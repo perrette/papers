@@ -1,0 +1,6 @@
+#!/bin/env python2.7
+import myref.bib
+
+if __name__ == '__main__':
+    myref.bib.main()
+

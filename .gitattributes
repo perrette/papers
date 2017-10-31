@@ -1,0 +1,3 @@
+_version.py export-subst
+librarymanager/_version.py export-subst
+myref/_version.py export-subst
