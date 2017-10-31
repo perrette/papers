@@ -5,6 +5,8 @@ logging.basicConfig(level=logging.INFO)
 import argparse
 import subprocess as sp
 import shutil
+import re
+import bisect
 
 import bibtexparser
 
@@ -134,7 +136,7 @@ class MyRef(object):
         files = [pdf]
         if attachments:
             files += attachments
-        setentryfiles(entry, files, overwrite=False)
+        setentryfiles(entry, files, overwrite=True)
 
         # rename files
         if rename:
@@ -150,37 +152,66 @@ class MyRef(object):
     #         logging.info('folder already present: '+name)        
 
 
-def extract_doi(pdf, txtdir='/tmp'):
+def readpdf(pdf, txtdir='/tmp'):
     txtfile = os.path.join(txtdir, pdf.replace('.pdf','.txt'))
     if not os.path.exists(txtfile):
         # logging.info(' '.join(['pdftotext','"'+pdf+'"', '"'+txtfile+'"']))
         sp.check_call(['pdftotext',pdf])
     else:
         logging.info('file already present: '+txtfile)
+    return open(txtfile).read()
 
-    # # look for expressions in the beginning of a line first
-    # cmd = "grep -io -e '^doi:10.[^ ,]\+' '{}' | head -1".format(txtfile)
+
+def extract_doi(pdf, txtdir='/tmp', space_digit=True):
+    txt = readpdf(pdf, txtdir)
+
+    # doi = r"10\.\d\d\d\d/[^ ,]+"  # this ignore line breaks
+    doi = r"10\.\d\d\d\d/.*?"
+
+    # sometimes an underscore is converted as space
+    if space_digit:
+        doi += r"[ \d]*"  # also accept empty space followed by digit
+
+    # expression ends with a comma, empty space or newline
+    stop = r"[, \n]"
+
+    # expression starts with doi:
+    prefixes = ['doi:', 'doi: ', 'doi ', 'dx\.doi\.org/', 'doi/']
+    prefix = '[' + '|'.join(prefixes) + ']' # match any of those
+
+    # full expression, capture doi as a group
+    regexp = prefix + "(" + doi + ")" + stop
+
+    match = re.compile(regexp).findall(txt.lower())[0]
+
+    # clean expression
+    doi = match.replace('\n','').strip('.')
+
+    if space_digit:
+        doi = doi.replace(' ','_')
+
+    # quality check 
+    assert len(doi) > 8, 'failed to extract doi: '+doi
+
+    return doi 
+
+    # # now try out more things
+    # cmd = "grep -io -e 'doi:10.[^ ,]\+' \
+    #                 -e 'doi: 10.[^ ,]\+' \
+    #                 -e 'doi 10.[^ ,]\+' \
+    #                 -e 'dx.doi.org/10.[^ ,]\+' \
+    #                 -e 'doi/10.[^ ,]\+' \
+    #                 '{}' | head -1".format(txtfile)
+    # # logging.info(cmd)
     # output = sp.check_output(cmd, shell=True).format(txtfile)
-    # if output.lower().startswith('doi'):
-    #     return output[4:].strip().strip('.')
-
-    # now try out more things
-    cmd = "grep -io -e 'doi:10.[^ ,]\+' \
-                    -e 'doi: 10.[^ ,]\+' \
-                    -e 'doi 10.[^ ,]\+' \
-                    -e 'dx.doi.org/10.[^ ,]\+' \
-                    -e 'doi/10.[^ ,]\+' \
-                    '{}' | head -1".format(txtfile)
-    # logging.info(cmd)
-    output = sp.check_output(cmd, shell=True).format(txtfile)
-    if output.lower().startswith('dx.doi.org/'):
-        return output[11:].strip()
-    for c in '[]{}':
-        if c in output:
-            raise ValueError('invalid doi: '+str(output))
-    if not output.lower().startswith('doi'):
-        raise ValueError('failed to extract doi: '+str(output))
-    return output[4:].strip().strip('.')
+    # if output.lower().startswith('dx.doi.org/'):
+    #     return output[11:].strip()
+    # for c in '[]{}':
+    #     if c in output:
+    #         raise ValueError('invalid doi: '+str(output))
+    # if not output.lower().startswith('doi'):
+    #     raise ValueError('failed to extract doi: '+str(output))
+    # return output[4:].strip().strip('.')
 
 
 def cached(file):
