@@ -19,12 +19,16 @@ def getentryfiles(e):
     else:
         return [ef.split(':') for ef in files.split(';') ]
 
-def setentryfiles(e, files):
+def setentryfiles(e, files, overwrite=True):
+    if not overwrite:
+        existingfiles = [fname for fname, ftype in getentryfiles(e)]
+    else:
+        existingfiles = []
     efiles = []
     for file in files: 
         base, ext = os.path.splitext(file)
         efiles.append(file + ':' + ext[1:])
-    e['file'] = ';'.join(efiles)
+    e['file'] = ';'.join(efiles + existingfiles)
 
 
 def move(f1, f2):
@@ -32,7 +36,8 @@ def move(f1, f2):
     if not os.path.exists(dirname):
         logging.info('create directory: '+dirname)
         os.makedirs(dirname)
-    logging.info('mv '+f1+' '+f2)
+    cmd = 'mv '+f1.decode('utf-8')+' '+f2
+    logging.info(cmd)
     shutil.move(f1, f2)
 
 
@@ -66,7 +71,7 @@ class MyRef(object):
         import bisect
         keys = [self.key(ei) for ei in self.db.entries]
         i = bisect.bisect_left(keys, self.key(e))
-        if keys and keys[i] == self.key(e):
+        if i < len(keys) and keys[i] == self.key(e):
             logging.info('entry already present: '+self.key(e) + replace*' => replace')
             if replace:
                 self.db.entries[i] = e
@@ -129,7 +134,7 @@ class MyRef(object):
         files = [pdf]
         if attachments:
             files += attachments
-        setentryfiles(entry, files)
+        setentryfiles(entry, files, overwrite=False)
 
         # rename files
         if rename:
@@ -146,17 +151,36 @@ class MyRef(object):
 
 
 def extract_doi(pdf, txtdir='/tmp'):
-    txtfile = os.path.join(txtdir, pdf + '.txt')
+    txtfile = os.path.join(txtdir, pdf.replace('.pdf','.txt'))
     if not os.path.exists(txtfile):
-        sp.check_call(['pdftotext',pdf, txtfile])
+        # logging.info(' '.join(['pdftotext','"'+pdf+'"', '"'+txtfile+'"']))
+        sp.check_call(['pdftotext',pdf])
     else:
         logging.info('file already present: '+txtfile)
-    cmd = "grep -o 'doi:.*[^ ,]\+' '{}' | head -1".format(txtfile)
-    logging.info(cmd)
+
+    # # look for expressions in the beginning of a line first
+    # cmd = "grep -io -e '^doi:10.[^ ,]\+' '{}' | head -1".format(txtfile)
+    # output = sp.check_output(cmd, shell=True).format(txtfile)
+    # if output.lower().startswith('doi'):
+    #     return output[4:].strip().strip('.')
+
+    # now try out more things
+    cmd = "grep -io -e 'doi:10.[^ ,]\+' \
+                    -e 'doi: 10.[^ ,]\+' \
+                    -e 'doi 10.[^ ,]\+' \
+                    -e 'dx.doi.org/10.[^ ,]\+' \
+                    -e 'doi/10.[^ ,]\+' \
+                    '{}' | head -1".format(txtfile)
+    # logging.info(cmd)
     output = sp.check_output(cmd, shell=True).format(txtfile)
-    if not output.startswith('doi:'):
-        raise ValueError('failed to extract doi')
-    return output[4:].strip()
+    if output.lower().startswith('dx.doi.org/'):
+        return output[11:].strip()
+    for c in '[]{}':
+        if c in output:
+            raise ValueError('invalid doi: '+str(output))
+    if not output.lower().startswith('doi'):
+        raise ValueError('failed to extract doi: '+str(output))
+    return output[4:].strip().strip('.')
 
 
 def cached(file):
@@ -193,6 +217,7 @@ def main():
     parser.add_argument('--filesdir', default='files', help='%(default)s')
     parser.add_argument('-a','--attachments', nargs='+', help='supplementary material')
     parser.add_argument('-r','--rename', action='store_true')
+    # parser.add_argument('---','--rename', action='store_true')
     # parser.add_argument('-c', '--config-file', 
         # default=os.path.join(CONFIG_FOLDER, 'config.json'))
     # parser.add_argument('--data-location', default='')
@@ -207,7 +232,14 @@ def main():
     else:
         my = MyRef.newbib(o.bibtex, o.filesdir)
 
-    my.add_pdf(o.pdf, rename=o.rename, attachments=o.attachments)
+    try:
+        my.add_pdf(o.pdf, rename=o.rename, attachments=o.attachments)
+    except Exception as error:
+        # print(error) 
+        # parser.error(str(error))
+        raise
+        logging.error(str(error))
+        parser.exit(1)
     my.save()
 
 if __name__ == '__main__':
