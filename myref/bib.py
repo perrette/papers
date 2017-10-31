@@ -154,9 +154,9 @@ class MyRef(object):
 
 def readpdf(pdf, txtdir='/tmp'):
     txtfile = os.path.join(txtdir, pdf.replace('.pdf','.txt'))
-    if not os.path.exists(txtfile):
+    if True: #not os.path.exists(txtfile):
         # logging.info(' '.join(['pdftotext','"'+pdf+'"', '"'+txtfile+'"']))
-        sp.check_call(['pdftotext',pdf])
+        sp.check_call(['pdftotext','-f','1','-l','1',pdf])
     else:
         logging.info('file already present: '+txtfile)
     return open(txtfile).read()
@@ -164,6 +164,9 @@ def readpdf(pdf, txtdir='/tmp'):
 
 def extract_doi(pdf, txtdir='/tmp', space_digit=True):
     txt = readpdf(pdf, txtdir)
+
+    # cut the reference part...
+
 
     # doi = r"10\.\d\d\d\d/[^ ,]+"  # this ignore line breaks
     doi = r"10\.\d\d\d\d/.*?"
