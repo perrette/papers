@@ -57,37 +57,37 @@ This tool's interface is built like `git`, with main command `myref` and a range
 Start with PDF of your choice (modern enough to have a DOI, e.g. anything from the Copernicus publications). 
 For the sake of the example, one of my owns: https://www.earth-syst-dynam.net/4/11/2013/esd-4-11-2013.pdf
 
-- parse doi:
+- parse doi
 
-    myref doi esd-4-11-2013.pdf
+        myref doi esd-4-11-2013.pdf
     
-    10.5194/esd-4-11-2013
+        10.5194/esd-4-11-2013
     
 - fetch bibtex based on doi
 
-    myref fetch 10.5194/esd-4-11-2013
+        myref fetch 10.5194/esd-4-11-2013
     
-    @article{Perrette_2013,
-        doi = {10.5194/esd-4-11-2013},
-        url = {https://doi.org/10.5194%2Fesd-4-11-2013},
-        year = 2013,
-        month = {jan},
-        publisher = {Copernicus {GmbH}},
-        volume = {4},
-        number = {1},
-        pages = {11--29},
-        author = {M. Perrette and F. Landerer and R. Riva and K. Frieler and M. Meinshausen},
-        title = {A scaling approach to project regional sea level rise and its uncertainties},
-        journal = {Earth System Dynamics}
-    }
+        @article{Perrette_2013,
+            doi = {10.5194/esd-4-11-2013},
+            url = {https://doi.org/10.5194%2Fesd-4-11-2013},
+            year = 2013,
+            month = {jan},
+            publisher = {Copernicus {GmbH}},
+            volume = {4},
+            number = {1},
+            pages = {11--29},
+            author = {M. Perrette and F. Landerer and R. Riva and K. Frieler and M. Meinshausen},
+            title = {A scaling approach to project regional sea level rise and its uncertainties},
+            journal = {Earth System Dynamics}
+        }
 
 - add pdf to library
 
-    myref add esd-4-11-2013.pdf
+        myref add esd-4-11-2013.pdf
 
-    INFO:root:found doi:10.5194/esd-4-11-2013
-    INFO:root:NEW ENTRY: perrette_2013
-    INFO:root:mv esd-4-11-2013.pdf files/2013/Perrette_2013.pdf
+        INFO:root:found doi:10.5194/esd-4-11-2013
+        INFO:root:NEW ENTRY: perrette_2013
+        INFO:root:mv esd-4-11-2013.pdf files/2013/Perrette_2013.pdf
     
     
 In the above case, the sequence of actions is:
