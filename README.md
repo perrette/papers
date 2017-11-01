@@ -85,7 +85,7 @@ For the sake of the example, one of my owns: https://www.earth-syst-dynam.net/4/
 
 - add pdf to library
 
-        myref add esd-4-11-2013.pdf
+        myref add --rename esd-4-11-2013.pdf
         
     output:
     
