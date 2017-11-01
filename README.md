@@ -54,6 +54,31 @@ Getting started
 ---------------
 This tool's interface is built like `git`, with main command `myref` and a range of subcommands.
 
+    usage: myref [-h] {add,doi} ...
+
+    library management tool
+
+    positional arguments:
+      {add,doi}
+
+    optional arguments:
+      -h, --help  show this help message and exit
+
+
+- `myref doi`: extract DOI from a PDF
+
+    usage: myref doi [-h] [--space-digit] pdf
+
+    parse DOI from PDF
+
+    positional arguments:
+      pdf
+
+    optional arguments:
+      -h, --help     show this help message and exit
+      --space-digit  space digit fix
+
+
 - `myref add`: Add a PDF to bibliography:
 
     - read bibtex file if any, otherwise create new bibtex lib
@@ -83,9 +108,11 @@ Usage:
 
     optional arguments:
       -h, --help            show this help message and exit
-      --bibtex BIBTEX       (default: myref.bib)
-      --filesdir FILESDIR   (default: files)
+      --bibtex BIBTEX       myref.bib
+      --filesdir FILESDIR   files
       -a ATTACHMENTS [ATTACHMENTS ...], --attachments ATTACHMENTS [ATTACHMENTS ...]
                             supplementary material
-      -r, --rename
-      -o, --overwrite
+      -r, --rename          rename PDFs according to key
+      -o, --overwrite       if the entry already exists, overwrite any existing
+                            files instead of appending
+

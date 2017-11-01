@@ -132,8 +132,8 @@ class MyRef(object):
                 logging.info('several files were renamed ({})'.format(count))
 
 
-    def add_pdf(self, pdf, rename=False, overwrite=True, attachments=None):
-        doi = extract_doi(pdf, '.')
+    def add_pdf(self, pdf, rename=False, overwrite=True, attachments=None, **kw):
+        doi = extract_doi(pdf, **kw)
         logging.info('found doi:'+doi)
 
         # get bib tex based on doi
@@ -183,7 +183,7 @@ def readpdf(pdf, first=None, last=None, keeptxt=False):
     return txt
 
 
-def extract_doi(pdf, txtdir='/tmp', space_digit=True):
+def extract_doi(pdf, space_digit=True):
     txt = readpdf(pdf, first=1, last=1)
 
     try:
@@ -291,10 +291,19 @@ def main():
             parser.exit(1)
         my.save()
 
+
+    parser = sp.add_parser('doi', description='parse DOI from PDF')
+    parser.add_argument('pdf')
+    parser.add_argument('--space-digit', action='store_true', help='space digit fix')
+
+
     o = main.parse_args()
 
     if o.cmd == 'add':
         addpdf(o)
+    elif o.cmd == 'doi':
+        print(extract_doi(o.pdf, o.space_digit))
+
 
 if __name__ == '__main__':
     main()
