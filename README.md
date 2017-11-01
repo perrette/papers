@@ -60,6 +60,7 @@ For the sake of the example, one of my owns: https://www.earth-syst-dynam.net/4/
 - parse doi
 
         myref doi esd-4-11-2013.pdf
+    output:
     
         10.5194/esd-4-11-2013
     
