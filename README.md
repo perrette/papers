@@ -121,16 +121,21 @@ Current features
 Planned features
 ----------------
 Mostly related to bibliography management:
+- integration with git (such as `pass` does)
+- configuration file with default bibtex and files directory, with priority:
+    - command line
+    - local congig
+    - global config
+- associated `myref config` to see and set configuration 
+- display / search / filter entries : format as bibtex or key or whatever
 - add entry as bibtex
 - add manual entry 
-- scan directory for PDFs (currently doable with `find . -name "*.pdf" -exec myref add {} \;`)
 - remove entry by key
-- search / filter entries : display filtered bibtex
 - move library location (i.e. both on disk and in bibtex's `file` entry)
 - fix broken PDF links
 - more advanced control for merging / update / key generation
 - better handling of attachment / multiple files
-- integration with git (such as `pass` does)
+- scan directory for PDFs (currently doable with `find . -name "*.pdf" -exec myref add {} \;`)
 
 As well as:
 - parse other info (author name, year) from PDF, especially for old papers
@@ -138,5 +143,7 @@ As well as:
 - fetch bibtex from alternative info (author name, year...), especially for old papers
     - this is currently possible with the standard crossref API (and nice python package [crossrefapi](https://github.com/fabiobatalha/crossrefapi)), but the result is `json`    - not sure how to convert the json result `into` a `bibtex` file in the general case
     - for recent papers with DOI, a second request can be made, as workaround, but this feature is mostly inteded for old papers without DOI.
+
+And more technically, needs to include nose tests ASAP.
 
 Suggestions welcomed for prioritizing / feature suggestion.
