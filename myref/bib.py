@@ -19,11 +19,19 @@ def getentryfiles(e):
     if not files: 
         return []
     else:
-        return [ef.split(':') for ef in files.split(';') ]
+        res = []
+        for ef in files.split(';'):
+            if ':' in ef:
+                res.append(ef.split(':'))
+            else:
+                res.append((ef, 'pdf'))
+        return res
 
-def setentryfiles(e, files, overwrite=True):
+def setentryfiles(e, files, overwrite=True, interactive=True):
     if not overwrite:
         existingfiles = [fname for fname, ftype in getentryfiles(e)]
+        # if interactive and existingfiles:
+            # ans = raw_input('files already present for '+)
     else:
         existingfiles = []
     efiles = []
@@ -262,8 +270,10 @@ def main():
     parser.add_argument('--bibtex', default='myref.bib',help='%(default)s')
     parser.add_argument('--filesdir', default='files', help='%(default)s')
     parser.add_argument('-a','--attachments', nargs='+', help='supplementary material')
-    parser.add_argument('-r','--rename', action='store_true')
-    parser.add_argument('-o','--overwrite', action='store_true')
+    parser.add_argument('-r','--rename', action='store_true', 
+        help='rename PDFs according to key')
+    parser.add_argument('-o','--overwrite', action='store_true', 
+            help='if the entry already exists, overwrite any existing files instead of appending')
 
     def addpdf(o):
         if os.path.exists(o.bibtex):
@@ -281,9 +291,9 @@ def main():
             parser.exit(1)
         my.save()
 
-    o = parser.parse_args()
+    o = main.parse_args()
 
-    if o.cmd == 'addpdf':
+    if o.cmd == 'add':
         addpdf(o)
 
 if __name__ == '__main__':
