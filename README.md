@@ -2,6 +2,7 @@
 
 Command-line tool to manage bibliography (pdfs + bibtex)
 
+
 Motivation
 ----------
 This project is an attempt to create a light-weight, 
@@ -12,14 +13,15 @@ command-line bibliography managenent tool. Aims:
 - some PDF-parsing capability (especially to extract DOI)
 - fetch PDF metadata from the internet (i.e. [crossref](https://github.com/CrossRef/rest-api-doc)), preferably based on DOI
 
+
 Why not JabRef or Mendeley?
 --------------------------
-- JabRef is nice, light-weight, but is not so good as managing PDFs.
+- JabRef is nice, light-weight, but is not so good at managing PDFs.
 - Mendeley is perfect at extracting metadata from PDF and managing your PDF library, 
 but many issues remain (own experience, Ubuntu 14.04, Desktop Version 1.17):
     - very unstable
-    - PDF renaming is too verbose, and sometimes the behaviour is unexpected (some PDFs remain in on obscure Downloaded folder, instead of in the main collection)
-    - somewhat heavy (it offers many functions of online syncing, etc)
+    - PDF automatic naming is too verbose, and sometimes the behaviour is unexpected (some PDFs remain in on obscure Downloaded folder, instead of in the main collection)
+    - somewhat heavy (it offers functions of online syncing, etc)
     - poor seach capability (related to the point above)
 
 Above-mentioned issues will with no doubt be improved in future releases, but they are a starting point for this project.
@@ -121,12 +123,6 @@ Current features
 Planned features
 ----------------
 Mostly related to bibliography management:
-- integration with git (such as `pass` does)
-- configuration file with default bibtex and files directory, with priority:
-    - command line
-    - local congig
-    - global config
-- associated `myref config` to see and set configuration 
 - display / search / filter entries : format as bibtex or key or whatever
 - add entry as bibtex
 - add manual entry 
@@ -143,6 +139,14 @@ As well as:
 - fetch bibtex from alternative info (author name, year...), especially for old papers
     - this is currently possible with the standard crossref API (and nice python package [crossrefapi](https://github.com/fabiobatalha/crossrefapi)), but the result is `json`    - not sure how to convert the json result `into` a `bibtex` file in the general case
     - for recent papers with DOI, a second request can be made, as workaround, but this feature is mostly inteded for old papers without DOI.
+
+And some new, original features:
+- integration with git (such as `pass` does)
+- configuration file with default bibtex and files directory, with priority:
+    - command line
+    - local congig
+    - global config
+- associated `myref config` to see and set configuration 
 
 And more technically, needs to include nose tests ASAP.
 
