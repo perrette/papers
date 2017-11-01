@@ -130,6 +130,7 @@ Mostly related to bibliography management:
 - fix broken PDF links
 - more advanced control for merging / update / key generation
 - better handling of attachment / multiple files
+- integration with git (such as `pass` does)
 
 As well as:
 - parse other info (author name, year) from PDF, especially for old papers
