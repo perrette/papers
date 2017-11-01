@@ -66,10 +66,12 @@ This tool's interface is built like `git`, with main command `myref` and a range
 
     
 Example:
+
         myref add -r myfile.pdf
 
 
 Usage:
+
     usage: myref add [-h] [--bibtex BIBTEX] [--filesdir FILESDIR]
                      [-a ATTACHMENTS [ATTACHMENTS ...]] [-r] [-o]
                      pdf
