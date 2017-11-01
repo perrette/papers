@@ -66,6 +66,8 @@ For the sake of the example, one of my owns: https://www.earth-syst-dynam.net/4/
 - fetch bibtex based on doi
 
         myref fetch 10.5194/esd-4-11-2013
+        
+    output:
     
         @article{Perrette_2013,
             doi = {10.5194/esd-4-11-2013},
@@ -84,7 +86,9 @@ For the sake of the example, one of my owns: https://www.earth-syst-dynam.net/4/
 - add pdf to library
 
         myref add esd-4-11-2013.pdf
-
+        
+    output:
+    
         INFO:root:found doi:10.5194/esd-4-11-2013
         INFO:root:NEW ENTRY: perrette_2013
         INFO:root:mv esd-4-11-2013.pdf files/2013/Perrette_2013.pdf
