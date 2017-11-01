@@ -124,7 +124,7 @@ class MyRef(object):
                 logging.info('several files were renamed ({})'.format(count))
 
 
-    def add_pdf(self, pdf, rename=False, attachments=None):
+    def add_pdf(self, pdf, rename=False, overwrite=True, attachments=None):
         doi = extract_doi(pdf, '.')
         logging.info('found doi:'+doi)
 
@@ -141,7 +141,7 @@ class MyRef(object):
         files = [pdf]
         if attachments:
             files += attachments
-        setentryfiles(entry, files, overwrite=True)
+        setentryfiles(entry, files, overwrite=overwrite)
 
         # rename files
         if rename:
@@ -254,36 +254,37 @@ def fetch_bibtex(doi):
 # default_config = Config()
 
 def main():
-    parser = argparse.ArgumentParser(description='add PDF to library')
+    main = argparse.ArgumentParser(description='library management tool')
+    sp = main.add_subparsers(dest='cmd')
+
+    parser = sp.add_parser('add', description='add PDF to library')
     parser.add_argument('pdf')
     parser.add_argument('--bibtex', default='myref.bib',help='%(default)s')
     parser.add_argument('--filesdir', default='files', help='%(default)s')
     parser.add_argument('-a','--attachments', nargs='+', help='supplementary material')
     parser.add_argument('-r','--rename', action='store_true')
-    # parser.add_argument('---','--rename', action='store_true')
-    # parser.add_argument('-c', '--config-file', 
-        # default=os.path.join(CONFIG_FOLDER, 'config.json'))
-    # parser.add_argument('--data-location', default='')
-    # parser.add_argument('--pdf-folder', default='pdfs')
-    # parser.add_argument('--text-folder', default='texts')
-    # parser.add_argument('--bib', default='myref.bib', help='bibtex file')
+    parser.add_argument('-o','--overwrite', action='store_true')
+
+    def addpdf(o):
+        if os.path.exists(o.bibtex):
+            my = MyRef(o.bibtex, o.filesdir)
+        else:
+            my = MyRef.newbib(o.bibtex, o.filesdir)
+
+        try:
+            my.add_pdf(o.pdf, rename=o.rename, overwrite=o.overwrite, attachments=o.attachments)
+        except Exception as error:
+            # print(error) 
+            # parser.error(str(error))
+            raise
+            logging.error(str(error))
+            parser.exit(1)
+        my.save()
 
     o = parser.parse_args()
 
-    if os.path.exists(o.bibtex):
-        my = MyRef(o.bibtex, o.filesdir)
-    else:
-        my = MyRef.newbib(o.bibtex, o.filesdir)
-
-    try:
-        my.add_pdf(o.pdf, rename=o.rename, attachments=o.attachments)
-    except Exception as error:
-        # print(error) 
-        # parser.error(str(error))
-        raise
-        logging.error(str(error))
-        parser.exit(1)
-    my.save()
+    if o.cmd == 'addpdf':
+        addpdf(o)
 
 if __name__ == '__main__':
     main()

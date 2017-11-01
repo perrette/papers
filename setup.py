@@ -9,7 +9,7 @@ setup(name='myref',
       description='utilities to keep your PDF library organized',
       url='https://github.com/perrette/myref',
       packages=['myref'],
-      scripts=['scripts/addpdf'],
+      scripts=['scripts/myref'],
       license = "MIT",
       requires = ["bibtexparser"],
       )
