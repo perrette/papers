@@ -11,6 +11,6 @@ setup(name='myref',
       packages=['myref'],
       scripts=['scripts/myref'],
       license = "MIT",
-      requires = ["bibtexparser"],
+      requires = ["bibtexparser","tox"],
       )
 

@@ -148,6 +148,5 @@ And some new, original features:
     - global config
 - associated `myref config` to see and set configuration 
 
-And more technically, needs to include nose tests ASAP.
 
 Suggestions welcomed for prioritizing / feature suggestion.

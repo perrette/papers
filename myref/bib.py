@@ -10,8 +10,6 @@ import bisect
 
 import bibtexparser
 
-from myref.sortedcollection import SortedCollection
-
 
 def getentryfiles(e):
     'list of (fname, ftype) '
