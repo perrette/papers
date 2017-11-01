@@ -54,32 +54,43 @@ Getting started
 ---------------
 This tool's interface is built like `git`, with main command `myref` and a range of subcommands.
 
-    usage: myref [-h] {add,doi,fetch} ...
+Start with PDF of your choice (modern enough to have a DOI, e.g. anything from the Copernicus publications). 
+For the sake of the example, one of my owns: https://www.earth-syst-dynam.net/4/11/2013/esd-4-11-2013.pdf
 
-    library management tool
+- parse doi:
 
-    positional arguments:
-      {add,doi,fetch}
+    myref doi esd-4-11-2013.pdf
+    
+    10.5194/esd-4-11-2013
+    
+- fetch bibtex based on doi
 
-    optional arguments:
-      -h, --help  show this help message and exit
+    myref fetch 10.5194/esd-4-11-2013
+    
+    @article{Perrette_2013,
+        doi = {10.5194/esd-4-11-2013},
+        url = {https://doi.org/10.5194%2Fesd-4-11-2013},
+        year = 2013,
+        month = {jan},
+        publisher = {Copernicus {GmbH}},
+        volume = {4},
+        number = {1},
+        pages = {11--29},
+        author = {M. Perrette and F. Landerer and R. Riva and K. Frieler and M. Meinshausen},
+        title = {A scaling approach to project regional sea level rise and its uncertainties},
+        journal = {Earth System Dynamics}
+    }
 
+- add pdf to library
 
-- `myref doi`: parse DOI from PDF
+    myref add esd-4-11-2013.pdf
 
-    usage: myref doi [-h] [--space-digit] pdf
-
-    optional arguments:
-      --space-digit  space digit fix
-
-
-- `myref fetch` : fetch bibtex from DOI
-
-    usage: myref fetch [-h] doi
-
-
-- `myref add`: Add a PDF to bibliography:
-
+    INFO:root:found doi:10.5194/esd-4-11-2013
+    INFO:root:NEW ENTRY: perrette_2013
+    INFO:root:mv esd-4-11-2013.pdf files/2013/Perrette_2013.pdf
+    
+    
+In the above case, the sequence of actions is:
     - read bibtex file if any, otherwise create new bibtex lib
     - extract DOI from PDF
     - fetch bibtex entry via [crossref API](https://github.com/CrossRef/rest-api-doc/issues/115#issuecomment-221821473)
@@ -88,30 +99,5 @@ This tool's interface is built like `git`, with main command `myref` and a range
     - rename files if required
         - in the case of multiple files, a folder named after the key is created, and all associated files are copied into it, without further renaming.
 
-    
-Example:
 
-        myref add -r myfile.pdf
-
-
-Usage:
-
-    usage: myref add [-h] [--bibtex BIBTEX] [--filesdir FILESDIR]
-                     [-a ATTACHMENTS [ATTACHMENTS ...]] [-r] [-o]
-                     pdf
-
-    add PDF to library
-
-    positional arguments:
-      pdf
-
-    optional arguments:
-      -h, --help            show this help message and exit
-      --bibtex BIBTEX       myref.bib
-      --filesdir FILESDIR   files
-      -a ATTACHMENTS [ATTACHMENTS ...], --attachments ATTACHMENTS [ATTACHMENTS ...]
-                            supplementary material
-      -r, --rename          rename PDFs according to key
-      -o, --overwrite       if the entry already exists, overwrite any existing
-                            files instead of appending
-
+Consult inline help for more detailed documentation!
