@@ -48,13 +48,14 @@ def move(f1, f2):
 class MyRef(object):
     """main config
     """
-    def __init__(self, bibtex, filesdir):
+    def __init__(self, bibtex, filesdir, key_field='ID'):
         self.filesdir = filesdir
         self.txt = '/tmp'
         self.bibtex = bibtex
         self.db = bibtexparser.load(open(bibtex))
         # assume an already sorted list
-        self.key_field = 'ID'
+        self.key_field = key_field
+        self.sort()
 
     @classmethod
     def newbib(cls, bibtex, filesdir):
@@ -62,12 +63,11 @@ class MyRef(object):
         open(bibtex,'w').write('')
         return cls(bibtex, filesdir)
 
-
     def key(self, e):
-        return e[self.key_field]
+        return e[self.key_field].lower()
 
     def sort(self):
-        self.db.entries = sorted(self.db.entries, self.key)
+        self.db.entries = sorted(self.db.entries, key=self.key)
 
     def insert_entry(self, e, replace=False):
         import bisect
@@ -79,7 +79,7 @@ class MyRef(object):
                 self.db.entries[i] = e
             return self.db.entries[i]
         else:
-            logging.info('new entry: '+self.key(e))
+            logging.info('NEW ENTRY: '+self.key(e))
             self.db.entries.insert(i, e)
             return e
 
@@ -100,23 +100,28 @@ class MyRef(object):
             return
 
         if len(files) == 1:
-            logging.info('one file to rename')
             file, type = files[0]
             base, ext = os.path.splitext(file)
             newfile = os.path.join(direc, e['ID']+ext)
-            move(file, newfile)
+            if file != newfile:
+                move(file, newfile)
+                logging.info('one file was renamed')
             e['file'] = newfile + ':' +type
 
         # several files: only rename container
         else:
-            logging.info('several files to rename')
             newdir = os.path.join(direc, e['ID'])
             efiles = []
+            count = 0
             for file, ftype in files:
                 newfile = os.path.join(newdir, os.path.basename(file))
-                move(file, newfile)
+                if file != newfile:
+                    move(file, newfile)
+                    count += 1
                 efiles.append(file + ':' + ftype)
             e['file'] = ';'.join(efiles)
+            if count > 0:
+                logging.info('several files were renamed ({})'.format(count))
 
 
     def add_pdf(self, pdf, rename=False, attachments=None):
