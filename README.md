@@ -5,9 +5,9 @@ Command-line tool to manage bibliography (pdfs + bibtex)
 Motivation
 ----------
 This project is an attempt to create a light-weight, 
-command-line bibliography managenent tool. It aims at:
+command-line bibliography managenent tool. Aims:
 
-- maintaining a PDF library (with appropriate naming)
+- maintain a PDF library (with appropriate naming)
 - maintain one or several bibtex-compatible collections, linked to PDFs
 - some PDF-parsing capability (especially to extract DOI)
 - fetch PDF metadata from the internet (i.e. [crossref](https://github.com/CrossRef/rest-api-doc)), preferably based on DOI
