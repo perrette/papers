@@ -272,8 +272,8 @@ def main():
     parser.add_argument('-a','--attachments', nargs='+', help='supplementary material')
     parser.add_argument('-r','--rename', action='store_true', 
         help='rename PDFs according to key')
-    parser.add_argument('-o','--overwrite', action='store_true', 
-            help='if the entry already exists, overwrite any existing files instead of appending')
+    parser.add_argument('--append', action='store_true', 
+            help='if the entry already exists, append instead of overwriting file')
 
     def addpdf(o):
         if os.path.exists(o.bibtex):
@@ -282,7 +282,7 @@ def main():
             my = MyRef.newbib(o.bibtex, o.filesdir)
 
         try:
-            my.add_pdf(o.pdf, rename=o.rename, overwrite=o.overwrite, attachments=o.attachments)
+            my.add_pdf(o.pdf, rename=o.rename, overwrite=not o.append, attachments=o.attachments)
         except Exception as error:
             # print(error) 
             # parser.error(str(error))
