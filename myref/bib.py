@@ -157,21 +157,38 @@ class MyRef(object):
     #         logging.info('folder already present: '+name)        
 
 
-def readpdf(pdf, txtdir='/tmp'):
-    txtfile = os.path.join(txtdir, pdf.replace('.pdf','.txt'))
+def readpdf(pdf, first=None, last=None, keeptxt=False):
+    txtfile = pdf.replace('.pdf','.txt')
+    # txtfile = os.path.join(os.path.dirname(pdf), pdf.replace('.pdf','.txt'))
     if True: #not os.path.exists(txtfile):
         # logging.info(' '.join(['pdftotext','"'+pdf+'"', '"'+txtfile+'"']))
-        sp.check_call(['pdftotext','-f','1','-l','1',pdf])
+        cmd = ['pdftotext']
+        if first is not None: cmd.extend(['-f',str(first)])
+        if last is not None: cmd.extend(['-l',str(last)])
+        cmd.append(pdf)
+        sp.check_call(cmd)
     else:
         logging.info('file already present: '+txtfile)
-    return open(txtfile).read()
+    txt = open(txtfile).read()
+    if not keeptxt:
+        os.remove(txtfile)
+    return txt
 
 
 def extract_doi(pdf, txtdir='/tmp', space_digit=True):
-    txt = readpdf(pdf, txtdir)
+    txt = readpdf(pdf, first=1, last=1)
 
+    try:
+        doi = parse_doi(txt, space_digit=space_digit)
+
+    except ValueError:
+        # sometimes first page is blank
+        txt = readpdf(pdf, first=2, last=2)
+        doi = parse_doi(txt, space_digit=space_digit)
+    return doi
+
+def parse_doi(txt, space_digit=True):
     # cut the reference part...
-
 
     # doi = r"10\.\d\d\d\d/[^ ,]+"  # this ignore line breaks
     doi = r"10\.\d\d\d\d/.*?"
@@ -190,7 +207,12 @@ def extract_doi(pdf, txtdir='/tmp', space_digit=True):
     # full expression, capture doi as a group
     regexp = prefix + "(" + doi + ")" + stop
 
-    match = re.compile(regexp).findall(txt.lower())[0]
+    matches = re.compile(regexp).findall(txt.lower())
+
+    if not matches:
+        raise ValueError('no matches')
+
+    match = matches[0]
 
     # clean expression
     doi = match.replace('\n','').strip('.')
@@ -202,24 +224,6 @@ def extract_doi(pdf, txtdir='/tmp', space_digit=True):
     assert len(doi) > 8, 'failed to extract doi: '+doi
 
     return doi 
-
-    # # now try out more things
-    # cmd = "grep -io -e 'doi:10.[^ ,]\+' \
-    #                 -e 'doi: 10.[^ ,]\+' \
-    #                 -e 'doi 10.[^ ,]\+' \
-    #                 -e 'dx.doi.org/10.[^ ,]\+' \
-    #                 -e 'doi/10.[^ ,]\+' \
-    #                 '{}' | head -1".format(txtfile)
-    # # logging.info(cmd)
-    # output = sp.check_output(cmd, shell=True).format(txtfile)
-    # if output.lower().startswith('dx.doi.org/'):
-    #     return output[11:].strip()
-    # for c in '[]{}':
-    #     if c in output:
-    #         raise ValueError('invalid doi: '+str(output))
-    # if not output.lower().startswith('doi'):
-    #     raise ValueError('failed to extract doi: '+str(output))
-    # return output[4:].strip().strip('.')
 
 
 def cached(file):
