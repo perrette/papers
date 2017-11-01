@@ -106,3 +106,35 @@ In the above case, the sequence of actions is:
 
 
 Consult inline help for more detailed documentation!
+
+
+Current features
+----------------
+- parse PDF to extract DOI
+- fetch bibtex entry from DOI (using crossref API)
+- create and maintain bibtex file
+- add entry as PDF
+- rename PDFs according to bibtex key and year
+- some support for attachment
+
+
+Planned features
+----------------
+Mostly related to bibliography management:
+- add entry as bibtex
+- add manual entry 
+- scan directory for PDFs (currently doable with `find . -name "*.pdf" -exec myref add {} \;`)
+- remove entry by key
+- search / filter entries : display filtered bibtex
+- move library location (i.e. both on disk and in bibtex's `file` entry)
+- fix broken PDF links
+- more advanced control for merging / update / key generation
+
+As well as:
+- parse other info (author name, year) from PDF, especially for old papers
+    - maybe worthwhile to look into crossref's parser written in Ruby
+- fetch bibtex from alternative info (author name, year...), especially for old papers
+    - this is currently possible with the standard crossref API (and nice python package [crossrefapi](https://github.com/fabiobatalha/crossrefapi)), but the result is `json`    - not sure how to convert the json result `into` a `bibtex` file in the general case
+    - for recent papers with DOI, a second request can be made, as workaround, but this feature is mostly inteded for old papers without DOI.
+
+Suggestions welcomed for prioritizing / feature suggestion.
