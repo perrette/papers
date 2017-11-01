@@ -296,6 +296,8 @@ def main():
     parser.add_argument('pdf')
     parser.add_argument('--space-digit', action='store_true', help='space digit fix')
 
+    parser = sp.add_parser('fetch', description='fetch bibtex from DOI')
+    parser.add_argument('doi')
 
     o = main.parse_args()
 
@@ -303,7 +305,8 @@ def main():
         addpdf(o)
     elif o.cmd == 'doi':
         print(extract_doi(o.pdf, o.space_digit))
-
+    elif o.cmd == 'fetch':
+        print(fetch_bibtex(o.doi))
 
 if __name__ == '__main__':
     main()

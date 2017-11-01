@@ -54,29 +54,28 @@ Getting started
 ---------------
 This tool's interface is built like `git`, with main command `myref` and a range of subcommands.
 
-    usage: myref [-h] {add,doi} ...
+    usage: myref [-h] {add,doi,fetch} ...
 
     library management tool
 
     positional arguments:
-      {add,doi}
+      {add,doi,fetch}
 
     optional arguments:
       -h, --help  show this help message and exit
 
 
-- `myref doi`: extract DOI from a PDF
+- `myref doi`: parse DOI from PDF
 
     usage: myref doi [-h] [--space-digit] pdf
 
-    parse DOI from PDF
-
-    positional arguments:
-      pdf
-
     optional arguments:
-      -h, --help     show this help message and exit
       --space-digit  space digit fix
+
+
+- `myref fetch` : fetch bibtex from DOI
+
+    usage: myref fetch [-h] doi
 
 
 - `myref add`: Add a PDF to bibliography:
