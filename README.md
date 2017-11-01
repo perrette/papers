@@ -129,6 +129,7 @@ Mostly related to bibliography management:
 - move library location (i.e. both on disk and in bibtex's `file` entry)
 - fix broken PDF links
 - more advanced control for merging / update / key generation
+- better handling of attachment / multiple files
 
 As well as:
 - parse other info (author name, year) from PDF, especially for old papers
