@@ -95,13 +95,13 @@ For the sake of the example, one of my owns: https://www.earth-syst-dynam.net/4/
     
     
 In the above case, the sequence of actions is:
-    - read bibtex file if any, otherwise create new bibtex lib
-    - extract DOI from PDF
-    - fetch bibtex entry via [crossref API](https://github.com/CrossRef/rest-api-doc/issues/115#issuecomment-221821473)
-    - create entry if not already present
-    - link PDF and attachments to the enrty (`file` field)
-    - rename files if required
-        - in the case of multiple files, a folder named after the key is created, and all associated files are copied into it, without further renaming.
+- read bibtex file if any, otherwise create new bibtex lib
+- extract DOI from PDF
+- fetch bibtex entry via [crossref API](https://github.com/CrossRef/rest-api-doc/issues/115#issuecomment-221821473)
+- create entry if not already present
+- link PDF and attachments to the enrty (`file` field)
+- rename files if required
+    - in the case of multiple files, a folder named after the key is created, and all associated files are copied into it, without further renaming.
 
 
 Consult inline help for more detailed documentation!
