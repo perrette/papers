@@ -40,7 +40,7 @@ def _parse_file(file):
 
 def _format_file(file, type=None):
     if not type:
-        type = os.path.splitext(file)[1][1:]
+        type = os.path.splitext(file)[1].strip('.')
     return ':'+file+':'+type
 
 
