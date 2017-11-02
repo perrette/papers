@@ -1,6 +1,6 @@
 #!/bin/env python2.7
 from __future__ import print_function
-import urllib2
+import six.moves.urllib.request
 import os
 import logging
 
@@ -25,7 +25,7 @@ def _downloadpdf(url, filename, overwrite=False):
 
     print('download',url,'to',filename)
 
-    response = urllib2.urlopen(url)
+    response = six.moves.urllib.request.urlopen(url)
     resp = response.read()
 
     open(filename, 'w').write(resp)

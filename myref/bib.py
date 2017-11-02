@@ -7,6 +7,8 @@ import subprocess as sp
 import shutil
 import re
 import bisect
+import six
+import six.moves.urllib.request
 
 import bibtexparser
 
@@ -73,12 +75,12 @@ def move(f1, f2, copy=False):
         logging.info('create directory: '+dirname)
         os.makedirs(dirname)
     if copy:
-        cmd = 'cp '+f1.decode('utf-8')+' '+f2
+        cmd = 'cp {} {}'.format(f1, f2)
         logging.info(cmd)
         if not DRYRUN:
             shutil.copy(f1, f2)
     else:
-        cmd = 'mv '+f1.decode('utf-8')+' '+f2
+        cmd = 'mv {} {}'.format(f1, f2)
         logging.info(cmd)
         if not DRYRUN:
             shutil.move(f1, f2)
@@ -127,7 +129,8 @@ class MyRef(object):
 
     def save(self):
         s = bibtexparser.dumps(self.db)
-        s = s.encode('utf-8')
+        if six.PY2:
+            s = s.encode('utf-8')
         open(self.bibtex, 'w').write(s)
 
 
@@ -289,11 +292,10 @@ def cached(file):
 
 @cached('.crossref-bibtex.json')
 def fetch_bibtex(doi):
-    import urllib2
     url = "http://api.crossref.org/works/"+doi+"/transform/application/x-bibtex"
-    response = urllib2.urlopen(url)
+    response = six.moves.urllib.request.urlopen(url)
     html = response.read()
-    return html.decode('utf-8').strip()
+    return six.u(html).strip()
 
 # default_config = Config()
 

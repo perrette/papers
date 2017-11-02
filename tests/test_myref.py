@@ -10,7 +10,7 @@ from download import downloadpdf
 
 def run(cmd):
     print(cmd)
-    return sp.check_output(cmd, shell=True)
+    return str(sp.check_output(cmd, shell=True).strip().decode())
 
 def prepare_paper():
     pdf = downloadpdf('bg-8-515-2011.pdf')

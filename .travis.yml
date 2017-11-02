@@ -6,11 +6,13 @@ addons:
     - poppler-utils
 python:
   - "2.7"
+  - "3.4"
 notifications:
   email: false
 before_install:
   - pip install pip --upgrade
   - pip install bibtexparser
+  - pip install six
 # test coverage
 #  - pip install tox
   - pip install pytest pytest-cov
