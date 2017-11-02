@@ -4,7 +4,6 @@ import unittest
 import os, subprocess as sp
 import tempfile, shutil
 
-from utils import myref
 from myref.bib import MyRef, bibtexparser
 from download import downloadpdf
 
