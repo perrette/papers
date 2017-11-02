@@ -306,14 +306,16 @@ def main():
     sp = main.add_subparsers(dest='cmd')
 
     parser = sp.add_parser('add', description='add PDF to library')
-    parser.add_argument('pdf')
+    parser.add_argument('pdf', nargs='+')
+    parser.add_argument('--ignore-errors', action='store_true', 
+        help='ignore errors when adding multiple files')
 
     grp = parser.add_argument_group('config')
     grp.add_argument('--bibtex', default='myref.bib',help='%(default)s')
     grp.add_argument('--filesdir', default='files', help='%(default)s')
 
     grp = parser.add_argument_group('files')
-    grp.add_argument('-a','--attachments', nargs='+', help='supplementary material')
+    grp.add_argument('-a','--attachment', nargs='+', help=argparse.SUPPRESS) #'supplementary material')
     grp.add_argument('-r','--rename', action='store_true', 
         help='rename PDFs according to key')
     grp.add_argument('-c','--copy', action='store_true', 
@@ -333,14 +335,23 @@ def main():
         else:
             my = MyRef.newbib(o.bibtex, o.filesdir)
 
-        try:
-            my.add_pdf(o.pdf, rename=o.rename, copy=o.copy, overwrite=not o.append, attachments=o.attachments)
-        except Exception as error:
-            # print(error) 
-            # parser.error(str(error))
-            raise
-            logging.error(str(error))
+        if len(o.pdf) > 1 and o.attachment:
+            logging.error('--attachment is only valid for one added file')
             parser.exit(1)
+
+        else:
+            for pdf in o.pdf:
+                try:
+                    my.add_pdf(pdf, rename=o.rename, copy=o.copy, overwrite=not o.append, 
+                        attachments=o.attachment)
+                except Exception as error:
+                    # print(error) 
+                    # parser.error(str(error))
+                    # raise
+                    logging.error(str(error))
+                    if not o.ignore_errors:
+                        parser.exit(1)
+
         if not o.dry_run:
             my.save()
 
