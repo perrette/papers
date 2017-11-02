@@ -12,33 +12,60 @@ import bibtexparser
 
 DRYRUN = False
 
+
+# Parse / format bibtex file entry
+# ================================
+
+def _parse_file(file):
+    """ parse a single file entry
+    """
+    sfile = file.split(':')
+    
+    if len(sfile) == 1:  # no ':'
+        path, type = file, ''
+
+    elif len(sfile) == 2:
+        path, type = sfile
+
+    elif len(sfile) == 3:
+        basename, path, type = sfile
+
+    else:
+        raise ValueError('unknown "file" format: file')
+
+    return path
+
+
+def _format_file(file, type=None):
+    if not type:
+        type = os.path.splitext(file)[1][1:]
+    return ':'+file+':'+type
+
+
+def parse_file(file):
+    if not file:
+        return []
+    else:
+        return [_parse_file(f) for f in file.split(';') ]
+
+
+def format_file(file_types):
+    return ';'.join([_format_file(f) for f in file_types])
+
+
 def getentryfiles(e):
     'list of (fname, ftype) '
     files = e.get('file','').strip()
-    if not files: 
-        return []
-    else:
-        res = []
-        for ef in files.split(';'):
-            if ':' in ef:
-                res.append(ef.split(':'))
-            else:
-                res.append((ef, 'pdf'))
-        return res
+    return parse_file(files)
 
-def setentryfiles(e, files, overwrite=True, interactive=True):
+
+def setentryfiles(e, files, overwrite=True): #, interactive=True):
     if not overwrite:
-        existingfiles = [fname for fname, ftype in getentryfiles(e)]
-        # if interactive and existingfiles:
-            # ans = raw_input('files already present for '+)
-    else:
-        existingfiles = []
-    efiles = []
-    for file in files: 
-        base, ext = os.path.splitext(file)
-        efiles.append(file + ':' + ext[1:])
-    e['file'] = ';'.join(efiles + existingfiles)
+        files = getentryfiles(e) + files
+    e['file'] = format_file(files)
 
+
+# move / copy
 
 def move(f1, f2, copy=False):
     dirname = os.path.dirname(f2)
@@ -59,6 +86,7 @@ def move(f1, f2, copy=False):
 
 # main config
 # ===========
+
 class MyRef(object):
     """main config
     """
@@ -113,29 +141,30 @@ class MyRef(object):
             logging.info('no files to rename')
             return
 
+        count = 0
         if len(files) == 1:
-            file, type = files[0]
+            file = files[0]
             base, ext = os.path.splitext(file)
             newfile = os.path.join(direc, e['ID']+ext)
             if file != newfile:
                 move(file, newfile, copy)
-                logging.info('one file was renamed')
-            e['file'] = newfile + ':' +type
+                count += 1
+            newfiles = [newfile]
 
         # several files: only rename container
         else:
             newdir = os.path.join(direc, e['ID'])
-            efiles = []
-            count = 0
-            for file, ftype in files:
+            newfiles = []
+            for file in files:
                 newfile = os.path.join(newdir, os.path.basename(file))
                 if file != newfile:
                     move(file, newfile, copy)
                     count += 1
-                efiles.append(newfile + ':' + ftype)
-            e['file'] = ';'.join(efiles)
-            if count > 0:
-                logging.info('several files were renamed ({})'.format(count))
+                newfiles.append(newfile)
+
+        setentryfiles(e, newfiles)
+        if count > 0:
+            logging.info('renamed file(s): {}'.format(count))
 
 
     def add_pdf(self, pdf, rename=False, copy=False, overwrite=True, attachments=None, **kw):

@@ -4,7 +4,7 @@ import unittest
 import os, subprocess as sp
 import tempfile, shutil
 
-from myref.bib import MyRef, bibtexparser
+from myref.bib import MyRef, bibtexparser, parse_file, format_file
 from download import downloadpdf
 
 
@@ -53,6 +53,36 @@ def prepare_paper2():
 }"""
     return pdf, si, doi, key, year, bibtex
 
+class TestBibtexFileEntry(unittest.TestCase):
+
+    def test_parse_file(self):
+        file = parse_file('file.pdf:/path/to/file.pdf:pdf')
+        self.assertEqual(file, ['/path/to/file.pdf'])
+        file = parse_file(':/path/to/file.pdf:pdf')
+        self.assertEqual(file, ['/path/to/file.pdf'])
+        file = parse_file('/path/to/file.pdf:pdf')
+        self.assertEqual(file, ['/path/to/file.pdf'])
+        file = parse_file('/path/to/file.pdf')
+        self.assertEqual(file, ['/path/to/file.pdf'])
+        file = parse_file(':/path/to/file.pdf:')
+        self.assertEqual(file, ['/path/to/file.pdf'])
+
+
+    def test_parse_files(self):
+        files = parse_file(':/path/to/file1.pdf:pdf;:/path/to/file2.pdf:pdf')
+        self.assertEqual(files, ['/path/to/file1.pdf','/path/to/file2.pdf'])
+
+
+    def test_format_file(self):
+        field = format_file(['/path/to/file.pdf'])
+        self.assertEqual(field, ':/path/to/file.pdf:pdf')
+
+
+    def test_format_files(self):
+        field = format_file(['/path/to/file1.pdf','/path/to/file2.pdf'])
+        self.assertEqual(field, ':/path/to/file1.pdf:pdf;:/path/to/file2.pdf:pdf')
+
+
 
 class TestSimple(unittest.TestCase):
 
@@ -85,7 +115,7 @@ class TestAdd(unittest.TestCase):
         return file
 
     def _checkfile(self, file):
-        file, type = file.split(':')
+        _, file, type = file.split(':')
         self.assertEqual(type, 'pdf') # file type is PDF
         self.assertTrue(os.path.exists(file))  # file link is valid
         return file
