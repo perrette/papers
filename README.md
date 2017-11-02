@@ -61,17 +61,12 @@ For the sake of the example, one of my owns: https://www.earth-syst-dynam.net/4/
 
 - parse doi
 
-        myref doi esd-4-11-2013.pdf
-    output:
-    
+        $> myref doi esd-4-11-2013.pdf    
         10.5194/esd-4-11-2013
     
 - fetch bibtex based on doi
 
-        myref fetch 10.5194/esd-4-11-2013
-        
-    output:
-    
+        $> myref fetch 10.5194/esd-4-11-2013
         @article{Perrette_2013,
             doi = {10.5194/esd-4-11-2013},
             url = {https://doi.org/10.5194%2Fesd-4-11-2013},
@@ -88,10 +83,7 @@ For the sake of the example, one of my owns: https://www.earth-syst-dynam.net/4/
 
 - add pdf to library
 
-        myref add --rename esd-4-11-2013.pdf
-        
-    output:
-    
+        $> myref add --rename esd-4-11-2013.pdf
         INFO:root:found doi:10.5194/esd-4-11-2013
         INFO:root:NEW ENTRY: perrette_2013
         INFO:root:mv esd-4-11-2013.pdf files/2013/Perrette_2013.pdf
