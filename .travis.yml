@@ -1,0 +1,23 @@
+language: python
+sudo : false
+addons:
+  apt:
+    packages:
+    - poppler-utils
+python:
+  - "2.7"
+notifications:
+  email: false
+before_install:
+  - pip install pip --upgrade
+  - pip install bibtexparser
+# test coverage
+#  - pip install tox
+  - pip install pytest pytest-cov
+  - pip install coveralls
+install:
+  - python setup.py install
+
+script: py.test -xv --cov myref.bib tests
+
+after-success: coveralls
