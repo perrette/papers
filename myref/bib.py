@@ -294,8 +294,10 @@ def cached(file):
 def fetch_bibtex(doi):
     url = "http://api.crossref.org/works/"+doi+"/transform/application/x-bibtex"
     response = six.moves.urllib.request.urlopen(url)
-    html = response.read()
-    return six.u(html).strip()
+    doi = response.read()
+    if six.PY3:
+        doi = doi.decode()
+    return doi.strip()
 
 # default_config = Config()
 
