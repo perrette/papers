@@ -196,5 +196,59 @@ class TestAdd2(TestAdd):
         self.assertTrue(os.path.exists(self.si))
 
 
+class TestAddBib(unittest.TestCase):
+
+    def setUp(self):
+        self.mybib = tempfile.mktemp(prefix='myref.bib')
+        self.somebib = tempfile.mktemp(prefix='myref.somebib.bib')
+        self.pdf1, self.doi, self.key1, self.year, self.bibtex1 = prepare_paper()
+        self.pdf2, self.si, self.doi, self.key2, self.year, self.bibtex2 = prepare_paper2()
+        bib = '\n'.join([self.bibtex1, self.bibtex2])
+        open(self.somebib,'w').write(bib)
+        self.my = MyRef.newbib(self.mybib, '')
+
+    def test_addbib(self):
+        self.my.add_bibtex_file(self.somebib)
+        self.assertEqual(len(self.my.db.entries), 2)
+        self.assertEqual(self.my.db.entries[0]['ID'], self.key1)
+        self.assertEqual(self.my.db.entries[1]['ID'], self.key2)
+
+    def tearDown(self):
+        os.remove(self.mybib)
+        os.remove(self.somebib)
+
+
+class TestAddDir(unittest.TestCase):
+
+    def setUp(self):
+        self.pdf1, self.doi, self.key1, self.year, self.bibtex1 = prepare_paper()
+        self.pdf2, self.si, self.doi, self.key2, self.year, self.bibtex2 = prepare_paper2()
+        self.somedir = tempfile.mktemp(prefix='myref.somedir')
+        self.somesubdir = os.path.join(self.somedir, 'subdir')
+        os.makedirs(self.somedir)
+        os.makedirs(self.somesubdir)
+        shutil.copy(self.pdf1, self.somedir)
+        shutil.copy(self.pdf2, self.somesubdir)
+        self.mybib = tempfile.mktemp(prefix='myref.bib')
+
+    def test_adddir_pdf(self):
+        self.my = MyRef.newbib(self.mybib, '')
+        self.my.scan_dir(self.somedir)
+        self.assertEqual(len(self.my.db.entries), 2)
+        keys = [self.my.db.entries[0]['ID'], self.my.db.entries[1]['ID']]
+        self.assertEqual(sorted(keys), sorted([self.key1, self.key2]))
+
+    def test_adddir_pdf_cmd(self):
+        sp.check_call('myref add --recursive --bibtex {} {}'.format(self.mybib, self.somedir), shell=True)
+        self.my = MyRef(self.mybib, '')
+        self.assertEqual(len(self.my.db.entries), 2)
+        keys = [self.my.db.entries[0]['ID'], self.my.db.entries[1]['ID']]
+        self.assertEqual(sorted(keys), sorted([self.key1, self.key2]))
+
+    def tearDown(self):
+        os.remove(self.mybib)
+        shutil.rmtree(self.somedir)
+
+
 if __name__ == '__main__':
     unittest.main()
