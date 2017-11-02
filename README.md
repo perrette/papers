@@ -40,6 +40,7 @@ For now (very much beta version), the project:
 
 Dependencies
 ------------
+- python 2 or 3
 - `pdftotext` (third-party): convert PDF to text
     - Tested with v0.41
     - Natively installed on Ubuntu 14.04 (?). Part of poppler-utils.
