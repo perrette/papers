@@ -132,7 +132,7 @@ class MyRef(object):
                 if file != newfile:
                     move(file, newfile, copy)
                     count += 1
-                efiles.append(file + ':' + ftype)
+                efiles.append(newfile + ':' + ftype)
             e['file'] = ';'.join(efiles)
             if count > 0:
                 logging.info('several files were renamed ({})'.format(count))
@@ -264,7 +264,7 @@ def fetch_bibtex(doi):
     url = "http://api.crossref.org/works/"+doi+"/transform/application/x-bibtex"
     response = urllib2.urlopen(url)
     html = response.read()
-    return html.decode('utf-8')
+    return html.decode('utf-8').strip()
 
 # default_config = Config()
 
