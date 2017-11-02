@@ -10,6 +10,7 @@ import bisect
 
 import bibtexparser
 
+DRYRUN = False
 
 def getentryfiles(e):
     'list of (fname, ftype) '
@@ -39,14 +40,21 @@ def setentryfiles(e, files, overwrite=True, interactive=True):
     e['file'] = ';'.join(efiles + existingfiles)
 
 
-def move(f1, f2):
+def move(f1, f2, copy=False):
     dirname = os.path.dirname(f2)
     if not os.path.exists(dirname):
         logging.info('create directory: '+dirname)
         os.makedirs(dirname)
-    cmd = 'mv '+f1.decode('utf-8')+' '+f2
-    logging.info(cmd)
-    shutil.move(f1, f2)
+    if copy:
+        cmd = 'cp '+f1.decode('utf-8')+' '+f2
+        logging.info(cmd)
+        if not DRYRUN:
+            shutil.copy(f1, f2)
+    else:
+        cmd = 'mv '+f1.decode('utf-8')+' '+f2
+        logging.info(cmd)
+        if not DRYRUN:
+            shutil.move(f1, f2)
 
 
 # main config
@@ -95,7 +103,7 @@ class MyRef(object):
         open(self.bibtex, 'w').write(s)
 
 
-    def rename_entry_files(self, e):
+    def rename_entry_files(self, e, copy=False):
 
         files = getentryfiles(e)
         # newname = entrydir(e, root)
@@ -110,7 +118,7 @@ class MyRef(object):
             base, ext = os.path.splitext(file)
             newfile = os.path.join(direc, e['ID']+ext)
             if file != newfile:
-                move(file, newfile)
+                move(file, newfile, copy)
                 logging.info('one file was renamed')
             e['file'] = newfile + ':' +type
 
@@ -122,7 +130,7 @@ class MyRef(object):
             for file, ftype in files:
                 newfile = os.path.join(newdir, os.path.basename(file))
                 if file != newfile:
-                    move(file, newfile)
+                    move(file, newfile, copy)
                     count += 1
                 efiles.append(file + ':' + ftype)
             e['file'] = ';'.join(efiles)
@@ -130,7 +138,7 @@ class MyRef(object):
                 logging.info('several files were renamed ({})'.format(count))
 
 
-    def add_pdf(self, pdf, rename=False, overwrite=True, attachments=None, **kw):
+    def add_pdf(self, pdf, rename=False, copy=False, overwrite=True, attachments=None, **kw):
         doi = extract_doi(pdf, **kw)
         logging.info('found doi:'+doi)
 
@@ -151,7 +159,7 @@ class MyRef(object):
 
         # rename files
         if rename:
-            self.rename_entry_files(entry)
+            self.rename_entry_files(entry, copy=copy)
 
 
     # @staticmethod
@@ -243,7 +251,8 @@ def cached(file):
                 return cache[doi]
             else:
                 res = cache[doi] = fun(doi)
-                json.dump(cache, open(file,'w'))
+                if not DRYRUN:
+                    json.dump(cache, open(file,'w'))
             return res
         return decorated
     return decorator
@@ -265,29 +274,42 @@ def main():
 
     parser = sp.add_parser('add', description='add PDF to library')
     parser.add_argument('pdf')
-    parser.add_argument('--bibtex', default='myref.bib',help='%(default)s')
-    parser.add_argument('--filesdir', default='files', help='%(default)s')
-    parser.add_argument('-a','--attachments', nargs='+', help='supplementary material')
-    parser.add_argument('-r','--rename', action='store_true', 
+
+    grp = parser.add_argument_group('config')
+    grp.add_argument('--bibtex', default='myref.bib',help='%(default)s')
+    grp.add_argument('--filesdir', default='files', help='%(default)s')
+
+    grp = parser.add_argument_group('files')
+    grp.add_argument('-a','--attachments', nargs='+', help='supplementary material')
+    grp.add_argument('-r','--rename', action='store_true', 
         help='rename PDFs according to key')
-    parser.add_argument('--append', action='store_true', 
+    grp.add_argument('-c','--copy', action='store_true', 
+        help='copy file instead of moving them')
+    grp.add_argument('--dry-run', action='store_true', 
+            help='no PDF renaming/copying, no bibtex writing on disk (for testing)')
+
+    grp = parser.add_argument_group('metadata')
+    grp.add_argument('--append', action='store_true', 
             help='if the entry already exists, append instead of overwriting file')
 
     def addpdf(o):
+        global DRYRUN
+        DRYRUN = o.dry_run
         if os.path.exists(o.bibtex):
             my = MyRef(o.bibtex, o.filesdir)
         else:
             my = MyRef.newbib(o.bibtex, o.filesdir)
 
         try:
-            my.add_pdf(o.pdf, rename=o.rename, overwrite=not o.append, attachments=o.attachments)
+            my.add_pdf(o.pdf, rename=o.rename, copy=o.copy, overwrite=not o.append, attachments=o.attachments)
         except Exception as error:
             # print(error) 
             # parser.error(str(error))
             raise
             logging.error(str(error))
             parser.exit(1)
-        my.save()
+        if not o.dry_run:
+            my.save()
 
 
     parser = sp.add_parser('doi', description='parse DOI from PDF')
