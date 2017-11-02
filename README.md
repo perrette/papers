@@ -143,11 +143,13 @@ And some new, original features:
 
 
 All this in a set of planned commands:
-- `myref add FILE[,FILE] [-a FILE [FILE...]] [...]` : add one or several entries, as either pdf(s) or bibtex. Attachment only valid when one entry is added, use `myref file` to add attachments to several files. Other options will include conflict management options (already existing entry, already existing files).
+- `myref add FILE[,FILE] [--link FILE [FILE...]] [--no-check] ...` : add one or several entries, as either pdf(s) or bibtex. Link only valid when one entry is added, use `myref file` to add attachments to several files. Other options will include conflict management options (already existing entry, already existing files).
 - `myref link -k KEY [--no-check] [--overwrite] FILE [FILE...]` : add one or several file to *existing* entry, without any check on the files beyond existence
 - `myref list [FILTERING OPTIONS] [FORMATTING OPTIONS] ...` : list bibtex entries
-- `myref check [--field [DOI] [AUTHOR] [YEAR] [JOURNAL]] [--action {interactive, solve, list}] [--method {fetch, merge}] `
-- `myref filecheck [--fix] [--rename] [--remove-broken] [--searchdir DIR [DIR...]]...` : perform check on bibtex file link (test broken, rename, re-link from other sources, remove broken)
+- `myref check [--field [DOI] [AUTHOR] [YEAR] [JOURNAL]] [--action {interactive, rename, fetch, merge, keepone, list}] [--merge-method {fetch, merge}] [--best-method ]`: perform checks on bibtex entries
+    - first rename or merge all fields with identical key (when importing a bibtex from somewhere else)
+    - search for duplicates by --field, by default 'doi'
+- `myref filecheck [--fix] [--rename] [--remove-broken] [--searchdir DIR [DIR...]] [--doi-check] ...` : perform check on bibtex file link (test broken, rename, re-link from other sources, remove broken, remove duplicate names, check that doi matches...)
 - `myref merge BIB BIB [BIB...] [MERGE OPTIONS]`: merge bibtex files (and their attachments)
 - `myref config ...` : show/change global configuration options (default bibtex, filesdir, caching of DOI requests)
 - `myref git ...` : any git command from myref's git repository
