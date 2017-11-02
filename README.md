@@ -1,4 +1,5 @@
 ![travis](https://travis-ci.org/perrette/myref.svg?branch=master)
+[![Coverage Status](https://coveralls.io/repos/github/perrette/myref/badge.svg?branch=master)](https://coveralls.io/github/perrette/myref?branch=master)
 # myref
 
 Command-line tool to manage bibliography (pdfs + bibtex)
