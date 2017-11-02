@@ -111,6 +111,7 @@ Current features
 - create and maintain bibtex file
 - add entry as PDF
 - add entry as bibtex
+- scan directory for PDFs
 - rename PDFs according to bibtex key and year
 - some support for attachment
 
@@ -125,7 +126,6 @@ Mostly related to bibliography management:
 - fix broken PDF links
 - more advanced control for merging / update / key generation
 - better handling of attachment / multiple files
-- scan directory for PDFs (currently doable with `find . -name "*.pdf" -exec myref add {} \;`)
 
 As well as:
 - parse other info (author name, year) from PDF, especially for old papers
