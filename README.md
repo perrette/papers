@@ -1,7 +1,5 @@
+![travis](https://travis-ci.org/perrette/myref.svg?branch=master)
 # myref
-
-.. image:: https://travis-ci.org/perrette/myref.svg?branch=master
-   :target: https://travis-ci.org/perrette/myref
 
 Command-line tool to manage bibliography (pdfs + bibtex)
 
