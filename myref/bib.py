@@ -193,7 +193,7 @@ class MyRef(object):
             raise ValueError('files is only tolerated with a single entry')
 
         for e in bib.entries:
-            self._add_bibtex_entry(e, files, **kw)
+            self._add_bibtex_entry(e, files or [], **kw)
 
 
     def add_bibtex_file(self, file, **kw):
@@ -215,6 +215,21 @@ class MyRef(object):
 
         self.add_bibtex(bibtex, files=files, **kw)
 
+
+    def scan_dir(self, direc, **kw):
+        for root, direcs, files in os.walk(direc):
+            dirname = os.path.basename(root)
+            if dirname.startswith('.'): continue
+            if dirname.startswith('_'): continue
+            for file in files:
+                try:
+                    if file.endswith('.pdf'): 
+                        self.add_pdf(file, **kw)
+                    elif file.endswith('.bib'):
+                        self.add_bibtex_file(file, **kw)
+                except Exception as error:
+                    logging.warning(file+'::'+str(error))
+                    continue
 
 
 def readpdf(pdf, first=None, last=None, keeptxt=False):
@@ -245,6 +260,7 @@ def extract_doi(pdf, space_digit=True):
         # sometimes first page is blank
         txt = readpdf(pdf, first=2, last=2)
         doi = parse_doi(txt, space_digit=space_digit)
+
     return doi
 
 def parse_doi(txt, space_digit=True):
@@ -270,7 +286,7 @@ def parse_doi(txt, space_digit=True):
     matches = re.compile(regexp).findall(txt.lower())
 
     if not matches:
-        raise ValueError('no matches')
+        raise ValueError('parse_doi::no matches')
 
     match = matches[0]
 
@@ -323,10 +339,17 @@ def main():
     parser.add_argument('file', nargs='+')
     parser.add_argument('--ignore-errors', action='store_true', 
         help='ignore errors when adding multiple files')
+    parser.add_argument('--recursive', action='store_true', 
+        help='accept directory as argument, for recursive scan \
+        of .pdf files (bibtex files are ignored in this mode')
 
     grp = parser.add_argument_group('config')
     grp.add_argument('--bibtex', default='myref.bib',help='%(default)s')
     grp.add_argument('--filesdir', default='files', help='%(default)s')
+
+    grp = parser.add_argument_group('entry')
+    grp.add_argument('--append', action='store_true', 
+            help='if the entry already exists, append instead of overwriting file')
 
     grp = parser.add_argument_group('files')
     grp.add_argument('-a','--attachment', nargs='+', help=argparse.SUPPRESS) #'supplementary material')
@@ -337,9 +360,6 @@ def main():
     grp.add_argument('--dry-run', action='store_true', 
             help='no PDF renaming/copying, no bibtex writing on disk (for testing)')
 
-    grp = parser.add_argument_group('metadata')
-    grp.add_argument('--append', action='store_true', 
-            help='if the entry already exists, append instead of overwriting file')
 
     def addpdf(o):
         global DRYRUN
@@ -353,23 +373,34 @@ def main():
             logging.error('--attachment is only valid for one added file')
             parser.exit(1)
 
-        else:
-            for file in o.file:
-                try:
-                    if os.path.splitext(file)[1] == '.pdf':
-                        my.add_pdf(file, rename=o.rename, copy=o.copy, overwrite=not o.append, 
-                            attachments=o.attachment)
-                    else:
-                        my.add_bibtex_file(file, rename=o.rename, copy=o.copy, overwrite=not o.append, 
-                            attachments=o.attachment)
+        kw = dict(rename=o.rename, copy=o.copy, overwrite=not o.append)
 
-                except Exception as error:
-                    # print(error) 
-                    # parser.error(str(error))
-                    # raise
-                    logging.error(str(error))
-                    if not o.ignore_errors:
-                        parser.exit(1)
+        for file in o.file:
+            try:
+                if os.path.isdir(file):
+                    if o.recursive:
+                        my.scan_dir(file, **kw)
+                    else:
+                        raise ValueError(file+' is a directory, requires --recursive to explore')
+
+                elif file.endswith('.pdf'):
+                    my.add_pdf(file, attachments=o.attachment, **kw)
+
+                elif file.endswith('.bib'):
+                    my.add_bibtex_file(file, **kw)
+
+                else:
+                    raise ValueError('unknown file type:'+file)
+
+            except Exception as error:
+                # print(error) 
+                # parser.error(str(error))
+                raise
+                logging.error(str(error))
+                if not o.ignore_errors:
+                    if len(o.file) or (os.isdir(file) and o.recursive)> 1: 
+                        logging.error('use --ignore to add other files anyway')
+                    parser.exit(1)
 
         if not o.dry_run:
             my.save()
