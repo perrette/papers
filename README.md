@@ -110,6 +110,7 @@ Current features
 - fetch bibtex entry from DOI (using crossref API)
 - create and maintain bibtex file
 - add entry as PDF
+- add entry as bibtex
 - rename PDFs according to bibtex key and year
 - some support for attachment
 
@@ -118,7 +119,6 @@ Planned features
 ----------------
 Mostly related to bibliography management:
 - display / search / filter entries : format as bibtex or key or whatever
-- add entry as bibtex
 - add manual entry 
 - remove entry by key
 - move library location (i.e. both on disk and in bibtex's `file` entry)

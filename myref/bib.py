@@ -114,7 +114,6 @@ class MyRef(object):
         self.db.entries = sorted(self.db.entries, key=self.key)
 
     def insert_entry(self, e, replace=False):
-        import bisect
         keys = [self.key(ei) for ei in self.db.entries]
         i = bisect.bisect_left(keys, self.key(e))
         if i < len(keys) and keys[i] == self.key(e):
@@ -170,23 +169,16 @@ class MyRef(object):
             logging.info('renamed file(s): {}'.format(count))
 
 
-    def add_pdf(self, pdf, rename=False, copy=False, overwrite=True, attachments=None, **kw):
-        doi = extract_doi(pdf, **kw)
-        logging.info('found doi:'+doi)
+    def rename_entries_files(self, copy=False):
+        for e in self.db.entries:
+            self.rename_entry_files(e, copy)
 
-        # get bib tex based on doi
-        bibtex = fetch_bibtex(doi)
 
-        bib = bibtexparser.loads(bibtex)
-        entry = bib.entries[0]
+    def _add_bibtex_entry(self, entry, files=[], rename=False, copy=False, overwrite=True):
 
         # add entry to library
         entry = self.insert_entry(entry, replace=False)
 
-        # add pdf to entry
-        files = [pdf]
-        if attachments:
-            files += attachments
         setentryfiles(entry, files, overwrite=overwrite)
 
         # rename files
@@ -194,13 +186,35 @@ class MyRef(object):
             self.rename_entry_files(entry, copy=copy)
 
 
-    # @staticmethod
-    # def _create_folder(self, name):
-    #     if not os.path.exists(name):
-    #         logging.info('create: '+name)
-    #         os.makedirs(name)
-    #     else:
-    #         logging.info('folder already present: '+name)        
+    def add_bibtex(self, bibtex, files=None, **kw):
+        bib = bibtexparser.loads(bibtex)
+        # assert len(bib.entries) == 1, 'only one bibtex entry is tolerated'
+        if len(bib.entries) > 1 and files:
+            raise ValueError('files is only tolerated with a single entry')
+
+        for e in bib.entries:
+            self._add_bibtex_entry(e, files, **kw)
+
+
+    def add_bibtex_file(self, file, **kw):
+        bibtex = open(file).read()
+        self.add_bibtex(bibtex, **kw)
+
+
+    def add_pdf(self, pdf, space_digit=True, attachments=None, **kw):
+
+        doi = extract_doi(pdf, space_digit=space_digit)
+        logging.info('found doi:'+doi)
+
+        # get bib tex based on doi
+        bibtex = fetch_bibtex(doi)
+
+        files = [pdf]
+        if attachments:
+            files += attachments
+
+        self.add_bibtex(bibtex, files=files, **kw)
+
 
 
 def readpdf(pdf, first=None, last=None, keeptxt=False):
@@ -305,8 +319,8 @@ def main():
     main = argparse.ArgumentParser(description='library management tool')
     sp = main.add_subparsers(dest='cmd')
 
-    parser = sp.add_parser('add', description='add PDF to library')
-    parser.add_argument('pdf', nargs='+')
+    parser = sp.add_parser('add', description='add PDF(s) or bibtex(s) to library')
+    parser.add_argument('file', nargs='+')
     parser.add_argument('--ignore-errors', action='store_true', 
         help='ignore errors when adding multiple files')
 
@@ -335,15 +349,20 @@ def main():
         else:
             my = MyRef.newbib(o.bibtex, o.filesdir)
 
-        if len(o.pdf) > 1 and o.attachment:
+        if len(o.file) > 1 and o.attachment:
             logging.error('--attachment is only valid for one added file')
             parser.exit(1)
 
         else:
-            for pdf in o.pdf:
+            for file in o.file:
                 try:
-                    my.add_pdf(pdf, rename=o.rename, copy=o.copy, overwrite=not o.append, 
-                        attachments=o.attachment)
+                    if os.path.splitext(file)[1] == '.pdf':
+                        my.add_pdf(file, rename=o.rename, copy=o.copy, overwrite=not o.append, 
+                            attachments=o.attachment)
+                    else:
+                        my.add_bibtex_file(file, rename=o.rename, copy=o.copy, overwrite=not o.append, 
+                            attachments=o.attachment)
+
                 except Exception as error:
                     # print(error) 
                     # parser.error(str(error))
