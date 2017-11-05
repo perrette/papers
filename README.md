@@ -105,6 +105,7 @@ In the above case, the sequence of actions is:
 - other commands: 
 
     - `myref merge ...` 
+    - `myref undo ...` 
     - `myref list ...` 
 
 Consult inline help for more detailed documentation!
@@ -122,6 +123,7 @@ Current features
 - some support for attachment
 - display / search / filter entries : format as bibtex or key or whatever
 - merging / update
+- undo command
 
 
 Planned features
@@ -133,7 +135,6 @@ Mostly related to bibliography management:
 - fix broken PDF links
 - better handling of attachment / multiple files
 - key generation (especially for new entry addition)
-- undo command
 - git saving of bibtex
 
 As well as:

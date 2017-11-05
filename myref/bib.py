@@ -618,6 +618,8 @@ class MyRef(object):
 
     def save(self):
         s = self.format()
+        if os.path.exists(self.bibtex):
+            shutil.copy(self.bibtex, self.bibtex+'.backup')
         open(self.bibtex, 'w').write(s)
 
 
@@ -867,6 +869,18 @@ def main():
     grp.add_argument('--ignore', action='store_true', help='ignore unresolved conflicts')
     grp.add_argument('-f','--force', action='store_true', help='force merging')
 
+    subp = subparsers.add_parser('undo', parents=[config])
+
+    def undo(o):
+        back = o.bibtex + '.back'
+        tmp = o.bibtex + '.tmp'
+        # my = MyRef(o.bibtex, o.filesdir)
+        logging.info(o.bibtex+' <==> '+back)
+        shutil.move(o.bibtex, tmp)
+        shutil.move(back, o.bibtex)
+        shutil.move(tmp, back)
+
+
     subp = subparsers.add_parser('merge', description='merge duplicates', 
         parents=[config, conflict])
     # subp.add_argument('-m', '--merge', action='store_true', help='merge duplicates')
@@ -983,10 +997,12 @@ def main():
 
     if o.cmd == 'add':
         addpdf(o)
-    elif o.cmd == 'list':
-        listing(o)
     elif o.cmd == 'merge':
         merge_duplicate(o)
+    elif o.cmd == 'undo':
+        undo(o)
+    elif o.cmd == 'list':
+        listing(o)
     elif o.cmd == 'doi':
         print(extract_doi(o.pdf, o.space_digit))
     elif o.cmd == 'fetch':
