@@ -14,6 +14,7 @@ import six.moves.urllib.request
 
 import bibtexparser
 
+
 DRYRUN = False
 
 
@@ -425,6 +426,21 @@ def search_duplicates(entries, key=None, issorted=False):
     return unique_entries, duplicates
 
 
+def format_entries(entries):
+    db = bibtexparser.loads('')
+    db.entries.extend(entries)
+    return format_db(db)
+ 
+
+def format_db(db):
+    """utf-8 encode of bibtexparser dump
+    """
+    s = bibtexparser.dumps(db)
+    if six.PY2:
+        s = s.encode('utf-8')
+    return s
+
+
 class MyRef(object):
     """main config
     """
@@ -482,7 +498,7 @@ class MyRef(object):
             if keys[i] == self.key(entry):
                 samekey = True 
             # check for doi duplicate
-            elif entry.get('doi',''):
+            elif 'doi' in entry and isvaliddoi(entry['doi']):
                 j = self.locate_doi(entry['doi'])
                 if j < len(self.db.entries):
                     samedoi = True
@@ -504,6 +520,9 @@ class MyRef(object):
                         entry['ID'], bcolors.ENDC))
                     if ans != 'y':
                         return
+
+                if mergefiles:
+                    self.db.entries[i]['file'] = merge_files(duplicates)
 
                 self.db.entries[i] = entry
                 return entry
@@ -594,10 +613,11 @@ class MyRef(object):
                     continue
 
 
+    def format(self):
+        return format_db(self.db)
+
     def save(self):
-        s = bibtexparser.dumps(self.db)
-        if six.PY2:
-            s = s.encode('utf-8')
+        s = self.format()
         open(self.bibtex, 'w').write(s)
 
 
@@ -666,20 +686,21 @@ class MyRef(object):
     def merge_duplicate_keys(self, **kw):
         return self.merge_duplicates(self.key, **kw)
 
-
-    def merge_duplicate_dois(self, **kw):
-        """merge entries with duplicate dois (exclude papers with no doi)
-        """
+    def _doi_key(self):
+        """used in merge_duplicate_dois and to list duplicates"""
         counts = [0]
-
         def key(e):
-            if e.get('doi',''):
+            if isvaliddoi(e.get('doi','')):
                 return e['doi']
             else:
                 counts[0] += 1
                 return counts[0]
+        return key
 
-        return self.merge_duplicates(key, **kw)
+    def merge_duplicate_dois(self, **kw):
+        """merge entries with duplicate dois (exclude papers with no doi)
+        """
+        return self.merge_duplicates(self._doi_key(), **kw)
 
 
     def merge_entries(self, keys, **kw):
@@ -731,10 +752,14 @@ class MyRef(object):
             self.rename_entry_files(e, copy)
 
 
-
 # default_config = Config()
 
 def main():
+
+    # import sys
+    # import codecs
+    # sys.stdout = codecs.getwriter('utf8')(sys.stdout)
+
     main = argparse.ArgumentParser(description='library management tool')
     subparsers = main.add_subparsers(dest='cmd')
 
@@ -792,18 +817,18 @@ def main():
             parser.exit(1)
 
 
-        kw = dict(rename=o.rename, copy=o.copy, overwrite=o.overwrite, merge=o.merge)
+        kw = dict(overwrite=o.overwrite, merge=o.merge)
 
         for file in o.file:
             try:
                 if os.path.isdir(file):
                     if o.recursive:
-                        my.scan_dir(file, **kw)
+                        my.scan_dir(file, rename=o.rename, copy=o.copy, **kw)
                     else:
                         raise ValueError(file+' is a directory, requires --recursive to explore')
 
                 elif file.endswith('.pdf'):
-                    my.add_pdf(file, attachments=o.attachment, **kw)
+                    my.add_pdf(file, attachments=o.attachment, rename=o.rename, copy=o.copy, **kw)
 
                 elif file.endswith('.bib'):
                     my.add_bibtex_file(file, **kw)
@@ -858,6 +883,95 @@ def main():
             my.merge_entries(o.keys, **kw)
         my.save()
 
+    parser = subparsers.add_parser('list', description='list (a subset of) entries',
+        parents=[config])
+
+    mgrp = parser.add_mutually_exclusive_group()
+    mgrp.add_argument('--strict', action='store_true', help='exact matching')
+    mgrp.add_argument('--fuzzy', action='store_true', help='fuzzy matching')
+    parser.add_argument('--fuzzy-ratio', type=int, default=80, help='default:%(default)s')
+    parser.add_argument('--invert', action='store_true')
+
+    grp = parser.add_argument_group('search')
+    grp.add_argument('-a','--author',nargs='+')
+    grp.add_argument('-y','--year', nargs='+')
+    grp.add_argument('-t','--title')
+    grp.add_argument('--key', nargs='+')
+    grp.add_argument('--doi', nargs='+')
+
+    grp = parser.add_argument_group('formatting')
+    mgrp = grp.add_mutually_exclusive_group()
+    mgrp.add_argument('-k','--key-only', action='store_true')
+    mgrp.add_argument('-s', '--short', action='store_true')
+    mgrp.add_argument('-f', '--field', nargs='+', help='specific fields only')
+    grp.add_argument('--no-key', action='store_true')
+
+    grp = parser.add_argument_group('special')
+    grp.add_argument('--invalid-doi', action='store_true', help='invalid dois')
+
+    def listing(o):
+        my = MyRef(o.bibtex, o.filesdir)
+        entries = my.db.entries
+
+        if o.fuzzy:
+            from fuzzywuzzy import fuzz
+
+        def match(word, target):
+            if isinstance(target, list):
+                return any([match(word, t) for t in target])
+            if o.fuzzy:
+                res = fuzz.token_set_ratio(word.lower(), target.lower()) > o.fuzzy_ratio
+            elif o.strict:
+                res = word.lower() == target.lower()
+            else:
+                res = target.lower() in word.lower()
+
+            return not res if o.invert else res
+
+
+        if o.invalid_doi:
+            check = lambda e : 'doi' in e and not isvaliddoi(e['doi'])
+            if o.invert:
+                entries = [e for e in entries if not check(e)]
+                for e in entries:
+                    e['doi'] = bcolors.FAIL + e['doi'] + bcolors.ENDC
+            else:
+                entries = [e for e in entries if check(e)]
+
+        if o.author:
+            entries = [e for e in entries if 'author' in e and match(e['author'], o.author)]
+        if o.year:
+            entries = [e for e in entries if 'year' in e and match(e['year'], o.year)]
+        if o.title:
+            entries = [e for e in entries if 'title' in e and match(e['title'], o.title)]
+        if o.doi:
+            entries = [e for e in entries if 'doi' in e and match(e['doi'], o.doi)]
+        if o.key:
+            entries = [e for e in entries if match(e['ID'], o.key)]
+
+        if o.no_key:
+            key = lambda e: ''
+        else:
+            key = lambda e: bcolors.OKBLUE+e['ID']+':'+bcolors.ENDC
+
+        if o.field:
+            # entries = [{k:e[k] for k in e if k in o.field+['ID','ENTRYTYPE']} for e in entries]
+            for e in entries:
+                print(key(e),*[e[k] for k in o.field])
+        elif o.key_only:
+            for e in entries:
+                print(e['ID'])
+        elif o.short:
+            for e in entries:
+                tit = e['title'][:60]+ ('...' if len(e['title'])>60 else '')
+                doi = ('(doi:'+e['doi']+')') if e.get('doi','') else ''
+                print(key(e), tit, doi)
+        else:
+            print(format_entries(entries))
+
+
+    # parser.add_argument_group
+
     parser = subparsers.add_parser('doi', description='parse DOI from PDF')
     parser.add_argument('pdf')
     parser.add_argument('--space-digit', action='store_true', help='space digit fix')
@@ -869,6 +983,8 @@ def main():
 
     if o.cmd == 'add':
         addpdf(o)
+    elif o.cmd == 'list':
+        listing(o)
     elif o.cmd == 'merge':
         merge_duplicate(o)
     elif o.cmd == 'doi':

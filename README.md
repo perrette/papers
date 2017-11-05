@@ -90,7 +90,7 @@ For the sake of the example, one of my owns: https://www.earth-syst-dynam.net/4/
         INFO:root:found doi:10.5194/esd-4-11-2013
         INFO:root:NEW ENTRY: perrette_2013
         INFO:root:mv esd-4-11-2013.pdf files/2013/Perrette_2013.pdf
-    
+
     
 In the above case, the sequence of actions is:
 - read bibtex file if any, otherwise create new bibtex lib
@@ -100,6 +100,12 @@ In the above case, the sequence of actions is:
 - link PDF and attachments to the enrty (`file` field)
 - rename files if required
     - in the case of multiple files, a folder named after the key is created, and all associated files are copied into it, without further renaming.
+
+
+- other commands: 
+
+    - `myref merge ...` 
+    - `myref list ...` 
 
 Consult inline help for more detailed documentation!
 
@@ -114,18 +120,21 @@ Current features
 - scan directory for PDFs
 - rename PDFs according to bibtex key and year
 - some support for attachment
+- display / search / filter entries : format as bibtex or key or whatever
+- merging / update
 
 
 Planned features
 ----------------
 Mostly related to bibliography management:
-- display / search / filter entries : format as bibtex or key or whatever
 - add manual entry 
 - remove entry by key
 - move library location (i.e. both on disk and in bibtex's `file` entry)
 - fix broken PDF links
-- more advanced control for merging / update / key generation
 - better handling of attachment / multiple files
+- key generation (especially for new entry addition)
+- undo command
+- git saving of bibtex
 
 As well as:
 - parse other info (author name, year) from PDF, especially for old papers
@@ -143,15 +152,9 @@ And some new, original features:
 
 
 All this in a set of planned commands:
-- `myref add FILE[,FILE] [--rename] [--copy] [--recursive] [--link FILE [FILE...]] [CONFLICT/MERGE OPTIONS] ...` : add one or several entries, as either pdf(s) or bibtex (or recursively on directories). Link only valid when one entry is added, use `myref file` to add attachments to several files. Other options will include conflict management options (already existing entry, already existing files).
 - `myref new (-k KEY | --auto-key) [--no-check] --author NAME --year YEAR [--file FILE [FILE...]] ...` : manually add one new entry (for the sake of completeness) 
 - `myref link -k KEY [--no-check] [--overwrite] FILE [FILE...]` : add one or several file to *existing* entry, without any check on the files beyond existence
-- `myref list [FILTERING OPTIONS] [FORMATTING OPTIONS] ...` : list bibtex entries
-- `myref check [--field [DOI] [AUTHOR] [YEAR] [JOURNAL]] [--action {interactive, rename, fetch, merge, keepone, list}] [--merge-method {fetch, merge}] [--best-method ]`: perform checks on bibtex entries, given CONFLICT / MERGE OPTIONS
-    - first rename or merge all fields with identical key (when importing a bibtex from somewhere else)
-    - search for duplicates by --field, by default 'doi'
 - `myref filecheck [--fix] [--rename] [--remove-broken] [--searchdir DIR [DIR...]] [--doi-check] ...` : perform check on bibtex file link (test broken, rename, re-link from other sources, remove broken, remove duplicate names, check that doi matches...)
-- `myref merge BIB BIB [BIB...] [CONFLICT/MERGE OPTIONS]`: merge bibtex files (and their attachments)
 - `myref config ...` : show/change global configuration options (default bibtex, filesdir, caching of DOI requests)
 - `myref git ...` : any git command from myref's git repository
 
