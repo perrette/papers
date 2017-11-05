@@ -14,9 +14,165 @@ import six.moves.urllib.request
 
 import bibtexparser
 
+import myref
+
 
 DRYRUN = False
 
+# config directory location
+HOME = os.environ.get('HOME','')
+CONFIG_HOME = os.environ.get('XDG_CONFIG_HOME', os.path.join(HOME, '.config'))
+CACHE_HOME = os.environ.get('XDG_CACHE_HOME', os.path.join(HOME, '.cache'))
+DATA_HOME = os.environ.get('XDG_DATA_HOME', os.path.join(HOME, '.local','share'))
+
+
+CONFIG_FILE = os.path.join(CONFIG_HOME, 'myref.json')
+DATA_DIR = os.path.join(DATA_HOME, 'myref')
+CACHE_DIR = os.path.join(CACHE_HOME, 'myref')
+
+
+
+class bcolors:
+    # https://stackoverflow.com/a/287944/2192272
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+
+    def str(self, s, modifier):
+        return modifier + s + self.ENDC
+
+
+class Config(object):
+    """configuration class to specify system-wide collections and files-dir
+    """
+    def __init__(self, file=CONFIG_FILE, data=DATA_DIR, cache=CACHE_DIR, 
+        collection='myref', files='files'):
+        self.file = file
+        self.data = data
+        self.cache = cache
+        self.collection = collection
+        self.files = files
+
+    def path(self, s):
+        return os.path.join(self.data, s)
+
+    def iscustom(self, s):
+        return os.path.sep in s
+
+    @property
+    def bibtex(self):
+        if self.iscustom(self.collection):
+            return self.collection
+        else:
+            return self.path(self.collection+'.bib')
+
+    @property
+    def filesdir(self):
+        if self.iscustom(self.files):
+            return self.files
+        else:
+            return self.path(self.files)
+
+    def collections(self):
+        files = []
+        for root, dirs, files in os.walk(self.data):
+            break
+        return sorted(f[:-4] for f in files if f.endswith('.bib'))
+
+
+    def save(self):
+        json.dump({
+            "data":self.data,
+            "collection":self.collection,
+            "files":self.files,
+            # "__version__":myref.__version__,
+            }, open(self.file, 'w'), sort_keys=True, indent=2, separators=(',', ': '))
+
+
+    def load(self):
+        js = json.load(open(self.file))
+        self.data = js['data']
+        self.collection = js['collection']
+        self.files = js['files']
+
+
+    def reset(self):
+        cfg = type(self)()
+        self.collection = cfg.collection
+        self.files = cfg.files
+
+
+    def check_install(self):
+        if not os.path.exists(self.cache):
+            logging.info('make cache directory for DOI requests: '+self.cache)
+            os.makedirs(self.cache)
+
+
+    def status(self, check_files=False, verbose=False):
+        lines = []
+        lines.append(bcolors.BOLD+'myref configuration'+bcolors.ENDC)
+        if verbose:
+            lines.append('* configuration file: '+self.file) 
+            lines.append('* cache directory:    '+self.cache) 
+
+        if not os.path.exists(self.filesdir):
+            status = bcolors.WARNING+' (missing)'+bcolors.ENDC
+        elif not os.listdir(self.filesdir):
+            status = bcolors.WARNING+' (empty)'+bcolors.ENDC
+        elif check_files:
+            file_count, folder_size = check_filesdir(self.filesdir)
+            status = bcolors.OKBLUE+" ({} files, {:.1f} MB)".format(file_count, folder_size/(1024*1024.0))+bcolors.ENDC
+        else:
+            status = ''
+
+        files = self.filesdir
+        lines.append('* files directory:    '+files+status) 
+
+        if not os.path.exists(self.bibtex):
+            status = bcolors.WARNING+' (missing)'+bcolors.ENDC 
+        elif check_files:
+            try:
+                db = bibtexparser.load(open(self.bibtex))
+                status = bcolors.OKBLUE+' ({} entries)'.format(len(db.entries))+bcolors.ENDC
+            except:
+                status = bcolors.FAIL+' (fails)'+bcolors.ENDC 
+        else:
+            status = ''
+        lines.append('* bibtex:     '+self.bibtex+status)
+
+        # if verbose:
+        #     collections = self.collections()
+        #     status = bcolors.WARNING+' none'+bcolors.ENDC if not collections else ''
+        #     lines.append('* other collections:'+status)
+        #     for i, nm in enumerate(collections):
+        #         if i > 10:
+        #             lines.append('    '+'({} more collections...)'.format(len(collections)-10))
+        #             break
+        #         status = ' (*)' if nm == self.collection else ''
+        #         lines.append('    '+nm+status)
+
+
+
+        return '\n'.join(lines)
+
+def check_filesdir(folder):
+    folder_size = 0
+    file_count = 0
+    for (path, dirs, files) in os.walk(folder):
+      for file in files:
+        filename = os.path.join(path, file)
+        if filename.endswith('.pdf'):
+            folder_size += os.path.getsize(filename)
+            file_count += 1
+    return file_count, folder_size
+
+config = Config()
+config.check_install()
 
 # Parse / format bibtex file entry
 # ================================
@@ -200,7 +356,7 @@ def cached(file):
     return decorator
 
 
-@cached('.crossref-bibtex.json')
+@cached(os.path.join(config.cache, 'crossref-bibtex.json'))
 def fetch_bibtex_by_doi(doi):
     url = "http://api.crossref.org/works/"+doi+"/transform/application/x-bibtex"
     response = six.moves.urllib.request.urlopen(url)
@@ -209,7 +365,7 @@ def fetch_bibtex_by_doi(doi):
         bibtex = bibtex.decode()
     return bibtex.strip()
 
-@cached('.crossref.json')
+@cached(os.path.join(config.cache, 'crossref.json'))
 def fetch_json_by_doi(doi):
     url = "http://api.crossref.org/works/"+doi+"/transform/application/json"
     response = six.moves.urllib.request.urlopen(url)
@@ -238,17 +394,6 @@ def unique(entries):
             entries_.append(e)
     return entries_
 
-
-class bcolors:
-    # https://stackoverflow.com/a/287944/2192272
-    HEADER = '\033[95m'
-    OKBLUE = '\033[94m'
-    OKGREEN = '\033[92m'
-    WARNING = '\033[93m'
-    FAIL = '\033[91m'
-    ENDC = '\033[0m'
-    BOLD = '\033[1m'
-    UNDERLINE = '\033[4m'
 
 
 def choose_entry_interactive(entries, extra=[], msg=''):
@@ -459,6 +604,8 @@ class MyRef(object):
     @classmethod
     def newbib(cls, bibtex, filesdir):
         assert not os.path.exists(bibtex)
+        if not os.path.exists(os.path.dirname(bibtex)):
+            os.makedirs(os.path.dirname(bibtex))
         open(bibtex,'w').write('')
         return cls(bibtex, filesdir)
 
@@ -754,25 +901,71 @@ class MyRef(object):
             self.rename_entry_files(e, copy)
 
 
-# default_config = Config()
-
 def main():
 
     # import sys
     # import codecs
     # sys.stdout = codecs.getwriter('utf8')(sys.stdout)
 
+    if os.path.exists(config.file):
+        config.load()
+        # config.check_install()
+
     main = argparse.ArgumentParser(description='library management tool')
     subparsers = main.add_subparsers(dest='cmd')
 
-    config = argparse.ArgumentParser(add_help=False)
-    grp = config.add_argument_group('config')
-    grp.add_argument('--bibtex', default='myref.bib',help='%(default)s')
-    grp.add_argument('--filesdir', default='files', help='%(default)s')
+    cfg = argparse.ArgumentParser(add_help=False)
+    grp = cfg.add_argument_group('config')
+    grp.add_argument('--filesdir', default=config.files, 
+        help='files directory (default: %(default)s)')
+    grp.add_argument('--bibtex', default=config.bibtex,
+        help='bibtex database (default: %(default)s)')
+    # grp.add_argument('--bibtex', default=config.bibtex, help='%(default)s')
+    # grp.add_argument('--filesdir', default=config.filesdir, help='%(default)s')
+
+    cfg_parser = subparsers.add_parser('config', description='configure myref',
+        parents=[cfg])
+    # egrp = parser.add_mutually_exclusive_group()
+    # egrp.add_argument('--create', help='create new bibtex collection\
+    #     (will be created under datadir, unless a path is provided)')
+    # egrp.add_argument('--switch', 
+    #     help='switch bibtex collection (current: {}, direc: {})'.format(config.collection, config.data))
+
+    grp = cfg_parser.add_argument_group('paths')
+    # grp.add_argument('--reset-datadir', 
+        # help='set path for data directory (current: {})'.format(config.data))
+    grp.add_argument('--reset', action='store_true') 
+
+    grp = cfg_parser.add_argument_group('status')
+    # grp.add_argument('-l','--status', action='store_true')
+    grp.add_argument('-v','--verbose', action='store_true')
+    grp.add_argument('--check-files', action='store_true')
+
+
+    def main_config(o):
+
+        if o.reset:
+            config.reset()
+            config.save()
+
+        if o.bibtex:
+            config.collection = o.bibtex
+            config.save()
+
+        if o.filesdir is not None:
+            config.files = o.filesdir
+            config.save()
+
+        # if o.status or o.verbose:
+        print(config.status(check_files=o.check_files, verbose=o.verbose))
+        # print('(-h for usage)')
+        # cfg_parser.print_usage()
+        # else:
+            # cfg_parser.print_help()
 
 
     parser = subparsers.add_parser('add', description='add PDF(s) or bibtex(s) to library',
-        parents=[config])
+        parents=[cfg])
     parser.add_argument('file', nargs='+')
     parser.add_argument('--ignore-errors', action='store_true', 
         help='ignore errors when adding multiple files')
@@ -869,7 +1062,7 @@ def main():
     grp.add_argument('--ignore', action='store_true', help='ignore unresolved conflicts')
     grp.add_argument('-f','--force', action='store_true', help='force merging')
 
-    subp = subparsers.add_parser('undo', parents=[config])
+    subp = subparsers.add_parser('undo', parents=[cfg])
 
     def undo(o):
         back = o.bibtex + '.back'
@@ -882,7 +1075,7 @@ def main():
 
 
     subp = subparsers.add_parser('merge', description='merge duplicates', 
-        parents=[config, conflict])
+        parents=[cfg, conflict])
     # subp.add_argument('-m', '--merge', action='store_true', help='merge duplicates')
     # subp.add_argument('--merge', action='store_true', help='merge duplicates')
     # subp.add_argument('--doi', action='store_true', help='DOI duplicate')
@@ -898,7 +1091,7 @@ def main():
         my.save()
 
     parser = subparsers.add_parser('list', description='list (a subset of) entries',
-        parents=[config])
+        parents=[cfg])
 
     mgrp = parser.add_mutually_exclusive_group()
     mgrp.add_argument('--strict', action='store_true', help='exact matching')
@@ -994,6 +1187,12 @@ def main():
     parser.add_argument('doi')
 
     o = main.parse_args()
+
+    # o.bibtex = config.bibtex
+    # o.filesdir = config.filesdir
+
+    if o.cmd == 'config':
+        main_config(o)
 
     if o.cmd == 'add':
         addpdf(o)

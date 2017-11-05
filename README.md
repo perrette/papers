@@ -124,6 +124,7 @@ Current features
 - display / search / filter entries : format as bibtex or key or whatever
 - merging / update
 - undo command
+- global configuration file with default bibtex and files directory
 
 
 Planned features
@@ -146,10 +147,6 @@ As well as:
 
 And some new, original features:
 - integration with git (such as `pass` does)
-- configuration file with default bibtex and files directory, with priority:
-    - command line
-    - local congig
-    - global config
 
 
 All this in a set of planned commands:
