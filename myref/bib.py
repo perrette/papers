@@ -52,54 +52,31 @@ class Config(object):
     """configuration class to specify system-wide collections and files-dir
     """
     def __init__(self, file=CONFIG_FILE, data=DATA_DIR, cache=CACHE_DIR, 
-        collection='myref', files='files'):
+        bibtex=None, filesdir=None):
         self.file = file
         self.data = data
         self.cache = cache
-        self.collection = collection
-        self.files = files
-
-    def path(self, s):
-        return os.path.join(self.data, s)
-
-    def iscustom(self, s):
-        return os.path.sep in s
-
-    @property
-    def bibtex(self):
-        if self.iscustom(self.collection):
-            return self.collection
-        else:
-            return self.path(self.collection+'.bib')
-
-    @property
-    def filesdir(self):
-        if self.iscustom(self.files):
-            return self.files
-        else:
-            return self.path(self.files)
+        self.filesdir = filesdir or os.path.join(data, 'files')
+        self.bibtex = bibtex  or os.path.join(data, 'myref.bib')
 
     def collections(self):
         files = []
-        for root, dirs, files in os.walk(self.data):
+        for root, dirs, files in os.walk(os.path.dirname(self.bibtex)):
             break
-        return sorted(f[:-4] for f in files if f.endswith('.bib'))
-
+        # return sorted(f[:-4] for f in files if f.endswith('.bib'))
+        return sorted(f for f in files if f.endswith('.bib'))
 
     def save(self):
         json.dump({
-            "data":self.data,
-            "collection":self.collection,
-            "files":self.files,
-            # "__version__":myref.__version__,
+            "filesdir":self.filesdir,
+            "bibtex":self.bibtex,
             }, open(self.file, 'w'), sort_keys=True, indent=2, separators=(',', ': '))
 
 
     def load(self):
         js = json.load(open(self.file))
-        self.data = js.get('data', self.data)
-        self.collection = js.get('collection', self.collection)
-        self.files = js.get('files', self.files)
+        self.bibtex = js.get('bibtex', self.bibtex)
+        self.filesdir = js.get('filesdir', self.filesdir)
 
 
     def reset(self):
@@ -624,11 +601,6 @@ class MyRef(object):
                 return i 
         return len(self.db.entries)
 
-    def locate_key(self, ID):
-        keys = [self.key(ei) for ei in self.db.entries]
-        i = bisect.bisect_left(keys, ID)
-        return i
-
     def insert_entry(self, entry, check=True, overwrite=False, merge=False, 
         strict=True, force=False, interactive=True, mergefiles=True):
         """
@@ -637,7 +609,8 @@ class MyRef(object):
         merge : merge with existing entry?
         force : never mind conflicting fields when merging
         """
-        i = self.locate_key(self.key(entry))
+        keys = [self.key(ei) for ei in self.db.entries]
+        i = bisect.bisect_left(keys, entry['ID'].lower())
 
         if not check:
             self.db.entries.insert(i, entry)
@@ -742,7 +715,7 @@ class MyRef(object):
         if attachments:
             files += attachments
 
-        entry['file'] = format_file(files)
+        entry['file'] = format_file([os.path.abspath(f) for f in files])
 
         self.insert_entry(entry, **kw)
 
@@ -890,7 +863,9 @@ class MyRef(object):
             file = files[0]
             base, ext = os.path.splitext(file)
             newfile = os.path.join(direc, e['ID']+ext)
-            if file != newfile:
+            if not os.path.exists(file):
+                raise ValueError(file+': original file link is broken')
+            elif file != newfile:
                 move(file, newfile, copy)
                 count += 1
             newfiles = [newfile]
@@ -901,7 +876,9 @@ class MyRef(object):
             newfiles = []
             for file in files:
                 newfile = os.path.join(newdir, os.path.basename(file))
-                if file != newfile:
+                if not os.path.exists(file):
+                    raise ValueError(file+': original file link is broken')
+                elif file != newfile:
                     move(file, newfile, copy)
                     count += 1
                 newfiles.append(newfile)
@@ -913,25 +890,23 @@ class MyRef(object):
 
     def rename_entries_files(self, copy=False):
         for e in self.db.entries:
-            self.rename_entry_files(e, copy)
-
+            try:
+                self.rename_entry_files(e, copy)
+            except Exception as error:
+                logging.error(str(error))
+                continue
 
 def main():
 
-    # import sys
-    # import codecs
-    # sys.stdout = codecs.getwriter('utf8')(sys.stdout)
-
     if os.path.exists(config.file):
         config.load()
-        # config.check_install()
 
     main = argparse.ArgumentParser(description='library management tool')
     subparsers = main.add_subparsers(dest='cmd')
 
     cfg = argparse.ArgumentParser(add_help=False)
     grp = cfg.add_argument_group('config')
-    grp.add_argument('--filesdir', default=config.files, 
+    grp.add_argument('--filesdir', default=config.filesdir, 
         help='files directory (default: %(default)s)')
     grp.add_argument('--bibtex', default=config.bibtex,
         help='bibtex database (default: %(default)s)')
@@ -940,16 +915,7 @@ def main():
 
     cfg_parser = subparsers.add_parser('config', description='configure myref',
         parents=[cfg])
-    # egrp = parser.add_mutually_exclusive_group()
-    # egrp.add_argument('--create', help='create new bibtex collection\
-    #     (will be created under datadir, unless a path is provided)')
-    # egrp.add_argument('--switch', 
-    #     help='switch bibtex collection (current: {}, direc: {})'.format(config.collection, config.data))
-
-    grp = cfg_parser.add_argument_group('paths')
-    # grp.add_argument('--reset-datadir', 
-        # help='set path for data directory (current: {})'.format(config.data))
-    grp.add_argument('--reset', action='store_true') 
+    cfg_parser.add_argument('--reset-paths', action='store_true') 
 
     grp = cfg_parser.add_argument_group('status')
     # grp.add_argument('-l','--status', action='store_true')
@@ -959,16 +925,16 @@ def main():
 
     def main_config(o):
 
-        if o.reset:
+        if o.reset_paths:
             config.reset()
             config.save()
 
         if o.bibtex:
-            config.collection = o.bibtex
+            config.bibtex = o.bibtex
             config.save()
 
         if o.filesdir is not None:
-            config.files = o.filesdir
+            config.filesdir = o.filesdir
             config.save()
 
         # if o.status or o.verbose:
@@ -1105,7 +1071,7 @@ def main():
             my.merge_entries(o.keys, **kw)
         my.save()
 
-    parser = subparsers.add_parser('list', description='list (a subset of) entries',
+    parser = subparsers.add_parser('filter', description='filter (a subset of) entries',
         parents=[cfg])
 
     mgrp = parser.add_mutually_exclusive_group()
@@ -1113,7 +1079,6 @@ def main():
     mgrp.add_argument('--fuzzy', action='store_true', help='fuzzy matching')
     parser.add_argument('--fuzzy-ratio', type=int, default=80, help='default:%(default)s')
     parser.add_argument('--invert', action='store_true')
-    parser.add_argument('--delete', action='store_true')
 
     grp = parser.add_argument_group('search')
     grp.add_argument('-a','--author',nargs='+')
@@ -1122,15 +1087,21 @@ def main():
     grp.add_argument('--key', nargs='+')
     grp.add_argument('--doi', nargs='+')
 
+    grp = parser.add_argument_group('special')
+    grp.add_argument('--invalid-doi', action='store_true', help='invalid dois')
+    # grp.add_argument('--invalid-file', action='store_true', help='invalid file')
+    # grp.add_argument('--valid-file', action='store_true', help='valid file')
+
     grp = parser.add_argument_group('formatting')
     mgrp = grp.add_mutually_exclusive_group()
     mgrp.add_argument('-k','--key-only', action='store_true')
-    mgrp.add_argument('-s', '--short', action='store_true')
+    mgrp.add_argument('-l', '--list', action='store_true', help='one liner')
     mgrp.add_argument('-f', '--field', nargs='+', help='specific fields only')
     grp.add_argument('--no-key', action='store_true')
 
-    grp = parser.add_argument_group('special')
-    grp.add_argument('--invalid-doi', action='store_true', help='invalid dois')
+
+    grp = parser.add_argument_group('action')
+    parser.add_argument('--delete', action='store_true')
 
     def listing(o):
         my = MyRef(o.bibtex, o.filesdir)
@@ -1184,7 +1155,7 @@ def main():
         elif o.key_only:
             for e in entries:
                 print(e['ID'])
-        elif o.short:
+        elif o.list:
             for e in entries:
                 tit = e['title'][:60]+ ('...' if len(e['title'])>60 else '')
                 doi = ('(doi:'+e['doi']+')') if e.get('doi','') else ''
@@ -1224,7 +1195,7 @@ def main():
         merge_duplicate(o)
     elif o.cmd == 'undo':
         undo(o)
-    elif o.cmd == 'list':
+    elif o.cmd == 'filter':
         listing(o)
     elif o.cmd == 'doi':
         print(extract_doi(o.pdf, o.space_digit))

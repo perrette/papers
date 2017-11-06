@@ -104,9 +104,9 @@ In the above case, the sequence of actions is:
 
 - other commands: 
 
+    - `myref filter ...` 
     - `myref merge ...` 
     - `myref undo ...` 
-    - `myref list ...` 
 
 Consult inline help for more detailed documentation!
 

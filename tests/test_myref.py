@@ -208,6 +208,8 @@ class TestAddBib(unittest.TestCase):
         self.my = MyRef.newbib(self.mybib, '')
 
     def test_addbib(self):
+        self.assertTrue(self.key1 not in [e['ID'] for e in self.my.db.entries])
+        self.assertTrue(self.key2 not in [e['ID'] for e in self.my.db.entries])
         self.my.add_bibtex_file(self.somebib)
         self.assertEqual(len(self.my.db.entries), 2)
         self.assertEqual(self.my.db.entries[0]['ID'], self.key1)
