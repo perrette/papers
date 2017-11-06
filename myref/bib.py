@@ -560,16 +560,14 @@ def search_duplicates(entries, key=None, issorted=False):
 def format_entries(entries):
     db = bibtexparser.loads('')
     db.entries.extend(entries)
-    return format_db(db)
+    return bibtexparser.dumps(db)
  
 
-def format_db(db):
-    """utf-8 encode of bibtexparser dump
-    """
-    s = bibtexparser.dumps(db)
-    if six.PY2:
-        s = s.encode('utf-8')
-    return s
+if six.PY2:
+    _bloads = bibtexparser.loads 
+    _bdumps = bibtexparser.dumps
+    bibtexparser.loads = lambda s: _bloads(s.decode('utf-8'))
+    bibtexparser.dumps = lambda db: _bdumps(db).encode('utf-8')
 
 
 class MyRef(object):
@@ -580,8 +578,6 @@ class MyRef(object):
         self.txt = '/tmp'
         self.bibtex = bibtex
         bibtexs = open(bibtex).read()
-        if six.PY2:
-            bibtexs = bibtexs.decode('utf-8')
         self.db = bibtexparser.loads(bibtexs)
         # assume an already sorted list
         self.key_field = key_field
@@ -775,7 +771,7 @@ class MyRef(object):
 
 
     def format(self):
-        return format_db(self.db)
+        return bibtexparser.dumps(self.db)
 
     def save(self):
         s = self.format()
