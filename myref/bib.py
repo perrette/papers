@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import print_function
-import os, json
+import os, json, sys
 import logging
 logging.basicConfig(level=logging.INFO)
 import argparse
@@ -18,6 +18,7 @@ import myref
 
 
 DRYRUN = False
+GIT = False
 
 # config directory location
 HOME = os.environ.get('HOME','')
@@ -96,9 +97,9 @@ class Config(object):
 
     def load(self):
         js = json.load(open(self.file))
-        self.data = js['data']
-        self.collection = js['collection']
-        self.files = js['files']
+        self.data = js.get('data', self.data)
+        self.collection = js.get('collection', self.collection)
+        self.files = js.get('files', self.files)
 
 
     def reset(self):
@@ -119,6 +120,7 @@ class Config(object):
         if verbose:
             lines.append('* configuration file: '+self.file) 
             lines.append('* cache directory:    '+self.cache) 
+            lines.append('* data directory:     '+self.data) 
 
         if not os.path.exists(self.filesdir):
             status = bcolors.WARNING+' (missing)'+bcolors.ENDC
@@ -143,7 +145,7 @@ class Config(object):
                 status = bcolors.FAIL+' (fails)'+bcolors.ENDC 
         else:
             status = ''
-        lines.append('* bibtex:     '+self.bibtex+status)
+        lines.append('* bibtex:            '+self.bibtex+status)
 
         # if verbose:
         #     collections = self.collections()
@@ -622,6 +624,11 @@ class MyRef(object):
                 return i 
         return len(self.db.entries)
 
+    def locate_key(self, ID):
+        keys = [self.key(ei) for ei in self.db.entries]
+        i = bisect.bisect_left(keys, ID)
+        return i
+
     def insert_entry(self, entry, check=True, overwrite=False, merge=False, 
         strict=True, force=False, interactive=True, mergefiles=True):
         """
@@ -630,8 +637,7 @@ class MyRef(object):
         merge : merge with existing entry?
         force : never mind conflicting fields when merging
         """
-        keys = [self.key(ei) for ei in self.db.entries]
-        i = bisect.bisect_left(keys, self.key(entry))
+        i = self.locate_key(self.key(entry))
 
         if not check:
             self.db.entries.insert(i, entry)
@@ -768,6 +774,15 @@ class MyRef(object):
         if os.path.exists(self.bibtex):
             shutil.copy(self.bibtex, self.bibtex+'.backup')
         open(self.bibtex, 'w').write(s)
+
+        # make a git commit?
+        if os.path.exists(os.path.join(config.data, '.git')):
+            target = os.path.join(config.data, os.path.basename(self.bibtex))
+            if self.bibtex != target:
+                shutil.copy(self.bibtex, target)
+            with open(os.devnull, 'w') as shutup:
+                sp.call(['git','add',target], stdout=shutup, stderr=shutup, cwd=config.data)
+                sp.call(['git','commit','-m', 'myref'+' '.join(sys.argv[1:])], stdout=shutup, stderr=shutup, cwd=config.data)
 
 
     def merge_duplicates(self, key, interactive=True, fetch=False, force=False, 
@@ -1098,6 +1113,7 @@ def main():
     mgrp.add_argument('--fuzzy', action='store_true', help='fuzzy matching')
     parser.add_argument('--fuzzy-ratio', type=int, default=80, help='default:%(default)s')
     parser.add_argument('--invert', action='store_true')
+    parser.add_argument('--delete', action='store_true')
 
     grp = parser.add_argument_group('search')
     grp.add_argument('-a','--author',nargs='+')
@@ -1173,6 +1189,10 @@ def main():
                 tit = e['title'][:60]+ ('...' if len(e['title'])>60 else '')
                 doi = ('(doi:'+e['doi']+')') if e.get('doi','') else ''
                 print(key(e), tit, doi)
+        elif o.delete:
+            for e in entries:
+                my.db.entries.remove(e)
+            my.save()
         else:
             print(format_entries(entries))
 
@@ -1185,6 +1205,10 @@ def main():
 
     parser = subparsers.add_parser('fetch', description='fetch bibtex from DOI')
     parser.add_argument('doi')
+
+    gitp = subparsers.add_parser('git', description='git subcommand')
+    gitp.add_argument('gitargs', nargs=argparse.REMAINDER)
+
 
     o = main.parse_args()
 
@@ -1206,6 +1230,13 @@ def main():
         print(extract_doi(o.pdf, o.space_digit))
     elif o.cmd == 'fetch':
         print(fetch_bibtex_by_doi(o.doi))
+    elif o.cmd == 'git':
+        try:
+            out = sp.check_output(['git']+o.gitargs, cwd=config.data)
+            print(out)
+        except:
+            gitp.error('failed to execute git command')
+
 
 if __name__ == '__main__':
     main()
