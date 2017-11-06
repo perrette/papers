@@ -81,8 +81,8 @@ class Config(object):
 
     def reset(self):
         cfg = type(self)()
-        self.collection = cfg.collection
-        self.files = cfg.files
+        self.bibtex = cfg.bibtex
+        self.filesdir = cfg.filesdir
 
 
     def check_install(self):
@@ -207,11 +207,18 @@ def setentryfiles(e, files, overwrite=True): #, interactive=True):
 
 # move / copy
 
-def move(f1, f2, copy=False):
+def move(f1, f2, copy=False, interactive=False):
     dirname = os.path.dirname(f2)
-    if not os.path.exists(dirname):
+    if dirname and not os.path.exists(dirname):
         logging.info('create directory: '+dirname)
         os.makedirs(dirname)
+    if f1 == f2:
+        logging.info('dest is identical to src: '+f1)
+        return 
+    if os.path.exists(f2):
+        ans = raw_input('dest file already exists: '+f2+'. Replace? (y/n) ')
+        if ans != 'y':
+            return
     if copy:
         cmd = 'cp {} {}'.format(f1, f2)
         logging.info(cmd)
@@ -594,6 +601,19 @@ class MyRef(object):
     def sort(self):
         self.db.entries = sorted(self.db.entries, key=self.key)
 
+    def generate_key(self, entry):
+        " generate a unique key not yet present in the record "
+        keys = [e['ID'] for e in self.db.entries]
+        names = bibtexparser.customization.getnames(entry['author'].split(' and '))
+        letters = list(' bcdefghijklmnopqrstuvwxyz')
+        key = names[0].split(',')[0].strip() + '_' + entry.get('year','XXXX')
+        for l in letters:
+            if key+l not in keys:
+                break
+        assert key+l not in keys
+        return key+l
+
+
     def locate_doi(self, doi):
         assert doi
         for i, entry in enumerate(self.db.entries):
@@ -623,19 +643,25 @@ class MyRef(object):
             # check for key duplicate
             if keys[i] == self.key(entry):
                 samekey = True 
-            # check for doi duplicate
-            elif 'doi' in entry and isvaliddoi(entry['doi']):
+
+        # check for doi duplicate
+        if 'doi' in entry and isvaliddoi(entry['doi']):
+            # try to check the same-key element first, to spare a search
+            if samekey and entry['doi'] == self.db.entries[i].get('doi',''):
+                samedoi = True
+            else:
                 j = self.locate_doi(entry['doi'])
                 if j < len(self.db.entries):
                     samedoi = True
-                    i = j
+                    i = j  # priority
+                    samekey = entry['ID'] == self.db.entries[i].get('doi','')
 
         if samekey or samedoi:
             msg_extra = (overwrite*' => overwrite') or (merge*' => merge')
-            if samekey:
-                logging.info('entry key already present: '+self.key(entry)+msg_extra)
-            else:
+            if samedoi:
                 logging.info('entry DOI already present: '+self.key(entry)+msg_extra)
+            else:
+                logging.info('entry key already present: '+self.key(entry)+msg_extra)
 
             duplicates = [self.db.entries[i], entry]
 
@@ -653,6 +679,9 @@ class MyRef(object):
                 self.db.entries[i] = entry
                 return entry
             
+            if entry['ID'] != self.db.entries[i]['ID']:
+                tmpl = 'imported entry key will be replaced {} >>> {}'
+                logging.warn(tmpl.format(self.db.entries[i]['ID'], entry['ID']))
             entry['ID'] = self.db.entries[i]['ID']
 
             if merge:
@@ -667,9 +696,15 @@ class MyRef(object):
                     print()
                     print('!!! Failed to merge:',str(error),' !!!')
                     print()
-                    e = choose_entry_interactive(unique(duplicates), extra=['q'], msg=' or (q)uit')
+                    e = choose_entry_interactive(unique(duplicates), 
+                        extra=['n','q'], msg=' or (n)ot a duplicate or (q)uit')
                     if e == 'q':
                         raise
+                    elif e == 'n':
+                        if samekey:
+                            entry['ID'] = self.generate_key(entry)
+                            e = entry
+                            return self.insert_entry(e)
                 self.db.entries[i] = e
 
 
@@ -910,8 +945,6 @@ def main():
         help='files directory (default: %(default)s)')
     grp.add_argument('--bibtex', default=config.bibtex,
         help='bibtex database (default: %(default)s)')
-    # grp.add_argument('--bibtex', default=config.bibtex, help='%(default)s')
-    # grp.add_argument('--filesdir', default=config.filesdir, help='%(default)s')
 
     cfg_parser = subparsers.add_parser('config', description='configure myref',
         parents=[cfg])
@@ -925,9 +958,7 @@ def main():
 
     def main_config(o):
 
-        if o.reset_paths:
-            config.reset()
-            config.save()
+        old = o.bibtex
 
         if o.bibtex:
             config.bibtex = o.bibtex
@@ -935,6 +966,10 @@ def main():
 
         if o.filesdir is not None:
             config.filesdir = o.filesdir
+            config.save()
+
+        if o.reset_paths:
+            config.reset()
             config.save()
 
         # if o.status or o.verbose:
@@ -1087,7 +1122,7 @@ def main():
     grp.add_argument('--key', nargs='+')
     grp.add_argument('--doi', nargs='+')
 
-    grp = parser.add_argument_group('special')
+    grp = parser.add_argument_group('problem')
     grp.add_argument('--invalid-doi', action='store_true', help='invalid dois')
     # grp.add_argument('--invalid-file', action='store_true', help='invalid file')
     # grp.add_argument('--valid-file', action='store_true', help='valid file')

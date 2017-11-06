@@ -107,6 +107,7 @@ In the above case, the sequence of actions is:
     - `myref filter ...` 
     - `myref merge ...` 
     - `myref undo ...` 
+    - `myref git ...` 
 
 Consult inline help for more detailed documentation!
 
@@ -153,8 +154,6 @@ All this in a set of planned commands:
 - `myref new (-k KEY | --auto-key) [--no-check] --author NAME --year YEAR [--file FILE [FILE...]] ...` : manually add one new entry (for the sake of completeness) 
 - `myref link -k KEY [--no-check] [--overwrite] FILE [FILE...]` : add one or several file to *existing* entry, without any check on the files beyond existence
 - `myref filecheck [--fix] [--rename] [--remove-broken] [--searchdir DIR [DIR...]] [--doi-check] ...` : perform check on bibtex file link (test broken, rename, re-link from other sources, remove broken, remove duplicate names, check that doi matches...)
-- `myref config ...` : show/change global configuration options (default bibtex, filesdir, caching of DOI requests)
-- `myref git ...` : any git command from myref's git repository
 
 
 Suggestions welcomed for prioritizing / feature suggestion.
