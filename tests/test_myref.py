@@ -242,7 +242,7 @@ class TestAddDir(unittest.TestCase):
 
     def test_adddir_pdf_cmd(self):
         sp.check_call('myref add --recursive --bibtex {} {}'.format(self.mybib, self.somedir), shell=True)
-        self.my = MyRef(self.mybib, '')
+        self.my = MyRef.load(self.mybib, '')
         self.assertEqual(len(self.my.db.entries), 2)
         keys = [self.my.db.entries[0]['ID'], self.my.db.entries[1]['ID']]
         self.assertEqual(sorted(keys), sorted([self.key1, self.key2]))
@@ -250,6 +250,19 @@ class TestAddDir(unittest.TestCase):
     def tearDown(self):
         os.remove(self.mybib)
         shutil.rmtree(self.somedir)
+
+
+# class TestAddMerge(unittest.TestCase):
+
+#     def setUp(self):
+#         self.
+
+
+#     def add_conflicting_key(self):
+
+
+#     def tearDown(self):
+#         pass
 
 
 if __name__ == '__main__':

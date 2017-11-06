@@ -6,192 +6,73 @@ logging.basicConfig(level=logging.INFO)
 import argparse
 import subprocess as sp
 import shutil
-import re
 import bisect
 import itertools
 import six
-import six.moves.urllib.request
 
 import bibtexparser
 
 import myref
-
+from myref.tools import (bcolors, move, check_filesdir, extract_doi, 
+    fetch_bibtex_by_doi, isvaliddoi)
+from myref.config import config
+from myref.conflict import (merge_files, merge_entries, parse_file, format_file,
+    handle_merge_conflict, search_duplicates, choose_entry_interactive, unique)
 
 DRYRUN = False
-GIT = False
-
-# config directory location
-HOME = os.environ.get('HOME','')
-CONFIG_HOME = os.environ.get('XDG_CONFIG_HOME', os.path.join(HOME, '.config'))
-CACHE_HOME = os.environ.get('XDG_CACHE_HOME', os.path.join(HOME, '.cache'))
-DATA_HOME = os.environ.get('XDG_DATA_HOME', os.path.join(HOME, '.local','share'))
 
 
-CONFIG_FILE = os.path.join(CONFIG_HOME, 'myref.json')
-DATA_DIR = os.path.join(DATA_HOME, 'myref')
-CACHE_DIR = os.path.join(CACHE_HOME, 'myref')
+def config_status(self, check_files=False, verbose=False):
+    lines = []
+    lines.append(bcolors.BOLD+'myref configuration'+bcolors.ENDC)
+    if verbose:
+        lines.append('* configuration file: '+self.file) 
+        lines.append('* cache directory:    '+self.cache) 
+        lines.append('* data directory:     '+self.data) 
 
+    if not os.path.exists(self.filesdir):
+        status = bcolors.WARNING+' (missing)'+bcolors.ENDC
+    elif not os.listdir(self.filesdir):
+        status = bcolors.WARNING+' (empty)'+bcolors.ENDC
+    elif check_files:
+        file_count, folder_size = check_filesdir(self.filesdir)
+        status = bcolors.OKBLUE+" ({} files, {:.1f} MB)".format(file_count, folder_size/(1024*1024.0))+bcolors.ENDC
+    else:
+        status = ''
 
+    files = self.filesdir
+    lines.append('* files directory:    '+files+status) 
 
-class bcolors:
-    # https://stackoverflow.com/a/287944/2192272
-    HEADER = '\033[95m'
-    OKBLUE = '\033[94m'
-    OKGREEN = '\033[92m'
-    WARNING = '\033[93m'
-    FAIL = '\033[91m'
-    ENDC = '\033[0m'
-    BOLD = '\033[1m'
-    UNDERLINE = '\033[4m'
+    if not os.path.exists(self.bibtex):
+        status = bcolors.WARNING+' (missing)'+bcolors.ENDC 
+    elif check_files:
+        try:
+            db = bibtexparser.load(open(self.bibtex))
+            status = bcolors.OKBLUE+' ({} entries)'.format(len(db.entries))+bcolors.ENDC
+        except:
+            status = bcolors.FAIL+' (fails)'+bcolors.ENDC 
+    else:
+        status = ''
+    lines.append('* bibtex:            '+self.bibtex+status)
 
-    def str(self, s, modifier):
-        return modifier + s + self.ENDC
-
-
-class Config(object):
-    """configuration class to specify system-wide collections and files-dir
-    """
-    def __init__(self, file=CONFIG_FILE, data=DATA_DIR, cache=CACHE_DIR, 
-        bibtex=None, filesdir=None):
-        self.file = file
-        self.data = data
-        self.cache = cache
-        self.filesdir = filesdir or os.path.join(data, 'files')
-        self.bibtex = bibtex  or os.path.join(data, 'myref.bib')
-
-    def collections(self):
-        files = []
-        for root, dirs, files in os.walk(os.path.dirname(self.bibtex)):
-            break
-        # return sorted(f[:-4] for f in files if f.endswith('.bib'))
-        return sorted(f for f in files if f.endswith('.bib'))
-
-    def save(self):
-        json.dump({
-            "filesdir":self.filesdir,
-            "bibtex":self.bibtex,
-            }, open(self.file, 'w'), sort_keys=True, indent=2, separators=(',', ': '))
-
-
-    def load(self):
-        js = json.load(open(self.file))
-        self.bibtex = js.get('bibtex', self.bibtex)
-        self.filesdir = js.get('filesdir', self.filesdir)
-
-
-    def reset(self):
-        cfg = type(self)()
-        self.bibtex = cfg.bibtex
-        self.filesdir = cfg.filesdir
-
-
-    def check_install(self):
-        if not os.path.exists(self.cache):
-            logging.info('make cache directory for DOI requests: '+self.cache)
-            os.makedirs(self.cache)
-
-
-    def status(self, check_files=False, verbose=False):
-        lines = []
-        lines.append(bcolors.BOLD+'myref configuration'+bcolors.ENDC)
-        if verbose:
-            lines.append('* configuration file: '+self.file) 
-            lines.append('* cache directory:    '+self.cache) 
-            lines.append('* data directory:     '+self.data) 
-
-        if not os.path.exists(self.filesdir):
-            status = bcolors.WARNING+' (missing)'+bcolors.ENDC
-        elif not os.listdir(self.filesdir):
-            status = bcolors.WARNING+' (empty)'+bcolors.ENDC
-        elif check_files:
-            file_count, folder_size = check_filesdir(self.filesdir)
-            status = bcolors.OKBLUE+" ({} files, {:.1f} MB)".format(file_count, folder_size/(1024*1024.0))+bcolors.ENDC
-        else:
-            status = ''
-
-        files = self.filesdir
-        lines.append('* files directory:    '+files+status) 
-
-        if not os.path.exists(self.bibtex):
-            status = bcolors.WARNING+' (missing)'+bcolors.ENDC 
-        elif check_files:
-            try:
-                db = bibtexparser.load(open(self.bibtex))
-                status = bcolors.OKBLUE+' ({} entries)'.format(len(db.entries))+bcolors.ENDC
-            except:
-                status = bcolors.FAIL+' (fails)'+bcolors.ENDC 
-        else:
-            status = ''
-        lines.append('* bibtex:            '+self.bibtex+status)
-
-        # if verbose:
-        #     collections = self.collections()
-        #     status = bcolors.WARNING+' none'+bcolors.ENDC if not collections else ''
-        #     lines.append('* other collections:'+status)
-        #     for i, nm in enumerate(collections):
-        #         if i > 10:
-        #             lines.append('    '+'({} more collections...)'.format(len(collections)-10))
-        #             break
-        #         status = ' (*)' if nm == self.collection else ''
-        #         lines.append('    '+nm+status)
+    # if verbose:
+    #     collections = self.collections()
+    #     status = bcolors.WARNING+' none'+bcolors.ENDC if not collections else ''
+    #     lines.append('* other collections:'+status)
+    #     for i, nm in enumerate(collections):
+    #         if i > 10:
+    #             lines.append('    '+'({} more collections...)'.format(len(collections)-10))
+    #             break
+    #         status = ' (*)' if nm == self.collection else ''
+    #         lines.append('    '+nm+status)
 
 
 
-        return '\n'.join(lines)
+    return '\n'.join(lines)
 
-def check_filesdir(folder):
-    folder_size = 0
-    file_count = 0
-    for (path, dirs, files) in os.walk(folder):
-      for file in files:
-        filename = os.path.join(path, file)
-        if filename.endswith('.pdf'):
-            folder_size += os.path.getsize(filename)
-            file_count += 1
-    return file_count, folder_size
-
-config = Config()
-config.check_install()
 
 # Parse / format bibtex file entry
 # ================================
-
-def _parse_file(file):
-    """ parse a single file entry
-    """
-    sfile = file.split(':')
-    
-    if len(sfile) == 1:  # no ':'
-        path, type = file, ''
-
-    elif len(sfile) == 2:
-        path, type = sfile
-
-    elif len(sfile) == 3:
-        basename, path, type = sfile
-
-    else:
-        raise ValueError('unknown "file" format: file')
-
-    return path
-
-
-def _format_file(file, type=None):
-    if not type:
-        type = os.path.splitext(file)[1].strip('.')
-    return ':'+file+':'+type
-
-
-def parse_file(file):
-    if not file:
-        return []
-    else:
-        return [_parse_file(f) for f in file.split(';')]
-
-
-def format_file(file_types):
-    return ';'.join([_format_file(f) for f in file_types])
-
 
 def getentryfiles(e):
     'list of (fname, ftype) '
@@ -204,357 +85,6 @@ def setentryfiles(e, files, overwrite=True): #, interactive=True):
         files = getentryfiles(e) + files
     e['file'] = format_file(files)
 
-
-# move / copy
-
-def move(f1, f2, copy=False, interactive=False):
-    dirname = os.path.dirname(f2)
-    if dirname and not os.path.exists(dirname):
-        logging.info('create directory: '+dirname)
-        os.makedirs(dirname)
-    if f1 == f2:
-        logging.info('dest is identical to src: '+f1)
-        return 
-    if os.path.exists(f2):
-        ans = raw_input('dest file already exists: '+f2+'. Replace? (y/n) ')
-        if ans != 'y':
-            return
-    if copy:
-        cmd = 'cp {} {}'.format(f1, f2)
-        logging.info(cmd)
-        if not DRYRUN:
-            shutil.copy(f1, f2)
-    else:
-        cmd = 'mv {} {}'.format(f1, f2)
-        logging.info(cmd)
-        if not DRYRUN:
-            shutil.move(f1, f2)
-
-
-
-# PDF parsing / crossref requests
-# ===============================
-
-def readpdf(pdf, first=None, last=None, keeptxt=False):
-    txtfile = pdf.replace('.pdf','.txt')
-    # txtfile = os.path.join(os.path.dirname(pdf), pdf.replace('.pdf','.txt'))
-    if True: #not os.path.exists(txtfile):
-        # logging.info(' '.join(['pdftotext','"'+pdf+'"', '"'+txtfile+'"']))
-        cmd = ['pdftotext']
-        if first is not None: cmd.extend(['-f',str(first)])
-        if last is not None: cmd.extend(['-l',str(last)])
-        cmd.append(pdf)
-        sp.check_call(cmd)
-    else:
-        logging.info('file already present: '+txtfile)
-    txt = open(txtfile).read()
-    if not keeptxt:
-        os.remove(txtfile)
-    return txt
-
-
-def extract_doi(pdf, space_digit=True):
-    txt = readpdf(pdf, first=1, last=1)
-
-    try:
-        doi = parse_doi(txt, space_digit=space_digit)
-
-    except ValueError:
-        # sometimes first page is blank
-        txt = readpdf(pdf, first=2, last=2)
-        doi = parse_doi(txt, space_digit=space_digit)
-
-    return doi
-
-def parse_doi(txt, space_digit=False):
-    # cut the reference part...
-
-    # doi = r"10\.\d\d\d\d/[^ ,]+"  # this ignore line breaks
-    doi = r"10\.\d\d\d\d/.*?"
-
-    # sometimes an underscore is converted as space
-    if space_digit:
-        doi += r"[ \d]*"  # also accept empty space followed by digit
-
-    # expression ends with a comma, empty space or newline
-    stop = r"[, \n]"
-
-    # expression starts with doi:
-    prefixes = ['doi:', 'doi: ', 'doi ', 'dx\.doi\.org/', 'doi/']
-    prefix = '[' + '|'.join(prefixes) + ']' # match any of those
-
-    # full expression, capture doi as a group
-    regexp = prefix + "(" + doi + ")" + stop
-
-    matches = re.compile(regexp).findall(' '+txt.lower()+' ')
-
-    if not matches:
-        raise ValueError('parse_doi::no matches')
-
-    match = matches[0]
-
-    # clean expression
-    doi = match.replace('\n','').strip('.')
-
-    if space_digit:
-        doi = doi.replace(' ','_')
-
-    # quality check 
-    assert len(doi) > 8, 'failed to extract doi: '+doi
-
-    return doi 
-
-
-def isvaliddoi(doi):
-    try:
-        doi2 = parse_doi(doi)
-    except:
-        return False
-    return doi == doi2
-
-
-def ask_doi(max=3):
-    doi = raw_input('doi : ')
-    count = 1
-    while not isvaliddoi(doi):
-        count += 1
-        if count > max:
-            raise ValueError('invalid doi: '+doi)
-        doi = raw_input('Valid DOI looks like 10.NNNN/... Please try again. doi : ')
-    return doi
-
-
-def cached(file):
-    def decorator(fun):
-        if os.path.exists(file):
-            cache = json.load(open(file))
-        else:
-            cache = {}
-        def decorated(doi):
-            if doi in cache:
-                return cache[doi]
-            else:
-                res = cache[doi] = fun(doi)
-                if not DRYRUN:
-                    json.dump(cache, open(file,'w'))
-            return res
-        return decorated
-    return decorator
-
-
-@cached(os.path.join(config.cache, 'crossref-bibtex.json'))
-def fetch_bibtex_by_doi(doi):
-    url = "http://api.crossref.org/works/"+doi+"/transform/application/x-bibtex"
-    response = six.moves.urllib.request.urlopen(url)
-    bibtex = response.read()
-    if six.PY3:
-        bibtex = bibtex.decode()
-    return bibtex.strip()
-
-@cached(os.path.join(config.cache, 'crossref.json'))
-def fetch_json_by_doi(doi):
-    url = "http://api.crossref.org/works/"+doi+"/transform/application/json"
-    response = six.moves.urllib.request.urlopen(url)
-    jsontxt = response.read()
-    if six.PY3:
-        jsontxt = jsontxt.decode()
-    return jsontxt.dumps(json)
-
-
-def json_to_bibtex(js):
-    raise NotImplementedError()
-
-def bibtex_to_json(js):
-    raise NotImplementedError()
-
-# main config
-# ===========
-class ConflictError(ValueError):
-    pass
-
-
-def unique(entries):
-    entries_ = []
-    for e in entries:
-        if e not in entries_:
-            entries_.append(e)
-    return entries_
-
-
-
-def choose_entry_interactive(entries, extra=[], msg=''):
-    db = bibtexparser.loads('')
-    db.entries.append({})
-
-    merged = merge_entries(entries).resolve()
-    conflicting_fields = [k for k in merged if isinstance(merged[k], ConflictingField)]
-
-    for i, entry in enumerate(entries):
-        db.entries[0] = entry
-        string = bibtexparser.dumps(db)
-        # color the conflicting fields
-        for k in conflicting_fields:
-            string = string.replace(entry[k], bcolors.FAIL+entry[k]+bcolors.ENDC)
-
-        print(bcolors.OKBLUE+'* ('+str(i+1)+')'+bcolors.ENDC+'\n'+string)
-    entry_choices = [str(i+1) for i in range(len(entries))]
-    choices = entry_choices + extra
-    i = 0
-    choices_msg = ", ".join(['('+e+')' for e in entry_choices])
-    while (i not in choices):
-        i = raw_input('{}pick entry in {}{}{}\n>>> '.format(bcolors.OKBLUE,choices_msg,msg, bcolors.ENDC))
-    if i in entry_choices:
-        return entries[int(i)-1]
-    else:
-        return i
-
-
-def best_entry(entries, fields=None):
-    """keep the best entry of a list of entries
-
-    strategy:
-    - filter out exact duplicate
-    - keep fied with non-zero ID
-    - for each field in fields, keep the entry where this field is documented (doi first)
-    - keep the entry with the smallest ID
-    """
-    if len(entries) == 0:
-        raise ValueError('at least one entry is required')
-
-    # keep unique entries
-    entries = unique(entries)
-
-    if len(entries) == 1:
-        return entries
-
-    # pick the entry with one of preferred fields
-    if fields is None:
-        fields = ['ID', 'doi','author','year','title']
-
-    for f in fields:
-        if any([e.get(f,'') for e in entries]):
-            entries = [e for e in entries if e.get(f,'')]
-            if len(entries) == 1:
-                return entries
-
-    # just pick one, based on the smallest key
-    e = entries[0]
-    for ei in entries[1:]:
-        if ei['ID'] < e['ID']:
-            e = ei
-
-    return e
-
-
-def merge_files(entries):
-    files = []
-    for e in entries:
-        for f in parse_file(e.get('file','')):
-            if f not in files:
-                files.append(f)
-    return format_file(files)
-
-
-def smallest_key(entries):
-    keys = [e['ID'] for e in entries if e.get('ID','')]
-    if not keys:
-        return ''
-    return min(keys)
-
-
-class ConflictingField(object):
-    def __init__(self, choices=[]):
-        self.choices = choices
-
-    def resolve(self, strict=True, force=False):
-        if force: 
-            strict = False
-        choices = self.choices if strict else [v for v in self.choices if v]
-
-        if len(choices) == 1 or force:
-            return choices[0]
-        else:
-            return self
-
-
-class MergedEntry(dict):
-
-    def isresolved(self):
-        return not any([isinstance(self[k], ConflictingField) for k in self])
-
-    def resolve(self, strict=True, force=False):
-        for k in self:
-            if isinstance(self[k], ConflictingField):
-                self[k] = self[k].resolve(strict, force)
-
-        return dict(self) if self.isresolved() else self
-
-
-def merge_entries(entries, strict=True, force=False):
-    merged = MergedEntry() # dict
-    for e in entries:
-        for k in e:
-            if k not in merged:
-                merged[k] = ConflictingField([])
-            if e[k] not in merged[k].choices:
-                merged[k].choices.append(e[k])
-    return merged.resolve(strict, force)
-
-
-def handle_merge_conflict(merged, fetch=False, force=False):
-    
-    if not isinstance(merged, MergedEntry):
-        return merged  # all good !
-
-    if fetch:
-        try:
-            fix_fetch_entry_metadata(merged)
-        except Exception as error:
-            if not force: 
-                raise
-            else:
-                logging.warn('failed to fetch metadata: '+str(error))
-
-    if force:
-        merged = merged.resolve(force=True)
-
-    if isinstance(merged, MergedEntry):
-        fields = [k for k in merged if isinstance(merged[k], ConflictingField)]
-        raise ValueError('conflicting entries for fields: '+str(fields))
-
-    return merged
-
-
-def fix_fetch_entry_metadata(entry):
-    assert entry.get('doi',''), 'missing DOI'
-    assert not isinstance(entry['doi'], MergedEntry), \
-        'conflicting doi: '+str(entry['doi'].choices)
-    assert isvaliddoi(entry['doi']), 'invalid DOI' 
-    bibtex = fetch_bibtex_by_doi(entry['doi'])
-    bib = bibtexparser.loads(bibtex)
-    e = bib.entries[0]
-    entry.update({k:e[k] for k in e if k != 'file' and k != 'ID'})
-
-   
-
-def search_duplicates(entries, key=None, issorted=False):
-    """search for duplicates
-
-    returns:
-    - unique_entries : list (entries for which no duplicates where found)
-    - duplicates : list of list (groups of duplicates)
-    """
-    if not issorted:
-        entries = sorted(entries, key=key)
-    duplicates = []
-    unique_entries = []
-    for e, g in itertools.groupby(entries, key):
-        group = list(g)
-        if len(group) == 1:
-            unique_entries.append(group[0])
-        else:
-            duplicates.append(group)
-    return unique_entries, duplicates
 
 
 def format_entries(entries):
@@ -573,147 +103,153 @@ if six.PY2:
 class MyRef(object):
     """main config
     """
-    def __init__(self, bibtex, filesdir, key_field='ID'):
+    def __init__(self, db, filesdir, key_field='ID'):
         self.filesdir = filesdir
         self.txt = '/tmp'
-        self.bibtex = bibtex
-        bibtexs = open(bibtex).read()
-        self.db = bibtexparser.loads(bibtexs)
         # assume an already sorted list
         self.key_field = key_field
+        self.db = db
         self.sort()
+
+    @property
+    def entries(self):
+        return self.db.entries
+
+    @classmethod
+    def load(cls, bibtex, filesdir):
+        # self.bibtex = bibtex
+        bibtexs = open(bibtex).read()
+        return cls(bibtexparser.loads(bibtexs), filesdir)
 
     @classmethod
     def newbib(cls, bibtex, filesdir):
         assert not os.path.exists(bibtex)
-        if not os.path.exists(os.path.dirname(bibtex)):
+        if os.path.dirname(bibtex) and not os.path.exists(os.path.dirname(bibtex)):
             os.makedirs(os.path.dirname(bibtex))
         open(bibtex,'w').write('')
-        return cls(bibtex, filesdir)
+        return cls.load(bibtex, filesdir)
 
     def key(self, e):
         return e[self.key_field].lower()
 
+    def doi(self, e):
+        return e.get('doi','')
+
+    def validdoi(self, e):
+        doi = self.doi(e)
+        return doi if isvaliddoi(doi) else ''
+
     def sort(self):
         self.db.entries = sorted(self.db.entries, key=self.key)
 
-    def generate_key(self, entry):
-        " generate a unique key not yet present in the record "
-        keys = [e['ID'] for e in self.db.entries]
-        names = bibtexparser.customization.getnames(entry['author'].split(' and '))
-        letters = list(' bcdefghijklmnopqrstuvwxyz')
-        key = names[0].split(',')[0].strip() + '_' + entry.get('year','XXXX')
-        for l in letters:
-            if key+l not in keys:
-                break
-        assert key+l not in keys
-        return key+l
+    def set_sortkey(self, key_field):
+        self.key_field = key_field
+        self.sort()
+
+    def index_sorted(self, entry):
+        keys = [self.key(ei) for ei in self.db.entries]
+        return bisect.bisect_left(keys, self.key(entry))
 
 
-    def locate_doi(self, doi):
-        assert doi
-        for i, entry in enumerate(self.db.entries):
-            if doi == entry.get('doi',''):
-                return i 
-        return len(self.db.entries)
-
-    def insert_entry(self, entry, check=True, overwrite=False, merge=False, 
-        strict=True, force=False, interactive=True, mergefiles=True):
+    def insert_entry(self, entry, on_conflict='a', mergefiles=True, safe=False):
         """
         check : check whether key already exists
-        overwrite : overwrite existing entry?
-        merge : merge with existing entry?
-        force : never mind conflicting fields when merging
+        on_conflict (key): 
+            'a': append (for later handling)
+            's': skip (do not insert new entry)
+            'o': overwrite (newer wins...)
+            Anything else: raise error
+        mergefiles : if two entries are identical besides the 'file' field, just merge files
+
+        Note that doi are not checked at this stage. Use merging / check tool later.
+        ----
         """
-        keys = [self.key(ei) for ei in self.db.entries]
-        i = bisect.bisect_left(keys, entry['ID'].lower())
-
-        if not check:
-            self.db.entries.insert(i, entry)
-            return entry
-
-        samekey = False
-        samedoi = False
-
-        if i < len(keys):
-            # check for key duplicate
-            if keys[i] == self.key(entry):
-                samekey = True 
-
-        # check for doi duplicate
-        if 'doi' in entry and isvaliddoi(entry['doi']):
-            # try to check the same-key element first, to spare a search
-            if samekey and entry['doi'] == self.db.entries[i].get('doi',''):
-                samedoi = True
-            else:
-                j = self.locate_doi(entry['doi'])
-                if j < len(self.db.entries):
-                    samedoi = True
-                    i = j  # priority
-                    samekey = entry['ID'] == self.db.entries[i].get('doi','')
-
-        if samekey or samedoi:
-            msg_extra = (overwrite*' => overwrite') or (merge*' => merge')
-            if samedoi:
-                logging.info('entry DOI already present: '+self.key(entry)+msg_extra)
-            else:
-                logging.info('entry key already present: '+self.key(entry)+msg_extra)
-
-            duplicates = [self.db.entries[i], entry]
-
-            if overwrite:
-                if not samekey and not force:
-                    tmpl = 'entry key will be replaced {}{} >>> {}{}. Continue? (y/n) '
-                    ans = raw_input(tmpl.format(bcolors.WARNING, self.db.entries[i]['ID'], 
-                        entry['ID'], bcolors.ENDC))
-                    if ans != 'y':
-                        return
-
-                if mergefiles:
-                    self.db.entries[i]['file'] = merge_files(duplicates)
-
-                self.db.entries[i] = entry
-                return entry
-            
-            if entry['ID'] != self.db.entries[i]['ID']:
-                tmpl = 'imported entry key will be replaced {} >>> {}'
-                logging.warn(tmpl.format(self.db.entries[i]['ID'], entry['ID']))
-            entry['ID'] = self.db.entries[i]['ID']
-
-            if merge:
-                merged = merge_entries(duplicates, strict=strict, force=force)
-                if mergefiles:
-                    merged['file'] = merge_files(duplicates)
-                try:
-                    e = handle_merge_conflict(merged)
-                except Exception as error:
-                    if not interactive:
-                        raise
-                    print()
-                    print('!!! Failed to merge:',str(error),' !!!')
-                    print()
-                    e = choose_entry_interactive(unique(duplicates), 
-                        extra=['n','q'], msg=' or (n)ot a duplicate or (q)uit')
-                    if e == 'q':
-                        raise
-                    elif e == 'n':
-                        if samekey:
-                            entry['ID'] = self.generate_key(entry)
-                            e = entry
-                            return self.insert_entry(e)
-                self.db.entries[i] = e
+        # additional checks on DOI
+        if safe:
+            return self.insert_safe(entry, mergefiles)
 
 
-            else:
-                if mergefiles:
-                    self.db.entries[i]['file'] = merge_files(duplicates)
-        
+        i = self.index_sorted(entry)  # based on current sort key (e.g. ID)
+
+        if i < len(self.entries) and self.key(entry) == self.key(self.entries[i]):
+            candidate = self.entries[i]
         else:
-            logging.info('NEW ENTRY: '+self.key(entry))
-            self.db.entries.insert(i, entry)
+            candidate = None
 
-        return self.db.entries[i]
+        # the keys do not match, just insert at new position without further checking
+        if not candidate:
+            logging.info('new entry: '+self.key(entry))
+            self.entries.insert(i, entry)
 
+        # the keys match: see what needs to be done
+        else:
+
+            nofile = lambda e : {k:e[k] for k in e if k != 'file'}
+
+            if entry == candidate:
+                logging.info('entry already present: '+self.key(entry))
+
+            # all files match besides 'file' ?
+            elif mergefiles and nofile(entry) == nofile(candidate):
+                logging.info('entry already present: '+self.key(entry))
+                candidate['file'] = merge_files([candidate, entry])
+
+            # some fields do not match
+            else:
+                msg = 'conflict: '+self.key(entry)
+                action = ''
+
+                if on_conflict == 'o':
+                    action = ' ==> overwrite'
+                    self.entries[i] = entry         
+
+                elif on_conflict == 's':
+                    action = ' ==> skip'
+
+                elif on_conflict == 'a':
+                    action = ' ==> append'
+                    self.entries.insert(i, entry)
+
+                else:
+                    raise ValueError(msg)
+
+                logging.warn(msg+action)
+
+        return self.entries[i]
+
+
+    def insert_safe(self, entry, mergefiles=True):
+        """like insert_entry, but with additional checks on DOI, 
+        and will raise an Exception is files conflict
+        """
+        doi = self.validdoi(entry) # only consider valid dois
+        if doi:
+            conflicting_doi = [e for e in self.entries if self.doi(e) == doi]
+        else:
+            conflicting_doi = []
+        # check conflict for doi or key
+        key = self.key(entry)
+        conflicting_key = [e for e in self.entries if self.key(e) == key]
+
+        duplicates = unique(conflicting_doi+conflicting_key+[entry])
+
+        if mergefiles:
+            nofile = lambda e : {k:e[k] for k in e if k != 'file'}
+            duplicates = unique([nofile(e) for e in duplicates])
+
+        if len(duplicates) > 1:
+            status = ['!!! insert conflict']
+            if conflicting_doi: 
+                status.append('doi: {} (x {})'.format(doi, len(conflicting_doi)))
+            if conflicting_key: 
+                status.append('key: {} (x {})'.format(key, len(conflicting_key)))
+
+            # status = bcolors.WARNING+', '.join(status)+bcolors.ENDC
+            msg = ', '.join(status) #+ ' ==> {} duplicates'.format(len(duplicates))
+
+            raise ValueError(msg)
+
+        return self.insert_entry(entry, on_conflict='r', mergefiles=mergefiles)
 
 
     def add_bibtex(self, bibtex, **kw):
@@ -769,21 +305,34 @@ class MyRef(object):
                     logging.warn(file+'::'+str(error))
                     continue
 
+    def generate_key(self, entry):
+        " generate a unique key not yet present in the record "
+        keys = [self.key(e) for e in self.db.entries]
+        names = bibtexparser.customization.getnames(entry['author'].split(' and '))
+        letters = list(' bcdefghijklmnopqrstuvwxyz')
+        key = names[0].split(',')[0].strip().capitalize() + '_' + entry.get('year','XXXX')
+        for l in letters:
+            Key = (key+l).capitalize()
+            if Key.lower() not in keys:
+                break
+        assert Key.lower() not in keys
+        return Key
+
 
     def format(self):
         return bibtexparser.dumps(self.db)
 
-    def save(self):
+    def save(self, bibtex):
         s = self.format()
-        if os.path.exists(self.bibtex):
-            shutil.copy(self.bibtex, self.bibtex+'.backup')
-        open(self.bibtex, 'w').write(s)
+        if os.path.exists(bibtex):
+            shutil.copy(bibtex, bibtex+'.backup')
+        open(bibtex, 'w').write(s)
 
         # make a git commit?
         if os.path.exists(os.path.join(config.data, '.git')):
-            target = os.path.join(config.data, os.path.basename(self.bibtex))
-            if self.bibtex != target:
-                shutil.copy(self.bibtex, target)
+            target = os.path.join(config.data, os.path.basename(bibtex))
+            if bibtex != target:
+                shutil.copy(bibtex, target)
             with open(os.devnull, 'w') as shutup:
                 sp.call(['git','add',target], stdout=shutup, stderr=shutup, cwd=config.data)
                 sp.call(['git','commit','-m', 'myref'+' '.join(sys.argv[1:])], stdout=shutup, stderr=shutup, cwd=config.data)
@@ -820,7 +369,7 @@ class MyRef(object):
                 logging.warn(str(error))
                 conflicts.append(unique(entries))
                 continue
-            self.insert_entry(e, check=False)
+            self.insert_entry(e, mergefiles=mergefiles)
 
 
         if interactive and len(conflicts) > 0:
@@ -841,12 +390,12 @@ class MyRef(object):
                     ignore_unresolved = True
 
                 else:
-                    self.insert_entry(e, check=False)
+                    self.insert_entry(e, mergefiles=mergefiles)
                     continue
 
             if ignore_unresolved:
                 for e in entries:
-                    self.insert_entry(e, check=False)
+                    self.insert_entry(e, mergefiles=mergefiles)
             else:
                 raise ValueError('conflicting entries')
 
@@ -986,21 +535,14 @@ def main():
         of .pdf files (bibtex files are ignored in this mode')
     parser.add_argument('--dry-run', action='store_true', 
             help='no PDF renaming/copying, no bibtex writing on disk (for testing)')
+    parser.add_argument('--safe', action='store_true', 
+        help='DOI check + raise an error in case of conflict')
 
-    grp = parser.add_argument_group('merge/conflict')
-    mgrp = grp.add_mutually_exclusive_group()
-    mgrp.add_argument('-o', '--overwrite', action='store_true', 
-        help='overwrite existing entries (the default is to just merge files)')
-    mgrp.add_argument('-m', '--merge', action='store_true', 
-        help='attempt to merge with existing entry (experimental)')
-    # mgrp = grp.add_argument('--conflict', default='ignore', choices=['ignore'])
-    # conflict.add_argument('-m', '--merge-files', action='store_true')
-    #     help='merge new entry files with existing one (otherwise they are ignored)')
-    # conflict.add_argument('--merge-files', action='store_true') 
-    # grp.add_argument('--append', action='store_true', 
-    #         help='if the entry already exists, append instead of overwriting file')
-    # grp.add_argument('--merge', action='store_true', 
-            # help='if the entry already exists, append instead of overwriting file')
+    parser.add_argument('-m', '--mode', default='r', choices=['a', 'o', 's'],
+        help='in case of key conflict, the default is to raise an exception, \
+        unless "mode" is set to (a)ppend anyway, (o)verwrite or (s)skip key.\
+        Note that with --ignore-errors there is no need to indicate --skip')
+
 
     grp = parser.add_argument_group('files')
     grp.add_argument('-a','--attachment', nargs='+', help=argparse.SUPPRESS) #'supplementary material')
@@ -1013,9 +555,12 @@ def main():
 
     def addpdf(o):
         global DRYRUN
+        import myref.tools
         DRYRUN = o.dry_run
+        myref.tools.DRYRUN = o.dry_run
+
         if os.path.exists(o.bibtex):
-            my = MyRef(o.bibtex, o.filesdir)
+            my = MyRef.load(o.bibtex, o.filesdir)
         else:
             my = MyRef.newbib(o.bibtex, o.filesdir)
 
@@ -1023,8 +568,7 @@ def main():
             logging.error('--attachment is only valid for one added file')
             parser.exit(1)
 
-
-        kw = dict(overwrite=o.overwrite, merge=o.merge)
+        kw = {'on_conflict':o.mode, 'safe':o.safe}
 
         for file in o.file:
             try:
@@ -1054,8 +598,7 @@ def main():
                     parser.exit(1)
 
         if not o.dry_run:
-            my.save()
-
+            my.save(o.bibtex)
 
 
 
@@ -1094,13 +637,13 @@ def main():
     subp.add_argument('--keys', nargs='+', help='merge these keys')
 
     def merge_duplicate(o):
-        my = MyRef(o.bibtex, o.filesdir)
+        my = MyRef.load(o.bibtex, o.filesdir)
         kw = dict(force=o.force, fetch=o.fetch, ignore_unresolved=o.ignore)
         my.merge_duplicate_keys(**kw)
         my.merge_duplicate_dois(**kw)
         if o.keys:
             my.merge_entries(o.keys, **kw)
-        my.save()
+        my.save(o.bibtex)
 
     parser = subparsers.add_parser('filter', description='filter (a subset of) entries',
         parents=[cfg])
@@ -1194,7 +737,7 @@ def main():
         elif o.delete:
             for e in entries:
                 my.db.entries.remove(e)
-            my.save()
+            my.save(o.bibtex)
         else:
             print(format_entries(entries))
 
