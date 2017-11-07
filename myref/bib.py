@@ -339,7 +339,7 @@ class MyRef(object):
 
 
     def merge_duplicates(self, key, interactive=True, fetch=False, force=False, 
-        resolve={}, ignore_unresolved=True, mergefiles=True, strict=False):
+        resolve={}, ignore_unresolved=True, mergefiles=True):
         """
         Find and merge duplicate keys. Leave unsolved keys.
 
@@ -360,7 +360,7 @@ class MyRef(object):
         # attempt to merge duplicates
         conflicts = []
         for entries in duplicates:
-            merged = merge_entries(entries, strict=strict, force=force)
+            merged = merge_entries(entries, force=force)
             if mergefiles:
                 merged['file'] = merge_files(entries)
             try:

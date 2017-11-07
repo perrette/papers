@@ -2,6 +2,7 @@
 """
 import bibtexparser
 import os
+import itertools
 
 from myref.tools import bcolors
 
@@ -92,7 +93,7 @@ def format_file(file_types):
 
 
 def best_entry(entries, fields=None):
-    """keep the best entry of a list of entries
+    """best guess among a list of entries, based on field availability
 
     strategy:
     - filter out exact duplicate
@@ -111,7 +112,7 @@ def best_entry(entries, fields=None):
 
     # pick the entry with one of preferred fields
     if fields is None:
-        fields = ['ID', 'doi','author','year','title']
+        fields = ['ID', 'doi','author','year','title','file']
 
     for f in fields:
         if any([e.get(f,'') for e in entries]):
@@ -148,10 +149,8 @@ class ConflictingField(object):
     def __init__(self, choices=[]):
         self.choices = choices
 
-    def resolve(self, strict=True, force=False):
-        if force: 
-            strict = False
-        choices = self.choices if strict else [v for v in self.choices if v]
+    def resolve(self, force=False):
+        choices = [v for v in self.choices if v]
 
         if len(choices) == 1 or force:
             return choices[0]
@@ -164,15 +163,15 @@ class MergedEntry(dict):
     def isresolved(self):
         return not any([isinstance(self[k], ConflictingField) for k in self])
 
-    def resolve(self, strict=True, force=False):
+    def resolve(self, force=False):
         for k in self:
             if isinstance(self[k], ConflictingField):
-                self[k] = self[k].resolve(strict, force)
+                self[k] = self[k].resolve(force)
 
         return dict(self) if self.isresolved() else self
 
 
-def merge_entries(entries, strict=True, force=False):
+def merge_entries(entries, force=False):
     merged = MergedEntry() # dict
     for e in entries:
         for k in e:
@@ -180,7 +179,7 @@ def merge_entries(entries, strict=True, force=False):
                 merged[k] = ConflictingField([])
             if e[k] not in merged[k].choices:
                 merged[k].choices.append(e[k])
-    return merged.resolve(strict, force)
+    return merged.resolve(force)
 
 
 def handle_merge_conflict(merged, fetch=False, force=False):
