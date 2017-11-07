@@ -126,18 +126,19 @@ Current features
 - merging / update
 - undo command
 - global configuration file with default bibtex and files directory
+- git saving of bibtex
+- integration with git
+- filter + remove entry by key or else
 
 
 Planned features
 ----------------
 Mostly related to bibliography management:
 - add manual entry 
-- remove entry by key
 - move library location (i.e. both on disk and in bibtex's `file` entry)
 - fix broken PDF links
 - better handling of attachment / multiple files
-- key generation (especially for new entry addition)
-- git saving of bibtex
+- key generation
 
 As well as:
 - parse other info (author name, year) from PDF, especially for old papers
@@ -146,8 +147,6 @@ As well as:
     - this is currently possible with the standard crossref API (and nice python package [crossrefapi](https://github.com/fabiobatalha/crossrefapi)), but the result is `json`    - not sure how to convert the json result `into` a `bibtex` file in the general case
     - for recent papers with DOI, a second request can be made, as workaround, but this feature is mostly inteded for old papers without DOI.
 
-And some new, original features:
-- integration with git (such as `pass` does)
 
 
 All this in a set of planned commands:

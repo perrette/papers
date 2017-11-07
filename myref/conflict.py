@@ -18,7 +18,7 @@ def choose_entry_interactive(entries, extra=[], msg=''):
     db = bibtexparser.loads('')
     db.entries.append({})
 
-    merged = merge_entries(entries).resolve()
+    merged = merge_entries(entries)
     conflicting_fields = [k for k in merged if isinstance(merged[k], ConflictingField)]
 
     for i, entry in enumerate(entries):

@@ -9,6 +9,7 @@ import shutil
 import bisect
 import itertools
 import six
+import difflib
 
 import bibtexparser
 
@@ -100,6 +101,9 @@ if six.PY2:
     bibtexparser.dumps = lambda db: _bdumps(db).encode('utf-8')
 
 
+def backupfile(bibtex):
+    return os.path.join(os.path.dirname(bibtex), '.'+os.path.basename(bibtex)+'.backup')
+
 class MyRef(object):
     """main config
     """
@@ -114,6 +118,14 @@ class MyRef(object):
     @property
     def entries(self):
         return self.db.entries
+
+    @classmethod
+    def loads(cls, bibtex, filesdir):
+        db = bibtexparser.loads(bibtex)
+        return cls(db, filesdir)
+
+    def dumps(self):
+        return bibtexparser.dumps(self.db)
 
     @classmethod
     def load(cls, bibtex, filesdir):
@@ -151,7 +163,8 @@ class MyRef(object):
         return bisect.bisect_left(keys, self.key(entry))
 
 
-    def insert_entry(self, entry, on_conflict='a', mergefiles=True, safe=False):
+    def insert_entry(self, entry, on_conflict='r', mergefiles=True, 
+        update_key=False, check_doi=True, interactive=True):
         """
         check : check whether key already exists
         on_conflict (key): 
@@ -165,8 +178,8 @@ class MyRef(object):
         ----
         """
         # additional checks on DOI
-        if safe:
-            return self.insert_safe(entry, mergefiles)
+        if check_doi:
+            self._entry_check_doi(entry, update_key=update_key, interactive=interactive)
 
 
         i = self.index_sorted(entry)  # based on current sort key (e.g. ID)
@@ -199,6 +212,15 @@ class MyRef(object):
                 msg = 'conflict: '+self.key(entry)
                 action = ''
 
+                if interactive:
+                    ans = choose_entry_interactive([self.entries[i], entry],['m','a','d'],
+                        ' or try (m)erging or (a)ppend new anyway or (d)elete')
+                    if ans in list('mad'):
+                        on_conflict = ans
+                    else:
+                        self.entries[i] = entry
+                        return entry
+
                 if on_conflict == 'o':
                     action = ' ==> overwrite'
                     self.entries[i] = entry         
@@ -209,6 +231,16 @@ class MyRef(object):
                 elif on_conflict == 'a':
                     action = ' ==> append'
                     self.entries.insert(i, entry)
+                
+                elif on_conflict == 'd':
+                    action = ' ==> delete'
+                    del self.entries[i]
+
+                elif on_conflict == 'm':
+                    action = ' ==> merge'
+                    merged = merge_entries([self.entries[i], entry])
+                    merged = handle_merge_conflict(merged)
+                    self.entries[i] = merged
 
                 else:
                     raise ValueError(msg)
@@ -218,38 +250,35 @@ class MyRef(object):
         return self.entries[i]
 
 
-    def insert_safe(self, entry, mergefiles=True):
-        """like insert_entry, but with additional checks on DOI, 
-        and will raise an Exception is files conflict
+    def _entry_check_doi(self, entry, update_key=False, interactive=True):
+        """check DOI duplicate, and update_key if desired, prior to insert entry
         """
         doi = self.validdoi(entry) # only consider valid dois
+        key = self.key(entry) # 
         if doi:
-            conflicting_doi = [e for e in self.entries if self.doi(e) == doi]
+            conflicting_doi = [e for e in self.entries 
+                                    if self.doi(e) == doi and self.key(e) != key]
         else:
             conflicting_doi = []
-        # check conflict for doi or key
-        key = self.key(entry)
-        conflicting_key = [e for e in self.entries if self.key(e) == key]
+ 
+        if conflicting_doi:
+            candidate = conflicting_doi[0]
+            msg = '!!! {}: insert conflict with existing doi: {} ({})'.format(
+                self.key(entry), doi, candidate['ID'])
+            logging.warn(msg)
 
-        duplicates = unique(conflicting_doi+conflicting_key+[entry])
+            if not update_key and interactive:
+                ans = raw_input('update key {} ==> {} ? [Y/n or (i)gnore] '.format(entry['ID'], candidate['ID']))
+                if ans == 'i': 
+                    return 
+                update_key = ans.lower() == 'y'
 
-        if mergefiles:
-            nofile = lambda e : {k:e[k] for k in e if k != 'file'}
-            duplicates = unique([nofile(e) for e in duplicates])
+            if update_key:
+                logging.info('update key {} ==> {}'.format(entry['ID'], candidate['ID']))
+                entry['ID'] = candidate['ID']
 
-        if len(duplicates) > 1:
-            status = ['!!! insert conflict']
-            if conflicting_doi: 
-                status.append('doi: {} (x {})'.format(doi, len(conflicting_doi)))
-            if conflicting_key: 
-                status.append('key: {} (x {})'.format(key, len(conflicting_key)))
-
-            # status = bcolors.WARNING+', '.join(status)+bcolors.ENDC
-            msg = ', '.join(status) #+ ' ==> {} duplicates'.format(len(duplicates))
-
-            raise ValueError(msg)
-
-        return self.insert_entry(entry, on_conflict='r', mergefiles=mergefiles)
+            else:
+                raise ValueError(msg)
 
 
     def add_bibtex(self, bibtex, **kw):
@@ -283,8 +312,9 @@ class MyRef(object):
             files += attachments
 
         entry['file'] = format_file([os.path.abspath(f) for f in files])
-
-        self.insert_entry(entry, **kw)
+        kw.pop('update_key', True)
+            # logging.warn('fetched key is always updated when adding PDF to existing bib')
+        self.insert_entry(entry, update_key=True, **kw)
 
         if rename:
             self.rename_entry_files(entry, copy=copy)
@@ -325,7 +355,7 @@ class MyRef(object):
     def save(self, bibtex):
         s = self.format()
         if os.path.exists(bibtex):
-            shutil.copy(bibtex, bibtex+'.backup')
+            shutil.copy(bibtex, backupfile(bibtex))
         open(bibtex, 'w').write(s)
 
         # make a git commit?
@@ -528,23 +558,34 @@ def main():
     parser = subparsers.add_parser('add', description='add PDF(s) or bibtex(s) to library',
         parents=[cfg])
     parser.add_argument('file', nargs='+')
-    parser.add_argument('--ignore-errors', action='store_true', 
-        help='ignore errors when adding multiple files')
+    # parser.add_argument('-f','--force', action='store_true', help='disable interactive')
+
+    grp = parser.add_argument_group('duplicate check')
+    grp.add_argument('--no-check-doi', action='store_true', 
+        help='disable DOI check (faster, create duplicates)')
+    grp.add_argument('--no-merge-files', action='store_true', 
+        help='distinct "file" field considered a conflict, all other things being equal')
+    # grp.add_argument('--no-merge-files', action='store_true', 
+        # help='distinct "file" field considered a conflict, all other things being equal')
+    # parser.add_argument('--safe', action='store_true', 
+    #     help='safe mode: always throw an error if anything strange is detected')
+    grp.add_argument('-f', '--force', action='store_true', help='no interactive')
+    grp.add_argument('-u','--update-key', action='store_true', 
+        help='always update imported key in case an existing file with same DOI is detected')
+    grp.add_argument('-m', '--mode', default='r', choices=['a', 'o', 'm', 's'],
+        help='force mode: in case of conflict, the default is to raise an exception, \
+        unless "mode" is set to (a)ppend anyway, (o)verwrite, (m)erge  or (s)skip key.')
+
     parser.add_argument('--recursive', action='store_true', 
         help='accept directory as argument, for recursive scan \
         of .pdf files (bibtex files are ignored in this mode')
+    parser.add_argument('--ignore-errors', action='store_true', 
+        help='ignore errors when adding multiple files')
     parser.add_argument('--dry-run', action='store_true', 
             help='no PDF renaming/copying, no bibtex writing on disk (for testing)')
-    parser.add_argument('--safe', action='store_true', 
-        help='DOI check + raise an error in case of conflict')
-
-    parser.add_argument('-m', '--mode', default='r', choices=['a', 'o', 's'],
-        help='in case of key conflict, the default is to raise an exception, \
-        unless "mode" is set to (a)ppend anyway, (o)verwrite or (s)skip key.\
-        Note that with --ignore-errors there is no need to indicate --skip')
 
 
-    grp = parser.add_argument_group('files')
+    grp = parser.add_argument_group('attached files')
     grp.add_argument('-a','--attachment', nargs='+', help=argparse.SUPPRESS) #'supplementary material')
     grp.add_argument('-r','--rename', action='store_true', 
         help='rename PDFs according to key')
@@ -568,7 +609,9 @@ def main():
             logging.error('--attachment is only valid for one added file')
             parser.exit(1)
 
-        kw = {'on_conflict':o.mode, 'safe':o.safe}
+        kw = {'on_conflict':o.mode, 'check_doi':not o.no_check_doi, 
+            'mergefiles':not o.no_merge_files, 'update_key':o.update_key, 
+            'interactive':not o.force}
 
         for file in o.file:
             try:
@@ -581,11 +624,8 @@ def main():
                 elif file.endswith('.pdf'):
                     my.add_pdf(file, attachments=o.attachment, rename=o.rename, copy=o.copy, **kw)
 
-                elif file.endswith('.bib'):
+                else: # file.endswith('.bib'):
                     my.add_bibtex_file(file, **kw)
-
-                else:
-                    raise ValueError('unknown file type:'+file)
 
             except Exception as error:
                 # print(error) 
@@ -620,11 +660,11 @@ def main():
     subp = subparsers.add_parser('undo', parents=[cfg])
 
     def undo(o):
-        back = o.bibtex + '.back'
+        back = backupfile(o.bibtex)
         tmp = o.bibtex + '.tmp'
         # my = MyRef(o.bibtex, o.filesdir)
         logging.info(o.bibtex+' <==> '+back)
-        shutil.move(o.bibtex, tmp)
+        shutil.copy(o.bibtex, tmp)
         shutil.move(back, o.bibtex)
         shutil.move(tmp, back)
 
