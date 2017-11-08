@@ -549,7 +549,7 @@ def main():
             config.save()
 
         # if o.status or o.verbose:
-        print(config.status(check_files=o.check_files, verbose=o.verbose))
+        print(config_status(config, check_files=o.check_files, verbose=o.verbose))
         # print('(-h for usage)')
         # cfg_parser.print_usage()
         # else:
