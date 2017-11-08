@@ -99,6 +99,24 @@ class TestSimple(unittest.TestCase):
         db2 = bibtexparser.loads(self.bibtex)
         self.assertEqual(db1.entries, db2.entries)
 	    
+class TestInstall(unittest.TestCase):
+
+    def setUp(self):
+        self.mybib = tempfile.mktemp(prefix='myref.bib')
+        self.filesdir = tempfile.mktemp(prefix='myref.files')
+
+    def test_install(self):
+        sp.check_call('myref install --bibtex {} --files {}'.format(self.mybib, self.filesdir), 
+            shell=True)
+        self.assertTrue(os.path.exists(self.mybib))
+        self.assertTrue(os.path.exists(self.filesdir))
+
+    def tearDown(self):
+        if os.path.exists(self.filesdir):
+            shutil.rmtree(self.filesdir)
+        if os.path.exists(self.mybib):
+            os.remove(self.mybib)
+
 
 class TestAdd(unittest.TestCase):
 
@@ -106,7 +124,7 @@ class TestAdd(unittest.TestCase):
         self.pdf, self.doi, self.key, self.year, self.bibtex = prepare_paper()
         self.mybib = tempfile.mktemp(prefix='myref.bib')
         self.filesdir = tempfile.mktemp(prefix='myref.files')
-
+        sp.check_call('myref install --bibtex {} --files {}'.format(self.mybib, self.filesdir), shell=True)
 
     def _checkbib(self):
         db1 = bibtexparser.load(open(self.mybib))
@@ -120,6 +138,12 @@ class TestAdd(unittest.TestCase):
         self.assertEqual(type, 'pdf') # file type is PDF
         self.assertTrue(os.path.exists(file))  # file link is valid
         return file
+
+
+    def test_fails_without_install(self):
+        os.remove(self.mybib)
+        func = lambda: sp.check_call('myref add --bibtex {} --files {}'.format(self.mybib, self.filesdir))
+        self.assertRaises(Exception, func)
 
 
     def test_add(self):
@@ -161,7 +185,8 @@ class TestAdd(unittest.TestCase):
     def tearDown(self):
         if os.path.exists(self.filesdir):
             shutil.rmtree(self.filesdir)
-        os.remove(self.mybib)
+        if os.path.exists(self.mybib):
+            os.remove(self.mybib)
 
 
 class TestAdd2(TestAdd):
@@ -170,6 +195,7 @@ class TestAdd2(TestAdd):
         self.pdf, self.si, self.doi, self.key, self.year, self.bibtex = prepare_paper2()
         self.mybib = tempfile.mktemp(prefix='myref.bib')
         self.filesdir = tempfile.mktemp(prefix='myref.files')
+        sp.check_call('myref install --bibtex {} --files {}'.format(self.mybib, self.filesdir), shell=True)
 
     def test_add_attachment(self):
         sp.check_call('myref add -rc --bibtex {} --filesdir {} {} -a {}'.format(
@@ -233,9 +259,10 @@ class TestAddDir(unittest.TestCase):
         shutil.copy(self.pdf1, self.somedir)
         shutil.copy(self.pdf2, self.subdir)
         self.mybib = tempfile.mktemp(prefix='myref.bib')
+        sp.check_call('myref install --bibtex {}'.format(self.mybib), shell=True)
 
     def test_adddir_pdf(self):
-        self.my = MyRef.newbib(self.mybib, '')
+        self.my = MyRef.load(self.mybib, '')
         self.my.scan_dir(self.somedir)
         self.assertEqual(len(self.my.db.entries), 2)
         keys = [self.my.db.entries[0]['ID'], self.my.db.entries[1]['ID']]
@@ -261,6 +288,7 @@ class BibTest(unittest.TestCase):
         self.filesdir = tempfile.mktemp(prefix='myref.files')
         self.otherbib = tempfile.mktemp(prefix='myref.otherbib')
         # self.my = MyRef.newbib(self.mybib, self.filesdir)
+        sp.check_call('myref install --bibtex {} --files {}'.format(self.mybib, self.filesdir), shell=True)
 
     def tearDown(self):
         os.remove(self.mybib)

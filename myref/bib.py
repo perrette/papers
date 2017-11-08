@@ -522,17 +522,17 @@ def main():
     grp.add_argument('--bibtex', default=config.bibtex,
         help='bibtex database (default: %(default)s)')
 
-    cfg_parser = subparsers.add_parser('config', description='configure myref',
+    install_parser = subparsers.add_parser('install', description='setup or update myref install',
         parents=[cfg])
-    cfg_parser.add_argument('--reset-paths', action='store_true') 
+    install_parser.add_argument('--reset-paths', action='store_true') 
 
-    grp = cfg_parser.add_argument_group('status')
+    grp = install_parser.add_argument_group('status')
     # grp.add_argument('-l','--status', action='store_true')
     grp.add_argument('-v','--verbose', action='store_true')
-    grp.add_argument('--check-files', action='store_true')
+    grp.add_argument('-c','--check-files', action='store_true')
 
 
-    def main_config(o):
+    def main_install(o):
 
         old = o.bibtex
 
@@ -548,12 +548,22 @@ def main():
             config.reset()
             config.save()
 
+        # create bibtex file if not existing
+        if not os.path.exists(o.bibtex):
+            logging.info('create empty bibliography database: '+o.bibtex)
+            open(o.bibtex,'w').write('')
+
+        # create bibtex file if not existing
+        if not os.path.exists(o.filesdir):
+            logging.info('create empty files directory: '+o.filesdir)
+            os.makedirs(o.filesdir)
+
         # if o.status or o.verbose:
         print(config_status(config, check_files=o.check_files, verbose=o.verbose))
         # print('(-h for usage)')
-        # cfg_parser.print_usage()
+        # install_parser.print_usage()
         # else:
-            # cfg_parser.print_help()
+            # install_parser.print_help()
 
 
     parser = subparsers.add_parser('add', description='add PDF(s) or bibtex(s) to library',
@@ -801,27 +811,39 @@ def main():
     # o.bibtex = config.bibtex
     # o.filesdir = config.filesdir
 
-    if o.cmd == 'config':
-        main_config(o)
+    if o.cmd == 'install':
+        return main_install(o)
+
+    def check_install():
+        if not os.path.exists(o.bibtex):
+            print('myref: error: no bibtex file found, use `myref install`')
+            main.exit(1)
 
     if o.cmd == 'add':
+        check_install()
         addpdf(o)
     elif o.cmd == 'merge':
+        check_install()
         merge_duplicate(o)
     elif o.cmd == 'undo':
+        check_install()
         undo(o)
     elif o.cmd == 'filter':
+        check_install()
         listing(o)
-    elif o.cmd == 'doi':
-        print(extract_doi(o.pdf, o.space_digit))
-    elif o.cmd == 'fetch':
-        print(fetch_bibtex_by_doi(o.doi))
     elif o.cmd == 'git':
+        check_install()
         try:
             out = sp.check_output(['git']+o.gitargs, cwd=config.data)
             print(out)
         except:
             gitp.error('failed to execute git command')
+    elif o.cmd == 'doi':
+        print(extract_doi(o.pdf, o.space_digit))
+    elif o.cmd == 'fetch':
+        print(fetch_bibtex_by_doi(o.doi))
+    else:
+        raise ValueError('this is a bug')
 
 
 if __name__ == '__main__':
