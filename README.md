@@ -98,6 +98,8 @@ For the sake of the example, one of my owns: https://www.earth-syst-dynam.net/4/
 Note the configuration file is global (unless `--local` is specified), so from now on, any `myref` 
 command will be know about these settings. Type `myref status -v` to check your
 configuration. Install has no impact on actual bibtex and attachment (e.g. pdf) files.
+Crossref requests are saved in the cache directory.
+`myref` can also be used without install, as long as --bibtex and --filesdir are explicitly specified.
 
 - add pdf to library
 
