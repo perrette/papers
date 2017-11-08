@@ -90,17 +90,14 @@ For the sake of the example, one of my owns: https://www.earth-syst-dynam.net/4/
         myref configuration
         * configuration file: /home/perrette/.config/myrefconfig.json
         * cache directory:    /home/perrette/.cache/myref
-        * app data directory: /home/perrette/.local/share/myref
         * git-tracked:        True
         * git directory :     ./
         * files directory:    files (empty)
         * bibtex:            myref.bib (empty)
 
 Note the configuration file is global (unless `--local` is specified), so from now on, any `myref` 
-command will be know about these settings. 
-If bibtex, filesdir or gitdir are not specified, default files are created in the app data directory.
-In this specific example, the app data directory is not used. `myref status -v` can let you check your
-configuration at any moment. Install has no impact on actual bibtex and attachment (e.g. pdf) files.
+command will be know about these settings. Type `myref status -v` to check your
+configuration. Install has no impact on actual bibtex and attachment (e.g. pdf) files.
 
 - add pdf to library
 

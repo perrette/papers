@@ -102,7 +102,7 @@ class Config(object):
         if verbose:
             lines.append('* configuration file: '+self.file) 
             lines.append('* cache directory:    '+self.cache) 
-            lines.append('* app data directory: '+self.data) 
+            # lines.append('* app data directory: '+self.data) 
             lines.append('* git-tracked:        '+str(self.git)) 
             if self.git:
                 lines.append('* git directory :     '+self.gitdir) 
