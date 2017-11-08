@@ -227,11 +227,11 @@ class TestAddDir(unittest.TestCase):
         self.pdf1, self.doi, self.key1, self.year, self.bibtex1 = prepare_paper()
         self.pdf2, self.si, self.doi, self.key2, self.year, self.bibtex2 = prepare_paper2()
         self.somedir = tempfile.mktemp(prefix='myref.somedir')
-        self.somesubdir = os.path.join(self.somedir, 'subdir')
+        self.subdir = os.path.join(self.somedir, 'subdir')
         os.makedirs(self.somedir)
-        os.makedirs(self.somesubdir)
+        os.makedirs(self.subdir)
         shutil.copy(self.pdf1, self.somedir)
-        shutil.copy(self.pdf2, self.somesubdir)
+        shutil.copy(self.pdf2, self.subdir)
         self.mybib = tempfile.mktemp(prefix='myref.bib')
 
     def test_adddir_pdf(self):

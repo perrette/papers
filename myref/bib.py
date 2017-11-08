@@ -326,13 +326,14 @@ class MyRef(object):
             if dirname.startswith('.'): continue
             if dirname.startswith('_'): continue
             for file in files:
+                path = os.path.join(root, file)
                 try:
                     if file.endswith('.pdf'): 
-                        self.add_pdf(file, **kw)
+                        self.add_pdf(path, **kw)
                     elif file.endswith('.bib'):
-                        self.add_bibtex_file(file, **kw)
+                        self.add_bibtex_file(path, **kw)
                 except Exception as error:
-                    logging.warn(file+'::'+str(error))
+                    logging.warn(path+'::'+str(error))
                     continue
 
     def generate_key(self, entry):
