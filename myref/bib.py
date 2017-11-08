@@ -355,10 +355,13 @@ class MyRef(object):
 
             if interactive:
                 e = choose_entry_interactive(entries, 
-                    extra=['s','q'], msg=' or (s)kip or (q)uit')
+                    extra=['s','d','q'], msg=' or (s)kip or (d)elete or (q)uit')
             
                 if e == 's':
                     ignore_unresolved = True
+
+                elif e == 'd':
+                    continue
 
                 elif e == 'q':
                     interactive = False
