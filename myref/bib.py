@@ -583,6 +583,16 @@ def main():
         print(config.status(check_files=not o.no_check_files, verbose=True))
 
 
+    def savebib(my, o):
+        if not o.get('dry_run', DRYRUN):
+            if my is not None:
+                my.save(o.bibtex)
+            # commit when operated on the default bibtex file provided during installation
+            if config.git and config.bibtex == o.bibtex:
+                config.bibtex = o.bibtex
+                config.gitcommit()
+
+
     # add
     # ===
     addp = subparsers.add_parser('add', description='add PDF(s) or bibtex(s) to library',
@@ -667,11 +677,8 @@ def main():
                         logging.error('use --ignore to add other files anyway')
                     addp.exit(1)
 
-        if not o.dry_run:
-            my.save(o.bibtex)
-            if config.git:
-                config.bibtex = o.bibtex
-                config.gitcommit()
+        savebib(my, o)
+
 
 
     # merge
@@ -706,7 +713,7 @@ def main():
         my.merge_duplicate_dois(**kw)
         if o.keys:
             my.merge_entries(o.keys, **kw)
-        my.save(o.bibtex)
+        savebib(my, o)
 
 
     # list
@@ -803,7 +810,7 @@ def main():
         elif o.delete:
             for e in entries:
                 my.db.entries.remove(e)
-            my.save(o.bibtex)
+            savebib(my, o)
         else:
             print(format_entries(entries))
 
@@ -840,6 +847,8 @@ def main():
         shutil.copy(o.bibtex, tmp)
         shutil.move(back, o.bibtex)
         shutil.move(tmp, back)
+        savebib(None, o)
+
         
 
     # git
