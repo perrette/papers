@@ -9,7 +9,7 @@ CACHE_HOME = os.environ.get('XDG_CACHE_HOME', os.path.join(HOME, '.cache'))
 DATA_HOME = os.environ.get('XDG_DATA_HOME', os.path.join(HOME, '.local','share'))
 
 
-CONFIG_FILE = os.path.join(CONFIG_HOME, 'myref.json')
+CONFIG_FILE = os.path.join(CONFIG_HOME, 'myrefconfig.json')
 DATA_DIR = os.path.join(DATA_HOME, 'myref')
 CACHE_DIR = os.path.join(CACHE_HOME, 'myref')
 

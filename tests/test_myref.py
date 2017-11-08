@@ -106,7 +106,7 @@ class TestInstall(unittest.TestCase):
         self.filesdir = tempfile.mktemp(prefix='myref.files')
 
     def test_install(self):
-        sp.check_call('myref install --bibtex {} --files {}'.format(self.mybib, self.filesdir), 
+        sp.check_call('myref install --local --bibtex {} --files {}'.format(self.mybib, self.filesdir), 
             shell=True)
         self.assertTrue(os.path.exists(self.mybib))
         self.assertTrue(os.path.exists(self.filesdir))
@@ -116,7 +116,8 @@ class TestInstall(unittest.TestCase):
             shutil.rmtree(self.filesdir)
         if os.path.exists(self.mybib):
             os.remove(self.mybib)
-
+        if os.path.exists('.myrefconfig.json'):
+            os.remove('.myrefconfig.json')
 
 class TestAdd(unittest.TestCase):
 
@@ -124,10 +125,11 @@ class TestAdd(unittest.TestCase):
         self.pdf, self.doi, self.key, self.year, self.bibtex = prepare_paper()
         self.mybib = tempfile.mktemp(prefix='myref.bib')
         self.filesdir = tempfile.mktemp(prefix='myref.files')
-        sp.check_call('myref install --bibtex {} --files {}'.format(self.mybib, self.filesdir), shell=True)
+        sp.check_call('myref install --local --bibtex {} --files {}'.format(self.mybib, self.filesdir), shell=True)
 
     def _checkbib(self):
         db1 = bibtexparser.load(open(self.mybib))
+        self.assertTrue(len(db1.entries) > 0)
         file = db1.entries[0].pop('file').strip()
         db2 = bibtexparser.loads(self.bibtex)
         self.assertEqual(db1.entries, db2.entries) # entry is as expected
@@ -142,13 +144,14 @@ class TestAdd(unittest.TestCase):
 
     def test_fails_without_install(self):
         os.remove(self.mybib)
-        func = lambda: sp.check_call('myref add --bibtex {} --files {}'.format(self.mybib, self.filesdir))
+        func = lambda: sp.check_call('myref add {} --bibtex {} --files {}'.format(self.pdf, self.mybib, 
+            self.filesdir))
         self.assertRaises(Exception, func)
 
 
     def test_add(self):
 
-        sp.check_call('myref add --bibtex {} {}'.format(
+        sp.check_call('myref add --force --bibtex {} {}'.format(
             self.mybib, self.pdf), shell=True)
 
         file_ = self._checkbib()
@@ -187,6 +190,8 @@ class TestAdd(unittest.TestCase):
             shutil.rmtree(self.filesdir)
         if os.path.exists(self.mybib):
             os.remove(self.mybib)
+        if os.path.exists('.myrefconfig.json'):
+            os.remove('.myrefconfig.json')
 
 
 class TestAdd2(TestAdd):
@@ -195,7 +200,7 @@ class TestAdd2(TestAdd):
         self.pdf, self.si, self.doi, self.key, self.year, self.bibtex = prepare_paper2()
         self.mybib = tempfile.mktemp(prefix='myref.bib')
         self.filesdir = tempfile.mktemp(prefix='myref.files')
-        sp.check_call('myref install --bibtex {} --files {}'.format(self.mybib, self.filesdir), shell=True)
+        sp.check_call('myref install --local --bibtex {} --files {}'.format(self.mybib, self.filesdir), shell=True)
 
     def test_add_attachment(self):
         sp.check_call('myref add -rc --bibtex {} --filesdir {} {} -a {}'.format(
@@ -245,6 +250,8 @@ class TestAddBib(unittest.TestCase):
     def tearDown(self):
         os.remove(self.mybib)
         os.remove(self.somebib)
+        if os.path.exists('.myrefconfig.json'):
+            os.remove('.myrefconfig.json')
 
 
 class TestAddDir(unittest.TestCase):
@@ -259,7 +266,7 @@ class TestAddDir(unittest.TestCase):
         shutil.copy(self.pdf1, self.somedir)
         shutil.copy(self.pdf2, self.subdir)
         self.mybib = tempfile.mktemp(prefix='myref.bib')
-        sp.check_call('myref install --bibtex {}'.format(self.mybib), shell=True)
+        sp.check_call('myref install --local --bibtex {}'.format(self.mybib), shell=True)
 
     def test_adddir_pdf(self):
         self.my = MyRef.load(self.mybib, '')
@@ -278,6 +285,8 @@ class TestAddDir(unittest.TestCase):
     def tearDown(self):
         os.remove(self.mybib)
         shutil.rmtree(self.somedir)
+        if os.path.exists('.myrefconfig.json'):
+            os.remove('.myrefconfig.json')
 
 
 class BibTest(unittest.TestCase):
@@ -288,7 +297,7 @@ class BibTest(unittest.TestCase):
         self.filesdir = tempfile.mktemp(prefix='myref.files')
         self.otherbib = tempfile.mktemp(prefix='myref.otherbib')
         # self.my = MyRef.newbib(self.mybib, self.filesdir)
-        sp.check_call('myref install --bibtex {} --files {}'.format(self.mybib, self.filesdir), shell=True)
+        sp.check_call('myref install --local --bibtex {} --files {}'.format(self.mybib, self.filesdir), shell=True)
 
     def tearDown(self):
         os.remove(self.mybib)
@@ -296,6 +305,8 @@ class BibTest(unittest.TestCase):
             shutil.rmtree(self.filesdir)
         if os.path.exists(self.otherbib):
             os.remove(self.otherbib)
+        if os.path.exists('.myrefconfig.json'):
+            os.remove('.myrefconfig.json')
 
 
     def assertMultiLineEqual(self, first, second, msg=None):

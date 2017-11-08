@@ -509,12 +509,23 @@ class MyRef(object):
 
 def main():
 
+    global_config = config.file
+    local_config = '.myrefconfig.json'
+
+    if os.path.exists(local_config):
+        config.file = local_config
+    elif os.path.exists(global_config):
+        config.file = global_config
+
     if os.path.exists(config.file):
+        logging.info('load config from: '+config.file)
         config.load()
 
-    main = argparse.ArgumentParser(description='library management tool')
-    subparsers = main.add_subparsers(dest='cmd')
+    parser = argparse.ArgumentParser(description='library management tool')
+    subparsers = parser.add_subparsers(dest='cmd')
 
+    # configuration (re-used everywhere)
+    # =============
     cfg = argparse.ArgumentParser(add_help=False)
     grp = cfg.add_argument_group('config')
     grp.add_argument('--filesdir', default=config.filesdir, 
@@ -522,31 +533,50 @@ def main():
     grp.add_argument('--bibtex', default=config.bibtex,
         help='bibtex database (default: %(default)s)')
 
-    install_parser = subparsers.add_parser('install', description='setup or update myref install',
+    # status
+    # ======
+    statusp = subparsers.add_parser('status', 
+        description='view install status',
         parents=[cfg])
-    install_parser.add_argument('--reset-paths', action='store_true') 
+    statusp.add_argument('-c','--check-files', action='store_true')
+    statusp.add_argument('-v','--verbose', action='store_true')
 
-    grp = install_parser.add_argument_group('status')
+    def statuscmd(o):
+        if o.bibtex:
+            config.bibtex = o.bibtex
+        if o.filesdir is not None:
+            config.filesdir = o.filesdir        
+        print(config_status(config, check_files=o.check_files, verbose=o.verbose))
+        
+
+    # install
+    # =======
+
+    installp = subparsers.add_parser('install', description='setup or update myref install',
+        parents=[cfg])
+    installp.add_argument('--reset-paths', action='store_true') 
+
+    installp.add_argument('--local', action='store_true', 
+        help='write config file in current directory (global install by default)')
+
+    grp = installp.add_argument_group('status')
     # grp.add_argument('-l','--status', action='store_true')
     grp.add_argument('-v','--verbose', action='store_true')
     grp.add_argument('-c','--check-files', action='store_true')
 
 
-    def main_install(o):
+    def installcmd(o):
 
         old = o.bibtex
 
         if o.bibtex:
             config.bibtex = o.bibtex
-            config.save()
 
         if o.filesdir is not None:
             config.filesdir = o.filesdir
-            config.save()
 
         if o.reset_paths:
             config.reset()
-            config.save()
 
         # create bibtex file if not existing
         if not os.path.exists(o.bibtex):
@@ -558,27 +588,30 @@ def main():
             logging.info('create empty files directory: '+o.filesdir)
             os.makedirs(o.filesdir)
 
-        # if o.status or o.verbose:
+        if o.local:
+            config.file = local_config
+        else:
+            config.file = global_config
+        config.save()
+
         print(config_status(config, check_files=o.check_files, verbose=o.verbose))
-        # print('(-h for usage)')
-        # install_parser.print_usage()
-        # else:
-            # install_parser.print_help()
 
 
-    parser = subparsers.add_parser('add', description='add PDF(s) or bibtex(s) to library',
+    # add
+    # ===
+    addp = subparsers.add_parser('add', description='add PDF(s) or bibtex(s) to library',
         parents=[cfg])
-    parser.add_argument('file', nargs='+')
-    # parser.add_argument('-f','--force', action='store_true', help='disable interactive')
+    addp.add_argument('file', nargs='+')
+    # addp.add_argument('-f','--force', action='store_true', help='disable interactive')
 
-    grp = parser.add_argument_group('duplicate check')
+    grp = addp.add_argument_group('duplicate check')
     grp.add_argument('--no-check-doi', action='store_true', 
         help='disable DOI check (faster, create duplicates)')
     grp.add_argument('--no-merge-files', action='store_true', 
         help='distinct "file" field considered a conflict, all other things being equal')
     # grp.add_argument('--no-merge-files', action='store_true', 
         # help='distinct "file" field considered a conflict, all other things being equal')
-    # parser.add_argument('--safe', action='store_true', 
+    # addp.add_argument('--safe', action='store_true', 
     #     help='safe mode: always throw an error if anything strange is detected')
     grp.add_argument('-f', '--force', action='store_true', help='no interactive')
     grp.add_argument('-u','--update-key', action='store_true', 
@@ -587,16 +620,16 @@ def main():
         help='force mode: in case of conflict, the default is to raise an exception, \
         unless "mode" is set to (a)ppend anyway, (o)verwrite, (m)erge  or (s)skip key.')
 
-    parser.add_argument('--recursive', action='store_true', 
+    addp.add_argument('--recursive', action='store_true', 
         help='accept directory as argument, for recursive scan \
         of .pdf files (bibtex files are ignored in this mode')
-    parser.add_argument('--ignore-errors', action='store_true', 
+    addp.add_argument('--ignore-errors', action='store_true', 
         help='ignore errors when adding multiple files')
-    parser.add_argument('--dry-run', action='store_true', 
+    addp.add_argument('--dry-run', action='store_true', 
             help='no PDF renaming/copying, no bibtex writing on disk (for testing)')
 
 
-    grp = parser.add_argument_group('attached files')
+    grp = addp.add_argument_group('attached files')
     grp.add_argument('-a','--attachment', nargs='+', help=argparse.SUPPRESS) #'supplementary material')
     grp.add_argument('-r','--rename', action='store_true', 
         help='rename PDFs according to key')
@@ -605,7 +638,7 @@ def main():
 
 
 
-    def addpdf(o):
+    def addcmd(o):
         global DRYRUN
         import myref.tools
         DRYRUN = o.dry_run
@@ -618,7 +651,7 @@ def main():
 
         if len(o.file) > 1 and o.attachment:
             logging.error('--attachment is only valid for one added file')
-            parser.exit(1)
+            addp.exit(1)
 
         kw = {'on_conflict':o.mode, 'check_doi':not o.no_check_doi, 
             'mergefiles':not o.no_merge_files, 'update_key':o.update_key, 
@@ -640,20 +673,21 @@ def main():
 
             except Exception as error:
                 # print(error) 
-                # parser.error(str(error))
+                # addp.error(str(error))
                 raise
                 logging.error(str(error))
                 if not o.ignore_errors:
                     if len(o.file) or (os.isdir(file) and o.recursive)> 1: 
                         logging.error('use --ignore to add other files anyway')
-                    parser.exit(1)
+                    addp.exit(1)
 
         if not o.dry_run:
             my.save(o.bibtex)
 
 
+    # merge
+    # =====
 
-# def merge_entries(entries, method='strict', resolve={}, mergefiles=True, fields=None):
     conflict = argparse.ArgumentParser(add_help=False)
     # conflict_options.add_argument('--merge', action='store_true', 
     #     help='merge non-conflicting entry fields')
@@ -668,26 +702,15 @@ def main():
     grp.add_argument('--ignore', action='store_true', help='ignore unresolved conflicts')
     grp.add_argument('-f','--force', action='store_true', help='force merging')
 
-    subp = subparsers.add_parser('undo', parents=[cfg])
 
-    def undo(o):
-        back = backupfile(o.bibtex)
-        tmp = o.bibtex + '.tmp'
-        # my = MyRef(o.bibtex, o.filesdir)
-        logging.info(o.bibtex+' <==> '+back)
-        shutil.copy(o.bibtex, tmp)
-        shutil.move(back, o.bibtex)
-        shutil.move(tmp, back)
-
-
-    subp = subparsers.add_parser('merge', description='merge duplicates', 
+    mergep = subparsers.add_parser('merge', description='merge duplicates', 
         parents=[cfg, conflict])
-    # subp.add_argument('-m', '--merge', action='store_true', help='merge duplicates')
-    # subp.add_argument('--merge', action='store_true', help='merge duplicates')
-    # subp.add_argument('--doi', action='store_true', help='DOI duplicate')
-    subp.add_argument('--keys', nargs='+', help='merge these keys')
+    # mergep.add_argument('-m', '--merge', action='store_true', help='merge duplicates')
+    # mergep.add_argument('--merge', action='store_true', help='merge duplicates')
+    # mergep.add_argument('--doi', action='store_true', help='DOI duplicate')
+    mergep.add_argument('--keys', nargs='+', help='merge these keys')
 
-    def merge_duplicate(o):
+    def mergecmd(o):
         my = MyRef.load(o.bibtex, o.filesdir)
         kw = dict(force=o.force, fetch=o.fetch, ignore_unresolved=o.ignore)
         my.merge_duplicate_keys(**kw)
@@ -696,28 +719,31 @@ def main():
             my.merge_entries(o.keys, **kw)
         my.save(o.bibtex)
 
-    parser = subparsers.add_parser('filter', description='filter (a subset of) entries',
+
+    # filter
+    # ======
+    filterp = subparsers.add_parser('filter', description='filter (a subset of) entries',
         parents=[cfg])
 
-    mgrp = parser.add_mutually_exclusive_group()
+    mgrp = filterp.add_mutually_exclusive_group()
     mgrp.add_argument('--strict', action='store_true', help='exact matching')
     mgrp.add_argument('--fuzzy', action='store_true', help='fuzzy matching')
-    parser.add_argument('--fuzzy-ratio', type=int, default=80, help='default:%(default)s')
-    parser.add_argument('--invert', action='store_true')
+    filterp.add_argument('--fuzzy-ratio', type=int, default=80, help='default:%(default)s')
+    filterp.add_argument('--invert', action='store_true')
 
-    grp = parser.add_argument_group('search')
+    grp = filterp.add_argument_group('search')
     grp.add_argument('-a','--author',nargs='+')
     grp.add_argument('-y','--year', nargs='+')
     grp.add_argument('-t','--title')
     grp.add_argument('--key', nargs='+')
     grp.add_argument('--doi', nargs='+')
 
-    grp = parser.add_argument_group('problem')
+    grp = filterp.add_argument_group('problem')
     grp.add_argument('--invalid-doi', action='store_true', help='invalid dois')
     # grp.add_argument('--invalid-file', action='store_true', help='invalid file')
     # grp.add_argument('--valid-file', action='store_true', help='valid file')
 
-    grp = parser.add_argument_group('formatting')
+    grp = filterp.add_argument_group('formatting')
     mgrp = grp.add_mutually_exclusive_group()
     mgrp.add_argument('-k','--key-only', action='store_true')
     mgrp.add_argument('-l', '--list', action='store_true', help='one liner')
@@ -725,10 +751,10 @@ def main():
     grp.add_argument('--no-key', action='store_true')
 
 
-    grp = parser.add_argument_group('action')
-    parser.add_argument('--delete', action='store_true')
+    grp = filterp.add_argument_group('action')
+    filterp.add_argument('--delete', action='store_true')
 
-    def listing(o):
+    def filtercmd(o):
         my = MyRef(o.bibtex, o.filesdir)
         entries = my.db.entries
 
@@ -793,55 +819,85 @@ def main():
             print(format_entries(entries))
 
 
-    # parser.add_argument_group
+    # doi
+    # ===
+    doip = subparsers.add_parser('doi', description='parse DOI from PDF')
+    doip.add_argument('pdf')
+    doip.add_argument('--space-digit', action='store_true', help='space digit fix')
+    
+    def doicmd(o):
+        print(extract_doi(o.pdf, o.space_digit))
 
-    parser = subparsers.add_parser('doi', description='parse DOI from PDF')
-    parser.add_argument('pdf')
-    parser.add_argument('--space-digit', action='store_true', help='space digit fix')
+    # fetch
+    # =====   
+    fetchp = subparsers.add_parser('fetch', description='fetch bibtex from DOI')
+    fetchp.add_argument('doi')
 
-    parser = subparsers.add_parser('fetch', description='fetch bibtex from DOI')
-    parser.add_argument('doi')
+    def fetchcmd(o):
+        print(fetch_bibtex_by_doi(o.doi))
 
+
+    # *** Pure OS related file checks ***
+
+    # undo
+    # ====
+    undop = subparsers.add_parser('undo', parents=[cfg])
+
+    def undocmd(o):
+        back = backupfile(o.bibtex)
+        tmp = o.bibtex + '.tmp'
+        # my = MyRef(o.bibtex, o.filesdir)
+        logging.info(o.bibtex+' <==> '+back)
+        shutil.copy(o.bibtex, tmp)
+        shutil.move(back, o.bibtex)
+        shutil.move(tmp, back)
+        
+
+    # git
+    # ===
     gitp = subparsers.add_parser('git', description='git subcommand')
     gitp.add_argument('gitargs', nargs=argparse.REMAINDER)
 
 
-    o = main.parse_args()
-
-    # o.bibtex = config.bibtex
-    # o.filesdir = config.filesdir
-
-    if o.cmd == 'install':
-        return main_install(o)
-
-    def check_install():
-        if not os.path.exists(o.bibtex):
-            print('myref: error: no bibtex file found, use `myref install`')
-            main.exit(1)
-
-    if o.cmd == 'add':
-        check_install()
-        addpdf(o)
-    elif o.cmd == 'merge':
-        check_install()
-        merge_duplicate(o)
-    elif o.cmd == 'undo':
-        check_install()
-        undo(o)
-    elif o.cmd == 'filter':
-        check_install()
-        listing(o)
-    elif o.cmd == 'git':
-        check_install()
+    def gitcmd(o):
         try:
             out = sp.check_output(['git']+o.gitargs, cwd=config.data)
             print(out)
         except:
             gitp.error('failed to execute git command')
+
+
+    o = parser.parse_args()
+
+    # o.bibtex = config.bibtex
+    # o.filesdir = config.filesdir
+
+    if o.cmd == 'install':
+        return installcmd(o)
+
+    elif o.cmd == 'status':
+        return statuscmd(o)
+
+    def check_install():
+        if not os.path.exists(o.bibtex):
+            print('myref: error: no bibtex file found, use `myref install` or `touch {}`'.format(o.bibtex))
+            parser.exit(1)
+        return True
+
+    if o.cmd == 'add':
+        check_install() and addcmd(o)
+    elif o.cmd == 'merge':
+        check_install() and mergecmd(o)
+    elif o.cmd == 'undo':
+        check_install() and undocmd(o)
+    elif o.cmd == 'filter':
+        check_install() and filtercmd(o)
+    elif o.cmd == 'git':
+        check_install() and gitcmd()
     elif o.cmd == 'doi':
-        print(extract_doi(o.pdf, o.space_digit))
+        doicmd(o)
     elif o.cmd == 'fetch':
-        print(fetch_bibtex_by_doi(o.doi))
+        fetchcmd(o)
     else:
         raise ValueError('this is a bug')
 
