@@ -14,62 +14,13 @@ import difflib
 import bibtexparser
 
 import myref
-from myref.tools import (bcolors, move, check_filesdir, extract_doi, 
-    fetch_bibtex_by_doi, isvaliddoi)
+from myref.tools import (bcolors, move, extract_doi, fetch_bibtex_by_doi, isvaliddoi)
 from myref.config import config
 from myref.conflict import (merge_files, merge_entries, parse_file, format_file,
     handle_merge_conflict, search_duplicates, choose_entry_interactive, unique)
 
 DRYRUN = False
 
-
-def config_status(self, check_files=False, verbose=False):
-    lines = []
-    lines.append(bcolors.BOLD+'myref configuration'+bcolors.ENDC)
-    if verbose:
-        lines.append('* configuration file: '+self.file) 
-        lines.append('* cache directory:    '+self.cache) 
-        lines.append('* data directory:     '+self.data) 
-
-    if not os.path.exists(self.filesdir):
-        status = bcolors.WARNING+' (missing)'+bcolors.ENDC
-    elif not os.listdir(self.filesdir):
-        status = bcolors.WARNING+' (empty)'+bcolors.ENDC
-    elif check_files:
-        file_count, folder_size = check_filesdir(self.filesdir)
-        status = bcolors.OKBLUE+" ({} files, {:.1f} MB)".format(file_count, folder_size/(1024*1024.0))+bcolors.ENDC
-    else:
-        status = ''
-
-    files = self.filesdir
-    lines.append('* files directory:    '+files+status) 
-
-    if not os.path.exists(self.bibtex):
-        status = bcolors.WARNING+' (missing)'+bcolors.ENDC 
-    elif check_files:
-        try:
-            db = bibtexparser.load(open(self.bibtex))
-            status = bcolors.OKBLUE+' ({} entries)'.format(len(db.entries))+bcolors.ENDC
-        except:
-            status = bcolors.FAIL+' (fails)'+bcolors.ENDC 
-    else:
-        status = ''
-    lines.append('* bibtex:            '+self.bibtex+status)
-
-    # if verbose:
-    #     collections = self.collections()
-    #     status = bcolors.WARNING+' none'+bcolors.ENDC if not collections else ''
-    #     lines.append('* other collections:'+status)
-    #     for i, nm in enumerate(collections):
-    #         if i > 10:
-    #             lines.append('    '+'({} more collections...)'.format(len(collections)-10))
-    #             break
-    #         status = ' (*)' if nm == self.collection else ''
-    #         lines.append('    '+nm+status)
-
-
-
-    return '\n'.join(lines)
 
 
 # Parse / format bibtex file entry
@@ -112,6 +63,8 @@ class MyRef(object):
         self.txt = '/tmp'
         # assume an already sorted list
         self.key_field = key_field
+        if not isinstance(db, bibtexparser.bibdatabase.BibDatabase):
+            raise TypeError('db must of type BibDatabase')
         self.db = db
         self.sort()
 
@@ -359,15 +312,6 @@ class MyRef(object):
             shutil.copy(bibtex, backupfile(bibtex))
         open(bibtex, 'w').write(s)
 
-        # make a git commit?
-        if os.path.exists(os.path.join(config.data, '.git')):
-            target = os.path.join(config.data, os.path.basename(bibtex))
-            if bibtex != target:
-                shutil.copy(bibtex, target)
-            with open(os.devnull, 'w') as shutup:
-                sp.call(['git','add',target], stdout=shutup, stderr=shutup, cwd=config.data)
-                sp.call(['git','commit','-m', 'myref'+' '.join(sys.argv[1:])], stdout=shutup, stderr=shutup, cwd=config.data)
-
 
     def merge_duplicates(self, key, interactive=True, fetch=False, force=False, 
         resolve={}, ignore_unresolved=True, mergefiles=True):
@@ -538,15 +482,15 @@ def main():
     statusp = subparsers.add_parser('status', 
         description='view install status',
         parents=[cfg])
-    statusp.add_argument('-c','--check-files', action='store_true')
-    statusp.add_argument('-v','--verbose', action='store_true')
+    statusp.add_argument('--no-check-files', action='store_true', help='faster, less info')
+    statusp.add_argument('-v','--verbose', action='store_true', help='app status info')
 
     def statuscmd(o):
         if o.bibtex:
             config.bibtex = o.bibtex
         if o.filesdir is not None:
             config.filesdir = o.filesdir        
-        print(config_status(config, check_files=o.check_files, verbose=o.verbose))
+        print(config.status(check_files=not o.no_check_files, verbose=o.verbose))
         
 
     # install
@@ -555,19 +499,42 @@ def main():
     installp = subparsers.add_parser('install', description='setup or update myref install',
         parents=[cfg])
     installp.add_argument('--reset-paths', action='store_true') 
-
+    # egrp = installp.add_mutually_exclusive_group()
     installp.add_argument('--local', action='store_true', 
-        help='write config file in current directory (global install by default)')
+        help="""save config file in current directory (global install by default). 
+        This file will be loaded instead of the global configuration file everytime 
+        myref is executed from this directory. This will affect the default bibtex file, 
+        the files directory, as well as the git-tracking option. Note this option does
+        not imply anything about the actual location of bibtex file and files directory.
+        """)
+    installp.add_argument('--git', action='store_true', 
+        help="""Track bibtex files with git. 
+        Each time the bibtex is modified, a copy of the file is saved in a git-tracked
+        global directory (see myref status), and committed. Note the original bibtex name is 
+        kept, so that different files can be tracked simultaneously, as long as the names do
+        not conflict. This option is mainly useful for backup purposes (local or remote).
+        Use in combination with `myref git`'
+        """) 
+    installp.add_argument('--gitdir', default=config.gitdir, help='default: %(default)s')
 
     grp = installp.add_argument_group('status')
     # grp.add_argument('-l','--status', action='store_true')
-    grp.add_argument('-v','--verbose', action='store_true')
-    grp.add_argument('-c','--check-files', action='store_true')
+    # grp.add_argument('-v','--verbose', action='store_true')
+    # grp.add_argument('-c','--check-files', action='store_true')
+    grp.add_argument('--no-check-files', action='store_true', help='faster, less info')
+    # grp.add_argument('-v','--verbose', action='store_true', help='app status info')
 
 
     def installcmd(o):
 
         old = o.bibtex
+
+        if config.git and not o.git and o.bibtex == config.bibtex:
+            ans = raw_input('stop git tracking (this will not affect actual git directory)? [Y/n] ')
+            if ans.lower() != 'y':
+                o.git = True
+
+        config.gitdir = o.gitdir
 
         if o.bibtex:
             config.bibtex = o.bibtex
@@ -577,6 +544,8 @@ def main():
 
         if o.reset_paths:
             config.reset()
+
+        config.git = o.git
 
         # create bibtex file if not existing
         if not os.path.exists(o.bibtex):
@@ -588,13 +557,27 @@ def main():
             logging.info('create empty files directory: '+o.filesdir)
             os.makedirs(o.filesdir)
 
+        if not o.local and os.path.exists(local_config):
+            logging.warn('Cannot make global install if local config file exists.')
+            ans = None
+            while ans not in ('1','2'):
+                ans = raw_input('(1) remove local config file '+local_config+'\n(2) make local install\nChoice: ')
+            if ans == '1':
+                os.remove(local_config)
+            else:
+                o.local = True
+
+        if o.git and not os.path.exists(config._gitdir):
+            config.gitinit()
+
         if o.local:
+            logging.info('save local config file: '+local_config)
             config.file = local_config
         else:
             config.file = global_config
         config.save()
 
-        print(config_status(config, check_files=o.check_files, verbose=o.verbose))
+        print(config.status(check_files=not o.no_check_files, verbose=True))
 
 
     # add
@@ -683,6 +666,9 @@ def main():
 
         if not o.dry_run:
             my.save(o.bibtex)
+            if config.git:
+                config.bibtex = o.bibtex
+                config.gitcommit()
 
 
     # merge
@@ -720,30 +706,30 @@ def main():
         my.save(o.bibtex)
 
 
-    # filter
+    # list
     # ======
-    filterp = subparsers.add_parser('filter', description='filter (a subset of) entries',
+    listp = subparsers.add_parser('list', description='list (a subset of) entries',
         parents=[cfg])
 
-    mgrp = filterp.add_mutually_exclusive_group()
+    mgrp = listp.add_mutually_exclusive_group()
     mgrp.add_argument('--strict', action='store_true', help='exact matching')
     mgrp.add_argument('--fuzzy', action='store_true', help='fuzzy matching')
-    filterp.add_argument('--fuzzy-ratio', type=int, default=80, help='default:%(default)s')
-    filterp.add_argument('--invert', action='store_true')
+    listp.add_argument('--fuzzy-ratio', type=int, default=80, help='default:%(default)s')
+    listp.add_argument('--invert', action='store_true')
 
-    grp = filterp.add_argument_group('search')
+    grp = listp.add_argument_group('search')
     grp.add_argument('-a','--author',nargs='+')
     grp.add_argument('-y','--year', nargs='+')
     grp.add_argument('-t','--title')
     grp.add_argument('--key', nargs='+')
     grp.add_argument('--doi', nargs='+')
 
-    grp = filterp.add_argument_group('problem')
+    grp = listp.add_argument_group('problem')
     grp.add_argument('--invalid-doi', action='store_true', help='invalid dois')
     # grp.add_argument('--invalid-file', action='store_true', help='invalid file')
     # grp.add_argument('--valid-file', action='store_true', help='valid file')
 
-    grp = filterp.add_argument_group('formatting')
+    grp = listp.add_argument_group('formatting')
     mgrp = grp.add_mutually_exclusive_group()
     mgrp.add_argument('-k','--key-only', action='store_true')
     mgrp.add_argument('-l', '--list', action='store_true', help='one liner')
@@ -751,11 +737,11 @@ def main():
     grp.add_argument('--no-key', action='store_true')
 
 
-    grp = filterp.add_argument_group('action')
-    filterp.add_argument('--delete', action='store_true')
+    grp = listp.add_argument_group('action')
+    listp.add_argument('--delete', action='store_true')
 
-    def filtercmd(o):
-        my = MyRef(o.bibtex, o.filesdir)
+    def listcmd(o):
+        my = MyRef.load(o.bibtex, o.filesdir)
         entries = my.db.entries
 
         if o.fuzzy:
@@ -890,10 +876,10 @@ def main():
         check_install() and mergecmd(o)
     elif o.cmd == 'undo':
         check_install() and undocmd(o)
-    elif o.cmd == 'filter':
-        check_install() and filtercmd(o)
+    elif o.cmd == 'list':
+        check_install() and listcmd(o)
     elif o.cmd == 'git':
-        check_install() and gitcmd()
+        gitcmd(o)
     elif o.cmd == 'doi':
         doicmd(o)
     elif o.cmd == 'fetch':

@@ -84,27 +84,39 @@ For the sake of the example, one of my owns: https://www.earth-syst-dynam.net/4/
             journal = {Earth System Dynamics}
         }
 
+- setup git-tracked library
+
+        $> myref install --bibtex myref.bib --filesdir files --git --gitdir ./
+        myref configuration
+        * configuration file: /home/perrette/.config/myrefconfig.json
+        * cache directory:    /home/perrette/.cache/myref
+        * app data directory: /home/perrette/.local/share/myref
+        * git-tracked:        True
+        * git directory :     ./
+        * files directory:    files (empty)
+        * bibtex:            myref.bib (empty)
+
+Note the configuration file is global (unless `--local` is specified), so from now on, any `myref` 
+command will be know about these settings. 
+If bibtex, filesdir or gitdir are not specified, default files are created in the app data directory.
+In this specific example, the app data directory is not used. `myref status -v` can let you check your
+configuration at any moment. Install has no impact on actual bibtex and attachment (e.g. pdf) files.
+
 - add pdf to library
 
         $> myref add --rename esd-4-11-2013.pdf
-        INFO:root:found doi:10.5194/esd-4-11-2013
-        INFO:root:NEW ENTRY: perrette_2013
-        INFO:root:mv esd-4-11-2013.pdf files/2013/Perrette_2013.pdf
-
-    
-In the above case, the sequence of actions is:
-- read bibtex file if any, otherwise create new bibtex lib
-- extract DOI from PDF
-- fetch bibtex entry via [crossref API](https://github.com/CrossRef/rest-api-doc/issues/115#issuecomment-221821473)
-- create entry if not already present
-- link PDF and attachments to the enrty (`file` field)
-- rename files if required
-    - in the case of multiple files, a folder named after the key is created, and all associated files are copied into it, without further renaming.
+	INFO:root:load config from: /home/perrette/.config/myrefconfig.json
+	INFO:root:found doi:10.5194/esd-4-11-2013
+	INFO:root:new entry: perrette_2013
+	INFO:root:create directory: files/2013
+	INFO:root:mv /home/perrette/playground/myref/esd-4-11-2013.pdf files/2013/Perrette_2013.pdf
+	INFO:root:renamed file(s): 1
 
 
 - other commands: 
 
-    - `myref filter ...` 
+    - `myref status ...` 
+    - `myref list ...` 
     - `myref merge ...` 
     - `myref undo ...` 
     - `myref git ...` 
@@ -122,13 +134,12 @@ Current features
 - scan directory for PDFs
 - rename PDFs according to bibtex key and year
 - some support for attachment
-- display / search / filter entries : format as bibtex or key or whatever
+- display / search / list entries : format as bibtex or key or whatever
 - merging / update
 - undo command
-- global configuration file with default bibtex and files directory
-- git saving of bibtex
+- configuration file with default bibtex and files directory
 - integration with git
-- filter + remove entry by key or else
+- list + remove entry by key or else
 
 
 Planned features
