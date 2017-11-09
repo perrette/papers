@@ -706,6 +706,7 @@ def main():
 
 
     def savebib(my, o):
+        logging.info(u'save '+o.bibtex)
         if DRYRUN:
             return
         if my is not None:

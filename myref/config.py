@@ -86,11 +86,11 @@ class Config(object):
                 if branch is not None:
                     sp.check_call(['git','checkout',branch], stdout=shutup, stderr=shutup, cwd=self.gitdir)
                 sp.check_call(['git','add',target], stdout=shutup, stderr=shutup, cwd=self.gitdir)
-                sp.check_call(['git','commit','-m', message], stdout=shutup, stderr=shutup, cwd=self.gitdir)
+                res = sp.call(['git','commit','-m', message], stdout=shutup, stderr=shutup, cwd=self.gitdir)
+                if res == 0:
+                    logging.info('git commit')
         else:
             raise ValueError('git is not initialized in '+self.gitdir)
-
-
 
     def status(self, check_files=False, verbose=False):
 
