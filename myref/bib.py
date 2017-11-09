@@ -14,7 +14,7 @@ import difflib
 import bibtexparser
 
 import myref
-from myref.tools import (bcolors, move, extract_doi, fetch_bibtex_by_doi, isvaliddoi)
+from myref.tools import (bcolors, move, extract_doi, fetch_bibtex_by_doi, isvaliddoi, checksum)
 from myref.config import config
 from myref.conflict import (merge_files, merge_entries, parse_file, format_file,
     handle_merge_conflict, search_duplicates, choose_entry_interactive, unique)
@@ -454,6 +454,116 @@ class MyRef(object):
                 logging.error(str(error))
                 continue
 
+
+def entry_filecheck_metadata(e, file):
+    ''' parse pdf metadata and compare with entry: only doi for now
+    '''
+    if 'doi' not in e:
+        raise ValueError(e['ID']+': no doi, skip PDF parsing')
+
+    try:
+        doi = extract_doi(file)
+    except Exception as error:
+        raise ValueError(e['ID']+': failed to parse doi: "{}"'.format(file))
+    if not isvaliddoi(doi):
+        raise ValueError(e['ID']+': invalid parsed doi: '+doi)
+
+    if doi.lower() != e['doi'].lower():
+        raise ValueError(e['ID']+': doi: entry <=> pdf : {} <=> {}'.format(e['doi'].lower(), doi.lower()))
+
+
+LATEX_TO_UNICODE = None
+
+def latex_to_unicode(string):
+    """ replace things like "{\_}" and "{\'{e}}'" with unicode characters _ and é
+    """
+    global LATEX_TO_UNICODE
+    if LATEX_TO_UNICODE is None:
+        import myref.unicode_to_latex as ul 
+        LATEX_TO_UNICODE = {v.strip():k for k,v in six.iteritems(ul.unicode_to_latex)}
+    return string.format(**LATEX_TO_UNICODE)
+
+
+
+
+def entry_filecheck(e, delete_broken=False, fix_mendeley=False, 
+    check_hash=False, check_metadata=False, interactive=True):
+
+    if 'file' not in e:
+        return
+    
+    if check_hash:
+        import hashlib
+
+    newfiles = []
+    hashes = set()
+    realpaths = set()
+    fixed = {}
+
+    for i, file in enumerate(parse_file(e['file'])):
+
+        realpath = os.path.realpath(file)
+        if realpath in realpaths:
+            logging.info(e['ID']+': remove duplicate path: "{}"'.format(fixed.get(file, file)))
+            continue
+        realpaths.add(realpath) # put here so that for identical
+                                   # files that are checked and finally not 
+                                   # included, the work is done only once 
+
+        if fix_mendeley and not os.path.exists(file):
+            old = file
+
+            # replace any "{\_}" with "_"
+            try:
+                file = latex_to_unicode(file)
+            except KeyError as error:
+                logging.warn(e['ID']+': '+str(error)+': failed to convert latex symbols to unicode: '+file)
+
+            # fix root (e.g. path starts with home instead of /home)
+            dirname = os.path.dirname(file)
+            candidate = os.path.sep + file
+            if (not file.startswith(os.path.sep) and dirname # only apply when some directory name is specified
+                and not os.path.exists(dirname) 
+                and os.path.exists(os.path.dirname(candidate))): # simply requires that '/'+directory exists 
+                # and os.path.exists(newfile)):
+                    # logging.info('prepend "/" to file name: "{}"'.format(file))
+                    file = candidate
+
+            if old != file:
+                logging.info(e['ID']+u': file name fixed: "{}" => "{}".'.format(old, file))
+                fixed[old] = file # keep record of fixed files
+
+        # parse PDF and check for metadata
+        if check_metadata and file.endswith('.pdf'):
+            try:
+                entry_filecheck_metadata(e, file)
+            except ValueError as error:
+                logging.warn(error)
+
+        # check existence
+        if not os.path.exists(file):
+            logging.warn(e['ID']+': "{}" does not exist.'.format(file))
+            if delete_broken:
+                logging.info(' delete file from entry: "{}"'.format(file))
+                continue
+            elif interactive:
+                ans = raw_input('delete file from entry ? [Y/n] ')
+                if ans.lower == 'y':
+                    continue
+
+        elif check_hash:
+            # hash_ = hashlib.sha256(open(file, 'rb').read()).digest()
+            hash_ = checksum(file) # a little faster
+            if hash_ in hashes:
+                logging.info(e['ID']+': file already exists (identical checksum): "{}"'.format(file))
+                continue
+            hashes.add(hash_)
+
+        newfiles.append(file)
+
+    e['file'] = format_file(newfiles)
+
+
 def main():
 
     global_config = config.file
@@ -715,6 +825,53 @@ def main():
             my.merge_entries(o.keys, **kw)
         savebib(my, o)
 
+    # check
+    # =====
+    filecheckp = subparsers.add_parser('filecheck', description='check attached file(s)',
+        parents=[cfg])
+    # filecheckp.add_argument('-f','--force', action='store_true', 
+    #     help='do not ask before performing actions')
+
+    # action on files
+    filecheckp.add_argument('-r','--rename', action='store_true', 
+        help='rename files')
+    filecheckp.add_argument('-c','--copy', action='store_true', 
+        help='in combination with --rename, keep a copy of the file in its original location')
+
+    # various metadata and duplicate checks
+    filecheckp.add_argument('--metadata-check', action='store_true', 
+        help='parse pdf metadata and check against metadata (currently doi only)')
+
+    filecheckp.add_argument('--hash-check', action='store_true', 
+        help='check file hash sum to remove any duplicates')
+
+    filecheckp.add_argument('-d', '--delete-broken', action='store_true', 
+        help='remove file entry if the file link is broken')
+
+    filecheckp.add_argument('--fix-mendeley', action='store_true', 
+        help='fix a Mendeley bug where the leading "/" is omitted.')
+
+    filecheckp.add_argument('--force', action='store_true', help='no interactive prompt, strictly follow options') 
+    # filecheckp.add_argument('--search-for-files', action='store_true',
+    #     help='search for missing files')
+    # filecheckp.add_argument('--searchdir', nargs='+',
+    #     help='search missing file link for existing bibtex entries, based on doi')
+    # filecheckp.add_argument('-D', '--delete-free', action='store_true', 
+        # help='delete file which is not associated with any entry')
+    # filecheckp.add_argument('-a', '--all', action='store_true', help='--hash and --meta')
+
+    def filecheckcmd(o):
+        my = MyRef.load(o.bibtex, o.filesdir)
+
+        # fix ':home' entry as saved by Mendeley
+        for e in my.entries:
+            entry_filecheck(e, delete_broken=o.delete_broken, fix_mendeley=o.fix_mendeley, 
+                check_hash=o.hash_check, check_metadata=o.metadata_check, interactive=not o.force)
+
+        if o.rename:
+            my.rename_entries_files(o.copy)
+
+        savebib(my, o)
 
     # list
     # ======
@@ -734,7 +891,7 @@ def main():
     grp.add_argument('--key', nargs='+')
     grp.add_argument('--doi', nargs='+')
 
-    grp = listp.add_argument_group('problem')
+    grp = listp.add_argument_group('check')
     grp.add_argument('--invalid-doi', action='store_true', help='invalid dois')
     # grp.add_argument('--invalid-file', action='store_true', help='invalid file')
     # grp.add_argument('--valid-file', action='store_true', help='valid file')
@@ -747,8 +904,9 @@ def main():
     grp.add_argument('--no-key', action='store_true')
 
 
-    grp = listp.add_argument_group('action')
-    listp.add_argument('--delete', action='store_true')
+    grp = listp.add_argument_group('action on listed results (pipe)')
+    grp.add_argument('--delete', action='store_true')
+    # grp.add_argument('--merge-duplicates', action='store_true')
 
     def listcmd(o):
         my = MyRef.load(o.bibtex, o.filesdir)
@@ -886,10 +1044,12 @@ def main():
         check_install() and addcmd(o)
     elif o.cmd == 'merge':
         check_install() and mergecmd(o)
-    elif o.cmd == 'undo':
-        check_install() and undocmd(o)
+    elif o.cmd == 'filecheck':
+        check_install() and filecheckcmd(o)
     elif o.cmd == 'list':
         check_install() and listcmd(o)
+    elif o.cmd == 'undo':
+        check_install() and undocmd(o)
     elif o.cmd == 'git':
         gitcmd(o)
     elif o.cmd == 'doi':
