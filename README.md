@@ -16,17 +16,23 @@ command-line bibliography managenent tool. Aims:
 - fetch PDF metadata from the internet (i.e. [crossref](https://github.com/CrossRef/rest-api-doc)), preferably based on DOI
 
 
-Why not JabRef or Mendeley?
---------------------------
-- JabRef is nice, light-weight, but is not so good at managing PDFs.
-- Mendeley is perfect at extracting metadata from PDF and managing your PDF library, 
-but many issues remain (own experience, Ubuntu 14.04, Desktop Version 1.17):
+Why not JabRef, Zotero or Mendeley (or...) ?
+--------------------------------------------
+- JabRef (2.10) is nice, light-weight, but is not so good at managing PDFs.
+- Zotero (5.0) features good PDF import capability, but it needs to be manually one by one and is a little slow .
+- Mendeley (1.17) is perfect at extracting metadata from PDF and managing your PDF library, 
+but it is not open source, and many issues remain (own experience, Ubuntu 14.04, Desktop Version 1.17):
     - very unstable
     - PDF automatic naming is too verbose, and sometimes the behaviour is unexpected (some PDFs remain in on obscure Downloaded folder, instead of in the main collection)
     - somewhat heavy (it offers functions of online syncing, etc)
     - poor seach capability (related to the point above)
 
 Above-mentioned issues will with no doubt be improved in future releases, but they are a starting point for this project.
+Anyway, a command-line tool is per se a good idea for faster development, 
+as noted [here](https://forums.zotero.org/discussion/43386/zotero-cli-version), 
+but so far I could only find zotero clients for their online API 
+(like [pyzotero](https://github.com/urschrei/pyzotero) or [zotero-cli](https://github.com/jbaiter/zotero-cli)).
+Please contact me if you know another interesting project.
 
 
 Internals
@@ -36,7 +42,7 @@ For now (very much beta version), the project:
 - [bibtexparser](https://bibtexparser.readthedocs.io/en/v0.6.2) is used to parse bibtexentries and libraries
 - each entry (and associated keys) is obtained from [crossref API](https://github.com/CrossRef/rest-api-doc/issues/115#issuecomment-221821473) (note: the feature that allows to fetch a bibtex entry from DOI is undocumented...). So far it seems that the keys are unique, until seen otherwise...
 - DOI is extracted from PDFs with regular expression search within the first two pages.
-
+- TODO: add other means to retrieve metadata, such as `ISBN`. Get inspired from [Zotero](https://forums.zotero.org/discussion/57418/retrieve-pdfs-metadata-wrong-metadata-source).
 
 Dependencies
 ------------
@@ -84,7 +90,22 @@ For the sake of the example, one of my owns: https://www.earth-syst-dynam.net/4/
             journal = {Earth System Dynamics}
         }
 
-- setup git-tracked library
+- add pdf to `myref.bib`  library, and rename a copy of it in a files directory `files`.
+
+        $> myref add --rename --copy --bibtex myref.bib --filesdir files esd-4-11-2013.pdf --info
+    	INFO:root:found doi:10.5194/esd-4-11-2013
+    	INFO:root:new entry: perrette_2013
+    	INFO:root:create directory: files/2013
+    	INFO:root:mv /home/perrette/playground/myref/esd-4-11-2013.pdf files/2013/Perrette_2013.pdf
+    	INFO:root:renamed file(s): 1
+
+(the `--info` argument asks for the above output information to be printed out to the terminal)
+
+In the common case where the bibtex (`--bibtex`) and files directory  (`--filesdir`) do not change, 
+it is convenient to *install* `myref`. 
+Additionally, install comes with the option to git-track any change to the bibtex file (`--git`) options.
+
+- setup git-tracked library (optional)
 
         $> myref install --bibtex myref.bib --filesdir files --git --gitdir ./
         myref configuration
@@ -92,31 +113,22 @@ For the sake of the example, one of my owns: https://www.earth-syst-dynam.net/4/
         * cache directory:    /home/perrette/.cache/myref
         * git-tracked:        True
         * git directory :     ./
-        * files directory:    files (empty)
-        * bibtex:            myref.bib (empty)
+        * files directory:    files (1 files, 5.8 MB)
+        * bibtex:            myref.bib (1 entries)
 
-Note the configuration file is global (unless `--local` is specified), so from now on, any `myref` 
+Note the existing bibtex file was detected but untouched.
+The configuration file is global (unless `--local` is specified), so from now on, any `myref` 
 command will be know about these settings. Type `myref status -v` to check your
-configuration. Install has no impact on actual bibtex and attachment (e.g. pdf) files.
-Crossref requests are saved in the cache directory.
-`myref` can also be used without install, as long as --bibtex and --filesdir are explicitly specified.
-
-- add pdf to library
-
-        $> myref add --rename esd-4-11-2013.pdf
-	INFO:root:load config from: /home/perrette/.config/myrefconfig.json
-	INFO:root:found doi:10.5194/esd-4-11-2013
-	INFO:root:new entry: perrette_2013
-	INFO:root:create directory: files/2013
-	INFO:root:mv /home/perrette/playground/myref/esd-4-11-2013.pdf files/2013/Perrette_2013.pdf
-	INFO:root:renamed file(s): 1
-
+configuration.
+You also notice that crossref requests are saved in the cache directory. 
+This happens regardless of whether `myref` is installed or not.
 
 - other commands: 
 
     - `myref status ...` 
     - `myref list ...` 
     - `myref merge ...` 
+    - `myref filecheck ...` 
     - `myref undo ...` 
     - `myref git ...` 
 
@@ -128,17 +140,24 @@ Current features
 - parse PDF to extract DOI
 - fetch bibtex entry from DOI (using crossref API)
 - create and maintain bibtex file
-- add entry as PDF
-- add entry as bibtex
-- scan directory for PDFs
-- rename PDFs according to bibtex key and year
+- add entry as PDF (`myref add ...`)
+- add entry as bibtex (`myref add ...`)
+- scan directory for PDFs (`myref add ...`)
+- rename PDFs according to bibtex key and year (`myref filecheck --rename [--copy]`)
 - some support for attachment
-- display / search / list entries : format as bibtex or key or whatever
-- merging / update
-- undo command
-- configuration file with default bibtex and files directory
-- integration with git
-- list + remove entry by key or else
+- merging (`myref merge ...`)
+- undo command (`myref undo`)
+- configuration file with default bibtex and files directory (`myref install --bibtex BIB --filesdir DIR ...`)
+- integration with git (`myref install --git --gitdir DIR` and e.g. `myref git ...` to setup a remote, push...)
+- display / search / list entries : format as bibtex or key or whatever (`myref list ... [-k | -l]`)
+- list + remove entry by key or else  (`myref list ... [--delete]`)
+- fix broken PDF links (`myref filecheck ...`):
+    - remove duplicate file names (always) or file copies (`--hash-check`)
+    - remove missing link (`--delete-missing`)
+    - fix files name after a Mendeley export (`--fix-mendeley`):
+        - leading '/' missing is added
+        - latex characters, e.g. `{\_}` or `{\'{e}}` replaced with unicode
+
 
 
 Planned features
@@ -146,7 +165,6 @@ Planned features
 Mostly related to bibliography management:
 - add manual entry 
 - move library location (i.e. both on disk and in bibtex's `file` entry)
-- fix broken PDF links
 - better handling of attachment / multiple files
 - key generation
 
@@ -157,12 +175,15 @@ As well as:
     - this is currently possible with the standard crossref API (and nice python package [crossrefapi](https://github.com/fabiobatalha/crossrefapi)), but the result is `json`    - not sure how to convert the json result `into` a `bibtex` file in the general case
     - for recent papers with DOI, a second request can be made, as workaround, but this feature is mostly inteded for old papers without DOI.
 
-
-
 All this in a set of planned commands:
-- `myref new (-k KEY | --auto-key) [--no-check] --author NAME --year YEAR [--file FILE [FILE...]] ...` : manually add one new entry (for the sake of completeness) 
+- `myref addone (-k KEY | --auto-key) [--no-check] --author NAME --year YEAR [--file FILE [FILE...]] ...` : manually add one new entry (for the sake of completeness) 
 - `myref link -k KEY [--no-check] [--overwrite] FILE [FILE...]` : add one or several file to *existing* entry, without any check on the files beyond existence
-- `myref filecheck [--fix] [--rename] [--remove-broken] [--searchdir DIR [DIR...]] [--doi-check] ...` : perform check on bibtex file link (test broken, rename, re-link from other sources, remove broken, remove duplicate names, check that doi matches...)
 
 
 Suggestions welcomed for prioritizing / feature suggestion.
+
+
+Tests
+-----
+Test coverage probably lacking being features' addition, but in progress.
+Aims at 80-90% coverage.
