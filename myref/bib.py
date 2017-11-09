@@ -692,6 +692,10 @@ def main():
             else:
                 o.local = True
 
+        if not o.local:
+            # save absolute path for global bibtex install
+            config.bibtex = os.path.realpath(config.bibtex)
+
         if o.git and not os.path.exists(config._gitdir):
             config.gitinit()
 
