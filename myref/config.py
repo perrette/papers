@@ -1,7 +1,7 @@
 import os, json, logging
 import subprocess as sp, sys, shutil
 
-GIT = False
+# GIT = False
 
 # config directory location
 HOME = os.environ.get('HOME',os.path.expanduser('~'))

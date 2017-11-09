@@ -2,7 +2,7 @@
 from __future__ import print_function
 import os, json, sys
 import logging
-logging.basicConfig(level=logging.INFO)
+# logging.basicConfig(level=logging.INFO)
 import argparse
 import subprocess as sp
 import shutil
@@ -566,6 +566,8 @@ def entry_filecheck(e, delete_broken=False, fix_mendeley=False,
 
 def main():
 
+    global DRYRUN
+
     global_config = config.file
     local_config = '.myrefconfig.json'
 
@@ -575,7 +577,7 @@ def main():
         config.file = global_config
 
     if os.path.exists(config.file):
-        logging.info('load config from: '+config.file)
+        logging.debug('load config from: '+config.file)
         config.load()
 
     parser = argparse.ArgumentParser(description='library management tool')
@@ -589,6 +591,14 @@ def main():
         help='files directory (default: %(default)s)')
     grp.add_argument('--bibtex', default=config.bibtex,
         help='bibtex database (default: %(default)s)')
+    grp.add_argument('--dry-run', action='store_true', 
+        help='no PDF renaming/copying, no bibtex writing on disk (for testing)')
+    grp = cfg.add_argument_group('logging level (default warn)')
+    egrp = grp.add_mutually_exclusive_group()
+    egrp.add_argument('--debug', action='store_const', dest='logging_level', const=logging.DEBUG)
+    egrp.add_argument('--info', action='store_const', dest='logging_level', const=logging.INFO)
+    egrp.add_argument('--warn', action='store_const', dest='logging_level', const=logging.WARN)
+    egrp.add_argument('--error', action='store_const', dest='logging_level', const=logging.ERROR)
 
     # status
     # ======
@@ -694,13 +704,14 @@ def main():
 
 
     def savebib(my, o):
-        if not o.get('dry_run', DRYRUN):
-            if my is not None:
-                my.save(o.bibtex)
-            # commit when operated on the default bibtex file provided during installation
-            if config.git and config.bibtex == o.bibtex:
-                config.bibtex = o.bibtex
-                config.gitcommit()
+        if DRYRUN:
+            return
+        if my is not None:
+            my.save(o.bibtex)
+        # commit when operated on the default bibtex file provided during installation
+        if config.git and config.bibtex == o.bibtex:
+            config.bibtex = o.bibtex
+            config.gitcommit()
 
 
     # add
@@ -731,8 +742,7 @@ def main():
         of .pdf files (bibtex files are ignored in this mode')
     addp.add_argument('--ignore-errors', action='store_true', 
         help='ignore errors when adding multiple files')
-    addp.add_argument('--dry-run', action='store_true', 
-            help='no PDF renaming/copying, no bibtex writing on disk (for testing)')
+
 
 
     grp = addp.add_argument_group('attached files')
@@ -1025,8 +1035,14 @@ def main():
 
     o = parser.parse_args()
 
-    # o.bibtex = config.bibtex
-    # o.filesdir = config.filesdir
+    # verbosity
+    if getattr(o,'logging_level',None):
+        logging.getLogger().setLevel(o.logging_level)
+    # modify disk state?
+    if getattr(o,'dry_run', DRYRUN):
+        DRYRUN = True
+        import tools
+        tools.DRYRUN = True
 
     if o.cmd == 'install':
         return installcmd(o)
@@ -1038,6 +1054,8 @@ def main():
         if not os.path.exists(o.bibtex):
             print('myref: error: no bibtex file found, use `myref install` or `touch {}`'.format(o.bibtex))
             parser.exit(1)
+        logging.info('bibtex: '+o.bibtex)
+        logging.info('filesdir: '+o.filesdir)
         return True
 
     if o.cmd == 'add':
