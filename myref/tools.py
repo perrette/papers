@@ -1,3 +1,4 @@
+from __future__ import print_function
 import os
 import logging
 import shutil
@@ -73,18 +74,17 @@ def move(f1, f2, copy=False, interactive=True):
         ans = raw_input('dest file already exists: '+f2+'. Replace? (y/n) ')
         if ans != 'y':
             return
+
     if copy:
-        cmd = 'cp {} {}'.format(f1, f2)
+        cmd = u'cp {} {}'.format(f1, f2)
         logging.info(cmd)
         if not DRYRUN:
             shutil.copy(f1, f2)
     else:
-        cmd = 'mv {} {}'.format(f1, f2)
+        cmd = u'mv {} {}'.format(f1, f2)
         logging.info(cmd)
         if not DRYRUN:
             shutil.move(f1, f2)
-
-
 
 
 # PDF parsing / crossref requests
@@ -221,3 +221,45 @@ def json_to_bibtex(js):
 
 def bibtex_to_json(js):
     raise NotImplementedError()
+
+
+
+    # Parse / format bibtex file entry
+# ================================
+
+def _parse_file(file):
+    """ parse a single file entry
+    """
+    sfile = file.split(':')
+    
+    if len(sfile) == 1:  # no ':'
+        path, type = file, ''
+
+    elif len(sfile) == 2:
+        path, type = sfile
+
+    elif len(sfile) == 3:
+        basename, path, type = sfile
+
+    else:
+        raise ValueError('unknown `file` format: '+ repr(file))
+
+    return path
+
+
+def _format_file(file, type=None):
+    if not type:
+        type = os.path.splitext(file)[1].strip('.')
+    return ':'+file+':'+type
+
+
+def parse_file(file):
+    if not file:
+        return []
+    else:
+        return [_parse_file(f) for f in file.split(';')]
+
+
+def format_file(file_types):
+    return ';'.join([_format_file(f) for f in file_types])
+

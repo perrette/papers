@@ -410,17 +410,19 @@ class MyRef(object):
 
         files = getentryfiles(e)
         # newname = entrydir(e, root)
-        direc = os.path.join(self.filesdir, e['year'])
+        direc = os.path.join(self.filesdir, e.get('year','0000'))
 
         if not files:
             logging.info('no files to rename')
             return
 
+        autoname = lambda e: e['ID'].replace(':','-').replace(';','-') # ':' and ';' are forbidden in file name
+
         count = 0
         if len(files) == 1:
             file = files[0]
             base, ext = os.path.splitext(file)
-            newfile = os.path.join(direc, e['ID']+ext)
+            newfile = os.path.join(direc, autoname(e)+ext)
             if not os.path.exists(file):
                 raise ValueError(file+': original file link is broken')
             elif file != newfile:
@@ -430,7 +432,7 @@ class MyRef(object):
 
         # several files: only rename container
         else:
-            newdir = os.path.join(direc, e['ID'])
+            newdir = os.path.join(direc, autoname(e))
             newfiles = []
             for file in files:
                 newfile = os.path.join(newdir, os.path.basename(file))
@@ -542,9 +544,9 @@ def entry_filecheck(e, delete_broken=False, fix_mendeley=False,
 
         # check existence
         if not os.path.exists(file):
-            logging.warn(e['ID']+': "{}" does not exist.'.format(file))
+            logging.warn(e['ID']+': "{}" does not exist'.format(file)+delete_broken*' ==> delete')
             if delete_broken:
-                logging.info(' delete file from entry: "{}"'.format(file))
+                logging.info('delete file from entry: "{}"'.format(file))
                 continue
             elif interactive:
                 ans = raw_input('delete file from entry ? [Y/n] ')
@@ -709,7 +711,7 @@ def main():
         if my is not None:
             my.save(o.bibtex)
         # commit when operated on the default bibtex file provided during installation
-        if config.git and config.bibtex == o.bibtex:
+        if config.git and os.path.samefile(config.bibtex, o.bibtex):
             config.bibtex = o.bibtex
             config.gitcommit()
 

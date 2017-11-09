@@ -4,7 +4,7 @@ import bibtexparser
 import os
 import itertools
 
-from myref.tools import bcolors
+from myref.tools import bcolors, parse_file, format_file
 
 def unique(entries):
     entries_ = []
@@ -50,46 +50,6 @@ def choose_entry_interactive(entries, extra=[], msg=''):
 #         choose_entry_interactive(self.entries, 
 #             extra=['m','s','f','k','e','c'], 
 #             msg='(m)erge or (s)plit or (f)etch doi or generate (k)ey or (e)dit or (c)ancel (skip)')
-
-# Parse / format bibtex file entry
-# ================================
-
-def _parse_file(file):
-    """ parse a single file entry
-    """
-    sfile = file.split(':')
-    
-    if len(sfile) == 1:  # no ':'
-        path, type = file, ''
-
-    elif len(sfile) == 2:
-        path, type = sfile
-
-    elif len(sfile) == 3:
-        basename, path, type = sfile
-
-    else:
-        raise ValueError('unknown "file" format: file')
-
-    return path
-
-
-def _format_file(file, type=None):
-    if not type:
-        type = os.path.splitext(file)[1].strip('.')
-    return ':'+file+':'+type
-
-
-def parse_file(file):
-    if not file:
-        return []
-    else:
-        return [_parse_file(f) for f in file.split(';')]
-
-
-def format_file(file_types):
-    return ';'.join([_format_file(f) for f in file_types])
-
 
 
 def best_entry(entries, fields=None):
