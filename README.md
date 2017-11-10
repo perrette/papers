@@ -19,8 +19,8 @@ command-line bibliography managenent tool. Aims:
 Why not JabRef, Zotero or Mendeley (or...) ?
 --------------------------------------------
 - JabRef (2.10) is nice, light-weight, but is not so good at managing PDFs.
-- Zotero (5.0) features good PDF import capability, but it needs to be manually one by one and is a little slow .
-- Mendeley (1.17) is perfect at extracting metadata from PDF and managing your PDF library, 
+- Zotero (5.0) features excellent PDF import capability, but it needs to be manually one by one and is a little slow .
+- Mendeley (1.17) is perfect at automatically extracting metadata from downloaded PDF and managing your PDF library, 
 but it is not open source, and many issues remain (own experience, Ubuntu 14.04, Desktop Version 1.17):
     - very unstable
     - PDF automatic naming is too verbose, and sometimes the behaviour is unexpected (some PDFs remain in on obscure Downloaded folder, instead of in the main collection)

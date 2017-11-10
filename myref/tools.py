@@ -108,19 +108,6 @@ def readpdf(pdf, first=None, last=None, keeptxt=False):
     return txt
 
 
-def extract_doi(pdf, space_digit=True):
-    txt = readpdf(pdf, first=1, last=1)
-
-    try:
-        doi = parse_doi(txt, space_digit=space_digit)
-
-    except ValueError:
-        # sometimes first page is blank
-        txt = readpdf(pdf, first=2, last=2)
-        doi = parse_doi(txt, space_digit=space_digit)
-
-    return doi
-
 def parse_doi(txt, space_digit=False):
     # cut the reference part...
 
@@ -168,6 +155,79 @@ def isvaliddoi(doi):
     return doi == doi2
 
 
+def pdfhead(pdf, maxpages=10, minwords=200):
+    """ read pdf header
+    """
+    i = 0
+    txt = ''
+    while len(txt.strip().split()) < minwords and i < maxpages:
+        i += 1
+        logging.debug('read pdf page: '+str(i))
+        txt += readpdf(pdf, first=i, last=i)
+    return txt
+
+
+def extract_doi(pdf, space_digit=True):
+    return parse_doi(pdfhead(pdf), space_digit=space_digit)
+
+
+def query_text(txt, max_query_words=200):
+    # list of paragraphs
+    paragraphs = re.split(r"\n\n", txt)
+ 
+    # remove anything that starts with 'reference'   
+    query = []
+    for p in paragraphs:
+        if p.lower().startswith('reference'):
+            continue
+        query.append(p)
+
+    query_txt = ' '.join(query)
+
+    # limit overall length
+    query_txt = ' '.join(query_txt.strip().split()[:max_query_words])
+
+    assert len(query_txt.split()) >= 3, 'needs at least 3 query words, got: '+repr(query_txt)
+    return query_txt
+
+
+def extract_txt_metadata(txt, search_doi=True, search_fulltext=False, space_digit=True, max_query_words=200):
+    """extract metadata from text, by parsing and doi-query, or by fulltext query in google scholar
+    """
+    assert search_doi or search_fulltext, 'no search criteria specified for metadata'
+
+    bibtex = None
+
+    if search_doi:
+        try:
+            logging.debug('parse doi')
+            doi = parse_doi(txt, space_digit=space_digit)
+            logging.info('found doi:'+doi)
+            logging.debug('query bibtex by doi')
+            bibtex = fetch_bibtex_by_doi(doi)
+            logging.debug('doi query successful')
+
+        except ValueError as error:
+            logging.debug(u'failed to obtained bibtex by doi search: '+str(error))
+
+    if search_fulltext and not bibtex:
+        logging.debug('query bibtex by fulltext')
+        query_txt = query_text(txt, max_query_words)
+        bibtex = fetch_bibtex_by_fulltext(query_txt)
+        logging.debug('fulltext query successful')
+
+    if not bibtex:
+        raise ValueError('failed to extract metadata')
+
+    return bibtex
+
+
+def extract_pdf_metadata(pdf, search_doi=True, search_fulltext=True, maxpages=10, minwords=200, **kw):
+    txt = pdfhead(pdf, maxpages, minwords)
+    return extract_txt_metadata(txt, search_doi, search_fulltext, **kw)
+
+
+
 def ask_doi(max=3):
     doi = raw_input('doi : ')
     count = 1
@@ -179,17 +239,25 @@ def ask_doi(max=3):
     return doi
 
 
-def cached(file):
+def cached(file, hashed_key=False):
     def decorator(fun):
         if os.path.exists(file):
             cache = json.load(open(file))
         else:
             cache = {}
         def decorated(doi):
-            if doi in cache:
-                return cache[doi]
+            if hashed_key: # use hashed parameter as key (for full text query)
+                if six.PY3:
+                    key = hashlib.sha256(doi.encode('utf-8')).hexdigest()[:6]
+                else:
+                    key = hashlib.sha256(doi).hexdigest()[:6]
             else:
-                res = cache[doi] = fun(doi)
+                key = doi
+            if key in cache:
+                logging.debug('load from cache: '+repr((file, key)))
+                return cache[key]
+            else:
+                res = cache[key] = fun(doi)
                 if not DRYRUN:
                     json.dump(cache, open(file,'w'))
             return res
@@ -214,6 +282,56 @@ def fetch_json_by_doi(doi):
     if six.PY3:
         jsontxt = jsontxt.decode()
     return jsontxt.dumps(json)
+
+
+def _get_page_fast(pagerequest):
+    """Return the data for a page on scholar.google.com"""
+    import scholarly
+    resp = scholarly._SESSION.get(pagerequest, headers=scholarly._HEADERS, cookies=scholarly._COOKIES)
+    if resp.status_code == 200:
+        return resp.text
+    else:
+        raise Exception('Error: {0} {1}'.format(resp.status_code, resp.reason))
+
+
+def _score_scholar(txt, bib):
+    # high score means high similarity
+    from fuzzywuzzy.fuzz import token_set_ratio
+    return sum([token_set_ratio(bib[k], txt) for k in ['title', 'author', 'abstract'] if k in bib])
+
+@cached(os.path.join(config.cache, 'scholar-bibtex.json'), hashed_key=True)
+def fetch_bibtex_by_fulltext(txt, assess_results=True):
+    import scholarly
+    scholarly._get_page = _get_page_fast  # remove waiting time
+    logging.debug(txt)
+    search_query = scholarly.search_pubs_query(txt)
+
+    # get the most likely match of the first results
+    results = list(search_query)
+    if len(results) > 1 and assess_results:
+        maxscore = 0
+        result = results[0]
+        for res in results:
+            score = _score_scholar(txt, res.bib)
+            if score > maxscore:
+                maxscore = score
+                result = res
+    else:
+        result = results[0]
+
+    # use url_scholarbib to get bibtex from google
+    if getattr(result, 'url_scholarbib', ''):
+        bibtex = scholarly._get_page(result.url_scholarbib).strip()
+    else:
+        raise NotImplementedError('no bibtex import linke. Make crossref request using title?')
+    return bibtex
+
+# url = "http://api.crossref.org/works/"+doi+"/transform/application/x-bibtex"
+    # response = six.moves.urllib.request.urlopen(url)
+    # bibtex = response.read()
+    # if six.PY3:
+        # bibtex = bibtex.decode()
+    return bibtex.strip()
 
 
 def json_to_bibtex(js):

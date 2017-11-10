@@ -14,14 +14,13 @@ import difflib
 import bibtexparser
 
 import myref
-from myref.tools import (bcolors, move, extract_doi, fetch_bibtex_by_doi, isvaliddoi, checksum)
+from myref.tools import (bcolors, move, extract_doi, fetch_bibtex_by_doi, isvaliddoi, checksum, extract_pdf_metadata)
 from myref.config import config
 from myref.conflict import (merge_files, merge_entries, parse_file, format_file,
     handle_merge_conflict, search_duplicates, choose_entry_interactive, unique)
 
 DRYRUN = False
-
-
+ 
 
 # Parse / format bibtex file entry
 # ================================
@@ -250,13 +249,10 @@ class MyRef(object):
         self.add_bibtex(bibtex, **kw)
 
 
-    def add_pdf(self, pdf, attachments=None, rename=False, copy=False, space_digit=True, **kw):
+    def add_pdf(self, pdf, attachments=None, rename=False, copy=False, search_doi=True, search_fulltext=True, space_digit=True, **kw):
+        
+        bibtex = extract_pdf_metadata(pdf, search_doi, search_fulltext, space_digit=space_digit)
 
-        doi = extract_doi(pdf, space_digit=space_digit)
-        logging.info('found doi:'+doi)
-
-        # get bib tex based on doi
-        bibtex = fetch_bibtex_by_doi(doi)
         bib = bibtexparser.loads(bibtex)
         entry = bib.entries[0]
 
@@ -273,7 +269,8 @@ class MyRef(object):
             self.rename_entry_files(entry, copy=copy)
             
 
-    def scan_dir(self, direc, **kw):
+    def scan_dir(self, direc, search_doi=True, search_fulltext=True, **kw):
+        
         for root, direcs, files in os.walk(direc):
             dirname = os.path.basename(root)
             if dirname.startswith('.'): continue
@@ -282,7 +279,7 @@ class MyRef(object):
                 path = os.path.join(root, file)
                 try:
                     if file.endswith('.pdf'): 
-                        self.add_pdf(path, **kw)
+                        self.add_pdf(path, search_doi=search_doi, search_fulltext=search_fulltext, **kw)
                     elif file.endswith('.bib'):
                         self.add_bibtex_file(path, **kw)
                 except Exception as error:
@@ -587,7 +584,15 @@ def main():
 
     # configuration (re-used everywhere)
     # =============
-    cfg = argparse.ArgumentParser(add_help=False)
+    loggingp = argparse.ArgumentParser(add_help=False)
+    grp = loggingp.add_argument_group('logging level (default warn)')
+    egrp = grp.add_mutually_exclusive_group()
+    egrp.add_argument('--debug', action='store_const', dest='logging_level', const=logging.DEBUG)
+    egrp.add_argument('--info', action='store_const', dest='logging_level', const=logging.INFO)
+    egrp.add_argument('--warn', action='store_const', dest='logging_level', const=logging.WARN)
+    egrp.add_argument('--error', action='store_const', dest='logging_level', const=logging.ERROR)
+
+    cfg = argparse.ArgumentParser(add_help=False, parents=[loggingp])
     grp = cfg.add_argument_group('config')
     grp.add_argument('--filesdir', default=config.filesdir, 
         help='files directory (default: %(default)s)')
@@ -595,12 +600,6 @@ def main():
         help='bibtex database (default: %(default)s)')
     grp.add_argument('--dry-run', action='store_true', 
         help='no PDF renaming/copying, no bibtex writing on disk (for testing)')
-    grp = cfg.add_argument_group('logging level (default warn)')
-    egrp = grp.add_mutually_exclusive_group()
-    egrp.add_argument('--debug', action='store_const', dest='logging_level', const=logging.DEBUG)
-    egrp.add_argument('--info', action='store_const', dest='logging_level', const=logging.INFO)
-    egrp.add_argument('--warn', action='store_const', dest='logging_level', const=logging.WARN)
-    egrp.add_argument('--error', action='store_const', dest='logging_level', const=logging.ERROR)
 
     # status
     # ======
@@ -740,18 +739,21 @@ def main():
     #     help='safe mode: always throw an error if anything strange is detected')
     grp.add_argument('-f', '--force', action='store_true', help='no interactive')
     grp.add_argument('-u','--update-key', action='store_true', 
-        help='always update imported key in case an existing file with same DOI is detected')
+        help='always update imported key in case an existing bibtex file with same DOI is detected')
     grp.add_argument('-m', '--mode', default='r', choices=['a', 'o', 'm', 's'],
         help='force mode: in case of conflict, the default is to raise an exception, \
         unless "mode" is set to (a)ppend anyway, (o)verwrite, (m)erge  or (s)skip key.')
 
-    addp.add_argument('--recursive', action='store_true', 
+    grp = addp.add_argument_group('directory scan')
+    grp.add_argument('--recursive', action='store_true', 
         help='accept directory as argument, for recursive scan \
         of .pdf files (bibtex files are ignored in this mode')
-    addp.add_argument('--ignore-errors', action='store_true', 
+    grp.add_argument('--ignore-errors', action='store_true', 
         help='ignore errors when adding multiple files')
 
-
+    grp = addp.add_argument_group('pdf metadata')
+    grp.add_argument('--no-query-doi', action='store_true', help='do not attempt to parse and query doi')
+    grp.add_argument('--no-query-fulltext', action='store_true', help='do not attempt to query fulltext in case doi query fails')
 
     grp = addp.add_argument_group('attached files')
     grp.add_argument('-a','--attachment', nargs='+', help=argparse.SUPPRESS) #'supplementary material')
@@ -785,12 +787,18 @@ def main():
             try:
                 if os.path.isdir(file):
                     if o.recursive:
-                        my.scan_dir(file, rename=o.rename, copy=o.copy, **kw)
+                        my.scan_dir(file, rename=o.rename, copy=o.copy, 
+                            search_doi=not o.no_query_doi,
+                            search_fulltext=not o.no_query_fulltext,
+                              **kw)
                     else:
                         raise ValueError(file+' is a directory, requires --recursive to explore')
 
                 elif file.endswith('.pdf'):
-                    my.add_pdf(file, attachments=o.attachment, rename=o.rename, copy=o.copy, **kw)
+                    my.add_pdf(file, attachments=o.attachment, rename=o.rename, copy=o.copy, 
+                            search_doi=not o.no_query_doi,
+                            search_fulltext=not o.no_query_fulltext, 
+                            **kw)
 
                 else: # file.endswith('.bib'):
                     my.add_bibtex_file(file, **kw)
@@ -1009,6 +1017,16 @@ def main():
         print(fetch_bibtex_by_doi(o.doi))
 
 
+    # scholar
+    # ======= 
+    scholarp = subparsers.add_parser('scholar', description='fulltext query to google scholar', parents=[loggingp])
+    scholarp.add_argument('pdf')
+    scholarp.add_argument('-n', '--word-count', type=int, default=100)
+
+    def scholarcmd(o):
+        print(extract_pdf_metadata(o.pdf, search_doi=False, search_fulltext=True, minwords=o.word_count, max_query_words=o.word_count))
+        # print(fetch_bibtex_by_doi(o.doi))
+
     # *** Pure OS related file checks ***
 
     # undo
@@ -1082,6 +1100,8 @@ def main():
         doicmd(o)
     elif o.cmd == 'fetch':
         fetchcmd(o)
+    elif o.cmd == 'scholar':
+        scholarcmd(o)
     else:
         raise ValueError('this is a bug')
 

@@ -129,12 +129,16 @@ class TestAdd(unittest.TestCase):
         # sp.check_call('myref install --local --bibtex {} --filesdir {}'.format(self.mybib, self.filesdir), shell=True)
         self.assertTrue(os.path.exists(self.mybib))
 
-    def _checkbib(self):
+    def _checkbib(self, doi_only=False):
         db1 = bibtexparser.load(open(self.mybib))
         self.assertTrue(len(db1.entries) > 0)
         file = db1.entries[0].pop('file').strip()
         db2 = bibtexparser.loads(self.bibtex)
-        self.assertEqual(db1.entries, db2.entries) # entry is as expected
+        if doi_only:
+            # self.assertEqual([e['doi'] for e in db1.entries], [e['doi'] for e in db2.entries]) # entry is as expected
+            self.assertEqual([e['title'].lower() for e in db1.entries], [e['title'].lower() for e in db2.entries]) # entry is as expected
+        else:
+            self.assertEqual(db1.entries, db2.entries) # entry is as expected
         return file
 
     def _checkfile(self, file):
@@ -159,6 +163,17 @@ class TestAdd(unittest.TestCase):
         file_ = self._checkbib()
         file = self._checkfile(file_)
         self.assertEqual(file, self.pdf)
+        # self.assertTrue(os.path.exists(self.pdf)) # old pdf still exists
+
+
+    # def test_add_fulltext(self):
+    #     # self.assertTrue(os.path.exists(self.mybib))
+    #     sp.check_call('myref add --no-query-doi --bibtex {} {}'.format(
+    #         self.mybib, self.pdf), shell=True)
+
+    #     file_ = self._checkbib(doi_only=True)
+    #     file = self._checkfile(file_)
+    #     self.assertEqual(file, self.pdf)
         # self.assertTrue(os.path.exists(self.pdf)) # old pdf still exists
 
 
