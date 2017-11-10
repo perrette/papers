@@ -51,6 +51,34 @@ if six.PY2:
     bibtexparser.dumps = lambda db: _bdumps(db).encode('utf-8')
 
 
+def hidden_bibtex(direc):
+    " save metadata for a bundle of files "
+    dirname = os.path.basename(direc)
+    return os.path.join(direc, '.'+dirname+'.bib')
+
+
+def read_entry_dir(self, direc, update_files=True):
+    """add a directory that contain files from a single entry
+    """
+    dirname = os.path.basename(direc)
+    hidden_bib = hidden_bibtex(direc)
+    if not os.path.exists(hidden_bib):
+        raise TypeError('hidden bib missing: not an entry dir')
+
+    db = bibtexparser.loads(open(hidden_bib).read())
+    assert len(db.entries) == 1, 'hidden bib must have one entry, got: '+str(len(db.entries))
+    entry = db.entries[0]
+
+    if update_files:
+        for root, direcs, files in os.walk(direc):
+            break # do not look further in subdirectories, cause any rename would flatten the tree
+        files = [os.path.join(direc, file) for file in files if not file.startswith('.')]
+
+    entry['file'] = format_file(files)
+    return entry
+
+
+
 def backupfile(bibtex):
     return os.path.join(os.path.dirname(bibtex), '.'+os.path.basename(bibtex)+'.backup')
 
@@ -275,7 +303,20 @@ class MyRef(object):
             dirname = os.path.basename(root)
             if dirname.startswith('.'): continue
             if dirname.startswith('_'): continue
+        
+            # maybe a special entry directory?
+            if os.path.exists(hidden_bibtex(root)):
+                try:
+                    entry = read_entry_dir(root)
+                    self.insert_entry(entry, **kw)
+                except Exception:  
+                    logging.warn(root+'::'+str(error))
+                continue 
+
+
             for file in files:
+                if file.startswith('.'):
+                    continue
                 path = os.path.join(root, file)
                 try:
                     if file.endswith('.pdf'): 
@@ -426,6 +467,8 @@ class MyRef(object):
                 move(file, newfile, copy)
                 count += 1
             newfiles = [newfile]
+            setentryfiles(e, newfiles)
+
 
         # several files: only rename container
         else:
@@ -439,8 +482,26 @@ class MyRef(object):
                     move(file, newfile, copy)
                     count += 1
                 newfiles.append(newfile)
+            setentryfiles(e, newfiles)
 
-        setentryfiles(e, newfiles)
+            # create hidden bib entry for special dir
+            bibname = hidden_bibtex(newdir)
+            db = bibtexparser.loads('')
+            db.entries.append(e)
+            bibtex = bibtexparser.dumps(db)
+            with open(bibname,'w') as f:
+                f.write(bibtex)
+
+            # remove old direc if empty?
+            direcs = unique([os.path.dirname(file) for file in files])
+            if len(direcs) == 1:
+                leftovers = os.listdir(direcs[0])
+                if not leftovers or len(leftovers) == 1 and leftovers[0] == os.path.basename(hidden_bibtex(direcs[0])):
+                    logging.debug('remove tree: '+direcs[0])
+                    shutil.rmtree(direcs[0])
+            else:
+                logging.debug('some left overs, do not remove tree: '+direcs[0])
+
         if count > 0:
             logging.info('renamed file(s): {}'.format(count))
 
@@ -552,7 +613,7 @@ def entry_filecheck(e, delete_broken=False, fix_mendeley=False,
 
         elif check_hash:
             # hash_ = hashlib.sha256(open(file, 'rb').read()).digest()
-            hash_ = checksum(file) # a little faster
+            hash_ = checksum(file) # a litftle faster
             if hash_ in hashes:
                 logging.info(e['ID']+': file already exists (identical checksum): "{}"'.format(file))
                 continue
