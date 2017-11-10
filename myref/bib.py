@@ -716,7 +716,8 @@ def main():
         if my is not None:
             my.save(o.bibtex)
         # commit when operated on the default bibtex file provided during installation
-        if config.git and os.path.samefile(config.bibtex, o.bibtex):
+        # if config.git and os.path.samefile(config.bibtex, o.bibtex):
+        if config.git and os.path.realpath(config.bibtex) == os.path.realpath(o.bibtex):
             config.bibtex = o.bibtex
             config.gitcommit()
 
