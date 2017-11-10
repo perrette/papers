@@ -125,7 +125,9 @@ class TestAdd(unittest.TestCase):
         self.pdf, self.doi, self.key, self.year, self.bibtex = prepare_paper()
         self.mybib = tempfile.mktemp(prefix='myref.bib')
         self.filesdir = tempfile.mktemp(prefix='myref.files')
-        sp.check_call('myref install --local --bibtex {} --files {}'.format(self.mybib, self.filesdir), shell=True)
+        open(self.mybib, 'w').write('')
+        # sp.check_call('myref install --local --bibtex {} --filesdir {}'.format(self.mybib, self.filesdir), shell=True)
+        self.assertTrue(os.path.exists(self.mybib))
 
     def _checkbib(self):
         db1 = bibtexparser.load(open(self.mybib))
@@ -150,7 +152,7 @@ class TestAdd(unittest.TestCase):
 
 
     def test_add(self):
-
+        # self.assertTrue(os.path.exists(self.mybib))
         sp.check_call('myref add --force --bibtex {} {}'.format(
             self.mybib, self.pdf), shell=True)
 
@@ -200,7 +202,8 @@ class TestAdd2(TestAdd):
         self.pdf, self.si, self.doi, self.key, self.year, self.bibtex = prepare_paper2()
         self.mybib = tempfile.mktemp(prefix='myref.bib')
         self.filesdir = tempfile.mktemp(prefix='myref.files')
-        sp.check_call('myref install --local --bibtex {} --files {}'.format(self.mybib, self.filesdir), shell=True)
+        # sp.check_call('myref install --local --bibtex {} --filesdir {}'.format(self.mybib, self.filesdir), shell=True)
+        open(self.mybib, 'w').write('')
 
     def test_add_attachment(self):
         sp.check_call('myref add -rc --bibtex {} --filesdir {} {} -a {}'.format(
@@ -297,7 +300,8 @@ class BibTest(unittest.TestCase):
         self.filesdir = tempfile.mktemp(prefix='myref.files')
         self.otherbib = tempfile.mktemp(prefix='myref.otherbib')
         # self.my = MyRef.newbib(self.mybib, self.filesdir)
-        sp.check_call('myref install --local --bibtex {} --files {}'.format(self.mybib, self.filesdir), shell=True)
+        # sp.check_call('myref install --local --bibtex {} --files {}'.format(self.mybib, self.filesdir), shell=True)
+        open(self.mybib, 'w').write('')
 
     def tearDown(self):
         os.remove(self.mybib)
@@ -467,6 +471,9 @@ class TestAddConflict(BibTest):
 
     def tearDown(self):
         pass
+
+
+
 
 
 if __name__ == '__main__':
