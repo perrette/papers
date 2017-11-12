@@ -54,6 +54,15 @@ Dependencies
 - [bibtexparser](https://bibtexparser.readthedocs.io/en/v0.6.2)
     - pip install bibtexparser
 
+- [crossrefapi](https://github.com/fabiobatalha/crossrefapi) : make polite requests to crossref API
+    - pip install crossrefapi
+
+- [scholarly](https://github.com/OrganicIrradiation/scholarly) : interface for google scholar
+    - pip install scholarly
+
+- [fuzzywuzzy](https://github.com/seatgeek/fuzzywuzzy) : calculate score to sort crossref requests
+    - pip install fuzzywuzzy
+
 
 Install
 -------
@@ -78,7 +87,7 @@ For the sake of the example, one of my owns: https://www.earth-syst-dynam.net/4/
             month = {jan},
             publisher = {Copernicus {GmbH}},
             volume = {4},
-            number = {1},
+            number = {1},   
             pages = {11--29},
             author = {M. Perrette and F. Landerer and R. Riva and K. Frieler and M. Meinshausen},
             title = {A scaling approach to project regional sea level rise and its uncertainties},
@@ -134,6 +143,7 @@ Current features
 ----------------
 - parse PDF to extract DOI
 - fetch bibtex entry from DOI (using crossref API)
+- fetch bibtex entry by fulltext search (using crossref API or google scholar)
 - create and maintain bibtex file
 - add entry as PDF (`myref add ...`)
 - add entry as bibtex (`myref add ...`)
@@ -154,7 +164,6 @@ Current features
         - latex characters, e.g. `{\_}` or `{\'{e}}` replaced with unicode
 
 
-
 Planned features
 ----------------
 Mostly related to bibliography management:
@@ -163,12 +172,6 @@ Mostly related to bibliography management:
 - better handling of attachment / multiple files
 - key generation
 
-As well as:
-- parse other info (author name, year) from PDF, especially for old papers
-    - maybe worthwhile to look into crossref's parser written in Ruby
-- fetch bibtex from alternative info (author name, year...), especially for old papers
-    - this is currently possible with the standard crossref API (and nice python package [crossrefapi](https://github.com/fabiobatalha/crossrefapi)), but the result is `json`    - not sure how to convert the json result `into` a `bibtex` file in the general case
-    - for recent papers with DOI, a second request can be made, as workaround, but this feature is mostly inteded for old papers without DOI.
 
 All this in a set of planned commands:
 - `myref addone (-k KEY | --auto-key) [--no-check] --author NAME --year YEAR [--file FILE [FILE...]] ...` : manually add one new entry (for the sake of completeness) 
