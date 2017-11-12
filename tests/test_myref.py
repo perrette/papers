@@ -135,8 +135,8 @@ class TestAdd(unittest.TestCase):
         file = db1.entries[0].pop('file').strip()
         db2 = bibtexparser.loads(self.bibtex)
         if doi_only:
-            # self.assertEqual([e['doi'] for e in db1.entries], [e['doi'] for e in db2.entries]) # entry is as expected
-            self.assertEqual([e['title'].lower() for e in db1.entries], [e['title'].lower() for e in db2.entries]) # entry is as expected
+            self.assertEqual([e['doi'] for e in db1.entries], [e['doi'] for e in db2.entries]) # entry is as expected
+            # self.assertEqual([e['title'].lower() for e in db1.entries], [e['title'].lower() for e in db2.entries]) # entry is as expected
         else:
             self.assertEqual(db1.entries, db2.entries) # entry is as expected
         return file

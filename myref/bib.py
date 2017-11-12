@@ -277,9 +277,9 @@ class MyRef(object):
         self.add_bibtex(bibtex, **kw)
 
 
-    def add_pdf(self, pdf, attachments=None, rename=False, copy=False, search_doi=True, search_fulltext=True, space_digit=True, **kw):
+    def add_pdf(self, pdf, attachments=None, rename=False, copy=False, search_doi=True, search_fulltext=True, space_digit=True, scholar=False, **kw):
         
-        bibtex = extract_pdf_metadata(pdf, search_doi, search_fulltext, space_digit=space_digit)
+        bibtex = extract_pdf_metadata(pdf, search_doi, search_fulltext, space_digit=space_digit, scholar=scholar)
 
         bib = bibtexparser.loads(bibtex)
         entry = bib.entries[0]
@@ -815,6 +815,7 @@ def main():
     grp = addp.add_argument_group('pdf metadata')
     grp.add_argument('--no-query-doi', action='store_true', help='do not attempt to parse and query doi')
     grp.add_argument('--no-query-fulltext', action='store_true', help='do not attempt to query fulltext in case doi query fails')
+    grp.add_argument('--scholar', action='store_true', help='use google scholar instead of crossref')
 
     grp = addp.add_argument_group('attached files')
     grp.add_argument('-a','--attachment', nargs='+', help=argparse.SUPPRESS) #'supplementary material')
@@ -859,6 +860,7 @@ def main():
                     my.add_pdf(file, attachments=o.attachment, rename=o.rename, copy=o.copy, 
                             search_doi=not o.no_query_doi,
                             search_fulltext=not o.no_query_fulltext, 
+                            scholar=o.scholar, 
                             **kw)
 
                 else: # file.endswith('.bib'):
@@ -1078,15 +1080,16 @@ def main():
         print(fetch_bibtex_by_doi(o.doi))
 
 
-    # fulltext
+    # extract
     # ========
-    fulltextp = subparsers.add_parser('fulltext', description='fulltext query', parents=[loggingp])
-    fulltextp.add_argument('pdf')
-    fulltextp.add_argument('-n', '--word-count', type=int, default=200)
-    fulltextp.add_argument('--scholar', action='store_true', help='use google scholar instead of default crossref')
+    extractp = subparsers.add_parser('extract', description='extract pdf metadata', parents=[loggingp])
+    extractp.add_argument('pdf')
+    extractp.add_argument('-n', '--word-count', type=int, default=200)
+    extractp.add_argument('--fulltext', action='store_true', help='fulltext only (otherwise DOI-based)')
+    extractp.add_argument('--scholar', action='store_true', help='use google scholar instead of default crossref for fulltext search')
 
-    def fulltextcmd(o):
-        print(extract_pdf_metadata(o.pdf, search_doi=False, search_fulltext=True, scholar=o.scholar, minwords=o.word_count, max_query_words=o.word_count))
+    def extractcmd(o):
+        print(extract_pdf_metadata(o.pdf, search_doi=not o.fulltext, search_fulltext=True, scholar=o.scholar, minwords=o.word_count, max_query_words=o.word_count))
         # print(fetch_bibtex_by_doi(o.doi))
 
     # *** Pure OS related file checks ***
@@ -1162,8 +1165,8 @@ def main():
         doicmd(o)
     elif o.cmd == 'fetch':
         fetchcmd(o)
-    elif o.cmd == 'fulltext':
-        fulltextcmd(o)
+    elif o.cmd == 'extract':
+        extractcmd(o)
     else:
         raise ValueError('this is a bug')
 

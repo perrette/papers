@@ -68,14 +68,9 @@ This tool's interface is built like `git`, with main command `myref` and a range
 Start with PDF of your choice (modern enough to have a DOI, e.g. anything from the Copernicus publications). 
 For the sake of the example, one of my owns: https://www.earth-syst-dynam.net/4/11/2013/esd-4-11-2013.pdf
 
-- parse doi
+- extract pdf metadata (doi-based if available, otherwise crossref, or google scholar if so specified)
 
-        $> myref doi esd-4-11-2013.pdf    
-        10.5194/esd-4-11-2013
-    
-- fetch bibtex based on doi
-
-        $> myref fetch 10.5194/esd-4-11-2013
+        $> myref extract esd-4-11-2013.pdf
         @article{Perrette_2013,
             doi = {10.5194/esd-4-11-2013},
             url = {https://doi.org/10.5194%2Fesd-4-11-2013},
