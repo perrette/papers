@@ -1078,14 +1078,15 @@ def main():
         print(fetch_bibtex_by_doi(o.doi))
 
 
-    # scholar
-    # ======= 
-    scholarp = subparsers.add_parser('scholar', description='fulltext query to google scholar', parents=[loggingp])
-    scholarp.add_argument('pdf')
-    scholarp.add_argument('-n', '--word-count', type=int, default=100)
+    # fulltext
+    # ========
+    fulltextp = subparsers.add_parser('fulltext', description='fulltext query', parents=[loggingp])
+    fulltextp.add_argument('pdf')
+    fulltextp.add_argument('-n', '--word-count', type=int, default=200)
+    fulltextp.add_argument('--scholar', action='store_true', help='use google scholar instead of default crossref')
 
-    def scholarcmd(o):
-        print(extract_pdf_metadata(o.pdf, search_doi=False, search_fulltext=True, minwords=o.word_count, max_query_words=o.word_count))
+    def fulltextcmd(o):
+        print(extract_pdf_metadata(o.pdf, search_doi=False, search_fulltext=True, scholar=o.scholar, minwords=o.word_count, max_query_words=o.word_count))
         # print(fetch_bibtex_by_doi(o.doi))
 
     # *** Pure OS related file checks ***
@@ -1161,8 +1162,8 @@ def main():
         doicmd(o)
     elif o.cmd == 'fetch':
         fetchcmd(o)
-    elif o.cmd == 'scholar':
-        scholarcmd(o)
+    elif o.cmd == 'fulltext':
+        fulltextcmd(o)
     else:
         raise ValueError('this is a bug')
 

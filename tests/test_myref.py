@@ -166,15 +166,15 @@ class TestAdd(unittest.TestCase):
         # self.assertTrue(os.path.exists(self.pdf)) # old pdf still exists
 
 
-    # def test_add_fulltext(self):
-    #     # self.assertTrue(os.path.exists(self.mybib))
-    #     sp.check_call('myref add --no-query-doi --bibtex {} {}'.format(
-    #         self.mybib, self.pdf), shell=True)
+    def test_add_fulltext(self):
+        # self.assertTrue(os.path.exists(self.mybib))
+        sp.check_call('myref add --no-query-doi --bibtex {} {}'.format(
+            self.mybib, self.pdf), shell=True)
 
-    #     file_ = self._checkbib(doi_only=True)
-    #     file = self._checkfile(file_)
-    #     self.assertEqual(file, self.pdf)
-        # self.assertTrue(os.path.exists(self.pdf)) # old pdf still exists
+        file_ = self._checkbib(doi_only=True)
+        file = self._checkfile(file_)
+        self.assertEqual(file, self.pdf)
+        self.assertTrue(os.path.exists(self.pdf)) # old pdf still exists
 
 
     def test_add_rename_copy(self):

@@ -8,8 +8,13 @@ import subprocess as sp
 import six.moves.urllib.request
 import re
 import hashlib
+from crossref.restful import Works, Etiquette
+import bibtexparser
 
+import myref
 from myref.config import config
+
+my_etiquette = Etiquette('myref', myref.__version__, 'https://github.com/perrette/myref', 'mahe.perrette@gmail.com')
 
 DRYRUN = False
 
@@ -191,7 +196,7 @@ def query_text(txt, max_query_words=200):
     return query_txt
 
 
-def extract_txt_metadata(txt, search_doi=True, search_fulltext=False, space_digit=True, max_query_words=200):
+def extract_txt_metadata(txt, search_doi=True, search_fulltext=False, space_digit=True, max_query_words=200, scholar=False):
     """extract metadata from text, by parsing and doi-query, or by fulltext query in google scholar
     """
     assert search_doi or search_fulltext, 'no search criteria specified for metadata'
@@ -213,7 +218,10 @@ def extract_txt_metadata(txt, search_doi=True, search_fulltext=False, space_digi
     if search_fulltext and not bibtex:
         logging.debug('query bibtex by fulltext')
         query_txt = query_text(txt, max_query_words)
-        bibtex = fetch_bibtex_by_fulltext(query_txt)
+        if scholar:
+            bibtex = fetch_bibtex_by_fulltext_scholar(query_txt)
+        else:
+            bibtex = fetch_bibtex_by_fulltext_crossref(query_txt)
         logging.debug('fulltext query successful')
 
     if not bibtex:
@@ -268,19 +276,16 @@ def cached(file, hashed_key=False):
 @cached(os.path.join(config.cache, 'crossref-bibtex.json'))
 def fetch_bibtex_by_doi(doi):
     url = "http://api.crossref.org/works/"+doi+"/transform/application/x-bibtex"
-    response = six.moves.urllib.request.urlopen(url)
-    bibtex = response.read()
-    if six.PY3:
-        bibtex = bibtex.decode()
+    work = Works(etiquette=my_etiquette)
+    bibtex = work.do_http_request('get', url, custom_header=str(work.etiquette)).text
     return bibtex.strip()
+
 
 @cached(os.path.join(config.cache, 'crossref.json'))
 def fetch_json_by_doi(doi):
     url = "http://api.crossref.org/works/"+doi+"/transform/application/json"
-    response = six.moves.urllib.request.urlopen(url)
-    jsontxt = response.read()
-    if six.PY3:
-        jsontxt = jsontxt.decode()
+    work = Works(etiquette=my_etiquette)
+    jsontxt = work.do_http_request('get', url, custom_header=str(work.etiquette)).text
     return jsontxt.dumps(json)
 
 
@@ -294,13 +299,14 @@ def _get_page_fast(pagerequest):
         raise Exception('Error: {0} {1}'.format(resp.status_code, resp.reason))
 
 
-def _score_scholar(txt, bib):
+def _scholar_score(txt, bib):
     # high score means high similarity
     from fuzzywuzzy.fuzz import token_set_ratio
     return sum([token_set_ratio(bib[k], txt) for k in ['title', 'author', 'abstract'] if k in bib])
 
+
 @cached(os.path.join(config.cache, 'scholar-bibtex.json'), hashed_key=True)
-def fetch_bibtex_by_fulltext(txt, assess_results=True):
+def fetch_bibtex_by_fulltext_scholar(txt, assess_results=True):
     import scholarly
     scholarly._get_page = _get_page_fast  # remove waiting time
     logging.debug(txt)
@@ -312,7 +318,7 @@ def fetch_bibtex_by_fulltext(txt, assess_results=True):
         maxscore = 0
         result = results[0]
         for res in results:
-            score = _score_scholar(txt, res.bib)
+            score = _scholar_score(txt, res.bib)
             if score > maxscore:
                 maxscore = score
                 result = res
@@ -326,20 +332,105 @@ def fetch_bibtex_by_fulltext(txt, assess_results=True):
         raise NotImplementedError('no bibtex import linke. Make crossref request using title?')
     return bibtex
 
-# url = "http://api.crossref.org/works/"+doi+"/transform/application/x-bibtex"
-    # response = six.moves.urllib.request.urlopen(url)
-    # bibtex = response.read()
-    # if six.PY3:
-        # bibtex = bibtex.decode()
-    return bibtex.strip()
 
 
-def json_to_bibtex(js):
-    raise NotImplementedError()
+def _crossref_get_author(res, sep=u'; '):
+    return sep.join([p.get('given','') + p['family'] for p in res.get('author',[]) if 'family' in p])
 
-def bibtex_to_json(js):
-    raise NotImplementedError()
 
+def _crossref_score(txt, r):
+    # high score means high similarity
+    from fuzzywuzzy.fuzz import token_set_ratio
+    score = 0
+    if 'author' in r:
+        author = ' '.join([p['family'] for p in r.get('author',[]) if 'family' in p])
+        score += token_set_ratio(author, txt)
+    if 'title' in r:
+        score += token_set_ratio(r['title'][0], txt)
+    if 'abstract' in r:
+        score += token_set_ratio(r['abstract'], txt)
+    return score
+
+
+def crossref_to_bibtex(r):
+    """convert crossref result to bibtex
+    """
+    bib = {}
+
+    if 'author' in r:
+        family = lambda p: p['family'] if len(p['family'].split()) == 1 else u'{'+p['family']+u'}'
+        bib['author'] = ' and '.join([p.get('given','') + ' '+ family(p)
+            for p in r.get('author',[]) if 'family' in p])
+
+    # for k in ['issued','published-print', 'published-online']:
+    k = 'issued'
+    if k in r and 'date-parts' in r[k] and len(r[k]['date-parts'])>0:
+        date = r[k]['date-parts'][0]
+        bib['year'] = str(date[0])
+        if len(date) >= 2:
+            bib['month'] = str(date[1])
+        # break
+
+    if 'DOI' in r: bib['doi'] = r['DOI']
+    if 'URL' in r: bib['url'] = r['URL']
+    if 'title' in r: bib['title'] = r['title'][0]
+    if 'container-title' in r: bib['journal'] = r['container-title'][0]
+    if 'volume' in r: bib['volume'] = r['volume']
+    if 'issue' in r: bib['number'] = r['issue']
+    if 'page' in r: bib['pages'] = r['page']
+    if 'publisher' in r: bib['publisher'] = r['publisher']
+
+    # entry type
+    type = bib.get('type','journal-article')
+    type_mapping = {'journal-article':'article'}
+    bib['ENTRYTYPE'] = type_mapping.get(type, type)
+
+    # bibtex key
+    year = str(bib.get('year','XXXX'))
+    if 'author' in r:
+        ID = r['author'][0]['family'] + u'_' + six.u(year)
+    else:
+        ID = year
+    # if six.PY2:
+        # ID = str(''.join([c if ord(c) < 128 else '_' for c in ID]))  # make sure the resulting string is ASCII
+    bib['ID'] = ID
+
+    db = bibtexparser.loads('')
+    db.entries.append(bib)
+    return bibtexparser.dumps(db)
+
+
+# @cached(os.path.join(config.cache, 'crossref-bibtex-fulltext.json'), hashed_key=True)
+def fetch_bibtex_by_fulltext_crossref(txt):
+    work = Works(etiquette=my_etiquette)
+    logging.debug(six.u('crossref fulltext seach:\n')+six.u(txt))
+
+    # get the most likely match of the first results
+    results = []
+    # bibtex_fields = ['title','author','DOI','URL','issue','issued','container-title','volume','issue','page','publisher','type']
+    for i, r in enumerate(work.query(txt).sort('score')):
+        results.append(r)
+        if i > 50:
+            break
+
+    if len(results) > 1:
+        maxscore = 0
+        result = results[0]
+        for res in results:
+            score = _crossref_score(txt, res)
+            if score > maxscore:
+                maxscore = score
+                result = res
+        logging.info('score: '+str(maxscore))
+
+    elif len(results) == 0:
+        raise ValueError('crossref fulltext: no results')
+
+    else:
+        result = results[0]
+
+    # convert to bibtex
+    return crossref_to_bibtex(result)
 
 
     # Parse / format bibtex file entry
