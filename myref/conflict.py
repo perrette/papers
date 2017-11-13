@@ -23,7 +23,7 @@ def choose_entry_interactive(entries, extra=[], msg=''):
 
     for i, entry in enumerate(entries):
         db.entries[0] = entry
-        string = bibtexparser.dumps(db)
+        string = bibtexparser.dumps(db).decode('utf-8') # decode to avoid failure in replace
         # color the conflicting fields
         for k in conflicting_fields:
             string = string.replace(entry[k], bcolors.FAIL+entry[k]+bcolors.ENDC)
