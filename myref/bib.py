@@ -993,6 +993,9 @@ def main():
 
     grp = listp.add_argument_group('check')
     grp.add_argument('--invalid-doi', action='store_true', help='invalid dois')
+    grp.add_argument('--has-file', action='store_true')
+    grp.add_argument('--no-file', action='store_true')
+    grp.add_argument('--broken-file', action='store_true')
     # grp.add_argument('--invalid-file', action='store_true', help='invalid file')
     # grp.add_argument('--valid-file', action='store_true', help='valid file')
 
@@ -1048,6 +1051,13 @@ def main():
                     e['doi'] = bcolors.FAIL + e['doi'] + bcolors.ENDC
             else:
                 entries = [e for e in entries if check(e)]
+
+        if o.has_file:
+            entries = [e for e in entries if e.get('file','')]
+        if o.no_file:
+            entries = [e for e in entries if not e.get('file','')]
+        if o.broken_file:
+            entries = [e for e in entries if e.get('file','') and any([not os.path.exists(f) for f in parse_file(e['file'])])]
 
         if o.doi:
             entries = [e for e in entries if 'doi' in e and match(e['doi'], o.doi)]
