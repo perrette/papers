@@ -1004,6 +1004,7 @@ def main():
 
     grp = listp.add_argument_group('action on listed results (pipe)')
     grp.add_argument('--delete', action='store_true')
+    grp.add_argument('--edit', action='store_true', help='interactive edit text file with entries, and re-insert them')
     # grp.add_argument('--merge-duplicates', action='store_true')
 
     def listcmd(o):
@@ -1067,6 +1068,26 @@ def main():
             for e in entries:
                 my.db.entries.remove(e)
             savebib(my, o)
+        elif o.edit:
+            # write the listed entries to temporary file
+            import tempfile
+            # filename = tempfile.mktemp(prefix='.', suffix='.txt', dir=os.path.curdir)
+            filename = tempfile.mktemp(suffix='.txt')
+            db = bibtexparser.loads('')
+            db.entries.extend(entries)
+            entrystring = bibtexparser.dumps(db)
+            with open(filename, 'w') as f:
+                f.write(entrystring)
+            res = os.system('%s %s' % (os.getenv('EDITOR'), filename))
+            if res == 0:
+                logging.info('sucessfully edited file, insert edited entries')
+                # db = bibtexparser.loads(open(filename).read())
+                # prepare entries without the edited ones
+                my.db.entries = [e for e in my.entries if e not in entries]
+                my.add_bibtex_file(filename)
+                savebib(my, o)
+            else:
+                logging.error('error when editing entries file: '+filename)
         else:
             print(format_entries(entries))
 
