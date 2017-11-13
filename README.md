@@ -107,20 +107,7 @@ For the sake of the example, one of my owns: https://www.earth-syst-dynam.net/4/
 
 In the common case where the bibtex (`--bibtex`) and files directory  (`--filesdir`) do not change, 
 it is convenient to *install* `myref`. 
-Additionally, install comes with the option to git-track any change to the bibtex file (`--git`) options.
-
-
-- list entries (and edit etc...)
-
-        $> myref list -l --bibtex myref.bib
-        Perrette2013: A scaling approach to project regional sea level rise and it... (doi:10.5194/esd-4-11-2013, file:1)
-
-`myref list` is a useful command, inspired from unix's `find` and `grep`. 
-It lets you search in your bibtex in a typical manner (including a number of special flags such as `--duplicates`, `--invalid-doi`, `--broken-file`...), 
-then output the result in a number of formats (one-liner, raw bibtex, keys-only, selected fields) or let you perform actions on it (currently `--edit`, `--delete`).
-For instance, it is possible to manually merge the duplicates with:
-
-        $> myref list --duplicates --edit --bibtex myref.bib
+Install comes with the option to git-track any change to the bibtex file (`--git`) options.
 
 - setup git-tracked library (optional)
 
@@ -139,6 +126,19 @@ command will be know about these settings. Type `myref status -v` to check your
 configuration.
 You also notice that crossref requests are saved in the cache directory. 
 This happens regardless of whether `myref` is installed or not.
+From now on, no needs to specify bibtex file or files directory.
+
+- list entries (and edit etc...)
+
+        $> myref list -l
+        Perrette2013: A scaling approach to project regional sea level rise and it... (doi:10.5194/esd-4-11-2013, file:1)
+
+`myref list` is a useful command, inspired from unix's `find` and `grep`. 
+It lets you search in your bibtex in a typical manner (including a number of special flags such as `--duplicates`, `--invalid-doi`, `--broken-file`...), 
+then output the result in a number of formats (one-liner, raw bibtex, keys-only, selected fields) or let you perform actions on it (currently `--edit`, `--delete`).
+For instance, it is possible to manually merge the duplicates with:
+
+        $> myref list --duplicates --edit
 
 
 - other commands: 
