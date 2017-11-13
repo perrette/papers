@@ -247,20 +247,36 @@ class MyRef(object):
                 self.key(entry), doi, candidate['ID'])
             logging.warn(msg)
 
+            autokey = self.generate_key(entry)
+
             if not update_key and interactive:
                 print('''Duplicates detected (same DOI). Keys are distinct. Choices:
-(1) update key and merge (keep old): {k2} ==> {k}
-(2) keep original keys (create duplicates)
-(3) error/skip insert'''.format(k=candidate['ID'], k2=entry['ID']))
+(1) (u)pdate key and merge (keep old key): {k2} ==> {k}
+(2) (U)pdate with other key and merge (use new key): {k} ==> {k2}
+(3) update with (a)uto-generated key and merge: {k},{k2} ==> {k3}
+(4) (k)eep original keys (create duplicates)
+(5) error/(s)kip insert'''.format(k=candidate['ID'], k2=entry['ID'], k3=autokey))
                 ans = None
-                while ans not in list('123'):
+                while ans not in list('12345uUaks'):
                     ans = raw_input('choice: ')
-                if ans == '2': 
+                if ans in '4k': 
                     return 
-                else:
-                    update_key = ans == '1'
+                elif ans in '1u':
+                    update_key = True
+                elif ans in '2U':
+                    update_key = 'other'
+                elif ans in '3a':
+                    update_key = 'auto'
 
-            if update_key:
+            if update_key == 'auto':
+                logging.info('update with auto-generated key {}, {} ==> {}'.format(candidate['ID'], entry['ID'], autokey))
+                candidate['ID'] = entry['ID'] = autokey
+
+            elif update_key == 'other':
+                logging.info('update with other key {} ==> {}'.format(candidate['ID'], entry['ID']))
+                candidate['ID'] = entry['ID']
+
+            elif update_key:
                 logging.info('update key {} ==> {}'.format(entry['ID'], candidate['ID']))
                 entry['ID'] = candidate['ID']
 
@@ -449,7 +465,6 @@ class MyRef(object):
         def binary_key(e):
             return self.key(e) in keys
         return self.merge_duplicates(binary_key, **kw)
-
 
     def rename_entry_files(self, e, copy=False):
 
@@ -810,6 +825,8 @@ def main():
     grp.add_argument('-f', '--force', action='store_true', help='no interactive')
     grp.add_argument('-u','--update-key', action='store_true', 
         help='always update imported key in case an existing bibtex file with same DOI is detected')
+    grp.add_argument('-U','--update-key-other', action='store_true', 
+        help='same as -u but use new imported key')
     grp.add_argument('-m', '--mode', default='r', choices=['a', 'o', 'm', 's'],
         help='force mode: in case of conflict, the default is to raise an exception, \
         unless "mode" is set to (a)ppend anyway, (o)verwrite, (m)erge  or (s)skip key.')
@@ -849,6 +866,9 @@ def main():
         if len(o.file) > 1 and o.attachment:
             logging.error('--attachment is only valid for one added file')
             addp.exit(1)
+
+        if o.update_key_other:
+            o.update_key = 'other'
 
         kw = {'on_conflict':o.mode, 'check_doi':not o.no_check_doi, 
             'mergefiles':not o.no_merge_files, 'update_key':o.update_key, 
