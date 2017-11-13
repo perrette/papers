@@ -992,6 +992,7 @@ def main():
     grp.add_argument('--doi', nargs='+')
 
     grp = listp.add_argument_group('check')
+    grp.add_argument('--duplicates', action='store_true', help='list duplicates')
     grp.add_argument('--invalid-doi', action='store_true', help='invalid dois')
     grp.add_argument('--has-file', action='store_true')
     grp.add_argument('--no-file', action='store_true')
@@ -1005,7 +1006,6 @@ def main():
     mgrp.add_argument('-l', '--one-liner', action='store_true', help='one liner')
     mgrp.add_argument('-f', '--field', nargs='+', help='specific field(s) only')
     grp.add_argument('--no-key', action='store_true')
-
 
     grp = listp.add_argument_group('action on listed results (pipe)')
     grp.add_argument('--delete', action='store_true')
@@ -1052,6 +1052,7 @@ def main():
             else:
                 entries = [e for e in entries if check(e)]
 
+
         if o.has_file:
             entries = [e for e in entries if e.get('file','')]
         if o.no_file:
@@ -1076,28 +1077,17 @@ def main():
         if o.abstract:
             entries = [e for e in entries if 'abstract' in e and longmatch(e['abstract'], o.abstract)]
 
+        if o.duplicates:
+            uniques, doi_duplicates = search_duplicates(entries, my._doi_key())
+            _, key_duplicates = search_duplicates(uniques, lambda e: e.get('ID','').lower())
+            entries = list(itertools.chain(*(doi_duplicates+key_duplicates)))
+
         if o.no_key:
             key = lambda e: ''
         else:
             key = lambda e: bcolors.OKBLUE+e['ID']+':'+bcolors.ENDC
 
-        if o.field:
-            # entries = [{k:e[k] for k in e if k in o.field+['ID','ENTRYTYPE']} for e in entries]
-            for e in entries:
-                print(key(e),*[e[k] for k in o.field])
-        elif o.key_only:
-            for e in entries:
-                print(e['ID'])
-        elif o.one_liner:
-            for e in entries:
-                tit = e['title'][:60]+ ('...' if len(e['title'])>60 else '')
-                doi = ('(doi:'+e['doi']+')') if e.get('doi','') else ''
-                print(key(e), tit, doi)
-        elif o.delete:
-            for e in entries:
-                my.db.entries.remove(e)
-            savebib(my, o)
-        elif o.edit:
+        if o.edit:
             # write the listed entries to temporary file
             import tempfile
             # filename = tempfile.mktemp(prefix='.', suffix='.txt', dir=os.path.curdir)
@@ -1110,13 +1100,29 @@ def main():
             res = os.system('%s %s' % (os.getenv('EDITOR'), filename))
             if res == 0:
                 logging.info('sucessfully edited file, insert edited entries')
-                # db = bibtexparser.loads(open(filename).read())
-                # prepare entries without the edited ones
                 my.db.entries = [e for e in my.entries if e not in entries]
                 my.add_bibtex_file(filename)
                 savebib(my, o)
             else:
                 logging.error('error when editing entries file: '+filename)
+
+        elif o.delete:
+            for e in entries:
+                my.db.entries.remove(e)
+            savebib(my, o)
+
+        elif o.field:
+            # entries = [{k:e[k] for k in e if k in o.field+['ID','ENTRYTYPE']} for e in entries]
+            for e in entries:
+                print(key(e),*[e[k] for k in o.field])
+        elif o.key_only:
+            for e in entries:
+                print(e['ID'])
+        elif o.one_liner:
+            for e in entries:
+                tit = e['title'][:60]+ ('...' if len(e['title'])>60 else '')
+                doi = ('(doi:'+e['doi']+')') if e.get('doi','') else ''
+                print(key(e), tit, doi)
         else:
             print(format_entries(entries))
 
