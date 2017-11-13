@@ -109,6 +109,19 @@ In the common case where the bibtex (`--bibtex`) and files directory  (`--filesd
 it is convenient to *install* `myref`. 
 Additionally, install comes with the option to git-track any change to the bibtex file (`--git`) options.
 
+
+- list entries (and edit etc...)
+
+        $> myref list -l --bibtex myref.bib
+        Perrette2013: A scaling approach to project regional sea level rise and it... (doi:10.5194/esd-4-11-2013, file:1)
+
+`myref list` is a useful command, inspired from unix's `find` and `grep`. 
+It lets you search in your bibtex in a typical manner (including a number of special flags such as `--duplicates`, `--invalid-doi`, `--broken-file`...), 
+then output the result in a number of formats (one-liner, raw bibtex, keys-only, selected fields) or let you perform actions on it (currently `--edit`, `--delete`).
+For instance, it is possible to manually merge the duplicates with:
+
+        $> myref list --duplicates --edit --bibtex myref.bib
+
 - setup git-tracked library (optional)
 
         $> myref install --bibtex myref.bib --filesdir files --git --gitdir ./
@@ -127,12 +140,13 @@ configuration.
 You also notice that crossref requests are saved in the cache directory. 
 This happens regardless of whether `myref` is installed or not.
 
+
 - other commands: 
 
     - `myref status ...` 
     - `myref list ...` 
-    - `myref merge ...` 
     - `myref filecheck ...` 
+    - `myref merge ...` 
     - `myref undo ...` 
     - `myref git ...` 
 
