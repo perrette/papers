@@ -406,12 +406,14 @@ def fetch_bibtex_by_fulltext_crossref(txt):
     logging.debug(six.u('crossref fulltext seach:\n')+six.u(txt))
 
     # get the most likely match of the first results
-    results = []
-    # bibtex_fields = ['title','author','DOI','URL','issue','issued','container-title','volume','issue','page','publisher','type']
-    for i, r in enumerate(work.query(txt).sort('score')):
-        results.append(r)
-        if i > 50:
-            break
+    # results = []
+    # for i, r in enumerate(work.query(txt).sort('score')):
+    #     results.append(r)
+    #     if i > 50:
+    #         break
+    query = work.query(txt).sort('score')
+    query_result = query.do_http_request('get', query.url, custom_header=str(query.etiquette)).text
+    results = json.loads(query_result)['message']['items']
 
     if len(results) > 1:
         maxscore = 0
@@ -430,7 +432,7 @@ def fetch_bibtex_by_fulltext_crossref(txt):
         result = results[0]
 
     # convert to bibtex
-    return crossref_to_bibtex(result)
+    return crossref_to_bibtex(result).strip()
 
 
     # Parse / format bibtex file entry
