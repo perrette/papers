@@ -14,7 +14,8 @@ import difflib
 import bibtexparser
 
 import myref
-from myref.tools import (bcolors, move, extract_doi, fetch_bibtex_by_doi, isvaliddoi, checksum, extract_pdf_metadata)
+from myref.tools import (bcolors, move, extract_doi, fetch_bibtex_by_doi, 
+    isvaliddoi, parse_doi, checksum, extract_pdf_metadata, fetch_bibtex_by_fulltext_crossref)
 from myref.config import config
 from myref.conflict import (merge_files, merge_entries, parse_file, format_file,
     handle_merge_conflict, search_duplicates, choose_entry_interactive, unique)
@@ -537,6 +538,77 @@ class MyRef(object):
                 continue
 
 
+    def fix_entry(self, e, fix_doi=True, fetch=False, fetch_all=False, fix_key=False, auto_key=False, interactive=True):
+
+        if fix_doi:
+            if 'doi' in e and e['doi']:
+                try:
+                    doi = parse_doi(e['doi'])
+                except:
+                    logging.warn(e.get('ID','')+': failed to fix doi: '+e['doi'])
+                    return
+
+                if doi.lower() != e['doi'].lower():
+                    logging.info(e.get('ID','')+': fix doi: {} ==> {}'.format(e['doi'], doi))
+                    if interactive and raw_input('update ? [Y/n] ').lower() not in ('', 'y'):
+                        return
+                    e['doi'] = doi
+                else:
+                    logging.debug(e.get('ID','')+': doi OK')
+            else:
+                logging.debug(e.get('ID','')+': no DOI')
+
+
+        if fetch or fetch_all:
+            bibtex = None
+            if 'doi' in e and e['doi']:
+                logging.info(e.get('ID','')+': fetch doi: '+e['doi'])
+                try:
+                    bibtex = fetch_bibtex_by_doi(e['doi'])
+                except Exception as error:
+                    logging.warn('...failed to fetch bibtex (doi): '+str(error))
+
+            elif e.get('title','') and e.get('author','') and fetch_all:
+                kw = {}
+                kw['title'] = e['title']
+                kw['author'] = ' '.join(family_names(e['author']))
+                logging.info(e.get('ID','')+': fetch-all: '+str(kw))
+                try:
+                    bibtex = fetch_bibtex_by_fulltext_crossref('', **kw)
+                except Exception as error:
+                    logging.warn('...failed to fetch/update bibtex (all): '+str(error))
+
+            if bibtex:                        
+                db = bibtexparser.loads(bibtex)
+                e2 = db.entries[0]
+                strip_e = lambda e_: {k:e_[k] for k in e_ if k not in ['ID', 'file'] and k in e2}
+                if strip_e(e) != strip_e(e2):
+                    e3 = e.copy()
+                    e3.update(strip_e(e2))
+                    print(bcolors.OKBLUE+'*** OLD ***'+bcolors.ENDC)
+                    print(format_entries([e]))
+                    print(bcolors.OKBLUE+'*** NEW ***'+bcolors.ENDC)
+                    print(format_entries([e2]))
+                    print(bcolors.OKBLUE+'*** UPDATED ***'+bcolors.ENDC)
+                    print(format_entries([e3]))
+                    if interactive and raw_input('update ? [Y/n] ').lower() not in ('', 'y'):
+                        return
+                    logging.info('...update entry')
+                    e.update(strip_e(e2))
+                else:
+                    logging.info('...already up to date')
+
+
+        if fix_key or auto_key:
+            if auto_key or not e.get('ID','') or e['ID'][0].isdigit():
+                key = self.generate_key(e)
+                if e.get('ID', '') != key:
+                    logging.info('update key {} => {}'.format(e.get('ID', ''), key))
+                    if interactive and raw_input('update ? [Y/n] ').lower() not in ('', 'y'):
+                        return                        
+                    e['ID'] = key
+
+
 def entry_filecheck_metadata(e, file):
     ''' parse pdf metadata and compare with entry: only doi for now
     '''
@@ -645,6 +717,12 @@ def entry_filecheck(e, delete_broken=False, fix_mendeley=False,
 
     e['file'] = format_file(newfiles)
 
+
+
+
+def family_names(author_field):
+    authors = bibtexparser.customization.getnames(author_field.split(' and '))
+    return [nm.split(',')[0] for nm in authors]
 
 def main():
 
@@ -908,42 +986,50 @@ def main():
         savebib(my, o)
 
 
-
-    # merge
+    # check
     # =====
+    checkp = subparsers.add_parser('check', description='check duplicates', 
+        parents=[cfg])
+    checkp.add_argument('-k', '--keys', nargs='+', help='apply check on this key subset')
+    checkp.add_argument('-f','--force', action='store_true', help='do not ask')
 
-    conflict = argparse.ArgumentParser(add_help=False)
-    # conflict_options.add_argument('--merge', action='store_true', 
-    #     help='merge non-conflicting entry fields')
-    grp = conflict.add_argument_group('merge/conflict')
-    # conflict.add_argument('--merge-files', action='store_true')
-    # conflict_options.add_argument('-i', '--interactive', action='store_true')
-    # g = conflict.add_mutually_exclusive_group()
-    # g.add_argument('-D','--delete', action='store_true', help='delete conflicting entries')
-    # g.add_argument('-w','--whatever', action='store_true', help='just pick one that looks good...')
-    grp.add_argument('--fetch', action='store_true', help='fetch metadata from doi, if not conflicting')
-    # grp.add_argument('-i','--interactive', action='store_true', help='interactive pick (the default)')
+    grp = checkp.add_argument_group('fix entry')
+    grp.add_argument('--fix-doi', action='store_true', help='fix doi for some common issues (e.g. DOI: inside doi, .received at the end')
+    grp.add_argument('--fetch', action='store_true', help='fetch metadata from doi and update entry')
+    grp.add_argument('--fetch-all', action='store_true', help='fetch metadata from title and author field and update entry (only when doi is missing)')
+    grp.add_argument('--fix-key', action='store_true', help='fix key based on author name and date (in case misssing or digit)')
+    grp.add_argument('--auto-key', action='store_true', help='new, auto-generated key for all entries')
+    grp.add_argument('--fix-all', action='store_true', help='--fix-doi --fetch-all --fix-key')
+
+    grp = checkp.add_argument_group('merge/conflict')
+    grp.add_argument('--duplicates',action='store_true', help='remove / merge duplicates')
     grp.add_argument('--ignore', action='store_true', help='ignore unresolved conflicts')
-    grp.add_argument('-f','--force', action='store_true', help='force merging')
+    # checkp.add_argument('--merge-keys', nargs='+', help='only merge remove / merge duplicates')
+    # checkp.add_argument('--duplicates',action='store_true', help='remove / merge duplicates')
 
-
-    mergep = subparsers.add_parser('merge', description='merge duplicates', 
-        parents=[cfg, conflict])
-    # mergep.add_argument('-m', '--merge', action='store_true', help='merge duplicates')
-    # mergep.add_argument('--merge', action='store_true', help='merge duplicates')
-    # mergep.add_argument('--doi', action='store_true', help='DOI duplicate')
-    mergep.add_argument('--keys', nargs='+', help='merge these keys')
-
-    def mergecmd(o):
+    def checkcmd(o):
         my = MyRef.load(o.bibtex, o.filesdir)
-        kw = dict(force=o.force, fetch=o.fetch, ignore_unresolved=o.ignore)
-        my.merge_duplicate_keys(**kw)
-        my.merge_duplicate_dois(**kw)
-        if o.keys:
-            my.merge_entries(o.keys, **kw)
+
+        if o.fix_all:
+            o.fix_doi = True
+            o.fetch_all = True
+            o.fix_key = True
+
+        for e in my.entries:
+            if o.keys and e.get('ID','') not in o.keys:
+                continue
+            my.fix_entry(e, fix_doi=o.fix_doi, fetch=o.fetch, fetch_all=o.fetch_all, fix_key=o.fix_key, auto_key=o.auto_key, interactive=not o.force)
+
+
+        if o.duplicates:
+            kw = dict(force=o.force, ignore_unresolved=o.ignore)
+            my.merge_duplicate_keys(**kw)
+            my.merge_duplicate_dois(**kw)
+
         savebib(my, o)
 
-    # check
+
+    # filecheck
     # =====
     filecheckp = subparsers.add_parser('filecheck', description='check attached file(s)',
         parents=[cfg])
@@ -1030,6 +1116,7 @@ def main():
     grp = listp.add_argument_group('action on listed results (pipe)')
     grp.add_argument('--delete', action='store_true')
     grp.add_argument('--edit', action='store_true', help='interactive edit text file with entries, and re-insert them')
+    grp.add_argument('--fetch', action='store_true', help='fetch and fix metadata')
     # grp.add_argument('--merge-duplicates', action='store_true')
 
     def listcmd(o):
@@ -1059,9 +1146,6 @@ def main():
             return match(word, target, fuzzy=o.fuzzy, substring=not o.strict)
 
 
-        def family_names(author_field):
-            authors = bibtexparser.customization.getnames(author_field.split(' and '))
-            return [nm.split(',')[0] for nm in authors]
 
         if o.invalid_doi:
             check = lambda e : 'doi' in e and not isvaliddoi(e['doi'])
@@ -1130,6 +1214,11 @@ def main():
                 savebib(my, o)
             else:
                 logging.error('error when editing entries file: '+filename)
+
+        elif o.fetch:
+            for e in entries:
+                my.fix_entry(e, fix_doi=True, fix_key=True, fetch_all=True, interactive=True)
+            savebib(my, o)
 
         elif o.delete:
             for e in entries:
@@ -1247,8 +1336,8 @@ def main():
 
     if o.cmd == 'add':
         check_install() and addcmd(o)
-    elif o.cmd == 'merge':
-        check_install() and mergecmd(o)
+    elif o.cmd == 'check':
+        check_install() and checkcmd(o)
     elif o.cmd == 'filecheck':
         check_install() and filecheckcmd(o)
     elif o.cmd == 'list':

@@ -404,7 +404,7 @@ def crossref_to_bibtex(r):
 
 
 # @cached(os.path.join(config.cache, 'crossref-bibtex-fulltext.json'), hashed_key=True)
-def fetch_bibtex_by_fulltext_crossref(txt):
+def fetch_bibtex_by_fulltext_crossref(txt, **kw):
     work = Works(etiquette=my_etiquette)
     logging.debug(six.u('crossref fulltext seach:\n')+six.u(txt))
 
@@ -414,7 +414,7 @@ def fetch_bibtex_by_fulltext_crossref(txt):
     #     results.append(r)
     #     if i > 50:
     #         break
-    query = work.query(txt).sort('score')
+    query = work.query(txt, **kw).sort('score')
     query_result = query.do_http_request('get', query.url, custom_header=str(query.etiquette)).text
     results = json.loads(query_result)['message']['items']
 
