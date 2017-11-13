@@ -248,10 +248,17 @@ class MyRef(object):
             logging.warn(msg)
 
             if not update_key and interactive:
-                ans = raw_input('update key {} ==> {} ? [Y/n or (i)gnore] '.format(entry['ID'], candidate['ID']))
-                if ans == 'i': 
+                print('''Duplicates detected (same DOI). Keys are distinct. Choices:
+(1) update key and merge (keep old): {k2} ==> {k}
+(2) keep original keys (create duplicates)
+(3) error/skip insert'''.format(k=candidate['ID'], k2=entry['ID']))
+                ans = None
+                while ans not in list('123'):
+                    ans = raw_input('choice: ')
+                if ans == '2': 
                     return 
-                update_key = ans.lower() == 'y'
+                else:
+                    update_key = ans == '1'
 
             if update_key:
                 logging.info('update key {} ==> {}'.format(entry['ID'], candidate['ID']))
