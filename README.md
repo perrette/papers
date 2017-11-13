@@ -134,7 +134,7 @@ From now on, no needs to specify bibtex file or files directory.
         Perrette2013: A scaling approach to project regional sea level rise and it... (doi:10.5194/esd-4-11-2013, file:1)
 
 `myref list` is a useful command, inspired from unix's `find` and `grep`. 
-It lets you search in your bibtex in a typical manner (including a number of special flags such as `--duplicates`, `--invalid-doi`, `--broken-file`...), 
+It lets you search in your bibtex in a typical manner (including a number of special flags such as `--duplicates`, `--review-required`, `--broken-file`...), 
 then output the result in a number of formats (one-liner, raw bibtex, keys-only, selected fields) or let you perform actions on it (currently `--edit`, `--delete`).
 For instance, it is possible to manually merge the duplicates with:
 
@@ -144,9 +144,8 @@ For instance, it is possible to manually merge the duplicates with:
 - other commands: 
 
     - `myref status ...` 
-    - `myref list ...` 
+    - `myref check ...` 
     - `myref filecheck ...` 
-    - `myref merge ...` 
     - `myref undo ...` 
     - `myref git ...` 
 
@@ -164,12 +163,12 @@ Current features
 - scan directory for PDFs (`myref add ...`)
 - rename PDFs according to bibtex key and year (`myref filecheck --rename [--copy]`)
 - some support for attachment
-- merging (`myref merge ...`)
+- merging (`myref check --duplicates ...`)
 - undo command (`myref undo`)
 - configuration file with default bibtex and files directory (`myref install --bibtex BIB --filesdir DIR ...`)
 - integration with git (`myref install --git --gitdir DIR` and e.g. `myref git ...` to setup a remote, push...)
 - display / search / list entries : format as bibtex or key or whatever (`myref list ... [-k | -l]`)
-- list + remove entry by key or else  (`myref list ... [--delete]`)
+- list + edit or remove entry by key or else  (`myref list ... [--edit, --delete]`)
 - fix broken PDF links (`myref filecheck ...`):
     - remove duplicate file names (always) or file copies (`--hash-check`)
     - remove missing link (`--delete-missing`)
@@ -180,22 +179,10 @@ Current features
 
 Planned features
 ----------------
-Mostly related to bibliography management:
-- add manual entry 
 - move library location (i.e. both on disk and in bibtex's `file` entry)
-- better handling of attachment / multiple files
-- key generation
-
-
-All this in a set of planned commands:
-- `myref addone (-k KEY | --auto-key) [--no-check] --author NAME --year YEAR [--file FILE [FILE...]] ...` : manually add one new entry (for the sake of completeness) 
-- `myref link -k KEY [--no-check] [--overwrite] FILE [FILE...]` : add one or several file to *existing* entry, without any check on the files beyond existence
-
-
-Suggestions welcomed for prioritizing / feature suggestion.
+- support collections (distinct bibtex entries, same files directory)
 
 
 Tests
 -----
-Test coverage probably lacking being features' addition, but in progress.
-Aims at 80-90% coverage.
+Test coverage very probably lagging being features' addition, but in progress.

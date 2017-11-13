@@ -586,11 +586,16 @@ class MyRef(object):
                     e3 = e.copy()
                     e3.update(strip_e(e2))
                     print(bcolors.OKBLUE+'*** OLD ***'+bcolors.ENDC)
-                    print(format_entries([e]))
+                    s1 = format_entries([e])
+                    print(s1)
                     print(bcolors.OKBLUE+'*** NEW ***'+bcolors.ENDC)
                     print(format_entries([e2]))
                     print(bcolors.OKBLUE+'*** UPDATED ***'+bcolors.ENDC)
-                    print(format_entries([e3]))
+                    s3 = format_entries([e3])
+                    # print(s3)
+                    ndiff = difflib.ndiff(s1.splitlines(1), s3.splitlines(1))
+                    print(''.join(ndiff))
+
                     if interactive and raw_input('update ? [Y/n] ').lower() not in ('', 'y'):
                         return
                     logging.info('...update entry')
@@ -600,13 +605,26 @@ class MyRef(object):
 
 
         if fix_key or auto_key:
-            if auto_key or not e.get('ID','') or e['ID'][0].isdigit():
+            if auto_key or not isvalidkey(e.get('ID','')):
                 key = self.generate_key(e)
                 if e.get('ID', '') != key:
                     logging.info('update key {} => {}'.format(e.get('ID', ''), key))
                     if interactive and raw_input('update ? [Y/n] ').lower() not in ('', 'y'):
                         return                        
                     e['ID'] = key
+
+
+def isvalidkey(key):
+    return key and not key[0].isdigit()
+
+
+def requiresreview(e):
+    if not isvalidkey(e.get('ID','')): return True
+    if 'doi' in e and not isvaliddoi(e['doi']): return True
+    if 'author' not in e: return True
+    if 'title' not in e: return True
+    if 'year' not in e: return True
+    return False
 
 
 def entry_filecheck_metadata(e, file):
@@ -1099,12 +1117,10 @@ def main():
 
     grp = listp.add_argument_group('check')
     grp.add_argument('--duplicates', action='store_true', help='list duplicates')
-    grp.add_argument('--invalid-doi', action='store_true', help='invalid dois')
     grp.add_argument('--has-file', action='store_true')
     grp.add_argument('--no-file', action='store_true')
     grp.add_argument('--broken-file', action='store_true')
-    # grp.add_argument('--invalid-file', action='store_true', help='invalid file')
-    # grp.add_argument('--valid-file', action='store_true', help='valid file')
+    grp.add_argument('--review-required', action='store_true', help='suspicious entry (invalid dois, missing field etc.)')
 
     grp = listp.add_argument_group('formatting')
     mgrp = grp.add_mutually_exclusive_group()
@@ -1146,23 +1162,21 @@ def main():
             return match(word, target, fuzzy=o.fuzzy, substring=not o.strict)
 
 
-
-        if o.invalid_doi:
-            check = lambda e : 'doi' in e and not isvaliddoi(e['doi'])
+        if o.review_required:
             if o.invert:
-                entries = [e for e in entries if not check(e)]
-                for e in entries:
-                    e['doi'] = bcolors.FAIL + e['doi'] + bcolors.ENDC
+                entries = [e for e in entries if not requiresreview(e)]
             else:
-                entries = [e for e in entries if check(e)]
-
-
+                entries = [e for e in entries if requiresreview(e)]
+                for e in entries:
+                    if 'doi' in e and not isvaliddoi(e['doi']):
+                        e['doi'] = bcolors.FAIL + e['doi'] + bcolors.ENDC
         if o.has_file:
             entries = [e for e in entries if e.get('file','')]
         if o.no_file:
             entries = [e for e in entries if not e.get('file','')]
         if o.broken_file:
             entries = [e for e in entries if e.get('file','') and any([not os.path.exists(f) for f in parse_file(e['file'])])]
+
 
         if o.doi:
             entries = [e for e in entries if 'doi' in e and match(e['doi'], o.doi)]
