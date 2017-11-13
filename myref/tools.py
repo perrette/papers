@@ -146,10 +146,13 @@ def parse_doi(txt, space_digit=False):
     if space_digit:
         doi = doi.replace(' ','_')
 
+    if doi.lower().endswith('.received'):
+        doi = doi[:-len('.received')]
+
     # quality check 
     assert len(doi) > 8, 'failed to extract doi: '+doi
 
-    return doi 
+    return doi
 
 
 def isvaliddoi(doi):
@@ -157,7 +160,7 @@ def isvaliddoi(doi):
         doi2 = parse_doi(doi)
     except:
         return False
-    return doi == doi2
+    return doi.lower() == doi2.lower()
 
 
 def pdfhead(pdf, maxpages=10, minwords=200):
