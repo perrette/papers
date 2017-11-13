@@ -977,15 +977,17 @@ def main():
         parents=[cfg])
 
     mgrp = listp.add_mutually_exclusive_group()
-    mgrp.add_argument('--strict', action='store_true', help='exact matching')
-    mgrp.add_argument('--fuzzy', action='store_true', help='fuzzy matching')
-    listp.add_argument('--fuzzy-ratio', type=int, default=80, help='default:%(default)s')
+    mgrp.add_argument('--strict', action='store_true', help='exact matching - instead of substring (only (*): title, author, abstract)')
+    mgrp.add_argument('--fuzzy', action='store_true', help='fuzzy matching - instead of substring (only (*): title, author, abstract)')
+    listp.add_argument('--fuzzy-ratio', type=int, default=80, help='threshold for fuzzy matching of title, author, abstract (default:%(default)s)')
     listp.add_argument('--invert', action='store_true')
 
     grp = listp.add_argument_group('search')
-    grp.add_argument('-a','--author',nargs='+')
+    grp.add_argument('-a','--author', nargs='+', help='any of the authors (*)')
+    grp.add_argument('--first-author', nargs='+')
     grp.add_argument('-y','--year', nargs='+')
-    grp.add_argument('-t','--title')
+    grp.add_argument('-t','--title', help='title (*)')
+    grp.add_argument('--abstract', help='abstract (*)')
     grp.add_argument('--key', nargs='+')
     grp.add_argument('--doi', nargs='+')
 
@@ -998,7 +1000,7 @@ def main():
     mgrp = grp.add_mutually_exclusive_group()
     mgrp.add_argument('-k','--key-only', action='store_true')
     mgrp.add_argument('-l', '--one-liner', action='store_true', help='one liner')
-    mgrp.add_argument('-f', '--field', nargs='+', help='specific fields only')
+    mgrp.add_argument('-f', '--field', nargs='+', help='specific field(s) only')
     grp.add_argument('--no-key', action='store_true')
 
 
@@ -1008,24 +1010,35 @@ def main():
     # grp.add_argument('--merge-duplicates', action='store_true')
 
     def listcmd(o):
+        import fnmatch   # unix-like match
+
         my = MyRef.load(o.bibtex, o.filesdir)
         entries = my.db.entries
 
         if o.fuzzy:
             from fuzzywuzzy import fuzz
 
-        def match(word, target):
+        def match(word, target, fuzzy=False, substring=False):
             if isinstance(target, list):
-                return any([match(word, t) for t in target])
-            if o.fuzzy:
+                return any([match(word, t, fuzzy) for t in target])
+
+            if fuzzy:
                 res = fuzz.token_set_ratio(word.lower(), target.lower()) > o.fuzzy_ratio
-            elif o.strict:
-                res = word.lower() == target.lower()
-            else:
+            elif substring:
                 res = target.lower() in word.lower()
+            else:
+                res = fnmatch.fnmatch(word.lower(), target.lower())
 
-            return not res if o.invert else res
+            return res if not o.invert else not res
 
+
+        def longmatch(word, target):
+            return match(word, target, fuzzy=o.fuzzy, substring=not o.strict)
+
+
+        def family_names(author_field):
+            authors = bibtexparser.customization.getnames(author_field.split(' and '))
+            return [nm.split(',')[0] for nm in authors]
 
         if o.invalid_doi:
             check = lambda e : 'doi' in e and not isvaliddoi(e['doi'])
@@ -1036,16 +1049,22 @@ def main():
             else:
                 entries = [e for e in entries if check(e)]
 
-        if o.author:
-            entries = [e for e in entries if 'author' in e and match(e['author'], o.author)]
-        if o.year:
-            entries = [e for e in entries if 'year' in e and match(e['year'], o.year)]
-        if o.title:
-            entries = [e for e in entries if 'title' in e and match(e['title'], o.title)]
         if o.doi:
             entries = [e for e in entries if 'doi' in e and match(e['doi'], o.doi)]
         if o.key:
-            entries = [e for e in entries if match(e['ID'], o.key)]
+            entries = [e for e in entries if 'ID' in e and match(e['ID'], o.key)]
+        if o.year:
+            entries = [e for e in entries if 'year' in e and match(e['year'], o.year)]
+        if o.first_author:
+            first_author = lambda field : family_names(field)[0]
+            entries = [e for e in entries if 'author' in e and match(firstauthor(e['author']), o.author)]
+        if o.author:
+            author = lambda field : u' '.join(family_names(field))
+            entries = [e for e in entries if 'author' in e and longmatch(author(e['author']), o.author)]
+        if o.title:
+            entries = [e for e in entries if 'title' in e and longmatch(e['title'], o.title)]
+        if o.abstract:
+            entries = [e for e in entries if 'abstract' in e and longmatch(e['abstract'], o.abstract)]
 
         if o.no_key:
             key = lambda e: ''
