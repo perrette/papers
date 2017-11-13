@@ -1126,8 +1126,14 @@ def main():
         elif o.one_liner:
             for e in entries:
                 tit = e['title'][:60]+ ('...' if len(e['title'])>60 else '')
-                doi = ('(doi:'+e['doi']+')') if e.get('doi','') else ''
-                print(key(e), tit, doi)
+                info = []
+                if e.get('doi',''):
+                    info.append('doi:'+e['doi'])
+                n = nfiles(e)
+                if n:
+                    info.append(bcolors.OKGREEN+'file:'+str(n)+bcolors.ENDC)
+                infotag = '('+', '.join(info)+')' if info else ''
+                print(key(e), tit, infotag)
         else:
             print(format_entries(entries))
 
