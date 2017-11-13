@@ -1117,7 +1117,7 @@ def main():
                 print(key(e),*[e[k] for k in o.field])
         elif o.key_only:
             for e in entries:
-                print(e['ID'])
+                print(e['ID'].encode('utf-8'))
         elif o.one_liner:
             for e in entries:
                 tit = e['title'][:60]+ ('...' if len(e['title'])>60 else '')
