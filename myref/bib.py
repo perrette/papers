@@ -1023,7 +1023,7 @@ def main():
 
         def match(word, target, fuzzy=False, substring=False):
             if isinstance(target, list):
-                return any([match(word, t, fuzzy) for t in target])
+                return any([match(word, t, fuzzy, substring) for t in target])
 
             if fuzzy:
                 res = fuzz.token_set_ratio(word.lower(), target.lower()) > o.fuzzy_ratio
