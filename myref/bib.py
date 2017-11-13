@@ -997,7 +997,7 @@ def main():
     grp = listp.add_argument_group('formatting')
     mgrp = grp.add_mutually_exclusive_group()
     mgrp.add_argument('-k','--key-only', action='store_true')
-    mgrp.add_argument('-l', '--list', action='store_true', help='one liner')
+    mgrp.add_argument('-l', '--one-liner', action='store_true', help='one liner')
     mgrp.add_argument('-f', '--field', nargs='+', help='specific fields only')
     grp.add_argument('--no-key', action='store_true')
 
@@ -1058,7 +1058,7 @@ def main():
         elif o.key_only:
             for e in entries:
                 print(e['ID'])
-        elif o.list:
+        elif o.one_liner:
             for e in entries:
                 tit = e['title'][:60]+ ('...' if len(e['title'])>60 else '')
                 doi = ('(doi:'+e['doi']+')') if e.get('doi','') else ''
