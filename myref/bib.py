@@ -1082,10 +1082,15 @@ def main():
             _, key_duplicates = search_duplicates(uniques, lambda e: e.get('ID','').lower())
             entries = list(itertools.chain(*(doi_duplicates+key_duplicates)))
 
+
+        def nfiles(e):
+            return len(parse_file(e.get('file','')))
+
         if o.no_key:
             key = lambda e: ''
         else:
-            key = lambda e: bcolors.OKBLUE+e['ID']+':'+bcolors.ENDC
+            # key = lambda e: bcolors.OKBLUE+e['ID']+filetag(e)+':'+bcolors.ENDC
+            key = lambda e: nfiles(e)*(bcolors.BOLD)+bcolors.OKBLUE+e['ID']+':'+bcolors.ENDC
 
         if o.edit:
             # write the listed entries to temporary file
