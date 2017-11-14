@@ -13,6 +13,10 @@ before_install:
   - pip install pip --upgrade
   - pip install bibtexparser
   - pip install six
+  - pip install crossrefapi
+  - pip install fuzzywuzzy
+  - pip install unidecode
+  - pip install scholarly
 # test coverage
 #  - pip install tox
   - pip install pytest pytest-cov
