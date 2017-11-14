@@ -34,49 +34,6 @@ class bcolors:
 
 
 
-# string conversions
-# ==================
-UPDATE_LATEX_TABLE = {
-    u'&': '\\&',
-    u'$': '\\$',
-    u'<': '\\textless',
-    u'>': '\\textgreater',
-}
-
-LATEX_TO_UNICODE = None
-
-def latex_to_unicode(string):
-    """ replace things like "{\_}" and "{\'{e}}'" with unicode characters _ and é
-    """
-    global LATEX_TO_UNICODE
-    if LATEX_TO_UNICODE is None:
-        import myref.unicode_to_latex as ul 
-        ul.unicode_to_latex.update(UPDATE_LATEX_TABLE)
-        LATEX_TO_UNICODE = {v.strip():k for k,v in six.iteritems(ul.unicode_to_latex)}
-    string = string.replace('{}','') #.replace('{\\}','')
-    # try:
-    string = string.format(**LATEX_TO_UNICODE)
-    # except (KeyError, ValueError) as error:
-    #     logging.warn('failed to replace latex: '+str(error))
-    return string
-
-
-def unicode_to_latex(string):
-    import myref.unicode_to_latex as ul 
-
-    lstring = []
-    for c in string:
-        if ord(c) < 128:
-            lstring.append(c)
-        else:
-            lstring.append('{'+ul.unicode_to_latex[c].strip()+'}')
-    return ''.join(lstring)
-
-    # ID = str(''.join([c if ord(c) < 128 else '_' for c in ID]))  # make sure the resulting string is ASCII
-
-def unicode_to_ascii(string):
-    from unidecode import unidecode
-    return unidecode(string)
 
 
 # misc
@@ -295,17 +252,6 @@ def extract_pdf_metadata(pdf, search_doi=True, search_fulltext=True, maxpages=10
 
 
 
-def ask_doi(max=3):
-    doi = raw_input('doi : ')
-    count = 1
-    while not isvaliddoi(doi):
-        count += 1
-        if count > max:
-            raise ValueError('invalid doi: '+doi)
-        doi = raw_input('Valid DOI looks like 10.NNNN/... Please try again. doi : ')
-    return doi
-
-
 def cached(file, hashed_key=False):
     def decorator(fun):
         if os.path.exists(file):
@@ -492,44 +438,4 @@ def fetch_bibtex_by_fulltext_crossref(txt, **kw):
 
     # convert to bibtex
     return crossref_to_bibtex(result).strip()
-
-
-    # Parse / format bibtex file entry
-# ================================
-
-def _parse_file(file):
-    """ parse a single file entry
-    """
-    sfile = file.split(':')
-    
-    if len(sfile) == 1:  # no ':'
-        path, type = file, ''
-
-    elif len(sfile) == 2:
-        path, type = sfile
-
-    elif len(sfile) == 3:
-        basename, path, type = sfile
-
-    else:
-        raise ValueError('unknown `file` format: '+ repr(file))
-
-    return path
-
-
-def _format_file(file, type=None):
-    if not type:
-        type = os.path.splitext(file)[1].strip('.')
-    return ':'+file+':'+type
-
-
-def parse_file(file):
-    if not file:
-        return []
-    else:
-        return [_parse_file(f) for f in file.split(';')]
-
-
-def format_file(file_types):
-    return ';'.join([_format_file(f) for f in file_types])
 

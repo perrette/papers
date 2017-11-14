@@ -16,7 +16,9 @@ import bibtexparser
 import myref
 from myref.tools import (bcolors, move, unique, extract_doi, fetch_bibtex_by_doi, 
     isvaliddoi, parse_doi, checksum, extract_pdf_metadata, fetch_bibtex_by_fulltext_crossref,
-    latex_to_unicode, unicode_to_latex, unicode_to_ascii, parse_file, format_file)
+    )
+from myref.encoding import (latex_to_unicode, unicode_to_latex, unicode_to_ascii, 
+    parse_file, format_file, formatted_name, family_names)
 from myref.config import config
 
 DRYRUN = False
@@ -53,43 +55,6 @@ def choose_entry_interactive(entries, extra=[], msg=''):
         return i
 
 
-def best_entry(entries, fields=None):
-    """best guess among a list of entries, based on field availability
-
-    strategy:
-    - filter out exact duplicate
-    - keep fied with non-zero ID
-    - for each field in fields, keep the entry where this field is documented (doi first)
-    - keep the entry with the smallest ID
-    """
-    if len(entries) == 0:
-        raise ValueError('at least one entry is required')
-
-    # keep unique entries
-    entries = unique(entries)
-
-    if len(entries) == 1:
-        return entries
-
-    # pick the entry with one of preferred fields
-    if fields is None:
-        fields = ['ID', 'doi','author','year','title','file']
-
-    for f in fields:
-        if any([e.get(f,'') for e in entries]):
-            entries = [e for e in entries if e.get(f,'')]
-            if len(entries) == 1:
-                return entries
-
-    # just pick one, based on the smallest key
-    e = entries[0]
-    for ei in entries[1:]:
-        if ei['ID'] < e['ID']:
-            e = ei
-
-    return e
-
-
 def merge_files(entries):
     files = []
     for e in entries:
@@ -98,12 +63,6 @@ def merge_files(entries):
                 files.append(f)
     return format_file(files)
 
-
-def smallest_key(entries):
-    keys = [e['ID'] for e in entries if e.get('ID','')]
-    if not keys:
-        return ''
-    return min(keys)
 
 
 class ConflictingField(object):
@@ -222,52 +181,6 @@ def format_entries(entries):
     return bibtexparser.dumps(db)
 
 
-def largest_nested_brackets(string, type='{}'):
-    '''
-    >>> largest_nested_brackets('{my name}')
-    ['my name']
-    >>> largest_nested_brackets("{my nam\\'{e}}")
-    ["my nam\\\'{e}"]
-    >>> largest_nested_brackets('{my} {name}')
-    ['my', 'name']
-    >>> largest_nested_brackets("{my} {nam\\'{e}}")
-    ['my', "nam\\'{e}"]
-    '''
-    l, r = type
-    level = 0
-    matches = []
-    for c in string:
-        if c == l:
-            level += 1
-            if level == 1:
-                expr = []
-        elif c == r:
-            level -= 1
-            if level == 0:  # close main
-                matches.append(''.join(expr))
-        elif level >= 1:
-            expr.append(c)
-    return matches
-
-
-def strip_outmost_brackets(family):
-    # strip brakets
-    brackets = largest_nested_brackets(family)
-    if len(brackets) == 1 and brackets[0] == family[1:-1]:
-        family = family[1:-1] # strip name' bracket
-    return family
-
-
-def formatted_name(author):
-    names = []
-    for name in bibtexparser.customization.getnames([strip_outmost_brackets(nm) for nm in author.split(' and ')]):
-        family, given = name.split(',')
-        family = strip_outmost_brackets(family.strip())
-        # given = strip_outmost_brackets(given.strip())
-        names.append(', '.join([family.strip(), given.strip()]))
-    return ' and '.join(names)
-
-
 def generate_key(entry, nauthor=NAUTHOR, ntitle=NTITLE, keys=None):
     # names = bibtexparser.customization.getnames(entry.get('author','unknown').lower().split(' and '))
     names = family_names(entry.get('author','unknown').lower())
@@ -285,13 +198,6 @@ def generate_key(entry, nauthor=NAUTHOR, ntitle=NTITLE, keys=None):
         assert Key not in keys
     return key
  
-
-if six.PY2:
-    _bloads = bibtexparser.loads 
-    _bdumps = bibtexparser.dumps
-    bibtexparser.loads = lambda s: _bloads(s.decode('utf-8') if type(s) is str else s)
-    bibtexparser.dumps = lambda db: _bdumps(db).encode('utf-8')
-
 
 def hidden_bibtex(direc):
     " save metadata for a bundle of files "
@@ -867,7 +773,7 @@ class MyRef(object):
             s = format_entries([e])
             ndiff = difflib.ndiff(s_old.splitlines(1), s.splitlines(1))
             print(''.join(ndiff))
-            if raw_input('update ? [Y/n] or [Enter]').lower() not in ('', 'y'):
+            if raw_input('update ? [Y/n] or [Enter] ').lower() not in ('', 'y'):
                 logging.info('cancel changes')
                 e.update(e_old)
                 for k in list(e.keys()):
@@ -983,11 +889,6 @@ def entry_filecheck(e, delete_broken=False, fix_mendeley=False,
     e['file'] = format_file(newfiles)
 
 
-
-
-def family_names(author_field):
-    authors = formatted_name(author_field).split(' and ')
-    return [nm.split(',')[0] for nm in authors]
 
 def main():
 
