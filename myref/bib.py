@@ -15,13 +15,15 @@ import bibtexparser
 
 import myref
 from myref.tools import (bcolors, move, extract_doi, fetch_bibtex_by_doi, 
-    isvaliddoi, parse_doi, checksum, extract_pdf_metadata, fetch_bibtex_by_fulltext_crossref)
+    isvaliddoi, parse_doi, checksum, extract_pdf_metadata, fetch_bibtex_by_fulltext_crossref,
+    latex_to_unicode, unicode_to_latex, unicode_to_ascii)
 from myref.config import config
 from myref.conflict import (merge_files, merge_entries, parse_file, format_file,
     handle_merge_conflict, search_duplicates, choose_entry_interactive, unique)
 
 DRYRUN = False
- 
+NAUTHOR = 2 
+NTITLE = 0 
 
 # Parse / format bibtex file entry
 # ================================
@@ -43,12 +45,76 @@ def format_entries(entries):
     db = bibtexparser.loads('')
     db.entries.extend(entries)
     return bibtexparser.dumps(db)
+
+
+def largest_nested_brackets(string, type='{}'):
+    '''
+    >>> largest_nested_brackets('{my name}')
+    ['my name']
+    >>> largest_nested_brackets("{my nam\\'{e}}")
+    ["my nam\\\'{e}"]
+    >>> largest_nested_brackets('{my} {name}')
+    ['my', 'name']
+    >>> largest_nested_brackets("{my} {nam\\'{e}}")
+    ['my', "nam\\'{e}"]
+    '''
+    l, r = type
+    level = 0
+    matches = []
+    for c in string:
+        if c == l:
+            level += 1
+            if level == 1:
+                expr = []
+        elif c == r:
+            level -= 1
+            if level == 0:  # close main
+                matches.append(''.join(expr))
+        elif level >= 1:
+            expr.append(c)
+    return matches
+
+
+def strip_outmost_brackets(family):
+    # strip brakets
+    brackets = largest_nested_brackets(family)
+    if len(brackets) == 1 and brackets[0] == family[1:-1]:
+        family = family[1:-1] # strip name' bracket
+    return family
+
+
+def formatted_name(author):
+    names = []
+    for name in bibtexparser.customization.getnames([strip_outmost_brackets(nm) for nm in author.split(' and ')]):
+        family, given = name.split(',')
+        family = strip_outmost_brackets(family.strip())
+        # given = strip_outmost_brackets(given.strip())
+        names.append(', '.join([family.strip(), given.strip()]))
+    return ' and '.join(names)
+
+
+def generate_key(entry, nauthor=NAUTHOR, ntitle=NTITLE, keys=None):
+    # names = bibtexparser.customization.getnames(entry.get('author','unknown').lower().split(' and '))
+    names = family_names(entry.get('author','unknown').lower())
+    authortag = '_'.join([nm for nm in names[:nauthor]]) 
+    yeartag = entry.get('year','0000') 
+    titletag = '_'.join([word for word in entry.get('title','').lower().strip().split() if len(word) > 3][:ntitle])
+    key = authortag + yeartag + titletag
+    if keys and key in keys: # and not isinstance(keys, set):
+        letters = list('bcdefghijklmnopqrstuvwxyz')
+        for l in letters:
+            Key = (key+l)
+            if Key not in keys:
+                key = Key
+                break
+        assert Key not in keys
+    return key
  
 
 if six.PY2:
     _bloads = bibtexparser.loads 
     _bdumps = bibtexparser.dumps
-    bibtexparser.loads = lambda s: _bloads(s.decode('utf-8'))
+    bibtexparser.loads = lambda s: _bloads(s.decode('utf-8') if type(s) is str else s)
     bibtexparser.dumps = lambda db: _bdumps(db).encode('utf-8')
 
 
@@ -86,7 +152,7 @@ def backupfile(bibtex):
 class MyRef(object):
     """main config
     """
-    def __init__(self, db, filesdir, key_field='ID'):
+    def __init__(self, db, filesdir, key_field='ID', nauthor=NAUTHOR, ntitle=NTITLE):
         self.filesdir = filesdir
         self.txt = '/tmp'
         # assume an already sorted list
@@ -95,6 +161,8 @@ class MyRef(object):
             raise TypeError('db must of type BibDatabase')
         self.db = db
         self.sort()
+        self.nauthor = nauthor
+        self.ntitle = ntitle
 
     @property
     def entries(self):
@@ -351,18 +419,11 @@ class MyRef(object):
                     logging.warn(path+'::'+str(error))
                     continue
 
+
     def generate_key(self, entry):
         " generate a unique key not yet present in the record "
-        keys = [self.key(e) for e in self.db.entries]
-        names = bibtexparser.customization.getnames(entry['author'].split(' and '))
-        letters = list(' bcdefghijklmnopqrstuvwxyz')
-        key = names[0].split(',')[0].strip().capitalize() + '_' + entry.get('year','XXXX')
-        for l in letters:
-            Key = (key+l).capitalize()
-            if Key.lower() not in keys:
-                break
-        assert Key.lower() not in keys
-        return Key
+        keys = set(self.key(e) for e in self.db.entries)
+        return generate_key(entry, keys=keys, nauthor=self.nauthor, ntitle=self.ntitle)
 
 
     def format(self):
@@ -538,7 +599,34 @@ class MyRef(object):
                 continue
 
 
-    def fix_entry(self, e, fix_doi=True, fetch=False, fetch_all=False, fix_key=False, auto_key=False, interactive=True):
+    def fix_entry(self, e, fix_doi=True, fetch=False, fetch_all=False, 
+        fix_key=False, auto_key=False, key_ascii=False, encoding=None, 
+        format_name=True, interactive=False):
+
+        e_old = e.copy()
+
+        if format_name:
+            for k in ['author','editor']:
+                if k in e:
+                    e[k] = formatted_name(e[k])
+                    if e[k] != e_old[k]:
+                        logging.info(e.get('ID','')+': '+k+' name formatted')
+
+        if encoding:
+
+            assert encoding in ['unicode','latex'], e.get('ID','')+': unknown encoding: '+repr(encoding)
+
+            logging.debug(e.get('ID','')+': update encoding')
+            for k in e:
+                if k == k.lower() and k != 'abstract': # all but ENTRYTYPE, ID, abstract
+                    try:
+                        if encoding == 'unicode':
+                            e[k] = latex_to_unicode(e[k])
+                        elif encoding == 'latex':
+                            e[k] = unicode_to_latex(e[k])
+                    # except KeyError as error:
+                    except (KeyError, ValueError) as error:
+                        logging.warn(e.get('ID','')+': '+k+': failed to encode: '+str(error))
 
         if fix_doi:
             if 'doi' in e and e['doi']:
@@ -550,8 +638,6 @@ class MyRef(object):
 
                 if doi.lower() != e['doi'].lower():
                     logging.info(e.get('ID','')+': fix doi: {} ==> {}'.format(e['doi'], doi))
-                    if interactive and raw_input('update ? [Y/n] ').lower() not in ('', 'y'):
-                        return
                     e['doi'] = doi
                 else:
                     logging.debug(e.get('ID','')+': doi OK')
@@ -581,27 +667,13 @@ class MyRef(object):
             if bibtex:                        
                 db = bibtexparser.loads(bibtex)
                 e2 = db.entries[0]
+                self.fix_entry(e2, encoding=encoding, format_name=True) 
                 strip_e = lambda e_: {k:e_[k] for k in e_ if k not in ['ID', 'file'] and k in e2}
                 if strip_e(e) != strip_e(e2):
-                    e3 = e.copy()
-                    e3.update(strip_e(e2))
-                    print(bcolors.OKBLUE+'*** OLD ***'+bcolors.ENDC)
-                    s1 = format_entries([e])
-                    print(s1)
-                    print(bcolors.OKBLUE+'*** NEW ***'+bcolors.ENDC)
-                    print(format_entries([e2]))
-                    print(bcolors.OKBLUE+'*** UPDATED ***'+bcolors.ENDC)
-                    s3 = format_entries([e3])
-                    # print(s3)
-                    ndiff = difflib.ndiff(s1.splitlines(1), s3.splitlines(1))
-                    print(''.join(ndiff))
-
-                    if interactive and raw_input('update ? [Y/n] ').lower() not in ('', 'y'):
-                        return
-                    logging.info('...update entry')
+                    logging.info('...fetch-update entry')
                     e.update(strip_e(e2))
                 else:
-                    logging.info('...already up to date')
+                    logging.info('...fetch-update: already up to date')
 
 
         if fix_key or auto_key:
@@ -609,9 +681,23 @@ class MyRef(object):
                 key = self.generate_key(e)
                 if e.get('ID', '') != key:
                     logging.info('update key {} => {}'.format(e.get('ID', ''), key))
-                    if interactive and raw_input('update ? [Y/n] ').lower() not in ('', 'y'):
-                        return                        
                     e['ID'] = key
+
+        if key_ascii:
+            e['ID'] = unicode_to_ascii(e['ID'])
+
+        if interactive and e_old != e:
+            print(bcolors.OKBLUE+'*** UPDATE ***'+bcolors.ENDC)
+            s_old = format_entries([e_old])
+            s = format_entries([e])
+            ndiff = difflib.ndiff(s_old.splitlines(1), s.splitlines(1))
+            print(''.join(ndiff))
+            if raw_input('update ? [Y/n] or [Enter]').lower() not in ('', 'y'):
+                logging.info('cancel changes')
+                e.update(e_old)
+                for k in list(e.keys()):
+                    if k not in e_old:
+                        del e[k]
 
 
 def isvalidkey(key):
@@ -642,20 +728,6 @@ def entry_filecheck_metadata(e, file):
 
     if doi.lower() != e['doi'].lower():
         raise ValueError(e['ID']+': doi: entry <=> pdf : {} <=> {}'.format(e['doi'].lower(), doi.lower()))
-
-
-LATEX_TO_UNICODE = None
-
-def latex_to_unicode(string):
-    """ replace things like "{\_}" and "{\'{e}}'" with unicode characters _ and é
-    """
-    global LATEX_TO_UNICODE
-    if LATEX_TO_UNICODE is None:
-        import myref.unicode_to_latex as ul 
-        LATEX_TO_UNICODE = {v.strip():k for k,v in six.iteritems(ul.unicode_to_latex)}
-    return string.format(**LATEX_TO_UNICODE)
-
-
 
 
 def entry_filecheck(e, delete_broken=False, fix_mendeley=False, 
@@ -739,7 +811,7 @@ def entry_filecheck(e, delete_broken=False, fix_mendeley=False,
 
 
 def family_names(author_field):
-    authors = bibtexparser.customization.getnames(author_field.split(' and '))
+    authors = formatted_name(author_field).split(' and ')
     return [nm.split(',')[0] for nm in authors]
 
 def main():
@@ -1006,18 +1078,27 @@ def main():
 
     # check
     # =====
-    checkp = subparsers.add_parser('check', description='check duplicates', 
+    checkp = subparsers.add_parser('check', description='check and fix entries', 
         parents=[cfg])
     checkp.add_argument('-k', '--keys', nargs='+', help='apply check on this key subset')
     checkp.add_argument('-f','--force', action='store_true', help='do not ask')
 
-    grp = checkp.add_argument_group('fix entry')
+    grp = checkp.add_argument_group('entry key')
+    grp.add_argument('--fix-key', action='store_true', help='fix key based on author name and date (in case misssing or digit)')
+    grp.add_argument('--key-ascii', action='store_true', help='replace keys unicode character with ascii')
+    grp.add_argument('--auto-key', action='store_true', help='new, auto-generated key for all entries')
+    grp.add_argument('--nauthor', type=int, default=NAUTHOR, help='number of authors to include in key (default:%(default)s)')
+    grp.add_argument('--ntitle', type=int, default=NTITLE, help='number of title words to include in key (default:%(default)s)')
+    # grp.add_argument('--ascii-key', action='store_true', help='replace unicode characters with closest ascii')
+
+    grp = checkp.add_argument_group('crossref fetch and fix')
     grp.add_argument('--fix-doi', action='store_true', help='fix doi for some common issues (e.g. DOI: inside doi, .received at the end')
     grp.add_argument('--fetch', action='store_true', help='fetch metadata from doi and update entry')
     grp.add_argument('--fetch-all', action='store_true', help='fetch metadata from title and author field and update entry (only when doi is missing)')
-    grp.add_argument('--fix-key', action='store_true', help='fix key based on author name and date (in case misssing or digit)')
-    grp.add_argument('--auto-key', action='store_true', help='new, auto-generated key for all entries')
-    grp.add_argument('--fix-all', action='store_true', help='--fix-doi --fetch-all --fix-key')
+
+    grp = checkp.add_argument_group('names')
+    grp.add_argument('--format-name', action='store_true', help='author name as family, given, without brackets')
+    grp.add_argument('--encoding', choices=['latex','unicode'], help='bibtex field encoding')
 
     grp = checkp.add_argument_group('merge/conflict')
     grp.add_argument('--duplicates',action='store_true', help='remove / merge duplicates')
@@ -1028,15 +1109,17 @@ def main():
     def checkcmd(o):
         my = MyRef.load(o.bibtex, o.filesdir)
 
-        if o.fix_all:
-            o.fix_doi = True
-            o.fetch_all = True
-            o.fix_key = True
+        # if o.fix_all:
+        #     o.fix_doi = True
+        #     o.fetch_all = True
+        #     o.fix_key = True
 
         for e in my.entries:
             if o.keys and e.get('ID','') not in o.keys:
                 continue
-            my.fix_entry(e, fix_doi=o.fix_doi, fetch=o.fetch, fetch_all=o.fetch_all, fix_key=o.fix_key, auto_key=o.auto_key, interactive=not o.force)
+            my.fix_entry(e, fix_doi=o.fix_doi, fetch=o.fetch, fetch_all=o.fetch_all, fix_key=o.fix_key, 
+                auto_key=o.auto_key, format_name=o.format_name, encoding=o.encoding, 
+                key_ascii=o.key_ascii, interactive=not o.force)
 
 
         if o.duplicates:

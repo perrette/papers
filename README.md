@@ -52,21 +52,16 @@ Dependencies
     - Natively installed on Ubuntu 14.04 (?). Part of poppler-utils.
 
 - [bibtexparser](https://bibtexparser.readthedocs.io/en/v0.6.2)
-    - pip install bibtexparser
-
 - [crossrefapi](https://github.com/fabiobatalha/crossrefapi) : make polite requests to crossref API
-    - pip install crossrefapi
-
 - [scholarly](https://github.com/OrganicIrradiation/scholarly) : interface for google scholar
-    - pip install scholarly
-
 - [fuzzywuzzy](https://github.com/seatgeek/fuzzywuzzy) : calculate score to sort crossref requests
-    - pip install fuzzywuzzy
-
+- [unidecode](https://github.com/avian2/unidecode) : replace unicode with ascii equivalent
+- six: python 2-3 compatibility
 
 Install
 -------
 - clone this project
+- pip install unidecode crossrefapi bibtexparser scholarly fuzzywuzzy six
 - python setup.py install
 
 
@@ -164,6 +159,7 @@ Current features
 - rename PDFs according to bibtex key and year (`myref filecheck --rename [--copy]`)
 - some support for attachment
 - merging (`myref check --duplicates ...`)
+- fix entries (`myref check --format-name --encoding unicode --fix-doi --fix-key ...`)
 - undo command (`myref undo`)
 - configuration file with default bibtex and files directory (`myref install --bibtex BIB --filesdir DIR ...`)
 - integration with git (`myref install --git --gitdir DIR` and e.g. `myref git ...` to setup a remote, push...)
