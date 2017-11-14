@@ -92,11 +92,11 @@ For the sake of the example, one of my owns: https://www.earth-syst-dynam.net/4/
 - add pdf to `myref.bib`  library, and rename a copy of it in a files directory `files`.
 
         $> myref add --rename --copy --bibtex myref.bib --filesdir files esd-4-11-2013.pdf --info
-    	INFO:root:found doi:10.5194/esd-4-11-2013
-    	INFO:root:new entry: perrette_2013
-    	INFO:root:create directory: files/2013
-    	INFO:root:mv /home/perrette/playground/myref/esd-4-11-2013.pdf files/2013/Perrette_2013.pdf
-    	INFO:root:renamed file(s): 1
+    	INFO:myref:found doi:10.5194/esd-4-11-2013
+    	INFO:myref:new entry: perrette_2013
+    	INFO:myref:create directory: files/2013
+    	INFO:myref:mv /home/perrette/playground/myref/esd-4-11-2013.pdf files/2013/Perrette_2013.pdf
+    	INFO:myref:renamed file(s): 1
 
 (the `--info` argument asks for the above output information to be printed out to the terminal)
 

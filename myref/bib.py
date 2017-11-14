@@ -2,7 +2,7 @@
 from __future__ import print_function
 import os, json, sys
 import logging
-# logging.basicConfig(level=logging.INFO)
+# logger.basicConfig(level=logger.INFO)
 import argparse
 import subprocess as sp
 import shutil
@@ -14,6 +14,7 @@ import difflib
 import bibtexparser
 
 import myref
+from myref import logger
 
 from myref.extract import extract_pdf_doi, isvaliddoi, parse_doi
 from myref.extract import extract_pdf_metadata
@@ -124,7 +125,7 @@ def handle_merge_conflict(merged, fetch=False, force=False):
             if not force: 
                 raise
             else:
-                logging.warn('failed to fetch metadata: '+str(error))
+                logger.warn('failed to fetch metadata: '+str(error))
 
     if force:
         merged = merged.resolve(force=True)
@@ -318,7 +319,7 @@ class MyRef(object):
 
         # the keys do not match, just insert at new position without further checking
         if not candidate:
-            logging.info('new entry: '+self.key(entry))
+            logger.info('new entry: '+self.key(entry))
             self.entries.insert(i, entry)
 
         # the keys match: see what needs to be done
@@ -327,11 +328,11 @@ class MyRef(object):
             nofile = lambda e : {k:e[k] for k in e if k != 'file'}
 
             if entry == candidate:
-                logging.info('entry already present: '+self.key(entry))
+                logger.info('entry already present: '+self.key(entry))
 
             # all files match besides 'file' ?
             elif mergefiles and nofile(entry) == nofile(candidate):
-                logging.info('entry already present: '+self.key(entry))
+                logger.info('entry already present: '+self.key(entry))
                 candidate['file'] = merge_files([candidate, entry])
 
             # some fields do not match
@@ -381,7 +382,7 @@ class MyRef(object):
                 else:
                     raise ValueError(msg)
 
-                logging.warn(msg+action)
+                logger.warn(msg+action)
 
         return self.entries[i]
 
@@ -401,7 +402,7 @@ class MyRef(object):
             candidate = conflicting_doi[0]
             msg = '!!! {}: insert conflict with existing doi: {} ({})'.format(
                 self.key(entry), doi, candidate['ID'])
-            logging.warn(msg)
+            logger.warn(msg)
 
             autokey = self.generate_key(entry)
 
@@ -425,15 +426,15 @@ class MyRef(object):
                     update_key = 'auto'
 
             if update_key == 'auto':
-                logging.info('update with auto-generated key {}, {} ==> {}'.format(candidate['ID'], entry['ID'], autokey))
+                logger.info('update with auto-generated key {}, {} ==> {}'.format(candidate['ID'], entry['ID'], autokey))
                 candidate['ID'] = entry['ID'] = autokey
 
             elif update_key == 'other':
-                logging.info('update with other key {} ==> {}'.format(candidate['ID'], entry['ID']))
+                logger.info('update with other key {} ==> {}'.format(candidate['ID'], entry['ID']))
                 candidate['ID'] = entry['ID']
 
             elif update_key:
-                logging.info('update key {} ==> {}'.format(entry['ID'], candidate['ID']))
+                logger.info('update key {} ==> {}'.format(entry['ID'], candidate['ID']))
                 entry['ID'] = candidate['ID']
 
             else:
@@ -469,7 +470,7 @@ class MyRef(object):
 
         entry['file'] = format_file([os.path.abspath(f) for f in files])
         kw.pop('update_key', True)
-            # logging.warn('fetched key is always updated when adding PDF to existing bib')
+            # logger.warn('fetched key is always updated when adding PDF to existing bib')
         self.insert_entry(entry, update_key=True, **kw)
 
         if rename:
@@ -489,7 +490,7 @@ class MyRef(object):
                     entry = read_entry_dir(root)
                     self.insert_entry(entry, **kw)
                 except Exception:  
-                    logging.warn(root+'::'+str(error))
+                    logger.warn(root+'::'+str(error))
                 continue 
 
 
@@ -503,7 +504,7 @@ class MyRef(object):
                     elif file.endswith('.bib'):
                         self.add_bibtex_file(path, **kw)
                 except Exception as error:
-                    logging.warn(path+'::'+str(error))
+                    logger.warn(path+'::'+str(error))
                     continue
 
 
@@ -527,7 +528,7 @@ class MyRef(object):
             f.write(entrystring)
         res = os.system('%s %s' % (os.getenv('EDITOR'), filename))
         if res == 0:
-            logging.info('sucessfully edited file, insert edited entries')
+            logger.info('sucessfully edited file, insert edited entries')
             self.db.entries = [e for e in self.entries if e not in entries]
             self.add_bibtex_file(filename)
         else:
@@ -572,7 +573,7 @@ class MyRef(object):
             try:
                 e = handle_merge_conflict(merged, fetch=fetch)
             except Exception as error:
-                logging.warn(str(error))
+                logger.warn(str(error))
                 conflicts.append(unique(entries))
                 continue
             self.insert_entry(e, mergefiles=mergefiles)
@@ -647,7 +648,7 @@ class MyRef(object):
         direc = os.path.join(self.filesdir, e.get('year','0000'))
 
         if not files:
-            logging.info('no files to rename')
+            logger.info('no files to rename')
             return
 
         autoname = lambda e: e['ID'].replace(':','-').replace(';','-') # ':' and ';' are forbidden in file name
@@ -693,13 +694,13 @@ class MyRef(object):
             if len(direcs) == 1:
                 leftovers = os.listdir(direcs[0])
                 if not leftovers or len(leftovers) == 1 and leftovers[0] == os.path.basename(hidden_bibtex(direcs[0])):
-                    logging.debug('remove tree: '+direcs[0])
+                    logger.debug('remove tree: '+direcs[0])
                     shutil.rmtree(direcs[0])
             else:
-                logging.debug('some left overs, do not remove tree: '+direcs[0])
+                logger.debug('some left overs, do not remove tree: '+direcs[0])
 
         if count > 0:
-            logging.info('renamed file(s): {}'.format(count))
+            logger.info('renamed file(s): {}'.format(count))
 
 
     def rename_entries_files(self, copy=False):
@@ -707,7 +708,7 @@ class MyRef(object):
             try:
                 self.rename_entry_files(e, copy)
             except Exception as error:
-                logging.error(str(error))
+                logger.error(str(error))
                 continue
 
 
@@ -722,13 +723,13 @@ class MyRef(object):
                 if k in e:
                     e[k] = standard_name(e[k])
                     if e[k] != e_old[k]:
-                        logging.info(e.get('ID','')+': '+k+' name formatted')
+                        logger.info(e.get('ID','')+': '+k+' name formatted')
 
         if encoding:
 
             assert encoding in ['unicode','latex'], e.get('ID','')+': unknown encoding: '+repr(encoding)
 
-            logging.debug(e.get('ID','')+': update encoding')
+            logger.debug(e.get('ID','')+': update encoding')
             for k in e:
                 if k == k.lower() and k != 'abstract': # all but ENTRYTYPE, ID, abstract
                     try:
@@ -738,43 +739,43 @@ class MyRef(object):
                             e[k] = unicode_to_latex(e[k])
                     # except KeyError as error:
                     except (KeyError, ValueError) as error:
-                        logging.warn(e.get('ID','')+': '+k+': failed to encode: '+str(error))
+                        logger.warn(e.get('ID','')+': '+k+': failed to encode: '+str(error))
 
         if fix_doi:
             if 'doi' in e and e['doi']:
                 try:
                     doi = parse_doi(e['doi'])
                 except:
-                    logging.warn(e.get('ID','')+': failed to fix doi: '+e['doi'])
+                    logger.warn(e.get('ID','')+': failed to fix doi: '+e['doi'])
                     return
 
                 if doi.lower() != e['doi'].lower():
-                    logging.info(e.get('ID','')+': fix doi: {} ==> {}'.format(e['doi'], doi))
+                    logger.info(e.get('ID','')+': fix doi: {} ==> {}'.format(e['doi'], doi))
                     e['doi'] = doi
                 else:
-                    logging.debug(e.get('ID','')+': doi OK')
+                    logger.debug(e.get('ID','')+': doi OK')
             else:
-                logging.debug(e.get('ID','')+': no DOI')
+                logger.debug(e.get('ID','')+': no DOI')
 
 
         if fetch or fetch_all:
             bibtex = None
             if 'doi' in e and e['doi']:
-                logging.info(e.get('ID','')+': fetch doi: '+e['doi'])
+                logger.info(e.get('ID','')+': fetch doi: '+e['doi'])
                 try:
                     bibtex = fetch_bibtex_by_doi(e['doi'])
                 except Exception as error:
-                    logging.warn('...failed to fetch bibtex (doi): '+str(error))
+                    logger.warn('...failed to fetch bibtex (doi): '+str(error))
 
             elif e.get('title','') and e.get('author','') and fetch_all:
                 kw = {}
                 kw['title'] = e['title']
                 kw['author'] = ' '.join(family_names(e['author']))
-                logging.info(e.get('ID','')+': fetch-all: '+str(kw))
+                logger.info(e.get('ID','')+': fetch-all: '+str(kw))
                 try:
                     bibtex = fetch_bibtex_by_fulltext_crossref('', **kw)
                 except Exception as error:
-                    logging.warn('...failed to fetch/update bibtex (all): '+str(error))
+                    logger.warn('...failed to fetch/update bibtex (all): '+str(error))
 
             if bibtex:                        
                 db = bibtexparser.loads(bibtex)
@@ -782,17 +783,17 @@ class MyRef(object):
                 self.fix_entry(e2, encoding=encoding, format_name=True) 
                 strip_e = lambda e_: {k:e_[k] for k in e_ if k not in ['ID', 'file'] and k in e2}
                 if strip_e(e) != strip_e(e2):
-                    logging.info('...fetch-update entry')
+                    logger.info('...fetch-update entry')
                     e.update(strip_e(e2))
                 else:
-                    logging.info('...fetch-update: already up to date')
+                    logger.info('...fetch-update: already up to date')
 
 
         if fix_key or auto_key:
             if auto_key or not isvalidkey(e.get('ID','')):
                 key = self.generate_key(e)
                 if e.get('ID', '') != key:
-                    logging.info('update key {} => {}'.format(e.get('ID', ''), key))
+                    logger.info('update key {} => {}'.format(e.get('ID', ''), key))
                     e['ID'] = key
 
         if key_ascii:
@@ -805,7 +806,7 @@ class MyRef(object):
             ndiff = difflib.ndiff(s_old.splitlines(1), s.splitlines(1))
             print(''.join(ndiff))
             if raw_input('update ? [Y/n] or [Enter] ').lower() not in ('', 'y'):
-                logging.info('cancel changes')
+                logger.info('cancel changes')
                 e.update(e_old)
                 for k in list(e.keys()):
                     if k not in e_old:
@@ -860,7 +861,7 @@ def entry_filecheck(e, delete_broken=False, fix_mendeley=False,
 
         realpath = os.path.realpath(file)
         if realpath in realpaths:
-            logging.info(e['ID']+': remove duplicate path: "{}"'.format(fixed.get(file, file)))
+            logger.info(e['ID']+': remove duplicate path: "{}"'.format(fixed.get(file, file)))
             continue
         realpaths.add(realpath) # put here so that for identical
                                    # files that are checked and finally not 
@@ -873,7 +874,7 @@ def entry_filecheck(e, delete_broken=False, fix_mendeley=False,
             try:
                 file = latex_to_unicode(file)
             except KeyError as error:
-                logging.warn(e['ID']+': '+str(error)+': failed to convert latex symbols to unicode: '+file)
+                logger.warn(e['ID']+': '+str(error)+': failed to convert latex symbols to unicode: '+file)
 
             # fix root (e.g. path starts with home instead of /home)
             dirname = os.path.dirname(file)
@@ -882,11 +883,11 @@ def entry_filecheck(e, delete_broken=False, fix_mendeley=False,
                 and not os.path.exists(dirname) 
                 and os.path.exists(os.path.dirname(candidate))): # simply requires that '/'+directory exists 
                 # and os.path.exists(newfile)):
-                    # logging.info('prepend "/" to file name: "{}"'.format(file))
+                    # logger.info('prepend "/" to file name: "{}"'.format(file))
                     file = candidate
 
             if old != file:
-                logging.info(e['ID']+u': file name fixed: "{}" => "{}".'.format(old, file))
+                logger.info(e['ID']+u': file name fixed: "{}" => "{}".'.format(old, file))
                 fixed[old] = file # keep record of fixed files
 
         # parse PDF and check for metadata
@@ -894,13 +895,13 @@ def entry_filecheck(e, delete_broken=False, fix_mendeley=False,
             try:
                 entry_filecheck_metadata(e, file)
             except ValueError as error:
-                logging.warn(error)
+                logger.warn(error)
 
         # check existence
         if not os.path.exists(file):
-            logging.warn(e['ID']+': "{}" does not exist'.format(file)+delete_broken*' ==> delete')
+            logger.warn(e['ID']+': "{}" does not exist'.format(file)+delete_broken*' ==> delete')
             if delete_broken:
-                logging.info('delete file from entry: "{}"'.format(file))
+                logger.info('delete file from entry: "{}"'.format(file))
                 continue
             elif interactive:
                 ans = raw_input('delete file from entry ? [Y/n] ')
@@ -911,7 +912,7 @@ def entry_filecheck(e, delete_broken=False, fix_mendeley=False,
             # hash_ = hashlib.sha256(open(file, 'rb').read()).digest()
             hash_ = checksum(file) # a litftle faster
             if hash_ in hashes:
-                logging.info(e['ID']+': file already exists (identical checksum): "{}"'.format(file))
+                logger.info(e['ID']+': file already exists (identical checksum): "{}"'.format(file))
                 continue
             hashes.add(hash_)
 
@@ -932,7 +933,7 @@ def main():
         config.file = global_config
 
     if os.path.exists(config.file):
-        logging.debug('load config from: '+config.file)
+        logger.debug('load config from: '+config.file)
         config.load()
 
     parser = argparse.ArgumentParser(description='library management tool')
@@ -1029,16 +1030,16 @@ def main():
 
         # create bibtex file if not existing
         if not os.path.exists(o.bibtex):
-            logging.info('create empty bibliography database: '+o.bibtex)
+            logger.info('create empty bibliography database: '+o.bibtex)
             open(o.bibtex,'w').write('')
 
         # create bibtex file if not existing
         if not os.path.exists(o.filesdir):
-            logging.info('create empty files directory: '+o.filesdir)
+            logger.info('create empty files directory: '+o.filesdir)
             os.makedirs(o.filesdir)
 
         if not o.local and os.path.exists(local_config):
-            logging.warn('Cannot make global install if local config file exists.')
+            logger.warn('Cannot make global install if local config file exists.')
             ans = None
             while ans not in ('1','2'):
                 ans = raw_input('(1) remove local config file '+local_config+'\n(2) make local install\nChoice: ')
@@ -1057,7 +1058,7 @@ def main():
             config.gitinit()
 
         if o.local:
-            logging.info('save local config file: '+local_config)
+            logger.info('save local config file: '+local_config)
             config.file = local_config
         else:
             config.file = global_config
@@ -1067,7 +1068,7 @@ def main():
 
 
     def savebib(my, o):
-        logging.info(u'save '+o.bibtex)
+        logger.info(u'save '+o.bibtex)
         if myref.config.DRYRUN:
             return
         if my is not None:
@@ -1133,7 +1134,7 @@ def main():
             my = MyRef.newbib(o.bibtex, o.filesdir)
 
         if len(o.file) > 1 and o.attachment:
-            logging.error('--attachment is only valid for one added file')
+            logger.error('--attachment is only valid for one added file')
             addp.exit(1)
 
         if o.update_key_other:
@@ -1168,10 +1169,10 @@ def main():
                 # print(error) 
                 # addp.error(str(error))
                 raise
-                logging.error(str(error))
+                logger.error(str(error))
                 if not o.ignore_errors:
                     if len(o.file) or (os.isdir(file) and o.recursive)> 1: 
-                        logging.error('use --ignore to add other files anyway')
+                        logger.error('use --ignore to add other files anyway')
                     addp.exit(1)
 
         savebib(my, o)
@@ -1398,7 +1399,7 @@ def main():
             try:
                 my.edit_entries(entries)
             except Exception as error:
-                logging.error(str(error))
+                logger.error(str(error))
                 return
             savebib(my, o)
 
@@ -1474,7 +1475,7 @@ def main():
         back = backupfile(o.bibtex)
         tmp = o.bibtex + '.tmp'
         # my = MyRef(o.bibtex, o.filesdir)
-        logging.info(o.bibtex+' <==> '+back)
+        logger.info(o.bibtex+' <==> '+back)
         shutil.copy(o.bibtex, tmp)
         shutil.move(back, o.bibtex)
         shutil.move(tmp, back)
@@ -1500,7 +1501,7 @@ def main():
 
     # verbosity
     if getattr(o,'logging_level',None):
-        logging.getLogger().setLevel(o.logging_level)
+        logger.setLevel(o.logging_level)
     # modify disk state?
     if hasattr(o,'dry_run'):
         myref.config.DRYRUN = o.dry_run
@@ -1515,8 +1516,8 @@ def main():
         if not os.path.exists(o.bibtex):
             print('myref: error: no bibtex file found, use `myref install` or `touch {}`'.format(o.bibtex))
             parser.exit(1)
-        logging.info('bibtex: '+o.bibtex)
-        logging.info('filesdir: '+o.filesdir)
+        logger.info('bibtex: '+o.bibtex)
+        logger.info('filesdir: '+o.filesdir)
         return True
 
     if o.cmd == 'add':

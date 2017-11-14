@@ -1,7 +1,6 @@
 
 from __future__ import print_function
 import os
-import logging
 import json
 import six
 import subprocess as sp
@@ -13,6 +12,7 @@ import bibtexparser
 
 import myref
 from myref.config import cached
+from myref import logger
 
 my_etiquette = Etiquette('myref', myref.__version__, 'https://github.com/perrette/myref', 'mahe.perrette@gmail.com')
 
@@ -24,14 +24,14 @@ def readpdf(pdf, first=None, last=None, keeptxt=False):
     txtfile = pdf.replace('.pdf','.txt')
     # txtfile = os.path.join(os.path.dirname(pdf), pdf.replace('.pdf','.txt'))
     if True: #not os.path.exists(txtfile):
-        # logging.info(' '.join(['pdftotext','"'+pdf+'"', '"'+txtfile+'"']))
+        # logger.info(' '.join(['pdftotext','"'+pdf+'"', '"'+txtfile+'"']))
         cmd = ['pdftotext']
         if first is not None: cmd.extend(['-f',str(first)])
         if last is not None: cmd.extend(['-l',str(last)])
         cmd.append(pdf)
         sp.check_call(cmd)
     else:
-        logging.info('file already present: '+txtfile)
+        logger.info('file already present: '+txtfile)
     txt = open(txtfile).read()
     if not keeptxt:
         os.remove(txtfile)
@@ -95,7 +95,7 @@ def pdfhead(pdf, maxpages=10, minwords=200):
     txt = ''
     while len(txt.strip().split()) < minwords and i < maxpages:
         i += 1
-        logging.debug('read pdf page: '+str(i))
+        logger.debug('read pdf page: '+str(i))
         txt += readpdf(pdf, first=i, last=i)
     return txt
 
@@ -133,24 +133,24 @@ def extract_txt_metadata(txt, search_doi=True, search_fulltext=False, space_digi
 
     if search_doi:
         try:
-            logging.debug('parse doi')
+            logger.debug('parse doi')
             doi = parse_doi(txt, space_digit=space_digit)
-            logging.info('found doi:'+doi)
-            logging.debug('query bibtex by doi')
+            logger.info('found doi:'+doi)
+            logger.debug('query bibtex by doi')
             bibtex = fetch_bibtex_by_doi(doi)
-            logging.debug('doi query successful')
+            logger.debug('doi query successful')
 
         except ValueError as error:
-            logging.debug(u'failed to obtained bibtex by doi search: '+str(error))
+            logger.debug(u'failed to obtained bibtex by doi search: '+str(error))
 
     if search_fulltext and not bibtex:
-        logging.debug('query bibtex by fulltext')
+        logger.debug('query bibtex by fulltext')
         query_txt = query_text(txt, max_query_words)
         if scholar:
             bibtex = fetch_bibtex_by_fulltext_scholar(query_txt)
         else:
             bibtex = fetch_bibtex_by_fulltext_crossref(query_txt)
-        logging.debug('fulltext query successful')
+        logger.debug('fulltext query successful')
 
     if not bibtex:
         raise ValueError('failed to extract metadata')
@@ -200,7 +200,7 @@ def _scholar_score(txt, bib):
 def fetch_bibtex_by_fulltext_scholar(txt, assess_results=True):
     import scholarly
     scholarly._get_page = _get_page_fast  # remove waiting time
-    logging.debug(txt)
+    logger.debug(txt)
     search_query = scholarly.search_pubs_query(txt)
 
     # get the most likely match of the first results
@@ -294,7 +294,7 @@ def crossref_to_bibtex(r):
 # @cached('crossref-bibtex-fulltext.json', hashed_key=True)
 def fetch_bibtex_by_fulltext_crossref(txt, **kw):
     work = Works(etiquette=my_etiquette)
-    logging.debug(six.u('crossref fulltext seach:\n')+six.u(txt))
+    logger.debug(six.u('crossref fulltext seach:\n')+six.u(txt))
 
     # get the most likely match of the first results
     # results = []
@@ -314,7 +314,7 @@ def fetch_bibtex_by_fulltext_crossref(txt, **kw):
             if score > maxscore:
                 maxscore = score
                 result = res
-        logging.info('score: '+str(maxscore))
+        logger.info('score: '+str(maxscore))
 
     elif len(results) == 0:
         raise ValueError('crossref fulltext: no results')

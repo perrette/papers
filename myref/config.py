@@ -1,12 +1,12 @@
-import os, json, logging, shutil
+import os, json, shutil
 import subprocess as sp, sys, shutil
 import hashlib
 import bibtexparser
+from myref import logger
 
 # GIT = False
 DRYRUN = False
-
-
+ 
 # config directory location
 HOME = os.environ.get('HOME',os.path.expanduser('~'))
 CONFIG_HOME = os.environ.get('XDG_CONFIG_HOME', os.path.join(HOME, '.config'))
@@ -91,7 +91,7 @@ class Config(object):
 
     def check_install(self):
         if not os.path.exists(self.cache):
-            logging.info('make cache directory for DOI requests: '+self.cache)
+            logger.info('make cache directory for DOI requests: '+self.cache)
             os.makedirs(self.cache)
 
 
@@ -119,7 +119,7 @@ class Config(object):
                 sp.check_call(['git','add',target], stdout=shutup, stderr=shutup, cwd=self.gitdir)
                 res = sp.call(['git','commit','-m', message], stdout=shutup, stderr=shutup, cwd=self.gitdir)
                 if res == 0:
-                    logging.info('git commit')
+                    logger.info('git commit')
         else:
             raise ValueError('git is not initialized in '+self.gitdir)
 
@@ -206,7 +206,7 @@ def cached(file, hashed_key=False):
             else:
                 key = doi
             if key in cache:
-                logging.debug('load from cache: '+repr((file, key)))
+                logger.debug('load from cache: '+repr((file, key)))
                 return cache[key]
             else:
                 res = cache[key] = fun(doi)
@@ -244,10 +244,10 @@ def checksum(fname):
 def move(f1, f2, copy=False, interactive=True):
     dirname = os.path.dirname(f2)
     if dirname and not os.path.exists(dirname):
-        logging.info('create directory: '+dirname)
+        logger.info('create directory: '+dirname)
         os.makedirs(dirname)
     if f1 == f2:
-        logging.info('dest is identical to src: '+f1)
+        logger.info('dest is identical to src: '+f1)
         return 
     if os.path.exists(f2):
         ans = raw_input('dest file already exists: '+f2+'. Replace? (y/n) ')
@@ -256,11 +256,11 @@ def move(f1, f2, copy=False, interactive=True):
 
     if copy:
         cmd = u'cp {} {}'.format(f1, f2)
-        logging.info(cmd)
+        logger.info(cmd)
         if not DRYRUN:
             shutil.copy(f1, f2)
     else:
         cmd = u'mv {} {}'.format(f1, f2)
-        logging.info(cmd)
+        logger.info(cmd)
         if not DRYRUN:
             shutil.move(f1, f2)
