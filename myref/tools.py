@@ -81,6 +81,13 @@ def unicode_to_ascii(string):
 
 # misc
 # ----
+def unique(entries):
+    entries_ = []
+    for e in entries:
+        if e not in entries_:
+            entries_.append(e)
+    return entries_
+
 
 def check_filesdir(folder):
     folder_size = 0
