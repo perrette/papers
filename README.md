@@ -180,6 +180,7 @@ Planned features
 - support collections (distinct bibtex entries, same files directory)
     - or maybe more like ´myref update-from OTHER.bib´ to update changes based on DOI / key
     - could also use git branches / merge
+- associate bibtex to existing pdf collection
 
 Tests
 -----

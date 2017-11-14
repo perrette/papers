@@ -340,9 +340,9 @@ class MyRef(object):
                 action = ''
 
                 if interactive:
-                    ans = choose_entry_interactive([self.entries[i], entry],['m','a','d'],
-                        ' or try (m)erging or (a)ppend new anyway or (d)elete')
-                    if ans in list('mad'):
+                    ans = choose_entry_interactive([self.entries[i], entry],['m','a','d','e'],
+                        ' or try (m)erging or (a)ppend new anyway or (d)elete or (e)dit')
+                    if ans in list('made'):
                         on_conflict = ans
                     else:
                         self.entries[i] = entry
@@ -362,6 +362,15 @@ class MyRef(object):
                 elif on_conflict == 'd':
                     action = ' ==> delete'
                     del self.entries[i]
+
+                elif on_conflict == 'e':
+                    action = ' ==> edit'
+                    merged = self.edit_entries([self.entries[i],entry])
+                    # del self.entries[i]
+                    # for e in merged:
+                    #     self.insert_entry(e, on_conflict='e')
+                    # self.entries[i] = merged
+                    return merged
 
                 elif on_conflict == 'm':
                     action = ' ==> merge'
@@ -504,6 +513,27 @@ class MyRef(object):
         return generate_key(entry, keys=keys, nauthor=self.nauthor, ntitle=self.ntitle)
 
 
+    def edit_entries(self, entries):
+        '''edit entries and insert result in database 
+        '''
+        # write the listed entries to temporary file
+        import tempfile
+        # filename = tempfile.mktemp(prefix='.', suffix='.txt', dir=os.path.curdir)
+        filename = tempfile.mktemp(suffix='.txt')
+        db = bibtexparser.loads('')
+        db.entries.extend(entries)
+        entrystring = bibtexparser.dumps(db)
+        with open(filename, 'w') as f:
+            f.write(entrystring)
+        res = os.system('%s %s' % (os.getenv('EDITOR'), filename))
+        if res == 0:
+            logging.info('sucessfully edited file, insert edited entries')
+            self.db.entries = [e for e in self.entries if e not in entries]
+            self.add_bibtex_file(filename)
+        else:
+            raise ValueError('error when editing entries file: '+filename)
+
+
     def format(self):
         return bibtexparser.dumps(self.db)
 
@@ -556,10 +586,14 @@ class MyRef(object):
 
             if interactive:
                 e = choose_entry_interactive(entries, 
-                    extra=['s','d','q'], msg=' or (s)kip or (d)elete or (q)uit')
+                    extra=['s','d','e', 'q'], msg=' or (s)kip or (d)elete or (e)dit or (q)uit')
             
                 if e == 's':
                     ignore_unresolved = True
+
+                elif e == 'e':
+                    self.edit_entries(entries)
+                    continue
 
                 elif e == 'd':
                     continue
@@ -1361,23 +1395,12 @@ def main():
             key = lambda e: nfiles(e)*(bcolors.BOLD)+bcolors.OKBLUE+e['ID']+':'+bcolors.ENDC
 
         if o.edit:
-            # write the listed entries to temporary file
-            import tempfile
-            # filename = tempfile.mktemp(prefix='.', suffix='.txt', dir=os.path.curdir)
-            filename = tempfile.mktemp(suffix='.txt')
-            db = bibtexparser.loads('')
-            db.entries.extend(entries)
-            entrystring = bibtexparser.dumps(db)
-            with open(filename, 'w') as f:
-                f.write(entrystring)
-            res = os.system('%s %s' % (os.getenv('EDITOR'), filename))
-            if res == 0:
-                logging.info('sucessfully edited file, insert edited entries')
-                my.db.entries = [e for e in my.entries if e not in entries]
-                my.add_bibtex_file(filename)
-                savebib(my, o)
-            else:
-                logging.error('error when editing entries file: '+filename)
+            try:
+                my.edit_entries(entries)
+            except Exception as error:
+                logging.error(str(error))
+                return
+            savebib(my, o)
 
         elif o.fetch:
             for e in entries:
