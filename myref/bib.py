@@ -354,6 +354,55 @@ class MyRef(object):
         if update_key:
             entry['ID'] = self.generate_key(entry)  # this key is not yet present
 
+        def conflict_resolution(candidate, entry, mode=on_conflict):
+
+            if mode == 'i':
+                print(entry_diff(candidate, entry))
+                print(bcolors.OKBLUE + 'what to do? '+bcolors.ENDC)
+                print('\n'.join('(o)verwrite, (u)pdate missing, (U)pdate other, (e)dit diff, (E)dit split, (s)kip, (a)ppend anyway, (r)aise'.split(', ')))
+                choices = list('ouUseaEr')
+                ans = None
+                while ans not in choices:
+                    print('choices: '+', '.join(choices))
+                    ans = raw_input('>>> ')
+                mode = ans
+
+            # overwrite?
+            if mode == 'o':
+                resolved = [entry]
+
+            elif mode == 'a':
+                resolved = [candidate, entry]
+
+            elif mode == 'u':
+                logger.info('update missing fields')
+                entry.update(candidate)
+                candidate.update(entry)
+                resolved = [candidate]
+
+            elif mode == 'U':
+                logger.info('update with other')
+                candidate.update(entry)
+                resolved = [candidate]
+
+            # skip
+            elif mode == 's':
+                resolved = [candidate]
+
+            # edit
+            elif mode == 'e':
+                self.edit_entries([candidate, entry], diff=True)
+                resolved = [] # already inserted
+
+            elif mode == 'E':
+                self.edit_entries([candidate, entry])
+                resolved = []
+
+            else:
+                raise ValueError('conflict resolution: '+repr(mode))
+
+            return resolved
+
 
         # additional checks on DOI
         if check_duplicate:
@@ -375,7 +424,9 @@ class MyRef(object):
 
                 if mergefiles:
                     logger.debug('merge files')
-                    entry['file'] = candidate['file'] = merge_files([candidate, entry])
+                    file = merge_files([candidate, entry])
+                    if file:
+                        entry['file'] = candidate['file'] = file
 
                 if entry == candidate:
                     logger.debug('exact duplicate')
@@ -383,58 +434,28 @@ class MyRef(object):
 
                 else:
                     logger.debug('conflic resolution: '+on_conflict)
-                    if on_conflict == 'i':
-                        print(entry_diff(candidate, entry))
-                        print(bcolors.OKBLUE + 'what to do? '+bcolors.ENDC)
-                        print('\n'.join('(o)verwrite, (u)pdate missing, (U)pdate other, (m)erge, (e)dit diff, (E)dit split, (s)kip, (a)ppend anyway, (r)aise'.split(', ')))
-                        choices = list('ouUsmeaEr')
-                        ans = None
-                        while ans not in choices:
-                            print('choices: '+', '.join(choices))
-                            ans = raw_input('>>> ')
-                        on_conflict = ans
-
-                    # overwrite?
-                    if on_conflict == 'o':
-                        self.entries.remove(candidate)
-
-                    elif on_conflict == 'a':
-                        pass
-
-                    elif on_conflict == 'u':
-                        logging.info('update missing fields')
-                        entry.update(candidate)
-                        candidate.update(entry)
-                        return
-
-                    elif on_conflict == 'U':
-                        logging.info('update with other')
-                        candidate.update(entry)
-                        return
-
-                    # skip
-                    elif on_conflict == 's':
-                        return
-
-                    # merge
-                    elif on_conflict == 'm':
-                        return self.merge_duplicates([candidate, entry], **mergeopt)
-
-                    # edit
-                    elif on_conflict == 'e':
-                        return self.edit_entries([candidate, entry], diff=True)
-
-                    elif on_conflict == 'E':
-                        return self.edit_entries([candidate, entry])
-
-                    else:
-                        raise ValueError('conflict resolution: '+repr(on_conflict))
+                    resolved = conflict_resolution(candidate, entry, mode=on_conflict)
+                    self.entries.remove(candidate) # maybe in resolved entries
+                    for e in resolved:
+                        self.insert_entry(e)
+                    return # already inserted
 
 
         i = self.index_sorted(entry)  # based on current sort key (e.g. ID)
 
+
         if i < len(self.entries) and self.key(self.entries[i]) == self.key(entry):
-            logger.warn('key duplicate: '+self.key(self.entries[i]))
+            message = 'key duplicate: '+self.key(self.entries[i])
+            
+            # same key but no duplicates (duplicate test was done above)
+            if check_duplicate:
+                resolved = conflict_resolution(self.entries[i], entry, mode=on_conflict)
+                self.entries.pop(i) # maybe reinserted in resolved entries
+                for e in resolved:
+                    self.insert_entry(e)
+                    return # already inserted
+            else:
+                logger.warn(message)
        
         else: 
             logger.info('new entry: '+self.key(entry))
@@ -488,13 +509,13 @@ class MyRef(object):
         
             # maybe a special entry directory?
             if os.path.exists(hidden_bibtex(root)):
+                logger.debug('read from hidden bibtex')
                 try:
                     entry = read_entry_dir(root)
                     self.insert_entry(entry, **kw)
                 except Exception:  
                     logger.warn(root+'::'+str(error))
                 continue 
-
 
             for file in files:
                 if file.startswith('.'):
@@ -568,7 +589,10 @@ class MyRef(object):
         if isinstance(key, list):
             duplicates = [key]
             for e in duplicates[0]:
-                self.entries.remove(e)
+                try:
+                    self.entries.remove(e)
+                except ValueError:
+                    pass
 
         else:
             self.db.entries, duplicates = search_duplicates(self.db.entries, key)
@@ -1150,9 +1174,10 @@ def main():
         help='distinct "file" field considered a conflict, all other things being equal')
     grp.add_argument('-u', '--update-key', action='store_true', help='update added key according to any existing duplicate or to metadata')
     # grp.add_argument('-f', '--force', action='store_true', help='no interactive')
-    grp.add_argument('-m', '--mode', default='i', choices=['o', 'm', 's', 'e', 'r', 'i'],
-        help='force mode: in case of conflict, the default is to raise an exception, \
-        unless "mode" is set to (o)verwrite, (m)erge, (s)skip key, (r)aise, (e)dit, (i)nteractive.')
+    grp.add_argument('-m', '--mode', default='i', choices=['u', 'U', 'o', 's', 'r', 'i'],
+        help='''if duplicates are found, the default is to start an (i)nteractive dialogue, 
+        unless "mode" is set to (r)aise, (s)skip new, (u)pdate missing, (U)pdate with new, (o)verwrite completely.
+        ''')
 
     grp = addp.add_argument_group('directory scan')
     grp.add_argument('--recursive', action='store_true', 

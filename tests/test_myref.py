@@ -16,6 +16,7 @@ def prepare_paper():
     pdf = downloadpdf('bg-8-515-2011.pdf')
     doi = '10.5194/bg-8-515-2011'
     key = 'Perrette_2011'
+    newkey = 'perrette_yool2011'
     year = '2011'
     bibtex = """@article{Perrette_2011,
     author = {M. Perrette and A. Yool and G. D. Quartly and E. E. Popova},
@@ -31,13 +32,14 @@ def prepare_paper():
     year = 2011,
 }"""
 
-    return pdf, doi, key, year, bibtex
+    return pdf, doi, key, newkey, year, bibtex
 
 def prepare_paper2():
     pdf = downloadpdf('esd-4-11-2013.pdf')
     si = downloadpdf('esd-4-11-2013-supplement.pdf')
     doi = '10.5194/esd-4-11-2013'
     key = 'Perrette_2013'
+    newkey = 'perrette_landerer2013'
     year = '2013'
     bibtex = """@article{Perrette_2013,
     author = {M. Perrette and F. Landerer and R. Riva and K. Frieler and M. Meinshausen},
@@ -52,7 +54,7 @@ def prepare_paper2():
     volume = {4},
     year = 2013,
 }"""
-    return pdf, si, doi, key, year, bibtex
+    return pdf, si, doi, key, newkey, year, bibtex
 
 class TestBibtexFileEntry(unittest.TestCase):
 
@@ -88,7 +90,7 @@ class TestBibtexFileEntry(unittest.TestCase):
 class TestSimple(unittest.TestCase):
 
     def setUp(self):
-        self.pdf, self.doi, self.key, self.year, self.bibtex = prepare_paper()
+        self.pdf, self.doi, self.key, self.newkey, self.year, self.bibtex = prepare_paper()
 
     def test_doi(self):
         self.assertEqual(run('myref doi '+self.pdf).strip(), self.doi)
@@ -122,14 +124,14 @@ class TestInstall(unittest.TestCase):
 class TestAdd(unittest.TestCase):
 
     def setUp(self):
-        self.pdf, self.doi, self.key, self.year, self.bibtex = prepare_paper()
+        self.pdf, self.doi, self.key, self.newkey, self.year, self.bibtex = prepare_paper()
         self.mybib = tempfile.mktemp(prefix='myref.bib')
         self.filesdir = tempfile.mktemp(prefix='myref.files')
         open(self.mybib, 'w').write('')
         # sp.check_call('myref install --local --bibtex {} --filesdir {}'.format(self.mybib, self.filesdir), shell=True)
         self.assertTrue(os.path.exists(self.mybib))
 
-    def _checkbib(self, doi_only=False):
+    def _checkbib(self, doi_only=False, dismiss_key=False):
         db1 = bibtexparser.load(open(self.mybib))
         self.assertTrue(len(db1.entries) > 0)
         file = db1.entries[0].pop('file').strip()
@@ -137,6 +139,9 @@ class TestAdd(unittest.TestCase):
         if doi_only:
             self.assertEqual([e['doi'] for e in db1.entries], [e['doi'] for e in db2.entries]) # entry is as expected
             # self.assertEqual([e['title'].lower() for e in db1.entries], [e['title'].lower() for e in db2.entries]) # entry is as expected
+        elif dismiss_key:
+            f = lambda e: {k:e[k] for k in e if k!='ID'}
+            self.assertEqual([f(e) for e in db1.entries], [f(e) for e in db2.entries]) # entry is as expected
         else:
             self.assertEqual(db1.entries, db2.entries) # entry is as expected
         return file
@@ -157,10 +162,10 @@ class TestAdd(unittest.TestCase):
 
     def test_add(self):
         # self.assertTrue(os.path.exists(self.mybib))
-        sp.check_call('myref add --force --bibtex {} {}'.format(
+        sp.check_call('myref add --bibtex {} {}'.format(
             self.mybib, self.pdf), shell=True)
 
-        file_ = self._checkbib()
+        file_ = self._checkbib(dismiss_key=True)
         file = self._checkfile(file_)
         self.assertEqual(file, self.pdf)
         # self.assertTrue(os.path.exists(self.pdf)) # old pdf still exists
@@ -182,9 +187,9 @@ class TestAdd(unittest.TestCase):
         sp.check_call('myref add -rc --bibtex {} --filesdir {} {}'.format(
             self.mybib, self.filesdir, self.pdf), shell=True)
 
-        file_ = self._checkbib()  # 'file:pdf'
+        file_ = self._checkbib(dismiss_key=True)  # 'file:pdf'
         file = self._checkfile(file_)
-        self.assertEqual(file, os.path.join(self.filesdir, self.year, self.key+'.pdf'))
+        self.assertEqual(file, os.path.join(self.filesdir, self.year, self.newkey+'.pdf')) # update key since pdf
         self.assertTrue(os.path.exists(self.pdf)) # old pdf still exists
 
 
@@ -196,9 +201,9 @@ class TestAdd(unittest.TestCase):
         sp.check_call('myref add -r --bibtex {} --filesdir {} {}'.format(
             self.mybib, self.filesdir, pdfcopy), shell=True)
 
-        file_ = self._checkbib()  # 'file:pdf'
+        file_ = self._checkbib(dismiss_key=True)  # 'file:pdf'
         file = self._checkfile(file_)
-        self.assertEqual(file, os.path.join(self.filesdir,self.year,self.key+'.pdf'))
+        self.assertEqual(file, os.path.join(self.filesdir,self.year,self.newkey+'.pdf')) # update key since pdf
         self.assertFalse(os.path.exists(pdfcopy))
 
 
@@ -214,7 +219,7 @@ class TestAdd(unittest.TestCase):
 class TestAdd2(TestAdd):
 
     def setUp(self):
-        self.pdf, self.si, self.doi, self.key, self.year, self.bibtex = prepare_paper2()
+        self.pdf, self.si, self.doi, self.key, self.newkey, self.year, self.bibtex = prepare_paper2()
         self.mybib = tempfile.mktemp(prefix='myref.bib')
         self.filesdir = tempfile.mktemp(prefix='myref.files')
         # sp.check_call('myref install --local --bibtex {} --filesdir {}'.format(self.mybib, self.filesdir), shell=True)
@@ -224,7 +229,7 @@ class TestAdd2(TestAdd):
         sp.check_call('myref add -rc --bibtex {} --filesdir {} {} -a {}'.format(
             self.mybib, self.filesdir, self.pdf, self.si), shell=True)
 
-        file_ = self._checkbib()
+        file_ = self._checkbib(dismiss_key=True)
         print('file field in bibtex:', file_)
         self.assertTrue(';' in file_)
         main_, si_ = file_.split(';')
@@ -235,7 +240,7 @@ class TestAdd2(TestAdd):
         dirsi = os.path.dirname(si)
         self.assertEqual(dirmain, dirsi)
         dirmains = dirmain.split(os.path.sep)
-        self.assertEqual(dirmains[-1], self.key)
+        self.assertEqual(dirmains[-1], self.newkey)  # NEW KEY since loaded as pdf
         self.assertEqual(dirmains[-2], self.year)
         self.assertEqual(os.path.sep.join(dirmains[:-2]), self.filesdir)
         # individual files have not been renamed
@@ -251,8 +256,8 @@ class TestAddBib(unittest.TestCase):
     def setUp(self):
         self.mybib = tempfile.mktemp(prefix='myref.bib')
         self.somebib = tempfile.mktemp(prefix='myref.somebib.bib')
-        self.pdf1, self.doi, self.key1, self.year, self.bibtex1 = prepare_paper()
-        self.pdf2, self.si, self.doi, self.key2, self.year, self.bibtex2 = prepare_paper2()
+        self.pdf1, self.doi, self.key1, self.newkey1, self.year, self.bibtex1 = prepare_paper()
+        self.pdf2, self.si, self.doi, self.key2, self.newkey2, self.year, self.bibtex2 = prepare_paper2()
         bib = '\n'.join([self.bibtex1, self.bibtex2])
         open(self.somebib,'w').write(bib)
         self.my = MyRef.newbib(self.mybib, '')
@@ -275,8 +280,8 @@ class TestAddBib(unittest.TestCase):
 class TestAddDir(unittest.TestCase):
 
     def setUp(self):
-        self.pdf1, self.doi, self.key1, self.year, self.bibtex1 = prepare_paper()
-        self.pdf2, self.si, self.doi, self.key2, self.year, self.bibtex2 = prepare_paper2()
+        self.pdf1, self.doi, self.key1, self.newkey1, self.year, self.bibtex1 = prepare_paper()
+        self.pdf2, self.si, self.doi, self.key2, self.newkey2, self.year, self.bibtex2 = prepare_paper2()
         self.somedir = tempfile.mktemp(prefix='myref.somedir')
         self.subdir = os.path.join(self.somedir, 'subdir')
         os.makedirs(self.somedir)
@@ -291,14 +296,14 @@ class TestAddDir(unittest.TestCase):
         self.my.scan_dir(self.somedir)
         self.assertEqual(len(self.my.db.entries), 2)
         keys = [self.my.db.entries[0]['ID'], self.my.db.entries[1]['ID']]
-        self.assertEqual(sorted(keys), sorted([self.key1, self.key2]))
+        self.assertEqual(sorted(keys), sorted([self.newkey1, self.newkey2]))  # PDF: update key
 
     def test_adddir_pdf_cmd(self):
         sp.check_call('myref add --recursive --bibtex {} {}'.format(self.mybib, self.somedir), shell=True)
         self.my = MyRef.load(self.mybib, '')
         self.assertEqual(len(self.my.db.entries), 2)
         keys = [self.my.db.entries[0]['ID'], self.my.db.entries[1]['ID']]
-        self.assertEqual(sorted(keys), sorted([self.key1, self.key2]))
+        self.assertEqual(sorted(keys), sorted([self.newkey1, self.newkey2])) # PDF: update key
 
     def tearDown(self):
         os.remove(self.mybib)
@@ -420,66 +425,66 @@ class TestAddConflict(BibTest):
 
     def test_add_same(self):
         open(self.otherbib, 'w').write(self.bibtex)
-        sp.check_call('myref add {} --bibtex {}'.format(self.otherbib, self.mybib), shell=True)
+        sp.check_call('myref add {} --bibtex {} --mode r'.format(self.otherbib, self.mybib), shell=True)
         self.assertMultiLineEqual(open(self.mybib).read().strip(), self.bibtex) # entries did not change
 
 
     def test_add_same_but_file(self):
         open(self.otherbib, 'w').write(self.bibtex_file)
-        sp.check_call('myref add {} --bibtex {} -f'.format(self.otherbib, self.mybib), shell=True)
+        sp.check_call('myref add {} --bibtex {}  --mode r'.format(self.otherbib, self.mybib), shell=True)
         self.assertMultiLineEqual(open(self.mybib).read().strip(), self.bibtex_file) # entries did not change
 
 
     def test_add_conflict_key_raises(self):
         # key conflict: raises exception
         open(self.otherbib, 'w').write(self.bibtex_conflict_key)
-        func = lambda : sp.check_call('myref add {} --bibtex {} -f'.format(self.otherbib, self.mybib), shell=True)
+        func = lambda : sp.check_call('myref add {} --bibtex {} --mode r'.format(self.otherbib, self.mybib), shell=True)
         self.assertRaises(Exception, func)
 
     def test_add_conflict_key_appends(self):
         # key conflict but append anyway
         open(self.otherbib, 'w').write(self.bibtex_conflict_key)
-        sp.check_call('myref add {} --mode a --bibtex {} -f'.format(self.otherbib, self.mybib), shell=True)
+        sp.check_call('myref add {} --no-check-duplicate --bibtex {} --mode r'.format(self.otherbib, self.mybib), shell=True)
         expected = self.bibtex_conflict_key+'\n\n'+self.bibtex
         self.assertMultiLineEqual(open(self.mybib).read().strip(), expected) # entries did not change
 
     def test_add_conflict_key_skip(self):
         # key conflict and skip entry
         open(self.otherbib, 'w').write(self.bibtex_conflict_key)
-        sp.check_call('myref add {} --mode s --bibtex {} -f'.format(self.otherbib, self.mybib), shell=True)
+        sp.check_call('myref add {} --bibtex {} --mode s'.format(self.otherbib, self.mybib), shell=True)
         expected = self.bibtex
         self.assertMultiLineEqual(open(self.mybib).read().strip(), expected) # entries did not change
 
     def test_add_same_doi_unchecked(self):
         # does not normally test doi
         open(self.otherbib, 'w').write(self.bibtex_same_doi)
-        sp.check_call('myref add {} --mode s --no-check-duplicates --bibtex {} -f'.format(self.otherbib, self.mybib), shell=True)
+        sp.check_call('myref add {} --no-check-duplicate --bibtex {} --mode r'.format(self.otherbib, self.mybib), shell=True)
         expected = self.bibtex+'\n\n'+self.bibtex_same_doi
         self.assertMultiLineEqual(open(self.mybib).read().strip(), expected) # entries did not change
 
     def test_add_same_doi_fails(self):
         # test doi and triggers conflict
         open(self.otherbib, 'w').write(self.bibtex_same_doi)
-        func = lambda : sp.check_call('myref add {} --bibtex {} -f'.format(self.otherbib, self.mybib), shell=True)
+        func = lambda : sp.check_call('myref add {} --bibtex {} --mode r'.format(self.otherbib, self.mybib), shell=True)
         self.assertRaises(Exception, func)
 
     def test_add_same_doi_update_key(self):
         # test doi and update key and identical entry detected
         open(self.otherbib, 'w').write(self.bibtex_same_doi)
-        sp.check_call('myref add {} --update-key --bibtex {} -f'.format(self.otherbib, self.mybib), shell=True)
+        sp.check_call('myref add {} --update-key --bibtex {} --mode r'.format(self.otherbib, self.mybib), shell=True)
         expected = self.bibtex
         self.assertMultiLineEqual(open(self.mybib).read().strip(), expected) # entries did not change
 
     def test_add_miss_field_fails(self):
         # miss field and triggers conflict
         open(self.otherbib, 'w').write(self.bibtex_miss_field)
-        func = lambda : sp.check_call('myref add {} --bibtex {} -f'.format(self.otherbib, self.mybib), shell=True)
+        func = lambda : sp.check_call('myref add {} --bibtex {} --mode r'.format(self.otherbib, self.mybib), shell=True)
         self.assertRaises(Exception, func)
 
     def test_add_miss_merge(self):
         # miss field but merges
         open(self.otherbib, 'w').write(self.bibtex_miss_field)
-        sp.check_call('myref add {} --mode m --bibtex {} -f'.format(self.otherbib, self.mybib), shell=True)
+        sp.check_call('myref add {} --mode u --bibtex {}'.format(self.otherbib, self.mybib), shell=True)
         expected = self.bibtex
         self.assertMultiLineEqual(open(self.mybib).read().strip(), expected) # entries did not change
 
