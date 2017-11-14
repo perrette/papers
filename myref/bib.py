@@ -1317,7 +1317,7 @@ def main():
 
     def gitcmd(o):
         try:
-            out = sp.check_output(['git']+o.gitargs, cwd=config.data)
+            out = sp.check_output(['git']+o.gitargs, cwd=config.gitdir)
             print(out)
         except:
             gitp.error('failed to execute git command')
