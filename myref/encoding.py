@@ -1,7 +1,8 @@
 import os
 import six
 import bibtexparser
-
+from bibtexparser.latexenc import latex_to_unicode, unicode_to_latex
+from unidecode import unidecode as unicode_to_ascii
 
 # fix bibtexparser issue
 if six.PY2:
@@ -10,51 +11,6 @@ if six.PY2:
     bibtexparser.loads = lambda s: _bloads(s.decode('utf-8') if type(s) is str else s)
     bibtexparser.dumps = lambda db: _bdumps(db).encode('utf-8')
 
-
-
-# string conversions
-# ==================
-UPDATE_LATEX_TABLE = {
-    u'&': '\\&',
-    u'$': '\\$',
-    u'<': '\\textless',
-    u'>': '\\textgreater',
-}
-
-LATEX_TO_UNICODE = None
-
-def latex_to_unicode(string):
-    """ replace things like "{\_}" and "{\'{e}}'" with unicode characters _ and é
-    """
-    global LATEX_TO_UNICODE
-    if LATEX_TO_UNICODE is None:
-        import myref.unicode_to_latex as ul 
-        ul.unicode_to_latex.update(UPDATE_LATEX_TABLE)
-        LATEX_TO_UNICODE = {v.strip():k for k,v in six.iteritems(ul.unicode_to_latex)}
-    string = string.replace('{}','') #.replace('{\\}','')
-    # try:
-    string = string.format(**LATEX_TO_UNICODE)
-    # except (KeyError, ValueError) as error:
-    #     logging.warn('failed to replace latex: '+str(error))
-    return string
-
-
-def unicode_to_latex(string):
-    import myref.unicode_to_latex as ul 
-
-    lstring = []
-    for c in string:
-        if ord(c) < 128:
-            lstring.append(c)
-        else:
-            lstring.append('{'+ul.unicode_to_latex[c].strip()+'}')
-    return ''.join(lstring)
-
-    # ID = str(''.join([c if ord(c) < 128 else '_' for c in ID]))  # make sure the resulting string is ASCII
-
-def unicode_to_ascii(string):
-    from unidecode import unidecode
-    return unidecode(string)
 
 # Parse / format bibtex file entry
 # ================================
