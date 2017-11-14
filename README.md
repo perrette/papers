@@ -175,9 +175,11 @@ Current features
 
 Planned features
 ----------------
-- move library location (i.e. both on disk and in bibtex's `file` entry)
+- additional checks on entries:
+    - duplicate-authors and more like [here](https://github.com/tdegeus/bibparse)
 - support collections (distinct bibtex entries, same files directory)
-
+    - or maybe more like ´myref update-from OTHER.bib´ to update changes based on DOI / key
+    - could also use git branches / merge
 
 Tests
 -----

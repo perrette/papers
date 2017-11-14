@@ -1,108 +1,20 @@
+
 from __future__ import print_function
 import os
 import logging
-import shutil
 import json
 import six
 import subprocess as sp
 import six.moves.urllib.request
 import re
-import hashlib
+
 from crossref.restful import Works, Etiquette
 import bibtexparser
 
 import myref
-from myref.config import config
+from myref.config import cached
 
 my_etiquette = Etiquette('myref', myref.__version__, 'https://github.com/perrette/myref', 'mahe.perrette@gmail.com')
-
-DRYRUN = False
-
-class bcolors:
-    # https://stackoverflow.com/a/287944/2192272
-    HEADER = '\033[95m'
-    OKBLUE = '\033[94m'
-    OKGREEN = '\033[92m'
-    WARNING = '\033[93m'
-    FAIL = '\033[91m'
-    ENDC = '\033[0m'
-    BOLD = '\033[1m'
-    UNDERLINE = '\033[4m'
-
-    def str(self, s, modifier):
-        return modifier + s + self.ENDC
-
-
-
-
-
-# misc
-# ----
-def unique(entries):
-    entries_ = []
-    for e in entries:
-        if e not in entries_:
-            entries_.append(e)
-    return entries_
-
-
-def check_filesdir(folder):
-    folder_size = 0
-    file_count = 0
-    for (path, dirs, files) in os.walk(folder):
-      for file in files:
-        filename = os.path.join(path, file)
-        if filename.endswith('.pdf'):
-            folder_size += os.path.getsize(filename)
-            file_count += 1
-    return file_count, folder_size
-
-
-
-def hash_bytestr_iter(bytesiter, hasher, ashexstr=False):
-    for block in bytesiter:
-        hasher.update(block)
-    return (hasher.hexdigest() if ashexstr else hasher.digest())
-
-def file_as_blockiter(afile, blocksize=65536):
-    with afile:
-        block = afile.read(blocksize)
-        while len(block) > 0:
-            yield block
-            block = afile.read(blocksize)
-
-def checksum(fname):
-    """memory-efficient check sum (sha256)
-
-    source: https://stackoverflow.com/a/3431835/2192272
-    """
-    return hash_bytestr_iter(file_as_blockiter(open(fname, 'rb')), hashlib.sha256())
-
-# move / copy
-
-def move(f1, f2, copy=False, interactive=True):
-    dirname = os.path.dirname(f2)
-    if dirname and not os.path.exists(dirname):
-        logging.info('create directory: '+dirname)
-        os.makedirs(dirname)
-    if f1 == f2:
-        logging.info('dest is identical to src: '+f1)
-        return 
-    if os.path.exists(f2):
-        ans = raw_input('dest file already exists: '+f2+'. Replace? (y/n) ')
-        if ans != 'y':
-            return
-
-    if copy:
-        cmd = u'cp {} {}'.format(f1, f2)
-        logging.info(cmd)
-        if not DRYRUN:
-            shutil.copy(f1, f2)
-    else:
-        cmd = u'mv {} {}'.format(f1, f2)
-        logging.info(cmd)
-        if not DRYRUN:
-            shutil.move(f1, f2)
 
 
 # PDF parsing / crossref requests
@@ -188,7 +100,7 @@ def pdfhead(pdf, maxpages=10, minwords=200):
     return txt
 
 
-def extract_doi(pdf, space_digit=True):
+def extract_pdf_doi(pdf, space_digit=True):
     return parse_doi(pdfhead(pdf), space_digit=space_digit)
 
 
@@ -252,33 +164,7 @@ def extract_pdf_metadata(pdf, search_doi=True, search_fulltext=True, maxpages=10
 
 
 
-def cached(file, hashed_key=False):
-    def decorator(fun):
-        if os.path.exists(file):
-            cache = json.load(open(file))
-        else:
-            cache = {}
-        def decorated(doi):
-            if hashed_key: # use hashed parameter as key (for full text query)
-                if six.PY3:
-                    key = hashlib.sha256(doi.encode('utf-8')).hexdigest()[:6]
-                else:
-                    key = hashlib.sha256(doi).hexdigest()[:6]
-            else:
-                key = doi
-            if key in cache:
-                logging.debug('load from cache: '+repr((file, key)))
-                return cache[key]
-            else:
-                res = cache[key] = fun(doi)
-                if not DRYRUN:
-                    json.dump(cache, open(file,'w'))
-            return res
-        return decorated
-    return decorator
-
-
-@cached(os.path.join(config.cache, 'crossref-bibtex.json'))
+@cached('crossref-bibtex.json')
 def fetch_bibtex_by_doi(doi):
     url = "http://api.crossref.org/works/"+doi+"/transform/application/x-bibtex"
     work = Works(etiquette=my_etiquette)
@@ -286,7 +172,7 @@ def fetch_bibtex_by_doi(doi):
     return bibtex.strip()
 
 
-@cached(os.path.join(config.cache, 'crossref.json'))
+@cached('crossref.json')
 def fetch_json_by_doi(doi):
     url = "http://api.crossref.org/works/"+doi+"/transform/application/json"
     work = Works(etiquette=my_etiquette)
@@ -310,7 +196,7 @@ def _scholar_score(txt, bib):
     return sum([token_set_ratio(bib[k], txt) for k in ['title', 'author', 'abstract'] if k in bib])
 
 
-@cached(os.path.join(config.cache, 'scholar-bibtex.json'), hashed_key=True)
+@cached('scholar-bibtex.json', hashed_key=True)
 def fetch_bibtex_by_fulltext_scholar(txt, assess_results=True):
     import scholarly
     scholarly._get_page = _get_page_fast  # remove waiting time
@@ -364,7 +250,7 @@ def crossref_to_bibtex(r):
 
     if 'author' in r:
         family = lambda p: p['family'] if len(p['family'].split()) == 1 else u'{'+p['family']+u'}'
-        bib['author'] = ' and '.join([p.get('given','') + ' '+ family(p)
+        bib['author'] = ' and '.join([family(p) + ', '+ p.get('given','') 
             for p in r.get('author',[]) if 'family' in p])
 
     # for k in ['issued','published-print', 'published-online']:
@@ -391,7 +277,7 @@ def crossref_to_bibtex(r):
     bib['ENTRYTYPE'] = type_mapping.get(type, type)
 
     # bibtex key
-    year = str(bib.get('year','XXXX'))
+    year = str(bib.get('year','0000'))
     if 'author' in r:
         ID = r['author'][0]['family'] + u'_' + six.u(year)
     else:
@@ -405,7 +291,7 @@ def crossref_to_bibtex(r):
     return bibtexparser.dumps(db)
 
 
-# @cached(os.path.join(config.cache, 'crossref-bibtex-fulltext.json'), hashed_key=True)
+# @cached('crossref-bibtex-fulltext.json', hashed_key=True)
 def fetch_bibtex_by_fulltext_crossref(txt, **kw):
     work = Works(etiquette=my_etiquette)
     logging.debug(six.u('crossref fulltext seach:\n')+six.u(txt))

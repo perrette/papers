@@ -14,17 +14,27 @@ import difflib
 import bibtexparser
 
 import myref
-from myref.tools import (bcolors, move, unique, extract_doi, fetch_bibtex_by_doi, 
-    isvaliddoi, parse_doi, checksum, extract_pdf_metadata, fetch_bibtex_by_fulltext_crossref,
-    )
-from myref.encoding import (latex_to_unicode, unicode_to_latex, unicode_to_ascii, 
-    parse_file, format_file, formatted_name, family_names)
-from myref.config import config
 
-DRYRUN = False
+from myref.extract import extract_pdf_doi, isvaliddoi, parse_doi
+from myref.extract import extract_pdf_metadata
+from myref.extract import fetch_bibtex_by_fulltext_crossref, fetch_bibtex_by_doi
+
+from myref.encoding import latex_to_unicode, unicode_to_latex, unicode_to_ascii
+from myref.encoding import parse_file, format_file, standard_name, family_names
+
+from myref.config import config, bcolors, checksum, move
+
+# DRYRUN = False
 NAUTHOR = 2 
 NTITLE = 0 
 
+
+def unique(entries):
+    entries_ = []
+    for e in entries:
+        if e not in entries_:
+            entries_.append(e)
+    return entries_
 
 
 def choose_entry_interactive(entries, extra=[], msg=''):
@@ -161,20 +171,6 @@ def search_duplicates(entries, key=None, issorted=False):
 
 # Parse / format bibtex file entry
 # ================================
-
-def getentryfiles(e):
-    'list of (fname, ftype) '
-    files = e.get('file','').strip()
-    return parse_file(files)
-
-
-def setentryfiles(e, files, overwrite=True): #, interactive=True):
-    if not overwrite:
-        files = getentryfiles(e) + files
-    e['file'] = format_file(files)
-
-
-
 def format_entries(entries):
     db = bibtexparser.loads('')
     db.entries.extend(entries)
@@ -229,6 +225,7 @@ def read_entry_dir(self, direc, update_files=True):
 
 def backupfile(bibtex):
     return os.path.join(os.path.dirname(bibtex), '.'+os.path.basename(bibtex)+'.backup')
+
 
 class MyRef(object):
     """main config
@@ -611,7 +608,7 @@ class MyRef(object):
 
     def rename_entry_files(self, e, copy=False):
 
-        files = getentryfiles(e)
+        files = parse_file(e.get('file',''))
         # newname = entrydir(e, root)
         direc = os.path.join(self.filesdir, e.get('year','0000'))
 
@@ -632,7 +629,7 @@ class MyRef(object):
                 move(file, newfile, copy)
                 count += 1
             newfiles = [newfile]
-            setentryfiles(e, newfiles)
+            e['file'] = format_file(newfiles)
 
 
         # several files: only rename container
@@ -647,7 +644,7 @@ class MyRef(object):
                     move(file, newfile, copy)
                     count += 1
                 newfiles.append(newfile)
-            setentryfiles(e, newfiles)
+            e['file'] = format_file(newfiles)
 
             # create hidden bib entry for special dir
             bibname = hidden_bibtex(newdir)
@@ -689,7 +686,7 @@ class MyRef(object):
         if format_name:
             for k in ['author','editor']:
                 if k in e:
-                    e[k] = formatted_name(e[k])
+                    e[k] = standard_name(e[k])
                     if e[k] != e_old[k]:
                         logging.info(e.get('ID','')+': '+k+' name formatted')
 
@@ -801,7 +798,7 @@ def entry_filecheck_metadata(e, file):
         raise ValueError(e['ID']+': no doi, skip PDF parsing')
 
     try:
-        doi = extract_doi(file)
+        doi = extract_pdf_doi(file)
     except Exception as error:
         raise ValueError(e['ID']+': failed to parse doi: "{}"'.format(file))
     if not isvaliddoi(doi):
@@ -891,8 +888,6 @@ def entry_filecheck(e, delete_broken=False, fix_mendeley=False,
 
 
 def main():
-
-    global DRYRUN
 
     global_config = config.file
     local_config = '.myrefconfig.json'
@@ -1039,7 +1034,7 @@ def main():
 
     def savebib(my, o):
         logging.info(u'save '+o.bibtex)
-        if DRYRUN:
+        if myref.config.DRYRUN:
             return
         if my is not None:
             my.save(o.bibtex)
@@ -1097,10 +1092,6 @@ def main():
 
 
     def addcmd(o):
-        global DRYRUN
-        import myref.tools
-        DRYRUN = o.dry_run
-        myref.tools.DRYRUN = o.dry_run
 
         if os.path.exists(o.bibtex):
             my = MyRef.load(o.bibtex, o.filesdir)
@@ -1427,7 +1418,7 @@ def main():
     doip.add_argument('--space-digit', action='store_true', help='space digit fix')
     
     def doicmd(o):
-        print(extract_doi(o.pdf, o.space_digit))
+        print(extract_pdf_doi(o.pdf, o.space_digit))
 
     # fetch
     # =====   
@@ -1488,10 +1479,8 @@ def main():
     if getattr(o,'logging_level',None):
         logging.getLogger().setLevel(o.logging_level)
     # modify disk state?
-    if getattr(o,'dry_run', DRYRUN):
-        DRYRUN = True
-        import tools
-        tools.DRYRUN = True
+    if hasattr(o,'dry_run'):
+        myref.config.DRYRUN = o.dry_run
 
     if o.cmd == 'install':
         return installcmd(o)

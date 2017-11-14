@@ -100,7 +100,7 @@ def format_file(file_types):
 # Parse name entry
 # ================
 
-def outermost_bracket_groups(string, type='{}'):
+def _outermost_bracket_groups(string, type='{}'):
     '''
     >>> outermost_bracket_groups('{my name}')
     ['my name']
@@ -130,13 +130,13 @@ def outermost_bracket_groups(string, type='{}'):
 
 def strip_outmost_brackets(family):
     # strip brakets
-    brackets = outermost_bracket_groups(family)
+    brackets = _outermost_bracket_groups(family)
     if len(brackets) == 1 and brackets[0] == family[1:-1]:
         family = family[1:-1] # strip name' bracket
     return family
 
 
-def formatted_name(author):
+def standard_name(author):
     names = []
     for name in bibtexparser.customization.getnames([strip_outmost_brackets(nm) for nm in author.split(' and ')]):
         family, given = name.split(',')
@@ -147,5 +147,5 @@ def formatted_name(author):
 
 
 def family_names(author_field):
-    authors = formatted_name(author_field).split(' and ')
+    authors = standard_name(author_field).split(' and ')
     return [nm.split(',')[0] for nm in authors]

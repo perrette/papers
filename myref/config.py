@@ -1,7 +1,11 @@
-import os, json, logging
+import os, json, logging, shutil
 import subprocess as sp, sys, shutil
+import hashlib
+import bibtexparser
 
 # GIT = False
+DRYRUN = False
+
 
 # config directory location
 HOME = os.environ.get('HOME',os.path.expanduser('~'))
@@ -13,6 +17,33 @@ DATA_HOME = os.environ.get('XDG_DATA_HOME', os.path.join(HOME, '.local','share')
 CONFIG_FILE = os.path.join(CONFIG_HOME, 'myrefconfig.json')
 DATA_DIR = os.path.join(DATA_HOME, 'myref')
 CACHE_DIR = os.path.join(CACHE_HOME, 'myref')
+
+
+# utils
+# -----
+
+class bcolors:
+    # https://stackoverflow.com/a/287944/2192272
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+
+
+def check_filesdir(folder):
+    folder_size = 0
+    file_count = 0
+    for (path, dirs, files) in os.walk(folder):
+      for file in files:
+        filename = os.path.join(path, file)
+        if filename.endswith('.pdf'):
+            folder_size += os.path.getsize(filename)
+            file_count += 1
+    return file_count, folder_size
 
 
 class Config(object):
@@ -94,9 +125,6 @@ class Config(object):
 
     def status(self, check_files=False, verbose=False):
 
-        import bibtexparser
-        from myref.tools import check_filesdir, bcolors
-
         lines = []
         lines.append(bcolors.BOLD+'myref configuration'+bcolors.ENDC)
         if verbose:
@@ -157,3 +185,82 @@ class Config(object):
 
 config = Config()
 config.check_install()
+
+
+
+def cached(file, hashed_key=False):
+    
+    file = os.path.join(config.cache, file)
+
+    def decorator(fun):
+        if os.path.exists(file):
+            cache = json.load(open(file))
+        else:
+            cache = {}
+        def decorated(doi):
+            if hashed_key: # use hashed parameter as key (for full text query)
+                if six.PY3:
+                    key = hashlib.sha256(doi.encode('utf-8')).hexdigest()[:6]
+                else:
+                    key = hashlib.sha256(doi).hexdigest()[:6]
+            else:
+                key = doi
+            if key in cache:
+                logging.debug('load from cache: '+repr((file, key)))
+                return cache[key]
+            else:
+                res = cache[key] = fun(doi)
+                if not DRYRUN:
+                    json.dump(cache, open(file,'w'))
+            return res
+        return decorated
+    return decorator
+
+
+
+
+def hash_bytestr_iter(bytesiter, hasher, ashexstr=False):
+    for block in bytesiter:
+        hasher.update(block)
+    return (hasher.hexdigest() if ashexstr else hasher.digest())
+
+def file_as_blockiter(afile, blocksize=65536):
+    with afile:
+        block = afile.read(blocksize)
+        while len(block) > 0:
+            yield block
+            block = afile.read(blocksize)
+
+def checksum(fname):
+    """memory-efficient check sum (sha256)
+
+    source: https://stackoverflow.com/a/3431835/2192272
+    """
+    return hash_bytestr_iter(file_as_blockiter(open(fname, 'rb')), hashlib.sha256())
+
+
+
+# move / copy
+def move(f1, f2, copy=False, interactive=True):
+    dirname = os.path.dirname(f2)
+    if dirname and not os.path.exists(dirname):
+        logging.info('create directory: '+dirname)
+        os.makedirs(dirname)
+    if f1 == f2:
+        logging.info('dest is identical to src: '+f1)
+        return 
+    if os.path.exists(f2):
+        ans = raw_input('dest file already exists: '+f2+'. Replace? (y/n) ')
+        if ans != 'y':
+            return
+
+    if copy:
+        cmd = u'cp {} {}'.format(f1, f2)
+        logging.info(cmd)
+        if not DRYRUN:
+            shutil.copy(f1, f2)
+    else:
+        cmd = u'mv {} {}'.format(f1, f2)
+        logging.info(cmd)
+        if not DRYRUN:
+            shutil.move(f1, f2)
