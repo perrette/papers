@@ -237,12 +237,13 @@ def _simplify_string(s):
     try:
         s = latex_to_unicode(s)
     except Exception as error:
+        raise
         logger.warn('simplify string: failed to remove latex: '+str(error))
     s = _remove_unicode(s)
     return s.lower().strip()
 
 
-def entry_id(self, e):
+def entry_id(e):
     """entry identifier which is not the bibtex key
     """
     author = _simplify_string(' '.join(family_names(e.get('author',''))))
@@ -260,7 +261,6 @@ DISTINCT = 0
 def compare_entries(e1, e2, fuzzy=False):
     """assess two entries' similarity
     """
-    
     if e1 == e2:
         return EXACT
 
@@ -340,173 +340,107 @@ class MyRef(object):
     def key(self, e):
         return e[self.key_field].lower()
 
-    def doi(self, e):
-        return e.get('doi','')
-
-    def validdoi(self, e):
-        doi = self.doi(e)
-        return doi if isvaliddoi(doi) else ''
-
     def sort(self):
         self.db.entries = sorted(self.db.entries, key=self.key)
-
-    def set_sortkey(self, key_field):
-        self.key_field = key_field
-        self.sort()
 
     def index_sorted(self, entry):
         keys = [self.key(ei) for ei in self.db.entries]
         return bisect.bisect_left(keys, self.key(entry))
 
 
-    def insert_entry(self, entry, on_conflict='r', mergefiles=True, 
-        update_key=False, check_duplicate=True, interactive=True, level=GOOD):
+    def insert_entry(self, entry, update_key=False, check_duplicate=False, on_conflict='i', level=PARTIAL, mergefiles=True, **mergeopt):
         """
-        check : check whether key already exists
-        on_conflict (key): 
-            'a': append (for later handling)
-            's': skip (do not insert new entry)
-            'o': overwrite (newer wins...)
-            Anything else: raise error
-        mergefiles : if two entries are identical besides the 'file' field, just merge files
+        """
+        if update_key:
+            entry['ID'] = self.generate_key(entry)  # this key is not yet present
 
-        Note that doi are not checked at this stage. Use merging / check tool later.
-        ----
-        """
+
         # additional checks on DOI
-        if check_doi:
-            self._entry_check_duplicate(entry, update_key=update_key, interactive=interactive, level=level)
+        if check_duplicate:
+
+            duplicates = [e for e in self.entries if are_duplicates(e, entry, level=level)]
+
+            if duplicates:
+                # some duplicates...
+                logger.warn('duplicate(s) found: {}'.format(len(duplicates)))
+
+                # pick only the most similar duplicate, if more than one
+                if len(duplicates) > 1:
+                    duplicates.sort(key=lambda e: compare_entries(entry, e), reverse=True)
+                candidate = duplicates[0]
+
+                if update_key:
+                    logger.debug('update key: {} => {}'.format(entry['ID'], candidate['ID']))
+                    entry['ID'] = candidate['ID']
+
+                if mergefiles:
+                    logger.debug('merge files')
+                    entry['file'] = candidate['file'] = merge_files([candidate, entry])
+
+                if entry == candidate:
+                    logger.debug('exact duplicate')
+                    return  # do nothing
+
+                else:
+                    logger.debug('conflic resolution: '+on_conflict)
+                    if on_conflict == 'i':
+                        print(entry_diff(candidate, entry))
+                        print(bcolors.OKBLUE + 'what to do? '+bcolors.ENDC)
+                        print('\n'.join('(o)verwrite, (u)pdate missing, (U)pdate other, (m)erge, (e)dit diff, (E)dit split, (s)kip, (a)ppend anyway, (r)aise'.split(', ')))
+                        choices = list('ouUsmeaEr')
+                        ans = None
+                        while ans not in choices:
+                            print('choices: '+', '.join(choices))
+                            ans = raw_input('>>> ')
+                        on_conflict = ans
+
+                    # overwrite?
+                    if on_conflict == 'o':
+                        self.entries.remove(candidate)
+
+                    elif on_conflict == 'a':
+                        pass
+
+                    elif on_conflict == 'u':
+                        logging.info('update missing fields')
+                        entry.update(candidate)
+                        candidate.update(entry)
+                        return
+
+                    elif on_conflict == 'U':
+                        logging.info('update with other')
+                        candidate.update(entry)
+                        return
+
+                    # skip
+                    elif on_conflict == 's':
+                        return
+
+                    # merge
+                    elif on_conflict == 'm':
+                        return self.merge_duplicates([candidate, entry], **mergeopt)
+
+                    # edit
+                    elif on_conflict == 'e':
+                        return self.edit_entries([candidate, entry], diff=True)
+
+                    elif on_conflict == 'E':
+                        return self.edit_entries([candidate, entry])
+
+                    else:
+                        raise ValueError('conflict resolution: '+repr(on_conflict))
 
 
         i = self.index_sorted(entry)  # based on current sort key (e.g. ID)
 
-        if i < len(self.entries) and self.key(entry) == self.key(self.entries[i]):
-            candidate = self.entries[i]
-        else:
-            candidate = None
-
-        # the keys do not match, just insert at new position without further checking
-        if not candidate:
+        if i < len(self.entries) and self.key(self.entries[i]) == self.key(entry):
+            logger.warn('key duplicate: '+self.key(self.entries[i]))
+       
+        else: 
             logger.info('new entry: '+self.key(entry))
-            self.entries.insert(i, entry)
+        
+        self.entries.insert(i, entry)
 
-        # the keys match: see what needs to be done
-        else:
-
-            nofile = lambda e : {k:e[k] for k in e if k != 'file'}
-
-            if entry == candidate:
-                logger.info('entry already present: '+self.key(entry))
-
-            # all files match besides 'file' ?
-            elif mergefiles and nofile(entry) == nofile(candidate):
-                logger.info('entry already present: '+self.key(entry))
-                candidate['file'] = merge_files([candidate, entry])
-
-            # some fields do not match
-            else:
-                msg = 'conflict: '+self.key(entry)
-                action = ''
-
-                if interactive:
-                    ans = choose_entry_interactive([self.entries[i], entry],['m','a','d','e'],
-                        ' or try (m)erging or (a)ppend new anyway or (d)elete or (e)dit')
-                    if ans in list('made'):
-                        on_conflict = ans
-                    else:
-                        self.entries[i] = entry
-                        return entry
-
-                if on_conflict == 'o':
-                    action = ' ==> overwrite'
-                    self.entries[i] = entry         
-
-                elif on_conflict == 's':
-                    action = ' ==> skip'
-
-                elif on_conflict == 'a':
-                    action = ' ==> append'
-                    self.entries.insert(i, entry)
-                
-                elif on_conflict == 'd':
-                    action = ' ==> delete'
-                    del self.entries[i]
-
-                elif on_conflict == 'e':
-                    action = ' ==> edit'
-                    merged = self.edit_entries([self.entries[i],entry])
-                    # del self.entries[i]
-                    # for e in merged:
-                    #     self.insert_entry(e, on_conflict='e')
-                    # self.entries[i] = merged
-                    return merged
-
-                elif on_conflict == 'm':
-                    action = ' ==> merge'
-                    merged = merge_entries([self.entries[i], entry])
-                    merged = handle_merge_conflict(merged)
-                    self.entries[i] = merged
-
-                else:
-                    raise ValueError(msg)
-
-                logger.warn(msg+action)
-
-        return self.entries[i]
-
-
-    def _entry_check_duplicate(self, entry, update_key=False, interactive=True, level=GOOD):
-        """check DOI duplicate, and update_key if desired, prior to insert entry
-        """
-        key = self.key(entry)
-        duplicates = [e for e in self.entries if are_duplicates(e, entry, level=level)]
-        if any(duplicates):
-            logging.warn('duplicate(s) found: {}'+str(len(duplicates)))
-
-        if duplicates:
-            # pick the most similar duplicate, if more than one
-            if len(duplicates) > 1:
-                duplicates.sort(key=lambda e: compare_entries(entry, e), reverse=True)
-            candidate = duplicates[0]
-            msg = '!!! {}: insert conflict with existing entry: {}'.format(
-                self.key(entry), candidate['ID'])
-            logger.warn(msg)
-
-            autokey = self.generate_key(entry)
-
-            if not update_key and interactive:
-                print('''Duplicates detected. Keys are distinct. Choices:
-(1) (u)pdate key and merge (keep old key): {k2} ==> {k}
-(2) (U)pdate with other key and merge (use new key): {k} ==> {k2}
-(3) update with (a)uto-generated key and merge: {k},{k2} ==> {k3}
-(4) (k)eep original keys (create duplicates)
-(5) error/(s)kip insert'''.format(k=candidate['ID'], k2=entry['ID'], k3=autokey))
-                ans = None
-                while ans not in list('12345uUaks'):
-                    ans = raw_input('choice: ')
-                if ans in '4k': 
-                    return 
-                elif ans in '1u':
-                    update_key = True
-                elif ans in '2U':
-                    update_key = 'other'
-                elif ans in '3a':
-                    update_key = 'auto'
-
-            if update_key == 'auto':
-                logger.info('update with auto-generated key {}, {} ==> {}'.format(candidate['ID'], entry['ID'], autokey))
-                candidate['ID'] = entry['ID'] = autokey
-
-            elif update_key == 'other':
-                logger.info('update with other key {} ==> {}'.format(candidate['ID'], entry['ID']))
-                candidate['ID'] = entry['ID']
-
-            elif update_key:
-                logger.info('update key {} ==> {}'.format(entry['ID'], candidate['ID']))
-                entry['ID'] = candidate['ID']
-
-            else:
-                raise ValueError(msg)
 
 
     def add_bibtex(self, bibtex, **kw):
@@ -582,16 +516,24 @@ class MyRef(object):
         return generate_key(entry, keys=keys, nauthor=self.nauthor, ntitle=self.ntitle)
 
 
-    def edit_entries(self, entries):
+    def edit_entries(self, entries, diff=False):
         '''edit entries and insert result in database 
         '''
         # write the listed entries to temporary file
         import tempfile
         # filename = tempfile.mktemp(prefix='.', suffix='.txt', dir=os.path.curdir)
         filename = tempfile.mktemp(suffix='.txt')
-        db = bibtexparser.loads('')
-        db.entries.extend(entries)
-        entrystring = bibtexparser.dumps(db)
+
+        if diff and len(entries) > 1:
+            if len(entries) == 2:
+                entrystring = entry_diff(*entries, color=False)
+            else:
+                entrystring = entry_ndiff(entries, color=False)
+        else:
+            db = bibtexparser.loads('')
+            db.entries.extend(entries)
+            entrystring = bibtexparser.dumps(db)
+
         with open(filename, 'w') as f:
             f.write(entrystring)
         res = os.system('%s %s' % (os.getenv('EDITOR'), filename))
@@ -614,23 +556,24 @@ class MyRef(object):
 
 
     def merge_duplicates(self, key, interactive=True, fetch=False, force=False, 
-        resolve={}, ignore_unresolved=True, mergefiles=True):
+        ignore_unresolved=True, mergefiles=True):
         """
         Find and merge duplicate keys. Leave unsolved keys.
 
-        key: callable or key for grouping duplicates
+        key: callable key for grouping duplicates or list of duplicates, existing or not, to merge in db
         interactive: interactive solving of conflicts
         conflict: method in case of unresolved conflict
         **kw : passed to merge_entries
         """
-        if isinstance(key, six.string_types):
-            key = lambda e: e[key]
+        if isinstance(key, list):
+            duplicates = [key]
+            for e in duplicates[0]:
+                self.entries.remove(e)
 
-        self.db.entries, duplicates = search_duplicates(self.db.entries, key)
+        else:
+            self.db.entries, duplicates = search_duplicates(self.db.entries, key)
 
-
-        if interactive and len(duplicates) > 0:
-            raw_input(str(len(duplicates))+' duplicate(s) to remove (press any key) ')
+        logger.info(str(len(duplicates))+' duplicate(s)')
 
         # attempt to merge duplicates
         conflicts = []
@@ -644,11 +587,9 @@ class MyRef(object):
                 logger.warn(str(error))
                 conflicts.append(unique(entries))
                 continue
-            self.insert_entry(e, mergefiles=mergefiles)
+            self.insert_entry(e)
 
-
-        if interactive and len(conflicts) > 0:
-            raw_input(str(len(conflicts))+' conflict(s) to solve (press any key) ')
+        logger.info(str(len(duplicates))+' conflict(s) to solve')
 
         # now deal with conflicts
         for entries in conflicts:
@@ -672,12 +613,12 @@ class MyRef(object):
                     ignore_unresolved = True
 
                 else:
-                    self.insert_entry(e, mergefiles=mergefiles)
+                    self.insert_entry(e)
                     continue
 
             if ignore_unresolved:
                 for e in entries:
-                    self.insert_entry(e, mergefiles=mergefiles)
+                    self.insert_entry(e)
             else:
                 raise ValueError('conflicting entries')
 
@@ -869,16 +810,63 @@ class MyRef(object):
 
         if interactive and e_old != e:
             print(bcolors.OKBLUE+'*** UPDATE ***'+bcolors.ENDC)
-            s_old = format_entries([e_old])
-            s = format_entries([e])
-            ndiff = difflib.ndiff(s_old.splitlines(1), s.splitlines(1))
-            print(''.join(ndiff))
+            print(entry_diff(e_old, e))
+
             if raw_input('update ? [Y/n] or [Enter] ').lower() not in ('', 'y'):
                 logger.info('cancel changes')
                 e.update(e_old)
                 for k in list(e.keys()):
                     if k not in e_old:
                         del e[k]
+
+
+def _colordiffline(line):
+    if line.startswith('+'):
+        return bcolors.OKGREEN + line + bcolors.ENDC
+    elif line.startswith('-'):
+        return bcolors.FAIL + line + bcolors.ENDC
+    elif line.startswith('?'):
+        return bcolors.WARNING + line + bcolors.ENDC
+    else:
+        return line
+
+
+def entry_diff(e_old, e, color=True):
+    s_old = format_entries([e_old])
+    s = format_entries([e])
+    ndiff = difflib.ndiff(s_old.splitlines(1), s.splitlines(1))
+    diff = ''.join(ndiff)
+    if color:
+        return "\n".join([_colordiffline(line) for line in diff.splitlines()])
+    else:
+        return diff
+
+
+def entry_ndiff(entries, color=True):
+    ' diff of many entries '
+    m = merge_entries(entries)
+    SECRET_STRING = 'REPLACE_{}_FIELD'
+    regex = re.compile(SECRET_STRING.format('(.*)')) # reg exp to find
+    choices = {}
+    for k in m:
+        if isinstance(m[k], ConflictingField):
+            choices[k] = m[k].choices
+            m[k] = SECRET_STRING.format(k)
+    db = bibtexparser.loads('')
+    db.entries.append(m)
+    s = db.dumps()
+    lines = []
+    for line in s.splitlines():
+        matches = regex.findall(line)
+        if matches:
+            k = matches[0]
+            template = SECRET_STRING.format(k)
+            for c in choices[k]:
+                newline = '? '+line.replace(template, u'{}'.format(c))
+                lines.append(_colordiffline(newline) if color else newline)
+        else:
+            lines.append(line)
+    return '\n'.join(lines)
 
 
 def isvalidkey(key):
@@ -1156,22 +1144,15 @@ def main():
     # addp.add_argument('-f','--force', action='store_true', help='disable interactive')
 
     grp = addp.add_argument_group('duplicate check')
-    grp.add_argument('--no-check-duplicates', action='store_true', 
+    grp.add_argument('--no-check-duplicate', action='store_true', 
         help='disable duplicate check (faster, create duplicates)')
     grp.add_argument('--no-merge-files', action='store_true', 
         help='distinct "file" field considered a conflict, all other things being equal')
-    # grp.add_argument('--no-merge-files', action='store_true', 
-        # help='distinct "file" field considered a conflict, all other things being equal')
-    # addp.add_argument('--safe', action='store_true', 
-    #     help='safe mode: always throw an error if anything strange is detected')
-    grp.add_argument('-f', '--force', action='store_true', help='no interactive')
-    grp.add_argument('-u','--update-key', action='store_true', 
-        help='always update imported key in case an existing bibtex file with same DOI is detected')
-    grp.add_argument('-U','--update-key-other', action='store_true', 
-        help='same as -u but use new imported key')
-    grp.add_argument('-m', '--mode', default='r', choices=['a', 'o', 'm', 's'],
+    grp.add_argument('-u', '--update-key', action='store_true', help='update added key according to any existing duplicate or to metadata')
+    # grp.add_argument('-f', '--force', action='store_true', help='no interactive')
+    grp.add_argument('-m', '--mode', default='i', choices=['o', 'm', 's', 'e', 'r', 'i'],
         help='force mode: in case of conflict, the default is to raise an exception, \
-        unless "mode" is set to (a)ppend anyway, (o)verwrite, (m)erge  or (s)skip key.')
+        unless "mode" is set to (o)verwrite, (m)erge, (s)skip key, (r)aise, (e)dit, (i)nteractive.')
 
     grp = addp.add_argument_group('directory scan')
     grp.add_argument('--recursive', action='store_true', 
@@ -1205,12 +1186,8 @@ def main():
             logger.error('--attachment is only valid for one added file')
             addp.exit(1)
 
-        if o.update_key_other:
-            o.update_key = 'other'
-
         kw = {'on_conflict':o.mode, 'check_duplicate':not o.no_check_duplicate, 
-            'mergefiles':not o.no_merge_files, 'update_key':o.update_key, 
-            'interactive':not o.force}
+            'mergefiles':not o.no_merge_files, 'update_key':o.update_key}
 
         for file in o.file:
             try:
