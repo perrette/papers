@@ -223,6 +223,74 @@ def read_entry_dir(self, direc, update_files=True):
     return entry
 
 
+def _remove_unicode(s, replace='_'):
+    s2 = []
+    for c in s:
+        if ord(c) < 128:
+            c = replace
+        s2.append(c)
+    return ''.join(s2)
+
+
+def _simplify_string(s):
+    ' replace latex brackets and unicode, strip, lower case '
+    try:
+        s = latex_to_unicode(s)
+    except Exception as error:
+        logger.warn('simplify string: failed to remove latex: '+str(error))
+    s = _remove_unicode(s)
+    return s.lower().strip()
+
+
+def entry_id(self, e):
+    """entry identifier which is not the bibtex key
+    """
+    author = _simplify_string(' '.join(family_names(e.get('author',''))))
+    title = _simplify_string(e.get('title',''))
+    authortitle = author+' '+title
+    return (e.get('doi','').lower(), authortitle)
+
+
+EXACT = 103
+GOOD = 102
+PARTIAL = 101
+FUZZY = 80
+DISTINCT = 0
+
+def compare_entries(e1, e2, fuzzy=False):
+    """assess two entries' similarity
+    """
+    
+    if e1 == e2:
+        return EXACT
+
+    id1 = entry_id(e1)
+    id2 = entry_id(e2)
+    
+    if id1 == id2:
+        return GOOD
+
+    doi1, tag1 = id1
+    doi2, tag2 = id2
+
+    if doi1 and doi2:
+        return PARTIAL if doi1 == doi2 else DISTINCT
+
+    elif any([f1==f2 for f1, f2 in zip(id1, id2)]):
+        return PARTIAL
+
+    elif not fuzzy:
+        return DISTINCT
+
+    else:
+        from fuzzywuzzy.fuzz import token_set_ratio
+        return token_set_ratio(tag1, tag2)
+
+
+def are_duplicates(e1, e2, fuzzy=False, level=None):
+    score = compare_entries(e1, e2, fuzzy=fuzzy)
+    return score >= level if level else score
+
 
 def backupfile(bibtex):
     return os.path.join(os.path.dirname(bibtex), '.'+os.path.basename(bibtex)+'.backup')
@@ -292,7 +360,7 @@ class MyRef(object):
 
 
     def insert_entry(self, entry, on_conflict='r', mergefiles=True, 
-        update_key=False, check_doi=True, interactive=True):
+        update_key=False, check_duplicate=True, interactive=True, level=GOOD):
         """
         check : check whether key already exists
         on_conflict (key): 
@@ -307,7 +375,7 @@ class MyRef(object):
         """
         # additional checks on DOI
         if check_doi:
-            self._entry_check_doi(entry, update_key=update_key, interactive=interactive)
+            self._entry_check_duplicate(entry, update_key=update_key, interactive=interactive, level=level)
 
 
         i = self.index_sorted(entry)  # based on current sort key (e.g. ID)
@@ -387,27 +455,27 @@ class MyRef(object):
         return self.entries[i]
 
 
-    def _entry_check_doi(self, entry, update_key=False, interactive=True):
+    def _entry_check_duplicate(self, entry, update_key=False, interactive=True, level=GOOD):
         """check DOI duplicate, and update_key if desired, prior to insert entry
         """
-        doi = self.validdoi(entry) # only consider valid dois
-        key = self.key(entry) # 
-        if doi:
-            conflicting_doi = [e for e in self.entries 
-                                    if self.doi(e) == doi and self.key(e) != key]
-        else:
-            conflicting_doi = []
- 
-        if conflicting_doi:
-            candidate = conflicting_doi[0]
-            msg = '!!! {}: insert conflict with existing doi: {} ({})'.format(
-                self.key(entry), doi, candidate['ID'])
+        key = self.key(entry)
+        duplicates = [e for e in self.entries if are_duplicates(e, entry, level=level)]
+        if any(duplicates):
+            logging.warn('duplicate(s) found: {}'+str(len(duplicates)))
+
+        if duplicates:
+            # pick the most similar duplicate, if more than one
+            if len(duplicates) > 1:
+                duplicates.sort(key=lambda e: compare_entries(entry, e), reverse=True)
+            candidate = duplicates[0]
+            msg = '!!! {}: insert conflict with existing entry: {}'.format(
+                self.key(entry), candidate['ID'])
             logger.warn(msg)
 
             autokey = self.generate_key(entry)
 
             if not update_key and interactive:
-                print('''Duplicates detected (same DOI). Keys are distinct. Choices:
+                print('''Duplicates detected. Keys are distinct. Choices:
 (1) (u)pdate key and merge (keep old key): {k2} ==> {k}
 (2) (U)pdate with other key and merge (use new key): {k} ==> {k2}
 (3) update with (a)uto-generated key and merge: {k},{k2} ==> {k3}
@@ -1088,8 +1156,8 @@ def main():
     # addp.add_argument('-f','--force', action='store_true', help='disable interactive')
 
     grp = addp.add_argument_group('duplicate check')
-    grp.add_argument('--no-check-doi', action='store_true', 
-        help='disable DOI check (faster, create duplicates)')
+    grp.add_argument('--no-check-duplicates', action='store_true', 
+        help='disable duplicate check (faster, create duplicates)')
     grp.add_argument('--no-merge-files', action='store_true', 
         help='distinct "file" field considered a conflict, all other things being equal')
     # grp.add_argument('--no-merge-files', action='store_true', 
@@ -1140,7 +1208,7 @@ def main():
         if o.update_key_other:
             o.update_key = 'other'
 
-        kw = {'on_conflict':o.mode, 'check_doi':not o.no_check_doi, 
+        kw = {'on_conflict':o.mode, 'check_duplicate':not o.no_check_duplicate, 
             'mergefiles':not o.no_merge_files, 'update_key':o.update_key, 
             'interactive':not o.force}
 

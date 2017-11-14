@@ -453,7 +453,7 @@ class TestAddConflict(BibTest):
     def test_add_same_doi_unchecked(self):
         # does not normally test doi
         open(self.otherbib, 'w').write(self.bibtex_same_doi)
-        sp.check_call('myref add {} --mode s --no-check-doi --bibtex {} -f'.format(self.otherbib, self.mybib), shell=True)
+        sp.check_call('myref add {} --mode s --no-check-duplicates --bibtex {} -f'.format(self.otherbib, self.mybib), shell=True)
         expected = self.bibtex+'\n\n'+self.bibtex_same_doi
         self.assertMultiLineEqual(open(self.mybib).read().strip(), expected) # entries did not change
 
