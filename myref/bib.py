@@ -121,6 +121,22 @@ def fix_fetch_entry_metadata(entry):
     e = bib.entries[0]
     entry.update({k:e[k] for k in e if k != 'file' and k != 'ID'})
 
+
+def fetch_entry(e):
+    if 'doi' in e and isvaliddoi(e['doi']):
+        bibtex = fetch_bibtex_by_doi(e['doi'])
+    else:
+        kw = {}
+        if e.get('author',''):
+            kw['author'] = family_names(e['author'])
+        if e.get('title',''):
+            kw['title'] = family_names(e['title'])
+        if kw:
+            bibtex = fetch_bibtex_by_fulltext_crossref('', **kw)
+        else:
+            ValueError('no author not title field')
+    db = bibtexparser.loads(bibtex)
+    return db.entries[0]
    
 
 def search_duplicates(entries, key=None, issorted=False):
@@ -149,7 +165,7 @@ def conflict_resolution(old, new, mode='i'):
     """
     if mode == 'i':
         print(entry_diff(old, new))
-        print(bcolors.OKBLUE + 'what to do? '+bcolors.ENDC)
+        print(bcolors.OKBLUE + 'what to do? ')
         print('''
 (u)pdate missing (discard conflicting fields in new entry)
 (U)pdate other (overwrite conflicting fields in old entry)
@@ -160,7 +176,7 @@ def conflict_resolution(old, new, mode='i'):
 (a)ppend anyway
 (r)aise'''.strip()
 .replace('(u)','('+_colordiffline('u','+')+')')  # green lines will be added 
-.replace('(o)','('+_colordiffline('o','-')+')')  
+.replace('(o)','('+_colordiffline('o','-')+')') + bcolors.ENDC
 )
 # .replace('(s)','('+_colordiffline('s','-')+')'))
         choices = list('uUoeEsar')
@@ -397,7 +413,7 @@ def entry_ndiff(entries, color=True):
     return '\n'.join(lines)
 
 
-def choose_entry_interactive(entries, extra=[], msg=''):
+def choose_entry_interactive(entries, extra=[], msg='', select=False):
     db = bibtexparser.loads('')
     db.entries.append({})
 
@@ -421,16 +437,41 @@ def choose_entry_interactive(entries, extra=[], msg=''):
         string = '\n'.join(lines)
         print(bcolors.OKBLUE+'* ('+str(i+1)+')'+bcolors.ENDC+'\n'+string)
     entry_choices = [str(i+1) for i in range(len(entries))]
-    choices = entry_choices + extra
-    i = 0
-    choices_msg = ", ".join(['('+e+')' for e in entry_choices])
-    while (i not in choices):
-        i = raw_input('{}pick entry in {}{}{}\n>>> '.format(bcolors.OKBLUE,choices_msg,msg, bcolors.ENDC))
-
-    if i in entry_choices:
-        return entries[int(i)-1]
+    if select:
+        select_choices = ['-'+c for c in entry_choices]
     else:
-        return i
+        select_choices = []
+    choices = entry_choices + select_choices + extra
+    if msg:
+        print(msg)
+    else:
+        print()
+
+    def _process_choice(i):
+        i = i.strip()
+        if i in entry_choices:
+            return entries[int(i)-1]
+        elif i in select_choices:
+            return [e for e in entries if e != entries[int(i)-1]]
+        elif select and len(i.lstrip('-').split()) > 1:
+            if i.startswith('-'):
+                deselect = [_process_choice(ii) for ii in i[1:].split()]
+                return [e for e in entries if e not in deselect]
+            else:
+                return [_process_choice(ii) for ii in i.split()]
+        elif i in choices:
+            return i
+        else:
+            raise ValueError(i)
+
+    while True:
+        print('choices: '+', '.join(choices))
+        # print(bcolors.OKBLUE + choices_msg + bcolors.ENDC)
+        i = raw_input('>>> ')
+        try:
+            return _process_choice(i)
+        except:
+            continue
 
 
 def edit_entries(entries, diff=False, ndiff=False):
@@ -682,8 +723,7 @@ class MyRef(object):
         for e in resolved:
             self.insert_entry(e)
 
-    def merge_duplicates(self, key, interactive=True, fetch=False, force=False, 
-        ignore_unresolved=True, mergefiles=True):
+    def merge_duplicates(self, key, mode='i'):
         """
         Find and merge duplicate keys. Leave unsolved keys.
 
@@ -705,72 +745,131 @@ class MyRef(object):
 
         logger.info(str(len(duplicates))+' duplicate(s)')
 
-        # attempt to merge duplicates
+        #  merge exact duplicates
         conflicts = []
         for entries in duplicates:
-            merged = merge_entries(entries, force=force)
-            if mergefiles:
-                merged['file'] = merge_files(entries)
-            try:
-                e = handle_merge_conflict(merged, fetch=fetch)
-            except Exception as error:
-                logger.warn(str(error))
-                conflicts.append(unique(entries))
-                continue
-            self.insert_entry(e)
+            entries = unique(entries)
+            if entries:
+                conflicts.append(entries)
 
-        logger.info(str(len(duplicates))+' conflict(s) to solve')
+        logger.info(str(len(conflicts))+' unresolved conflict(s)')
 
         # now deal with conflicts
+
+        # actions:
+        def _edit_diff(entries):
+            self.edit_entries(entries, ndiff=True)
+
+        def _edit_split(entries):
+            self.edit_entries(entries)
+
+        def _delete():
+            pass
+
+        def _skip(entries):
+            for e in entries:
+                self.insert_entry(e)
+
+        def _quit(entries):
+            _skip(entries)
+            global mode
+            mode = 's' # apply to all the other as well
+
+        def _pick(entries):
+            self.insert_entry(e)
+
+        def _fetch(entries):
+            # pick best entry to update from
+            e = fetch_entry(_best(entries))
+            return entries + [e]
+
+        def _best(entries):
+            return [sorted(entries, key=lambda e: 100*('doi' in e and isvaliddoi(e['doi'])) + 50*('title' in e) + 10*('author' in e))[-1]]
+
+        def _merge(entries):
+            merged = merge_entries(entries)
+            file = merge_files(entries)
+            if file:
+                merged['file'] = file
+            try:
+                e = handle_merge_conflict(merged)
+            except Exception as error:
+                logger.warn(str(error))
+                best = _best(entries)
+                for k in list(merged.keys()):
+                    if isinstance(merged[k], ConflictingField):
+                        del merged[k]
+                return unique(entries + [merged])
+            self.insert_entry(e)
+            return []
+
         for entries in conflicts:
 
-            if interactive:
-                print(entry_ndiff(entries))
-                print(bcolors.OKBLUE + 'what to do? '+bcolors.ENDC)
-                print('''
-(s)plit
-(e)dit diff
-(E)dit split (not a duplicate)
+            diffview = False
+
+            if mode == 'i':
+                while entries:
+                    choices = list('mefdsqv')
+                    txt = '''
+
+(m)erge
+(e)dit
+(f)etch metadata
 (d)elete
+(s)kip
 (q)uit
-        '''.strip())
-# .replace('(s)','('+_colordiffline('s','-')+')'))
-                choices = list('seEdq')
-                ans = None
-                while ans not in choices:
-                    print('choices: '+', '.join(choices))
-                    ans = raw_input('>>> ')
-                e = ans
+(v)iew toggle (diff - split)
+'''
+                    if not diffview:
+                        msg = bcolors.OKBLUE + 'Pick entry or choose one of the following actions:'+bcolors.ENDC+txt
+                        e = choose_entry_interactive(entries, extra=choices, msg=msg, select=True)
+                    else:
+                        print(entry_ndiff(entries))
+                        print(bcolors.OKBLUE + 'Choose one of the following actions:'+bcolors.ENDC + txt)
+    # .replace('(s)','('+_colordiffline('s','-')+')'))
+                        ans = None
+                        while ans not in choices:
+                            print('choices: '+', '.join(choices))
+                            ans = raw_input('>>> ')
+                        e = ans
 
-                if e == 's':
-                    e = choose_entry_interactive(entries, 
-                        extra=list('eEdq'), msg=''' or:
-(e)dit diff
-(E)dit 
-(d)elete
-(q)uit''')      
-                if e == 'e':
-                    self.edit_entries(entries, ndiff=True)
-                    continue
-                elif e == 'E':
-                    self.edit_entries(entries)
-                    continue
-                elif e == 'd':
-                    continue
+                    if e == 'm':
+                        entries = _merge(entries)                    
+                    elif e == 'e':
+                        if diffview:
+                            entries = _edit_diff(entries)
+                        else:
+                            entries = _edit_split(entries)
+                    elif e == 'v':
+                        diffview = not diffview  # toggle view
+                        continue
+                    elif e == 'd':
+                        entries = _delete(entries)
+                    elif e == 'f':
+                        entries = _fetch(entries)
+                    elif e == 's':
+                        entries = _skip(entries)
+                    elif e == 'q':
+                        entries = _quit(entries)
+                    elif isinstance(e, dict):
+                        entries = _pick(e)
+                    elif isinstance(e, list):
+                        entries = e
+                    else:
+                        print(e)
+                        raise ValueError('this is a bug')
 
-                elif e == 'q':
-                    interactive = False
-                    ignore_unresolved = True
+
+            elif mode == 'm':
+                entries = _merge(entries)
+
+            if entries:
+                if mode == 's':
+                    _skip(entries)
 
                 else:
-                    self.insert_entry(e)
-                    continue
-
-            if ignore_unresolved:
-                for e in entries:
-                    self.insert_entry(e)
-            else:
-                raise ValueError('conflicting entries')
+                    print(entry_ndiff(entries))
+                    raise ValueError('conflicting entries')
 
 
     def merge_duplicate_keys(self, **kw):
@@ -1352,8 +1451,9 @@ def main():
     grp.add_argument('--encoding', choices=['latex','unicode'], help='bibtex field encoding')
 
     grp = checkp.add_argument_group('merge/conflict')
-    grp.add_argument('--duplicates',action='store_true', help='remove / merge duplicates')
-    grp.add_argument('--ignore', action='store_true', help='ignore unresolved conflicts')
+    grp.add_argument('--duplicates',action='store_true', help='solve duplicates')
+    grp.add_argument('-m', '--mode', default='i', choices=list('ims'), help='''(i)interactive mode by default, otherwise (m)erge or (s)kip failed''')
+    # grp.add_argument('--ignore', action='store_true', help='ignore unresolved conflicts')
     # checkp.add_argument('--merge-keys', nargs='+', help='only merge remove / merge duplicates')
     # checkp.add_argument('--duplicates',action='store_true', help='remove / merge duplicates')
 
@@ -1374,7 +1474,7 @@ def main():
 
 
         if o.duplicates:
-            kw = dict(force=o.force, ignore_unresolved=o.ignore)
+            kw = dict(mode=o.mode)
             my.merge_duplicate_keys(**kw)
             my.merge_duplicate_dois(**kw)
 
