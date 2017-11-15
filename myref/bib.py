@@ -177,14 +177,18 @@ def conflict_resolution(old, new, mode='i'):
         print(entry_diff(old, new))
         print(bcolors.OKBLUE + 'what to do? '+bcolors.ENDC)
         print('''
-(u)pdate missing (discard new existing fields)
-(U)pdate other (overwrite old conflicting fields)
+(u)pdate missing (discard conflicting fields in new entry)
+(U)pdate other (overwrite conflicting fields in old entry)
 (o)verwrite
 (e)dit diff
 (E)dit split (not a duplicate)
 (s)kip
 (a)ppend anyway
-(r)aise'''.strip())
+(r)aise'''.strip()
+.replace('(u)','('+_colordiffline('u','+')+')')  # green lines will be added 
+.replace('(o)','('+_colordiffline('o','-')+')')  
+)
+# .replace('(s)','('+_colordiffline('s','-')+')'))
         choices = list('uUoeEsar')
         ans = None
         while ans not in choices:
@@ -350,12 +354,12 @@ def are_duplicates(e1, e2, fuzzy=False, level=None):
     return score >= level if level else score
 
 
-def _colordiffline(line):
-    if line.startswith('+'):
+def _colordiffline(line, sign=None):
+    if sign == '+' or line.startswith('+'):
         return bcolors.OKGREEN + line + bcolors.ENDC
-    elif line.startswith('-'):
+    elif sign == '-' or line.startswith('-'):
         return bcolors.FAIL + line + bcolors.ENDC
-    elif line.startswith('?'):
+    elif sign == '?' or line.startswith('?'):
         return bcolors.WARNING + line + bcolors.ENDC
     else:
         return line
