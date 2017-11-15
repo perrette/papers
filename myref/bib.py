@@ -9,6 +9,7 @@ import shutil
 import bisect
 import itertools
 import six
+import re
 import difflib
 
 import bibtexparser
@@ -37,33 +38,6 @@ def unique(entries):
             entries_.append(e)
     return entries_
 
-
-def choose_entry_interactive(entries, extra=[], msg=''):
-    db = bibtexparser.loads('')
-    db.entries.append({})
-
-    merged = merge_entries(entries)
-    conflicting_fields = [k for k in merged if isinstance(merged[k], ConflictingField)]
-
-    for i, entry in enumerate(entries):
-        db.entries[0] = entry
-        string = bibtexparser.dumps(db).decode('utf-8') # decode to avoid failure in replace
-        # color the conflicting fields
-        for k in conflicting_fields:
-            string = string.replace(entry[k], bcolors.FAIL+entry[k]+bcolors.ENDC)
-
-        print(bcolors.OKBLUE+'* ('+str(i+1)+')'+bcolors.ENDC+'\n'+string)
-    entry_choices = [str(i+1) for i in range(len(entries))]
-    choices = entry_choices + extra
-    i = 0
-    choices_msg = ", ".join(['('+e+')' for e in entry_choices])
-    while (i not in choices):
-        i = raw_input('{}pick entry in {}{}{}\n>>> '.format(bcolors.OKBLUE,choices_msg,msg, bcolors.ENDC))
-
-    if i in entry_choices:
-        return entries[int(i)-1]
-    else:
-        return i
 
 
 def merge_files(entries):
@@ -361,6 +335,13 @@ def _colordiffline(line, sign=None):
         return bcolors.FAIL + line + bcolors.ENDC
     elif sign == '?' or line.startswith('?'):
         return bcolors.WARNING + line + bcolors.ENDC
+    elif sign == '!' or line.startswith('!'):
+        return bcolors.BOLD + bcolors.WARNING + line + bcolors.ENDC
+    elif sign == '*' or line.startswith('*'):
+        return bcolors.BOLD + line + bcolors.ENDC
+    # elif sign == '>' or line.startswith('>'):
+        # return bcolors.BOLD + line + bcolors.ENDC    
+        # return bcolors.BOLD + bcolors.WARNING + line + bcolors.ENDC
     else:
         return line
 
@@ -382,28 +363,77 @@ def entry_ndiff(entries, color=True):
     SECRET_STRING = 'REPLACE_{}_FIELD'
     regex = re.compile(SECRET_STRING.format('(.*)')) # reg exp to find
     choices = {}
+    somemissing = []
     for k in m:
         if isinstance(m[k], ConflictingField):
             choices[k] = m[k].choices
             m[k] = SECRET_STRING.format(k)
+        elif any(k not in e for e in entries):
+            somemissing.append(k)
     db = bibtexparser.loads('')
     db.entries.append(m)
-    s = db.dumps()
+    s = bibtexparser.dumps(db)
     lines = []
     for line in s.splitlines():
         matches = regex.findall(line)
         if matches:
             k = matches[0]
             template = SECRET_STRING.format(k)
+            lines.append(u'\u2304'*3)
             for c in choices[k]:
-                newline = '? '+line.replace(template, u'{}'.format(c))
-                lines.append(_colordiffline(newline) if color else newline)
+                newline = '  '+line.replace(template, u'{}'.format(c))
+                lines.append(_colordiffline(newline, '!') if color else newline)
+                lines.append('---')
+            lines.pop() # remove last ---
+            # lines.append('^^^')
+            lines.append(u'\u2303'*3)
+        elif any('{} = {{'.format(k) in line for k in somemissing):
+            newline = '  '+line
+            lines.append(_colordiffline(newline, sign='*') if color else newline)
+        elif not line.startswith(('@','}')):
+            lines.append('  '+line)
         else:
             lines.append(line)
     return '\n'.join(lines)
 
 
-def edit_entries(entries, diff=False):
+def choose_entry_interactive(entries, extra=[], msg=''):
+    db = bibtexparser.loads('')
+    db.entries.append({})
+
+    merged = merge_entries(entries)
+    conflicting_fields = [k for k in merged if isinstance(merged[k], ConflictingField)]
+    somemissing = [k for k in merged if any(k not in e for e in entries)]
+
+    for i, entry in enumerate(entries):
+        db.entries[0] = entry
+        string = bibtexparser.dumps(db).decode('utf-8') # decode to avoid failure in replace
+        # color the conflicting fields
+        lines = []
+        for line in string.splitlines():
+            for k in conflicting_fields+somemissing:
+                fmt = lambda s : (bcolors.WARNING if k in conflicting_fields else bcolors.BOLD)+s+bcolors.ENDC
+                if k != k.lower() and '@' in line:
+                    line = line.replace(entry[k], fmt(entry[k]))
+                elif line.strip().startswith('{} = {{'.format(k)):
+                    line = fmt(line)
+            lines.append(line)
+        string = '\n'.join(lines)
+        print(bcolors.OKBLUE+'* ('+str(i+1)+')'+bcolors.ENDC+'\n'+string)
+    entry_choices = [str(i+1) for i in range(len(entries))]
+    choices = entry_choices + extra
+    i = 0
+    choices_msg = ", ".join(['('+e+')' for e in entry_choices])
+    while (i not in choices):
+        i = raw_input('{}pick entry in {}{}{}\n>>> '.format(bcolors.OKBLUE,choices_msg,msg, bcolors.ENDC))
+
+    if i in entry_choices:
+        return entries[int(i)-1]
+    else:
+        return i
+
+
+def edit_entries(entries, diff=False, ndiff=False):
     '''edit entries and insert result in database 
     '''
     # write the listed entries to temporary file
@@ -411,15 +441,18 @@ def edit_entries(entries, diff=False):
     # filename = tempfile.mktemp(prefix='.', suffix='.txt', dir=os.path.curdir)
     filename = tempfile.mktemp(suffix='.txt')
 
-    if diff and len(entries) > 1:
-        if len(entries) == 2:
-            entrystring = entry_diff(*entries, color=False)
-        else:
+    if (diff or ndiff) and len(entries) > 1:
+        if ndiff or len(entries) > 2:
             entrystring = entry_ndiff(entries, color=False)
+        else:
+            entrystring = entry_diff(*entries, color=False)
     else:
         db = bibtexparser.loads('')
         db.entries.extend(entries)
         entrystring = bibtexparser.dumps(db)
+
+    if six.PY2:
+        entrystring = entrystring.encode('utf-8')
 
     with open(filename, 'w') as f:
         f.write(entrystring)
@@ -641,10 +674,11 @@ class MyRef(object):
         open(bibtex, 'w').write(s)
 
 
-    def edit_entries(self, entries):
-        resolved = edit_entries(entries)
+    def edit_entries(self, entries, **kw):
+        resolved = edit_entries(entries, **kw)
         for e in entries:
-            self.entries.remove(e)
+            if e in self.entries:
+                self.entries.remove(e)
         for e in resolved:
             self.insert_entry(e)
 
@@ -691,16 +725,36 @@ class MyRef(object):
         for entries in conflicts:
 
             if interactive:
-                e = choose_entry_interactive(entries, 
-                    extra=['s','d','e', 'q'], msg=' or (s)kip or (d)elete or (e)dit or (q)uit')
-            
-                if e == 's':
-                    ignore_unresolved = True
+                print(entry_ndiff(entries))
+                print(bcolors.OKBLUE + 'what to do? '+bcolors.ENDC)
+                print('''
+(s)plit
+(e)dit diff
+(E)dit split (not a duplicate)
+(d)elete
+(q)uit
+        '''.strip())
+# .replace('(s)','('+_colordiffline('s','-')+')'))
+                choices = list('seEdq')
+                ans = None
+                while ans not in choices:
+                    print('choices: '+', '.join(choices))
+                    ans = raw_input('>>> ')
+                e = ans
 
-                elif e == 'e':
+                if e == 's':
+                    e = choose_entry_interactive(entries, 
+                        extra=list('eEdq'), msg=''' or:
+(e)dit diff
+(E)dit 
+(d)elete
+(q)uit''')      
+                if e == 'e':
+                    self.edit_entries(entries, ndiff=True)
+                    continue
+                elif e == 'E':
                     self.edit_entries(entries)
                     continue
-
                 elif e == 'd':
                     continue
 
