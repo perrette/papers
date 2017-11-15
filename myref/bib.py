@@ -170,6 +170,64 @@ def search_duplicates(entries, key=None, issorted=False):
 
 
 
+def conflict_resolution(old, new, mode='i'):
+    """conflict resolution with two entries
+    """
+    if mode == 'i':
+        print(entry_diff(old, new))
+        print(bcolors.OKBLUE + 'what to do? '+bcolors.ENDC)
+        print('''
+(u)pdate missing (discard new existing fields)
+(U)pdate other (overwrite old conflicting fields)
+(o)verwrite
+(e)dit diff
+(E)dit split (not a duplicate)
+(s)kip
+(a)ppend anyway
+(r)aise'''.strip())
+        choices = list('uUoeEsar')
+        ans = None
+        while ans not in choices:
+            print('choices: '+', '.join(choices))
+            ans = raw_input('>>> ')
+        mode = ans
+
+    # overwrite?
+    if mode == 'o':
+        resolved = [new]
+
+    elif mode == 'a':
+        resolved = [old, new]
+
+    elif mode == 'u':
+        logger.info('update missing fields')
+        new.update(old)
+        old.update(new)
+        resolved = [old]
+
+    elif mode == 'U':
+        logger.info('update with other')
+        old.update(new)
+        resolved = [old]
+
+    # skip
+    elif mode == 's':
+        resolved = [old]
+
+    # edit
+    elif mode == 'e':
+        resolved = edit_entries([old, new], diff=True)
+
+    elif mode == 'E':
+        resolved = edit_entries([old, new])
+
+    else:
+        raise ValueError('conflict resolution: '+repr(mode))
+
+    return resolved
+
+
+
 # Parse / format bibtex file entry
 # ================================
 def format_entries(entries):
@@ -292,6 +350,87 @@ def are_duplicates(e1, e2, fuzzy=False, level=None):
     return score >= level if level else score
 
 
+def _colordiffline(line):
+    if line.startswith('+'):
+        return bcolors.OKGREEN + line + bcolors.ENDC
+    elif line.startswith('-'):
+        return bcolors.FAIL + line + bcolors.ENDC
+    elif line.startswith('?'):
+        return bcolors.WARNING + line + bcolors.ENDC
+    else:
+        return line
+
+
+def entry_diff(e_old, e, color=True):
+    s_old = format_entries([e_old])
+    s = format_entries([e])
+    ndiff = difflib.ndiff(s_old.splitlines(1), s.splitlines(1))
+    diff = ''.join(ndiff)
+    if color:
+        return "\n".join([_colordiffline(line) for line in diff.splitlines()])
+    else:
+        return diff
+
+
+def entry_ndiff(entries, color=True):
+    ' diff of many entries '
+    m = merge_entries(entries)
+    SECRET_STRING = 'REPLACE_{}_FIELD'
+    regex = re.compile(SECRET_STRING.format('(.*)')) # reg exp to find
+    choices = {}
+    for k in m:
+        if isinstance(m[k], ConflictingField):
+            choices[k] = m[k].choices
+            m[k] = SECRET_STRING.format(k)
+    db = bibtexparser.loads('')
+    db.entries.append(m)
+    s = db.dumps()
+    lines = []
+    for line in s.splitlines():
+        matches = regex.findall(line)
+        if matches:
+            k = matches[0]
+            template = SECRET_STRING.format(k)
+            for c in choices[k]:
+                newline = '? '+line.replace(template, u'{}'.format(c))
+                lines.append(_colordiffline(newline) if color else newline)
+        else:
+            lines.append(line)
+    return '\n'.join(lines)
+
+
+def edit_entries(entries, diff=False):
+    '''edit entries and insert result in database 
+    '''
+    # write the listed entries to temporary file
+    import tempfile
+    # filename = tempfile.mktemp(prefix='.', suffix='.txt', dir=os.path.curdir)
+    filename = tempfile.mktemp(suffix='.txt')
+
+    if diff and len(entries) > 1:
+        if len(entries) == 2:
+            entrystring = entry_diff(*entries, color=False)
+        else:
+            entrystring = entry_ndiff(entries, color=False)
+    else:
+        db = bibtexparser.loads('')
+        db.entries.extend(entries)
+        entrystring = bibtexparser.dumps(db)
+
+    with open(filename, 'w') as f:
+        f.write(entrystring)
+
+    res = os.system('%s %s' % (os.getenv('EDITOR'), filename))
+
+    if res == 0:
+        logger.info('sucessfully edited file, insert edited entries')
+        db = bibtexparser.loads(open(filename).read())
+        return db.entries
+
+    else:
+        raise ValueError('error when editing entries file: '+filename)
+
+
 def backupfile(bibtex):
     return os.path.join(os.path.dirname(bibtex), '.'+os.path.basename(bibtex)+'.backup')
 
@@ -353,55 +492,6 @@ class MyRef(object):
         """
         if update_key:
             entry['ID'] = self.generate_key(entry)  # this key is not yet present
-
-        def conflict_resolution(candidate, entry, mode=on_conflict):
-
-            if mode == 'i':
-                print(entry_diff(candidate, entry))
-                print(bcolors.OKBLUE + 'what to do? '+bcolors.ENDC)
-                print('\n'.join('(o)verwrite, (u)pdate missing, (U)pdate other, (e)dit diff, (E)dit split, (s)kip, (a)ppend anyway, (r)aise'.split(', ')))
-                choices = list('ouUseaEr')
-                ans = None
-                while ans not in choices:
-                    print('choices: '+', '.join(choices))
-                    ans = raw_input('>>> ')
-                mode = ans
-
-            # overwrite?
-            if mode == 'o':
-                resolved = [entry]
-
-            elif mode == 'a':
-                resolved = [candidate, entry]
-
-            elif mode == 'u':
-                logger.info('update missing fields')
-                entry.update(candidate)
-                candidate.update(entry)
-                resolved = [candidate]
-
-            elif mode == 'U':
-                logger.info('update with other')
-                candidate.update(entry)
-                resolved = [candidate]
-
-            # skip
-            elif mode == 's':
-                resolved = [candidate]
-
-            # edit
-            elif mode == 'e':
-                self.edit_entries([candidate, entry], diff=True)
-                resolved = [] # already inserted
-
-            elif mode == 'E':
-                self.edit_entries([candidate, entry])
-                resolved = []
-
-            else:
-                raise ValueError('conflict resolution: '+repr(mode))
-
-            return resolved
 
 
         # additional checks on DOI
@@ -537,35 +627,6 @@ class MyRef(object):
         return generate_key(entry, keys=keys, nauthor=self.nauthor, ntitle=self.ntitle)
 
 
-    def edit_entries(self, entries, diff=False):
-        '''edit entries and insert result in database 
-        '''
-        # write the listed entries to temporary file
-        import tempfile
-        # filename = tempfile.mktemp(prefix='.', suffix='.txt', dir=os.path.curdir)
-        filename = tempfile.mktemp(suffix='.txt')
-
-        if diff and len(entries) > 1:
-            if len(entries) == 2:
-                entrystring = entry_diff(*entries, color=False)
-            else:
-                entrystring = entry_ndiff(entries, color=False)
-        else:
-            db = bibtexparser.loads('')
-            db.entries.extend(entries)
-            entrystring = bibtexparser.dumps(db)
-
-        with open(filename, 'w') as f:
-            f.write(entrystring)
-        res = os.system('%s %s' % (os.getenv('EDITOR'), filename))
-        if res == 0:
-            logger.info('sucessfully edited file, insert edited entries')
-            self.db.entries = [e for e in self.entries if e not in entries]
-            self.add_bibtex_file(filename)
-        else:
-            raise ValueError('error when editing entries file: '+filename)
-
-
     def format(self):
         return bibtexparser.dumps(self.db)
 
@@ -575,6 +636,13 @@ class MyRef(object):
             shutil.copy(bibtex, backupfile(bibtex))
         open(bibtex, 'w').write(s)
 
+
+    def edit_entries(self, entries):
+        resolved = edit_entries(entries)
+        for e in entries:
+            self.entries.remove(e)
+        for e in resolved:
+            self.insert_entry(e)
 
     def merge_duplicates(self, key, interactive=True, fetch=False, force=False, 
         ignore_unresolved=True, mergefiles=True):
@@ -844,53 +912,6 @@ class MyRef(object):
                         del e[k]
 
 
-def _colordiffline(line):
-    if line.startswith('+'):
-        return bcolors.OKGREEN + line + bcolors.ENDC
-    elif line.startswith('-'):
-        return bcolors.FAIL + line + bcolors.ENDC
-    elif line.startswith('?'):
-        return bcolors.WARNING + line + bcolors.ENDC
-    else:
-        return line
-
-
-def entry_diff(e_old, e, color=True):
-    s_old = format_entries([e_old])
-    s = format_entries([e])
-    ndiff = difflib.ndiff(s_old.splitlines(1), s.splitlines(1))
-    diff = ''.join(ndiff)
-    if color:
-        return "\n".join([_colordiffline(line) for line in diff.splitlines()])
-    else:
-        return diff
-
-
-def entry_ndiff(entries, color=True):
-    ' diff of many entries '
-    m = merge_entries(entries)
-    SECRET_STRING = 'REPLACE_{}_FIELD'
-    regex = re.compile(SECRET_STRING.format('(.*)')) # reg exp to find
-    choices = {}
-    for k in m:
-        if isinstance(m[k], ConflictingField):
-            choices[k] = m[k].choices
-            m[k] = SECRET_STRING.format(k)
-    db = bibtexparser.loads('')
-    db.entries.append(m)
-    s = db.dumps()
-    lines = []
-    for line in s.splitlines():
-        matches = regex.findall(line)
-        if matches:
-            k = matches[0]
-            template = SECRET_STRING.format(k)
-            for c in choices[k]:
-                newline = '? '+line.replace(template, u'{}'.format(c))
-                lines.append(_colordiffline(newline) if color else newline)
-        else:
-            lines.append(line)
-    return '\n'.join(lines)
 
 
 def isvalidkey(key):
