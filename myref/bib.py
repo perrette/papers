@@ -32,27 +32,52 @@ from myref.duplicate import search_duplicates, list_duplicates, list_uniques, me
 
 # KEY GENERATION
 # ==============
-
-NAUTHOR = 2 
-NTITLE = 0
-
+NAUTHOR = 0
+NTITLE = 2
 
 
-def generate_key(entry, nauthor=NAUTHOR, ntitle=NTITLE, keys=None):
+def append_abc(key, keys=[]):
+    """
+    >>> append_abc('Author2000')
+    'Author2000b'
+    >>> append_abc('Author2000b')
+    'Author2000c'
+    >>> append_abc('Author2000', ['Author2000', 'Author2000b'])
+    'Author2000c'
+    """
+    letters = list('abcdefghijklmnopqrstuvwxyz')
+
+    if key[-1] in letters:
+        i = letters.index(key[-1])
+        letters = letters[i+1:]
+        key = key[:-1]
+    else:
+        letters = letters[1:] # start at b
+
+    for l in letters:
+        Key = (key+l)
+        if Key not in keys:
+            key = Key
+            break
+    assert Key not in keys, 'not enough letters in the alphabets to solve key conflict? or maybe something went wrong...'
+    return Key
+
+
+def generate_key(entry, nauthor=NAUTHOR, ntitle=NTITLE, minwordlen=3, mintitlen=4, keys=None):
     # names = bibtexparser.customization.getnames(entry.get('author','unknown').lower().split(' and '))
     names = family_names(entry.get('author','unknown').lower())
     authortag = '_'.join([nm for nm in names[:nauthor]]) 
     yeartag = entry.get('year','0000') 
-    titletag = '_'.join([word for word in entry.get('title','').lower().strip().split() if len(word) > 3][:ntitle])
+    if not entry.get('title',''):
+        titletag = ''
+    else:
+        words = [word for word in entry['title'].lower().strip().split() if len(word) >= minwordlen]
+        while len(sum(words[:ntitle])) < mintitlen and ntitle < len(words):
+            ntitle += 1
+        titletag = '_'.join(words[:ntitle])
     key = authortag + yeartag + titletag
     if keys and key in keys: # and not isinstance(keys, set):
-        letters = list('bcdefghijklmnopqrstuvwxyz')
-        for l in letters:
-            Key = (key+l)
-            if Key not in keys:
-                key = Key
-                break
-        assert Key not in keys
+        key = append_abc(key, keys)
     return key
  
 
@@ -65,8 +90,8 @@ PARTIAL_DUPLICATES = 101
 FUZZY_DUPLICATES = 100
 DISTINCT_DUPLICATES = 0
 
-DUPLICATE_LEVEL = PARTIAL_DUPLICATES
-
+# should be conservative (used in myref add)
+DUPLICATE_LEVEL = GOOD_DUPLICATES  
 
 def _remove_unicode(s, replace='_'):
     s2 = []
@@ -168,11 +193,13 @@ def read_entry_dir(self, direc, update_files=True):
 def backupfile(bibtex):
     return os.path.join(os.path.dirname(bibtex), '.'+os.path.basename(bibtex)+'.backup')
 
+class DuplicateKeyError(ValueError):
+    pass
 
 class MyRef(object):
     """main config
     """
-    def __init__(self, db, filesdir, key_field='ID', nauthor=NAUTHOR, ntitle=NTITLE):
+    def __init__(self, db, filesdir, key_field='ID', nauthor=NAUTHOR, ntitle=NTITLE, level=DUPLICATE_LEVEL):
         self.filesdir = filesdir
         self.txt = '/tmp'
         # assume an already sorted list
@@ -183,6 +210,7 @@ class MyRef(object):
         self.sort()
         self.nauthor = nauthor
         self.ntitle = ntitle
+        self.level = level
 
     @property
     def entries(self):
@@ -218,6 +246,13 @@ class MyRef(object):
     def key(self, e):
         return e[self.key_field].lower()
 
+    def eq(self, e1, e2):
+        return are_duplicates(e1, e2, level=self.level)
+
+    def __contains___(self, entry):
+        return any({self.eq(entry, e) for e in self.entries})
+
+
     def sort(self):
         self.db.entries = sorted(self.db.entries, key=self.key)
 
@@ -226,71 +261,83 @@ class MyRef(object):
         return bisect.bisect_left(keys, self.key(entry))
 
 
-    def insert_entry(self, entry, update_key=False, check_duplicate=False, on_conflict='i', mergefiles=True, **mergeopt):
+    def insert_entry(self, entry, update_key=False, check_duplicate=False, **checkopt):
         """
         """
-        if update_key:
-            entry['ID'] = self.generate_key(entry)  # this key is not yet present
-
-
-        # additional checks on DOI
+        # additional checks on DOI etc...
         if check_duplicate:
-
-            duplicates = [e for e in self.entries if are_duplicates(e, entry)]
-
-            if duplicates:
-                # some duplicates...
-                logger.warn('duplicate(s) found: {}'.format(len(duplicates)))
-
-                # pick only the most similar duplicate, if more than one
-                if len(duplicates) > 1:
-                    duplicates.sort(key=lambda e: compare_entries(entry, e), reverse=True)
-                candidate = duplicates[0]
-
-                if update_key:
-                    logger.debug('update key: {} => {}'.format(entry['ID'], candidate['ID']))
-                    entry['ID'] = candidate['ID']
-
-                if mergefiles:
-                    logger.debug('merge files')
-                    file = merge_files([candidate, entry])
-                    if file:
-                        entry['file'] = candidate['file'] = file
-
-                if entry == candidate:
-                    logger.debug('exact duplicate')
-                    return  # do nothing
-
-                else:
-                    logger.debug('conflic resolution: '+on_conflict)
-                    resolved = conflict_resolution_on_insert(candidate, entry, mode=on_conflict)
-                    self.entries.remove(candidate) # maybe in resolved entries
-                    for e in resolved:
-                        self.insert_entry(e)
-                    return # already inserted
-
+            return self.insert_entry_check(entry, update_key=update_key, **checkopt)
 
         i = self.index_sorted(entry)  # based on current sort key (e.g. ID)
 
-
         if i < len(self.entries) and self.key(self.entries[i]) == self.key(entry):
-            message = 'key duplicate: '+self.key(self.entries[i])
+            logger.info('key duplicate: '+self.key(self.entries[i]))
             
-            # same key but no duplicates (duplicate test was done above)
-            if check_duplicate:
-                resolved = conflict_resolution_on_insert(self.entries[i], entry, mode=on_conflict)
-                self.entries.pop(i) # maybe reinserted in resolved entries
-                for e in resolved:
-                    self.insert_entry(e)
-                    return # already inserted
+            if update_key:
+                newkey = self.append_abc_to_key(entry)  # add abc
+                logger.info('update key: {} => {}'.format(entry['ID'], newkey))
+                entry['ID'] = newkey
+
             else:
-                logger.warn(message)
+                raise DuplicateKeyError('this error can be avoided if update_key is True')
        
         else: 
             logger.info('new entry: '+self.key(entry))
         
         self.entries.insert(i, entry)
 
+
+    def insert_entry_check(self, entry, update_key=False, mergefiles=True, on_conflict='i'):
+        
+        duplicates = [e for e in self.entries if self.eq(e, entry)]
+
+        if not duplicates:
+            self.insert_entry(entry, update_key)
+
+
+        elif duplicates:
+            # some duplicates...
+            logger.warn('duplicate(s) found: {}'.format(len(duplicates)))
+
+            # pick only the most similar duplicate, if more than one
+            # the point of check_duplicate is to avoid increasing disorder, not to clean the existing mess
+            if len(duplicates) > 1:
+                duplicates.sort(key=lambda e: compare_entries(entry, e), reverse=True)
+
+            candidate = duplicates[0]
+
+            if entry == candidate:
+                logger.debug('exact duplicate')
+                return  # do nothing
+
+            if update_key and entry['ID'] != candidate['ID']:
+                logger.info('update key: {} => {}'.format(entry['ID'], candidate['ID']))
+                entry['ID'] = candidate['ID']
+
+            if mergefiles:
+                file = merge_files([candidate, entry])
+                if file and entry.get('file','') != file:
+                    logger.info('merge files')
+                    entry['file'] = candidate['file'] = file
+
+            if entry == candidate:
+                logger.debug('fixed: exact duplicate')
+                return  # do nothing
+
+            logger.debug('conflic resolution: '+on_conflict)
+            resolved = conflict_resolution_on_insert(candidate, entry, mode=on_conflict)
+            self.entries.remove(candidate) # maybe in resolved entries
+            for e in resolved:
+                self.insert_entry(e, update_key)
+
+
+    def generate_key(self, entry):
+        " generate a unique key not yet present in the record "
+        keys = set(self.key(e) for e in self.db.entries)
+        return generate_key(entry, keys=keys, nauthor=self.nauthor, ntitle=self.ntitle)
+
+    def append_abc_to_key(self, entry):
+        return append_abc(entry['ID'], keys=set(self.key(e) for e in self.entries))
 
 
     def add_bibtex(self, bibtex, **kw):
@@ -358,12 +405,6 @@ class MyRef(object):
                 except Exception as error:
                     logger.warn(path+'::'+str(error))
                     continue
-
-
-    def generate_key(self, entry):
-        " generate a unique key not yet present in the record "
-        keys = set(self.key(e) for e in self.db.entries)
-        return generate_key(entry, keys=keys, nauthor=self.nauthor, ntitle=self.ntitle)
 
 
     def format(self):
@@ -836,7 +877,8 @@ def main():
         help='disable duplicate check (faster, create duplicates)')
     grp.add_argument('--no-merge-files', action='store_true', 
         help='distinct "file" field considered a conflict, all other things being equal')
-    grp.add_argument('-u', '--update-key', action='store_true', help='update added key according to any existing duplicate or to metadata')
+    grp.add_argument('-u', '--update-key', action='store_true', 
+        help='update added key according to any existing duplicate (otherwise an error might be raised on identical insert key)')
     # grp.add_argument('-f', '--force', action='store_true', help='no interactive')
     grp.add_argument('-m', '--mode', default='i', choices=['u', 'U', 'o', 's', 'r', 'i'],
         help='''if duplicates are found, the default is to start an (i)nteractive dialogue, 
@@ -1022,6 +1064,7 @@ def main():
     mgrp.add_argument('--strict', action='store_true', help='exact matching - instead of substring (only (*): title, author, abstract)')
     mgrp.add_argument('--fuzzy', action='store_true', help='fuzzy matching - instead of substring (only (*): title, author, abstract)')
     listp.add_argument('--fuzzy-ratio', type=int, default=80, help='threshold for fuzzy matching of title, author, abstract (default:%(default)s)')
+    listp.add_argument('--similarity', choices=['EXACT','GOOD','PARTIAL','FUZZY'], default='GOOD', help='duplicate level (default:%(default)s)')
     listp.add_argument('--invert', action='store_true')
 
     grp = listp.add_argument_group('search')
@@ -1038,8 +1081,7 @@ def main():
     grp.add_argument('--duplicates-key', action='store_true', help='list key duplicates only')
     grp.add_argument('--duplicates-doi', action='store_true', help='list doi duplicates only')
     grp.add_argument('--duplicates-tit', action='store_true', help='list tit duplicates only')
-    grp.add_argument('--duplicates', action='store_true', help='list all duplicates')
-    grp.add_argument('--duplicates-fuzzy', action='store_true', help='list fuzzy duplicates (look harder)')
+    grp.add_argument('--duplicates', action='store_true', help='list all duplicates (see --similarity)')
     grp.add_argument('--has-file', action='store_true')
     grp.add_argument('--no-file', action='store_true')
     grp.add_argument('--broken-file', action='store_true')
@@ -1130,10 +1172,8 @@ def main():
         if o.duplicates_tit:
             entries = list_dup(entries, key=title_id)
         if o.duplicates:
-            eq = lambda a, b: a['ID'] == b['ID'] or are_duplicates(a, b)
-            entries = list_dup(entries, eq=eq)
-        if o.duplicates_fuzzy:
-            eq = lambda a, b: a['ID'] == b['ID'] or are_duplicates(a, b, fuzzy=True, level=o.fuzzy_ratio)
+            level = o.fuzzy_ratio if o.similarity == 'FUZZY' else globals()[o.similarity]
+            eq = lambda a, b: a['ID'] == b['ID'] or are_duplicates(a, b, level=level, fuzzy=o.similarity=='FUZZY')
             entries = list_dup(entries, eq=eq)
 
         def nfiles(e):
