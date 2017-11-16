@@ -618,6 +618,83 @@ class TestAddResolveDuplicateCommand(TestAddResolveDuplicate):
         return 'myref add {} --bibtex {} --mode {} --debug'.format(self.otherbib, self.mybib, mode)
 
 
+
+class TestCheckResolveDuplicate(BibTest):
+
+    original = """@article{Perrette_2011,
+ doi = {10.5194/bg-8-515-2011},
+ journal = {Biogeosciences},
+ year = {RareYear}
+}"""
+
+
+    conflict = """@article{AnotherKey,
+ author = {New Author Field},
+ doi = {10.5194/bg-8-515-2011},
+ journal = {ConflictJournal}
+}"""
+
+
+    def setUp(self):
+        self.mybib = tempfile.mktemp(prefix='myref.bib')
+        open(self.mybib, 'w').write(self.original + '\n\n' + self.conflict)
+
+    def tearDown(self):
+        os.remove(self.mybib)
+
+    def command(self, mode):
+        return 'echo {} | myref check --duplicates --bibtex {} --debug'.format(mode, self.mybib)
+
+    def test_pick_conflict_1(self):
+
+        expected = self.conflict
+
+        sp.check_call(self.command('1'), shell=True)
+        self.assertMultiLineEqual(open(self.mybib).read().strip(), expected) # entries did not change
+
+    def test_pick_reference_2(self):
+
+        expected = self.original
+
+        sp.check_call(self.command('2'), shell=True)
+        self.assertMultiLineEqual(open(self.mybib).read().strip(), expected) # entries did not change
+
+
+    def test_skip_check(self):
+
+        expected = self.conflict + '\n\n' + self.original
+
+        sp.check_call(self.command('s'), shell=True)
+        self.assertMultiLineEqual(open(self.mybib).read().strip(), expected) # entries did not change
+
+
+    def test_not_a_duplicate(self):
+
+        expected = self.conflict + '\n\n' + self.original
+
+        sp.check_call(self.command('n'), shell=True)
+        self.assertMultiLineEqual(open(self.mybib).read().strip(), expected) # entries did not change
+
+
+    def test_raises(self):
+        # update key to new entry, but does not merge...
+        func = lambda: sp.check_call(self.command('r'), shell=True)
+        self.assertRaises(Exception, func)
+
+
+    def test_merge(self):
+        # update key to new entry, but does not merge...
+        expected = """@article{AnotherKey,
+         author = {New Author Field},
+         doi = {10.5194/bg-8-515-2011},
+         journal = {ConflictJournal},
+         year = {RareYear}
+        }"""
+        func = lambda: sp.check_call(self.command('m\n3'), shell=True)
+        self.assertRaises(Exception, func)
+
+
+
 class TestUnicode(BibTest):
     pass
 

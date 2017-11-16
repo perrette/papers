@@ -239,7 +239,7 @@ def entry_ndiff(entries, color=True):
     return '\n'.join(lines)
 
 
-def entry_sdiff(entries, color=True, bcolors=bcolors):
+def entry_sdiff(entries, color=True, bcolors=bcolors, best=None):
     """split diff
     """
     if not entries:
@@ -260,7 +260,9 @@ def entry_sdiff(entries, color=True, bcolors=bcolors):
 
     for i, entry in enumerate(entries):
         db.entries[0] = entry
-        string = bibtexparser.dumps(db).decode('utf-8') # decode to avoid failure in replace
+        string = bibtexparser.dumps(db)
+        if six.PY2:
+            string = string.decode('utf-8') # decode to avoid failure in replace
         # color the conflicting fields
         lines = []
         for line in string.splitlines():
@@ -272,7 +274,13 @@ def entry_sdiff(entries, color=True, bcolors=bcolors):
                     line = fmt(line)
             lines.append(line)
         string = '\n'.join(lines)
-        entry_strings.append(bcolors.OKBLUE+'* ('+str(i+1)+')'+bcolors.ENDC+'\n'+string)
+        if best is None:
+            entry_strings.append(bcolors.OKBLUE+'* ('+str(i+1)+')'+bcolors.ENDC+'\n'+string)
+        elif entry == best:
+            entry_strings.append(bcolors.OKBLUE+'* ('+str(i+1)+')'+bcolors.ENDC+'\n'+string)
+        else:
+            entry_strings.append(bcolors.OKBLUE+'  ('+str(i+1)+')'+bcolors.ENDC+'\n'+string)
+
     return '\n'.join(entry_strings)
 
 
@@ -324,9 +332,9 @@ def _ask_pick_loop(entries, extra=[], select=False):
             continue
 
 
-def choose_entry_interactive(entries, extra=[], msg='', select=False):
+def choose_entry_interactive(entries, extra=[], msg='', select=False, best=None):
 
-    print(entry_sdiff(entries))
+    print(entry_sdiff(entries, best=best))
 
     if msg:
         print(msg)
@@ -371,6 +379,16 @@ def edit_entries(entries, diff=False, ndiff=False):
 
 
 
+
+def score(e):
+    ' entry score, in terms of reliability '
+    return (100*('doi' in e and isvaliddoi(e['doi'])) + 50*('title' in e) + 10*('author' in e) + 1*('file' in e))*100 + len(e)
+
+
+def bestentry(entries):
+    return sorted(entries, key=score)[-1]
+
+
 class DuplicateSkip(Exception):
     pass
 
@@ -391,27 +409,23 @@ class DuplicateHandler(object):
             return entry_ndiff(self.entries, color=color)
 
     def viewsplit(self, color=False):
-        return entry_sdiff(self.entries, color=color)
+        return entry_sdiff(self.entries, color=color, best=self.best())
 
     def format(self, diffview=False, update=False, color=True):
         return self.viewdiff(color, update) if diffview else self.viewsplit(color)
 
     # action methods
     def remove_duplicates(self):
-        self.entries = list(set(self.entries)) # note: loose order
+        self.entries = unique(self.entries) # note: loose order
 
     def edit(self, diffview=False, update=False):
         self.entries = edit_entries(self.entries, diff=diffview, ndiff=not update)
 
     def delete(self):
         self.entries = []
-
-    def _score(self, e):
-        ' entry score, in terms of reliability '
-        return 100*('doi' in e and isvaliddoi(e['doi'])) + 50*('title' in e) + 10*('author' in e)
     
     def best(self):
-        return sorted(self.entries, key=self._score)[-1]
+        return bestentry(self.entries)
 
     def fetch(self):
         # pick best entry to update from
@@ -435,7 +449,10 @@ class DuplicateHandler(object):
             best = self.best()
             for k in list(merged.keys()):
                 if isinstance(merged[k], ConflictingField):
-                    del merged[k]
+                    merged[k] = best[k] # ID, ENTRYFIELD
+                    # if k != k.lower():
+                    # else:
+                    #     del merged[k]
             self.entries.append(merged)
 
     # interactive loops
@@ -460,7 +477,7 @@ class DuplicateHandler(object):
 '''
             if not diffview:
                 msg = bcolors.OKBLUE + 'Pick entry or choose one of the following actions:'+bcolors.ENDC+txt
-                e = choose_entry_interactive(self.entries, extra=choices, msg=msg, select=True)
+                e = choose_entry_interactive(self.entries, extra=choices, msg=msg, select=True, best=self.best())
             else:
                 print(entry_ndiff(self.entries))
                 print(bcolors.OKBLUE + 'Choose one of the following actions:'+bcolors.ENDC + txt)
@@ -621,6 +638,7 @@ def conflict_resolution_on_insert(old, new, mode='i'):
 # ================
 
 def unique(entries):
+    entries_ = []
     for e in entries:
         if e not in entries_:
             entries_.append(e)

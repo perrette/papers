@@ -449,10 +449,8 @@ class MyRef(object):
     def check_duplicates(self, key=None, eq=None, mode='i'):
         """remove duplicates, in some sensse (see myref.conflict.check_duplicates)
         """
-        self.entries = check_duplicates(self.entries, key, eq, key is self.key, mode)
+        self.entries = check_duplicates(self.entries, key=key, eq=eq or self.eq, issorted=key is self.key, mode=mode)
         self.sort() # keep sorted
-
-
 
 
     def rename_entry_files(self, e, copy=False):
