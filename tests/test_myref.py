@@ -532,12 +532,15 @@ class TestAddResolveDuplicate(BibTest):
         os.remove(self.mybib)
         os.remove(self.otherbib)
 
+    def command(self, mode):
+        return 'echo {} | myref add {} --bibtex {} --debug'.format(mode, self.otherbib, self.mybib)
+
     def test_overwrite(self):
 
         expected = self.conflict
 
         open(self.otherbib, 'w').write(self.conflict)
-        sp.check_call('echo o | myref add {} --bibtex {}'.format(self.otherbib, self.mybib), shell=True)
+        sp.check_call(self.command('o'), shell=True)
         self.assertMultiLineEqual(open(self.mybib).read().strip(), expected) # entries did not change
 
 
@@ -546,12 +549,12 @@ class TestAddResolveDuplicate(BibTest):
         expected = self.original
 
         open(self.otherbib, 'w').write(self.conflict)
-        sp.check_call('echo s | myref add {} --bibtex {}'.format(self.otherbib, self.mybib), shell=True)
+        sp.check_call(self.command('s'), shell=True)
         self.assertMultiLineEqual(open(self.mybib).read().strip(), expected) # entries did not change
 
     def test_append(self):
         open(self.otherbib, 'w').write(self.conflict)
-        sp.check_call('echo a | myref add {} --bibtex {}'.format(self.otherbib, self.mybib), shell=True)
+        sp.check_call(self.command('a'), shell=True)
         # sp.check_call('myref add {} --bibtex {} --debug'.format(self.otherbib, self.mybib), shell=True)
         expected = self.conflict + '\n\n' + self.original 
         self.assertMultiLineEqual(open(self.mybib).read().strip(), expected) # entries did not change
@@ -560,7 +563,7 @@ class TestAddResolveDuplicate(BibTest):
     def test_raises(self):
         # update key to new entry, but does not merge...
         open(self.otherbib, 'w').write(self.conflict)
-        func = lambda: sp.check_call('echo r | myref add {} --bibtex {}'.format(self.otherbib, self.mybib), shell=True)
+        func = lambda: sp.check_call(self.command('r'), shell=True)
         self.assertRaises(Exception, func)
 
 
@@ -574,7 +577,7 @@ class TestAddResolveDuplicate(BibTest):
 }"""
 
         open(self.otherbib, 'w').write(self.conflict)
-        sp.check_call('echo u | myref add {} --bibtex {}'.format(self.otherbib, self.mybib), shell=True)
+        sp.check_call(self.command('u'), shell=True)
         self.assertMultiLineEqual(open(self.mybib).read().strip(), expected) # entries did not change
 
 
@@ -588,7 +591,7 @@ class TestAddResolveDuplicate(BibTest):
 }"""
 
         open(self.otherbib, 'w').write(self.conflict)
-        sp.check_call('echo U | myref add {} --bibtex {}'.format(self.otherbib, self.mybib), shell=True)
+        sp.check_call(self.command('U'), shell=True)
         self.assertMultiLineEqual(open(self.mybib).read().strip(), expected) # entries did not change
 
 
@@ -600,11 +603,16 @@ class TestAddResolveDuplicate(BibTest):
  journal = {ConflictJournal},
  year = {RareYear}
 }"""
-
         open(self.otherbib, 'w').write(self.conflict)
-        sp.check_call('echo U | myref add {} -u --bibtex {}'.format(self.otherbib, self.mybib), shell=True)
+        sp.check_call(self.command('U') + ' --update-key', shell=True)
         self.assertMultiLineEqual(open(self.mybib).read().strip(), expected) # entries did not change
 
+
+
+class TestAddResolveDuplicateCommand(TestAddResolveDuplicate):
+
+    def command(self, mode):
+        return 'myref add {} --bibtex {} --mode {} --debug'.format(self.otherbib, self.mybib, mode)
 
 
 class TestUnicode(BibTest):

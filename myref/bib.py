@@ -912,7 +912,7 @@ def main():
     grp.add_argument('-u', '--update-key', action='store_true', 
         help='update added key according to any existing duplicate (otherwise an error might be raised on identical insert key)')
     # grp.add_argument('-f', '--force', action='store_true', help='no interactive')
-    grp.add_argument('-m', '--mode', default='i', choices=['u', 'U', 'o', 's', 'r', 'i'],
+    grp.add_argument('-m', '--mode', default='i', choices=['u', 'U', 'o', 's', 'r', 'i','a'],
         help='''if duplicates are found, the default is to start an (i)nteractive dialogue, 
         unless "mode" is set to (r)aise, (s)skip new, (u)pdate missing, (U)pdate with new, (o)verwrite completely.
         ''')
