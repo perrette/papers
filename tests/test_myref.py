@@ -91,6 +91,7 @@ class TestSimple(unittest.TestCase):
 
     def setUp(self):
         self.pdf, self.doi, self.key, self.newkey, self.year, self.bibtex = prepare_paper()
+        self.assertTrue(os.path.exists(self.pdf))
 
     def test_doi(self):
         self.assertEqual(run('myref doi '+self.pdf).strip(), self.doi)
@@ -125,6 +126,7 @@ class TestAdd(unittest.TestCase):
 
     def setUp(self):
         self.pdf, self.doi, self.key, self.newkey, self.year, self.bibtex = prepare_paper()
+        self.assertTrue(os.path.exists(self.pdf))
         self.mybib = tempfile.mktemp(prefix='myref.bib')
         self.filesdir = tempfile.mktemp(prefix='myref.files')
         open(self.mybib, 'w').write('')
@@ -220,6 +222,7 @@ class TestAdd2(TestAdd):
 
     def setUp(self):
         self.pdf, self.si, self.doi, self.key, self.newkey, self.year, self.bibtex = prepare_paper2()
+        self.assertTrue(os.path.exists(self.pdf))
         self.mybib = tempfile.mktemp(prefix='myref.bib')
         self.filesdir = tempfile.mktemp(prefix='myref.files')
         # sp.check_call('myref install --local --bibtex {} --filesdir {}'.format(self.mybib, self.filesdir), shell=True)
