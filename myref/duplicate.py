@@ -4,6 +4,7 @@ import operator
 import os
 import itertools
 import six
+from six.moves import input as raw_input
 import re
 import difflib
 
@@ -609,7 +610,7 @@ def conflict_resolution_on_insert(old, new, mode='i'):
         resolved = edit_entries([old, new])
 
     else:
-        raise ValueError('conflict resolution: '+repr(mode))
+        raise ValueError('conflicting entries')
 
     return resolved
 

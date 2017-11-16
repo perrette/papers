@@ -171,15 +171,15 @@ class TestAdd(unittest.TestCase):
         # self.assertTrue(os.path.exists(self.pdf)) # old pdf still exists
 
 
-    def test_add_fulltext(self):
-        # self.assertTrue(os.path.exists(self.mybib))
-        sp.check_call('myref add --no-query-doi --bibtex {} {}'.format(
-            self.mybib, self.pdf), shell=True)
+    # def test_add_fulltext(self):
+    #     # self.assertTrue(os.path.exists(self.mybib))
+    #     sp.check_call('myref add --no-query-doi --bibtex {} {}'.format(
+    #         self.mybib, self.pdf), shell=True)
 
-        file_ = self._checkbib(doi_only=True)
-        file = self._checkfile(file_)
-        self.assertEqual(file, self.pdf)
-        self.assertTrue(os.path.exists(self.pdf)) # old pdf still exists
+    #     file_ = self._checkbib(doi_only=True)
+    #     file = self._checkfile(file_)
+    #     self.assertEqual(file, self.pdf)
+    #     self.assertTrue(os.path.exists(self.pdf)) # old pdf still exists
 
 
     def test_add_rename_copy(self):
@@ -198,7 +198,7 @@ class TestAdd(unittest.TestCase):
         pdfcopy = tempfile.mktemp(prefix='myref_test', suffix='.pdf')
         shutil.copy(self.pdf, pdfcopy)
 
-        sp.check_call('myref add -r --bibtex {} --filesdir {} {}'.format(
+        sp.check_call('myref add -r --bibtex {} --filesdir {} {} --debug'.format(
             self.mybib, self.filesdir, pdfcopy), shell=True)
 
         file_ = self._checkbib(dismiss_key=True)  # 'file:pdf'
@@ -315,23 +315,6 @@ class TestAddDir(unittest.TestCase):
 class BibTest(unittest.TestCase):
     """base class for bib tests: create a new bibliography
     """
-    def setUp(self):
-        self.mybib = tempfile.mktemp(prefix='myref.bib')
-        self.filesdir = tempfile.mktemp(prefix='myref.files')
-        self.otherbib = tempfile.mktemp(prefix='myref.otherbib')
-        # self.my = MyRef.newbib(self.mybib, self.filesdir)
-        # sp.check_call('myref install --local --bibtex {} --files {}'.format(self.mybib, self.filesdir), shell=True)
-        open(self.mybib, 'w').write('')
-
-    def tearDown(self):
-        os.remove(self.mybib)
-        if os.path.exists(self.filesdir):
-            shutil.rmtree(self.filesdir)
-        if os.path.exists(self.otherbib):
-            os.remove(self.otherbib)
-        if os.path.exists('.myrefconfig.json'):
-            os.remove('.myrefconfig.json')
-
 
     def assertMultiLineEqual(self, first, second, msg=None):
         """Assert that two multi-line strings are equal.
@@ -352,7 +335,290 @@ class BibTest(unittest.TestCase):
             self.fail("Multi-line strings are unequal:\n" + message)
 
 
+
+
+class TestDuplicates(unittest.TestCase):
+
+    reference = """@article{Perrette_2011,
+ author = {M. Perrette and A. Yool and G. D. Quartly and E. E. Popova},
+ doi = {10.5194/bg-8-515-2011},
+ title = {Near-ubiquity of ice-edge blooms in the Arctic},
+ year = {2011}
+}"""
+
+    anotherkey = """@article{OtherKey,
+ author = {M. Perrette and A. Yool and G. D. Quartly and E. E. Popova},
+ doi = {10.5194/bg-8-515-2011},
+ title = {Near-ubiquity of ice-edge blooms in the Arctic},
+ year = {2011}
+}"""
+
+    missingfield = """@article{Perrette_2011,
+ author = {M. Perrette and A. Yool and G. D. Quartly and E. E. Popova},
+ doi = {10.5194/bg-8-515-2011},
+ title = {Near-ubiquity of ice-edge blooms in the Arctic},
+}"""
+
+    missingdoi = """@article{Perrette_2011,
+ author = {M. Perrette and A. Yool and G. D. Quartly and E. E. Popova},
+ title = {Near-ubiquity of ice-edge blooms in the Arctic},
+}"""
+
+    missingtitauthor = """@article{Perrette_2011,
+ doi = {10.5194/bg-8-515-2011},
+}"""
+
+    conflictauthor = """@article{Perrette_2011,
+ author = {SomeOneElse},
+ doi = {10.5194/bg-8-515-2011},
+ title = {Near-ubiquity of ice-edge blooms in the Arctic},
+}"""
+
+    conflictdoi = """@article{Perrette_2011,
+ author = {M. Perrette and A. Yool and G. D. Quartly and E. E. Popova},
+ doi = {10.5194/XXX},
+ title = {Near-ubiquity of ice-edge blooms in the Arctic},
+}""" 
+
+    conflictyear = """@article{Perrette_2011,
+ author = {M. Perrette and A. Yool and G. D. Quartly and E. E. Popova},
+ doi = {10.5194/bg-8-515-2011},
+ title = {Near-ubiquity of ice-edge blooms in the Arctic},
+ year = {2012}
+}"""
+
+    @staticmethod
+    def isduplicate(a, b):
+        """test MyRef's eq method for duplicates
+        """
+        db = bibtexparser.loads(a+'\n'+b)
+        e1, e2 = db.entries
+        refs = MyRef()
+        return refs.eq(e1, e2)
+
+    def test_exactsame(self):
+        self.assertTrue(self.isduplicate(self.reference, self.reference))
+
+    def test_anotherkey(self):
+        self.assertTrue(self.isduplicate(self.reference, self.anotherkey))
+
+    def test_missingfield(self):
+        self.assertTrue(self.isduplicate(self.reference, self.missingfield))
+
+    def test_missingdoi(self):
+        self.assertTrue(self.isduplicate(self.reference, self.missingdoi))
+
+    def test_missingtitauthor(self):
+        self.assertTrue(self.isduplicate(self.reference, self.missingtitauthor))
+        
+    def test_conflictauthor(self):
+        self.assertFalse(self.isduplicate(self.reference, self.conflictauthor))
+        
+    def test_conflictdoi(self):
+        self.assertFalse(self.isduplicate(self.reference, self.conflictdoi))
+
+    def test_conflictyear(self):
+        self.assertTrue(self.isduplicate(self.reference, self.conflictyear))
+
+
+
+class SimilarityBase(object):
+
+    similarity = None
+
+    def isduplicate(self, a, b):
+        """test MyRef's eq method for duplicates
+        """
+        db = bibtexparser.loads(a+'\n'+b)
+        e1, e2 = db.entries
+        refs = MyRef(similarity=self.similarity)
+        return refs.eq(e1, e2)
+
+
+class TestDuplicatesExact(SimilarityBase, TestDuplicates):
+
+    similarity = 'EXACT'
+
+    def test_anotherkey(self):
+        self.assertFalse(self.isduplicate(self.reference, self.anotherkey))
+
+    def test_missingfield(self):
+        self.assertFalse(self.isduplicate(self.reference, self.missingfield))
+
+    def test_missingdoi(self):
+        self.assertFalse(self.isduplicate(self.reference, self.missingdoi))
+
+    def test_missingtitauthor(self):
+        self.assertFalse(self.isduplicate(self.reference, self.missingtitauthor))
+
+    def test_conflictyear(self):
+        self.assertFalse(self.isduplicate(self.reference, self.conflictyear))
+
+
+
+class TestDuplicatesGood(SimilarityBase, TestDuplicates):
+
+    similarity = 'GOOD'
+
+    def test_missingdoi(self):
+        self.assertFalse(self.isduplicate(self.reference, self.missingdoi))
+
+    def test_missingtitauthor(self):
+        self.assertFalse(self.isduplicate(self.reference, self.missingtitauthor))
+
+
+class TestDuplicatesPartial(SimilarityBase, TestDuplicates):
+
+    similarity = 'PARTIAL'
+
+    def test_conflictauthor(self):
+        self.assertTrue(self.isduplicate(self.reference, self.conflictauthor))
+        
+    def test_conflictdoi(self):
+        self.assertTrue(self.isduplicate(self.reference, self.conflictdoi))
+        
+        
+
+class TestDuplicatesAdd(SimilarityBase, TestDuplicates):
+
+    def setUp(self):
+        self.mybib = tempfile.mktemp(prefix='myref.bib')
+        self.otherbib = tempfile.mktemp(prefix='myref.otherbib')
+
+    def tearDown(self):
+        os.remove(self.mybib)
+        os.remove(self.otherbib)
+
+    def isduplicate(self, a, b):
+        """test MyRef's eq method in 'add' mode
+        """
+        open(self.mybib, 'w').write(a)
+        open(self.otherbib, 'w').write(b)
+        res = sp.call('myref add {} --bibtex {} --update-key --mode r --debug'.format(self.otherbib, self.mybib), shell=True)
+        return res != 0
+
+    @unittest.skip("skip cause does not make sense with add")
+    def test_exactsame(self):
+        pass
+
+    @unittest.skip("skip cause does not make sense with add")
+    def test_anotherkey(self):
+        pass
+
+
+
+class TestAddResolveDuplicate(BibTest):
+
+    original = """@article{Perrette_2011,
+ doi = {10.5194/bg-8-515-2011},
+ journal = {Biogeosciences},
+ year = {RareYear}
+}"""
+
+
+    conflict = """@article{AnotherKey,
+ author = {New Author Field},
+ doi = {10.5194/bg-8-515-2011},
+ journal = {ConflictJournal}
+}"""
+
+
+    def setUp(self):
+        self.mybib = tempfile.mktemp(prefix='myref.bib')
+        self.otherbib = tempfile.mktemp(prefix='myref.otherbib')
+        open(self.mybib, 'w').write(self.original)
+
+    def tearDown(self):
+        os.remove(self.mybib)
+        os.remove(self.otherbib)
+
+    def test_overwrite(self):
+
+        expected = self.conflict
+
+        open(self.otherbib, 'w').write(self.conflict)
+        sp.check_call('echo o | myref add {} --bibtex {}'.format(self.otherbib, self.mybib), shell=True)
+        self.assertMultiLineEqual(open(self.mybib).read().strip(), expected) # entries did not change
+
+
+    def test_skip(self):
+
+        expected = self.original
+
+        open(self.otherbib, 'w').write(self.conflict)
+        sp.check_call('echo s | myref add {} --bibtex {}'.format(self.otherbib, self.mybib), shell=True)
+        self.assertMultiLineEqual(open(self.mybib).read().strip(), expected) # entries did not change
+
+    def test_append(self):
+        open(self.otherbib, 'w').write(self.conflict)
+        sp.check_call('echo a | myref add {} --bibtex {}'.format(self.otherbib, self.mybib), shell=True)
+        # sp.check_call('myref add {} --bibtex {} --debug'.format(self.otherbib, self.mybib), shell=True)
+        expected = self.conflict + '\n\n' + self.original 
+        self.assertMultiLineEqual(open(self.mybib).read().strip(), expected) # entries did not change
+
+
+    def test_raises(self):
+        # update key to new entry, but does not merge...
+        open(self.otherbib, 'w').write(self.conflict)
+        func = lambda: sp.check_call('echo r | myref add {} --bibtex {}'.format(self.otherbib, self.mybib), shell=True)
+        self.assertRaises(Exception, func)
+
+
+    def test_original_updated_from_conflict(self):
+
+        expected = """@article{Perrette_2011,
+ author = {New Author Field},
+ doi = {10.5194/bg-8-515-2011},
+ journal = {Biogeosciences},
+ year = {RareYear}
+}"""
+
+        open(self.otherbib, 'w').write(self.conflict)
+        sp.check_call('echo u | myref add {} --bibtex {}'.format(self.otherbib, self.mybib), shell=True)
+        self.assertMultiLineEqual(open(self.mybib).read().strip(), expected) # entries did not change
+
+
+    def test_conflict_updated_from_original(self):
+
+        expected = """@article{AnotherKey,
+ author = {New Author Field},
+ doi = {10.5194/bg-8-515-2011},
+ journal = {ConflictJournal},
+ year = {RareYear}
+}"""
+
+        open(self.otherbib, 'w').write(self.conflict)
+        sp.check_call('echo U | myref add {} --bibtex {}'.format(self.otherbib, self.mybib), shell=True)
+        self.assertMultiLineEqual(open(self.mybib).read().strip(), expected) # entries did not change
+
+
+    def test_conflict_updated_from_original_but_originalkey(self):
+
+        expected = """@article{Perrette_2011,
+ author = {New Author Field},
+ doi = {10.5194/bg-8-515-2011},
+ journal = {ConflictJournal},
+ year = {RareYear}
+}"""
+
+        open(self.otherbib, 'w').write(self.conflict)
+        sp.check_call('echo U | myref add {} -u --bibtex {}'.format(self.otherbib, self.mybib), shell=True)
+        self.assertMultiLineEqual(open(self.mybib).read().strip(), expected) # entries did not change
+
+
+
+class TestUnicode(BibTest):
+    pass
+
+
+class TestUnicodeVsLatexEncoding(BibTest):
+    pass
+
+
+## KEEP FOR NOW BUT TRASH ASAP:
+
 class TestAddConflict(BibTest):
+    ## TODO: tear down in several smaller tests
     
     bibtex = """@article{Perrette_2011,
  author = {M. Perrette and A. Yool and G. D. Quartly and E. E. Popova},
@@ -368,7 +634,22 @@ class TestAddConflict(BibTest):
  year = {2011}
 }"""
 
-    bibtex_file = """@article{Perrette_2011,
+    bibtex_otherkey = """@article{otherkey,
+ author = {M. Perrette and A. Yool and G. D. Quartly and E. E. Popova},
+ doi = {10.5194/bg-8-515-2011},
+ journal = {Biogeosciences},
+ link = {https://doi.org/10.5194%2Fbg-8-515-2011},
+ month = {feb},
+ number = {2},
+ pages = {515--524},
+ publisher = {Copernicus {GmbH}},
+ title = {Near-ubiquity of ice-edge blooms in the Arctic},
+ volume = {8},
+ year = {2011}
+}"""
+
+
+    bibtex_hasfile = """@article{Perrette_2011,
  author = {M. Perrette and A. Yool and G. D. Quartly and E. E. Popova},
  doi = {10.5194/bg-8-515-2011},
  file = {:mypdf.pdf:pdf},
@@ -386,18 +667,16 @@ class TestAddConflict(BibTest):
     bibtex_conflict_key = """@article{Perrette_2011,
  author = {M. Perrette and A. Yool and G. D. Quartly and E. E. Popova},
  doi = {10.5194/bg-8-515-2011XXX},
- journal = {Biogeosciences},
- link = {https://doi.org/10.5194%2Fbg-8-515-2011},
- month = {feb},
- number = {2},
- pages = {515--524},
- publisher = {Copernicus {GmbH}},
- title = {Near-ubiquity of ice-edge blooms in the Arctic},
- volume = {8},
- year = {2011}
+ title = {Near-ubiquity of ice-edge blooms in the Arctic}
 }"""
 
-    bibtex_same_doi = """@article{SomeOtherKey,
+    bibtex_conflict_key_fixed = """@article{Perrette_2011b,
+ author = {M. Perrette and A. Yool and G. D. Quartly and E. E. Popova},
+ doi = {10.5194/bg-8-515-2011XXX},
+ title = {Near-ubiquity of ice-edge blooms in the Arctic}
+}"""
+
+    bibtex_same_doi = """@article{same_doi,
  author = {M. Perrette and A. Yool and G. D. Quartly and E. E. Popova},
  doi = {10.5194/bg-8-515-2011},
  journal = {Biogeosciences},
@@ -411,48 +690,98 @@ class TestAddConflict(BibTest):
  year = {2011}
 }"""
 
-    bibtex_miss_field = """@article{Perrette_2011,
+    bibtex_miss_field = """@article{miss_field,
  author = {M. Perrette and A. Yool and G. D. Quartly and E. E. Popova},
  doi = {10.5194/bg-8-515-2011},
+ title = {Near-ubiquity of ice-edge blooms in the Arctic}
 }"""
+
+    bibtex_miss_doi_field = """@article{miss_doi_field,
+ author = {M. Perrette and A. Yool and G. D. Quartly and E. E. Popova},
+ title = {Near-ubiquity of ice-edge blooms in the Arctic}
+}"""
+
+    bibtex_miss_titauthor_field = """@article{miss_titauthor_field,
+ doi = {10.5194/bg-8-515-2011},
+}"""
+
 
     def setUp(self):
-        super(TestAddConflict, self).setUp()
-        open(self.otherbib, 'w').write(self.bibtex)
-        sp.check_call('myref add {} --bibtex {}'.format(self.otherbib, self.mybib), shell=True)        
-        self.assertMultiLineEqual(open(self.mybib).read().strip(), self.bibtex)
+        self.mybib = tempfile.mktemp(prefix='myref.bib')
+        self.filesdir = tempfile.mktemp(prefix='myref.files')
+        self.otherbib = tempfile.mktemp(prefix='myref.otherbib')
+        # self.my = MyRef.newbib(self.mybib, self.filesdir)
+        # sp.check_call('myref install --local --bibtex {} --files {}'.format(self.mybib, self.filesdir), shell=True)
+        open(self.mybib, 'w').write(self.bibtex)
+        # open(self.otherbib, 'w').write('')
+        # sp.check_call('myref add {} --bibtex {}'.format(self.otherbib, self.mybib), shell=True)        
+        # self.assertMultiLineEqual(open(self.mybib).read().strip(), self.bibtex)
+
+    def tearDown(self):
+        os.remove(self.mybib)
+        if os.path.exists(self.filesdir):
+            shutil.rmtree(self.filesdir)
+        if os.path.exists(self.otherbib):
+            os.remove(self.otherbib)
+        if os.path.exists('.myrefconfig.json'):
+            os.remove('.myrefconfig.json')
 
 
     def test_add_same(self):
         open(self.otherbib, 'w').write(self.bibtex)
-        sp.check_call('myref add {} --bibtex {} --mode r'.format(self.otherbib, self.mybib), shell=True)
+        sp.check_call('myref add {} --bibtex {}'.format(self.otherbib, self.mybib), shell=True)
         self.assertMultiLineEqual(open(self.mybib).read().strip(), self.bibtex) # entries did not change
 
 
-    def test_add_same_but_file(self):
-        open(self.otherbib, 'w').write(self.bibtex_file)
-        sp.check_call('myref add {} --bibtex {}  --mode r'.format(self.otherbib, self.mybib), shell=True)
-        self.assertMultiLineEqual(open(self.mybib).read().strip(), self.bibtex_file) # entries did not change
+    def test_add_same_but_key_interactive(self):
+        # fails in raise mode
+        open(self.otherbib, 'w').write(self.bibtex_otherkey)
+        sp.check_call('echo u | myref add {} --bibtex {}'.format(self.otherbib, self.mybib), shell=True)
+        self.assertMultiLineEqual(open(self.mybib).read().strip(), self.bibtex) # entries did not change
 
 
-    def test_add_conflict_key_raises(self):
-        # key conflict: raises exception
-        open(self.otherbib, 'w').write(self.bibtex_conflict_key)
-        func = lambda : sp.check_call('myref add {} --bibtex {} --mode r'.format(self.otherbib, self.mybib), shell=True)
+    def test_add_same_but_key_update(self):
+        open(self.otherbib, 'w').write(self.bibtex_otherkey)
+        sp.check_call('myref add {} --bibtex {} -u'.format(self.otherbib, self.mybib), shell=True)
+        self.assertMultiLineEqual(open(self.mybib).read().strip(), self.bibtex) # entries did not change
+
+
+    def test_add_same_but_key_fails(self):
+        # fails in raise mode
+        open(self.otherbib, 'w').write(self.bibtex_otherkey)
+        func = lambda x: sp.check_call('myref add {} --bibtex {} --mode r'.format(self.otherbib, self.mybib), shell=True)
         self.assertRaises(Exception, func)
 
-    def test_add_conflict_key_appends(self):
-        # key conflict but append anyway
-        open(self.otherbib, 'w').write(self.bibtex_conflict_key)
-        sp.check_call('myref add {} --no-check-duplicate --bibtex {} --mode r'.format(self.otherbib, self.mybib), shell=True)
-        expected = self.bibtex_conflict_key+'\n\n'+self.bibtex
-        self.assertMultiLineEqual(open(self.mybib).read().strip(), expected) # entries did not change
 
-    def test_add_conflict_key_skip(self):
-        # key conflict and skip entry
+    def test_add_same_but_file(self):
+        open(self.otherbib, 'w').write(self.bibtex_hasfile)
+        sp.check_call('myref add {} --bibtex {} -u'.format(self.otherbib, self.mybib), shell=True)
+        self.assertMultiLineEqual(open(self.mybib).read().strip(), self.bibtex_hasfile) # entries did not change
+
+
+    def test_add_conflict_key_check_raises(self):
+        # key conflict: raises exception whatever mode is indicated
         open(self.otherbib, 'w').write(self.bibtex_conflict_key)
-        sp.check_call('myref add {} --bibtex {} --mode s'.format(self.otherbib, self.mybib), shell=True)
-        expected = self.bibtex
+        func = lambda : sp.check_call('myref add {} --bibtex {} --mode s --debug'.format(self.otherbib, self.mybib), shell=True)
+        self.assertRaises(Exception, func)
+
+    def test_add_conflict_key_nocheck_raises(self):
+        # also when no check duplicate is indicated
+        func = lambda : sp.check_call('myref add {} --bibtex {} --no-check-duplicate'.format(self.otherbib, self.mybib), shell=True)
+        self.assertRaises(Exception, func)
+
+    # def test_add_conflict_key_appends(self):
+    #     # key conflict : ra
+    #     open(self.otherbib, 'w').write(self.bibtex_conflict_key)
+    #     sp.check_call('myref add {} --no-check-duplicate --bibtex {} --mode r'.format(self.otherbib, self.mybib), shell=True)
+    #     expected = self.bibtex_conflict_key+'\n\n'+self.bibtex
+    #     self.assertMultiLineEqual(open(self.mybib).read().strip(), expected) # entries did not change
+
+    def test_add_conflict_key_update(self):
+        # key conflict and update entry
+        open(self.otherbib, 'w').write(self.bibtex_conflict_key)
+        sp.check_call('myref add {} --bibtex {} -u'.format(self.otherbib, self.mybib), shell=True)
+        expected = self.bibtex+'\n\n'+self.bibtex_conflict_key_fixed
         self.assertMultiLineEqual(open(self.mybib).read().strip(), expected) # entries did not change
 
     def test_add_same_doi_unchecked(self):
@@ -488,11 +817,19 @@ class TestAddConflict(BibTest):
         expected = self.bibtex
         self.assertMultiLineEqual(open(self.mybib).read().strip(), expected) # entries did not change
 
+    def test_add_miss_doi_merge(self):
+        # miss field but merges
+        open(self.otherbib, 'w').write(self.bibtex_miss_doi_field)
+        sp.check_call('myref add {} --mode u --bibtex {}'.format(self.otherbib, self.mybib), shell=True)
+        expected = self.bibtex
+        self.assertMultiLineEqual(open(self.mybib).read().strip(), expected) # entries did not change
 
-    def tearDown(self):
-        pass
-
-
+    def test_add_miss_titauthor_merge(self):
+        # miss field but merges
+        open(self.otherbib, 'w').write(self.bibtex_miss_titauthor_field)
+        sp.check_call('myref add {} --mode u --bibtex {} --debug'.format(self.otherbib, self.mybib), shell=True)
+        expected = self.bibtex
+        self.assertMultiLineEqual(open(self.mybib).read().strip(), expected) # entries did not change
 
 
 

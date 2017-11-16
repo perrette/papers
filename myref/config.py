@@ -2,6 +2,7 @@ import os, json, shutil
 import subprocess as sp, sys, shutil
 import hashlib
 import bibtexparser
+from six.moves import input as raw_input
 from myref import logger
 
 # GIT = False

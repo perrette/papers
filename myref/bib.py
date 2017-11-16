@@ -9,6 +9,7 @@ import shutil
 import bisect
 import itertools
 import six
+from six.moves import input as raw_input
 import re
 
 import bibtexparser
@@ -32,8 +33,8 @@ from myref.duplicate import search_duplicates, list_duplicates, list_uniques, me
 
 # KEY GENERATION
 # ==============
-NAUTHOR = 0
-NTITLE = 2
+NAUTHOR = 2
+NTITLE = 0
 
 
 def append_abc(key, keys=[]):
@@ -68,11 +69,11 @@ def generate_key(entry, nauthor=NAUTHOR, ntitle=NTITLE, minwordlen=3, mintitlen=
     names = family_names(entry.get('author','unknown').lower())
     authortag = '_'.join([nm for nm in names[:nauthor]]) 
     yeartag = entry.get('year','0000') 
-    if not entry.get('title',''):
+    if not ntitle or not entry.get('title',''):
         titletag = ''
     else:
         words = [word for word in entry['title'].lower().strip().split() if len(word) >= minwordlen]
-        while len(sum(words[:ntitle])) < mintitlen and ntitle < len(words):
+        while len(u''.join(words[:ntitle])) < mintitlen and ntitle < len(words):
             ntitle += 1
         titletag = '_'.join(words[:ntitle])
     key = authortag + yeartag + titletag
@@ -83,15 +84,6 @@ def generate_key(entry, nauthor=NAUTHOR, ntitle=NTITLE, minwordlen=3, mintitlen=
 
 # DUPLICATE DEFINITION
 # ====================
-
-EXACT_DUPLICATES = 103
-GOOD_DUPLICATES = 102
-PARTIAL_DUPLICATES = 101
-FUZZY_DUPLICATES = 100
-DISTINCT_DUPLICATES = 0
-
-# should be conservative (used in myref add)
-DUPLICATE_LEVEL = GOOD_DUPLICATES  
 
 def _remove_unicode(s, replace='_'):
     s2 = []
@@ -122,8 +114,23 @@ def title_id(e):
 def entry_id(e):
     """entry identifier which is not the bibtex key
     """
-    authortitle = author_id(e)+' '+title_id(e)
+    authortitle = ''.join([author_id(e),title_id(e)])
     return (e.get('doi','').lower(), authortitle)
+
+
+
+
+FUZZY_RATIO = 80
+
+# should be conservative (used in myref add)
+DEFAULT_SIMILARITY = 'FAIR'
+
+EXACT_DUPLICATES = 104
+GOOD_DUPLICATES = 103
+FAIR_DUPLICATES = 102
+PARTIAL_DUPLICATES = 101
+FUZZY_DUPLICATES = 100
+
 
 def compare_entries(e1, e2, fuzzy=False):
     """assess two entries' similarity
@@ -134,30 +141,44 @@ def compare_entries(e1, e2, fuzzy=False):
     id1 = entry_id(e1)
     id2 = entry_id(e2)
     
+    logger.debug('{} ?= {}'.format(id1, id2))
+
     if id1 == id2:
-        return GOOD_DUPLICATES
+        score = GOOD_DUPLICATES
 
-    doi1, tag1 = id1
-    doi2, tag2 = id2
+    elif all([f1==f2 for f1, f2 in zip(id1, id2) if f1 and f2]): # all defined fields agree
+        score = FAIR_DUPLICATES
 
-    if doi1 and doi2:
-        return PARTIAL_DUPLICATES if doi1 == doi2 else DISTINCT_DUPLICATES
-
-    elif any([f1==f2 for f1, f2 in zip(id1, id2)]):
-        return PARTIAL_DUPLICATES
+    elif any([f1==f2 for f1, f2 in zip(id1, id2) if f1 and f2]): # some of the defined fields agree
+        score = PARTIAL_DUPLICATES
 
     elif not fuzzy:
-        return DISTINCT_DUPLICATES
+        score = 0
 
     else:
         from fuzzywuzzy.fuzz import token_set_ratio
-        return token_set_ratio(tag1, tag2)
+        doi1, tag1 = id1
+        doi2, tag2 = id2
+        score = token_set_ratio(tag1, tag2)
 
+    return score
 
-def are_duplicates(e1, e2, fuzzy=False, level=DUPLICATE_LEVEL):
-    score = compare_entries(e1, e2, fuzzy=fuzzy)
-    return score >= level if level else score
+def are_duplicates(e1, e2, similarity=DEFAULT_SIMILARITY, fuzzy_ratio=FUZZY_RATIO):
+    level = dict(
+        EXACT = EXACT_DUPLICATES,
+        GOOD = GOOD_DUPLICATES,
+        FAIR = FAIR_DUPLICATES,
+        PARTIAL = PARTIAL_DUPLICATES,
+        FUZZY = FUZZY_DUPLICATES,
+        )
+    try: 
+        target = level[similarity]
+    except KeyError:
+        raise ValueError('similarity must be one of EXACT, GOOD, FAIR, PARTIAL, FUZZY')
 
+    score = compare_entries(e1, e2, fuzzy=level==FUZZY_DUPLICATES)
+    logger.debug('score: {}, target: {}, similarity: {}'.format(score, target, similarity))
+    return score >= target
 
 
 
@@ -199,18 +220,19 @@ class DuplicateKeyError(ValueError):
 class MyRef(object):
     """main config
     """
-    def __init__(self, db, filesdir, key_field='ID', nauthor=NAUTHOR, ntitle=NTITLE, level=DUPLICATE_LEVEL):
+    def __init__(self, db=None, filesdir=None, key_field='ID', nauthor=NAUTHOR, ntitle=NTITLE, similarity=DEFAULT_SIMILARITY):
         self.filesdir = filesdir
-        self.txt = '/tmp'
         # assume an already sorted list
         self.key_field = key_field
-        if not isinstance(db, bibtexparser.bibdatabase.BibDatabase):
+        if db is None:
+            db = bibtexparser.loads('')
+        elif not isinstance(db, bibtexparser.bibdatabase.BibDatabase):
             raise TypeError('db must of type BibDatabase')
         self.db = db
         self.sort()
         self.nauthor = nauthor
         self.ntitle = ntitle
-        self.level = level
+        self.similarity = similarity
 
     @property
     def entries(self):
@@ -247,7 +269,7 @@ class MyRef(object):
         return e[self.key_field].lower()
 
     def eq(self, e1, e2):
-        return are_duplicates(e1, e2, level=self.level)
+        return are_duplicates(e1, e2, similarity=self.similarity)
 
     def __contains___(self, entry):
         return any({self.eq(entry, e) for e in self.entries})
@@ -266,7 +288,10 @@ class MyRef(object):
         """
         # additional checks on DOI etc...
         if check_duplicate:
+            logger.debug('check duplicates : TRUE')
             return self.insert_entry_check(entry, update_key=update_key, **checkopt)
+        else:
+            logger.debug('check duplicates : FALSE')
 
         i = self.index_sorted(entry)  # based on current sort key (e.g. ID)
 
@@ -292,6 +317,7 @@ class MyRef(object):
         duplicates = [e for e in self.entries if self.eq(e, entry)]
 
         if not duplicates:
+            logger.debug('not a duplicate')
             self.insert_entry(entry, update_key)
 
 
@@ -316,7 +342,7 @@ class MyRef(object):
 
             if mergefiles:
                 file = merge_files([candidate, entry])
-                if file and entry.get('file','') != file:
+                if len({file, entry.get('file',''), candidate.get('file','')}) > 1:
                     logger.info('merge files')
                     entry['file'] = candidate['file'] = file
 
@@ -368,6 +394,9 @@ class MyRef(object):
             files += attachments
 
         entry['file'] = format_file([os.path.abspath(f) for f in files])
+        entry['ID'] = self.generate_key(entry)
+        logger.debug('generated PDF key: '+entry['ID'])
+
         kw.pop('update_key', True)
             # logger.warn('fetched key is always updated when adding PDF to existing bib')
         self.insert_entry(entry, update_key=True, **kw)
@@ -427,6 +456,9 @@ class MyRef(object):
 
 
     def rename_entry_files(self, e, copy=False):
+
+        if self.filesdir is None:
+            raise ValueError('filesdir is None, cannot rename entries')
 
         files = parse_file(e.get('file',''))
         # newname = entrydir(e, root)
@@ -1063,8 +1095,8 @@ def main():
     mgrp = listp.add_mutually_exclusive_group()
     mgrp.add_argument('--strict', action='store_true', help='exact matching - instead of substring (only (*): title, author, abstract)')
     mgrp.add_argument('--fuzzy', action='store_true', help='fuzzy matching - instead of substring (only (*): title, author, abstract)')
-    listp.add_argument('--fuzzy-ratio', type=int, default=80, help='threshold for fuzzy matching of title, author, abstract (default:%(default)s)')
-    listp.add_argument('--similarity', choices=['EXACT','GOOD','PARTIAL','FUZZY'], default='GOOD', help='duplicate level (default:%(default)s)')
+    listp.add_argument('--fuzzy-ratio', type=int, default=FUZZY_RATIO, help='threshold for fuzzy matching of title, author, abstract (default:%(default)s)')
+    listp.add_argument('--similarity', choices=['EXACT','GOOD','FAIR','PARTIAL','FUZZY'], default=DEFAULT_SIMILARITY, help='duplicate testing (default:%(default)s)')
     listp.add_argument('--invert', action='store_true')
 
     grp = listp.add_argument_group('search')
@@ -1172,8 +1204,7 @@ def main():
         if o.duplicates_tit:
             entries = list_dup(entries, key=title_id)
         if o.duplicates:
-            level = o.fuzzy_ratio if o.similarity == 'FUZZY' else globals()[o.similarity]
-            eq = lambda a, b: a['ID'] == b['ID'] or are_duplicates(a, b, level=level, fuzzy=o.similarity=='FUZZY')
+            eq = lambda a, b: a['ID'] == b['ID'] or are_duplicates(a, b, similarity=level, fuzzy_ratio=o.fuzzy_ratio)
             entries = list_dup(entries, eq=eq)
 
         def nfiles(e):
