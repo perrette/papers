@@ -49,7 +49,7 @@ Dependencies
 - python 2 or 3
 - `pdftotext` (third-party): convert PDF to text
     - Tested with v0.41
-    - Part of xpdf or popper-utils package in ubuntu
+    - Part of popper-utils package in ubuntu
 
 - [bibtexparser](https://bibtexparser.readthedocs.io/en/v0.6.2)
 - [crossrefapi](https://github.com/fabiobatalha/crossrefapi) : make polite requests to crossref API
@@ -62,7 +62,7 @@ Install
 -------
 - clone this project
 - pip install unidecode crossrefapi bibtexparser scholarly fuzzywuzzy six
-- install third-party dependencies (Ubuntu: ´sudo apt install xpdf´ or ´sudo apt install popper-utils´)
+- install third-party dependencies (Ubuntu: ´sudo apt install popper-utils´)
 - python setup.py install
 
 

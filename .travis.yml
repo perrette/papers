@@ -3,7 +3,7 @@ sudo : false
 addons:
   apt:
     packages:
-    - xpdf
+    - poppler-utils
 python:
   - "2.7"
   - "3.4"
