@@ -1,3 +1,4 @@
+
 import os
 import six
 import bibtexparser
@@ -52,6 +53,10 @@ def format_file(file_types):
     return ';'.join([_format_file(f) for f in file_types])
 
 
+def format_entries(entries):
+    db = bibtexparser.loads('')
+    db.entries.extend(entries)
+    return bibtexparser.dumps(db)
 
 # Parse name entry
 # ================

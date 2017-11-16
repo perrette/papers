@@ -14,6 +14,7 @@ import bibtexparser
 import myref
 from myref.config import cached
 from myref import logger
+from myref.encoding import family_names, latex_to_unicode
 
 my_etiquette = Etiquette('myref', myref.__version__, 'https://github.com/perrette/myref', 'mahe.perrette@gmail.com')
 
@@ -326,3 +327,20 @@ def fetch_bibtex_by_fulltext_crossref(txt, **kw):
     # convert to bibtex
     return crossref_to_bibtex(result).strip()
 
+
+
+def fetch_entry(e):
+    if 'doi' in e and isvaliddoi(e['doi']):
+        bibtex = fetch_bibtex_by_doi(e['doi'])
+    else:
+        kw = {}
+        if e.get('author',''):
+            kw['author'] = latex_to_unicode(family_names(e['author']))
+        if e.get('title',''):
+            kw['title'] = latex_to_unicode(family_names(e['title']))
+        if kw:
+            bibtex = fetch_bibtex_by_fulltext_crossref('', **kw)
+        else:
+            ValueError('no author not title field')
+    db = bibtexparser.loads(bibtex)
+    return db.entries[0]

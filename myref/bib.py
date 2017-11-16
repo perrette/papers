@@ -10,7 +10,6 @@ import bisect
 import itertools
 import six
 import re
-import difflib
 
 import bibtexparser
 
@@ -22,212 +21,21 @@ from myref.extract import extract_pdf_metadata
 from myref.extract import fetch_bibtex_by_fulltext_crossref, fetch_bibtex_by_doi
 
 from myref.encoding import latex_to_unicode, unicode_to_latex, unicode_to_ascii
-from myref.encoding import parse_file, format_file, standard_name, family_names
+from myref.encoding import parse_file, format_file, standard_name, family_names, format_entries
 
 from myref.config import config, bcolors, checksum, move
 
+from myref.duplicate import check_duplicates, resolve_duplicates, conflict_resolution_on_insert
+from myref.duplicate import search_duplicates, list_duplicates, list_uniques, merge_files
+
 # DRYRUN = False
+
+# KEY GENERATION
+# ==============
+
 NAUTHOR = 2 
-NTITLE = 0 
+NTITLE = 0
 
-
-def unique(entries):
-    entries_ = []
-    for e in entries:
-        if e not in entries_:
-            entries_.append(e)
-    return entries_
-
-
-
-def merge_files(entries):
-    files = []
-    for e in entries:
-        for f in parse_file(e.get('file','')):
-            if f not in files:
-                files.append(f)
-    return format_file(files)
-
-
-
-class ConflictingField(object):
-    def __init__(self, choices=[]):
-        self.choices = choices
-
-    def resolve(self, force=False):
-        choices = [v for v in self.choices if v]
-
-        if len(choices) == 1 or force:
-            return choices[0]
-        else:
-            return self
-
-
-class MergedEntry(dict):
-
-    def isresolved(self):
-        return not any([isinstance(self[k], ConflictingField) for k in self])
-
-    def resolve(self, force=False):
-        for k in self:
-            if isinstance(self[k], ConflictingField):
-                self[k] = self[k].resolve(force)
-
-        return dict(self) if self.isresolved() else self
-
-
-def merge_entries(entries, force=False):
-    merged = MergedEntry() # dict
-    for e in entries:
-        for k in e:
-            if k not in merged:
-                merged[k] = ConflictingField([])
-            if e[k] not in merged[k].choices:
-                merged[k].choices.append(e[k])
-    return merged.resolve(force)
-
-
-def handle_merge_conflict(merged, fetch=False, force=False):
-    
-    if not isinstance(merged, MergedEntry):
-        return merged  # all good !
-
-    if fetch:
-        try:
-            fix_fetch_entry_metadata(merged)
-        except Exception as error:
-            if not force: 
-                raise
-            else:
-                logger.warn('failed to fetch metadata: '+str(error))
-
-    if force:
-        merged = merged.resolve(force=True)
-
-    if isinstance(merged, MergedEntry):
-        fields = [k for k in merged if isinstance(merged[k], ConflictingField)]
-        raise ValueError('conflicting entries for fields: '+str(fields))
-
-    return merged
-
-
-def fix_fetch_entry_metadata(entry):
-    assert entry.get('doi',''), 'missing DOI'
-    assert not isinstance(entry['doi'], MergedEntry), \
-        'conflicting doi: '+str(entry['doi'].choices)
-    assert isvaliddoi(entry['doi']), 'invalid DOI' 
-    bibtex = fetch_bibtex_by_doi(entry['doi'])
-    bib = bibtexparser.loads(bibtex)
-    e = bib.entries[0]
-    entry.update({k:e[k] for k in e if k != 'file' and k != 'ID'})
-
-
-def fetch_entry(e):
-    if 'doi' in e and isvaliddoi(e['doi']):
-        bibtex = fetch_bibtex_by_doi(e['doi'])
-    else:
-        kw = {}
-        if e.get('author',''):
-            kw['author'] = family_names(e['author'])
-        if e.get('title',''):
-            kw['title'] = family_names(e['title'])
-        if kw:
-            bibtex = fetch_bibtex_by_fulltext_crossref('', **kw)
-        else:
-            ValueError('no author not title field')
-    db = bibtexparser.loads(bibtex)
-    return db.entries[0]
-   
-
-def search_duplicates(entries, key=None, issorted=False):
-    """search for duplicates
-
-    returns:
-    - unique_entries : list (entries for which no duplicates where found)
-    - duplicates : list of list (groups of duplicates)
-    """
-    if not issorted:
-        entries = sorted(entries, key=key)
-    duplicates = []
-    unique_entries = []
-    for e, g in itertools.groupby(entries, key):
-        group = list(g)
-        if len(group) == 1:
-            unique_entries.append(group[0])
-        else:
-            duplicates.append(group)
-    return unique_entries, duplicates
-
-
-
-def conflict_resolution(old, new, mode='i'):
-    """conflict resolution with two entries
-    """
-    if mode == 'i':
-        print(entry_diff(old, new))
-        print(bcolors.OKBLUE + 'what to do? ')
-        print('''
-(u)pdate missing (discard conflicting fields in new entry)
-(U)pdate other (overwrite conflicting fields in old entry)
-(o)verwrite
-(e)dit diff
-(E)dit split (not a duplicate)
-(s)kip
-(a)ppend anyway
-(r)aise'''.strip()
-.replace('(u)','('+_colordiffline('u','+')+')')  # green lines will be added 
-.replace('(o)','('+_colordiffline('o','-')+')') + bcolors.ENDC
-)
-# .replace('(s)','('+_colordiffline('s','-')+')'))
-        choices = list('uUoeEsar')
-        ans = None
-        while ans not in choices:
-            print('choices: '+', '.join(choices))
-            ans = raw_input('>>> ')
-        mode = ans
-
-    # overwrite?
-    if mode == 'o':
-        resolved = [new]
-
-    elif mode == 'a':
-        resolved = [old, new]
-
-    elif mode == 'u':
-        logger.info('update missing fields')
-        new.update(old)
-        old.update(new)
-        resolved = [old]
-
-    elif mode == 'U':
-        logger.info('update with other')
-        old.update(new)
-        resolved = [old]
-
-    # skip
-    elif mode == 's':
-        resolved = [old]
-
-    # edit
-    elif mode == 'e':
-        resolved = edit_entries([old, new], diff=True)
-
-    elif mode == 'E':
-        resolved = edit_entries([old, new])
-
-    else:
-        raise ValueError('conflict resolution: '+repr(mode))
-
-    return resolved
-
-
-
-# Parse / format bibtex file entry
-# ================================
-def format_entries(entries):
-    db = bibtexparser.loads('')
-    db.entries.extend(entries)
-    return bibtexparser.dumps(db)
 
 
 def generate_key(entry, nauthor=NAUTHOR, ntitle=NTITLE, keys=None):
@@ -247,6 +55,86 @@ def generate_key(entry, nauthor=NAUTHOR, ntitle=NTITLE, keys=None):
         assert Key not in keys
     return key
  
+
+# DUPLICATE DEFINITION
+# ====================
+
+EXACT_DUPLICATES = 103
+GOOD_DUPLICATES = 102
+PARTIAL_DUPLICATES = 101
+FUZZY_DUPLICATES = 100
+DISTINCT_DUPLICATES = 0
+
+DUPLICATE_LEVEL = PARTIAL_DUPLICATES
+
+
+def _remove_unicode(s, replace='_'):
+    s2 = []
+    for c in s:
+        if ord(c) > 128:
+            c = replace
+        s2.append(c)
+    return ''.join(s2)
+
+
+def _simplify_string(s):
+    ' replace unicode, strip, lower case '
+    # try:
+    #     s = latex_to_unicode(s)
+    # except Exception as error:
+    #     raise
+    #     logger.warn('simplify string: failed to remove latex: '+str(error))
+    s = _remove_unicode(s)
+    return s.lower().strip()
+
+
+def author_id(e):
+    return _simplify_string(' '.join(family_names(e.get('author',''))))
+
+def title_id(e):
+    return _simplify_string(e.get('title',''))
+
+def entry_id(e):
+    """entry identifier which is not the bibtex key
+    """
+    authortitle = author_id(e)+' '+title_id(e)
+    return (e.get('doi','').lower(), authortitle)
+
+def compare_entries(e1, e2, fuzzy=False):
+    """assess two entries' similarity
+    """
+    if e1 == e2:
+        return EXACT_DUPLICATES
+
+    id1 = entry_id(e1)
+    id2 = entry_id(e2)
+    
+    if id1 == id2:
+        return GOOD_DUPLICATES
+
+    doi1, tag1 = id1
+    doi2, tag2 = id2
+
+    if doi1 and doi2:
+        return PARTIAL_DUPLICATES if doi1 == doi2 else DISTINCT_DUPLICATES
+
+    elif any([f1==f2 for f1, f2 in zip(id1, id2)]):
+        return PARTIAL_DUPLICATES
+
+    elif not fuzzy:
+        return DISTINCT_DUPLICATES
+
+    else:
+        from fuzzywuzzy.fuzz import token_set_ratio
+        return token_set_ratio(tag1, tag2)
+
+
+def are_duplicates(e1, e2, fuzzy=False, level=DUPLICATE_LEVEL):
+    score = compare_entries(e1, e2, fuzzy=fuzzy)
+    return score >= level if level else score
+
+
+
 
 def hidden_bibtex(direc):
     " save metadata for a bundle of files "
@@ -275,238 +163,6 @@ def read_entry_dir(self, direc, update_files=True):
     return entry
 
 
-def _remove_unicode(s, replace='_'):
-    s2 = []
-    for c in s:
-        if ord(c) < 128:
-            c = replace
-        s2.append(c)
-    return ''.join(s2)
-
-
-def _simplify_string(s):
-    ' replace latex brackets and unicode, strip, lower case '
-    try:
-        s = latex_to_unicode(s)
-    except Exception as error:
-        raise
-        logger.warn('simplify string: failed to remove latex: '+str(error))
-    s = _remove_unicode(s)
-    return s.lower().strip()
-
-
-def entry_id(e):
-    """entry identifier which is not the bibtex key
-    """
-    author = _simplify_string(' '.join(family_names(e.get('author',''))))
-    title = _simplify_string(e.get('title',''))
-    authortitle = author+' '+title
-    return (e.get('doi','').lower(), authortitle)
-
-
-EXACT = 103
-GOOD = 102
-PARTIAL = 101
-FUZZY = 80
-DISTINCT = 0
-
-def compare_entries(e1, e2, fuzzy=False):
-    """assess two entries' similarity
-    """
-    if e1 == e2:
-        return EXACT
-
-    id1 = entry_id(e1)
-    id2 = entry_id(e2)
-    
-    if id1 == id2:
-        return GOOD
-
-    doi1, tag1 = id1
-    doi2, tag2 = id2
-
-    if doi1 and doi2:
-        return PARTIAL if doi1 == doi2 else DISTINCT
-
-    elif any([f1==f2 for f1, f2 in zip(id1, id2)]):
-        return PARTIAL
-
-    elif not fuzzy:
-        return DISTINCT
-
-    else:
-        from fuzzywuzzy.fuzz import token_set_ratio
-        return token_set_ratio(tag1, tag2)
-
-
-def are_duplicates(e1, e2, fuzzy=False, level=None):
-    score = compare_entries(e1, e2, fuzzy=fuzzy)
-    return score >= level if level else score
-
-
-def _colordiffline(line, sign=None):
-    if sign == '+' or line.startswith('+'):
-        return bcolors.OKGREEN + line + bcolors.ENDC
-    elif sign == '-' or line.startswith('-'):
-        return bcolors.FAIL + line + bcolors.ENDC
-    elif sign == '?' or line.startswith('?'):
-        return bcolors.WARNING + line + bcolors.ENDC
-    elif sign == '!' or line.startswith('!'):
-        return bcolors.BOLD + bcolors.WARNING + line + bcolors.ENDC
-    elif sign == '*' or line.startswith('*'):
-        return bcolors.BOLD + line + bcolors.ENDC
-    # elif sign == '>' or line.startswith('>'):
-        # return bcolors.BOLD + line + bcolors.ENDC    
-        # return bcolors.BOLD + bcolors.WARNING + line + bcolors.ENDC
-    else:
-        return line
-
-
-def entry_diff(e_old, e, color=True):
-    s_old = format_entries([e_old])
-    s = format_entries([e])
-    ndiff = difflib.ndiff(s_old.splitlines(1), s.splitlines(1))
-    diff = ''.join(ndiff)
-    if color:
-        return "\n".join([_colordiffline(line) for line in diff.splitlines()])
-    else:
-        return diff
-
-
-def entry_ndiff(entries, color=True):
-    ' diff of many entries '
-    m = merge_entries(entries)
-    SECRET_STRING = 'REPLACE_{}_FIELD'
-    regex = re.compile(SECRET_STRING.format('(.*)')) # reg exp to find
-    choices = {}
-    somemissing = []
-    for k in m:
-        if isinstance(m[k], ConflictingField):
-            choices[k] = m[k].choices
-            m[k] = SECRET_STRING.format(k)
-        elif any(k not in e for e in entries):
-            somemissing.append(k)
-    db = bibtexparser.loads('')
-    db.entries.append(m)
-    s = bibtexparser.dumps(db)
-    lines = []
-    for line in s.splitlines():
-        matches = regex.findall(line)
-        if matches:
-            k = matches[0]
-            template = SECRET_STRING.format(k)
-            lines.append(u'\u2304'*3)
-            for c in choices[k]:
-                newline = '  '+line.replace(template, u'{}'.format(c))
-                lines.append(_colordiffline(newline, '!') if color else newline)
-                lines.append('---')
-            lines.pop() # remove last ---
-            # lines.append('^^^')
-            lines.append(u'\u2303'*3)
-        elif any('{} = {{'.format(k) in line for k in somemissing):
-            newline = '  '+line
-            lines.append(_colordiffline(newline, sign='*') if color else newline)
-        elif not line.startswith(('@','}')):
-            lines.append('  '+line)
-        else:
-            lines.append(line)
-    return '\n'.join(lines)
-
-
-def choose_entry_interactive(entries, extra=[], msg='', select=False):
-    db = bibtexparser.loads('')
-    db.entries.append({})
-
-    merged = merge_entries(entries)
-    conflicting_fields = [k for k in merged if isinstance(merged[k], ConflictingField)]
-    somemissing = [k for k in merged if any(k not in e for e in entries)]
-
-    for i, entry in enumerate(entries):
-        db.entries[0] = entry
-        string = bibtexparser.dumps(db).decode('utf-8') # decode to avoid failure in replace
-        # color the conflicting fields
-        lines = []
-        for line in string.splitlines():
-            for k in conflicting_fields+somemissing:
-                fmt = lambda s : (bcolors.WARNING if k in conflicting_fields else bcolors.BOLD)+s+bcolors.ENDC
-                if k != k.lower() and '@' in line:
-                    line = line.replace(entry[k], fmt(entry[k]))
-                elif line.strip().startswith('{} = {{'.format(k)):
-                    line = fmt(line)
-            lines.append(line)
-        string = '\n'.join(lines)
-        print(bcolors.OKBLUE+'* ('+str(i+1)+')'+bcolors.ENDC+'\n'+string)
-    entry_choices = [str(i+1) for i in range(len(entries))]
-    if select:
-        select_choices = ['-'+c for c in entry_choices]
-    else:
-        select_choices = []
-    choices = entry_choices + select_choices + extra
-    if msg:
-        print(msg)
-    else:
-        print()
-
-    def _process_choice(i):
-        i = i.strip()
-        if i in entry_choices:
-            return entries[int(i)-1]
-        elif i in select_choices:
-            return [e for e in entries if e != entries[int(i)-1]]
-        elif select and len(i.lstrip('-').split()) > 1:
-            if i.startswith('-'):
-                deselect = [_process_choice(ii) for ii in i[1:].split()]
-                return [e for e in entries if e not in deselect]
-            else:
-                return [_process_choice(ii) for ii in i.split()]
-        elif i in choices:
-            return i
-        else:
-            raise ValueError(i)
-
-    while True:
-        print('choices: '+', '.join(choices))
-        # print(bcolors.OKBLUE + choices_msg + bcolors.ENDC)
-        i = raw_input('>>> ')
-        try:
-            return _process_choice(i)
-        except:
-            continue
-
-
-def edit_entries(entries, diff=False, ndiff=False):
-    '''edit entries and insert result in database 
-    '''
-    # write the listed entries to temporary file
-    import tempfile
-    # filename = tempfile.mktemp(prefix='.', suffix='.txt', dir=os.path.curdir)
-    filename = tempfile.mktemp(suffix='.txt')
-
-    if (diff or ndiff) and len(entries) > 1:
-        if ndiff or len(entries) > 2:
-            entrystring = entry_ndiff(entries, color=False)
-        else:
-            entrystring = entry_diff(*entries, color=False)
-    else:
-        db = bibtexparser.loads('')
-        db.entries.extend(entries)
-        entrystring = bibtexparser.dumps(db)
-
-    if six.PY2:
-        entrystring = entrystring.encode('utf-8')
-
-    with open(filename, 'w') as f:
-        f.write(entrystring)
-
-    res = os.system('%s %s' % (os.getenv('EDITOR'), filename))
-
-    if res == 0:
-        logger.info('sucessfully edited file, insert edited entries')
-        db = bibtexparser.loads(open(filename).read())
-        return db.entries
-
-    else:
-        raise ValueError('error when editing entries file: '+filename)
 
 
 def backupfile(bibtex):
@@ -531,6 +187,11 @@ class MyRef(object):
     @property
     def entries(self):
         return self.db.entries
+
+    @entries.setter
+    def entries(self, entries):
+        assert isinstance(entries, list)
+        self.db.entries = entries
 
     @classmethod
     def loads(cls, bibtex, filesdir):
@@ -565,7 +226,7 @@ class MyRef(object):
         return bisect.bisect_left(keys, self.key(entry))
 
 
-    def insert_entry(self, entry, update_key=False, check_duplicate=False, on_conflict='i', level=PARTIAL, mergefiles=True, **mergeopt):
+    def insert_entry(self, entry, update_key=False, check_duplicate=False, on_conflict='i', mergefiles=True, **mergeopt):
         """
         """
         if update_key:
@@ -575,7 +236,7 @@ class MyRef(object):
         # additional checks on DOI
         if check_duplicate:
 
-            duplicates = [e for e in self.entries if are_duplicates(e, entry, level=level)]
+            duplicates = [e for e in self.entries if are_duplicates(e, entry)]
 
             if duplicates:
                 # some duplicates...
@@ -602,7 +263,7 @@ class MyRef(object):
 
                 else:
                     logger.debug('conflic resolution: '+on_conflict)
-                    resolved = conflict_resolution(candidate, entry, mode=on_conflict)
+                    resolved = conflict_resolution_on_insert(candidate, entry, mode=on_conflict)
                     self.entries.remove(candidate) # maybe in resolved entries
                     for e in resolved:
                         self.insert_entry(e)
@@ -617,7 +278,7 @@ class MyRef(object):
             
             # same key but no duplicates (duplicate test was done above)
             if check_duplicate:
-                resolved = conflict_resolution(self.entries[i], entry, mode=on_conflict)
+                resolved = conflict_resolution_on_insert(self.entries[i], entry, mode=on_conflict)
                 self.entries.pop(i) # maybe reinserted in resolved entries
                 for e in resolved:
                     self.insert_entry(e)
@@ -715,189 +376,14 @@ class MyRef(object):
         open(bibtex, 'w').write(s)
 
 
-    def edit_entries(self, entries, **kw):
-        resolved = edit_entries(entries, **kw)
-        for e in entries:
-            if e in self.entries:
-                self.entries.remove(e)
-        for e in resolved:
-            self.insert_entry(e)
-
-    def merge_duplicates(self, key, mode='i'):
+    def check_duplicates(self, key=None, eq=None, mode='i'):
+        """remove duplicates, in some sensse (see myref.conflict.check_duplicates)
         """
-        Find and merge duplicate keys. Leave unsolved keys.
-
-        key: callable key for grouping duplicates or list of duplicates, existing or not, to merge in db
-        interactive: interactive solving of conflicts
-        conflict: method in case of unresolved conflict
-        **kw : passed to merge_entries
-        """
-        if isinstance(key, list):
-            duplicates = [key]
-            for e in duplicates[0]:
-                try:
-                    self.entries.remove(e)
-                except ValueError:
-                    pass
-
-        else:
-            self.db.entries, duplicates = search_duplicates(self.db.entries, key)
-
-        logger.info(str(len(duplicates))+' duplicate(s)')
-
-        #  merge exact duplicates
-        conflicts = []
-        for entries in duplicates:
-            entries = unique(entries)
-            if entries:
-                conflicts.append(entries)
-
-        logger.info(str(len(conflicts))+' unresolved conflict(s)')
-
-        # now deal with conflicts
-
-        # actions:
-        def _edit_diff(entries):
-            self.edit_entries(entries, ndiff=True)
-
-        def _edit_split(entries):
-            self.edit_entries(entries)
-
-        def _delete():
-            pass
-
-        def _skip(entries):
-            for e in entries:
-                self.insert_entry(e)
-
-        def _quit(entries):
-            _skip(entries)
-            global mode
-            mode = 's' # apply to all the other as well
-
-        def _pick(entries):
-            self.insert_entry(e)
-
-        def _fetch(entries):
-            # pick best entry to update from
-            e = fetch_entry(_best(entries))
-            return entries + [e]
-
-        def _best(entries):
-            return [sorted(entries, key=lambda e: 100*('doi' in e and isvaliddoi(e['doi'])) + 50*('title' in e) + 10*('author' in e))[-1]]
-
-        def _merge(entries):
-            merged = merge_entries(entries)
-            file = merge_files(entries)
-            if file:
-                merged['file'] = file
-            try:
-                e = handle_merge_conflict(merged)
-            except Exception as error:
-                logger.warn(str(error))
-                best = _best(entries)
-                for k in list(merged.keys()):
-                    if isinstance(merged[k], ConflictingField):
-                        del merged[k]
-                return unique(entries + [merged])
-            self.insert_entry(e)
-            return []
-
-        for entries in conflicts:
-
-            diffview = False
-
-            if mode == 'i':
-                while entries:
-                    choices = list('mefdsqv')
-                    txt = '''
-
-(m)erge
-(e)dit
-(f)etch metadata
-(d)elete
-(s)kip
-(q)uit
-(v)iew toggle (diff - split)
-'''
-                    if not diffview:
-                        msg = bcolors.OKBLUE + 'Pick entry or choose one of the following actions:'+bcolors.ENDC+txt
-                        e = choose_entry_interactive(entries, extra=choices, msg=msg, select=True)
-                    else:
-                        print(entry_ndiff(entries))
-                        print(bcolors.OKBLUE + 'Choose one of the following actions:'+bcolors.ENDC + txt)
-    # .replace('(s)','('+_colordiffline('s','-')+')'))
-                        ans = None
-                        while ans not in choices:
-                            print('choices: '+', '.join(choices))
-                            ans = raw_input('>>> ')
-                        e = ans
-
-                    if e == 'm':
-                        entries = _merge(entries)                    
-                    elif e == 'e':
-                        if diffview:
-                            entries = _edit_diff(entries)
-                        else:
-                            entries = _edit_split(entries)
-                    elif e == 'v':
-                        diffview = not diffview  # toggle view
-                        continue
-                    elif e == 'd':
-                        entries = _delete(entries)
-                    elif e == 'f':
-                        entries = _fetch(entries)
-                    elif e == 's':
-                        entries = _skip(entries)
-                    elif e == 'q':
-                        entries = _quit(entries)
-                    elif isinstance(e, dict):
-                        entries = _pick(e)
-                    elif isinstance(e, list):
-                        entries = e
-                    else:
-                        print(e)
-                        raise ValueError('this is a bug')
+        self.entries = check_duplicates(self.entries, key, eq, key is self.key, mode)
+        self.sort() # keep sorted
 
 
-            elif mode == 'm':
-                entries = _merge(entries)
 
-            if entries:
-                if mode == 's':
-                    _skip(entries)
-
-                else:
-                    print(entry_ndiff(entries))
-                    raise ValueError('conflicting entries')
-
-
-    def merge_duplicate_keys(self, **kw):
-        return self.merge_duplicates(self.key, **kw)
-
-    def _doi_key(self):
-        """used in merge_duplicate_dois and to list duplicates"""
-        counts = [0]
-        def key(e):
-            if isvaliddoi(e.get('doi','')):
-                return e['doi']
-            else:
-                counts[0] += 1
-                return counts[0]
-        return key
-
-    def merge_duplicate_dois(self, **kw):
-        """merge entries with duplicate dois (exclude papers with no doi)
-        """
-        return self.merge_duplicates(self._doi_key(), **kw)
-
-
-    def merge_entries(self, keys, **kw):
-        """merge entries with the provided keys
-        """
-        def binary_key(e):
-            return self.key(e) in keys
-        return self.merge_duplicates(binary_key, **kw)
 
     def rename_entry_files(self, e, copy=False):
 
@@ -948,7 +434,7 @@ class MyRef(object):
                 f.write(bibtex)
 
             # remove old direc if empty?
-            direcs = unique([os.path.dirname(file) for file in files])
+            direcs = list(set([os.path.dirname(file) for file in files]))
             if len(direcs) == 1:
                 leftovers = os.listdir(direcs[0])
                 if not leftovers or len(leftovers) == 1 and leftovers[0] == os.path.basename(hidden_bibtex(direcs[0])):
@@ -1474,9 +960,7 @@ def main():
 
 
         if o.duplicates:
-            kw = dict(mode=o.mode)
-            my.merge_duplicate_keys(**kw)
-            my.merge_duplicate_dois(**kw)
+            my.check_duplicates(mode=o.mode)
 
         savebib(my, o)
 
@@ -1549,8 +1033,13 @@ def main():
     grp.add_argument('--key', nargs='+')
     grp.add_argument('--doi', nargs='+')
 
+
     grp = listp.add_argument_group('check')
-    grp.add_argument('--duplicates', action='store_true', help='list duplicates')
+    grp.add_argument('--duplicates-key', action='store_true', help='list key duplicates only')
+    grp.add_argument('--duplicates-doi', action='store_true', help='list doi duplicates only')
+    grp.add_argument('--duplicates-tit', action='store_true', help='list tit duplicates only')
+    grp.add_argument('--duplicates', action='store_true', help='list all duplicates')
+    grp.add_argument('--duplicates-fuzzy', action='store_true', help='list fuzzy duplicates (look harder)')
     grp.add_argument('--has-file', action='store_true')
     grp.add_argument('--no-file', action='store_true')
     grp.add_argument('--broken-file', action='store_true')
@@ -1629,11 +1118,23 @@ def main():
         if o.abstract:
             entries = [e for e in entries if 'abstract' in e and longmatch(e['abstract'], o.abstract)]
 
-        if o.duplicates:
-            uniques, doi_duplicates = search_duplicates(entries, my._doi_key())
-            _, key_duplicates = search_duplicates(uniques, lambda e: e.get('ID','').lower())
-            entries = list(itertools.chain(*(doi_duplicates+key_duplicates)))
+        _check_duplicates = lambda uniques, groups: uniques if o.invert else list(itertools.chain(*groups))
 
+        # if o.duplicates_key or o.duplicates_doi or o.duplicates_tit or o.duplicates or o.duplicates_fuzzy:
+        list_dup = list_uniques if o.invert else list_duplicates
+
+        if o.duplicates_key:
+            entries = list_dup(entries, key=my.key, issorted=True)
+        if o.duplicates_doi:
+            entries = list_dup(entries, key=lambda e:e.get('doi',''), filter_key=isvaliddoi)
+        if o.duplicates_tit:
+            entries = list_dup(entries, key=title_id)
+        if o.duplicates:
+            eq = lambda a, b: a['ID'] == b['ID'] or are_duplicates(a, b)
+            entries = list_dup(entries, eq=eq)
+        if o.duplicates_fuzzy:
+            eq = lambda a, b: a['ID'] == b['ID'] or are_duplicates(a, b, fuzzy=True, level=o.fuzzy_ratio)
+            entries = list_dup(entries, eq=eq)
 
         def nfiles(e):
             return len(parse_file(e.get('file','')))
@@ -1646,7 +1147,7 @@ def main():
 
         if o.edit:
             try:
-                my.edit_entries(entries)
+                entries = edit_entries(entries)
             except Exception as error:
                 logger.error(str(error))
                 return
