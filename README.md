@@ -1,5 +1,9 @@
 ![travis](https://travis-ci.org/perrette/papers.svg?branch=master)
 [![Coverage Status](https://coveralls.io/repos/github/perrette/papers/badge.svg?branch=master)](https://coveralls.io/github/perrette/papers?branch=master)
+[![python](https://img.shields.io/badge/python-2.7%2C%203.5-blue.svg)]()
+<!-- [![PyPI version](https://badge.fury.io/py/papers.svg)](https://badge.fury.io/py/papers) -->
+<!-- [![license](https://img.shields.io/badge/license-MIT-blue.svg)](https://raw.githubusercontent.com/perrette/papers/master/LICENSE) -->
+
 # papers
 
 Command-line tool to manage bibliography (pdfs + bibtex)
@@ -12,51 +16,19 @@ command-line bibliography managenent tool. Aims:
 
 - maintain a PDF library (with appropriate naming)
 - maintain one or several bibtex-compatible collections, linked to PDFs
-- some PDF-parsing capability (especially to extract DOI)
-- fetch PDF metadata from the internet (i.e. [crossref](https://github.com/CrossRef/rest-api-doc)), preferably based on DOI
+- enough PDF-parsing capability to fetch metadata from the internet (i.e. [crossref](https://github.com/CrossRef/rest-api-doc) or google-scholar)
 
-
-Why not JabRef, Zotero or Mendeley (or...) ?
---------------------------------------------
-- JabRef (2.10) is nice, light-weight, but is not so good at managing PDFs.
-- Zotero (5.0) features excellent PDF import capability, but it needs to be manually one by one and is a little slow .
-- Mendeley (1.17) is perfect at automatically extracting metadata from downloaded PDF and managing your PDF library, 
-but it is not open source, and many issues remain (own experience, Ubuntu 14.04, Desktop Version 1.17):
-    - very unstable
-    - PDF automatic naming is too verbose, and sometimes the behaviour is unexpected (some PDFs remain in on obscure Downloaded folder, instead of in the main collection)
-    - somewhat heavy (it offers functions of online syncing, etc)
-    - poor seach capability (related to the point above)
-
-Above-mentioned issues will with no doubt be improved in future releases, but they are a starting point for this project.
-Anyway, a command-line tool is per se a good idea for faster development, 
-as noted [here](https://forums.zotero.org/discussion/43386/zotero-cli-version), 
-but so far I could only find zotero clients for their online API 
-(like [pyzotero](https://github.com/urschrei/pyzotero) or [zotero-cli](https://github.com/jbaiter/zotero-cli)).
-Please contact me if you know another interesting project.
-
-
-Internals
----------
-For now (very much beta version), the project:
-- manages one `bibtex` collection, maintained sorted according to entry keys
-- [bibtexparser](https://bibtexparser.readthedocs.io/en/v0.6.2) is used to parse bibtexentries and libraries
-- each entry (and associated keys) is obtained from [crossref API](https://github.com/CrossRef/rest-api-doc/issues/115#issuecomment-221821473) (note: the feature that allows to fetch a bibtex entry from DOI is undocumented...). So far it seems that the keys are unique, until seen otherwise...
-- DOI is extracted from PDFs with regular expression search within the first two pages.
-- TODO: add other means to retrieve metadata, such as `ISBN`. Get inspired from [Zotero](https://forums.zotero.org/discussion/57418/retrieve-pdfs-metadata-wrong-metadata-source).
 
 Dependencies
 ------------
 - python 2 or 3
-- `pdftotext` (third-party): convert PDF to text
-    - Tested with v0.41
-    - Part of popper-utils package in ubuntu
-
-- [bibtexparser](https://bibtexparser.readthedocs.io/en/v0.6.2)
-- [crossrefapi](https://github.com/fabiobatalha/crossrefapi) : make polite requests to crossref API
-- [scholarly](https://github.com/OrganicIrradiation/scholarly) : interface for google scholar
-- [fuzzywuzzy](https://github.com/seatgeek/fuzzywuzzy) : calculate score to sort crossref requests
-- [unidecode](https://github.com/avian2/unidecode) : replace unicode with ascii equivalent
-- six: python 2-3 compatibility
+- [popper-utils](https://en.wikipedia.org/wiki/Poppler_(software)) (only:`pdftotext`): convert PDF to text for parsing
+- [bibtexparser (0.6.2)](https://bibtexparser.readthedocs.io) : parse bibtex files
+- [crossrefapi (1.2.0)](https://github.com/fabiobatalha/crossrefapi) : make polite requests to crossref API
+- [scholarly (0.2.2)](https://github.com/OrganicIrradiation/scholarly) : interface for google scholar
+- [fuzzywuzzy (0.15.1)](https://github.com/seatgeek/fuzzywuzzy) : calculate score to sort crossref requests
+- [unidecode (0.04.21)](https://github.com/avian2/unidecode) : replace unicode with ascii equivalent
+- [six](http://pythonhosted.org/six): python 2-3 compatibility
 
 Install
 -------
@@ -176,13 +148,62 @@ Current features
 
 Planned features
 ----------------
+- `papers encode`: text encoding in bibtex entries (latex, unicode, ascii)
 - additional checks on entries:
     - duplicate-authors and more like [here](https://github.com/tdegeus/bibparse)
 - support collections (distinct bibtex entries, same files directory)
     - or maybe more like ´papers update-from OTHER.bib´ to update changes based on DOI / key
     - could also use git branches / merge
-- associate bibtex to existing pdf collection
+- associate bibtex to existing pdf collection (to move library location)
+- fetch PDFs for existing entries? Bindings with [sopaper](https://github.com/ppwwyyxx/SoPaper)
+- as add-on in separate github: basic flask interface to browse papers & edit entries. E.g. check-out [paperhero](https://github.com/PatWie/paperhero).
+
 
 Tests
 -----
-Test coverage very probably lagging being features' addition, but in progress.
+Test coverage in progress... 
+
+Currently covers:
+- `papers extract`
+    - parse pdf DOI 
+    - fetch bibtex on crossref based on DOI 
+    - fetch bibtex on crossref based fulltext search
+    - fetch bibtex on google-scholar based fulltext search
+- `papers add`
+    - add entry and manage conflict
+    - add pdf file, bibtex, directory
+    - add one pdf file with attachment (beta, API will change)
+- `papers check --duplicates`
+    - conflict resolution
+- `papers install` (superficial test)
+- internals:
+    - duplicate test with levels `EXACT`, `GOOD`, `FAIR` (the default), `PARTIAL`
+
+
+Todo (more bug prone until then !):
+- `papers check` (fix DOI etc.)
+- `papers filecheck` (especially rename files, including those with attachment)
+- `papers list`
+- `papers status`
+- `papers install` (extend)
+- `papers undo`
+- `papers git`
+
+
+Why not JabRef, Zotero or Mendeley (or...) ?
+--------------------------------------------
+- JabRef (2.10) is nice, light-weight, but is not so good at managing PDFs.
+- Zotero (5.0) features excellent PDF import capability, but it needs to be manually one by one and is a little slow. Not very flexible.
+- Mendeley (1.17) is perfect at automatically extracting metadata from downloaded PDF and managing your PDF library, 
+but it is not open source, and many issues remain (own experience, Ubuntu 14.04, Desktop Version 1.17):
+    - very unstable
+    - PDF automatic naming is too verbose, and sometimes the behaviour is unexpected (some PDFs remain in on obscure Downloaded folder, instead of in the main collection)
+    - somewhat heavy (it offers functions of online syncing, etc)
+    - poor seach capability (related to the point above)
+
+Above-mentioned issues will with no doubt be improved in future releases, but they are a starting point for this project.
+Anyway, a command-line tool is per se a good idea for faster development, 
+as noted [here](https://forums.zotero.org/discussion/43386/zotero-cli-version), 
+but so far I could only find zotero clients for their online API 
+(like [pyzotero](https://github.com/urschrei/pyzotero) or [zotero-cli](https://github.com/jbaiter/zotero-cli)).
+Please contact me if you know another interesting project.
