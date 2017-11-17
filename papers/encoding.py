@@ -2,7 +2,7 @@
 import os
 import six
 import bibtexparser
-from myref.latexenc import latex_to_unicode, unicode_to_latex
+from papers.latexenc import latex_to_unicode, unicode_to_latex
 from unidecode import unidecode as unicode_to_ascii
 
 # fix bibtexparser issue

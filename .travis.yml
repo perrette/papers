@@ -24,6 +24,6 @@ before_install:
 install:
   - python setup.py install
 
-script: py.test -xv --cov myref.bib tests
+script: py.test -xv --cov papers.bib tests
 
 after-success: coveralls

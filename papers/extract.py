@@ -11,12 +11,12 @@ import re
 from crossref.restful import Works, Etiquette
 import bibtexparser
 
-import myref
-from myref.config import cached
-from myref import logger
-from myref.encoding import family_names, latex_to_unicode
+import papers
+from papers.config import cached
+from papers import logger
+from papers.encoding import family_names, latex_to_unicode
 
-my_etiquette = Etiquette('myref', myref.__version__, 'https://github.com/perrette/myref', 'mahe.perrette@gmail.com')
+my_etiquette = Etiquette('papers', papers.__version__, 'https://github.com/perrette/papers', 'mahe.perrette@gmail.com')
 
 
 # PDF parsing / crossref requests

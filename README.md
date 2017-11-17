@@ -1,6 +1,6 @@
-![travis](https://travis-ci.org/perrette/myref.svg?branch=master)
-[![Coverage Status](https://coveralls.io/repos/github/perrette/myref/badge.svg?branch=master)](https://coveralls.io/github/perrette/myref?branch=master)
-# myref
+![travis](https://travis-ci.org/perrette/papers.svg?branch=master)
+[![Coverage Status](https://coveralls.io/repos/github/perrette/papers/badge.svg?branch=master)](https://coveralls.io/github/perrette/papers?branch=master)
+# papers
 
 Command-line tool to manage bibliography (pdfs + bibtex)
 
@@ -68,14 +68,14 @@ Install
 
 Getting started
 ---------------
-This tool's interface is built like `git`, with main command `myref` and a range of subcommands.
+This tool's interface is built like `git`, with main command `papers` and a range of subcommands.
 
 Start with PDF of your choice (modern enough to have a DOI, e.g. anything from the Copernicus publications). 
 For the sake of the example, one of my owns: https://www.earth-syst-dynam.net/4/11/2013/esd-4-11-2013.pdf
 
 - extract pdf metadata (doi-based if available, otherwise crossref, or google scholar if so specified)
 
-        $> myref extract esd-4-11-2013.pdf
+        $> papers extract esd-4-11-2013.pdf
         @article{Perrette_2013,
             doi = {10.5194/esd-4-11-2013},
             url = {https://doi.org/10.5194%2Fesd-4-11-2013},
@@ -90,60 +90,60 @@ For the sake of the example, one of my owns: https://www.earth-syst-dynam.net/4/
             journal = {Earth System Dynamics}
         }
 
-- add pdf to `myref.bib`  library, and rename a copy of it in a files directory `files`.
+- add pdf to `papers.bib`  library, and rename a copy of it in a files directory `files`.
 
-        $> myref add --rename --copy --bibtex myref.bib --filesdir files esd-4-11-2013.pdf --info
-    	INFO:myref:found doi:10.5194/esd-4-11-2013
-    	INFO:myref:new entry: perrette_2013
-    	INFO:myref:create directory: files/2013
-    	INFO:myref:mv /home/perrette/playground/myref/esd-4-11-2013.pdf files/2013/Perrette_2013.pdf
-    	INFO:myref:renamed file(s): 1
+        $> papers add --rename --copy --bibtex papers.bib --filesdir files esd-4-11-2013.pdf --info
+    	INFO:papers:found doi:10.5194/esd-4-11-2013
+    	INFO:papers:new entry: perrette_2013
+    	INFO:papers:create directory: files/2013
+    	INFO:papers:mv /home/perrette/playground/papers/esd-4-11-2013.pdf files/2013/Perrette_2013.pdf
+    	INFO:papers:renamed file(s): 1
 
 (the `--info` argument asks for the above output information to be printed out to the terminal)
 
 In the common case where the bibtex (`--bibtex`) and files directory  (`--filesdir`) do not change, 
-it is convenient to *install* `myref`. 
+it is convenient to *install* `papers`. 
 Install comes with the option to git-track any change to the bibtex file (`--git`) options.
 
 - setup git-tracked library (optional)
 
-        $> myref install --bibtex myref.bib --filesdir files --git --gitdir ./
-        myref configuration
-        * configuration file: /home/perrette/.config/myrefconfig.json
-        * cache directory:    /home/perrette/.cache/myref
+        $> papers install --bibtex papers.bib --filesdir files --git --gitdir ./
+        papers configuration
+        * configuration file: /home/perrette/.config/papersconfig.json
+        * cache directory:    /home/perrette/.cache/papers
         * git-tracked:        True
         * git directory :     ./
         * files directory:    files (1 files, 5.8 MB)
-        * bibtex:            myref.bib (1 entries)
+        * bibtex:            papers.bib (1 entries)
 
 Note the existing bibtex file was detected but untouched.
-The configuration file is global (unless `--local` is specified), so from now on, any `myref` 
-command will be know about these settings. Type `myref status -v` to check your
+The configuration file is global (unless `--local` is specified), so from now on, any `papers` 
+command will be know about these settings. Type `papers status -v` to check your
 configuration.
 You also notice that crossref requests are saved in the cache directory. 
-This happens regardless of whether `myref` is installed or not.
+This happens regardless of whether `papers` is installed or not.
 From now on, no needs to specify bibtex file or files directory.
 
 - list entries (and edit etc...)
 
-        $> myref list -l
+        $> papers list -l
         Perrette2013: A scaling approach to project regional sea level rise and it... (doi:10.5194/esd-4-11-2013, file:1)
 
-`myref list` is a useful command, inspired from unix's `find` and `grep`. 
+`papers list` is a useful command, inspired from unix's `find` and `grep`. 
 It lets you search in your bibtex in a typical manner (including a number of special flags such as `--duplicates`, `--review-required`, `--broken-file`...), 
 then output the result in a number of formats (one-liner, raw bibtex, keys-only, selected fields) or let you perform actions on it (currently `--edit`, `--delete`).
 For instance, it is possible to manually merge the duplicates with:
 
-        $> myref list --duplicates --edit
+        $> papers list --duplicates --edit
 
 
 - other commands: 
 
-    - `myref status ...` 
-    - `myref check ...` 
-    - `myref filecheck ...` 
-    - `myref undo ...` 
-    - `myref git ...` 
+    - `papers status ...` 
+    - `papers check ...` 
+    - `papers filecheck ...` 
+    - `papers undo ...` 
+    - `papers git ...` 
 
 Consult inline help for more detailed documentation!
 
@@ -154,19 +154,19 @@ Current features
 - fetch bibtex entry from DOI (using crossref API)
 - fetch bibtex entry by fulltext search (using crossref API or google scholar)
 - create and maintain bibtex file
-- add entry as PDF (`myref add ...`)
-- add entry as bibtex (`myref add ...`)
-- scan directory for PDFs (`myref add ...`)
-- rename PDFs according to bibtex key and year (`myref filecheck --rename [--copy]`)
+- add entry as PDF (`papers add ...`)
+- add entry as bibtex (`papers add ...`)
+- scan directory for PDFs (`papers add ...`)
+- rename PDFs according to bibtex key and year (`papers filecheck --rename [--copy]`)
 - some support for attachment
-- merging (`myref check --duplicates ...`)
-- fix entries (`myref check --format-name --encoding unicode --fix-doi --fix-key ...`)
-- undo command (`myref undo`)
-- configuration file with default bibtex and files directory (`myref install --bibtex BIB --filesdir DIR ...`)
-- integration with git (`myref install --git --gitdir DIR` and e.g. `myref git ...` to setup a remote, push...)
-- display / search / list entries : format as bibtex or key or whatever (`myref list ... [-k | -l]`)
-- list + edit or remove entry by key or else  (`myref list ... [--edit, --delete]`)
-- fix broken PDF links (`myref filecheck ...`):
+- merging (`papers check --duplicates ...`)
+- fix entries (`papers check --format-name --encoding unicode --fix-doi --fix-key ...`)
+- undo command (`papers undo`)
+- configuration file with default bibtex and files directory (`papers install --bibtex BIB --filesdir DIR ...`)
+- integration with git (`papers install --git --gitdir DIR` and e.g. `papers git ...` to setup a remote, push...)
+- display / search / list entries : format as bibtex or key or whatever (`papers list ... [-k | -l]`)
+- list + edit or remove entry by key or else  (`papers list ... [--edit, --delete]`)
+- fix broken PDF links (`papers filecheck ...`):
     - remove duplicate file names (always) or file copies (`--hash-check`)
     - remove missing link (`--delete-missing`)
     - fix files name after a Mendeley export (`--fix-mendeley`):
@@ -179,7 +179,7 @@ Planned features
 - additional checks on entries:
     - duplicate-authors and more like [here](https://github.com/tdegeus/bibparse)
 - support collections (distinct bibtex entries, same files directory)
-    - or maybe more like ´myref update-from OTHER.bib´ to update changes based on DOI / key
+    - or maybe more like ´papers update-from OTHER.bib´ to update changes based on DOI / key
     - could also use git branches / merge
 - associate bibtex to existing pdf collection
 

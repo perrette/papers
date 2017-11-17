@@ -13,10 +13,10 @@ import bibtexparser
 import logging
 logger = logging.getLogger(__name__)
 
-from myref.extract import isvaliddoi, fetch_entry
-from myref.encoding import parse_file, format_file, format_entries
+from papers.extract import isvaliddoi, fetch_entry
+from papers.encoding import parse_file, format_file, format_entries
 
-from myref.config import bcolors
+from papers.config import bcolors
 
 
 # SEARCH DUPLICATES

@@ -14,20 +14,20 @@ import re
 
 import bibtexparser
 
-import myref
-from myref import logger
+import papers
+from papers import logger
 
-from myref.extract import extract_pdf_doi, isvaliddoi, parse_doi
-from myref.extract import extract_pdf_metadata
-from myref.extract import fetch_bibtex_by_fulltext_crossref, fetch_bibtex_by_doi
+from papers.extract import extract_pdf_doi, isvaliddoi, parse_doi
+from papers.extract import extract_pdf_metadata
+from papers.extract import fetch_bibtex_by_fulltext_crossref, fetch_bibtex_by_doi
 
-from myref.encoding import latex_to_unicode, unicode_to_latex, unicode_to_ascii
-from myref.encoding import parse_file, format_file, standard_name, family_names, format_entries
+from papers.encoding import latex_to_unicode, unicode_to_latex, unicode_to_ascii
+from papers.encoding import parse_file, format_file, standard_name, family_names, format_entries
 
-from myref.config import config, bcolors, checksum, move
+from papers.config import config, bcolors, checksum, move
 
-from myref.duplicate import check_duplicates, resolve_duplicates, conflict_resolution_on_insert
-from myref.duplicate import search_duplicates, list_duplicates, list_uniques, merge_files
+from papers.duplicate import check_duplicates, resolve_duplicates, conflict_resolution_on_insert
+from papers.duplicate import search_duplicates, list_duplicates, list_uniques, merge_files
 
 # DRYRUN = False
 
@@ -122,7 +122,7 @@ def entry_id(e):
 
 FUZZY_RATIO = 80
 
-# should be conservative (used in myref add)
+# should be conservative (used in papers add)
 DEFAULT_SIMILARITY = 'FAIR'
 
 EXACT_DUPLICATES = 104
@@ -217,7 +217,7 @@ def backupfile(bibtex):
 class DuplicateKeyError(ValueError):
     pass
 
-class MyRef(object):
+class Biblio(object):
     """main config
     """
     def __init__(self, db=None, filesdir=None, key_field='ID', nauthor=NAUTHOR, ntitle=NTITLE, similarity=DEFAULT_SIMILARITY):
@@ -447,7 +447,7 @@ class MyRef(object):
 
 
     def check_duplicates(self, key=None, eq=None, mode='i'):
-        """remove duplicates, in some sensse (see myref.conflict.check_duplicates)
+        """remove duplicates, in some sensse (see papers.conflict.check_duplicates)
         """
         self.entries = check_duplicates(self.entries, key=key, eq=eq or self.eq, issorted=key is self.key, mode=mode)
         self.sort() # keep sorted
@@ -740,7 +740,7 @@ def entry_filecheck(e, delete_broken=False, fix_mendeley=False,
 def main():
 
     global_config = config.file
-    local_config = '.myrefconfig.json'
+    local_config = '.papersconfig.json'
 
     if os.path.exists(local_config):
         config.file = local_config
@@ -792,24 +792,24 @@ def main():
     # install
     # =======
 
-    installp = subparsers.add_parser('install', description='setup or update myref install',
+    installp = subparsers.add_parser('install', description='setup or update papers install',
         parents=[cfg])
     installp.add_argument('--reset-paths', action='store_true') 
     # egrp = installp.add_mutually_exclusive_group()
     installp.add_argument('--local', action='store_true', 
         help="""save config file in current directory (global install by default). 
         This file will be loaded instead of the global configuration file everytime 
-        myref is executed from this directory. This will affect the default bibtex file, 
+        papers is executed from this directory. This will affect the default bibtex file, 
         the files directory, as well as the git-tracking option. Note this option does
         not imply anything about the actual location of bibtex file and files directory.
         """)
     installp.add_argument('--git', action='store_true', 
         help="""Track bibtex files with git. 
         Each time the bibtex is modified, a copy of the file is saved in a git-tracked
-        global directory (see myref status), and committed. Note the original bibtex name is 
+        global directory (see papers status), and committed. Note the original bibtex name is 
         kept, so that different files can be tracked simultaneously, as long as the names do
         not conflict. This option is mainly useful for backup purposes (local or remote).
-        Use in combination with `myref git`'
+        Use in combination with `papers git`'
         """) 
     installp.add_argument('--gitdir', default=config.gitdir, help='default: %(default)s')
 
@@ -884,7 +884,7 @@ def main():
 
     def savebib(my, o):
         logger.info(u'save '+o.bibtex)
-        if myref.config.DRYRUN:
+        if papers.config.DRYRUN:
             return
         if my is not None:
             my.save(o.bibtex)
@@ -939,9 +939,9 @@ def main():
     def addcmd(o):
 
         if os.path.exists(o.bibtex):
-            my = MyRef.load(o.bibtex, o.filesdir)
+            my = Biblio.load(o.bibtex, o.filesdir)
         else:
-            my = MyRef.newbib(o.bibtex, o.filesdir)
+            my = Biblio.newbib(o.bibtex, o.filesdir)
 
         if len(o.file) > 1 and o.attachment:
             logger.error('--attachment is only valid for one added file')
@@ -1016,7 +1016,7 @@ def main():
     # checkp.add_argument('--duplicates',action='store_true', help='remove / merge duplicates')
 
     def checkcmd(o):
-        my = MyRef.load(o.bibtex, o.filesdir)
+        my = Biblio.load(o.bibtex, o.filesdir)
 
         # if o.fix_all:
         #     o.fix_doi = True
@@ -1073,7 +1073,7 @@ def main():
     # filecheckp.add_argument('-a', '--all', action='store_true', help='--hash and --meta')
 
     def filecheckcmd(o):
-        my = MyRef.load(o.bibtex, o.filesdir)
+        my = Biblio.load(o.bibtex, o.filesdir)
 
         # fix ':home' entry as saved by Mendeley
         for e in my.entries:
@@ -1133,7 +1133,7 @@ def main():
     def listcmd(o):
         import fnmatch   # unix-like match
 
-        my = MyRef.load(o.bibtex, o.filesdir)
+        my = Biblio.load(o.bibtex, o.filesdir)
         entries = my.db.entries
 
         if o.fuzzy:
@@ -1293,7 +1293,7 @@ def main():
     def undocmd(o):
         back = backupfile(o.bibtex)
         tmp = o.bibtex + '.tmp'
-        # my = MyRef(o.bibtex, o.filesdir)
+        # my = Biblio(o.bibtex, o.filesdir)
         logger.info(o.bibtex+' <==> '+back)
         shutil.copy(o.bibtex, tmp)
         shutil.move(back, o.bibtex)
@@ -1323,7 +1323,7 @@ def main():
         logger.setLevel(o.logging_level)
     # modify disk state?
     if hasattr(o,'dry_run'):
-        myref.config.DRYRUN = o.dry_run
+        papers.config.DRYRUN = o.dry_run
 
     if o.cmd == 'install':
         return installcmd(o)
@@ -1333,7 +1333,7 @@ def main():
 
     def check_install():
         if not os.path.exists(o.bibtex):
-            print('myref: error: no bibtex file found, use `myref install` or `touch {}`'.format(o.bibtex))
+            print('papers: error: no bibtex file found, use `papers install` or `touch {}`'.format(o.bibtex))
             parser.exit(1)
         logger.info('bibtex: '+o.bibtex)
         logger.info('filesdir: '+o.filesdir)

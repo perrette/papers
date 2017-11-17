@@ -3,7 +3,7 @@ import subprocess as sp, sys, shutil
 import hashlib
 import bibtexparser
 from six.moves import input as raw_input
-from myref import logger
+from papers import logger
 
 # GIT = False
 DRYRUN = False
@@ -15,9 +15,9 @@ CACHE_HOME = os.environ.get('XDG_CACHE_HOME', os.path.join(HOME, '.cache'))
 DATA_HOME = os.environ.get('XDG_DATA_HOME', os.path.join(HOME, '.local','share'))
 
 
-CONFIG_FILE = os.path.join(CONFIG_HOME, 'myrefconfig.json')
-DATA_DIR = os.path.join(DATA_HOME, 'myref')
-CACHE_DIR = os.path.join(CACHE_HOME, 'myref')
+CONFIG_FILE = os.path.join(CONFIG_HOME, 'papersconfig.json')
+DATA_DIR = os.path.join(DATA_HOME, 'papers')
+CACHE_DIR = os.path.join(CACHE_HOME, 'papers')
 
 
 # utils
@@ -56,7 +56,7 @@ class Config(object):
         self.data = data
         self.cache = cache
         self.filesdir = filesdir or os.path.join(data, 'files')
-        self.bibtex = bibtex  or os.path.join(data, 'myref.bib')
+        self.bibtex = bibtex  or os.path.join(data, 'papers.bib')
         self.gitdir = gitdir  or data
         self.git = git
 
@@ -113,7 +113,7 @@ class Config(object):
             target = os.path.join(self.gitdir, os.path.basename(self.bibtex))
             if not os.path.samefile(self.bibtex, target):
                 shutil.copy(self.bibtex, target)
-            message = message or 'save '+self.bibtex+' after command:\n\n    myref ' +' '.join(sys.argv[1:])
+            message = message or 'save '+self.bibtex+' after command:\n\n    papers ' +' '.join(sys.argv[1:])
             with open(os.devnull, 'w') as shutup:
                 if branch is not None:
                     sp.check_call(['git','checkout',branch], stdout=shutup, stderr=shutup, cwd=self.gitdir)
@@ -127,7 +127,7 @@ class Config(object):
     def status(self, check_files=False, verbose=False):
 
         lines = []
-        lines.append(bcolors.BOLD+'myref configuration'+bcolors.ENDC)
+        lines.append(bcolors.BOLD+'papers configuration'+bcolors.ENDC)
         if verbose:
             lines.append('* configuration file: '+self.file) 
             lines.append('* cache directory:    '+self.cache) 
