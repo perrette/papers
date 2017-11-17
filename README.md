@@ -33,10 +33,9 @@ Dependencies
 Install
 -------
 - clone this project
-- pip install unidecode crossrefapi bibtexparser scholarly fuzzywuzzy six
-- install third-party dependencies (Ubuntu: ´sudo apt install popper-utils´)
-- python setup.py install
-
+- `pip install unidecode crossrefapi bibtexparser scholarly fuzzywuzzy six`
+- install third-party dependencies (Ubuntu: `sudo apt install popper-utils`)
+- `python setup.py install`
 
 Getting started
 ---------------
@@ -156,7 +155,8 @@ Planned features
     - could also use git branches / merge
 - associate bibtex to existing pdf collection (to move library location)
 - fetch PDFs for existing entries? Bindings with [sopaper](https://github.com/ppwwyyxx/SoPaper)
-- as add-on in separate github: basic flask interface to browse papers & edit entries. E.g. check-out [paperhero](https://github.com/PatWie/paperhero).
+- as add-on in separate github: basic flask interface to browse papers & edit entries. E.g. check-out [paperhero](https://github.com/PatWie/paperhero)
+- lazy loading of modules (optimization)
 
 
 Tests
