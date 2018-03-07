@@ -225,7 +225,7 @@ class Biblio(object):
         # assume an already sorted list
         self.key_field = key_field
         if db is None:
-            db = bibtexparser.loads('')
+            db = bibtexparser.bibdatabase.BibDatabase()
         elif not isinstance(db, bibtexparser.bibdatabase.BibDatabase):
             raise TypeError('db must of type BibDatabase')
         self.db = db
