@@ -498,7 +498,7 @@ class Biblio(object):
 
             # create hidden bib entry for special dir
             bibname = hidden_bibtex(newdir)
-            db = bibtexparser.loads('')
+            db = bibtexparser.bibdatabase.BibDatabase()
             db.entries.append(e)
             bibtex = bibtexparser.dumps(db)
             with open(bibname,'w') as f:
