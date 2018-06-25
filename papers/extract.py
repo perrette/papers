@@ -23,7 +23,7 @@ my_etiquette = Etiquette('papers', papers.__version__, 'https://github.com/perre
 # ===============================
 
 def readpdf(pdf, first=None, last=None, keeptxt=False):
-    txtfilename = pdf.replace('.pdf','.txt')
+    txtfile = pdf.replace('.pdf','.txt')
     # txtfile = os.path.join(os.path.dirname(pdf), pdf.replace('.pdf','.txt'))
     if True: #not os.path.exists(txtfile):
         # logger.info(' '.join(['pdftotext','"'+pdf+'"', '"'+txtfile+'"']))
@@ -33,11 +33,10 @@ def readpdf(pdf, first=None, last=None, keeptxt=False):
         cmd.append(pdf)
         sp.check_call(cmd)
     else:
-        logger.info('file already present: '+txtfilename)
-    with open(txtfilename, 'r') as tfile:
-        txt = tfile.read()
+        logger.info('file already present: '+txtfile)
+    txt = open(txtfile).read()
     if not keeptxt:
-        os.remove(txtfilename)
+        os.remove(txtfile)
     return txt
 
 
@@ -77,7 +76,7 @@ def parse_doi(txt, space_digit=False):
     if doi.lower().endswith('.received'):
         doi = doi[:-len('.received')]
 
-    # quality check
+    # quality check 
     assert len(doi) > 8, 'failed to extract doi: '+doi
 
     return doi
@@ -110,8 +109,8 @@ def extract_pdf_doi(pdf, space_digit=True):
 def query_text(txt, max_query_words=200):
     # list of paragraphs
     paragraphs = re.split(r"\n\n", txt)
-
-    # remove anything that starts with 'reference'
+ 
+    # remove anything that starts with 'reference'   
     query = []
     for p in paragraphs:
         if p.lower().startswith('reference'):
@@ -253,7 +252,7 @@ def crossref_to_bibtex(r):
 
     if 'author' in r:
         family = lambda p: p['family'] if len(p['family'].split()) == 1 else u'{'+p['family']+u'}'
-        bib['author'] = ' and '.join([family(p) + ', '+ p.get('given','')
+        bib['author'] = ' and '.join([family(p) + ', '+ p.get('given','') 
             for p in r.get('author',[]) if 'family' in p])
 
     # for k in ['issued','published-print', 'published-online']:
