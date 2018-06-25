@@ -9,8 +9,18 @@ from unidecode import unidecode as unicode_to_ascii
 if six.PY2:
     _bloads = bibtexparser.loads 
     _bdumps = bibtexparser.dumps
-    bibtexparser.loads = lambda s: _bloads(s.decode('utf-8') if type(s) is str else s)
+    bibtexparser.loads = lambda s: (_bloads(s.decode('utf-8') if type(s) is str else s))
     bibtexparser.dumps = lambda db: _bdumps(db).encode('utf-8')
+
+
+# fix bibtexparser call on empty strings
+_bloads_orig = bibtexparser.loads
+def _bloads_fixed(s):
+    if s == '':
+        return bibtexparser.bibdatabase.BibDatabase()
+    else:
+        return _bloads_orig(s)
+bibtexparser.loads = _bloads_fixed
 
 
 # Parse / format bibtex file entry
@@ -54,7 +64,7 @@ def format_file(file_types):
 
 
 def format_entries(entries):
-    db = bibtexparser.loads('')
+    db = bibtexparser.bibdatabase.BibDatabase()
     db.entries.extend(entries)
     return bibtexparser.dumps(db)
 

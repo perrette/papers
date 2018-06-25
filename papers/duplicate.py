@@ -212,7 +212,7 @@ def entry_ndiff(entries, color=True):
             m[k] = SECRET_STRING.format(k)
         elif any(k not in e for e in entries):
             somemissing.append(k)
-    db = bibtexparser.loads('')
+    db = bibtexparser.bibdatabase.BibDatabase()
     db.entries.append(m)
     s = bibtexparser.dumps(db)
     lines = []
@@ -249,7 +249,7 @@ def entry_sdiff(entries, color=True, bcolors=bcolors, best=None):
     if not color:
         bcolors = dummybcolors
 
-    db = bibtexparser.loads('')
+    db = bibtexparser.bibdatabase.BibDatabase()
     db.entries.append(None)
 
     merged = merge_entries(entries)
@@ -358,7 +358,7 @@ def edit_entries(entries, diff=False, ndiff=False):
         else:
             entrystring = entry_diff(*entries, color=False)
     else:
-        db = bibtexparser.loads('')
+        db = bibtexparser.bibdatabase.BibDatabase()
         db.entries.extend(entries)
         entrystring = bibtexparser.dumps(db)
 
