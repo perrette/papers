@@ -108,7 +108,7 @@ class TestInstall(unittest.TestCase):
         self.filesdir = tempfile.mktemp(prefix='papers.files')
 
     def test_install(self):
-        sp.check_call(f'papers install --local --bibtex {self.mybib} --files {self.filesdir}', shell=True)
+        sp.check_call('papers install --local --bibtex {self.mybib} --files {self.filesdir}', shell=True)
         self.assertTrue(os.path.exists(self.mybib))
         self.assertTrue(os.path.exists(self.filesdir))
 
