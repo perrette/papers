@@ -54,7 +54,7 @@ def format_file(file_types):
 
 
 def format_entries(entries):
-    db = bibtexparser.bibdatabase.BibDatabase()
+    db = bibtexparser.loads('')
     db.entries.extend(entries)
     return bibtexparser.dumps(db)
 

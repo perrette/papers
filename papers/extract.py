@@ -288,7 +288,7 @@ def crossref_to_bibtex(r):
         # ID = str(''.join([c if ord(c) < 128 else '_' for c in ID]))  # make sure the resulting string is ASCII
     bib['ID'] = ID
 
-    db = bibtexparser.bibdatabase.BibDatabase()
+    db = bibtexparser.loads('')
     db.entries.append(bib)
     return bibtexparser.dumps(db)
 
