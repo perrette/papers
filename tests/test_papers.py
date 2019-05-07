@@ -10,6 +10,7 @@ from download import downloadpdf
 
 def run(cmd):
     print(cmd)
+    import pdb; pdb.set_trace()
     return str(sp.check_output(cmd, shell=True).strip().decode())
 
 def prepare_paper():
