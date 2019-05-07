@@ -94,10 +94,10 @@ class TestSimple(unittest.TestCase):
         self.assertTrue(os.path.exists(self.pdf))
 
     def test_doi(self):
-	val1 = run('papers doi '+self.pdf).strip()
-	val2 = self.doi
-	print("Types: {}, {}".format(type(val1), type(val2)))
-        self.assertEqual(run('papers doi '+self.pdf).strip(), self.doi)
+	#val1 = run('papers doi '+self.pdf).strip()
+	#val2 = self.doi
+	#print("Types: {}, {}".format(type(val1), type(val2)))
+        self.assertEqual(run('papers doi '+self.pdf).strip(""), self.doi)
 
     def test_fetch(self):
         bibtexs = run('papers fetch '+self.doi).strip()
