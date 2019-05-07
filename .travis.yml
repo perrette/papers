@@ -6,6 +6,11 @@ addons:
     packages:
     - poppler-utils
     - tesseract-ocr
+    - imagemagick
+    - libleptonica-dev
+    - libicu-dev
+    - libpango1.0-dev
+    - libcairo2-dev
 python:
   - "2.7"
   - "3.5"
