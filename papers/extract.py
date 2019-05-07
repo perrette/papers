@@ -24,13 +24,20 @@ my_etiquette = Etiquette('papers', papers.__version__, 'https://github.com/perre
 
 def readpdf(pdf, first=None, last=None, keeptxt=False):
     txtfile = pdf.replace('.pdf','.txt')
+    imgfile = pdf.replace('.pdf','.png')
     # txtfile = os.path.join(os.path.dirname(pdf), pdf.replace('.pdf','.txt'))
     if True: #not os.path.exists(txtfile):
         # logger.info(' '.join(['pdftotext','"'+pdf+'"', '"'+txtfile+'"']))
-        cmd = ['pdftotext']
+        cmd = ['pdftoppm']
         if first is not None: cmd.extend(['-f',str(first)])
         if last is not None: cmd.extend(['-l',str(last)])
+        cmd.extend(['-singlefile'])
+        cmd.extend(['-png'])
+        cmd.extend(['-q'])
         cmd.append(pdf)
+        cmd.append(imgfile.replace(".png", ""))
+        sp.check_call(cmd)
+        cmd = ["tesseract", imgfile, txtfile.replace(".txt", ""), "-l", "eng", "quiet"]
         sp.check_call(cmd)
     else:
         logger.info('file already present: '+txtfile)
