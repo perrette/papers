@@ -12,7 +12,7 @@ from download import downloadpdf
 
 
 def run(cmd):
-    return str(sp.check_output(cmd, shell=True).strip().decode())
+    return str(sp.check_output(cmd, shell=True).strip().decode('utf-8'))
 
 
 def prepare_paper():
