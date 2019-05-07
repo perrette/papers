@@ -10,7 +10,6 @@ from download import downloadpdf
 
 def run(cmd):
     print(cmd)
-    print("This is the returned value: {}".format(str(sp.check_output(cmd, shell=True).strip().decode())))
     return str(sp.check_output(cmd, shell=True).strip().decode())
 
 def prepare_paper():
@@ -95,6 +94,7 @@ class TestSimple(unittest.TestCase):
         self.assertTrue(os.path.exists(self.pdf))
 
     def test_doi(self):
+	print("Types: ", type(run('papers doi '+self.pdf).strip()), self.doi)
         self.assertEqual(run('papers doi '+self.pdf).strip(), self.doi)
 
     def test_fetch(self):
