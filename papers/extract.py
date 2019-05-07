@@ -44,6 +44,7 @@ def readpdf(pdf, first=None, last=None, keeptxt=False):
     txt = open(txtfile).read()
     if not keeptxt:
         os.remove(txtfile)
+        os.remove(imgfile)
     return txt
 
 
