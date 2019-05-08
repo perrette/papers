@@ -6,6 +6,7 @@ addons:
     packages:
     - poppler-utils
     - tesseract-ocr
+    - tesseract-ocr-eng
     - imagemagick
     - libleptonica-dev
     - libicu-dev
