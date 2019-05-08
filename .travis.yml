@@ -25,6 +25,7 @@ before_install:
   - pip install fuzzywuzzy
   - pip install unidecode
   - pip install scholarly
+  - pip --lock clear
 # test coverage
 #  - pip install tox
   - pip install pytest pytest-cov
