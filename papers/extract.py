@@ -37,7 +37,7 @@ def readpdf(pdf, first=None, last=None, keeptxt=False):
         cmd.append(pdf)
         cmd.append(imgfile.replace(".png", ""))
         sp.check_call(cmd)
-        cmd = ["tesseract", imgfile, txtfile.replace(".txt", ""), "-l", "eng", "quiet", ">", "/dev/null", "2>&1"]
+        cmd = ["tesseract", imgfile, txtfile.replace(".txt", ""), "-l", "eng", "quiet"]
         sp.check_call(cmd)
     else:
         logger.info('file already present: '+txtfile)
