@@ -13,8 +13,8 @@ addons:
     - libpango1.0-dev
     - libcairo2-dev
 python:
-  - "2.7"
-  - "3.5"
+  #- "2.7"
+  - "3.6"
 notifications:
   email: false
 before_install:
