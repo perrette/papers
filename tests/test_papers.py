@@ -12,7 +12,7 @@ from download import downloadpdf
 
 
 def run(cmd):
-    return str(sp.check_output(cmd, shell=True).strip().decode('utf-8'))
+    return str(sp.check_output(cmd, shell=True).strip().decode())
 
 
 def prepare_paper():
@@ -96,7 +96,7 @@ class TestSimple(unittest.TestCase):
         self.assertTrue(os.path.exists(self.pdf))
 
     def test_doi(self):
-        self.assertEqual(run('papers doi '+self.pdf).strip(""), self.doi)
+        self.assertEqual(run('papers doi '+self.pdf).strip(), self.doi)
 
     def test_fetch(self):
         bibtexs = run('papers fetch '+self.doi).strip()
