@@ -29,9 +29,12 @@ before_install:
   - pip install tox-travis
 # test coverage
 #  - pip install tox
-#  - "python -m pip install --upgrade pip"
-#  - "python -m pip install --upgrade pytest pytest-cov coveralls"
-  #- pip install coveralls
+  #- "python -m pip install --upgrade pip"
+  #- "python -m pip install --upgrade pytest pytest-cov coveralls"
+  - pip install pytest
+  - pip install pytest-cov
+  - pip install coveralls
+  pip install --upgrade setuptools
 install:
   - python setup.py install
 
