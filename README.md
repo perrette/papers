@@ -29,8 +29,8 @@ Dependencies
 - [fuzzywuzzy (0.15.1)](https://github.com/seatgeek/fuzzywuzzy) : calculate score to sort crossref requests
 - [unidecode (0.04.21)](https://github.com/avian2/unidecode) : replace unicode with ascii equivalent
 - [six](http://pythonhosted.org/six): python 2-3 compatibility
-- [pyenchant](https://github.com/rfk/pyenchant)
-- [nltk](http://www.nltk.org/)
+- [pyenchant](https://github.com/rfk/pyenchant) : spellchecking library
+- [nltk](http://www.nltk.org/) : natural language processing library
 - [tesseract](https://github.com/tesseract-ocr/tesseract) : OCR engine to convert images into text
 
 Install
