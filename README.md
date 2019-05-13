@@ -33,6 +33,7 @@ Dependencies
 - [nltk](http://www.nltk.org/) : natural language processing library
 - [tesseract](https://github.com/tesseract-ocr/tesseract) : OCR engine to convert images into text
 
+
 Install
 -------
 - clone this project
