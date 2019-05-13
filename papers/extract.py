@@ -1,5 +1,3 @@
-
-
 from __future__ import print_function
 import os
 import json
@@ -22,15 +20,40 @@ my_etiquette = Etiquette('papers', papers.__version__, 'https://github.com/perre
 # PDF parsing / crossref requests
 # ===============================
 
+def createrandname(path, ext):
+    import random
+    import string
+    check = False
+    while check == False:
+        rand = "".join(
+            random.sample(string.ascii_lowercase + string.digits, 20)
+        ) + ext
+        check = True if not os.path.exists(path + rand) else False
+    return rand
+
+
 def readpdf(pdf, first=None, last=None, keeptxt=False):
-    txtfile = pdf.replace('.pdf','.txt')
-    imgfile = pdf.replace('.pdf','.png')
+    import shutil
+    txtfile = pdf.replace('.pdf', '.txt')
+    imgfile = pdf.replace('.pdf', '.png')
     # txtfile = os.path.join(os.path.dirname(pdf), pdf.replace('.pdf','.txt'))
-    if True: #not os.path.exists(txtfile):
+    if True:  # not os.path.exists(txtfile):
         # logger.info(' '.join(['pdftotext','"'+pdf+'"', '"'+txtfile+'"']))
+        if os.path.isfile(pdf):
+            path, ext = os.path.splitext(pdf)
+            path = "/".join(path.split("/")[:-1])
+            rand = createrandname(path, ext)
+            # Do the rename
+            newfile = os.path.join(path, rand)
+            shutil.copyfile(pdf, newfile)
+            logger.info("\t->", rand)
+            pdf = newfile
+        else:
+            # Not a file
+            logger.info("\tSkipped:", "'" + pdf + "'", "Target is not a file")
         cmd = ['pdftoppm']
-        if first is not None: cmd.extend(['-f',str(first)])
-        if last is not None: cmd.extend(['-l',str(last)])
+        if first is not None: cmd.extend(['-f', str(first)])
+        if last is not None: cmd.extend(['-l', str(last)])
         cmd.extend(['-singlefile'])
         cmd.extend(['-png'])
         cmd.extend(['-q'])
@@ -45,6 +68,7 @@ def readpdf(pdf, first=None, last=None, keeptxt=False):
     if not keeptxt:
         os.remove(txtfile)
         os.remove(imgfile)
+        os.remove(pdf)
     return txt
 
 
@@ -84,7 +108,7 @@ def parse_doi(txt, space_digit=False):
     if doi.lower().endswith('.received'):
         doi = doi[:-len('.received')]
 
-    # quality check 
+    # quality check
     assert len(doi) > 8, 'failed to extract doi: '+doi
 
     return doi
@@ -117,8 +141,8 @@ def extract_pdf_doi(pdf, space_digit=True):
 def query_text(txt, max_query_words=200):
     # list of paragraphs
     paragraphs = re.split(r"\n\n", txt)
- 
-    # remove anything that starts with 'reference'   
+
+    # remove anything that starts with 'reference'
     query = []
     for p in paragraphs:
         if p.lower().startswith('reference'):
@@ -234,7 +258,6 @@ def fetch_bibtex_by_fulltext_scholar(txt, assess_results=True):
     return bibtex
 
 
-
 def _crossref_get_author(res, sep=u'; '):
     return sep.join([p.get('given','') + p['family'] for p in res.get('author',[]) if 'family' in p])
 
@@ -260,7 +283,7 @@ def crossref_to_bibtex(r):
 
     if 'author' in r:
         family = lambda p: p['family'] if len(p['family'].split()) == 1 else u'{'+p['family']+u'}'
-        bib['author'] = ' and '.join([family(p) + ', '+ p.get('given','') 
+        bib['author'] = ' and '.join([family(p) + ', '+ p.get('given','')
             for p in r.get('author',[]) if 'family' in p])
 
     # for k in ['issued','published-print', 'published-online']:
