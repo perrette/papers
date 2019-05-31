@@ -26,8 +26,7 @@ def readpdf(pdf, first=None, last=None, keeptxt=False):
     if True:  # not os.path.exists(txtfile):
         if os.path.isfile(pdf):
             path, ext = os.path.splitext(pdf)
-            path = os.path.dirname(path)
-            fd, uniq_pdf = tempfile.mkstemp(dir=path, suffix=ext)
+            fd, uniq_pdf = tempfile.mkstemp(suffix=ext)
             uniq_pdf = shutil.copy2(pdf, uniq_pdf)
             logger.info("\t->", uniq_pdf)
         else:
