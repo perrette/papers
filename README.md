@@ -11,7 +11,7 @@ Command-line tool to manage bibliography (pdfs + bibtex)
 
 Motivation
 ----------
-This project is an attempt to create a light-weight, 
+This project is an attempt to create a light-weight,
 command-line bibliography managenent tool. Aims:
 
 - maintain a PDF library (with appropriate naming)
@@ -29,8 +29,6 @@ Dependencies
 - [fuzzywuzzy (0.15.1)](https://github.com/seatgeek/fuzzywuzzy) : calculate score to sort crossref requests
 - [unidecode (0.04.21)](https://github.com/avian2/unidecode) : replace unicode with ascii equivalent
 - [six](http://pythonhosted.org/six): python 2-3 compatibility
-- [pyenchant](https://github.com/rfk/pyenchant) : spellchecking library
-- [nltk](http://www.nltk.org/) : natural language processing library
 - [tesseract](https://github.com/tesseract-ocr/tesseract) : OCR engine to convert images into text
 
 
@@ -45,7 +43,7 @@ Getting started
 ---------------
 This tool's interface is built like `git`, with main command `papers` and a range of subcommands.
 
-Start with PDF of your choice (modern enough to have a DOI, e.g. anything from the Copernicus publications). 
+Start with PDF of your choice (modern enough to have a DOI, e.g. anything from the Copernicus publications).
 For the sake of the example, one of my owns: https://www.earth-syst-dynam.net/4/11/2013/esd-4-11-2013.pdf
 
 - extract pdf metadata (doi-based if available, otherwise crossref, or google scholar if so specified)
@@ -58,7 +56,7 @@ For the sake of the example, one of my owns: https://www.earth-syst-dynam.net/4/
             month = {jan},
             publisher = {Copernicus {GmbH}},
             volume = {4},
-            number = {1},   
+            number = {1},
             pages = {11--29},
             author = {M. Perrette and F. Landerer and R. Riva and K. Frieler and M. Meinshausen},
             title = {A scaling approach to project regional sea level rise and its uncertainties},
@@ -76,8 +74,8 @@ For the sake of the example, one of my owns: https://www.earth-syst-dynam.net/4/
 
 (the `--info` argument asks for the above output information to be printed out to the terminal)
 
-In the common case where the bibtex (`--bibtex`) and files directory  (`--filesdir`) do not change, 
-it is convenient to *install* `papers`. 
+In the common case where the bibtex (`--bibtex`) and files directory  (`--filesdir`) do not change,
+it is convenient to *install* `papers`.
 Install comes with the option to git-track any change to the bibtex file (`--git`) options.
 
 - setup git-tracked library (optional)
@@ -92,10 +90,10 @@ Install comes with the option to git-track any change to the bibtex file (`--git
         * bibtex:            papers.bib (1 entries)
 
 Note the existing bibtex file was detected but untouched.
-The configuration file is global (unless `--local` is specified), so from now on, any `papers` 
+The configuration file is global (unless `--local` is specified), so from now on, any `papers`
 command will be know about these settings. Type `papers status -v` to check your
 configuration.
-You also notice that crossref requests are saved in the cache directory. 
+You also notice that crossref requests are saved in the cache directory.
 This happens regardless of whether `papers` is installed or not.
 From now on, no needs to specify bibtex file or files directory.
 
@@ -104,21 +102,21 @@ From now on, no needs to specify bibtex file or files directory.
         $> papers list -l
         Perrette2013: A scaling approach to project regional sea level rise and it... (doi:10.5194/esd-4-11-2013, file:1)
 
-`papers list` is a useful command, inspired from unix's `find` and `grep`. 
-It lets you search in your bibtex in a typical manner (including a number of special flags such as `--duplicates`, `--review-required`, `--broken-file`...), 
+`papers list` is a useful command, inspired from unix's `find` and `grep`.
+It lets you search in your bibtex in a typical manner (including a number of special flags such as `--duplicates`, `--review-required`, `--broken-file`...),
 then output the result in a number of formats (one-liner, raw bibtex, keys-only, selected fields) or let you perform actions on it (currently `--edit`, `--delete`).
 For instance, it is possible to manually merge the duplicates with:
 
         $> papers list --duplicates --edit
 
 
-- other commands: 
+- other commands:
 
-    - `papers status ...` 
-    - `papers check ...` 
-    - `papers filecheck ...` 
-    - `papers undo ...` 
-    - `papers git ...` 
+    - `papers status ...`
+    - `papers check ...`
+    - `papers filecheck ...`
+    - `papers undo ...`
+    - `papers git ...`
 
 Consult inline help for more detailed documentation!
 
@@ -165,12 +163,12 @@ Planned features
 
 Tests
 -----
-Test coverage in progress... 
+Test coverage in progress...
 
 Currently covers:
 - `papers extract`
-    - parse pdf DOI 
-    - fetch bibtex on crossref based on DOI 
+    - parse pdf DOI
+    - fetch bibtex on crossref based on DOI
     - fetch bibtex on crossref based fulltext search
     - fetch bibtex on google-scholar based fulltext search
 - `papers add`
@@ -198,7 +196,7 @@ Why not JabRef, Zotero or Mendeley (or...) ?
 --------------------------------------------
 - JabRef (2.10) is nice, light-weight, but is not so good at managing PDFs.
 - Zotero (5.0) features excellent PDF import capability, but it needs to be manually one by one and is a little slow. Not very flexible.
-- Mendeley (1.17) is perfect at automatically extracting metadata from downloaded PDF and managing your PDF library, 
+- Mendeley (1.17) is perfect at automatically extracting metadata from downloaded PDF and managing your PDF library,
 but it is not open source, and many issues remain (own experience, Ubuntu 14.04, Desktop Version 1.17):
     - very unstable
     - PDF automatic naming is too verbose, and sometimes the behaviour is unexpected (some PDFs remain in on obscure Downloaded folder, instead of in the main collection)
@@ -206,8 +204,8 @@ but it is not open source, and many issues remain (own experience, Ubuntu 14.04,
     - poor seach capability (related to the point above)
 
 Above-mentioned issues will with no doubt be improved in future releases, but they are a starting point for this project.
-Anyway, a command-line tool is per se a good idea for faster development, 
-as noted [here](https://forums.zotero.org/discussion/43386/zotero-cli-version), 
-but so far I could only find zotero clients for their online API 
+Anyway, a command-line tool is per se a good idea for faster development,
+as noted [here](https://forums.zotero.org/discussion/43386/zotero-cli-version),
+but so far I could only find zotero clients for their online API
 (like [pyzotero](https://github.com/urschrei/pyzotero) or [zotero-cli](https://github.com/jbaiter/zotero-cli)).
 Please contact me if you know another interesting project.
