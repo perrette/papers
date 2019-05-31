@@ -23,20 +23,44 @@ my_etiquette = Etiquette('papers', papers.__version__, 'https://github.com/perre
 # ===============================
 
 def readpdf(pdf, first=None, last=None, keeptxt=False):
-    txtfile = pdf.replace('.pdf','.txt')
-    # txtfile = os.path.join(os.path.dirname(pdf), pdf.replace('.pdf','.txt'))
-    if True: #not os.path.exists(txtfile):
-        # logger.info(' '.join(['pdftotext','"'+pdf+'"', '"'+txtfile+'"']))
-        cmd = ['pdftotext']
-        if first is not None: cmd.extend(['-f',str(first)])
-        if last is not None: cmd.extend(['-l',str(last)])
-        cmd.append(pdf)
+    import shutil
+    import tempfile
+    if True:  # not os.path.exists(txtfile):
+        if os.path.isfile(pdf):
+            path, ext = os.path.splitext(pdf)
+            fd, uniq_pdf = tempfile.mkstemp(suffix=ext)
+            uniq_pdf = shutil.copy2(pdf, uniq_pdf)
+            logger.info("\t->", uniq_pdf)
+        else:
+            # Not a file
+            logger.info("\tSkipped:", "'" + pdf + "'", "Target is not a file")
+
+        uniq_name, ext = os.path.splitext(uniq_pdf)
+        uniq_img = uniq_name + '.png'
+        uniq_txt = uniq_name + '.txt'
+
+        cmd = ['pdftoppm']
+        if first is not None: cmd.extend(['-f', str(first)])
+        if last is not None: cmd.extend(['-l', str(last)])
+
+        # 1st create a .png image from the uniq pdf file
+        cmd.extend(['-singlefile'])
+        cmd.extend(['-png'])
+        cmd.extend(['-q'])
+        cmd.append(uniq_pdf)
+        cmd.append(uniq_name)
+        sp.check_call(cmd)
+
+        # 2nd extract text from .png using tesseract
+        cmd = ["tesseract", uniq_img, uniq_name, "-l", "eng", "quiet"]
         sp.check_call(cmd)
     else:
-        logger.info('file already present: '+txtfile)
-    txt = open(txtfile).read()
+        logger.info('file already present: '+uniq_txt)
+    txt = open(uniq_txt).read()
     if not keeptxt:
-        os.remove(txtfile)
+        os.remove(uniq_pdf)
+        os.remove(uniq_img)
+        os.remove(uniq_txt)
     return txt
 
 
