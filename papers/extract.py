@@ -20,55 +20,46 @@ my_etiquette = Etiquette('papers', papers.__version__, 'https://github.com/perre
 # PDF parsing / crossref requests
 # ===============================
 
-def createrandname(path, ext):
-    import random
-    import string
-    check = False
-    while check == False:
-        rand = "".join(
-            random.sample(string.ascii_lowercase + string.digits, 20)
-        ) + ext
-        check = True if not os.path.exists(path + rand) else False
-    return rand
-
-
 def readpdf(pdf, first=None, last=None, keeptxt=False):
     import shutil
-    txtfile = pdf.replace('.pdf', '.txt')
-    imgfile = pdf.replace('.pdf', '.png')
-    # txtfile = os.path.join(os.path.dirname(pdf), pdf.replace('.pdf','.txt'))
+    import tempfile
     if True:  # not os.path.exists(txtfile):
-        # logger.info(' '.join(['pdftotext','"'+pdf+'"', '"'+txtfile+'"']))
         if os.path.isfile(pdf):
             path, ext = os.path.splitext(pdf)
-            path = "/".join(path.split("/")[:-1])
-            rand = createrandname(path, ext)
-            # Do the rename
-            newfile = os.path.join(path, rand)
-            shutil.copyfile(pdf, newfile)
-            logger.info("\t->", rand)
-            pdf = newfile
+            path = os.path.dirname(path)
+            fd, uniq_pdf = tempfile.mkstemp(dir=path, suffix=ext)
+            uniq_pdf = shutil.copy2(pdf, uniq_pdf)
+            logger.info("\t->", uniq_pdf)
         else:
             # Not a file
             logger.info("\tSkipped:", "'" + pdf + "'", "Target is not a file")
+
+        uniq_name, ext = os.path.splitext(uniq_pdf)
+        uniq_img = uniq_name + '.png'
+        uniq_txt = uniq_name + '.txt'
+
         cmd = ['pdftoppm']
         if first is not None: cmd.extend(['-f', str(first)])
         if last is not None: cmd.extend(['-l', str(last)])
+
+        # 1st create a .png image from the uniq pdf file
         cmd.extend(['-singlefile'])
         cmd.extend(['-png'])
         cmd.extend(['-q'])
-        cmd.append(pdf)
-        cmd.append(imgfile.replace(".png", ""))
+        cmd.append(uniq_pdf)
+        cmd.append(uniq_name)
         sp.check_call(cmd)
-        cmd = ["tesseract", imgfile, txtfile.replace(".txt", ""), "-l", "eng", "quiet"]
+
+        # 2nd extract text from .png using tesseract
+        cmd = ["tesseract", uniq_img, uniq_name, "-l", "eng", "quiet"]
         sp.check_call(cmd)
     else:
-        logger.info('file already present: '+txtfile)
-    txt = open(txtfile).read()
+        logger.info('file already present: '+uniq_txt)
+    txt = open(uniq_txt).read()
     if not keeptxt:
-        os.remove(txtfile)
-        os.remove(imgfile)
-        os.remove(pdf)
+        os.remove(uniq_pdf)
+        os.remove(uniq_img)
+        os.remove(uniq_txt)
     return txt
 
 
