@@ -31,7 +31,7 @@ before_install:
   - pip install pytest
   - pip install pytest-cov
   - pip install coveralls
-  pip install --upgrade setuptools
+  - pip install --upgrade setuptools
 install:
   - python setup.py install
 
