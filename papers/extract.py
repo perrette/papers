@@ -27,29 +27,17 @@ def readpdf(pdf, first=None, last=None):
     if not os.path.isfile(pdf):
         raise ValueError(repr(pdf) + ": not a file")
 
-    tmpbase = tempfile.mktemp()
-    tmppng = tmpbase + '.png'
-    tmptxt = tmpbase + '.txt'
+    tmptxt = tempfile.mktemp(suffix='.txt')
 
-    # 1st create a .png image from the uniq pdf file
-    cmd = ['pdftoppm', '-singlefile', '-png', '-q']
+    cmd = ['pdftotext']
     if first is not None: cmd.extend(['-f', str(first)])
     if last is not None: cmd.extend(['-l', str(last)])
-    cmd.extend([pdf, tmpbase])
+    cmd.extend([pdf, tmptxt])
     logger.info(' '.join(cmd))
-    # print(' '.join(cmd))
-    sp.check_call(cmd)
-
-    # 2nd extract text from .png using tesseract
-    cmd = ["tesseract", tmppng, tmpbase, "-l", "eng", "quiet"]
-    logger.info(' '.join(cmd))
-    # print(' '.join(cmd))
     sp.check_call(cmd)
 
     txt = open(tmptxt).read()
-
     os.remove(tmptxt)
-    os.remove(tmppng)
 
     return txt
 

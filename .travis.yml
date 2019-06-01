@@ -5,14 +5,6 @@ addons:
   apt:
     packages:
     - poppler-utils
-    - tesseract-ocr
-    - tesseract-ocr-eng
-    - imagemagick
-    - libleptonica-dev
-    - libicu-dev
-    - libpango1.0-dev
-    - libcairo2-dev
-    - python-tox
 python:
   - "2.7"
   - "3.5"
@@ -26,12 +18,10 @@ before_install:
   - pip install fuzzywuzzy
   - pip install unidecode
   - pip install scholarly
-  - pip install tox-travis
 # test coverage
   - pip install pytest
   - pip install pytest-cov
   - pip install coveralls
-  - pip install --upgrade setuptools
 install:
   - python setup.py install
 
