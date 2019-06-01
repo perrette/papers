@@ -42,6 +42,38 @@ def readpdf(pdf, first=None, last=None):
     return txt
 
 
+def readpdf_image(pdf, first=None, last=None):
+
+    if not os.path.isfile(pdf):
+        raise ValueError(repr(pdf) + ": not a file")
+
+    tmpbase = tempfile.mktemp()
+    tmppng = tmpbase + '.png'
+    tmptxt = tmpbase + '.txt'
+
+    # 1st create a .png image from the uniq pdf file
+    cmd = ['pdftoppm', '-singlefile', '-png', '-q']
+    if first is not None: cmd.extend(['-f', str(first)])
+    if last is not None: cmd.extend(['-l', str(last)])
+    cmd.extend([pdf, tmpbase])
+    logger.info(' '.join(cmd))
+    # print(' '.join(cmd))
+    sp.check_call(cmd)
+
+    # 2nd extract text from .png using tesseract
+    cmd = ["tesseract", tmppng, tmpbase, "-l", "eng", "quiet"]
+    logger.info(' '.join(cmd))
+    # print(' '.join(cmd))
+    sp.check_call(cmd)
+
+    txt = open(tmptxt).read()
+
+    os.remove(tmptxt)
+    os.remove(tmppng)
+
+    return txt
+
+
 def parse_doi(txt, space_digit=False):
     # cut the reference part...
 
@@ -92,7 +124,7 @@ def isvaliddoi(doi):
     return doi.lower() == doi2.lower()
 
 
-def pdfhead(pdf, maxpages=10, minwords=200):
+def pdfhead(pdf, maxpages=10, minwords=200, image=False):
     """ read pdf header
     """
     i = 0
@@ -100,12 +132,15 @@ def pdfhead(pdf, maxpages=10, minwords=200):
     while len(txt.strip().split()) < minwords and i < maxpages:
         i += 1
         logger.debug('read pdf page: '+str(i))
-        txt += readpdf(pdf, first=i, last=i)
+        if image:
+            txt += readpdf_image(pdf, first=i, last=i)
+        else:
+            txt += readpdf(pdf, first=i, last=i)
     return txt
 
 
-def extract_pdf_doi(pdf, space_digit=True):
-    return parse_doi(pdfhead(pdf), space_digit=space_digit)
+def extract_pdf_doi(pdf, space_digit=True, image=False):
+    return parse_doi(pdfhead(pdf, image=image), space_digit=space_digit)
 
 
 def query_text(txt, max_query_words=200):
@@ -162,8 +197,8 @@ def extract_txt_metadata(txt, search_doi=True, search_fulltext=False, space_digi
     return bibtex
 
 
-def extract_pdf_metadata(pdf, search_doi=True, search_fulltext=True, maxpages=10, minwords=200, **kw):
-    txt = pdfhead(pdf, maxpages, minwords)
+def extract_pdf_metadata(pdf, search_doi=True, search_fulltext=True, maxpages=10, minwords=200, image=False, **kw):
+    txt = pdfhead(pdf, maxpages, minwords, image=image)
     return extract_txt_metadata(txt, search_doi, search_fulltext, **kw)
 
 
