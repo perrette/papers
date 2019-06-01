@@ -1,5 +1,3 @@
-
-
 from __future__ import print_function
 import os
 import json
@@ -7,6 +5,8 @@ import six
 import subprocess as sp
 import six.moves.urllib.request
 import re
+import shutil
+import tempfile
 
 from crossref.restful import Works, Etiquette
 import bibtexparser
@@ -22,45 +22,35 @@ my_etiquette = Etiquette('papers', papers.__version__, 'https://github.com/perre
 # PDF parsing / crossref requests
 # ===============================
 
-def readpdf(pdf, first=None, last=None, keeptxt=False):
-    import shutil
-    import tempfile
-    if True:  # not os.path.exists(txtfile):
-        if os.path.isfile(pdf):
-            path, ext = os.path.splitext(pdf)
-            fd, uniq_pdf = tempfile.mkstemp(suffix=ext)
-            uniq_pdf = shutil.copy2(pdf, uniq_pdf)
-            logger.info("\t->", uniq_pdf)
-        else:
-            # Not a file
-            logger.info("\tSkipped:", "'" + pdf + "'", "Target is not a file")
+def readpdf(pdf, first=None, last=None):
 
-        uniq_name, ext = os.path.splitext(uniq_pdf)
-        uniq_img = uniq_name + '.png'
-        uniq_txt = uniq_name + '.txt'
+    if not os.path.isfile(pdf):
+        raise ValueError(repr(pdf) + ": not a file")
 
-        cmd = ['pdftoppm']
-        if first is not None: cmd.extend(['-f', str(first)])
-        if last is not None: cmd.extend(['-l', str(last)])
+    tmpbase = tempfile.mktemp()
+    tmppng = tmpbase + '.png'
+    tmptxt = tmpbase + '.txt'
 
-        # 1st create a .png image from the uniq pdf file
-        cmd.extend(['-singlefile'])
-        cmd.extend(['-png'])
-        cmd.extend(['-q'])
-        cmd.append(uniq_pdf)
-        cmd.append(uniq_name)
-        sp.check_call(cmd)
+    # 1st create a .png image from the uniq pdf file
+    cmd = ['pdftoppm', '-singlefile', '-png', '-q']
+    if first is not None: cmd.extend(['-f', str(first)])
+    if last is not None: cmd.extend(['-l', str(last)])
+    cmd.extend([pdf, tmpbase])
+    logger.info(' '.join(cmd))
+    # print(' '.join(cmd))
+    sp.check_call(cmd)
 
-        # 2nd extract text from .png using tesseract
-        cmd = ["tesseract", uniq_img, uniq_name, "-l", "eng", "quiet"]
-        sp.check_call(cmd)
-    else:
-        logger.info('file already present: '+uniq_txt)
-    txt = open(uniq_txt).read()
-    if not keeptxt:
-        os.remove(uniq_pdf)
-        os.remove(uniq_img)
-        os.remove(uniq_txt)
+    # 2nd extract text from .png using tesseract
+    cmd = ["tesseract", tmppng, tmpbase, "-l", "eng", "quiet"]
+    logger.info(' '.join(cmd))
+    # print(' '.join(cmd))
+    sp.check_call(cmd)
+
+    txt = open(tmptxt).read()
+
+    os.remove(tmptxt)
+    os.remove(tmppng)
+
     return txt
 
 
