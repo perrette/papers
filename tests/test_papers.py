@@ -5,6 +5,7 @@ import os, subprocess as sp
 import tempfile, shutil
 import difflib
 
+from papers.extract import extract_pdf_metadata
 from papers.bib import Biblio, bibtexparser, parse_file, format_file
 from download import downloadpdf
 
@@ -101,7 +102,10 @@ class TestSimple(unittest.TestCase):
         db1 = bibtexparser.loads(bibtexs)
         db2 = bibtexparser.loads(self.bibtex)
         self.assertEqual(db1.entries, db2.entries)
-	    
+
+    def test_fetch_scholar(self):
+        extract_pdf_metadata(self.pdf, scholar=True)
+
 class TestInstall(unittest.TestCase):
 
     def setUp(self):
@@ -109,7 +113,7 @@ class TestInstall(unittest.TestCase):
         self.filesdir = tempfile.mktemp(prefix='papers.files')
 
     def test_install(self):
-        sp.check_call('papers install --local --bibtex {} --files {}'.format(self.mybib, self.filesdir), 
+        sp.check_call('papers install --local --bibtex {} --files {}'.format(self.mybib, self.filesdir),
             shell=True)
         self.assertTrue(os.path.exists(self.mybib))
         self.assertTrue(os.path.exists(self.filesdir))
@@ -157,7 +161,7 @@ class TestAdd(unittest.TestCase):
 
     def test_fails_without_install(self):
         os.remove(self.mybib)
-        func = lambda: sp.check_call('papers add {} --bibtex {} --files {}'.format(self.pdf, self.mybib, 
+        func = lambda: sp.check_call('papers add {} --bibtex {} --files {}'.format(self.pdf, self.mybib,
             self.filesdir))
         self.assertRaises(Exception, func)
 
@@ -250,7 +254,7 @@ class TestAdd2(TestAdd):
         self.assertEqual(os.path.basename(main), os.path.basename(self.pdf))
         self.assertEqual(os.path.basename(si), os.path.basename(self.si))
         # old pdfs still exists
-        self.assertTrue(os.path.exists(self.pdf)) 
+        self.assertTrue(os.path.exists(self.pdf))
         self.assertTrue(os.path.exists(self.si))
 
 
@@ -381,7 +385,7 @@ class TestDuplicates(unittest.TestCase):
  author = {M. Perrette and A. Yool and G. D. Quartly and E. E. Popova},
  doi = {10.5194/XXX},
  title = {Near-ubiquity of ice-edge blooms in the Arctic},
-}""" 
+}"""
 
     conflictyear = """@article{Perrette_2011,
  author = {M. Perrette and A. Yool and G. D. Quartly and E. E. Popova},
@@ -413,10 +417,10 @@ class TestDuplicates(unittest.TestCase):
 
     def test_missingtitauthor(self):
         self.assertTrue(self.isduplicate(self.reference, self.missingtitauthor))
-        
+
     def test_conflictauthor(self):
         self.assertFalse(self.isduplicate(self.reference, self.conflictauthor))
-        
+
     def test_conflictdoi(self):
         self.assertFalse(self.isduplicate(self.reference, self.conflictdoi))
 
@@ -476,11 +480,11 @@ class TestDuplicatesPartial(SimilarityBase, TestDuplicates):
 
     def test_conflictauthor(self):
         self.assertTrue(self.isduplicate(self.reference, self.conflictauthor))
-        
+
     def test_conflictdoi(self):
         self.assertTrue(self.isduplicate(self.reference, self.conflictdoi))
-        
-        
+
+
 
 class TestDuplicatesAdd(SimilarityBase, TestDuplicates):
 
@@ -559,7 +563,7 @@ class TestAddResolveDuplicate(BibTest):
         open(self.otherbib, 'w').write(self.conflict)
         sp.check_call(self.command('a'), shell=True)
         # sp.check_call('papers add {} --bibtex {} --debug'.format(self.otherbib, self.mybib), shell=True)
-        expected = self.conflict + '\n\n' + self.original 
+        expected = self.conflict + '\n\n' + self.original
         self.assertMultiLineEqual(open(self.mybib).read().strip(), expected) # entries did not change
 
 
@@ -707,7 +711,7 @@ class TestUnicodeVsLatexEncoding(BibTest):
 
 class TestAddConflict(BibTest):
     ## TODO: tear down in several smaller tests
-    
+
     bibtex = """@article{Perrette_2011,
  author = {M. Perrette and A. Yool and G. D. Quartly and E. E. Popova},
  doi = {10.5194/bg-8-515-2011},
@@ -802,7 +806,7 @@ class TestAddConflict(BibTest):
         # sp.check_call('papers install --local --bibtex {} --files {}'.format(self.mybib, self.filesdir), shell=True)
         open(self.mybib, 'w').write(self.bibtex)
         # open(self.otherbib, 'w').write('')
-        # sp.check_call('papers add {} --bibtex {}'.format(self.otherbib, self.mybib), shell=True)        
+        # sp.check_call('papers add {} --bibtex {}'.format(self.otherbib, self.mybib), shell=True)
         # self.assertMultiLineEqual(open(self.mybib).read().strip(), self.bibtex)
 
     def tearDown(self):
