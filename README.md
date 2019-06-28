@@ -34,7 +34,7 @@ Dependencies
 Install
 -------
 - clone this project
-- `pip install unidecode crossrefapi bibtexparser scholarly fuzzywuzzy six`
+- `pip install --user -r requirements.txt`
 - install third-party dependencies (Ubuntu: `sudo apt install popper-utils`)
 - `python setup.py install`
 
