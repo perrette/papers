@@ -2,12 +2,13 @@ import os, json, shutil
 import subprocess as sp, sys, shutil
 import hashlib
 import bibtexparser
+import six
 from six.moves import input as raw_input
 from papers import logger
 
 # GIT = False
 DRYRUN = False
- 
+
 # config directory location
 HOME = os.environ.get('HOME',os.path.expanduser('~'))
 CONFIG_HOME = os.environ.get('XDG_CONFIG_HOME', os.path.join(HOME, '.config'))
@@ -50,7 +51,7 @@ def check_filesdir(folder):
 class Config(object):
     """configuration class to specify system-wide collections and files-dir
     """
-    def __init__(self, file=CONFIG_FILE, data=DATA_DIR, cache=CACHE_DIR, 
+    def __init__(self, file=CONFIG_FILE, data=DATA_DIR, cache=CACHE_DIR,
         bibtex=None, filesdir=None, gitdir=None, git=False):
         self.file = file
         self.data = data
@@ -129,12 +130,12 @@ class Config(object):
         lines = []
         lines.append(bcolors.BOLD+'papers configuration'+bcolors.ENDC)
         if verbose:
-            lines.append('* configuration file: '+self.file) 
-            lines.append('* cache directory:    '+self.cache) 
-            # lines.append('* app data directory: '+self.data) 
-            lines.append('* git-tracked:        '+str(self.git)) 
+            lines.append('* configuration file: '+self.file)
+            lines.append('* cache directory:    '+self.cache)
+            # lines.append('* app data directory: '+self.data)
+            lines.append('* git-tracked:        '+str(self.git))
             if self.git:
-                lines.append('* git directory :     '+self.gitdir) 
+                lines.append('* git directory :     '+self.gitdir)
 
         if not os.path.exists(self.filesdir):
             status = bcolors.WARNING+' (missing)'+bcolors.ENDC
@@ -147,10 +148,10 @@ class Config(object):
             status = ''
 
         files = self.filesdir
-        lines.append('* files directory:    '+files+status) 
+        lines.append('* files directory:    '+files+status)
 
         if not os.path.exists(self.bibtex):
-            status = bcolors.WARNING+' (missing)'+bcolors.ENDC 
+            status = bcolors.WARNING+' (missing)'+bcolors.ENDC
         elif check_files:
             try:
                 db = bibtexparser.load(open(self.bibtex))
@@ -190,7 +191,7 @@ config.check_install()
 
 
 def cached(file, hashed_key=False):
-    
+
     file = os.path.join(config.cache, file)
 
     def decorator(fun):
@@ -249,7 +250,7 @@ def move(f1, f2, copy=False, interactive=True):
         os.makedirs(dirname)
     if f1 == f2:
         logger.info('dest is identical to src: '+f1)
-        return 
+        return
     if os.path.exists(f2):
         ans = raw_input('dest file already exists: '+f2+'. Replace? (y/n) ')
         if ans != 'y':
