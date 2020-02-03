@@ -1,0 +1,6 @@
+unidecode
+crossrefapi
+bibtexparser
+scholarly
+fuzzywuzzy
+six
