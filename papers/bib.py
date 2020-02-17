@@ -382,9 +382,9 @@ class Biblio(object):
         self.add_bibtex(bibtex, **kw)
 
 
-    def add_pdf(self, pdf, attachments=None, rename=False, copy=False, search_doi=True, search_fulltext=True, space_digit=True, scholar=False, **kw):
+    def add_pdf(self, pdf, attachments=None, rename=False, copy=False, search_doi=True, search_fulltext=True, scholar=False, **kw):
         
-        bibtex = extract_pdf_metadata(pdf, search_doi, search_fulltext, space_digit=space_digit, scholar=scholar)
+        bibtex = extract_pdf_metadata(pdf, search_doi, search_fulltext, scholar=scholar)
 
         bib = bibtexparser.loads(bibtex)
         entry = bib.entries[0]
@@ -1259,10 +1259,9 @@ def main():
     doip = subparsers.add_parser('doi', description='parse DOI from PDF')
     doip.add_argument('pdf')
     doip.add_argument('--image', action='store_true', help='convert to image and use tesseract instead of pdftotext')
-    doip.add_argument('--space-digit', action='store_true', help='space digit fix')
     
     def doicmd(o):
-        print(extract_pdf_doi(o.pdf, o.space_digit, image=o.image))
+        print(extract_pdf_doi(o.pdf, image=o.image))
 
     # fetch
     # =====   

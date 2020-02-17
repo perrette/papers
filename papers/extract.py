@@ -82,7 +82,7 @@ def readpdf_image(pdf, first=None, last=None):
 
 REGEXP = re.compile(r'[doi,doi.org/][\s\.\:]{0,2}(10\.\d{4}[\d\:\.\-\/a-z]+)[A-Z\s,\n]')
 
-def parse_doi(txt, space_digit=False):
+def parse_doi(txt):
     # based on: https://doeidoei.wordpress.com/2009/10/22/regular-expression-to-match-a-doi-digital-object-identifier/
     # doi = r'[doi|DOI][\s\.\:]{0,2}(10\.\d{4}[\d\:\.\-\/a-z]+)[A-Z\s]'
 
@@ -103,9 +103,6 @@ def parse_doi(txt, space_digit=False):
 
     # clean expression
     doi = match.replace('\n','').strip('.')
-
-    if space_digit:
-        doi = doi.replace(' ','_')
 
     if doi.lower().endswith('.received'):
         doi = doi[:-len('.received')]
@@ -140,8 +137,8 @@ def pdfhead(pdf, maxpages=10, minwords=200, image=False):
     return txt
 
 
-def extract_pdf_doi(pdf, space_digit=True, image=False):
-    return parse_doi(pdfhead(pdf, image=image), space_digit=space_digit)
+def extract_pdf_doi(pdf, image=False):
+    return parse_doi(pdfhead(pdf, image=image))
 
 
 def query_text(txt, max_query_words=200):
@@ -164,7 +161,7 @@ def query_text(txt, max_query_words=200):
     return query_txt
 
 
-def extract_txt_metadata(txt, search_doi=True, search_fulltext=False, space_digit=True, max_query_words=200, scholar=False):
+def extract_txt_metadata(txt, search_doi=True, search_fulltext=False, max_query_words=200, scholar=False):
     """extract metadata from text, by parsing and doi-query, or by fulltext query in google scholar
     """
     assert search_doi or search_fulltext, 'no search criteria specified for metadata'
@@ -174,7 +171,7 @@ def extract_txt_metadata(txt, search_doi=True, search_fulltext=False, space_digi
     if search_doi:
         try:
             logger.debug('parse doi')
-            doi = parse_doi(txt, space_digit=space_digit)
+            doi = parse_doi(txt)
             logger.info('found doi:'+doi)
             logger.debug('query bibtex by doi')
             bibtex = fetch_bibtex_by_doi(doi)
