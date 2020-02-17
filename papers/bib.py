@@ -846,6 +846,9 @@ def main():
         # create bibtex file if not existing
         if not os.path.exists(o.bibtex):
             logger.info('create empty bibliography database: '+o.bibtex)
+            dirname = os.path.dirname(o.bibtex)
+            if not os.path.exists(dirname):
+                os.makedirs(dirname)
             open(o.bibtex,'w').write('')
 
         # create bibtex file if not existing

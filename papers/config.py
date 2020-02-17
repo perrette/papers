@@ -154,7 +154,8 @@ class Config(object):
             status = bcolors.WARNING+' (missing)'+bcolors.ENDC
         elif check_files:
             try:
-                db = bibtexparser.load(open(self.bibtex))
+                bibtexstring = open(self.bibtex).read()
+                db = bibtexparser.loads(bibtexstring)
                 if len(db.entries):
                     status = bcolors.OKBLUE+' ({} entries)'.format(len(db.entries))+bcolors.ENDC
                 else:
