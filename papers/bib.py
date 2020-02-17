@@ -559,7 +559,7 @@ class Biblio(object):
         if fix_doi:
             if 'doi' in e and e['doi']:
                 try:
-                    doi = parse_doi(e['doi'])
+                    doi = parse_doi('doi:'+e['doi'])
                 except:
                     logger.warn(e.get('ID','')+': failed to fix doi: '+e['doi'])
                     return

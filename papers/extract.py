@@ -19,6 +19,13 @@ from papers.encoding import family_names, latex_to_unicode
 my_etiquette = Etiquette('papers', papers.__version__, 'https://github.com/perrette/papers', 'mahe.perrette@gmail.com')
 
 
+class DOIParsingError(ValueError):
+    pass
+
+class NonExistentDOI(ValueError):
+    pass
+
+
 # PDF parsing / crossref requests
 # ===============================
 
@@ -73,31 +80,24 @@ def readpdf_image(pdf, first=None, last=None):
 
     return txt
 
+REGEXP = re.compile(r'[doi,doi.org/][\s\.\:]{0,2}(10\.\d{4}[\d\:\.\-\/a-z]+)[A-Z\s,\n]')
 
 def parse_doi(txt, space_digit=False):
-    # cut the reference part...
+    # based on: https://doeidoei.wordpress.com/2009/10/22/regular-expression-to-match-a-doi-digital-object-identifier/
+    # doi = r'[doi|DOI][\s\.\:]{0,2}(10\.\d{4}[\d\:\.\-\/a-z]+)[A-Z\s]'
 
-    # doi = r"10\.\d\d\d\d/[^ ,]+"  # this ignore line breaks
-    doi = r"10\.\d\d\d\d/.*?"
+    # maybe try that? (need to convert to python-regex)
+    # https://www.crossref.org/blog/dois-and-matching-regular-expressions/
+    # a. /^10.\d{4,9}/[-._;()/:A-Z0-9]+$/i
+    # b. /^10.1002/[^\s]+$/i
+    # c. /^10.\d{4}/\d+-\d+X?(\d+)\d+<[\d\w]+:[\d\w]*>\d+.\d+.\w+;\d$/i
+    # d. /^10.1021/\w\w\d++$/i
+    # e. /^10.1207/[\w\d]+\&\d+_\d+$/i
 
-    # sometimes an underscore is converted as space
-    if space_digit:
-        doi += r"[ \d]*"  # also accept empty space followed by digit
-
-    # expression ends with a comma, empty space or newline
-    stop = r"[, \n]"
-
-    # expression starts with doi:
-    prefixes = ['doi:', 'doi: ', 'doi ', 'dx\.doi\.org/', 'doi/']
-    prefix = '[' + '|'.join(prefixes) + ']' # match any of those
-
-    # full expression, capture doi as a group
-    regexp = prefix + "(" + doi + ")" + stop
-
-    matches = re.compile(regexp).findall(' '+txt.lower()+' ')
+    matches = REGEXP.findall(' '+txt.lower()+' ')
 
     if not matches:
-        raise ValueError('parse_doi::no matches')
+        raise DOIParsingError('parse_doi::no matches')
 
     match = matches[0]
 
@@ -111,14 +111,15 @@ def parse_doi(txt, space_digit=False):
         doi = doi[:-len('.received')]
 
     # quality check 
-    assert len(doi) > 8, 'failed to extract doi: '+doi
+    if len(doi) <= 8:
+        raise DOIParsingError('failed to extract doi: '+doi)
 
     return doi
 
 
 def isvaliddoi(doi):
     try:
-        doi2 = parse_doi(doi)
+        doi2 = parse_doi('doi:'+doi)
     except:
         return False
     return doi.lower() == doi2.lower()
@@ -179,8 +180,15 @@ def extract_txt_metadata(txt, search_doi=True, search_fulltext=False, space_digi
             bibtex = fetch_bibtex_by_doi(doi)
             logger.debug('doi query successful')
 
+        except DOIParsingError as error:
+            logger.debug(u'doi parsing error: '+str(error))
+
+        except NonExistentDOI as error:
+            raise
+
         except ValueError as error:
-            logger.debug(u'failed to obtained bibtex by doi search: '+str(error))
+            raise
+            # logger.debug(u'failed to obtained bibtex by doi search: '+str(error))
 
     if search_fulltext and not bibtex:
         logger.debug('query bibtex by fulltext')
@@ -207,8 +215,11 @@ def extract_pdf_metadata(pdf, search_doi=True, search_fulltext=True, maxpages=10
 def fetch_bibtex_by_doi(doi):
     url = "http://api.crossref.org/works/"+doi+"/transform/application/x-bibtex"
     work = Works(etiquette=my_etiquette)
-    bibtex = work.do_http_request('get', url, custom_header=str(work.etiquette)).text
-    return bibtex.strip()
+    response = work.do_http_request('get', url, custom_header=str(work.etiquette))
+    if response.ok:
+        bibtex = response.text.strip()
+        return bibtex
+    raise NonExistentDOI(repr(doi)+': '+response.text)
 
 
 @cached('crossref.json')
