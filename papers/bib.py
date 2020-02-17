@@ -641,14 +641,14 @@ def requiresreview(e):
     return False
 
 
-def entry_filecheck_metadata(e, file):
+def entry_filecheck_metadata(e, file, image=False):
     ''' parse pdf metadata and compare with entry: only doi for now
     '''
     if 'doi' not in e:
         raise ValueError(e['ID']+': no doi, skip PDF parsing')
 
     try:
-        doi = extract_pdf_doi(file)
+        doi = extract_pdf_doi(file, image=image)
     except Exception as error:
         raise ValueError(e['ID']+': failed to parse doi: "{}"'.format(file))
     if not isvaliddoi(doi):
@@ -659,7 +659,7 @@ def entry_filecheck_metadata(e, file):
 
 
 def entry_filecheck(e, delete_broken=False, fix_mendeley=False, 
-    check_hash=False, check_metadata=False, interactive=True):
+    check_hash=False, check_metadata=False, interactive=True, image=False):
 
     if 'file' not in e:
         return
@@ -708,7 +708,7 @@ def entry_filecheck(e, delete_broken=False, fix_mendeley=False,
         # parse PDF and check for metadata
         if check_metadata and file.endswith('.pdf'):
             try:
-                entry_filecheck_metadata(e, file)
+                entry_filecheck_metadata(e, file, image=image)
             except ValueError as error:
                 logger.warn(error)
 
@@ -1258,10 +1258,11 @@ def main():
     # ===
     doip = subparsers.add_parser('doi', description='parse DOI from PDF')
     doip.add_argument('pdf')
+    doip.add_argument('--image', action='store_true', help='convert to image and use tesseract instead of pdftotext')
     doip.add_argument('--space-digit', action='store_true', help='space digit fix')
     
     def doicmd(o):
-        print(extract_pdf_doi(o.pdf, o.space_digit))
+        print(extract_pdf_doi(o.pdf, o.space_digit, image=o.image))
 
     # fetch
     # =====   
@@ -1279,9 +1280,10 @@ def main():
     extractp.add_argument('-n', '--word-count', type=int, default=200)
     extractp.add_argument('--fulltext', action='store_true', help='fulltext only (otherwise DOI-based)')
     extractp.add_argument('--scholar', action='store_true', help='use google scholar instead of default crossref for fulltext search')
+    extractp.add_argument('--image', action='store_true', help='convert to image and use tesseract instead of pdftotext')
 
     def extractcmd(o):
-        print(extract_pdf_metadata(o.pdf, search_doi=not o.fulltext, search_fulltext=True, scholar=o.scholar, minwords=o.word_count, max_query_words=o.word_count))
+        print(extract_pdf_metadata(o.pdf, search_doi=not o.fulltext, search_fulltext=True, scholar=o.scholar, minwords=o.word_count, max_query_words=o.word_count, image=o.image))
         # print(fetch_bibtex_by_doi(o.doi))
 
     # *** Pure OS related file checks ***
