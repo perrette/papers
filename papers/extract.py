@@ -22,7 +22,7 @@ my_etiquette = Etiquette('papers', papers.__version__, 'https://github.com/perre
 class DOIParsingError(ValueError):
     pass
 
-class NonExistentDOI(ValueError):
+class DOIRequestError(ValueError):
     pass
 
 
@@ -180,8 +180,11 @@ def extract_txt_metadata(txt, search_doi=True, search_fulltext=False, max_query_
         except DOIParsingError as error:
             logger.debug(u'doi parsing error: '+str(error))
 
-        except NonExistentDOI as error:
-            raise
+        except DOIRequestError as error:
+            return '''@misc{{{doi},
+             doi = {{{doi}}},
+             url = {{http://dx.doi.org/{doi}}},
+            }}'''.format(doi=doi)
 
         except ValueError as error:
             raise
@@ -216,7 +219,7 @@ def fetch_bibtex_by_doi(doi):
     if response.ok:
         bibtex = response.text.strip()
         return bibtex
-    raise NonExistentDOI(repr(doi)+': '+response.text)
+    raise DOIRequestError(repr(doi)+': '+response.text)
 
 
 @cached('crossref.json')
