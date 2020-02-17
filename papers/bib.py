@@ -1215,11 +1215,14 @@ def main():
             key = lambda e: nfiles(e)*(bcolors.BOLD)+bcolors.OKBLUE+e['ID']+':'+bcolors.ENDC
 
         if o.edit:
+            otherentries = [e for e in my.db.entries if e not in entries]
             try:
                 entries = edit_entries(entries)
+                my.db.entries = otherentries + entries
             except Exception as error:
                 logger.error(str(error))
                 return
+
             savebib(my, o)
 
         elif o.fetch:
