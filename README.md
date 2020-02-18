@@ -90,11 +90,11 @@ Install comes with the option to git-track any change to the bibtex file (`--git
 
 Note the existing bibtex file was detected but untouched.
 The configuration file is global (unless `--local` is specified), so from now on, any `papers`
-command will be know about these settings. Type `papers status -v` to check your
+command will know about these settings. Type `papers status -v` to check your
 configuration.
 You also notice that crossref requests are saved in the cache directory.
 This happens regardless of whether `papers` is installed or not.
-From now on, no needs to specify bibtex file or files directory.
+From now on, no need to specify bibtex file or files directory.
 
 - list entries (and edit etc...)
 
@@ -156,7 +156,6 @@ Planned features
     - could also use git branches / merge
 - associate bibtex to existing pdf collection (to move library location)
 - fetch PDFs for existing entries? Bindings with [sopaper](https://github.com/ppwwyyxx/SoPaper)
-- as add-on in separate github: basic flask interface to browse papers & edit entries. E.g. check-out [paperhero](https://github.com/PatWie/paperhero)
 - lazy loading of modules (optimization)
 
 
