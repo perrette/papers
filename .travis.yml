@@ -15,7 +15,7 @@ before_install:
   - pip install bibtexparser
   - pip install six
   - pip install crossrefapi
-  - pip install fuzzywuzzy
+  - pip install rapidfuzz
   - pip install unidecode
   - pip install scholarly
 # test coverage
