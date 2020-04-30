@@ -85,16 +85,16 @@ For the sake of the example, one of my owns: https://www.earth-syst-dynam.net/4/
 
 where 'nameformat' is a comma-separated list of fields, with valid fields being any field available in the bibtex. Fields not in the bibtex will remain untouched.
 
-To rename esd-4-11-2013.pdf as perrette_2013.pdf, nameformat should be "author,_,year".
-If that happens to be the entry ID, 'ID' also works.
+To rename esd-4-11-2013.pdf as perrette_2013.pdf, nameformat should be `author,_,year`.
+If that happens to be the entry ID, `ID` also works.
 
 To rename esd-4-11-2013.pdf as 2013/Perrette2013-AScalingApproachToProjectRegionalSeaLevelRiseAndItsUncertainties.pdf,
-nameformat should be 'year,/,Author,year,Title' (note the case).
+nameformat should be `year,/,Author,year,Title` (note the case).
 
-Entries are case-sensitive, so that:
-    'author' generates 'perrette'
-    'Author' generates 'Perrette'
-    'AUTHOR' generates 'PERRETTE'
+Entries are case-sensitive, so that:  
+    'author' generates 'perrette'  
+    'Author' generates 'Perrette'  
+    'AUTHOR' generates 'PERRETTE'  
 any other case, like 'AuTHoR', will retrieve the field from 'e' with unaltered case.
 
 
