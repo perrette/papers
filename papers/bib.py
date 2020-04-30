@@ -478,7 +478,20 @@ class Biblio(object):
         # newname = entrydir(e, root)
         direc = self.filesdir
 
-        autoname = lambda s: s.replace(':','-').replace(';','-') # ':' and ';' are forbidden in file name
+        def autoname(namestr):
+            # Adapted
+            # from https://gitlab.com/malfatti/SciScripts/-/blob/master/Python3/Files/FixStupidFileNames.py
+
+            New = namestr
+
+            for C in ['"',"'",'!','@','#','$','%','&','*','+','=',';',':','?',',','/','\\']:
+                if C in New: New = New.replace(C,'')
+
+            for C in ['(', ')', '[', ']', '{', '}', '<', '>', '|']:
+                if C in New: New = New.replace(C,'_')
+
+            return(New)
+
 
         Fields = nameformat.split(',')
         for F,Field in enumerate(Fields):
