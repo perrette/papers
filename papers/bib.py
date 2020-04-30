@@ -491,8 +491,11 @@ class Biblio(object):
             elif Field.lower() in e.keys():
                 if Field.lower() == 'author':
                     Names = family_names(e['author'])
-                    eField = Names[0]
-                    if len(Names) > 3: eField += ' et al'
+
+                    if len(Names) >= 3: eField = Names[0] + ' et al'
+                    elif len(Names) == 2: eField = ' and '.join(Names)
+                    else: eField = Names[0]
+
                 else:
                     eField = e[Field.lower()]
 
