@@ -541,7 +541,7 @@ class Biblio(object):
 
         # several files: only rename container
         else:
-            newdir = os.path.join(direc, autoname(e))
+            newdir = os.path.join(direc, autoname(e['ID']))
             newfiles = []
             for file in files:
                 newfile = os.path.join(newdir, os.path.basename(file))
