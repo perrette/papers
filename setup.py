@@ -11,6 +11,6 @@ setup(name='papers',
       packages=['papers'],
       scripts=['scripts/papers'],
       license = "MIT",
-      requires = ["bibtexparser","crossrefapi","fuzzywuzzy", "unidecode", "scholarly", "six"],
+      requires = ["bibtexparser","crossrefapi","rapidfuzz", "unidecode", "scholarly", "six"],
       )
 

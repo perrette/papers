@@ -242,7 +242,7 @@ def _get_page_fast(pagerequest):
 
 def _scholar_score(txt, bib):
     # high score means high similarity
-    from fuzzywuzzy.fuzz import token_set_ratio
+    from rapidfuzz.fuzz import token_set_ratio
     return sum([token_set_ratio(bib[k], txt) for k in ['title', 'author', 'abstract'] if k in bib])
 
 
@@ -281,7 +281,7 @@ def _crossref_get_author(res, sep=u'; '):
 
 def _crossref_score(txt, r):
     # high score means high similarity
-    from fuzzywuzzy.fuzz import token_set_ratio
+    from rapidfuzz.fuzz import token_set_ratio
     score = 0
     if 'author' in r:
         author = ' '.join([p['family'] for p in r.get('author',[]) if 'family' in p])

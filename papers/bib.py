@@ -156,7 +156,7 @@ def compare_entries(e1, e2, fuzzy=False):
         score = 0
 
     else:
-        from fuzzywuzzy.fuzz import token_set_ratio
+        from rapidfuzz.fuzz import token_set_ratio
         doi1, tag1 = id1
         doi2, tag2 = id2
         score = token_set_ratio(tag1, tag2)
@@ -1140,14 +1140,14 @@ def main():
         entries = my.db.entries
 
         if o.fuzzy:
-            from fuzzywuzzy import fuzz
+            from rapidfuzz import fuzz
 
         def match(word, target, fuzzy=False, substring=False):
             if isinstance(target, list):
                 return any([match(word, t, fuzzy, substring) for t in target])
 
             if fuzzy:
-                res = fuzz.token_set_ratio(word.lower(), target.lower()) > o.fuzzy_ratio
+                res = fuzz.token_set_ratio(word, target, score_cutoff=o.fuzzy_ratio) > o.fuzzy_ratio
             elif substring:
                 res = target.lower() in word.lower()
             else:

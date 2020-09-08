@@ -27,7 +27,7 @@ Dependencies
 - [bibtexparser (1.0.1)](https://bibtexparser.readthedocs.io) : parse bibtex files
 - [crossrefapi (1.2.0)](https://github.com/fabiobatalha/crossrefapi) : make polite requests to crossref API
 - [scholarly (0.2.2)](https://github.com/OrganicIrradiation/scholarly) : interface for google scholar
-- [fuzzywuzzy (0.15.1)](https://github.com/seatgeek/fuzzywuzzy) : calculate score to sort crossref requests
+- [rapidfuzz (0.2.0)](https://github.com/rhasspy/rapidfuzz) : calculate score to sort crossref requests
 - [unidecode (0.04.21)](https://github.com/avian2/unidecode) : replace unicode with ascii equivalent
 - [six](http://pythonhosted.org/six): python 2-3 compatibility
 
