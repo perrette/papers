@@ -23,7 +23,7 @@ command-line bibliography managenent tool. Aims:
 Dependencies
 ------------
 - python 2 or 3
-- [popper-utils](https://en.wikipedia.org/wiki/Poppler_(software)) (only:`pdftotext`): convert PDF to text for parsing
+- [poppler-utils](https://en.wikipedia.org/wiki/Poppler_(software)) (only:`pdftotext`): convert PDF to text for parsing
 - [bibtexparser (1.0.1)](https://bibtexparser.readthedocs.io) : parse bibtex files
 - [crossrefapi (1.2.0)](https://github.com/fabiobatalha/crossrefapi) : make polite requests to crossref API
 - [scholarly (0.2.2)](https://github.com/OrganicIrradiation/scholarly) : interface for google scholar
@@ -35,7 +35,7 @@ Install
 -------
 - clone this project
 - `pip install --user -r requirements.txt`
-- install third-party dependencies (Ubuntu: `sudo apt install popper-utils`)
+- install third-party dependencies (Ubuntu: `sudo apt install poppler-utils`)
 - `python setup.py install`
 
 Getting started
