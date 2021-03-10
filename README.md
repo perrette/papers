@@ -31,10 +31,10 @@ Dependencies
 
 Install
 -------
-- clone this project
-- `pip install --user -r requirements.txt`
+- `pip install papers-cli`
 - install third-party dependencies (Ubuntu: `sudo apt install poppler-utils`)
-- `python setup.py install`
+
+Note there is another project registered on pypi as papers, hence `papers-cli` for command-line-interface.
 
 Getting started
 ---------------
