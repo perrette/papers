@@ -20,7 +20,7 @@ command-line bibliography managenent tool. Aims:
 
 Dependencies
 ------------
-- python 2 or 3
+- python 3
 - [poppler-utils](https://en.wikipedia.org/wiki/Poppler_(software)) (only:`pdftotext`): convert PDF to text for parsing
 - [bibtexparser (1.0.1)](https://bibtexparser.readthedocs.io) : parse bibtex files
 - [crossrefapi (1.2.0)](https://github.com/fabiobatalha/crossrefapi) : make polite requests to crossref API
