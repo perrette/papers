@@ -6,8 +6,8 @@ addons:
     packages:
     - poppler-utils
 python:
-  - "2.7"
   - "3.5"
+  - "3.8"
 notifications:
   email: false
 before_install:
