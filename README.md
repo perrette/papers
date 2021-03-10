@@ -1,4 +1,4 @@
-[![CI](https://github.com/perrette/papers/workflows/CI/badge.svg)](https://github.com/perrette/papers/actions)
+[![test](https://github.com/perrette/papers/workflows/CI/badge.svg)](https://github.com/perrette/papers/actions)
 [![python](https://img.shields.io/badge/python-3.8-blue.svg)]()
 <!-- [![python](https://img.shields.io/badge/python-3.5%20%7C%203.8-blue.svg)]() -->
 
