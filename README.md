@@ -1,4 +1,4 @@
-[![CI](https://github.com/perrette/papers/workflows/CI/badge.svg)](https://github.com/perrette/papers/actions)
+[![test](https://github.com/perrette/papers/workflows/CI/badge.svg)](https://github.com/perrette/papers/actions)
 [![python](https://img.shields.io/badge/python-3.8-blue.svg)]()
 <!-- [![python](https://img.shields.io/badge/python-3.5%20%7C%203.8-blue.svg)]() -->
 
@@ -20,7 +20,7 @@ command-line bibliography managenent tool. Aims:
 
 Dependencies
 ------------
-- python 2 or 3
+- python 3
 - [poppler-utils](https://en.wikipedia.org/wiki/Poppler_(software)) (only:`pdftotext`): convert PDF to text for parsing
 - [bibtexparser (1.0.1)](https://bibtexparser.readthedocs.io) : parse bibtex files
 - [crossrefapi (1.2.0)](https://github.com/fabiobatalha/crossrefapi) : make polite requests to crossref API
