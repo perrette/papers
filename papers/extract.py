@@ -215,7 +215,7 @@ def extract_pdf_metadata(pdf, search_doi=True, search_fulltext=True, maxpages=10
 def fetch_bibtex_by_doi(doi):
     url = "http://api.crossref.org/works/"+doi+"/transform/application/x-bibtex"
     work = Works(etiquette=my_etiquette)
-    response = work.do_http_request('get', url, custom_header=str(work.etiquette))
+    response = work.do_http_request('get', url, custom_header={'user-agent': str(work.etiquette)})
     if response.ok:
         bibtex = response.text.strip()
         return bibtex
@@ -226,7 +226,7 @@ def fetch_bibtex_by_doi(doi):
 def fetch_json_by_doi(doi):
     url = "http://api.crossref.org/works/"+doi+"/transform/application/json"
     work = Works(etiquette=my_etiquette)
-    jsontxt = work.do_http_request('get', url, custom_header=str(work.etiquette)).text
+    jsontxt = work.do_http_request('get', url, custom_header={'user-agent': str(work.etiquette)}).text
     return jsontxt.dumps(json)
 
 
@@ -353,7 +353,7 @@ def fetch_bibtex_by_fulltext_crossref(txt, **kw):
     #     if i > 50:
     #         break
     query = work.query(txt, **kw).sort('score')
-    query_result = query.do_http_request('get', query.url, custom_header=str(query.etiquette)).text
+    query_result = query.do_http_request('get', query.url, custom_header={'user-agent':str(query.etiquette)}).text
     results = json.loads(query_result)['message']['items']
 
     if len(results) > 1:
