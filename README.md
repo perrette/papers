@@ -1,8 +1,6 @@
-![travis](https://travis-ci.org/perrette/papers.svg?branch=master)
-[![Coverage Status](https://coveralls.io/repos/github/perrette/papers/badge.svg?branch=master)](https://coveralls.io/github/perrette/papers?branch=master)
-[![python](https://img.shields.io/badge/python-2.7%2C%203.5-blue.svg)]()
-<!-- [![PyPI version](https://badge.fury.io/py/papers.svg)](https://badge.fury.io/py/papers) -->
-<!-- [![license](https://img.shields.io/badge/license-MIT-blue.svg)](https://raw.githubusercontent.com/perrette/papers/master/LICENSE) -->
+[![CI](https://github.com/perrette/papers/workflows/CI/badge.svg)](https://github.com/perrette/papers/actions)
+[![python](https://img.shields.io/badge/python-3.8-blue.svg)]()
+<!-- [![python](https://img.shields.io/badge/python-3.5%20%7C%203.8-blue.svg)]() -->
 
 # papers
 
