@@ -13,6 +13,7 @@ from six.moves import input as raw_input
 import re
 
 import bibtexparser
+from normality import slugify, normalize
 
 import papers
 from papers import logger
@@ -64,18 +65,27 @@ def append_abc(key, keys=[]):
     return Key
 
 
-def generate_key(entry, nauthor=NAUTHOR, ntitle=NTITLE, minwordlen=3, mintitlen=4, keys=None):
+def listtag(words, maxlength=30, minwordlen=3, n=100, sep='-'):
+    # preformat & filter words
+    words = [word for word in words if len(word) >= minwordlen]
+    while True:
+        tag = sep.join(words[:n])
+        n -= 1
+        if len(tag) <= maxlength or n < 2:
+            break
+    return tag
+
+
+def generate_key(entry, nauthor=NAUTHOR, ntitle=NTITLE, minwordlen=3, maxtitlen=4, keys=None):
     # names = bibtexparser.customization.getnames(entry.get('author','unknown').lower().split(' and '))
     names = family_names(entry.get('author','unknown').lower())
     authortag = '_'.join([nm for nm in names[:nauthor]])
-    yeartag = entry.get('year','0000')
+    yeartag = str(entry.get('year','0000'))
     if not ntitle or not entry.get('title',''):
         titletag = ''
     else:
-        words = [word for word in entry['title'].lower().strip().split() if len(word) >= minwordlen]
-        while len(u''.join(words[:ntitle])) < mintitlen and ntitle < len(words):
-            ntitle += 1
-        titletag = '_'.join(words[:ntitle])
+        titlewords = normalize(entry['title']).lower().split()
+        titletag = listtag(titlewords, n=ntitle, minwordlen=minwordlen, maxlength=maxtitlen, sep='-')
     key = authortag + yeartag + titletag
     if keys and key in keys: # and not isinstance(keys, set):
         key = append_abc(key, keys)
@@ -460,13 +470,22 @@ class Biblio(object):
 
         files = parse_file(e.get('file',''))
         # newname = entrydir(e, root)
-        direc = os.path.join(self.filesdir, e.get('year','0000'))
+        # direc = os.path.join(self.filesdir, e.get('year','0000'))
+        direc = os.path.join(self.filesdir)
 
         if not files:
             logger.info('no files to rename')
             return
 
-        autoname = lambda e: e['ID'].replace(':','-').replace(';','-') # ':' and ';' are forbidden in file name
+        # autoname = lambda e: e['ID'].replace(':','-').replace(';','-') # ':' and ';' are forbidden in file name
+        def autoname(e):
+            key = slugify(e['ID']).lower()
+            if e.get('title', ''):
+                titlewords = normalize(e['title']).lower().split()
+                titletag = listtag(titlewords, n=100, minwordlen=0, maxlength=70, sep='-')
+            else:
+                titletag = 'unknonwn'
+            return key + "_" + titletag
 
         count = 0
         if len(files) == 1:
