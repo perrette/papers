@@ -402,6 +402,9 @@ class Biblio(object):
         bib = bibtexparser.loads(bibtex)
         entry = bib.entries[0]
 
+        # convert curly brackets to unicode
+        bibtexparser.customization.convert_to_unicode(entry)
+
         files = [pdf]
         if attachments:
             files += attachments
