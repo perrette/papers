@@ -176,7 +176,7 @@ def are_duplicates(e1, e2, similarity=DEFAULT_SIMILARITY, fuzzy_ratio=FUZZY_RATI
     except KeyError:
         raise ValueError('similarity must be one of EXACT, GOOD, FAIR, PARTIAL, FUZZY')
 
-    score = compare_entries(e1, e2, fuzzy=level==FUZZY_DUPLICATES)
+    score = compare_entries(e1, e2, fuzzy=target==FUZZY_DUPLICATES)
     logger.debug('score: {}, target: {}, similarity: {}'.format(score, target, similarity))
     return score >= target
 
@@ -1205,7 +1205,7 @@ def main():
         if o.duplicates_tit:
             entries = list_dup(entries, key=title_id)
         if o.duplicates:
-            eq = lambda a, b: a['ID'] == b['ID'] or are_duplicates(a, b, similarity=level, fuzzy_ratio=o.fuzzy_ratio)
+            eq = lambda a, b: a['ID'] == b['ID'] or are_duplicates(a, b, fuzzy_ratio=o.fuzzy_ratio)
             entries = list_dup(entries, eq=eq)
 
         def nfiles(e):
@@ -1247,7 +1247,7 @@ def main():
                 print(e['ID'].encode('utf-8'))
         elif o.one_liner:
             for e in entries:
-                tit = e['title'][:60]+ ('...' if len(e['title'])>60 else '')
+                tit = e.get('title', '')[:60]+ ('...' if len(e.get('title', ''))>60 else '')
                 info = []
                 if e.get('doi',''):
                     info.append('doi:'+e['doi'])
