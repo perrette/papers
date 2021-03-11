@@ -1205,7 +1205,7 @@ def main():
         if o.duplicates_tit:
             entries = list_dup(entries, key=title_id)
         if o.duplicates:
-            eq = lambda a, b: a['ID'] == b['ID'] or are_duplicates(a, b, fuzzy_ratio=o.fuzzy_ratio)
+            eq = lambda a, b: a['ID'] == b['ID'] or are_duplicates(a, b, similarity="PARTIAL", fuzzy_ratio=o.fuzzy_ratio)
             entries = list_dup(entries, eq=eq)
 
         def nfiles(e):
