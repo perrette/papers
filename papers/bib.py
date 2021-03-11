@@ -79,7 +79,7 @@ def listtag(words, maxlength=30, minwordlen=3, n=100, sep='-'):
 def generate_key(entry, nauthor=NAUTHOR, ntitle=NTITLE, minwordlen=3, maxtitlen=4, keys=None):
     # names = bibtexparser.customization.getnames(entry.get('author','unknown').lower().split(' and '))
     names = family_names(entry.get('author','unknown').lower())
-    authortag = '_'.join([nm for nm in names[:nauthor]])
+    authortag = '_'.join([slugify(nm) for nm in names[:nauthor]])
     yeartag = str(entry.get('year','0000'))
     if not ntitle or not entry.get('title',''):
         titletag = ''
