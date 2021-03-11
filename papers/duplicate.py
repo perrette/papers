@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 from papers.extract import isvaliddoi, fetch_entry
 from papers.encoding import parse_file, format_file, format_entries
 
-from papers.config import bcolors
+from papers.config import bcolors, checksum
 
 
 # SEARCH DUPLICATES
@@ -50,7 +50,7 @@ def groupby_equal(entries, eq=None):
         else:
             group = groups[k]
         group.append(e)
-    return sorted(six.iteritems(groups)) 
+    return sorted(six.iteritems(groups))
 
 
 def search_duplicates(entries, key=None, eq=None, issorted=False, filter_key=None):
@@ -59,7 +59,7 @@ def search_duplicates(entries, key=None, eq=None, issorted=False, filter_key=Non
     entries: list elements
     key: key to check for equality
     eq: binary operator for equality check (slower)
-    issorted: if True and key is provided, skip sort 
+    issorted: if True and key is provided, skip sort
 
     returns:
     - unique_entries : list (entries for which no duplicates where found)
@@ -150,7 +150,7 @@ def merge_entries(entries, force=False):
 
 def handle_merge_conflict(merged):
     # TODO: boil down this command to the minimum, or build all into a merge class
-    
+
     if not isinstance(merged, MergedEntry):
         return merged  # all GOOD_DUPLICATES !
 
@@ -181,7 +181,7 @@ def _colordiffline(line, sign=None):
     elif sign == '*' or line.startswith('*'):
         return bcolors.BOLD + line + bcolors.ENDC
     # elif sign == '>' or line.startswith('>'):
-        # return bcolors.BOLD + line + bcolors.ENDC    
+        # return bcolors.BOLD + line + bcolors.ENDC
         # return bcolors.BOLD + bcolors.WARNING + line + bcolors.ENDC
     else:
         return line
@@ -289,12 +289,16 @@ def entry_sdiff(entries, color=True, bcolors=bcolors, best=None):
 # ==================
 
 def merge_files(entries):
+    checksums = []
     files = []
     for e in entries:
         for f in parse_file(e.get('file','')):
-            if f not in files:
+            check = checksum(f) if os.path.exists(f) else None
+            if f not in files and (check is None or check not in checksums):
                 files.append(f)
-    return format_file(files)   
+                if check is not None:
+                    checksums.append(check)
+    return format_file(files)
 
 
 def _ask_pick_loop(entries, extra=[], select=False):
@@ -345,7 +349,7 @@ def choose_entry_interactive(entries, extra=[], msg='', select=False, best=None)
 
 
 def edit_entries(entries, diff=False, ndiff=False):
-    '''edit entries and insert result in database 
+    '''edit entries and insert result in database
     '''
     # write the listed entries to temporary file
     import tempfile
@@ -423,7 +427,7 @@ class DuplicateHandler(object):
 
     def delete(self):
         self.entries = []
-    
+
     def best(self):
         return bestentry(self.entries)
 
@@ -471,7 +475,7 @@ class DuplicateHandler(object):
 (d)elete
 (n)ot a duplicate (validate several entries)
 (s)kip (cancel)
-(S)kip all 
+(S)kip all
 (v)iew toggle (diff - split)
 (V)iew toggle for diff mode
 '''
@@ -489,7 +493,7 @@ class DuplicateHandler(object):
                 e = ans
 
             if e == 'm':
-                self.merge() 
+                self.merge()
 
             elif e == 'e':
                 self.edit(diffview, update)
@@ -547,7 +551,7 @@ def resolve_duplicates(duplicates, mode='i'):
             raise ValueError('unresolved conflicts')
 
     return conflict.entries
-    
+
 
 def check_duplicates(entries, key=None, eq=None, issorted=False, filter_key=None, mode='i'):
     """check duplicates, given a key or equality function
@@ -562,7 +566,7 @@ def check_duplicates(entries, key=None, eq=None, issorted=False, filter_key=None
         except DuplicateSkip:
             entries.extend(duplicates)
         except DuplicateSkipAll:
-            entries.extend(itertools.chain(duplicates))        
+            entries.extend(itertools.chain(duplicates))
             break
     return entries
 
@@ -586,7 +590,7 @@ def conflict_resolution_on_insert(old, new, mode='i'):
 (s)kip
 (a)ppend anyway
 (r)aise'''.strip()
-.replace('(u)','('+_colordiffline('u','+')+')')  # green lines will be added 
+.replace('(u)','('+_colordiffline('u','+')+')')  # green lines will be added
 .replace('(o)','('+_colordiffline('o','-')+')') + bcolors.ENDC
 )
 # .replace('(s)','('+_colordiffline('s','-')+')'))
