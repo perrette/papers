@@ -392,9 +392,12 @@ class Biblio(object):
         self.add_bibtex(bibtex, **kw)
 
 
-    def add_pdf(self, pdf, attachments=None, rename=False, copy=False, search_doi=True, search_fulltext=True, scholar=False, **kw):
+    def add_pdf(self, pdf, attachments=None, rename=False, copy=False, search_doi=True, search_fulltext=True, scholar=False, doi=None, **kw):
 
-        bibtex = extract_pdf_metadata(pdf, search_doi, search_fulltext, scholar=scholar)
+        if doi:
+            bibtex = fetch_bibtex_by_doi(doi)
+        else:
+            bibtex = extract_pdf_metadata(pdf, search_doi, search_fulltext, scholar=scholar)
 
         bib = bibtexparser.loads(bibtex)
         entry = bib.entries[0]
@@ -945,6 +948,7 @@ def main():
         help='ignore errors when adding multiple files')
 
     grp = addp.add_argument_group('pdf metadata')
+    grp.add_argument('--doi', help='provide DOI -- skip parsing PDF')
     grp.add_argument('--no-query-doi', action='store_true', help='do not attempt to parse and query doi')
     grp.add_argument('--no-query-fulltext', action='store_true', help='do not attempt to query fulltext in case doi query fails')
     grp.add_argument('--scholar', action='store_true', help='use google scholar instead of crossref')
@@ -987,7 +991,7 @@ def main():
                     my.add_pdf(file, attachments=o.attachment, rename=o.rename, copy=o.copy,
                             search_doi=not o.no_query_doi,
                             search_fulltext=not o.no_query_fulltext,
-                            scholar=o.scholar,
+                            scholar=o.scholar, doi=o.doi,
                             **kw)
 
                 else: # file.endswith('.bib'):
