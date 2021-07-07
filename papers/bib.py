@@ -1391,7 +1391,9 @@ def main():
     elif o.cmd == 'extract':
         extractcmd(o)
     else:
-        raise ValueError('this is a bug')
+        parser.print_help()
+        parser.exit(1)
+        # raise ValueError('this is a bug')
 
 
 if __name__ == '__main__':
