@@ -107,7 +107,7 @@ def parse_doi(txt):
     if doi.lower().endswith('.received'):
         doi = doi[:-len('.received')]
 
-    # quality check 
+    # quality check
     if len(doi) <= 8:
         raise DOIParsingError('failed to extract doi: '+doi)
 
@@ -144,8 +144,8 @@ def extract_pdf_doi(pdf, image=False):
 def query_text(txt, max_query_words=200):
     # list of paragraphs
     paragraphs = re.split(r"\n\n", txt)
- 
-    # remove anything that starts with 'reference'   
+
+    # remove anything that starts with 'reference'
     query = []
     for p in paragraphs:
         if p.lower().startswith('reference'):
@@ -300,7 +300,7 @@ def crossref_to_bibtex(r):
 
     if 'author' in r:
         family = lambda p: p['family'] if len(p['family'].split()) == 1 else u'{'+p['family']+u'}'
-        bib['author'] = ' and '.join([family(p) + ', '+ p.get('given','') 
+        bib['author'] = ' and '.join([family(p) + ', '+ p.get('given','')
             for p in r.get('author',[]) if 'family' in p])
 
     # for k in ['issued','published-print', 'published-online']:
