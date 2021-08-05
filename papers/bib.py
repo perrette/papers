@@ -484,7 +484,8 @@ class Biblio(object):
 
             New = namestr
 
-            for C in ['"',"'",'!','@','#','$','%','&','*','+','=',';',':','?',',','/','\\']:
+            for C in ['"',"'",'!','@','#','$','%','&','*','+','=',';',':',
+                      '?',',','/','\\','\n', '{\\textquotesingle}']:
                 if C in New: New = New.replace(C,'')
 
             for C in ['(', ')', '[', ']', '{', '}', '<', '>', '|']:
@@ -1275,7 +1276,7 @@ def main():
         if o.duplicates_tit:
             entries = list_dup(entries, key=title_id)
         if o.duplicates:
-            eq = lambda a, b: a['ID'] == b['ID'] or are_duplicates(a, b, similarity=level, fuzzy_ratio=o.fuzzy_ratio)
+            eq = lambda a, b: a['ID'] == b['ID'] or are_duplicates(a, b, similarity=DEFAULT_SIMILARITY, fuzzy_ratio=o.fuzzy_ratio)
             entries = list_dup(entries, eq=eq)
 
         def nfiles(e):
