@@ -493,33 +493,33 @@ class Biblio(object):
             return(New)
 
 
-        Fields = nameformat.split(',')
-        for F,Field in enumerate(Fields):
-            if Field == 'ID':
-                Fields[F] = autoname(e['ID'])
+        fields = nameformat.split(',')
+        for ff,field in enumerate(fields):
+            if field == 'ID':
+                fields[ff] = autoname(e['ID'])
 
-            elif Field == 'year':
-                Fields[F] = e.get('year','0000')
+            elif field == 'year':
+                fields[ff] = e.get('year','0000')
 
-            elif Field.lower() in e.keys():
-                if Field.lower() == 'author':
+            elif field.lower() in e.keys():
+                if field.lower() == 'author':
                     Names = family_names(e['author'])
 
-                    if len(Names) >= 3: eField = Names[0] + ' et al'
-                    elif len(Names) == 2: eField = ' and '.join(Names)
-                    else: eField = Names[0]
+                    if len(Names) >= 3: etalfield = Names[0] + ' et al'
+                    elif len(Names) == 2: etalfield = ' and '.join(Names)
+                    else: etalfield = Names[0]
 
                 else:
-                    eField = e[Field.lower()]
+                    etalfield = e[field.lower()]
 
-                if Field.istitle():
-                    Fields[F] = autoname(eField).title().replace(' ','')
-                elif Field.islower():
-                    Fields[F] = autoname(eField).lower().replace(' ','')
-                elif Field.isupper():
-                    Fields[F] = autoname(eField).upper().replace(' ','')
+                if field.istitle():
+                    fields[ff] = autoname(etalfield).title().replace(' ','')
+                elif field.islower():
+                    fields[ff] = autoname(etalfield).lower().replace(' ','')
+                elif field.isupper():
+                    fields[ff] = autoname(etalfield).upper().replace(' ','')
                 else:
-                    Fields[F] = autoname(eField).replace(' ','')
+                    fields[ff] = autoname(etalfield).replace(' ','')
 
         if not files:
             logger.info('no files to rename')
@@ -529,7 +529,7 @@ class Biblio(object):
         if len(files) == 1:
             file = files[0]
             base, ext = os.path.splitext(file)
-            newfile = os.path.join(direc, ''.join(Fields)+ext)
+            newfile = os.path.join(direc, ''.join(fields)+ext)
             if not os.path.exists(file):
                 raise ValueError(file+': original file link is broken')
             elif file != newfile:
