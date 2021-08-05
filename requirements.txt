@@ -2,5 +2,5 @@ unidecode
 crossrefapi
 bibtexparser
 scholarly
-fuzzywuzzy
+rapidfuzz
 six

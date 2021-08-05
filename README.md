@@ -1,8 +1,6 @@
-![travis](https://travis-ci.org/perrette/papers.svg?branch=master)
-[![Coverage Status](https://coveralls.io/repos/github/perrette/papers/badge.svg?branch=master)](https://coveralls.io/github/perrette/papers?branch=master)
-[![python](https://img.shields.io/badge/python-2.7%2C%203.5-blue.svg)]()
-<!-- [![PyPI version](https://badge.fury.io/py/papers.svg)](https://badge.fury.io/py/papers) -->
-<!-- [![license](https://img.shields.io/badge/license-MIT-blue.svg)](https://raw.githubusercontent.com/perrette/papers/master/LICENSE) -->
+[![test](https://github.com/perrette/papers/workflows/CI/badge.svg)](https://github.com/perrette/papers/actions)
+[![python](https://img.shields.io/badge/python-3.8-blue.svg)]()
+<!-- [![python](https://img.shields.io/badge/python-3.5%20%7C%203.8-blue.svg)]() -->
 
 # papers
 
@@ -22,21 +20,21 @@ command-line bibliography managenent tool. Aims:
 
 Dependencies
 ------------
-- python 2 or 3
-- [popper-utils](https://en.wikipedia.org/wiki/Poppler_(software)) (only:`pdftotext`): convert PDF to text for parsing
+- python 3
+- [poppler-utils](https://en.wikipedia.org/wiki/Poppler_(software)) (only:`pdftotext`): convert PDF to text for parsing
 - [bibtexparser (1.0.1)](https://bibtexparser.readthedocs.io) : parse bibtex files
 - [crossrefapi (1.2.0)](https://github.com/fabiobatalha/crossrefapi) : make polite requests to crossref API
 - [scholarly (0.2.2)](https://github.com/OrganicIrradiation/scholarly) : interface for google scholar
-- [fuzzywuzzy (0.15.1)](https://github.com/seatgeek/fuzzywuzzy) : calculate score to sort crossref requests
+- [rapidfuzz (0.2.0)](https://github.com/rhasspy/rapidfuzz) : calculate score to sort crossref requests
 - [unidecode (0.04.21)](https://github.com/avian2/unidecode) : replace unicode with ascii equivalent
 - [six](http://pythonhosted.org/six): python 2-3 compatibility
 
 Install
 -------
-- clone this project
-- `pip install --user -r requirements.txt`
-- install third-party dependencies (Ubuntu: `sudo apt install popper-utils`)
-- `python setup.py install`
+- `pip install papers-cli`
+- install third-party dependencies (Ubuntu: `sudo apt install poppler-utils`)
+
+Note there is another project registered on pypi as papers, hence `papers-cli` for command-line-interface.
 
 Getting started
 ---------------

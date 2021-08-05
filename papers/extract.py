@@ -3,7 +3,7 @@ import os
 import json
 import six
 import subprocess as sp
-import six.moves.urllib.request
+# import six.moves.urllib.request
 import re
 import shutil
 import tempfile
@@ -215,7 +215,7 @@ def extract_pdf_metadata(pdf, search_doi=True, search_fulltext=True, maxpages=10
 def fetch_bibtex_by_doi(doi):
     url = "http://api.crossref.org/works/"+doi+"/transform/application/x-bibtex"
     work = Works(etiquette=my_etiquette)
-    response = work.do_http_request('get', url, custom_header=str(work.etiquette))
+    response = work.do_http_request('get', url, custom_header={'user-agent': str(work.etiquette)})
     if response.ok:
         bibtex = response.text.strip()
         return bibtex
@@ -226,7 +226,7 @@ def fetch_bibtex_by_doi(doi):
 def fetch_json_by_doi(doi):
     url = "http://api.crossref.org/works/"+doi+"/transform/application/json"
     work = Works(etiquette=my_etiquette)
-    jsontxt = work.do_http_request('get', url, custom_header=str(work.etiquette)).text
+    jsontxt = work.do_http_request('get', url, custom_header={'user-agent': str(work.etiquette)}).text
     return jsontxt.dumps(json)
 
 
@@ -242,7 +242,7 @@ def _get_page_fast(pagerequest):
 
 def _scholar_score(txt, bib):
     # high score means high similarity
-    from fuzzywuzzy.fuzz import token_set_ratio
+    from rapidfuzz.fuzz import token_set_ratio
     return sum([token_set_ratio(bib[k], txt) for k in ['title', 'author', 'abstract'] if k in bib])
 
 
@@ -270,7 +270,7 @@ def fetch_bibtex_by_fulltext_scholar(txt, assess_results=True):
     if getattr(result, 'url_scholarbib', ''):
         bibtex = scholarly._get_page(result.url_scholarbib).strip()
     else:
-        raise NotImplementedError('no bibtex import linke. Make crossref request using title?')
+        raise NotImplementedError('no bibtex import link. Make crossref request using title?')
     return bibtex
 
 
@@ -281,7 +281,7 @@ def _crossref_get_author(res, sep=u'; '):
 
 def _crossref_score(txt, r):
     # high score means high similarity
-    from fuzzywuzzy.fuzz import token_set_ratio
+    from rapidfuzz.fuzz import token_set_ratio
     score = 0
     if 'author' in r:
         author = ' '.join([p['family'] for p in r.get('author',[]) if 'family' in p])
@@ -353,7 +353,7 @@ def fetch_bibtex_by_fulltext_crossref(txt, **kw):
     #     if i > 50:
     #         break
     query = work.query(txt, **kw).sort('score')
-    query_result = query.do_http_request('get', query.url, custom_header=str(query.etiquette)).text
+    query_result = query.do_http_request('get', query.url, custom_header={'user-agent':str(query.etiquette)}).text
     results = json.loads(query_result)['message']['items']
 
     if len(results) > 1:
