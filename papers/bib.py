@@ -24,6 +24,7 @@ from papers.config import config, bcolors, checksum, move
 
 from papers.duplicate import check_duplicates, resolve_duplicates, conflict_resolution_on_insert
 from papers.duplicate import search_duplicates, list_duplicates, list_uniques, merge_files, edit_entries
+from papers.duplicate import entry_diff
 
 # DRYRUN = False
 
