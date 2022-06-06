@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-from __future__ import print_function
 import operator
 import os
 import itertools
@@ -50,7 +48,7 @@ def groupby_equal(entries, eq=None):
         else:
             group = groups[k]
         group.append(e)
-    return sorted(six.iteritems(groups)) 
+    return sorted(groups.items()) 
 
 
 def search_duplicates(entries, key=None, eq=None, issorted=False, filter_key=None):
@@ -110,7 +108,7 @@ def list_uniques(entries, **kw):
 # ==================
 
 
-class ConflictingField(object):
+class ConflictingField:
     def __init__(self, choices=[]):
         self.choices = choices
 
@@ -221,14 +219,14 @@ def entry_ndiff(entries, color=True):
         if matches:
             k = matches[0]
             template = SECRET_STRING.format(k)
-            lines.append(u'\u2304'*3)
+            lines.append('\u2304'*3)
             for c in choices[k]:
-                newline = '  '+line.replace(template, u'{}'.format(c))
+                newline = '  '+line.replace(template, '{}'.format(c))
                 lines.append(_colordiffline(newline, '!') if color else newline)
                 lines.append('---')
             lines.pop() # remove last ---
             # lines.append('^^^')
-            lines.append(u'\u2303'*3)
+            lines.append('\u2303'*3)
         elif any('{} = {{'.format(k) in line for k in somemissing):
             newline = '  '+line
             lines.append(_colordiffline(newline, sign='*') if color else newline)
@@ -368,7 +366,7 @@ def edit_entries(entries, diff=False, ndiff=False):
     with open(filename, 'w') as f:
         f.write(entrystring)
 
-    res = os.system('%s %s' % (os.getenv('EDITOR'), filename))
+    res = os.system('{} {}'.format(os.getenv('EDITOR'), filename))
 
     if res == 0:
         logger.info('sucessfully edited file, insert edited entries')
@@ -396,7 +394,7 @@ class DuplicateSkipAll(Exception):
     pass
 
 
-class DuplicateHandler(object):
+class DuplicateHandler:
 
     def __init__(self, entries):
         self.entries = entries

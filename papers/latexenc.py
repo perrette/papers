@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 
 # Original source: github.com/okfn/bibserver
 # Authors:
@@ -83,7 +82,7 @@ def latex_to_unicode(string):
     # string, that is always having only compound accentuated character (letter
     # + accent) or single accentuated character (letter with accent). We choose
     # to normalize to the latter.
-    cleaned_string = unicodedata.normalize("NFC", u"".join(cleaned_string))
+    cleaned_string = unicodedata.normalize("NFC", "".join(cleaned_string))
 
     # Remove any left braces
     cleaned_string = cleaned_string.replace("{", "").replace("}", "")
@@ -98,7 +97,7 @@ def protect_uppercase(string):
     :param string: string to convert
     :returns: string
     """
-    string = re.sub('([^{]|^)([A-Z])([^}]|$)', '\g<1>{\g<2>}\g<3>', string)
+    string = re.sub('([^{]|^)([A-Z])([^}]|$)', r'\g<1>{\g<2>}\g<3>', string)
     return string
 
 
@@ -2691,15 +2690,9 @@ def prepare_unicode_to_latex():
         ("\uD7FF", "\\mathtt{9}"),
     )
 
-    if sys.version_info >= (3, 0):
-        unicode_to_latex = to_latex
-        unicode_to_crappy_latex1 = to_crappy1
-        unicode_to_crappy_latex2 = to_crappy2
-        unicode_to_latex_map = dict(unicode_to_latex)
-    else:
-        unicode_to_latex = tuple((k.decode('unicode-escape'), v) for k, v in to_latex)
-        unicode_to_crappy_latex1 = tuple((k.decode('unicode-escape'), v) for k, v in to_crappy1)
-        unicode_to_crappy_latex2 = tuple((k.decode('unicode-escape'), v) for k, v in to_crappy2)
-        unicode_to_latex_map = dict(unicode_to_latex)
+    unicode_to_latex = to_latex
+    unicode_to_crappy_latex1 = to_crappy1
+    unicode_to_crappy_latex2 = to_crappy2
+    unicode_to_latex_map = dict(unicode_to_latex)
 
 prepare_unicode_to_latex()
