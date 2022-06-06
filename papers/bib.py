@@ -1,4 +1,4 @@
-import os, json, sys
+import os
 import logging
 # logger.basicConfig(level=logger.INFO)
 import argparse
@@ -6,9 +6,6 @@ import subprocess as sp
 import shutil
 import bisect
 import itertools
-import six
-from six.moves import input as raw_input
-import re
 
 import bibtexparser
 
@@ -616,7 +613,7 @@ class Biblio:
             print(bcolors.OKBLUE+'*** UPDATE ***'+bcolors.ENDC)
             print(entry_diff(e_old, e))
 
-            if raw_input('update ? [Y/n] or [Enter] ').lower() not in ('', 'y'):
+            if input('update ? [Y/n] or [Enter] ').lower() not in ('', 'y'):
                 logger.info('cancel changes')
                 e.update(e_old)
                 for k in list(e.keys()):
@@ -717,7 +714,7 @@ def entry_filecheck(e, delete_broken=False, fix_mendeley=False,
                 logger.info('delete file from entry: "{}"'.format(file))
                 continue
             elif interactive:
-                ans = raw_input('delete file from entry ? [Y/n] ')
+                ans = input('delete file from entry ? [Y/n] ')
                 if ans.lower == 'y':
                     continue
 
@@ -824,7 +821,7 @@ def main():
         old = o.bibtex
 
         if config.git and not o.git and o.bibtex == config.bibtex:
-            ans = raw_input('stop git tracking (this will not affect actual git directory)? [Y/n] ')
+            ans = input('stop git tracking (this will not affect actual git directory)? [Y/n] ')
             if ans.lower() != 'y':
                 o.git = True
 
@@ -858,7 +855,7 @@ def main():
             logger.warn('Cannot make global install if local config file exists.')
             ans = None
             while ans not in ('1','2'):
-                ans = raw_input('(1) remove local config file '+local_config+'\n(2) make local install\nChoice: ')
+                ans = input('(1) remove local config file '+local_config+'\n(2) make local install\nChoice: ')
             if ans == '1':
                 os.remove(local_config)
             else:

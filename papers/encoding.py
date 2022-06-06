@@ -1,16 +1,7 @@
 import os
-import six
 import bibtexparser
 from papers.latexenc import latex_to_unicode, unicode_to_latex
 from unidecode import unidecode as unicode_to_ascii
-
-# fix bibtexparser issue
-if six.PY2:
-    _bloads = bibtexparser.loads 
-    _bdumps = bibtexparser.dumps
-    bibtexparser.loads = lambda s: (_bloads(s.decode('utf-8') if type(s) is str else s))
-    bibtexparser.dumps = lambda db: _bdumps(db).encode('utf-8')
-
 
 # fix bibtexparser call on empty strings
 _bloads_orig = bibtexparser.loads

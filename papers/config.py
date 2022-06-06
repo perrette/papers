@@ -1,9 +1,7 @@
-import os, json, shutil
+import os, json
 import subprocess as sp, sys, shutil
 import hashlib
 import bibtexparser
-import six
-from six.moves import input as raw_input
 from papers import logger
 
 # GIT = False
@@ -250,7 +248,7 @@ def move(f1, f2, copy=False, interactive=True):
         logger.info('dest is identical to src: '+f1)
         return
     if os.path.exists(f2):
-        ans = raw_input('dest file already exists: '+f2+'. Replace? (y/n) ')
+        ans = input('dest file already exists: '+f2+'. Replace? (y/n) ')
         if ans != 'y':
             return
 
