@@ -1,4 +1,3 @@
-
 import os
 import six
 import bibtexparser

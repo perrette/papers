@@ -48,7 +48,7 @@ def check_filesdir(folder):
     return file_count, folder_size
 
 
-class Config(object):
+class Config:
     """configuration class to specify system-wide collections and files-dir
     """
     def __init__(self, file=CONFIG_FILE, data=DATA_DIR, cache=CACHE_DIR,
@@ -216,10 +216,7 @@ def cached(file, hashed_key=False):
             cache = {}
         def decorated(doi):
             if hashed_key: # use hashed parameter as key (for full text query)
-                if six.PY3:
-                    key = hashlib.sha256(doi.encode('utf-8')).hexdigest()[:6]
-                else:
-                    key = hashlib.sha256(doi).hexdigest()[:6]
+                key = hashlib.sha256(doi.encode('utf-8')).hexdigest()[:6]
             else:
                 key = doi
             if key in cache:
@@ -272,12 +269,12 @@ def move(f1, f2, copy=False, interactive=True):
             return
 
     if copy:
-        cmd = u'cp {} {}'.format(f1, f2)
+        cmd = 'cp {} {}'.format(f1, f2)
         logger.info(cmd)
         if not DRYRUN:
             shutil.copy(f1, f2)
     else:
-        cmd = u'mv {} {}'.format(f1, f2)
+        cmd = 'mv {} {}'.format(f1, f2)
         logger.info(cmd)
         if not DRYRUN:
             shutil.move(f1, f2)

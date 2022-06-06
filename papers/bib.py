@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-from __future__ import print_function
 import os, json, sys
 import logging
 # logger.basicConfig(level=logger.INFO)
@@ -227,7 +225,7 @@ def backupfile(bibtex):
 class DuplicateKeyError(ValueError):
     pass
 
-class Biblio(object):
+class Biblio:
     """main config
     """
     def __init__(self, db=None, filesdir=None, key_field='ID', nauthor=NAUTHOR, ntitle=NTITLE, similarity=DEFAULT_SIMILARITY):
@@ -369,11 +367,11 @@ class Biblio(object):
 
     def generate_key(self, entry):
         " generate a unique key not yet present in the record "
-        keys = set(self.key(e) for e in self.db.entries)
+        keys = {self.key(e) for e in self.db.entries}
         return generate_key(entry, keys=keys, nauthor=self.nauthor, ntitle=self.ntitle)
 
     def append_abc_to_key(self, entry):
-        return append_abc(entry['ID'], keys=set(self.key(e) for e in self.entries))
+        return append_abc(entry['ID'], keys={self.key(e) for e in self.entries})
 
 
     def add_bibtex(self, bibtex, **kw):
@@ -530,7 +528,7 @@ class Biblio(object):
                 f.write(bibtex)
 
             # remove old direc if empty?
-            direcs = list(set([os.path.dirname(file) for file in files]))
+            direcs = list({os.path.dirname(file) for file in files})
             if len(direcs) == 1:
                 leftovers = os.listdir(direcs[0])
                 if not leftovers or len(leftovers) == 1 and leftovers[0] == os.path.basename(hidden_bibtex(direcs[0])):
@@ -727,7 +725,7 @@ def entry_filecheck(e, delete_broken=False, fix_mendeley=False,
                     file = candidate
 
             if old != file:
-                logger.info(e['ID']+u': file name fixed: "{}" => "{}".'.format(old, file))
+                logger.info(e['ID']+': file name fixed: "{}" => "{}".'.format(old, file))
                 fixed[old] = file # keep record of fixed files
 
         # parse PDF and check for metadata
@@ -911,7 +909,7 @@ def main():
 
 
     def savebib(my, o):
-        logger.info(u'save '+o.bibtex)
+        logger.info('save '+o.bibtex)
         if papers.config.DRYRUN:
             return
         if my is not None:
@@ -1212,7 +1210,7 @@ def main():
             first_author = lambda field : family_names(field)[0]
             entries = [e for e in entries if 'author' in e and match(firstauthor(e['author']), o.author)]
         if o.author:
-            author = lambda field : u' '.join(family_names(field))
+            author = lambda field : ' '.join(family_names(field))
             entries = [e for e in entries if 'author' in e and longmatch(author(e['author']), o.author)]
         if o.title:
             entries = [e for e in entries if 'title' in e and longmatch(e['title'], o.title)]
