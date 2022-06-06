@@ -14,5 +14,5 @@ setup(name='papers-cli',
       packages=['papers'],
       scripts=['scripts/papers'],
       license = "MIT",
-      install_requires = ["bibtexparser","crossrefapi","rapidfuzz", "unidecode", "scholarly", "six"],
+      requires=["bibtexparser", "crossrefapi", "rapidfuzz", "unidecode", "scholarly"],
       )

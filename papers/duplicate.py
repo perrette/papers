@@ -1,8 +1,6 @@
 import operator
 import os
 import itertools
-import six
-from six.moves import input as raw_input
 import re
 import difflib
 
@@ -259,8 +257,6 @@ def entry_sdiff(entries, color=True, bcolors=bcolors, best=None):
     for i, entry in enumerate(entries):
         db.entries[0] = entry
         string = bibtexparser.dumps(db)
-        if six.PY2:
-            string = string.decode('utf-8') # decode to avoid failure in replace
         # color the conflicting fields
         lines = []
         for line in string.splitlines():
@@ -327,7 +323,7 @@ def _ask_pick_loop(entries, extra=[], select=False):
 
     while True:
         print('choices: '+', '.join(choices))
-        i = raw_input('>>> ')
+        i = input('>>> ')
         try:
             return _process_choice(i)
         except:
@@ -363,9 +359,6 @@ def edit_entries(entries, diff=False, ndiff=False):
         db = bibtexparser.bibdatabase.BibDatabase()
         db.entries.extend(entries)
         entrystring = bibtexparser.dumps(db)
-
-    if six.PY2:
-        entrystring = entrystring.encode('utf-8')
 
     with open(filename, 'w') as f:
         f.write(entrystring)
@@ -487,7 +480,7 @@ class DuplicateHandler:
                 ans = None
                 while ans not in choices:
                     print('choices: '+', '.join(choices))
-                    ans = raw_input('>>> ')
+                    ans = input('>>> ')
                 e = ans
 
             if e == 'm':
@@ -596,7 +589,7 @@ def conflict_resolution_on_insert(old, new, mode='i'):
         ans = None
         while ans not in choices:
             print('choices: '+', '.join(choices))
-            ans = raw_input('>>> ')
+            ans = input('>>> ')
         mode = ans
 
     # overwrite?

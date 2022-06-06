@@ -1,10 +1,7 @@
 import os
 import json
-import six
 import subprocess as sp
-# import six.moves.urllib.request
 import re
-import shutil
 import tempfile
 
 from crossref.restful import Works, Etiquette
@@ -325,8 +322,6 @@ def crossref_to_bibtex(r):
         ID = r['author'][0]['family'] + '_' + year
     else:
         ID = year
-    # if six.PY2:
-        # ID = str(''.join([c if ord(c) < 128 else '_' for c in ID]))  # make sure the resulting string is ASCII
     bib['ID'] = ID
 
     db = bibtexparser.bibdatabase.BibDatabase()
