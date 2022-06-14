@@ -1,9 +1,7 @@
-#!/bin/env python2.7
-from __future__ import print_function
-import six
-import six.moves.urllib.request
+#!/bin/env python3
 import os
 import logging
+import urllib.request
 
 DOWNDIR = os.path.join(os.path.dirname(__file__), 'downloadedpapers')
 
@@ -12,6 +10,7 @@ URL = {
     'esd-4-11-2013.pdf': 'https://www.earth-syst-dynam.net/4/11/2013/esd-4-11-2013.pdf',
     'esd-4-11-2013-supplement.pdf': 'https://www.earth-syst-dynam.net/4/11/2013/esd-4-11-2013-supplement.pdf',
 }
+
 
 def _downloadpdf(url, filename, overwrite=False):
 
@@ -26,7 +25,7 @@ def _downloadpdf(url, filename, overwrite=False):
 
     print('download',url,'to',filename)
 
-    response = six.moves.urllib.request.urlopen(url)
+    response = urllib.request.urlopen(url)
     resp = response.read()
 
     with open(filename, 'wb') as f:

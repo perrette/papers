@@ -3,4 +3,3 @@ crossrefapi
 bibtexparser
 scholarly
 rapidfuzz
-six

@@ -1,11 +1,7 @@
-from __future__ import print_function
 import os
 import json
-import six
 import subprocess as sp
-# import six.moves.urllib.request
 import re
-import shutil
 import tempfile
 
 from crossref.restful import Works, Etiquette
@@ -178,7 +174,7 @@ def extract_txt_metadata(txt, search_doi=True, search_fulltext=False, max_query_
             logger.debug('doi query successful')
 
         except DOIParsingError as error:
-            logger.debug(u'doi parsing error: '+str(error))
+            logger.debug('doi parsing error: '+str(error))
 
         except DOIRequestError as error:
             return '''@misc{{{doi},
@@ -237,13 +233,13 @@ def _get_page_fast(pagerequest):
     if resp.status_code == 200:
         return resp.text
     else:
-        raise Exception('Error: {0} {1}'.format(resp.status_code, resp.reason))
+        raise Exception('Error: {} {}'.format(resp.status_code, resp.reason))
 
 
 def _scholar_score(txt, bib):
     # high score means high similarity
     from rapidfuzz.fuzz import token_set_ratio
-    return sum([token_set_ratio(bib[k], txt) for k in ['title', 'author', 'abstract'] if k in bib])
+    return sum(token_set_ratio(bib[k], txt) for k in ['title', 'author', 'abstract'] if k in bib)
 
 
 @cached('scholar-bibtex.json', hashed_key=True)
@@ -275,7 +271,7 @@ def fetch_bibtex_by_fulltext_scholar(txt, assess_results=True):
 
 
 
-def _crossref_get_author(res, sep=u'; '):
+def _crossref_get_author(res, sep='; '):
     return sep.join([p.get('given','') + p['family'] for p in res.get('author',[]) if 'family' in p])
 
 
@@ -299,7 +295,7 @@ def crossref_to_bibtex(r):
     bib = {}
 
     if 'author' in r:
-        family = lambda p: p['family'] if len(p['family'].split()) == 1 else u'{'+p['family']+u'}'
+        family = lambda p: p['family'] if len(p['family'].split()) == 1 else '{'+p['family']+'}'
         bib['author'] = ' and '.join([family(p) + ', '+ p.get('given','')
             for p in r.get('author',[]) if 'family' in p])
 
@@ -329,11 +325,9 @@ def crossref_to_bibtex(r):
     # bibtex key
     year = str(bib.get('year','0000'))
     if 'author' in r:
-        ID = r['author'][0]['family'] + u'_' + six.u(year)
+        ID = r['author'][0]['family'] + '_' + year
     else:
         ID = year
-    # if six.PY2:
-        # ID = str(''.join([c if ord(c) < 128 else '_' for c in ID]))  # make sure the resulting string is ASCII
     bib['ID'] = ID
 
     db = bibtexparser.bibdatabase.BibDatabase()
@@ -344,7 +338,7 @@ def crossref_to_bibtex(r):
 # @cached('crossref-bibtex-fulltext.json', hashed_key=True)
 def fetch_bibtex_by_fulltext_crossref(txt, **kw):
     work = Works(etiquette=my_etiquette)
-    logger.debug(six.u('crossref fulltext seach:\n')+six.u(txt))
+    logger.debug('crossref fulltext seach:\n'+txt)
 
     # get the most likely match of the first results
     # results = []

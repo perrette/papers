@@ -27,7 +27,6 @@ Dependencies
 - [scholarly (0.2.2)](https://github.com/OrganicIrradiation/scholarly) : interface for google scholar
 - [rapidfuzz (0.2.0)](https://github.com/rhasspy/rapidfuzz) : calculate score to sort crossref requests
 - [unidecode (0.04.21)](https://github.com/avian2/unidecode) : replace unicode with ascii equivalent
-- [six](http://pythonhosted.org/six): python 2-3 compatibility
 
 Install
 -------
