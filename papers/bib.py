@@ -1,6 +1,4 @@
-# -*- coding: utf-8 -*-
-from __future__ import print_function
-import os, json, sys
+import os
 import logging
 # logger.basicConfig(level=logger.INFO)
 import argparse
@@ -8,9 +6,6 @@ import subprocess as sp
 import shutil
 import bisect
 import itertools
-import six
-from six.moves import input as raw_input
-import re
 
 import bibtexparser
 
@@ -73,7 +68,7 @@ def generate_key(entry, nauthor=NAUTHOR, ntitle=NTITLE, minwordlen=3, mintitlen=
         titletag = ''
     else:
         words = [word for word in entry['title'].lower().strip().split() if len(word) >= minwordlen]
-        while len(u''.join(words[:ntitle])) < mintitlen and ntitle < len(words):
+        while len(''.join(words[:ntitle])) < mintitlen and ntitle < len(words):
             ntitle += 1
         titletag = '_'.join(words[:ntitle])
     key = authortag + yeartag + titletag
@@ -217,7 +212,7 @@ def backupfile(bibtex):
 class DuplicateKeyError(ValueError):
     pass
 
-class Biblio(object):
+class Biblio:
     """main config
     """
     def __init__(self, db=None, filesdir=None, key_field='ID', nauthor=NAUTHOR, ntitle=NTITLE, similarity=DEFAULT_SIMILARITY):
@@ -359,11 +354,11 @@ class Biblio(object):
 
     def generate_key(self, entry):
         " generate a unique key not yet present in the record "
-        keys = set(self.key(e) for e in self.db.entries)
+        keys = {self.key(e) for e in self.db.entries}
         return generate_key(entry, keys=keys, nauthor=self.nauthor, ntitle=self.ntitle)
 
     def append_abc_to_key(self, entry):
-        return append_abc(entry['ID'], keys=set(self.key(e) for e in self.entries))
+        return append_abc(entry['ID'], keys={self.key(e) for e in self.entries})
 
 
     def add_bibtex(self, bibtex, **kw):
@@ -505,7 +500,7 @@ class Biblio(object):
                 f.write(bibtex)
 
             # remove old direc if empty?
-            direcs = list(set([os.path.dirname(file) for file in files]))
+            direcs = list({os.path.dirname(file) for file in files})
             if len(direcs) == 1:
                 leftovers = os.listdir(direcs[0])
                 if not leftovers or len(leftovers) == 1 and leftovers[0] == os.path.basename(hidden_bibtex(direcs[0])):
@@ -618,7 +613,7 @@ class Biblio(object):
             print(bcolors.OKBLUE+'*** UPDATE ***'+bcolors.ENDC)
             print(entry_diff(e_old, e))
 
-            if raw_input('update ? [Y/n] or [Enter] ').lower() not in ('', 'y'):
+            if input('update ? [Y/n] or [Enter] ').lower() not in ('', 'y'):
                 logger.info('cancel changes')
                 e.update(e_old)
                 for k in list(e.keys()):
@@ -702,7 +697,7 @@ def entry_filecheck(e, delete_broken=False, fix_mendeley=False,
                     file = candidate
 
             if old != file:
-                logger.info(e['ID']+u': file name fixed: "{}" => "{}".'.format(old, file))
+                logger.info(e['ID']+': file name fixed: "{}" => "{}".'.format(old, file))
                 fixed[old] = file # keep record of fixed files
 
         # parse PDF and check for metadata
@@ -719,7 +714,7 @@ def entry_filecheck(e, delete_broken=False, fix_mendeley=False,
                 logger.info('delete file from entry: "{}"'.format(file))
                 continue
             elif interactive:
-                ans = raw_input('delete file from entry ? [Y/n] ')
+                ans = input('delete file from entry ? [Y/n] ')
                 if ans.lower == 'y':
                     continue
 
@@ -826,7 +821,7 @@ def main():
         old = o.bibtex
 
         if config.git and not o.git and o.bibtex == config.bibtex:
-            ans = raw_input('stop git tracking (this will not affect actual git directory)? [Y/n] ')
+            ans = input('stop git tracking (this will not affect actual git directory)? [Y/n] ')
             if ans.lower() != 'y':
                 o.git = True
 
@@ -860,7 +855,7 @@ def main():
             logger.warn('Cannot make global install if local config file exists.')
             ans = None
             while ans not in ('1','2'):
-                ans = raw_input('(1) remove local config file '+local_config+'\n(2) make local install\nChoice: ')
+                ans = input('(1) remove local config file '+local_config+'\n(2) make local install\nChoice: ')
             if ans == '1':
                 os.remove(local_config)
             else:
@@ -886,7 +881,7 @@ def main():
 
 
     def savebib(my, o):
-        logger.info(u'save '+o.bibtex)
+        logger.info('save '+o.bibtex)
         if papers.config.DRYRUN:
             return
         if my is not None:
@@ -1186,7 +1181,7 @@ def main():
             first_author = lambda field : family_names(field)[0]
             entries = [e for e in entries if 'author' in e and match(firstauthor(e['author']), o.author)]
         if o.author:
-            author = lambda field : u' '.join(family_names(field))
+            author = lambda field : ' '.join(family_names(field))
             entries = [e for e in entries if 'author' in e and longmatch(author(e['author']), o.author)]
         if o.title:
             entries = [e for e in entries if 'title' in e and longmatch(e['title'], o.title)]

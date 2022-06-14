@@ -13,7 +13,6 @@ notifications:
 before_install:
   - pip install pip --upgrade
   - pip install bibtexparser
-  - pip install six
   - pip install crossrefapi
   - pip install rapidfuzz
   - pip install unidecode
@@ -25,7 +24,7 @@ before_install:
 install:
   - python setup.py install
 
-script: py.test -xv --cov papers.bib tests
+script: pytest -xv --cov papers.bib tests
 #script: tox -e py27 -e py34
 
 after-success: coveralls
