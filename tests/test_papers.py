@@ -1,5 +1,3 @@
-from __future__ import print_function, absolute_import
-
 import unittest
 import os, subprocess as sp
 import tempfile, shutil
@@ -429,7 +427,7 @@ class TestDuplicates(unittest.TestCase):
 
 
 
-class SimilarityBase(object):
+class SimilarityBase:
 
     similarity = None
 

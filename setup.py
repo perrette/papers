@@ -1,4 +1,4 @@
-from distutils.core import setup
+from setuptools import setup
 import versioneer
 
 version = versioneer.get_version()
@@ -14,5 +14,5 @@ setup(name='papers-cli',
       packages=['papers'],
       scripts=['scripts/papers'],
       license = "MIT",
-      requires = ["bibtexparser","crossrefapi","rapidfuzz", "unidecode", "scholarly", "six"],
+      requires=["bibtexparser", "crossrefapi", "rapidfuzz", "unidecode", "scholarly"],
       )
