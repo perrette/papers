@@ -71,8 +71,33 @@ For the sake of the example, one of my owns: https://www.earth-syst-dynam.net/4/
 
 (the `--info` argument asks for the above output information to be printed out to the terminal)
 
-In the common case where the bibtex (`--bibtex`) and files directory  (`--filesdir`) do not change,
-it is convenient to *install* `papers`.
+
+- control fields when renaming file
+
+        $> papers add --rename --info --nameformat Author,year,-,Title --nauthor 1 --ntitle 1 esd-4-11-2013
+        INFO:papers:found doi:10.5194/esd-4-11-2013
+        INFO:papers:new entry: perrette2013scaling
+        INFO:papers:create directory: files/2013
+        INFO:papers:mv /home/perrette/playground/papers/esd-4-11-2013.pdf files/2013/PerretteEtAl2013-AScalingApproachToProjectRegionalSeaLevelRiseAndItsUncertainties.pdf
+        INFO:papers:renamed file(s): 1
+
+where 'nameformat' is a comma-separated list of fields, with valid fields being any field available in the bibtex. Fields not in the bibtex will remain untouched.
+
+To rename esd-4-11-2013.pdf as perrette_2013.pdf, nameformat should be `author,_,year`.
+If that happens to be the entry ID, `ID` also works.
+
+To rename esd-4-11-2013.pdf as 2013/Perrette2013-AScalingApproachToProjectRegionalSeaLevelRiseAndItsUncertainties.pdf,
+nameformat should be `year,/,Author,year,Title` (note the case).
+
+Entries are case-sensitive, so that:  
+    'author' generates 'perrette'  
+    'Author' generates 'Perrette'  
+    'AUTHOR' generates 'PERRETTE'  
+any other case, like 'AuTHoR', will retrieve the field from 'e' with unaltered case.
+
+
+
+In the common case where the bibtex (`--bibtex`), files directory  (`--filesdir`), number of authors in key (`--nauthor`) or number of title words in key (`--ntitle`) do not change, it is convenient to *install* `papers`.
 Install comes with the option to git-track any change to the bibtex file (`--git`) options.
 
 - setup git-tracked library (optional)

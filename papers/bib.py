@@ -30,9 +30,6 @@ from papers.duplicate import entry_diff
 
 # KEY GENERATION
 # ==============
-NAUTHOR = 2
-NTITLE = 0
-
 
 def append_abc(key, keys=[]):
     """
@@ -72,10 +69,10 @@ def listtag(words, maxlength=30, minwordlen=3, n=100, sep='-'):
     return tag
 
 
-def generate_key(entry, nauthor=NAUTHOR, ntitle=NTITLE, minwordlen=3, maxtitlen=4, keys=None):
+def generate_key(entry, nauthor=config.nauthor, ntitle=config.ntitle, minwordlen=3, maxtitlen=4, keys=None, authorsep='_'):
     # names = bibtexparser.customization.getnames(entry.get('author','unknown').lower().split(' and '))
     names = family_names(entry.get('author','unknown').lower())
-    authortag = '_'.join([slugify(nm) for nm in names[:nauthor]])
+    authortag = authorsep.join([slugify(nm) for nm in names[:nauthor]])
     yeartag = str(entry.get('year','0000'))
     if not ntitle or not entry.get('title',''):
         titletag = ''
@@ -130,6 +127,7 @@ FUZZY_RATIO = 80
 
 # should be conservative (used in papers add)
 DEFAULT_SIMILARITY = 'FAIR'
+# DEFAULT_SIMILARITY = 'PARTIAL'
 
 EXACT_DUPLICATES = 104
 GOOD_DUPLICATES = 103
@@ -226,7 +224,7 @@ class DuplicateKeyError(ValueError):
 class Biblio:
     """main config
     """
-    def __init__(self, db=None, filesdir=None, key_field='ID', nauthor=NAUTHOR, ntitle=NTITLE, similarity=DEFAULT_SIMILARITY):
+    def __init__(self, db=None, filesdir=None, key_field='ID', nauthor=config.nauthor, ntitle=config.ntitle, nameformat=config.nameformat, similarity=DEFAULT_SIMILARITY):
         self.filesdir = filesdir
         # assume an already sorted list
         self.key_field = key_field
@@ -238,6 +236,7 @@ class Biblio:
         self.sort()
         self.nauthor = nauthor
         self.ntitle = ntitle
+        self.nameformat = nameformat
         self.similarity = similarity
 
     @property
@@ -414,7 +413,7 @@ class Biblio:
         self.insert_entry(entry, update_key=True, **kw)
 
         if rename:
-            self.rename_entry_files(entry, copy=copy)
+            self.rename_entry_files(entry, copy=copy, nameformat=self.nameformat)
 
 
     def scan_dir(self, direc, search_doi=True, search_fulltext=True, **kw):
@@ -465,35 +464,91 @@ class Biblio:
         self.sort() # keep sorted
 
 
-    def rename_entry_files(self, e, copy=False):
+    def rename_entry_files(self, e, copy=False, nameformat='year,/,ID'):
+        """ Rename files according to 'nameformat'
+            'nameformat' is a comma-separated string, and every field that is in
+            e.keys() will be replaced by the corresponding value. Fields not in
+            e.keys() will remain untouched.
+
+            To rename esd-4-11-2013.pdf as perrette_2013.pdf, nameformat should be 'author,_,year'.
+            If that happens to be the entry ID, 'ID' also works.
+
+            To rename esd-4-11-2013.pdf as
+            2013/Perrette2013-AScalingApproachToProjectRegionalSeaLevelRiseAndItsUncertainties.pdf,
+            nameformat should be 'year,/,Author,year,Title' (note the case).
+
+            Entries are case-sensitive, so that:
+                'author' generates 'perrette'
+                'Author' generates 'Perrette'
+                'AUTHOR' generates 'PERRETTE'
+            any other case, like 'AuTHoR', will retrieve the field from 'e' with unaltered case.
+        """
 
         if self.filesdir is None:
             raise ValueError('filesdir is None, cannot rename entries')
 
         files = parse_file(e.get('file',''))
         # newname = entrydir(e, root)
-        # direc = os.path.join(self.filesdir, e.get('year','0000'))
-        direc = os.path.join(self.filesdir)
+
+        direc = self.filesdir
 
         if not files:
             logger.info('no files to rename')
             return
 
-        # autoname = lambda e: e['ID'].replace(':','-').replace(';','-') # ':' and ';' are forbidden in file name
-        def autoname(e):
-            key = slugify(e['ID']).lower()
-            if e.get('title', ''):
-                titlewords = normalize(e['title']).lower().split()
-                titletag = listtag(titlewords, n=100, minwordlen=0, maxlength=70, sep='-')
-            else:
-                titletag = 'unknonwn'
-            return key + "_" + titletag
+        def autoname(namestr):
+            # Adapted
+            # from https://gitlab.com/malfatti/SciScripts/-/blob/master/Python3/Files/FixStupidFileNames.py
+
+            New = namestr
+
+            for C in ['"',"'",'!','@','#','$','%','&','*','+','=',';',':','?',',','/','\\']:
+                if C in New: New = New.replace(C,'')
+
+            for C in ['(', ')', '[', ']', '{', '}', '<', '>', '|']:
+                if C in New: New = New.replace(C,'_')
+
+            return(New)
+
+
+        def malfatti_rename(e, nameformat):
+            Fields = nameformat.split(',')
+            for F,Field in enumerate(Fields):
+                if Field == 'ID':
+                    Fields[F] = autoname(e['ID'])
+
+                elif Field == 'year':
+                    Fields[F] = e.get('year','0000')
+
+                elif Field.lower() in e.keys():
+                    if Field.lower() == 'author':
+                        Names = family_names(e['author'])
+
+                        if len(Names) >= 3: eField = Names[0] + ' et al'
+                        elif len(Names) == 2: eField = ' and '.join(Names)
+                        else: eField = Names[0]
+
+                    else:
+                        eField = e[Field.lower()]
+
+                    if Field.istitle():
+                        Fields[F] = autoname(eField).title().replace(' ','')
+                    elif Field.islower():
+                        Fields[F] = autoname(eField).lower().replace(' ','')
+                    elif Field.isupper():
+                        Fields[F] = autoname(eField).upper().replace(' ','')
+                    else:
+                        Fields[F] = autoname(eField).replace(' ','')
+
+            return ''.join(Fields)
+
+        newname = malfatti_rename(e, nameformat)
 
         count = 0
         if len(files) == 1:
             file = files[0]
             base, ext = os.path.splitext(file)
-            newfile = os.path.join(direc, autoname(e)+ext)
+            newfile = os.path.join(direc, newname+ext)
             if not os.path.exists(file):
                 raise ValueError(file+': original file link is broken')
             elif file != newfile:
@@ -505,7 +560,7 @@ class Biblio:
 
         # several files: only rename container
         else:
-            newdir = os.path.join(direc, autoname(e))
+            newdir = os.path.join(direc, newname)
             newfiles = []
             for file in files:
                 newfile = os.path.join(newdir, os.path.basename(file))
@@ -542,7 +597,7 @@ class Biblio:
     def rename_entries_files(self, copy=False):
         for e in self.db.entries:
             try:
-                self.rename_entry_files(e, copy)
+                self.rename_entry_files(e, copy, nameformat=self.nameformat)
             except Exception as error:
                 logger.error(str(error))
                 continue
@@ -793,6 +848,12 @@ def main():
         help='bibtex database (default: %(default)s)')
     grp.add_argument('--dry-run', action='store_true',
         help='no PDF renaming/copying, no bibtex writing on disk (for testing)')
+    grp.add_argument('--nauthor', type=int, default=config.nauthor,
+        help='number of authors to include in key (default:%(default)s)')
+    grp.add_argument('--ntitle', type=int, default=config.ntitle,
+        help='number of title words to include in key (default:%(default)s)')
+    grp.add_argument('--nameformat', default=config.nameformat,
+        help='comma-separated fields for renaming files (default:%(default)s)')
 
     # status
     # ======
@@ -858,6 +919,10 @@ def main():
 
         if o.filesdir is not None:
             config.filesdir = o.filesdir
+
+        config.nauthor = o.nauthor
+        config.ntitle = o.ntitle
+        config.nameformat = o.nameformat
 
         if o.reset_paths:
             config.reset()
@@ -962,11 +1027,14 @@ def main():
 
 
     def addcmd(o):
-
         if os.path.exists(o.bibtex):
             my = Biblio.load(o.bibtex, o.filesdir)
         else:
             my = Biblio.newbib(o.bibtex, o.filesdir)
+
+        my.nauthor = o.nauthor
+        my.ntitle = o.ntitle
+        my.nameformat = o.nameformat
 
         if len(o.file) > 1 and o.attachment:
             logger.error('--attachment is only valid for one added file')
@@ -1020,8 +1088,8 @@ def main():
     grp.add_argument('--fix-key', action='store_true', help='fix key based on author name and date (in case misssing or digit)')
     grp.add_argument('--key-ascii', action='store_true', help='replace keys unicode character with ascii')
     grp.add_argument('--auto-key', action='store_true', help='new, auto-generated key for all entries')
-    grp.add_argument('--nauthor', type=int, default=NAUTHOR, help='number of authors to include in key (default:%(default)s)')
-    grp.add_argument('--ntitle', type=int, default=NTITLE, help='number of title words to include in key (default:%(default)s)')
+#     grp.add_argument('--nauthor', type=int, default=config.nauthor, help='number of authors to include in key (default:%(default)s)')
+#     grp.add_argument('--ntitle', type=int, default=config.ntitle, help='number of title words to include in key (default:%(default)s)')
     # grp.add_argument('--ascii-key', action='store_true', help='replace unicode characters with closest ascii')
 
     grp = checkp.add_argument_group('crossref fetch and fix')
@@ -1227,6 +1295,10 @@ def main():
         if o.duplicates_tit:
             entries = list_dup(entries, key=title_id)
         if o.duplicates:
+            # QUESTION MARK: in latest HEAD before merge with @malfatti's PR, I used hard-coded "PARTIAL".
+            # I think that's because we might need to be inclusive here, whereas the default is conservative (parameter used for several functions with possibly differing requirements).
+            # (otherwise we'd have used the command-line option o.similarity, or possibly DEFAULT_SIMILARITY)
+            # Might need to revise later (the question mark is from a review after a long time without use)
             eq = lambda a, b: a['ID'] == b['ID'] or are_duplicates(a, b, similarity="PARTIAL", fuzzy_ratio=o.fuzzy_ratio)
             entries = list_dup(entries, eq=eq)
 

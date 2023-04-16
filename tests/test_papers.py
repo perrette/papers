@@ -32,7 +32,7 @@ def prepare_paper():
     year = 2011,
 }"""
 
-    file_rename = "perrette-yool2011_near-ubiquity-of-ice-edge-blooms-in-the-arctic.pdf"
+    file_rename = "2011/perrette_yool2011.pdf"
 
     return pdf, doi, key, newkey, year, bibtex, file_rename
 
@@ -57,7 +57,7 @@ def prepare_paper2():
     volume = {4},
     year = 2013,
 }"""
-    file_rename = "perrette-landerer2013_a-scaling-approach-to-project-regional-sea-level-rise-and-its.pdf"
+    file_rename = "2013/perrette_landerer2013.pdf"
     return pdf, si, doi, key, newkey, year, bibtex, file_rename
 
 class TestBibtexFileEntry(unittest.TestCase):
