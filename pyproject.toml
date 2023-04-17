@@ -1,0 +1,72 @@
+[build-system]
+requires = ["setuptools>=61.0", "setuptools_scm[toml]>=6.2"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "papers-cli"
+authors = [
+    {name = "Mahé Perrette", email = "mahe.perrette@gmail.com"},
+]
+description='utilities to keep your PDF library organized'
+readme = "README.md"
+requires-python = ">=3.7"
+keywords = ['bibtex', 'references','bibliography']
+license = {text = "MIT"}
+classifiers = [
+    "Programming Language :: Python :: 3",
+]
+dependencies = [
+      "unidecode",
+      "crossrefapi",
+      "bibtexparser",
+      "scholarly",
+      "rapidfuzz",
+      "normality",
+]
+dynamic = ["version"]
+
+[project.optional-dependencies]
+# all = ["package"]
+
+[project.urls]
+homepage = "https://github.com/perrette/papers"
+
+[tool.setuptools_scm]
+write_to = "papers/_version.py"
+
+[project.scripts]
+papers = "papers.bib:main"
+
+[tool.tox]
+# Tox (https://tox.readthedocs.io/) is a tool for running tests
+# in multiple virtualenvs. This configuration file will run the
+# test suite on all supported python versions. To use it, "pip install tox"
+# and then run "tox" from this directory.
+legacy_tox_ini = """
+[tox]
+envlist = py38, py39, py310, py311
+
+[gh-actions]
+python =
+    3.7: py37
+    3.8: py38
+    3.9: py39
+    3.10: py310
+    3.11: py311
+
+[testenv]
+commands = pytest tests -xv
+deps =
+    bibtexparser
+    scholarly
+    crossrefapi
+    rapidfuzz
+    unidecode
+    normality
+    pytest
+
+[pytest]
+norecursedirs =
+      .tox
+      .git
+"""

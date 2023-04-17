@@ -5,3 +5,4 @@
 __pycache__
 build
 MANIFEST
+papers/_version.py
