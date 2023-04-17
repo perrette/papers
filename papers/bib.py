@@ -29,9 +29,6 @@ from papers.duplicate import entry_diff
 
 # KEY GENERATION
 # ==============
-NAUTHOR = 2
-NTITLE = 0
-
 
 def append_abc(key, keys=[]):
     """
@@ -58,24 +55,6 @@ def append_abc(key, keys=[]):
             break
     assert Key not in keys, 'not enough letters in the alphabets to solve key conflict? or maybe something went wrong...'
     return Key
-
-
-def generate_key(entry, nauthor=NAUTHOR, ntitle=NTITLE, minwordlen=3, mintitlen=4, keys=None):
-    # names = bibtexparser.customization.getnames(entry.get('author','unknown').lower().split(' and '))
-    names = family_names(entry.get('author','unknown').lower())
-    authortag = '_'.join([nm for nm in names[:nauthor]])
-    yeartag = entry.get('year','0000')
-    if not ntitle or not entry.get('title',''):
-        titletag = ''
-    else:
-        words = [word for word in entry['title'].lower().strip().split() if len(word) >= minwordlen]
-        while len(''.join(words[:ntitle])) < mintitlen and ntitle < len(words):
-            ntitle += 1
-        titletag = '_'.join(words[:ntitle])
-    key = authortag + yeartag + titletag
-    if keys and key in keys: # and not isinstance(keys, set):
-        key = append_abc(key, keys)
-    return key
 
 
 # DUPLICATE DEFINITION
@@ -114,12 +93,11 @@ def entry_id(e):
     return (e.get('doi','').lower(), authortitle)
 
 
-
-
 FUZZY_RATIO = 80
 
 # should be conservative (used in papers add)
 DEFAULT_SIMILARITY = 'FAIR'
+# DEFAULT_SIMILARITY = 'PARTIAL'
 
 EXACT_DUPLICATES = 104
 GOOD_DUPLICATES = 103
@@ -172,7 +150,7 @@ def are_duplicates(e1, e2, similarity=DEFAULT_SIMILARITY, fuzzy_ratio=FUZZY_RATI
     except KeyError:
         raise ValueError('similarity must be one of EXACT, GOOD, FAIR, PARTIAL, FUZZY')
 
-    score = compare_entries(e1, e2, fuzzy=level==FUZZY_DUPLICATES)
+    score = compare_entries(e1, e2, fuzzy=target==FUZZY_DUPLICATES)
     logger.debug('score: {}, target: {}, similarity: {}'.format(score, target, similarity))
     return score >= target
 
@@ -205,8 +183,6 @@ def read_entry_dir(self, direc, update_files=True):
     return entry
 
 
-
-
 def backupfile(bibtex):
     return os.path.join(os.path.dirname(bibtex), '.'+os.path.basename(bibtex)+'.backup')
 
@@ -216,7 +192,7 @@ class DuplicateKeyError(ValueError):
 class Biblio:
     """main config
     """
-    def __init__(self, db=None, filesdir=None, key_field='ID', nauthor=NAUTHOR, ntitle=NTITLE, similarity=DEFAULT_SIMILARITY):
+    def __init__(self, db=None, filesdir=None, key_field='ID', nameformat=None, keyformat=None, similarity=DEFAULT_SIMILARITY):
         self.filesdir = filesdir
         # assume an already sorted list
         self.key_field = key_field
@@ -225,10 +201,10 @@ class Biblio:
         elif not isinstance(db, bibtexparser.bibdatabase.BibDatabase):
             raise TypeError('db must of type BibDatabase')
         self.db = db
-        self.sort()
-        self.nauthor = nauthor
-        self.ntitle = ntitle
+        self.nameformat = nameformat or config.nameformat
+        self.keyformat = keyformat or config.keyformat
         self.similarity = similarity
+        self.sort()
 
     @property
     def entries(self):
@@ -356,7 +332,10 @@ class Biblio:
     def generate_key(self, entry):
         " generate a unique key not yet present in the record "
         keys = {self.key(e) for e in self.db.entries}
-        return generate_key(entry, keys=keys, nauthor=self.nauthor, ntitle=self.ntitle)
+        key = self.keyformat(entry)
+        if keys and key in keys: # and not isinstance(keys, set):
+            key = append_abc(key, keys)
+        return key
 
     def append_abc_to_key(self, entry):
         return append_abc(entry['ID'], keys={self.key(e) for e in self.entries})
@@ -378,12 +357,18 @@ class Biblio:
         self.add_bibtex(bibtex, **kw)
 
 
-    def add_pdf(self, pdf, attachments=None, rename=False, copy=False, search_doi=True, search_fulltext=True, scholar=False, **kw):
+    def add_pdf(self, pdf, attachments=None, rename=False, copy=False, search_doi=True, search_fulltext=True, scholar=False, doi=None, **kw):
 
-        bibtex = extract_pdf_metadata(pdf, search_doi, search_fulltext, scholar=scholar)
+        if doi:
+            bibtex = fetch_bibtex_by_doi(doi)
+        else:
+            bibtex = extract_pdf_metadata(pdf, search_doi, search_fulltext, scholar=scholar)
 
         bib = bibtexparser.loads(bibtex)
         entry = bib.entries[0]
+
+        # convert curly brackets to unicode
+        bibtexparser.customization.convert_to_unicode(entry)
 
         files = [pdf]
         if attachments:
@@ -449,26 +434,45 @@ class Biblio:
         self.sort() # keep sorted
 
 
-    def rename_entry_files(self, e, copy=False):
+    def rename_entry_files(self, e, copy=False, formatter=None):
+        """ Rename files
+
+        See `confog.Format` class
+
+
+            To rename esd-4-11-2013.pdf as perrette_2013.pdf, nameformat should be '{author}_{year}' with --name-nauthor 1.
+            If that happens to be the entry ID, 'ID' also works.
+
+            To rename esd-4-11-2013.pdf as
+            2013/Perrette2013-AScalingApproachToProjectRegionalSeaLevelRiseAndItsUncertainties.pdf,
+            nameformat should be '{year}/{Author}{year}-{Title}' with --name-nauthor 1 (note the case).
+
+            Entries are case-sensitive, so that:
+                'author' generates 'perrette'
+                'Author' generates 'Perrette'
+                'AUTHOR' generates 'PERRETTE'
+            any other case, like 'AuTHoR', will retrieve the field from 'e' with unaltered case.
+        """
 
         if self.filesdir is None:
             raise ValueError('filesdir is None, cannot rename entries')
 
         files = parse_file(e.get('file',''))
         # newname = entrydir(e, root)
-        direc = os.path.join(self.filesdir, e.get('year','0000'))
+
+        direc = self.filesdir
 
         if not files:
             logger.info('no files to rename')
             return
 
-        autoname = lambda e: e['ID'].replace(':','-').replace(';','-') # ':' and ';' are forbidden in file name
+        newname = (formatter or self.nameformat)(e)
 
         count = 0
         if len(files) == 1:
             file = files[0]
             base, ext = os.path.splitext(file)
-            newfile = os.path.join(direc, autoname(e)+ext)
+            newfile = os.path.join(direc, newname+ext)
             if not os.path.exists(file):
                 raise ValueError(file+': original file link is broken')
             elif file != newfile:
@@ -480,7 +484,7 @@ class Biblio:
 
         # several files: only rename container
         else:
-            newdir = os.path.join(direc, autoname(e))
+            newdir = os.path.join(direc, newname)
             newfiles = []
             for file in files:
                 newfile = os.path.join(newdir, os.path.basename(file))
@@ -769,6 +773,52 @@ def main():
     grp.add_argument('--dry-run', action='store_true',
         help='no PDF renaming/copying, no bibtex writing on disk (for testing)')
 
+    grp.add_argument('--key-template', default=config.keyformat.template,
+        help='python template for generating keys (default:%(default)s)')
+    grp.add_argument('--key-author-num', type=int, default=config.keyformat.author_num,
+        help='number of authors to include in key (default:%(default)s)')
+    grp.add_argument('--key-author-sep', default=config.keyformat.author_sep,
+        help='separator for authors in key (default:%(default)s)')
+    grp.add_argument('--key-title-word-num', type=int, default=config.keyformat.title_word_num,
+        help='number of title words to include in key (default:%(default)s)')
+    grp.add_argument('--key-title-word-size', type=int, default=config.keyformat.title_word_size,
+        help='number of title words to include in key (default:%(default)s)')
+    grp.add_argument('--key-title-sep', default=config.keyformat.title_sep,
+        help='separator for title words in key (default:%(default)s)')
+
+    grp.add_argument('--name-template', default=config.nameformat.template,
+        help='python template for renaming files (default:%(default)s)')
+    grp.add_argument('--name-author-num', type=int, default=config.nameformat.author_num,
+        help='number of authors to include in filename (default:%(default)s)')
+    grp.add_argument('--name-author-sep', default=config.nameformat.author_sep,
+        help='separator for authors in filename (default:%(default)s)')
+    grp.add_argument('--name-title-word-num', type=int, default=config.nameformat.title_word_num,
+        help='number of title words to include in filename (default:%(default)s)')
+    grp.add_argument('--name-title-word-size', type=int, default=config.nameformat.title_word_size,
+        help='min size of title words to include in filename (default:%(default)s)')
+    grp.add_argument('--name-title-length', type=int, default=config.nameformat.title_length,
+        help='title length to include in filename (default:%(default)s)')
+    grp.add_argument('--name-title-sep', default=config.nameformat.title_sep,
+        help='separator for title words in filename (default:%(default)s)')
+
+
+    def set_format_config_from_cmd(o):
+        config.keyformat.template = o.key_template
+        config.keyformat.author_num = o.key_author_num
+        config.keyformat.author_sep = o.key_author_sep
+        config.keyformat.title_word_num = o.key_title_word_num
+        config.keyformat.title_word_size = o.key_title_word_size
+        config.keyformat.title_sep = o.key_title_sep
+
+        config.nameformat.template = o.name_template
+        config.nameformat.author_num = o.name_author_num
+        config.nameformat.author_sep = o.name_author_sep
+        config.nameformat.title_length = o.name_title_length
+        config.nameformat.title_word_num = o.name_title_word_num
+        config.nameformat.title_word_size = o.name_title_word_size
+        config.nameformat.title_sep = o.name_title_sep
+
+
     # status
     # ======
     statusp = subparsers.add_parser('status',
@@ -922,6 +972,7 @@ def main():
         help='ignore errors when adding multiple files')
 
     grp = addp.add_argument_group('pdf metadata')
+    grp.add_argument('--doi', help='provide DOI -- skip parsing PDF')
     grp.add_argument('--no-query-doi', action='store_true', help='do not attempt to parse and query doi')
     grp.add_argument('--no-query-fulltext', action='store_true', help='do not attempt to query fulltext in case doi query fails')
     grp.add_argument('--scholar', action='store_true', help='use google scholar instead of crossref')
@@ -936,7 +987,6 @@ def main():
 
 
     def addcmd(o):
-
         if os.path.exists(o.bibtex):
             my = Biblio.load(o.bibtex, o.filesdir)
         else:
@@ -964,7 +1014,7 @@ def main():
                     my.add_pdf(file, attachments=o.attachment, rename=o.rename, copy=o.copy,
                             search_doi=not o.no_query_doi,
                             search_fulltext=not o.no_query_fulltext,
-                            scholar=o.scholar,
+                            scholar=o.scholar, doi=o.doi,
                             **kw)
 
                 else: # file.endswith('.bib'):
@@ -994,8 +1044,8 @@ def main():
     grp.add_argument('--fix-key', action='store_true', help='fix key based on author name and date (in case misssing or digit)')
     grp.add_argument('--key-ascii', action='store_true', help='replace keys unicode character with ascii')
     grp.add_argument('--auto-key', action='store_true', help='new, auto-generated key for all entries')
-    grp.add_argument('--nauthor', type=int, default=NAUTHOR, help='number of authors to include in key (default:%(default)s)')
-    grp.add_argument('--ntitle', type=int, default=NTITLE, help='number of title words to include in key (default:%(default)s)')
+#     grp.add_argument('--nauthor', type=int, default=config.nauthor, help='number of authors to include in key (default:%(default)s)')
+#     grp.add_argument('--ntitle', type=int, default=config.ntitle, help='number of title words to include in key (default:%(default)s)')
     # grp.add_argument('--ascii-key', action='store_true', help='replace unicode characters with closest ascii')
 
     grp = checkp.add_argument_group('crossref fetch and fix')
@@ -1201,7 +1251,11 @@ def main():
         if o.duplicates_tit:
             entries = list_dup(entries, key=title_id)
         if o.duplicates:
-            eq = lambda a, b: a['ID'] == b['ID'] or are_duplicates(a, b, similarity=level, fuzzy_ratio=o.fuzzy_ratio)
+            # QUESTION MARK: in latest HEAD before merge with @malfatti's PR, I used hard-coded "PARTIAL".
+            # I think that's because we might need to be inclusive here, whereas the default is conservative (parameter used for several functions with possibly differing requirements).
+            # (otherwise we'd have used the command-line option o.similarity, or possibly DEFAULT_SIMILARITY)
+            # Might need to revise later (the question mark is from a review after a long time without use)
+            eq = lambda a, b: a['ID'] == b['ID'] or are_duplicates(a, b, similarity="PARTIAL", fuzzy_ratio=o.fuzzy_ratio)
             entries = list_dup(entries, eq=eq)
 
         def nfiles(e):
@@ -1243,7 +1297,7 @@ def main():
                 print(e['ID'].encode('utf-8'))
         elif o.one_liner:
             for e in entries:
-                tit = e['title'][:60]+ ('...' if len(e['title'])>60 else '')
+                tit = e.get('title', '')[:60]+ ('...' if len(e.get('title', ''))>60 else '')
                 info = []
                 if e.get('doi',''):
                     info.append('doi:'+e['doi'])
@@ -1335,6 +1389,7 @@ def main():
         return statuscmd(o)
 
     def check_install():
+        set_format_config_from_cmd(o)
         if not os.path.exists(o.bibtex):
             print('papers: error: no bibtex file found, use `papers install` or `touch {}`'.format(o.bibtex))
             parser.exit(1)

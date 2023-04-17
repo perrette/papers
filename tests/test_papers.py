@@ -2,6 +2,7 @@ import unittest
 import os, subprocess as sp
 import tempfile, shutil
 import difflib
+from pathlib import Path
 
 from papers.extract import extract_pdf_metadata
 from papers.bib import Biblio, bibtexparser, parse_file, format_file
@@ -31,7 +32,10 @@ def prepare_paper():
     year = 2011,
 }"""
 
-    return pdf, doi, key, newkey, year, bibtex
+    file_rename = "perrette_et_al_2011_near-ubiquity-of-ice-edge-blooms-in-the-arctic.pdf"
+
+    return pdf, doi, key, newkey, year, bibtex, file_rename
+
 
 def prepare_paper2():
     pdf = downloadpdf('esd-4-11-2013.pdf')
@@ -53,7 +57,9 @@ def prepare_paper2():
     volume = {4},
     year = 2013,
 }"""
-    return pdf, si, doi, key, newkey, year, bibtex
+    file_rename = "perrette_et_al_2013_a-scaling-approach-to-project-regional-sea-level-rise-and-its-uncertainties.pdf"
+
+    return pdf, si, doi, key, newkey, year, bibtex, file_rename
 
 class TestBibtexFileEntry(unittest.TestCase):
 
@@ -89,7 +95,7 @@ class TestBibtexFileEntry(unittest.TestCase):
 class TestSimple(unittest.TestCase):
 
     def setUp(self):
-        self.pdf, self.doi, self.key, self.newkey, self.year, self.bibtex = prepare_paper()
+        self.pdf, self.doi, self.key, self.newkey, self.year, self.bibtex, self.file_rename = prepare_paper()
         self.assertTrue(os.path.exists(self.pdf))
 
     def test_doi(self):
@@ -127,7 +133,7 @@ class TestInstall(unittest.TestCase):
 class TestAdd(unittest.TestCase):
 
     def setUp(self):
-        self.pdf, self.doi, self.key, self.newkey, self.year, self.bibtex = prepare_paper()
+        self.pdf, self.doi, self.key, self.newkey, self.year, self.bibtex, self.file_rename = prepare_paper()
         self.assertTrue(os.path.exists(self.pdf))
         self.mybib = tempfile.mktemp(prefix='papers.bib')
         self.filesdir = tempfile.mktemp(prefix='papers.files')
@@ -144,7 +150,7 @@ class TestAdd(unittest.TestCase):
             self.assertEqual([e['doi'] for e in db1.entries], [e['doi'] for e in db2.entries]) # entry is as expected
             # self.assertEqual([e['title'].lower() for e in db1.entries], [e['title'].lower() for e in db2.entries]) # entry is as expected
         elif dismiss_key:
-            f = lambda e: {k:e[k] for k in e if k!='ID'}
+            f = lambda e: bibtexparser.customization.convert_to_unicode({k:e[k] for k in e if k!='ID'})
             self.assertEqual([f(e) for e in db1.entries], [f(e) for e in db2.entries]) # entry is as expected
         else:
             self.assertEqual(db1.entries, db2.entries) # entry is as expected
@@ -171,6 +177,8 @@ class TestAdd(unittest.TestCase):
 
         file_ = self._checkbib(dismiss_key=True)
         file = self._checkfile(file_)
+        print("file created during test:", file)
+        print("file for check:", self.pdf)
         self.assertEqual(file, self.pdf)
         # self.assertTrue(os.path.exists(self.pdf)) # old pdf still exists
 
@@ -193,7 +201,7 @@ class TestAdd(unittest.TestCase):
 
         file_ = self._checkbib(dismiss_key=True)  # 'file:pdf'
         file = self._checkfile(file_)
-        self.assertEqual(file, os.path.join(self.filesdir, self.year, self.newkey+'.pdf')) # update key since pdf
+        self.assertEqual(file, os.path.join(self.filesdir, self.file_rename)) # update key since pdf
         self.assertTrue(os.path.exists(self.pdf)) # old pdf still exists
 
 
@@ -207,7 +215,7 @@ class TestAdd(unittest.TestCase):
 
         file_ = self._checkbib(dismiss_key=True)  # 'file:pdf'
         file = self._checkfile(file_)
-        self.assertEqual(file, os.path.join(self.filesdir,self.year,self.newkey+'.pdf')) # update key since pdf
+        self.assertEqual(file, os.path.join(self.filesdir,self.file_rename)) # update key since pdf
         self.assertFalse(os.path.exists(pdfcopy))
 
 
@@ -223,7 +231,7 @@ class TestAdd(unittest.TestCase):
 class TestAdd2(TestAdd):
 
     def setUp(self):
-        self.pdf, self.si, self.doi, self.key, self.newkey, self.year, self.bibtex = prepare_paper2()
+        self.pdf, self.si, self.doi, self.key, self.newkey, self.year, self.bibtex, self.file_rename = prepare_paper2()
         self.assertTrue(os.path.exists(self.pdf))
         self.mybib = tempfile.mktemp(prefix='papers.bib')
         self.filesdir = tempfile.mktemp(prefix='papers.files')
@@ -245,9 +253,7 @@ class TestAdd2(TestAdd):
         dirsi = os.path.dirname(si)
         self.assertEqual(dirmain, dirsi)
         dirmains = dirmain.split(os.path.sep)
-        self.assertEqual(dirmains[-1], self.newkey)  # NEW KEY since loaded as pdf
-        self.assertEqual(dirmains[-2], self.year)
-        self.assertEqual(os.path.sep.join(dirmains[:-2]), self.filesdir)
+        self.assertEqual(Path(dirmain).name, Path(self.file_rename).stem)
         # individual files have not been renamed
         self.assertEqual(os.path.basename(main), os.path.basename(self.pdf))
         self.assertEqual(os.path.basename(si), os.path.basename(self.si))
@@ -261,8 +267,8 @@ class TestAddBib(unittest.TestCase):
     def setUp(self):
         self.mybib = tempfile.mktemp(prefix='papers.bib')
         self.somebib = tempfile.mktemp(prefix='papers.somebib.bib')
-        self.pdf1, self.doi, self.key1, self.newkey1, self.year, self.bibtex1 = prepare_paper()
-        self.pdf2, self.si, self.doi, self.key2, self.newkey2, self.year, self.bibtex2 = prepare_paper2()
+        self.pdf1, self.doi, self.key1, self.newkey1, self.year, self.bibtex1, self.file_rename1 = prepare_paper()
+        self.pdf2, self.si, self.doi, self.key2, self.newkey2, self.year, self.bibtex2, self.file_rename2 = prepare_paper2()
         bib = '\n'.join([self.bibtex1, self.bibtex2])
         open(self.somebib,'w').write(bib)
         self.my = Biblio.newbib(self.mybib, '')
@@ -285,8 +291,8 @@ class TestAddBib(unittest.TestCase):
 class TestAddDir(unittest.TestCase):
 
     def setUp(self):
-        self.pdf1, self.doi, self.key1, self.newkey1, self.year, self.bibtex1 = prepare_paper()
-        self.pdf2, self.si, self.doi, self.key2, self.newkey2, self.year, self.bibtex2 = prepare_paper2()
+        self.pdf1, self.doi, self.key1, self.newkey1, self.year, self.bibtex1, self.file_rename1 = prepare_paper()
+        self.pdf2, self.si, self.doi, self.key2, self.newkey2, self.year, self.bibtex2, self.file_rename2 = prepare_paper2()
         self.somedir = tempfile.mktemp(prefix='papers.somedir')
         self.subdir = os.path.join(self.somedir, 'subdir')
         os.makedirs(self.somedir)

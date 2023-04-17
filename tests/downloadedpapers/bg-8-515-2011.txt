@@ -1,0 +1,84 @@
+Biogeosciences, 8, 515–524, 2011
+www.biogeosciences.net/8/515/2011/
+doi:10.5194/bg-8-515-2011
+© Author(s) 2011. CC Attribution 3.0 License.
+
+Biogeosciences
+
+Near-ubiquity of ice-edge blooms in the Arctic
+M. Perrette1,* , A. Yool1 , G. D. Quartly1 , and E. E. Popova1
+1 National
+* now
+
+Oceanography Centre; Univ. of Southampton Waterfront Campus, European Way, Southampton SO14 3ZH, UK
+at: Potsdam Institute for Climate Impact Research (PIK), Telegrafenberg A31, 14412 Potsdam, Germany
+
+Received: 22 September 2010 – Published in Biogeosciences Discuss.: 4 November 2010
+Revised: 10 February 2011 – Accepted: 15 February 2011 – Published: 25 February 2011
+
+Abstract. Ice-edge blooms are significant features of Arctic
+primary production, yet have received relatively little attention. Here we combine satellite ocean colour and sea-ice data
+in a pan-Arctic study. Ice-edge blooms occur in all seasonally ice-covered areas and from spring to late summer, being
+observed in 77–89% of locations for which adequate data exist, and usually peaking within 20 days of ice retreat. They
+sometimes form long belts along the ice-edge (greater than
+100 km), although smaller structures were also found. The
+bloom peak is on average more than 1 mg m−3 , with major
+blooms more than 10 mg m−3 , and is usually located close
+to the ice-edge, though not always. Some propagate behind
+the receding ice-edge over hundreds of kilometres and over
+several months, while others remain stationary. The strong
+connection between ice retreat and productivity suggests that
+the ongoing changes in Arctic sea-ice may have a significant
+impact on higher trophic levels and local fish stocks.
+
+1
+
+Introduction
+
+The classical picture of Arctic ice-edge phytoplankton
+blooms found in the literature – mainly based on cruise transects – is of a long but narrow (20–100 km) band along the
+ice-edge, moving northward as the ice breaks up and melts
+over spring and summer (Sakshaug and Skjoldal, 1989).
+They differ from more traditional open-water blooms with
+respect to the nature of water column stratification, here induced primarily by freshwater input instead of solar heating.
+When sea-ice breaks up and melts, there is an input of freshwater to the surface that induces strong stratification. Another causal factor is increased solar irradiance at the surface
+as ice cover shrinks. Since irradiance is typically sufficient
+Correspondence to: M. Perrette
+(mahe.perrette@pik-potsdam.de)
+
+by the time ice cover recedes, Sverdrup’s (1953) criterion of
+a mixed layer shallower than the critical depth is met, making
+the light regime suitable for phytoplankton growth. Ice-edge
+blooms are generally understood as short-lived phenomena
+that quickly strip out the nutrients of the shallow (15–35 m)
+surface mixed layer characteristic of seasonally ice-covered
+waters (Niebauer, 1991). The area located between the multiyear ice and maximal extent is the seasonal ice cover, and this
+forms the subject of this study, with a particular focus on the
+marginal ice zone (MIZ), which is the region of recent ice
+melt.
+Ice-edge phytoplankton blooms have been detected from
+cruises in many locations including Bering Sea (Alexander
+and Niebauer, 1981; Niebauer et al., 1995), Chukchi and
+Beaufort Seas (Hill et al., 2005; Sukhanova et al., 2009),
+Canadian Archipelago (Klein et al., 2002; Tremblay et al.,
+2006), Greenland Sea (Smith et al., 1997), Barents Sea
+(Luchetta et al., 2000; Hegseth and Sundfjord, 2008), and
+also in the Southern Ocean (Smith and Nelson, 1985). In
+the Barents Sea and on the Bering Shelf they are thought
+to account for 50–65% of annual primary production (Sakshaug, 2004). Indications of ice-edge blooms had been noted
+in ocean colour imagery from the Coastal Zone Color Scanner (e.g. Maynard, 1986; Maynard et al., 1987; Mitchell et
+al., 1991; Kögeler and Rey, 1999) but detailed investigations
+were not possible on account of its poor sampling due to limited onboard storage, and underestimation problems close to
+ice due to a “ringing effect” as the scan line moved from
+bright to dark features (Mitchell et al., 1991). The launch
+of the SeaWiFS in 1997 ushered in a new era of long-term
+continuous ocean colour observations, with the whole globe
+sampled every two days, albeit that in some places cloud frequently obscures the surface. However, the potential of the
+SeaWiFS archive for the investigation of ice-edge blooms
+has only led to a few publications to date (e.g. Arrigo and
+van Dijken, 2004), and thus a primary aim of this study is
+to fill this gap and investigate their existence at the large
+
+Published by Copernicus Publications on behalf of the European Geosciences Union.
+
+

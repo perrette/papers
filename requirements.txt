@@ -3,3 +3,4 @@ crossrefapi
 bibtexparser
 scholarly
 rapidfuzz
+normality
