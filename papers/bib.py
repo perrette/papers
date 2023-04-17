@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 import logging
 # logger.basicConfig(level=logger.INFO)
 import argparse
@@ -869,8 +870,6 @@ def main():
 
     def installcmd(o):
 
-        old = o.bibtex
-
         if config.git and not o.git and o.bibtex == config.bibtex:
             ans = input('stop git tracking (this will not affect actual git directory)? [Y/n] ')
             if ans.lower() != 'y':
@@ -890,17 +889,18 @@ def main():
         config.git = o.git
 
         # create bibtex file if not existing
-        if not os.path.exists(o.bibtex):
+        bibtex = Path(o.bibtex)
+
+        if not bibtex.exists():
             logger.info('create empty bibliography database: '+o.bibtex)
-            dirname = os.path.dirname(o.bibtex)
-            if not os.path.exists(dirname):
-                os.makedirs(dirname)
-            open(o.bibtex,'w').write('')
+            bibtex.parent.mkdir(parents=True, exist_ok=True)
+            bibtex.open('w', encoding="utf-8").write('')
 
         # create bibtex file if not existing
-        if not os.path.exists(o.filesdir):
+        filesdir = Path(o.filesdir)
+        if not filesdir.exists():
             logger.info('create empty files directory: '+o.filesdir)
-            os.makedirs(o.filesdir)
+            filesdir.mkdir(parents=True)
 
         if not o.local and os.path.exists(local_config):
             logger.warn('Cannot make global install if local config file exists.')
