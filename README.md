@@ -66,7 +66,7 @@ For the sake of the example, one of my owns: https://www.earth-syst-dynam.net/4/
     	INFO:papers:found doi:10.5194/esd-4-11-2013
     	INFO:papers:new entry: perrette_2013
     	INFO:papers:create directory: files/2013
-    	INFO:papers:mv /home/perrette/playground/papers/esd-4-11-2013.pdf files/2013/Perrette_2013.pdf
+    	INFO:papers:mv /home/perrette/playground/papers/esd-4-11-2013.pdf files/perrette_et_al_2013_a-scaling-approach-to-project-regional-sea-level-rise-and-its-uncertainties.pdf
     	INFO:papers:renamed file(s): 1
 
 (the `--info` argument asks for the above output information to be printed out to the terminal)
