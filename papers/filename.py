@@ -78,11 +78,11 @@ class Format:
     def __init__(self, template, author_num=2, title_word_num=100, title_word_size=1, title_length=100, author_sep="_", title_sep="-"):
         self.template = template
         self.author_num = author_num
+        self.author_sep = author_sep
+        self.title_length = title_length
+        self.title_sep = title_sep
         self.title_word_num = title_word_num
         self.title_word_size = title_word_size
-        self.title_length = title_length
-        self.author_sep = author_sep
-        self.title_sep = title_sep
 
     def todict(self):
         return vars(self)
@@ -92,3 +92,7 @@ class Format:
 
     def __call__(self, entry):
         return self.render(**entry)
+
+
+KEYFORMAT = Format(template='{author}{year}', author_num=2, author_sep="_")
+NAMEFORMAT = Format(template='{authorX}_{year}_{title}', author_sep="_", title_sep="-")

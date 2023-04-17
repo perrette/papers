@@ -3,7 +3,7 @@ import subprocess as sp, sys, shutil
 import hashlib
 import bibtexparser
 from papers import logger
-from papers.filename import Format
+from papers.filename import Format, NAMEFORMAT, KEYFORMAT
 
 # GIT = False
 DRYRUN = False
@@ -45,9 +45,6 @@ def check_filesdir(folder):
             folder_size += os.path.getsize(filename)
             file_count += 1
     return file_count, folder_size
-
-KEYFORMAT = Format(template='{author}{year}', author_num=2, author_sep="_")
-NAMEFORMAT = Format(template='{authorX}_{year}_{title}', author_sep="_", title_sep="-")
 
 class Config:
     """configuration class to specify system-wide collections and files-dir
