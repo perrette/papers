@@ -2,12 +2,13 @@
 [![python](https://img.shields.io/badge/python-3.8-blue.svg)]()
 [![python](https://img.shields.io/badge/python-3.9-blue.svg)]()
 [![python](https://img.shields.io/badge/python-3.10-blue.svg)]()
+[![python](https://img.shields.io/badge/python-3.11-blue.svg)]()
 
 # papers
 
 Command-line tool to manage bibliography (pdfs + bibtex)
 
-> **WARNING**: This tool requires further development and testing, and is not production-ready as such (contributors welcome).
+> **WARNING**: This tool requires further development and testing, and is not fully production-ready as such (contributors welcome).
 
 Motivation
 ----------
