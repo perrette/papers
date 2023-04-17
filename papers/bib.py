@@ -767,12 +767,14 @@ def main():
 
     cfg = argparse.ArgumentParser(add_help=False, parents=[loggingp])
     grp = cfg.add_argument_group('config')
-    grp.add_argument('--filesdir', default=config.filesdir,
-        help='files directory (default: %(default)s)')
-    grp.add_argument('--bibtex', default=config.bibtex,
-        help='bibtex database (default: %(default)s)')
+    grp.add_argument('--filesdir', default=None,
+        help=f'files directory (default: {config.filesdir}, except with `papers install --local`)')
+    grp.add_argument('--bibtex', default=None,
+        help=f'bibtex database (default: {config.bibtex}, except with `papers install --local`)')
     grp.add_argument('--dry-run', action='store_true',
         help='no PDF renaming/copying, no bibtex writing on disk (for testing)')
+    grp.add_argument('--no-prompt', action='store_false', dest="prompt",
+        help='no prompt, use default (useful for tests)')
 
     grp.add_argument('--key-template', default=config.keyformat.template,
         help='python template for generating keys (default:%(default)s)')
@@ -843,13 +845,11 @@ def main():
         parents=[cfg])
     installp.add_argument('--reset-paths', action='store_true')
     # egrp = installp.add_mutually_exclusive_group()
-    installp.add_argument('--local', action='store_true',
-        help="""save config file in current directory (global install by default).
-        This file will be loaded instead of the global configuration file everytime
-        papers is executed from this directory. This will affect the default bibtex file,
-        the files directory, as well as the git-tracking option. Note this option does
-        not imply anything about the actual location of bibtex file and files directory.
-        """)
+    installp.add_argument('--local', action="store_true",
+        help="""setup papers locally in current directory (global install by default), exposing bibtex and filesdir,
+        and having the rest under .papers (config options). Only keep the cache globally.
+        This might not play out too well with git tracking (local install usuall have their own git) but might be OK.""")
+
     installp.add_argument('--git', action='store_true',
         help="""Track bibtex files with git.
         Each time the bibtex is modified, a copy of the file is saved in a git-tracked
@@ -858,7 +858,7 @@ def main():
         not conflict. This option is mainly useful for backup purposes (local or remote).
         Use in combination with `papers git`'
         """)
-    installp.add_argument('--gitdir', default=config.gitdir, help='default: %(default)s')
+    installp.add_argument('--gitdir', default=None, help=f'default: {config.gitdir} or local')
 
     grp = installp.add_argument_group('status')
     # grp.add_argument('-l','--status', action='store_true')
@@ -870,18 +870,57 @@ def main():
 
     def installcmd(o):
 
+        if o.local:
+            workdir = Path('.')
+            biblios = list(workdir.glob("*.bib"))
+
+            if not o.bibtex:
+                if len(biblios) > 1:
+                    logger.warn("Several bibtex files found: "+" ".join([str(b) for b in biblios]))
+                    bibtex = workdir / "papers.bib"
+                elif len(biblios) == 1:
+                    bibtex = workdir / biblios[0]
+                else:
+                    bibtex = workdir / "papers.bib"
+
+                if o.prompt:
+                    user_input = input(f"bibtex file ? [{bibtex}] [Enter]: ")
+                    if user_input:
+                        bibtex = Path(user_input)
+                o.bibtex = str(bibtex)
+
+            if not o.filesdir:
+                filesdir = "papers"
+                if o.prompt:
+                    user_input = input(f"papers folder ? [{filesdir}] [Enter]: ")
+                    if user_input:
+                        filesdir = user_input
+                o.filesdir = filesdir
+
+            datadir = gitdir = ".papers"
+            papersconfig = ".papers/config.json"
+
+        else:
+            if not o.bibtex:
+                o.bibtex = config.bibtex
+            if not o.filesdir:
+                o.filesdir = config.filesdir
+
+            datadir = config.data
+            gitdir = config.gitdir
+            papersconfig = config.file
+
+        config.bibtex = o.bibtex
+        config.filesdir = o.filesdir
+        config.gitdir = gitdir
+        config.data = datadir
+        config.file = papersconfig
+
+
         if config.git and not o.git and o.bibtex == config.bibtex:
             ans = input('stop git tracking (this will not affect actual git directory)? [Y/n] ')
             if ans.lower() != 'y':
                 o.git = True
-
-        config.gitdir = o.gitdir
-
-        if o.bibtex:
-            config.bibtex = o.bibtex
-
-        if o.filesdir is not None:
-            config.filesdir = o.filesdir
 
         if o.reset_paths:
             config.reset()
@@ -931,18 +970,14 @@ def main():
         print(config.status(check_files=not o.no_check_files, verbose=True))
 
 
-    def savebib(my, o):
-        logger.info('save '+o.bibtex)
+    def savebib(my):
+        logger.info('save '+config.bibtex)
         if papers.config.DRYRUN:
             return
         if my is not None:
-            my.save(o.bibtex)
-        # commit when operated on the default bibtex file provided during installation
-        # if config.git and os.path.samefile(config.bibtex, o.bibtex):
-        if config.git and os.path.realpath(config.bibtex) == os.path.realpath(o.bibtex):
-            config.bibtex = o.bibtex
+            my.save(config.bibtex)
+        if config.git:
             config.gitcommit()
-
 
     # add
     # ===
@@ -987,10 +1022,10 @@ def main():
 
 
     def addcmd(o):
-        if os.path.exists(o.bibtex):
-            my = Biblio.load(o.bibtex, o.filesdir)
+        if os.path.exists(config.bibtex):
+            my = Biblio.load(config.bibtex, config.filesdir)
         else:
-            my = Biblio.newbib(o.bibtex, o.filesdir)
+            my = Biblio.newbib(config.bibtex, config.filesdir)
 
         if len(o.file) > 1 and o.attachment:
             logger.error('--attachment is only valid for one added file')
@@ -1030,7 +1065,7 @@ def main():
                         logger.error('use --ignore to add other files anyway')
                     addp.exit(1)
 
-        savebib(my, o)
+        savebib(my)
 
 
     # check
@@ -1065,7 +1100,7 @@ def main():
     # checkp.add_argument('--duplicates',action='store_true', help='remove / merge duplicates')
 
     def checkcmd(o):
-        my = Biblio.load(o.bibtex, o.filesdir)
+        my = Biblio.load(config.bibtex, config.filesdir)
 
         # if o.fix_all:
         #     o.fix_doi = True
@@ -1083,7 +1118,7 @@ def main():
         if o.duplicates:
             my.check_duplicates(mode=o.mode)
 
-        savebib(my, o)
+        savebib(my)
 
 
     # filecheck
@@ -1122,7 +1157,7 @@ def main():
     # filecheckp.add_argument('-a', '--all', action='store_true', help='--hash and --meta')
 
     def filecheckcmd(o):
-        my = Biblio.load(o.bibtex, o.filesdir)
+        my = Biblio.load(config.bibtex, config.filesdir)
 
         # fix ':home' entry as saved by Mendeley
         for e in my.entries:
@@ -1132,7 +1167,7 @@ def main():
         if o.rename:
             my.rename_entries_files(o.copy)
 
-        savebib(my, o)
+        savebib(my)
 
     # list
     # ======
@@ -1182,7 +1217,7 @@ def main():
     def listcmd(o):
         import fnmatch   # unix-like match
 
-        my = Biblio.load(o.bibtex, o.filesdir)
+        my = Biblio.load(config.bibtex, config.filesdir)
         entries = my.db.entries
 
         if o.fuzzy:
@@ -1276,17 +1311,17 @@ def main():
                 logger.error(str(error))
                 return
 
-            savebib(my, o)
+            savebib(my)
 
         elif o.fetch:
             for e in entries:
                 my.fix_entry(e, fix_doi=True, fix_key=True, fetch_all=True, interactive=True)
-            savebib(my, o)
+            savebib(my)
 
         elif o.delete:
             for e in entries:
                 my.db.entries.remove(e)
-            savebib(my, o)
+            savebib(my)
 
         elif o.field:
             # entries = [{k:e[k] for k in e if k in o.field+['ID','ENTRYTYPE']} for e in entries]
@@ -1348,12 +1383,12 @@ def main():
     undop = subparsers.add_parser('undo', parents=[cfg])
 
     def undocmd(o):
-        back = backupfile(o.bibtex)
-        tmp = o.bibtex + '.tmp'
-        # my = Biblio(o.bibtex, o.filesdir)
-        logger.info(o.bibtex+' <==> '+back)
-        shutil.copy(o.bibtex, tmp)
-        shutil.move(back, o.bibtex)
+        back = backupfile(config.bibtex)
+        tmp = config.bibtex + '.tmp'
+        # my = Biblio(config.bibtex, config.filesdir)
+        logger.info(config.bibtex+' <==> '+back)
+        shutil.copy(config.bibtex, tmp)
+        shutil.move(back, config.bibtex)
         shutil.move(tmp, back)
         savebib(None, o)
 
@@ -1382,19 +1417,26 @@ def main():
     if hasattr(o,'dry_run'):
         papers.config.DRYRUN = o.dry_run
 
+
     if o.cmd == 'install':
         return installcmd(o)
 
-    elif o.cmd == 'status':
+    else:
+        if getattr(o, "bibtex", None) is not None:
+            config.bibtex = o.bibtex
+        if getattr(o, "filesdir", None) is not None:
+            config.filesdir = o.filesdir
+
+    if o.cmd == 'status':
         return statuscmd(o)
 
     def check_install():
         set_format_config_from_cmd(o)
-        if not os.path.exists(o.bibtex):
-            print('papers: error: no bibtex file found, use `papers install` or `touch {}`'.format(o.bibtex))
+        if not os.path.exists(config.bibtex):
+            print('papers: error: no bibtex file found, use `papers install` or `touch {}`'.format(config.bibtex))
             parser.exit(1)
-        logger.info('bibtex: '+o.bibtex)
-        logger.info('filesdir: '+o.filesdir)
+        logger.info('bibtex: '+config.bibtex)
+        logger.info('filesdir: '+config.filesdir)
         return True
 
     if o.cmd == 'add':

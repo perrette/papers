@@ -14,8 +14,29 @@ CONFIG_HOME = os.environ.get('XDG_CONFIG_HOME', os.path.join(HOME, '.config'))
 CACHE_HOME = os.environ.get('XDG_CACHE_HOME', os.path.join(HOME, '.cache'))
 DATA_HOME = os.environ.get('XDG_DATA_HOME', os.path.join(HOME, '.local','share'))
 
+##
+def search_config(filenames, start_dir, default=os.path.join(CONFIG_HOME, 'papersconfig.json')):
+    """Thanks Chat GPT !"""
+    current_dir = os.path.abspath(start_dir)
+    root_dir = os.path.abspath(os.sep)
+    while True:
+        for filename in filenames:
+            file_path = os.path.join(current_dir, filename)
+            if os.path.exists(file_path):
+                return file_path
 
-CONFIG_FILE = os.path.join(CONFIG_HOME, 'papersconfig.json')
+        parent_dir = os.path.dirname(current_dir)
+        if parent_dir == current_dir:
+            return default
+
+        # root
+        if parent_dir == root_dir:
+            return default
+        current_dir = parent_dir
+
+    return default
+
+CONFIG_FILE = search_config([os.path.join(".papers", "config.json"), ".papersconfig.json"], start_dir=".")
 DATA_DIR = os.path.join(DATA_HOME, 'papers')
 CACHE_DIR = os.path.join(CACHE_HOME, 'papers')
 

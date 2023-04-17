@@ -116,7 +116,7 @@ class TestInstall(unittest.TestCase):
         self.mybib = tempfile.mktemp(prefix='papers.bib')
         self.filesdir = tempfile.mktemp(prefix='papers.files')
 
-    def test_install(self):
+    def test_local_install(self):
         sp.check_call('papers install --local --bibtex {} --files {}'.format(self.mybib, self.filesdir),
             shell=True)
         self.assertTrue(os.path.exists(self.mybib))
@@ -300,7 +300,7 @@ class TestAddDir(unittest.TestCase):
         shutil.copy(self.pdf1, self.somedir)
         shutil.copy(self.pdf2, self.subdir)
         self.mybib = tempfile.mktemp(prefix='papers.bib')
-        sp.check_call('papers install --local --bibtex {}'.format(self.mybib), shell=True)
+        sp.check_call('papers install --local --no-prompt --bibtex {}'.format(self.mybib), shell=True)
 
     def test_adddir_pdf(self):
         self.my = Biblio.load(self.mybib, '')
