@@ -3,6 +3,7 @@ import subprocess as sp, sys, shutil
 import hashlib
 import bibtexparser
 from papers import logger
+from papers.filename import Format
 
 # GIT = False
 DRYRUN = False
@@ -45,19 +46,23 @@ def check_filesdir(folder):
             file_count += 1
     return file_count, folder_size
 
+KEYFORMAT = Format(template='{author}{year}', author_num=2, author_sep="_")
+NAMEFORMAT = Format(template='{authorX}_{year}_{title}', author_sep="_", title_sep="-")
 
 class Config:
     """configuration class to specify system-wide collections and files-dir
     """
     def __init__(self, file=CONFIG_FILE, data=DATA_DIR, cache=CACHE_DIR,
-        bibtex=None, filesdir=None, nauthor=2, ntitle=0, nameformat='year,/,ID', gitdir=None, git=False, gitlfs=False):
+        bibtex=None, filesdir=None,
+        keyformat=KEYFORMAT,
+        nameformat=NAMEFORMAT,
+        gitdir=None, git=False, gitlfs=False):
         self.file = file
         self.data = data
         self.cache = cache
         self.filesdir = filesdir or os.path.join(data, 'files')
         self.bibtex = bibtex  or os.path.join(data, 'papers.bib')
-        self.nauthor = nauthor
-        self.ntitle = ntitle
+        self.keyformat = keyformat
         self.nameformat = nameformat
         self.gitdir = gitdir  or data
         self.git = git
@@ -74,9 +79,8 @@ class Config:
         json.dump({
             "filesdir":self.filesdir,
             "bibtex":self.bibtex,
-            "nauthor":self.nauthor,
-            "ntitle":self.ntitle,
-            "nameformat":self.nameformat,
+            "keyformat":self.keyformat.todict(),
+            "nameformat":self.nameformat.todict(),
             "git":self.git,
             "gitdir":self.gitdir,
             }, open(self.file, 'w'), sort_keys=True, indent=2, separators=(',', ': '))
@@ -86,9 +90,8 @@ class Config:
         js = json.load(open(self.file))
         self.bibtex = js.get('bibtex', self.bibtex)
         self.filesdir = js.get('filesdir', self.filesdir)
-        self.nauthor = js.get('nauthor', self.nauthor)
-        self.ntitle = js.get('ntitle', self.ntitle)
-        self.nameformat = js.get('nameformat', self.nameformat)
+        self.nameformat = Format(**js["nameformat"]) if "nameformat" in js else self.nameformat
+        self.keyformat = Format(**js["keyformat"]) if "keyformat" in js else self.keyformat
         self.git = js.get('git', self.git)
         self.gitlfs = js.get('gitlfs', self.gitlfs)
         self.gitdir = js.get('gitdir', self.gitdir)

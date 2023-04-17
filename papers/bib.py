@@ -8,7 +8,6 @@ import bisect
 import itertools
 
 import bibtexparser
-from normality import slugify, normalize
 
 import papers
 from papers import logger
@@ -58,33 +57,6 @@ def append_abc(key, keys=[]):
     return Key
 
 
-def listtag(words, maxlength=30, minwordlen=3, n=100, sep='-'):
-    # preformat & filter words
-    words = [word for word in words if len(word) >= minwordlen]
-    while True:
-        tag = sep.join(words[:n])
-        n -= 1
-        if len(tag) <= maxlength or n < 2:
-            break
-    return tag
-
-
-def generate_key(entry, nauthor=config.nauthor, ntitle=config.ntitle, minwordlen=3, maxtitlen=4, keys=None, authorsep='_'):
-    # names = bibtexparser.customization.getnames(entry.get('author','unknown').lower().split(' and '))
-    names = family_names(entry.get('author','unknown').lower())
-    authortag = authorsep.join([slugify(nm) for nm in names[:nauthor]])
-    yeartag = str(entry.get('year','0000'))
-    if not ntitle or not entry.get('title',''):
-        titletag = ''
-    else:
-        titlewords = normalize(entry['title']).lower().split()
-        titletag = listtag(titlewords, n=ntitle, minwordlen=minwordlen, maxlength=maxtitlen, sep='-')
-    key = authortag + yeartag + titletag
-    if keys and key in keys: # and not isinstance(keys, set):
-        key = append_abc(key, keys)
-    return key
-
-
 # DUPLICATE DEFINITION
 # ====================
 
@@ -119,8 +91,6 @@ def entry_id(e):
     """
     authortitle = ''.join([author_id(e),title_id(e)])
     return (e.get('doi','').lower(), authortitle)
-
-
 
 
 FUZZY_RATIO = 80
@@ -213,8 +183,6 @@ def read_entry_dir(self, direc, update_files=True):
     return entry
 
 
-
-
 def backupfile(bibtex):
     return os.path.join(os.path.dirname(bibtex), '.'+os.path.basename(bibtex)+'.backup')
 
@@ -224,7 +192,7 @@ class DuplicateKeyError(ValueError):
 class Biblio:
     """main config
     """
-    def __init__(self, db=None, filesdir=None, key_field='ID', nauthor=config.nauthor, ntitle=config.ntitle, nameformat=config.nameformat, similarity=DEFAULT_SIMILARITY):
+    def __init__(self, db=None, filesdir=None, key_field='ID', nameformat=None, keyformat=None, similarity=DEFAULT_SIMILARITY):
         self.filesdir = filesdir
         # assume an already sorted list
         self.key_field = key_field
@@ -233,11 +201,10 @@ class Biblio:
         elif not isinstance(db, bibtexparser.bibdatabase.BibDatabase):
             raise TypeError('db must of type BibDatabase')
         self.db = db
-        self.sort()
-        self.nauthor = nauthor
-        self.ntitle = ntitle
-        self.nameformat = nameformat
+        self.nameformat = nameformat or config.nameformat
+        self.keyformat = keyformat or config.keyformat
         self.similarity = similarity
+        self.sort()
 
     @property
     def entries(self):
@@ -365,7 +332,10 @@ class Biblio:
     def generate_key(self, entry):
         " generate a unique key not yet present in the record "
         keys = {self.key(e) for e in self.db.entries}
-        return generate_key(entry, keys=keys, nauthor=self.nauthor, ntitle=self.ntitle)
+        key = self.keyformat(entry)
+        if keys and key in keys: # and not isinstance(keys, set):
+            key = append_abc(key, keys)
+        return key
 
     def append_abc_to_key(self, entry):
         return append_abc(entry['ID'], keys={self.key(e) for e in self.entries})
@@ -413,7 +383,7 @@ class Biblio:
         self.insert_entry(entry, update_key=True, **kw)
 
         if rename:
-            self.rename_entry_files(entry, copy=copy, nameformat=self.nameformat)
+            self.rename_entry_files(entry, copy=copy)
 
 
     def scan_dir(self, direc, search_doi=True, search_fulltext=True, **kw):
@@ -464,18 +434,18 @@ class Biblio:
         self.sort() # keep sorted
 
 
-    def rename_entry_files(self, e, copy=False, nameformat='year,/,ID'):
-        """ Rename files according to 'nameformat'
-            'nameformat' is a comma-separated string, and every field that is in
-            e.keys() will be replaced by the corresponding value. Fields not in
-            e.keys() will remain untouched.
+    def rename_entry_files(self, e, copy=False, formatter=None):
+        """ Rename files
 
-            To rename esd-4-11-2013.pdf as perrette_2013.pdf, nameformat should be 'author,_,year'.
+        See `confog.Format` class
+
+
+            To rename esd-4-11-2013.pdf as perrette_2013.pdf, nameformat should be '{author}_{year}' with --name-nauthor 1.
             If that happens to be the entry ID, 'ID' also works.
 
             To rename esd-4-11-2013.pdf as
             2013/Perrette2013-AScalingApproachToProjectRegionalSeaLevelRiseAndItsUncertainties.pdf,
-            nameformat should be 'year,/,Author,year,Title' (note the case).
+            nameformat should be '{year}/{Author}{year}-{Title}' with --name-nauthor 1 (note the case).
 
             Entries are case-sensitive, so that:
                 'author' generates 'perrette'
@@ -496,53 +466,7 @@ class Biblio:
             logger.info('no files to rename')
             return
 
-        def autoname(namestr):
-            # Adapted
-            # from https://gitlab.com/malfatti/SciScripts/-/blob/master/Python3/Files/FixStupidFileNames.py
-
-            New = namestr
-
-            for C in ['"',"'",'!','@','#','$','%','&','*','+','=',';',':','?',',','/','\\']:
-                if C in New: New = New.replace(C,'')
-
-            for C in ['(', ')', '[', ']', '{', '}', '<', '>', '|']:
-                if C in New: New = New.replace(C,'_')
-
-            return(New)
-
-
-        def malfatti_rename(e, nameformat):
-            Fields = nameformat.split(',')
-            for F,Field in enumerate(Fields):
-                if Field == 'ID':
-                    Fields[F] = autoname(e['ID'])
-
-                elif Field == 'year':
-                    Fields[F] = e.get('year','0000')
-
-                elif Field.lower() in e.keys():
-                    if Field.lower() == 'author':
-                        Names = family_names(e['author'])
-
-                        if len(Names) >= 3: eField = Names[0] + ' et al'
-                        elif len(Names) == 2: eField = ' and '.join(Names)
-                        else: eField = Names[0]
-
-                    else:
-                        eField = e[Field.lower()]
-
-                    if Field.istitle():
-                        Fields[F] = autoname(eField).title().replace(' ','')
-                    elif Field.islower():
-                        Fields[F] = autoname(eField).lower().replace(' ','')
-                    elif Field.isupper():
-                        Fields[F] = autoname(eField).upper().replace(' ','')
-                    else:
-                        Fields[F] = autoname(eField).replace(' ','')
-
-            return ''.join(Fields)
-
-        newname = malfatti_rename(e, nameformat)
+        newname = (formatter or self.nameformat)(e)
 
         count = 0
         if len(files) == 1:
@@ -597,7 +521,7 @@ class Biblio:
     def rename_entries_files(self, copy=False):
         for e in self.db.entries:
             try:
-                self.rename_entry_files(e, copy, nameformat=self.nameformat)
+                self.rename_entry_files(e, copy)
             except Exception as error:
                 logger.error(str(error))
                 continue
@@ -848,12 +772,52 @@ def main():
         help='bibtex database (default: %(default)s)')
     grp.add_argument('--dry-run', action='store_true',
         help='no PDF renaming/copying, no bibtex writing on disk (for testing)')
-    grp.add_argument('--nauthor', type=int, default=config.nauthor,
+
+    grp.add_argument('--key-template', default=config.keyformat.template,
+        help='python template for generating keys (default:%(default)s)')
+    grp.add_argument('--key-author-num', type=int, default=config.keyformat.author_num,
         help='number of authors to include in key (default:%(default)s)')
-    grp.add_argument('--ntitle', type=int, default=config.ntitle,
+    grp.add_argument('--key-author-sep', default=config.keyformat.author_sep,
+        help='separator for authors in key (default:%(default)s)')
+    grp.add_argument('--key-title-word-num', type=int, default=config.keyformat.title_word_num,
         help='number of title words to include in key (default:%(default)s)')
-    grp.add_argument('--nameformat', default=config.nameformat,
-        help='comma-separated fields for renaming files (default:%(default)s)')
+    grp.add_argument('--key-title-word-size', type=int, default=config.keyformat.title_word_size,
+        help='number of title words to include in key (default:%(default)s)')
+    grp.add_argument('--key-title-sep', default=config.keyformat.title_sep,
+        help='separator for title words in key (default:%(default)s)')
+
+    grp.add_argument('--name-template', default=config.nameformat.template,
+        help='python template for renaming files (default:%(default)s)')
+    grp.add_argument('--name-author-num', type=int, default=config.nameformat.author_num,
+        help='number of authors to include in filename (default:%(default)s)')
+    grp.add_argument('--name-author-sep', default=config.nameformat.author_sep,
+        help='separator for authors in filename (default:%(default)s)')
+    grp.add_argument('--name-title-word-num', type=int, default=config.nameformat.title_word_num,
+        help='number of title words to include in filename (default:%(default)s)')
+    grp.add_argument('--name-title-word-size', type=int, default=config.nameformat.title_word_size,
+        help='min size of title words to include in filename (default:%(default)s)')
+    grp.add_argument('--name-title-length', type=int, default=config.nameformat.title_length,
+        help='title length to include in filename (default:%(default)s)')
+    grp.add_argument('--name-title-sep', default=config.nameformat.title_sep,
+        help='separator for title words in filename (default:%(default)s)')
+
+
+    def set_format_config_from_cmd(o):
+        config.keyformat.template = o.key_template
+        config.keyformat.author_num = o.key_author_num
+        config.keyformat.author_sep = o.key_author_sep
+        config.keyformat.title_word_num = o.key_title_word_num
+        config.keyformat.title_word_size = o.key_title_word_size
+        config.keyformat.title_sep = o.key_title_sep
+
+        config.nameformat.template = o.name_template
+        config.nameformat.author_num = o.name_author_num
+        config.nameformat.author_sep = o.name_author_sep
+        config.nameformat.title_length = o.name_title_length
+        config.nameformat.title_word_num = o.name_title_word_num
+        config.nameformat.title_word_size = o.name_title_word_size
+        config.nameformat.title_sep = o.name_title_sep
+
 
     # status
     # ======
@@ -919,10 +883,6 @@ def main():
 
         if o.filesdir is not None:
             config.filesdir = o.filesdir
-
-        config.nauthor = o.nauthor
-        config.ntitle = o.ntitle
-        config.nameformat = o.nameformat
 
         if o.reset_paths:
             config.reset()
@@ -1031,10 +991,6 @@ def main():
             my = Biblio.load(o.bibtex, o.filesdir)
         else:
             my = Biblio.newbib(o.bibtex, o.filesdir)
-
-        my.nauthor = o.nauthor
-        my.ntitle = o.ntitle
-        my.nameformat = o.nameformat
 
         if len(o.file) > 1 and o.attachment:
             logger.error('--attachment is only valid for one added file')
@@ -1433,6 +1389,7 @@ def main():
         return statuscmd(o)
 
     def check_install():
+        set_format_config_from_cmd(o)
         if not os.path.exists(o.bibtex):
             print('papers: error: no bibtex file found, use `papers install` or `touch {}`'.format(o.bibtex))
             parser.exit(1)
