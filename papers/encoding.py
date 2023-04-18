@@ -2,6 +2,7 @@ import os
 import bibtexparser
 from papers.latexenc import latex_to_unicode, unicode_to_latex
 from unidecode import unidecode as unicode_to_ascii
+from config import config
 
 # fix bibtexparser call on empty strings
 _bloads_orig = bibtexparser.loads
@@ -42,15 +43,17 @@ def _format_file(file, type=None):
     return ':'+file+':'+type
 
 
-def parse_file(file):
+def parse_file(file, modifier=config._abspath):
     if not file:
         return []
     else:
-        return [_parse_file(f) for f in file.split(';')]
+        return [modifier(_parse_file(f)) for f in file.split(';')]
 
 
-def format_file(file_types):
-    return ';'.join([_format_file(f) for f in file_types])
+def format_file(file_types, modifier=config._relpath):
+    from papers import logger
+    logger.info(f"FORMAT FILE {file_types} => {[modifier(f) for f in file_types]}")
+    return ';'.join([_format_file(modifier(f)) for f in file_types])
 
 
 def format_entries(entries):

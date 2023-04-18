@@ -20,7 +20,7 @@ from papers.extract import fetch_bibtex_by_fulltext_crossref, fetch_bibtex_by_do
 from papers.encoding import latex_to_unicode, unicode_to_latex, unicode_to_ascii
 from papers.encoding import parse_file, format_file, standard_name, family_names, format_entries
 
-from papers.config import config, bcolors, checksum, move
+from papers.config import config, bcolors, checksum, move, search_config
 
 from papers.duplicate import check_duplicates, resolve_duplicates, conflict_resolution_on_insert
 from papers.duplicate import search_duplicates, list_duplicates, list_uniques, merge_files, edit_entries
@@ -438,7 +438,7 @@ class Biblio:
     def rename_entry_files(self, e, copy=False, formatter=None):
         """ Rename files
 
-        See `confog.Format` class
+        See `papers.filename.Format` class
 
 
             To rename esd-4-11-2013.pdf as perrette_2013.pdf, nameformat should be '{author}_{year}' with --name-nauthor 1.
@@ -734,22 +734,16 @@ def entry_filecheck(e, delete_broken=False, fix_mendeley=False,
 
         newfiles.append(file)
 
-    e['file'] = format_file(newfiles)
+    e['file'] = format_file(newfiles, config._relpath)
 
 
 
 def main():
 
-    global_config = config.file
-    local_config = '.papersconfig.json'
+    configfile = search_config([os.path.join(".papers", "config.json")], start_dir=".", default=config.file)
 
-    if os.path.exists(local_config):
-        config.file = local_config
-    elif os.path.exists(global_config):
-        config.file = global_config
-
-    if os.path.exists(config.file):
-        logger.debug('load config from: '+config.file)
+    if os.path.exists(configfile):
+        config.file = configfile
         config.load()
 
     parser = argparse.ArgumentParser(description='library management tool')
@@ -884,7 +878,10 @@ def main():
                     bibtex = workdir / "papers.bib"
 
                 if o.prompt:
-                    user_input = input(f"bibtex file ? [{bibtex}] [Enter]: ")
+                    if bibtex.exists():
+                        user_input = input(f"Bibtex file name [default to existing: {bibtex}] [Enter]: ")
+                    else:
+                        user_input = input(f"Bibtex file name [default to new: {bibtex}] [Enter]: ")
                     if user_input:
                         bibtex = Path(user_input)
                 o.bibtex = str(bibtex)
@@ -892,7 +889,10 @@ def main():
             if not o.filesdir:
                 filesdir = "papers"
                 if o.prompt:
-                    user_input = input(f"papers folder ? [{filesdir}] [Enter]: ")
+                    if Path(filesdir).exists():
+                        user_input = input(f"Files folder [default to existing: {filesdir}] [Enter]: ")
+                    else:
+                        user_input = input(f"Files folder [default to new: {filesdir}] [Enter]: ")
                     if user_input:
                         filesdir = user_input
                 o.filesdir = filesdir
@@ -915,6 +915,7 @@ def main():
         config.gitdir = gitdir
         config.data = datadir
         config.file = papersconfig
+        config.local = o.local
 
 
         if config.git and not o.git and o.bibtex == config.bibtex:
@@ -941,30 +942,15 @@ def main():
             logger.info('create empty files directory: '+o.filesdir)
             filesdir.mkdir(parents=True)
 
-        if not o.local and os.path.exists(local_config):
-            logger.warn('Cannot make global install if local config file exists.')
-            ans = None
-            while ans not in ('1','2'):
-                ans = input('(1) remove local config file '+local_config+'\n(2) make local install\nChoice: ')
-            if ans == '1':
-                os.remove(local_config)
-            else:
-                o.local = True
-
-        if not o.local:
-            # save absolute path for global bibtex install
-            config.bibtex = os.path.realpath(config.bibtex)
-            config.filesdir = os.path.realpath(config.filesdir)
-            config.gitdir = os.path.realpath(config.gitdir)
-
         if o.git and not os.path.exists(config._gitdir):
             config.gitinit()
 
+        logger.info('save config file: '+config.file)
         if o.local:
-            logger.info('save local config file: '+local_config)
-            config.file = local_config
+            os.makedirs(".papers", exist_ok=True)
         else:
-            config.file = global_config
+            from config import CONFIG_HOME
+            os.makedirs(CONFIG_HOME, exist_ok=True)
         config.save()
 
         print(config.status(check_files=not o.no_check_files, verbose=True))
