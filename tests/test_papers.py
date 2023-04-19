@@ -117,7 +117,7 @@ class TestInstall(unittest.TestCase):
         self.filesdir = tempfile.mktemp(prefix='papers.files')
 
     def test_local_install(self):
-        sp.check_call('papers install --local --absolute-paths --bibtex {} --files {}'.format(self.mybib, self.filesdir),
+        sp.check_call('papers install --local --bibtex {} --files {}'.format(self.mybib, self.filesdir),
             shell=True)
         self.assertTrue(os.path.exists(self.mybib))
         self.assertTrue(os.path.exists(self.filesdir))
@@ -159,7 +159,7 @@ class TestAdd(unittest.TestCase):
     def _checkfile(self, file):
         _, file, type = file.split(':')
         self.assertEqual(type, 'pdf') # file type is PDF
-        file = os.path.join(os.path.dirname(self.mybib), file)  # relative to bibtex
+        file = os.path.abspath(os.path.join(os.path.dirname(self.mybib), file))
         self.assertTrue(os.path.exists(file))  # file link is valid
         return file
 
