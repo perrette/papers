@@ -3,7 +3,6 @@
 from normality import slugify, normalize
 from papers.encoding import family_names
 
-
 def listtag(words, maxlength=30, minwordlen=3, n=100, sep='-'):
     # preformat & filter words
     words = [word for word in words if len(word) >= minwordlen]

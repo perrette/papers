@@ -74,7 +74,7 @@ class Config:
         bibtex=None, filesdir=None,
         keyformat=KEYFORMAT,
         nameformat=NAMEFORMAT,
-        gitdir=None, git=False, gitlfs=False, local=False):
+        gitdir=None, git=False, gitlfs=False, local=False, absolute_paths=None):
         self.file = file
         self.local = local
         self.data = data
@@ -83,6 +83,9 @@ class Config:
         self.bibtex = bibtex  or os.path.join(data, 'papers.bib')
         self.keyformat = keyformat
         self.nameformat = nameformat
+        if absolute_paths is None:
+            absolute_paths = False if local else True
+        self.absolute_paths = absolute_paths
         self.gitdir = gitdir  or data
         self.git = git
         self.gitlfs = gitlfs
@@ -128,6 +131,7 @@ class Config:
             "keyformat": self.keyformat.todict(),
             "nameformat": self.nameformat.todict(),
             "local": self.local,
+            "absolute_paths": self.absolute_paths,
             "git": self.git,
             }, open(self.file, 'w'), sort_keys=True, indent=2, separators=(',', ': '))
 
@@ -141,6 +145,7 @@ class Config:
         self.gitdir = self._abspath(js.get('gitdir', self.gitdir), root)
         self.nameformat = Format(**js["nameformat"]) if "nameformat" in js else self.nameformat
         self.keyformat = Format(**js["keyformat"]) if "keyformat" in js else self.keyformat
+        self.absolute_paths = js.get('absolute_paths', self.absolute_paths)
         self.git = js.get('git', self.git)
         self.gitlfs = js.get('gitlfs', self.gitlfs)
 

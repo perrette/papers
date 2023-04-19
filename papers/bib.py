@@ -18,7 +18,7 @@ from papers.extract import extract_pdf_metadata
 from papers.extract import fetch_bibtex_by_fulltext_crossref, fetch_bibtex_by_doi
 
 from papers.encoding import latex_to_unicode, unicode_to_latex, unicode_to_ascii
-from papers.encoding import parse_file, format_file, standard_name, family_names, format_entries
+from papers.encoding import parse_file, format_file, standard_name, family_names, format_entries, update_file_path
 
 from papers.config import config, bcolors, checksum, move, search_config
 
@@ -163,7 +163,7 @@ def hidden_bibtex(direc):
     return os.path.join(direc, '.'+dirname+'.bib')
 
 
-def read_entry_dir(self, direc, update_files=True):
+def read_entry_dir(direc, update_files=True, relative_to=None):
     """add a directory that contain files from a single entry
     """
     dirname = os.path.basename(direc)
@@ -180,7 +180,7 @@ def read_entry_dir(self, direc, update_files=True):
             break # do not look further in subdirectories, cause any rename would flatten the tree
         files = [os.path.join(direc, file) for file in files if not file.startswith('.')]
 
-    entry['file'] = format_file(files)
+    entry['file'] = format_file(files, relative_to=relative_to)
     return entry
 
 
@@ -193,18 +193,23 @@ class DuplicateKeyError(ValueError):
 class Biblio:
     """main config
     """
-    def __init__(self, db=None, filesdir=None, key_field='ID', nameformat=None, keyformat=None, similarity=DEFAULT_SIMILARITY):
+    def __init__(self, db=None, filesdir=None, key_field='ID', nameformat=None, keyformat=None, similarity=DEFAULT_SIMILARITY, relative_to=None):
+        """
+        relative_to : bibtex directory, optional
+            use relative paths instead of absolute path
+        """
         self.filesdir = filesdir
         # assume an already sorted list
         self.key_field = key_field
         if db is None:
             db = bibtexparser.bibdatabase.BibDatabase()
         elif not isinstance(db, bibtexparser.bibdatabase.BibDatabase):
-            raise TypeError('db must of type BibDatabase')
+            raise TypeError('db must be of type BibDatabase')
         self.db = db
         self.nameformat = nameformat or config.nameformat
         self.keyformat = keyformat or config.keyformat
         self.similarity = similarity
+        self.relative_to = relative_to or os.path.sep
         self.sort()
 
     @property
@@ -225,10 +230,18 @@ class Biblio:
         return bibtexparser.dumps(self.db)
 
     @classmethod
-    def load(cls, bibtex, filesdir):
+    def load(cls, bibtex, filesdir, relative_to=None):
         # self.bibtex = bibtex
         bibtexs = open(bibtex).read()
-        return cls(bibtexparser.loads(bibtexs), filesdir)
+        loaded_bib = cls(bibtexparser.loads(bibtexs), filesdir, relative_to=os.path.dirname(bibtex))
+        if relative_to is None:
+            if config.absolute_paths:
+                loaded_bib.update_file_path(os.path.sep)
+        elif relative_to != os.path.dirname(bibtex):
+            loaded_bib.update_file_path(relative_to)
+        return loaded_bib
+
+        # make sure the path is right
 
     @classmethod
     def newbib(cls, bibtex, filesdir):
@@ -314,7 +327,7 @@ class Biblio:
                 entry['ID'] = candidate['ID']
 
             if mergefiles:
-                file = merge_files([candidate, entry])
+                file = merge_files([candidate, entry], relative_to=self.relative_to)
                 if len({file, entry.get('file',''), candidate.get('file','')}) > 1:
                     logger.info('merge files')
                     entry['file'] = candidate['file'] = file
@@ -342,15 +355,18 @@ class Biblio:
         return append_abc(entry['ID'], keys={self.key(e) for e in self.entries})
 
 
-    def add_bibtex(self, bibtex, **kw):
+    def add_bibtex(self, bibtex, relative_to=None, **kw):
         bib = bibtexparser.loads(bibtex)
         for e in bib.entries:
+            if "file" in e:
+                # make sure paths relative to other bibtex are inserted correctly
+                e["file"] = format_file(parse_file(e["file"], relative_to=relative_to), relative_to=self.relative_to)
             self.insert_entry(e, **kw)
 
 
     def add_bibtex_file(self, file, **kw):
         bibtex = open(file).read()
-        return self.add_bibtex(bibtex, **kw)
+        return self.add_bibtex(bibtex, relative_to=os.path.dirname(file), **kw)
 
 
     def fetch_doi(self, doi, **kw):
@@ -375,7 +391,7 @@ class Biblio:
         if attachments:
             files += attachments
 
-        entry['file'] = format_file([os.path.abspath(f) for f in files])
+        entry['file'] = format_file([os.path.abspath(f) for f in files], relative_to=self.relative_to)
         entry['ID'] = self.generate_key(entry)
         logger.debug('generated PDF key: '+entry['ID'])
 
@@ -398,7 +414,7 @@ class Biblio:
             if os.path.exists(hidden_bibtex(root)):
                 logger.debug('read from hidden bibtex')
                 try:
-                    entry = read_entry_dir(root)
+                    entry = read_entry_dir(root, relative_to=self.relative_to)
                     self.insert_entry(entry, **kw)
                 except Exception:
                     logger.warn(root+'::'+str(error))
@@ -422,10 +438,23 @@ class Biblio:
         return bibtexparser.dumps(self.db)
 
     def save(self, bibtex):
-        s = self.format()
         if os.path.exists(bibtex):
             shutil.copy(bibtex, backupfile(bibtex))
+        if self.relative_to not in (os.path.sep, None) and Path(self.relative_to).resolve() != Path(bibtex).parent.resolve():
+            logger.warn("Saving bibtex file with relative paths may break links. Consider using `Biblio.update_file_path(Path(bibtex).parent)` before.")
+        s = self.format()
         open(bibtex, 'w').write(s)
+
+
+    def update_file_path(self, relative_to):
+        """
+        relative_to: new path root:
+            None: absolute path
+            otherwise: different file root (the bibtex directory)
+        """
+        for e in self.entries:
+            update_file_path(e, self.relative_to, relative_to)
+        self.relative_to = relative_to
 
 
     def check_duplicates(self, key=None, eq=None, mode='i'):
@@ -458,7 +487,7 @@ class Biblio:
         if self.filesdir is None:
             raise ValueError('filesdir is None, cannot rename entries')
 
-        files = parse_file(e.get('file',''))
+        files = parse_file(e.get('file',''), relative_to=self.relative_to)
         # newname = entrydir(e, root)
 
         direc = self.filesdir
@@ -480,7 +509,7 @@ class Biblio:
                 move(file, newfile, copy)
                 count += 1
             newfiles = [newfile]
-            e['file'] = format_file(newfiles)
+            e['file'] = format_file(newfiles, relative_to=self.relative_to)
 
 
         # several files: only rename container
@@ -495,7 +524,7 @@ class Biblio:
                     move(file, newfile, copy)
                     count += 1
                 newfiles.append(newfile)
-            e['file'] = format_file(newfiles)
+            e['file'] = format_file(newfiles, relative_to=self.relative_to)
 
             # create hidden bib entry for special dir
             bibname = hidden_bibtex(newdir)
@@ -660,7 +689,7 @@ def entry_filecheck_metadata(e, file, image=False):
 
 
 def entry_filecheck(e, delete_broken=False, fix_mendeley=False,
-    check_hash=False, check_metadata=False, interactive=True, image=False):
+    check_hash=False, check_metadata=False, interactive=True, image=False, relative_to=None):
 
     if 'file' not in e:
         return
@@ -673,7 +702,7 @@ def entry_filecheck(e, delete_broken=False, fix_mendeley=False,
     realpaths = set()
     fixed = {}
 
-    for i, file in enumerate(parse_file(e['file'])):
+    for i, file in enumerate(parse_file(e['file'], relative_to=relative_to)):
 
         realpath = os.path.realpath(file)
         if realpath in realpaths:
@@ -734,7 +763,7 @@ def entry_filecheck(e, delete_broken=False, fix_mendeley=False,
 
         newfiles.append(file)
 
-    e['file'] = format_file(newfiles, config._relpath)
+    e['file'] = format_file(newfiles, relative_to=relative_to)
 
 
 
@@ -762,14 +791,16 @@ def main():
     cfg = argparse.ArgumentParser(add_help=False, parents=[loggingp])
     grp = cfg.add_argument_group('config')
     grp.add_argument('--filesdir', default=None,
-        help=f'files directory (default: {config.filesdir}, except with `papers install --local`)')
+        help=f'files directory (default: {config.filesdir} or ./papers with `papers install --local`)')
     grp.add_argument('--bibtex', default=None,
-        help=f'bibtex database (default: {config.bibtex}, except with `papers install --local`)')
+        help=f'bibtex database (default: {config.bibtex} or ./papers.bib with `papers install --local`)')
     grp.add_argument('--dry-run', action='store_true',
         help='no PDF renaming/copying, no bibtex writing on disk (for testing)')
     grp.add_argument('--no-prompt', action='store_false', dest="prompt",
         help='no prompt, use default (useful for tests)')
+    grp.add_argument('--absolute-paths', action="store_true")
 
+    grp = cfg.add_argument_group('bibtex key format')
     grp.add_argument('--key-template', default=config.keyformat.template,
         help='python template for generating keys (default:%(default)s)')
     grp.add_argument('--key-author-num', type=int, default=config.keyformat.author_num,
@@ -783,6 +814,7 @@ def main():
     grp.add_argument('--key-title-sep', default=config.keyformat.title_sep,
         help='separator for title words in key (default:%(default)s)')
 
+    grp = cfg.add_argument_group('filename format')
     grp.add_argument('--name-template', default=config.nameformat.template,
         help='python template for renaming files (default:%(default)s)')
     grp.add_argument('--name-author-num', type=int, default=config.nameformat.author_num,
@@ -825,10 +857,6 @@ def main():
     statusp.add_argument('-v','--verbose', action='store_true', help='app status info')
 
     def statuscmd(o):
-        if o.bibtex:
-            config.bibtex = o.bibtex
-        if o.filesdir is not None:
-            config.filesdir = o.filesdir
         print(config.status(check_files=not o.no_check_files, verbose=o.verbose))
 
 
@@ -837,7 +865,7 @@ def main():
 
     installp = subparsers.add_parser('install', description='setup or update papers install',
         parents=[cfg])
-    installp.add_argument('--reset-paths', action='store_true')
+    installp.add_argument('--reset-paths', action='store_true', help=argparse.SUPPRESS)
     # egrp = installp.add_mutually_exclusive_group()
     installp.add_argument('--local', action="store_true",
         help="""setup papers locally in current directory (global install by default), exposing bibtex and filesdir,
@@ -899,6 +927,7 @@ def main():
 
             datadir = gitdir = ".papers"
             papersconfig = ".papers/config.json"
+            absolute_paths = o.absolute_paths
 
         else:
             if not o.bibtex:
@@ -909,6 +938,7 @@ def main():
             datadir = config.data
             gitdir = config.gitdir
             papersconfig = config.file
+            absolute_paths = True
 
         config.bibtex = o.bibtex
         config.filesdir = o.filesdir
@@ -916,6 +946,7 @@ def main():
         config.data = datadir
         config.file = papersconfig
         config.local = o.local
+        config.absolute_paths = absolute_paths
 
 
         if config.git and not o.git and o.bibtex == config.bibtex:
@@ -961,6 +992,8 @@ def main():
         if papers.config.DRYRUN:
             return
         if my is not None:
+            if not config.local:
+                my.update_file_path(relative_to=os.path.sep)
             my.save(config.bibtex)
         if config.git:
             config.gitcommit()
@@ -1148,7 +1181,7 @@ def main():
         # fix ':home' entry as saved by Mendeley
         for e in my.entries:
             entry_filecheck(e, delete_broken=o.delete_broken, fix_mendeley=o.fix_mendeley,
-                check_hash=o.hash_check, check_metadata=o.metadata_check, interactive=not o.force)
+                check_hash=o.hash_check, check_metadata=o.metadata_check, interactive=not o.force, relative_to=my.relative_to)
 
         if o.rename:
             my.rename_entries_files(o.copy)
@@ -1240,7 +1273,7 @@ def main():
         if o.no_file:
             entries = [e for e in entries if not e.get('file','')]
         if o.broken_file:
-            entries = [e for e in entries if e.get('file','') and any([not os.path.exists(f) for f in parse_file(e['file'])])]
+            entries = [e for e in entries if e.get('file','') and any([not os.path.exists(f) for f in parse_file(e['file'], relative_to=my.relative_to)])]
 
 
         if o.doi:
@@ -1280,7 +1313,7 @@ def main():
             entries = list_dup(entries, eq=eq)
 
         def nfiles(e):
-            return len(parse_file(e.get('file','')))
+            return len(parse_file(e.get('file',''), relative_to=my.relative_to))
 
         if o.no_key:
             key = lambda e: ''
@@ -1371,7 +1404,7 @@ def main():
     def undocmd(o):
         back = backupfile(config.bibtex)
         tmp = config.bibtex + '.tmp'
-        # my = Biblio(config.bibtex, config.filesdir)
+        # my = :config.bibtex, config.filesdir)
         logger.info(config.bibtex+' <==> '+back)
         shutil.copy(config.bibtex, tmp)
         shutil.move(back, config.bibtex)
@@ -1403,6 +1436,8 @@ def main():
     if hasattr(o,'dry_run'):
         papers.config.DRYRUN = o.dry_run
 
+    if hasattr(o, "absolute_paths") and o.absolute_paths:
+        config.absolute_paths = True
 
     if o.cmd == 'install':
         return installcmd(o)

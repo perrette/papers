@@ -2,7 +2,6 @@ import os
 import bibtexparser
 from papers.latexenc import latex_to_unicode, unicode_to_latex
 from unidecode import unidecode as unicode_to_ascii
-from config import config
 
 # fix bibtexparser call on empty strings
 _bloads_orig = bibtexparser.loads
@@ -43,17 +42,35 @@ def _format_file(file, type=None):
     return ':'+file+':'+type
 
 
-def parse_file(file, modifier=config._abspath):
+def parse_file(file, relative_to=None):
+    " return list of absolute paths "
     if not file:
         return []
     else:
-        return [modifier(_parse_file(f)) for f in file.split(';')]
+        files = [_parse_file(f) for f in file.split(';')]
+        if relative_to is not None:
+            files = [os.path.abspath(os.path.join(relative_to, f)) for f in files]
+
+    return files
 
 
-def format_file(file_types, modifier=config._relpath):
+def update_file_path(entry, from_relative_to, to_relative_to):
+    if 'file' in entry:
+        entry["file"] = format_file(parse_file(entry["file"], from_relative_to), to_relative_to)
+
+
+def format_file(files, relative_to=None):
     from papers import logger
-    logger.info(f"FORMAT FILE {file_types} => {[modifier(f) for f in file_types]}")
-    return ';'.join([_format_file(modifier(f)) for f in file_types])
+    # make sure the path is right
+    if relative_to is not None:
+        msg = f"FORMAT FILE {', '.join(files)}"
+        if relative_to == os.path.sep:
+            files = [os.path.abspath(p) for p in files]
+        else:
+            files = [os.path.normpath(os.path.relpath(p, relative_to)) for p in files]
+        msg += f" => {', '.join(files)}"
+        logger.debug(msg)
+    return ';'.join([_format_file(f) for f in files])
 
 
 def format_entries(entries):

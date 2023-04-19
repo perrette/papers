@@ -282,17 +282,17 @@ def entry_sdiff(entries, color=True, bcolors=bcolors, best=None):
 # RESOLVE DUPLICATES
 # ==================
 
-def merge_files(entries):
+def merge_files(entries, relative_to=None):
     checksums = []
     files = []
     for e in entries:
-        for f in parse_file(e.get('file','')):
+        for f in parse_file(e.get('file',''), relative_to=relative_to):
             check = checksum(f) if os.path.exists(f) else None
             if f not in files and (check is None or check not in checksums):
                 files.append(f)
                 if check is not None:
                     checksums.append(check)
-    return format_file(files)
+    return format_file(files, relative_to=relative_to)
 
 
 def _ask_pick_loop(entries, extra=[], select=False):
