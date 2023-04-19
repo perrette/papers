@@ -208,9 +208,10 @@ class Config:
         if verbose:
             lines.append('* configuration file: '+self.file)
             lines.append('* cache directory:    '+self.cache)
+            lines.append('* absolute paths:     '+str(self.absolute_paths))
             # lines.append('* app data directory: '+self.data)
             lines.append('* git-tracked:        '+str(self.git))
-            lines.append('* git-lfs tracked:        '+str(self.gitlfs))
+            lines.append('* git-lfs tracked:    '+str(self.gitlfs))
             if self.git:
                 lines.append('* git directory :     '+self.gitdir)
 
