@@ -122,6 +122,7 @@ Install comes with the option to git-track any change to the bibtex file (`--git
         papers configuration
         * configuration file: /home/perrette/.config/papersconfig.json
         * cache directory:    /home/perrette/.cache/papers
+        * absolute paths:     True
         * git-tracked:        True
         * git directory :     ./
         * files directory:    files (1 files, 5.8 MB)
@@ -140,15 +141,16 @@ From now on, no need to specify bibtex file or files directory.
 Sometimes it is desirable to have separate configurations. In that case a local install is the way to go:
 
     $> papers install --local
-    Bibtex file name [default to existing: papers.bib] [Enter]:
-    Files folder [default to new: papers] [Enter]: pdfs
+    Bibtex file name [default to existing: papers.bib] [Enter/Yes/No]:
+    Files folder [default to new: papers] [Enter/Yes/No]: pdfs
     papers configuration
     * configuration file: .papers/config.json
     * cache directory:    /home/perrette/.cache/papers
+    * absolute paths:     True
     * git-tracked:        False
-    * git-lfs tracked:        False
+    * git-lfs tracked:    False
     * files directory:    pdfs (90 files, 337.4 MB)
-    * bibtex:            papers.bib (82 entries)
+    * bibtex:             papers.bib (82 entries)
 
 
 Creates a local configuration file in a hidden `.papers` folder.

@@ -254,7 +254,7 @@ class Config:
             status = bcolors.WARNING+' (empty)'+bcolors.ENDC
         else:
             status = ''
-        lines.append('* bibtex:            '+str(self.bibtex)+status)
+        lines.append('* bibtex:             '+str(self.bibtex)+status)
 
         # if verbose:
         #     collections = self.collections()
