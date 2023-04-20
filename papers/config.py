@@ -79,8 +79,8 @@ class Config:
         self.local = local
         self.data = data
         self.cache = cache
-        self.filesdir = filesdir or os.path.join(data, 'files')
-        self.bibtex = bibtex  or os.path.join(data, 'papers.bib')
+        self.filesdir = filesdir
+        self.bibtex = bibtex
         self.keyformat = keyformat
         self.nameformat = nameformat
         if absolute_paths is None:
@@ -105,6 +105,7 @@ class Config:
             return Path(os.path.sep)
 
     def _relpath(self, p):
+        if p is None: return p
         if not self.local:
             return str(Path(p).resolve())  # abspath
 
@@ -117,6 +118,7 @@ class Config:
             return p
 
     def _abspath(self, p, root=None):
+        if p is None: return p
         if not self.local:
             return str(Path(p).resolve())  # abspath
         p2 = str((Path(root).resolve() if root is not None else self.root) / p)

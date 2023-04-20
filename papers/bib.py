@@ -911,39 +911,52 @@ def main():
             gitdir = config.gitdir
             papersconfig = CONFIG_FILE
             workdir = Path(DATA_DIR)
-            biblios = list(workdir.glob("*.bib"))
+            biblios = list(Path('.').glob("*.bib")) + list(workdir.glob("*.bib"))
             default_filesdir = str(workdir / "files")
 
             if o.absolute_paths is None:
                 o.absolute_paths = True
 
 
+        RESET_DEFAULT = ('none', 'null', 'unset', 'undefined', 'reset', 'delete', 'no', 'n')
+        ACCEPT_DEFAULT = ('yes', 'y')
+
         if not o.bibtex:
             if len(biblios) > 1:
                 logger.warn("Several bibtex files found: "+" ".join([str(b) for b in biblios]))
-                default_bibtex = workdir / "papers.bib"
+                default_bibtex = str(workdir / "papers.bib")
             elif len(biblios) == 1:
-                default_bibtex = workdir / biblios[0]
+                default_bibtex = str(workdir / biblios[0])
             else:
-                default_bibtex = workdir / "papers.bib"
+                default_bibtex = str(workdir / "papers.bib")
 
             if o.prompt:
-                if default_bibtex.exists():
-                    user_input = input(f"Bibtex file name [default to existing: {default_bibtex}] [Enter]: ")
+                if os.path.exists(default_bibtex):
+                    user_input = input(f"Bibtex file name [default to existing: {default_bibtex}] [Enter/Yes/No]: ")
                 else:
-                    user_input = input(f"Bibtex file name [default to new: {default_bibtex}] [Enter]: ")
+                    user_input = input(f"Bibtex file name [default to new: {default_bibtex}] [Enter/Yes/No]: ")
                 if user_input:
-                    default_bibtex = Path(user_input)
-            o.bibtex = str(default_bibtex)
+                    if user_input.lower() in RESET_DEFAULT:
+                        default_bibtex = None
+                    elif user_input.lower() in ACCEPT_DEFAULT:
+                        pass
+                    else:
+                        default_bibtex = Path(user_input)
+            o.bibtex = default_bibtex
 
         if not o.filesdir:
             if o.prompt:
                 if Path(default_filesdir).exists():
-                    user_input = input(f"Files folder [default to existing: {default_filesdir}] [Enter]: ")
+                    user_input = input(f"Files folder [default to existing: {default_filesdir}] [Enter/Yes/No]: ")
                 else:
-                    user_input = input(f"Files folder [default to new: {default_filesdir}] [Enter]: ")
+                    user_input = input(f"Files folder [default to new: {default_filesdir}] [Enter/Yes/No]: ")
                 if user_input:
-                    default_filesdir = user_input
+                    if user_input.lower() in RESET_DEFAULT:
+                        default_filesdir = None
+                    elif user_input.lower() in ACCEPT_DEFAULT:
+                        pass
+                    else:
+                        default_filesdir = user_input
             o.filesdir = default_filesdir
 
 
@@ -967,16 +980,16 @@ def main():
         config.git = o.git
 
         # create bibtex file if not existing
-        bibtex = Path(o.bibtex)
+        bibtex = Path(o.bibtex) if o.bibtex else None
 
-        if not bibtex.exists():
+        if bibtex and not bibtex.exists():
             logger.info('create empty bibliography database: '+o.bibtex)
             bibtex.parent.mkdir(parents=True, exist_ok=True)
             bibtex.open('w', encoding="utf-8").write('')
 
         # create bibtex file if not existing
-        filesdir = Path(o.filesdir)
-        if not filesdir.exists():
+        filesdir = Path(o.filesdir) if o.filesdir else None
+        if filesdir and not filesdir.exists():
             logger.info('create empty files directory: '+o.filesdir)
             filesdir.mkdir(parents=True)
 
@@ -1021,6 +1034,7 @@ def main():
             if _dir_is_empty(parent):
                 logger.info(f"remove {parent}")
                 os.rmdir(parent)
+            papers.config.config = papers.config.Config()
         else:
             logger.info(f"no config file to remove")
             return
