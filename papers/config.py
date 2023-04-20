@@ -204,9 +204,13 @@ class Config:
     def status(self, check_files=False, verbose=False):
 
         lines = []
-        lines.append(bcolors.BOLD+'papers configuration'+(' (local)' if self.local else ' (global)')+bcolors.ENDC)
+        if self.file and os.path.exists(self.file):
+            status = "(local)" if self.local else "(global)"
+        else:
+            status = bcolors.WARNING+"(default, not installed)"+bcolors.ENDC
+        lines.append(bcolors.BOLD+f'papers configuration {status}'+bcolors.ENDC)
         if verbose:
-            lines.append('* configuration file: '+(self.file if os.path.exists(self.file) else 'none'))
+            lines.append('* configuration file: '+(self.file if self.file and os.path.exists(self.file) else bcolors.WARNING+'none'+bcolors.ENDC))
             lines.append('* cache directory:    '+self.cache)
             lines.append('* absolute paths:     '+str(self.absolute_paths))
             # lines.append('* app data directory: '+self.data)
@@ -215,7 +219,9 @@ class Config:
             if self.git:
                 lines.append('* git directory :     '+self.gitdir)
 
-        if not os.path.exists(self.filesdir):
+        if self.filesdir is None:
+            status = bcolors.WARNING+' (unset)'+bcolors.ENDC
+        elif not os.path.exists(self.filesdir):
             status = bcolors.WARNING+' (missing)'+bcolors.ENDC
         elif not os.listdir(self.filesdir):
             status = bcolors.WARNING+' (empty)'+bcolors.ENDC
@@ -226,9 +232,11 @@ class Config:
             status = ''
 
         files = self.filesdir
-        lines.append('* files directory:    '+files+status)
+        lines.append('* files directory:    '+str(files)+status)
 
-        if not os.path.exists(self.bibtex):
+        if self.bibtex is None:
+            status = bcolors.WARNING+' (unset)'+bcolors.ENDC
+        elif not os.path.exists(self.bibtex):
             status = bcolors.WARNING+' (missing)'+bcolors.ENDC
         elif check_files:
             try:
@@ -244,7 +252,7 @@ class Config:
             status = bcolors.WARNING+' (empty)'+bcolors.ENDC
         else:
             status = ''
-        lines.append('* bibtex:            '+self.bibtex+status)
+        lines.append('* bibtex:            '+str(self.bibtex)+status)
 
         # if verbose:
         #     collections = self.collections()

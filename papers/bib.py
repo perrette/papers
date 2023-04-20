@@ -20,7 +20,7 @@ from papers.extract import fetch_bibtex_by_fulltext_crossref, fetch_bibtex_by_do
 from papers.encoding import latex_to_unicode, unicode_to_latex, unicode_to_ascii
 from papers.encoding import parse_file, format_file, standard_name, family_names, format_entries, update_file_path
 
-from papers.config import config, bcolors, checksum, move, search_config, CONFIG_FILE
+from papers.config import config, bcolors, checksum, move, search_config, CONFIG_FILE, DATA_DIR
 
 from papers.duplicate import check_duplicates, resolve_duplicates, conflict_resolution_on_insert
 from papers.duplicate import search_duplicates, list_duplicates, list_uniques, merge_files, edit_entries
@@ -772,6 +772,10 @@ def main():
         config.file = configfile
         config.load()
 
+    else:
+        config.bibtex = None
+        config.filesdir = None
+
     parser = argparse.ArgumentParser(description='library management tool')
     subparsers = parser.add_subparsers(dest='cmd')
 
@@ -890,57 +894,58 @@ def main():
 
     def installcmd(o):
 
+        set_format_config_from_cmd(o)
+
         if o.local:
-            workdir = Path('.')
-            biblios = list(workdir.glob("*.bib"))
-
-            if not o.bibtex:
-                if len(biblios) > 1:
-                    logger.warn("Several bibtex files found: "+" ".join([str(b) for b in biblios]))
-                    bibtex = workdir / "papers.bib"
-                elif len(biblios) == 1:
-                    bibtex = workdir / biblios[0]
-                else:
-                    bibtex = workdir / "papers.bib"
-
-                if o.prompt:
-                    if bibtex.exists():
-                        user_input = input(f"Bibtex file name [default to existing: {bibtex}] [Enter]: ")
-                    else:
-                        user_input = input(f"Bibtex file name [default to new: {bibtex}] [Enter]: ")
-                    if user_input:
-                        bibtex = Path(user_input)
-                o.bibtex = str(bibtex)
-
-            if not o.filesdir:
-                filesdir = "papers"
-                if o.prompt:
-                    if Path(filesdir).exists():
-                        user_input = input(f"Files folder [default to existing: {filesdir}] [Enter]: ")
-                    else:
-                        user_input = input(f"Files folder [default to new: {filesdir}] [Enter]: ")
-                    if user_input:
-                        filesdir = user_input
-                o.filesdir = filesdir
-
             datadir = gitdir = ".papers"
             papersconfig = ".papers/config.json"
+            workdir = Path('.')
+            biblios = list(workdir.glob("*.bib"))
+            default_filesdir = "papers"
 
             if o.absolute_paths is None:
                 o.absolute_paths = False
 
         else:
-            if not o.bibtex:
-                o.bibtex = config.bibtex
-            if not o.filesdir:
-                o.filesdir = config.filesdir
-
             datadir = config.data
             gitdir = config.gitdir
             papersconfig = CONFIG_FILE
+            workdir = Path(DATA_DIR)
+            biblios = list(workdir.glob("*.bib"))
+            default_filesdir = str(workdir / "files")
 
             if o.absolute_paths is None:
                 o.absolute_paths = True
+
+
+        if not o.bibtex:
+            if len(biblios) > 1:
+                logger.warn("Several bibtex files found: "+" ".join([str(b) for b in biblios]))
+                default_bibtex = workdir / "papers.bib"
+            elif len(biblios) == 1:
+                default_bibtex = workdir / biblios[0]
+            else:
+                default_bibtex = workdir / "papers.bib"
+
+            if o.prompt:
+                if default_bibtex.exists():
+                    user_input = input(f"Bibtex file name [default to existing: {default_bibtex}] [Enter]: ")
+                else:
+                    user_input = input(f"Bibtex file name [default to new: {default_bibtex}] [Enter]: ")
+                if user_input:
+                    default_bibtex = Path(user_input)
+            o.bibtex = str(default_bibtex)
+
+        if not o.filesdir:
+            if o.prompt:
+                if Path(default_filesdir).exists():
+                    user_input = input(f"Files folder [default to existing: {default_filesdir}] [Enter]: ")
+                else:
+                    user_input = input(f"Files folder [default to new: {default_filesdir}] [Enter]: ")
+                if user_input:
+                    default_filesdir = user_input
+            o.filesdir = default_filesdir
+
 
         config.bibtex = o.bibtex
         config.filesdir = o.filesdir
@@ -1463,11 +1468,12 @@ def main():
     if hasattr(o,'dry_run'):
         papers.config.DRYRUN = o.dry_run
 
+    if o.cmd == 'status':
+        return statuscmd(o)
 
-    if o.cmd == 'install':
-        return installcmd(o)
+    def check_install():
+        set_format_config_from_cmd(o)
 
-    else:
         if getattr(o, "bibtex", None) is not None:
             config.bibtex = o.bibtex
         if getattr(o, "filesdir", None) is not None:
@@ -1475,20 +1481,22 @@ def main():
         if getattr(o, "absolute_paths", None) is not None:
             config.absolute_paths = o.absolute_paths
 
-    if o.cmd == 'status':
-        return statuscmd(o)
-
-    def check_install():
-        set_format_config_from_cmd(o)
-        if not os.path.exists(config.bibtex):
-            print('papers: error: no bibtex file found, use `papers install` or `touch {}`'.format(config.bibtex))
+        install_doc = f"first execute `papers install --bibtex {config.bibtex or '...'} [ --local ]`"
+        if not config.bibtex:
+            print(f"--bibtex must be specified, or {install_doc}")
+            parser.exit(1)
+        elif not os.path.exists(config.bibtex):
+            print(f'papers: error: no bibtex file found, do `touch {config.bibtex}` or {install_doc}')
             parser.exit(1)
         logger.info('bibtex: '+config.bibtex)
         logger.info('filesdir: '+config.filesdir)
         return True
 
-    if o.cmd == 'uninstall':
+    if o.cmd == 'install':
+        installcmd(o)
+    elif o.cmd == 'uninstall':
         uninstallcmd(o)
+        print(config.status(verbose=True))
     elif o.cmd == 'add':
         check_install() and addcmd(o)
     elif o.cmd == 'check':
@@ -1500,7 +1508,7 @@ def main():
     elif o.cmd == 'undo':
         check_install() and undocmd(o)
     elif o.cmd == 'git':
-        gitcmd(o)
+        check_install() and gitcmd(o)
     elif o.cmd == 'doi':
         doicmd(o)
     elif o.cmd == 'fetch':

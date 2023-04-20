@@ -172,7 +172,8 @@ class TestAdd(unittest.TestCase):
 
 
     def test_add(self):
-        # self.assertTrue(os.path.exists(self.mybib))
+        self.assertTrue(os.path.exists(self.mybib))
+        print("bibtex", self.mybib, 'exists?', os.path.exists(self.mybib))
         sp.check_call('papers add --bibtex {} {}'.format(
             self.mybib, self.pdf), shell=True)
 
