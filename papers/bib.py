@@ -20,7 +20,7 @@ from papers.extract import fetch_bibtex_by_fulltext_crossref, fetch_bibtex_by_do
 from papers.encoding import latex_to_unicode, unicode_to_latex, unicode_to_ascii
 from papers.encoding import parse_file, format_file, standard_name, family_names, format_entries, update_file_path
 
-from papers.config import config, bcolors, checksum, move, search_config
+from papers.config import config, bcolors, checksum, move, search_config, CONFIG_FILE
 
 from papers.duplicate import check_duplicates, resolve_duplicates, conflict_resolution_on_insert
 from papers.duplicate import search_duplicates, list_duplicates, list_uniques, merge_files, edit_entries
@@ -209,7 +209,7 @@ class Biblio:
         self.nameformat = nameformat or config.nameformat
         self.keyformat = keyformat or config.keyformat
         self.similarity = similarity
-        self.relative_to = relative_to or os.path.sep
+        self.relative_to = os.path.sep if relative_to is None else relative_to
         self.sort()
 
     @property
@@ -235,21 +235,26 @@ class Biblio:
         bibtexs = open(bibtex).read()
         loaded_bib = cls(bibtexparser.loads(bibtexs), filesdir, relative_to=os.path.dirname(bibtex))
         if relative_to is None:
-            if config.absolute_paths:
-                loaded_bib.update_file_path(os.path.sep)
-        elif relative_to != os.path.dirname(bibtex):
+            relative_to = os.path.sep if config.absolute_paths else os.path.dirname(bibtex)
+        if loaded_bib.relative_to != relative_to:
             loaded_bib.update_file_path(relative_to)
+
         return loaded_bib
 
-        # make sure the path is right
+    # make sure the path is right
+    # def assert_files_exist(self):
+    #     for e in self.entries:
+    #         files = parse_file(e["file"], self.relative_to)
+    #         for f in files:
+    #             assert os.path.exists(f), f"{f} does not exist"
 
     @classmethod
-    def newbib(cls, bibtex, filesdir):
+    def newbib(cls, bibtex, filesdir, relative_to=None):
         assert not os.path.exists(bibtex)
         if os.path.dirname(bibtex) and not os.path.exists(os.path.dirname(bibtex)):
             os.makedirs(os.path.dirname(bibtex))
         open(bibtex,'w').write('')
-        return cls.load(bibtex, filesdir)
+        return cls.load(bibtex, filesdir, relative_to=relative_to)
 
     def key(self, e):
         return e[self.key_field].lower()
@@ -309,7 +314,7 @@ class Biblio:
 
         elif duplicates:
             # some duplicates...
-            logger.warn('duplicate(s) found: {}'.format(len(duplicates)))
+            logger.debug('duplicate(s) found: {}'.format(len(duplicates)))
 
             # pick only the most similar duplicate, if more than one
             # the point of check_duplicate is to avoid increasing disorder, not to clean the existing mess
@@ -323,13 +328,13 @@ class Biblio:
                 return  # do nothing
 
             if update_key and entry['ID'] != candidate['ID']:
-                logger.info('update key: {} => {}'.format(entry['ID'], candidate['ID']))
+                logger.info('duplicate :: update key to match existing entry: {} => {}'.format(entry['ID'], candidate['ID']))
                 entry['ID'] = candidate['ID']
 
             if mergefiles:
                 file = merge_files([candidate, entry], relative_to=self.relative_to)
                 if len({file, entry.get('file',''), candidate.get('file','')}) > 1:
-                    logger.info('merge files')
+                    logger.info('duplicate :: merge files')
                     entry['file'] = candidate['file'] = file
 
             if entry == candidate:
@@ -452,9 +457,15 @@ class Biblio:
             None: absolute path
             otherwise: different file root (the bibtex directory)
         """
+        updates = []
         for e in self.entries:
-            update_file_path(e, self.relative_to, relative_to)
+            update = update_file_path(e, self.relative_to, relative_to)
+            if update is not None:
+                updates.append(update)
+        if len(updates):
+            logger.info(f"{len(updates)} entry files were updated")
         self.relative_to = relative_to
+
 
 
     def check_duplicates(self, key=None, eq=None, mode='i'):
@@ -798,7 +809,8 @@ def main():
         help='no PDF renaming/copying, no bibtex writing on disk (for testing)')
     grp.add_argument('--no-prompt', action='store_false', dest="prompt",
         help='no prompt, use default (useful for tests)')
-    grp.add_argument('--absolute-paths', action="store_true")
+    grp.add_argument('--relative-paths', action="store_false", dest="absolute_paths", default=None)
+    grp.add_argument('--absolute-paths', action="store_true", default=None)
 
     grp = cfg.add_argument_group('bibtex key format')
     grp.add_argument('--key-template', default=config.keyformat.template,
@@ -927,7 +939,9 @@ def main():
 
             datadir = gitdir = ".papers"
             papersconfig = ".papers/config.json"
-            absolute_paths = o.absolute_paths
+
+            if o.absolute_paths is None:
+                o.absolute_paths = False
 
         else:
             if not o.bibtex:
@@ -937,8 +951,10 @@ def main():
 
             datadir = config.data
             gitdir = config.gitdir
-            papersconfig = config.file
-            absolute_paths = True
+            papersconfig = CONFIG_FILE
+
+            if o.absolute_paths is None:
+                o.absolute_paths = True
 
         config.bibtex = o.bibtex
         config.filesdir = o.filesdir
@@ -946,7 +962,7 @@ def main():
         config.data = datadir
         config.file = papersconfig
         config.local = o.local
-        config.absolute_paths = absolute_paths
+        config.absolute_paths = o.absolute_paths
 
 
         if config.git and not o.git and o.bibtex == config.bibtex:
@@ -980,7 +996,7 @@ def main():
         if o.local:
             os.makedirs(".papers", exist_ok=True)
         else:
-            from config import CONFIG_HOME
+            from papers.config import CONFIG_HOME
             os.makedirs(CONFIG_HOME, exist_ok=True)
         config.save()
 
@@ -992,11 +1008,36 @@ def main():
         if papers.config.DRYRUN:
             return
         if my is not None:
-            if not config.local:
-                my.update_file_path(relative_to=os.path.sep)
             my.save(config.bibtex)
         if config.git:
             config.gitcommit()
+
+    # uninstall
+    # =======
+    uninstallp = subparsers.add_parser('uninstall', description='remove configuration file',
+        parents=[cfg])
+    uninstallp.add_argument("--recursive", action="store_true", help="if true, uninstall all papers configuration found on the path, recursively (config file only)")
+
+    def _dir_is_empty(dir):
+        with os.scandir(dir) as it:
+            return not any(it)
+
+    def uninstallcmd(o):
+        if Path(config.file).exists():
+            logger.info(f"remove {config.file}")
+            os.remove(config.file)
+            parent = os.path.dirname(config.file)
+            if _dir_is_empty(parent):
+                logger.info(f"remove {parent}")
+                os.rmdir(parent)
+        else:
+            logger.info(f"no config file to remove")
+            return
+
+        if o.recursive:
+            config.file = search_config([os.path.join(".papers", "config.json")], start_dir=".", default=CONFIG_FILE)
+            uninstallcmd(o)
+
 
     # add
     # ===
@@ -1436,8 +1477,6 @@ def main():
     if hasattr(o,'dry_run'):
         papers.config.DRYRUN = o.dry_run
 
-    if hasattr(o, "absolute_paths") and o.absolute_paths:
-        config.absolute_paths = True
 
     if o.cmd == 'install':
         return installcmd(o)
@@ -1447,6 +1486,8 @@ def main():
             config.bibtex = o.bibtex
         if getattr(o, "filesdir", None) is not None:
             config.filesdir = o.filesdir
+        if getattr(o, "absolute_paths", None) is not None:
+            config.absolute_paths = o.absolute_paths
 
     if o.cmd == 'status':
         return statuscmd(o)
@@ -1460,7 +1501,9 @@ def main():
         logger.info('filesdir: '+config.filesdir)
         return True
 
-    if o.cmd == 'add':
+    if o.cmd == 'uninstall':
+        uninstallcmd(o)
+    elif o.cmd == 'add':
         check_install() and addcmd(o)
     elif o.cmd == 'check':
         check_install() and checkcmd(o)

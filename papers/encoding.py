@@ -1,7 +1,8 @@
 import os
 import bibtexparser
-from papers.latexenc import latex_to_unicode, unicode_to_latex
 from unidecode import unidecode as unicode_to_ascii
+from papers.latexenc import latex_to_unicode, unicode_to_latex
+from papers import logger
 
 # fix bibtexparser call on empty strings
 _bloads_orig = bibtexparser.loads
@@ -54,13 +55,23 @@ def parse_file(file, relative_to=None):
     return files
 
 
-def update_file_path(entry, from_relative_to, to_relative_to):
+def update_file_path(entry, from_relative_to, to_relative_to, check=False):
     if 'file' in entry:
-        entry["file"] = format_file(parse_file(entry["file"], from_relative_to), to_relative_to)
+        old_file = entry["file"]
+        file_path = parse_file(entry["file"], from_relative_to)
+        if check:
+            for f in file_path:
+                assert os.path.exists(f), f"{f} does not exist"
+        new_file = format_file(file_path, to_relative_to)
+        if new_file != old_file:
+            logger.debug(f"""update_file_path {entry.get("ID")} {old_file} (relative to {repr(from_relative_to)}) {new_file} (relative to {repr(to_relative_to)})""")
+            # logger.debug(f"""{entry.get("ID")}: update file {old_file} to {new_file}""")
+        entry["file"] = new_file
+        if old_file != new_file:
+            return (old_file, new_file)
 
 
 def format_file(files, relative_to=None):
-    from papers import logger
     # make sure the path is right
     if relative_to is not None:
         msg = f"FORMAT FILE {', '.join(files)}"

@@ -74,7 +74,7 @@ class Config:
         bibtex=None, filesdir=None,
         keyformat=KEYFORMAT,
         nameformat=NAMEFORMAT,
-        gitdir=None, git=False, gitlfs=False, local=False, absolute_paths=None):
+        gitdir=None, git=False, gitlfs=False, local=None, absolute_paths=None):
         self.file = file
         self.local = local
         self.data = data
@@ -204,9 +204,9 @@ class Config:
     def status(self, check_files=False, verbose=False):
 
         lines = []
-        lines.append(bcolors.BOLD+'papers configuration'+bcolors.ENDC)
+        lines.append(bcolors.BOLD+'papers configuration'+(' (local)' if self.local else ' (global)')+bcolors.ENDC)
         if verbose:
-            lines.append('* configuration file: '+self.file)
+            lines.append('* configuration file: '+(self.file if os.path.exists(self.file) else 'none'))
             lines.append('* cache directory:    '+self.cache)
             lines.append('* absolute paths:     '+str(self.absolute_paths))
             # lines.append('* app data directory: '+self.data)
