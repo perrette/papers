@@ -71,7 +71,22 @@ def stringify_entry(entry, template, **opt):
 
 class Format:
     """
-    Store formmatting info as python template formatted with str.format() method. See make_template_fields for available fields.
+    Store formatting info as python template formatted with str.format() method. See make_template_fields for available fields.
+
+
+    Example
+    -------
+    To rename esd-4-11-2013.pdf as perrette_2013.pdf, template should be '{author}_{year}' with --name-nauthor 1.
+    If that happens to be the entry ID, 'ID' also works.
+    To rename esd-4-11-2013.pdf as
+    2013/Perrette2013-AScalingApproachToProjectRegionalSeaLevelRiseAndItsUncertainties.pdf,
+    template should be '{year}/{Author}{year}-{Title}' with --name-nauthor 1 (note the case).
+    Entries are case-sensitive, so that:
+        'author' generates 'perrette'
+        'Author' generates 'Perrette'
+        'AUTHOR' generates 'PERRETTE'
+    any other case, like 'AuTHoR', will retrieve the field from 'e' with unaltered case.
+
     """
     # def __init__(self, template="{author}{year}{title}", author_num=2, title_word_num=5, author_sep="_", title_sep="-")
     def __init__(self, template, author_num=2, title_word_num=100, title_word_size=1, title_length=100, author_sep="_", title_sep="-"):

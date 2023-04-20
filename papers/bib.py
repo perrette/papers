@@ -478,21 +478,7 @@ class Biblio:
     def rename_entry_files(self, e, copy=False, formatter=None):
         """ Rename files
 
-        See `papers.filename.Format` class
-
-
-            To rename esd-4-11-2013.pdf as perrette_2013.pdf, nameformat should be '{author}_{year}' with --name-nauthor 1.
-            If that happens to be the entry ID, 'ID' also works.
-
-            To rename esd-4-11-2013.pdf as
-            2013/Perrette2013-AScalingApproachToProjectRegionalSeaLevelRiseAndItsUncertainties.pdf,
-            nameformat should be '{year}/{Author}{year}-{Title}' with --name-nauthor 1 (note the case).
-
-            Entries are case-sensitive, so that:
-                'author' generates 'perrette'
-                'Author' generates 'Perrette'
-                'AUTHOR' generates 'PERRETTE'
-            any other case, like 'AuTHoR', will retrieve the field from 'e' with unaltered case.
+        See `papers.filename.Format` class and REAMDE.md for infos.
         """
 
         if self.filesdir is None:
