@@ -159,6 +159,7 @@ class TestAdd(unittest.TestCase):
     def _checkfile(self, file):
         _, file, type = file.split(':')
         self.assertEqual(type, 'pdf') # file type is PDF
+        file = os.path.abspath(os.path.join(os.path.dirname(self.mybib), file))
         self.assertTrue(os.path.exists(file))  # file link is valid
         return file
 
@@ -171,14 +172,13 @@ class TestAdd(unittest.TestCase):
 
 
     def test_add(self):
-        # self.assertTrue(os.path.exists(self.mybib))
+        self.assertTrue(os.path.exists(self.mybib))
+        print("bibtex", self.mybib, 'exists?', os.path.exists(self.mybib))
         sp.check_call('papers add --bibtex {} {}'.format(
             self.mybib, self.pdf), shell=True)
 
         file_ = self._checkbib(dismiss_key=True)
         file = self._checkfile(file_)
-        print("file created during test:", file)
-        print("file for check:", self.pdf)
         self.assertEqual(file, self.pdf)
         # self.assertTrue(os.path.exists(self.pdf)) # old pdf still exists
 
@@ -243,7 +243,6 @@ class TestAdd2(TestAdd):
             self.mybib, self.filesdir, self.pdf, self.si), shell=True)
 
         file_ = self._checkbib(dismiss_key=True)
-        print('file field in bibtex:', file_)
         self.assertTrue(';' in file_)
         main_, si_ = file_.split(';')
         main = self._checkfile(main_)

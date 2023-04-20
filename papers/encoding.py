@@ -1,7 +1,8 @@
 import os
 import bibtexparser
-from papers.latexenc import latex_to_unicode, unicode_to_latex
 from unidecode import unidecode as unicode_to_ascii
+from papers.latexenc import latex_to_unicode, unicode_to_latex
+from papers import logger
 
 # fix bibtexparser call on empty strings
 _bloads_orig = bibtexparser.loads
@@ -42,15 +43,45 @@ def _format_file(file, type=None):
     return ':'+file+':'+type
 
 
-def parse_file(file):
+def parse_file(file, relative_to=None):
+    " return list of absolute paths "
     if not file:
         return []
     else:
-        return [_parse_file(f) for f in file.split(';')]
+        files = [_parse_file(f) for f in file.split(';')]
+        if relative_to is not None:
+            files = [os.path.abspath(os.path.join(relative_to, f)) for f in files]
+
+    return files
 
 
-def format_file(file_types):
-    return ';'.join([_format_file(f) for f in file_types])
+def update_file_path(entry, from_relative_to, to_relative_to, check=False):
+    if 'file' in entry:
+        old_file = entry["file"]
+        file_path = parse_file(entry["file"], from_relative_to)
+        if check:
+            for f in file_path:
+                assert os.path.exists(f), f"{f} does not exist"
+        new_file = format_file(file_path, to_relative_to)
+        if new_file != old_file:
+            logger.debug(f"""update_file_path {entry.get("ID")} {old_file} (relative to {repr(from_relative_to)}) {new_file} (relative to {repr(to_relative_to)})""")
+            # logger.debug(f"""{entry.get("ID")}: update file {old_file} to {new_file}""")
+        entry["file"] = new_file
+        if old_file != new_file:
+            return (old_file, new_file)
+
+
+def format_file(files, relative_to=None):
+    # make sure the path is right
+    if relative_to is not None:
+        msg = f"FORMAT FILE {', '.join(files)}"
+        if relative_to == os.path.sep:
+            files = [os.path.abspath(p) for p in files]
+        else:
+            files = [os.path.normpath(os.path.relpath(p, relative_to)) for p in files]
+        msg += f" => {', '.join(files)}"
+        logger.debug(msg)
+    return ';'.join([_format_file(f) for f in files])
 
 
 def format_entries(entries):

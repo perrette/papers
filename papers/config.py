@@ -1,4 +1,5 @@
 import os, json
+from pathlib import Path
 import subprocess as sp, sys, shutil
 import hashlib
 import bibtexparser
@@ -14,8 +15,11 @@ CONFIG_HOME = os.environ.get('XDG_CONFIG_HOME', os.path.join(HOME, '.config'))
 CACHE_HOME = os.environ.get('XDG_CACHE_HOME', os.path.join(HOME, '.cache'))
 DATA_HOME = os.environ.get('XDG_DATA_HOME', os.path.join(HOME, '.local','share'))
 
-##
-def search_config(filenames, start_dir, default=os.path.join(CONFIG_HOME, 'papersconfig.json')):
+CONFIG_FILE = os.path.join(CONFIG_HOME, 'papersconfig.json')
+DATA_DIR = os.path.join(DATA_HOME, 'papers')
+CACHE_DIR = os.path.join(CACHE_HOME, 'papers')
+
+def search_config(filenames, start_dir, default):
     """Thanks Chat GPT !"""
     current_dir = os.path.abspath(start_dir)
     root_dir = os.path.abspath(os.sep)
@@ -35,10 +39,6 @@ def search_config(filenames, start_dir, default=os.path.join(CONFIG_HOME, 'paper
         current_dir = parent_dir
 
     return default
-
-CONFIG_FILE = search_config([os.path.join(".papers", "config.json"), ".papersconfig.json"], start_dir=".")
-DATA_DIR = os.path.join(DATA_HOME, 'papers')
-CACHE_DIR = os.path.join(CACHE_HOME, 'papers')
 
 
 # utils
@@ -74,14 +74,18 @@ class Config:
         bibtex=None, filesdir=None,
         keyformat=KEYFORMAT,
         nameformat=NAMEFORMAT,
-        gitdir=None, git=False, gitlfs=False):
+        gitdir=None, git=False, gitlfs=False, local=None, absolute_paths=None):
         self.file = file
+        self.local = local
         self.data = data
         self.cache = cache
-        self.filesdir = filesdir or os.path.join(data, 'files')
-        self.bibtex = bibtex  or os.path.join(data, 'papers.bib')
+        self.filesdir = filesdir
+        self.bibtex = bibtex
         self.keyformat = keyformat
         self.nameformat = nameformat
+        if absolute_paths is None:
+            absolute_paths = False if local else True
+        self.absolute_paths = absolute_paths
         self.gitdir = gitdir  or data
         self.git = git
         self.gitlfs = gitlfs
@@ -93,26 +97,59 @@ class Config:
         # return sorted(f[:-4] for f in files if f.endswith('.bib'))
         return sorted(f for f in files if f.endswith('.bib'))
 
+    @property
+    def root(self):
+        if self.local:
+            return Path(self.bibtex).parent
+        else:
+            return Path(os.path.sep)
+
+    def _relpath(self, p):
+        if p is None: return p
+        if not self.local:
+            return str(Path(p).resolve())  # abspath
+
+        # otherwise express path relative to bibtex (parent of config file)
+        try:
+            # logger.info(f"rel path: (p)", p)
+            return str((self.root / p).relative_to(self.root))
+        except:
+            logger.warn("can't save as relative path:", p)
+            return p
+
+    def _abspath(self, p, root=None):
+        if p is None: return p
+        if not self.local:
+            return str(Path(p).resolve())  # abspath
+        p2 = str((Path(root).resolve() if root is not None else self.root) / p)
+        return p2
+
+
     def save(self):
         json.dump({
-            "filesdir":self.filesdir,
-            "bibtex":self.bibtex,
-            "keyformat":self.keyformat.todict(),
-            "nameformat":self.nameformat.todict(),
-            "git":self.git,
-            "gitdir":self.gitdir,
+            "filesdir": self._relpath(self.filesdir),
+            "bibtex": self._relpath(self.bibtex),
+            "gitdir": self._relpath(self.gitdir),
+            "keyformat": self.keyformat.todict(),
+            "nameformat": self.nameformat.todict(),
+            "local": self.local,
+            "absolute_paths": self.absolute_paths,
+            "git": self.git,
             }, open(self.file, 'w'), sort_keys=True, indent=2, separators=(',', ': '))
 
 
     def load(self):
         js = json.load(open(self.file))
-        self.bibtex = js.get('bibtex', self.bibtex)
-        self.filesdir = js.get('filesdir', self.filesdir)
+        root = Path(self.file).parent.parent
+        self.local = js.get('local', self.local)
+        self.bibtex = self._abspath(js.get('bibtex', self.bibtex), root)
+        self.filesdir = self._abspath(js.get('filesdir', self.filesdir), root)
+        self.gitdir = self._abspath(js.get('gitdir', self.gitdir), root)
         self.nameformat = Format(**js["nameformat"]) if "nameformat" in js else self.nameformat
         self.keyformat = Format(**js["keyformat"]) if "keyformat" in js else self.keyformat
+        self.absolute_paths = js.get('absolute_paths', self.absolute_paths)
         self.git = js.get('git', self.git)
         self.gitlfs = js.get('gitlfs', self.gitlfs)
-        self.gitdir = js.get('gitdir', self.gitdir)
 
 
     def reset(self):
@@ -169,17 +206,24 @@ class Config:
     def status(self, check_files=False, verbose=False):
 
         lines = []
-        lines.append(bcolors.BOLD+'papers configuration'+bcolors.ENDC)
+        if self.file and os.path.exists(self.file):
+            status = "(local)" if self.local else "(global)"
+        else:
+            status = bcolors.WARNING+"(default, not installed)"+bcolors.ENDC
+        lines.append(bcolors.BOLD+f'papers configuration {status}'+bcolors.ENDC)
         if verbose:
-            lines.append('* configuration file: '+self.file)
+            lines.append('* configuration file: '+(self.file if self.file and os.path.exists(self.file) else bcolors.WARNING+'none'+bcolors.ENDC))
             lines.append('* cache directory:    '+self.cache)
+            lines.append('* absolute paths:     '+str(self.absolute_paths))
             # lines.append('* app data directory: '+self.data)
             lines.append('* git-tracked:        '+str(self.git))
-            lines.append('* git-lfs tracked:        '+str(self.gitlfs))
+            lines.append('* git-lfs tracked:    '+str(self.gitlfs))
             if self.git:
                 lines.append('* git directory :     '+self.gitdir)
 
-        if not os.path.exists(self.filesdir):
+        if self.filesdir is None:
+            status = bcolors.WARNING+' (unset)'+bcolors.ENDC
+        elif not os.path.exists(self.filesdir):
             status = bcolors.WARNING+' (missing)'+bcolors.ENDC
         elif not os.listdir(self.filesdir):
             status = bcolors.WARNING+' (empty)'+bcolors.ENDC
@@ -190,9 +234,11 @@ class Config:
             status = ''
 
         files = self.filesdir
-        lines.append('* files directory:    '+files+status)
+        lines.append('* files directory:    '+str(files)+status)
 
-        if not os.path.exists(self.bibtex):
+        if self.bibtex is None:
+            status = bcolors.WARNING+' (unset)'+bcolors.ENDC
+        elif not os.path.exists(self.bibtex):
             status = bcolors.WARNING+' (missing)'+bcolors.ENDC
         elif check_files:
             try:
@@ -208,7 +254,7 @@ class Config:
             status = bcolors.WARNING+' (empty)'+bcolors.ENDC
         else:
             status = ''
-        lines.append('* bibtex:            '+self.bibtex+status)
+        lines.append('* bibtex:             '+str(self.bibtex)+status)
 
         # if verbose:
         #     collections = self.collections()

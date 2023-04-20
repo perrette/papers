@@ -115,12 +115,14 @@ The same template and modifiers system applies to the bibtex key generation by r
 In the common case where the bibtex (`--bibtex`), files directory  (`--filesdir`), and name and key formats (e.g. `--name-template`) do not change, it is convenient to *install* `papers`.
 Install comes with the option to git-track any change to the bibtex file (`--git`) options.
 
+
 - setup git-tracked library (optional)
 
         $> papers install --bibtex papers.bib --filesdir files --git --gitdir ./
         papers configuration
         * configuration file: /home/perrette/.config/papersconfig.json
         * cache directory:    /home/perrette/.cache/papers
+        * absolute paths:     True
         * git-tracked:        True
         * git directory :     ./
         * files directory:    files (1 files, 5.8 MB)
@@ -133,6 +135,63 @@ configuration.
 You also notice that crossref requests are saved in the cache directory.
 This happens regardless of whether `papers` is installed or not.
 From now on, no need to specify bibtex file or files directory.
+
+- local install
+
+Sometimes it is desirable to have separate configurations. In that case a local install is the way to go:
+
+    $> papers install --local
+    Bibtex file name [default to existing: papers.bib] [Enter/Yes/No]:
+    Files folder [default to new: papers] [Enter/Yes/No]: pdfs
+    papers configuration
+    * configuration file: .papers/config.json
+    * cache directory:    /home/perrette/.cache/papers
+    * absolute paths:     True
+    * git-tracked:        False
+    * git-lfs tracked:    False
+    * files directory:    pdfs (90 files, 337.4 MB)
+    * bibtex:             papers.bib (82 entries)
+
+
+Creates a local configuration file in a hidden `.papers` folder.
+By default, it expects existing or creates new `papers.bib` bibliography and `papers` files folder in the local directory, though `papers` will ask first unless explicitly provided.
+Note that every call from a subfolder will also detect that configuration file (it has priority over global install).
+
+By default, the local install is meant to be portable with bibtex and files, so the file paths are encoded relatively to the bibtex file.
+If instead absolute paths make more sense (example use case: local bibtex file but central PDF folder), then simply specify `--absolute-paths` options:
+
+    `papers install --local --absolute-paths --filesdir /path/to/central/pdfs`
+
+
+- uninstall
+
+Getting confused with papers config files scattered in subfolders ? Check the config with
+
+    papers status -v
+
+and remove the configuration file by hand (`rm ...`). Or use `papers uninstall` command:
+
+    papers uninstall
+
+You may repeat `papers status -v` and cleaning until a satistfying state is reached, or remove all config files recursively up to (and including) global install:
+
+    papers uninstall --recursive
+
+
+- Relative versus Absolute path
+
+By default, the file paths in the bibtex are stored as absolute paths (starting with `/`), except for local installs.
+It is possible to change this behavious explicitly during install or in a case by case basis with `--relative-paths` or `--absolute-paths` options.
+With or without install.
+
+- move library to a new location
+
+There is no canonical command yet, but the following set of commands works (and takes care of file attachment in case of relative paths in the source file):
+
+    touch new.bib
+    papers add /path/to/old.bib --bib new.bib
+
+This defaults to writing absolute paths in the new library, unless `--relative-paths` is specified.
 
 - list entries (and edit etc...)
 
@@ -184,8 +243,8 @@ Current features
         - latex characters, e.g. `{\_}` or `{\'{e}}` replaced with unicode
 
 
-Planned features
-----------------
+Feature ideas (TODO: organize as issues for discussion)
+-------------
 - `papers encode`: text encoding in bibtex entries (latex, unicode, ascii)
 - additional checks on entries:
     - duplicate-authors and more like [here](https://github.com/tdegeus/bibparse)
