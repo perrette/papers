@@ -160,6 +160,22 @@ If instead absolute paths make more sense (example use case: local bibtex file b
 
     `papers install --local --absolute-paths --filesdir /path/to/central/pdfs`
 
+
+- uninstall
+
+Getting confused with papers config files scattered in subfolders ? Check the config with
+
+    papers status -v
+
+and remove the configuration file by hand (`rm ...`). Or use `papers uninstall` command:
+
+    papers uninstall
+
+You may repeat `papers status -v` and cleaning until a satistfying state is reached, or remove all config files recursively up to (and including) global install:
+
+    papers uninstall --recursive
+
+
 - Relative versus Absolute path
 
 By default, the file paths in the bibtex are stored as absolute paths (starting with `/`), except for local installs.
@@ -168,10 +184,12 @@ With or without install.
 
 - move library to a new location
 
-There is no canonical command yet, but the following set of commands works:
+There is no canonical command yet, but the following set of commands works (and takes care of file attachment in case of relative paths in the source file):
 
     touch new.bib
-    papers add /path/to/old.bib --bib new.bib [ --relative-paths | --absolute-paths ]
+    papers add /path/to/old.bib --bib new.bib
+
+This defaults to writing absolute paths in the new library, unless `--relative-paths` is specified.
 
 - list entries (and edit etc...)
 
