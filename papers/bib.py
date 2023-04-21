@@ -97,9 +97,12 @@ def entry_id(e):
 
 FUZZY_RATIO = 80
 
-# should be conservative (used in papers add)
-DEFAULT_SIMILARITY = 'FAIR'
-# DEFAULT_SIMILARITY = 'PARTIAL'
+# Default similarity is used in papers add
+# False positive (to weak a test) and distinct entries will be merged
+# False negative and duplicates will be created
+# PARTIAL means that If either DOI or author+title agree, that is good enough to be considered a duplicate
+# I cant think of any situation where two legitimately distinct papers test True with partial similarity.
+DEFAULT_SIMILARITY = 'PARTIAL'
 
 EXACT_DUPLICATES = 104
 GOOD_DUPLICATES = 103
@@ -122,10 +125,14 @@ def compare_entries(e1, e2, fuzzy=False):
     if id1 == id2:
         score = GOOD_DUPLICATES
 
-    elif all([f1==f2 for f1, f2 in zip(id1, id2) if f1 and f2]): # all defined fields agree
+    elif e1.get('doi') and e2.get('doi') and e1['doi'] == e2['doi']:
         score = FAIR_DUPLICATES
 
-    elif any([f1==f2 for f1, f2 in zip(id1, id2) if f1 and f2]): # some of the defined fields agree
+    # elif all([f1==f2 for f1, f2 in zip(id1, id2) if f1 and f2]): # ID and AUTHORTITLE agree
+    #     score = FAIR_DUPLICATES
+    # COMMENT: same as GOOD_DUPLICATES when all fields are defined, but also returns true when one field is missing in one entry
+
+    elif any([f1==f2 for f1, f2 in zip(id1, id2) if f1 and f2]): # any of ID or AUTHORTITLE agree
         score = PARTIAL_DUPLICATES
 
     elif not fuzzy:

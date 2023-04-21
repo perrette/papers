@@ -346,8 +346,9 @@ class BibTest(unittest.TestCase):
 
 
 
+class SimilarityBase(unittest.TestCase):
 
-class TestDuplicates(unittest.TestCase):
+    similarity = None
 
     reference = """@article{Perrette_2011,
  author = {M. Perrette and A. Yool and G. D. Quartly and E. E. Popova},
@@ -397,44 +398,6 @@ class TestDuplicates(unittest.TestCase):
  year = {2012}
 }"""
 
-    @staticmethod
-    def isduplicate(a, b):
-        """test Biblio's eq method for duplicates
-        """
-        db = bibtexparser.loads(a+'\n'+b)
-        e1, e2 = db.entries
-        refs = Biblio()
-        return refs.eq(e1, e2)
-
-    def test_exactsame(self):
-        self.assertTrue(self.isduplicate(self.reference, self.reference))
-
-    def test_anotherkey(self):
-        self.assertTrue(self.isduplicate(self.reference, self.anotherkey))
-
-    def test_missingfield(self):
-        self.assertTrue(self.isduplicate(self.reference, self.missingfield))
-
-    def test_missingdoi(self):
-        self.assertTrue(self.isduplicate(self.reference, self.missingdoi))
-
-    def test_missingtitauthor(self):
-        self.assertTrue(self.isduplicate(self.reference, self.missingtitauthor))
-
-    def test_conflictauthor(self):
-        self.assertFalse(self.isduplicate(self.reference, self.conflictauthor))
-
-    def test_conflictdoi(self):
-        self.assertFalse(self.isduplicate(self.reference, self.conflictdoi))
-
-    def test_conflictyear(self):
-        self.assertTrue(self.isduplicate(self.reference, self.conflictyear))
-
-
-
-class SimilarityBase:
-
-    similarity = None
 
     def isduplicate(self, a, b):
         """test Biblio's eq method for duplicates
@@ -445,9 +408,12 @@ class SimilarityBase:
         return refs.eq(e1, e2)
 
 
-class TestDuplicatesExact(SimilarityBase, TestDuplicates):
+class TestDuplicatesExact(SimilarityBase):
 
     similarity = 'EXACT'
+
+    def test_exactsame(self):
+        self.assertTrue(self.isduplicate(self.reference, self.reference))
 
     def test_anotherkey(self):
         self.assertFalse(self.isduplicate(self.reference, self.anotherkey))
@@ -461,35 +427,65 @@ class TestDuplicatesExact(SimilarityBase, TestDuplicates):
     def test_missingtitauthor(self):
         self.assertFalse(self.isduplicate(self.reference, self.missingtitauthor))
 
+    def test_conflictauthor(self):
+        self.assertFalse(self.isduplicate(self.reference, self.conflictauthor))
+
+    def test_conflictdoi(self):
+        self.assertFalse(self.isduplicate(self.reference, self.conflictdoi))
+
     def test_conflictyear(self):
         self.assertFalse(self.isduplicate(self.reference, self.conflictyear))
 
 
-
-class TestDuplicatesGood(SimilarityBase, TestDuplicates):
+class TestDuplicatesGood(TestDuplicatesExact):
 
     similarity = 'GOOD'
 
-    def test_missingdoi(self):
-        self.assertFalse(self.isduplicate(self.reference, self.missingdoi))
+    def test_anotherkey(self):
+        self.assertTrue(self.isduplicate(self.reference, self.anotherkey))
+
+    def test_missingfield(self):
+        self.assertTrue(self.isduplicate(self.reference, self.missingfield))
+
+    def test_conflictyear(self):
+        self.assertTrue(self.isduplicate(self.reference, self.conflictyear))
+
+
+class TestDuplicatesFair(TestDuplicatesGood):
+
+    similarity = 'FAIR'
 
     def test_missingtitauthor(self):
-        self.assertFalse(self.isduplicate(self.reference, self.missingtitauthor))
-
-
-class TestDuplicatesPartial(SimilarityBase, TestDuplicates):
-
-    similarity = 'PARTIAL'
+        self.assertTrue(self.isduplicate(self.reference, self.missingtitauthor))
 
     def test_conflictauthor(self):
         self.assertTrue(self.isduplicate(self.reference, self.conflictauthor))
+
+
+class TestDuplicatesPartial(TestDuplicatesFair):
+
+    similarity = 'PARTIAL'
+
+    def test_missingdoi(self):
+        self.assertTrue(self.isduplicate(self.reference, self.missingdoi))
 
     def test_conflictdoi(self):
         self.assertTrue(self.isduplicate(self.reference, self.conflictdoi))
 
 
+class TestDuplicates(TestDuplicatesPartial):
 
-class TestDuplicatesAdd(SimilarityBase, TestDuplicates):
+    @staticmethod
+    def isduplicate(a, b):
+        """test Biblio's eq method for duplicates
+        """
+        db = bibtexparser.loads(a+'\n'+b)
+        e1, e2 = db.entries
+        refs = Biblio()
+        return refs.eq(e1, e2)
+
+
+class TestDuplicatesAdd(TestDuplicates):
 
     def setUp(self):
         self.mybib = tempfile.mktemp(prefix='papers.bib')
@@ -760,15 +756,15 @@ class TestAddConflict(BibTest):
 }"""
 
     bibtex_conflict_key = """@article{Perrette_2011,
- author = {M. Perrette and A. Yool and G. D. Quartly and E. E. Popova},
+ author = {M. Perrette and Another author},
  doi = {10.5194/bg-8-515-2011XXX},
- title = {Near-ubiquity of ice-edge blooms in the Arctic}
+ title = {Something else entirely}
 }"""
 
     bibtex_conflict_key_fixed = """@article{Perrette_2011b,
- author = {M. Perrette and A. Yool and G. D. Quartly and E. E. Popova},
+ author = {M. Perrette and Another author},
  doi = {10.5194/bg-8-515-2011XXX},
- title = {Near-ubiquity of ice-edge blooms in the Arctic}
+ title = {Something else entirely}
 }"""
 
     bibtex_same_doi = """@article{same_doi,
