@@ -343,10 +343,20 @@ def move(f1, f2, copy=False, interactive=True):
     if f1 == f2:
         logger.info('dest is identical to src: '+f1)
         return
+
     if os.path.exists(f2):
-        ans = input('dest file already exists: '+f2+'. Replace? (y/n) ')
-        if ans != 'y':
+        # if identical file, pretend nothing happened, skip copying
+        if checksum(f2) == checksum(f1):
+            if not copy:
+                os.remove(f1)
             return
+
+        elif interactive:
+            ans = input('dest file already exists: '+f2+'. Replace? (y/n) ')
+            if ans.lower() != 'y':
+                return
+        else:
+            os.remove(f2)
 
     if copy:
         cmd = 'cp {} {}'.format(f1, f2)
