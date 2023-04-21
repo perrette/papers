@@ -100,7 +100,7 @@ class Config:
     @property
     def root(self):
         if self.local:
-            return Path(self.bibtex).parent
+            return Path(self.bibtex).parent.resolve()
         else:
             return Path(os.path.sep)
 
@@ -113,8 +113,9 @@ class Config:
         try:
             # logger.info(f"rel path: (p)", p)
             return str((self.root / p).relative_to(self.root))
-        except:
-            logger.warn("can't save as relative path:", p)
+        except Exception as error:
+            print(error)
+            logger.warn(f"config :: can't save {p} as relative path to {self.root}")
             return p
 
     def _abspath(self, p, root=None):
