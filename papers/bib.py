@@ -280,9 +280,7 @@ class Biblio:
         # additional checks on DOI etc...
         if check_duplicate:
             logger.debug('check duplicates : TRUE')
-            self.insert_entry_check(entry, update_key=update_key, **checkopt)
-            if rename:
-                self.rename_entry_files(entry, copy=copy)
+            self.insert_entry_check(entry, update_key=update_key, rename=rename, copy=copy, **checkopt)
             return
         else:
             logger.debug('check duplicates : FALSE')
@@ -305,18 +303,16 @@ class Biblio:
 
         self.entries.insert(i, entry)
 
-        if rename:
-            self.rename_entry_files(entry, copy=copy)
+        if rename: self.rename_entry_files(entry, copy=copy)
 
 
-
-    def insert_entry_check(self, entry, update_key=False, mergefiles=True, on_conflict='i'):
+    def insert_entry_check(self, entry, update_key=False, mergefiles=True, on_conflict='i', rename=False, copy=False):
 
         duplicates = [e for e in self.entries if self.eq(e, entry)]
 
         if not duplicates:
             logger.debug('not a duplicate')
-            self.insert_entry(entry, update_key)
+            self.insert_entry(entry, update_key, rename=rename, copy=copy)
 
 
         elif duplicates:
@@ -332,6 +328,7 @@ class Biblio:
 
             if entry == candidate:
                 logger.debug('exact duplicate')
+                if rename: self.rename_entry_files(candidate, copy=copy)
                 return  # do nothing
 
             if update_key and entry['ID'] != candidate['ID']:
@@ -339,20 +336,24 @@ class Biblio:
                 entry['ID'] = candidate['ID']
 
             if mergefiles:
+
                 file = merge_files([candidate, entry], relative_to=self.relative_to)
                 if len({file, entry.get('file',''), candidate.get('file','')}) > 1:
                     logger.info('duplicate :: merge files')
                     entry['file'] = candidate['file'] = file
 
+
             if entry == candidate:
                 logger.debug('fixed: exact duplicate')
+                entry = candidate
+                if rename: self.rename_entry_files(candidate, copy=copy)
                 return  # do nothing
 
-            logger.debug('conflic resolution: '+on_conflict)
+            logger.debug('conflict resolution: '+on_conflict)
             resolved = conflict_resolution_on_insert(candidate, entry, mode=on_conflict)
             self.entries.remove(candidate) # maybe in resolved entries
             for e in resolved:
-                self.insert_entry(e, update_key)
+                self.insert_entry(e, update_key, rename=rename, copy=copy)
 
 
     def generate_key(self, entry):
@@ -415,10 +416,7 @@ class Biblio:
 
         kw.pop('update_key', True)
             # logger.warn('fetched key is always updated when adding PDF to existing bib')
-        self.insert_entry(entry, update_key=True, **kw)
-
-        if rename:
-            self.rename_entry_files(entry, copy=copy)
+        self.insert_entry(entry, update_key=True, rename=rename, copy=copy)
 
 
     def scan_dir(self, direc, search_doi=True, search_fulltext=True, **kw):
@@ -507,7 +505,6 @@ class Biblio:
             return
 
         newname = (formatter or self.nameformat)(e)
-
         count = 0
         if len(files) == 1:
             file = files[0]
@@ -517,6 +514,9 @@ class Biblio:
                 raise ValueError(file+': original file link is broken')
             elif file != newfile:
                 move(file, newfile, copy)
+                # assert os.path.exists(newfile)
+                # if not copy:
+                #     assert not os.path.exists(file)
                 count += 1
             newfiles = [newfile]
             e['file'] = format_file(newfiles, relative_to=self.relative_to)
@@ -532,6 +532,7 @@ class Biblio:
                     raise ValueError(file+': original file link is broken')
                 elif file != newfile:
                     move(file, newfile, copy)
+                    # assert os.path.exists(newfile)
                     count += 1
                 newfiles.append(newfile)
             e['file'] = format_file(newfiles, relative_to=self.relative_to)
@@ -553,6 +554,9 @@ class Biblio:
                     shutil.rmtree(direcs[0])
             else:
                 logger.debug('some left overs, do not remove tree: '+direcs[0])
+
+        # for f in parse_file(e['file'], self.relative_to):
+        #     assert os.path.exists(f), f
 
         if count > 0:
             logger.info('renamed file(s): {}'.format(count))
@@ -760,7 +764,7 @@ def entry_filecheck(e, delete_broken=False, fix_mendeley=False,
                 continue
             elif interactive:
                 ans = input('delete file from entry ? [Y/n] ')
-                if ans.lower == 'y':
+                if ans.lower() == 'y':
                     continue
 
         elif check_hash:
