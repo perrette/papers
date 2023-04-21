@@ -815,7 +815,8 @@ def main():
     grp.add_argument('--relative-paths', action="store_false", dest="absolute_paths", default=None)
     grp.add_argument('--absolute-paths', action="store_true", default=None)
 
-    grp = cfg.add_argument_group('bibtex key format')
+    keyfmt = argparse.ArgumentParser(add_help=False)
+    grp = keyfmt.add_argument_group('bibtex key format')
     grp.add_argument('--key-template', default=config.keyformat.template,
         help='python template for generating keys (default:%(default)s)')
     grp.add_argument('--key-author-num', type=int, default=config.keyformat.author_num,
@@ -829,7 +830,8 @@ def main():
     grp.add_argument('--key-title-sep', default=config.keyformat.title_sep,
         help='separator for title words in key (default:%(default)s)')
 
-    grp = cfg.add_argument_group('filename format')
+    namefmt = argparse.ArgumentParser(add_help=False)
+    grp = namefmt.add_argument_group('filename format')
     grp.add_argument('--name-template', default=config.nameformat.template,
         help='python template for renaming files (default:%(default)s)')
     grp.add_argument('--name-author-num', type=int, default=config.nameformat.author_num,
@@ -846,7 +848,7 @@ def main():
         help='separator for title words in filename (default:%(default)s)')
 
 
-    def set_format_config_from_cmd(o):
+    def set_keyformat_config_from_cmd(o):
         config.keyformat.template = o.key_template
         config.keyformat.author_num = o.key_author_num
         config.keyformat.author_sep = o.key_author_sep
@@ -854,6 +856,7 @@ def main():
         config.keyformat.title_word_size = o.key_title_word_size
         config.keyformat.title_sep = o.key_title_sep
 
+    def set_nameformat_config_from_cmd(o):
         config.nameformat.template = o.name_template
         config.nameformat.author_num = o.name_author_num
         config.nameformat.author_sep = o.name_author_sep
@@ -879,7 +882,7 @@ def main():
     # =======
 
     installp = subparsers.add_parser('install', description='setup or update papers install',
-        parents=[cfg])
+        parents=[cfg, namefmt, keyfmt])
     installp.add_argument('--reset-paths', action='store_true', help=argparse.SUPPRESS)
     # egrp = installp.add_mutually_exclusive_group()
     installp.add_argument('--local', action="store_true",
@@ -907,7 +910,8 @@ def main():
 
     def installcmd(o):
 
-        set_format_config_from_cmd(o)
+        set_nameformat_config_from_cmd(o)
+        set_keyformat_config_from_cmd(o)
 
         checkdirs = ["files", "pdfs", "pdf", "papers", "bibliography"]
         default_bibtex = "papers.bib"
@@ -1068,7 +1072,7 @@ def main():
     # add
     # ===
     addp = subparsers.add_parser('add', description='add PDF(s) or bibtex(s) to library',
-        parents=[cfg])
+        parents=[cfg, namefmt, keyfmt])
     addp.add_argument('file', nargs='*', default=[])
     # addp.add_argument('-f','--force', action='store_true', help='disable interactive')
 
@@ -1108,6 +1112,10 @@ def main():
 
 
     def addcmd(o):
+
+        set_nameformat_config_from_cmd(o)
+        set_keyformat_config_from_cmd(o)
+
         if os.path.exists(config.bibtex):
             my = Biblio.load(config.bibtex, config.filesdir)
         else:
@@ -1171,7 +1179,7 @@ def main():
     # check
     # =====
     checkp = subparsers.add_parser('check', description='check and fix entries',
-        parents=[cfg])
+        parents=[cfg, keyfmt])
     checkp.add_argument('-k', '--keys', nargs='+', help='apply check on this key subset')
     checkp.add_argument('-f','--force', action='store_true', help='do not ask')
 
@@ -1200,6 +1208,7 @@ def main():
     # checkp.add_argument('--duplicates',action='store_true', help='remove / merge duplicates')
 
     def checkcmd(o):
+        set_keyformat_config_from_cmd(o)
         my = Biblio.load(config.bibtex, config.filesdir)
 
         # if o.fix_all:
@@ -1224,7 +1233,7 @@ def main():
     # filecheck
     # =====
     filecheckp = subparsers.add_parser('filecheck', description='check attached file(s)',
-        parents=[cfg])
+        parents=[cfg, namefmt])
     # filecheckp.add_argument('-f','--force', action='store_true',
     #     help='do not ask before performing actions')
 
@@ -1257,6 +1266,8 @@ def main():
     # filecheckp.add_argument('-a', '--all', action='store_true', help='--hash and --meta')
 
     def filecheckcmd(o):
+        set_nameformat_config_from_cmd(o)
+
         my = Biblio.load(config.bibtex, config.filesdir)
 
         # fix ':home' entry as saved by Mendeley
@@ -1521,7 +1532,6 @@ def main():
         return statuscmd(o)
 
     def check_install():
-        set_format_config_from_cmd(o)
 
         if getattr(o, "bibtex", None) is not None:
             config.bibtex = o.bibtex
