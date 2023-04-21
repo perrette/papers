@@ -24,11 +24,11 @@ command-line bibliography managenent tool. Aims:
 
 - python 3.8+
 - [poppler-utils](https://en.wikipedia.org/wiki/Poppler_(software)) (only:`pdftotext`): convert PDF to text for parsing
-- [bibtexparser (1.0.1)](https://bibtexparser.readthedocs.io) : parse bibtex files
-- [crossrefapi (1.2.0)](https://github.com/fabiobatalha/crossrefapi) : make polite requests to crossref API
-- [scholarly (0.2.2)](https://github.com/OrganicIrradiation/scholarly) : interface for google scholar
-- [rapidfuzz (0.2.0)](https://github.com/rhasspy/rapidfuzz) : calculate score to sort crossref requests
-- [unidecode (0.04.21)](https://github.com/avian2/unidecode) : replace unicode with ascii equivalent
+- [bibtexparser](https://bibtexparser.readthedocs.io) : parse bibtex files
+- [crossrefapi](https://github.com/fabiobatalha/crossrefapi) : make polite requests to crossref API
+- [scholarly](https://github.com/OrganicIrradiation/scholarly) : interface for google scholar
+- [rapidfuzz](https://github.com/rhasspy/rapidfuzz) : calculate score to sort crossref requests
+- [unidecode](https://github.com/avian2/unidecode) : replace unicode with ascii equivalent
 
 ## Install
 
