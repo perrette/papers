@@ -10,7 +10,8 @@ import bibtexparser
 import papers
 from papers.config import cached
 from papers import logger
-from papers.encoding import family_names, latex_to_unicode
+from papers.encoding import family_names
+from bibtexparser.customization import convert_to_unicode
 
 my_etiquette = Etiquette('papers', papers.__version__, 'https://github.com/perrette/papers', 'mahe.perrette@gmail.com')
 
@@ -369,14 +370,15 @@ def fetch_entry(e):
     if 'doi' in e and isvaliddoi(e['doi']):
         bibtex = fetch_bibtex_by_doi(e['doi'])
     else:
+        e = convert_to_unicode(e)
         kw = {}
         if e.get('author',''):
-            kw['author'] = latex_to_unicode(family_names(e['author']))
+            kw['author'] = family_names(e['author'])
         if e.get('title',''):
-            kw['title'] = latex_to_unicode(family_names(e['title']))
+            kw['title'] = e['title']
         if kw:
             bibtex = fetch_bibtex_by_fulltext_crossref('', **kw)
         else:
-            ValueError('no author not title field')
+            ValueError('no author nor title field')
     db = bibtexparser.loads(bibtex)
     return db.entries[0]

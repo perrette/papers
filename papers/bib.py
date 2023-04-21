@@ -9,6 +9,7 @@ import bisect
 import itertools
 
 import bibtexparser
+from bibtexparser.customization import convert_to_unicode
 
 import papers
 from papers import logger
@@ -17,7 +18,7 @@ from papers.extract import extract_pdf_doi, isvaliddoi, parse_doi
 from papers.extract import extract_pdf_metadata
 from papers.extract import fetch_bibtex_by_fulltext_crossref, fetch_bibtex_by_doi
 
-from papers.encoding import latex_to_unicode, unicode_to_latex, unicode_to_ascii
+from papers.encoding import unicode_to_latex, unicode_to_ascii
 from papers.encoding import parse_file, format_file, standard_name, family_names, format_entries, update_file_path
 
 from papers.config import config, bcolors, checksum, move, search_config, CONFIG_FILE, DATA_DIR
@@ -368,8 +369,10 @@ class Biblio:
         return append_abc(entry['ID'], keys={self.key(e) for e in self.entries})
 
 
-    def add_bibtex(self, bibtex, relative_to=None, attachments=None, **kw):
+    def add_bibtex(self, bibtex, relative_to=None, attachments=None, convert_to_unicode=False, **kw):
         bib = bibtexparser.loads(bibtex)
+        if convert_to_unicode:
+            bib = bibtexparser.customization.convert_to_unicode(bib)
         for e in bib.entries:
             files = []
             if "file" in e:
@@ -404,7 +407,7 @@ class Biblio:
         entry = bib.entries[0]
 
         # convert curly brackets to unicode
-        bibtexparser.customization.convert_to_unicode(entry)
+        entry = convert_to_unicode(entry)
 
         files = [pdf] if pdf else []
         if attachments:
@@ -589,16 +592,19 @@ class Biblio:
             assert encoding in ['unicode','latex'], e.get('ID','')+': unknown encoding: '+repr(encoding)
 
             logger.debug(e.get('ID','')+': update encoding')
-            for k in e:
-                if k == k.lower() and k != 'abstract': # all but ENTRYTYPE, ID, abstract
-                    try:
-                        if encoding == 'unicode':
-                            e[k] = latex_to_unicode(e[k])
-                        elif encoding == 'latex':
-                            e[k] = unicode_to_latex(e[k])
-                    # except KeyError as error:
-                    except (KeyError, ValueError) as error:
-                        logger.warn(e.get('ID','')+': '+k+': failed to encode: '+str(error))
+            if encoding == "unicode":
+                e = convert_to_unicode(e)
+            else:
+                for k in e:
+                    if k == k.lower() and k != 'abstract': # all but ENTRYTYPE, ID, abstract
+                        try:
+                            if encoding == 'unicode':
+                                e[k] = latex_to_unicode(e[k])
+                            elif encoding == 'latex':
+                                e[k] = unicode_to_latex(e[k])
+                        # except KeyError as error:
+                        except (KeyError, ValueError) as error:
+                            logger.warn(e.get('ID','')+': '+k+': failed to encode: '+str(error))
 
         if fix_doi:
             if 'doi' in e and e['doi']:

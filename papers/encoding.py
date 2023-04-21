@@ -1,7 +1,7 @@
 import os
 import bibtexparser
 from unidecode import unidecode as unicode_to_ascii
-from papers.latexenc import latex_to_unicode, unicode_to_latex
+from papers.latexenc import unicode_to_latex
 from papers import logger
 
 # fix bibtexparser call on empty strings
@@ -129,18 +129,7 @@ def strip_outmost_brackets(family):
 
 
 def standard_name(author):
-    names = []
-    for name in bibtexparser.customization.getnames([strip_outmost_brackets(nm) for nm in author.split(' and ')]):
-        # if 'name' contains more than one author
-        # Example: doi:10.1111/jnc.13687
-        name = name.split(' and ')
-
-        for n in name:
-            family, given = n.split(',')
-            family = strip_outmost_brackets(family.strip())
-            # given = strip_outmost_brackets(given.strip())
-            names.append(', '.join([family.strip(), given.strip()]))
-    return ' and '.join(names)
+    return " and ".join(bibtexparser.customization.author({"author": author}).get("author",[]))
 
 
 def family_names(author_field):
