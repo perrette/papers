@@ -48,28 +48,28 @@ For the sake of the example, one of my owns: https://www.earth-syst-dynam.net/4/
 
 - extract pdf metadata (doi-based if available, otherwise crossref, or google scholar if so specified)
 
-    $> papers extract esd-4-11-2013.pdf
-    @article{Perrette_2013,
-        doi = {10.5194/esd-4-11-2013},
-        url = {https://doi.org/10.5194%2Fesd-4-11-2013},
-        year = 2013,
-        month = {jan},
-        publisher = {Copernicus {GmbH}},
-        volume = {4},
-        number = {1},
-        pages = {11--29},
-        author = {M. Perrette and F. Landerer and R. Riva and K. Frieler and M. Meinshausen},
-        title = {A scaling approach to project regional sea level rise and its uncertainties},
-        journal = {Earth System Dynamics}
-    }
+		$> papers extract esd-4-11-2013.pdf
+		@article{Perrette_2013,
+		doi = {10.5194/esd-4-11-2013},
+		url = {https://doi.org/10.5194%2Fesd-4-11-2013},
+		year = 2013,
+		month = {jan},
+		publisher = {Copernicus {GmbH}},
+		volume = {4},
+		number = {1},
+		pages = {11--29},
+		author = {M. Perrette and F. Landerer and R. Riva and K. Frieler and M. Meinshausen},
+		title = {A scaling approach to project regional sea level rise and its uncertainties},
+		journal = {Earth System Dynamics}
+		}
 
 - add pdf to `papers.bib`  library, and rename a copy of it in a files directory `files`.
 
-    $> papers add esd-4-11-2013.pdf --rename --copy --bibtex papers.bib --filesdir files --info
-	INFO:papers:found doi:10.5194/esd-4-11-2013
-	INFO:papers:new entry: perrette_landerer2013
-	INFO:papers:mv /home/perrette/playground/papers/esd-4-11-2013.pdf files/perrette_et_al_2013_a-scaling-approach-to-project-regional-sea-level-rise-and-its-uncertainties.pdf
-	INFO:papers:renamed file(s): 1
+		$> papers add esd-4-11-2013.pdf --rename --copy --bibtex papers.bib --filesdir files --info
+		INFO:papers:found doi:10.5194/esd-4-11-2013
+		INFO:papers:new entry: perrette_landerer2013
+		INFO:papers:mv /home/perrette/playground/papers/esd-4-11-2013.pdf files/perrette_et_al_2013_a-scaling-approach-to-project-regional-sea-level-rise-and-its-uncertainties.pdf
+		INFO:papers:renamed file(s): 1
 
 (the `--info` argument asks for the above output information to be printed out to the terminal)
 
