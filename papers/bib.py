@@ -805,9 +805,9 @@ def main():
     cfg = argparse.ArgumentParser(add_help=False, parents=[loggingp])
     grp = cfg.add_argument_group('config')
     grp.add_argument('--filesdir', default=None,
-        help=f'files directory (default: {config.filesdir} or ./papers with `papers install --local`)')
+        help=f'files directory (default: {config.filesdir}')
     grp.add_argument('--bibtex', default=None,
-        help=f'bibtex database (default: {config.bibtex} or ./papers.bib with `papers install --local`)')
+        help=f'bibtex database (default: {config.bibtex}')
     grp.add_argument('--dry-run', action='store_true',
         help='no PDF renaming/copying, no bibtex writing on disk (for testing)')
     grp.add_argument('--no-prompt', action='store_false', dest="prompt",
@@ -909,12 +909,15 @@ def main():
 
         set_format_config_from_cmd(o)
 
+        checkdirs = ["files", "pdfs", "pdf", "papers", "bibliography"]
+        default_bibtex = "papers.bib"
+        default_filesdir = "files"
+
         if o.local:
             datadir = gitdir = ".papers"
             papersconfig = ".papers/config.json"
             workdir = Path('.')
             biblios = list(workdir.glob("*.bib"))
-            default_filesdir = "papers"
 
             if o.absolute_paths is None:
                 o.absolute_paths = False
@@ -925,11 +928,20 @@ def main():
             papersconfig = CONFIG_FILE
             workdir = Path(DATA_DIR)
             biblios = list(Path('.').glob("*.bib")) + list(workdir.glob("*.bib"))
-            default_filesdir = str(workdir / "files")
+            checkdirs = [os.path.join(papers.config.DATA_DIR, "files")] + checkdirs
 
             if o.absolute_paths is None:
                 o.absolute_paths = True
 
+        biblios = [default_bibtex] + [f for f in biblios if Path(f) != Path(default_bibtex)]
+
+        if config.filesdir:
+            checkdirs = [config.filesdir] + checkdirs
+
+        for d in checkdirs:
+            if os.path.exists(str(d)):
+                default_filesdir = d
+                break
 
         RESET_DEFAULT = ('none', 'null', 'unset', 'undefined', 'reset', 'delete', 'no', 'n')
         ACCEPT_DEFAULT = ('yes', 'y')
@@ -937,12 +949,8 @@ def main():
         if not o.bibtex:
             if len(biblios) > 1:
                 logger.warn("Several bibtex files found: "+" ".join([str(b) for b in biblios]))
-                default_bibtex = str(workdir / "papers.bib")
-            elif len(biblios) == 1:
-                default_bibtex = str(workdir / biblios[0])
-            else:
-                default_bibtex = str(workdir / "papers.bib")
-
+            if biblios:
+                default_bibtex = biblios[0]
             if o.prompt:
                 if os.path.exists(default_bibtex):
                     user_input = input(f"Bibtex file name [default to existing: {default_bibtex}] [Enter/Yes/No]: ")
