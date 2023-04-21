@@ -37,8 +37,8 @@ Install
 
 Note there is another project registered on pypi as papers, hence `papers-cli` for command-line-interface.
 
-Getting started
----------------
+## Getting started
+
 This tool's interface is built like `git`, with main command `papers` and a range of subcommands.
 
 Start with PDF of your choice (modern enough to have a DOI, e.g. anything from the Copernicus publications).
@@ -46,48 +46,57 @@ For the sake of the example, one of my owns: https://www.earth-syst-dynam.net/4/
 
 - extract pdf metadata (doi-based if available, otherwise crossref, or google scholar if so specified)
 
-        $> papers extract esd-4-11-2013.pdf
-        @article{Perrette_2013,
-            doi = {10.5194/esd-4-11-2013},
-            url = {https://doi.org/10.5194%2Fesd-4-11-2013},
-            year = 2013,
-            month = {jan},
-            publisher = {Copernicus {GmbH}},
-            volume = {4},
-            number = {1},
-            pages = {11--29},
-            author = {M. Perrette and F. Landerer and R. Riva and K. Frieler and M. Meinshausen},
-            title = {A scaling approach to project regional sea level rise and its uncertainties},
-            journal = {Earth System Dynamics}
-        }
+    $> papers extract esd-4-11-2013.pdf
+    @article{Perrette_2013,
+        doi = {10.5194/esd-4-11-2013},
+        url = {https://doi.org/10.5194%2Fesd-4-11-2013},
+        year = 2013,
+        month = {jan},
+        publisher = {Copernicus {GmbH}},
+        volume = {4},
+        number = {1},
+        pages = {11--29},
+        author = {M. Perrette and F. Landerer and R. Riva and K. Frieler and M. Meinshausen},
+        title = {A scaling approach to project regional sea level rise and its uncertainties},
+        journal = {Earth System Dynamics}
+    }
 
 - add pdf to `papers.bib`  library, and rename a copy of it in a files directory `files`.
 
-        $> papers add esd-4-11-2013.pdf --rename --copy --bibtex papers.bib --filesdir files --info
-    	INFO:papers:found doi:10.5194/esd-4-11-2013
-    	INFO:papers:new entry: perrette_2013
-    	INFO:papers:create directory: files/2013
-    	INFO:papers:mv /home/perrette/playground/papers/esd-4-11-2013.pdf files/perrette_et_al_2013_a-scaling-approach-to-project-regional-sea-level-rise-and-its-uncertainties.pdf
-    	INFO:papers:renamed file(s): 1
+    $> papers add esd-4-11-2013.pdf --rename --copy --bibtex papers.bib --filesdir files --info
+	INFO:papers:found doi:10.5194/esd-4-11-2013
+	INFO:papers:new entry: perrette_landerer2013
+	INFO:papers:mv /home/perrette/playground/papers/esd-4-11-2013.pdf files/perrette_et_al_2013_a-scaling-approach-to-project-regional-sea-level-rise-and-its-uncertainties.pdf
+	INFO:papers:renamed file(s): 1
 
-Or alternatively:
+(the `--info` argument asks for the above output information to be printed out to the terminal)
+
+That is equivalent to doing:
 
     papers extract esd-4-11-2013.pdf > entry.bib
     papers add entry.bib --bibtex papers.bib --attachment esd-4-11-2013.pdf
 
-Or again:
+If you already know the DOI of a PDF, and don't want to gamble the fulltext search and match, you can indicate it via `--doi`:
 
-    papers fetch 10.5194/esd-4-11-2013 > entry
-    papers add entry --bibtex papers.bib
+    papers add esd-4-11-2013.pdf --doi 10.5194/esd-4-11-2013 --bibtex papers.bib
 
-That also works
-
-    papers add --doi 10.5194/esd-4-11-2013 --attachment esd-4-11-2013.pdf --bibtex papers.bib
-
-(the `--info` argument asks for the above output information to be printed out to the terminal)
+The `add` command above also works without any PDF (create a bibtex entry without file attachment).
 
 
-- control fields when renaming file
+### List entries (and edit etc...)
+
+    $> papers list -l
+    Perrette2013: A scaling approach to project regional sea level rise and it... (doi:10.5194/esd-4-11-2013, file:1)
+
+`papers list` is a useful command, inspired from unix's `find` and `grep`.
+It lets you search in your bibtex in a typical manner (including a number of special flags such as `--duplicates`, `--review-required`, `--broken-file`...),
+then output the result in a number of formats (one-liner, raw bibtex, keys-only, selected fields) or let you perform actions on it (currently `--edit`, `--delete`).
+For instance, it is possible to manually merge the duplicates with:
+
+    $> papers list --duplicates --edit
+
+
+### Control fields when renaming file
 
         $> papers add --rename --info --name-template "{AuthorX}{year}-{Title}" --name-title-sep '' --name-author-sep '' esd-4-11-2013
         INFO:papers:found doi:10.5194/esd-4-11-2013
@@ -126,31 +135,31 @@ and similarly:
 The same template and modifiers system applies to the bibtex key generation by replacing the prefix `--name-` with `--key-`, e.g. `--key-template`
 
 
-In the common case where the bibtex (`--bibtex`), files directory  (`--filesdir`), and name and key formats (e.g. `--name-template`) do not change, it is convenient to *install* `papers`.
+In the common case where the bibtex (`--bibtex`), files directory  (`--filesdir`), and name and key formats (e.g. `--name-template`) do not change, it is convenient to
+(install)[#install-make-bibtex-and-files-directory-persistent] `papers`.
 Install comes with the option to git-track any change to the bibtex file (`--git`) options.
 
 
-- setup git-tracked library (optional)
+### install: make bibtex and files directory persistent
 
-        $> papers install --bibtex papers.bib --filesdir files --git --gitdir ./
-        papers configuration
-        * configuration file: /home/perrette/.config/papersconfig.json
-        * cache directory:    /home/perrette/.cache/papers
-        * absolute paths:     True
-        * git-tracked:        True
-        * git directory :     ./
-        * files directory:    files (1 files, 5.8 MB)
-        * bibtex:            papers.bib (1 entries)
+    $> papers install --bibtex papers.bib --filesdir files
+    papers configuration
+    * configuration file: /home/perrette/.config/papersconfig.json
+    * cache directory:    /home/perrette/.cache/papers
+    * absolute paths:     True
+    * files directory:    files (1 files, 5.8 MB)
+    * bibtex:            papers.bib (1 entries)
 
-Note the existing bibtex file was detected but untouched.
 The configuration file is global (unless `--local` is specified), so from now on, any `papers`
-command will know about these settings. Type `papers status -v` to check your
-configuration.
-You also notice that crossref requests are saved in the cache directory.
-This happens regardless of whether `papers` is installed or not.
-From now on, no need to specify bibtex file or files directory.
+command will know about these settings: no need to specify bibtex file or files directory.
 
-- local install
+Type `papers status -v` to check your configuration.
+
+You also notice a cache directory. All internet requests such as crossref requests are saved in the cache directory.
+This happens regardless of whether `papers` is installed or not.
+
+
+#### local install
 
 Sometimes it is desirable to have separate configurations. In that case a local install is the way to go:
 
@@ -177,7 +186,7 @@ If instead absolute paths make more sense (example use case: local bibtex file b
     `papers install --local --absolute-paths --filesdir /path/to/central/pdfs`
 
 
-- uninstall
+#### uninstall
 
 Getting confused with papers config files scattered in subfolders ? Check the config with
 
@@ -192,35 +201,48 @@ You may repeat `papers status -v` and cleaning until a satistfying state is reac
     papers uninstall --recursive
 
 
-- Relative versus Absolute path
+### Relative versus Absolute path
 
 By default, the file paths in the bibtex are stored as absolute paths (starting with `/`), except for local installs.
 It is possible to change this behavious explicitly during install or in a case by case basis with `--relative-paths` or `--absolute-paths` options.
 With or without install.
 
-- move library to a new location
 
-There is no canonical command yet, but the following set of commands works (and takes care of file attachment in case of relative paths in the source file):
+
+### Move library to a new location
+
+Moving a library can be tricky.
+Simple cases are:
+- files are stored in a central repository, and the bibtex contains absolute paths. Then moving the bibtex by hand is fine.
+- files are stored alongside the bibtex, and the bibtex contains relative paths. Just move around the folder containing bibtex and files
+In any other cases, you risk breaking the file links.
+
+Papers tries to be as little opinionated as possible about how files are organized, and so it relies on your own judgement and use case.
+When loading a bibtex, it always inteprete relative file links as being relative to the bibtex file.
+When saving a bibtex, it will save file links accordingly to the default setting path (usually absolute, unless local install or unless you specify otherwise).
+
+In any case, the following set of commands will always work provided the initial file links are valid (optional parameters in brackets):
 
     touch new.bib
-    papers add /path/to/old.bib --bib new.bib
-
-This defaults to writing absolute paths in the new library, unless `--relative-paths` is specified.
-
-- list entries (and edit etc...)
-
-        $> papers list -l
-        Perrette2013: A scaling approach to project regional sea level rise and it... (doi:10.5194/esd-4-11-2013, file:1)
-
-`papers list` is a useful command, inspired from unix's `find` and `grep`.
-It lets you search in your bibtex in a typical manner (including a number of special flags such as `--duplicates`, `--review-required`, `--broken-file`...),
-then output the result in a number of formats (one-liner, raw bibtex, keys-only, selected fields) or let you perform actions on it (currently `--edit`, `--delete`).
-For instance, it is possible to manually merge the duplicates with:
-
-        $> papers list --duplicates --edit
+    papers add /path/to/old.bib --bib new.bib [ --rename ] [ --relative-paths ]
+    rm -f /path/to/old.bib
 
 
-- other commands:
+### Setup git-tracked library (optional)
+
+    Install comes with the option to git-track any change to the bibtex file (`--git`) options.
+
+    $> papers install --bibtex papers.bib --filesdir files --git
+
+From now on, every change to the library will result in an automatic git commit.
+And `papers git ...` command will work just as `git ...` executed from the bibtex directory.
+E.g. `papers git add origin *REMOTE URL*`; `papers git lfs track files`; `papers git add files`; `papers git push`
+Note this is an experimental feature at this stage, with potential for improvement.
+
+This probably makes more sense for a global install (local installs usually have their own git tracking system).
+
+
+### other commands:
 
     - `papers status ...`
     - `papers check ...`
