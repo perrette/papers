@@ -206,6 +206,12 @@ class Config:
 
     def status(self, check_files=False, verbose=False):
 
+        def _fmt_path(p):
+            if self.local:
+                return os.path.relpath(p, ".")
+            else:
+                return p
+
         lines = []
         if self.file and os.path.exists(self.file):
             status = "(local)" if self.local else "(global)"
@@ -213,7 +219,7 @@ class Config:
             status = bcolors.WARNING+"(default, not installed)"+bcolors.ENDC
         lines.append(bcolors.BOLD+f'papers configuration {status}'+bcolors.ENDC)
         if verbose:
-            lines.append('* configuration file: '+(self.file if self.file and os.path.exists(self.file) else bcolors.WARNING+'none'+bcolors.ENDC))
+            lines.append('* configuration file: '+(_fmt_path(self.file) if self.file and os.path.exists(self.file) else bcolors.WARNING+'none'+bcolors.ENDC))
             lines.append('* cache directory:    '+self.cache)
             lines.append('* absolute paths:     '+str(self.absolute_paths))
             # lines.append('* app data directory: '+self.data)
@@ -234,8 +240,7 @@ class Config:
         else:
             status = ''
 
-        files = self.filesdir
-        lines.append('* files directory:    '+str(files)+status)
+        lines.append(f'* files directory:    {_fmt_path(self.filesdir) if self.filesdir else self.filesdir}'+status)
 
         if self.bibtex is None:
             status = bcolors.WARNING+' (unset)'+bcolors.ENDC
@@ -255,7 +260,7 @@ class Config:
             status = bcolors.WARNING+' (empty)'+bcolors.ENDC
         else:
             status = ''
-        lines.append('* bibtex:             '+str(self.bibtex)+status)
+        lines.append(f'* bibtex:             {_fmt_path(self.bibtex) if self.bibtex else self.bibtex}'+status)
 
         # if verbose:
         #     collections = self.collections()
