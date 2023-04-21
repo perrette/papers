@@ -274,13 +274,16 @@ class Biblio:
         return bisect.bisect_left(keys, self.key(entry))
 
 
-    def insert_entry(self, entry, update_key=False, check_duplicate=False, **checkopt):
+    def insert_entry(self, entry, update_key=False, check_duplicate=False, rename=False, copy=False, **checkopt):
         """
         """
         # additional checks on DOI etc...
         if check_duplicate:
             logger.debug('check duplicates : TRUE')
-            return self.insert_entry_check(entry, update_key=update_key, **checkopt)
+            self.insert_entry_check(entry, update_key=update_key, **checkopt)
+            if rename:
+                self.rename_entry_files(entry, copy=copy)
+            return
         else:
             logger.debug('check duplicates : FALSE')
 
@@ -301,6 +304,10 @@ class Biblio:
             logger.info('new entry: '+self.key(entry))
 
         self.entries.insert(i, entry)
+
+        if rename:
+            self.rename_entry_files(entry, copy=copy)
+
 
 
     def insert_entry_check(self, entry, update_key=False, mergefiles=True, on_conflict='i'):
@@ -360,12 +367,18 @@ class Biblio:
         return append_abc(entry['ID'], keys={self.key(e) for e in self.entries})
 
 
-    def add_bibtex(self, bibtex, relative_to=None, **kw):
+    def add_bibtex(self, bibtex, relative_to=None, attachments=None, **kw):
         bib = bibtexparser.loads(bibtex)
         for e in bib.entries:
+            files = []
             if "file" in e:
                 # make sure paths relative to other bibtex are inserted correctly
-                e["file"] = format_file(parse_file(e["file"], relative_to=relative_to), relative_to=self.relative_to)
+                files.extend(parse_file(e["file"], relative_to=relative_to))
+            if attachments:
+                files.extend([os.path.abspath(f) for f in attachments])
+            if files:
+                e["file"] = format_file(list(set(files)), relative_to=self.relative_to)
+
             self.insert_entry(e, **kw)
 
 
@@ -392,7 +405,7 @@ class Biblio:
         # convert curly brackets to unicode
         bibtexparser.customization.convert_to_unicode(entry)
 
-        files = [pdf]
+        files = [pdf] if pdf else []
         if attachments:
             files += attachments
 
@@ -1048,7 +1061,7 @@ def main():
     # ===
     addp = subparsers.add_parser('add', description='add PDF(s) or bibtex(s) to library',
         parents=[cfg])
-    addp.add_argument('file', nargs='+')
+    addp.add_argument('file', nargs='*', default=[])
     # addp.add_argument('-f','--force', action='store_true', help='disable interactive')
 
     grp = addp.add_argument_group('duplicate check')
@@ -1078,7 +1091,7 @@ def main():
     grp.add_argument('--scholar', action='store_true', help='use google scholar instead of crossref')
 
     grp = addp.add_argument_group('attached files')
-    grp.add_argument('-a','--attachment', nargs='+', help=argparse.SUPPRESS) #'supplementary material')
+    grp.add_argument('-a','--attachment', nargs='+') #'supplementary material')
     grp.add_argument('-r','--rename', action='store_true',
         help='rename PDFs according to key')
     grp.add_argument('-c','--copy', action='store_true',
@@ -1092,12 +1105,26 @@ def main():
         else:
             my = Biblio.newbib(config.bibtex, config.filesdir)
 
-        if len(o.file) > 1 and o.attachment:
-            logger.error('--attachment is only valid for one added file')
-            addp.exit(1)
-
         kw = {'on_conflict':o.mode, 'check_duplicate':not o.no_check_duplicate,
             'mergefiles':not o.no_merge_files, 'update_key':o.update_key}
+
+        if len(o.file) > 1:
+            if o.attachment:
+                logger.error('--attachment is only valid for one PDF / BIBTEX entry')
+                addp.exit(1)
+            if o.doi:
+                logger.error('--doi is only valid for one added file')
+                addp.exit(1)
+
+        if len(o.file) == 0:
+            if not o.doi:
+                logger.error('Please provide either a PDF file or BIBTEX entry or specify `--doi DOI`')
+                addp.exit(1)
+            elif o.no_query_doi:
+                logger.error('If no file is present, --no-query-doi is not compatible with --doi')
+                addp.exit(1)
+            else:
+                my.fetch_doi(o.doi, attachments=o.attachment, rename=o.rename, copy=o.copy, **kw)
 
         for file in o.file:
             try:

@@ -63,12 +63,26 @@ For the sake of the example, one of my owns: https://www.earth-syst-dynam.net/4/
 
 - add pdf to `papers.bib`  library, and rename a copy of it in a files directory `files`.
 
-        $> papers add --rename --copy --bibtex papers.bib --filesdir files esd-4-11-2013.pdf --info
+        $> papers add esd-4-11-2013.pdf --rename --copy --bibtex papers.bib --filesdir files --info
     	INFO:papers:found doi:10.5194/esd-4-11-2013
     	INFO:papers:new entry: perrette_2013
     	INFO:papers:create directory: files/2013
     	INFO:papers:mv /home/perrette/playground/papers/esd-4-11-2013.pdf files/perrette_et_al_2013_a-scaling-approach-to-project-regional-sea-level-rise-and-its-uncertainties.pdf
     	INFO:papers:renamed file(s): 1
+
+Or alternatively:
+
+    papers extract esd-4-11-2013.pdf > entry.bib
+    papers add entry.bib --bibtex papers.bib --attachment esd-4-11-2013.pdf
+
+Or again:
+
+    papers fetch 10.5194/esd-4-11-2013 > entry
+    papers add entry --bibtex papers.bib
+
+That also works
+
+    papers add --doi 10.5194/esd-4-11-2013 --attachment esd-4-11-2013.pdf --bibtex papers.bib
 
 (the `--info` argument asks for the above output information to be printed out to the terminal)
 
