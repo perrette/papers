@@ -230,8 +230,35 @@ When saving a bibtex, it will save file links accordingly to the default setting
 In any case, the following set of commands will always work provided the initial file links are valid (optional parameters in brackets):
 
     touch new.bib
-    papers add /path/to/old.bib --bib new.bib [ --rename ] [ --relative-paths ]
+    papers add /path/to/old.bib --bib new.bib [ --rename ] [ --relative-paths ] [ --filesdir newfilesdir ]
     rm -f /path/to/old.bib
+
+
+### check
+
+It's easy to end up with duplicates in your bibtex. After adding PDFs, or every once in a while, do:
+
+    papers check --duplicates
+
+
+### filecheck
+
+Check for broken links, rename files etc. Example:
+
+    papers filecheck --rename
+
+The command can be used to move around the file directory:
+
+    papers filecheck --rename --filesdir newfilesdir
+
+That command is also convenient to check on what's actually tracked and what is not. Example workflow
+
+    papers filecheck --rename --filesdir tmp
+    # check what's left over in your initial files directory, e.g.
+    # papers extract files/leftover1.pdf
+    # papers add files/leftover1.pdf
+    # ...
+    papers filecheck --rename --filesdir files
 
 
 ### Setup git-tracked library (optional)
@@ -248,13 +275,16 @@ Note this is an experimental feature at this stage, with potential for improveme
 This probably makes more sense for a global install (local installs usually have their own git tracking system).
 
 
-### other commands:
+### undo
 
-    - `papers status ...`
-    - `papers check ...`
-    - `papers filecheck ...`
-    - `papers undo ...`
-    - `papers git ...`
+Did a `papers add` and are unhappy with the result?
+
+    papers undo
+
+will revert to the previous version. If repeated, it will jump back and forth between latest and before-latest.
+
+Better to git-track your bibliography to go back deeper into history.
+
 
 Consult inline help for more detailed documentation!
 
