@@ -10,8 +10,8 @@ Command-line tool to manage bibliography (pdfs + bibtex)
 
 > **WARNING**: This tool requires further development and testing, and is not fully production-ready as such (contributors welcome).
 
-Motivation
-----------
+## Motivation
+
 This project is an attempt to create a light-weight,
 command-line bibliography managenent tool. Aims:
 
@@ -20,8 +20,8 @@ command-line bibliography managenent tool. Aims:
 - enough PDF-parsing capability to fetch metadata from the internet (i.e. [crossref](https://github.com/CrossRef/rest-api-doc) or google-scholar)
 
 
-Dependencies
-------------
+## Dependencies
+
 - python 3.8+
 - [poppler-utils](https://en.wikipedia.org/wiki/Poppler_(software)) (only:`pdftotext`): convert PDF to text for parsing
 - [bibtexparser (1.0.1)](https://bibtexparser.readthedocs.io) : parse bibtex files
@@ -30,8 +30,8 @@ Dependencies
 - [rapidfuzz (0.2.0)](https://github.com/rhasspy/rapidfuzz) : calculate score to sort crossref requests
 - [unidecode (0.04.21)](https://github.com/avian2/unidecode) : replace unicode with ascii equivalent
 
-Install
--------
+## Install
+
 - `pip install papers-cli`
 - install third-party dependencies (Ubuntu: `sudo apt install poppler-utils`)
 
@@ -40,6 +40,8 @@ Note there is another project registered on pypi as papers, hence `papers-cli` f
 ## Getting started
 
 This tool's interface is built like `git`, with main command `papers` and a range of subcommands.
+
+### Extract PDF metadata and add to library
 
 Start with PDF of your choice (modern enough to have a DOI, e.g. anything from the Copernicus publications).
 For the sake of the example, one of my owns: https://www.earth-syst-dynam.net/4/11/2013/esd-4-11-2013.pdf
@@ -74,7 +76,11 @@ For the sake of the example, one of my owns: https://www.earth-syst-dynam.net/4/
 That is equivalent to doing:
 
     papers extract esd-4-11-2013.pdf > entry.bib
-    papers add entry.bib --bibtex papers.bib --attachment esd-4-11-2013.pdf
+    papers add entry.bib --bibtex papers.bib --attachment esd-4-11-2013.pdf --rename --copy
+
+See [Control fields when renaming file](#control-fields-when-renaming-file) for how to specify file naming patterns.
+
+### Add library entry from its DOI
 
 If you already know the DOI of a PDF, and don't want to gamble the fulltext search and match, you can indicate it via `--doi`:
 
@@ -82,7 +88,8 @@ If you already know the DOI of a PDF, and don't want to gamble the fulltext sear
 
 The `add` command above also works without any PDF (create a bibtex entry without file attachment).
 
-
+    papers add --doi 10.5194/esd-4-11-2013 --bibtex papers.bib
+    
 ### List entries (and edit etc...)
 
     $> papers list -l
@@ -206,7 +213,6 @@ You may repeat `papers status -v` and cleaning until a satistfying state is reac
 By default, the file paths in the bibtex are stored as absolute paths (starting with `/`), except for local installs.
 It is possible to change this behavious explicitly during install or in a case by case basis with `--relative-paths` or `--absolute-paths` options.
 With or without install.
-
 
 
 ### Move library to a new location
