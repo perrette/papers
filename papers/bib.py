@@ -393,7 +393,7 @@ class Biblio:
         self.add_bibtex(bibtex, **kw)
 
 
-    def add_pdf(self, pdf, attachments=None, rename=False, copy=False, search_doi=True, search_fulltext=True, scholar=False, doi=None, **kw):
+    def add_pdf(self, pdf, attachments=None, search_doi=True, search_fulltext=True, scholar=False, doi=None, **kw):
 
         if doi:
             bibtex = fetch_bibtex_by_doi(doi)
@@ -416,7 +416,7 @@ class Biblio:
 
         kw.pop('update_key', True)
             # logger.warn('fetched key is always updated when adding PDF to existing bib')
-        self.insert_entry(entry, update_key=True, rename=rename, copy=copy)
+        self.insert_entry(entry, update_key=True, **kw)
 
 
     def scan_dir(self, direc, search_doi=True, search_fulltext=True, **kw):
