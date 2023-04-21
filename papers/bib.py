@@ -1426,7 +1426,7 @@ def main():
         elif o.field:
             # entries = [{k:e[k] for k in e if k in o.field+['ID','ENTRYTYPE']} for e in entries]
             for e in entries:
-                print(key(e),*[e[k] for k in o.field])
+                print(key(e),*[e.get(k, "") for k in o.field])
         elif o.key_only:
             for e in entries:
                 print(e['ID'].encode('utf-8'))
