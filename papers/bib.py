@@ -1501,7 +1501,7 @@ def main():
         shutil.copy(config.bibtex, tmp)
         shutil.move(back, config.bibtex)
         shutil.move(tmp, back)
-        savebib(None, o)
+        # o.savebib()
 
 
 
