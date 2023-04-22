@@ -811,6 +811,10 @@ def main():
     parser = argparse.ArgumentParser(description='library management tool')
     subparsers = parser.add_subparsers(dest='cmd')
 
+    # Direct arg parsers, not in any group.
+    # =============
+    parser.add_argument('--version', action='store_true', help='Print version string, help info and exit.')
+
     # configuration (re-used everywhere)
     # =============
     loggingp = argparse.ArgumentParser(add_help=False)
@@ -892,15 +896,11 @@ def main():
         parents=[cfg])
     statusp.add_argument('--no-check-files', action='store_true', help='faster, less info')
     statusp.add_argument('-v','--verbose', action='store_true', help='app status info')
-    statusp.add_argument('--version', action='store_true', help='Print version string and quit.')
 
-    def statuscmd(o):
-        if o.version:
-            version = str(__version__)
-            print(version)
-            del version
-        else:
-            print(config.status(check_files=not o.no_check_files, verbose=o.verbose))
+    def statuscmd(o, version):
+        assert type(version) == str
+        print("Version " + version)
+        print(config.status(check_files=not o.no_check_files, verbose=o.verbose))
 
 
     # install
@@ -1553,8 +1553,13 @@ def main():
     if hasattr(o,'dry_run'):
         papers.config.DRYRUN = o.dry_run
 
+    if o.version:
+        version = str(__version__)
+        print(version)
+        del version
+
     if o.cmd == 'status':
-        return statuscmd(o)
+        return statuscmd(o, str(__version__))
 
     def check_install():
 
