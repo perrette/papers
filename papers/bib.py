@@ -14,8 +14,6 @@ from bibtexparser.customization import convert_to_unicode
 import papers
 from papers import logger
 
-from papers._version import __version__
-
 from papers.extract import extract_pdf_doi, isvaliddoi, parse_doi
 from papers.extract import extract_pdf_metadata
 from papers.extract import fetch_bibtex_by_fulltext_crossref, fetch_bibtex_by_doi
@@ -897,9 +895,7 @@ def main():
     statusp.add_argument('--no-check-files', action='store_true', help='faster, less info')
     statusp.add_argument('-v','--verbose', action='store_true', help='app status info')
 
-    def statuscmd(o, version):
-        assert type(version) == str
-        print("Version " + version)
+    def statuscmd(o):
         print(config.status(check_files=not o.no_check_files, verbose=o.verbose))
 
 
@@ -1554,12 +1550,10 @@ def main():
         papers.config.DRYRUN = o.dry_run
 
     if o.version:
-        version = str(__version__)
-        print(version)
-        del version
+        print(papers.__version__)
 
     if o.cmd == 'status':
-        return statuscmd(o, str(__version__))
+        return statuscmd(o)
 
     def check_install():
 
