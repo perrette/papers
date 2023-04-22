@@ -913,7 +913,7 @@ def main():
     installp.add_argument('--local', action="store_true",
         help="""setup papers locally in current directory (global install by default), exposing bibtex and filesdir,
         and having the rest under .papers (config options). Only keep the cache globally.
-        This might not play out too well with git tracking (local install usuall have their own git) but might be OK.""")
+        This might not play out too well with git tracking (local installs usually have their own git) but might be OK.""")
 
     installp.add_argument('--git', action='store_true',
         help="""Track bibtex files with git.
