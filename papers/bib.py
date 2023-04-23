@@ -955,7 +955,13 @@ def installcmd(o, config):
 
     print(config.status(check_files=not o.no_check_files, verbose=True))
 
+def _dir_is_empty(dir):
+    # TODO this is actually never tested.
+    with os.scandir(dir) as it:
+        return not any(it)
+
 def uninstallcmd(o, config):
+    # TODO this is actually never tested.    
     if Path(config.file).exists():
         logger.info(f"The uninstaller will now remove {config.file}")
         os.remove(config.file)
@@ -1112,10 +1118,6 @@ def main():
     uninstallp = subparsers.add_parser('uninstall', description='remove configuration file',
         parents=[cfg])
     uninstallp.add_argument("--recursive", action="store_true", help="if true, uninstall all papers configuration found on the path, recursively (config file only)")
-
-    def _dir_is_empty(dir):
-        with os.scandir(dir) as it:
-            return not any(it)
 
 
     # add
