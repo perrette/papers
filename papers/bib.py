@@ -1089,6 +1089,21 @@ def checkcmd(o, config):
 
     savebib(my, config)
 
+def filecheckcmd(o, config):
+    o, config = set_nameformat_config_from_cmd(o, config)
+
+    my = Biblio.load(config.bibtex, config.filesdir)
+
+    # fix ':home' entry as saved by Mendeley
+    for e in my.entries:
+        entry_filecheck(e, delete_broken=o.delete_broken, fix_mendeley=o.fix_mendeley,
+                        check_hash=o.hash_check, check_metadata=o.metadata_check, interactive=not o.force, relative_to=my.relative_to)
+
+    if o.rename:
+        my.rename_entries_files(o.copy)
+        
+    savebib(my, config)
+
 def main():
 
     configfile = search_config([os.path.join(".papers", "config.json")], start_dir=".", default=config.file)
@@ -1315,21 +1330,6 @@ def main():
     # filecheckp.add_argument('-D', '--delete-free', action='store_true',
         # help='delete file which is not associated with any entry')
     # filecheckp.add_argument('-a', '--all', action='store_true', help='--hash and --meta')
-
-    def filecheckcmd(o, config):
-        o, config = set_nameformat_config_from_cmd(o, config)
-
-        my = Biblio.load(config.bibtex, config.filesdir)
-
-        # fix ':home' entry as saved by Mendeley
-        for e in my.entries:
-            entry_filecheck(e, delete_broken=o.delete_broken, fix_mendeley=o.fix_mendeley,
-                check_hash=o.hash_check, check_metadata=o.metadata_check, interactive=not o.force, relative_to=my.relative_to)
-
-        if o.rename:
-            my.rename_entries_files(o.copy)
-
-        savebib(my, config)
 
     # list
     # ======
