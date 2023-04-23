@@ -1104,6 +1104,16 @@ def filecheckcmd(o, config):
         
     savebib(my, config)
 
+def undocmd(o, config):
+    back = backupfile(config.bibtex)
+    tmp = config.bibtex + '.tmp'
+    # my = :config.bibtex, config.filesdir)
+    logger.info(config.bibtex+' <==> '+back)
+    shutil.copy(config.bibtex, tmp)
+    shutil.move(back, config.bibtex)
+    shutil.move(tmp, back)
+    # o.savebib()
+
 def main():
 
     configfile = search_config([os.path.join(".papers", "config.json")], start_dir=".", default=config.file)
@@ -1543,16 +1553,6 @@ def main():
     # undo
     # ====
     undop = subparsers.add_parser('undo', parents=[cfg])
-
-    def undocmd(o, config):
-        back = backupfile(config.bibtex)
-        tmp = config.bibtex + '.tmp'
-        # my = :config.bibtex, config.filesdir)
-        logger.info(config.bibtex+' <==> '+back)
-        shutil.copy(config.bibtex, tmp)
-        shutil.move(back, config.bibtex)
-        shutil.move(tmp, back)
-        # o.savebib()
 
 
 
