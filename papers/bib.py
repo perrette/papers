@@ -1000,6 +1000,70 @@ def check_install(o, config):
     logger.info('filesdir: '+config.filesdir)
     return True
 
+def addcmd(o, config):
+
+    o, config = set_nameformat_config_from_cmd(o, config)
+    o, config = set_keyformat_config_from_cmd(o, config)
+
+    if os.path.exists(config.bibtex):
+        my = Biblio.load(config.bibtex, config.filesdir)
+    else:
+        my = Biblio.newbib(config.bibtex, config.filesdir)
+
+    kw = {'on_conflict':o.mode, 'check_duplicate':not o.no_check_duplicate,
+            'mergefiles':not o.no_merge_files, 'update_key':o.update_key}
+
+    if len(o.file) > 1:
+        if o.attachment:
+            logger.error('--attachment is only valid for one PDF / BIBTEX entry')
+            addp.exit(1)
+        if o.doi:
+            logger.error('--doi is only valid for one added file')
+            addp.exit(1)
+
+    if len(o.file) == 0:
+        if not o.doi:
+            logger.error('Please provide either a PDF file or BIBTEX entry or specify `--doi DOI`')
+            addp.exit(1)
+        elif o.no_query_doi:
+            logger.error('If no file is present, --no-query-doi is not compatible with --doi')
+            addp.exit(1)
+        else:
+            my.fetch_doi(o.doi, attachments=o.attachment, rename=o.rename, copy=o.copy, **kw)
+
+    for file in o.file:
+        try:
+            if os.path.isdir(file):
+                if o.recursive:
+                    my.scan_dir(file, rename=o.rename, copy=o.copy,
+                                search_doi=not o.no_query_doi,
+                                search_fulltext=not o.no_query_fulltext,
+                                **kw)
+                else:
+                    raise ValueError(file+' is a directory, requires --recursive to explore')
+                
+            elif file.endswith('.pdf'):
+                my.add_pdf(file, attachments=o.attachment, rename=o.rename, copy=o.copy,
+                           search_doi=not o.no_query_doi,
+                           search_fulltext=not o.no_query_fulltext,
+                           scholar=o.scholar, doi=o.doi,
+                           **kw)
+
+            else: # file.endswith('.bib'):
+                my.add_bibtex_file(file, **kw)
+
+        except Exception as error:
+            # print(error)
+            # addp.error(str(error))
+            raise
+            logger.error(str(error))
+            if not o.ignore_errors:
+                if len(o.file) or (os.isdir(file) and o.recursive)> 1:
+                    logger.error('use --ignore to add other files anyway')
+                addp.exit(1)
+
+    savebib(my, config)
+
 def main():
 
     configfile = search_config([os.path.join(".papers", "config.json")], start_dir=".", default=config.file)
@@ -1159,73 +1223,6 @@ def main():
         help='rename PDFs according to key')
     grp.add_argument('-c','--copy', action='store_true',
         help='copy file instead of moving them')
-
-
-
-    def addcmd(o, config):
-
-        o, config = set_nameformat_config_from_cmd(o, config)
-        o, config = set_keyformat_config_from_cmd(o, config)
-
-        if os.path.exists(config.bibtex):
-            my = Biblio.load(config.bibtex, config.filesdir)
-        else:
-            my = Biblio.newbib(config.bibtex, config.filesdir)
-
-        kw = {'on_conflict':o.mode, 'check_duplicate':not o.no_check_duplicate,
-            'mergefiles':not o.no_merge_files, 'update_key':o.update_key}
-
-        if len(o.file) > 1:
-            if o.attachment:
-                logger.error('--attachment is only valid for one PDF / BIBTEX entry')
-                addp.exit(1)
-            if o.doi:
-                logger.error('--doi is only valid for one added file')
-                addp.exit(1)
-
-        if len(o.file) == 0:
-            if not o.doi:
-                logger.error('Please provide either a PDF file or BIBTEX entry or specify `--doi DOI`')
-                addp.exit(1)
-            elif o.no_query_doi:
-                logger.error('If no file is present, --no-query-doi is not compatible with --doi')
-                addp.exit(1)
-            else:
-                my.fetch_doi(o.doi, attachments=o.attachment, rename=o.rename, copy=o.copy, **kw)
-
-        for file in o.file:
-            try:
-                if os.path.isdir(file):
-                    if o.recursive:
-                        my.scan_dir(file, rename=o.rename, copy=o.copy,
-                            search_doi=not o.no_query_doi,
-                            search_fulltext=not o.no_query_fulltext,
-                              **kw)
-                    else:
-                        raise ValueError(file+' is a directory, requires --recursive to explore')
-
-                elif file.endswith('.pdf'):
-                    my.add_pdf(file, attachments=o.attachment, rename=o.rename, copy=o.copy,
-                            search_doi=not o.no_query_doi,
-                            search_fulltext=not o.no_query_fulltext,
-                            scholar=o.scholar, doi=o.doi,
-                            **kw)
-
-                else: # file.endswith('.bib'):
-                    my.add_bibtex_file(file, **kw)
-
-            except Exception as error:
-                # print(error)
-                # addp.error(str(error))
-                raise
-                logger.error(str(error))
-                if not o.ignore_errors:
-                    if len(o.file) or (os.isdir(file) and o.recursive)> 1:
-                        logger.error('use --ignore to add other files anyway')
-                    addp.exit(1)
-
-        savebib(my, config)
-
 
     # check
     # =====
