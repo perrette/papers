@@ -1121,6 +1121,16 @@ def gitcmd(o):
     except:
         gitp.error('papers failed to execute git command -- you should check your system git install.')
 
+def doicmd(o):
+    print(extract_pdf_doi(o.pdf, image=o.image))    
+
+def fetchcmd(o):
+    print(fetch_bibtex_by_doi(o.doi))
+
+def extractcmd(o):
+    print(extract_pdf_metadata(o.pdf, search_doi=not o.fulltext, search_fulltext=True, scholar=o.scholar, minwords=o.word_count, max_query_words=o.word_count, image=o.image))
+    # print(fetch_bibtex_by_doi(o.doi))
+    
 def main():
 
     configfile = search_config([os.path.join(".papers", "config.json")], start_dir=".", default=config.file)
@@ -1530,16 +1540,10 @@ def main():
     doip.add_argument('pdf')
     doip.add_argument('--image', action='store_true', help='convert to image and use tesseract instead of pdftotext')
 
-    def doicmd(o):
-        print(extract_pdf_doi(o.pdf, image=o.image))
-
     # fetch
     # =====
     fetchp = subparsers.add_parser('fetch', description='fetch bibtex from DOI')
     fetchp.add_argument('doi')
-
-    def fetchcmd(o):
-        print(fetch_bibtex_by_doi(o.doi))
 
 
     # extract
@@ -1550,10 +1554,6 @@ def main():
     extractp.add_argument('--fulltext', action='store_true', help='fulltext only (otherwise DOI-based)')
     extractp.add_argument('--scholar', action='store_true', help='use google scholar instead of default crossref for fulltext search')
     extractp.add_argument('--image', action='store_true', help='convert to image and use tesseract instead of pdftotext')
-
-    def extractcmd(o):
-        print(extract_pdf_metadata(o.pdf, search_doi=not o.fulltext, search_fulltext=True, scholar=o.scholar, minwords=o.word_count, max_query_words=o.word_count, image=o.image))
-        # print(fetch_bibtex_by_doi(o.doi))
 
     # *** Pure OS related file checks ***
 
