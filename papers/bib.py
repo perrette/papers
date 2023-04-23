@@ -7,7 +7,7 @@ import subprocess as sp
 import shutil
 import bisect
 import itertools
-
+import fnmatch   # unix-like match
 import bibtexparser
 from bibtexparser.customization import convert_to_unicode
 
@@ -1130,6 +1130,138 @@ def fetchcmd(o):
 def extractcmd(o):
     print(extract_pdf_metadata(o.pdf, search_doi=not o.fulltext, search_fulltext=True, scholar=o.scholar, minwords=o.word_count, max_query_words=o.word_count, image=o.image))
     # print(fetch_bibtex_by_doi(o.doi))
+
+def match(word, target, fuzzy=False, substring=False):
+    if isinstance(target, list):
+        return any([match(word, t, fuzzy, substring) for t in target])
+
+    if fuzzy:
+        res = fuzz.token_set_ratio(word, target, score_cutoff=o.fuzzy_ratio) > o.fuzzy_ratio
+    elif substring:
+        res = target.lower() in word.lower()
+    else:
+        res = fnmatch.fnmatch(word.lower(), target.lower())
+
+    return res if not o.invert else not res
+
+
+def longmatch(word, target):
+    return match(word, target, fuzzy=o.fuzzy, substring=not o.strict)
+
+def nfiles(e):
+    return len(parse_file(e.get('file',''), relative_to=my.relative_to))
+
+def listcmd(o, config):
+
+    my = Biblio.load(config.bibtex, config.filesdir)
+    entries = my.db.entries
+
+    if o.fuzzy:
+        from rapidfuzz import fuzz
+
+
+    if o.review_required:
+        if o.invert:
+            entries = [e for e in entries if not requiresreview(e)]
+        else:
+            entries = [e for e in entries if requiresreview(e)]
+            for e in entries:
+                if 'doi' in e and not isvaliddoi(e['doi']):
+                    e['doi'] = bcolors.FAIL + e['doi'] + bcolors.ENDC
+    if o.has_file:
+        entries = [e for e in entries if e.get('file','')]
+    if o.no_file:
+        entries = [e for e in entries if not e.get('file','')]
+    if o.broken_file:
+        entries = [e for e in entries if e.get('file','') and any([not os.path.exists(f) for f in parse_file(e['file'], relative_to=my.relative_to)])]
+
+
+    if o.doi:
+        entries = [e for e in entries if 'doi' in e and match(e['doi'], o.doi)]
+    if o.key:
+        entries = [e for e in entries if 'ID' in e and match(e['ID'], o.key)]
+    if o.year:
+        entries = [e for e in entries if 'year' in e and match(e['year'], o.year)]
+    if o.first_author:
+        first_author = lambda field : family_names(field)[0]
+        entries = [e for e in entries if 'author' in e and match(firstauthor(e['author']), o.author)]
+    if o.author:
+        author = lambda field : ' '.join(family_names(field))
+        entries = [e for e in entries if 'author' in e and longmatch(author(e['author']), o.author)]
+    if o.title:
+        entries = [e for e in entries if 'title' in e and longmatch(e['title'], o.title)]
+    if o.abstract:
+        entries = [e for e in entries if 'abstract' in e and longmatch(e['abstract'], o.abstract)]
+
+    _check_duplicates = lambda uniques, groups: uniques if o.invert else list(itertools.chain(*groups))
+
+    # if o.duplicates_key or o.duplicates_doi or o.duplicates_tit or o.duplicates or o.duplicates_fuzzy:
+    list_dup = list_uniques if o.invert else list_duplicates
+
+    if o.duplicates_key:
+        entries = list_dup(entries, key=my.key, issorted=True)
+    if o.duplicates_doi:
+        entries = list_dup(entries, key=lambda e:e.get('doi',''), filter_key=isvaliddoi)
+    if o.duplicates_tit:
+        entries = list_dup(entries, key=title_id)
+    if o.duplicates:
+        # QUESTION MARK: in latest HEAD before merge with @malfatti's PR, I used hard-coded "PARTIAL".
+        # I think that's because we might need to be inclusive here, whereas the default is conservative (parameter used for several functions with possibly differing requirements).
+        # (otherwise we'd have used the command-line option o.similarity, or possibly DEFAULT_SIMILARITY)
+        # Might need to revise later (the question mark is from a review after a long time without use)
+        eq = lambda a, b: a['ID'] == b['ID'] or are_duplicates(a, b, similarity="PARTIAL", fuzzy_ratio=o.fuzzy_ratio)
+        entries = list_dup(entries, eq=eq)
+
+    if o.no_key:
+        key = lambda e: ''
+    else:
+        # key = lambda e: bcolors.OKBLUE+e['ID']+filetag(e)+':'+bcolors.ENDC
+        key = lambda e: nfiles(e)*(bcolors.BOLD)+bcolors.OKBLUE+e['ID']+':'+bcolors.ENDC
+
+    if o.edit:
+        otherentries = [e for e in my.db.entries if e not in entries]
+        try:
+            entries = edit_entries(entries)
+            my.db.entries = otherentries + entries
+        except Exception as error:
+            logger.error(str(error))
+            return
+
+        savebib(my, config)
+        
+    elif o.fetch:
+        for e in entries:
+            my.fix_entry(e, fix_doi=True, fix_key=True, fetch_all=True, interactive=True)
+        savebib(my, config)
+
+    elif o.delete:
+        for e in entries:
+            my.db.entries.remove(e)
+        savebib(my, config)
+
+    elif o.field:
+        # entries = [{k:e[k] for k in e if k in o.field+['ID','ENTRYTYPE']} for e in entries]
+        for e in entries:
+            print(key(e),*[e.get(k, "") for k in o.field])
+    elif o.key_only:
+        for e in entries:
+            print(e['ID'].encode('utf-8'))
+    elif o.one_liner:
+        for e in entries:
+            tit = e.get('title', '')[:60]+ ('...' if len(e.get('title', ''))>60 else '')
+            info = []
+            if e.get('doi',''):
+                info.append('doi:'+e['doi'])
+            n = nfiles(e)
+            if n:
+                info.append(bcolors.OKGREEN+'file:'+str(n)+bcolors.ENDC)
+            infotag = '('+', '.join(info)+')' if info else ''
+            print(key(e), tit, infotag)
+    else:
+        print(format_entries(entries))
+
+def statuscmd(o):
+    print(config.status(check_files=not o.no_check_files, verbose=o.verbose))
     
 def main():
 
@@ -1209,9 +1341,6 @@ def main():
         parents=[cfg])
     statusp.add_argument('--no-check-files', action='store_true', help='faster, less info')
     statusp.add_argument('-v','--verbose', action='store_true', help='app status info')
-
-    def statuscmd(o):
-        print(config.status(check_files=not o.no_check_files, verbose=o.verbose))
 
 
     # install
@@ -1403,136 +1532,6 @@ def main():
     grp.add_argument('--fetch', action='store_true', help='fetch and fix metadata')
     # grp.add_argument('--merge-duplicates', action='store_true')
 
-    def listcmd(o, config):
-        import fnmatch   # unix-like match
-
-        my = Biblio.load(config.bibtex, config.filesdir)
-        entries = my.db.entries
-
-        if o.fuzzy:
-            from rapidfuzz import fuzz
-
-        def match(word, target, fuzzy=False, substring=False):
-            if isinstance(target, list):
-                return any([match(word, t, fuzzy, substring) for t in target])
-
-            if fuzzy:
-                res = fuzz.token_set_ratio(word, target, score_cutoff=o.fuzzy_ratio) > o.fuzzy_ratio
-            elif substring:
-                res = target.lower() in word.lower()
-            else:
-                res = fnmatch.fnmatch(word.lower(), target.lower())
-
-            return res if not o.invert else not res
-
-
-        def longmatch(word, target):
-            return match(word, target, fuzzy=o.fuzzy, substring=not o.strict)
-
-
-        if o.review_required:
-            if o.invert:
-                entries = [e for e in entries if not requiresreview(e)]
-            else:
-                entries = [e for e in entries if requiresreview(e)]
-                for e in entries:
-                    if 'doi' in e and not isvaliddoi(e['doi']):
-                        e['doi'] = bcolors.FAIL + e['doi'] + bcolors.ENDC
-        if o.has_file:
-            entries = [e for e in entries if e.get('file','')]
-        if o.no_file:
-            entries = [e for e in entries if not e.get('file','')]
-        if o.broken_file:
-            entries = [e for e in entries if e.get('file','') and any([not os.path.exists(f) for f in parse_file(e['file'], relative_to=my.relative_to)])]
-
-
-        if o.doi:
-            entries = [e for e in entries if 'doi' in e and match(e['doi'], o.doi)]
-        if o.key:
-            entries = [e for e in entries if 'ID' in e and match(e['ID'], o.key)]
-        if o.year:
-            entries = [e for e in entries if 'year' in e and match(e['year'], o.year)]
-        if o.first_author:
-            first_author = lambda field : family_names(field)[0]
-            entries = [e for e in entries if 'author' in e and match(firstauthor(e['author']), o.author)]
-        if o.author:
-            author = lambda field : ' '.join(family_names(field))
-            entries = [e for e in entries if 'author' in e and longmatch(author(e['author']), o.author)]
-        if o.title:
-            entries = [e for e in entries if 'title' in e and longmatch(e['title'], o.title)]
-        if o.abstract:
-            entries = [e for e in entries if 'abstract' in e and longmatch(e['abstract'], o.abstract)]
-
-        _check_duplicates = lambda uniques, groups: uniques if o.invert else list(itertools.chain(*groups))
-
-        # if o.duplicates_key or o.duplicates_doi or o.duplicates_tit or o.duplicates or o.duplicates_fuzzy:
-        list_dup = list_uniques if o.invert else list_duplicates
-
-        if o.duplicates_key:
-            entries = list_dup(entries, key=my.key, issorted=True)
-        if o.duplicates_doi:
-            entries = list_dup(entries, key=lambda e:e.get('doi',''), filter_key=isvaliddoi)
-        if o.duplicates_tit:
-            entries = list_dup(entries, key=title_id)
-        if o.duplicates:
-            # QUESTION MARK: in latest HEAD before merge with @malfatti's PR, I used hard-coded "PARTIAL".
-            # I think that's because we might need to be inclusive here, whereas the default is conservative (parameter used for several functions with possibly differing requirements).
-            # (otherwise we'd have used the command-line option o.similarity, or possibly DEFAULT_SIMILARITY)
-            # Might need to revise later (the question mark is from a review after a long time without use)
-            eq = lambda a, b: a['ID'] == b['ID'] or are_duplicates(a, b, similarity="PARTIAL", fuzzy_ratio=o.fuzzy_ratio)
-            entries = list_dup(entries, eq=eq)
-
-        def nfiles(e):
-            return len(parse_file(e.get('file',''), relative_to=my.relative_to))
-
-        if o.no_key:
-            key = lambda e: ''
-        else:
-            # key = lambda e: bcolors.OKBLUE+e['ID']+filetag(e)+':'+bcolors.ENDC
-            key = lambda e: nfiles(e)*(bcolors.BOLD)+bcolors.OKBLUE+e['ID']+':'+bcolors.ENDC
-
-        if o.edit:
-            otherentries = [e for e in my.db.entries if e not in entries]
-            try:
-                entries = edit_entries(entries)
-                my.db.entries = otherentries + entries
-            except Exception as error:
-                logger.error(str(error))
-                return
-
-            savebib(my, config)
-
-        elif o.fetch:
-            for e in entries:
-                my.fix_entry(e, fix_doi=True, fix_key=True, fetch_all=True, interactive=True)
-            savebib(my, config)
-
-        elif o.delete:
-            for e in entries:
-                my.db.entries.remove(e)
-            savebib(my, config)
-
-        elif o.field:
-            # entries = [{k:e[k] for k in e if k in o.field+['ID','ENTRYTYPE']} for e in entries]
-            for e in entries:
-                print(key(e),*[e.get(k, "") for k in o.field])
-        elif o.key_only:
-            for e in entries:
-                print(e['ID'].encode('utf-8'))
-        elif o.one_liner:
-            for e in entries:
-                tit = e.get('title', '')[:60]+ ('...' if len(e.get('title', ''))>60 else '')
-                info = []
-                if e.get('doi',''):
-                    info.append('doi:'+e['doi'])
-                n = nfiles(e)
-                if n:
-                    info.append(bcolors.OKGREEN+'file:'+str(n)+bcolors.ENDC)
-                infotag = '('+', '.join(info)+')' if info else ''
-                print(key(e), tit, infotag)
-        else:
-            print(format_entries(entries))
-
 
     # doi
     # ===
@@ -1561,12 +1560,12 @@ def main():
     # ====
     undop = subparsers.add_parser('undo', parents=[cfg])
 
-
-
     # git
     # ===
     gitp = subparsers.add_parser('git', description='git subcommand')
     gitp.add_argument('gitargs', nargs=argparse.REMAINDER)
+
+    # All parser setup complete; below here, all we do is check parser options and run the relevant command.
 
     o = parser.parse_args()
 
