@@ -835,7 +835,7 @@ def installcmd(o, config):
     Given options and a config state, installs the expected config files.
     """
     o, config = set_nameformat_config_from_cmd(o, config)
-    o, config= set_keyformat_config_from_cmd(o, config)
+    o, config = set_keyformat_config_from_cmd(o, config)
 
     checkdirs = ["files", "pdfs", "pdf", "papers", "bibliography"]
     default_bibtex = "papers.bib"
