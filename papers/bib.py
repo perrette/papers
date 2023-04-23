@@ -806,6 +806,9 @@ def entry_filecheck(e, delete_broken=False, fix_mendeley=False,
     e['file'] = format_file(newfiles, relative_to=relative_to)
 
 def set_keyformat_config_from_cmd(o, config):
+    """
+    Given options and a config state, applies the desired key options to the config.
+    """    
     config.keyformat.template = o.key_template
     config.keyformat.author_num = o.key_author_num
     config.keyformat.author_sep = o.key_author_sep
@@ -815,6 +818,9 @@ def set_keyformat_config_from_cmd(o, config):
     return o, config
 
 def set_nameformat_config_from_cmd(o, config):
+    """
+    Given options and a config state, applies the desired name options to the config.
+    """
     config.nameformat.template = o.name_template
     config.nameformat.author_num = o.name_author_num
     config.nameformat.author_sep = o.name_author_sep
