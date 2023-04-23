@@ -830,7 +830,147 @@ def set_nameformat_config_from_cmd(o, config):
     config.nameformat.title_sep = o.name_title_sep
     return o, config
 
+def installcmd(o, config):
+    """
+    Given options and a config state, installs the expected config files.
+    """
+    o, config = set_nameformat_config_from_cmd(o, config)
+    o, config= set_keyformat_config_from_cmd(o, config)
 
+    checkdirs = ["files", "pdfs", "pdf", "papers", "bibliography"]
+    default_bibtex = "papers.bib"
+    default_filesdir = "files"
+
+    if o.local:
+        datadir = gitdir = ".papers"
+        papersconfig = ".papers/config.json"
+        workdir = Path('.')
+        biblios = list(workdir.glob("*.bib"))
+        
+        if o.absolute_paths is None:
+            o.absolute_paths = False
+
+    else:
+        datadir = config.data
+        gitdir = config.gitdir
+        papersconfig = CONFIG_FILE
+        workdir = Path(DATA_DIR)
+        biblios = list(Path('.').glob("*.bib")) + list(workdir.glob("*.bib"))
+        checkdirs = [os.path.join(papers.config.DATA_DIR, "files")] + checkdirs
+        
+        if o.absolute_paths is None:
+            o.absolute_paths = True
+
+    biblios = [default_bibtex] + [f for f in biblios if Path(f) != Path(default_bibtex)]
+
+    if config.filesdir:
+        checkdirs = [config.filesdir] + checkdirs
+
+    for d in checkdirs:
+        if os.path.exists(str(d)):
+            default_filesdir = d
+            break
+
+    RESET_DEFAULT = ('none', 'null', 'unset', 'undefined', 'reset', 'delete', 'no', 'n')
+    ACCEPT_DEFAULT = ('yes', 'y')
+
+    if not o.bibtex:
+        if len(biblios) > 1:
+            logger.warn("Several bibtex files found: "+" ".join([str(b) for b in biblios]))
+        if biblios:
+            default_bibtex = biblios[0]
+        if o.prompt:
+            if os.path.exists(default_bibtex):
+                user_input = input(f"Bibtex file name [default to existing: {default_bibtex}] [Enter/Yes/No]: ")
+            else:
+                user_input = input(f"Bibtex file name [default to new: {default_bibtex}] [Enter/Yes/No]: ")
+            if user_input:
+                if user_input.lower() in RESET_DEFAULT:
+                    default_bibtex = None
+                elif user_input.lower() in ACCEPT_DEFAULT:
+                    pass
+                else:
+                    default_bibtex = Path(user_input)
+        o.bibtex = default_bibtex
+
+    if not o.filesdir:
+        if o.prompt:
+            if Path(default_filesdir).exists():
+                user_input = input(f"Files folder [default to existing: {default_filesdir}] [Enter/Yes/No]: ")
+            else:
+                user_input = input(f"Files folder [default to new: {default_filesdir}] [Enter/Yes/No]: ")
+            if user_input:
+                if user_input.lower() in RESET_DEFAULT:
+                    default_filesdir = None
+                elif user_input.lower() in ACCEPT_DEFAULT:
+                    pass
+                else:
+                    default_filesdir = user_input
+        o.filesdir = default_filesdir
+
+
+    config.bibtex = o.bibtex
+    config.filesdir = o.filesdir
+    config.gitdir = gitdir
+    config.data = datadir
+    config.file = papersconfig
+    config.local = o.local
+    config.absolute_paths = o.absolute_paths
+
+
+    if config.git and not o.git and o.bibtex == config.bibtex:
+        ans = input('stop git tracking (this will not affect actual git directory)? [Y/n] ')
+        if ans.lower() != 'y':
+            o.git = True
+
+    if o.reset_paths:
+        config.reset()
+
+    config.git = o.git
+
+    # create bibtex file if not existing
+    bibtex = Path(o.bibtex) if o.bibtex else None
+    
+    if bibtex and not bibtex.exists():
+        logger.info('create empty bibliography database: '+o.bibtex)
+        bibtex.parent.mkdir(parents=True, exist_ok=True)
+        bibtex.open('w', encoding="utf-8").write('')
+
+    # create bibtex file if not existing
+    filesdir = Path(o.filesdir) if o.filesdir else None
+    if filesdir and not filesdir.exists():
+        logger.info('create empty files directory: '+o.filesdir)
+        filesdir.mkdir(parents=True)
+
+    if o.git and not os.path.exists(config._gitdir):
+        config.gitinit()
+
+    logger.info('save config file: '+config.file)
+    if o.local:
+        os.makedirs(".papers", exist_ok=True)
+    else:
+        from papers.config import CONFIG_HOME
+        os.makedirs(CONFIG_HOME, exist_ok=True)
+    config.save()
+
+    print(config.status(check_files=not o.no_check_files, verbose=True))
+
+def uninstallcmd(o, config):
+    if Path(config.file).exists():
+        logger.info(f"The uninstaller will now remove {config.file}")
+        os.remove(config.file)
+        parent = os.path.dirname(config.file)
+        if _dir_is_empty(parent):
+            logger.info(f"The config dir {parent} is empty and the uninstaller will now remove it.")
+            os.rmdir(parent)
+        papers.config.config = papers.config.Config()
+    else:
+        logger.info(f"The uninstaller found no config file to remove.")
+        return
+
+    if o.recursive:
+        config.file = search_config([os.path.join(".papers", "config.json")], start_dir=".", default=CONFIG_FILE)
+        uninstallcmd(o, config)
 
 def main():
 
@@ -945,130 +1085,6 @@ def main():
     # grp.add_argument('-v','--verbose', action='store_true', help='app status info')
 
 
-    def installcmd(o, config):
-
-        o, config = set_nameformat_config_from_cmd(o, config)
-        o, config= set_keyformat_config_from_cmd(o, config)
-
-        checkdirs = ["files", "pdfs", "pdf", "papers", "bibliography"]
-        default_bibtex = "papers.bib"
-        default_filesdir = "files"
-
-        if o.local:
-            datadir = gitdir = ".papers"
-            papersconfig = ".papers/config.json"
-            workdir = Path('.')
-            biblios = list(workdir.glob("*.bib"))
-
-            if o.absolute_paths is None:
-                o.absolute_paths = False
-
-        else:
-            datadir = config.data
-            gitdir = config.gitdir
-            papersconfig = CONFIG_FILE
-            workdir = Path(DATA_DIR)
-            biblios = list(Path('.').glob("*.bib")) + list(workdir.glob("*.bib"))
-            checkdirs = [os.path.join(papers.config.DATA_DIR, "files")] + checkdirs
-
-            if o.absolute_paths is None:
-                o.absolute_paths = True
-
-        biblios = [default_bibtex] + [f for f in biblios if Path(f) != Path(default_bibtex)]
-
-        if config.filesdir:
-            checkdirs = [config.filesdir] + checkdirs
-
-        for d in checkdirs:
-            if os.path.exists(str(d)):
-                default_filesdir = d
-                break
-
-        RESET_DEFAULT = ('none', 'null', 'unset', 'undefined', 'reset', 'delete', 'no', 'n')
-        ACCEPT_DEFAULT = ('yes', 'y')
-
-        if not o.bibtex:
-            if len(biblios) > 1:
-                logger.warn("Several bibtex files found: "+" ".join([str(b) for b in biblios]))
-            if biblios:
-                default_bibtex = biblios[0]
-            if o.prompt:
-                if os.path.exists(default_bibtex):
-                    user_input = input(f"Bibtex file name [default to existing: {default_bibtex}] [Enter/Yes/No]: ")
-                else:
-                    user_input = input(f"Bibtex file name [default to new: {default_bibtex}] [Enter/Yes/No]: ")
-                if user_input:
-                    if user_input.lower() in RESET_DEFAULT:
-                        default_bibtex = None
-                    elif user_input.lower() in ACCEPT_DEFAULT:
-                        pass
-                    else:
-                        default_bibtex = Path(user_input)
-            o.bibtex = default_bibtex
-
-        if not o.filesdir:
-            if o.prompt:
-                if Path(default_filesdir).exists():
-                    user_input = input(f"Files folder [default to existing: {default_filesdir}] [Enter/Yes/No]: ")
-                else:
-                    user_input = input(f"Files folder [default to new: {default_filesdir}] [Enter/Yes/No]: ")
-                if user_input:
-                    if user_input.lower() in RESET_DEFAULT:
-                        default_filesdir = None
-                    elif user_input.lower() in ACCEPT_DEFAULT:
-                        pass
-                    else:
-                        default_filesdir = user_input
-            o.filesdir = default_filesdir
-
-
-        config.bibtex = o.bibtex
-        config.filesdir = o.filesdir
-        config.gitdir = gitdir
-        config.data = datadir
-        config.file = papersconfig
-        config.local = o.local
-        config.absolute_paths = o.absolute_paths
-
-
-        if config.git and not o.git and o.bibtex == config.bibtex:
-            ans = input('stop git tracking (this will not affect actual git directory)? [Y/n] ')
-            if ans.lower() != 'y':
-                o.git = True
-
-        if o.reset_paths:
-            config.reset()
-
-        config.git = o.git
-
-        # create bibtex file if not existing
-        bibtex = Path(o.bibtex) if o.bibtex else None
-
-        if bibtex and not bibtex.exists():
-            logger.info('create empty bibliography database: '+o.bibtex)
-            bibtex.parent.mkdir(parents=True, exist_ok=True)
-            bibtex.open('w', encoding="utf-8").write('')
-
-        # create bibtex file if not existing
-        filesdir = Path(o.filesdir) if o.filesdir else None
-        if filesdir and not filesdir.exists():
-            logger.info('create empty files directory: '+o.filesdir)
-            filesdir.mkdir(parents=True)
-
-        if o.git and not os.path.exists(config._gitdir):
-            config.gitinit()
-
-        logger.info('save config file: '+config.file)
-        if o.local:
-            os.makedirs(".papers", exist_ok=True)
-        else:
-            from papers.config import CONFIG_HOME
-            os.makedirs(CONFIG_HOME, exist_ok=True)
-        config.save()
-
-        print(config.status(check_files=not o.no_check_files, verbose=True))
-
-
     # uninstall
     # =======
     uninstallp = subparsers.add_parser('uninstall', description='remove configuration file',
@@ -1078,23 +1094,6 @@ def main():
     def _dir_is_empty(dir):
         with os.scandir(dir) as it:
             return not any(it)
-
-    def uninstallcmd(o, config):
-        if Path(config.file).exists():
-            logger.info(f"remove {config.file}")
-            os.remove(config.file)
-            parent = os.path.dirname(config.file)
-            if _dir_is_empty(parent):
-                logger.info(f"remove {parent}")
-                os.rmdir(parent)
-            papers.config.config = papers.config.Config()
-        else:
-            logger.info(f"no config file to remove")
-            return
-
-        if o.recursive:
-            config.file = search_config([os.path.join(".papers", "config.json")], start_dir=".", default=CONFIG_FILE)
-            uninstallcmd(o, config)
 
 
     # add
