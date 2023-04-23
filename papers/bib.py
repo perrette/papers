@@ -805,6 +805,25 @@ def entry_filecheck(e, delete_broken=False, fix_mendeley=False,
 
     e['file'] = format_file(newfiles, relative_to=relative_to)
 
+def set_keyformat_config_from_cmd(o, config):
+    config.keyformat.template = o.key_template
+    config.keyformat.author_num = o.key_author_num
+    config.keyformat.author_sep = o.key_author_sep
+    config.keyformat.title_word_num = o.key_title_word_num
+    config.keyformat.title_word_size = o.key_title_word_size
+    config.keyformat.title_sep = o.key_title_sep
+    return o, config
+
+def set_nameformat_config_from_cmd(o, config):
+    config.nameformat.template = o.name_template
+    config.nameformat.author_num = o.name_author_num
+    config.nameformat.author_sep = o.name_author_sep
+    config.nameformat.title_length = o.name_title_length
+    config.nameformat.title_word_num = o.name_title_word_num
+    config.nameformat.title_word_size = o.name_title_word_size
+    config.nameformat.title_sep = o.name_title_sep
+    return o, config
+
 
 
 def main():
@@ -878,24 +897,6 @@ def main():
         help='separator for title words in filename (default:%(default)s)')
 
 
-    def set_keyformat_config_from_cmd(o):
-        config.keyformat.template = o.key_template
-        config.keyformat.author_num = o.key_author_num
-        config.keyformat.author_sep = o.key_author_sep
-        config.keyformat.title_word_num = o.key_title_word_num
-        config.keyformat.title_word_size = o.key_title_word_size
-        config.keyformat.title_sep = o.key_title_sep
-
-    def set_nameformat_config_from_cmd(o):
-        config.nameformat.template = o.name_template
-        config.nameformat.author_num = o.name_author_num
-        config.nameformat.author_sep = o.name_author_sep
-        config.nameformat.title_length = o.name_title_length
-        config.nameformat.title_word_num = o.name_title_word_num
-        config.nameformat.title_word_size = o.name_title_word_size
-        config.nameformat.title_sep = o.name_title_sep
-
-
     # status
     # ======
     statusp = subparsers.add_parser('status',
@@ -938,10 +939,10 @@ def main():
     # grp.add_argument('-v','--verbose', action='store_true', help='app status info')
 
 
-    def installcmd(o):
+    def installcmd(o, config):
 
-        set_nameformat_config_from_cmd(o)
-        set_keyformat_config_from_cmd(o)
+        o, config = set_nameformat_config_from_cmd(o, config)
+        o, config= set_keyformat_config_from_cmd(o, config)
 
         checkdirs = ["files", "pdfs", "pdf", "papers", "bibliography"]
         default_bibtex = "papers.bib"
@@ -1072,7 +1073,7 @@ def main():
         with os.scandir(dir) as it:
             return not any(it)
 
-    def uninstallcmd(o):
+    def uninstallcmd(o, config):
         if Path(config.file).exists():
             logger.info(f"remove {config.file}")
             os.remove(config.file)
@@ -1087,7 +1088,7 @@ def main():
 
         if o.recursive:
             config.file = search_config([os.path.join(".papers", "config.json")], start_dir=".", default=CONFIG_FILE)
-            uninstallcmd(o)
+            uninstallcmd(o, config)
 
 
     # add
@@ -1132,10 +1133,10 @@ def main():
 
 
 
-    def addcmd(o):
+    def addcmd(o, config):
 
-        set_nameformat_config_from_cmd(o)
-        set_keyformat_config_from_cmd(o)
+        o, config = set_nameformat_config_from_cmd(o, config)
+        o, config = set_keyformat_config_from_cmd(o, config)
 
         if os.path.exists(config.bibtex):
             my = Biblio.load(config.bibtex, config.filesdir)
@@ -1228,8 +1229,8 @@ def main():
     # checkp.add_argument('--merge-keys', nargs='+', help='only merge remove / merge duplicates')
     # checkp.add_argument('--duplicates',action='store_true', help='remove / merge duplicates')
 
-    def checkcmd(o):
-        set_keyformat_config_from_cmd(o)
+    def checkcmd(o, config):
+        o, config = set_keyformat_config_from_cmd(o, config)
         my = Biblio.load(config.bibtex, config.filesdir)
 
         # if o.fix_all:
@@ -1286,8 +1287,8 @@ def main():
         # help='delete file which is not associated with any entry')
     # filecheckp.add_argument('-a', '--all', action='store_true', help='--hash and --meta')
 
-    def filecheckcmd(o):
-        set_nameformat_config_from_cmd(o)
+    def filecheckcmd(o, config):
+        o, config = set_nameformat_config_from_cmd(o, config)
 
         my = Biblio.load(config.bibtex, config.filesdir)
 
@@ -1346,7 +1347,7 @@ def main():
     grp.add_argument('--fetch', action='store_true', help='fetch and fix metadata')
     # grp.add_argument('--merge-duplicates', action='store_true')
 
-    def listcmd(o):
+    def listcmd(o, config):
         import fnmatch   # unix-like match
 
         my = Biblio.load(config.bibtex, config.filesdir)
@@ -1514,7 +1515,7 @@ def main():
     # ====
     undop = subparsers.add_parser('undo', parents=[cfg])
 
-    def undocmd(o):
+    def undocmd(o, config):
         back = backupfile(config.bibtex)
         tmp = config.bibtex + '.tmp'
         # my = :config.bibtex, config.filesdir)
@@ -1573,22 +1574,22 @@ def main():
         return True
 
     if o.cmd == 'install':
-        installcmd(o)
+        installcmd(o, config)
     elif o.cmd == 'uninstall':
-        uninstallcmd(o)
+        uninstallcmd(o, config)
         print(config.status(verbose=True))
     elif o.cmd == 'add':
-        check_install() and addcmd(o)
+        check_install() and addcmd(o, config)
     elif o.cmd == 'check':
-        check_install() and checkcmd(o)
+        check_install() and checkcmd(o, config)
     elif o.cmd == 'filecheck':
-        check_install() and filecheckcmd(o)
+        check_install() and filecheckcmd(o, config)
     elif o.cmd == 'list':
-        check_install() and listcmd(o)
+        check_install() and listcmd(o, config)
     elif o.cmd == 'undo':
-        check_install() and undocmd(o)
+        check_install() and undocmd(o, config)
     elif o.cmd == 'git':
-        check_install() and gitcmd(o)
+        check_install() and gitcmd(o, config)
     elif o.cmd == 'doi':
         doicmd(o)
     elif o.cmd == 'fetch':
