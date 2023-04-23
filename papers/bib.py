@@ -199,7 +199,8 @@ class DuplicateKeyError(ValueError):
     pass
 
 class Biblio:
-    """main config
+    """
+    main config
     """
     def __init__(self, db=None, filesdir=None, key_field='ID', nameformat=None, keyformat=None, similarity=DEFAULT_SIMILARITY, relative_to=None):
         """
@@ -716,7 +717,7 @@ def entry_filecheck_metadata(e, file, image=False):
 
 def savebib(my, config):
     """
-    
+    Given a Biblio object and it's configuration, save them to disk.  If you're using the git bib tracker, will trigger a git commit there.
     """
     logger.info('save '+config.bibtex)
     if papers.config.DRYRUN:
