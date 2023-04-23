@@ -715,15 +715,15 @@ def entry_filecheck_metadata(e, file, image=False):
     if doi.lower() != e['doi'].lower():
         raise ValueError(e['ID']+': doi: entry <=> pdf : {} <=> {}'.format(e['doi'].lower(), doi.lower()))
 
-def savebib(my, config):
+def savebib(my_bib, config):
     """
-    Given a Biblio object and it's configuration, save them to disk.  If you're using the git bib tracker, will trigger a git commit there.
+    Given a Biblio object and its configuration, save them to disk.  If you're using the git bib tracker, will trigger a git commit there.
     """
-    logger.info('save '+config.bibtex)
+    logger.info('Saving '+config.bibtex)
     if papers.config.DRYRUN:
         return
-    if my is not None:
-        my.save(config.bibtex)
+    if my_bib is not None:
+        my_bib.save(config.bibtex)
     if config.git:
         config.gitcommit()
 
