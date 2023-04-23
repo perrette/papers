@@ -1114,6 +1114,13 @@ def undocmd(o, config):
     shutil.move(tmp, back)
     # o.savebib()
 
+def gitcmd(o):
+    try:
+        out = sp.check_output(['git']+o.gitargs, cwd=config.gitdir)
+        print(out.decode())
+    except:
+        gitp.error('papers failed to execute git command -- you should check your system git install.')
+
 def main():
 
     configfile = search_config([os.path.join(".papers", "config.json")], start_dir=".", default=config.file)
@@ -1560,15 +1567,6 @@ def main():
     # ===
     gitp = subparsers.add_parser('git', description='git subcommand')
     gitp.add_argument('gitargs', nargs=argparse.REMAINDER)
-
-
-    def gitcmd(o):
-        try:
-            out = sp.check_output(['git']+o.gitargs, cwd=config.gitdir)
-            print(out.decode())
-        except:
-            gitp.error('failed to execute git command')
-
 
     o = parser.parse_args()
 
