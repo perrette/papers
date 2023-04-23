@@ -1001,6 +1001,9 @@ def check_install(o, config):
     return True
 
 def addcmd(o, config):
+    """
+    Given an options set and a config, sets up the function call to add the file or dir to the bibtex, and executes it.
+    """
 
     o, config = set_nameformat_config_from_cmd(o, config)
     o, config = set_keyformat_config_from_cmd(o, config)
