@@ -714,7 +714,10 @@ def entry_filecheck_metadata(e, file, image=False):
     if doi.lower() != e['doi'].lower():
         raise ValueError(e['ID']+': doi: entry <=> pdf : {} <=> {}'.format(e['doi'].lower(), doi.lower()))
 
-def savebib(my):
+def savebib(my, config):
+    """
+    
+    """
     logger.info('save '+config.bibtex)
     if papers.config.DRYRUN:
         return
@@ -1190,7 +1193,7 @@ def main():
                         logger.error('use --ignore to add other files anyway')
                     addp.exit(1)
 
-        savebib(my)
+        savebib(my, config)
 
 
     # check
@@ -1244,7 +1247,7 @@ def main():
         if o.duplicates:
             my.check_duplicates(mode=o.mode)
 
-        savebib(my)
+        savebib(my, config)
 
 
     # filecheck
@@ -1295,7 +1298,7 @@ def main():
         if o.rename:
             my.rename_entries_files(o.copy)
 
-        savebib(my)
+        savebib(my, config)
 
     # list
     # ======
@@ -1439,17 +1442,17 @@ def main():
                 logger.error(str(error))
                 return
 
-            savebib(my)
+            savebib(my, config)
 
         elif o.fetch:
             for e in entries:
                 my.fix_entry(e, fix_doi=True, fix_key=True, fetch_all=True, interactive=True)
-            savebib(my)
+            savebib(my, config)
 
         elif o.delete:
             for e in entries:
                 my.db.entries.remove(e)
-            savebib(my)
+            savebib(my, config)
 
         elif o.field:
             # entries = [{k:e[k] for k in e if k in o.field+['ID','ENTRYTYPE']} for e in entries]
