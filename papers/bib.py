@@ -714,6 +714,15 @@ def entry_filecheck_metadata(e, file, image=False):
     if doi.lower() != e['doi'].lower():
         raise ValueError(e['ID']+': doi: entry <=> pdf : {} <=> {}'.format(e['doi'].lower(), doi.lower()))
 
+def savebib(my):
+    logger.info('save '+config.bibtex)
+    if papers.config.DRYRUN:
+        return
+    if my is not None:
+        my.save(config.bibtex)
+    if config.git:
+        config.gitcommit()
+
 
 def entry_filecheck(e, delete_broken=False, fix_mendeley=False,
     check_hash=False, check_metadata=False, interactive=True, image=False, relative_to=None):
@@ -1048,15 +1057,6 @@ def main():
 
         print(config.status(check_files=not o.no_check_files, verbose=True))
 
-
-    def savebib(my):
-        logger.info('save '+config.bibtex)
-        if papers.config.DRYRUN:
-            return
-        if my is not None:
-            my.save(config.bibtex)
-        if config.git:
-            config.gitcommit()
 
     # uninstall
     # =======
