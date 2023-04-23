@@ -1067,6 +1067,28 @@ def addcmd(o, config):
 
     savebib(my, config)
 
+def checkcmd(o, config):
+    o, config = set_keyformat_config_from_cmd(o, config)
+    my = Biblio.load(config.bibtex, config.filesdir)
+    
+    # if o.fix_all:
+    #     o.fix_doi = True
+    #     o.fetch_all = True
+    #     o.fix_key = True
+
+    for e in my.entries:
+        if o.keys and e.get('ID','') not in o.keys:
+            continue
+        my.fix_entry(e, fix_doi=o.fix_doi, fetch=o.fetch, fetch_all=o.fetch_all, fix_key=o.fix_key,
+                     auto_key=o.auto_key, format_name=o.format_name, encoding=o.encoding,
+                     key_ascii=o.key_ascii, interactive=not o.force)
+
+
+    if o.duplicates:
+        my.check_duplicates(mode=o.mode)
+
+    savebib(my, config)
+
 def main():
 
     configfile = search_config([os.path.join(".papers", "config.json")], start_dir=".", default=config.file)
@@ -1257,28 +1279,6 @@ def main():
     # grp.add_argument('--ignore', action='store_true', help='ignore unresolved conflicts')
     # checkp.add_argument('--merge-keys', nargs='+', help='only merge remove / merge duplicates')
     # checkp.add_argument('--duplicates',action='store_true', help='remove / merge duplicates')
-
-    def checkcmd(o, config):
-        o, config = set_keyformat_config_from_cmd(o, config)
-        my = Biblio.load(config.bibtex, config.filesdir)
-
-        # if o.fix_all:
-        #     o.fix_doi = True
-        #     o.fetch_all = True
-        #     o.fix_key = True
-
-        for e in my.entries:
-            if o.keys and e.get('ID','') not in o.keys:
-                continue
-            my.fix_entry(e, fix_doi=o.fix_doi, fetch=o.fetch, fetch_all=o.fetch_all, fix_key=o.fix_key,
-                auto_key=o.auto_key, format_name=o.format_name, encoding=o.encoding,
-                key_ascii=o.key_ascii, interactive=not o.force)
-
-
-        if o.duplicates:
-            my.check_duplicates(mode=o.mode)
-
-        savebib(my, config)
 
 
     # filecheck
