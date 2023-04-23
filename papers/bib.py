@@ -972,6 +972,28 @@ def uninstallcmd(o, config):
         config.file = search_config([os.path.join(".papers", "config.json")], start_dir=".", default=CONFIG_FILE)
         uninstallcmd(o, config)
 
+def check_install(o, config):
+    """
+    Given an option and config, checks to see if the install is done correctly on this filesystem.
+    """
+    if getattr(o, "bibtex", None) is not None:
+        config.bibtex = o.bibtex
+    if getattr(o, "filesdir", None) is not None:
+        config.filesdir = o.filesdir
+    if getattr(o, "absolute_paths", None) is not None:
+        config.absolute_paths = o.absolute_paths
+
+    install_doc = f"first execute `papers install --bibtex {config.bibtex or '...'} [ --local ]`"
+    if not config.bibtex:
+        print(f"--bibtex must be specified, or {install_doc}")
+        parser.exit(1)
+    elif not os.path.exists(config.bibtex):
+        print(f'papers: error: no bibtex file found, do `touch {config.bibtex}` or {install_doc}')
+        parser.exit(1)
+    logger.info('bibtex: '+config.bibtex)
+    logger.info('filesdir: '+config.filesdir)
+    return True
+
 def main():
 
     configfile = search_config([os.path.join(".papers", "config.json")], start_dir=".", default=config.file)
@@ -1558,43 +1580,23 @@ def main():
     if o.cmd == 'status':
         return statuscmd(o)
 
-    def check_install():
-
-        if getattr(o, "bibtex", None) is not None:
-            config.bibtex = o.bibtex
-        if getattr(o, "filesdir", None) is not None:
-            config.filesdir = o.filesdir
-        if getattr(o, "absolute_paths", None) is not None:
-            config.absolute_paths = o.absolute_paths
-
-        install_doc = f"first execute `papers install --bibtex {config.bibtex or '...'} [ --local ]`"
-        if not config.bibtex:
-            print(f"--bibtex must be specified, or {install_doc}")
-            parser.exit(1)
-        elif not os.path.exists(config.bibtex):
-            print(f'papers: error: no bibtex file found, do `touch {config.bibtex}` or {install_doc}')
-            parser.exit(1)
-        logger.info('bibtex: '+config.bibtex)
-        logger.info('filesdir: '+config.filesdir)
-        return True
-
     if o.cmd == 'install':
         installcmd(o, config)
     elif o.cmd == 'uninstall':
         uninstallcmd(o, config)
         print(config.status(verbose=True))
     elif o.cmd == 'add':
-        check_install() and addcmd(o, config)
+        check_install(o, config) and addcmd(o, config)
     elif o.cmd == 'check':
-        check_install() and checkcmd(o, config)
+        check_install(o, config) and checkcmd(o, config)
     elif o.cmd == 'filecheck':
-        check_install() and filecheckcmd(o, config)
+        check_install(o, config) and filecheckcmd(o, config)
     elif o.cmd == 'list':
-        check_install() and listcmd(o, config)
+        check_install(o, config) and listcmd(o, config)
     elif o.cmd == 'undo':
-        check_install() and undocmd(o, config)
+        check_install(o, config) and undocmd(o, config)
     elif o.cmd == 'git':
-        check_install() and gitcmd(o, config)
+        check_install(o, config) and gitcmd(o, config)
     elif o.cmd == 'doi':
         doicmd(o)
     elif o.cmd == 'fetch':
