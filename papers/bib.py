@@ -978,27 +978,6 @@ def uninstallcmd(o, config):
         config.file = search_config([os.path.join(".papers", "config.json")], start_dir=".", default=CONFIG_FILE)
         uninstallcmd(o, config)
 
-def check_install(o, config):
-    """
-    Given an option and config, checks to see if the install is done correctly on this filesystem.
-    """
-    if getattr(o, "bibtex", None) is not None:
-        config.bibtex = o.bibtex
-    if getattr(o, "filesdir", None) is not None:
-        config.filesdir = o.filesdir
-    if getattr(o, "absolute_paths", None) is not None:
-        config.absolute_paths = o.absolute_paths
-
-    install_doc = f"first execute `papers install --bibtex {config.bibtex or '...'} [ --local ]`"
-    if not config.bibtex:
-        print(f"--bibtex must be specified, or {install_doc}")
-        parser.exit(1)
-    elif not os.path.exists(config.bibtex):
-        print(f'papers: error: no bibtex file found, do `touch {config.bibtex}` or {install_doc}')
-        parser.exit(1)
-    logger.info(f'bibtex: {config.bibtex!r}')
-    logger.info(f'filesdir: {config.filesdir!r}')
-    return True
 
 def addcmd(o, config):
     """
@@ -1570,6 +1549,28 @@ def main():
     gitp.add_argument('gitargs', nargs=argparse.REMAINDER)
 
     # All parser setup complete; below here, all we do is check parser options and run the relevant command.
+
+    def check_install(o, config):
+        """
+        Given an option and config, checks to see if the install is done correctly on this filesystem.
+        """
+        if getattr(o, "bibtex", None) is not None:
+            config.bibtex = o.bibtex
+        if getattr(o, "filesdir", None) is not None:
+            config.filesdir = o.filesdir
+        if getattr(o, "absolute_paths", None) is not None:
+            config.absolute_paths = o.absolute_paths
+
+        install_doc = f"first execute `papers install --bibtex {config.bibtex or '...'} [ --local ]`"
+        if not config.bibtex:
+            print(f"--bibtex must be specified, or {install_doc}")
+            parser.exit(1)
+        elif not os.path.exists(config.bibtex):
+            print(f'papers: error: no bibtex file found, do `touch {config.bibtex}` or {install_doc}')
+            parser.exit(1)
+        logger.info(f'bibtex: {config.bibtex!r}')
+        logger.info(f'filesdir: {config.filesdir!r}')
+        return True
 
     o = parser.parse_args()
 
