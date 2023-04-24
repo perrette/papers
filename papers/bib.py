@@ -795,7 +795,7 @@ def entry_filecheck(e, delete_broken=False, fix_mendeley=False,
 
         elif check_hash:
             # hash_ = hashlib.sha256(open(file, 'rb').read()).digest()
-            hash_ = checksum(file) # a litftle faster
+            hash_ = checksum(file) # a little faster
             if hash_ in hashes:
                 logger.info(e['ID']+': file already exists (identical checksum): "{}"'.format(file))
                 continue
