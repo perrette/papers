@@ -4,6 +4,7 @@ import subprocess as sp, sys, shutil
 import hashlib
 import bibtexparser
 from papers import logger
+from papers import __version__
 from papers.filename import Format, NAMEFORMAT, KEYFORMAT
 
 # GIT = False
@@ -217,7 +218,7 @@ class Config:
             status = "(local)" if self.local else "(global)"
         else:
             status = bcolors.WARNING+"(default, not installed)"+bcolors.ENDC
-        lines.append(bcolors.BOLD+f'papers configuration {status}'+bcolors.ENDC)
+        lines.append(bcolors.BOLD+f'papers v{__version__} configuration {status}'+bcolors.ENDC)
         if verbose:
             lines.append('* configuration file: '+(_fmt_path(self.file) if self.file and os.path.exists(self.file) else bcolors.WARNING+'none'+bcolors.ENDC))
             lines.append('* cache directory:    '+self.cache)
