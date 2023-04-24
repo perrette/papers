@@ -203,7 +203,7 @@ def uninstallcmd(o, config):
         config.file = search_config([os.path.join(".papers", "config.json")], start_dir=".", default=CONFIG_FILE)
         uninstallcmd(o, config)
 
-def check_install(o, config):
+def check_install(parser, o, config):
     """
     Given an option and config, checks to see if the install is done correctly on this filesystem.
     """
@@ -221,8 +221,8 @@ def check_install(o, config):
     elif not os.path.exists(config.bibtex):
         print(f'papers: error: no bibtex file found, do `touch {config.bibtex}` or {install_doc}')
         parser.exit(1)
-    logger.info('bibtex: '+config.bibtex)
-    logger.info('filesdir: '+config.filesdir)
+    logger.info(f'bibtex: {config.bibtex!r}')
+    logger.info(f'filesdir: {config.filesdir!r}')
     return True
 
 def addcmd(o, config):
@@ -820,17 +820,17 @@ def main():
         uninstallcmd(o, config)
         print(config.status(verbose=True))
     elif o.cmd == 'add':
-        check_install(o, config) and addcmd(o, config)
+        check_install(parser, o, config) and addcmd(o, config)
     elif o.cmd == 'check':
-        check_install(o, config) and checkcmd(o, config)
+        check_install(parser, o, config) and checkcmd(o, config)
     elif o.cmd == 'filecheck':
-        check_install(o, config) and filecheckcmd(o, config)
+        check_install(parser, o, config) and filecheckcmd(o, config)
     elif o.cmd == 'list':
-        check_install(o, config) and listcmd(o, config)
+        check_install(parser, o, config) and listcmd(o, config)
     elif o.cmd == 'undo':
-        check_install(o, config) and undocmd(o, config)
+        check_install(parser, o, config) and undocmd(o, config)
     elif o.cmd == 'git':
-        check_install(o, config) and gitcmd(o, config)
+        check_install(parser, o, config) and gitcmd(o, config)
     elif o.cmd == 'doi':
         doicmd(o)
     elif o.cmd == 'fetch':
