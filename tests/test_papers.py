@@ -6,7 +6,7 @@ from pathlib import Path
 
 from papers.extract import extract_pdf_metadata
 from papers.bib import Biblio, bibtexparser, parse_file, format_file
-from download import downloadpdf
+from tests.download import downloadpdf
 
 def run(cmd):
     print(cmd)

@@ -44,7 +44,7 @@ papers = "papers.__main__:main"
 # and then run "tox" from this directory.
 legacy_tox_ini = """
 [tox]
-envlist = py38, py39, py310, py311
+envlist = clean, py38, py39, py310, py311, report
 
 [gh-actions]
 python =
@@ -55,7 +55,7 @@ python =
     3.11: py311
 
 [testenv]
-commands = pytest tests -xv
+commands = pytest --cov=papers --cov-append --cov-report=term-missing tests -xv
 deps =
     bibtexparser
     scholarly
@@ -64,6 +64,24 @@ deps =
     unidecode
     normality
     pytest
+    pytest-cov
+depends =
+    {py38,py39,py310,py311}: clean
+    report: py38,py39,py310,py311
+
+
+[testenv:report]
+deps = coverage
+skip_install = true
+commands =
+    coverage report
+    coverage html
+
+
+[testenv:clean]
+deps = coverage
+skip_install = true
+commands = coverage erase
 
 [pytest]
 norecursedirs =
