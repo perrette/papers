@@ -1551,6 +1551,7 @@ def main():
 
     if o.version:
         print(papers.__version__)
+        parser.exit(0)
 
     if o.cmd == 'status':
         return statuscmd(o)
