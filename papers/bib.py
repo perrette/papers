@@ -996,8 +996,8 @@ def check_install(o, config):
     elif not os.path.exists(config.bibtex):
         print(f'papers: error: no bibtex file found, do `touch {config.bibtex}` or {install_doc}')
         parser.exit(1)
-    logger.info('bibtex: '+config.bibtex)
-    logger.info('filesdir: '+config.filesdir)
+    logger.info(f'bibtex: {config.bibtex!r}')
+    logger.info(f'filesdir: {config.filesdir!r}')
     return True
 
 def addcmd(o, config):
