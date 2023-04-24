@@ -27,7 +27,7 @@ class DOIRequestError(ValueError):
 # ===============================
 
 def readpdf(pdf, first=None, last=None):
-
+    # TODO the python package pdftotext can do this directly, with no temp file and no I/O.
     if not os.path.isfile(pdf):
         raise ValueError(repr(pdf) + ": not a file")
 
@@ -120,7 +120,8 @@ def isvaliddoi(doi):
 
 
 def pdfhead(pdf, maxpages=10, minwords=200, image=False):
-    """ read pdf header
+    """
+    read pdf header
     """
     i = 0
     txt = ''
@@ -159,7 +160,8 @@ def query_text(txt, max_query_words=200):
 
 
 def extract_txt_metadata(txt, search_doi=True, search_fulltext=False, max_query_words=200, scholar=False):
-    """extract metadata from text, by parsing and doi-query, or by fulltext query in google scholar
+    """
+    extract metadata from text, by parsing and doi-query, or by fulltext query in google scholar
     """
     assert search_doi or search_fulltext, 'no search criteria specified for metadata'
 
