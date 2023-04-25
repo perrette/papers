@@ -5,7 +5,7 @@ from tests.download import downloadpdf
 from pathlib import Path
 import papers
 # Using python -m papers instead of papers otherwise pytest --cov does not detect the call
-PAPERSCMD = f'PYTHONPATH={Path(papers.__file__).parent} python3 -m papers'
+PAPERSCMD = f'PYTHONPATH={Path(__file__).parent.parent} python3 -m papers'
 
 def paperscmd(cmd, sp_cmd="check_output", **kw):
     return run(f'{PAPERSCMD} '+cmd, sp_cmd=sp_cmd, **kw)
