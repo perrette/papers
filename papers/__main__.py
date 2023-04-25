@@ -69,7 +69,6 @@ def installcmd(o, config):
     default_filesdir = "files"
 
     if o.local:
-        datadir = gitdir = ".papers"
         papersconfig = ".papers/config.json"
         workdir = Path('.')
         biblios = list(workdir.glob("*.bib"))
@@ -78,8 +77,6 @@ def installcmd(o, config):
             o.absolute_paths = False
 
     else:
-        datadir = config.data
-        gitdir = config.gitdir
         papersconfig = CONFIG_FILE
         workdir = Path(DATA_DIR)
         biblios = list(Path('.').glob("*.bib")) + list(workdir.glob("*.bib"))
@@ -138,20 +135,18 @@ def installcmd(o, config):
 
     config.bibtex = o.bibtex
     config.filesdir = o.filesdir
-    config.gitdir = gitdir
-    config.data = datadir
+    config.gitdir = config.data = os.path.dirname(o.bibtex)
     config.file = papersconfig
     config.local = o.local
     config.absolute_paths = o.absolute_paths
 
+    if o.reset_paths:
+        config.reset()
 
-    if config.git and not o.git and o.bibtex == config.bibtex:
+    if o.prompt and config.git and not o.git and o.bibtex == config.bibtex:
         ans = input('stop git tracking (this will not affect actual git directory)? [Y/n] ')
         if ans.lower() != 'y':
             o.git = True
-
-    if o.reset_paths:
-        config.reset()
 
     config.git = o.git
 
@@ -169,8 +164,6 @@ def installcmd(o, config):
         logger.info('create empty files directory: '+o.filesdir)
         filesdir.mkdir(parents=True)
 
-    if o.git and not os.path.exists(config._gitdir):
-        config.gitinit()
 
     logger.info('save config file: '+config.file)
     if o.local:
@@ -178,6 +171,10 @@ def installcmd(o, config):
     else:
         from papers.config import CONFIG_HOME
         os.makedirs(CONFIG_HOME, exist_ok=True)
+
+    if o.git and not os.path.exists(config._gitdir):
+        config.gitinit()
+
     config.save()
 
     print(config.status(check_files=not o.no_check_files, verbose=True))
@@ -341,7 +338,7 @@ def undocmd(o, config):
     shutil.move(tmp, back)
     # o.savebib()
 
-def gitcmd(o):
+def gitcmd(o, config):
     try:
         out = sp.check_output(['git']+o.gitargs, cwd=config.gitdir)
         print(out.decode())

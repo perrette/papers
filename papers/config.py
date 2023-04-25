@@ -174,7 +174,7 @@ class Config:
     def gitinit(self, branch=None):
         if not os.path.exists(self._gitdir):
             # with open(os.devnull, 'w') as shutup:
-            sp.check_call(['git','init'], cwd=self.gitdir)
+            sp.check_call(['git','init'], cwd=self.gitdir or None)
             if self.gitlfs:
                 try:
                     sp.check_call('git lfs track "files/**"', cwd=self.gitdir, shell=True) # this does not seem to work
