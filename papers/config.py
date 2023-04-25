@@ -5,6 +5,7 @@ import hashlib
 import bibtexparser
 from papers import logger
 from papers.filename import Format, NAMEFORMAT, KEYFORMAT
+from papers import __version__
 
 # GIT = False
 DRYRUN = False
@@ -218,6 +219,7 @@ class Config:
         else:
             status = bcolors.WARNING+"(default, not installed)"+bcolors.ENDC
         lines.append(bcolors.BOLD+f'papers configuration {status}'+bcolors.ENDC)
+        lines.append(bcolors.BOLD+f'version {__version__}'+bcolors.ENDC)
         if verbose:
             lines.append('* configuration file: '+(_fmt_path(self.file) if self.file and os.path.exists(self.file) else bcolors.WARNING+'none'+bcolors.ENDC))
             lines.append('* cache directory:    '+self.cache)

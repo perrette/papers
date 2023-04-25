@@ -15,6 +15,7 @@ from papers.encoding import parse_file, format_file, family_names, format_entrie
 from papers.config import config, bcolors, search_config, CONFIG_FILE, DATA_DIR
 from papers.duplicate import list_duplicates, list_uniques, edit_entries
 from papers.bib import Biblio, FUZZY_RATIO, DEFAULT_SIMILARITY, entry_filecheck, backupfile, isvalidkey
+from papers import __version__
 
 
 def savebib(my_bib, config):
@@ -511,6 +512,8 @@ def main():
         config.filesdir = None
 
     parser = argparse.ArgumentParser(description='library management tool')
+    parser.add_argument('--version', action='store_true', help='Print version string and exit.')
+
     subparsers = parser.add_subparsers(dest='cmd')
 
     # configuration (re-used everywhere)
@@ -803,6 +806,10 @@ def main():
     # All parser setup complete; below here, all we do is check parser options and run the relevant command.
 
     o = parser.parse_args()
+
+    if o.version:
+        print(__version__)
+        parser.exit(0)
 
     # verbosity
     if getattr(o,'logging_level',None):
