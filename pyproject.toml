@@ -55,7 +55,7 @@ python =
     3.11: py311
 
 [testenv]
-commands = pytest --cov=papers --cov-append --cov-report=term-missing tests -xv
+commands = pytest --cov=papers --cov-append --cov-report=term-missing {posargs} -xv
 deps =
     bibtexparser
     scholarly
