@@ -22,9 +22,10 @@ def savebib(my_bib, config):
     """
     Given a Biblio object and its configuration, save them to disk.  If you're using the git bib tracker, will trigger a git commit there.
     """
-    logger.info('Saving '+config.bibtex)
     if papers.config.DRYRUN:
+        logger.info(f'DRYRUN: NOT saving {config.bibtex}')
         return
+    logger.info(f'Saving {config.bibtex}')
     if my_bib is not None:
         my_bib.save(config.bibtex)
     if config.git:

@@ -53,7 +53,6 @@ class TestAdd(unittest.TestCase):
 
     def test_add(self):
         self.assertTrue(os.path.exists(self.mybib))
-        print("bibtex", self.mybib, 'exists?', os.path.exists(self.mybib))
         paperscmd(f'add --bibtex {self.mybib} {self.pdf}')
 
         file_ = self._checkbib(dismiss_key=True)
@@ -144,16 +143,37 @@ class TestAddBib(unittest.TestCase):
         self.pdf1, self.doi, self.key1, self.newkey1, self.year, self.bibtex1, self.file_rename1 = prepare_paper()
         self.pdf2, self.si, self.doi, self.key2, self.newkey2, self.year, self.bibtex2, self.file_rename2 = prepare_paper2()
         bib = '\n'.join([self.bibtex1, self.bibtex2])
-        open(self.somebib,'w').write(bib)
-        self.my = Biblio.newbib(self.mybib, '')
+        open(self.mybib,'w').write(self.bibtex1)
+        open(self.somebib,'w').write(self.bibtex2)
+        self.my = Biblio.load(self.mybib, '')
 
-    def test_addbib(self):
-        self.assertTrue(self.key1 not in [e['ID'] for e in self.my.db.entries])
+    def test_addbib_method(self):
+        self.assertTrue(self.key1 in [e['ID'] for e in self.my.db.entries])
         self.assertTrue(self.key2 not in [e['ID'] for e in self.my.db.entries])
         self.my.add_bibtex_file(self.somebib)
         self.assertEqual(len(self.my.db.entries), 2)
         self.assertEqual(self.my.db.entries[0]['ID'], self.key1)
         self.assertEqual(self.my.db.entries[1]['ID'], self.key2)
+
+    def test_addbib_cmd(self):
+        bib = Biblio.load(self.mybib, '')
+        self.assertEqual(len(bib.db.entries), 1)
+        self.assertEqual(bib.db.entries[0]['ID'], self.key1)
+        paperscmd(f'add {self.somebib} --bibtex {self.mybib}')
+        bib = Biblio.load(self.mybib, '')
+        self.assertEqual(len(bib.db.entries), 2)
+        self.assertEqual(bib.db.entries[0]['ID'], self.key1)
+        self.assertEqual(bib.db.entries[1]['ID'], self.key2)
+
+    def test_addbib_cmd_dryrun(self):
+        bib = Biblio.load(self.mybib, '')
+        self.assertEqual(len(bib.db.entries), 1)
+        self.assertEqual(bib.db.entries[0]['ID'], self.key1)
+        paperscmd(f'add {self.somebib} --bibtex {self.mybib} --dry-run')
+        bib = Biblio.load(self.mybib, '')
+        self.assertEqual(len(bib.db.entries), 1)
+        self.assertEqual(bib.db.entries[0]['ID'], self.key1)
+        self.assertTrue(self.key2 not in [e['ID'] for e in self.my.db.entries])
 
     def tearDown(self):
         os.remove(self.mybib)
@@ -193,8 +213,7 @@ class TestAddDir(unittest.TestCase):
     def tearDown(self):
         os.remove(self.mybib)
         shutil.rmtree(self.somedir)
-        if os.path.exists('.papersconfig.json'):
-            os.remove('.papersconfig.json')
+        paperscmd(f'uninstall')
 
 
 
@@ -340,7 +359,7 @@ class TestAddConflict(BibTest):
 
     def test_add_same_but_file(self):
         open(self.otherbib, 'w').write(self.bibtex_hasfile)
-        paperscmd(f'add {self.otherbib} --bibtex {self.mybib} -u')
+        paperscmd(f'add {self.otherbib} --bibtex {self.mybib} -u --relative-path')
         self.assertMultiLineEqual(open(self.mybib).read().strip(), self.bibtex_hasfile) # entries did not change
 
 
