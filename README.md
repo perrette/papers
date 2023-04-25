@@ -144,7 +144,6 @@ The same template and modifiers system applies to the bibtex key generation by r
 
 In the common case where the bibtex (`--bibtex`), files directory  (`--filesdir`), and name and key formats (e.g. `--name-template`) do not change, it is convenient to
 (install)[#install-make-bibtex-and-files-directory-persistent] `papers`.
-Install comes with the option to git-track any change to the bibtex file (`--git`) options.
 
 
 ### install: make bibtex and files directory persistent
@@ -178,7 +177,6 @@ Sometimes it is desirable to have separate configurations. In that case a local 
     * cache directory:    /home/perrette/.cache/papers
     * absolute paths:     True
     * git-tracked:        False
-    * git-lfs tracked:    False
     * files directory:    pdfs (90 files, 337.4 MB)
     * bibtex:             papers.bib (82 entries)
 
@@ -270,7 +268,7 @@ That command is also convenient to check on what's actually tracked and what is 
 From now on, every change to the library will result in an automatic git commit.
 And `papers git ...` command will work just as `git ...` executed from the bibtex directory.
 E.g. `papers git add origin *REMOTE URL*`; `papers git lfs track files`; `papers git add files`; `papers git push`
-Note this is an experimental feature at this stage, with potential for improvement.
+Note this is an experimental feature at this stage, with likely changes in future versions (Issue #51).
 
 This probably makes more sense for a global install (local installs usually have their own git tracking system).
 
@@ -304,7 +302,7 @@ Current features
 - fix entries (`papers check --format-name --encoding unicode --fix-doi --fix-key ...`)
 - undo command (`papers undo`)
 - configuration file with default bibtex and files directory (`papers install --bibtex BIB --filesdir DIR ...`)
-- integration with git (`papers install --git --gitdir DIR` and e.g. `papers git ...` to setup a remote, push...)
+- experimental integration with git
 - display / search / list entries : format as bibtex or key or whatever (`papers list ... [-k | -l]`)
 - list + edit or remove entry by key or else  (`papers list ... [--edit, --delete]`)
 - fix broken PDF links (`papers filecheck ...`):

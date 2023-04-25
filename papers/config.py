@@ -175,30 +175,17 @@ class Config:
         if not os.path.exists(self._gitdir):
             # with open(os.devnull, 'w') as shutup:
             sp.check_call(['git','init'], cwd=self.gitdir or None)
-            if self.gitlfs:
-                try:
-                    sp.check_call('git lfs track "files/**"', cwd=self.gitdir, shell=True) # this does not seem to work
-                    sp.check_call('git lfs track "pdf/*"', cwd=self.gitdir, shell=True) # pdf tracked via git-lfs
-                except Exception as error:
-                    logger.warning("Install git-lfs : https://git-lfs.github.com to track PDF files")
-                    self.gitlfs = False
 
         else:
             raise ValueError('git is already initialized in '+self.gitdir)
 
     def gitcommit(self, branch=None, message=None):
         if os.path.exists(self._gitdir):
-            target = os.path.join(self.gitdir, os.path.basename(self.bibtex))
-            target_files = os.path.join(self.gitdir, "files")
-            if not os.path.samefile(self.bibtex, target):
-                shutil.copy(self.bibtex, target)
-            message = message or 'save '+self.bibtex+' after command:\n\n    papers ' +' '.join(sys.argv[1:])
+            message = message or f'save {self.bibtex} after command:\n\n    papers ' +' '.join(sys.argv[1:])
             with open(os.devnull, 'w') as shutup:
                 if branch is not None:
                     sp.check_call(['git','checkout',branch], stdout=shutup, stderr=shutup, cwd=self.gitdir)
-                sp.check_call(['git','add',target], stdout=shutup, stderr=shutup, cwd=self.gitdir)
-                if self.gitlfs:
-                    sp.check_call(['git','add',target_files], stdout=shutup, stderr=shutup, cwd=self.gitdir)
+                sp.check_call(['git','add',self.bibtex], stdout=shutup, stderr=shutup, cwd=self.gitdir)
                 res = sp.call(['git','commit','-m', message], stdout=shutup, stderr=shutup, cwd=self.gitdir)
                 if res == 0:
                     logger.info('git commit')
@@ -226,7 +213,7 @@ class Config:
             lines.append('* absolute paths:     '+str(self.absolute_paths))
             # lines.append('* app data directory: '+self.data)
             lines.append('* git-tracked:        '+str(self.git))
-            lines.append('* git-lfs tracked:    '+str(self.gitlfs))
+            # lines.append('* git-lfs tracked:    '+str(self.gitlfs))
             if self.git:
                 lines.append('* git directory :     '+self.gitdir)
 

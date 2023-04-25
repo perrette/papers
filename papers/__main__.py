@@ -132,10 +132,14 @@ def installcmd(o, config):
                     default_filesdir = user_input
         o.filesdir = default_filesdir
 
-
     config.bibtex = o.bibtex
     config.filesdir = o.filesdir
     config.gitdir = config.data = os.path.dirname(o.bibtex)
+    if o.gitdir:
+        if Path(o.gitdir) not in Path(o.bibtex).parents:
+            print("--gitdir must be a parent of bibtex file")
+            parser.exit(1)
+        config.gitdir = o.gitdir
     config.file = papersconfig
     config.local = o.local
     config.absolute_paths = o.absolute_paths
@@ -202,7 +206,7 @@ def uninstallcmd(o, config):
         config.file = search_config([os.path.join(".papers", "config.json")], start_dir=".", default=CONFIG_FILE)
         uninstallcmd(o, config)
 
-def check_install(parser, o, config):
+def check_install(o, config):
     """
     Given an option and config, checks to see if the install is done correctly on this filesystem.
     """
@@ -342,8 +346,9 @@ def gitcmd(o, config):
     try:
         out = sp.check_output(['git']+o.gitargs, cwd=config.gitdir)
         print(out.decode())
-    except:
-        gitp.error('papers failed to execute git command -- you should check your system git install.')
+    except Exception as error:
+        print(f"Error message: {error}")
+        parser.error('papers failed to execute git command -- you should check your system git install.')
 
 def doicmd(o):
     print(extract_pdf_doi(o.pdf, image=o.image))    
@@ -498,6 +503,7 @@ def statuscmd(o):
     print(config.status(check_files=not o.no_check_files, verbose=o.verbose))
     
 def main():
+    global parser
 
     configfile = search_config([os.path.join(".papers", "config.json")], start_dir=".", default=config.file)
 
@@ -599,7 +605,7 @@ def main():
         not conflict. This option is mainly useful for backup purposes (local or remote).
         Use in combination with `papers git`'
         """)
-    installp.add_argument('--gitdir', default=None, help=f'default: {config.gitdir} or local')
+    installp.add_argument('--gitdir', default=None, help=argparse.SUPPRESS)
 
     grp = installp.add_argument_group('status')
     # grp.add_argument('-l','--status', action='store_true')
@@ -825,17 +831,17 @@ def main():
         uninstallcmd(o, config)
         print(config.status(verbose=True))
     elif o.cmd == 'add':
-        check_install(parser, o, config) and addcmd(o, config)
+        check_install(o, config) and addcmd(o, config)
     elif o.cmd == 'check':
-        check_install(parser, o, config) and checkcmd(o, config)
+        check_install(o, config) and checkcmd(o, config)
     elif o.cmd == 'filecheck':
-        check_install(parser, o, config) and filecheckcmd(o, config)
+        check_install(o, config) and filecheckcmd(o, config)
     elif o.cmd == 'list':
-        check_install(parser, o, config) and listcmd(o, config)
+        check_install(o, config) and listcmd(o, config)
     elif o.cmd == 'undo':
-        check_install(parser, o, config) and undocmd(o, config)
+        check_install(o, config) and undocmd(o, config)
     elif o.cmd == 'git':
-        check_install(parser, o, config) and gitcmd(o, config)
+        check_install(o, config) and gitcmd(o, config)
     elif o.cmd == 'doi':
         doicmd(o)
     elif o.cmd == 'fetch':
