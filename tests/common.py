@@ -2,19 +2,20 @@ import subprocess as sp
 import unittest
 import difflib
 from tests.download import downloadpdf
-
+from pathlib import Path
+import papers
 # Using python -m papers instead of papers otherwise pytest --cov does not detect the call
-PAPERSCMD = f'python3 -m papers'
+PAPERSCMD = f'PYTHONPATH={Path(papers.__file__).parent} python3 -m papers'
 
-def paperscmd(cmd, sp_cmd="check_output"):
-    return run(f'{PAPERSCMD} '+cmd, sp_cmd=sp_cmd)
+def paperscmd(cmd, sp_cmd="check_output", **kw):
+    return run(f'{PAPERSCMD} '+cmd, sp_cmd=sp_cmd, **kw)
 
-def run(cmd, sp_cmd="check_output"):
+def run(cmd, sp_cmd="check_output", **kw):
     print(cmd)
     if sp_cmd == "check_output":
-        return str(sp.check_output(cmd, shell=True).strip().decode())
+        return str(sp.check_output(cmd, shell=True, **kw).strip().decode())
     else:
-        return str(getattr(sp, sp_cmd)(cmd, shell=True))
+        return str(getattr(sp, sp_cmd)(cmd, shell=True, **kw))
 
 
 
