@@ -122,7 +122,7 @@ def installcmd(parser, o, config):
                 user_input = input(f"Bibtex file name [default to new: {default_bibtex}] [Enter/Yes/No]: ")
             if user_input in ACCEPT_DEFAULT:
                 pass
-            else:
+            elif user_input:
                 default_bibtex = user_input
         o.bibtex = default_bibtex
 
@@ -137,7 +137,7 @@ def installcmd(parser, o, config):
                 user_input = input(f"Files folder [default to new: {default_filesdir}] [Enter/Yes/No]: ")
             if user_input in ACCEPT_DEFAULT:
                 pass
-            else:
+            elif user_input:
                 default_filesdir = user_input
         o.filesdir = default_filesdir
 
