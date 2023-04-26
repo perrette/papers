@@ -206,7 +206,7 @@ def uninstallcmd(parser, o, config):
         config.file = search_config([os.path.join(".papers", "config.json")], start_dir=".", default=CONFIG_FILE)
         uninstallcmd(parser, o, config)
 
-def check_install(o, config):
+def check_install(parser, o, config):
     """
     Given an option and config, checks to see if the install is done correctly on this filesystem.
     """
@@ -516,7 +516,7 @@ def get_parser(config=None):
     if config is None:
         config = papers.config.Config()
 
-    parser = argparse.ArgumentParser(description='library management tool')
+    parser = argparse.ArgumentParser(prog='papers', description='library management tool')
     parser.add_argument('--version', action='store_true', help='Print version string and exit.')
 
     subparsers = parser.add_subparsers(dest='cmd')
@@ -618,7 +618,7 @@ def get_parser(config=None):
     # uninstall
     # =======
     uninstallp = subparsers.add_parser('uninstall', description='remove configuration file',
-        parents=[cfg])
+        parents=[loggingp])
     uninstallp.add_argument("--recursive", action="store_true", help="if true, uninstall all papers configuration found on the path, recursively (config file only)")
 
 
@@ -816,20 +816,20 @@ def get_parser(config=None):
 def main():
 
     config = Config()
-    configfile = search_config([os.path.join(".papers", "config.json")], start_dir=".", default=config.file)
+    configfile = search_config([os.path.join(".papers", "config.json")], start_dir=".")
 
-    if os.path.exists(configfile):
+    if configfile is None:
+        installed = False
+    else:
+        installed = True
+
+    if configfile and os.path.exists(configfile):
         config.file = configfile
         config.load()
 
-    else:
-        config.bibtex = None
-        config.filesdir = None
-
-
     parser, subparsers = get_parser(config)
 
-    o = parser.parse_args()
+    o, args = parser.parse_known_args()
 
     if o.version:
         print(__version__)
@@ -842,32 +842,39 @@ def main():
     if hasattr(o,'dry_run'):
         papers.config.DRYRUN = o.dry_run
 
+    subp = subparsers.choices[o.cmd]
+    vars(o).update(vars(subp.parse_args(args)))
+
     if o.cmd == 'status':
-        return statuscmd(subparsers.choices[o.cmd], o, config)
+        return statuscmd(subp, o, config)
 
     if o.cmd == 'install':
-        installcmd(subparsers.choices[o.cmd], o, config)
+        installcmd(subp, o, config)
     elif o.cmd == 'uninstall':
-        uninstallcmd(subparsers.choices[o.cmd], o, config)
+        if not installed:
+            subp.error('no papers install was found')
+        uninstallcmd(subp, o, config)
         print(config.status(verbose=True))
     elif o.cmd == 'add':
-        check_install(o, config) and addcmd(subparsers.choices[o.cmd], o, config)
+        check_install(subp, o, config) and addcmd(subp, o, config)
     elif o.cmd == 'check':
-        check_install(o, config) and checkcmd(subparsers.choices[o.cmd], o, config)
+        check_install(subp, o, config) and checkcmd(subp, o, config)
     elif o.cmd == 'filecheck':
-        check_install(o, config) and filecheckcmd(subparsers.choices[o.cmd], o, config)
+        check_install(subp, o, config) and filecheckcmd(subp, o, config)
     elif o.cmd == 'list':
-        check_install(o, config) and listcmd(subparsers.choices[o.cmd], o, config)
+        check_install(subp, o, config) and listcmd(subp, o, config)
     elif o.cmd == 'undo':
-        check_install(o, config) and undocmd(subparsers.choices[o.cmd], o, config)
+        check_install(subp, o, config) and undocmd(subp, o, config)
     elif o.cmd == 'git':
-        check_install(o, config) and gitcmd(subparsers.choices[o.cmd], o, config)
+        if not installed:
+            subp.error('papers must be installed to use git command')
+        gitcmd(subp, o, config)
     elif o.cmd == 'doi':
-        doicmd(subparsers.choices[o.cmd], o)
+        doicmd(subp, o)
     elif o.cmd == 'fetch':
-        fetchcmd(subparsers.choices[o.cmd], o)
+        fetchcmd(subp, o)
     elif o.cmd == 'extract':
-        extractcmd(subparsers.choices[o.cmd], o)
+        extractcmd(subp, o)
     else:
         parser.print_help()
         parser.exit(1)

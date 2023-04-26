@@ -25,7 +25,7 @@ CACHE_DIR = os.path.join(CACHE_HOME, 'papers')
 class Config:
     """configuration class to specify system-wide collections and files-dir
     """
-    def __init__(self, file=CONFIG_FILE, data=DATA_DIR,
+    def __init__(self, file=None, data=DATA_DIR,
         bibtex=None, filesdir=None,
         keyformat=KEYFORMAT,
         nameformat=NAMEFORMAT,

@@ -29,7 +29,7 @@ def check_filesdir(folder):
     return file_count, folder_size
 
 
-def search_config(filenames, start_dir, default):
+def search_config(filenames, start_dir, default=None):
     """Thanks Chat GPT !"""
     current_dir = os.path.abspath(start_dir)
     root_dir = os.path.abspath(os.sep)
