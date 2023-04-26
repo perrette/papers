@@ -21,11 +21,11 @@ from papers.extract import fetch_bibtex_by_fulltext_crossref, fetch_bibtex_by_do
 from papers.encoding import unicode_to_latex, unicode_to_ascii
 from papers.encoding import parse_file, format_file, standard_name, family_names, format_entries, update_file_path
 
-from papers.config import config, bcolors, checksum, move, search_config, CONFIG_FILE, DATA_DIR
+from papers.filename import NAMEFORMAT, KEYFORMAT
+from papers.utils import bcolors, checksum, move as _move
+import papers.config
 
 from papers.duplicate import conflict_resolution_on_insert, entry_diff, merge_files, check_duplicates
-
-# DRYRUN = False
 
 # KEY GENERATION
 # ==============
@@ -200,7 +200,7 @@ class Biblio:
     """
     main config
     """
-    def __init__(self, db=None, filesdir=None, key_field='ID', nameformat=None, keyformat=None, similarity=DEFAULT_SIMILARITY, relative_to=None):
+    def __init__(self, db=None, filesdir=None, key_field='ID', nameformat=NAMEFORMAT, keyformat=KEYFORMAT, similarity=DEFAULT_SIMILARITY, relative_to=None):
         """
         relative_to : bibtex directory, optional
             use relative paths instead of absolute path
@@ -213,11 +213,14 @@ class Biblio:
         elif not isinstance(db, bibtexparser.bibdatabase.BibDatabase):
             raise TypeError('db must be of type BibDatabase')
         self.db = db
-        self.nameformat = nameformat or config.nameformat
-        self.keyformat = keyformat or config.keyformat
+        self.nameformat = nameformat
+        self.keyformat = keyformat
         self.similarity = similarity
         self.relative_to = os.path.sep if relative_to is None else relative_to
         self.sort()
+
+    def move(self, file, newfile, copy=False):
+        return _move(file, newfile, copy=copy, dryrun=papers.config.DRYRUN)
 
     @property
     def entries(self):
@@ -237,12 +240,12 @@ class Biblio:
         return bibtexparser.dumps(self.db)
 
     @classmethod
-    def load(cls, bibtex, filesdir, relative_to=None):
+    def load(cls, bibtex, filesdir, relative_to=None, **kw):
         # self.bibtex = bibtex
         bibtexs = open(bibtex).read()
-        loaded_bib = cls(bibtexparser.loads(bibtexs), filesdir, relative_to=os.path.dirname(bibtex))
+        loaded_bib = cls(bibtexparser.loads(bibtexs), filesdir, relative_to=os.path.dirname(bibtex), **kw)
         if relative_to is None:
-            relative_to = os.path.sep if config.absolute_paths else os.path.dirname(bibtex)
+            relative_to = os.path.dirname(bibtex)
         if loaded_bib.relative_to != relative_to:
             loaded_bib.update_file_path(relative_to)
 
@@ -256,12 +259,12 @@ class Biblio:
     #             assert os.path.exists(f), f"{f} does not exist"
 
     @classmethod
-    def newbib(cls, bibtex, filesdir, relative_to=None):
+    def newbib(cls, bibtex, filesdir, relative_to=None, **kw):
         assert not os.path.exists(bibtex)
         if os.path.dirname(bibtex) and not os.path.exists(os.path.dirname(bibtex)):
             os.makedirs(os.path.dirname(bibtex))
         open(bibtex,'w').write('')
-        return cls.load(bibtex, filesdir, relative_to=relative_to)
+        return cls.load(bibtex, filesdir, relative_to=relative_to, **kw)
 
     def key(self, e):
         return e[self.key_field].lower()
@@ -522,7 +525,7 @@ class Biblio:
             if not os.path.exists(file):
                 raise ValueError(file+': original file link is broken')
             elif file != newfile:
-                move(file, newfile, copy)
+                self.move(file, newfile, copy)
                 # assert os.path.exists(newfile)
                 # if not copy:
                 #     assert not os.path.exists(file)
@@ -540,7 +543,7 @@ class Biblio:
                 if not os.path.exists(file):
                     raise ValueError(file+': original file link is broken')
                 elif file != newfile:
-                    move(file, newfile, copy)
+                    self.move(file, newfile, copy)
                     # assert os.path.exists(newfile)
                     count += 1
                 newfiles.append(newfile)

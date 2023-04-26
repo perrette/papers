@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 from papers.extract import isvaliddoi, fetch_entry
 from papers.encoding import parse_file, format_file, format_entries
 
-from papers.config import bcolors, checksum
+from papers.utils import bcolors, checksum
 
 
 # SEARCH DUPLICATES

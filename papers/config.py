@@ -1,11 +1,12 @@
 import os, json
 from pathlib import Path
-import subprocess as sp, sys, shutil
+import subprocess as sp, sys
 import hashlib
 import bibtexparser
 from papers import logger
 from papers.filename import Format, NAMEFORMAT, KEYFORMAT
 from papers import __version__
+from papers.utils import bcolors, check_filesdir, search_config
 
 # GIT = False
 DRYRUN = False
@@ -20,58 +21,11 @@ CONFIG_FILE = os.path.join(CONFIG_HOME, 'papersconfig.json')
 DATA_DIR = os.path.join(DATA_HOME, 'papers')
 CACHE_DIR = os.path.join(CACHE_HOME, 'papers')
 
-def search_config(filenames, start_dir, default):
-    """Thanks Chat GPT !"""
-    current_dir = os.path.abspath(start_dir)
-    root_dir = os.path.abspath(os.sep)
-    while True:
-        for filename in filenames:
-            file_path = os.path.join(current_dir, filename)
-            if os.path.exists(file_path):
-                return file_path
-
-        parent_dir = os.path.dirname(current_dir)
-        if parent_dir == current_dir:
-            return default
-
-        # root
-        if parent_dir == root_dir:
-            return default
-        current_dir = parent_dir
-
-    return default
-
-
-# utils
-# -----
-
-class bcolors:
-    # https://stackoverflow.com/a/287944/2192272
-    HEADER = '\033[95m'
-    OKBLUE = '\033[94m'
-    OKGREEN = '\033[92m'
-    WARNING = '\033[93m'
-    FAIL = '\033[91m'
-    ENDC = '\033[0m'
-    BOLD = '\033[1m'
-    UNDERLINE = '\033[4m'
-
-
-def check_filesdir(folder):
-    folder_size = 0
-    file_count = 0
-    for (path, dirs, files) in os.walk(folder):
-      for file in files:
-        filename = os.path.join(path, file)
-        if filename.endswith('.pdf'):
-            folder_size += os.path.getsize(filename)
-            file_count += 1
-    return file_count, folder_size
 
 class Config:
     """configuration class to specify system-wide collections and files-dir
     """
-    def __init__(self, file=CONFIG_FILE, data=DATA_DIR, cache=CACHE_DIR,
+    def __init__(self, file=CONFIG_FILE, data=DATA_DIR,
         bibtex=None, filesdir=None,
         keyformat=KEYFORMAT,
         nameformat=NAMEFORMAT,
@@ -79,7 +33,6 @@ class Config:
         self.file = file
         self.local = local
         self.data = data
-        self.cache = cache
         self.filesdir = filesdir
         self.bibtex = bibtex
         self.keyformat = keyformat
@@ -156,15 +109,7 @@ class Config:
 
     def reset(self):
         cfg = type(self)()
-        self.bibtex = cfg.bibtex
-        self.filesdir = cfg.filesdir
-
-
-    def check_install(self):
-        if not os.path.exists(self.cache):
-            logger.info('make cache directory for DOI requests: '+self.cache)
-            os.makedirs(self.cache)
-
+        vars(self).update(vars(cfg))
 
     # make a git commit?
     @property
@@ -209,7 +154,7 @@ class Config:
         lines.append(bcolors.BOLD+f'version {__version__}'+bcolors.ENDC)
         if verbose:
             lines.append('* configuration file: '+(_fmt_path(self.file) if self.file and os.path.exists(self.file) else bcolors.WARNING+'none'+bcolors.ENDC))
-            lines.append('* cache directory:    '+self.cache)
+            lines.append('* cache directory:    '+CACHE_DIR)
             lines.append('* absolute paths:     '+str(self.absolute_paths))
             # lines.append('* app data directory: '+self.data)
             lines.append('* git-tracked:        '+str(self.git))
@@ -267,16 +212,16 @@ class Config:
         return '\n'.join(lines)
 
 
+def _init_cache():
+    if not os.path.exists(CACHE_DIR):
+        logger.info('make cache directory for DOI requests: '+CACHE_DIR)
+        os.makedirs(CACHE_DIR)
 
-
-config = Config()
-config.check_install()
-
-
+_init_cache()
 
 def cached(file, hashed_key=False):
 
-    file = os.path.join(config.cache, file)
+    file = os.path.join(CACHE_DIR, file)
 
     def decorator(fun):
         if os.path.exists(file):
@@ -298,62 +243,3 @@ def cached(file, hashed_key=False):
             return res
         return decorated
     return decorator
-
-
-
-
-def hash_bytestr_iter(bytesiter, hasher, ashexstr=False):
-    for block in bytesiter:
-        hasher.update(block)
-    return (hasher.hexdigest() if ashexstr else hasher.digest())
-
-def file_as_blockiter(afile, blocksize=65536):
-    with afile:
-        block = afile.read(blocksize)
-        while len(block) > 0:
-            yield block
-            block = afile.read(blocksize)
-
-def checksum(fname):
-    """memory-efficient check sum (sha256)
-
-    source: https://stackoverflow.com/a/3431835/2192272
-    """
-    return hash_bytestr_iter(file_as_blockiter(open(fname, 'rb')), hashlib.sha256())
-
-
-
-# move / copy
-def move(f1, f2, copy=False, interactive=True):
-    dirname = os.path.dirname(f2)
-    if dirname and not os.path.exists(dirname):
-        logger.info('create directory: '+dirname)
-        os.makedirs(dirname)
-    if f1 == f2:
-        logger.info('dest is identical to src: '+f1)
-        return
-
-    if os.path.exists(f2):
-        # if identical file, pretend nothing happened, skip copying
-        if checksum(f2) == checksum(f1):
-            if not copy:
-                os.remove(f1)
-            return
-
-        elif interactive:
-            ans = input('dest file already exists: '+f2+'. Replace? (y/n) ')
-            if ans.lower() != 'y':
-                return
-        else:
-            os.remove(f2)
-
-    if copy:
-        cmd = 'cp {} {}'.format(f1, f2)
-        logger.info(cmd)
-        if not DRYRUN:
-            shutil.copy(f1, f2)
-    else:
-        cmd = 'mv {} {}'.format(f1, f2)
-        logger.info(cmd)
-        if not DRYRUN:
-            shutil.move(f1, f2)

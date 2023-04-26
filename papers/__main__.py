@@ -1,3 +1,5 @@
+"""That is the script called by papers
+"""
 import os
 from pathlib import Path
 import logging
@@ -12,13 +14,13 @@ from papers import logger
 from papers.extract import extract_pdf_doi, isvaliddoi, extract_pdf_metadata
 from papers.extract import fetch_bibtex_by_doi
 from papers.encoding import parse_file, format_file, family_names, format_entries
-from papers.config import config, bcolors, search_config, CONFIG_FILE, DATA_DIR
+from papers.config import bcolors, Config, search_config, CONFIG_FILE, DATA_DIR
 from papers.duplicate import list_duplicates, list_uniques, edit_entries
 from papers.bib import Biblio, FUZZY_RATIO, DEFAULT_SIMILARITY, entry_filecheck, backupfile, isvalidkey
 from papers import __version__
 
 
-def savebib(my_bib, config):
+def savebib(biblio, config):
     """
     Given a Biblio object and its configuration, save them to disk.  If you're using the git bib tracker, will trigger a git commit there.
     """
@@ -26,8 +28,8 @@ def savebib(my_bib, config):
         logger.info(f'DRYRUN: NOT saving {config.bibtex}')
         return
     logger.info(f'Saving {config.bibtex}')
-    if my_bib is not None:
-        my_bib.save(config.bibtex)
+    if biblio is not None:
+        biblio.save(config.bibtex)
     if config.git:
         config.gitcommit()
 
@@ -42,7 +44,6 @@ def set_keyformat_config_from_cmd(o, config):
     config.keyformat.title_word_num = o.key_title_word_num
     config.keyformat.title_word_size = o.key_title_word_size
     config.keyformat.title_sep = o.key_title_sep
-    return o, config
 
 def set_nameformat_config_from_cmd(o, config):
     """
@@ -55,14 +56,16 @@ def set_nameformat_config_from_cmd(o, config):
     config.nameformat.title_word_num = o.name_title_word_num
     config.nameformat.title_word_size = o.name_title_word_size
     config.nameformat.title_sep = o.name_title_sep
-    return o, config
 
-def installcmd(o, config):
+def installcmd(parser, o, config):
     """
     Given options and a config state, installs the expected config files.
     """
-    o, config = set_nameformat_config_from_cmd(o, config)
-    o, config = set_keyformat_config_from_cmd(o, config)
+    if o.reset_paths:
+        config.reset()
+
+    set_nameformat_config_from_cmd(o, config)
+    set_keyformat_config_from_cmd(o, config)
 
     checkdirs = ["files", "pdfs", "pdf", "papers", "bibliography"]
     default_bibtex = "papers.bib"
@@ -71,7 +74,7 @@ def installcmd(o, config):
     if o.local:
         papersconfig = ".papers/config.json"
         workdir = Path('.')
-        biblios = list(workdir.glob("*.bib"))
+        bibtex_files = list(workdir.glob("*.bib"))
         
         if o.absolute_paths is None:
             o.absolute_paths = False
@@ -79,13 +82,13 @@ def installcmd(o, config):
     else:
         papersconfig = CONFIG_FILE
         workdir = Path(DATA_DIR)
-        biblios = list(Path('.').glob("*.bib")) + list(workdir.glob("*.bib"))
+        bibtex_files = list(Path('.').glob("*.bib")) + list(workdir.glob("*.bib"))
         checkdirs = [os.path.join(papers.config.DATA_DIR, "files")] + checkdirs
         
         if o.absolute_paths is None:
             o.absolute_paths = True
 
-    biblios = [default_bibtex] + [f for f in biblios if Path(f) != Path(default_bibtex)]
+    bibtex_files = [default_bibtex] + [f for f in bibtex_files if Path(f) != Path(default_bibtex)]
 
     if config.filesdir:
         checkdirs = [config.filesdir] + checkdirs
@@ -99,10 +102,10 @@ def installcmd(o, config):
     ACCEPT_DEFAULT = ('yes', 'y')
 
     if not o.bibtex:
-        if len(biblios) > 1:
-            logger.warn("Several bibtex files found: "+" ".join([str(b) for b in biblios]))
-        if biblios:
-            default_bibtex = biblios[0]
+        if len(bibtex_files) > 1:
+            logger.warn("Several bibtex files found: "+" ".join([str(b) for b in bibtex_files]))
+        if bibtex_files:
+            default_bibtex = bibtex_files[0]
         if o.prompt:
             if os.path.exists(default_bibtex):
                 user_input = input(f"Bibtex file name [default to existing: {default_bibtex}] [Enter/Yes/No]: ")
@@ -143,9 +146,6 @@ def installcmd(o, config):
     config.file = papersconfig
     config.local = o.local
     config.absolute_paths = o.absolute_paths
-
-    if o.reset_paths:
-        config.reset()
 
     if o.prompt and config.git and not o.git and o.bibtex == config.bibtex:
         ans = input('stop git tracking (this will not affect actual git directory)? [Y/n] ')
@@ -188,7 +188,7 @@ def _dir_is_empty(dir):
     with os.scandir(dir) as it:
         return not any(it)
 
-def uninstallcmd(o, config):
+def uninstallcmd(parser, o, config):
     # TODO this is actually never tested.    
     if Path(config.file).exists():
         logger.info(f"The uninstaller will now remove {config.file}")
@@ -197,14 +197,14 @@ def uninstallcmd(o, config):
         if _dir_is_empty(parent):
             logger.info(f"The config dir {parent} is empty and the uninstaller will now remove it.")
             os.rmdir(parent)
-        papers.config.config = papers.config.Config()
+        config.reset()
     else:
         logger.info(f"The uninstaller found no config file to remove.")
         return
 
     if o.recursive:
         config.file = search_config([os.path.join(".papers", "config.json")], start_dir=".", default=CONFIG_FILE)
-        uninstallcmd(o, config)
+        uninstallcmd(parser, o, config)
 
 def check_install(o, config):
     """
@@ -219,8 +219,7 @@ def check_install(o, config):
 
     install_doc = f"first execute `papers install --bibtex {config.bibtex or '...'} [ --local ]`"
     if not config.bibtex:
-        print(f"--bibtex must be specified, or {install_doc}")
-        parser.exit(1)
+        parser.error(f"--bibtex must be specified, or {install_doc}")
     elif not os.path.exists(config.bibtex):
         print(f'papers: error: no bibtex file found, do `touch {config.bibtex}` or {install_doc}')
         parser.exit(1)
@@ -228,18 +227,25 @@ def check_install(o, config):
     logger.info(f'filesdir: {config.filesdir!r}')
     return True
 
-def addcmd(o, config):
+
+def get_biblio(config):
+    relative_to = os.path.sep if config.absolute_paths else os.path.dirname(config.bibtex)
+    if os.path.exists(config.bibtex):
+        biblio = Biblio.load(config.bibtex, config.filesdir, relative_to=relative_to, nameformat=config.nameformat, keyformat=config.keyformat)
+    else:
+        biblio = Biblio.newbib(config.bibtex, config.filesdir, relative_to=relative_to, nameformat=config.nameformat, keyformat=config.keyformat)
+    return biblio
+
+
+def addcmd(parser, o, config):
     """
     Given an options set and a config, sets up the function call to add the file or dir to the bibtex, and executes it.
     """
 
-    o, config = set_nameformat_config_from_cmd(o, config)
-    o, config = set_keyformat_config_from_cmd(o, config)
+    set_nameformat_config_from_cmd(o, config)
+    set_keyformat_config_from_cmd(o, config)
 
-    if os.path.exists(config.bibtex):
-        my = Biblio.load(config.bibtex, config.filesdir)
-    else:
-        my = Biblio.newbib(config.bibtex, config.filesdir)
+    biblio = get_biblio(config)
 
     kw = {'on_conflict':o.mode, 'check_duplicate':not o.no_check_duplicate,
             'mergefiles':not o.no_merge_files, 'update_key':o.update_key}
@@ -260,13 +266,13 @@ def addcmd(o, config):
             logger.error('If no file is present, --no-query-doi is not compatible with --doi')
             addp.exit(1)
         else:
-            my.fetch_doi(o.doi, attachments=o.attachment, rename=o.rename, copy=o.copy, **kw)
+            biblio.fetch_doi(o.doi, attachments=o.attachment, rename=o.rename, copy=o.copy, **kw)
 
     for file in o.file:
         try:
             if os.path.isdir(file):
                 if o.recursive:
-                    my.scan_dir(file, rename=o.rename, copy=o.copy,
+                    biblio.scan_dir(file, rename=o.rename, copy=o.copy,
                                 search_doi=not o.no_query_doi,
                                 search_fulltext=not o.no_query_fulltext,
                                 **kw)
@@ -274,14 +280,14 @@ def addcmd(o, config):
                     raise ValueError(file+' is a directory, requires --recursive to explore')
                 
             elif file.endswith('.pdf'):
-                my.add_pdf(file, attachments=o.attachment, rename=o.rename, copy=o.copy,
+                biblio.add_pdf(file, attachments=o.attachment, rename=o.rename, copy=o.copy,
                            search_doi=not o.no_query_doi,
                            search_fulltext=not o.no_query_fulltext,
                            scholar=o.scholar, doi=o.doi,
                            **kw)
 
             else: # file.endswith('.bib'):
-                my.add_bibtex_file(file, **kw)
+                biblio.add_bibtex_file(file, **kw)
 
         except Exception as error:
             # print(error)
@@ -293,46 +299,47 @@ def addcmd(o, config):
                     logger.error('use --ignore to add other files anyway')
                 addp.exit(1)
 
-    savebib(my, config)
+    savebib(biblio, config)
 
-def checkcmd(o, config):
-    o, config = set_keyformat_config_from_cmd(o, config)
-    my = Biblio.load(config.bibtex, config.filesdir)
+def checkcmd(parser, o, config):
+    set_keyformat_config_from_cmd(o, config)
+
+    biblio = get_biblio(config)
     
     # if o.fix_all:
     #     o.fix_doi = True
     #     o.fetch_all = True
     #     o.fix_key = True
 
-    for e in my.entries:
+    for e in biblio.entries:
         if o.keys and e.get('ID','') not in o.keys:
             continue
-        my.fix_entry(e, fix_doi=o.fix_doi, fetch=o.fetch, fetch_all=o.fetch_all, fix_key=o.fix_key,
+        biblio.fix_entry(e, fix_doi=o.fix_doi, fetch=o.fetch, fetch_all=o.fetch_all, fix_key=o.fix_key,
                      auto_key=o.auto_key, format_name=o.format_name, encoding=o.encoding,
                      key_ascii=o.key_ascii, interactive=not o.force)
 
 
     if o.duplicates:
-        my.check_duplicates(mode=o.mode)
+        biblio.check_duplicates(mode=o.mode)
 
-    savebib(my, config)
+    savebib(biblio, config)
 
-def filecheckcmd(o, config):
-    o, config = set_nameformat_config_from_cmd(o, config)
+def filecheckcmd(parser, o, config):
+    set_nameformat_config_from_cmd(o, config)
 
-    my = Biblio.load(config.bibtex, config.filesdir)
+    biblio = get_biblio(config)
 
     # fix ':home' entry as saved by Mendeley
-    for e in my.entries:
+    for e in biblio.entries:
         entry_filecheck(e, delete_broken=o.delete_broken, fix_mendeley=o.fix_mendeley,
-                        check_hash=o.hash_check, check_metadata=o.metadata_check, interactive=not o.force, relative_to=my.relative_to)
+                        check_hash=o.hash_check, check_metadata=o.metadata_check, interactive=not o.force, relative_to=biblio.relative_to)
 
     if o.rename:
-        my.rename_entries_files(o.copy)
+        biblio.rename_entries_files(o.copy, o.dry_run)
         
-    savebib(my, config)
+    savebib(biblio, config)
 
-def undocmd(o, config):
+def undocmd(parser, o, config):
     back = backupfile(config.bibtex)
     tmp = config.bibtex + '.tmp'
     # my = :config.bibtex, config.filesdir)
@@ -342,7 +349,7 @@ def undocmd(o, config):
     shutil.move(tmp, back)
     # o.savebib()
 
-def gitcmd(o, config):
+def gitcmd(parser, o, config):
     try:
         out = sp.check_output(['git']+o.gitargs, cwd=config.gitdir)
         print(out.decode())
@@ -350,50 +357,51 @@ def gitcmd(o, config):
         print(f"Error message: {error}")
         parser.error('papers failed to execute git command -- you should check your system git install.')
 
-def doicmd(o):
+def doicmd(parser, o):
     print(extract_pdf_doi(o.pdf, image=o.image))    
 
-def fetchcmd(o):
+def fetchcmd(parser, o):
     print(fetch_bibtex_by_doi(o.doi))
 
-def extractcmd(o):
+def extractcmd(parser, o):
     print(extract_pdf_metadata(o.pdf, search_doi=not o.fulltext, search_fulltext=True, scholar=o.scholar, minwords=o.word_count, max_query_words=o.word_count, image=o.image))
     # print(fetch_bibtex_by_doi(o.doi))
 
-def match(word, target, fuzzy=False, substring=False):
-    if isinstance(target, list):
-        return any([match(word, t, fuzzy, substring) for t in target])
 
-    if fuzzy:
-        res = fuzz.token_set_ratio(word, target, score_cutoff=o.fuzzy_ratio) > o.fuzzy_ratio
-    elif substring:
-        res = target.lower() in word.lower()
-    else:
-        res = fnmatch.fnmatch(word.lower(), target.lower())
+def listcmd(parser, o, config):
 
-    return res if not o.invert else not res
+    def _match(word, target, fuzzy=False, substring=False):
+        if isinstance(target, list):
+            return any([_match(word, t, fuzzy, substring) for t in target])
 
+        if fuzzy:
+            res = fuzz.token_set_ratio(word, target, score_cutoff=o.fuzzy_ratio) > o.fuzzy_ratio
+        elif substring:
+            res = target.lower() in word.lower()
+        else:
+            res = fnmatch.fnmatch(word.lower(), target.lower())
 
-def longmatch(word, target):
-    return match(word, target, fuzzy=o.fuzzy, substring=not o.strict)
-
-def nfiles(e):
-    return len(parse_file(e.get('file',''), relative_to=my.relative_to))
+        return res if not o.invert else not res
 
 
-def requiresreview(e):
-    if not isvalidkey(e.get('ID','')): return True
-    if 'doi' in e and not isvaliddoi(e['doi']): return True
-    if 'author' not in e: return True
-    if 'title' not in e: return True
-    if 'year' not in e: return True
-    return False
+    def _longmatch(word, target):
+        return _match(word, target, fuzzy=o.fuzzy, substring=not o.strict)
+
+    def _nfiles(e):
+        return len(parse_file(e.get('file',''), relative_to=biblio.relative_to))
 
 
-def listcmd(o, config):
+    def _requiresreview(e):
+        if not isvalidkey(e.get('ID','')): return True
+        if 'doi' in e and not isvaliddoi(e['doi']): return True
+        if 'author' not in e: return True
+        if 'title' not in e: return True
+        if 'year' not in e: return True
+        return False
 
-    my = Biblio.load(config.bibtex, config.filesdir)
-    entries = my.db.entries
+
+    biblio = get_biblio(config)
+    entries = biblio.db.entries
 
     if o.fuzzy:
         from rapidfuzz import fuzz
@@ -401,9 +409,9 @@ def listcmd(o, config):
 
     if o.review_required:
         if o.invert:
-            entries = [e for e in entries if not requiresreview(e)]
+            entries = [e for e in entries if not _requiresreview(e)]
         else:
-            entries = [e for e in entries if requiresreview(e)]
+            entries = [e for e in entries if _requiresreview(e)]
             for e in entries:
                 if 'doi' in e and not isvaliddoi(e['doi']):
                     e['doi'] = bcolors.FAIL + e['doi'] + bcolors.ENDC
@@ -412,25 +420,25 @@ def listcmd(o, config):
     if o.no_file:
         entries = [e for e in entries if not e.get('file','')]
     if o.broken_file:
-        entries = [e for e in entries if e.get('file','') and any([not os.path.exists(f) for f in parse_file(e['file'], relative_to=my.relative_to)])]
+        entries = [e for e in entries if e.get('file','') and any([not os.path.exists(f) for f in parse_file(e['file'], relative_to=biblio.relative_to)])]
 
 
     if o.doi:
-        entries = [e for e in entries if 'doi' in e and match(e['doi'], o.doi)]
+        entries = [e for e in entries if 'doi' in e and _match(e['doi'], o.doi)]
     if o.key:
-        entries = [e for e in entries if 'ID' in e and match(e['ID'], o.key)]
+        entries = [e for e in entries if 'ID' in e and _match(e['ID'], o.key)]
     if o.year:
-        entries = [e for e in entries if 'year' in e and match(e['year'], o.year)]
+        entries = [e for e in entries if 'year' in e and _match(e['year'], o.year)]
     if o.first_author:
         first_author = lambda field : family_names(field)[0]
-        entries = [e for e in entries if 'author' in e and match(firstauthor(e['author']), o.author)]
+        entries = [e for e in entries if 'author' in e and _match(firstauthor(e['author']), o.author)]
     if o.author:
         author = lambda field : ' '.join(family_names(field))
-        entries = [e for e in entries if 'author' in e and longmatch(author(e['author']), o.author)]
+        entries = [e for e in entries if 'author' in e and _longmatch(author(e['author']), o.author)]
     if o.title:
-        entries = [e for e in entries if 'title' in e and longmatch(e['title'], o.title)]
+        entries = [e for e in entries if 'title' in e and _longmatch(e['title'], o.title)]
     if o.abstract:
-        entries = [e for e in entries if 'abstract' in e and longmatch(e['abstract'], o.abstract)]
+        entries = [e for e in entries if 'abstract' in e and _longmatch(e['abstract'], o.abstract)]
 
     _check_duplicates = lambda uniques, groups: uniques if o.invert else list(itertools.chain(*groups))
 
@@ -438,7 +446,7 @@ def listcmd(o, config):
     list_dup = list_uniques if o.invert else list_duplicates
 
     if o.duplicates_key:
-        entries = list_dup(entries, key=my.key, issorted=True)
+        entries = list_dup(entries, key=biblio.key, issorted=True)
     if o.duplicates_doi:
         entries = list_dup(entries, key=lambda e:e.get('doi',''), filter_key=isvaliddoi)
     if o.duplicates_tit:
@@ -455,28 +463,28 @@ def listcmd(o, config):
         key = lambda e: ''
     else:
         # key = lambda e: bcolors.OKBLUE+e['ID']+filetag(e)+':'+bcolors.ENDC
-        key = lambda e: nfiles(e)*(bcolors.BOLD)+bcolors.OKBLUE+e['ID']+':'+bcolors.ENDC
+        key = lambda e: _nfiles(e)*(bcolors.BOLD)+bcolors.OKBLUE+e['ID']+':'+bcolors.ENDC
 
     if o.edit:
-        otherentries = [e for e in my.db.entries if e not in entries]
+        otherentries = [e for e in biblio.db.entries if e not in entries]
         try:
             entries = edit_entries(entries)
-            my.db.entries = otherentries + entries
+            biblio.db.entries = otherentries + entries
         except Exception as error:
             logger.error(str(error))
             return
 
-        savebib(my, config)
+        savebib(biblio, config)
         
     elif o.fetch:
         for e in entries:
-            my.fix_entry(e, fix_doi=True, fix_key=True, fetch_all=True, interactive=True)
-        savebib(my, config)
+            biblio.fix_entry(e, fix_doi=True, fix_key=True, fetch_all=True, interactive=True)
+        savebib(biblio, config)
 
     elif o.delete:
         for e in entries:
-            my.db.entries.remove(e)
-        savebib(my, config)
+            biblio.db.entries.remove(e)
+        savebib(biblio, config)
 
     elif o.field:
         # entries = [{k:e[k] for k in e if k in o.field+['ID','ENTRYTYPE']} for e in entries]
@@ -491,7 +499,7 @@ def listcmd(o, config):
             info = []
             if e.get('doi',''):
                 info.append('doi:'+e['doi'])
-            n = nfiles(e)
+            n = _nfiles(e)
             if n:
                 info.append(bcolors.OKGREEN+'file:'+str(n)+bcolors.ENDC)
             infotag = '('+', '.join(info)+')' if info else ''
@@ -499,21 +507,14 @@ def listcmd(o, config):
     else:
         print(format_entries(entries))
 
-def statuscmd(o):
+def statuscmd(parser, o, config):
     print(config.status(check_files=not o.no_check_files, verbose=o.verbose))
     
-def main():
-    global parser
 
-    configfile = search_config([os.path.join(".papers", "config.json")], start_dir=".", default=config.file)
 
-    if os.path.exists(configfile):
-        config.file = configfile
-        config.load()
-
-    else:
-        config.bibtex = None
-        config.filesdir = None
+def get_parser(config=None):
+    if config is None:
+        config = papers.config.Config()
 
     parser = argparse.ArgumentParser(description='library management tool')
     parser.add_argument('--version', action='store_true', help='Print version string and exit.')
@@ -583,7 +584,6 @@ def main():
         parents=[cfg])
     statusp.add_argument('--no-check-files', action='store_true', help='faster, less info')
     statusp.add_argument('-v','--verbose', action='store_true', help='app status info')
-
 
     # install
     # =======
@@ -673,8 +673,8 @@ def main():
     grp.add_argument('--fix-key', action='store_true', help='fix key based on author name and date (in case misssing or digit)')
     grp.add_argument('--key-ascii', action='store_true', help='replace keys unicode character with ascii')
     grp.add_argument('--auto-key', action='store_true', help='new, auto-generated key for all entries')
-#     grp.add_argument('--nauthor', type=int, default=config.nauthor, help='number of authors to include in key (default:%(default)s)')
-#     grp.add_argument('--ntitle', type=int, default=config.ntitle, help='number of title words to include in key (default:%(default)s)')
+    #     grp.add_argument('--nauthor', type=int, default=config.nauthor, help='number of authors to include in key (default:%(default)s)')
+    #     grp.add_argument('--ntitle', type=int, default=config.ntitle, help='number of title words to include in key (default:%(default)s)')
     # grp.add_argument('--ascii-key', action='store_true', help='replace unicode characters with closest ascii')
 
     grp = checkp.add_argument_group('crossref fetch and fix')
@@ -807,7 +807,27 @@ def main():
     gitp = subparsers.add_parser('git', description='git subcommand')
     gitp.add_argument('gitargs', nargs=argparse.REMAINDER)
 
-    # All parser setup complete; below here, all we do is check parser options and run the relevant command.
+    return parser, subparsers
+
+#############
+# Main script
+#############
+
+def main():
+
+    config = Config()
+    configfile = search_config([os.path.join(".papers", "config.json")], start_dir=".", default=config.file)
+
+    if os.path.exists(configfile):
+        config.file = configfile
+        config.load()
+
+    else:
+        config.bibtex = None
+        config.filesdir = None
+
+
+    parser, subparsers = get_parser(config)
 
     o = parser.parse_args()
 
@@ -823,36 +843,35 @@ def main():
         papers.config.DRYRUN = o.dry_run
 
     if o.cmd == 'status':
-        return statuscmd(o)
+        return statuscmd(subparsers.choices[o.cmd], o, config)
 
     if o.cmd == 'install':
-        installcmd(o, config)
+        installcmd(subparsers.choices[o.cmd], o, config)
     elif o.cmd == 'uninstall':
-        uninstallcmd(o, config)
+        uninstallcmd(subparsers.choices[o.cmd], o, config)
         print(config.status(verbose=True))
     elif o.cmd == 'add':
-        check_install(o, config) and addcmd(o, config)
+        check_install(o, config) and addcmd(subparsers.choices[o.cmd], o, config)
     elif o.cmd == 'check':
-        check_install(o, config) and checkcmd(o, config)
+        check_install(o, config) and checkcmd(subparsers.choices[o.cmd], o, config)
     elif o.cmd == 'filecheck':
-        check_install(o, config) and filecheckcmd(o, config)
+        check_install(o, config) and filecheckcmd(subparsers.choices[o.cmd], o, config)
     elif o.cmd == 'list':
-        check_install(o, config) and listcmd(o, config)
+        check_install(o, config) and listcmd(subparsers.choices[o.cmd], o, config)
     elif o.cmd == 'undo':
-        check_install(o, config) and undocmd(o, config)
+        check_install(o, config) and undocmd(subparsers.choices[o.cmd], o, config)
     elif o.cmd == 'git':
-        check_install(o, config) and gitcmd(o, config)
+        check_install(o, config) and gitcmd(subparsers.choices[o.cmd], o, config)
     elif o.cmd == 'doi':
-        doicmd(o)
+        doicmd(subparsers.choices[o.cmd], o)
     elif o.cmd == 'fetch':
-        fetchcmd(o)
+        fetchcmd(subparsers.choices[o.cmd], o)
     elif o.cmd == 'extract':
-        extractcmd(o)
+        extractcmd(subparsers.choices[o.cmd], o)
     else:
         parser.print_help()
         parser.exit(1)
-        # raise ValueError('this is a bug')
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
