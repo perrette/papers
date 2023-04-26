@@ -207,6 +207,9 @@ class TestGlobalInstall(TestBaseInstall):
         self.assertTrue(self._exists(self.mybib))
         self.assertTrue(self._exists(self.filesdir))
         self.assertTrue(os.path.exists(CONFIG_FILE))
+        config = Config.load(self._path(CONFIG_FILE))
+        self.assertEqual(config.bibtex, os.path.abspath(self._path(self.mybib)))
+        self.assertEqual(config.filesdir, os.path.abspath(self._path(self.filesdir)))
 
 
 class TestGitInstall(TestBaseInstall):
