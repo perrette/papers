@@ -816,7 +816,9 @@ def get_parser(config=None):
 def main():
 
     config = Config()
-    configfile = search_config([os.path.join(".papers", "config.json")], start_dir=".")
+    configfile = search_config([os.path.join(".papers", "config.json")], start_dir=".", default=CONFIG_FILE)
+    if not os.path.exists(configfile):
+        configfile = None
 
     if configfile is None:
         installed = False
@@ -843,7 +845,10 @@ def main():
         papers.config.DRYRUN = o.dry_run
 
     subp = subparsers.choices[o.cmd]
-    vars(o).update(vars(subp.parse_args(args)))
+    # arguments are already parsed, but we can now process error message
+    # with subparser:
+    if args:
+        subp.parse_args(args)
 
     if o.cmd == 'status':
         return statuscmd(subp, o, config)
