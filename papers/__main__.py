@@ -61,18 +61,26 @@ def installcmd(parser, o, config):
     """
     Given options and a config state, installs the expected config files.
     """
-    if o.reset_paths:
+    prompt = o.prompt and not o.edit
+    # installed = config.file is not None
+    if config.file is not None and prompt:
+        ans = input('An existing install was found: {config.file}. Overwrite (O) or Edit (E) ? [o / e]')
+        if ans.lower() not in ('o', 'e'):
+            parser.error('Use the --edit option to selectively edit existing configuration, or --force to ignore pre-existing configuration.')
+        o.edit = ans.lower() == 'e'
+
+    if not o.edit:
         config = Config()
 
     set_nameformat_config_from_cmd(o, config)
     set_keyformat_config_from_cmd(o, config)
 
     checkdirs = ["files", "pdfs", "pdf", "papers", "bibliography"]
-    default_bibtex = "papers.bib"
-    default_filesdir = "files"
+    default_bibtex = config.bibtex or "papers.bib"
+    default_filesdir = config.filesdir or "files"
 
     if o.local:
-        papersconfig = ".papers/config.json"
+        papersconfig = config.file or ".papers/config.json"
         workdir = Path('.')
         bibtex_files = list(workdir.glob("*.bib"))
         
@@ -106,7 +114,7 @@ def installcmd(parser, o, config):
             logger.warn("Several bibtex files found: "+" ".join([str(b) for b in bibtex_files]))
         if bibtex_files:
             default_bibtex = bibtex_files[0]
-        if o.prompt:
+        if prompt:
             if os.path.exists(default_bibtex):
                 user_input = input(f"Bibtex file name [default to existing: {default_bibtex}] [Enter/Yes/No]: ")
             else:
@@ -121,7 +129,7 @@ def installcmd(parser, o, config):
         o.bibtex = default_bibtex
 
     if not o.filesdir:
-        if o.prompt:
+        if prompt:
             if Path(default_filesdir).exists():
                 user_input = input(f"Files folder [default to existing: {default_filesdir}] [Enter/Yes/No]: ")
             else:
@@ -539,8 +547,6 @@ def get_parser(config=None):
         help=f'bibtex database (default: {config.bibtex}')
     grp.add_argument('--dry-run', action='store_true',
         help='no PDF renaming/copying, no bibtex writing on disk (for testing)')
-    grp.add_argument('--no-prompt', action='store_false', dest="prompt",
-        help='no prompt, use default (useful for tests)')
     grp.add_argument('--relative-paths', action="store_false", dest="absolute_paths", default=None)
     grp.add_argument('--absolute-paths', action="store_true", default=None)
 
@@ -590,8 +596,10 @@ def get_parser(config=None):
 
     installp = subparsers.add_parser('install', description='setup or update papers install',
         parents=[cfg, namefmt, keyfmt])
-    installp.add_argument('--reset-paths', action='store_true', help=argparse.SUPPRESS)
-    # egrp = installp.add_mutually_exclusive_group()
+    installp.add_argument('--edit', action='store_true', help=f'edit existing install if any (found: {config.file})')
+    installp.add_argument('--force', '--no-prompt', action='store_false', dest="prompt",
+        help='no prompt, use default (useful for tests)')
+
     installp.add_argument('--local', action="store_true",
         help="""setup papers locally in current directory (global install by default), exposing bibtex and filesdir,
         and having the rest under .papers (config options). Only keep the cache globally.
