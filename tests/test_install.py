@@ -27,14 +27,25 @@ bibtex = """@article{Perrette_2011,
 class TestBaseInstall(unittest.TestCase):
 
     def setUp(self):
+        if os.path.exists(CONFIG_FILE):
+            self.backup = tempfile.mktemp(prefix='papers.bib.backup')
+            shutil.move(CONFIG_FILE, self.backup)
+        else:
+            self.backup = None
+
         self.temp_dir = tempfile.TemporaryDirectory()
         self.mybib = "papersxyz.bib"
         self.filesdir = "filesxyz"
         self.anotherbib = 'another.bib'
-        open(os.path.join(self.temp_dir.name, self.anotherbib), 'w').write(bibtex)
+        open(self._path(self.anotherbib), 'w').write(bibtex)
 
     def tearDown(self):
+        if os.path.exists(CONFIG_FILE):
+            os.remove(CONFIG_FILE)
+        if self.backup:
+            shutil.move(self.backup, CONFIG_FILE)
         self.temp_dir.cleanup()
+
 
     def _path(self, p):
         return os.path.join(self.temp_dir.name, p)
@@ -53,8 +64,57 @@ class TestLocalInstall(TestBaseInstall):
         self.assertFalse(self._exists(self.mybib))
         self.assertFalse(self._exists(self.filesdir))
         self.papers(f'install --force --local --bibtex {self.mybib} --files {self.filesdir}')
+        # Config file was created:
+        self.assertTrue(self._exists(".papers/config.json"))
+        # Values of config file match input:
+        config = Config.load(self._path(".papers/config.json"))
+        self.assertEqual(config.bibtex, os.path.abspath(self._path(self.mybib)))
+        self.assertEqual(config.filesdir, os.path.abspath(self._path(self.filesdir)))
+        # bibtex and files directory were created:
         self.assertTrue(self._exists(self.mybib))
         self.assertTrue(self._exists(self.filesdir))
+
+
+    def test_install_defaults_no_preexisting_bibtex(self):
+        self.assertFalse(self._exists(self.mybib))
+        self.assertFalse(self._exists(self.filesdir))
+        self.assertFalse(self._exists(".papers/config.json"))
+        # pre-existing bibtex?
+        os.remove(self._path(self.anotherbib))
+        self.assertFalse(self._exists(self.anotherbib))
+        self.papers(f'install --force --local')
+        self.assertTrue(self._exists(".papers/config.json"))
+        config = Config.load(self._path(".papers/config.json"))
+        # self.assertEqual(config.bibtex, os.path.abspath(self._path("papers.bib")))
+        self.assertEqual(config.bibtex, os.path.abspath(self._path("papers.bib")))
+        self.assertEqual(config.filesdir, os.path.abspath(self._path("files")))
+
+
+    def test_install_defaults_preexisting_bibtex(self):
+        self.assertFalse(self._exists(self.mybib))
+        self.assertFalse(self._exists(self.filesdir))
+        self.assertFalse(self._exists(".papers/config.json"))
+        # pre-existing bibtex
+        self.assertTrue(self._exists(self.anotherbib))
+        self.assertFalse(self._exists("papers.bib"))
+        self.papers(f'install --force --local')
+        self.assertTrue(self._exists(".papers/config.json"))
+        config = Config.load(self._path(".papers/config.json"))
+        self.assertEqual(config.bibtex, os.path.abspath(self._path(self.anotherbib)))
+        self.assertEqual(config.filesdir, os.path.abspath(self._path("files")))
+
+
+    def test_install_defaults_preexisting_pdfs(self):
+        self.assertFalse(self._exists(self.filesdir))
+        self.assertFalse(self._exists(".papers/config.json"))
+        # pre-existing pdfs folder (pre-defined set of names)
+        os.makedirs(self._path("pdfs"))
+        self.papers(f'install --force --local')
+        self.assertTrue(self._exists(".papers/config.json"))
+        config = Config.load(self._path(".papers/config.json"))
+        # self.assertEqual(config.bibtex, os.path.abspath(self._path("papers.bib")))
+        self.assertEqual(config.bibtex, os.path.abspath(self._path(self.anotherbib)))
+        self.assertEqual(config.filesdir, os.path.abspath(self._path("pdfs")))
 
     def test_install_raise(self):
         self.papers(f'install --force --local --bibtex {self.mybib} --files {self.filesdir}')
@@ -122,15 +182,6 @@ EOF""", shell=True, cwd=self.temp_dir.name)
 
 class TestGlobalInstall(TestBaseInstall):
 
-    def setUp(self):
-        if os.path.exists(CONFIG_FILE):
-            self.backup = tempfile.mktemp(prefix='papers.bib.backup')
-            shutil.move(CONFIG_FILE, self.backup)
-        else:
-            self.backup = None
-        super().setUp()
-
-
     def test_install(self):
         self.assertFalse(self._exists(self.mybib))
         self.assertFalse(self._exists(self.filesdir))
@@ -139,12 +190,6 @@ class TestGlobalInstall(TestBaseInstall):
         self.assertTrue(self._exists(self.mybib))
         self.assertTrue(self._exists(self.filesdir))
         self.assertTrue(os.path.exists(CONFIG_FILE))
-
-    def tearDown(self):
-        super().tearDown()
-        os.remove(CONFIG_FILE)
-        if self.backup:
-            shutil.move(self.backup, CONFIG_FILE)
 
 
 class TestGitInstall(TestBaseInstall):

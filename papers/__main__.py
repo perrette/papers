@@ -97,6 +97,7 @@ def installcmd(parser, o, config):
             o.absolute_paths = True
 
     bibtex_files = [default_bibtex] + [f for f in bibtex_files if Path(f) != Path(default_bibtex)]
+    bibtex_files = [f for f in bibtex_files if os.path.exists(f)]
 
     if config.filesdir:
         checkdirs = [config.filesdir] + checkdirs
