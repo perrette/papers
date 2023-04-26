@@ -153,7 +153,11 @@ class TestLocalInstall(TestBaseInstall):
         self.assertEqual(config.filesdir, os.path.abspath(self._path(self.filesdir)))
 
     def test_install_interactive(self):
-        self.papers(f'install --force --local --bibtex {self.mybib} --files {self.filesdir}')
+        # fully interactive install
+        sp.check_call(f"""{PAPERSCMD} install --local << EOF
+{self.mybib}
+{self.filesdir}
+EOF""", shell=True, cwd=self.temp_dir.name)
         self.assertTrue(self._exists(".papers/config.json"))
         self.assertTrue(self._exists(self.mybib))
         self.assertTrue(self._exists(self.filesdir))
@@ -161,6 +165,7 @@ class TestLocalInstall(TestBaseInstall):
         self.assertEqual(config.bibtex, os.path.abspath(self._path(self.mybib)))
         self.assertEqual(config.filesdir, os.path.abspath(self._path(self.filesdir)))
 
+        # edit existing install (--edit)
         sp.check_call(f"""{PAPERSCMD} install --local --bibtex {self.mybib}XX << EOF
 e
 y
@@ -170,6 +175,7 @@ EOF""", shell=True, cwd=self.temp_dir.name)
         # The files folder from previous install is remembered
         self.assertEqual(config.filesdir, os.path.abspath(self._path(self.filesdir)))
 
+        # overwrite existing install (--force)
         sp.check_call(f"""{PAPERSCMD} install --local --bibtex {self.mybib}XX << EOF
 o
 y
@@ -178,6 +184,17 @@ EOF""", shell=True, cwd=self.temp_dir.name)
         self.assertEqual(config.bibtex, os.path.abspath(self._path(self.mybib + "XX")))
         # The files folder from previous install was forgotten
         self.assertEqual(config.filesdir, os.path.abspath(self._path("files")))
+
+        # reset default values from install
+        sp.check_call(f"""{PAPERSCMD} install --local << EOF
+e
+reset
+reset
+EOF""", shell=True, cwd=self.temp_dir.name)
+        config = Config.load(self._path(".papers/config.json"))
+        self.assertEqual(config.bibtex, None)
+        # The files folder from previous install was forgotten
+        self.assertEqual(config.filesdir, None)
 
 
 class TestGlobalInstall(TestBaseInstall):

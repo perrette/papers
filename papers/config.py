@@ -53,7 +53,7 @@ class Config:
 
     @property
     def root(self):
-        if self.local:
+        if self.local and self.bibtex:
             return Path(self.bibtex).parent.resolve()
         else:
             return Path(os.path.sep)

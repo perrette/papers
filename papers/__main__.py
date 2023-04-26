@@ -82,7 +82,7 @@ def installcmd(parser, o, config):
     if o.local:
         papersconfig = config.file or ".papers/config.json"
         workdir = Path('.')
-        bibtex_files = list(workdir.glob("*.bib"))
+        bibtex_files = [str(f) for f in workdir.glob("*.bib")]
         
         if o.absolute_paths is None:
             o.absolute_paths = False
@@ -90,7 +90,7 @@ def installcmd(parser, o, config):
     else:
         papersconfig = CONFIG_FILE
         workdir = Path(DATA_DIR)
-        bibtex_files = list(Path('.').glob("*.bib")) + list(workdir.glob("*.bib"))
+        bibtex_files = [str(f) for f in Path('.').glob("*.bib")] + [str(f) for f in workdir.glob("*.bib")]
         checkdirs = [os.path.join(papers.config.DATA_DIR, "files")] + checkdirs
         
         if o.absolute_paths is None:
@@ -120,14 +120,14 @@ def installcmd(parser, o, config):
                 user_input = input(f"Bibtex file name [default to existing: {default_bibtex}] [Enter/Yes/No]: ")
             else:
                 user_input = input(f"Bibtex file name [default to new: {default_bibtex}] [Enter/Yes/No]: ")
-            if user_input:
-                if user_input.lower() in RESET_DEFAULT:
-                    default_bibtex = None
-                elif user_input.lower() in ACCEPT_DEFAULT:
-                    pass
-                else:
-                    default_bibtex = Path(user_input)
+            if user_input in ACCEPT_DEFAULT:
+                pass
+            else:
+                default_bibtex = user_input
         o.bibtex = default_bibtex
+
+    if o.bibtex and o.bibtex.lower() in RESET_DEFAULT:
+        o.bibtex = None
 
     if not o.filesdir:
         if prompt:
@@ -135,19 +135,20 @@ def installcmd(parser, o, config):
                 user_input = input(f"Files folder [default to existing: {default_filesdir}] [Enter/Yes/No]: ")
             else:
                 user_input = input(f"Files folder [default to new: {default_filesdir}] [Enter/Yes/No]: ")
-            if user_input:
-                if user_input.lower() in RESET_DEFAULT:
-                    default_filesdir = None
-                elif user_input.lower() in ACCEPT_DEFAULT:
-                    pass
-                else:
-                    default_filesdir = user_input
+            if user_input in ACCEPT_DEFAULT:
+                pass
+            else:
+                default_filesdir = user_input
         o.filesdir = default_filesdir
+
+    if o.filesdir and o.filesdir.lower() in RESET_DEFAULT:
+        o.filesdir = None
+
 
     config.bibtex = o.bibtex
     config.filesdir = o.filesdir
-    config.gitdir = config.data = os.path.dirname(o.bibtex)
-    if o.gitdir:
+    config.gitdir = config.data = os.path.dirname(o.bibtex) if o.bibtex else DATA_DIR
+    if o.gitdir and o.bibtex:
         if Path(o.gitdir) not in Path(o.bibtex).parents:
             print("--gitdir must be a parent of bibtex file")
             parser.exit(1)
@@ -167,14 +168,14 @@ def installcmd(parser, o, config):
     bibtex = Path(o.bibtex) if o.bibtex else None
     
     if bibtex and not bibtex.exists():
-        logger.info('create empty bibliography database: '+o.bibtex)
+        logger.info(f'create empty bibliography database: {bibtex}')
         bibtex.parent.mkdir(parents=True, exist_ok=True)
         bibtex.open('w', encoding="utf-8").write('')
 
     # create bibtex file if not existing
     filesdir = Path(o.filesdir) if o.filesdir else None
     if filesdir and not filesdir.exists():
-        logger.info('create empty files directory: '+o.filesdir)
+        logger.info(f'create empty files directory: {filesdir}')
         filesdir.mkdir(parents=True)
 
 
