@@ -848,7 +848,12 @@ def main():
     if hasattr(o,'dry_run'):
         papers.config.DRYRUN = o.dry_run
 
-    subp = subparsers.choices[o.cmd]
+    try:
+        subp = subparsers.choices[o.cmd]
+    except KeyError:
+        parser.print_help()
+        parser.exit(1)
+
     # arguments are already parsed, but we can now process error message
     # with subparser:
     if args:
