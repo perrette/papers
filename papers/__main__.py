@@ -62,7 +62,7 @@ def installcmd(parser, o, config):
     Given options and a config state, installs the expected config files.
     """
     if o.reset_paths:
-        config.reset()
+        config = Config()
 
     set_nameformat_config_from_cmd(o, config)
     set_keyformat_config_from_cmd(o, config)
@@ -197,7 +197,7 @@ def uninstallcmd(parser, o, config):
         if _dir_is_empty(parent):
             logger.info(f"The config dir {parent} is empty and the uninstaller will now remove it.")
             os.rmdir(parent)
-        config.reset()
+        config = Config()
     else:
         logger.info(f"The uninstaller found no config file to remove.")
         return
@@ -815,19 +815,13 @@ def get_parser(config=None):
 
 def main():
 
-    config = Config()
     configfile = search_config([os.path.join(".papers", "config.json")], start_dir=".", default=CONFIG_FILE)
     if not os.path.exists(configfile):
-        configfile = None
-
-    if configfile is None:
-        installed = False
+        config = Config()
     else:
-        installed = True
+        config = Config.load(configfile)
 
-    if configfile and os.path.exists(configfile):
-        config.file = configfile
-        config.load()
+    installed = config.file is not None
 
     parser, subparsers = get_parser(config)
 

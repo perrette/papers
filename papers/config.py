@@ -93,23 +93,25 @@ class Config:
             }, open(self.file, 'w'), sort_keys=True, indent=2, separators=(',', ': '))
 
 
-    def load(self):
-        js = json.load(open(self.file))
+    @classmethod
+    def load(cls, file):
+        js = json.load(open(file))
+        if 'nameformat' in js:
+            js['nameformat'] = Format(**js.get('nameformat'))
+        if 'keyformat' in js:
+            js['keyformat'] = Format(**js.get('keyformat'))
+        cfg = cls(file=file, **js)
+        cfg._update_paths_to_absolute()
+        return cfg
+
+
+    def _update_paths_to_absolute(self):
+        if self.file is None:
+            logger.warn("_update_paths_to_absolute: only works if Config.file is defined")
+            return
         root = Path(self.file).parent.parent
-        self.local = js.get('local', self.local)
-        self.bibtex = self._abspath(js.get('bibtex', self.bibtex), root)
-        self.filesdir = self._abspath(js.get('filesdir', self.filesdir), root)
-        self.gitdir = self._abspath(js.get('gitdir', self.gitdir), root)
-        self.nameformat = Format(**js["nameformat"]) if "nameformat" in js else self.nameformat
-        self.keyformat = Format(**js["keyformat"]) if "keyformat" in js else self.keyformat
-        self.absolute_paths = js.get('absolute_paths', self.absolute_paths)
-        self.git = js.get('git', self.git)
-        self.gitlfs = js.get('gitlfs', self.gitlfs)
-
-
-    def reset(self):
-        cfg = type(self)()
-        vars(self).update(vars(cfg))
+        for field in ['bibtex', 'filesdir', 'gitdir']:
+            setattr(self, field, self._abspath(getattr(self, field), root))
 
     # make a git commit?
     @property
