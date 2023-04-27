@@ -345,7 +345,7 @@ def filecheckcmd(parser, o, config):
                         check_hash=o.hash_check, check_metadata=o.metadata_check, interactive=not o.force, relative_to=biblio.relative_to)
 
     if o.rename:
-        biblio.rename_entries_files(o.copy, o.dry_run)
+        biblio.rename_entries_files(o.copy)
         
     savebib(biblio, config)
 

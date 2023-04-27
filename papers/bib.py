@@ -378,6 +378,12 @@ class Biblio:
         return append_abc(entry['ID'], keys={self.key(e) for e in self.entries})
 
 
+    def set_files(self, entry, files):
+        entry['file'] = format_file(list(sorted(set(files), key=lambda f: files.index(f))), relative_to=self.relative_to)
+
+    def get_files(self, entry, relative_to=None):
+        return parse_file(entry.get('file', ''), relative_to=relative_to or self.relative_to)
+
     def add_bibtex(self, bibtex, relative_to=None, attachments=None, convert_to_unicode=False, **kw):
         bib = bibtexparser.loads(bibtex)
         if convert_to_unicode:
@@ -386,11 +392,11 @@ class Biblio:
             files = []
             if "file" in e:
                 # make sure paths relative to other bibtex are inserted correctly
-                files.extend(parse_file(e["file"], relative_to=relative_to))
+                files.extend(self.get_files(e, relative_to))
             if attachments:
                 files.extend([os.path.abspath(f) for f in attachments])
             if files:
-                e["file"] = format_file(list(set(files)), relative_to=self.relative_to)
+                self.set_files(e, files)
 
             self.insert_entry(e, **kw)
 
@@ -422,7 +428,7 @@ class Biblio:
         if attachments:
             files += attachments
 
-        entry['file'] = format_file([os.path.abspath(f) for f in files], relative_to=self.relative_to)
+        self.set_files(entry, [os.path.abspath(f) for f in files])
         entry['ID'] = self.generate_key(entry)
         logger.debug('generated PDF key: '+entry['ID'])
 
@@ -507,7 +513,7 @@ class Biblio:
         if self.filesdir is None:
             raise ValueError('filesdir is None, cannot rename entries')
 
-        files = parse_file(e.get('file',''), relative_to=self.relative_to)
+        files = self.get_files(e)
         # newname = entrydir(e, root)
 
         direc = self.filesdir
@@ -531,7 +537,7 @@ class Biblio:
                 #     assert not os.path.exists(file)
                 count += 1
             newfiles = [newfile]
-            e['file'] = format_file(newfiles, relative_to=self.relative_to)
+            self.set_files(e, newfiles)
 
 
         # several files: only rename container
@@ -547,7 +553,7 @@ class Biblio:
                     # assert os.path.exists(newfile)
                     count += 1
                 newfiles.append(newfile)
-            e['file'] = format_file(newfiles, relative_to=self.relative_to)
+            self.set_files(e, newfiles)
 
             # create hidden bib entry for special dir
             bibname = hidden_bibtex(newdir)
