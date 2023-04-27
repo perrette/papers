@@ -325,6 +325,15 @@ EOF""")
         self.assertFalse(config.git)
         self.assertFalse(config.gitlfs)
 
+    def test_install_interactive5(self):
+        self.papers(f"""install --local --filesdir files --bibtex bibbib.bib << EOF
+y
+
+EOF""")
+        config = Config.load(self._path(".papers/config.json"))
+        self.assertTrue(config.git)
+        self.assertFalse(config.gitlfs)
+
 
 class TestUndoGitLocal(TestBaseInstall):
 
@@ -414,3 +423,30 @@ class TestUndoNoInstall(TestBaseInstall):
         self.papers(f'redo --bibtex {self.mybib} --files {self.filesdir}')
         biblio = Biblio.load(self._path(self.mybib), '')
         self.assertEqual(len(biblio.entries), 1)
+
+
+
+class TestUninstall(LocalInstallTest):
+    def test_uninstall(self):
+        self.assertTrue(self._exists(".papers/config.json"))
+        self.papers(f'uninstall')
+        self.assertFalse(self._exists(".papers/config.json"))
+
+
+class TestUninstall2(GlobalInstallTest):
+    def test_uninstall(self):
+        self.assertTrue(self._exists(CONFIG_FILE))
+        self.papers(f'install --force --local')
+        self.assertTrue(self._exists(".papers/config.json"))
+        self.assertTrue(self._exists(CONFIG_FILE))
+        self.papers(f'uninstall')
+        self.assertFalse(self._exists(".papers/config.json"))
+        self.assertTrue(self._exists(CONFIG_FILE))
+
+    def test_uninstall(self):
+        self.papers(f'install --force --local')
+        self.assertTrue(self._exists(".papers/config.json"))
+        self.assertTrue(self._exists(CONFIG_FILE))
+        self.papers(f'uninstall --recursive')
+        self.assertFalse(self._exists(".papers/config.json"))
+        self.assertFalse(self._exists(CONFIG_FILE))

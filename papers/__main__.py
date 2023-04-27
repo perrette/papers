@@ -402,7 +402,9 @@ def check_install(parser, o, config):
 
     install_doc = f"first execute `papers install --bibtex {config.bibtex or '...'} [ --local ]`"
     if not config.bibtex:
-        parser.error(f"--bibtex must be specified, or {install_doc}")
+        parser.print_help()
+        print(f"--bibtex must be specified, or {install_doc}")
+        raise PapersExit()
     elif not os.path.exists(config.bibtex):
         print(f'papers: error: no bibtex file found, do `touch {config.bibtex}` or {install_doc}')
         raise PapersExit()
