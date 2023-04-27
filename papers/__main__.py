@@ -711,7 +711,7 @@ def get_parser(config=None):
         help='no PDF renaming/copying, no bibtex writing on disk (for testing)')
     grp.add_argument('--relative-paths', action="store_false", dest="absolute_paths", default=None)
     grp.add_argument('--absolute-paths', action="store_true", default=None)
-    grp.add_argument('--no-git', action='store_false', dest='git', help="""Do not commit the currrent action, whatever happens""")
+    grp.add_argument('--no-git', action='store_false', dest='git', default=None, help="""Do not commit the currrent action, whatever happens""")
 
     keyfmt = argparse.ArgumentParser(add_help=False)
     grp = keyfmt.add_argument_group('bibtex key format')
