@@ -540,6 +540,10 @@ def extractcmd(parser, o):
     # print(fetch_bibtex_by_doi(o.doi))
 
 
+def _fullsearch_string(e):
+    return " ".join([v for k,v in sorted(e.items(), key=lambda kv:kv[0]) if v is not None])
+
+
 def listcmd(parser, o, config):
 
     def _match(word, target, fuzzy=False, substring=False):
@@ -611,6 +615,9 @@ def listcmd(parser, o, config):
         entries = [e for e in entries if 'title' in e and _longmatch(e['title'], o.title)]
     if o.abstract:
         entries = [e for e in entries if 'abstract' in e and _longmatch(e['abstract'], o.abstract)]
+    if o.fullsearch:
+        o.strict = False
+        entries = [e for e in entries if _longmatch(_fullsearch_string(e), o.fullsearch)]
 
     _check_duplicates = lambda uniques, groups: uniques if o.invert else list(itertools.chain(*groups))
 
@@ -900,6 +907,8 @@ def get_parser(config=None):
     # ======
     listp = subparsers.add_parser('list', description='list (a subset of) entries',
         parents=[cfg])
+
+    listp.add_argument('fullsearch', nargs='*', help='''Search field. Usually no quotes required. See keywords to search specific fields. All words must find a match, unless --any is passed.''')
 
     mgrp = listp.add_mutually_exclusive_group()
     mgrp.add_argument('--strict', action='store_true', help='exact matching - instead of substring')

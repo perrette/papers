@@ -105,6 +105,22 @@ class SearchTest(ListTest):
         self.assertEqual(out, "")
 
 
+    def test_list_fullsearch(self):
+        out = self.papers(f'list 2011 perrette', sp_cmd='check_output')
+        self.assertMultiLineEqual(out, self.initial_content)
+
+        # --strict is deactivated
+        out = self.papers(f'list 2011 perrette --strict', sp_cmd='check_output')
+        self.assertMultiLineEqual(out, self.initial_content)
+
+        out = self.papers(f'list 2021 perrette', sp_cmd='check_output')
+        self.assertEqual(out, "")
+
+        # any works well on full search strings
+        out = self.papers(f'list 2021 perrette --any', sp_cmd='check_output')
+        self.assertMultiLineEqual(out, self.initial_content)
+
+
 class EditTest(ListTest):
     def test_delete(self):
         out = self.papers(f'list --author perrette --delete', sp_cmd='check_output')
