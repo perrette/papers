@@ -291,6 +291,40 @@ class TestGitInstall(TestBaseInstall):
         print(count, count2)
         self.assertEqual(int(count2), int(count)+1)
 
+    def test_install_interactive(self):
+        self.papers(f"""install --local --filesdir files --bibtex bibbib.bib << EOF
+y
+y
+EOF""")
+        config = Config.load(self._path(".papers/config.json"))
+        self.assertTrue(config.git)
+        self.assertTrue(config.gitlfs)
+
+    def test_install_interactive2(self):
+        self.papers(f"""install --local --filesdir files --bibtex bibbib.bib << EOF
+y
+n
+EOF""")
+        config = Config.load(self._path(".papers/config.json"))
+        self.assertTrue(config.git)
+        self.assertFalse(config.gitlfs)
+
+    def test_install_interactive3(self):
+        self.papers(f"""install --local --filesdir files --bibtex bibbib.bib << EOF
+n
+EOF""")
+        config = Config.load(self._path(".papers/config.json"))
+        self.assertFalse(config.git)
+        self.assertFalse(config.gitlfs)
+
+    def test_install_interactive4(self):
+        self.papers(f"""install --local --filesdir files --bibtex bibbib.bib << EOF
+
+EOF""")
+        config = Config.load(self._path(".papers/config.json"))
+        self.assertFalse(config.git)
+        self.assertFalse(config.gitlfs)
+
 
 class TestUndoGitLocal(TestBaseInstall):
 
