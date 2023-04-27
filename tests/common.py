@@ -4,15 +4,42 @@ import difflib
 from tests.download import downloadpdf
 from pathlib import Path
 import papers
+from papers.utils import set_directory
+from papers.__main__ import main
 # Using python -m papers instead of papers otherwise pytest --cov does not detect the call
 PAPERSCMD = f'PYTHONPATH={Path(papers.__file__).parent.parent} python3 -m papers'
 
-def paperscmd(cmd, sp_cmd="check_output", **kw):
-    return run(f'{PAPERSCMD} '+cmd, sp_cmd=sp_cmd, **kw)
+def reliable_paperscmd(cmd, sp_cmd=None, cwd=None, **kw):
+    return run(f'{PAPERSCMD} '+cmd, sp_cmd=sp_cmd, cwd=cwd, **kw)
 
-def run(cmd, sp_cmd="check_output", **kw):
+def call(f, *args, check=False, cwd=None, **kwargs):
+    if check:
+        return f(*args, **kwargs)
+    else:
+        try:
+            f(*args, **kwargs)
+            return 0
+        except:
+            return 1
+
+def speedy_paperscmd(cmd, sp_cmd=None, cwd=None, **kw):
+    if '<' in cmd or sp_cmd == 'check_output':
+        return reliable_paperscmd(cmd, sp_cmd, cwd, **kw)
+
+    check = sp_cmd is None or "check" in sp_cmd
+
+    if cwd:
+        with set_directory(cwd):
+            return call(main, cmd.split(), check=check)
+    else:
+        return call(main, cmd.split(), check=check)
+
+paperscmd = speedy_paperscmd
+# paperscmd = reliable_paperscmd
+
+def run(cmd, sp_cmd=None, **kw):
     print(cmd)
-    if sp_cmd == "check_output":
+    if not sp_cmd or sp_cmd == "check_output":
         return str(sp.check_output(cmd, shell=True, **kw).strip().decode())
     else:
         return str(getattr(sp, sp_cmd)(cmd, shell=True, **kw))

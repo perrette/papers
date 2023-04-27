@@ -13,10 +13,10 @@ class TestSimple(unittest.TestCase):
         self.assertTrue(os.path.exists(self.pdf))
 
     def test_doi(self):
-        self.assertEqual(paperscmd(f'doi {self.pdf}').strip(), self.doi)
+        self.assertEqual(paperscmd(f'doi {self.pdf}', sp_cmd='check_output').strip(), self.doi)
 
     def test_fetch(self):
-        bibtexs = paperscmd(f'fetch {self.doi}').strip()
+        bibtexs = paperscmd(f'fetch {self.doi}', sp_cmd='check_output').strip()
         db1 = bibtexparser.loads(bibtexs)
         db2 = bibtexparser.loads(self.bibtex)
         self.assertEqual(db1.entries, db2.entries)

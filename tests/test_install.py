@@ -272,13 +272,18 @@ class TestGitInstall(TestBaseInstall):
         # self.assertTrue(self._exists(".git"))
         # count = sp.check_output(f'cd {self.temp_dir.name} && git rev-list --all --count', shell=True).strip().decode()
         # self.assertEqual(count, '0')
-        count = self.papers('git rev-list --all --count')
+        count = self.papers('git rev-list --all --count', sp_cmd='check_output')
+        count_ = sp.check_output("git rev-list --all --count", shell=True, cwd=self._path('.papers')).decode().strip()
+        self.assertEqual(count, count_)
+        count2 = self.papers('git rev-list --all --count', sp_cmd='check_output')
+        count2_ = sp.check_output("git rev-list --all --count", shell=True, cwd=self._path('.papers')).decode().strip()
+        self.assertEqual(count2, count2_)
         self.papers(f'add {self.anotherbib}')
         # self.papers(f'add --doi 10.5194/bg-8-515-2011')
-        count2 = self.papers('git rev-list --all --count')
-        # The part below fails on github CI, I cannot explain why
+        count2 = self.papers('git rev-list --all --count', sp_cmd='check_output')
+
+        print(count, count2)
         self.assertEqual(int(count2), int(count)+1)
-        # self.papers(f'git log', sp_cmd='check_call')
 
 
     def test_undo(self):
