@@ -175,6 +175,20 @@ class TestAddBib(unittest.TestCase):
         self.assertEqual(bib.db.entries[0]['ID'], self.key1)
         self.assertTrue(self.key2 not in [e['ID'] for e in self.my.db.entries])
 
+    def test_attachment_fails_with_multiple_entries(self):
+        func = lambda: paperscmd(f'add {self.pdf} {self.pdf} --bibtex {self.mybib} --filesdir {self.filesdir} --attachment {self.pdf}')
+        self.assertRaises(Exception, func)
+
+    def test_fails_with_no_file_and_no_doi(self):
+        func = lambda: paperscmd(f'add --bibtex {self.mybib} --filesdir {self.filesdir} --attachment {self.pdf}')
+        self.assertRaises(Exception, func)
+
+    def test_fails_with_no_file_and_doi_but_no_query_doi(self):
+        func = lambda: paperscmd(f'add --bibtex {self.mybib} --filesdir {self.filesdir} --attachment {self.pdf} --doi 123 --no-query-doi')
+        self.assertRaises(Exception, func)
+
+
+
     def tearDown(self):
         os.remove(self.mybib)
         os.remove(self.somebib)
