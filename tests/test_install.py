@@ -203,6 +203,33 @@ EOF""", shell=True, cwd=self.temp_dir.name)
         self.assertTrue(config.gitlfs)
 
 
+class TestInstallNewBibTex(TestBaseInstall):
+
+    # no bibtex file is present at start
+    initial_content = None
+    anotherbib_content = None
+
+    def test_install(self):
+        self.assertFalse(self._exists(self.mybib))
+        self.assertFalse(self._exists(self.anotherbib))
+        self.papers(f"""install --local --filesdir files << EOF
+e
+my.bib
+EOF""")
+
+
+class TestInstallEditor(TestBaseInstall):
+
+    # no bibtex file is present at start
+    initial_content = None
+    anotherbib_content = None
+
+    def test_install(self):
+        self.papers(f'install --force --local --editor "subl -w"')
+        config = Config.load(self._path(".papers/config.json"))
+        self.assertEqual(config.editor, "subl -w")
+
+
 class TestDefaultLocal(LocalInstallTest):
     def test_install(self):
         self.assertTrue(self._exists(".papers/config.json"))
@@ -238,6 +265,12 @@ class TestGlobalInstall(TestBaseInstall):
 
 
 class TestGitInstall(TestBaseInstall):
+
+    def test_install_gitlfs(self):
+        self.papers(f'install --local --no-prompt --git-lfs')
+        config = Config.load(self._path(".papers/config.json"))
+        self.assertTrue(config.git)
+        # self.assertTrue(self._exists(".git"))
 
     def test_install(self):
         self.papers(f'install --local --no-prompt --bibtex {self.mybib} --files {self.filesdir} --git')

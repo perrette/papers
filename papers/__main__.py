@@ -295,9 +295,8 @@ def installcmd(parser, o, config):
         logger.info(f'create empty files directory: {filesdir}')
         filesdir.mkdir(parents=True)
 
-    if config.gitlfs:
+    if o.git_lfs:
         o.git = True
-        config.git = True
 
     default_git = config.git if config.git is not None else False
     if o.git is None:
