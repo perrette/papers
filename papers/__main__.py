@@ -20,6 +20,17 @@ from papers.bib import Biblio, FUZZY_RATIO, DEFAULT_SIMILARITY, entry_filecheck,
 from papers import __version__
 
 
+def get_biblio(config):
+    relative_to = os.path.sep if config.absolute_paths else os.path.dirname(config.bibtex)
+    if os.path.exists(config.bibtex):
+        biblio = Biblio.load(config.bibtex, config.filesdir, nameformat=config.nameformat, keyformat=config.keyformat)
+        if biblio.relative_to != relative_to:
+            biblio.update_file_path(relative_to)
+    else:
+        biblio = Biblio.newbib(config.bibtex, config.filesdir, relative_to=relative_to, nameformat=config.nameformat, keyformat=config.keyformat)
+    return biblio
+
+
 def savebib(biblio, config):
     """
     Given a Biblio object and its configuration, save them to disk.  If you're using the git bib tracker, will trigger a git commit there.
@@ -236,15 +247,6 @@ def check_install(parser, o, config):
     logger.info(f'bibtex: {config.bibtex!r}')
     logger.info(f'filesdir: {config.filesdir!r}')
     return True
-
-
-def get_biblio(config):
-    relative_to = os.path.sep if config.absolute_paths else os.path.dirname(config.bibtex)
-    if os.path.exists(config.bibtex):
-        biblio = Biblio.load(config.bibtex, config.filesdir, relative_to=relative_to, nameformat=config.nameformat, keyformat=config.keyformat)
-    else:
-        biblio = Biblio.newbib(config.bibtex, config.filesdir, relative_to=relative_to, nameformat=config.nameformat, keyformat=config.keyformat)
-    return biblio
 
 
 def addcmd(parser, o, config):

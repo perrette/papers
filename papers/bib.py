@@ -243,12 +243,7 @@ class Biblio:
     def load(cls, bibtex, filesdir, relative_to=None, **kw):
         # self.bibtex = bibtex
         bibtexs = open(bibtex).read()
-        loaded_bib = cls(bibtexparser.loads(bibtexs), filesdir, relative_to=os.path.dirname(bibtex), **kw)
-        if relative_to is None:
-            relative_to = os.path.dirname(bibtex)
-        if loaded_bib.relative_to != relative_to:
-            loaded_bib.update_file_path(relative_to)
-
+        loaded_bib = cls(bibtexparser.loads(bibtexs), filesdir, relative_to=relative_to if relative_to is not None else os.path.dirname(bibtex), **kw)
         return loaded_bib
 
     # make sure the path is right
