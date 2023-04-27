@@ -18,3 +18,31 @@ class ListTest(LocalInstallTest):
 
         out = self.papers(f'list --title "ice edge bloom arctc" --fuzzy', sp_cmd='check_output')
         self.assertMultiLineEqual(out, self.anotherbib_content)
+
+    def test_list_title_multiple(self):
+        out = self.papers(f'list --title ice edge', sp_cmd='check_output')
+        self.assertMultiLineEqual(out, self.anotherbib_content)
+
+        out = self.papers(f'list --title ice edge antarctic', sp_cmd='check_output')
+        self.assertEqual(out, "")
+
+        out = self.papers(f'list --title ice edge antarctic --any', sp_cmd='check_output')
+        self.assertMultiLineEqual(out, self.anotherbib_content)
+
+    def test_list_author(self):
+        out = self.papers(f'list --author perrette', sp_cmd='check_output')
+        self.assertMultiLineEqual(out, self.anotherbib_content)
+
+        out = self.papers(f'list --author perrette balafon', sp_cmd='check_output')
+        self.assertEqual(out, "")
+
+        out = self.papers(f'list --author perrette balafon --any', sp_cmd='check_output')
+        self.assertMultiLineEqual(out, self.anotherbib_content)
+
+
+    def test_list_key(self):
+        out = self.papers(f'list --key perrette', sp_cmd='check_output')
+        self.assertEqual(out, "")
+
+        out = self.papers(f'list --key perrette_2011', sp_cmd='check_output')
+        self.assertMultiLineEqual(out, self.anotherbib_content)

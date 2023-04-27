@@ -544,7 +544,7 @@ def listcmd(parser, o, config):
 
     def _match(word, target, fuzzy=False, substring=False):
         if isinstance(target, list):
-            return any([_match(word, t, fuzzy, substring) for t in target])
+            return (any if o.any else all)([_match(word, t, fuzzy, substring) for t in target])
 
         if fuzzy:
             res = (target.lower() in word.lower() or fuzz.token_set_ratio(word.lower(), target.lower(), score_cutoff=o.fuzzy_ratio) > o.fuzzy_ratio)
@@ -907,13 +907,14 @@ def get_parser(config=None):
     listp.add_argument('--fuzzy-ratio', type=int, default=50, help='threshold for fuzzy matching of title, author, abstract (default:%(default)s)')
     listp.add_argument('--similarity', choices=['EXACT','GOOD','FAIR','PARTIAL','FUZZY'], default=DEFAULT_SIMILARITY, help='duplicate testing (default:%(default)s)')
     listp.add_argument('--invert', action='store_true')
+    listp.add_argument('--any', action='store_true', help='when several keywords: any of them')
 
     grp = listp.add_argument_group('search')
     grp.add_argument('-a','--author', nargs='+', help='any of the authors (*)')
     grp.add_argument('--first-author', nargs='+')
     grp.add_argument('-y','--year', nargs='+')
-    grp.add_argument('-t','--title', help='title (*)')
-    grp.add_argument('--abstract', help='abstract (*)')
+    grp.add_argument('-t','--title', help='title (*)', nargs="+")
+    grp.add_argument('--abstract', help='abstract (*)', nargs="+")
     grp.add_argument('--key', nargs='+')
     grp.add_argument('--doi', nargs='+')
 
