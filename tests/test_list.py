@@ -39,10 +39,22 @@ class ListTest(LocalInstallTest):
         out = self.papers(f'list --author perrette balafon --any', sp_cmd='check_output')
         self.assertMultiLineEqual(out, self.anotherbib_content)
 
-
     def test_list_key(self):
         out = self.papers(f'list --key perrette', sp_cmd='check_output')
+        self.assertMultiLineEqual(out, self.anotherbib_content)
+
+        out = self.papers(f'list --key perrette --strict', sp_cmd='check_output')
         self.assertEqual(out, "")
 
-        out = self.papers(f'list --key perrette_2011', sp_cmd='check_output')
+        out = self.papers(f'list --key perrette_2011 --strict', sp_cmd='check_output')
+        self.assertMultiLineEqual(out, self.anotherbib_content)
+
+    def test_list_year(self):
+        out = self.papers(f'list --year 201', sp_cmd='check_output')
+        self.assertMultiLineEqual(out, self.anotherbib_content)
+
+        out = self.papers(f'list --year 201 --strict', sp_cmd='check_output')
+        self.assertEqual(out, "")
+
+        out = self.papers(f'list --year 2011 --strict', sp_cmd='check_output')
         self.assertMultiLineEqual(out, self.anotherbib_content)

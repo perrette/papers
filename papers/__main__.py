@@ -596,14 +596,14 @@ def listcmd(parser, o, config):
 
 
     if o.doi:
-        entries = [e for e in entries if 'doi' in e and _match(e['doi'], o.doi)]
+        entries = [e for e in entries if 'doi' in e and _longmatch(e['doi'], o.doi)]
     if o.key:
-        entries = [e for e in entries if 'ID' in e and _match(e['ID'], o.key)]
+        entries = [e for e in entries if 'ID' in e and _longmatch(e['ID'], o.key)]
     if o.year:
-        entries = [e for e in entries if 'year' in e and _match(e['year'], o.year)]
+        entries = [e for e in entries if 'year' in e and _longmatch(e['year'], o.year)]
     if o.first_author:
         first_author = lambda field : family_names(field)[0]
-        entries = [e for e in entries if 'author' in e and _match(firstauthor(e['author']), o.author)]
+        entries = [e for e in entries if 'author' in e and _longmatch(firstauthor(e['author']), o.author)]
     if o.author:
         author = lambda field : ' '.join(family_names(field))
         entries = [e for e in entries if 'author' in e and _longmatch(author(e['author']), o.author)]
@@ -902,19 +902,19 @@ def get_parser(config=None):
         parents=[cfg])
 
     mgrp = listp.add_mutually_exclusive_group()
-    mgrp.add_argument('--strict', action='store_true', help='exact matching - instead of substring (only (*): title, author, abstract)')
-    mgrp.add_argument('--fuzzy', action='store_true', help='fuzzy matching - instead of substring (only (*): title, author, abstract)')
+    mgrp.add_argument('--strict', action='store_true', help='exact matching - instead of substring')
+    mgrp.add_argument('--fuzzy', action='store_true', help='fuzzy matching - instead of substring')
     listp.add_argument('--fuzzy-ratio', type=int, default=50, help='threshold for fuzzy matching of title, author, abstract (default:%(default)s)')
     listp.add_argument('--similarity', choices=['EXACT','GOOD','FAIR','PARTIAL','FUZZY'], default=DEFAULT_SIMILARITY, help='duplicate testing (default:%(default)s)')
     listp.add_argument('--invert', action='store_true')
     listp.add_argument('--any', action='store_true', help='when several keywords: any of them')
 
     grp = listp.add_argument_group('search')
-    grp.add_argument('-a','--author', nargs='+', help='any of the authors (*)')
+    grp.add_argument('-a','--author', nargs='+', help='any of the authors')
     grp.add_argument('--first-author', nargs='+')
     grp.add_argument('-y','--year', nargs='+')
-    grp.add_argument('-t','--title', help='title (*)', nargs="+")
-    grp.add_argument('--abstract', help='abstract (*)', nargs="+")
+    grp.add_argument('-t','--title', help='title', nargs="+")
+    grp.add_argument('--abstract', help='abstract', nargs="+")
     grp.add_argument('--key', nargs='+')
     grp.add_argument('--doi', nargs='+')
 
