@@ -74,35 +74,38 @@ def checksum(fname):
 
 # move / copy
 def move(f1, f2, copy=False, interactive=True, dryrun=False):
+    maybe = 'dry-run:: ' if dryrun else ''
     dirname = os.path.dirname(f2)
     if dirname and not os.path.exists(dirname):
-        logger.info('create directory: '+dirname)
-        os.makedirs(dirname)
+        logger.info(f'{maybe}create directory: {dirname}')
+        if not dryrun: os.makedirs(dirname)
     if f1 == f2:
         logger.info('dest is identical to src: '+f1)
         return
 
     if os.path.exists(f2):
         # if identical file, pretend nothing happened, skip copying
-        if checksum(f2) == checksum(f1):
-            if not copy:
+        if os.path.samefile(f1, f2) or checksum(f2) == checksum(f1):
+            if not copy and not dryrun:
+                logger.info(f'{maybe}rm {f1}')
                 os.remove(f1)
             return
 
         elif interactive:
-            ans = input('dest file already exists: '+f2+'. Replace? (y/n) ')
+            ans = input(f'dest file already exists: {f2}. Replace? (y/n) ')
             if ans.lower() != 'y':
                 return
         else:
-            os.remove(f2)
+            logger.info(f'{maybe}rm {f2}')
+            if not dryrun:
+                os.remove(f2)
 
     if copy:
-        cmd = 'cp {} {}'.format(f1, f2)
-        logger.info(cmd)
+        logger.info(f'{maybe}cp {f1} {f2}')
         if not dryrun:
             shutil.copy(f1, f2)
     else:
-        cmd = 'mv {} {}'.format(f1, f2)
+        cmd = f'{maybe}mv {f1} {f2}'
         logger.info(cmd)
         if not dryrun:
             shutil.move(f1, f2)

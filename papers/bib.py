@@ -560,8 +560,9 @@ class Biblio:
             db = bibtexparser.bibdatabase.BibDatabase()
             db.entries.append(e)
             bibtex = bibtexparser.dumps(db)
-            with open(bibname,'w') as f:
-                f.write(bibtex)
+            if not papers.config.DRYRUN:
+                with open(bibname,'w') as f:
+                    f.write(bibtex)
 
             # remove old direc if empty?
             direcs = list({os.path.dirname(file) for file in files})
@@ -569,7 +570,8 @@ class Biblio:
                 leftovers = os.listdir(direcs[0])
                 if not leftovers or len(leftovers) == 1 and leftovers[0] == os.path.basename(hidden_bibtex(direcs[0])):
                     logger.debug('remove tree: '+direcs[0])
-                    shutil.rmtree(direcs[0])
+                    if not papers.config.DRYRUN:
+                        shutil.rmtree(direcs[0])
             else:
                 logger.debug('some left overs, do not remove tree: '+direcs[0])
 
