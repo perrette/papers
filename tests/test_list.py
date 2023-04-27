@@ -1,5 +1,6 @@
 import bibtexparser
 from tests.common import LocalInstallTest, Biblio
+from papers.utils import strip_colors
 
 
 class ListTest(LocalInstallTest):
@@ -7,6 +8,13 @@ class ListTest(LocalInstallTest):
     def setUp(self):
         super().setUp()
         self.papers(f'add {self.anotherbib}')
+
+    def test_format(self):
+        out = self.papers(f'list -l', sp_cmd='check_output')
+        self.assertEqual(strip_colors(out), "Perrette_2011: Near-ubiquity of ice-edge blooms in the Arctic (doi:10.5194/bg-8-515-2011)")
+
+        out = self.papers(f'list -k', sp_cmd='check_output')
+        self.assertEqual(out, "Perrette_2011")
 
     def test_list_title(self):
         out = self.papers(f'list --title "ice-edge blooms"', sp_cmd='check_output')

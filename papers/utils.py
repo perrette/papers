@@ -19,6 +19,13 @@ class bcolors:
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
 
+def strip_colors(s):
+    for name, c in vars(bcolors).items():
+        if name.startswith("_"):
+            continue
+        s = s.replace(c, '')
+    return s
+
 
 def check_filesdir(folder):
     folder_size = 0
