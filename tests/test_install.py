@@ -9,7 +9,7 @@ from papers.config import CONFIG_FILE
 from papers.bib import Biblio
 # from pathlib import Path
 
-from tests.common import paperscmd, prepare_paper, run, PAPERSCMD, BaseTest as TestBaseInstall
+from tests.common import paperscmd, prepare_paper, run, PAPERSCMD, BaseTest as TestBaseInstall, LocalInstallTest, GlobalInstallTest
 
 bibtex2 = """@article{SomeOneElse2000,
  author = {Some One},
@@ -136,6 +136,7 @@ EOF""", shell=True, cwd=self.temp_dir.name)
 
         # Now try simple carriage return (select default)
         sp.check_call(f"""{PAPERSCMD} install --local << EOF
+
 e
 
 
@@ -202,6 +203,25 @@ EOF""", shell=True, cwd=self.temp_dir.name)
         self.assertTrue(config.gitlfs)
 
 
+class TestDefaultLocal(LocalInstallTest):
+    def test_install(self):
+        self.assertTrue(self._exists(".papers/config.json"))
+        self.assertTrue(self.config.local)
+        self.papers(f'install --edit')
+        self.assertTrue(self._exists(".papers/config.json"))
+        config = Config.load(self._path(".papers/config.json"))
+        self.assertTrue(config.local)
+
+class TestDefaultLocal2(GlobalInstallTest):
+    def test_install(self):
+        self.assertTrue(self._exists(CONFIG_FILE))
+        self.assertFalse(self.config.local)
+        self.papers(f'install --edit')
+        self.assertTrue(self._exists(CONFIG_FILE))
+        config = Config.load(CONFIG_FILE)
+        self.assertFalse(config.local)
+
+
 class TestGlobalInstall(TestBaseInstall):
 
     def test_install(self):
@@ -244,6 +264,7 @@ class TestUndoGitLocal(TestBaseInstall):
     def _install(self):
         self.papers(f'install --local --no-prompt --bibtex {self.mybib} --files {self.filesdir} --git --git-lfs')
 
+
     def test_undo(self):
         self._install()
 
@@ -277,6 +298,11 @@ class TestUndoGitLocal(TestBaseInstall):
         self.papers(f'redo')
         biblio = Biblio.load(self._path(self.mybib), '')
         self.assertEqual(len(biblio.entries), 2)
+
+
+class TestUndoGitOnlyLocal(TestUndoGitLocal):
+    def _install(self):
+        self.papers(f'install --local --no-prompt --bibtex {self.mybib} --files {self.filesdir} --git')
 
 
 class TestUndoGitGlobal(TestUndoGitLocal):

@@ -180,9 +180,12 @@ def installcmd(parser, o, config):
     prompt = o.prompt and not o.edit
     # installed = config.file is not None
     if config.file is not None and prompt:
-        ans = input(f'An existing {"local" if config.local else "global"} install was found: {config.file}. Overwrite (O) or Edit (E) ? [o / e]')
-        if ans.lower() not in ('o', 'e'):
-            parser.error('Use the --edit option to selectively edit existing configuration, or --force to ignore pre-existing configuration.')
+        while True:
+            ans = input(f'An existing {"local" if config.local else "global"} install was found: {config.file}. Overwrite (O) or Edit (E) ? [o / e]')
+            if ans.lower() in ('o', 'e'):
+                break
+            else:
+                print('Use the --edit option to selectively edit existing configuration, or --force to ignore pre-existing configuration.')
         o.edit = ans.lower() == 'e'
 
     if not o.edit:

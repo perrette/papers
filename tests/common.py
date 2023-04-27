@@ -217,6 +217,12 @@ class LocalInstallTest(BaseTest):
         self.papers(f'install --force --local --bibtex {self.mybib} --files {self.filesdir}')
         self.config = Config.load(self._path(".papers/config.json"))
 
+class GlobalInstallTest(BaseTest):
+    def setUp(self):
+        super().setUp()
+        self.papers(f'install --force --bibtex {self.mybib} --files {self.filesdir}')
+        self.config = Config.load(CONFIG_FILE)
+
 
 class LocalGitInstallTest(LocalInstallTest):
     def setUp(self):
