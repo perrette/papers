@@ -180,13 +180,20 @@ def installcmd(parser, o, config):
     prompt = o.prompt and not o.edit
     # installed = config.file is not None
     if config.file is not None and prompt:
-        ans = input('An existing install was found: {config.file}. Overwrite (O) or Edit (E) ? [o / e]')
+        ans = input(f'An existing {"local" if config.local else "global"} install was found: {config.file}. Overwrite (O) or Edit (E) ? [o / e]')
         if ans.lower() not in ('o', 'e'):
             parser.error('Use the --edit option to selectively edit existing configuration, or --force to ignore pre-existing configuration.')
         o.edit = ans.lower() == 'e'
 
     if not o.edit:
         config = Config()
+
+    if o.local is None:
+        if config.local is not None:
+            o.local = config.local
+        else:
+            # default ?
+            o.local = False
 
     set_nameformat_config_from_cmd(o, config)
     set_keyformat_config_from_cmd(o, config)
@@ -772,7 +779,7 @@ def get_parser(config=None):
     installp.add_argument('--force', '--no-prompt', action='store_false', dest="prompt",
         help='no prompt, use default (useful for tests)')
 
-    installp.add_argument('--local', action="store_true",
+    installp.add_argument('--local', action="store_true", default=None,
         help="""setup papers locally in current directory (global install by default), exposing bibtex and filesdir,
         and having the rest under .papers (config options). Only keep the cache globally.
         This might not play out too well with git tracking (local install usuall have their own git) but might be OK.""")
