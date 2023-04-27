@@ -325,12 +325,17 @@ def installcmd(parser, o, config):
             logger.warn(f'{config.gitdir} is already initialized')
         else:
             os.makedirs(config.gitdir, exist_ok=True)
-            sp.check_call('git init', cwd=config.gitdir, shell=True)
-        if config.gitlfs:
-            sp.check_call(f'git lfs track "files/"', cwd=config.gitdir, shell=True)
-            sp.check_call(f'git add .gitattributes', cwd=config.gitdir, shell=True)
+            config.gitcmd('init')
 
-        sp.check_call(f'git add {os.path.abspath(config.file)}', cwd=config.gitdir, shell=True)
+        # setup user name and user email if not set (otherwise commit will fail)
+        config.gitcmd('config --list | grep user.name || git config --global user.name "Some One"')
+        config.gitcmd('config --list | grep user.email || git config --global user.name "some.one@github.com"')
+
+        if config.gitlfs:
+            config.gitcmd('lfs track "files/"')
+            config.gitcmd('add .gitattributes')
+
+        config.gitcmd(f'add {os.path.abspath(config.file)}')
         message = f'papers ' +' '.join(sys.argv[1:])
         config.gitcmd(f"commit -m '{message}'")
 
