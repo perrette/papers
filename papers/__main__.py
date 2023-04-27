@@ -394,7 +394,7 @@ def check_install(parser, o, config):
         parser.error(f"--bibtex must be specified, or {install_doc}")
     elif not os.path.exists(config.bibtex):
         print(f'papers: error: no bibtex file found, do `touch {config.bibtex}` or {install_doc}')
-        parser.exit(1)
+        raise PapersExit()
     logger.info(f'bibtex: {config.bibtex!r}')
     logger.info(f'filesdir: {config.filesdir!r}')
     return True
@@ -416,18 +416,18 @@ def addcmd(parser, o, config):
     if len(o.file) > 1:
         if o.attachment:
             logger.error('--attachment is only valid for one PDF / BIBTEX entry')
-            addp.exit(1)
+            raise PapersExit()
         if o.doi:
             logger.error('--doi is only valid for one added file')
-            addp.exit(1)
+            raise PapersExit()
 
     if len(o.file) == 0:
         if not o.doi:
             logger.error('Please provide either a PDF file or BIBTEX entry or specify `--doi DOI`')
-            addp.exit(1)
+            raise PapersExit()
         elif o.no_query_doi:
             logger.error('If no file is present, --no-query-doi is not compatible with --doi')
-            addp.exit(1)
+            raise PapersExit()
         else:
             biblio.fetch_doi(o.doi, attachments=o.attachment, rename=o.rename, copy=o.copy, **kw)
 
@@ -460,7 +460,7 @@ def addcmd(parser, o, config):
             if not o.ignore_errors:
                 if len(o.file) or (os.isdir(file) and o.recursive)> 1:
                     logger.error('use --ignore to add other files anyway')
-                addp.exit(1)
+                raise PapersExit()
 
     savebib(biblio, config)
 
@@ -982,6 +982,7 @@ def get_parser(config=None):
 #############
 
 def main(args=None):
+    papers.config.DRYRUN = False  # reset in case main() if called directly
 
     configfile = search_config([os.path.join(".papers", "config.json")], start_dir=".", default=CONFIG_FILE)
     if not os.path.exists(configfile):
@@ -997,7 +998,7 @@ def main(args=None):
 
     if o.version:
         print(__version__)
-        parser.exit(0)
+        return
 
     # verbosity
     if getattr(o,'logging_level',None):
@@ -1010,7 +1011,7 @@ def main(args=None):
         subp = subparsers.choices[o.cmd]
     except KeyError:
         parser.print_help()
-        parser.exit(1)
+        raise PapersExit()
 
     # arguments are already parsed, but we can now process error message
     # with subparser:
@@ -1051,8 +1052,18 @@ def main(args=None):
         extractcmd(subp, o)
     else:
         parser.print_help()
-        parser.exit(1)
+        raise PapersExit()
+        # parser.exit(1)
+
+
+class PapersExit(Exception):
+    pass
 
 
 if __name__ == "__main__":
-    main()
+    # we use try/except here to use a clean exit instead of trace
+    # test and debugging may use main() directly for speed-up => better to avoid sys.exit there
+    try:
+        main()
+    except PapersExit:
+        sys.exit(1)

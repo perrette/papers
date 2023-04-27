@@ -2,6 +2,9 @@ import os
 import shutil
 import hashlib
 
+from contextlib import contextmanager
+from pathlib import Path
+
 from papers import logger
 
 
@@ -117,3 +120,24 @@ def move(f1, f2, copy=False, interactive=True, dryrun=False, hardlink=True):
         logger.info(cmd)
         if not dryrun:
             shutil.move(f1, f2)
+
+
+
+
+@contextmanager
+def set_directory(path: Path):
+    """Sets the cwd within the context
+
+    Args:
+        path (Path): The path to the cwd
+
+    Yields:
+        None
+    """
+
+    origin = Path().absolute()
+    try:
+        os.chdir(path)
+        yield
+    finally:
+        os.chdir(origin)
