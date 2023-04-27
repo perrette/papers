@@ -1,19 +1,35 @@
+import os
 import subprocess as sp
+import tempfile
+import shutil
+# import json
 import unittest
 import difflib
 from tests.download import downloadpdf
 from pathlib import Path
+import io
+from contextlib import redirect_stdout
+
 import papers
 from papers.utils import set_directory
 from papers.__main__ import main
+from papers.config import CONFIG_FILE, Config
+from papers.bib import Biblio
 # Using python -m papers instead of papers otherwise pytest --cov does not detect the call
 PAPERSCMD = f'PYTHONPATH={Path(papers.__file__).parent.parent} python3 -m papers'
 
 def reliable_paperscmd(cmd, sp_cmd=None, cwd=None, **kw):
     return run(f'{PAPERSCMD} '+cmd, sp_cmd=sp_cmd, cwd=cwd, **kw)
 
-def call(f, *args, check=False, cwd=None, **kwargs):
-    if check:
+
+def call(f, *args, check=False, check_output=False, cwd=None, **kwargs):
+    if check_output:
+        out = io.StringIO()
+        with redirect_stdout(out):
+            f(*args, **kwargs)
+        return out.getvalue().strip()
+
+    elif check:
         return f(*args, **kwargs)
     else:
         try:
@@ -23,16 +39,17 @@ def call(f, *args, check=False, cwd=None, **kwargs):
             return 1
 
 def speedy_paperscmd(cmd, sp_cmd=None, cwd=None, **kw):
-    if '<' in cmd or sp_cmd == 'check_output':
+    if '<' in cmd:
         return reliable_paperscmd(cmd, sp_cmd, cwd, **kw)
 
     check = sp_cmd is None or "check" in sp_cmd
+    check_output = sp_cmd == 'check_output'
 
     if cwd:
         with set_directory(cwd):
-            return call(main, cmd.split(), check=check)
+            return call(main, cmd.split(), check=check, check_output=check_output)
     else:
-        return call(main, cmd.split(), check=check)
+        return call(main, cmd.split(), check=check, check_output=check_output)
 
 paperscmd = speedy_paperscmd
 # paperscmd = reliable_paperscmd
@@ -119,3 +136,86 @@ class BibTest(unittest.TestCase):
                 message += " : " + msg
             self.fail("Multi-line strings are unequal:\n" + message)
 
+
+
+
+bibtex = """@article{Perrette_2011,
+ author = {M. Perrette and A. Yool and G. D. Quartly and E. E. Popova},
+ doi = {10.5194/bg-8-515-2011},
+ journal = {Biogeosciences},
+ link = {https://doi.org/10.5194%2Fbg-8-515-2011},
+ month = {feb},
+ number = {2},
+ pages = {515--524},
+ publisher = {Copernicus {GmbH}},
+ title = {Near-ubiquity of ice-edge blooms in the Arctic},
+ volume = {8},
+ year = {2011}
+}"""
+
+bibtex2 = """@article{SomeOneElse2000,
+ author = {Some One},
+ doi = {10.5194/xxxx},
+ title = {Interesting Stuff},
+ year = {2000}
+}"""
+
+class BaseTest(BibTest):
+    """This class provides a temporary directory to work with
+    """
+
+    def setUp(self):
+        if os.path.exists(CONFIG_FILE):
+            self.backup = tempfile.mktemp(prefix='papers.bib.backup')
+            shutil.move(CONFIG_FILE, self.backup)
+        else:
+            self.backup = None
+
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.mybib = "papersxyz.bib"
+        self.filesdir = "filesxyz"
+        self.anotherbib = 'another.bib'
+        self.anotherbib_content = bibtex
+        open(self._path(self.anotherbib), 'w').write(bibtex)
+
+    def tearDown(self):
+        if os.path.exists(CONFIG_FILE):
+            os.remove(CONFIG_FILE)
+        if self.backup:
+            shutil.move(self.backup, CONFIG_FILE)
+        self.temp_dir.cleanup()
+
+
+    def _path(self, p):
+        return os.path.join(self.temp_dir.name, p)
+
+    def _exists(self, p):
+        return os.path.exists(os.path.join(self.temp_dir.name, p))
+
+    def papers(self, cmd, **kw):
+        return paperscmd(f'{cmd}', cwd=self.temp_dir.name, **kw)
+
+    def read_bib(self):
+        return Biblio.load(self._path(self.mybib))
+
+
+
+class LocalInstallTest(BaseTest):
+    def setUp(self):
+        super().setUp()
+        self.papers(f'install --force --local --bibtex {self.mybib} --files {self.filesdir}')
+        self.config = Config.load(self._path(".papers/config.json"))
+
+
+class LocalGitInstallTest(LocalInstallTest):
+    def setUp(self):
+        super().setUp()
+        self.papers(f'install --force --local --git --bibtex {self.mybib} --files {self.filesdir}')
+        self.config = Config.load(self._path(".papers/config.json"))
+
+
+class LocalGitLFSInstallTest(LocalInstallTest):
+    def setUp(self):
+        super().setUp()
+        self.papers(f'install --force --local --git --git-lfs --bibtex {self.mybib} --files {self.filesdir}')
+        self.config = Config.load(self._path(".papers/config.json"))

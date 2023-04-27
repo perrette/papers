@@ -4,26 +4,12 @@ import shutil
 import tempfile
 import unittest
 import subprocess as sp
-from papers.config import Config, search_config
+from papers.config import Config
 from papers.config import CONFIG_FILE
 from papers.bib import Biblio
 # from pathlib import Path
 
-from tests.common import paperscmd, prepare_paper, run, PAPERSCMD
-
-bibtex = """@article{Perrette_2011,
- author = {M. Perrette and A. Yool and G. D. Quartly and E. E. Popova},
- doi = {10.5194/bg-8-515-2011},
- journal = {Biogeosciences},
- link = {https://doi.org/10.5194%2Fbg-8-515-2011},
- month = {feb},
- number = {2},
- pages = {515--524},
- publisher = {Copernicus {GmbH}},
- title = {Near-ubiquity of ice-edge blooms in the Arctic},
- volume = {8},
- year = {2011}
-}"""
+from tests.common import paperscmd, prepare_paper, run, PAPERSCMD, BaseTest as TestBaseInstall
 
 bibtex2 = """@article{SomeOneElse2000,
  author = {Some One},
@@ -31,39 +17,6 @@ bibtex2 = """@article{SomeOneElse2000,
  title = {Interesting Stuff},
  year = {2000}
 }"""
-
-class TestBaseInstall(unittest.TestCase):
-
-    def setUp(self):
-        if os.path.exists(CONFIG_FILE):
-            self.backup = tempfile.mktemp(prefix='papers.bib.backup')
-            shutil.move(CONFIG_FILE, self.backup)
-        else:
-            self.backup = None
-
-        self.temp_dir = tempfile.TemporaryDirectory()
-        self.mybib = "papersxyz.bib"
-        self.filesdir = "filesxyz"
-        self.anotherbib = 'another.bib'
-        open(self._path(self.anotherbib), 'w').write(bibtex)
-
-    def tearDown(self):
-        if os.path.exists(CONFIG_FILE):
-            os.remove(CONFIG_FILE)
-        if self.backup:
-            shutil.move(self.backup, CONFIG_FILE)
-        self.temp_dir.cleanup()
-
-
-    def _path(self, p):
-        return os.path.join(self.temp_dir.name, p)
-
-    def _exists(self, p):
-        return os.path.exists(os.path.join(self.temp_dir.name, p))
-
-    def papers(self, cmd, **kw):
-        return paperscmd(f'{cmd}', cwd=self.temp_dir.name, **kw)
-
 
 
 class TestLocalInstall(TestBaseInstall):
