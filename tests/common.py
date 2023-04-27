@@ -9,6 +9,7 @@ from tests.download import downloadpdf
 from pathlib import Path
 import io
 from contextlib import redirect_stdout
+import shlex
 
 import papers
 from papers.utils import set_directory
@@ -44,15 +45,18 @@ def speedy_paperscmd(cmd, sp_cmd=None, cwd=None, **kw):
 
     check = sp_cmd is None or "check" in sp_cmd
     check_output = sp_cmd == 'check_output'
-
+    args = shlex.split(cmd)
     if cwd:
         with set_directory(cwd):
-            return call(main, cmd.split(), check=check, check_output=check_output)
+            return call(main, args, check=check, check_output=check_output)
     else:
-        return call(main, cmd.split(), check=check, check_output=check_output)
+        return call(main, args, check=check, check_output=check_output)
 
-paperscmd = speedy_paperscmd
-# paperscmd = reliable_paperscmd
+def paperscmd(cmd, *args, reliable=None, **kwargs):
+    if reliable:
+        return reliable_paperscmd(cmd, *args, **kwargs)
+    else:
+        return speedy_paperscmd(cmd, *args, **kwargs)
 
 def run(cmd, sp_cmd=None, **kw):
     print(cmd)
