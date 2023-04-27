@@ -658,7 +658,16 @@ def listcmd(parser, o, config):
         # key = lambda e: bcolors.OKBLUE+e['ID']+filetag(e)+':'+bcolors.ENDC
         key = lambda e: _nfiles(e)*(bcolors.BOLD)+bcolors.OKBLUE+e['ID']+':'+bcolors.ENDC
 
-    if o.edit:
+    if o.add_keywords:
+        for e in entries:
+            keywords = [w.strip() for w in e.get('keywords', '').split(',') if w.strip()]
+            for w in o.add_keywords:
+                if w not in keywords:
+                    keywords.append(w)
+            e['keywords'] = ", ".join(keywords)
+        savebib(biblio, config)
+
+    elif o.edit:
         otherentries = [e for e in biblio.db.entries if e not in entries]
         try:
             entries = edit_entries(entries)
@@ -941,6 +950,7 @@ def get_parser(config=None):
     grp.add_argument('--abstract', help='abstract', nargs="+")
     grp.add_argument('--key', nargs='+')
     grp.add_argument('--doi', nargs='+')
+    grp.add_argument('--keywords', '--tag', nargs='+')
 
 
     grp = listp.add_argument_group('check')
@@ -964,6 +974,8 @@ def get_parser(config=None):
     grp.add_argument('--delete', action='store_true')
     grp.add_argument('--edit', action='store_true', help='interactive edit text file with entries, and re-insert them')
     grp.add_argument('--fetch', action='store_true', help='fetch and fix metadata')
+    grp.add_argument('--add-keywords', '--add-tag', nargs='+', help='add keywords to the selected entries')
+
     # grp.add_argument('--merge-duplicates', action='store_true')
 
 
