@@ -28,7 +28,7 @@ class FormattingTest(ListTest):
         out = self.papers(f'list -l', sp_cmd='check_output')
         self.assertEqual(strip_colors(out), "Perrette_2011: Near-ubiquity of ice-edge blooms in the Arctic (doi:10.5194/bg-8-515-2011)")
 
-        out = self.papers(f'list -k', sp_cmd='check_output')
+        out = self.papers(f'list --key-only', sp_cmd='check_output')
         self.assertEqual(out, "Perrette_2011")
 
         out = self.papers(f'list -f month doi', sp_cmd='check_output')
