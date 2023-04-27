@@ -243,12 +243,7 @@ class Biblio:
     def load(cls, bibtex, filesdir, relative_to=None, **kw):
         # self.bibtex = bibtex
         bibtexs = open(bibtex).read()
-        loaded_bib = cls(bibtexparser.loads(bibtexs), filesdir, relative_to=os.path.dirname(bibtex), **kw)
-        if relative_to is None:
-            relative_to = os.path.dirname(bibtex)
-        if loaded_bib.relative_to != relative_to:
-            loaded_bib.update_file_path(relative_to)
-
+        loaded_bib = cls(bibtexparser.loads(bibtexs), filesdir, relative_to=relative_to if relative_to is not None else os.path.dirname(bibtex), **kw)
         return loaded_bib
 
     # make sure the path is right
@@ -378,8 +373,8 @@ class Biblio:
         return append_abc(entry['ID'], keys={self.key(e) for e in self.entries})
 
 
-    def set_files(self, entry, files):
-        entry['file'] = format_file(list(sorted(set(files), key=lambda f: files.index(f))), relative_to=self.relative_to)
+    def set_files(self, entry, files, relative_to=None):
+        entry['file'] = format_file(list(sorted(set(files), key=lambda f: files.index(f))), relative_to=relative_to or self.relative_to)
 
     def get_files(self, entry, relative_to=None):
         return parse_file(entry.get('file', ''), relative_to=relative_to or self.relative_to)
@@ -504,7 +499,7 @@ class Biblio:
         self.sort() # keep sorted
 
 
-    def rename_entry_files(self, e, copy=False, formatter=None):
+    def rename_entry_files(self, e, copy=False, formatter=None, relative_to=None):
         """ Rename files
 
         See `papers.filename.Format` class and REAMDE.md for infos.
@@ -537,7 +532,7 @@ class Biblio:
                 #     assert not os.path.exists(file)
                 count += 1
             newfiles = [newfile]
-            self.set_files(e, newfiles)
+            self.set_files(e, newfiles, relative_to=relative_to)
 
 
         # several files: only rename container
@@ -553,7 +548,7 @@ class Biblio:
                     # assert os.path.exists(newfile)
                     count += 1
                 newfiles.append(newfile)
-            self.set_files(e, newfiles)
+            self.set_files(e, newfiles, relative_to=relative_to)
 
             # create hidden bib entry for special dir
             bibname = hidden_bibtex(newdir)
@@ -582,13 +577,15 @@ class Biblio:
             logger.info('renamed file(s): {}'.format(count))
 
 
-    def rename_entries_files(self, copy=False):
+    def rename_entries_files(self, copy=False, relative_to=None):
         for e in self.db.entries:
             try:
-                self.rename_entry_files(e, copy)
+                self.rename_entry_files(e, copy, relative_to=relative_to)
             except Exception as error:
                 logger.error(str(error))
                 continue
+        if relative_to is not None:
+            self.relative_to = relative_to
 
 
     def fix_entry(self, e, fix_doi=True, fetch=False, fetch_all=False,

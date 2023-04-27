@@ -81,7 +81,8 @@ commands =
 [testenv:clean]
 deps = coverage
 skip_install = true
-commands = coverage erase
+commands =
+    coverage erase
 
 [pytest]
 norecursedirs =

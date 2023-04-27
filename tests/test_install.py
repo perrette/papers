@@ -6,6 +6,7 @@ import unittest
 import subprocess as sp
 from papers.config import Config, search_config
 from papers.config import CONFIG_FILE
+from papers.bib import Biblio
 # from pathlib import Path
 
 from tests.common import paperscmd, prepare_paper, run, PAPERSCMD
@@ -22,6 +23,13 @@ bibtex = """@article{Perrette_2011,
  title = {Near-ubiquity of ice-edge blooms in the Arctic},
  volume = {8},
  year = {2011}
+}"""
+
+bibtex2 = """@article{SomeOneElse2000,
+ author = {Some One},
+ doi = {10.5194/xxxx},
+ title = {Interesting Stuff},
+ year = {2000}
 }"""
 
 class TestBaseInstall(unittest.TestCase):
@@ -70,6 +78,7 @@ class TestLocalInstall(TestBaseInstall):
         config = Config.load(self._path(".papers/config.json"))
         self.assertEqual(config.bibtex, os.path.abspath(self._path(self.mybib)))
         self.assertEqual(config.filesdir, os.path.abspath(self._path(self.filesdir)))
+        self.assertFalse(config.git)
         # bibtex and files directory were created:
         self.assertTrue(self._exists(self.mybib))
         self.assertTrue(self._exists(self.filesdir))
@@ -88,6 +97,7 @@ class TestLocalInstall(TestBaseInstall):
         # self.assertEqual(config.bibtex, os.path.abspath(self._path("papers.bib")))
         self.assertEqual(config.bibtex, os.path.abspath(self._path("papers.bib")))
         self.assertEqual(config.filesdir, os.path.abspath(self._path("files")))
+        self.assertFalse(config.git)
 
 
     def test_install_defaults_preexisting_bibtex(self):
@@ -102,6 +112,7 @@ class TestLocalInstall(TestBaseInstall):
         config = Config.load(self._path(".papers/config.json"))
         self.assertEqual(config.bibtex, os.path.abspath(self._path(self.anotherbib)))
         self.assertEqual(config.filesdir, os.path.abspath(self._path("files")))
+        self.assertFalse(config.git)
 
 
     def test_install_defaults_preexisting_pdfs(self):
@@ -115,6 +126,7 @@ class TestLocalInstall(TestBaseInstall):
         # self.assertEqual(config.bibtex, os.path.abspath(self._path("papers.bib")))
         self.assertEqual(config.bibtex, os.path.abspath(self._path(self.anotherbib)))
         self.assertEqual(config.filesdir, os.path.abspath(self._path("pdfs")))
+        self.assertFalse(config.git)
 
     def test_install_raise(self):
         self.papers(f'install --force --local --bibtex {self.mybib} --files {self.filesdir}')
@@ -137,6 +149,7 @@ class TestLocalInstall(TestBaseInstall):
         self.assertEqual(config.bibtex, os.path.abspath(self._path(self.mybib + "XX")))
         # The files folder from previous install was forgotten
         self.assertEqual(config.filesdir, os.path.abspath(self._path("files")))
+        self.assertFalse(config.git)
 
     def test_install_edit(self):
         self.papers(f'install --force --local --bibtex {self.mybib} --files {self.filesdir}')
@@ -151,12 +164,14 @@ class TestLocalInstall(TestBaseInstall):
         self.assertEqual(config.bibtex, os.path.abspath(self._path(self.mybib + "XX")))
         # The files folder from previous install is remembered
         self.assertEqual(config.filesdir, os.path.abspath(self._path(self.filesdir)))
+        self.assertFalse(config.git)
 
     def test_install_interactive(self):
         # fully interactive install
         sp.check_call(f"""{PAPERSCMD} install --local << EOF
 {self.mybib}
 {self.filesdir}
+n
 EOF""", shell=True, cwd=self.temp_dir.name)
         self.assertTrue(self._exists(".papers/config.json"))
         self.assertTrue(self._exists(self.mybib))
@@ -164,11 +179,12 @@ EOF""", shell=True, cwd=self.temp_dir.name)
         config = Config.load(self._path(".papers/config.json"))
         self.assertEqual(config.bibtex, os.path.abspath(self._path(self.mybib)))
         self.assertEqual(config.filesdir, os.path.abspath(self._path(self.filesdir)))
-
+        self.assertFalse(config.git)
 
         # Now try simple carriage return (select default)
         sp.check_call(f"""{PAPERSCMD} install --local << EOF
 e
+
 
 
 EOF""", shell=True, cwd=self.temp_dir.name)
@@ -183,32 +199,54 @@ EOF""", shell=True, cwd=self.temp_dir.name)
         sp.check_call(f"""{PAPERSCMD} install --local --bibtex {self.mybib}XX << EOF
 e
 y
+n
 EOF""", shell=True, cwd=self.temp_dir.name)
         config = Config.load(self._path(".papers/config.json"))
         self.assertEqual(config.bibtex, os.path.abspath(self._path(self.mybib + "XX")))
         # The files folder from previous install is remembered
         self.assertEqual(config.filesdir, os.path.abspath(self._path(self.filesdir)))
+        self.assertFalse(config.git)
 
         # overwrite existing install (--force)
         sp.check_call(f"""{PAPERSCMD} install --local --bibtex {self.mybib}XX << EOF
 o
 y
+n
 EOF""", shell=True, cwd=self.temp_dir.name)
         config = Config.load(self._path(".papers/config.json"))
         self.assertEqual(config.bibtex, os.path.abspath(self._path(self.mybib + "XX")))
         # The files folder from previous install was forgotten
         self.assertEqual(config.filesdir, os.path.abspath(self._path("files")))
+        self.assertFalse(config.git)
 
         # reset default values from install
         sp.check_call(f"""{PAPERSCMD} install --local << EOF
 e
 reset
 reset
+n
 EOF""", shell=True, cwd=self.temp_dir.name)
         config = Config.load(self._path(".papers/config.json"))
         self.assertEqual(config.bibtex, None)
         # The files folder from previous install was forgotten
         self.assertEqual(config.filesdir, None)
+        self.assertFalse(config.git)
+
+        # install with git tracking
+        sp.check_call(f"""{PAPERSCMD} install --local << EOF
+e
+
+
+y
+y
+EOF""", shell=True, cwd=self.temp_dir.name)
+        config = Config.load(self._path(".papers/config.json"))
+        ## by default another bib is detected, because it starts with a (sorted)
+        self.assertEqual(config.bibtex, os.path.abspath(self._path(self.anotherbib)))
+        # The files folder from previous install was forgotten
+        self.assertEqual(config.filesdir, os.path.abspath(self._path("files")))
+        self.assertTrue(config.git)
+        self.assertTrue(config.gitlfs)
 
 
 class TestGlobalInstall(TestBaseInstall):
@@ -235,13 +273,43 @@ class TestGitInstall(TestBaseInstall):
         # count = sp.check_output(f'cd {self.temp_dir.name} && git rev-list --all --count', shell=True).strip().decode()
         # self.assertEqual(count, '0')
         count = self.papers('git rev-list --all --count')
-        self.assertEqual(count, '0')
-
         self.papers(f'add {self.anotherbib}')
         # self.papers(f'add --doi 10.5194/bg-8-515-2011')
-        count = self.papers('git rev-list --all --count')
-        self.papers(f'status -v', sp_cmd='check_call')
-
+        count2 = self.papers('git rev-list --all --count')
         # The part below fails on github CI, I cannot explain why
-        # self.assertEqual(count, '1')
+        self.assertEqual(int(count2), int(count)+1)
         # self.papers(f'git log', sp_cmd='check_call')
+
+
+    def test_undo(self):
+        self.papers(f'install --local --no-prompt --bibtex {self.mybib} --files {self.filesdir} --git --git-lfs')
+        biblio = Biblio.load(self._path(self.mybib), '')
+        self.assertEqual(len(biblio.entries), 0)
+        self.papers(f'add {self.anotherbib}')
+        biblio = Biblio.load(self._path(self.mybib), '')
+        self.assertEqual(len(biblio.entries), 1)
+
+        open(self._path('yetanother'), 'w').write(bibtex2)
+        self.papers(f'add yetanother')
+        biblio = Biblio.load(self._path(self.mybib), '')
+        self.assertEqual(len(biblio.entries), 2)
+
+        self.papers(f'undo')
+        biblio = Biblio.load(self._path(self.mybib), '')
+        self.assertEqual(len(biblio.entries), 1)
+
+        self.papers(f'undo')
+        biblio = Biblio.load(self._path(self.mybib), '')
+        self.assertEqual(len(biblio.entries), 0)
+
+        self.papers(f'redo')
+        biblio = Biblio.load(self._path(self.mybib), '')
+        self.assertEqual(len(biblio.entries), 1)
+
+        self.papers(f'redo')
+        biblio = Biblio.load(self._path(self.mybib), '')
+        self.assertEqual(len(biblio.entries), 2)
+
+        self.papers(f'redo')
+        biblio = Biblio.load(self._path(self.mybib), '')
+        self.assertEqual(len(biblio.entries), 2)
