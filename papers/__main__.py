@@ -664,7 +664,7 @@ def listcmd(parser, o, config):
             print(key(e),*[e.get(k, "") for k in o.field])
     elif o.key_only:
         for e in entries:
-            print(e['ID'].encode('utf-8'))
+            print(e['ID'])
     elif o.one_liner:
         for e in entries:
             tit = e.get('title', '')[:60]+ ('...' if len(e.get('title', ''))>60 else '')
