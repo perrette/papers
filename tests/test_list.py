@@ -18,14 +18,11 @@ bibtex = """@article{Perrette_2011,
 
 
 class ListTest(LocalInstallTest):
-
     initial_content = bibtex
     anotherbib_content = None
 
-    # def setUp(self):
-    #     super().setUp()
-    #     self.papers(f'list -l')
-    #     self.papers(f'add {self.anotherbib}')
+
+class FormattingTest(ListTest):
 
     def test_format(self):
         out = self.papers(f'list -l', sp_cmd='check_output')
@@ -36,6 +33,9 @@ class ListTest(LocalInstallTest):
 
         out = self.papers(f'list -f month doi', sp_cmd='check_output')
         self.assertEqual(strip_colors(out), "Perrette_2011: feb 10.5194/bg-8-515-2011")
+
+
+class SearchTest(ListTest):
 
     def test_list_title(self):
         out = self.papers(f'list --title "ice-edge blooms"', sp_cmd='check_output')
@@ -102,4 +102,13 @@ class ListTest(LocalInstallTest):
 
         # --any has no effect on multiple strings
         out = self.papers(f'list --year 2021 --author perrette --any', sp_cmd='check_output')
+        self.assertEqual(out, "")
+
+
+class EditTest(ListTest):
+    def test_delete(self):
+        out = self.papers(f'list --author perrette --delete', sp_cmd='check_output')
+        self.assertEqual(out, "")
+
+        out = self.papers(f'list', sp_cmd='check_output')
         self.assertEqual(out, "")
