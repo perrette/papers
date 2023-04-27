@@ -286,8 +286,14 @@ class TestGitInstall(TestBaseInstall):
         self.assertEqual(int(count2), int(count)+1)
 
 
-    def test_undo(self):
+class TestUndoGitLocal(TestBaseInstall):
+
+    def _install(self):
         self.papers(f'install --local --no-prompt --bibtex {self.mybib} --files {self.filesdir} --git --git-lfs')
+
+    def test_undo(self):
+        self._install()
+
         biblio = Biblio.load(self._path(self.mybib), '')
         self.assertEqual(len(biblio.entries), 0)
         self.papers(f'add {self.anotherbib}')
@@ -318,3 +324,10 @@ class TestGitInstall(TestBaseInstall):
         self.papers(f'redo')
         biblio = Biblio.load(self._path(self.mybib), '')
         self.assertEqual(len(biblio.entries), 2)
+
+
+class TestUndoGitGlobal(TestUndoGitLocal):
+
+    def _install(self):
+        self.papers(f'install --no-prompt --bibtex {self.mybib} --files {self.filesdir} --git --git-lfs')
+

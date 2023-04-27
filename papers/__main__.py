@@ -15,10 +15,19 @@ from papers import logger
 from papers.extract import extract_pdf_doi, isvaliddoi, extract_pdf_metadata
 from papers.extract import fetch_bibtex_by_doi
 from papers.encoding import parse_file, format_file, family_names, format_entries
-from papers.config import bcolors, Config, search_config, CONFIG_FILE, DATA_DIR
+from papers.config import bcolors, Config, search_config, CONFIG_FILE, DATA_DIR, CONFIG_FILE_LEGACY
 from papers.duplicate import list_duplicates, list_uniques, edit_entries
 from papers.bib import Biblio, FUZZY_RATIO, DEFAULT_SIMILARITY, entry_filecheck, backupfile, isvalidkey
 from papers import __version__
+
+
+def check_legacy_config(configfile):
+    " move config file from ~/.config/papersconfig.json to ~/.local/.share/papers/ "
+    if not os.path.exists(configfile) and os.path.exists(CONFIG_FILE_LEGACY):
+        os.makedirs(os.path.dirname(CONFIG_FILE), exist_ok=True)
+        shutil.move(CONFIG_FILE_LEGACY, CONFIG_FILE)
+        configfile = CONFIG_FILE
+    return configfile
 
 
 def get_biblio(config):
@@ -200,7 +209,6 @@ def installcmd(parser, o, config):
         workdir = Path(DATA_DIR)
         bibtex_files = [str(f) for f in sorted(Path('.').glob("*.bib"))] + [str(f) for f in sorted(workdir.glob("*.bib"))]
         checkdirs = [os.path.join(DATA_DIR, "files")] + checkdirs
-        config.gitdir = config.data = DATA_DIR
         
         if o.absolute_paths is None:
             o.absolute_paths = True
@@ -253,16 +261,10 @@ def installcmd(parser, o, config):
     if o.filesdir and o.filesdir.lower() in RESET_DEFAULT:
         o.filesdir = None
 
-
     config.bibtex = o.bibtex
     config.filesdir = o.filesdir
-    # config.gitdir = config.data = os.path.dirname(o.bibtex) if o.bibtex else DATA_DIR
-    # if o.gitdir and o.bibtex:
-    #     if Path(o.gitdir) not in Path(o.bibtex).parents:
-    #         print("--gitdir must be a parent of bibtex file")
-    #         parser.exit(1)
-    #     config.gitdir = o.gitdir
     config.file = papersconfig
+    config.gitdir = config.data = os.path.dirname(config.file)
     config.local = o.local
     config.absolute_paths = o.absolute_paths
 
@@ -314,11 +316,7 @@ def installcmd(parser, o, config):
     config.backup_files = config.gitlfs
 
     logger.info('save config file: '+config.file)
-    if o.local:
-        os.makedirs(".papers", exist_ok=True)
-    else:
-        from papers.config import CONFIG_HOME
-        os.makedirs(CONFIG_HOME, exist_ok=True)
+    os.makedirs(os.path.dirname(config.file), exist_ok=True)
 
     config.git = o.git
 
@@ -374,6 +372,7 @@ def uninstallcmd(parser, o, config):
 
     if o.recursive:
         config.file = search_config([os.path.join(".papers", "config.json")], start_dir=".", default=CONFIG_FILE)
+        config.file = check_legacy_config(config.file)
         uninstallcmd(parser, o, config)
 
 def check_install(parser, o, config):
@@ -512,6 +511,7 @@ def undocmd(parser, o, config):
     if config.git:
         return _git_undo(config)
 
+    logger.warning("git-tracking is not installed: undo / redo is limited to 1 step back and forth")
     back = backupfile(config.bibtex)
     tmp = config.bibtex + '.tmp'
     # my = :config.bibtex, config.filesdir)
@@ -985,6 +985,7 @@ def main(args=None):
     papers.config.DRYRUN = False  # reset in case main() if called directly
 
     configfile = search_config([os.path.join(".papers", "config.json")], start_dir=".", default=CONFIG_FILE)
+    configfile = check_legacy_config(configfile)
     if not os.path.exists(configfile):
         config = Config()
     else:
