@@ -29,7 +29,7 @@ class Config:
         bibtex=None, filesdir=None,
         keyformat=KEYFORMAT,
         nameformat=NAMEFORMAT,
-        gitdir=None, git=False, gitlfs=False, local=None, absolute_paths=None):
+        gitdir=None, git=False, gitlfs=False, local=None, absolute_paths=None, backup_files=False):
         self.file = file
         self.local = local
         self.data = data
@@ -43,6 +43,7 @@ class Config:
         self.gitdir = gitdir  or data
         self.git = git
         self.gitlfs = gitlfs
+        self.backup_files = backup_files
 
     def collections(self):
         files = []
@@ -57,6 +58,10 @@ class Config:
             return Path(self.bibtex).parent.resolve()
         else:
             return Path(os.path.sep)
+
+    def gitcmd(self, cmd):
+        sp.check_call(f"git {cmd}", shell=True, cwd=self.gitdir)
+
 
     def _relpath(self, p):
         if p is None: return p
@@ -90,6 +95,8 @@ class Config:
             "local": self.local,
             "absolute_paths": self.absolute_paths,
             "git": self.git,
+            "gitlfs": self.gitlfs,
+            "backup_files": self.backup_files,
             }, open(self.file, 'w'), sort_keys=True, indent=2, separators=(',', ': '))
 
 
@@ -113,31 +120,6 @@ class Config:
         for field in ['bibtex', 'filesdir', 'gitdir']:
             setattr(self, field, self._abspath(getattr(self, field), root))
 
-    # make a git commit?
-    @property
-    def _gitdir(self):
-        return os.path.join(self.gitdir, '.git')
-
-    def gitinit(self, branch=None):
-        if not os.path.exists(self._gitdir):
-            # with open(os.devnull, 'w') as shutup:
-            sp.check_call(['git','init'], cwd=self.gitdir or None)
-
-        else:
-            raise ValueError('git is already initialized in '+self.gitdir)
-
-    def gitcommit(self, branch=None, message=None):
-        if os.path.exists(self._gitdir):
-            message = message or f'save {self.bibtex} after command:\n\n    papers ' +' '.join(sys.argv[1:])
-            with open(os.devnull, 'w') as shutup:
-                if branch is not None:
-                    sp.check_call(['git','checkout',branch], stdout=shutup, stderr=shutup, cwd=self.gitdir)
-                sp.check_call(['git','add',self.bibtex], stdout=shutup, stderr=shutup, cwd=self.gitdir)
-                res = sp.call(['git','commit','-m', message], stdout=shutup, stderr=shutup, cwd=self.gitdir)
-                if res == 0:
-                    logger.info('git commit')
-        else:
-            raise ValueError('git is not initialized in '+self.gitdir)
 
     def status(self, check_files=False, verbose=False):
 
@@ -160,8 +142,8 @@ class Config:
             lines.append('* absolute paths:     '+str(self.absolute_paths))
             # lines.append('* app data directory: '+self.data)
             lines.append('* git-tracked:        '+str(self.git))
-            # lines.append('* git-lfs tracked:    '+str(self.gitlfs))
             if self.git:
+                lines.append('* git-lfs tracked:    '+str(self.gitlfs))
                 lines.append('* git directory :     '+self.gitdir)
 
         if self.filesdir is None:

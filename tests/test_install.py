@@ -70,6 +70,7 @@ class TestLocalInstall(TestBaseInstall):
         config = Config.load(self._path(".papers/config.json"))
         self.assertEqual(config.bibtex, os.path.abspath(self._path(self.mybib)))
         self.assertEqual(config.filesdir, os.path.abspath(self._path(self.filesdir)))
+        self.assertFalse(config.git)
         # bibtex and files directory were created:
         self.assertTrue(self._exists(self.mybib))
         self.assertTrue(self._exists(self.filesdir))
@@ -88,6 +89,7 @@ class TestLocalInstall(TestBaseInstall):
         # self.assertEqual(config.bibtex, os.path.abspath(self._path("papers.bib")))
         self.assertEqual(config.bibtex, os.path.abspath(self._path("papers.bib")))
         self.assertEqual(config.filesdir, os.path.abspath(self._path("files")))
+        self.assertFalse(config.git)
 
 
     def test_install_defaults_preexisting_bibtex(self):
@@ -102,6 +104,7 @@ class TestLocalInstall(TestBaseInstall):
         config = Config.load(self._path(".papers/config.json"))
         self.assertEqual(config.bibtex, os.path.abspath(self._path(self.anotherbib)))
         self.assertEqual(config.filesdir, os.path.abspath(self._path("files")))
+        self.assertFalse(config.git)
 
 
     def test_install_defaults_preexisting_pdfs(self):
@@ -115,6 +118,7 @@ class TestLocalInstall(TestBaseInstall):
         # self.assertEqual(config.bibtex, os.path.abspath(self._path("papers.bib")))
         self.assertEqual(config.bibtex, os.path.abspath(self._path(self.anotherbib)))
         self.assertEqual(config.filesdir, os.path.abspath(self._path("pdfs")))
+        self.assertFalse(config.git)
 
     def test_install_raise(self):
         self.papers(f'install --force --local --bibtex {self.mybib} --files {self.filesdir}')
@@ -137,6 +141,7 @@ class TestLocalInstall(TestBaseInstall):
         self.assertEqual(config.bibtex, os.path.abspath(self._path(self.mybib + "XX")))
         # The files folder from previous install was forgotten
         self.assertEqual(config.filesdir, os.path.abspath(self._path("files")))
+        self.assertFalse(config.git)
 
     def test_install_edit(self):
         self.papers(f'install --force --local --bibtex {self.mybib} --files {self.filesdir}')
@@ -151,12 +156,14 @@ class TestLocalInstall(TestBaseInstall):
         self.assertEqual(config.bibtex, os.path.abspath(self._path(self.mybib + "XX")))
         # The files folder from previous install is remembered
         self.assertEqual(config.filesdir, os.path.abspath(self._path(self.filesdir)))
+        self.assertFalse(config.git)
 
     def test_install_interactive(self):
         # fully interactive install
         sp.check_call(f"""{PAPERSCMD} install --local << EOF
 {self.mybib}
 {self.filesdir}
+n
 EOF""", shell=True, cwd=self.temp_dir.name)
         self.assertTrue(self._exists(".papers/config.json"))
         self.assertTrue(self._exists(self.mybib))
@@ -164,11 +171,12 @@ EOF""", shell=True, cwd=self.temp_dir.name)
         config = Config.load(self._path(".papers/config.json"))
         self.assertEqual(config.bibtex, os.path.abspath(self._path(self.mybib)))
         self.assertEqual(config.filesdir, os.path.abspath(self._path(self.filesdir)))
-
+        self.assertFalse(config.git)
 
         # Now try simple carriage return (select default)
         sp.check_call(f"""{PAPERSCMD} install --local << EOF
 e
+
 
 
 EOF""", shell=True, cwd=self.temp_dir.name)
@@ -183,32 +191,53 @@ EOF""", shell=True, cwd=self.temp_dir.name)
         sp.check_call(f"""{PAPERSCMD} install --local --bibtex {self.mybib}XX << EOF
 e
 y
+n
 EOF""", shell=True, cwd=self.temp_dir.name)
         config = Config.load(self._path(".papers/config.json"))
         self.assertEqual(config.bibtex, os.path.abspath(self._path(self.mybib + "XX")))
         # The files folder from previous install is remembered
         self.assertEqual(config.filesdir, os.path.abspath(self._path(self.filesdir)))
+        self.assertFalse(config.git)
 
         # overwrite existing install (--force)
         sp.check_call(f"""{PAPERSCMD} install --local --bibtex {self.mybib}XX << EOF
 o
 y
+n
 EOF""", shell=True, cwd=self.temp_dir.name)
         config = Config.load(self._path(".papers/config.json"))
         self.assertEqual(config.bibtex, os.path.abspath(self._path(self.mybib + "XX")))
         # The files folder from previous install was forgotten
         self.assertEqual(config.filesdir, os.path.abspath(self._path("files")))
+        self.assertFalse(config.git)
 
         # reset default values from install
         sp.check_call(f"""{PAPERSCMD} install --local << EOF
 e
 reset
 reset
+n
 EOF""", shell=True, cwd=self.temp_dir.name)
         config = Config.load(self._path(".papers/config.json"))
         self.assertEqual(config.bibtex, None)
         # The files folder from previous install was forgotten
         self.assertEqual(config.filesdir, None)
+        self.assertFalse(config.git)
+
+        # install with git tracking
+        sp.check_call(f"""{PAPERSCMD} install --local << EOF
+e
+reset
+reset
+y
+y
+EOF""", shell=True, cwd=self.temp_dir.name)
+        config = Config.load(self._path(".papers/config.json"))
+        self.assertEqual(config.bibtex, None)
+        # The files folder from previous install was forgotten
+        self.assertEqual(config.filesdir, None)
+        self.assertTrue(config.git)
+        self.assertTrue(config.gitlfs)
 
 
 class TestGlobalInstall(TestBaseInstall):
@@ -235,13 +264,15 @@ class TestGitInstall(TestBaseInstall):
         # count = sp.check_output(f'cd {self.temp_dir.name} && git rev-list --all --count', shell=True).strip().decode()
         # self.assertEqual(count, '0')
         count = self.papers('git rev-list --all --count')
-        self.assertEqual(count, '0')
+        self.assertEqual(count, '1')
 
+        self.papers(f'status -v', sp_cmd='check_call')
         self.papers(f'add {self.anotherbib}')
         # self.papers(f'add --doi 10.5194/bg-8-515-2011')
+        self.papers(f'status -v', sp_cmd='check_call')
         count = self.papers('git rev-list --all --count')
         self.papers(f'status -v', sp_cmd='check_call')
 
         # The part below fails on github CI, I cannot explain why
-        # self.assertEqual(count, '1')
+        self.assertEqual(count, '2')
         # self.papers(f'git log', sp_cmd='check_call')

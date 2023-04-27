@@ -1,6 +1,7 @@
 """That is the script called by papers
 """
 import os
+import sys
 from pathlib import Path
 import logging
 import argparse
@@ -31,6 +32,95 @@ def get_biblio(config):
     return biblio
 
 
+def _backup_bib(biblio, config, message=None):
+    # backupdir = Path(config.file).parent
+    backupdir = Path(config.gitdir)
+    backupdir.mkdir(exist_ok=True)
+    backupfile = backupdir/'papers.bib'
+
+    if backupfile.exists():
+        backupfile.remove()
+
+    ## Here we could create a copy of biblio since it is modified in place
+    ## For now, we exit the program after saving, so don't bother
+    if config.backup_files:
+        backupfilesdir = backupdir/"files"
+        backupfilesdir.mkdir(exist_ok=True)
+        biblio.filesdir = str(backupfilesdir)
+        biblio.rename_entries_files(copy=True, relative_to=backupdir)
+        biblio.save(backupfile)
+        config.gitcmd(f"add {backupfile}")
+        config.gitcmd(f"add {backupfilesdir}")
+
+    else:
+        biblio.update_file_path(relative_to=backupdir)
+        biblio.save(backupfile)
+        config.gitcmd(f"add {backupfile}")
+
+    # no redo possible
+    futuresfile = backupdir/"futures.txt"
+    if futuresfile.exists():
+        # futuresfile.remove()
+        # may fail if does not exist and was never commited before -- fine
+        config.gitcmd(f"rm -f {futuresfile}")
+
+    message = message or f'back-up {config.bibtex} after command:\n\n    papers ' +' '.join(sys.argv[1:])
+    config.gitcmd(f"commit -m '{message}'")
+    config.gitcmd(f"clean -f")
+
+def _restore_from_backupdir(config):
+    # copy the files to the working directory
+    # backupdir = Path(config.file).parent
+    backupdir = Path(config.gitdir)
+    backupfile = backupdir/'papers.bib'
+    if os.path.exists(config.bibtex):
+        os.remove(config.bibtex)
+    if config.backup_files:
+        cmd = f"papers add {backupfile} --bibtex {config.bibtex} --filesdir {config.filesdir} --rename --copy"
+    else:
+        cmd = f"papers add {backupfile} --bibtex {config.bibtex} --filesdir {config.filesdir}"
+    # sp.check_call(f"PYTHONPATH={Path(papers.__file__).parent.parent} -m {cmd}", shell=True)
+    # Here we avoid starting a new process with re-importing python libs etc
+    main(cmd.split())
+
+def _git_undo(config):
+    """papers undo using git backup"""
+    # backupdir = Path(config.file).parent
+    backupdir = Path(config.gitdir)
+    backupfile = backupdir/'papers.bib'
+    # keep track of where we come from, for future redos
+    current = sp.check_output(f"git rev-parse HEAD", shell=True, cwd=backupdir).strip().decode()
+    #  now go back
+    config.gitcmd(f"reset --hard HEAD^")
+    futuresfile = backupdir/"futures.txt"
+    open(futuresfile, 'a+').write(current)
+    _restore_from_backupdir(config)
+
+def _git_redo(config):
+    """papers redo using git backup"""
+    # backupdir = Path(config.file).parent
+    backupdir = Path(config.gitdir)
+    backupfile = backupdir/'papers.bib'
+    # keep track of where we come from, for future redos
+    try:
+        futures = open(futuresfile, 'r').readlines()
+        last = futures[-1].strip()
+    except:
+        last = ""
+    if not last:
+        logger.info("Nothing to redo")
+        return
+
+    config.gitcmd(f"reset --hard {last}")
+    futures = futures[:-1]
+    if futures:
+        open(futuresfile, 'w').write("\n".join(futures))
+    else:
+        futuresfile.remove()
+
+    _restore_from_backupdir(config)
+
+
 def savebib(biblio, config):
     """
     Given a Biblio object and its configuration, save them to disk.  If you're using the git bib tracker, will trigger a git commit there.
@@ -41,8 +131,10 @@ def savebib(biblio, config):
     logger.info(f'Saving {config.bibtex}')
     if biblio is not None:
         biblio.save(config.bibtex)
-    if config.git:
-        config.gitcommit()
+    if config.file and config.git:
+        _backup_bib(biblio, config)
+    # if config.git:
+        # config.gitcommit()
 
 
 def set_keyformat_config_from_cmd(o, config):
@@ -94,6 +186,7 @@ def installcmd(parser, o, config):
         papersconfig = config.file or ".papers/config.json"
         workdir = Path('.')
         bibtex_files = [str(f) for f in workdir.glob("*.bib")]
+        config.gitdir = config.data = os.path.dirname(papersconfig)
         
         if o.absolute_paths is None:
             o.absolute_paths = False
@@ -102,7 +195,8 @@ def installcmd(parser, o, config):
         papersconfig = CONFIG_FILE
         workdir = Path(DATA_DIR)
         bibtex_files = [str(f) for f in Path('.').glob("*.bib")] + [str(f) for f in workdir.glob("*.bib")]
-        checkdirs = [os.path.join(papers.config.DATA_DIR, "files")] + checkdirs
+        checkdirs = [os.path.join(DATA_DIR, "files")] + checkdirs
+        config.gitdir = config.data = DATA_DIR
         
         if o.absolute_paths is None:
             o.absolute_paths = True
@@ -119,7 +213,7 @@ def installcmd(parser, o, config):
             break
 
     RESET_DEFAULT = ('none', 'null', 'unset', 'undefined', 'reset', 'delete', 'no', 'n')
-    ACCEPT_DEFAULT = ('yes', 'y')
+    ACCEPT_DEFAULT = ('yes', 'y', '')
 
     if not o.bibtex:
         if len(bibtex_files) > 1:
@@ -158,22 +252,15 @@ def installcmd(parser, o, config):
 
     config.bibtex = o.bibtex
     config.filesdir = o.filesdir
-    config.gitdir = config.data = os.path.dirname(o.bibtex) if o.bibtex else DATA_DIR
-    if o.gitdir and o.bibtex:
-        if Path(o.gitdir) not in Path(o.bibtex).parents:
-            print("--gitdir must be a parent of bibtex file")
-            parser.exit(1)
-        config.gitdir = o.gitdir
+    # config.gitdir = config.data = os.path.dirname(o.bibtex) if o.bibtex else DATA_DIR
+    # if o.gitdir and o.bibtex:
+    #     if Path(o.gitdir) not in Path(o.bibtex).parents:
+    #         print("--gitdir must be a parent of bibtex file")
+    #         parser.exit(1)
+    #     config.gitdir = o.gitdir
     config.file = papersconfig
     config.local = o.local
     config.absolute_paths = o.absolute_paths
-
-    if o.prompt and config.git and not o.git and o.bibtex == config.bibtex:
-        ans = input('stop git tracking (this will not affect actual git directory)? [Y/n] ')
-        if ans.lower() != 'y':
-            o.git = True
-
-    config.git = o.git
 
     # create bibtex file if not existing
     bibtex = Path(o.bibtex) if o.bibtex else None
@@ -189,6 +276,38 @@ def installcmd(parser, o, config):
         logger.info(f'create empty files directory: {filesdir}')
         filesdir.mkdir(parents=True)
 
+    if config.gitlfs:
+        o.git = True
+        config.git = True
+
+    default_git = config.git if config.git is not None else False
+    if o.git is None:
+        if prompt:
+            ans = input(f"Use git to back-up the bibtex file ? [Enter: {default_git}/Yes/No]: ")
+            if ans.strip() == '':
+                o.git = default_git
+            else:
+                o.git = ans.strip() in ACCEPT_DEFAULT
+        else:
+            o.git = default_git
+    config.git = o.git
+
+    if not config.git:
+        o.git_lfs = False
+
+    default_git_lfs = config.gitlfs if config.gitlfs is not None else False
+    if o.git_lfs is None:
+        if prompt:
+            ans = input(f"Use git-lfs to back-up associated files ? [Enter: {default_git_lfs}/Yes/No]: ")
+            if ans.strip() == '':
+                o.git_lfs = default_git_lfs
+            else:
+                o.git_lfs = ans.strip() in ACCEPT_DEFAULT
+        else:
+            o.git_lfs = default_git_lfs
+    config.gitlfs = o.git_lfs
+
+    config.backup_files = config.gitlfs
 
     logger.info('save config file: '+config.file)
     if o.local:
@@ -197,10 +316,23 @@ def installcmd(parser, o, config):
         from papers.config import CONFIG_HOME
         os.makedirs(CONFIG_HOME, exist_ok=True)
 
-    if o.git and not os.path.exists(config._gitdir):
-        config.gitinit()
+    config.git = o.git
 
     config.save()
+
+    if config.git:
+        if (Path(config.gitdir)/'.git').exists():
+            logger.warn(f'{config.gitdir} is already initialized')
+        else:
+            os.makedirs(config.gitdir, exist_ok=True)
+            sp.check_call('git init', cwd=config.gitdir, shell=True)
+        if config.gitlfs:
+            sp.check_call(f'git lfs track "files/"', cwd=config.gitdir, shell=True)
+            sp.check_call(f'git add .gitattributes', cwd=config.gitdir, shell=True)
+
+        sp.check_call(f'git add {os.path.abspath(config.file)}', cwd=config.gitdir, shell=True)
+        message = f'papers ' +' '.join(sys.argv[1:])
+        config.gitcmd(f"commit -m '{message}'")
 
     print(config.status(check_files=not o.no_check_files, verbose=True))
 
@@ -351,7 +483,16 @@ def filecheckcmd(parser, o, config):
         
     savebib(biblio, config)
 
+def redocmd(parser, o, config):
+    if config.git:
+        return _git_redo(config)
+    else:
+        undocmd(parser, o, config)
+
 def undocmd(parser, o, config):
+    if config.git:
+        return _git_undo(config)
+
     back = backupfile(config.bibtex)
     tmp = config.bibtex + '.tmp'
     # my = :config.bibtex, config.filesdir)
@@ -609,14 +750,8 @@ def get_parser(config=None):
         and having the rest under .papers (config options). Only keep the cache globally.
         This might not play out too well with git tracking (local install usuall have their own git) but might be OK.""")
 
-    installp.add_argument('--git', action='store_true',
-        help="""Track bibtex files with git.
-        Each time the bibtex is modified, a copy of the file is saved in a git-tracked
-        global directory (see papers status), and committed. Note the original bibtex name is
-        kept, so that different files can be tracked simultaneously, as long as the names do
-        not conflict. This option is mainly useful for backup purposes (local or remote).
-        Use in combination with `papers git`'
-        """)
+    installp.add_argument('--git', '--backup', action='store_true', default=None, help="""Track bibtex files with git.""")
+    installp.add_argument('--git-lfs', '--backup-files', action='store_true', default=None, help="""Backup files with git-lfs (implies --git)""")
     installp.add_argument('--gitdir', default=None, help=argparse.SUPPRESS)
 
     grp = installp.add_argument_group('status')
@@ -812,7 +947,8 @@ def get_parser(config=None):
 
     # undo
     # ====
-    undop = subparsers.add_parser('undo', parents=[cfg])
+    undop = subparsers.add_parser('undo', parents=[cfg], help='this command is modified and more powerful if git-tracking is enabled (infinite memory vs back-and-forth switch)')
+    redop = subparsers.add_parser('redo', parents=[cfg], help='this command is modified and more powerful if git-tracking is enabled (infinite memory vs back-and-forth switch)')
 
     # git
     # ===
@@ -825,7 +961,7 @@ def get_parser(config=None):
 # Main script
 #############
 
-def main():
+def main(args=None):
 
     configfile = search_config([os.path.join(".papers", "config.json")], start_dir=".", default=CONFIG_FILE)
     if not os.path.exists(configfile):
@@ -837,7 +973,7 @@ def main():
 
     parser, subparsers = get_parser(config)
 
-    o, args = parser.parse_known_args()
+    o, args = parser.parse_known_args(args)
 
     if o.version:
         print(__version__)
@@ -881,6 +1017,8 @@ def main():
         check_install(subp, o, config) and listcmd(subp, o, config)
     elif o.cmd == 'undo':
         check_install(subp, o, config) and undocmd(subp, o, config)
+    elif o.cmd == 'redo':
+        check_install(subp, o, config) and redocmd(subp, o, config)
     elif o.cmd == 'git':
         if not installed:
             subp.error('papers must be installed to use git command')
