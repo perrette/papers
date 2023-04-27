@@ -342,7 +342,7 @@ def choose_entry_interactive(entries, extra=[], msg='', select=False, best=None)
 
 
 
-def edit_entries(entries, diff=False, ndiff=False):
+def edit_entries(entries, diff=False, ndiff=False, editor=None):
     '''edit entries and insert result in database
     '''
     # write the listed entries to temporary file
@@ -363,7 +363,7 @@ def edit_entries(entries, diff=False, ndiff=False):
     with open(filename, 'w') as f:
         f.write(entrystring)
 
-    res = os.system('{} {}'.format(os.getenv('EDITOR'), filename))
+    res = os.system('{} {}'.format(editor or os.getenv('EDITOR'), filename))
 
     if res == 0:
         logger.info('sucessfully edited file, insert edited entries')

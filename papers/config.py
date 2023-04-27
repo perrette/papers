@@ -30,11 +30,13 @@ class Config:
         bibtex=None, filesdir=None,
         keyformat=KEYFORMAT,
         nameformat=NAMEFORMAT,
+        editor=None,
         gitdir=None, git=False, gitlfs=False, local=None, absolute_paths=None, backup_files=False):
         self.file = file
         self.local = local
         self.data = data
         self.filesdir = filesdir
+        self.editor = editor
         self.bibtex = bibtex
         self.keyformat = keyformat
         self.nameformat = nameformat
@@ -45,6 +47,17 @@ class Config:
         self.git = git
         self.gitlfs = gitlfs
         self.backup_files = backup_files
+
+
+    @property
+    def editor(self):
+        return self._editor
+
+    @editor.setter
+    def editor(self, value):
+        if value is not None:
+            os.environ['EDITOR'] = value
+        self._editor = value
 
     def collections(self):
         files = []
@@ -91,6 +104,7 @@ class Config:
             "filesdir": self._relpath(self.filesdir),
             "bibtex": self._relpath(self.bibtex),
             "gitdir": self._relpath(self.gitdir),
+            "editor": self.editor,
             "keyformat": self.keyformat.todict(),
             "nameformat": self.nameformat.todict(),
             "local": self.local,
@@ -146,6 +160,7 @@ class Config:
             if self.git:
                 lines.append('* git-lfs tracked:    '+str(self.gitlfs))
                 lines.append('* git directory :     '+self.gitdir)
+            lines.append('* editor:             '+str(self.editor))
 
         if self.filesdir is None:
             status = bcolors.WARNING+' (unset)'+bcolors.ENDC

@@ -275,6 +275,9 @@ def installcmd(parser, o, config):
     config.local = o.local
     config.absolute_paths = o.absolute_paths
 
+    if o.editor:
+        config.editor = o.editor
+
     # create bibtex file if not existing
     bibtex = Path(o.bibtex) if o.bibtex else None
     
@@ -787,6 +790,7 @@ def get_parser(config=None):
     installp.add_argument('--git', '--backup', action='store_true', default=None, help="""Track bibtex files with git.""")
     installp.add_argument('--git-lfs', '--backup-files', action='store_true', default=None, help="""Backup files with git-lfs (implies --git)""")
     installp.add_argument('--gitdir', default=None, help=argparse.SUPPRESS)
+    installp.add_argument('--editor', help="""Set command to open text editor. Need to wait until closing ! E.g. vim or subl -w""")
 
     grp = installp.add_argument_group('status')
     # grp.add_argument('-l','--status', action='store_true')
