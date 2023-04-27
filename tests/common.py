@@ -168,6 +168,12 @@ class BaseTest(BibTest):
     """This class provides a temporary directory to work with
     """
 
+    mybib = "papersxyz.bib"
+    filesdir = "filesxyz"
+    anotherbib = 'another.bib'
+    anotherbib_content = bibtex
+    initial_content = None
+
     def setUp(self):
         if os.path.exists(CONFIG_FILE):
             self.backup = tempfile.mktemp(prefix='papers.bib.backup')
@@ -176,11 +182,12 @@ class BaseTest(BibTest):
             self.backup = None
 
         self.temp_dir = tempfile.TemporaryDirectory()
-        self.mybib = "papersxyz.bib"
-        self.filesdir = "filesxyz"
-        self.anotherbib = 'another.bib'
-        self.anotherbib_content = bibtex
-        open(self._path(self.anotherbib), 'w').write(bibtex)
+
+        if self.anotherbib_content is not None:
+            open(self._path(self.anotherbib), 'w').write(self.anotherbib_content)
+
+        if self.initial_content is not None:
+            open(self._path(self.mybib), 'w').write(self.initial_content)
 
     def tearDown(self):
         if os.path.exists(CONFIG_FILE):
