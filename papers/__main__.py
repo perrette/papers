@@ -38,49 +38,50 @@ def _backup_bib(biblio, config, message=None):
     backupdir.mkdir(exist_ok=True)
     backupfile = backupdir/'papers.bib'
 
-    if backupfile.exists():
-        backupfile.remove()
+    # remove if exists
+    backupfile.unlink(missing_ok=True)
 
     ## Here we could create a copy of biblio since it is modified in place
     ## For now, we exit the program after saving, so don't bother
     if config.backup_files:
+        logger.info('backup bibliography with files')
         backupfilesdir = backupdir/"files"
         backupfilesdir.mkdir(exist_ok=True)
         biblio.filesdir = str(backupfilesdir)
         biblio.rename_entries_files(copy=True, relative_to=backupdir)
         biblio.save(backupfile)
-        config.gitcmd(f"add {backupfile}")
-        config.gitcmd(f"add {backupfilesdir}")
+        config.gitcmd(f"add papers.bib")
+        config.gitcmd(f"add files")
 
     else:
+        logger.info('backup bibliography only (without files)')
         biblio.update_file_path(relative_to=backupdir)
         biblio.save(backupfile)
-        config.gitcmd(f"add {backupfile}")
-
-    # no redo possible
-    futuresfile = backupdir/"futures.txt"
-    if futuresfile.exists():
-        # futuresfile.remove()
-        # may fail if does not exist and was never commited before -- fine
-        config.gitcmd(f"rm -f {futuresfile}")
+        config.gitcmd(f"add papers.bib", check=False)
 
     message = message or f'back-up {config.bibtex} after command:\n\n    papers ' +' '.join(sys.argv[1:])
-    config.gitcmd(f"commit -m '{message}'")
-    config.gitcmd(f"clean -f")
+    res = config.gitcmd(f"commit -m '{message}'", check=False)
+    if res != 0:
+        logger.warning('Failed to commit')
+
+    config.gitcmd(f"clean -f")   # will also clean future files
 
 def _restore_from_backupdir(config):
+    logger.info('restore bibliography')
     # copy the files to the working directory
     # backupdir = Path(config.file).parent
     backupdir = Path(config.gitdir)
     backupfile = backupdir/'papers.bib'
     if os.path.exists(config.bibtex):
         os.remove(config.bibtex)
+    open(config.bibtex, 'w').write('')
     if config.backup_files:
-        cmd = f"papers add {backupfile} --bibtex {config.bibtex} --filesdir {config.filesdir} --rename --copy"
+        cmd = f"add {backupfile} --bibtex {config.bibtex} --filesdir {config.filesdir} --rename --copy --no-git"
     else:
-        cmd = f"papers add {backupfile} --bibtex {config.bibtex} --filesdir {config.filesdir}"
-    # sp.check_call(f"PYTHONPATH={Path(papers.__file__).parent.parent} -m {cmd}", shell=True)
+        cmd = f"add {backupfile} --bibtex {config.bibtex} --filesdir {config.filesdir} --no-git"
+    # return sp.check_call(f"PYTHONPATH={Path(papers.__file__).parent.parent} python3 -m papers {cmd}", shell=True)
     # Here we avoid starting a new process with re-importing python libs etc
+    logger.info("papers "+cmd)
     main(cmd.split())
 
 def _git_undo(config):
@@ -93,7 +94,7 @@ def _git_undo(config):
     #  now go back
     config.gitcmd(f"reset --hard HEAD^")
     futuresfile = backupdir/"futures.txt"
-    open(futuresfile, 'a+').write(current)
+    open(futuresfile, 'a+').write(current+"\n")
     _restore_from_backupdir(config)
 
 def _git_redo(config):
@@ -102,6 +103,7 @@ def _git_redo(config):
     backupdir = Path(config.gitdir)
     backupfile = backupdir/'papers.bib'
     # keep track of where we come from, for future redos
+    futuresfile = backupdir/"futures.txt"
     try:
         futures = open(futuresfile, 'r').readlines()
         last = futures[-1].strip()
@@ -116,7 +118,7 @@ def _git_redo(config):
     if futures:
         open(futuresfile, 'w').write("\n".join(futures))
     else:
-        futuresfile.remove()
+        futuresfile.unlink()
 
     _restore_from_backupdir(config)
 
@@ -217,7 +219,7 @@ def installcmd(parser, o, config):
 
     if not o.bibtex:
         if len(bibtex_files) > 1:
-            logger.warn("Several bibtex files found: "+" ".join([str(b) for b in bibtex_files]))
+            logger.warning("Several bibtex files found: "+" ".join([str(b) for b in bibtex_files]))
         if bibtex_files:
             default_bibtex = bibtex_files[0]
         if prompt:
@@ -322,7 +324,7 @@ def installcmd(parser, o, config):
 
     if config.git:
         if (Path(config.gitdir)/'.git').exists():
-            logger.warn(f'{config.gitdir} is already initialized')
+            logger.warning(f'{config.gitdir} is already initialized')
         else:
             os.makedirs(config.gitdir, exist_ok=True)
             config.gitcmd('init')
@@ -335,9 +337,17 @@ def installcmd(parser, o, config):
             config.gitcmd('lfs track "files/"')
             config.gitcmd('add .gitattributes')
 
+        with open(Path(config.gitdir)/'.gitignore', 'a+') as f:
+            lines = f.readlines()
+            if 'futures.txt' not in (l.strip() for l in lines):
+                f.write('futures.txt\n')
+        config.gitcmd('add .gitignore')
+        config.gitcmd('status',check=False)
         config.gitcmd(f'add {os.path.abspath(config.file)}')
         message = f'papers ' +' '.join(sys.argv[1:])
-        config.gitcmd(f"commit -m '{message}'")
+        config.gitcmd(f'commit -m "new install: config file"', check=False)
+        biblio = get_biblio(config)
+        _backup_bib(biblio, config)
 
     print(config.status(check_files=not o.no_check_files, verbose=True))
 
@@ -374,6 +384,8 @@ def check_install(parser, o, config):
         config.filesdir = o.filesdir
     if getattr(o, "absolute_paths", None) is not None:
         config.absolute_paths = o.absolute_paths
+    if getattr(o, "git", None) is not None:
+        config.git = o.git
 
     install_doc = f"first execute `papers install --bibtex {config.bibtex or '...'} [ --local ]`"
     if not config.bibtex:
@@ -699,6 +711,7 @@ def get_parser(config=None):
         help='no PDF renaming/copying, no bibtex writing on disk (for testing)')
     grp.add_argument('--relative-paths', action="store_false", dest="absolute_paths", default=None)
     grp.add_argument('--absolute-paths', action="store_true", default=None)
+    grp.add_argument('--no-git', action='store_false', dest='git', help="""Do not commit the currrent action, whatever happens""")
 
     keyfmt = argparse.ArgumentParser(add_help=False)
     grp = keyfmt.add_argument_group('bibtex key format')

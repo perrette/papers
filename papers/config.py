@@ -59,8 +59,8 @@ class Config:
         else:
             return Path(os.path.sep)
 
-    def gitcmd(self, cmd):
-        sp.check_call(f"git {cmd}", shell=True, cwd=self.gitdir)
+    def gitcmd(self, cmd, check=True):
+        return (sp.check_call if check else sp.call)(f"git {cmd}", shell=True, cwd=self.gitdir)
 
 
     def _relpath(self, p):

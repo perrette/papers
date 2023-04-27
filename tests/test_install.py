@@ -6,6 +6,7 @@ import unittest
 import subprocess as sp
 from papers.config import Config, search_config
 from papers.config import CONFIG_FILE
+from papers.bib import Biblio
 # from pathlib import Path
 
 from tests.common import paperscmd, prepare_paper, run, PAPERSCMD
@@ -24,6 +25,13 @@ bibtex = """@article{Perrette_2011,
  year = {2011}
 }"""
 
+bibtex2 = """@article{SomeOneElse2000,
+ author = {Some One},
+ doi = {10.5194/xxxx},
+ title = {Interesting Stuff},
+ year = {2000}
+}"""
+
 class TestBaseInstall(unittest.TestCase):
 
     def setUp(self):
@@ -39,12 +47,12 @@ class TestBaseInstall(unittest.TestCase):
         self.anotherbib = 'another.bib'
         open(self._path(self.anotherbib), 'w').write(bibtex)
 
-    def tearDown(self):
-        if os.path.exists(CONFIG_FILE):
-            os.remove(CONFIG_FILE)
-        if self.backup:
-            shutil.move(self.backup, CONFIG_FILE)
-        self.temp_dir.cleanup()
+    # def tearDown(self):
+    #     if os.path.exists(CONFIG_FILE):
+    #         os.remove(CONFIG_FILE)
+    #     if self.backup:
+    #         shutil.move(self.backup, CONFIG_FILE)
+    #     self.temp_dir.cleanup()
 
 
     def _path(self, p):
@@ -264,15 +272,43 @@ class TestGitInstall(TestBaseInstall):
         # count = sp.check_output(f'cd {self.temp_dir.name} && git rev-list --all --count', shell=True).strip().decode()
         # self.assertEqual(count, '0')
         count = self.papers('git rev-list --all --count')
-        self.assertEqual(count, '1')
-
-        self.papers(f'status -v', sp_cmd='check_call')
         self.papers(f'add {self.anotherbib}')
         # self.papers(f'add --doi 10.5194/bg-8-515-2011')
-        self.papers(f'status -v', sp_cmd='check_call')
-        count = self.papers('git rev-list --all --count')
-        self.papers(f'status -v', sp_cmd='check_call')
-
+        count2 = self.papers('git rev-list --all --count')
         # The part below fails on github CI, I cannot explain why
-        self.assertEqual(count, '2')
+        self.assertEqual(int(count2), int(count)+1)
         # self.papers(f'git log', sp_cmd='check_call')
+
+
+    def test_undo(self):
+        self.papers(f'install --local --no-prompt --bibtex {self.mybib} --files {self.filesdir} --git --git-lfs')
+        biblio = Biblio.load(self._path(self.mybib), '')
+        self.assertEqual(len(biblio.entries), 0)
+        self.papers(f'add {self.anotherbib}')
+        biblio = Biblio.load(self._path(self.mybib), '')
+        self.assertEqual(len(biblio.entries), 1)
+
+        open(self._path('yetanother'), 'w').write(bibtex2)
+        self.papers(f'add yetanother')
+        biblio = Biblio.load(self._path(self.mybib), '')
+        self.assertEqual(len(biblio.entries), 2)
+
+        self.papers(f'undo')
+        biblio = Biblio.load(self._path(self.mybib), '')
+        self.assertEqual(len(biblio.entries), 1)
+
+        self.papers(f'undo')
+        biblio = Biblio.load(self._path(self.mybib), '')
+        self.assertEqual(len(biblio.entries), 0)
+
+        self.papers(f'redo')
+        biblio = Biblio.load(self._path(self.mybib), '')
+        self.assertEqual(len(biblio.entries), 1)
+
+        self.papers(f'redo')
+        biblio = Biblio.load(self._path(self.mybib), '')
+        self.assertEqual(len(biblio.entries), 2)
+
+        self.papers(f'redo')
+        biblio = Biblio.load(self._path(self.mybib), '')
+        self.assertEqual(len(biblio.entries), 2)
