@@ -47,12 +47,12 @@ class TestBaseInstall(unittest.TestCase):
         self.anotherbib = 'another.bib'
         open(self._path(self.anotherbib), 'w').write(bibtex)
 
-    # def tearDown(self):
-    #     if os.path.exists(CONFIG_FILE):
-    #         os.remove(CONFIG_FILE)
-    #     if self.backup:
-    #         shutil.move(self.backup, CONFIG_FILE)
-    #     self.temp_dir.cleanup()
+    def tearDown(self):
+        if os.path.exists(CONFIG_FILE):
+            os.remove(CONFIG_FILE)
+        if self.backup:
+            shutil.move(self.backup, CONFIG_FILE)
+        self.temp_dir.cleanup()
 
 
     def _path(self, p):
