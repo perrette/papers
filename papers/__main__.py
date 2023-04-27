@@ -22,8 +22,10 @@ from papers import __version__
 
 
 def get_biblio(config):
-    relative_to = os.path.sep if config.absolute_paths else os.path.dirname(config.bibtex)
-    if os.path.exists(config.bibtex):
+    if config.bibtex is None:
+        raise ValueError('bibtex is not initialized')
+    relative_to = os.path.sep if config.absolute_paths else (os.path.dirname(config.bibtex) if config.bibtex else None)
+    if config.bibtex and os.path.exists(config.bibtex):
         biblio = Biblio.load(config.bibtex, config.filesdir, nameformat=config.nameformat, keyformat=config.keyformat)
         if biblio.relative_to != relative_to:
             biblio.update_file_path(relative_to)

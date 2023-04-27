@@ -235,15 +235,15 @@ EOF""", shell=True, cwd=self.temp_dir.name)
         # install with git tracking
         sp.check_call(f"""{PAPERSCMD} install --local << EOF
 e
-reset
-reset
+
+
 y
 y
 EOF""", shell=True, cwd=self.temp_dir.name)
         config = Config.load(self._path(".papers/config.json"))
-        self.assertEqual(config.bibtex, None)
+        self.assertEqual(config.bibtex, os.path.abspath(self._path(self.mybib)))
         # The files folder from previous install was forgotten
-        self.assertEqual(config.filesdir, None)
+        self.assertEqual(config.filesdir, os.path.abspath(self._path("files")))
         self.assertTrue(config.git)
         self.assertTrue(config.gitlfs)
 
