@@ -189,7 +189,7 @@ def installcmd(parser, o, config):
     if o.local:
         papersconfig = config.file or ".papers/config.json"
         workdir = Path('.')
-        bibtex_files = [str(f) for f in workdir.glob("*.bib")]
+        bibtex_files = [str(f) for f in sorted(workdir.glob("*.bib"))]
         config.gitdir = config.data = os.path.dirname(papersconfig)
         
         if o.absolute_paths is None:
@@ -198,7 +198,7 @@ def installcmd(parser, o, config):
     else:
         papersconfig = CONFIG_FILE
         workdir = Path(DATA_DIR)
-        bibtex_files = [str(f) for f in Path('.').glob("*.bib")] + [str(f) for f in workdir.glob("*.bib")]
+        bibtex_files = [str(f) for f in sorted(Path('.').glob("*.bib"))] + [str(f) for f in sorted(workdir.glob("*.bib"))]
         checkdirs = [os.path.join(DATA_DIR, "files")] + checkdirs
         config.gitdir = config.data = DATA_DIR
         

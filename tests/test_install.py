@@ -241,7 +241,8 @@ y
 y
 EOF""", shell=True, cwd=self.temp_dir.name)
         config = Config.load(self._path(".papers/config.json"))
-        self.assertEqual(config.bibtex, os.path.abspath(self._path(self.mybib)))
+        ## by default another bib is detected, because it starts with a (sorted)
+        self.assertEqual(config.bibtex, os.path.abspath(self._path(self.anotherbib)))
         # The files folder from previous install was forgotten
         self.assertEqual(config.filesdir, os.path.abspath(self._path("files")))
         self.assertTrue(config.git)
