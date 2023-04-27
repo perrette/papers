@@ -58,3 +58,19 @@ class ListTest(LocalInstallTest):
 
         out = self.papers(f'list --year 2011 --strict', sp_cmd='check_output')
         self.assertMultiLineEqual(out, self.anotherbib_content)
+
+
+    def test_list_combined(self):
+        out = self.papers(f'list --year 2011 --author perrette', sp_cmd='check_output')
+        self.assertMultiLineEqual(out, self.anotherbib_content)
+
+        # Here we'd need the full name (never useful in practice)
+        out = self.papers(f'list --year 2011 --author perrette --strict', sp_cmd='check_output')
+        self.assertEqual(out, "")
+
+        out = self.papers(f'list --year 2021 --author perrette', sp_cmd='check_output')
+        self.assertEqual(out, "")
+
+        # --any has no effect on multiple strings
+        out = self.papers(f'list --year 2021 --author perrette --any', sp_cmd='check_output')
+        self.assertEqual(out, "")
