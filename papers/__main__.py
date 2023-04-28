@@ -70,7 +70,7 @@ def _backup_bib(biblio, config, message=None):
         biblio.save(backupfile)
         config.gitcmd(f"add papers.bib", check=False)
 
-    message = message or f'back-up {config.bibtex} after command:\n\n    papers ' +' '.join(sys.argv[1:])
+    message = message or f'papers ' +' '.join(sys.argv[1:])
     res = config.gitcmd(f"commit -m '{message}'", check=False)
     config.gitcmd(f"clean -f")   # will also clean future files
 
