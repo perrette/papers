@@ -658,9 +658,12 @@ def listcmd(parser, o, config):
         # key = lambda e: bcolors.OKBLUE+e['ID']+filetag(e)+':'+bcolors.ENDC
         key = lambda e: _nfiles(e)*(bcolors.BOLD)+bcolors.OKBLUE+e['ID']+':'+bcolors.ENDC
 
+    def parse_keywords(e):
+        return [w.strip() for w in e.get('keywords', '').split(',') if w.strip()]
+
     if o.add_keywords:
         for e in entries:
-            keywords = [w.strip() for w in e.get('keywords', '').split(',') if w.strip()]
+            keywords = parse_keywords(e)
             for w in o.add_keywords:
                 if w not in keywords:
                     keywords.append(w)
@@ -704,6 +707,9 @@ def listcmd(parser, o, config):
             n = _nfiles(e)
             if n:
                 info.append(bcolors.OKGREEN+'file:'+str(n)+bcolors.ENDC)
+            if e.get('keywords',''):
+                keywords = parse_keywords(e)
+                info.append(bcolors.WARNING+" | ".join(keywords)+bcolors.ENDC)
             infotag = '('+', '.join(info)+')' if info else ''
             print(key(e), tit, infotag)
     else:
