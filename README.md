@@ -8,7 +8,8 @@
 
 Command-line tool to manage bibliography (pdfs + bibtex)
 
-> **WARNING**: This tool requires further development and testing, and is not fully production-ready as such (contributors welcome).
+Disclaimer: This tool requires further development and testing, and might never be fully production-ready (contributors welcome). \
+That said, it is becoming useful :)
 
 ## Motivation
 
