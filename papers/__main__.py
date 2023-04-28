@@ -72,9 +72,6 @@ def _backup_bib(biblio, config, message=None):
 
     message = message or f'back-up {config.bibtex} after command:\n\n    papers ' +' '.join(sys.argv[1:])
     res = config.gitcmd(f"commit -m '{message}'", check=False)
-    if res != 0:
-        logger.warning('Failed to commit')
-
     config.gitcmd(f"clean -f")   # will also clean future files
 
 def _restore_from_backupdir(config):
@@ -354,7 +351,6 @@ def installcmd(parser, o, config):
             if 'futures.txt' not in (l.strip() for l in lines):
                 f.write('futures.txt\n')
         config.gitcmd('add .gitignore')
-        config.gitcmd('status',check=False)
         config.gitcmd(f'add {os.path.abspath(config.file)}')
         message = f'papers ' +' '.join(sys.argv[1:])
         config.gitcmd(f'commit -m "new install: config file"', check=False)
