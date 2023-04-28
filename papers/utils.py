@@ -85,13 +85,13 @@ def checksum(fname):
 # move / copy
 def move(f1, f2, copy=False, interactive=True, dryrun=False, hardlink=True):
     maybe = 'dry-run:: ' if dryrun else ''
+    if f1 == f2:
+        logger.info('dest is identical to src: '+f1)
+        return
     dirname = os.path.dirname(f2)
     if dirname and not os.path.exists(dirname):
         logger.info(f'{maybe}create directory: {dirname}')
         if not dryrun: os.makedirs(dirname)
-    if f1 == f2:
-        logger.info('dest is identical to src: '+f1)
-        return
 
     if os.path.exists(f2):
         # if identical file, pretend nothing happened, skip copying

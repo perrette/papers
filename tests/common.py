@@ -12,10 +12,15 @@ from contextlib import redirect_stdout
 import shlex
 
 import papers
+from papers import logger, logging
 from papers.utils import set_directory
 from papers.__main__ import main
 from papers.config import CONFIG_FILE, CONFIG_FILE_LOCAL, Config
 from papers.bib import Biblio
+
+debug_level = logging.DEBUG
+logger.setLevel(debug_level)
+
 # Using python -m papers instead of papers otherwise pytest --cov does not detect the call
 PAPERSCMD = f'PYTHONPATH={Path(papers.__file__).parent.parent} python3 -m papers'
 
@@ -42,6 +47,8 @@ def call(f, *args, check=False, check_output=False, cwd=None, **kwargs):
 def speedy_paperscmd(cmd, sp_cmd=None, cwd=None, **kw):
     if '<' in cmd:
         return reliable_paperscmd(cmd, sp_cmd, cwd, **kw)
+
+    logger.setLevel(debug_level)
 
     check = sp_cmd is None or "check" in sp_cmd
     check_output = sp_cmd == 'check_output'
@@ -231,8 +238,22 @@ class LocalGitInstallTest(LocalInstallTest):
         self.config = Config.load(self._path(CONFIG_FILE_LOCAL))
 
 
+class GlobalGitInstallTest(LocalInstallTest):
+    def setUp(self):
+        super().setUp()
+        self.papers(f'install --force --git --bibtex {self.mybib} --files {self.filesdir}')
+        self.config = Config.load(self._path(CONFIG_FILE))
+
+
 class LocalGitLFSInstallTest(LocalInstallTest):
     def setUp(self):
         super().setUp()
         self.papers(f'install --force --local --git --git-lfs --bibtex {self.mybib} --files {self.filesdir}')
         self.config = Config.load(self._path(CONFIG_FILE_LOCAL))
+
+
+class GlobalGitLFSInstallTest(LocalInstallTest):
+    def setUp(self):
+        super().setUp()
+        self.papers(f'install --force --git --git-lfs --bibtex {self.mybib} --files {self.filesdir}')
+        self.config = Config.load(self._path(CONFIG_FILE))

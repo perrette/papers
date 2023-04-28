@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 import json
 import shutil
 import tempfile
@@ -333,96 +334,6 @@ EOF""")
         config = Config.load(self._path(CONFIG_FILE_LOCAL))
         self.assertTrue(config.git)
         self.assertFalse(config.gitlfs)
-
-
-class TestUndoGitLocal(TestBaseInstall):
-
-    def _install(self):
-        self.papers(f'install --local --no-prompt --bibtex {self.mybib} --files {self.filesdir} --git --git-lfs')
-
-
-    def test_undo(self):
-        self._install()
-
-        biblio = Biblio.load(self._path(self.mybib), '')
-        self.assertEqual(len(biblio.entries), 0)
-        self.papers(f'add {self.anotherbib}')
-        biblio = Biblio.load(self._path(self.mybib), '')
-        self.assertEqual(len(biblio.entries), 1)
-
-        open(self._path('yetanother'), 'w').write(bibtex2)
-        self.papers(f'add yetanother')
-        biblio = Biblio.load(self._path(self.mybib), '')
-        self.assertEqual(len(biblio.entries), 2)
-
-        self.papers(f'undo')
-        biblio = Biblio.load(self._path(self.mybib), '')
-        self.assertEqual(len(biblio.entries), 1)
-
-        self.papers(f'undo')
-        biblio = Biblio.load(self._path(self.mybib), '')
-        self.assertEqual(len(biblio.entries), 0)
-
-        self.papers(f'redo')
-        biblio = Biblio.load(self._path(self.mybib), '')
-        self.assertEqual(len(biblio.entries), 1)
-
-        self.papers(f'redo')
-        biblio = Biblio.load(self._path(self.mybib), '')
-        self.assertEqual(len(biblio.entries), 2)
-
-        self.papers(f'redo')
-        biblio = Biblio.load(self._path(self.mybib), '')
-        self.assertEqual(len(biblio.entries), 2)
-
-
-class TestUndoGitOnlyLocal(TestUndoGitLocal):
-    def _install(self):
-        self.papers(f'install --local --no-prompt --bibtex {self.mybib} --files {self.filesdir} --git')
-
-
-class TestUndoGitGlobal(TestUndoGitLocal):
-
-    def _install(self):
-        self.papers(f'install --no-prompt --bibtex {self.mybib} --files {self.filesdir} --git --git-lfs')
-
-
-class TestUndoNoInstall(TestBaseInstall):
-
-    def test_undo(self):
-
-        open(self._path(self.mybib), 'w').write('')
-
-        biblio = Biblio.load(self._path(self.mybib), '')
-        self.assertEqual(len(biblio.entries), 0)
-        self.papers(f'add {self.anotherbib}  --bibtex {self.mybib} --files {self.filesdir}')
-        biblio = Biblio.load(self._path(self.mybib), '')
-        self.assertEqual(len(biblio.entries), 1)
-
-        open(self._path('yetanother'), 'w').write(bibtex2)
-        self.papers(f'add yetanother --bibtex {self.mybib} --files {self.filesdir}')
-        biblio = Biblio.load(self._path(self.mybib), '')
-        self.assertEqual(len(biblio.entries), 2)
-
-        self.papers(f'undo --bibtex {self.mybib} --files {self.filesdir}')
-        biblio = Biblio.load(self._path(self.mybib), '')
-        self.assertEqual(len(biblio.entries), 1)
-
-        self.papers(f'undo --bibtex {self.mybib} --files {self.filesdir}')
-        biblio = Biblio.load(self._path(self.mybib), '')
-        self.assertEqual(len(biblio.entries), 2)
-
-        self.papers(f'redo --bibtex {self.mybib} --files {self.filesdir}')
-        biblio = Biblio.load(self._path(self.mybib), '')
-        self.assertEqual(len(biblio.entries), 1)
-
-        self.papers(f'redo --bibtex {self.mybib} --files {self.filesdir}')
-        biblio = Biblio.load(self._path(self.mybib), '')
-        self.assertEqual(len(biblio.entries), 2)
-
-        self.papers(f'redo --bibtex {self.mybib} --files {self.filesdir}')
-        biblio = Biblio.load(self._path(self.mybib), '')
-        self.assertEqual(len(biblio.entries), 1)
 
 
 

@@ -68,6 +68,14 @@ class Config:
         return sorted(f for f in files if f.endswith('.bib'))
 
     @property
+    def backupfile_clean(self):
+        return Path(self.gitdir)/'backup_clean.bib'
+
+    @property
+    def backupfile(self):
+        return Path(self.gitdir)/'backup_copy.bib'
+
+    @property
     def root(self):
         if self.local and self.bibtex:
             return Path(self.bibtex).parent.resolve()
