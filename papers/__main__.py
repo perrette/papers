@@ -629,6 +629,8 @@ def listcmd(parser, o, config):
         entries = [e for e in entries if 'title' in e and _longmatch(e['title'], o.title)]
     if o.abstract:
         entries = [e for e in entries if 'abstract' in e and _longmatch(e['abstract'], o.abstract)]
+    if o.keywords:
+        entries = [e for e in entries if 'keywords' in e and _longmatch(e['keywords'], o.keywords)]
     if o.fullsearch:
         o.strict = False
         entries = [e for e in entries if _longmatch(_fullsearch_string(e), o.fullsearch)]
