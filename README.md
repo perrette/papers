@@ -92,12 +92,31 @@ The `add` command above also works without any PDF (create a bibtex entry withou
     
 ### List entries (and edit etc...)
 
-    $> papers list -l
+Pretty listing (-1 or -l for one-liner listing, otherwise plain bibtex):
+
+    $> papers list -1
     Perrette2013: A scaling approach to project regional sea level rise and it... (doi:10.5194/esd-4-11-2013, file:1)
 
-`papers list` is a useful command, inspired from unix's `find` and `grep`.
+Search with any number of keywords:
+
+    $> papers list perrette scaling approach sea level -1
+    ... (short list)
+    $> papers list perrette scaling approach sea level --any -1
+    ... (long list)
+    $> papers list --key perrette2013 --author perrette --year 2013 --title scaling approach sea level -1
+    ... (precise list)
+
+Add tags to view papers by topic:
+
+    $> papers list perrette2013 --add-tag sea-level projections -1
+    ...
+    $> papers list --tag sea-level projections -1
+    Perrette2013: A scaling approach to project regional sea level rise and it... (doi:10.5194/esd-4-11-2013, file:1, sea-level | projections )
+
+`papers list` is a powerful command, inspired from unix's `find` and `grep`.
+
 It lets you search in your bibtex in a typical manner (including a number of special flags such as `--duplicates`, `--review-required`, `--broken-file`...),
-then output the result in a number of formats (one-liner, raw bibtex, keys-only, selected fields) or let you perform actions on it (currently `--edit`, `--delete`).
+then output the result in a number of formats (one-liner, raw bibtex, keys-only, selected fields) or let you perform actions on it (currently `--edit`, `--delete`, `--add-tag`, `--fetch`).
 For instance, it is possible to manually merge the duplicates with:
 
     $> papers list --duplicates --edit
@@ -263,25 +282,34 @@ That command is also convenient to check on what's actually tracked and what is 
 
     Install comes with the option to git-track any change to the bibtex file (`--git`) options.
 
-    $> papers install --bibtex papers.bib --filesdir files --git
+    $> papers install --bibtex papers.bib --filesdir files --git  [ --git-lfs ]
 
 From now on, every change to the library will result in an automatic git commit.
 And `papers git ...` command will work just as `git ...` executed from the bibtex directory.
 E.g. `papers git add origin *REMOTE URL*`; `papers git lfs track files`; `papers git add files`; `papers git push`
-Note this is an experimental feature at this stage, with likely changes in future versions (Issue #51).
 
-This probably makes more sense for a global install (local installs usually have their own git tracking system).
+If `--git-lfs` is passed, the files will be backed-up along with the bibtex.
+Under the hood, bibtex and files (if applicable) are copied (hard-linked) to a back-up directory.
+Details are described in [issue 51](https://github.com/perrette/papers/issues/51).
+
+In local installs, backup occurs in `.papers/`. In global installs, defaults to `~/.local/.share/papers`.
+Type `papers status -v` to find out.
+
+For local install that are already git-tracked, the feature remains useful as it is the basis for `papers undo` and `papers redo`.
+You might want to add `.papers` to your .gitignore to avoid messing up with your larger project.
+
+This feature is experimental.
 
 
-### undo
+### undo / redo
 
 Did a `papers add` and are unhappy with the result?
 
     papers undo
 
 will revert to the previous version. If repeated, it will jump back and forth between latest and before-latest.
-
-Better to git-track your bibliography to go back deeper into history.
+Unless papers is installed with --git option, in which case `papers undo` and `papers redo` will have essentially infinite memory
+(doing undos and making a new commit risk loosing history, unless you keep track of the commit).
 
 
 Consult inline help for more detailed documentation!
@@ -300,10 +328,10 @@ Current features
 - some support for attachment
 - merging (`papers check --duplicates ...`)
 - fix entries (`papers check --format-name --encoding unicode --fix-doi --fix-key ...`)
-- undo command (`papers undo`)
 - configuration file with default bibtex and files directory (`papers install --bibtex BIB --filesdir DIR ...`)
-- experimental integration with git
-- display / search / list entries : format as bibtex or key or whatever (`papers list ... [-k | -l]`)
+- integration with git
+- undo/redo command (`papers undo / redo`)
+- display / search / list entries : format as bibtex or key or whatever (`papers list ... [--key-only, -l]`)
 - list + edit or remove entry by key or else  (`papers list ... [--edit, --delete]`)
 - fix broken PDF links (`papers filecheck ...`):
     - remove duplicate file names (always) or file copies (`--hash-check`)
@@ -313,25 +341,12 @@ Current features
         - latex characters, e.g. `{\_}` or `{\'{e}}` replaced with unicode
 
 
-Feature ideas (TODO: organize as issues for discussion)
--------------
-- `papers encode`: text encoding in bibtex entries (latex, unicode, ascii)
-- additional checks on entries:
-    - duplicate-authors and more like [here](https://github.com/tdegeus/bibparse)
-- support collections (distinct bibtex entries, same files directory)
-    - or maybe more like ´papers update-from OTHER.bib´ to update changes based on DOI / key
-    - could also use git branches / merge
-- associate bibtex to existing pdf collection (to move library location)
-- fetch PDFs for existing entries? Bindings with [sopaper](https://github.com/ppwwyyxx/SoPaper)
-- lazy loading of modules (optimization)
-
-
 Tests
 -----
-Test coverage in progress...
+Test coverage is improving (now 80%)
 
 Currently covers:
-- `papers extract`
+- `papers extract` (test on a handful of PDFs)
     - parse pdf DOI
     - fetch bibtex on crossref based on DOI
     - fetch bibtex on crossref based fulltext search
@@ -340,21 +355,14 @@ Currently covers:
     - add entry and manage conflict
     - add pdf file, bibtex, directory
     - add one pdf file with attachment (beta, API will change)
-- `papers check --duplicates`
     - conflict resolution
-- `papers install` (superficial test)
+- `papers install`
 - internals:
     - duplicate test with levels `EXACT`, `GOOD`, `FAIR` (the default), `PARTIAL`
-
-
-Todo (more bug prone until then !):
-- `papers check` (fix DOI etc.)
-- `papers filecheck` (especially rename files, including those with attachment)
 - `papers list`
-- `papers status`
-- `papers install` (extend)
-- `papers undo`
-- `papers git`
+- `papers undo / redo` (partial)
+- `papers filecheck --rename` (superficial)
+- `papers check --duplicate` (fix DOI etc.) (superficial)
 
 
 Why not JabRef, Zotero or Mendeley (or...) ?
