@@ -15,7 +15,7 @@ from papers import logger
 from papers.extract import extract_pdf_doi, isvaliddoi, extract_pdf_metadata
 from papers.extract import fetch_bibtex_by_doi
 from papers.encoding import parse_file, format_file, family_names, format_entries
-from papers.config import bcolors, Config, search_config, CONFIG_FILE, DATA_DIR, CONFIG_FILE_LEGACY
+from papers.config import bcolors, Config, search_config, CONFIG_FILE, CONFIG_FILE_LOCAL, DATA_DIR, CONFIG_FILE_LEGACY
 from papers.duplicate import list_duplicates, list_uniques, edit_entries
 from papers.bib import Biblio, FUZZY_RATIO, DEFAULT_SIMILARITY, entry_filecheck, backupfile, isvalidkey
 from papers import __version__
@@ -203,7 +203,7 @@ def installcmd(parser, o, config):
     default_filesdir = config.filesdir or "files"
 
     if o.local:
-        papersconfig = config.file or ".papers/config.json"
+        papersconfig = config.file or CONFIG_FILE_LOCAL
         workdir = Path('.')
         bibtex_files = [str(f) for f in sorted(workdir.glob("*.bib"))]
         config.gitdir = config.data = os.path.dirname(papersconfig)
@@ -376,7 +376,7 @@ def uninstallcmd(parser, o, config):
         return
 
     if o.recursive:
-        config.file = search_config([os.path.join(".papers", "config.json")], start_dir=".", default=CONFIG_FILE)
+        config.file = search_config([CONFIG_FILE_LOCAL], start_dir=".", default=CONFIG_FILE)
         config.file = check_legacy_config(config.file)
         uninstallcmd(parser, o, config)
 
@@ -1022,7 +1022,7 @@ def get_parser(config=None):
 def main(args=None):
     papers.config.DRYRUN = False  # reset in case main() if called directly
 
-    configfile = search_config([os.path.join(".papers", "config.json")], start_dir=".", default=CONFIG_FILE)
+    configfile = search_config([CONFIG_FILE_LOCAL], start_dir=".", default=CONFIG_FILE)
     configfile = check_legacy_config(configfile)
     if not os.path.exists(configfile):
         config = Config()

@@ -14,7 +14,7 @@ import shlex
 import papers
 from papers.utils import set_directory
 from papers.__main__ import main
-from papers.config import CONFIG_FILE, Config
+from papers.config import CONFIG_FILE, CONFIG_FILE_LOCAL, Config
 from papers.bib import Biblio
 # Using python -m papers instead of papers otherwise pytest --cov does not detect the call
 PAPERSCMD = f'PYTHONPATH={Path(papers.__file__).parent.parent} python3 -m papers'
@@ -215,7 +215,7 @@ class LocalInstallTest(BaseTest):
     def setUp(self):
         super().setUp()
         self.papers(f'install --force --local --bibtex {self.mybib} --files {self.filesdir}')
-        self.config = Config.load(self._path(".papers/config.json"))
+        self.config = Config.load(self._path(CONFIG_FILE_LOCAL))
 
 class GlobalInstallTest(BaseTest):
     def setUp(self):
@@ -228,11 +228,11 @@ class LocalGitInstallTest(LocalInstallTest):
     def setUp(self):
         super().setUp()
         self.papers(f'install --force --local --git --bibtex {self.mybib} --files {self.filesdir}')
-        self.config = Config.load(self._path(".papers/config.json"))
+        self.config = Config.load(self._path(CONFIG_FILE_LOCAL))
 
 
 class LocalGitLFSInstallTest(LocalInstallTest):
     def setUp(self):
         super().setUp()
         self.papers(f'install --force --local --git --git-lfs --bibtex {self.mybib} --files {self.filesdir}')
-        self.config = Config.load(self._path(".papers/config.json"))
+        self.config = Config.load(self._path(CONFIG_FILE_LOCAL))

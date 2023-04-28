@@ -5,7 +5,7 @@ import tempfile
 import unittest
 import subprocess as sp
 from papers.config import Config
-from papers.config import CONFIG_FILE
+from papers.config import CONFIG_FILE, CONFIG_FILE_LOCAL
 from papers.bib import Biblio
 # from pathlib import Path
 
@@ -26,9 +26,9 @@ class TestLocalInstall(TestBaseInstall):
         self.assertFalse(self._exists(self.filesdir))
         self.papers(f'install --force --local --bibtex {self.mybib} --files {self.filesdir}')
         # Config file was created:
-        self.assertTrue(self._exists(".papers/config.json"))
+        self.assertTrue(self._exists(CONFIG_FILE_LOCAL))
         # Values of config file match input:
-        config = Config.load(self._path(".papers/config.json"))
+        config = Config.load(self._path(CONFIG_FILE_LOCAL))
         self.assertEqual(config.bibtex, os.path.abspath(self._path(self.mybib)))
         self.assertEqual(config.filesdir, os.path.abspath(self._path(self.filesdir)))
         self.assertFalse(config.git)
@@ -40,13 +40,13 @@ class TestLocalInstall(TestBaseInstall):
     def test_install_defaults_no_preexisting_bibtex(self):
         self.assertFalse(self._exists(self.mybib))
         self.assertFalse(self._exists(self.filesdir))
-        self.assertFalse(self._exists(".papers/config.json"))
+        self.assertFalse(self._exists(CONFIG_FILE_LOCAL))
         # pre-existing bibtex?
         os.remove(self._path(self.anotherbib))
         self.assertFalse(self._exists(self.anotherbib))
         self.papers(f'install --force --local')
-        self.assertTrue(self._exists(".papers/config.json"))
-        config = Config.load(self._path(".papers/config.json"))
+        self.assertTrue(self._exists(CONFIG_FILE_LOCAL))
+        config = Config.load(self._path(CONFIG_FILE_LOCAL))
         # self.assertEqual(config.bibtex, os.path.abspath(self._path("papers.bib")))
         self.assertEqual(config.bibtex, os.path.abspath(self._path("papers.bib")))
         self.assertEqual(config.filesdir, os.path.abspath(self._path("files")))
@@ -56,13 +56,13 @@ class TestLocalInstall(TestBaseInstall):
     def test_install_defaults_preexisting_bibtex(self):
         self.assertFalse(self._exists(self.mybib))
         self.assertFalse(self._exists(self.filesdir))
-        self.assertFalse(self._exists(".papers/config.json"))
+        self.assertFalse(self._exists(CONFIG_FILE_LOCAL))
         # pre-existing bibtex
         self.assertTrue(self._exists(self.anotherbib))
         self.assertFalse(self._exists("papers.bib"))
         self.papers(f'install --force --local')
-        self.assertTrue(self._exists(".papers/config.json"))
-        config = Config.load(self._path(".papers/config.json"))
+        self.assertTrue(self._exists(CONFIG_FILE_LOCAL))
+        config = Config.load(self._path(CONFIG_FILE_LOCAL))
         self.assertEqual(config.bibtex, os.path.abspath(self._path(self.anotherbib)))
         self.assertEqual(config.filesdir, os.path.abspath(self._path("files")))
         self.assertFalse(config.git)
@@ -70,12 +70,12 @@ class TestLocalInstall(TestBaseInstall):
 
     def test_install_defaults_preexisting_pdfs(self):
         self.assertFalse(self._exists(self.filesdir))
-        self.assertFalse(self._exists(".papers/config.json"))
+        self.assertFalse(self._exists(CONFIG_FILE_LOCAL))
         # pre-existing pdfs folder (pre-defined set of names)
         os.makedirs(self._path("pdfs"))
         self.papers(f'install --force --local')
-        self.assertTrue(self._exists(".papers/config.json"))
-        config = Config.load(self._path(".papers/config.json"))
+        self.assertTrue(self._exists(CONFIG_FILE_LOCAL))
+        config = Config.load(self._path(CONFIG_FILE_LOCAL))
         # self.assertEqual(config.bibtex, os.path.abspath(self._path("papers.bib")))
         self.assertEqual(config.bibtex, os.path.abspath(self._path(self.anotherbib)))
         self.assertEqual(config.filesdir, os.path.abspath(self._path("pdfs")))
@@ -83,7 +83,7 @@ class TestLocalInstall(TestBaseInstall):
 
     def test_install_raise(self):
         self.papers(f'install --force --local --bibtex {self.mybib} --files {self.filesdir}')
-        self.assertTrue(self._exists(".papers/config.json"))
+        self.assertTrue(self._exists(CONFIG_FILE_LOCAL))
         self.assertTrue(self._exists(self.mybib))
         self.assertTrue(self._exists(self.filesdir))
         f = lambda : self.papers(f'install --local --bibtex {self.mybib} --files {self.filesdir}')
@@ -91,14 +91,14 @@ class TestLocalInstall(TestBaseInstall):
 
     def test_install_force(self):
         self.papers(f'install --force --local --bibtex {self.mybib} --files {self.filesdir}')
-        self.assertTrue(self._exists(".papers/config.json"))
+        self.assertTrue(self._exists(CONFIG_FILE_LOCAL))
         self.assertTrue(self._exists(self.mybib))
         self.assertTrue(self._exists(self.filesdir))
-        config = Config.load(self._path(".papers/config.json"))
+        config = Config.load(self._path(CONFIG_FILE_LOCAL))
         self.assertEqual(config.bibtex, os.path.abspath(self._path(self.mybib)))
         self.assertEqual(config.filesdir, os.path.abspath(self._path(self.filesdir)))
         self.papers(f'install --local --force --bibtex {self.mybib}XX')
-        config = Config.load(self._path(".papers/config.json"))
+        config = Config.load(self._path(CONFIG_FILE_LOCAL))
         self.assertEqual(config.bibtex, os.path.abspath(self._path(self.mybib + "XX")))
         # The files folder from previous install was forgotten
         self.assertEqual(config.filesdir, os.path.abspath(self._path("files")))
@@ -106,14 +106,14 @@ class TestLocalInstall(TestBaseInstall):
 
     def test_install_edit(self):
         self.papers(f'install --force --local --bibtex {self.mybib} --files {self.filesdir}')
-        self.assertTrue(self._exists(".papers/config.json"))
+        self.assertTrue(self._exists(CONFIG_FILE_LOCAL))
         self.assertTrue(self._exists(self.mybib))
         self.assertTrue(self._exists(self.filesdir))
-        config = Config.load(self._path(".papers/config.json"))
+        config = Config.load(self._path(CONFIG_FILE_LOCAL))
         self.assertEqual(config.bibtex, os.path.abspath(self._path(self.mybib)))
         self.assertEqual(config.filesdir, os.path.abspath(self._path(self.filesdir)))
         self.papers(f'install --local --edit --bibtex {self.mybib}XX')
-        config = Config.load(self._path(".papers/config.json"))
+        config = Config.load(self._path(CONFIG_FILE_LOCAL))
         self.assertEqual(config.bibtex, os.path.abspath(self._path(self.mybib + "XX")))
         # The files folder from previous install is remembered
         self.assertEqual(config.filesdir, os.path.abspath(self._path(self.filesdir)))
@@ -126,10 +126,10 @@ class TestLocalInstall(TestBaseInstall):
 {self.filesdir}
 n
 EOF""", shell=True, cwd=self.temp_dir.name)
-        self.assertTrue(self._exists(".papers/config.json"))
+        self.assertTrue(self._exists(CONFIG_FILE_LOCAL))
         self.assertTrue(self._exists(self.mybib))
         self.assertTrue(self._exists(self.filesdir))
-        config = Config.load(self._path(".papers/config.json"))
+        config = Config.load(self._path(CONFIG_FILE_LOCAL))
         self.assertEqual(config.bibtex, os.path.abspath(self._path(self.mybib)))
         self.assertEqual(config.filesdir, os.path.abspath(self._path(self.filesdir)))
         self.assertFalse(config.git)
@@ -142,10 +142,10 @@ e
 
 
 EOF""", shell=True, cwd=self.temp_dir.name)
-        self.assertTrue(self._exists(".papers/config.json"))
+        self.assertTrue(self._exists(CONFIG_FILE_LOCAL))
         self.assertTrue(self._exists(self.mybib))
         self.assertTrue(self._exists(self.filesdir))
-        config = Config.load(self._path(".papers/config.json"))
+        config = Config.load(self._path(CONFIG_FILE_LOCAL))
         self.assertEqual(config.bibtex, os.path.abspath(self._path(self.mybib)))
         self.assertEqual(config.filesdir, os.path.abspath(self._path(self.filesdir)))
 
@@ -155,7 +155,7 @@ e
 y
 n
 EOF""", shell=True, cwd=self.temp_dir.name)
-        config = Config.load(self._path(".papers/config.json"))
+        config = Config.load(self._path(CONFIG_FILE_LOCAL))
         self.assertEqual(config.bibtex, os.path.abspath(self._path(self.mybib + "XX")))
         # The files folder from previous install is remembered
         self.assertEqual(config.filesdir, os.path.abspath(self._path(self.filesdir)))
@@ -167,7 +167,7 @@ o
 y
 n
 EOF""", shell=True, cwd=self.temp_dir.name)
-        config = Config.load(self._path(".papers/config.json"))
+        config = Config.load(self._path(CONFIG_FILE_LOCAL))
         self.assertEqual(config.bibtex, os.path.abspath(self._path(self.mybib + "XX")))
         # The files folder from previous install was forgotten
         self.assertEqual(config.filesdir, os.path.abspath(self._path("files")))
@@ -180,7 +180,7 @@ reset
 reset
 n
 EOF""", shell=True, cwd=self.temp_dir.name)
-        config = Config.load(self._path(".papers/config.json"))
+        config = Config.load(self._path(CONFIG_FILE_LOCAL))
         self.assertEqual(config.bibtex, None)
         # The files folder from previous install was forgotten
         self.assertEqual(config.filesdir, None)
@@ -194,7 +194,7 @@ e
 y
 y
 EOF""", shell=True, cwd=self.temp_dir.name)
-        config = Config.load(self._path(".papers/config.json"))
+        config = Config.load(self._path(CONFIG_FILE_LOCAL))
         ## by default another bib is detected, because it starts with a (sorted)
         self.assertEqual(config.bibtex, os.path.abspath(self._path(self.anotherbib)))
         # The files folder from previous install was forgotten
@@ -226,17 +226,17 @@ class TestInstallEditor(TestBaseInstall):
 
     def test_install(self):
         self.papers(f'install --force --local --editor "subl -w"')
-        config = Config.load(self._path(".papers/config.json"))
+        config = Config.load(self._path(CONFIG_FILE_LOCAL))
         self.assertEqual(config.editor, "subl -w")
 
 
 class TestDefaultLocal(LocalInstallTest):
     def test_install(self):
-        self.assertTrue(self._exists(".papers/config.json"))
+        self.assertTrue(self._exists(CONFIG_FILE_LOCAL))
         self.assertTrue(self.config.local)
         self.papers(f'install --edit')
-        self.assertTrue(self._exists(".papers/config.json"))
-        config = Config.load(self._path(".papers/config.json"))
+        self.assertTrue(self._exists(CONFIG_FILE_LOCAL))
+        config = Config.load(self._path(CONFIG_FILE_LOCAL))
         self.assertTrue(config.local)
 
 class TestDefaultLocal2(GlobalInstallTest):
@@ -268,7 +268,7 @@ class TestGitInstall(TestBaseInstall):
 
     def test_install_gitlfs(self):
         self.papers(f'install --local --no-prompt --git-lfs')
-        config = Config.load(self._path(".papers/config.json"))
+        config = Config.load(self._path(CONFIG_FILE_LOCAL))
         self.assertTrue(config.git)
         # self.assertTrue(self._exists(".git"))
 
@@ -296,7 +296,7 @@ class TestGitInstall(TestBaseInstall):
 y
 y
 EOF""")
-        config = Config.load(self._path(".papers/config.json"))
+        config = Config.load(self._path(CONFIG_FILE_LOCAL))
         self.assertTrue(config.git)
         self.assertTrue(config.gitlfs)
 
@@ -305,7 +305,7 @@ EOF""")
 y
 n
 EOF""")
-        config = Config.load(self._path(".papers/config.json"))
+        config = Config.load(self._path(CONFIG_FILE_LOCAL))
         self.assertTrue(config.git)
         self.assertFalse(config.gitlfs)
 
@@ -313,7 +313,7 @@ EOF""")
         self.papers(f"""install --local --filesdir files --bibtex bibbib.bib << EOF
 n
 EOF""")
-        config = Config.load(self._path(".papers/config.json"))
+        config = Config.load(self._path(CONFIG_FILE_LOCAL))
         self.assertFalse(config.git)
         self.assertFalse(config.gitlfs)
 
@@ -321,7 +321,7 @@ EOF""")
         self.papers(f"""install --local --filesdir files --bibtex bibbib.bib << EOF
 
 EOF""")
-        config = Config.load(self._path(".papers/config.json"))
+        config = Config.load(self._path(CONFIG_FILE_LOCAL))
         self.assertFalse(config.git)
         self.assertFalse(config.gitlfs)
 
@@ -330,7 +330,7 @@ EOF""")
 y
 
 EOF""")
-        config = Config.load(self._path(".papers/config.json"))
+        config = Config.load(self._path(CONFIG_FILE_LOCAL))
         self.assertTrue(config.git)
         self.assertFalse(config.gitlfs)
 
@@ -428,25 +428,25 @@ class TestUndoNoInstall(TestBaseInstall):
 
 class TestUninstall(LocalInstallTest):
     def test_uninstall(self):
-        self.assertTrue(self._exists(".papers/config.json"))
+        self.assertTrue(self._exists(CONFIG_FILE_LOCAL))
         self.papers(f'uninstall')
-        self.assertFalse(self._exists(".papers/config.json"))
+        self.assertFalse(self._exists(CONFIG_FILE_LOCAL))
 
 
 class TestUninstall2(GlobalInstallTest):
     def test_uninstall(self):
         self.assertTrue(self._exists(CONFIG_FILE))
         self.papers(f'install --force --local')
-        self.assertTrue(self._exists(".papers/config.json"))
+        self.assertTrue(self._exists(CONFIG_FILE_LOCAL))
         self.assertTrue(self._exists(CONFIG_FILE))
         self.papers(f'uninstall')
-        self.assertFalse(self._exists(".papers/config.json"))
+        self.assertFalse(self._exists(CONFIG_FILE_LOCAL))
         self.assertTrue(self._exists(CONFIG_FILE))
 
     def test_uninstall(self):
         self.papers(f'install --force --local')
-        self.assertTrue(self._exists(".papers/config.json"))
+        self.assertTrue(self._exists(CONFIG_FILE_LOCAL))
         self.assertTrue(self._exists(CONFIG_FILE))
         self.papers(f'uninstall --recursive')
-        self.assertFalse(self._exists(".papers/config.json"))
+        self.assertFalse(self._exists(CONFIG_FILE_LOCAL))
         self.assertFalse(self._exists(CONFIG_FILE))

@@ -19,6 +19,7 @@ DATA_HOME = os.environ.get('XDG_DATA_HOME', os.path.join(HOME, '.local','share')
 
 CONFIG_FILE_LEGACY = os.path.join(CONFIG_HOME, 'papersconfig.json')
 CONFIG_FILE = os.path.join(DATA_HOME, 'config.json')
+CONFIG_FILE_LOCAL = '.papers/config.json'
 DATA_DIR = os.path.join(DATA_HOME, 'papers')
 CACHE_DIR = os.path.join(CACHE_HOME, 'papers')
 
