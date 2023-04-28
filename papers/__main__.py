@@ -338,9 +338,6 @@ def installcmd(parser, o, config):
             os.makedirs(config.gitdir, exist_ok=True)
             config.gitcmd('init')
 
-        # setup user name and user email if not set (otherwise commit will fail)
-        config.gitcmd('config --list | grep user.name || git config --global user.name "Some One"')
-        config.gitcmd('config --list | grep user.email || git config --global user.name "some.one@github.com"')
 
         if config.gitlfs:
             config.gitcmd('lfs track "files/"')
