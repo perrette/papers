@@ -5,7 +5,9 @@ from papers.utils import strip_colors
 bibtex = """@article{Perrette_2011,
  author = {M. Perrette and A. Yool and G. D. Quartly and E. E. Popova},
  doi = {10.5194/bg-8-515-2011},
+ file = {article.pdf:pdf; supplement.mov:mov},
  journal = {Biogeosciences},
+ keywords = {kiwi, ocean},
  link = {https://doi.org/10.5194%2Fbg-8-515-2011},
  month = {feb},
  number = {2},
@@ -26,7 +28,7 @@ class FormattingTest(ListTest):
 
     def test_format(self):
         out = self.papers(f'list -l', sp_cmd='check_output')
-        self.assertEqual(strip_colors(out), "Perrette_2011: Near-ubiquity of ice-edge blooms in the Arctic (doi:10.5194/bg-8-515-2011)")
+        self.assertEqual(strip_colors(out), "Perrette_2011: Near-ubiquity of ice-edge blooms in the Arctic (doi:10.5194/bg-8-515-2011, files:2, kiwi | ocean)")
 
         out = self.papers(f'list --key-only', sp_cmd='check_output')
         self.assertEqual(out, "Perrette_2011")
