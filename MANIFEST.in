@@ -1,3 +1,0 @@
-include versioneer.py
-include _version.py
-include papers/_version.py
