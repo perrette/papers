@@ -21,12 +21,26 @@ from papers.bib import Biblio, FUZZY_RATIO, DEFAULT_SIMILARITY, entry_filecheck,
 from papers import __version__
 
 
-def check_legacy_config(configfile):
-    " move config file from ~/.config/papersconfig.json to ~/.local/.share/papers/ "
-    if not os.path.exists(configfile) and os.path.exists(CONFIG_FILE_LEGACY):
-        os.makedirs(os.path.dirname(CONFIG_FILE), exist_ok=True)
+if os.path.exists(CONFIG_FILE_LEGACY):
+    # move config file from ~/.local/.share/papers/ to ~/.config/papersconfig.json .papers/config.json to .papersconfig.json"
+    if not os.path.exists(CONFIG_PATH):
+        logger.warning(f"Move legacy config file {CONFIG_FILE_LEGACY} to {CONFIG_FILE}'")
         shutil.move(CONFIG_FILE_LEGACY, CONFIG_FILE)
-        configfile = CONFIG_FILE
+    else:
+        logger.warning(f"Legacy config file found: {CONFIG_FILE_LEGACY}. Delete to remove this warning:  rm -f '{CONFIG_FILE_LEGACY}'")
+
+def check_legacy_config(configfile):
+    " move config file from ~/.local/.share/papers/ to ~/.config/papersconfig.json and .papers/config.json to .papersconfig.json"
+    if os.path.exists(configfile):
+        p = Path(configfile)
+        if configfile == CONFIG_FILE_LEGACY:
+            shutil.move(configfile, CONFIG_FILE)
+            configfile = CONFIG_FILE
+        elif p.name == "config.json" and p.parent.name == ".papers":
+            newname = str(p.parent.parent/CONFIG_FILE_LOCAL)
+            shutil.move(configfile, newname)
+            configfile = newname
+
     return configfile
 
 
@@ -204,15 +218,16 @@ def installcmd(parser, o, config):
 
     if o.local:
         papersconfig = config.file or CONFIG_FILE_LOCAL
+        config.gitdir = config.data = str(Path(papersconfig).parent/".papers")
         workdir = Path('.')
         bibtex_files = [str(f) for f in sorted(workdir.glob("*.bib"))]
-        config.gitdir = config.data = os.path.dirname(papersconfig)
         
         if o.absolute_paths is None:
             o.absolute_paths = False
 
     else:
         papersconfig = CONFIG_FILE
+        config.gitdir = config.data = os.path.join(DATA_DIR, '.papers')
         workdir = Path(DATA_DIR)
         bibtex_files = [str(f) for f in sorted(Path('.').glob("*.bib"))] + [str(f) for f in sorted(workdir.glob("*.bib"))]
         checkdirs = [os.path.join(DATA_DIR, "files")] + checkdirs
@@ -271,7 +286,6 @@ def installcmd(parser, o, config):
     config.bibtex = o.bibtex
     config.filesdir = o.filesdir
     config.file = papersconfig
-    config.gitdir = config.data = os.path.dirname(config.file)
     config.local = o.local
     config.absolute_paths = o.absolute_paths
 
@@ -325,32 +339,34 @@ def installcmd(parser, o, config):
     config.backup_files = config.gitlfs
 
     logger.info('save config file: '+config.file)
-    os.makedirs(os.path.dirname(config.file), exist_ok=True)
+    if os.path.dirname(config.file):
+        # typically is current dir = ""
+        os.makedirs(os.path.dirname(config.file), exist_ok=True)
 
     config.git = o.git
 
     config.save()
 
     if config.git:
+        # add a gitignore file to skip gitdir
+        if config.local:
+            with open(Path(config.gitdir).parent/'.gitignore', 'a+') as f:
+                lines = f.readlines()
+                ignore = os.path.basename(config.gitdir)
+                if config.gitdir not in (l.strip() for l in lines):
+                    f.write(config.gitdir + '\n')
+
         if (Path(config.gitdir)/'.git').exists():
             logger.warning(f'{config.gitdir} is already initialized')
         else:
             os.makedirs(config.gitdir, exist_ok=True)
             config.gitcmd('init')
 
-
         if config.gitlfs:
             config.gitcmd('lfs track "files/"')
             config.gitcmd('add .gitattributes')
+            config.gitcmd(f'commit -m "papers install: .gitattribute"', check=False)
 
-        with open(Path(config.gitdir)/'.gitignore', 'a+') as f:
-            lines = f.readlines()
-            if 'futures.txt' not in (l.strip() for l in lines):
-                f.write('futures.txt\n')
-        config.gitcmd('add .gitignore')
-        config.gitcmd(f'add {os.path.abspath(config.file)}')
-        message = f'papers ' +' '.join(sys.argv[1:])
-        config.gitcmd(f'commit -m "new install: config file"', check=False)
         biblio = get_biblio(config)
         _backup_bib(biblio, config)
 
@@ -376,7 +392,7 @@ def uninstallcmd(parser, o, config):
         return
 
     if o.recursive:
-        config.file = search_config([CONFIG_FILE_LOCAL], start_dir=".", default=CONFIG_FILE)
+        config.file = search_config([CONFIG_FILE_LOCAL, os.path.join(".papers", "config.json")], start_dir=".", default=CONFIG_FILE)
         config.file = check_legacy_config(config.file)
         uninstallcmd(parser, o, config)
 
@@ -1022,7 +1038,7 @@ def get_parser(config=None):
 def main(args=None):
     papers.config.DRYRUN = False  # reset in case main() if called directly
 
-    configfile = search_config([CONFIG_FILE_LOCAL], start_dir=".", default=CONFIG_FILE)
+    configfile = search_config([CONFIG_FILE_LOCAL, os.path.join(".papers", "config.json")], start_dir=".", default=CONFIG_FILE)
     configfile = check_legacy_config(configfile)
     if not os.path.exists(configfile):
         config = Config()

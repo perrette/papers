@@ -17,9 +17,9 @@ CONFIG_HOME = os.environ.get('XDG_CONFIG_HOME', os.path.join(HOME, '.config'))
 CACHE_HOME = os.environ.get('XDG_CACHE_HOME', os.path.join(HOME, '.cache'))
 DATA_HOME = os.environ.get('XDG_DATA_HOME', os.path.join(HOME, '.local','share'))
 
-CONFIG_FILE_LEGACY = os.path.join(CONFIG_HOME, 'papersconfig.json')
-CONFIG_FILE = os.path.join(DATA_HOME, 'config.json')
-CONFIG_FILE_LOCAL = '.papers/config.json'
+CONFIG_FILE = os.path.join(CONFIG_HOME, 'papersconfig.json')
+CONFIG_FILE_LEGACY = os.path.join(DATA_HOME, 'config.json')
+CONFIG_FILE_LOCAL = '.papersconfig.json'
 DATA_DIR = os.path.join(DATA_HOME, 'papers')
 CACHE_DIR = os.path.join(CACHE_HOME, 'papers')
 
@@ -132,7 +132,7 @@ class Config:
         if self.file is None:
             logger.warn("_update_paths_to_absolute: only works if Config.file is defined")
             return
-        root = Path(self.file).parent.parent
+        root = Path(self.file).parent
         for field in ['bibtex', 'filesdir', 'gitdir']:
             setattr(self, field, self._abspath(getattr(self, field), root))
 
