@@ -79,19 +79,23 @@ def _backup_bib(biblio, config, message=None):
     config.gitcmd(f"clean -f")   # will also clean future files
 
 
-def _restore_from_backupdir(config):
+def _restore_from_backupdir(config, restore_file=False):
     restore_cmd = f"papers add {config.backupfile_clean} --rename --copy" if config.backup_files else f"cp {config.backupfile} {config.bibtex}"
     repair_message = f"papers backup broken :: cannot repair file links :: try to recover manually with `{restore_cmd}`"
     try:
-        return _restore_from_backupdir_wrapped(config)
+        return _restore_from_backupdir_wrapped(config, restore_file=restore_file)
     except Exception as error:
         raise
         logger.error(str(error))
         raise PapersExit(repair_message)
 
 
-def _restore_from_backupdir_wrapped(config):
-    logger.info('restore bibliography')
+def _restore_from_backupdir_wrapped(config, restore_file=False):
+    # current = sp.check_output(f"git rev-parse --short HEAD", shell=True, cwd=config.gitdir).strip().decode()
+    current = sp.check_output(f"git rev-parse HEAD", shell=True, cwd=config.gitdir).strip().decode()
+    message = sp.check_output(f"git log {current} --pretty='format:%C(auto)%h %s (%ad)' -1", shell=True, cwd=config.gitdir).strip().decode()
+    logger.info(f'restore bibliography to {message}')
+
     if os.path.exists(config.bibtex):
         os.remove(config.bibtex)
     shutil.copy(config.backupfile, config.bibtex)
@@ -102,22 +106,59 @@ def _restore_from_backupdir_wrapped(config):
 
     biblio = Biblio.load(config.bibtex, config.filesdir)
     biblio_clean = Biblio.load(config.backupfile_clean, config.filesdir)
-    logger.debug(f"BACKUP BIBLIO RELATIVE TO: {biblio_clean.relative_to} ")
 
     assert len(biblio.entries) == len(biblio_clean.entries)
+
     for e, e_clean in zip(biblio.entries, biblio_clean.entries):
         assert e['ID'] == e_clean['ID'], f"{e['ID']} != {e_clean['ID']})"
         files = biblio.get_files(e)
         files_clean = biblio_clean.get_files(e_clean)
         assert len(files) == len(files_clean), f"{e['ID']} :: files {len(files)} != {len(files_clean)})"
+
+        new_files = []
+
         for f, f_clean in zip(files, files_clean):
-            if os.path.exists(f_clean):
-                move(f_clean, f, copy=True, interactive=False)
-            else:
+            # broken link in the backup
+            if not os.path.exists(f_clean):
                 logger.debug(f"BACKUP FILE DOES NOT EXISTS: {f_clean} ")
                 logger.debug(f"BACKUP ENTRY: {e_clean['file']} ")
                 logger.debug(f"BROKEN ENTRY: {e['file']} ")
                 logger.warning(f"{e['ID']} :: file link broken => {f} ")
+                new_files.append(f)
+                continue
+
+            # backup file is fine
+
+            # original bibtex link matches something on disk
+            if os.path.exists(f):
+
+                # same file: nothing to do
+                if os.path.samefile(f, f_clean) or checksum(f_clean) == checksum(f):
+                    new_files.append(f)
+
+                else:
+                    logger.warning(f"{e['ID']} :: file found but does not match backup (keep pointer to backup): {f} != {f_clean}")
+                    new_files.append(f_clean)
+
+            # original bibtex link is broken, --restore-file is active
+            elif restore_file:
+                try:
+                    move(f_clean, f, copy=True, interactive=False)
+                    new_files.append(f)
+
+                except Exception as error:
+                    logger.error(f"{error}")
+                    logger.error(f"{e['ID']} :: failed to restore file (keep pointer to backup)")
+                    new_files.append(f_clean)
+                    pass
+
+            # original bibtex link is broken, default without --restore-file : do not do anything
+            else:
+                new_files.append(f_clean)
+
+        biblio.set_files(e, new_files)
+
+    biblio.save(config.bibtex)
 
 
 def _git_undo(config):
