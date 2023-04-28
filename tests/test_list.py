@@ -90,6 +90,19 @@ class SearchTest(ListTest):
         out = self.papers(f'list --year 2011 --strict', sp_cmd='check_output')
         self.assertMultiLineEqual(out, self.initial_content)
 
+    def test_list_tag(self):
+        out = self.papers(f'list --tag kiwi', sp_cmd='check_output')
+        self.assertMultiLineEqual(out, self.initial_content)
+
+        out = self.papers(f'list --tag kiwi ocean', sp_cmd='check_output')
+        self.assertMultiLineEqual(out, self.initial_content)
+
+        out = self.papers(f'list --tag kiwi bonobo', sp_cmd='check_output')
+        self.assertEqual(out, "")
+
+        out = self.papers(f'list --tag kiwi bonobo --any', sp_cmd='check_output')
+        self.assertMultiLineEqual(out, self.initial_content)
+
 
     def test_list_combined(self):
         out = self.papers(f'list --year 2011 --author perrette', sp_cmd='check_output')
@@ -130,3 +143,15 @@ class EditTest(ListTest):
 
         out = self.papers(f'list', sp_cmd='check_output')
         self.assertEqual(out, "")
+
+
+    def test_add_tag(self):
+
+        out = self.papers(f'list --tag newtag', sp_cmd='check_output')
+        self.assertEqual(out, "")
+
+        self.papers(f'list --author perrette --add-tag newtag -1')
+        # self.assertEqual(strip_colors(out), "Perrette_2011: Near-ubiquity of ice-edge blooms in the Arctic (doi:10.5194/bg-8-515-2011, files:2, kiwi | ocean | newtag)")
+
+        out = self.papers(f'list --tag newtag -1', sp_cmd='check_output')
+        self.assertEqual(strip_colors(out), "Perrette_2011: Near-ubiquity of ice-edge blooms in the Arctic (doi:10.5194/bg-8-515-2011, files:2, kiwi | ocean | newtag)")
