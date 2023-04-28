@@ -708,7 +708,7 @@ def listcmd(parser, o, config):
                 info.append('doi:'+e['doi'])
             n = _nfiles(e)
             if n:
-                info.append(bcolors.OKGREEN+'file:'+str(n)+bcolors.ENDC)
+                info.append(bcolors.OKGREEN+('files:' if n > 1 else 'file:')+str(n)+bcolors.ENDC)
             if e.get('keywords',''):
                 keywords = parse_keywords(e)
                 info.append(bcolors.WARNING+" | ".join(keywords)+bcolors.ENDC)
