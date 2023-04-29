@@ -168,20 +168,20 @@ def _git_reset_to_commit(config, commit, restore_files=False):
     _restore_from_backupdir(config, restore_files=restore_files)
 
 
-def _git_undo(o, config):
+def _git_undo(config, restore_files=False, steps=1):
     sp.check_call(f"git checkout -B history", shell=True, cwd=config.gitdir)
-    _git_reset_to_commit(config, 'HEAD'+'^'*o.steps, restore_files=o.restore_files)
+    _git_reset_to_commit(config, 'HEAD'+'^'*steps, restore_files=restore_files)
     # _git_reset_to_commit(config, 'HEAD^', restore_files=o.restore_files)
 
 
-def _git_redo(o, config):
+def _git_redo(config, restore_files=False, steps=1):
     current = sp.check_output(f"git rev-parse HEAD", shell=True, cwd=config.gitdir).strip().decode()
     futures = sp.check_output(f"git rev-list {current}..main", shell=True, cwd=config.gitdir).strip().decode().splitlines()[::-1]
     try:
-        future = futures[o.steps-1]
+        future = futures[steps-1]
     except Exception as error:
         raise PapersExit("nothing to redo")
-    _git_reset_to_commit(config, future, restore_files=o.restore_files)
+    _git_reset_to_commit(config, future, restore_files=restore_files)
 
 
 def savebib(biblio, config):
@@ -562,13 +562,13 @@ def filecheckcmd(parser, o, config):
 
 def redocmd(parser, o, config):
     if config.git:
-        return _git_redo(o, config)
+        return _git_redo(config, restore_files=o.restore_files, steps=o.steps)
     else:
         undocmd(parser, o, config)
 
 def undocmd(parser, o, config):
     if config.git:
-        return _git_undo(o, config)
+        return _git_undo(config, restore_files=o.restore_files, steps=o.steps)
 
     logger.warning("git-tracking is not installed: undo / redo is limited to 1 step back and forth")
     back = backupfile_func(config.bibtex)
