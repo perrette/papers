@@ -31,6 +31,9 @@ def check_legacy_config(configfile):
 
 
 def get_biblio(config):
+    """
+    Given a config, get the Biblio object associated with this run.  If there's no Biblio object, will make a new one, silently.
+    """
     if config.bibtex is None:
         raise ValueError('bibtex is not initialized')
     relative_to = os.path.sep if config.absolute_paths else (os.path.dirname(config.bibtex) if config.bibtex else None)

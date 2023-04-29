@@ -198,7 +198,7 @@ class DuplicateKeyError(ValueError):
 
 class Biblio:
     """
-    main config
+    The bibtex object that we operate on, which is mainly used to read and write to dynamically, and can then send the changes to be stored in a specified bibtex file on disk.
     """
     def __init__(self, db=None, filesdir=None, key_field='ID', nameformat=NAMEFORMAT, keyformat=KEYFORMAT, similarity=DEFAULT_SIMILARITY, relative_to=None):
         """
