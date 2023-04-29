@@ -19,6 +19,59 @@ bibtex2 = """@article{SomeOneElse2000,
  year = {2000}
 }"""
 
+class TestTimeTravelGitLocal(LocalGitInstallTest):
+
+    def get_commit(self):
+        return sp.check_output(f"git rev-parse HEAD", shell=True, cwd=self.config.gitdir).strip().decode()
+
+    def test_undo(self):
+        ## Make sure git undo / redo travels as expected
+
+        commits = []
+        commits.append(self.get_commit())
+
+        self.papers(f'add {self.anotherbib}')
+        commits.append(self.get_commit())
+
+        self.papers(f'list --add-tag change')
+        commits.append(self.get_commit())
+
+        # make sure we have 3 distinct commits
+        self.assertEqual(len(set(commits)), 3)
+
+        self.papers(f'undo')
+        current = self.get_commit()
+        self.assertEqual(current, commits[-2])
+
+        self.papers(f'undo')
+        current = self.get_commit()
+        self.assertEqual(current, commits[-3])
+
+        self.papers(f'redo')
+        current = self.get_commit()
+        self.assertEqual(current, commits[-2])
+
+        self.papers(f'redo')
+        current = self.get_commit()
+        self.assertEqual(current, commits[-1])
+
+        # beyond last commit, nothing changes
+        f = lambda: self.papers(f'redo')
+        self.assertRaises(Exception, f)
+        current = self.get_commit()
+        self.assertEqual(current, commits[-1])
+
+        # two steps back
+        self.papers(f'undo -n 2')
+        current = self.get_commit()
+        self.assertEqual(current, commits[-3])
+
+        # two steps forth
+        self.papers(f'redo -n 2')
+        current = self.get_commit()
+        self.assertEqual(current, commits[-1])
+
+
 
 class TestUndoGitLocal(LocalGitLFSInstallTest):
 
@@ -26,18 +79,20 @@ class TestUndoGitLocal(LocalGitLFSInstallTest):
 
         biblio = Biblio.load(self._path(self.mybib), '')
         self.assertEqual(len(biblio.entries), 0)
+
         self.papers(f'add {self.anotherbib}')
-        biblio = Biblio.load(self._path(self.mybib), '')
+        biblio = biblio1 = Biblio.load(self._path(self.mybib), '')
         self.assertEqual(len(biblio.entries), 1)
 
         open(self._path('yetanother'), 'w').write(bibtex2)
         self.papers(f'add yetanother')
-        biblio = Biblio.load(self._path(self.mybib), '')
+        biblio = biblio2 = Biblio.load(self._path(self.mybib), '')
         self.assertEqual(len(biblio.entries), 2)
 
         self.papers(f'undo')
         biblio = Biblio.load(self._path(self.mybib), '')
         self.assertEqual(len(biblio.entries), 1)
+        self.assertMultiLineEqual(biblio.format(), biblio1.format())
 
         self.papers(f'undo')
         biblio = Biblio.load(self._path(self.mybib), '')
@@ -46,14 +101,12 @@ class TestUndoGitLocal(LocalGitLFSInstallTest):
         self.papers(f'redo')
         biblio = Biblio.load(self._path(self.mybib), '')
         self.assertEqual(len(biblio.entries), 1)
+        self.assertMultiLineEqual(biblio.format(), biblio1.format())
 
         self.papers(f'redo')
         biblio = Biblio.load(self._path(self.mybib), '')
         self.assertEqual(len(biblio.entries), 2)
-
-        self.papers(f'redo')
-        biblio = Biblio.load(self._path(self.mybib), '')
-        self.assertEqual(len(biblio.entries), 2)
+        self.assertMultiLineEqual(biblio.format(), biblio2.format())
 
 
     def _format_file(self, name):
@@ -102,22 +155,73 @@ class TestUndoGitLocal(LocalGitLFSInstallTest):
         self.assertFalse(biblio.format() == biblio_original.format())
         self.assertEqual(len(biblio.entries), 1)
 
-        # What's going on?
-        # That fails (it should not !)
-        print("original")
-        print(biblio_original.format())
-        print("renamed")
-        print(biblio_future.format())
-        print("undo")
-        print(biblio.format())
-        print("backup")
-        print(backup.format())
         self.assertNotEqual(biblio.get_files(biblio.entries[0]), biblio_original.get_files(biblio_original.entries[0]))
         self.assertEqual(biblio.get_files(biblio.entries[0]), backup.get_files(backup.entries[0]))
 
         # ...that's because the original file does not exist
         self.assertTrue(os.path.exists(biblio.get_files(biblio.entries[0])[0]))
         self.assertFalse(os.path.exists(biblio_original.get_files(biblio_original.entries[0])[0]))
+
+        self.papers(f'redo')
+
+        backup = Biblio.load(self.config.backupfile_clean, self._path('.papers/files'))
+        self.assertMultiLineEqual(backup.format(), backup0.format())
+        self.assertTrue(backup_file_path)
+
+        biblio = Biblio.load(self._path(self.mybib), '')
+        # we're back on track
+        self.assertMultiLineEqual(biblio.format(), biblio_future.format())
+
+        # ...that's because the future file does exist
+        self.assertTrue(os.path.exists(biblio_future.get_files(biblio_future.entries[0])[0]))
+        self.assertTrue(os.path.exists(biblio.get_files(biblio.entries[0])[0]))
+
+
+    def test_undo_files_rename_restore(self):
+        biblio = Biblio.load(self._path(self.mybib), '')
+        self.assertEqual(len(biblio.entries), 0)
+
+        pdf, doi, key, newkey, year, bibtex, file_rename = prepare_paper()
+
+        self.papers(f'add {pdf} --doi {doi}')
+
+        biblio = biblio_original = Biblio.load(self._path(self.mybib), '')
+        self.assertEqual(len(biblio.entries), 1)
+        self.assertEqual(biblio.get_files(biblio.entries[0]), [ pdf ])
+        self.assertTrue(os.path.exists(pdf))
+
+        backup = backup0 = Biblio.load(self.config.backupfile_clean, self._path('.papers/files'))
+        self.assertEqual(len(backup.entries), 1)
+        backup_file_path = str((Path(self._path(self.config.gitdir))/"files"/file_rename).resolve())
+        self.assertEqual(backup.get_files(backup.entries[0]), [ backup_file_path ])
+        self.assertTrue(Path(backup_file_path).exists())
+
+        self.papers(f'filecheck --rename')
+
+        biblio = biblio_future = Biblio.load(self._path(self.mybib), '')
+        self.assertEqual(len(biblio.entries), 1)
+        file_path = os.path.join(self.config.filesdir, file_rename)
+        self.assertEqual(biblio.get_files(biblio.entries[0]), [ file_path ])
+        self.assertFalse(os.path.exists(pdf))
+        self.assertTrue(os.path.exists(file_path))
+
+        backup = Biblio.load(self.config.backupfile_clean, self._path('.papers/files'))
+        self.assertMultiLineEqual(backup.format(), backup0.format())
+        self.assertTrue(backup_file_path)
+
+        self.papers(f'undo --restore')
+
+        backup = Biblio.load(self.config.backupfile_clean, self._path('.papers/files'))
+        self.assertMultiLineEqual(backup.format(), backup0.format())
+        self.assertTrue(backup_file_path)
+
+        # The biblio has its file pointer to the backup directory:
+        biblio = Biblio.load(self._path(self.mybib), '')
+        self.assertMultiLineEqual(biblio.format(), biblio_original.format())
+        self.assertEqual(len(biblio.entries), 1)
+
+        # ...that's because the original file does exist
+        self.assertTrue(os.path.exists(biblio_original.get_files(biblio_original.entries[0])[0]))
 
         self.papers(f'redo')
 

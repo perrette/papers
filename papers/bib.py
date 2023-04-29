@@ -375,6 +375,9 @@ class Biblio:
 
     def set_files(self, entry, files, relative_to=None):
         entry['file'] = format_file(list(sorted(set(files), key=lambda f: files.index(f))), relative_to=relative_to or self.relative_to)
+        # delete field if empty
+        if not entry['file'].strip():
+            del entry['file']
 
     def get_files(self, entry, relative_to=None):
         return parse_file(entry.get('file', ''), relative_to=relative_to or self.relative_to)

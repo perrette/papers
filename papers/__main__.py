@@ -76,21 +76,23 @@ def _backup_bib(biblio, config, message=None):
 
     message = message or f'papers ' +' '.join(sys.argv[1:])
     res = config.gitcmd(f"commit -m '{message}'", check=False)
-    config.gitcmd(f"clean -f")   # will also clean future files
+    # work on "main" branch for comitting (out of history branch)
+    config.gitcmd(f"checkout -B main")
+    config.gitcmd(f"clean -f")
 
 
-def _restore_from_backupdir(config, restore_file=False):
+def _restore_from_backupdir(config, restore_files=False):
     restore_cmd = f"papers add {config.backupfile_clean} --rename --copy" if config.backup_files else f"cp {config.backupfile} {config.bibtex}"
     repair_message = f"papers backup broken :: cannot repair file links :: try to recover manually with `{restore_cmd}`"
     try:
-        return _restore_from_backupdir_wrapped(config, restore_file=restore_file)
+        return _restore_from_backupdir_wrapped(config, restore_files=restore_files)
     except Exception as error:
         raise
         logger.error(str(error))
         raise PapersExit(repair_message)
 
 
-def _restore_from_backupdir_wrapped(config, restore_file=False):
+def _restore_from_backupdir_wrapped(config, restore_files=False):
     # current = sp.check_output(f"git rev-parse --short HEAD", shell=True, cwd=config.gitdir).strip().decode()
     current = sp.check_output(f"git rev-parse HEAD", shell=True, cwd=config.gitdir).strip().decode()
     message = sp.check_output(f"git log {current} --pretty='format:%C(auto)%h %s (%ad)' -1", shell=True, cwd=config.gitdir).strip().decode()
@@ -141,7 +143,7 @@ def _restore_from_backupdir_wrapped(config, restore_file=False):
                     new_files.append(f_clean)
 
             # original bibtex link is broken, --restore-file is active
-            elif restore_file:
+            elif restore_files:
                 try:
                     move(f_clean, f, copy=True, interactive=False)
                     new_files.append(f)
@@ -161,38 +163,25 @@ def _restore_from_backupdir_wrapped(config, restore_file=False):
     biblio.save(config.bibtex)
 
 
-def _git_undo(config):
-    """papers undo using git backup"""
-    # backupdir = Path(config.file).parent
-    # keep track of where we come from, for future redos
+def _git_reset_to_commit(config, commit, restore_files=False):
+    config.gitcmd(f"reset --hard {commit}")
+    _restore_from_backupdir(config, restore_files=restore_files)
+
+
+def _git_undo(o, config):
+    sp.check_call(f"git checkout -B history", shell=True, cwd=config.gitdir)
+    _git_reset_to_commit(config, 'HEAD'+'^'*o.steps, restore_files=o.restore_files)
+    # _git_reset_to_commit(config, 'HEAD^', restore_files=o.restore_files)
+
+
+def _git_redo(o, config):
     current = sp.check_output(f"git rev-parse HEAD", shell=True, cwd=config.gitdir).strip().decode()
-    #  now go back
-    config.gitcmd(f"reset --hard HEAD^")
-    futuresfile = Path(config.gitdir)/"futures.txt"
-    open(futuresfile, 'a+').write(current+"\n")
-    _restore_from_backupdir(config)
-
-def _git_redo(config):
-    """papers redo using git backup"""
-    # keep track of where we come from, for future redos
-    futuresfile = Path(config.gitdir)/"futures.txt"
+    futures = sp.check_output(f"git rev-list {current}..main", shell=True, cwd=config.gitdir).strip().decode().splitlines()[::-1]
     try:
-        futures = open(futuresfile, 'r').readlines()
-        last = futures[-1].strip()
-    except:
-        last = ""
-    if not last:
-        logger.info("Nothing to redo")
-        return
-
-    config.gitcmd(f"reset --hard {last}")
-    futures = futures[:-1]
-    if futures:
-        open(futuresfile, 'w').write("\n".join(futures))
-    else:
-        futuresfile.unlink()
-
-    _restore_from_backupdir(config)
+        future = futures[o.steps-1]
+    except Exception as error:
+        raise PapersExit("nothing to redo")
+    _git_reset_to_commit(config, future, restore_files=o.restore_files)
 
 
 def savebib(biblio, config):
@@ -402,7 +391,6 @@ def installcmd(parser, o, config):
             os.makedirs(config.gitdir, exist_ok=True)
             config.gitcmd('init')
 
-
         if config.gitlfs:
             config.gitcmd('lfs track "files/"')
             config.gitcmd('add .gitattributes')
@@ -574,13 +562,13 @@ def filecheckcmd(parser, o, config):
 
 def redocmd(parser, o, config):
     if config.git:
-        return _git_redo(config)
+        return _git_redo(o, config)
     else:
         undocmd(parser, o, config)
 
 def undocmd(parser, o, config):
     if config.git:
-        return _git_undo(config)
+        return _git_undo(o, config)
 
     logger.warning("git-tracking is not installed: undo / redo is limited to 1 step back and forth")
     back = backupfile_func(config.bibtex)
@@ -1069,8 +1057,12 @@ def get_parser(config=None):
 
     # undo
     # ====
-    undop = subparsers.add_parser('undo', parents=[cfg], help='this command is modified and more powerful if git-tracking is enabled (infinite memory vs back-and-forth switch)')
-    redop = subparsers.add_parser('redo', parents=[cfg], help='this command is modified and more powerful if git-tracking is enabled (infinite memory vs back-and-forth switch)')
+    restorep = argparse.ArgumentParser(add_help=False)
+    restorep.add_argument('--restore-files', action='store_true', help='Use this option to restore files that have been renamed. By default the file link points to the back-up repository. This command has no effect without --git-lfs, and will result in broken file links.')
+    restorep.add_argument('-n', '--steps', type=int, default=1, help='number of times undo/redo should be performed')
+
+    undop = subparsers.add_parser('undo', parents=[cfg, restorep], help='this command is modified and more powerful if git-tracking is enabled (infinite memory vs back-and-forth switch)')
+    redop = subparsers.add_parser('redo', parents=[cfg, restorep], help='this command is modified and more powerful if git-tracking is enabled (infinite memory vs back-and-forth switch)')
 
     # git
     # ===
@@ -1085,6 +1077,9 @@ def get_parser(config=None):
 
 def main(args=None):
     papers.config.DRYRUN = False  # reset in case main() if called directly
+    if args is not None:
+        # used in the commit message
+        sys.argv = sys.argv[:1] + args
 
     configfile = search_config([CONFIG_FILE_LOCAL], start_dir=".", default=CONFIG_FILE)
     configfile = check_legacy_config(configfile)
@@ -1168,7 +1163,9 @@ if __name__ == "__main__":
     # test and debugging may use main() directly for speed-up => better to avoid sys.exit there
     try:
         main()
-    except PapersExit:
+    except PapersExit as error:
         if logger.getLevel() == logging.DEBUG:
             raise
+        if error.message:
+            logger.error(error.message)
         sys.exit(1)
