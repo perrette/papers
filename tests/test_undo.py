@@ -19,7 +19,7 @@ bibtex2 = """@article{SomeOneElse2000,
  year = {2000}
 }"""
 
-class TestTimeTravelGitLocal(LocalGitInstallTest):
+class TimeTravelBase:
 
     def get_commit(self):
         return sp.check_output(f"git rev-parse HEAD", shell=True, cwd=self.config.gitdir).strip().decode()
@@ -27,16 +27,33 @@ class TestTimeTravelGitLocal(LocalGitInstallTest):
     def test_undo(self):
         ## Make sure git undo / redo travels as expected
 
+        print(self.config.status(verbose=True))
+        self.assertTrue(self.config.git)
+
         commits = []
         commits.append(self.get_commit())
 
         self.papers(f'add {self.anotherbib}')
+        self.assertTrue(self.config.git)
         commits.append(self.get_commit())
+        print("bib add paper:", self._path(self.mybib))
+        print(open(self._path(self.mybib)).read())
+        print("backup after add paper:", self.config.backupfile_clean)
+        print(open(self.config.backupfile_clean).read())
 
         self.papers(f'list --add-tag change')
+        self.assertTrue(self.config.git)
         commits.append(self.get_commit())
+        print("bib add-tag:", self._path(self.mybib))
+        print(open(self._path(self.mybib)).read())
+        print("backup after add-tag:", self.config.backupfile_clean)
+        print(open(self.config.backupfile_clean).read())
 
         # make sure we have 3 distinct commits
+        self.config.gitcmd('log')
+        print(commits)
+        print(self.config.gitdir)
+        sp.check_call(f'ls {self.config.gitdir}', shell=True)
         self.assertEqual(len(set(commits)), 3)
 
         self.papers(f'undo')
@@ -70,6 +87,13 @@ class TestTimeTravelGitLocal(LocalGitInstallTest):
         self.papers(f'redo -n 2')
         current = self.get_commit()
         self.assertEqual(current, commits[-1])
+
+
+class TestTimeTravelGitLocal(LocalGitInstallTest, TimeTravelBase):
+    pass
+
+class TestTimeTravelGitGlobal(GlobalGitInstallTest, TimeTravelBase):
+    pass
 
 
 

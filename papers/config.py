@@ -17,10 +17,10 @@ CONFIG_HOME = os.environ.get('XDG_CONFIG_HOME', os.path.join(HOME, '.config'))
 CACHE_HOME = os.environ.get('XDG_CACHE_HOME', os.path.join(HOME, '.cache'))
 DATA_HOME = os.environ.get('XDG_DATA_HOME', os.path.join(HOME, '.local','share'))
 
-CONFIG_FILE_LEGACY = os.path.join(CONFIG_HOME, 'papersconfig.json')
-CONFIG_FILE = os.path.join(DATA_HOME, 'config.json')
 CONFIG_FILE_LOCAL = '.papers/config.json'
 DATA_DIR = os.path.join(DATA_HOME, 'papers')
+CONFIG_FILE = os.path.join(DATA_DIR, 'config.json')
+CONFIG_FILE_LEGACY = os.path.join(CONFIG_HOME, 'papersconfig.json')
 CACHE_DIR = os.path.join(CACHE_HOME, 'papers')
 
 
@@ -83,6 +83,7 @@ class Config:
             return Path(os.path.sep)
 
     def gitcmd(self, cmd, check=True, **kw):
+        logger.debug(f"git add {self.backupfile.name}")
         return (sp.check_call if check else sp.call)(f"git {cmd}", shell=True, cwd=self.gitdir, **kw)
 
 

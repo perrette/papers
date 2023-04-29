@@ -18,7 +18,7 @@ from papers.encoding import parse_file, format_file, family_names, format_entrie
 from papers.config import bcolors, Config, search_config, CONFIG_FILE, CONFIG_FILE_LOCAL, DATA_DIR, CONFIG_FILE_LEGACY
 from papers.duplicate import list_duplicates, list_uniques, edit_entries
 from papers.bib import Biblio, FUZZY_RATIO, DEFAULT_SIMILARITY, entry_filecheck, backupfile as backupfile_func, isvalidkey
-from papers.utils import move
+from papers.utils import move, checksum
 from papers import __version__
 
 
@@ -45,6 +45,8 @@ def get_biblio(config):
 
 
 def _backup_bib(biblio, config, message=None):
+    if not config.git:
+        raise PapersExit('cannot backup without --git enabled')
     # backupdir = Path(config.file).parent
     backupdir = Path(config.gitdir)
     backupdir.mkdir(exist_ok=True)
@@ -55,6 +57,7 @@ def _backup_bib(biblio, config, message=None):
 
     ## Here we could create a copy of biblio since it is modified in place
     ## For now, we exit the program after saving, so don't bother
+    logger.debug(f'BACKUP: cp {config.bibtex} {config.backupfile}')
     shutil.copy(config.bibtex, config.backupfile)
     config.gitcmd(f"add {config.backupfile.name}")
 
@@ -196,6 +199,8 @@ def savebib(biblio, config):
         biblio.save(config.bibtex)
     if config.file and config.git:
         _backup_bib(biblio, config)
+    else:
+        logger.debug(f'do not backup bib: {config.file}, {config.git}')
     # if config.git:
         # config.gitcommit()
 
@@ -239,12 +244,18 @@ def installcmd(parser, o, config):
         o.edit = ans.lower() == 'e'
 
     if not o.edit:
+        if config.local and os.path.exists(config.file):
+            # if we don't do that the local install will take precedence over global install
+            logger.warning(f"remove pre-existing local configuration file: {config.file}")
+            os.remove(config.file)
         config = Config()
 
     if o.local is None:
         if config.local is not None:
+            logger.debug(f'keep config to pre-existing: {config.local}')
             o.local = config.local
         else:
+            logger.debug(f'default to global config')
             # default ?
             o.local = False
 
@@ -269,6 +280,7 @@ def installcmd(parser, o, config):
         workdir = Path(DATA_DIR)
         bibtex_files = [str(f) for f in sorted(Path('.').glob("*.bib"))] + [str(f) for f in sorted(workdir.glob("*.bib"))]
         checkdirs = [os.path.join(DATA_DIR, "files")] + checkdirs
+        config.gitdir = config.data = DATA_DIR
         
         if o.absolute_paths is None:
             o.absolute_paths = True
@@ -324,7 +336,6 @@ def installcmd(parser, o, config):
     config.bibtex = o.bibtex
     config.filesdir = o.filesdir
     config.file = papersconfig
-    config.gitdir = config.data = os.path.dirname(config.file)
     config.local = o.local
     config.absolute_paths = o.absolute_paths
 
@@ -395,11 +406,6 @@ def installcmd(parser, o, config):
             config.gitcmd('lfs track "files/"')
             config.gitcmd('add .gitattributes')
 
-        with open(Path(config.gitdir)/'.gitignore', 'a+') as f:
-            lines = f.readlines()
-            if 'futures.txt' not in (l.strip() for l in lines):
-                f.write('futures.txt\n')
-        config.gitcmd('add .gitignore')
         config.gitcmd(f'add {os.path.abspath(config.file)}')
         message = f'papers ' +' '.join(sys.argv[1:])
         config.gitcmd(f'commit -m "new install: config file"', check=False)
@@ -432,7 +438,7 @@ def uninstallcmd(parser, o, config):
         config.file = check_legacy_config(config.file)
         uninstallcmd(parser, o, config)
 
-def check_install(parser, o, config):
+def check_install(parser, o, config, bibtex_must_exist=True):
     """
     Given an option and config, checks to see if the install is done correctly on this filesystem.
     """
@@ -450,7 +456,8 @@ def check_install(parser, o, config):
         parser.print_help()
         print(f"--bibtex must be specified, or {install_doc}")
         raise PapersExit()
-    elif not os.path.exists(config.bibtex):
+
+    if bibtex_must_exist and not os.path.exists(config.bibtex):
         print(f'papers: error: no bibtex file found, do `touch {config.bibtex}` or {install_doc}')
         raise PapersExit()
     logger.info(f'bibtex: {config.bibtex!r}')

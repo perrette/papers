@@ -15,7 +15,7 @@ import papers
 from papers import logger, logging
 from papers.utils import set_directory
 from papers.__main__ import main
-from papers.config import CONFIG_FILE, CONFIG_FILE_LOCAL, Config
+from papers.config import CONFIG_FILE, CONFIG_FILE_LOCAL, Config, DATA_DIR
 from papers.bib import Biblio
 
 debug_level = logging.DEBUG
@@ -129,6 +129,39 @@ class BibTest(unittest.TestCase):
     """base class for bib tests: create a new bibliography
     """
 
+    @classmethod
+    def setUpClass(cls):
+        """ Move aside any pre-existing global config
+        """
+        if os.path.exists(CONFIG_FILE):
+            cls._backup = tempfile.mktemp(prefix='papers.bib.backup')
+            shutil.move(CONFIG_FILE, cls._backup)
+        else:
+            cls._backup = None
+
+        if os.path.exists(DATA_DIR):
+            cls._backup_dir = tempfile.TemporaryDirectory()
+            shutil.move(DATA_DIR, cls._backup_dir.name)
+        else:
+            cls._backup_dir = None
+
+    @classmethod
+    def tearDownClass(cls):
+        """ Restore any pre-existing global config
+        """
+        if os.path.exists(CONFIG_FILE):
+            os.remove(CONFIG_FILE)
+        if cls._backup:
+            shutil.move(cls._backup, CONFIG_FILE)
+
+        if os.path.exists(DATA_DIR):
+            shutil.rmtree(DATA_DIR)
+
+        if cls._backup_dir is not None:
+            shutil.move(os.path.join(cls._backup_dir.name, os.path.basename(DATA_DIR)), DATA_DIR)
+            cls._backup_dir.cleanup()
+
+
     def assertMultiLineEqual(self, first, second, msg=None):
         """Assert that two multi-line strings are equal.
 
@@ -181,14 +214,12 @@ class BaseTest(BibTest):
     anotherbib_content = bibtex
     initial_content = None
 
+
     def setUp(self):
-        if os.path.exists(CONFIG_FILE):
-            self.backup = tempfile.mktemp(prefix='papers.bib.backup')
-            shutil.move(CONFIG_FILE, self.backup)
-        else:
-            self.backup = None
+
 
         self.temp_dir = tempfile.TemporaryDirectory()
+        print(self, 'setUp', self.temp_dir.name)
 
         if self.anotherbib_content is not None:
             open(self._path(self.anotherbib), 'w').write(self.anotherbib_content)
@@ -197,11 +228,9 @@ class BaseTest(BibTest):
             open(self._path(self.mybib), 'w').write(self.initial_content)
 
     def tearDown(self):
-        if os.path.exists(CONFIG_FILE):
-            os.remove(CONFIG_FILE)
-        if self.backup:
-            shutil.move(self.backup, CONFIG_FILE)
+        print(self, 'cleanup', self.temp_dir.name)
         self.temp_dir.cleanup()
+        assert not os.path.exists(self.temp_dir.name)
 
 
     def _path(self, p):
@@ -222,38 +251,38 @@ class LocalInstallTest(BaseTest):
     def setUp(self):
         super().setUp()
         self.papers(f'install --force --local --bibtex {self.mybib} --files {self.filesdir}')
-        self.config = Config.load(self._path(CONFIG_FILE_LOCAL))
+
+    @property
+    def config(self):
+        return Config.load(self._path(CONFIG_FILE_LOCAL))
 
 class GlobalInstallTest(BaseTest):
     def setUp(self):
         super().setUp()
         self.papers(f'install --force --bibtex {self.mybib} --files {self.filesdir}')
-        self.config = Config.load(CONFIG_FILE)
+
+    @property
+    def config(self):
+        return Config.load(CONFIG_FILE)
 
 
 class LocalGitInstallTest(LocalInstallTest):
     def setUp(self):
         super().setUp()
         self.papers(f'install --force --local --git --bibtex {self.mybib} --files {self.filesdir}')
-        self.config = Config.load(self._path(CONFIG_FILE_LOCAL))
 
-
-class GlobalGitInstallTest(LocalInstallTest):
+class GlobalGitInstallTest(GlobalInstallTest):
     def setUp(self):
         super().setUp()
         self.papers(f'install --force --git --bibtex {self.mybib} --files {self.filesdir}')
-        self.config = Config.load(self._path(CONFIG_FILE))
-
 
 class LocalGitLFSInstallTest(LocalInstallTest):
     def setUp(self):
         super().setUp()
         self.papers(f'install --force --local --git --git-lfs --bibtex {self.mybib} --files {self.filesdir}')
-        self.config = Config.load(self._path(CONFIG_FILE_LOCAL))
 
 
-class GlobalGitLFSInstallTest(LocalInstallTest):
+class GlobalGitLFSInstallTest(GlobalInstallTest):
     def setUp(self):
         super().setUp()
         self.papers(f'install --force --git --git-lfs --bibtex {self.mybib} --files {self.filesdir}')
-        self.config = Config.load(self._path(CONFIG_FILE))
