@@ -96,6 +96,24 @@ class TestTimeTravelGitGlobal(GlobalGitInstallTest, TimeTravelBase):
     pass
 
 
+class TestRestoreGitLocal(LocalGitInstallTest):
+
+    def get_commit(self):
+        return sp.check_output(f"git rev-parse HEAD", shell=True, cwd=self.config.gitdir).strip().decode()
+
+    def test_undo(self):
+        ## Make sure git undo / redo travels as expected
+
+        self.papers(f'add {self.anotherbib}')
+        biblio = Biblio.load(self._path(self.mybib), '')
+
+        # Remove bibtex
+        sp.check_call(f"rm -f {self._path(self.mybib)}", shell=True)
+
+        self.papers(f'restore-backup')
+        biblio2 = Biblio.load(self._path(self.mybib), '')
+
+        self.assertMultiLineEqual(biblio.format(), biblio2.format())
 
 class TestUndoGitLocal(LocalGitLFSInstallTest):
 

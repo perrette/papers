@@ -587,6 +587,13 @@ def undocmd(parser, o, config):
     shutil.move(tmp, back)
     # o.savebib()
 
+def restorecmd(parser, o, config):
+    if not config.git:
+        parser.print_help()
+        raise PapersExit('only valid with --git enabled')
+    _restore_from_backupdir(config, restore_files=o.restore_files)
+
+
 def gitcmd(parser, o, config):
     try:
         out = sp.check_output(['git']+o.gitargs, cwd=config.gitdir)
@@ -1064,12 +1071,15 @@ def get_parser(config=None):
 
     # undo
     # ====
-    restorep = argparse.ArgumentParser(add_help=False)
-    restorep.add_argument('--restore-files', action='store_true', help='Use this option to restore files that have been renamed. By default the file link points to the back-up repository. This command has no effect without --git-lfs, and will result in broken file links.')
-    restorep.add_argument('-n', '--steps', type=int, default=1, help='number of times undo/redo should be performed')
+    _restorep = argparse.ArgumentParser(add_help=False)
+    _restorep.add_argument('--restore-files', action='store_true', help='Use this option to restore files that have been renamed. By default the file link points to the back-up repository. This command has no effect without --git-lfs, and will result in broken file links.')
 
-    undop = subparsers.add_parser('undo', parents=[cfg, restorep], help='this command is modified and more powerful if git-tracking is enabled (infinite memory vs back-and-forth switch)')
-    redop = subparsers.add_parser('redo', parents=[cfg, restorep], help='this command is modified and more powerful if git-tracking is enabled (infinite memory vs back-and-forth switch)')
+    _stepsp = argparse.ArgumentParser(add_help=False)
+    _stepsp.add_argument('-n', '--steps', type=int, default=1, help='number of times undo/redo should be performed')
+
+    undop = subparsers.add_parser('undo', parents=[cfg, _restorep, _stepsp], help='Undo changes on bibtex (if --git is not enabled, only back and forth with last modification). If --git-lfs is enabled, the file entry may differ if it does not exist on disk any more, unless --restore-files was passed.')
+    redop = subparsers.add_parser('redo', parents=[cfg, _restorep, _stepsp], help='Redo changes on bibtex (if --git is not enabled, this has the same effect as papers undo)')
+    restorep = subparsers.add_parser('restore-backup', parents=[cfg, _restorep], help='Restore bibtex from backup. Also restore files if --restore-files if passed (--git-lfs only).')
 
     # git
     # ===
@@ -1145,6 +1155,8 @@ def main(args=None):
         check_install(subp, o, config) and undocmd(subp, o, config)
     elif o.cmd == 'redo':
         check_install(subp, o, config) and redocmd(subp, o, config)
+    elif o.cmd == 'restore-backup':
+        check_install(subp, o, config, bibtex_must_exist=False) and restorecmd(subp, o, config)
     elif o.cmd == 'git':
         if not installed:
             subp.error('papers must be installed to use git command')
