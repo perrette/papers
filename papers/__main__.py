@@ -1,4 +1,4 @@
-"""That is the script called by papers
+"""That is the script called by the papers cli command.
 """
 import os
 import sys
