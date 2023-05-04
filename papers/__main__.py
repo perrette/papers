@@ -474,6 +474,9 @@ def addcmd(parser, o, config):
     savebib(biblio, config)
 
 def checkcmd(parser, o, config):
+    """
+    Loops over the entire bib file that the Papers install sees, and checks each entry for formatting and for the existance of duplicates.  Then writes the Biblio object back to your Bibtex file.
+    """
     set_keyformat_config_from_cmd(o, config)
 
     biblio = get_biblio(config)

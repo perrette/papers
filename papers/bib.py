@@ -591,6 +591,9 @@ class Biblio:
     def fix_entry(self, e, fix_doi=True, fetch=False, fetch_all=False,
         fix_key=False, auto_key=False, key_ascii=False, encoding=None,
         format_name=True, interactive=False):
+        """
+        Given an entry in an existing Bilio object, checks the format name and encoding.  Will fetch additional info if it's missing.
+        """
 
         e_old = e.copy()
 
