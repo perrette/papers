@@ -411,7 +411,7 @@ def check_install(parser, o, config):
 
 def addcmd(parser, o, config):
     """
-    Given an options set and a config, sets up the function call to add the file or dir to the bibtex, and executes it.
+    Given an options set and a config, sets up the function call to add the file or all files in the directory to the bibtex, and executes it.
     """
 
     set_nameformat_config_from_cmd(o, config)
@@ -936,7 +936,7 @@ def get_parser(config=None):
 
     # list
     # ======
-    listp = subparsers.add_parser('list', description='list (a subset of) entries',
+    listp = subparsers.add_parser('list', description='list (a subset of) entries in the existing bib file.',
         parents=[cfg])
 
     listp.add_argument('fullsearch', nargs='*', help='''Search field. Usually no quotes required. See keywords to search specific fields. All words must find a match, unless --any is passed.''')

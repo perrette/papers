@@ -716,6 +716,9 @@ def entry_filecheck_metadata(e, file, image=False):
 
 def entry_filecheck(e, delete_broken=False, fix_mendeley=False,
     check_hash=False, check_metadata=False, interactive=True, image=False, relative_to=None):
+    """
+    Checks the bib entry file actually corresponds to an existing, correct file on disk.
+    """
 
     if 'file' not in e:
         return
