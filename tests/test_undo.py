@@ -88,6 +88,15 @@ class TimeTravelBase:
         current = self.get_commit()
         self.assertEqual(current, commits[-1])
 
+        # Now go to specific commits
+        self.papers(f'restore-backup --ref {commits[0]}')
+        current = self.get_commit()
+        self.assertEqual(current, commits[0])
+
+        self.papers(f'restore-backup --ref {commits[-1]}')
+        current = self.get_commit()
+        self.assertEqual(current, commits[-1])
+
 
 class TestTimeTravelGitLocal(LocalGitInstallTest, TimeTravelBase):
     pass
@@ -114,6 +123,7 @@ class TestRestoreGitLocal(LocalGitInstallTest):
         biblio2 = Biblio.load(self._path(self.mybib), '')
 
         self.assertMultiLineEqual(biblio.format(), biblio2.format())
+
 
 class TestUndoGitLocal(LocalGitLFSInstallTest):
 

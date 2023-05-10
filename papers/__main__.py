@@ -591,7 +591,10 @@ def restorecmd(parser, o, config):
     if not config.git:
         parser.print_help()
         raise PapersExit('only valid with --git enabled')
-    _restore_from_backupdir(config, restore_files=o.restore_files)
+    if o.ref:
+        _git_reset_to_commit(config, o.ref, restore_files=o.restore_files)
+    else:
+        _restore_from_backupdir(config, restore_files=o.restore_files)
 
 
 def gitcmd(parser, o, config):
@@ -1080,6 +1083,7 @@ def get_parser(config=None):
     undop = subparsers.add_parser('undo', parents=[cfg, _restorep, _stepsp], help='Undo changes on bibtex (if --git is not enabled, only back and forth with last modification). If --git-lfs is enabled, the file entry may differ if it does not exist on disk any more, unless --restore-files was passed.')
     redop = subparsers.add_parser('redo', parents=[cfg, _restorep, _stepsp], help='Redo changes on bibtex (if --git is not enabled, this has the same effect as papers undo)')
     restorep = subparsers.add_parser('restore-backup', parents=[cfg, _restorep], help='Restore bibtex from backup. Also restore files if --restore-files if passed (--git-lfs only).')
+    restorep.add_argument('--ref', help='Optional: restore specific commit (execute `papers git whatchanged` to obtain appropriate reference)')
 
     # git
     # ===
