@@ -80,7 +80,7 @@ def _backup_bib(biblio, config, message=None):
         backupfilesdir = backupdir/"files"
         backupfilesdir.mkdir(exist_ok=True)
         biblio.filesdir = str(backupfilesdir)
-        biblio.rename_entries_files(copy=True, relative_to=backupdir)
+        biblio.rename_entries_files(copy=True, relative_to=backupdir, hardlink=True)
         biblio.save(config.backupfile_clean)
         config.gitcmd(f"add {config.backupfile_clean.name}")
         config.gitcmd(f"add files")
