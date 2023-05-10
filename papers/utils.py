@@ -83,7 +83,7 @@ def checksum(fname):
 
 
 # move / copy
-def move(f1, f2, copy=False, interactive=True, dryrun=False, hardlink=True):
+def move(f1, f2, copy=False, interactive=True, dryrun=False, hardlink=False):
     maybe = 'dry-run:: ' if dryrun else ''
     dirname = os.path.dirname(f2)
     if dirname and not os.path.exists(dirname):
@@ -112,16 +112,25 @@ def move(f1, f2, copy=False, interactive=True, dryrun=False, hardlink=True):
 
     if copy:
         # If we can do a hard-link instead of copy-ing, let's do:
-        if hardlink:
+        def _hardlink(f1, f2):
             cmd = f'{maybe}ln {f1} {f2}'
             logger.info(cmd)
             if not dryrun:
                 os.link(f1, f2)
 
-        else:
+        def _copy(f1, f2):
             logger.info(f'{maybe}cp {f1} {f2}')
             if not dryrun:
                 shutil.copy(f1, f2)
+
+        if hardlink:
+            try:
+                _hardlink(f1, f2)
+            except:
+                _copy(f1, f2)
+        else:
+            _copy(f1, f2)
+
     else:
         cmd = f'{maybe}mv {f1} {f2}'
         logger.info(cmd)
