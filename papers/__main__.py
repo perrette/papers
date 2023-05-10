@@ -59,7 +59,7 @@ def _backup_bib(biblio, config, message=None):
         backupfilesdir = backupdir/"files"
         backupfilesdir.mkdir(exist_ok=True)
         biblio.filesdir = str(backupfilesdir)
-        biblio.rename_entries_files(copy=True, relative_to=backupdir)
+        biblio.rename_entries_files(copy=True, relative_to=backupdir, hardlink=True)
         biblio.save(backupfile)
         config.gitcmd(f"add papers.bib")
         config.gitcmd(f"add files")

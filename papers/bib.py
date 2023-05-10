@@ -219,8 +219,8 @@ class Biblio:
         self.relative_to = os.path.sep if relative_to is None else relative_to
         self.sort()
 
-    def move(self, file, newfile, copy=False):
-        return _move(file, newfile, copy=copy, dryrun=papers.config.DRYRUN)
+    def move(self, file, newfile, copy=False, hardlink=False):
+        return _move(file, newfile, copy=copy, dryrun=papers.config.DRYRUN, hardlink=hardlink)
 
     @property
     def entries(self):
@@ -499,7 +499,7 @@ class Biblio:
         self.sort() # keep sorted
 
 
-    def rename_entry_files(self, e, copy=False, formatter=None, relative_to=None):
+    def rename_entry_files(self, e, copy=False, formatter=None, relative_to=None, hardlink=False):
         """ Rename files
 
         See `papers.filename.Format` class and REAMDE.md for infos.
@@ -526,7 +526,7 @@ class Biblio:
             if not os.path.exists(file):
                 raise ValueError(file+': original file link is broken')
             elif file != newfile:
-                self.move(file, newfile, copy)
+                self.move(file, newfile, copy, hardlink=hardlink)
                 # assert os.path.exists(newfile)
                 # if not copy:
                 #     assert not os.path.exists(file)
@@ -544,7 +544,7 @@ class Biblio:
                 if not os.path.exists(file):
                     raise ValueError(file+': original file link is broken')
                 elif file != newfile:
-                    self.move(file, newfile, copy)
+                    self.move(file, newfile, copy, hardlink=hardlink)
                     # assert os.path.exists(newfile)
                     count += 1
                 newfiles.append(newfile)
@@ -577,10 +577,10 @@ class Biblio:
             logger.info('renamed file(s): {}'.format(count))
 
 
-    def rename_entries_files(self, copy=False, relative_to=None):
+    def rename_entries_files(self, copy=False, relative_to=None, hardlink=False):
         for e in self.db.entries:
             try:
-                self.rename_entry_files(e, copy, relative_to=relative_to)
+                self.rename_entry_files(e, copy, relative_to=relative_to, hardlink=hardlink)
             except Exception as error:
                 logger.error(str(error))
                 continue
