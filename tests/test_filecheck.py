@@ -11,7 +11,7 @@ from papers.bib import Biblio
 from tests.common import PAPERSCMD, paperscmd, prepare_paper, prepare_paper2, BibTest
 
 
-class TestFileCheck(unittest.TestCase):
+class TestFileCheck(BibTest):
 
     def setUp(self):
         self.pdf, self.doi, self.key, self.newkey, self.year, self.bibtex, self.file_rename = prepare_paper()

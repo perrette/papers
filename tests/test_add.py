@@ -11,7 +11,7 @@ from papers.bib import Biblio
 from tests.common import PAPERSCMD, paperscmd, prepare_paper, prepare_paper2, BibTest
 
 
-class TestAdd(unittest.TestCase):
+class TestAdd(BibTest):
 
     def setUp(self):
         self.pdf, self.doi, self.key, self.newkey, self.year, self.bibtex, self.file_rename = prepare_paper()
@@ -135,7 +135,7 @@ class TestAdd2(TestAdd):
         self.assertTrue(os.path.exists(self.si))
 
 
-class TestAddBib(unittest.TestCase):
+class TestAddBib(BibTest):
 
     def setUp(self):
         self.mybib = tempfile.mktemp(prefix='papers.bib')
@@ -196,7 +196,7 @@ class TestAddBib(unittest.TestCase):
             os.remove('.papersconfig.json')
 
 
-class TestAddDir(unittest.TestCase):
+class TestAddDir(BibTest):
 
     def setUp(self):
         self.pdf1, self.doi, self.key1, self.newkey1, self.year, self.bibtex1, self.file_rename1 = prepare_paper()
