@@ -29,7 +29,7 @@ CACHE_DIR = os.path.join(CACHE_HOME, 'papers')
 class Config:
     """configuration class to specify system-wide collections and files-dir
     """
-    def __init__(self, file=None, data=DATA_DIR,
+    def __init__(self, file=None,
         bibtex=None, filesdir=None,
         keyformat=KEYFORMAT,
         nameformat=NAMEFORMAT,
@@ -37,7 +37,6 @@ class Config:
         gitdir=None, git=False, gitlfs=False, local=None, absolute_paths=None, backup_files=False):
         self.file = file
         self.local = local
-        self.data = data
         self.filesdir = filesdir
         self.editor = editor
         self.bibtex = bibtex
@@ -46,7 +45,7 @@ class Config:
         if absolute_paths is None:
             absolute_paths = False if local else True
         self.absolute_paths = absolute_paths
-        self.gitdir = gitdir  or data
+        self.gitdir = gitdir
         self.git = git
         self.gitlfs = gitlfs
         self.backup_files = backup_files
@@ -115,7 +114,7 @@ class Config:
         json.dump({
             "filesdir": self._relpath(self.filesdir),
             "bibtex": self._relpath(self.bibtex),
-            "gitdir": self._relpath(self.gitdir),
+            "gitdir": self._abspath(self.gitdir), # central gitdir
             "editor": self.editor,
             "keyformat": self.keyformat.todict(),
             "nameformat": self.nameformat.todict(),
@@ -168,11 +167,12 @@ class Config:
             lines.append('* cache directory:    '+CACHE_DIR)
             lines.append('* absolute paths:     '+str(self.absolute_paths))
             # lines.append('* app data directory: '+self.data)
-            lines.append('* git-tracked:        '+str(self.git))
+            lines.append('* backup (git):       '+str(self.git))
             if self.git:
-                lines.append('* git-lfs tracked:    '+str(self.gitlfs))
-                lines.append('* git directory :     '+self.gitdir)
-            lines.append('* editor:             '+str(self.editor))
+                lines.append('* backup files (git-lfs): '+str(self.gitlfs))
+                lines.append('* backup directory:   '+self.gitdir)
+            if self.editor:
+                lines.append('* editor:             '+str(self.editor))
 
         if self.filesdir is None:
             status = bcolors.WARNING+' (unset)'+bcolors.ENDC
