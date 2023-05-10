@@ -15,7 +15,7 @@ from papers import logger
 from papers.extract import extract_pdf_doi, isvaliddoi, extract_pdf_metadata
 from papers.extract import fetch_bibtex_by_doi
 from papers.encoding import parse_file, format_file, family_names, format_entries
-from papers.config import bcolors, Config, search_config, CONFIG_FILE, CONFIG_FILE_LOCAL, DATA_DIR, CONFIG_FILE_LEGACY
+from papers.config import bcolors, Config, search_config, CONFIG_FILE, CONFIG_FILE_LOCAL, DATA_DIR, CONFIG_FILE_LEGACY, BACKUP_DIR
 from papers.duplicate import list_duplicates, list_uniques, edit_entries
 from papers.bib import Biblio, FUZZY_RATIO, DEFAULT_SIMILARITY, entry_filecheck, backupfile as backupfile_func, isvalidkey
 from papers.utils import move, checksum
@@ -282,7 +282,6 @@ def installcmd(parser, o, config):
 
     if o.local:
         papersconfig = config.file or CONFIG_FILE_LOCAL
-        config.gitdir = str(Path(papersconfig).parent/".papers")
         workdir = Path('.')
         bibtex_files = [str(f) for f in sorted(workdir.glob("*.bib"))]
         
@@ -291,11 +290,9 @@ def installcmd(parser, o, config):
 
     else:
         papersconfig = CONFIG_FILE
-        config.gitdir = os.path.join(DATA_DIR, '.papers')
         workdir = Path(DATA_DIR)
         bibtex_files = [str(f) for f in sorted(Path('.').glob("*.bib"))] + [str(f) for f in sorted(workdir.glob("*.bib"))]
         checkdirs = [os.path.join(DATA_DIR, "files")] + checkdirs
-        config.gitdir = DATA_DIR
         
         if o.absolute_paths is None:
             o.absolute_paths = True
@@ -353,6 +350,16 @@ def installcmd(parser, o, config):
     config.file = papersconfig
     config.local = o.local
     config.absolute_paths = o.absolute_paths
+
+    # Unless otherwise specified (option not advertized -- help suppressed)
+    # the git directory is centralized in the back up dir.
+    if o.gitdir:
+        config.gitdir = o.gitdir
+
+    elif config.bibtex is not None:
+        from normality import slugify
+        bibi = config.bibtex[:-len(".bib")] if config.bibtex.endswith(".bib") else config.bibtex
+        config.gitdir = os.path.join(BACKUP_DIR, slugify(bibi))
 
     if o.editor:
         config.editor = o.editor
@@ -414,13 +421,6 @@ def installcmd(parser, o, config):
 
     if config.git:
         # add a gitignore file to skip gitdir
-        if config.local:
-            with open(Path(config.gitdir).parent/'.gitignore', 'a+') as f:
-                lines = f.readlines()
-                ignore = os.path.basename(config.gitdir)
-                if config.gitdir not in (l.strip() for l in lines):
-                    f.write(config.gitdir + '\n')
-
         if (Path(config.gitdir)/'.git').exists():
             logger.warning(f'{config.gitdir} is already initialized')
         else:
