@@ -19,7 +19,6 @@ bibtex2 = """@article{SomeOneElse2000,
  year = {2000}
 }"""
 
-
 class TestLocalInstall(TestBaseInstall):
 
     def test_install(self):
