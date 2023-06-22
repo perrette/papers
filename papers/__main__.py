@@ -790,10 +790,13 @@ def listcmd(parser, o, config):
             tit = e.get('title', '')[:60]+ ('...' if len(e.get('title', ''))>60 else '')
             info = []
             if e.get('doi',''):
-                info.append('doi:'+e['doi'])
+                info.append(link(f"https://doi.org/{e['doi']}", 'doi:'+e['doi']))
             n = _nfiles(e)
             if n:
-                info.append(bcolors.OKGREEN+('files:' if n > 1 else 'file:')+str(n)+bcolors.ENDC)
+                files = parse_file(e.get('file',''), relative_to=biblio.relative_to)
+                file_link = f"file:///{Path(files[0]).resolve()}"
+                ansi_link = link(file_link, f'{"file" if n == 1 else "files"}:{str(n)}')
+                info.append(bcolors.OKGREEN+ansi_link+bcolors.ENDC)
             if e.get('keywords',''):
                 keywords = parse_keywords(e)
                 info.append(bcolors.WARNING+" | ".join(keywords)+bcolors.ENDC)
@@ -801,6 +804,20 @@ def listcmd(parser, o, config):
             print(key(e), tit, infotag)
     else:
         print(format_entries(entries))
+
+
+def link(uri, label=None):
+    """https://stackoverflow.com/a/71309268/2192272
+    """
+    if label is None:
+        label = uri
+    parameters = ''
+
+    # OSC 8 ; params ; URI ST <name> OSC 8 ;; ST
+    escape_mask = '\033]8;{};{}\033\\{}\033]8;;\033\\'
+
+    return escape_mask.format(parameters, uri, label)
+
 
 def statuscmd(parser, o, config):
     print(config.status(check_files=not o.no_check_files, verbose=o.verbose))
