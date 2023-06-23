@@ -538,7 +538,7 @@ def addcmd(parser, o, config):
                            **kw)
 
             else: # file.endswith('.bib'):
-                biblio.add_bibtex_file(file, **kw)
+                biblio.add_bibtex_file(file, attachments=o.attachment, **kw)
 
         except Exception as error:
             # print(error)

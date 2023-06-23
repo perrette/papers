@@ -90,6 +90,14 @@ If you already know the DOI of a PDF, and don't want to gamble the fulltext sear
 The `add` command above also works without any PDF (create a bibtex entry without file attachment).
 
     papers add --doi 10.5194/esd-4-11-2013 --bibtex papers.bib
+
+
+### Add entry without DOI from bibtex library + PDF
+
+Some old files don't have a DOI. Best is to add the entry from its bibtex:
+
+    papers add entry.bib --attachment esd-4-11-2013.pdf
+
     
 ### List entries (and edit etc...)
 
