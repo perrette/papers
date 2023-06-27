@@ -99,7 +99,7 @@ class Config:
             return str((self.root / p).relative_to(self.root))
         except Exception as error:
             print(error)
-            logger.warn(f"config :: can't save {p} as relative path to {self.root}")
+            logger.warning(f"config :: can't save {p} as relative path to {self.root}")
             return p
 
     def _abspath(self, p, root=None):
@@ -140,7 +140,7 @@ class Config:
 
     def _update_paths_to_absolute(self):
         if self.file is None:
-            logger.warn("_update_paths_to_absolute: only works if Config.file is defined")
+            logger.warning("_update_paths_to_absolute: only works if Config.file is defined")
             return
         root = Path(self.file).parent
         for field in ['bibtex', 'filesdir', 'gitdir']:
