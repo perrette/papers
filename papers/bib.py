@@ -526,14 +526,19 @@ class Biblio:
             file = files[0]
             base, ext = os.path.splitext(file)
             newfile = os.path.join(direc, newname+ext)
+
             if not os.path.exists(file):
-                raise ValueError(file+': original file link is broken')
+                # raise ValueError(file+': original file link is broken')
+                logger.warning(file+': original file link is broken')
+                newfile = file
+
             elif file != newfile:
                 self.move(file, newfile, copy, hardlink=hardlink)
                 # assert os.path.exists(newfile)
                 # if not copy:
                 #     assert not os.path.exists(file)
                 count += 1
+
             newfiles = [newfile]
             self.set_files(e, newfiles, relative_to=relative_to)
 
@@ -545,7 +550,8 @@ class Biblio:
             for file in files:
                 newfile = os.path.join(newdir, os.path.basename(file))
                 if not os.path.exists(file):
-                    raise ValueError(file+': original file link is broken')
+                    logger.warning(file+': original file link is broken')
+                    newfile = file
                 elif file != newfile:
                     self.move(file, newfile, copy, hardlink=hardlink)
                     # assert os.path.exists(newfile)
