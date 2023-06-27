@@ -18,7 +18,7 @@ from papers.encoding import parse_file, format_file, family_names, format_entrie
 from papers.config import bcolors, Config, search_config, CONFIG_FILE, CONFIG_FILE_LOCAL, DATA_DIR, CONFIG_FILE_LEGACY, BACKUP_DIR
 from papers.duplicate import list_duplicates, list_uniques, edit_entries
 from papers.bib import Biblio, FUZZY_RATIO, DEFAULT_SIMILARITY, entry_filecheck, backupfile as backupfile_func, isvalidkey
-from papers.utils import move, checksum
+from papers.utils import move, checksum, ansi_link as link
 from papers import __version__
 
 
@@ -804,19 +804,6 @@ def listcmd(parser, o, config):
             print(key(e), tit, infotag)
     else:
         print(format_entries(entries))
-
-
-def link(uri, label=None):
-    """https://stackoverflow.com/a/71309268/2192272
-    """
-    if label is None:
-        label = uri
-    parameters = ''
-
-    # OSC 8 ; params ; URI ST <name> OSC 8 ;; ST
-    escape_mask = '\033]8;{};{}\033\\{}\033]8;;\033\\'
-
-    return escape_mask.format(parameters, uri, label)
 
 
 def statuscmd(parser, o, config):
