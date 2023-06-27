@@ -757,6 +757,20 @@ def listcmd(parser, o, config):
             e['keywords'] = ", ".join(keywords)
         savebib(biblio, config)
 
+    elif o.add_files:
+        if len(entries) != 1:
+            raise PapersExit("list only one entry to use --add-files")
+        e = entries[0]
+        files = biblio.get_files(e)
+        for f in o.add_files:
+            if not os.path.exists(f):
+                raise PapersExit(f"file {f} does not exist")
+        files.extend(o.add_files)
+        biblio.set_files(e, files)
+        if o.rename:
+            biblio.rename_entry_files(e, copy=o.copy)
+        savebib(biblio, config)
+
     elif o.edit:
         otherentries = [e for e in biblio.db.entries if e not in entries]
         try:
@@ -1072,6 +1086,9 @@ def get_parser(config=None):
     grp.add_argument('--edit', action='store_true', help='interactive edit text file with entries, and re-insert them')
     grp.add_argument('--fetch', action='store_true', help='fetch and fix metadata')
     grp.add_argument('--add-keywords', '--add-tag', nargs='+', help='add keywords to the selected entries')
+    grp.add_argument('--add-files', nargs='+', help='add files to the selected entries (only one entry must be listed)')
+    grp.add_argument('--rename', action='store_true', help='rename added file(s) into files folder. Used together with --add-files')
+    grp.add_argument('--copy', action='store_true', help='copy added file(s) into files folder. Used together with --add-files --rename')
 
     # grp.add_argument('--merge-duplicates', action='store_true')
 
