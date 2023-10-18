@@ -14,7 +14,7 @@ That said, it is becoming useful :)
 ## Motivation
 
 This project is an attempt to create a light-weight,
-command-line bibliography managenent tool. Aims:
+command-line bibliography management tool. Aims:
 
 - maintain a PDF library (with appropriate naming)
 - maintain one or several bibtex-compatible collections, linked to PDFs
@@ -221,7 +221,7 @@ and remove the configuration file by hand (`rm ...`). Or use `papers uninstall` 
 
     papers uninstall
 
-You may repeat `papers status -v` and cleaning until a satistfying state is reached, or remove all config files recursively up to (and including) global install:
+You may repeat `papers status -v` and cleaning until a satisfying state is reached, or remove all config files recursively up to (and including) global install:
 
     papers uninstall --recursive
 
@@ -229,7 +229,7 @@ You may repeat `papers status -v` and cleaning until a satistfying state is reac
 ### Relative versus Absolute path
 
 By default, the file paths in the bibtex are stored as absolute paths (starting with `/`), except for local installs.
-It is possible to change this behavious explicitly during install or in a case by case basis with `--relative-paths` or `--absolute-paths` options.
+It is possible to change this behaviour explicitly during install or in a case by case basis with `--relative-paths` or `--absolute-paths` options.
 With or without install.
 
 
@@ -242,7 +242,7 @@ Simple cases are:
 In any other cases, you risk breaking the file links.
 
 Papers tries to be as little opinionated as possible about how files are organized, and so it relies on your own judgement and use case.
-When loading a bibtex, it always inteprete relative file links as being relative to the bibtex file.
+When loading a bibtex, it always interprete relative file links as being relative to the bibtex file.
 When saving a bibtex, it will save file links accordingly to the default setting path (usually absolute, unless local install or unless you specify otherwise).
 
 In any case, the following set of commands will always work provided the initial file links are valid (optional parameters in brackets):
