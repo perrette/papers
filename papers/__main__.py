@@ -32,7 +32,9 @@ def check_legacy_config(configfile):
 
 def get_biblio(config):
     """
-    Given a config, get the Biblio object associated with this run.  If there's no Biblio object, will make a new one, silently.
+    This function initializes a Biblio object based on the bibtex file specified as command line argument or in config file.
+
+    If no bibtex file is specified, it raises a ValueError().
     """
     if config.bibtex is None:
         raise ValueError('bibtex is not initialized')
