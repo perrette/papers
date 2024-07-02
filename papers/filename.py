@@ -1,4 +1,5 @@
-"""Key and file name formatting
+"""
+Key and file name formatting
 """
 from normality import slugify, normalize
 from papers.encoding import family_names
@@ -32,15 +33,17 @@ def make_template_fields(
     title_sep="-",
 ):
     """
-     Available fields in output
+    Available fields in output are explicitly listed here, and this is the single source of truth for these.
     - author : slugified author names (lower case) separated by {author_sep} ('_' by default), with max {author_num} authors
-    - Author : same as author but titel case (first letter capitalized)
+    - Author : same as author but title case (first letter capitalized)
     - AUTHOR : same as author but upper case
     - authorX: first; first and second; first et al
+    - journal: journal name
     - title : normalized title in lower case, separated by {title_sep} ('-' by default) with max {title_word_num} words
     - Title: same as title by with capitalized words
     - year
     - ID : bibtex key
+    Each one of these needs a specific, explicit assignment below.
     """
     # names = bibtexparser.customization.getnames(entry.get('author','unknown').lower().split(' and '))
     _names = family_names(entry.get("author", "unknown").lower())
@@ -49,6 +52,9 @@ def make_template_fields(
     Author = author_sep.join([nm.capitalize() for nm in _names[:author_num]])
     AuthorX = _cite_author([nm.capitalize() for nm in _names]).replace(" ", author_sep)
     authorX = AuthorX.lower()
+
+    # a thing that's not a bibtex article won't have a journal
+    journal = entry.get("journal", None)
 
     year = str(entry.get("year", "0000"))
 
@@ -73,6 +79,7 @@ def make_template_fields(
         "AUTHOR": author.upper(),
         "authorX": authorX,
         "AuthorX": AuthorX,
+        "journal" : journal,
         "year": year,
         "title": title,
         "Title": Title,
