@@ -597,7 +597,7 @@ class Biblio:
             self.relative_to = relative_to
 
 
-    def fix_entry(self, e, fix_doi=True, fetch=False, fetch_all=False                  
+    def fix_entry(self, e, fix_doi=True, fetch=False, fetch_all=False,
         fix_key=False, auto_key=False, key_ascii=False, encoding=None,
         format_name=True, interactive=False):
         """
