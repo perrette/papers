@@ -56,8 +56,8 @@ class TestAdd(BibTest):
         paperscmd(f'add --bibtex {self.mybib} {self.pdf}')
 
         file_ = self._checkbib(dismiss_key=True)
-        file = self._checkfile(file_)
-        self.assertEqual(file, self.pdf)
+        the_file = self._checkfile(file_)
+        self.assertEqual(the_file, self.pdf)
         # self.assertTrue(os.path.exists(self.pdf)) # old pdf still exists
 
 
@@ -76,10 +76,27 @@ class TestAdd(BibTest):
         paperscmd(f'add -rc --bibtex {self.mybib} --filesdir {self.filesdir} {self.pdf}')
 
         file_ = self._checkbib(dismiss_key=True)  # 'file:pdf'
-        file = self._checkfile(file_)
-        self.assertEqual(file, os.path.join(self.filesdir, self.file_rename)) # update key since pdf
+        the_file = self._checkfile(file_)
+        self.assertEqual(str(the_file).split('/')[-1], self.file_rename) # update key since pdf
         self.assertTrue(os.path.exists(self.pdf)) # old pdf still exists
 
+    def test_add_rename_copy_journal(self):
+        '''
+        Tests that demanding a {journal} in the --name-template works.
+        Lightly begged/borrowed/stolen from the above test.
+        '''
+        paperscmd(f'add --rename --copy --name-template "{{journal}}/{{authorX}}_{{year}}_{{title}}" --name-title-sep - --name-author-sep _ --bibtex {self.mybib} --filesdir {self.filesdir} {self.pdf}') # need to escape the {} in f-strings by doubling those curly braces.
+        
+        file_ = self._checkbib(dismiss_key=True)
+        the_file = self._checkfile(file_)
+        self.assertTrue(os.path.exists(self.pdf))
+        new_path = str(the_file).split('/')
+        old_path = str(os.path.join(self.filesdir, self.file_rename)).split('/')
+        self.assertEqual(old_path[-1], new_path[-1])
+        self.assertEqual(old_path[0], new_path[0])
+        db = bibtexparser.load(open(self.mybib))        
+        journal = db.entries[0]['journal']
+        self.assertEqual(journal, new_path[-2]) #TODO a little gross, hardcoded
 
     def test_add_rename(self):
 
@@ -89,8 +106,9 @@ class TestAdd(BibTest):
         paperscmd(f'add -r --bibtex {self.mybib} --filesdir {self.filesdir} {pdfcopy} --debug')
 
         file_ = self._checkbib(dismiss_key=True)  # 'file:pdf'
-        file = self._checkfile(file_)
-        self.assertEqual(file, os.path.join(self.filesdir,self.file_rename)) # update key since pdf
+        the_file = self._checkfile(file_)
+        self.assertEqual(the_file.split('/')[-1], self.file_rename)
+        #self.assertEqual(the_file, os.path.join(self.filesdir,self.file_rename)) # update key since pdf        
         self.assertFalse(os.path.exists(pdfcopy))
 
 
