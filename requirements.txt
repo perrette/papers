@@ -4,3 +4,4 @@ bibtexparser
 scholarly
 rapidfuzz
 normality
+pyicu # remove warning
