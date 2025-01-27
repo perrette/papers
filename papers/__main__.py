@@ -222,7 +222,7 @@ def savebib(biblio, config):
 def set_keyformat_config_from_cmd(o, config):
     """
     Given options and a config state, applies the desired key options to the config.
-    """    
+    """
     config.keyformat.template = o.key_template
     config.keyformat.author_num = o.key_author_num
     config.keyformat.author_sep = o.key_author_sep
@@ -284,7 +284,7 @@ def installcmd(parser, o, config):
         papersconfig = config.file or CONFIG_FILE_LOCAL
         workdir = Path('.')
         bibtex_files = [str(f) for f in sorted(workdir.glob("*.bib"))]
-        
+
         if o.absolute_paths is None:
             o.absolute_paths = False
 
@@ -293,7 +293,7 @@ def installcmd(parser, o, config):
         workdir = Path(DATA_DIR)
         bibtex_files = [str(f) for f in sorted(Path('.').glob("*.bib"))] + [str(f) for f in sorted(workdir.glob("*.bib"))]
         checkdirs = [os.path.join(DATA_DIR, "files")] + checkdirs
-        
+
         if o.absolute_paths is None:
             o.absolute_paths = True
 
@@ -366,7 +366,7 @@ def installcmd(parser, o, config):
 
     # create bibtex file if not existing
     bibtex = Path(o.bibtex) if o.bibtex else None
-    
+
     if bibtex and not bibtex.exists():
         logger.info(f'create empty bibliography database: {bibtex}')
         bibtex.parent.mkdir(parents=True, exist_ok=True)
@@ -443,7 +443,7 @@ def _dir_is_empty(dir):
         return not any(it)
 
 def uninstallcmd(parser, o, config):
-    # TODO this is actually never tested.    
+    # TODO this is actually never tested.
     if Path(config.file).exists():
         logger.info(f"The uninstaller will now remove {config.file}")
         os.remove(config.file)
@@ -529,7 +529,7 @@ def addcmd(parser, o, config):
                                 **kw)
                 else:
                     raise ValueError(file+' is a directory, requires --recursive to explore')
-                
+
             elif file.endswith('.pdf'):
                 biblio.add_pdf(file, attachments=o.attachment, rename=o.rename, copy=o.copy,
                            search_doi=not o.no_query_doi,
@@ -556,7 +556,7 @@ def checkcmd(parser, o, config):
     set_keyformat_config_from_cmd(o, config)
 
     biblio = get_biblio(config)
-    
+
     # if o.fix_all:
     #     o.fix_doi = True
     #     o.fetch_all = True
@@ -587,7 +587,7 @@ def filecheckcmd(parser, o, config):
 
     if o.rename:
         biblio.rename_entries_files(o.copy)
-        
+
     savebib(biblio, config)
 
 def redocmd(parser, o, config):
@@ -629,7 +629,7 @@ def gitcmd(parser, o, config):
         parser.error('papers failed to execute git command -- you should check your system git install.')
 
 def doicmd(parser, o):
-    print(extract_pdf_doi(o.pdf, image=o.image))    
+    print(extract_pdf_doi(o.pdf, image=o.image))
 
 def fetchcmd(parser, o):
     print(fetch_bibtex_by_doi(o.doi))
@@ -781,7 +781,7 @@ def listcmd(parser, o, config):
             return
 
         savebib(biblio, config)
-        
+
     elif o.fetch:
         for e in entries:
             biblio.fix_entry(e, fix_doi=True, fix_key=True, fetch_all=True, interactive=True)
@@ -822,7 +822,7 @@ def listcmd(parser, o, config):
 
 def statuscmd(parser, o, config):
     print(config.status(check_files=not o.no_check_files, verbose=o.verbose))
-    
+
 
 
 def get_parser(config=None):
