@@ -85,7 +85,19 @@ class Config:
 
     def gitcmd(self, cmd, check=True, **kw):
         logger.debug(f"git add {self.backupfile.name}")
-        return (sp.check_call if check else sp.call)(f"git {cmd}", shell=True, cwd=self.gitdir, **kw)
+        try:
+            sp.run(
+                f"git {cmd}",
+                cwd=self.gitdir,
+                stdout=sp.DEVNULL,
+                stderr=sp.DEVNULL,
+                check=check,
+                shell=True,
+                **kw,
+            )
+        except sp.CalledProcessError as e:
+            logger.error(f"Command failed: 'git {cmd}'")
+            raise
 
 
     def _relpath(self, p):
