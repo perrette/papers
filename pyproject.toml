@@ -22,7 +22,6 @@ dependencies = [
     "scholarly",
     "rapidfuzz",
     "normality",
-    "pyicu",
 ]
 dynamic = ["version"]
 
