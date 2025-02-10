@@ -27,9 +27,18 @@ jobs:
       run: |
         python setup.py sdist bdist_wheel
 
-    - name: Publish to PyPI
-      env:
-        TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
-        TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+    - name: Create .pypirc
       run: |
+        echo "[distutils]" > ~/.pypirc
+        echo "index-servers =" >> ~/.pypirc
+        echo "  papers-cli" >> ~/.pypirc
+        echo "" >> ~/.pypirc
+        echo "[papers-cli]" >> ~/.pypirc
+        echo "repository = https://upload.pypi.org/legacy/" >> ~/.pypirc
+        echo "username = ${{ secrets.PYPI_USERNAME }}" >> ~/.pypirc
+        echo "password = ${{ secrets.PYPI_PASSWORD }}" >> ~/.pypirc
+
+    - name: Publish to PyPI
+      run: |
+        echo "TWINE_USERNAME is set to $TWINE_USERNAME"
         twine upload dist/*
