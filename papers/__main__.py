@@ -1229,10 +1229,10 @@ def main_clean_exit(args=None):
     try:
         main(args)
     except PapersExit as error:
-        if logger.getLevel() == logging.DEBUG:
+        if logger.getEffectiveLevel() == logging.DEBUG:
             raise
-        if error.message:
-            logger.error(error.message)
+        if error.args:
+            logger.error(str(error))
         sys.exit(1)
 
 if __name__ == "__main__":
