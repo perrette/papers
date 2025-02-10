@@ -9,7 +9,7 @@ authors = [
 ]
 description='utilities to keep your PDF library organized'
 readme = "README.md"
-requires-python = ">=3.7"
+requires-python = ">=3.9"
 keywords = ['bibtex', 'references','bibliography']
 license = {text = "MIT"}
 classifiers = [
