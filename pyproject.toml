@@ -44,15 +44,14 @@ papers = "papers.__main__:main"
 # and then run "tox" from this directory.
 legacy_tox_ini = """
 [tox]
-envlist = clean, py38, py39, py310, py311, report
+envlist = clean, py39, py310, py311, py312, py313, report
 
 [gh-actions]
 python =
-    3.7: py37
-    3.8: py38
     3.9: py39
     3.10: py310
     3.11: py311
+    3.12: py312
 
 [testenv]
 commands = pytest --cov=papers --cov-append --cov-report=term-missing {posargs} -xv
@@ -66,8 +65,8 @@ deps =
     pytest
     pytest-cov
 depends =
-    {py38,py39,py310,py311}: clean
-    report: py38,py39,py310,py311
+    {py39,py310,py311,py312,py313}: clean
+    report: py39,py310,py311,py312,py313
 
 
 [testenv:report]

@@ -1,8 +1,9 @@
 [![test](https://github.com/perrette/papers/workflows/CI/badge.svg)](https://github.com/perrette/papers/actions)
-[![python](https://img.shields.io/badge/python-3.8-blue.svg)]()
 [![python](https://img.shields.io/badge/python-3.9-blue.svg)]()
 [![python](https://img.shields.io/badge/python-3.10-blue.svg)]()
 [![python](https://img.shields.io/badge/python-3.11-blue.svg)]()
+[![python](https://img.shields.io/badge/python-3.12-blue.svg)]()
+[![python](https://img.shields.io/badge/python-3.13-blue.svg)]()
 
 # papers
 
@@ -23,7 +24,7 @@ command-line bibliography management tool. Aims:
 
 ## Dependencies
 
-- python 3.8+
+- python 3.9+
 - [poppler-utils](https://en.wikipedia.org/wiki/Poppler_(software)) (only:`pdftotext`): convert PDF to text for parsing
 - [bibtexparser](https://bibtexparser.readthedocs.io) : parse bibtex files
 - [crossrefapi](https://github.com/fabiobatalha/crossrefapi) : make polite requests to crossref API
@@ -98,7 +99,7 @@ Some old files don't have a DOI. Best is to add the entry from its bibtex:
 
     papers add entry.bib --attachment esd-4-11-2013.pdf
 
-    
+
 ### List entries (and edit etc...)
 
 Pretty listing (-1 or -l for one-liner listing, otherwise plain bibtex):
