@@ -299,17 +299,18 @@ class Biblio:
                 newkey = self.append_abc_to_key(entry)  # add abc
                 logger.info('update key: {} => {}'.format(entry['ID'], newkey))
                 entry['ID'] = newkey
+                print("Updated entry:", self.key(entry))
 
             else:
                 raise DuplicateKeyError('this error can be avoided if update_key is True')
 
         else:
             logger.info('new entry: '+self.key(entry))
+            print("New entry:", self.key(entry))
 
         self.entries.insert(i, entry)
 
         if rename: self.rename_entry_files(entry, copy=copy)
-
 
     def insert_entry_check(self, entry, update_key=False, mergefiles=True, on_conflict='i', rename=False, copy=False):
 
@@ -320,7 +321,7 @@ class Biblio:
             self.insert_entry(entry, update_key, rename=rename, copy=copy)
 
 
-        elif duplicates:
+        else:
             # some duplicates...
             logger.debug('duplicate(s) found: {}'.format(len(duplicates)))
 
@@ -334,6 +335,7 @@ class Biblio:
             if entry == candidate:
                 logger.debug('exact duplicate')
                 if rename: self.rename_entry_files(candidate, copy=copy)
+                print("Existing entry:", self.key(entry))
                 return  # do nothing
 
             if update_key and entry['ID'] != candidate['ID']:
@@ -352,6 +354,7 @@ class Biblio:
                 logger.debug('fixed: exact duplicate')
                 entry = candidate
                 if rename: self.rename_entry_files(candidate, copy=copy)
+                print("Existing entry:", self.key(entry))
                 return  # do nothing
 
             logger.debug('conflict resolution: '+on_conflict)
@@ -602,7 +605,7 @@ class Biblio:
         format_name=True, interactive=False):
         """
         Given an entry in an existing Bilio object, checks the format name and encoding.  Will fetch additional info if it's missing.
-        """        
+        """
 
         e_old = e.copy()
 
@@ -727,7 +730,7 @@ def entry_filecheck(e, delete_broken=False, fix_mendeley=False,
     check_hash=False, check_metadata=False, interactive=True, image=False, relative_to=None):
     """
     Checks the bib entry file actually corresponds to an existing, correct file on disk.
-    """    
+    """
 
     if 'file' not in e:
         return
