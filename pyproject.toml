@@ -57,7 +57,7 @@ python =
 [testenv]
 commands = pytest --cov=papers --cov-append --cov-report=term-missing {posargs} -xv
 deps =
-    bibtexparser
+    bibtexparser < 2.0.0
     scholarly
     crossrefapi
     rapidfuzz

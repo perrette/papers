@@ -1,6 +1,6 @@
 unidecode
 crossrefapi
-bibtexparser
+bibtexparser < 2.0.0
 scholarly
 rapidfuzz
 normality
