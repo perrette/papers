@@ -18,7 +18,7 @@ from papers.encoding import parse_file, format_file, family_names, format_entrie
 from papers.config import bcolors, Config, search_config, CONFIG_FILE, CONFIG_FILE_LOCAL, DATA_DIR, CONFIG_FILE_LEGACY, BACKUP_DIR
 from papers.duplicate import list_duplicates, list_uniques, edit_entries
 from papers.bib import Biblio, FUZZY_RATIO, DEFAULT_SIMILARITY, entry_filecheck, backupfile as backupfile_func, isvalidkey
-from papers.utils import move, checksum, ansi_link as link
+from papers.utils import move, checksum, ansi_link as link, view_pdf
 from papers import __version__
 
 
@@ -799,6 +799,12 @@ def listcmd(parser, o, config):
             biblio.db.entries.remove(e)
         savebib(biblio, config)
 
+    elif o.open:
+        for e in entries:
+            for f in biblio.get_files(e):
+                logger.info(f"opening {f} ...")
+                view_pdf(f)
+
     elif o.field:
         # entries = [{k:e[k] for k in e if k in o.field+['ID','ENTRYTYPE']} for e in entries]
         for e in entries:
@@ -823,6 +829,7 @@ def listcmd(parser, o, config):
                 info.append(bcolors.WARNING+" | ".join(keywords)+bcolors.ENDC)
             infotag = '('+', '.join(info)+')' if info else ''
             print(key(e), tit, infotag)
+
     else:
         print(format_entries(entries))
 
@@ -1096,6 +1103,7 @@ def get_parser(config=None):
     grp.add_argument('--add-files', nargs='+', help='add files to the selected entries (only one entry must be listed)')
     grp.add_argument('--rename', action='store_true', help='rename added file(s) into files folder. Used together with --add-files')
     grp.add_argument('--copy', action='store_true', help='copy added file(s) into files folder. Used together with --add-files --rename')
+    grp.add_argument('-o', '--open', action='store_true', help='open attachments (if any)')
 
     # grp.add_argument('--merge-duplicates', action='store_true')
 
