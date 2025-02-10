@@ -75,7 +75,7 @@ def _simplify_string(s):
     #     s = latex_to_unicode(s)
     # except Exception as error:
     #     raise
-    #     logger.warn('simplify string: failed to remove latex: '+str(error))
+    #     logger.warning('simplify string: failed to remove latex: '+str(error))
     s = _remove_unicode(s)
     return s.lower().strip()
 
@@ -375,6 +375,9 @@ class Biblio:
 
     def set_files(self, entry, files, relative_to=None):
         entry['file'] = format_file(list(sorted(set(files), key=lambda f: files.index(f))), relative_to=relative_to or self.relative_to)
+        # delete field if empty
+        if not entry['file'].strip():
+            del entry['file']
 
     def get_files(self, entry, relative_to=None):
         return parse_file(entry.get('file', ''), relative_to=relative_to or self.relative_to)
@@ -428,7 +431,7 @@ class Biblio:
         logger.debug('generated PDF key: '+entry['ID'])
 
         kw.pop('update_key', True)
-            # logger.warn('fetched key is always updated when adding PDF to existing bib')
+            # logger.warning('fetched key is always updated when adding PDF to existing bib')
         self.insert_entry(entry, update_key=True, **kw)
 
 
@@ -446,7 +449,7 @@ class Biblio:
                     entry = read_entry_dir(root, relative_to=self.relative_to)
                     self.insert_entry(entry, **kw)
                 except Exception:
-                    logger.warn(root+'::'+str(error))
+                    logger.warning(root+'::'+str(error))
                 continue
 
             for file in files:
@@ -459,7 +462,7 @@ class Biblio:
                     elif file.endswith('.bib'):
                         self.add_bibtex_file(path, **kw)
                 except Exception as error:
-                    logger.warn(path+'::'+str(error))
+                    logger.warning(path+'::'+str(error))
                     continue
 
 
@@ -470,7 +473,7 @@ class Biblio:
         if os.path.exists(bibtex):
             shutil.copy(bibtex, backupfile(bibtex))
         if self.relative_to not in (os.path.sep, None) and Path(self.relative_to).resolve() != Path(bibtex).parent.resolve():
-            logger.warn("Saving bibtex file with relative paths may break links. Consider using `Biblio.update_file_path(Path(bibtex).parent)` before.")
+            logger.warning("Saving bibtex file with relative paths may break links. Consider using `Biblio.update_file_path(Path(bibtex).parent)` before.")
         s = self.format()
         open(bibtex, 'w').write(s)
 
@@ -523,14 +526,19 @@ class Biblio:
             file = files[0]
             base, ext = os.path.splitext(file)
             newfile = os.path.join(direc, newname+ext)
+
             if not os.path.exists(file):
-                raise ValueError(file+': original file link is broken')
+                # raise ValueError(file+': original file link is broken')
+                logger.warning(file+': original file link is broken')
+                newfile = file
+
             elif file != newfile:
                 self.move(file, newfile, copy, hardlink=hardlink)
                 # assert os.path.exists(newfile)
                 # if not copy:
                 #     assert not os.path.exists(file)
                 count += 1
+
             newfiles = [newfile]
             self.set_files(e, newfiles, relative_to=relative_to)
 
@@ -542,7 +550,8 @@ class Biblio:
             for file in files:
                 newfile = os.path.join(newdir, os.path.basename(file))
                 if not os.path.exists(file):
-                    raise ValueError(file+': original file link is broken')
+                    logger.warning(file+': original file link is broken')
+                    newfile = file
                 elif file != newfile:
                     self.move(file, newfile, copy, hardlink=hardlink)
                     # assert os.path.exists(newfile)
@@ -618,14 +627,14 @@ class Biblio:
                                 e[k] = unicode_to_latex(e[k])
                         # except KeyError as error:
                         except (KeyError, ValueError) as error:
-                            logger.warn(e.get('ID','')+': '+k+': failed to encode: '+str(error))
+                            logger.warning(e.get('ID','')+': '+k+': failed to encode: '+str(error))
 
         if fix_doi:
             if 'doi' in e and e['doi']:
                 try:
                     doi = parse_doi('doi:'+e['doi'])
                 except:
-                    logger.warn(e.get('ID','')+': failed to fix doi: '+e['doi'])
+                    logger.warning(e.get('ID','')+': failed to fix doi: '+e['doi'])
                     return
 
                 if doi.lower() != e['doi'].lower():
@@ -644,7 +653,7 @@ class Biblio:
                 try:
                     bibtex = fetch_bibtex_by_doi(e['doi'])
                 except Exception as error:
-                    logger.warn('...failed to fetch bibtex (doi): '+str(error))
+                    logger.warning('...failed to fetch bibtex (doi): '+str(error))
 
             elif e.get('title','') and e.get('author','') and fetch_all:
                 kw = {}
@@ -654,7 +663,7 @@ class Biblio:
                 try:
                     bibtex = fetch_bibtex_by_fulltext_crossref('', **kw)
                 except Exception as error:
-                    logger.warn('...failed to fetch/update bibtex (all): '+str(error))
+                    logger.warning('...failed to fetch/update bibtex (all): '+str(error))
 
             if bibtex:
                 db = bibtexparser.loads(bibtex)
@@ -742,7 +751,7 @@ def entry_filecheck(e, delete_broken=False, fix_mendeley=False,
             try:
                 file = latex_to_unicode(file)
             except KeyError as error:
-                logger.warn(e['ID']+': '+str(error)+': failed to convert latex symbols to unicode: '+file)
+                logger.warning(e['ID']+': '+str(error)+': failed to convert latex symbols to unicode: '+file)
 
             # fix root (e.g. path starts with home instead of /home)
             dirname = os.path.dirname(file)
@@ -763,11 +772,11 @@ def entry_filecheck(e, delete_broken=False, fix_mendeley=False,
             try:
                 entry_filecheck_metadata(e, file, image=image)
             except ValueError as error:
-                logger.warn(error)
+                logger.warning(error)
 
         # check existence
         if not os.path.exists(file):
-            logger.warn(e['ID']+': "{}" does not exist'.format(file)+delete_broken*' ==> delete')
+            logger.warning(e['ID']+': "{}" does not exist'.format(file)+delete_broken*' ==> delete')
             if delete_broken:
                 logger.info('delete file from entry: "{}"'.format(file))
                 continue

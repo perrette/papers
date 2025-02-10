@@ -16,12 +16,12 @@ classifiers = [
     "Programming Language :: Python :: 3",
 ]
 dependencies = [
-      "unidecode",
-      "crossrefapi",
-      "bibtexparser",
-      "scholarly",
-      "rapidfuzz",
-      "normality",
+    "unidecode",
+    "crossrefapi",
+    "bibtexparser",
+    "scholarly",
+    "rapidfuzz",
+    "normality",
 ]
 dynamic = ["version"]
 

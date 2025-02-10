@@ -1,4 +1,5 @@
 import os
+import re
 import shutil
 import hashlib
 
@@ -24,6 +25,33 @@ def strip_colors(s):
         if name.startswith("_"):
             continue
         s = s.replace(c, '')
+    return s
+
+
+def ansi_link(uri, label=None):
+    """https://stackoverflow.com/a/71309268/2192272
+    """
+    if label is None:
+        label = uri
+    parameters = ''
+
+    # OSC 8 ; params ; URI ST <name> OSC 8 ;; ST
+    escape_mask = '\033]8;{};{}\033\\{}\033]8;;\033\\'
+
+    return escape_mask.format(parameters, uri, label)
+
+
+ANSI_LINK_RE = re.compile(r'(?P<ansi_sequence>\033]8;(?P<parameter>.*?);(?P<uri>.*?)\033\\(?P<label>.*?)\033]8;;\033\\)')
+
+def strip_ansi_link(s):
+    for m in ANSI_LINK_RE.findall(s):
+        s = s.replace(m[0], m[3])
+    return s
+
+
+def strip_all(s):
+    s = strip_colors(s)
+    s = strip_ansi_link(s)
     return s
 
 
@@ -85,13 +113,13 @@ def checksum(fname):
 # move / copy
 def move(f1, f2, copy=False, interactive=True, dryrun=False, hardlink=False):
     maybe = 'dry-run:: ' if dryrun else ''
+    if f1 == f2:
+        logger.info('dest is identical to src: '+f1)
+        return
     dirname = os.path.dirname(f2)
     if dirname and not os.path.exists(dirname):
         logger.info(f'{maybe}create directory: {dirname}')
         if not dryrun: os.makedirs(dirname)
-    if f1 == f2:
-        logger.info('dest is identical to src: '+f1)
-        return
 
     if os.path.exists(f2):
         # if identical file, pretend nothing happened, skip copying

@@ -17,17 +17,19 @@ CONFIG_HOME = os.environ.get('XDG_CONFIG_HOME', os.path.join(HOME, '.config'))
 CACHE_HOME = os.environ.get('XDG_CACHE_HOME', os.path.join(HOME, '.cache'))
 DATA_HOME = os.environ.get('XDG_DATA_HOME', os.path.join(HOME, '.local','share'))
 
-CONFIG_FILE_LEGACY = os.path.join(CONFIG_HOME, 'papersconfig.json')
-CONFIG_FILE = os.path.join(DATA_HOME, 'config.json')
-CONFIG_FILE_LOCAL = '.papers/config.json'
+CONFIG_FILE = os.path.join(CONFIG_HOME, 'papersconfig.json')
+CONFIG_FILE_LEGACY = os.path.join(DATA_HOME, 'config.json')
+CONFIG_FILE_LOCAL = '.papersconfig.json'
+
 DATA_DIR = os.path.join(DATA_HOME, 'papers')
+BACKUP_DIR = os.path.join(DATA_HOME, 'papers', 'backups')
 CACHE_DIR = os.path.join(CACHE_HOME, 'papers')
 
 
 class Config:
     """configuration class to specify system-wide collections and files-dir
     """
-    def __init__(self, file=None, data=DATA_DIR,
+    def __init__(self, file=None,
         bibtex=None, filesdir=None,
         keyformat=KEYFORMAT,
         nameformat=NAMEFORMAT,
@@ -35,7 +37,6 @@ class Config:
         gitdir=None, git=False, gitlfs=False, local=None, absolute_paths=None, backup_files=False):
         self.file = file
         self.local = local
-        self.data = data
         self.filesdir = filesdir
         self.editor = editor
         self.bibtex = bibtex
@@ -44,7 +45,7 @@ class Config:
         if absolute_paths is None:
             absolute_paths = False if local else True
         self.absolute_paths = absolute_paths
-        self.gitdir = gitdir  or data
+        self.gitdir = gitdir
         self.git = git
         self.gitlfs = gitlfs
         self.backup_files = backup_files
@@ -68,6 +69,14 @@ class Config:
         return sorted(f for f in files if f.endswith('.bib'))
 
     @property
+    def backupfile_clean(self):
+        return Path(self.gitdir)/'backup_clean.bib'
+
+    @property
+    def backupfile(self):
+        return Path(self.gitdir)/'backup_copy.bib'
+
+    @property
     def root(self):
         if self.local and self.bibtex:
             return Path(self.bibtex).parent.resolve()
@@ -75,7 +84,20 @@ class Config:
             return Path(os.path.sep)
 
     def gitcmd(self, cmd, check=True, **kw):
-        return (sp.check_call if check else sp.call)(f"git {cmd}", shell=True, cwd=self.gitdir, **kw)
+        logger.debug(f"git add {self.backupfile.name}")
+        try:
+            sp.run(
+                f"git {cmd}",
+                cwd=self.gitdir,
+                stdout=sp.DEVNULL,
+                stderr=sp.DEVNULL,
+                check=check,
+                shell=True,
+                **kw,
+            )
+        except sp.CalledProcessError as e:
+            logger.error(f"Command failed: 'git {cmd}'")
+            raise
 
 
     def _relpath(self, p):
@@ -89,7 +111,7 @@ class Config:
             return str((self.root / p).relative_to(self.root))
         except Exception as error:
             print(error)
-            logger.warn(f"config :: can't save {p} as relative path to {self.root}")
+            logger.warning(f"config :: can't save {p} as relative path to {self.root}")
             return p
 
     def _abspath(self, p, root=None):
@@ -104,7 +126,7 @@ class Config:
         json.dump({
             "filesdir": self._relpath(self.filesdir),
             "bibtex": self._relpath(self.bibtex),
-            "gitdir": self._relpath(self.gitdir),
+            "gitdir": self._abspath(self.gitdir), # central gitdir
             "editor": self.editor,
             "keyformat": self.keyformat.todict(),
             "nameformat": self.nameformat.todict(),
@@ -130,9 +152,9 @@ class Config:
 
     def _update_paths_to_absolute(self):
         if self.file is None:
-            logger.warn("_update_paths_to_absolute: only works if Config.file is defined")
+            logger.warning("_update_paths_to_absolute: only works if Config.file is defined")
             return
-        root = Path(self.file).parent.parent
+        root = Path(self.file).parent
         for field in ['bibtex', 'filesdir', 'gitdir']:
             setattr(self, field, self._abspath(getattr(self, field), root))
 
@@ -157,11 +179,12 @@ class Config:
             lines.append('* cache directory:    '+CACHE_DIR)
             lines.append('* absolute paths:     '+str(self.absolute_paths))
             # lines.append('* app data directory: '+self.data)
-            lines.append('* git-tracked:        '+str(self.git))
+            lines.append('* backup (git):       '+str(self.git))
             if self.git:
-                lines.append('* git-lfs tracked:    '+str(self.gitlfs))
-                lines.append('* git directory :     '+self.gitdir)
-            lines.append('* editor:             '+str(self.editor))
+                lines.append('* backup files (git-lfs): '+str(self.gitlfs))
+                lines.append('* backup directory:   '+self.gitdir)
+            if self.editor:
+                lines.append('* editor:             '+str(self.editor))
 
         if self.filesdir is None:
             status = bcolors.WARNING+' (unset)'+bcolors.ENDC

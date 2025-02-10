@@ -440,7 +440,7 @@ class DuplicateHandler:
             self.entries = [e]
 
         except Exception as error:
-            logger.warn(str(error))
+            logger.warning(str(error))
             best = self.best()
             for k in list(merged.keys()):
                 if isinstance(merged[k], ConflictingField):
