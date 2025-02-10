@@ -1,4 +1,5 @@
 import os, json
+import copy
 from pathlib import Path
 import subprocess as sp, sys
 import hashlib
@@ -31,8 +32,8 @@ class Config:
     """
     def __init__(self, file=None,
         bibtex=None, filesdir=None,
-        keyformat=KEYFORMAT,
-        nameformat=NAMEFORMAT,
+        keyformat=None,
+        nameformat=None,
         editor=None,
         gitdir=None, git=False, gitlfs=False, local=None, absolute_paths=None, backup_files=False):
         self.file = file
@@ -40,8 +41,8 @@ class Config:
         self.filesdir = filesdir
         self.editor = editor
         self.bibtex = bibtex
-        self.keyformat = keyformat
-        self.nameformat = nameformat
+        self.keyformat = copy.deepcopy(keyformat if keyformat is not None else KEYFORMAT)
+        self.nameformat = copy.deepcopy(nameformat if nameformat is not None else NAMEFORMAT)
         if absolute_paths is None:
             absolute_paths = False if local else True
         self.absolute_paths = absolute_paths

@@ -86,15 +86,15 @@ class TestAdd(BibTest):
         Lightly begged/borrowed/stolen from the above test.
         '''
         paperscmd(f'add --rename --copy --name-template "{{journal}}/{{authorX}}_{{year}}_{{title}}" --name-title-sep - --name-author-sep _ --bibtex {self.mybib} --filesdir {self.filesdir} {self.pdf}') # need to escape the {} in f-strings by doubling those curly braces.
-        
+
         file_ = self._checkbib(dismiss_key=True)
         the_file = self._checkfile(file_)
         self.assertTrue(os.path.exists(self.pdf))
-        new_path = os.path.split(str(the_file))
-        old_path = os.path.split(str(os.path.join(self.filesdir, self.file_rename)))
+        new_path = str(the_file).split(os.path.sep)
+        old_path = str(os.path.join(self.filesdir, self.file_rename)).split(os.path.sep)
         self.assertEqual(old_path[-1], new_path[-1])
         self.assertEqual(old_path[0], new_path[0])
-        db = bibtexparser.load(open(self.mybib))        
+        db = bibtexparser.load(open(self.mybib))
         journal = db.entries[0]['journal']
         self.assertEqual(journal, new_path[-2]) #TODO a little gross, hardcoded
 
