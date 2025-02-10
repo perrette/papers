@@ -198,8 +198,8 @@ class DuplicateKeyError(ValueError):
 
 class Biblio:
     """
-    main config
-    """
+    The bibtex object that we operate on, which is mainly used to read and write to dynamically, and can then send the changes to be stored in a specified bibtex file on disk.
+    """    
     def __init__(self, db=None, filesdir=None, key_field='ID', nameformat=NAMEFORMAT, keyformat=KEYFORMAT, similarity=DEFAULT_SIMILARITY, relative_to=None):
         """
         relative_to : bibtex directory, optional
@@ -600,6 +600,9 @@ class Biblio:
     def fix_entry(self, e, fix_doi=True, fetch=False, fetch_all=False,
         fix_key=False, auto_key=False, key_ascii=False, encoding=None,
         format_name=True, interactive=False):
+        """
+        Given an entry in an existing Bilio object, checks the format name and encoding.  Will fetch additional info if it's missing.
+        """        
 
         e_old = e.copy()
 
@@ -722,6 +725,9 @@ def entry_filecheck_metadata(e, file, image=False):
 
 def entry_filecheck(e, delete_broken=False, fix_mendeley=False,
     check_hash=False, check_metadata=False, interactive=True, image=False, relative_to=None):
+    """
+    Checks the bib entry file actually corresponds to an existing, correct file on disk.
+    """    
 
     if 'file' not in e:
         return

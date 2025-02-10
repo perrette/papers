@@ -96,7 +96,7 @@ def prepare_paper():
 }"""
 
     file_rename = "perrette_et_al_2011_near-ubiquity-of-ice-edge-blooms-in-the-arctic.pdf"
-
+    # The above corresponds to --name-template "{authorX}_{year}_{title}"
     return pdf, doi, key, newkey, year, bibtex, file_rename
 
 

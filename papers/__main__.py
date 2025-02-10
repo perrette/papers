@@ -1,4 +1,4 @@
-"""That is the script called by papers
+"""That is the script called by the papers cli command
 """
 import os
 import sys
@@ -46,6 +46,10 @@ def check_legacy_config(configfile):
 
 
 def get_biblio(config):
+    """
+    This function initializes a Biblio object based on the bibtex file specified as command line argument or in config file.
+    If no bibtex file is specified, it raises a ValueError().
+    """
     if config.bibtex is None:
         raise ValueError('bibtex is not initialized')
     relative_to = os.path.sep if config.absolute_paths else (os.path.dirname(config.bibtex) if config.bibtex else None)
@@ -490,7 +494,7 @@ def check_install(parser, o, config, bibtex_must_exist=True):
 
 def addcmd(parser, o, config):
     """
-    Given an options set and a config, sets up the function call to add the file or dir to the bibtex, and executes it.
+    Given an options set and a config, sets up the function call to add the file or all files in the directory to the bibtex, and executes it.
     """
 
     set_nameformat_config_from_cmd(o, config)
@@ -553,6 +557,9 @@ def addcmd(parser, o, config):
     savebib(biblio, config)
 
 def checkcmd(parser, o, config):
+    """
+    Loops over the entire bib file that the Papers install sees, and checks each entry for formatting and for the existance of duplicates.  Then writes the Biblio object back to your Bibtex file.
+    """
     set_keyformat_config_from_cmd(o, config)
 
     biblio = get_biblio(config)
@@ -1040,7 +1047,7 @@ def get_parser(config=None):
 
     # list
     # ======
-    listp = subparsers.add_parser('list', description='list (a subset of) entries',
+    listp = subparsers.add_parser('list', description='list (a subset of) entries in the existing bib file',
         parents=[cfg])
 
     listp.add_argument('fullsearch', nargs='*', help='''Search field. Usually no quotes required. See keywords to search specific fields. All words must find a match, unless --any is passed.''')

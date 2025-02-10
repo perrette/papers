@@ -1,4 +1,5 @@
-"""Key and file name formatting
+"""
+Key and file name formatting
 """
 from normality import slugify, normalize
 from papers.encoding import family_names
@@ -14,39 +15,61 @@ def listtag(words, maxlength=30, minwordlen=3, n=100, sep='-'):
     return tag
 
 def _cite_author(names):
-    if len(names) >= 3: return names[0] + ' et al'
-    elif len(names) == 2: return ' and '.join(names)
-    else: return names[0]
+    if len(names) >= 3:
+        return names[0] + ' et al'
+    elif len(names) == 2:
+        return ' and '.join(names)
+    else:
+        return names[0]
 
 
-def make_template_fields(entry, author_num=2, title_word_num=100, title_word_size=1, title_length=100, author_sep="_", title_sep="-"):
+def make_template_fields(
+    entry,
+    author_num=2,
+    title_word_num=100,
+    title_word_size=1,
+    title_length=100,
+    author_sep="_",
+    title_sep="-",
+):
     """
-     Available fields in output
+    Available fields in output are explicitly listed here, and this is the single source of truth for these.
     - author : slugified author names (lower case) separated by {author_sep} ('_' by default), with max {author_num} authors
-    - Author : same as author but titel case (first letter capitalized)
+    - Author : same as author but title case (first letter capitalized)
     - AUTHOR : same as author but upper case
     - authorX: first; first and second; first et al
+    - journal: journal name
     - title : normalized title in lower case, separated by {title_sep} ('-' by default) with max {title_word_num} words
     - Title: same as title by with capitalized words
     - year
     - ID : bibtex key
+    Each one of these needs a specific, explicit assignment below.
     """
     # names = bibtexparser.customization.getnames(entry.get('author','unknown').lower().split(' and '))
-    _names = family_names(entry.get('author','unknown').lower())
+    _names = family_names(entry.get("author", "unknown").lower())
     _names = [slugify(nm) for nm in _names]
     author = author_sep.join([nm for nm in _names[:author_num]])
     Author = author_sep.join([nm.capitalize() for nm in _names[:author_num]])
     AuthorX = _cite_author([nm.capitalize() for nm in _names]).replace(" ", author_sep)
     authorX = AuthorX.lower()
 
-    year = str(entry.get('year','0000'))
+    # a thing that's not a bibtex article won't have a journal
+    journal = entry.get("journal", None)
 
-    if not title_word_num or not entry.get('title',''):
-        title = ''
-        Title = ''
+    year = str(entry.get("year", "0000"))
+
+    if not title_word_num or not entry.get("title", ""):
+        title = ""
+        Title = ""
     else:
-        titlewords = normalize(entry['title']).lower().split()
-        _titles = listtag(titlewords, n=title_word_num, minwordlen=title_word_size, maxlength=title_length, sep="*").split('*')
+        titlewords = normalize(entry["title"]).lower().split()
+        _titles = listtag(
+            titlewords,
+            n=title_word_num,
+            minwordlen=title_word_size,
+            maxlength=title_length,
+            sep="*",
+        ).split("*")
         title = title_sep.join(_titles)
         Title = title_sep.join(w.capitalize() for w in _titles)
 
@@ -56,11 +79,12 @@ def make_template_fields(entry, author_num=2, title_word_num=100, title_word_siz
         "AUTHOR": author.upper(),
         "authorX": authorX,
         "AuthorX": AuthorX,
+        "journal" : journal,
         "year": year,
         "title": title,
         "Title": Title,
         "ID": entry.get("ID"),
-        }
+    }
 
 
 def stringify_entry(entry, template, **opt):
