@@ -1225,14 +1225,17 @@ class PapersExit(Exception):
     pass
 
 
-if __name__ == "__main__":
-    # we use try/except here to use a clean exit instead of trace
-    # test and debugging may use main() directly for speed-up => better to avoid sys.exit there
+def main_clean_exit(args=None):
     try:
-        main()
+        main(args)
     except PapersExit as error:
         if logger.getLevel() == logging.DEBUG:
             raise
         if error.message:
             logger.error(error.message)
         sys.exit(1)
+
+if __name__ == "__main__":
+    # we use try/except here to use a clean exit instead of trace
+    # test and debugging may use main() directly for speed-up => better to avoid sys.exit there
+    main_clean_exit()

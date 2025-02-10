@@ -35,7 +35,7 @@ homepage = "https://github.com/perrette/papers"
 write_to = "papers/_version.py"
 
 [project.scripts]
-papers = "papers.__main__:main"
+papers = "papers.__main__:main_clean_exit"
 
 [tool.tox]
 # Tox (https://tox.readthedocs.io/) is a tool for running tests
