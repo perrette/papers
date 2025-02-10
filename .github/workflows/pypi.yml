@@ -8,6 +8,11 @@ on:
 jobs:
   build-and-publish:
     runs-on: ubuntu-latest
+    environment:
+      name: pypi
+    permissions:
+      id-token: write  # This is required for OIDC
+      contents: read
 
     steps:
     - name: Checkout code
@@ -27,18 +32,5 @@ jobs:
       run: |
         python setup.py sdist bdist_wheel
 
-    - name: Create .pypirc
-      run: |
-        echo "[distutils]" > ~/.pypirc
-        echo "index-servers =" >> ~/.pypirc
-        echo "  papers-cli" >> ~/.pypirc
-        echo "" >> ~/.pypirc
-        echo "[papers-cli]" >> ~/.pypirc
-        echo "repository = https://upload.pypi.org/legacy/" >> ~/.pypirc
-        echo "username = ${{ secrets.PYPI_USERNAME }}" >> ~/.pypirc
-        echo "password = ${{ secrets.PYPI_PASSWORD }}" >> ~/.pypirc
-
     - name: Publish to PyPI
-      run: |
-        echo "TWINE_USERNAME is set to $TWINE_USERNAME"
-        twine upload dist/*
+      uses: pypa/gh-action-pypi-publish@release/v1
