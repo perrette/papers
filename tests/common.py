@@ -81,17 +81,18 @@ def prepare_paper():
     newkey = 'perrette_yool2011'
     year = '2011'
     bibtex = """@article{Perrette_2011,
-    author = {M. Perrette and A. Yool and G. D. Quartly and E. E. Popova},
-    doi = {10.5194/bg-8-515-2011},
-    journal = {Biogeosciences},
-    month = {feb},
-    number = {2},
-    pages = {515--524},
-    publisher = {Copernicus {GmbH}},
-    title = {Near-ubiquity of ice-edge blooms in the Arctic},
-    url = {https://doi.org/10.5194%2Fbg-8-515-2011},
-    volume = {8},
-    year = 2011,
+ author = {Perrette, M. and Yool, A. and Quartly, G. D. and Popova, E. E.},
+ doi = {10.5194/bg-8-515-2011},
+ issn = {1726-4189},
+ journal = {Biogeosciences},
+ month = {February},
+ number = {2},
+ pages = {515â€“524},
+ publisher = {Copernicus GmbH},
+ title = {Near-ubiquity of ice-edge blooms in the Arctic},
+ url = {http://dx.doi.org/10.5194/bg-8-515-2011},
+ volume = {8},
+ year = {2011}
 }"""
 
     file_rename = "perrette_et_al_2011_near-ubiquity-of-ice-edge-blooms-in-the-arctic.pdf"
@@ -107,17 +108,18 @@ def prepare_paper2():
     newkey = 'perrette_landerer2013'
     year = '2013'
     bibtex = """@article{Perrette_2013,
-    author = {M. Perrette and F. Landerer and R. Riva and K. Frieler and M. Meinshausen},
-    doi = {10.5194/esd-4-11-2013},
-    journal = {Earth System Dynamics},
-    month = {jan},
-    number = {1},
-    pages = {11--29},
-    publisher = {Copernicus {GmbH}},
-    title = {A scaling approach to project regional sea level rise and its uncertainties},
-    url = {https://doi.org/10.5194%2Fesd-4-11-2013},
-    volume = {4},
-    year = 2013,
+ author = {Perrette, M. and Landerer, F. and Riva, R. and Frieler, K. and Meinshausen, M.},
+ doi = {10.5194/esd-4-11-2013},
+ issn = {2190-4987},
+ journal = {Earth System Dynamics},
+ month = {January},
+ number = {1},
+ pages = {11â€“29},
+ publisher = {Copernicus GmbH},
+ title = {A scaling approach to project regional sea level rise and its uncertainties},
+ url = {http://dx.doi.org/10.5194/esd-4-11-2013},
+ volume = {4},
+ year = {2013}
 }"""
     file_rename = "perrette_et_al_2013_a-scaling-approach-to-project-regional-sea-level-rise-and-its-uncertainties.pdf"
 
