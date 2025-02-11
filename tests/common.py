@@ -77,23 +77,21 @@ def run(cmd, sp_cmd=None, **kw):
 def prepare_paper():
     pdf = downloadpdf('bg-8-515-2011.pdf')
     doi = '10.5194/bg-8-515-2011'
-    key = 'Perrette_2011'
+    key = '10.5194/bg-8-515-2011'
     newkey = 'perrette_yool2011'
     year = '2011'
-    bibtex = """@article{Perrette_2011,
+    bibtex = """@article{10.5194/bg-8-515-2011,
  author = {Perrette, M. and Yool, A. and Quartly, G. D. and Popova, E. E.},
  doi = {10.5194/bg-8-515-2011},
- issn = {1726-4189},
  journal = {Biogeosciences},
- month = {February},
  number = {2},
- pages = {515â€“524},
- publisher = {Copernicus GmbH},
+ pages = {515-524},
  title = {Near-ubiquity of ice-edge blooms in the Arctic},
- url = {http://dx.doi.org/10.5194/bg-8-515-2011},
+ url = {https://doi.org/10.5194/bg-8-515-2011},
  volume = {8},
  year = {2011}
-}"""
+}
+"""
 
     file_rename = "perrette_et_al_2011_near-ubiquity-of-ice-edge-blooms-in-the-arctic.pdf"
     # The above corresponds to --name-template "{authorX}_{year}_{title}"
@@ -104,20 +102,17 @@ def prepare_paper2():
     pdf = downloadpdf('esd-4-11-2013.pdf')
     si = downloadpdf('esd-4-11-2013-supplement.pdf')
     doi = '10.5194/esd-4-11-2013'
-    key = 'Perrette_2013'
+    key = '10.5194/esd-4-11-2013'
     newkey = 'perrette_landerer2013'
     year = '2013'
-    bibtex = """@article{Perrette_2013,
+    bibtex = """@article{10.5194/esd-4-11-2013,
  author = {Perrette, M. and Landerer, F. and Riva, R. and Frieler, K. and Meinshausen, M.},
  doi = {10.5194/esd-4-11-2013},
- issn = {2190-4987},
  journal = {Earth System Dynamics},
- month = {January},
  number = {1},
- pages = {11â€“29},
- publisher = {Copernicus GmbH},
+ pages = {11-29},
  title = {A scaling approach to project regional sea level rise and its uncertainties},
- url = {http://dx.doi.org/10.5194/esd-4-11-2013},
+ url = {https://doi.org/10.5194/esd-4-11-2013},
  volume = {4},
  year = {2013}
 }"""
@@ -185,19 +180,18 @@ class BibTest(unittest.TestCase):
 
 
 
-bibtex = """@article{Perrette_2011,
- author = {M. Perrette and A. Yool and G. D. Quartly and E. E. Popova},
+bibtex = """@article{10.5194/bg-8-515-2011,
+ author = {Perrette, M. and Yool, A. and Quartly, G. D. and Popova, E. E.},
  doi = {10.5194/bg-8-515-2011},
  journal = {Biogeosciences},
- link = {https://doi.org/10.5194%2Fbg-8-515-2011},
- month = {feb},
  number = {2},
- pages = {515--524},
- publisher = {Copernicus {GmbH}},
+ pages = {515-524},
  title = {Near-ubiquity of ice-edge blooms in the Arctic},
+ url = {https://doi.org/10.5194/bg-8-515-2011},
  volume = {8},
  year = {2011}
-}"""
+}
+"""
 
 bibtex2 = """@article{SomeOneElse2000,
  author = {Some One},

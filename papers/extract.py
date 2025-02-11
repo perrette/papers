@@ -14,7 +14,7 @@ from papers.encoding import family_names
 from bibtexparser.customization import convert_to_unicode
 
 my_etiquette = Etiquette('papers', papers.__version__, 'https://github.com/perrette/papers', 'mahe.perrette@gmail.com')
-
+work = Works(etiquette=my_etiquette)
 
 class DOIParsingError(ValueError):
     pass
@@ -208,25 +208,27 @@ def extract_pdf_metadata(pdf, search_doi=True, search_fulltext=True, maxpages=10
     txt = pdfhead(pdf, maxpages, minwords, image=image)
     return extract_txt_metadata(txt, search_doi, search_fulltext, **kw)
 
-
-
-@cached('crossref-bibtex.json')
-def fetch_bibtex_by_doi(doi):
-    url = "http://api.crossref.org/works/"+doi+"/transform/application/x-bibtex"
-    work = Works(etiquette=my_etiquette)
-    response = work.do_http_request('get', url, custom_header={'user-agent': str(work.etiquette)})
-    if response.ok:
-        bibtex = response.text.strip()
-        return bibtex
-    raise DOIRequestError(repr(doi)+': '+response.text)
-
-
 @cached('crossref.json')
+def fetch_crossref_by_doi(doi):
+    url = "http://api.crossref.org/works/"+doi
+    response = work.do_http_request('get', url, custom_header={'user-agent': str(work.etiquette)})
+    try:
+        response.raise_for_status()
+    except Exception as error:
+        raise DOIRequestError(repr(doi)+': '+repr(error))
+    return response.json()
+
+# @cached('crossref-bibtex.json')
+def fetch_bibtex_by_doi(doi):
+    json_data = fetch_crossref_by_doi(doi)
+    return crossref_to_bibtex(json_data)
+
+@cached('crossref-json.json')
 def fetch_json_by_doi(doi):
     url = "http://api.crossref.org/works/"+doi+"/transform/application/json"
-    work = Works(etiquette=my_etiquette)
     jsontxt = work.do_http_request('get', url, custom_header={'user-agent': str(work.etiquette)}).text
     return jsontxt.dumps(json)
+
 
 
 def _get_page_fast(pagerequest):
@@ -267,11 +269,6 @@ def fetch_bibtex_by_fulltext_scholar(txt, assess_results=True):
 
     return scholarly.bibtex(result)
 
-
-def _crossref_get_author(res, sep='; '):
-    return sep.join([p.get('given','') + p['family'] for p in res.get('author',[]) if 'family' in p])
-
-
 def _crossref_score(txt, r):
     # high score means high similarity
     from rapidfuzz.fuzz import token_set_ratio
@@ -285,56 +282,105 @@ def _crossref_score(txt, r):
         score += token_set_ratio(r['abstract'], txt)
     return score
 
+def map_crossref_to_bibtex_type(crossref_type):
+    mapping = {
+        "journal-article": "article",
+        "book": "book",
+        "book-chapter": "incollection",  # or sometimes inbook
+        "proceedings-article": "inproceedings",
+        "conference-paper": "inproceedings",
+        "report": "techreport",
+        "thesis": "phdthesis",  # or "mastersthesis" based on additional info
+    }
+    return mapping.get(crossref_type, "misc")
 
-def crossref_to_bibtex(r):
-    """convert crossref result to bibtex
-    """
-    bib = {}
 
-    if 'author' in r:
-        family = lambda p: p['family'] if len(p['family'].split()) == 1 else '{'+p['family']+'}'
-        bib['author'] = ' and '.join([family(p) + ', '+ p.get('given','')
-            for p in r.get('author',[]) if 'family' in p])
+def format_authors(authors):
+    """Converts a list of author dicts to a BibTeX-friendly string."""
+    author_list = []
+    for author in authors:
+        given = author.get("given", "")
+        family = author.get("family", "")
+        # Format as "Family, Given" for BibTeX
+        formatted = f"{family}, {given}" if family else given
+        # author_list.append(unidecode(formatted))
+        author_list.append(formatted)
+    return " and ".join(author_list)
 
-    # for k in ['issued','published-print', 'published-online']:
-    k = 'issued'
-    if k in r and 'date-parts' in r[k] and len(r[k]['date-parts'])>0:
-        date = r[k]['date-parts'][0]
-        bib['year'] = str(date[0])
-        if len(date) >= 2:
-            bib['month'] = str(date[1])
-        # break
 
-    if 'DOI' in r: bib['doi'] = r['DOI']
-    if 'URL' in r: bib['url'] = r['URL']
-    if 'title' in r: bib['title'] = r['title'][0]
-    if 'container-title' in r: bib['journal'] = r['container-title'][0]
-    if 'volume' in r: bib['volume'] = r['volume']
-    if 'issue' in r: bib['number'] = r['issue']
-    if 'page' in r: bib['pages'] = r['page']
-    if 'publisher' in r: bib['publisher'] = r['publisher']
+def crossref_to_bibtex(json_data):
+    message = json_data['message']
+    entry_type = message.get('type', 'misc')  # Default to 'misc' if type is not specified
 
-    # entry type
-    type = bib.get('type','journal-article')
-    type_mapping = {'journal-article':'article'}
-    bib['ENTRYTYPE'] = type_mapping.get(type, type)
+    # Common fields
+    bib_entry = {
+        'title': message.get('title', [''])[0],
+        'author': format_authors(message.get('author', [])),
+        'doi': message.get('DOI', ''),
+        'url': message.get('URL', ''),
+        'ENTRYTYPE': map_crossref_to_bibtex_type(entry_type),
+        'ID': message.get('DOI', '')
+    }
 
-    # bibtex key
-    year = str(bib.get('year','0000'))
-    if 'author' in r:
-        ID = r['author'][0]['family'] + '_' + year
+    # Year: Look for publication date in several possible places
+    date_parts = None
+    for date_field in ["published-print", "published-online", "issued"]:
+        if date_field in message and "date-parts" in message[date_field]:
+            date_parts = message[date_field]["date-parts"][0]
+            break
+    if date_parts and len(date_parts) > 0:
+        bib_entry["year"] = str(date_parts[0])
     else:
-        ID = year
-    bib['ID'] = ID
+        bib_entry["year"] = "0000"
 
+    # Fields specific to entry types
+    if entry_type == 'journal-article':
+        bib_entry.update({
+            'journal': message.get('container-title', [''])[0],
+            'volume': message.get('volume', ''),
+            'number': message.get('issue', ''),
+            'pages': message.get('page', ''),
+        })
+    elif entry_type == 'book':
+        bib_entry.update({
+            'publisher': message.get('publisher', ''),
+            'address': message.get('publisher-location', ''),
+            'editor': format_authors(message.get('editor', [])),
+            'isbn': message.get('ISBN', [''])[0],
+        })
+
+
+    elif entry_type == 'proceedings-article':
+        bib_entry.update({
+            'booktitle': message.get('container-title', [''])[0],
+            'publisher': message.get('publisher', ''),
+            'editor': format_authors(message.get('editor', [])),
+        })
+    elif entry_type == 'report':
+        bib_entry.update({
+            'institution': message.get('institution', {}).get('name', ''),
+        })
+    elif entry_type == 'thesis':
+        bib_entry.update({
+            'school': message.get('institution', {}).get('name', ''),
+            'type': message.get('type', ''),
+        })
+
+    bib_entry = {k: v for k, v in bib_entry.items() if v}  # Remove empty fields
+
+    # Create a BibDatabase object
     db = bibtexparser.bibdatabase.BibDatabase()
-    db.entries.append(bib)
-    return bibtexparser.dumps(db)
+    db.entries = [bib_entry]
+
+    # Write to a BibTeX string
+    writer = bibtexparser.bwriter.BibTexWriter()
+    bibtex_str = writer.write(db)
+
+    return bibtex_str
 
 
 # @cached('crossref-bibtex-fulltext.json', hashed_key=True)
 def fetch_bibtex_by_fulltext_crossref(txt, **kw):
-    work = Works(etiquette=my_etiquette)
     logger.debug('crossref fulltext seach:\n'+txt)
 
     # get the most likely match of the first results
