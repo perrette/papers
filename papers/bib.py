@@ -279,9 +279,14 @@ class Biblio:
         return bisect.bisect_left(keys, self.key(entry))
 
 
-    def insert_entry(self, entry, update_key=False, check_duplicate=False, rename=False, copy=False, **checkopt):
+    def insert_entry(self, entry, update_key=False, check_duplicate=False, rename=False, copy=False, metadata={}, **checkopt):
         """
         """
+        if metadata:
+            files = list(set(self.get_files(entry) + self.get_files(metadata)))
+            entry.update(metadata)
+            entry['file'] = format_file(files, relative_to=self.relative_to)
+
         # additional checks on DOI etc...
         if check_duplicate:
             logger.debug('check duplicates : TRUE')
@@ -387,12 +392,14 @@ class Biblio:
     def get_files(self, entry, relative_to=None):
         return parse_file(entry.get('file', ''), relative_to=relative_to or self.relative_to)
 
-    def add_bibtex(self, bibtex, relative_to=None, attachments=None, convert_to_unicode=False, **kw):
+    def add_bibtex(self, bibtex, relative_to=None, attachments=None, convert_to_unicode=False, update_key=False, **kw):
         bib = bibtexparser.loads(bibtex)
         if convert_to_unicode:
             bib = bibtexparser.customization.convert_to_unicode(bib)
         entries = []
         for e in bib.entries:
+            if update_key:
+                e['ID'] = self.generate_key(e)
             files = []
             if "file" in e:
                 # make sure paths relative to other bibtex are inserted correctly
@@ -402,7 +409,7 @@ class Biblio:
             if files:
                 self.set_files(e, files)
 
-            entries.extend( self.insert_entry(e, **kw) )
+            entries.extend( self.insert_entry(e, update_key=update_key, **kw) )
         return entries
 
 
@@ -413,7 +420,9 @@ class Biblio:
 
     def fetch_doi(self, doi, **kw):
         bibtex = fetch_bibtex_by_doi(doi)
+        kw["update_key"] = True  # fetched key is always updated
         return self.add_bibtex(bibtex, **kw)
+
 
     def add_pdf(self, pdf, attachments=None, search_doi=True, search_fulltext=True, scholar=False, doi=None, **kw):
 
@@ -436,9 +445,8 @@ class Biblio:
         entry['ID'] = self.generate_key(entry)
         logger.debug('generated PDF key: '+entry['ID'])
 
-        kw.pop('update_key', True)
-            # logger.warning('fetched key is always updated when adding PDF to existing bib')
-        return self.insert_entry(entry, update_key=True, **kw)
+        kw["update_key"] = True  # fetched key is always updated
+        return self.insert_entry(entry, **kw)
 
 
     def scan_dir_iter(self, direc, search_doi=True, search_fulltext=True, **kw):
