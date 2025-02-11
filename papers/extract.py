@@ -221,7 +221,7 @@ def fetch_crossref_by_doi(doi):
 # @cached('crossref-bibtex.json')
 def fetch_bibtex_by_doi(doi):
     json_data = fetch_crossref_by_doi(doi)
-    return crossref_to_bibtex(json_data)
+    return crossref_to_bibtex(json_data['message'])
 
 @cached('crossref-json.json')
 def fetch_json_by_doi(doi):
@@ -308,8 +308,7 @@ def format_authors(authors):
     return " and ".join(author_list)
 
 
-def crossref_to_bibtex(json_data):
-    message = json_data['message']
+def crossref_to_bibtex(message):
     entry_type = message.get('type', 'misc')  # Default to 'misc' if type is not specified
 
     # Common fields
@@ -411,7 +410,6 @@ def fetch_bibtex_by_fulltext_crossref(txt, **kw):
 
     # convert to bibtex
     return crossref_to_bibtex(result).strip()
-
 
 
 def fetch_entry(e):
