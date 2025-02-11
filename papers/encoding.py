@@ -109,12 +109,12 @@ def format_entry(biblio, e, no_key=False, prefix=""):
     info = []
     if e.get('doi',''):
         info.append(link(f"https://doi.org/{e['doi']}", 'doi:'+e['doi']))
-    
+
     files = parse_file(e.get('file',''), relative_to=biblio.relative_to)
     n = len(files)
 
     if n:
-        file_link = f"file:///{Path(files[0]).resolve()}"
+        file_link = f"file:///{Path(files[0]).resolve()}" if n == 1 else f"file:///{Path(os.path.commonpath(files)).resolve()}"
         ansi_link = link(file_link, f'{"file" if n == 1 else "files"}:{str(n)}')
         info.append(bcolors.OKGREEN+ansi_link+bcolors.ENDC)
 
@@ -127,7 +127,7 @@ def format_entry(biblio, e, no_key=False, prefix=""):
         prefixtag = f"{bcolors.WARNING}{prefix} -> {bcolors.ENDC}"
     else:
         prefixtag = ""
-    return f"{prefixtag}{format_key(e, no_key=no_key)} {tit} {infotag}"    
+    return f"{prefixtag}{format_key(e, no_key=no_key)} {tit} {infotag}"
 
 
 # Parse name entry
