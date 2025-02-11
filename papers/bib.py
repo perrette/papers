@@ -19,7 +19,7 @@ from papers.extract import extract_pdf_metadata
 from papers.extract import fetch_bibtex_by_fulltext_crossref, fetch_bibtex_by_doi
 
 from papers.encoding import unicode_to_latex, unicode_to_ascii
-from papers.encoding import parse_file, format_file, standard_name, family_names, format_entries, update_file_path
+from papers.encoding import parse_file, format_file, standard_name, family_names, format_entries, update_file_path, format_entry
 
 from papers.filename import NAMEFORMAT, KEYFORMAT
 from papers.utils import bcolors, checksum, move as _move
@@ -298,14 +298,14 @@ class Biblio:
                 newkey = self.append_abc_to_key(entry)  # add abc
                 logger.info('update key: {} => {}'.format(entry['ID'], newkey))
                 entry['ID'] = newkey
-                print("Updated entry:", self.key(entry))
+                print(format_entry(self, entry, prefix="Updated"))
 
             else:
                 raise DuplicateKeyError('this error can be avoided if update_key is True')
 
         else:
             logger.info('new entry: '+self.key(entry))
-            print("New entry:", self.key(entry))
+            print(format_entry(self, entry, prefix="Added"))
 
         self.entries.insert(i, entry)
 
@@ -335,7 +335,7 @@ class Biblio:
             if entry == candidate:
                 logger.debug('exact duplicate')
                 if rename: self.rename_entry_files(candidate, copy=copy)
-                print("Existing entry:", self.key(entry))
+                print(format_entry(self, entry, prefix="Existing"))
                 return [ entry ] # do nothing
 
             if update_key and entry['ID'] != candidate['ID']:
@@ -354,7 +354,7 @@ class Biblio:
                 logger.debug('fixed: exact duplicate')
                 entry = candidate
                 if rename: self.rename_entry_files(candidate, copy=copy)
-                print("Existing entry:", self.key(entry))
+                print(format_entry(self, entry, prefix="Existing"))
                 return [ entry ] # do nothing
 
             logger.debug('conflict resolution: '+on_conflict)

@@ -102,7 +102,7 @@ def format_key(e, no_key=False):
         key = lambda e: n*(bcolors.BOLD)+bcolors.OKBLUE+e['ID']+':'+bcolors.ENDC
     return key(e)
 
-def format_entry(biblio, e, no_key=False):
+def format_entry(biblio, e, no_key=False, prefix=""):
     """One-liner formatter
     """
     tit = e.get('title', '')[:60]+ ('...' if len(e.get('title', ''))>60 else '')
@@ -123,7 +123,11 @@ def format_entry(biblio, e, no_key=False):
         info.append(bcolors.WARNING+" | ".join(keywords)+bcolors.ENDC)
 
     infotag = '('+', '.join(info)+')' if info else ''
-    return f"{format_key(e, no_key=no_key)} {tit} {infotag}"    
+    if prefix:
+        prefixtag = f"{bcolors.WARNING}{prefix} -> {bcolors.ENDC}"
+    else:
+        prefixtag = ""
+    return f"{prefixtag}{format_key(e, no_key=no_key)} {tit} {infotag}"    
 
 
 # Parse name entry
