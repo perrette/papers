@@ -46,7 +46,7 @@ def groupby_equal(entries, eq=None):
         else:
             group = groups[k]
         group.append(e)
-    return sorted(groups.items()) 
+    return sorted(groups.items())
 
 
 def search_duplicates(entries, key=None, eq=None, issorted=False, filter_key=None):
