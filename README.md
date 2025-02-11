@@ -1,4 +1,4 @@
-[![test](https://github.com/perrette/papers/workflows/CI/badge.svg)](https://github.com/perrette/papers/actions)
+[![test](https://github.com/perrette/papers/workflows/CI/badge.svg?branch=main)](https://github.com/perrette/papers/actions)
 [![python](https://img.shields.io/badge/python-3.9-blue.svg)]()
 [![python](https://img.shields.io/badge/python-3.10-blue.svg)]()
 [![python](https://img.shields.io/badge/python-3.11-blue.svg)]()
@@ -102,25 +102,25 @@ Some old files don't have a DOI. Best is to add the entry from its bibtex:
 
 ### List entries (and edit etc...)
 
-Pretty listing (-1 or -l for one-liner listing, otherwise plain bibtex):
+Pretty listing by default (otherwise pass --plain for plain bibtex):
 
-    $> papers list -1
+    $> papers list
     Perrette2013: A scaling approach to project regional sea level rise and it... (doi:10.5194/esd-4-11-2013, file:1)
 
 Search with any number of keywords:
 
-    $> papers list perrette scaling approach sea level -1
+    $> papers list perrette scaling approach sea level
     ... (short list)
-    $> papers list perrette scaling approach sea level --any -1
+    $> papers list perrette scaling approach sea level --any
     ... (long list)
-    $> papers list --key perrette2013 --author perrette --year 2013 --title scaling approach sea level -1
+    $> papers list --key perrette2013 --author perrette --year 2013 --title scaling approach sea level
     ... (precise list)
 
 Add tags to view papers by topic:
 
-    $> papers list perrette2013 --add-tag sea-level projections -1
+    $> papers list perrette2013 --add-tag sea-level projections
     ...
-    $> papers list --tag sea-level projections -1
+    $> papers list --tag sea-level projections
     Perrette2013: A scaling approach to project regional sea level rise and it... (doi:10.5194/esd-4-11-2013, file:1, sea-level | projections )
 
 `papers list` is a powerful command, inspired from unix's `find` and `grep`.
