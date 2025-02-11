@@ -16,11 +16,11 @@ import papers
 from papers import logger
 from papers.extract import extract_pdf_doi, isvaliddoi, extract_pdf_metadata
 from papers.extract import fetch_bibtex_by_doi
-from papers.encoding import parse_file, format_file, family_names, format_entries, standard_name
+from papers.encoding import parse_file, format_file, family_names, format_entries, standard_name, format_entry, parse_keywords, format_key
 from papers.config import bcolors, Config, search_config, CONFIG_FILE, CONFIG_FILE_LOCAL, DATA_DIR, CONFIG_FILE_LEGACY, BACKUP_DIR
 from papers.duplicate import list_duplicates, list_uniques, edit_entries
 from papers.bib import Biblio, FUZZY_RATIO, DEFAULT_SIMILARITY, entry_filecheck, backupfile as backupfile_func, isvalidkey
-from papers.utils import move, checksum, ansi_link as link, view_pdf
+from papers.utils import move, checksum, view_pdf
 from papers import __version__
 
 
@@ -801,15 +801,6 @@ def listcmd(parser, o, config):
         eq = lambda a, b: a['ID'] == b['ID'] or are_duplicates(a, b, similarity="PARTIAL", fuzzy_ratio=o.fuzzy_ratio)
         entries = list_dup(entries, eq=eq)
 
-    if o.no_key:
-        key = lambda e: ''
-    else:
-        # key = lambda e: bcolors.OKBLUE+e['ID']+filetag(e)+':'+bcolors.ENDC
-        key = lambda e: _nfiles(e)*(bcolors.BOLD)+bcolors.OKBLUE+e['ID']+':'+bcolors.ENDC
-
-    def parse_keywords(e):
-        return [w.strip() for w in e.get('keywords', '').split(',') if w.strip()]
-
     if o.add_keywords:
         for e in entries:
             keywords = parse_keywords(e)
@@ -861,27 +852,13 @@ def listcmd(parser, o, config):
     elif o.field:
         # entries = [{k:e[k] for k in e if k in o.field+['ID','ENTRYTYPE']} for e in entries]
         for e in entries:
-            print(key(e),*[e.get(k, "") for k in o.field])
+            print(format_key(e, no_key=o.no_key),*[e.get(k, "") for k in o.field])
     elif o.key_only:
         for e in entries:
             print(e['ID'])
     elif o.one_liner:
         for e in entries:
-            tit = e.get('title', '')[:60]+ ('...' if len(e.get('title', ''))>60 else '')
-            info = []
-            if e.get('doi',''):
-                info.append(link(f"https://doi.org/{e['doi']}", 'doi:'+e['doi']))
-            n = _nfiles(e)
-            if n:
-                files = parse_file(e.get('file',''), relative_to=biblio.relative_to)
-                file_link = f"file:///{Path(files[0]).resolve()}"
-                ansi_link = link(file_link, f'{"file" if n == 1 else "files"}:{str(n)}')
-                info.append(bcolors.OKGREEN+ansi_link+bcolors.ENDC)
-            if e.get('keywords',''):
-                keywords = parse_keywords(e)
-                info.append(bcolors.WARNING+" | ".join(keywords)+bcolors.ENDC)
-            infotag = '('+', '.join(info)+')' if info else ''
-            print(key(e), tit, infotag)
+            print(format_entry(biblio, e, no_key=o.no_key))
 
     else:
         print(format_entries(entries))
