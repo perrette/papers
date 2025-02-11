@@ -580,9 +580,7 @@ def conflict_resolution_on_insert(old, new, mode='i'):
 (E)dit split (not a duplicate)
 (s)kip
 (a)ppend anyway
-(r)aise'''.strip()
-.replace('(u)','('+_colordiffline('u','+')+')')  # green lines will be added
-.replace('(o)','('+_colordiffline('o','-')+')') + bcolors.ENDC
+(r)aise'''.strip() + bcolors.ENDC
 )
 # .replace('(s)','('+_colordiffline('s','-')+')'))
         choices = list('uUoeEsar')
