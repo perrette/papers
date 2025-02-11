@@ -223,6 +223,12 @@ def savebib(biblio, config):
         # config.gitcommit()
 
 
+def view_entry_files(biblio, entry):
+    for f in biblio.get_files(entry):
+        logger.info(f"opening {f} ...")
+        view_pdf(f)
+
+
 def set_keyformat_config_from_cmd(o, config):
     """
     Given options and a config state, applies the desired key options to the config.
@@ -505,6 +511,8 @@ def addcmd(parser, o, config):
     kw = {'on_conflict':o.mode, 'check_duplicate':not o.no_check_duplicate,
             'mergefiles':not o.no_merge_files, 'update_key':o.update_key}
 
+    entries = []
+
     if len(o.file) > 1:
         if o.attachment:
             logger.error('--attachment is only valid for one PDF / BIBTEX entry')
@@ -521,28 +529,28 @@ def addcmd(parser, o, config):
             logger.error('If no file is present, --no-query-doi is not compatible with --doi')
             raise PapersExit()
         else:
-            biblio.fetch_doi(o.doi, attachments=o.attachment, rename=o.rename, copy=o.copy, **kw)
+            entries.extend( biblio.fetch_doi(o.doi, attachments=o.attachment, rename=o.rename, copy=o.copy, **kw) )
 
     for file in o.file:
         try:
             if os.path.isdir(file):
                 if o.recursive:
-                    biblio.scan_dir(file, rename=o.rename, copy=o.copy,
+                    entries.extend( biblio.scan_dir(file, rename=o.rename, copy=o.copy,
                                 search_doi=not o.no_query_doi,
                                 search_fulltext=not o.no_query_fulltext,
-                                **kw)
+                                **kw) )
                 else:
                     raise ValueError(file+' is a directory, requires --recursive to explore')
 
             elif file.endswith('.pdf'):
-                biblio.add_pdf(file, attachments=o.attachment, rename=o.rename, copy=o.copy,
+                entries.extend( biblio.add_pdf(file, attachments=o.attachment, rename=o.rename, copy=o.copy,
                            search_doi=not o.no_query_doi,
                            search_fulltext=not o.no_query_fulltext,
                            scholar=o.scholar, doi=o.doi,
-                           **kw)
+                           **kw) )
 
             else: # file.endswith('.bib'):
-                biblio.add_bibtex_file(file, attachments=o.attachment, rename=o.rename, copy=o.copy, **kw)
+                entries.extend( biblio.add_bibtex_file(file, attachments=o.attachment, rename=o.rename, copy=o.copy, **kw) )
 
         except Exception as error:
             # print(error)
@@ -554,7 +562,31 @@ def addcmd(parser, o, config):
                     logger.error('use --ignore to add other files anyway')
                 raise PapersExit()
 
+    # The list of new entries potentially contains duplicates if more than one file is added sequentially
+    # If action is required on the added entry, we need to make sure we're consistent with the biblio.
+    if o.fetch or o.edit or o.open:
+        unique_keys = set(biblio.key(e) for e in entries)
+        entries = [e for e in biblio.entries if biblio.key(e) in unique_keys]
+
+    # actions on entries (see also papers list)
+    if o.fetch:
+        for e in entries:
+            biblio.fix_entry(e, fix_doi=True, fix_key=True, fetch_all=True, interactive=True)
+
+    if o.edit:
+        try:
+            otherentries = [e for e in biblio.entries if e not in entries]
+            entries = edit_entries(entries)
+            biblio.db.entries = entries + otherentries
+        except Exception as error:
+            logger.error(str(error))
+            return
+
     savebib(biblio, config)
+
+    if o.open:
+        for e in entries:
+            view_entry_files(biblio, e)
 
 def checkcmd(parser, o, config):
     """
@@ -801,9 +833,7 @@ def listcmd(parser, o, config):
 
     elif o.open:
         for e in entries:
-            for f in biblio.get_files(e):
-                logger.info(f"opening {f} ...")
-                view_pdf(f)
+            view_entry_files(biblio, e)
 
     elif o.field:
         # entries = [{k:e[k] for k in e if k in o.field+['ID','ENTRYTYPE']} for e in entries]
@@ -984,6 +1014,11 @@ def get_parser(config=None):
         help='rename PDFs according to key')
     grp.add_argument('-c','--copy', action='store_true',
         help='copy file instead of moving them')
+
+    grp = addp.add_argument_group('actions')
+    grp.add_argument('-e', '--edit', action='store_true', help='edit entry')
+    grp.add_argument('-o', '--open', action='store_true', help='open files')
+    grp.add_argument('--fetch', action='store_true', help='fetch metadata from doi and update entry')
 
     # check
     # =====
