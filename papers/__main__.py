@@ -20,7 +20,7 @@ from papers.encoding import parse_file, format_file, family_names, format_entrie
 from papers.config import bcolors, Config, search_config, CONFIG_FILE, CONFIG_FILE_LOCAL, DATA_DIR, CONFIG_FILE_LEGACY, BACKUP_DIR
 from papers.duplicate import list_duplicates, list_uniques, edit_entries
 from papers.bib import Biblio, FUZZY_RATIO, DEFAULT_SIMILARITY, entry_filecheck, backupfile as backupfile_func, isvalidkey
-from papers.utils import move, checksum, view_pdf
+from papers.utils import move, checksum, view_pdf, open_folder
 from papers import __version__
 
 
@@ -233,7 +233,27 @@ def savebib(biblio, config):
         # config.gitcommit()
 
 
+
+def is_subdirectory(parent, child):
+    # Resolve paths to absolute paths
+    parent = Path(parent).resolve()
+    child = Path(child).resolve()
+
+    # Check if the child path is relative to the parent path
+    return parent in child.parents
+
+
 def view_entry_files(biblio, entry):
+    files = biblio.get_files(entry)
+
+    # in case several attachments are present and the files are ordered under filesdir,
+    # open the subfolder instead of the single files
+    if len(files) > 1:
+        parent = os.path.commonpath(files)
+        if is_subdirectory(biblio.filesdir, parent):
+            open_folder(parent)
+            return
+
     for f in biblio.get_files(entry):
         logger.info(f"opening {f} ...")
         view_pdf(f)

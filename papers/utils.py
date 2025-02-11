@@ -2,7 +2,7 @@ import os
 import re
 import shutil
 import hashlib
-
+import subprocess, platform
 from contextlib import contextmanager
 from pathlib import Path
 
@@ -191,10 +191,22 @@ def view_pdf(filepath):
     """
     https://stackoverflow.com/questions/434597/open-document-with-default-os-application-in-python-both-in-windows-and-mac-os
     """
-    import subprocess, os, platform
     if platform.system() == 'Darwin':       # macOS
         subprocess.call(('open', filepath))
     elif platform.system() == 'Windows':    # Windows
         os.startfile(filepath)
     else:                                   # linux variants
         subprocess.call(('xdg-open', filepath))
+
+
+def open_folder(path):
+    system_platform = platform.system()
+
+    if system_platform == "Windows":
+        os.startfile(path)
+    elif system_platform == "Darwin":  # macOS
+        os.system(f'open "{path}"')
+    elif system_platform == "Linux":
+        os.system(f'xdg-open "{path}"')
+    else:
+        print("Unsupported operating system.")
