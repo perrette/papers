@@ -103,6 +103,14 @@ def _backup_bib(biblio, config, message=None):
     config.gitcmd(f"checkout -B main")
     config.gitcmd(f"clean -f")
 
+def _silent_backup_bib(biblio, config, level=logging.WARNING, *args, **kwargs):
+    " this is useful when passing --info to avoid having too many outputs"
+    level0 = logger.getEffectiveLevel()
+    if level0 > logging.DEBUG: # if DEBUG, also show back debug logs
+        logger.setLevel(level)
+    _backup_bib(biblio, config, *args, **kwargs)
+    logger.setLevel(level0)
+
 
 def _restore_from_backupdir(config, restore_files=False):
     restore_cmd = f"papers add {config.backupfile_clean} --rename --copy" if config.backup_files else f"cp {config.backupfile} {config.bibtex}"
@@ -218,7 +226,7 @@ def savebib(biblio, config):
     if biblio is not None:
         biblio.save(config.bibtex)
     if config.file and config.git:
-        _backup_bib(biblio, config)
+        _silent_backup_bib(biblio, config)
     else:
         logger.debug(f'do not backup bib: {config.file}, {config.git}')
     # if config.git:
