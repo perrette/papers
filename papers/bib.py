@@ -285,8 +285,8 @@ class Biblio:
         # additional checks on DOI etc...
         if check_duplicate:
             logger.debug('check duplicates : TRUE')
-            self.insert_entry_check(entry, update_key=update_key, rename=rename, copy=copy, **checkopt)
-            return
+            print("entering...")
+            return self.insert_entry_check(entry, update_key=update_key, rename=rename, copy=copy, **checkopt)
         else:
             logger.debug('check duplicates : FALSE')
 
@@ -312,13 +312,14 @@ class Biblio:
 
         if rename: self.rename_entry_files(entry, copy=copy)
 
-    def insert_entry_check(self, entry, update_key=False, mergefiles=True, on_conflict='i', rename=False, copy=False):
+        return [ entry ]
 
+    def insert_entry_check(self, entry, update_key=False, mergefiles=True, on_conflict='i', rename=False, copy=False):
         duplicates = [e for e in self.entries if self.eq(e, entry)]
 
         if not duplicates:
             logger.debug('not a duplicate')
-            self.insert_entry(entry, update_key, rename=rename, copy=copy)
+            return self.insert_entry(entry, update_key, rename=rename, copy=copy)
 
 
         else:
@@ -336,7 +337,7 @@ class Biblio:
                 logger.debug('exact duplicate')
                 if rename: self.rename_entry_files(candidate, copy=copy)
                 print("Existing entry:", self.key(entry))
-                return  # do nothing
+                return [ entry ] # do nothing
 
             if update_key and entry['ID'] != candidate['ID']:
                 logger.info('duplicate :: update key to match existing entry: {} => {}'.format(entry['ID'], candidate['ID']))
@@ -355,13 +356,15 @@ class Biblio:
                 entry = candidate
                 if rename: self.rename_entry_files(candidate, copy=copy)
                 print("Existing entry:", self.key(entry))
-                return  # do nothing
+                return [ entry ] # do nothing
 
             logger.debug('conflict resolution: '+on_conflict)
             resolved = conflict_resolution_on_insert(candidate, entry, mode=on_conflict)
             self.entries.remove(candidate) # maybe in resolved entries
+            entries = []
             for e in resolved:
-                self.insert_entry(e, update_key, rename=rename, copy=copy)
+                entries.extend( self.insert_entry(e, update_key, rename=rename, copy=copy) )
+            return entries
 
 
     def generate_key(self, entry):
@@ -389,6 +392,7 @@ class Biblio:
         bib = bibtexparser.loads(bibtex)
         if convert_to_unicode:
             bib = bibtexparser.customization.convert_to_unicode(bib)
+        entries = []
         for e in bib.entries:
             files = []
             if "file" in e:
@@ -399,7 +403,8 @@ class Biblio:
             if files:
                 self.set_files(e, files)
 
-            self.insert_entry(e, **kw)
+            entries.extend( self.insert_entry(e, **kw) )
+        return entries
 
 
     def add_bibtex_file(self, file, **kw):
@@ -409,8 +414,7 @@ class Biblio:
 
     def fetch_doi(self, doi, **kw):
         bibtex = fetch_bibtex_by_doi(doi)
-        self.add_bibtex(bibtex, **kw)
-
+        return self.add_bibtex(bibtex, **kw)
 
     def add_pdf(self, pdf, attachments=None, search_doi=True, search_fulltext=True, scholar=False, doi=None, **kw):
 
@@ -435,10 +439,10 @@ class Biblio:
 
         kw.pop('update_key', True)
             # logger.warning('fetched key is always updated when adding PDF to existing bib')
-        self.insert_entry(entry, update_key=True, **kw)
+        return self.insert_entry(entry, update_key=True, **kw)
 
 
-    def scan_dir(self, direc, search_doi=True, search_fulltext=True, **kw):
+    def scan_dir_iter(self, direc, search_doi=True, search_fulltext=True, **kw):
 
         for root, direcs, files in os.walk(direc):
             dirname = os.path.basename(root)
@@ -450,7 +454,7 @@ class Biblio:
                 logger.debug('read from hidden bibtex')
                 try:
                     entry = read_entry_dir(root, relative_to=self.relative_to)
-                    self.insert_entry(entry, **kw)
+                    yield from self.insert_entry(entry, **kw)
                 except Exception:
                     logger.warning(root+'::'+str(error))
                 continue
@@ -461,12 +465,16 @@ class Biblio:
                 path = os.path.join(root, file)
                 try:
                     if file.endswith('.pdf'):
-                        self.add_pdf(path, search_doi=search_doi, search_fulltext=search_fulltext, **kw)
+                        yield from self.add_pdf(path, search_doi=search_doi, search_fulltext=search_fulltext, **kw)
                     elif file.endswith('.bib'):
-                        self.add_bibtex_file(path, **kw)
+                        yield from self.add_bibtex_file(path, **kw)
                 except Exception as error:
                     logger.warning(path+'::'+str(error))
                     continue
+
+    def scan_dir(self, direc, **kw):
+        " like scan_dir_iter but returns a list"
+        return list(self.scan_dir_iter(direc, **kw))
 
 
     def format(self):
