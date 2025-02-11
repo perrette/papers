@@ -285,7 +285,6 @@ class Biblio:
         # additional checks on DOI etc...
         if check_duplicate:
             logger.debug('check duplicates : TRUE')
-            print("entering...")
             return self.insert_entry_check(entry, update_key=update_key, rename=rename, copy=copy, **checkopt)
         else:
             logger.debug('check duplicates : FALSE')
