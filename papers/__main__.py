@@ -9,12 +9,14 @@ import subprocess as sp
 import shutil
 import itertools
 import fnmatch   # unix-like match
+import hashlib
+import time
 
 import papers
 from papers import logger
 from papers.extract import extract_pdf_doi, isvaliddoi, extract_pdf_metadata
 from papers.extract import fetch_bibtex_by_doi
-from papers.encoding import parse_file, format_file, family_names, format_entries
+from papers.encoding import parse_file, format_file, family_names, format_entries, standard_name
 from papers.config import bcolors, Config, search_config, CONFIG_FILE, CONFIG_FILE_LOCAL, DATA_DIR, CONFIG_FILE_LEGACY, BACKUP_DIR
 from papers.duplicate import list_duplicates, list_uniques, edit_entries
 from papers.bib import Biblio, FUZZY_RATIO, DEFAULT_SIMILARITY, entry_filecheck, backupfile as backupfile_func, isvalidkey
@@ -522,8 +524,10 @@ def addcmd(parser, o, config):
             raise PapersExit()
 
     if len(o.file) == 0:
-        if not o.doi:
-            logger.error('Please provide either a PDF file or BIBTEX entry or specify `--doi DOI`')
+        if o.edit:
+            pass
+        elif not o.doi:
+            logger.error('Please provide either a PDF file or BIBTEX entry or specify `--doi DOI` or `--edit`')
             raise PapersExit()
         elif o.no_query_doi:
             logger.error('If no file is present, --no-query-doi is not compatible with --doi')
@@ -564,20 +568,31 @@ def addcmd(parser, o, config):
 
     # The list of new entries potentially contains duplicates if more than one file is added sequentially
     # If action is required on the added entry, we need to make sure we're consistent with the biblio.
-    if o.fetch or o.edit or o.open:
+    if len(entries) > 1 and (o.edit or o.open):
         unique_keys = set(biblio.key(e) for e in entries)
         entries = [e for e in biblio.entries if biblio.key(e) in unique_keys]
 
-    # actions on entries (see also papers list)
-    if o.fetch:
-        for e in entries:
-            biblio.fix_entry(e, fix_doi=True, fix_key=True, fetch_all=True, interactive=True)
-
     if o.edit:
+        if len(entries) == 0:
+            entries = [{
+                "ID": "EDIT-NEW-KEY",
+                "ENTRYTYPE": "article",
+                "author": standard_name("John Doe and Jane Roe"),
+                "title": "",
+                "journal": "",
+                "year": "",
+                "doi": o.doi or "",
+                "file": format_file(o.attachment or [], relative_to=biblio.relative_to),
+                }]
+
         try:
             otherentries = [e for e in biblio.entries if e not in entries]
             entries = edit_entries(entries)
-            biblio.db.entries = entries + otherentries
+            entries = [{k:v for k,v in e.items() if v != ""} for e in entries]
+            biblio.db.entries = otherentries
+            for e in entries:
+                biblio.insert_entry(e, **kw)
+
         except Exception as error:
             logger.error(str(error))
             return
@@ -1018,7 +1033,6 @@ def get_parser(config=None):
     grp = addp.add_argument_group('actions')
     grp.add_argument('-e', '--edit', action='store_true', help='edit entry')
     grp.add_argument('-o', '--open', action='store_true', help='open files')
-    grp.add_argument('--fetch', action='store_true', help='fetch metadata from doi and update entry')
 
     # check
     # =====
