@@ -1152,7 +1152,7 @@ def get_parser(config=None):
 
     grp = listp.add_argument_group('action on listed results (pipe)')
     grp.add_argument('--delete', action='store_true')
-    grp.add_argument('--edit', action='store_true', help='interactive edit text file with entries, and re-insert them')
+    grp.add_argument('-e', '--edit', action='store_true', help='interactive edit text file with entries, and re-insert them')
     grp.add_argument('--fetch', action='store_true', help='fetch and fix metadata')
     grp.add_argument('--add-keywords', '--add-tag', nargs='+', help='add keywords to the selected entries')
     grp.add_argument('--add-files', nargs='+', help='add files to the selected entries (only one entry must be listed)')
