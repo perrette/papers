@@ -1124,6 +1124,7 @@ def get_parser(config=None):
 
     grp = listp.add_argument_group('formatting')
     mgrp = grp.add_mutually_exclusive_group()
+    mgrp.add_argument('--plain', action='store_false', dest="one_liner", help='print in bibtex format')
     mgrp.add_argument('-l', '-1', '--one-liner', action='store_true', help='one liner')
     mgrp.add_argument('--key-only', action='store_true')
     mgrp.add_argument('-f', '--field', nargs='+', help='specific field(s) only')
