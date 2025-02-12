@@ -305,7 +305,7 @@ class TestAddConflict(BibTest):
  title = {Something else entirely}
 }"""
 
-    bibtex_conflict_key_fixed = """@article{Perrette_2011b,
+    bibtex_conflict_key_fixed = """@article{perrette_author0000,
  author = {M. Perrette and Another author},
  doi = {10.5194/bg-8-515-2011XXX},
  title = {Something else entirely}

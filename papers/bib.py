@@ -283,9 +283,8 @@ class Biblio:
         """
         """
         if metadata:
-            files = list(set(self.get_files(entry) + self.get_files(metadata)))
-            entry.update(metadata)
-            entry['file'] = format_file(files, relative_to=self.relative_to)
+            files = self.get_files(entry) + self.get_files(metadata)
+            self.set_files(metadata, files)
 
         if update_key:
             entry['ID'] = self.generate_key(entry)
@@ -447,7 +446,7 @@ class Biblio:
         entry['ID'] = self.generate_key(entry)
         logger.debug('generated PDF key: '+entry['ID'])
 
-        kw["update_key"] = True  # fetched key is always updated
+        kw["update_key"] = False  # already updated
         return self.insert_entry(entry, **kw)
 
 
