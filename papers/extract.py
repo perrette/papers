@@ -4,6 +4,7 @@ import subprocess as sp
 import re
 import tempfile
 
+import requests
 from crossref.restful import Works, Etiquette
 import bibtexparser
 
@@ -78,6 +79,7 @@ def readpdf_image(pdf, first=None, last=None):
     return txt
 
 REGEXP = re.compile(r'[doi,doi.org/][\s\.\:]{0,2}(10\.\d{4}[\d\:\.\-\/a-z]+)[A-Z\s,\n]')
+ARXIV = re.compile(r'arxiv:\s*(\d{4}\.\d{4,5})')
 
 def parse_doi(txt):
     # based on: https://doeidoei.wordpress.com/2009/10/22/regular-expression-to-match-a-doi-digital-object-identifier/
@@ -94,7 +96,15 @@ def parse_doi(txt):
     matches = REGEXP.findall(' '+txt.lower()+' ')
 
     if not matches:
-        raise DOIParsingError('parse_doi::no matches')
+
+        # try arxiv pattern
+        match = ARXIV.search(txt.lower())
+        if match:
+            arxiv_id = match.group(1)
+            matches = [ f"10.48550/arXiv.{arxiv_id}" ]
+
+        else:
+            raise DOIParsingError('parse_doi::no matches')
 
     match = matches[0]
 
@@ -218,8 +228,19 @@ def fetch_crossref_by_doi(doi):
         raise DOIRequestError(repr(doi)+': '+repr(error))
     return response.json()
 
+@cached('arxiv.json')
+def fetch_bibtex_by_arxiv(arxiv_id):
+    url = f"https://arxiv.org/bibtex/{arxiv_id}"
+    response = requests.get(url)
+    if response.status_code == 200:
+        return response.text
+    else:
+        return f"Error: Unable to fetch BibTeX (HTTP {response.status_code})"
+
 # @cached('crossref-bibtex.json')
 def fetch_bibtex_by_doi(doi):
+    if "arxiv" in doi.lower():
+        return fetch_bibtex_by_arxiv(doi.split("arXiv.")[1])
     json_data = fetch_crossref_by_doi(doi)
     return crossref_to_bibtex(json_data['message'])
 
