@@ -569,7 +569,7 @@ def addcmd(parser, o, config):
             logger.error("No entry added: use --doi, --metadata, --key, --attachment, --title, --author, --journal, --year to add a new entry")
             raise PapersExit()
 
-        metadata.setdefault('ID', biblio.generate_key(metadata))
+        metadata.setdefault('ID', biblio.keyformat(metadata))
         metadata.setdefault('ENTRYTYPE', 'article')
         if o.edit:
             metadata = edit_entries(metadata)
