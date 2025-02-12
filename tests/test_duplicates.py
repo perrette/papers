@@ -266,7 +266,7 @@ class TestAddResolveDuplicate(BibTest):
 
     def test_conflict_updated_from_original_but_originalkey(self):
 
-        expected = """@article{Perrette_2011,
+        expected = """@article{fieldRareYear,
  author = {New Author Field},
  doi = {10.5194/bg-8-515-2011},
  journal = {ConflictJournal},

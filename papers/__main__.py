@@ -19,7 +19,7 @@ from papers.extract import fetch_bibtex_by_doi
 from papers.encoding import parse_file, format_file, family_names, format_entries, standard_name, format_entry, parse_keywords, format_key
 from papers.config import bcolors, Config, search_config, CONFIG_FILE, CONFIG_FILE_LOCAL, DATA_DIR, CONFIG_FILE_LEGACY, BACKUP_DIR
 from papers.duplicate import list_duplicates, list_uniques, edit_entries
-from papers.bib import Biblio, FUZZY_RATIO, DEFAULT_SIMILARITY, entry_filecheck, backupfile as backupfile_func, isvalidkey
+from papers.bib import Biblio, FUZZY_RATIO, DEFAULT_SIMILARITY, entry_filecheck, backupfile as backupfile_func, isvalidkey, DuplicateKeyError
 from papers.utils import move, checksum, view_pdf, open_folder
 from papers import __version__
 
@@ -538,30 +538,45 @@ def addcmd(parser, o, config):
 
     biblio = get_biblio(config)
 
-    kw = {'on_conflict':o.mode, 'check_duplicate':not o.no_check_duplicate,
-            'mergefiles':not o.no_merge_files, 'update_key':o.update_key}
-
     entries = []
 
+    metadata = {k: v for k, v in o.metadata or []}
+    if o.doi: metadata['doi'] = o.doi
+    if o.key: metadata['ID'] = o.key
+    if o.title: metadata['title'] = o.title
+    if o.author: metadata['author'] = o.author
+    if o.journal: metadata['journal'] = o.journal
+    if o.year: metadata['year'] = o.year
+    if o.type: metadata['ENTRYTYPE'] = o.type
+    if "author" in metadata:
+        metadata["author"] = standard_name(metadata["author"])
+    if o.attachment:
+        metadata['file'] = format_file(biblio.get_files(metadata) + o.attachment, relative_to=biblio.relative_to)
+
     if len(o.file) > 1:
-        if o.attachment:
-            logger.error('--attachment is only valid for one PDF / BIBTEX entry')
-            raise PapersExit()
-        if o.doi:
-            logger.error('--doi is only valid for one added file')
+        if metadata:
+            logger.error('--doi, --metadata, --key, --attachment and other metadata keys are only valid for one PDF / BIBTEX entry')
             raise PapersExit()
 
-    if len(o.file) == 0:
+    kw = {'on_conflict':o.mode, 'check_duplicate':not o.no_check_duplicate,
+            'mergefiles':not o.no_merge_files, 'update_key':o.update_key, 'metadata':metadata}
+
+    if len(o.file) == 0 and o.doi and not o.no_query_doi:
+        entries.extend( biblio.fetch_doi(o.doi, attachments=o.attachment, rename=o.rename, copy=o.copy, **kw) )
+
+    elif len(o.file) == 0:
+        if not o.edit and not o.metadata and not o.key and not o.doi and not o.attachment and not o.title and not o.author and not o.journal and not o.year:
+            logger.error("No entry added: use --doi, --metadata, --key, --attachment, --title, --author, --journal, --year to add a new entry")
+            raise PapersExit()
+
+        metadata.setdefault('ID', biblio.generate_key(metadata))
+        metadata.setdefault('ENTRYTYPE', 'article')
         if o.edit:
-            pass
-        elif not o.doi:
-            logger.error('Please provide either a PDF file or BIBTEX entry or specify `--doi DOI` or `--edit`')
-            raise PapersExit()
-        elif o.no_query_doi:
-            logger.error('If no file is present, --no-query-doi is not compatible with --doi')
-            raise PapersExit()
-        else:
-            entries.extend( biblio.fetch_doi(o.doi, attachments=o.attachment, rename=o.rename, copy=o.copy, **kw) )
+            metadata = edit_entries(metadata)
+            o.edit = False
+
+        entries.extend( biblio.insert_entry(metadata, **kw) )
+
 
     for file in o.file:
         try:
@@ -601,29 +616,17 @@ def addcmd(parser, o, config):
         entries = [e for e in biblio.entries if biblio.key(e) in unique_keys]
 
     if o.edit:
-        if len(entries) == 0:
-            entries = [{
-                "ID": "EDIT-NEW-KEY",
-                "ENTRYTYPE": "article",
-                "author": standard_name("John Doe and Jane Roe"),
-                "title": "",
-                "journal": "",
-                "year": "",
-                "doi": o.doi or "",
-                "file": format_file(o.attachment or [], relative_to=biblio.relative_to),
-                }]
+        entry_keys = [biblio.key(e) for e in entries]
+        otherentries = [e for e in biblio.entries if biblio.key(e) not in entry_keys]
 
         try:
-            otherentries = [e for e in biblio.entries if e not in entries]
             entries = edit_entries(entries)
-            entries = [{k:v for k,v in e.items() if v != ""} for e in entries]
-            biblio.db.entries = otherentries
-            for e in entries:
-                biblio.insert_entry(e, **kw)
-
         except Exception as error:
             logger.error(str(error))
             return
+
+        entries = [{k:v for k,v in e.items() if v != ""} for e in entries]
+        biblio.db.entries = otherentries + entries
 
     savebib(biblio, config)
 
@@ -888,7 +891,6 @@ def statuscmd(parser, o, config):
     print(config.status(check_files=not o.no_check_files, verbose=o.verbose))
 
 
-
 def get_parser(config=None):
     if config is None:
         config = papers.config.Config()
@@ -1022,8 +1024,15 @@ def get_parser(config=None):
     grp.add_argument('--ignore-errors', action='store_true',
         help='ignore errors when adding multiple files')
 
-    grp = addp.add_argument_group('pdf metadata')
+    grp = addp.add_argument_group('metadata')
     grp.add_argument('--doi', help='provide DOI -- skip parsing PDF')
+    grp.add_argument('--key', help='manually set the key')
+    grp.add_argument('--type', help='document type')
+    grp.add_argument('--title', help='manually set the title')
+    grp.add_argument('--author', help='manually set the author')
+    grp.add_argument('--journal', help='manually set the journal')
+    grp.add_argument('--year', help='manually set the year')
+    grp.add_argument('--metadata', nargs="+", metavar="KEY=VALUE", type=lambda meta: meta.split('=', 1), help='the metadata fields manually')
     grp.add_argument('--no-query-doi', action='store_true', help='do not attempt to parse and query doi')
     grp.add_argument('--no-query-fulltext', action='store_true', help='do not attempt to query fulltext in case doi query fails')
     grp.add_argument('--scholar', action='store_true', help='use google scholar instead of crossref')
@@ -1298,7 +1307,7 @@ class PapersExit(Exception):
 def main_clean_exit(args=None):
     try:
         main(args)
-    except PapersExit as error:
+    except (PapersExit, DuplicateKeyError) as error:
         if logger.getEffectiveLevel() == logging.DEBUG:
             raise
         if error.args:
