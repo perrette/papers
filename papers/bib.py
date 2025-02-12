@@ -287,6 +287,9 @@ class Biblio:
             entry.update(metadata)
             entry['file'] = format_file(files, relative_to=self.relative_to)
 
+        if update_key:
+            entry['ID'] = self.generate_key(entry)
+
         # additional checks on DOI etc...
         if check_duplicate:
             logger.debug('check duplicates : TRUE')
@@ -303,15 +306,16 @@ class Biblio:
                 newkey = self.append_abc_to_key(entry)  # add abc
                 logger.info('update key: {} => {}'.format(entry['ID'], newkey))
                 entry['ID'] = newkey
-                print(format_entry(self, entry, prefix="Updated"))
 
             else:
-                raise DuplicateKeyError('this error can be avoided if update_key is True')
+                print(format_entry(self, entry, prefix="New entry"))
+                print(format_entry(self, self.entries[i], prefix="Conflicts with"))
+                raise DuplicateKeyError('Key conflict. Try update_key is True?')
 
         else:
             logger.info('new entry: '+self.key(entry))
-            print(format_entry(self, entry, prefix="Added"))
 
+        print(format_entry(self, entry, prefix="Added"))
         self.entries.insert(i, entry)
 
         if rename: self.rename_entry_files(entry, copy=copy)
@@ -392,14 +396,12 @@ class Biblio:
     def get_files(self, entry, relative_to=None):
         return parse_file(entry.get('file', ''), relative_to=relative_to or self.relative_to)
 
-    def add_bibtex(self, bibtex, relative_to=None, attachments=None, convert_to_unicode=False, update_key=False, **kw):
+    def add_bibtex(self, bibtex, relative_to=None, attachments=None, convert_to_unicode=False, **kw):
         bib = bibtexparser.loads(bibtex)
         if convert_to_unicode:
             bib = bibtexparser.customization.convert_to_unicode(bib)
         entries = []
         for e in bib.entries:
-            if update_key:
-                e['ID'] = self.generate_key(e)
             files = []
             if "file" in e:
                 # make sure paths relative to other bibtex are inserted correctly
@@ -409,7 +411,7 @@ class Biblio:
             if files:
                 self.set_files(e, files)
 
-            entries.extend( self.insert_entry(e, update_key=update_key, **kw) )
+            entries.extend( self.insert_entry(e, **kw) )
         return entries
 
 
