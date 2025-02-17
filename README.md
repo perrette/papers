@@ -287,6 +287,14 @@ That command is also convenient to check on what's actually tracked and what is 
     # ...
     papers filecheck --rename --filesdir files
 
+There is also a command specifically designed to clean up the zombie files and folders:
+
+    papers filecheck --clean-filesdir
+
+That command will ask before removig anything, unless `--force` is passed. Currently
+it ignores hidden files and folders, and will only consider folder that have a `.{folder}.bib` file inside, 
+which is the convention `papers` follows to store multiple attachments. That command works best
+when the files are in their own folder, and not mixed up with other things, obviously.
 
 ### Setup git-tracked library (optional)
 
