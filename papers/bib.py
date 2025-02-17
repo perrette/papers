@@ -816,3 +816,71 @@ def entry_filecheck(e, delete_broken=False, fix_mendeley=False,
         newfiles.append(file)
 
     e['file'] = format_file(newfiles, relative_to=relative_to)
+
+
+def clean_filesdir(biblio, interactive=True, ignore_files=None, ignore_folders=None):
+    if biblio.filesdir is None:
+        raise ValueError('filesdir is not defined, cannot clean')
+    removed_files = []
+
+    allfiles = set(os.path.abspath(file) for e in biblio.entries for file in biblio.get_files(e))
+    if ignore_files:
+        for f in ignore_files:
+            allfiles.add(os.path.abspath(f))
+    allfolders = set(os.path.abspath(folder) for e in biblio.entries for folder in {os.path.dirname(file) for file in biblio.get_files(e)})
+
+    if ignore_folders is None:
+        ignore_folders = []
+
+    for root, direcs, files in os.walk(biblio.filesdir):
+
+        ANS = None  # Y(es) or N(o) for all files in this folder (reset at each pass)
+        if root in ignore_folders:
+            continue
+        if '.git' in root.split(os.path.sep):
+            continue
+        for file in files:
+            path = os.path.abspath(os.path.join(root, file))
+            if file.startswith('.') or file.endswith('.bib'):
+                continue
+            if path not in allfiles:
+                if interactive:
+                    if ANS is None:
+                        ans = input(f"File: {os.path.relpath(path, biblio.filesdir)} not in library. Remove ? [Y/n/Y/N] ")
+                    else:
+                        ans = ANS
+                    if ans in ['Y', 'N']:
+                        ans = ANS = ans.lower()  # same reply for all files in this folder
+                    if ans.lower() == 'y':
+                        os.remove(path)
+                        removed_files.append(path)
+                else:
+                    logger.info(f"Remove unlinked file {os.path.relpath(path, biblio.filesdir)}.")
+                    os.remove(path)
+                    removed_files.append(path)
+
+        for direc in direcs:
+            if direc.startswith('.'):
+                continue
+            if direc in ignore_folders:
+                continue
+
+            # Check multifile entries
+            bibtex = os.path.join(root, direc, '.'+direc+'.bib')
+            if not os.path.exists(bibtex):
+                continue
+
+            direcpath = os.path.abspath(os.path.join(root, direc))
+
+            if direcpath not in allfolders:
+                if interactive:
+                    ans = input(f"Folder: {os.path.relpath(direcpath, root)} not in library. Remove ? [Y/n] ")
+                    if ans.lower() == 'y':
+                        shutil.rmtree(os.path.join(root, direcpath))
+                else:
+                    logger.info(f"Remove folder {direc}.")
+                    shutil.rmtree(os.path.join(root, direcpath))
+
+        break
+
+    return removed_files

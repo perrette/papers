@@ -18,7 +18,7 @@ from papers.encoding import parse_file, format_file, family_names, format_entrie
 from papers.config import bcolors, Config, search_config, CONFIG_FILE, CONFIG_FILE_LOCAL, DATA_DIR, CONFIG_FILE_LEGACY, BACKUP_DIR
 from papers.duplicate import list_duplicates, list_uniques, edit_entries
 from papers.bib import (Biblio, FUZZY_RATIO, DEFAULT_SIMILARITY, entry_filecheck,
-                        backupfile as backupfile_func, isvalidkey, DuplicateKeyError)
+                        backupfile as backupfile_func, isvalidkey, DuplicateKeyError, clean_filesdir)
 from papers.utils import move, checksum, view_pdf, open_folder
 from papers import __version__
 
@@ -88,6 +88,9 @@ def _backup_bib(biblio, config, message=None):
         biblio.rename_entries_files(copy=True, relative_to=backupdir, hardlink=True)
         biblio.save(config.backupfile_clean)
         config.gitcmd(f"add {config.backupfile_clean.name}")
+
+        # Remove unlink files
+        clean_filesdir(biblio, interactive=False, ignore_files=[config.backupfile, config.backupfile_clean])
         config.gitcmd(f"add files")
 
     else:
@@ -672,6 +675,10 @@ def filecheckcmd(parser, o, config):
     if o.rename:
         biblio.rename_entries_files(o.copy)
 
+    if o.clean_filesdir:
+        print("Check files directory for unlinked files")
+        clean_filesdir(biblio, interactive=not o.force, ignore_files=[config.bibtex])
+
     savebib(biblio, config)
 
 def redocmd(parser, o, config):
@@ -1114,6 +1121,9 @@ def get_parser(config=None):
 
     filecheckp.add_argument('-d', '--delete-broken', action='store_true',
         help='remove file entry if the file link is broken')
+
+    filecheckp.add_argument('--clean-filesdir', action='store_true',
+        help='remove files in filesdir if not referred to in any entry')
 
     filecheckp.add_argument('--fix-mendeley', action='store_true',
         help='fix a Mendeley bug where the leading "/" is omitted.')
