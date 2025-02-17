@@ -2,7 +2,6 @@ import os
 import bibtexparser
 from pathlib import Path
 from unidecode import unidecode as unicode_to_ascii
-from papers.latexenc import unicode_to_latex
 from papers.utils import ansi_link as link, bcolors
 from papers import logger
 

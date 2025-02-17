@@ -1,13 +1,8 @@
 import os
 from pathlib import Path
-import logging
-# logger.basicConfig(level=logger.INFO)
-import argparse
-import subprocess as sp
 import shutil
 import bisect
-import itertools
-import fnmatch   # unix-like match
+from unidecode import unidecode as unicode_to_ascii
 import bibtexparser
 from bibtexparser.customization import convert_to_unicode
 
@@ -18,8 +13,8 @@ from papers.extract import extract_pdf_doi, isvaliddoi, parse_doi
 from papers.extract import extract_pdf_metadata
 from papers.extract import fetch_bibtex_by_fulltext_crossref, fetch_bibtex_by_doi
 
-from papers.encoding import unicode_to_latex, unicode_to_ascii
 from papers.encoding import parse_file, format_file, standard_name, family_names, format_entries, update_file_path, format_entry
+from papers.latexenc import unicode_to_latex, latex_to_unicode
 
 from papers.filename import NAMEFORMAT, KEYFORMAT
 from papers.utils import bcolors, checksum, move as _move
@@ -309,7 +304,7 @@ class Biblio:
             else:
                 print(format_entry(self, entry, prefix="New entry"))
                 print(format_entry(self, self.entries[i], prefix="Conflicts with"))
-                raise DuplicateKeyError('Key conflict. Try update_key is True?')
+                raise DuplicateKeyError('Key conflict. Try update_key is True or specify --key KEY explicitly')
 
         else:
             logger.info('new entry: '+self.key(entry))

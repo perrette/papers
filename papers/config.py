@@ -85,7 +85,7 @@ class Config:
             return Path(os.path.sep)
 
     def gitcmd(self, cmd, check=True, **kw):
-        logger.debug(f"git add {self.backupfile.name}")
+        logger.debug(f"git {cmd} -C {self.gitdir}")
         try:
             sp.run(
                 f"git {cmd}",
