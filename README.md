@@ -310,14 +310,8 @@ If `--git-lfs` is passed, the files will be backed-up along with the bibtex.
 Under the hood, bibtex and files (if applicable) are copied (hard-linked) to a back-up directory.
 Details are described in [issue 51](https://github.com/perrette/papers/issues/51).
 
-In local installs, backup occurs in `.papers/`. In global installs, defaults to `~/.local/.share/papers`.
-Type `papers status -v` to find out.
-
+Backup occurs in a subfolder of `~/.local/.share/papers` regardless of the type of installation. Type `papers status -v` to find out.
 For local install that are already git-tracked, the feature remains useful as it is the basis for `papers undo` and `papers redo`.
-You might want to add `.papers` to your .gitignore to avoid messing up with your larger project.
-
-This feature is experimental.
-
 
 ### undo / redo
 
