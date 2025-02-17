@@ -15,7 +15,7 @@ import time
 import papers
 from papers import logger
 from papers.extract import extract_pdf_doi, isvaliddoi, extract_pdf_metadata
-from papers.extract import fetch_bibtex_by_doi
+from papers.extract import fetch_bibtex_by_doi, fetch_bibtex_by_fulltext_crossref, fetch_bibtex_by_fulltext_scholar
 from papers.encoding import parse_file, format_file, family_names, format_entries, standard_name, format_entry, parse_keywords, format_key
 from papers.config import bcolors, Config, search_config, CONFIG_FILE, CONFIG_FILE_LOCAL, DATA_DIR, CONFIG_FILE_LEGACY, BACKUP_DIR
 from papers.duplicate import list_duplicates, list_uniques, edit_entries
@@ -717,7 +717,20 @@ def doicmd(parser, o):
     print(extract_pdf_doi(o.pdf, image=o.image))
 
 def fetchcmd(parser, o):
-    print(fetch_bibtex_by_doi(o.doi))
+    # either one or several DOIs
+    if all(isvaliddoi(field) for field in o.doi_or_text):
+        if o.scholar:
+            parser.error("Fetching from DOI does not support Google Scholar option")
+        for doi in o.doi_or_text:
+            print(fetch_bibtex_by_doi(doi))
+        return
+
+    # or one full text search
+    field = " ".join(o.doi_or_text)
+    if o.scholar:
+        print(fetch_bibtex_by_fulltext_scholar(field))
+    else:
+        print(fetch_bibtex_by_fulltext_crossref(field))
 
 def extractcmd(parser, o):
     print(extract_pdf_metadata(o.pdf, search_doi=not o.fulltext, search_fulltext=True, scholar=o.scholar, minwords=o.word_count, max_query_words=o.word_count, image=o.image))
@@ -1180,9 +1193,9 @@ def get_parser(config=None):
 
     # fetch
     # =====
-    fetchp = subparsers.add_parser('fetch', description='fetch bibtex from DOI')
-    fetchp.add_argument('doi')
-
+    fetchp = subparsers.add_parser('fetch', description='fetch bibtex from DOI or full-text')
+    fetchp.add_argument('doi_or_text', nargs='+', help='DOI or full text.')
+    fetchp.add_argument('--scholar', action='store_true', help='use google scholar instead of default crossref for fulltext search')
 
     # extract
     # ========
