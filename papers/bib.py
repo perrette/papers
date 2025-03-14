@@ -432,10 +432,10 @@ class Biblio:
             files += attachments
 
         self.set_files(entry, [os.path.abspath(f) for f in files])
-        entry['ID'] = self.generate_key(entry)
+        entry['ID'] = self.keyformat(entry)
         logger.debug('generated PDF key: '+entry['ID'])
 
-        kw["update_key"] = False  # already updated
+        kw["update_key"] = True
         return self.insert_entry(entry, **kw)
 
 
