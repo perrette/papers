@@ -650,7 +650,7 @@ def addcmd(parser, o, config):
             return
 
         entries = [{k:v for k,v in e.items() if v != ""} for e in entries]
-        biblio.db.entries = otherentries + entries
+        biblio.db.entries = sorted(otherentries + entries, key=lambda e: biblio.key(e))
 
     savebib(biblio, config)
 
