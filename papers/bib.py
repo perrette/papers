@@ -295,6 +295,10 @@ class Biblio:
         if i < len(self.entries) and self.key(self.entries[i]) == self.key(entry):
             logger.info('key duplicate: '+self.key(self.entries[i]))
 
+            if self.entries[i]["title"] == entry["title"]:
+                logger.info('exact duplicate')
+                return [ self.entries[i] ]
+
             if update_key:
                 newkey = self.append_abc_to_key(entry)  # add abc
                 logger.info('update key: {} => {}'.format(entry['ID'], newkey))
