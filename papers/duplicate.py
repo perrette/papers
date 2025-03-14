@@ -367,12 +367,6 @@ def edit_entries(entries, diff=False, ndiff=False, editor=None):
     if res == 0:
         logger.info('sucessfully edited file, insert edited entries')
         db_updated = bibtexparser.loads(open(filename).read())
-        keys_before = [e.get('ID') for e in entries]
-        keys_after = [e.get('ID') for e in db_updated.entries]
-        if set(keys_before) != set(keys_after):
-            print(f"{bcolors.WARNING}Keys edited ->", bcolors.OKBLUE ," ".join(sorted(set(keys_before).difference(keys_after))), bcolors.ENDC,
-                  "=>", bcolors.OKBLUE,
-                  " ".join(sorted(set(keys_after).difference(keys_before))), bcolors.ENDC) if keys_after else '(deleted)'
         return db_updated.entries
 
     else:

@@ -1,6 +1,7 @@
 """That is the script called by the papers cli command
 """
 import os
+import copy
 import sys
 from pathlib import Path
 import logging
@@ -79,6 +80,8 @@ def _backup_bib(biblio, config, message=None):
     logger.debug(f'BACKUP: cp {config.bibtex} {config.backupfile}')
     shutil.copy(config.bibtex, config.backupfile)
     config.gitcmd(f"add {config.backupfile.name}")
+
+    biblio = copy.deepcopy(biblio)
 
     if config.backup_files:
         logger.info('backup bibliography with files')
@@ -561,6 +564,7 @@ def addcmd(parser, o, config):
     set_keyformat_config_from_cmd(o, config)
 
     biblio = get_biblio(config)
+    biblio_init = copy.deepcopy(biblio)
 
     entries = []
 
@@ -653,6 +657,29 @@ def addcmd(parser, o, config):
         biblio.db.entries = sorted(otherentries + entries, key=lambda e: biblio.key(e))
 
     savebib(biblio, config)
+
+    # compare entries to inform user
+    # this is not very efficient but I have yet to hear a complaint about speed
+
+    old_set = set(e["ID"] for e in biblio_init.entries)
+    old_entries_by_key = {e["ID"]:e for e in biblio_init.db.entries}
+    new_set = set(e["ID"] for e in biblio.entries)
+    new_entries_by_key = {e["ID"]:e for e in biblio.db.entries}
+    modified_set = set(e["ID"] for e in entries ).intersection(set.intersection(old_set, new_set))
+
+    for ID in sorted(old_set - new_set):
+        print(format_entry(biblio_init, old_entries_by_key[ID], prefix="Removed"))
+
+    for ID in sorted(new_set - old_set):
+        print(format_entry(biblio, new_entries_by_key[ID], prefix="Added"))
+
+    for ID in sorted(modified_set):
+        before = old_entries_by_key[ID]
+        after = new_entries_by_key[ID]
+        if before != after:
+            print(format_entry(biblio, after, prefix="Modified"))
+        else:
+            print(format_entry(biblio, after, prefix="Existing"))
 
     if o.open:
         for e in entries:

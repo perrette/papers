@@ -273,7 +273,6 @@ class Biblio:
         keys = [self.key(ei) for ei in self.db.entries]
         return bisect.bisect_left(keys, self.key(entry))
 
-
     def insert_entry(self, entry, update_key=False, check_duplicate=False, rename=False, copy=False, metadata={}, **checkopt):
         """
         """
@@ -302,14 +301,11 @@ class Biblio:
                 entry['ID'] = newkey
 
             else:
-                print(format_entry(self, entry, prefix="New entry"))
-                print(format_entry(self, self.entries[i], prefix="Conflicts with"))
                 raise DuplicateKeyError('Key conflict. Try update_key is True or specify --key KEY explicitly')
 
         else:
             logger.info('new entry: '+self.key(entry))
 
-        print(format_entry(self, entry, prefix="Added"))
         self.entries.insert(i, entry)
 
         if rename: self.rename_entry_files(entry, copy=copy)
@@ -338,7 +334,6 @@ class Biblio:
             if entry == candidate:
                 logger.debug('exact duplicate')
                 if rename: self.rename_entry_files(candidate, copy=copy)
-                print(format_entry(self, entry, prefix="Existing"))
                 return [ entry ] # do nothing
 
             if update_key and entry['ID'] != candidate['ID']:
@@ -357,7 +352,6 @@ class Biblio:
                 logger.debug('fixed: exact duplicate')
                 entry = candidate
                 if rename: self.rename_entry_files(candidate, copy=copy)
-                print(format_entry(self, entry, prefix="Existing"))
                 return [ entry ] # do nothing
 
             logger.debug('conflict resolution: '+on_conflict)
