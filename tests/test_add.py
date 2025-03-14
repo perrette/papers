@@ -305,7 +305,7 @@ class TestAddConflict(BibTest):
  title = {Something else entirely}
 }"""
 
-    bibtex_conflict_key_fixed = """@article{perrette_author0000,
+    bibtex_conflict_key_fixed = """@article{10.5194/bg-8-515-2011XXX,
  author = {M. Perrette and Another author},
  doi = {10.5194/bg-8-515-2011XXX},
  title = {Something else entirely}
@@ -416,7 +416,7 @@ class TestAddConflict(BibTest):
         # key conflict and update entry
         open(self.otherbib, 'w').write(self.bibtex_conflict_key)
         paperscmd(f'add {self.otherbib} --bibtex {self.mybib} -u')
-        expected = self.bibtex+'\n\n'+self.bibtex_conflict_key_fixed
+        expected = self.bibtex_conflict_key_fixed+'\n\n'+self.bibtex
         self.assertMultiLineEqual(open(self.mybib).read().strip(), expected) # entries did not change
 
     def test_add_same_doi_unchecked(self):
