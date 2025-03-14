@@ -290,19 +290,41 @@ def installcmd(parser, o, config):
     """
     prompt = o.prompt and not o.edit
     # installed = config.file is not None
+    # WARNING if pre-existing config file
     if config.file is not None and prompt:
-        while True:
-            ans = input(f'An existing {"local" if config.local else "global"} install was found: {config.file}. Overwrite (O) or Edit (E) ? [o / e]')
-            if ans.lower() in ('o', 'e'):
-                break
-            else:
-                print('Use the --edit option to selectively edit existing configuration, or --force to ignore pre-existing configuration.')
-        o.edit = ans.lower() == 'e'
+        if ((o.local and config.local) or ((not o.local and not config.local))):
+            while True:
+                ans = input(f'An existing {"local" if config.local else "global"} install was found: {config.file}. Overwrite (O) or Edit (E) ? [o / e]')
+                if ans.lower() in ('o', 'e'):
+                    break
+                else:
+                    print('Use the --edit option to selectively edit existing configuration, or --force to ignore pre-existing configuration.')
+            o.edit = ans.lower() == 'e'
+
+        elif not o.local and config.local:
+            print(f"A local configuration file was found that will have precedence over the global install: {config.file}. Delete (D) or Ignore (any other key) ?")
+            ans = input()
+            if ans.lower() == "d":
+                logger.info(f"Removing pre-existing local configuration file {config.file}")
+                os.remove(config.file)
+                config = Config()
+
+        elif o.local and not config.local:
+            logger.warning(f"A global configuration file was found, but the local install will have precedence: {config.file}. Delete the global configuration file (D) or Ignore (any other key) ?")
+            ans = input()
+            if ans.lower() == "d":
+                logger.info(f"Removing pre-existing global configuration file {config.file}")
+                os.remove(config.file)
+                config = Config()
+
+        else:
+            raise PapersExit("Unexpected configuration state")
+
 
     if not o.edit:
-        if config.local and os.path.exists(config.file):
+        if config.file and os.path.exists(config.file) and ((o.local and config.local) or ((not o.local and not config.local))):
             # if we don't do that the local install will take precedence over global install
-            logger.warning(f"remove pre-existing local configuration file: {config.file}")
+            logger.warning(f"remove pre-existing configuration file: {config.file}")
             os.remove(config.file)
         config = Config()
 
