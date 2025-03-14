@@ -143,9 +143,9 @@ class Config:
     def load(cls, the_file):
         js = json.load(open(the_file))
         if 'nameformat' in js:
-            js['nameformat'] = Format(**js.get('nameformat'))
+            js['nameformat'] = Format(**{**vars(NAMEFORMAT), **js.get('nameformat')})
         if 'keyformat' in js:
-            js['keyformat'] = Format(**js.get('keyformat'))
+            js['keyformat'] = Format(**{**vars(KEYFORMAT), **js.get('keyformat')})
         cfg = cls(file=the_file, **js)
         cfg._update_paths_to_absolute()
         return cfg

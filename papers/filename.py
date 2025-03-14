@@ -22,6 +22,10 @@ def _cite_author(names):
     else:
         return names[0]
 
+UNKNOWN_AUTHOR = 'unknown'
+UNKNOWN_YEAR = '0000'
+UNKNOWN_JOURNAL = None
+UNKNOWN_TITLE = ""
 
 def make_template_fields(
     entry,
@@ -31,6 +35,7 @@ def make_template_fields(
     title_length=100,
     author_sep="_",
     title_sep="-",
+    **ignore,
 ):
     """
     Available fields in output are explicitly listed here, and this is the single source of truth for these.
@@ -43,10 +48,12 @@ def make_template_fields(
     - Title: same as title by with capitalized words
     - year
     - ID : bibtex key
+    - doi : bibtex DOI
+    - doi- : slugified doi (for use in filenames)
     Each one of these needs a specific, explicit assignment below.
     """
     # names = bibtexparser.customization.getnames(entry.get('author','unknown').lower().split(' and '))
-    _names = family_names(entry.get("author", "unknown").lower())
+    _names = family_names(entry.get("author", UNKNOWN_AUTHOR).lower())
     _names = [slugify(nm) for nm in _names]
     author = author_sep.join([nm for nm in _names[:author_num]])
     Author = author_sep.join([nm.capitalize() for nm in _names[:author_num]])
@@ -54,13 +61,13 @@ def make_template_fields(
     authorX = AuthorX.lower()
 
     # a thing that's not a bibtex article won't have a journal
-    journal = entry.get("journal", None)
+    journal = entry.get("journal", UNKNOWN_JOURNAL)
 
-    year = str(entry.get("year", "0000"))
+    year = str(entry.get("year", UNKNOWN_YEAR))
 
     if not title_word_num or not entry.get("title", ""):
-        title = ""
-        Title = ""
+        title = UNKNOWN_TITLE
+        Title = UNKNOWN_TITLE
     else:
         titlewords = normalize(entry["title"]).lower().split()
         _titles = listtag(
@@ -84,13 +91,10 @@ def make_template_fields(
         "title": title,
         "Title": Title,
         "ID": entry.get("ID"),
+        "doi": entry.get("doi"),
+        "doi_": slugify(entry.get("doi", "")),
+        "doi_or_id": slugify(entry.get("doi", entry.get("ID", ""))),
     }
-
-
-def stringify_entry(entry, template, **opt):
-    fields = make_template_fields(entry, **opt)
-    res = template.format(**fields)
-    return res
 
 
 class Format:
@@ -113,7 +117,8 @@ class Format:
 
     """
     # def __init__(self, template="{author}{year}{title}", author_num=2, title_word_num=5, author_sep="_", title_sep="-")
-    def __init__(self, template, author_num=2, title_word_num=100, title_word_size=1, title_length=100, author_sep="_", title_sep="-"):
+    def __init__(self, template, author_num=2, title_word_num=100, title_word_size=1, title_length=100,
+                 author_sep="_", title_sep="-", unknown_strict=False, unknown_template=None):
         self.template = template
         self.author_num = author_num
         self.author_sep = author_sep
@@ -121,16 +126,30 @@ class Format:
         self.title_sep = title_sep
         self.title_word_num = title_word_num
         self.title_word_size = title_word_size
+        self.unknown_strict = unknown_strict
+        self.unknown_template = unknown_template
 
     def todict(self):
         return vars(self)
 
+    def is_unknown(self, entry):
+        conditions = ( entry.get("author", UNKNOWN_AUTHOR) == UNKNOWN_AUTHOR, entry.get("year", UNKNOWN_YEAR) == UNKNOWN_YEAR, entry.get("title", UNKNOWN_TITLE) == UNKNOWN_TITLE)
+        if self.unknown_strict:
+            return all(conditions)
+        else:
+            return any(conditions)
+
     def render(self, **entry):
-        return stringify_entry(entry, **vars(self))
+        fields = make_template_fields(entry, **vars(self))
+
+        if self.unknown_template and self.is_unknown(entry):
+            return self.unknown_template.format(**fields)
+
+        return self.template.format(**fields)
 
     def __call__(self, entry):
         return self.render(**entry)
 
 
-KEYFORMAT = Format(template='{author}{year}', author_num=2, author_sep="_")
-NAMEFORMAT = Format(template='{authorX}_{year}_{title}', author_sep="_", title_sep="-")
+KEYFORMAT = Format(template='{author}{year}', author_num=2, author_sep="_", unknown_template="{doi}")
+NAMEFORMAT = Format(template='{authorX}_{year}_{title}', author_sep="_", title_sep="-", unknown_template="unknown_{doi_or_id}")
