@@ -1196,13 +1196,13 @@ def get_parser(config=None):
 
     # doi
     # ===
-    doip = subparsers.add_parser('doi', description='parse DOI from PDF')
+    doip = subparsers.add_parser('doi', description='parse DOI from PDF', parents=[loggingp])
     doip.add_argument('pdf')
     doip.add_argument('--image', action='store_true', help='convert to image and use tesseract instead of pdftotext')
 
     # fetch
     # =====
-    fetchp = subparsers.add_parser('fetch', description='fetch bibtex from DOI or full-text')
+    fetchp = subparsers.add_parser('fetch', description='fetch bibtex from DOI or full-text', parents=[loggingp])
     fetchp.add_argument('doi_or_text', nargs='+', help='DOI or full text.')
     fetchp.add_argument('--scholar', action='store_true', help='use google scholar instead of default crossref for fulltext search')
 
@@ -1241,6 +1241,13 @@ def get_parser(config=None):
 # Main script
 #############
 
+def handle_logging(o):
+    # verbosity
+    if getattr(o,'logging_level',None):
+        logger.setLevel(o.logging_level)
+    logger.debug("LOGGER LEVEL: "+logging.getLevelName(logger.getEffectiveLevel()))
+
+
 def main(args=None):
     papers.config.DRYRUN = False  # reset in case main() if called directly
     if args is not None:
@@ -1264,9 +1271,8 @@ def main(args=None):
         print(__version__)
         return
 
-    # verbosity
-    if getattr(o,'logging_level',None):
-        logger.setLevel(o.logging_level)
+    handle_logging(o)
+
     # modify disk state?
     if hasattr(o,'dry_run'):
         papers.config.DRYRUN = o.dry_run
