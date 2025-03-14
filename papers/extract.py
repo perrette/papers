@@ -26,12 +26,28 @@ class DOIRequestError(ValueError):
 
 # PDF parsing / crossref requests
 # ===============================
+def readpdf_fitz(pdf_path, pages=None, first=None, last=None):
+    import fitz
 
-def readpdf(pdf, first=None, last=None):
-    # TODO the python package pdftotext can do this directly, with no temp file and no I/O.
-    if not os.path.isfile(pdf):
-        raise ValueError(repr(pdf) + ": not a file")
+    # Open the PDF file
+    document = fitz.open(pdf_path)
+    text = ""
 
+    # Iterate through the pages
+    for page_num in range(len(document)):
+        if pages is not None and page_num+1 not in pages:
+            continue
+        elif first is not None and page_num+1 < first:
+            continue
+        elif last is not None and page_num+1 > last:
+            continue
+        page = document.load_page(page_num)
+        text += page.get_text()
+
+    return text
+
+def readpdf_poputils(pdf, first=None, last=None, pages=None):
+    # DEPRECATED
     tmptxt = tempfile.mktemp(suffix='.txt')
 
     cmd = ['pdftotext']
@@ -43,6 +59,18 @@ def readpdf(pdf, first=None, last=None):
 
     txt = open(tmptxt).read()
     os.remove(tmptxt)
+
+    return txt
+
+def readpdf(pdf, first=None, last=None):
+    # TODO the python package pdftotext can do this directly, with no temp file and no I/O.
+    if not os.path.isfile(pdf):
+        raise ValueError(repr(pdf) + ": not a file")
+    try:
+        return readpdf_fitz(pdf, first=first, last=last)
+    except ImportError:
+        logger.warning("PyMuPDF not installed, using pdftotext")
+        return readpdf_fitz(pdf, first=first, last=last)
 
     return txt
 

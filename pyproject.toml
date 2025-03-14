@@ -16,6 +16,7 @@ classifiers = [
     "Programming Language :: Python :: 3",
 ]
 dependencies = [
+    "PyMuPDF",
     "unidecode",
     "crossrefapi",
     "bibtexparser",
@@ -58,6 +59,7 @@ python =
 commands = pytest --cov=papers --cov-append --cov-report=term-missing {posargs} -xv
 deps =
     bibtexparser < 2.0.0
+    PyMuPDF
     scholarly
     crossrefapi
     rapidfuzz

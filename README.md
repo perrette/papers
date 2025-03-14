@@ -25,7 +25,7 @@ command-line bibliography management tool. Aims:
 ## Dependencies
 
 - python 3.9+
-- [poppler-utils](https://en.wikipedia.org/wiki/Poppler_(software)) (only:`pdftotext`): convert PDF to text for parsing
+- [PyMuPDF](https://github.com/pymupdf/PyMuPDF) (preferred) or [poppler-utils](https://en.wikipedia.org/wiki/Poppler_(software)) (only:`pdftotext`; deprecated): convert PDF to text for parsing
 - [bibtexparser](https://bibtexparser.readthedocs.io) : parse bibtex files
 - [crossrefapi](https://github.com/fabiobatalha/crossrefapi) : make polite requests to crossref API
 - [scholarly](https://github.com/OrganicIrradiation/scholarly) : interface for google scholar
@@ -35,7 +35,6 @@ command-line bibliography management tool. Aims:
 ## Install
 
 - `pip install papers-cli`
-- install third-party dependencies (Ubuntu: `sudo apt install poppler-utils`)
 
 Note there is another project registered on pypi as papers, hence `papers-cli` for command-line-interface.
 
@@ -292,7 +291,7 @@ There is also a command specifically designed to clean up the zombie files and f
     papers filecheck --clean-filesdir
 
 That command will ask before removig anything, unless `--force` is passed. Currently
-it ignores hidden files and folders, and will only consider folder that have a `.{folder}.bib` file inside, 
+it ignores hidden files and folders, and will only consider folder that have a `.{folder}.bib` file inside,
 which is the convention `papers` follows to store multiple attachments. That command works best
 when the files are in their own folder, and not mixed up with other things, obviously.
 
