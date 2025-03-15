@@ -14,6 +14,10 @@ from papers import logger
 from papers.encoding import family_names
 from bibtexparser.customization import convert_to_unicode
 
+from bs4 import BeautifulSoup
+from urllib.parse import urljoin
+
+
 my_etiquette = Etiquette('papers', papers.__version__, 'https://github.com/perrette/papers', 'mahe.perrette@gmail.com')
 work = Works(etiquette=my_etiquette)
 
@@ -265,12 +269,22 @@ def fetch_bibtex_by_arxiv(arxiv_id):
     else:
         return f"Error: Unable to fetch BibTeX (HTTP {response.status_code})"
 
-# @cached('crossref-bibtex.json')
 def fetch_bibtex_by_doi(doi):
     if "arxiv" in doi.lower():
         return fetch_bibtex_by_arxiv(doi.split("arXiv.")[1])
-    json_data = fetch_crossref_by_doi(doi)
-    return crossref_to_bibtex(json_data['message'])
+    try:
+        json_data = fetch_crossref_by_doi(doi)
+        return crossref_to_bibtex(json_data['message'])
+    except DOIRequestError as error:
+        pass
+
+    try:
+        return fetch_bibtex_on_journal_website(doi)
+    except:
+        pass
+
+    raise DOIRequestError(f"Unable to fetch BibTeX for DOI {doi}")
+
 
 @cached('crossref-json.json')
 def fetch_json_by_doi(doi):
@@ -477,3 +491,47 @@ def fetch_entry(e):
             ValueError('no author nor title field')
     db = bibtexparser.loads(bibtex)
     return db.entries[0]
+
+
+
+############### HERE A HACK DESIGNED FOR THE ESD JOURNAL ################
+# That journal often provides DOI that are not yet registered in crossref
+# so we need to fetch the bibtex from the journal website
+# Thanks Le Chat for near-instantaneous and elegantly designed code
+
+def fetch_html(url):
+    response = requests.get(url)
+    response.raise_for_status()  # Raise an error for bad status codes
+    return response.text
+
+def find_bibtex_links(html_content, base_url):
+    soup = BeautifulSoup(html_content, 'html.parser')
+
+    for link in soup.find_all('a', href=True):
+        href = link['href']
+        if href.endswith('.bib'):
+            full_url = urljoin(base_url, href)
+            yield full_url
+
+def download_bibtex(url):
+    response = requests.get(url)
+    response.raise_for_status()
+    return response.text
+
+def parse_bibtex(bibtex_content, target_doi):
+    bib_database = bibtexparser.loads(bibtex_content)
+    for entry in bib_database.entries:
+        if (entry.get('doi', '') or entry.get('DOI', '')).lower() == target_doi.lower():
+            return entry
+    return None
+
+def fetch_bibtex_on_journal_website(doi):
+    base_url = f"https://doi.org/{doi}"
+    html_content = fetch_html(base_url)
+    for bibtex_url in find_bibtex_links(html_content, base_url):
+        bibtex_content = download_bibtex(bibtex_url)
+        bibtex_entry = parse_bibtex(bibtex_content, doi)
+        if bibtex_entry:
+            return bibtex_entry
+
+    raise DOIRequestError("No matching BibTeX entry found for the given DOI.")
