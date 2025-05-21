@@ -420,6 +420,17 @@ class Biblio:
 
     def add_pdf(self, pdf, attachments=None, search_doi=True, search_fulltext=True, scholar=False, doi=None, **kw):
 
+        if str(pdf).startswith("http"):
+            # if pdf is a URL, download it
+            import requests, tempfile
+            response = requests.get(pdf)
+            if response.status_code == 200:
+                pdf = tempfile.NamedTemporaryFile(delete=False, suffix='.pdf').name
+                with open(pdf, 'wb') as f:
+                    f.write(response.content)
+            else:
+                raise ValueError(f"Failed to download PDF from {pdf}")
+
         if doi:
             bibtex = fetch_bibtex_by_doi(doi)
         else:
