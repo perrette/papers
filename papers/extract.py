@@ -279,7 +279,7 @@ def fetch_bibtex_by_doi(doi):
         pass
 
     try:
-        return fetch_bibtex_on_journal_website(doi)
+        return fetch_bibtex_on_journal_website(doi, as_string=True)
     except:
         pass
 
@@ -525,13 +525,16 @@ def parse_bibtex(bibtex_content, target_doi):
             return entry
     return None
 
-def fetch_bibtex_on_journal_website(doi):
+def fetch_bibtex_on_journal_website(doi, as_string=False):
     base_url = f"https://doi.org/{doi}"
     html_content = fetch_html(base_url)
     for bibtex_url in find_bibtex_links(html_content, base_url):
         bibtex_content = download_bibtex(bibtex_url)
         bibtex_entry = parse_bibtex(bibtex_content, doi)
         if bibtex_entry:
-            return bibtex_entry
+            if as_string:
+                return bibtex_content
+            else:
+                return bibtex_entry
 
     raise DOIRequestError("No matching BibTeX entry found for the given DOI.")
