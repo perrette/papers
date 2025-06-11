@@ -55,6 +55,7 @@ python =
     3.13: py313
 
 [testenv]
+setenv = HOME = {homedir}
 commands = pytest --cov=papers --cov-append --cov-report=term-missing {posargs} -xv
 deps =
     bibtexparser < 2.0.0
