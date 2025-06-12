@@ -1,6 +1,6 @@
 [![pypi](https://img.shields.io/pypi/v/papers-cli)](https://pypi.org/project/papers-cli)
-[![test](https://github.com/perrette/papers/workflows/CI/badge.svg?query=branch%3Amaster)](https://github.com/perrette/papers/actions)
 [![python](https://img.shields.io/badge/python-3.13-blue.svg)]()
+[![test](https://github.com/perrette/papers/workflows/CI/badge.svg?query=branch%3Amaster)](https://github.com/perrette/papers/actions)
 
 # papers
 
