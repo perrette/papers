@@ -77,6 +77,11 @@ depends =
     {py39,py310,py311,py312,py313}: clean
     report: py39,py310,py311,py312,py313
 
+# Here, we require normality < 3.0.0, since above that
+# version, normality requires an explict local install
+# of pyicu; which, in August 2025, was more than just a
+# pip incantation, and would break the CI pipeline.
+
 [testenv:py39]
 conda-deps =
     python=3.9
