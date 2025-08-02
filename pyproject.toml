@@ -71,7 +71,6 @@ deps =
     bs4
     pytest
     pytest-cov
-    setuptools
 depends =
     {py39,py310,py311,py312,py313}: clean
     report: py39,py310,py311,py312,py313
