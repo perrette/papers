@@ -65,7 +65,6 @@ commands = pytest --cov=papers --cov-append --cov-report=term-missing {posargs} 
 deps =
     bibtexparser < 2.0.0
     PyMuPDF
-    pyicu
     scholarly
     crossrefapi
     rapidfuzz
@@ -80,23 +79,28 @@ depends =
 
 [testenv:py39]
 conda-deps =
-	   python=3.9
+    python=3.9
+    pyicu
 
 [testenv:py310]
 conda-deps =
-	   python=3.10
+    python=3.10
+    pyicu
 
 [testenv:py311]
 conda-deps =
-	   python=3.11
+    python=3.11
+    pyicu
 
 [testenv:py312]
 conda-deps =
-	   python=3.12
+    python=3.12
+    pyicu
 
 [testenv:py313]
 conda-deps =
-	   python=3.13
+    python=3.13
+    pyicu
 
 [testenv:report]
 deps = coverage
