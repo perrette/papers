@@ -24,7 +24,6 @@ dependencies = [
     "rapidfuzz",
     "normality",
     "bs4",
-    "setuptools",
 ]
 dynamic = ["version"]
 
@@ -47,7 +46,7 @@ papers = "papers.__main__:main_clean_exit"
 # and then run "tox" from this directory.
 legacy_tox_ini = """
 [tox]
-requires = tox-conda
+requires = tox-conda, setuptools
 envlist = clean, py39, py310, py311, py312, py313, report
 
 [gh-actions]
