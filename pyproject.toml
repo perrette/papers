@@ -24,6 +24,7 @@ dependencies = [
     "rapidfuzz",
     "normality",
     "bs4",
+    "setuptools",
 ]
 dynamic = ["version"]
 
