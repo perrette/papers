@@ -69,7 +69,7 @@ deps =
     crossrefapi
     rapidfuzz
     unidecode
-    normality
+    normality < 3.0.0
     bs4
     pytest
     pytest-cov
@@ -80,27 +80,22 @@ depends =
 [testenv:py39]
 conda-deps =
     python=3.9
-    pyicu
 
 [testenv:py310]
 conda-deps =
     python=3.10
-    pyicu
 
 [testenv:py311]
 conda-deps =
     python=3.11
-    pyicu
 
 [testenv:py312]
 conda-deps =
     python=3.12
-    pyicu
 
 [testenv:py313]
 conda-deps =
     python=3.13
-    pyicu
 
 [testenv:report]
 deps = coverage
