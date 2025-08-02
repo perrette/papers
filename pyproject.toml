@@ -65,6 +65,7 @@ commands = pytest --cov=papers --cov-append --cov-report=term-missing {posargs} 
 deps =
     bibtexparser < 2.0.0
     PyMuPDF
+    pyicu
     scholarly
     crossrefapi
     rapidfuzz
