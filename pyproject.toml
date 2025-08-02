@@ -46,7 +46,7 @@ papers = "papers.__main__:main_clean_exit"
 # and then run "tox" from this directory.
 legacy_tox_ini = """
 [tox]
-requires = tox-conda, setuptools
+requires = tox-conda
 envlist = clean, py39, py310, py311, py312, py313, report
 
 [gh-actions]
@@ -71,6 +71,7 @@ deps =
     bs4
     pytest
     pytest-cov
+    setuptools    
 depends =
     {py39,py310,py311,py312,py313}: clean
     report: py39,py310,py311,py312,py313
