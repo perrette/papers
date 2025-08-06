@@ -61,7 +61,7 @@ python =
 
 [testenv]
 passenv=HOME
-commands = pytest --cov=papers --cov-append --cov-report=term-missing {posargs} -xv
+commands = pytest -vv -n auto --dist loadfile --cov=papers --cov-append --cov-report=term-missing {posargs} -xv
 deps =
     bibtexparser < 2.0.0
     PyMuPDF
@@ -73,6 +73,7 @@ deps =
     bs4
     pytest
     pytest-cov
+    pytest-xdist
 depends =
     {py39,py310,py311,py312,py313}: clean
     report: py39,py310,py311,py312,py313
