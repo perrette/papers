@@ -21,6 +21,7 @@ from papers.duplicate import list_duplicates, list_uniques, edit_entries
 from papers.bib import (Biblio, FUZZY_RATIO, DEFAULT_SIMILARITY, entry_filecheck,
                         backupfile as backupfile_func, isvalidkey, DuplicateKeyError, clean_filesdir)
 from papers.utils import move, checksum, view_pdf, open_folder
+from papers.compat import slugify
 from papers import __version__
 
 
@@ -424,7 +425,6 @@ def installcmd(parser, o, config):
         config.gitdir = o.gitdir
 
     elif config.bibtex is not None:
-        from normality import slugify
         bibi = config.bibtex[:-len(".bib")] if config.bibtex.endswith(".bib") else config.bibtex
         config.gitdir = os.path.join(BACKUP_DIR, slugify(bibi))
 

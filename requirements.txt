@@ -4,5 +4,5 @@ crossrefapi
 bibtexparser < 2.0.0
 scholarly
 rapidfuzz
-normality
 bs4
+python-slugify

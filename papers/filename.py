@@ -1,7 +1,7 @@
 """
 Key and file name formatting
 """
-from normality import slugify, normalize
+from papers.compat import slugify, normalize
 from papers.encoding import family_names
 
 def listtag(words, maxlength=30, minwordlen=3, n=100, sep='-'):
