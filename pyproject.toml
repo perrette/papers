@@ -46,7 +46,10 @@ papers = "papers.__main__:main_clean_exit"
 # and then run "tox" from this directory.
 legacy_tox_ini = """
 [tox]
-envlist = clean, py39, py310, py311, py312, py313, report
+requires =
+    tox-conda
+    setuptools
+envlist = clean, py39, py310, py311, py312, py313, py314, report
 
 [gh-actions]
 python =
@@ -55,8 +58,10 @@ python =
     3.11: py311
     3.12: py312
     3.13: py313
+    3.14: py314
 
 [testenv]
+passenv=HOME
 commands = pytest --cov=papers --cov-append --cov-report=term-missing {posargs} -xv
 deps =
     bibtexparser < 2.0.0
@@ -70,9 +75,32 @@ deps =
     pytest
     pytest-cov
 depends =
-    {py39,py310,py311,py312,py313}: clean
-    report: py39,py310,py311,py312,py313
+    {py39,py310,py311,py312,py313,py314}: clean
+    report: py39,py310,py311,py312,py313,py314
 
+[testenv:py39]
+conda-deps =
+    python=3.9
+
+[testenv:py310]
+conda-deps =
+    python=3.10
+
+[testenv:py311]
+conda-deps =
+    python=3.11
+
+[testenv:py312]
+conda-deps =
+    python=3.12
+
+[testenv:py313]
+conda-deps =
+    python=3.13
+
+[testenv:py314]
+conda-deps =
+    python=3.14
 
 [testenv:report]
 deps = coverage
