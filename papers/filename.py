@@ -1,7 +1,7 @@
 """
 Key and file name formatting
 """
-from papers.compat import slugify, normalize
+from slugify import slugify
 from papers.encoding import family_names
 
 def listtag(words, maxlength=30, minwordlen=3, n=100, sep='-'):
@@ -69,7 +69,7 @@ def make_template_fields(
         title = UNKNOWN_TITLE
         Title = UNKNOWN_TITLE
     else:
-        titlewords = normalize(entry["title"]).lower().split()
+        titlewords = slugify(entry["title"]).split('-')
         _titles = listtag(
             titlewords,
             n=title_word_num,

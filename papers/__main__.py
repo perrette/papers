@@ -10,6 +10,7 @@ import subprocess as sp
 import shutil
 import itertools
 import fnmatch   # unix-like match
+from slugify import slugify
 
 import papers
 from papers import logger
@@ -21,7 +22,6 @@ from papers.duplicate import list_duplicates, list_uniques, edit_entries
 from papers.bib import (Biblio, FUZZY_RATIO, DEFAULT_SIMILARITY, entry_filecheck,
                         backupfile as backupfile_func, isvalidkey, DuplicateKeyError, clean_filesdir)
 from papers.utils import move, checksum, view_pdf, open_folder
-from papers.compat import slugify
 from papers import __version__
 
 
