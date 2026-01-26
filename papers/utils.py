@@ -2,7 +2,8 @@ import os
 import re
 import shutil
 import hashlib
-import subprocess, platform
+import subprocess
+import platform
 from contextlib import contextmanager
 from pathlib import Path
 
