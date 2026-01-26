@@ -430,6 +430,7 @@ class Biblio:
                     f.write(response.content)
             else:
                 raise ValueError(f"Failed to download PDF from {pdf}")
+            kw['rename'] = True  # always rename downloaded files
 
         if doi:
             bibtex = fetch_bibtex_by_doi(doi)

@@ -10,6 +10,7 @@ import subprocess as sp
 import shutil
 import itertools
 import fnmatch   # unix-like match
+from slugify import slugify
 
 import papers
 from papers import logger
@@ -424,7 +425,6 @@ def installcmd(parser, o, config):
         config.gitdir = o.gitdir
 
     elif config.bibtex is not None:
-        from normality import slugify
         bibi = config.bibtex[:-len(".bib")] if config.bibtex.endswith(".bib") else config.bibtex
         config.gitdir = os.path.join(BACKUP_DIR, slugify(bibi))
 

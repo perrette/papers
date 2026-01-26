@@ -22,7 +22,7 @@ dependencies = [
     "bibtexparser",
     "scholarly",
     "rapidfuzz",
-    "normality",
+    "python-slugify",
     "bs4",
 ]
 dynamic = ["version"]
@@ -69,7 +69,7 @@ deps =
     crossrefapi
     rapidfuzz
     unidecode
-    normality < 3.0.0
+    python-slugify
     bs4
     pytest
     pytest-cov
