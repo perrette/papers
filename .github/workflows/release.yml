@@ -1,0 +1,58 @@
+name: Create GitHub Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # Required to create releases
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Fetch all history for changelog generation
+
+    - name: Get tag name
+      id: tag
+      run: echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+    - name: Generate changelog
+      id: changelog
+      run: |
+        # Get the previous tag
+        PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+
+        if [ -z "$PREV_TAG" ]; then
+          # First release - get all commits
+          CHANGES=$(git log --pretty=format:"- %s (%h)" --no-merges)
+        else
+          # Get commits since previous tag
+          CHANGES=$(git log ${PREV_TAG}..HEAD --pretty=format:"- %s (%h)" --no-merges)
+        fi
+
+        # Save to file to handle multiline content
+        echo "$CHANGES" > changelog.txt
+
+        # Also output to GitHub output
+        echo "changelog<<EOF" >> $GITHUB_OUTPUT
+        echo "$CHANGES" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+
+    - name: Create Release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ steps.tag.outputs.tag }}
+        release_name: Release ${{ steps.tag.outputs.tag }}
+        body: |
+          ## Changes in ${{ steps.tag.outputs.tag }}
+
+          ${{ steps.changelog.outputs.changelog }}
+        draft: false
+        prerelease: false
