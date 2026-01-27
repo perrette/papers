@@ -110,43 +110,98 @@ def readpdf_image(pdf, first=None, last=None):
 
     return txt
 
-REGEXP = re.compile(r'[doi,doi.org/][\s\.\:]{0,2}(10\.\d{4}[\d\:\.\-\/a-z]+)[A-Z\s,\n]')
+# CrossRef DOI standard: /^10.\d{4,9}/[-._;()/:A-Z0-9]+$/i
+REGEXP = re.compile(r'[doi,doi.org/][\s\.\:]{0,2}(10\.\d{4,9}/[-._;()/:a-z0-9]+)')
 ARXIV = re.compile(r'arxiv:\s*(\d{4}\.\d{4,5})')
 
+def _parse_doi_from_metadata_string(metadata):
+    """Extract DOI from XMP metadata string."""
+    patterns = [
+        r'<prism:doi>(10\.\d{4,9}/[-._;()/:a-z0-9]+)</prism:doi>',
+        r'<dc:identifier>doi:(10\.\d{4,9}/[-._;()/:a-z0-9]+)</dc:identifier>',
+        r'<pdfx:doi>(10\.\d{4,9}/[-._;()/:a-z0-9]+)</pdfx:doi>',
+        r'<crossmark:DOI>(10\.\d{4,9}/[-._;()/:a-z0-9]+)</crossmark:DOI>',
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, metadata, re.IGNORECASE)
+        if match:
+            return match.group(1)
+    return None
+
+def parse_doi_from_pdf_metadata_poppler(pdf_path):
+    """Extract DOI from PDF metadata using pdfinfo (poppler-utils)."""
+    try:
+        result = sp.run(['pdfinfo', '-meta', pdf_path],
+                       capture_output=True, text=True, timeout=5)
+        if result.returncode == 0:
+            return _parse_doi_from_metadata_string(result.stdout)
+    except Exception:
+        pass
+    return None
+
+def parse_doi_from_pdf_metadata_fitz(pdf_path):
+    """Extract DOI from PDF metadata using PyMuPDF/fitz."""
+    import fitz
+
+    with fitz.open(pdf_path) as doc:
+        metadata = doc.metadata
+
+        # Try direct metadata fields first
+        if metadata:
+            # Check common metadata fields
+            for key in ['subject', 'keywords', 'title']:
+                value = metadata.get(key, '')
+                if value and '10.' in value:
+                    # Try to extract DOI from the field
+                    doi_match = re.search(r'10\.\d{4,9}/[-._;()/:a-z0-9]+', value, re.IGNORECASE)
+                    if doi_match:
+                        return doi_match.group(0)
+
+        # Fall back to XMP metadata
+        xmp = doc.get_xml_metadata() if hasattr(doc, 'get_xml_metadata') else doc.xref_get_key(-1, "Metadata")
+        if xmp:
+            xmp_str = xmp if isinstance(xmp, str) else xmp.decode('utf-8', errors='ignore')
+            return _parse_doi_from_metadata_string(xmp_str)
+
+
+def parse_doi_from_pdf_metadata(pdf_path):
+    """Extract DOI from PDF metadata (tries fitz, falls back to poppler)."""
+    # Try fitz first (no subprocess overhead)
+
+    try:
+        return parse_doi_from_pdf_metadata_fitz(pdf_path)
+    except ImportError:
+        # Fall back to poppler-utils
+        return parse_doi_from_pdf_metadata_poppler(pdf_path)
+
 def parse_doi(txt):
-    # based on: https://doeidoei.wordpress.com/2009/10/22/regular-expression-to-match-a-doi-digital-object-identifier/
-    # doi = r'[doi|DOI][\s\.\:]{0,2}(10\.\d{4}[\d\:\.\-\/a-z]+)[A-Z\s]'
-
-    # maybe try that? (need to convert to python-regex)
-    # https://www.crossref.org/blog/dois-and-matching-regular-expressions/
-    # a. /^10.\d{4,9}/[-._;()/:A-Z0-9]+$/i
-    # b. /^10.1002/[^\s]+$/i
-    # c. /^10.\d{4}/\d+-\d+X?(\d+)\d+<[\d\w]+:[\d\w]*>\d+.\d+.\w+;\d$/i
-    # d. /^10.1021/\w\w\d++$/i
-    # e. /^10.1207/[\w\d]+\&\d+_\d+$/i
-
-    matches = REGEXP.findall(' '+txt.lower()+' ')
+    # PDF extraction sometimes splits DOIs across lines - join them back
+    # e.g., "10.1073/pnas.\n2511370123" -> "10.1073/pnas.2511370123"
+    # Also remove invisible Unicode characters that can appear in PDFs
+    txt_clean = txt.replace('\u200b', '').replace('\xad', '')  # zero-width space, soft hyphen
+    # Handle both direct newlines and space+newline patterns
+    txt_normalized = re.sub(r'([a-z0-9\.\-_/])\s*\n\s*([a-z0-9])', r'\1\2', txt_clean.lower())
+    matches = REGEXP.findall(txt_normalized)
 
     if not matches:
-
-        # try arxiv pattern
-        match = ARXIV.search(txt.lower())
+        # Try arxiv pattern
+        match = ARXIV.search(txt_normalized)
         if match:
-            arxiv_id = match.group(1)
-            matches = [ f"10.48550/arXiv.{arxiv_id}" ]
+            return f"10.48550/arXiv.{match.group(1)}"
 
-        else:
-            raise DOIParsingError('parse_doi::no matches')
+        raise DOIParsingError('parse_doi::no matches')
 
-    match = matches[0]
+    # Use the first match (typically the article's own DOI, not a citation)
+    doi = matches[0]
 
-    # clean expression
-    doi = match.replace('\n','').strip('.')
+    # Remove common non-DOI suffixes (may be chained)
+    # These can include path segments, document sections, or text that got concatenated
+    doi = re.sub(r'(\.?((/-/dcsupplemental)|(/-/dc)|received|published|\.pdf|\.full|\.abstract|reference:|www\.[a-z]+\.[a-z]+|[0-9]+\.introduction))+$', '', doi, flags=re.IGNORECASE)
 
-    if doi.lower().endswith('.received'):
-        doi = doi[:-len('.received')]
+    # Clean up trailing periods, colons
+    doi = doi.rstrip('.:')
 
-    # quality check
+    # Quality check
     if len(doi) <= 8:
         raise DOIParsingError('failed to extract doi: '+doi)
 
@@ -178,6 +233,12 @@ def pdfhead(pdf, maxpages=10, minwords=200, image=False):
 
 
 def extract_pdf_doi(pdf, image=False):
+    # Try PDF metadata first (fast and reliable for many publishers)
+    metadata_doi = parse_doi_from_pdf_metadata(pdf)
+    if metadata_doi:
+        return metadata_doi
+
+    # Fall back to text extraction if metadata doesn't have DOI
     return parse_doi(pdfhead(pdf, image=image))
 
 
