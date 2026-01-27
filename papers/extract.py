@@ -175,30 +175,106 @@ def parse_doi_from_pdf_metadata(pdf_path):
         return parse_doi_from_pdf_metadata_poppler(pdf_path)
 
 def parse_doi(txt):
-    # PDF extraction sometimes splits DOIs across lines - join them back
-    # e.g., "10.1073/pnas.\n2511370123" -> "10.1073/pnas.2511370123"
-    # Also remove invisible Unicode characters that can appear in PDFs
-    txt_clean = txt.replace('\u200b', '').replace('\xad', '')  # zero-width space, soft hyphen
-    # Handle both direct newlines and space+newline patterns
-    txt_normalized = re.sub(r'([a-z0-9\.\-_/])\s*\n\s*([a-z0-9])', r'\1\2', txt_clean.lower())
-    matches = REGEXP.findall(txt_normalized)
+    # Remove invisible Unicode characters and normalize dashes and slashes
+    # U+200B: zero-width space, U+00AD: soft hyphen, U+2013: en-dash, U+2014: em-dash
+    # \x02: STX (Start of Text) sometimes used instead of slash in PDFs
+    txt_clean = txt.replace('\u200b', '').replace('\xad', '').replace('\u2013', '-').replace('\u2014', '-').replace('\x02', '/')
+    txt_lower = txt_clean.lower()
+
+    # Handle DOI split at "10.\n<registrant>" (e.g., "10.\n1073/pnas.123")
+    # Requires 4-9 digits (valid registrant) followed by slash
+    txt_lower = re.sub(r'(10\.)\s*\n\s*(\d{4,9}/)', r'\1\2', txt_lower)
+
+    # Special case: PNAS DOIs may be split at "10.1073/pnas. \n<digits>"
+    # This is a very specific pattern that's safe to join
+    txt_lower = re.sub(r'(10\.1073/pnas\.)\s*\n\s*(\d)', r'\1\2', txt_lower)
+
+    # Handle DOIs split at dash-newline-alphanumeric (common in many publishers)
+    # e.g., "10.1175/jcli-d-21-\n0636.1", "10.1175/JCLI-\nD-17-0112.s1"
+    txt_lower = re.sub(r'(10\.\d{4,9}/[-._;()/:a-z0-9]+-)\s*\n\s*([a-z0-9])', r'\1\2', txt_lower)
+
+    # Don't join across newlines generally - it causes more problems than it solves
+    # The newline naturally stops incorrect matches from extending into following text
+    matches = REGEXP.findall(txt_lower)
 
     if not matches:
         # Try arxiv pattern
-        match = ARXIV.search(txt_normalized)
+        match = ARXIV.search(txt_lower)
         if match:
             return f"10.48550/arXiv.{match.group(1)}"
 
         raise DOIParsingError('parse_doi::no matches')
 
-    # Use the first match (typically the article's own DOI, not a citation)
+    # Start with first match as default
     doi = matches[0]
 
-    # Remove common non-DOI suffixes (may be chained)
-    # These can include path segments, document sections, or text that got concatenated
-    doi = re.sub(r'(\.?((/-/dcsupplemental)|(/-/dc)|received|published|\.pdf|\.full|\.abstract|reference:|www\.[a-z]+\.[a-z]+|[0-9]+\.introduction))+$', '', doi, flags=re.IGNORECASE)
+    # Prefer DOIs that appear in full URL context (e.g., www.pnas.org/cgi/doi/10.1073/...)
+    # These are more likely to be the article's own DOI rather than citations
+    if len(matches) > 1:
+        url_patterns = [
+            r'www\.[a-z]+\.org/[a-z/]+/(10\.\d{4,9}/[-._;()/:a-z0-9]+)',
+            r'doi\.org/(10\.\d{4,9}/[-._;()/:a-z0-9]+)',
+            r'dx\.doi\.org/(10\.\d{4,9}/[-._;()/:a-z0-9]+)',
+        ]
+        for pattern in url_patterns:
+            url_matches = re.findall(pattern, txt_lower)
+            # If any of our DOI matches appear in a URL, prefer the first one
+            for doi_match in matches:
+                if doi_match in url_matches:
+                    doi = doi_match
+                    break
+            if doi in url_matches:  # Found a URL match, stop searching patterns
+                break
 
-    # Clean up trailing periods, colons
+    # If multiple matches and first is supplemental, prefer non-supplemental with same base
+    # e.g., prefer "10.1175/jcli-d-16-0271.1" over "10.1175/jcli-d-16-0271.s1"
+    if len(matches) > 1 and doi == matches[0]:
+        # Check if first match is supplemental (.s<digit>)
+        if re.search(r'\.s\d+\.?$', matches[0]):
+            # Look for non-supplemental version with same base
+            base = re.sub(r'\.s\d+\.?$', '', matches[0])
+            for m in matches[1:]:
+                if m.startswith(base) and not re.search(r'\.s\d+\.?$', m):
+                    doi = m
+                    break
+
+    # Remove non-DOI suffixes: known publisher paths and common junk
+    # Strategy: if we find these patterns, remove them AND everything after
+    suffixes = [
+        # Publisher-specific paths
+        '/-/dcsupplemental',
+        '/-/dc',
+        # Common file extension
+        '.pdf',
+        # Document status markers that clearly shouldn't be in DOI
+        'preprint',
+        'received',
+        'published',
+        'edited',
+        'advance',
+        'full',
+        'abstract',
+        '-supplement',
+        'supplement',
+    ]
+
+    doi_lower = doi.lower()
+    for suffix in suffixes:
+        pos = doi_lower.find(suffix)
+        if pos > 0:  # Found suffix (not at start)
+            # For word-only suffixes, ensure they follow a valid DOI character
+            if suffix.isalpha():
+                prev_char = doi[pos-1]
+                # Accept if preceded by alphanumeric, dash, underscore, slash, or dot
+                if prev_char.isalnum() or prev_char in '.-_/':
+                    doi = doi[:pos]
+                    break
+            else:
+                # Non-word suffixes (paths, extensions) - just cut
+                doi = doi[:pos]
+                break
+
+    # Clean up trailing periods and colons
     doi = doi.rstrip('.:')
 
     # Quality check
@@ -206,8 +282,6 @@ def parse_doi(txt):
         raise DOIParsingError('failed to extract doi: '+doi)
 
     return doi
-
-
 def isvaliddoi(doi):
     try:
         doi2 = parse_doi('doi:'+doi)
