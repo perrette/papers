@@ -49,7 +49,7 @@ legacy_tox_ini = """
 requires =
     tox-conda
     setuptools
-envlist = clean, py39, py310, py311, py312, py313, report
+envlist = clean, py39, py310, py311, py312, py313, py314, report
 
 [gh-actions]
 python =
@@ -58,6 +58,7 @@ python =
     3.11: py311
     3.12: py312
     3.13: py313
+    3.14: py314
 
 [testenv]
 passenv=HOME
@@ -75,13 +76,8 @@ deps =
     pytest-cov
     pytest-xdist
 depends =
-    {py39,py310,py311,py312,py313}: clean
-    report: py39,py310,py311,py312,py313
-
-# Here, we require normality < 3.0.0, since above that
-# version, normality requires an explict local install
-# of pyicu; which, in August 2025, was more than just a
-# pip incantation, and would break the CI pipeline.
+    {py39,py310,py311,py312,py313,py314}: clean
+    report: py39,py310,py311,py312,py313,py314
 
 [testenv:py39]
 conda-deps =
@@ -102,6 +98,10 @@ conda-deps =
 [testenv:py313]
 conda-deps =
     python=3.13
+
+[testenv:py314]
+conda-deps =
+    python=3.14
 
 [testenv:report]
 deps = coverage
