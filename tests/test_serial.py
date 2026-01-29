@@ -880,26 +880,6 @@ class TestInstallEditor(TestBaseInstall):
         self.assertEqual(config.editor, "subl -w")
 
 
-class TestDefaultLocal(LocalInstallTest):
-    def test_install(self):
-        self.assertTrue(self._exists(CONFIG_FILE_LOCAL))
-        self.assertTrue(self.config.local)
-        self.papers(f"install --edit")
-        self.assertTrue(self._exists(CONFIG_FILE_LOCAL))
-        config = Config.load(self._path(CONFIG_FILE_LOCAL))
-        self.assertTrue(config.local)
-
-
-class TestDefaultLocal2(GlobalInstallTest):
-    def test_install(self):
-        self.assertTrue(self._exists(CONFIG_FILE))
-        self.assertFalse(self.config.local)
-        self.papers(f"install --edit")
-        self.assertTrue(self._exists(CONFIG_FILE))
-        config = Config.load(CONFIG_FILE)
-        self.assertFalse(config.local)
-
-
 class TestGlobalInstall(TestBaseInstall):
 
     def test_install(self):
@@ -1008,12 +988,30 @@ EOF"""
         self.assertTrue(config.git)
         self.assertFalse(config.gitlfs)
 
+class TestDefaultLocal(LocalInstallTest):
+    def test_install(self):
+        self.assertTrue(self._exists(CONFIG_FILE_LOCAL))
+        self.assertTrue(self.config.local)
+        self.papers(f"install --edit")
+        self.assertTrue(self._exists(CONFIG_FILE_LOCAL))
+        config = Config.load(self._path(CONFIG_FILE_LOCAL))
+        self.assertTrue(config.local)
+
 
 class TestUninstall(LocalInstallTest):
     def test_uninstall_localinstall(self):
         self.assertTrue(self._exists(CONFIG_FILE_LOCAL))
         self.papers(f"uninstall")
         self.assertFalse(self._exists(CONFIG_FILE_LOCAL))
+
+class TestDefaultLocal2(GlobalInstallTest):
+    def test_install(self):
+        self.assertTrue(self._exists(CONFIG_FILE))
+        self.assertFalse(self.config.local)
+        self.papers(f"install --edit")
+        self.assertTrue(self._exists(CONFIG_FILE))
+        config = Config.load(CONFIG_FILE)
+        self.assertFalse(config.local)
 
 
 class TestUninstall2(GlobalInstallTest):
@@ -1036,8 +1034,6 @@ class TestUninstall2(GlobalInstallTest):
 
 
 # from tests/test_duplicates.py
-
-
 class SimilarityBase(unittest.TestCase):
 
     similarity = None
