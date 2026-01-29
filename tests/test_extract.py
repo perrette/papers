@@ -8,11 +8,13 @@ from tests.common import paperscmd, prepare_paper
 
 class TestSimple(unittest.TestCase):
 
-    def setUp(self):
+    def setup_module(self):
         self.pdf, self.doi, self.key, self.newkey, self.year, self.bibtex, self.file_rename = prepare_paper()
         self.assertTrue(os.path.exists(self.pdf))
 
     def test_doi(self):
+        # TODO this relies on the prepare_paper() leaving the bg-8-515-2011.pdf file in dowloadedpapers
+        # and flakes out occasionally on py312 only
         self.assertEqual(paperscmd(f'doi {self.pdf}', sp_cmd='check_output').strip(), self.doi)
 
     def test_fetch(self):
