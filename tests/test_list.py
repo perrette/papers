@@ -1,5 +1,4 @@
-import bibtexparser
-from tests.common import LocalInstallTest, Biblio, tempfile
+from tests.common import LocalInstallTest, tempfile
 from papers.utils import strip_all
 
 bibtex = """@article{Perrette_2011,
