@@ -31,7 +31,7 @@ jobs:
       uses: conda-incubator/setup-miniconda@v3
       with:
         auto-update-conda: true # Ensure conda is up-to-date
-        python-version: 3.13
+        python-version: ${{ matrix.python-version }}
         auto-activate-base: true # Activate the base environment automatically
         channels: conda-forge, defaults # Prioritize packages from conda-forge
 
