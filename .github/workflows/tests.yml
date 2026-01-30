@@ -14,17 +14,17 @@ jobs:
 	env_name: [ "39", "310", "311", "312", "313", "314" ]
 	include:
 	- python-version "3.9"
-	  env_name: 39
+	  env_name: "39"
 	- python-version "3.10"
-	  env_name: 3.10
+	  env_name: "310"
 	- python-version "3.11"
-	  env_name: 311
+	  env_name: "311"
 	- python-version "3.12"
-	  env_name: 312
+	  env_name: "312"
 	- python-version "3.13"
-	  env_name: 313
+	  env_name: "313"
 	- python-version "3.14"
-	  env_name: 314
+	  env_name: "314"
 
     steps:
     - uses: actions/checkout@v2
