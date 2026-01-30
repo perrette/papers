@@ -47,6 +47,6 @@ jobs:
         conda install -c conda-forge tox tox-conda pip
         pip install tox-gh-actions
     - name: Test with tox
-      run:|
+      run: |
         conda activate py${{ matrix.env-name }}
         tox -e py${{ matrix.env-name }}
