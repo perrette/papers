@@ -43,5 +43,5 @@ jobs:
       run: |
         conda create --name py${{ matrix.env-name }} python=${{ matrix.python-version }}
         conda activate py${{ matrix.env-name }}
-        conda install -c conda-forge tox=3.27.1 tox-conda tox-gh py
+        conda install -c conda-forge tox=3.27.1 tox-conda tox-gh=1.3.3 py
         tox -e py${{ matrix.env-name }}
