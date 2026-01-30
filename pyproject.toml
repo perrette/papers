@@ -51,7 +51,7 @@ requires =
     setuptools
 envlist = clean, py39, py310, py311, py312, py313, py314, report
 
-[gh-actions]
+[gh]
 python =
     3.9: py39
     3.10: py310
