@@ -41,7 +41,7 @@ jobs:
       shell: bash -l {0}
       run: |
         # Create a new environment from an environment.yml file (recommended approach)
-        conda env create --name py${{ matrix.env-name }} python$={{ matrix.python-version }}
+        conda env create --name py${{ matrix.env-name }} python=${{ matrix.python-version }}
         conda activate py${{ matrix.env-name }}
         # Or install packages directly into the activated base environment
         conda install -c conda-forge tox
