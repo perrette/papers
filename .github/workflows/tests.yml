@@ -30,7 +30,7 @@ jobs:
     - name: Setup Miniconda
       uses: conda-incubator/setup-miniconda@v2
       with:
-	auto-update-conda: true # Ensure conda is up-to-date
+        auto-update-conda: true # Ensure conda is up-to-date
         python-version: ${{ matrix.python-version }}
         auto-activate-base: true # Activate the base environment automatically
         channels: conda-forge, defaults # Prioritize packages from conda-forge
