@@ -27,13 +27,24 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v2
-      with:
-        python-version: ${{ matrix.python-version }}
+    - name: Setup Miniconda
+        uses: conda-incubator/setup-miniconda@v3
+        with:
+	  auto-update-conda: true # Ensure conda is up-to-date
+          python-version: ${{ matrix.python-version }}
+          auto-activate-base: true # Activate the base environment automatically
+          channels: conda-forge, defaults # Prioritize packages from conda-forge
+
     - name: Install dependencies
+      # Use the -l option to ensure bash runs as a login shell,
+      # necessary for conda activation
+      shell: bash -l {0}
       run: |
-        python -m pip install --upgrade pip
-        pip install tox tox-conda tox-gh-actions
+        # Create a new environment from an environment.yml file (recommended approach)
+        conda env create -n py${{ matrix.env-name }} python=py${{ matrix.python-version }}
+        conda activate py${{ matrix.env-name }}
+        # Or install packages directly into the activated base environment
+        conda install -c conda-forge tox
+        pip install tox-conda tox-gh-actions
     - name: Test with tox
       run: tox -e py${{ matrix.env-name }}
