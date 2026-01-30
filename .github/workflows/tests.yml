@@ -48,5 +48,4 @@ jobs:
         pip install tox-gh-actions
     - name: Test with tox
       run: |
-        conda activate py${{ matrix.env-name }}
-        tox -e py${{ matrix.env-name }}
+        conda run -n py${{ matrix.env-name }} tox -e py${{ matrix.env-name }}
