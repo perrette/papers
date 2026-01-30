@@ -34,7 +34,6 @@ EOF"""
         )
         file_rename = os.path.join(self.filesdir, self.file_rename)
         self.assertFalse(os.path.exists(file_rename))
-        del file_rename
         self.assertTrue(os.path.exists(self.pdf))
         paperscmd(
             f"filecheck --bibtex {self.mybib} --filesdir {self.filesdir} --rename"
@@ -47,6 +46,7 @@ EOF"""
         del biblio
         self.assertTrue(len(files) == 1)
         self.assertEqual(files[0], os.path.abspath(file_rename))
+        del file_rename
         del files
 
     def tearDown(self):
