@@ -29,7 +29,10 @@ class TestSimple(unittest.TestCase):
         bibtexs = paperscmd(f"fetch {self.doi}", sp_cmd="check_output").strip()
         db1 = bibtexparser.loads(bibtexs)
         db2 = bibtexparser.loads(self.bibtex)
+        del bibtexs
         self.assertEqual(db1.entries, db2.entries)
+        del db1
+        del db2
 
     def test_fetch_scholar(self):
         extract_pdf_metadata(self.pdf, scholar=True)

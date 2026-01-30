@@ -21,7 +21,8 @@ class TestFileCheck(BibTest):
         self.assertTrue(os.path.exists(self.pdf))
         self.mybib = tempfile.mktemp(prefix="papers.bib")
         self.filesdir = tempfile.mktemp(prefix="papers.files")
-        open(self.mybib, "w").write(self.bibtex)
+        with open(self.mybib, "w") as the_file:
+            the_file.write(self.bibtex)
         # paperscmd(f'install --local --bibtex {self.mybib} --filesdir {self.filesdir}'
         self.assertTrue(os.path.exists(self.mybib))
 
@@ -42,8 +43,11 @@ EOF"""
         biblio = Biblio.load(self.mybib, "")
         e = biblio.entries[[e["ID"] for e in biblio.entries].index(self.key)]
         files = biblio.get_files(e)
+        del biblio
         self.assertTrue(len(files) == 1)
         self.assertEqual(files[0], os.path.abspath(file_rename))
+        del file_rename
+        del files
 
     def tearDown(self):
         if os.path.exists(self.filesdir):

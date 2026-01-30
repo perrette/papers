@@ -19,7 +19,8 @@ class TestBiblio(unittest.TestCase):
             self.bibtex,
             self.file_rename,
         ) = prepare_paper()
-        open(self.mybib, "w").write(self.bibtex)
+        with open(self.mybib, "w") as the_file:
+            the_file.write(self.bibtex)
         self.biblio = Biblio.load(self.mybib, "")
 
     def test_bib_equal(self):
