@@ -31,7 +31,7 @@ jobs:
       uses: conda-incubator/setup-miniconda@v2
       with:
         auto-update-conda: true # Ensure conda is up-to-date
-        python-version: ${{ matrix.python-version }}
+        python-version: 3.13
         auto-activate-base: true # Activate the base environment automatically
         channels: conda-forge, defaults # Prioritize packages from conda-forge
 
@@ -41,7 +41,7 @@ jobs:
       shell: bash -l {0}
       run: |
         # Create a new environment from an environment.yml file (recommended approach)
-        conda env create -n py${{ matrix.env-name }} python=${{ matrix.python-version }}
+        conda env create --name py${{ matrix.env-name }} python$={{ matrix.python-version }}
         conda activate py${{ matrix.env-name }}
         # Or install packages directly into the activated base environment
         conda install -c conda-forge tox
