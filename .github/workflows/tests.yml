@@ -44,7 +44,7 @@ jobs:
         conda create --name py${{ matrix.env-name }} python=${{ matrix.python-version }}
         conda activate py${{ matrix.env-name }}
         # Or install packages directly into the activated base environment
-        conda install -c conda-forge tox
-        pip install tox-conda tox-gh-actions
+        conda install -c conda-forge tox tox-conda
+        pip install tox-gh-actions
     - name: Test with tox
       run: tox -e py${{ matrix.env-name }}
