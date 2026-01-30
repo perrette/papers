@@ -49,4 +49,5 @@ jobs:
     - name: Test with tox
       shell: bash -l {0}
       run: |
+        conda activate py${{ matrix.env-name }}
         tox -e py${{ matrix.env-name }}
