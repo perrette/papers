@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [ "39", "310", "311", "312", "313", "314" ]
+        python-version: [ "3.9", "3.10", "3.11", "3.12", "3.13", "3.14" ]
 
     steps:
     - uses: actions/checkout@v2
@@ -23,4 +23,4 @@ jobs:
         python -m pip install --upgrade pip
         pip install tox tox-conda tox-gh-actions
     - name: Test with tox
-      run: tox -e py${{ matrix.python-version }}
+      run: tox -e py${{ format(matrix.python-version,'.','' }}
