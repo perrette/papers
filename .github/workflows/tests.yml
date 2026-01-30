@@ -26,9 +26,9 @@ jobs:
           env-name: "314"
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
     - name: Setup Miniconda
-      uses: conda-incubator/setup-miniconda@v2
+      uses: conda-incubator/setup-miniconda@v4
       with:
         auto-update-conda: true # Ensure conda is up-to-date
         python-version: 3.13
