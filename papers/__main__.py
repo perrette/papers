@@ -608,26 +608,26 @@ def addcmd(parser, o, config):
 
     del metadata
 
-    for file in o.file:
+    for the_file in o.file:
         try:
-            if os.path.isdir(file):
+            if os.path.isdir(the_file):
                 if o.recursive:
-                    entries.extend( biblio.scan_dir(file, rename=o.rename, copy=o.copy,
+                    entries.extend( biblio.scan_dir(the_file, rename=o.rename, copy=o.copy,
                                 search_doi=not o.no_query_doi,
                                 search_fulltext=not o.no_query_fulltext,
                                 **kw) )
                 else:
                     raise ValueError(file+' is a directory, requires --recursive to explore')
 
-            elif file.endswith('.pdf'):
-                entries.extend( biblio.add_pdf(file, attachments=o.attachment, rename=o.rename, copy=o.copy,
+            elif the_file.endswith('.pdf'):
+                entries.extend( biblio.add_pdf(the_file, attachments=o.attachment, rename=o.rename, copy=o.copy,
                            search_doi=not o.no_query_doi,
                            search_fulltext=not o.no_query_fulltext,
                            scholar=o.scholar, doi=o.doi,
                            **kw) )
 
-            else: # file.endswith('.bib'):
-                entries.extend( biblio.add_bibtex_file(file, attachments=o.attachment, rename=o.rename, copy=o.copy, **kw) )
+            else: # the)file.endswith('.bib'):
+                entries.extend( biblio.add_bibtex_file(the_file, attachments=o.attachment, rename=o.rename, copy=o.copy, **kw) )
 
         except Exception as error:
             # print(error)
@@ -635,7 +635,7 @@ def addcmd(parser, o, config):
             raise
             logger.error(str(error))
             if not o.ignore_errors:
-                if len(o.file) or (os.isdir(file) and o.recursive)> 1:
+                if len(o.file) or (os.isdir(the_file) and o.recursive)> 1:
                     logger.error('use --ignore to add other files anyway')
                 raise PapersExit()
 
