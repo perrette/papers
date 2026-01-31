@@ -606,6 +606,8 @@ def addcmd(parser, o, config):
         entries.extend( biblio.insert_entry(metadata, **kw) )
 
 
+    del metadata
+
     for file in o.file:
         try:
             if os.path.isdir(file):
@@ -670,6 +672,8 @@ def addcmd(parser, o, config):
     for ID in sorted(old_set - new_set):
         print(format_entry(biblio_init, old_entries_by_key[ID], prefix="Removed"))
 
+    del biblio_init
+
     for ID in sorted(new_set - old_set):
         print(format_entry(biblio, new_entries_by_key[ID], prefix="Added"))
 
@@ -684,6 +688,8 @@ def addcmd(parser, o, config):
     if o.open:
         for e in entries:
             view_entry_files(biblio, e)
+
+    return # ends addcmd()
 
 def checkcmd(parser, o, config):
     """
