@@ -563,11 +563,6 @@ def addcmd(parser, o, config):
     set_nameformat_config_from_cmd(o, config)
     set_keyformat_config_from_cmd(o, config)
 
-    biblio = get_biblio(config)
-    biblio_init = copy.deepcopy(biblio)
-
-    entries = []
-
     metadata = {k: v for k, v in o.metadata or []}
     if o.doi: metadata['doi'] = o.doi
     if o.key: metadata['ID'] = o.key
@@ -578,33 +573,41 @@ def addcmd(parser, o, config):
     if o.type: metadata['ENTRYTYPE'] = o.type
     if "author" in metadata:
         metadata["author"] = standard_name(metadata["author"])
-    if o.attachment:
-        metadata['file'] = format_file(biblio.get_files(metadata) + o.attachment, relative_to=biblio.relative_to)
 
+    # Check if you're passing the same metadata to multiple files.
     if len(o.file) > 1:
         if metadata:
             logger.error('--doi, --metadata, --key, --attachment and other metadata keys are only valid for one PDF / BIBTEX entry')
             raise PapersExit()
 
+    # If you didn't fail fast above, now take the time to get the expensive variables up
+    biblio = get_biblio(config)
+    biblio_init = copy.deepcopy(biblio)
+
+    if o.attachment:
+        metadata['file'] = format_file(biblio.get_files(metadata) + o.attachment, relative_to=biblio.relative_to)
+
     kw = {'on_conflict':o.mode, 'check_duplicate':not o.no_check_duplicate,
             'mergefiles':not o.no_merge_files, 'update_key':o.update_key, 'metadata':metadata}
 
+    entries = []
+
+    # If you have a single file and you are assured to do a DIO query, run it
     if len(o.file) == 0 and o.doi and not o.no_query_doi:
         entries.extend( biblio.fetch_doi(o.doi, attachments=o.attachment, rename=o.rename, copy=o.copy, **kw) )
 
+    # ifyou have a single file but don't need to DOI query...
     elif len(o.file) == 0:
         if not o.edit and not o.metadata and not o.key and not o.doi and not o.attachment and not o.title and not o.author and not o.journal and not o.year:
             logger.error("No entry added: use --doi, --metadata, --key, --attachment, --title, --author, --journal, --year to add a new entry")
             raise PapersExit()
-
+        #...take your single file and update the entries.
         metadata.setdefault('ID', biblio.keyformat(metadata))
         metadata.setdefault('ENTRYTYPE', 'article')
         if o.edit:
             metadata = edit_entries(metadata)
             o.edit = False
-
         entries.extend( biblio.insert_entry(metadata, **kw) )
-
 
     del metadata
 
@@ -658,6 +661,7 @@ def addcmd(parser, o, config):
         entries = [{k:v for k,v in e.items() if v != ""} for e in entries]
         biblio.db.entries = sorted(otherentries + entries, key=lambda e: biblio.key(e))
 
+    # This writes the biblio; after this, it's all displaying the action to the user.
     savebib(biblio, config)
 
     # compare entries to inform user
@@ -677,6 +681,9 @@ def addcmd(parser, o, config):
     for ID in sorted(new_set - old_set):
         print(format_entry(biblio, new_entries_by_key[ID], prefix="Added"))
 
+    del old_set
+    del new_set
+
     for ID in sorted(modified_set):
         before = old_entries_by_key[ID]
         after = new_entries_by_key[ID]
@@ -684,10 +691,14 @@ def addcmd(parser, o, config):
             print(format_entry(biblio, after, prefix="Modified"))
         else:
             print(format_entry(biblio, after, prefix="Existing"))
+        del before
+        del after
 
     if o.open:
         for e in entries:
             view_entry_files(biblio, e)
+
+    del biblio
 
     return # ends addcmd()
 

@@ -472,6 +472,9 @@ class Biblio:
                 continue
 
             for file in files:
+                # TODO ripe little moment here to do this in parallel,
+                # on multiple threads, with Lock() primitives on the
+                # Biblio() updates
                 if file.startswith('.'):
                     continue
                 path = os.path.join(root, file)
