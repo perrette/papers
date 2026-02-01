@@ -598,7 +598,7 @@ def addcmd(parser, o, config):
     if len(o.file) == 0 and o.doi and not o.no_query_doi:
         entries.extend( biblio.fetch_doi(o.doi, attachments=o.attachment, rename=o.rename, copy=o.copy, **kw) )
 
-    # ifyou have a single file but don't need to DOI query...
+    # if you have a single file but don't need to DOI query...
     elif len(o.file) == 0:
         if not o.edit and not o.metadata and not o.key and not o.doi and not o.attachment and not o.title and not o.author and not o.journal and not o.year:
             logger.error("No entry added: use --doi, --metadata, --key, --attachment, --title, --author, --journal, --year to add a new entry")
@@ -662,6 +662,7 @@ def addcmd(parser, o, config):
 
         entries = [{k:v for k,v in e.items() if v != ""} for e in entries]
         biblio.db.entries = sorted(otherentries + entries, key=lambda e: biblio.key(e))
+        del otherentries
 
     # This writes the biblio; after this, it's all displaying the action to the user.
     savebib(biblio, config)
@@ -701,9 +702,12 @@ def addcmd(parser, o, config):
             print(format_entry(biblio, after, prefix="Modified"))
         else:
             print(format_entry(biblio, after, prefix="Existing"))
-        del before
-        del after
 
+    # Yes, these last ones are pedantic, since they go out of scope right after
+    # but for consistency, can see where they end, if we add more stuff after
+    del old_entries_by_key
+    del new_entries_by_key
+    del modified_set
     del biblio
 
     return # ends addcmd()
