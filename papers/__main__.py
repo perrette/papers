@@ -653,6 +653,7 @@ def addcmd(parser, o, config):
     if o.edit:
         entry_keys = [biblio.key(e) for e in entries]
         otherentries = [e for e in biblio.entries if biblio.key(e) not in entry_keys]
+        del entry_keys
 
         try:
             entries = edit_entries(entries)
