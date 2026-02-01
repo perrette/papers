@@ -264,6 +264,8 @@ def view_entry_files(biblio, entry):
         logger.info(f"opening {f} ...")
         view_pdf(f)
 
+    return
+
 
 def set_keyformat_config_from_cmd(o, config):
     """
@@ -673,6 +675,14 @@ def addcmd(parser, o, config):
     new_entries_by_key = {e["ID"]:e for e in biblio.db.entries}
     modified_set = set(e["ID"] for e in entries ).intersection(set.intersection(old_set, new_set))
 
+    if o.open:
+        for e in entries:
+            # xdg-open and all that probably won't block
+            # but can multithread here for large PDFs
+            view_entry_files(biblio, e)
+
+    del entries
+
     for ID in sorted(old_set - new_set):
         print(format_entry(biblio_init, old_entries_by_key[ID], prefix="Removed"))
 
@@ -693,10 +703,6 @@ def addcmd(parser, o, config):
             print(format_entry(biblio, after, prefix="Existing"))
         del before
         del after
-
-    if o.open:
-        for e in entries:
-            view_entry_files(biblio, e)
 
     del biblio
 
