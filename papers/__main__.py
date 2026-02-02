@@ -651,6 +651,7 @@ def addcmd(parser, o, config):
     if len(entries) > 1 and (o.edit or o.open):
         unique_keys = set(biblio.key(e) for e in entries)
         entries = [e for e in biblio.entries if biblio.key(e) in unique_keys]
+        del unique_keys
 
     if o.edit:
         entry_keys = [biblio.key(e) for e in entries]
