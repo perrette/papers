@@ -644,6 +644,8 @@ def addcmd(parser, o, config):
                     logger.error('use --ignore to add other files anyway')
                 raise PapersExit()
 
+    del kw
+
     # The list of new entries potentially contains duplicates if more than one file is added sequentially
     # If action is required on the added entry, we need to make sure we're consistent with the biblio.
     if len(entries) > 1 and (o.edit or o.open):
