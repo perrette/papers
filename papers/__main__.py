@@ -566,6 +566,13 @@ def addcmd(parser, o, config):
     set_keyformat_config_from_cmd(o, config)
 
     metadata = {k: v for k, v in o.metadata or []}
+
+    # Check if you're passing the same metadata to multiple files.
+    if len(o.file) > 1:
+        if metadata:
+            logger.error('--doi, --metadata, --key, --attachment and other metadata keys are only valid for one PDF / BIBTEX entry')
+            raise PapersExit()
+
     if o.doi: metadata['doi'] = o.doi
     if o.key: metadata['ID'] = o.key
     if o.title: metadata['title'] = o.title
@@ -575,12 +582,6 @@ def addcmd(parser, o, config):
     if o.type: metadata['ENTRYTYPE'] = o.type
     if "author" in metadata:
         metadata["author"] = standard_name(metadata["author"])
-
-    # Check if you're passing the same metadata to multiple files.
-    if len(o.file) > 1:
-        if metadata:
-            logger.error('--doi, --metadata, --key, --attachment and other metadata keys are only valid for one PDF / BIBTEX entry')
-            raise PapersExit()
 
     # If you didn't fail fast above, now take the time to get the expensive variables up
     biblio = get_biblio(config)
