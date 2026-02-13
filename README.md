@@ -1,10 +1,5 @@
 [![pypi](https://img.shields.io/pypi/v/papers-cli)](https://pypi.org/project/papers-cli)
 [![python](https://img.shields.io/badge/python-3.9-blue.svg)]()
-[![python](https://img.shields.io/badge/python-3.10-blue.svg)]()
-[![python](https://img.shields.io/badge/python-3.11-blue.svg)]()
-[![python](https://img.shields.io/badge/python-3.12-blue.svg)]()
-[![python](https://img.shields.io/badge/python-3.13-blue.svg)]()
-[![python](https://img.shields.io/badge/python-3.14-blue.svg)]()
 [![python](https://img.shields.io/badge/python-3.14t-blue.svg)]()
 [![test](https://github.com/perrette/papers/workflows/CI/badge.svg?query=branch%3Amaster)](https://github.com/perrette/papers/actions)
 
