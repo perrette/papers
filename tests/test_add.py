@@ -2,7 +2,6 @@ import os
 import shutil
 import subprocess as sp
 import tempfile
-import unittest
 from pathlib import Path
 
 import bibtexparser
