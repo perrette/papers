@@ -12,6 +12,7 @@ from pathlib import Path
 import bibtexparser
 
 from papers.bib import Biblio
+from papers.entries import get_entry_val
 from tests.common import PAPERSCMD, paperscmd, prepare_paper, prepare_paper2, BibTest
 
 
@@ -41,7 +42,7 @@ EOF""", cwd=self.workdir)
         self.assertTrue(os.path.exists(file_rename))
         self.assertFalse(os.path.exists(self.pdf))
         biblio = Biblio.load(self.mybib, '')
-        e = biblio.entries[[e['ID'] for e in biblio.entries].index(self.key)]
+        e = next(ent for ent in biblio.entries if get_entry_val(ent, 'ID', '').lower() == self.key.lower())
         files = biblio.get_files(e)
         self.assertTrue(len(files) == 1)
         self.assertEqual(files[0], os.path.abspath(file_rename))

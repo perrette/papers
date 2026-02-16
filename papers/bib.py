@@ -1,10 +1,25 @@
 import os
 from pathlib import Path
 import shutil
-import bisect
 from unidecode import unidecode as unicode_to_ascii
 import bibtexparser
-from bibtexparser.customization import convert_to_unicode
+from bibtexparser import Library
+
+from papers.entries import (
+    get_entry_val,
+    set_entry_key,
+    update_entry,
+    entry_copy,
+    entry_content_equal,
+    parse_string,
+    format_library,
+    entry_from_dict,
+    library_from_entries,
+)
+from papers.encoding import (
+    latex_to_unicode_library,
+    convert_entry_to_unicode,
+)
 
 import papers
 from papers import logger
@@ -76,16 +91,16 @@ def _simplify_string(s):
 
 
 def author_id(e):
-    return _simplify_string(' '.join(family_names(e.get('author',''))))
+    return _simplify_string(' '.join(family_names(get_entry_val(e, 'author', ''))))
 
 def title_id(e):
-    return _simplify_string(e.get('title',''))
+    return _simplify_string(get_entry_val(e, 'title', ''))
 
 def entry_id(e):
     """entry identifier which is not the bibtex key
     """
-    authortitle = ''.join([author_id(e),title_id(e)])
-    return (e.get('doi','').lower(), authortitle)
+    authortitle = ''.join([author_id(e), title_id(e)])
+    return (get_entry_val(e, 'doi', '').lower(), authortitle)
 
 
 FUZZY_RATIO = 80
@@ -107,7 +122,7 @@ FUZZY_DUPLICATES = 100
 def compare_entries(e1, e2, fuzzy=False):
     """assess two entries' similarity
     """
-    if e1 == e2:
+    if entry_content_equal(e1, e2):
         return EXACT_DUPLICATES
 
     id1 = entry_id(e1)
@@ -118,7 +133,7 @@ def compare_entries(e1, e2, fuzzy=False):
     if id1 == id2:
         score = GOOD_DUPLICATES
 
-    elif e1.get('doi') and e2.get('doi') and e1['doi'] == e2['doi']:
+    elif get_entry_val(e1, 'doi') and get_entry_val(e2, 'doi') and e1['doi'] == e2['doi']:
         score = FAIR_DUPLICATES
 
     # elif all([f1==f2 for f1, f2 in zip(id1, id2) if f1 and f2]): # ID and AUTHORTITLE agree
@@ -172,7 +187,7 @@ def read_entry_dir(direc, update_files=True, relative_to=None):
     if not os.path.exists(hidden_bib):
         raise TypeError('hidden bib missing: not an entry dir')
 
-    db = bibtexparser.loads(open(hidden_bib).read())
+    db = parse_string(open(hidden_bib).read())
     assert len(db.entries) == 1, 'hidden bib must have one entry, got: '+str(len(db.entries))
     entry = db.entries[0]
 
@@ -204,15 +219,14 @@ class Biblio:
         # assume an already sorted list
         self.key_field = key_field
         if db is None:
-            db = bibtexparser.bibdatabase.BibDatabase()
-        elif not isinstance(db, bibtexparser.bibdatabase.BibDatabase):
-            raise TypeError('db must be of type BibDatabase')
+            db = Library()
+        elif not isinstance(db, Library):
+            raise TypeError('db must be of type Library')
         self.db = db
         self.nameformat = nameformat
         self.keyformat = keyformat
         self.similarity = similarity
         self.relative_to = os.path.sep if relative_to is None else relative_to
-        self.sort()
 
     def move(self, file, newfile, copy=False, hardlink=False):
         return _move(file, newfile, copy=copy, dryrun=papers.config.DRYRUN, hardlink=hardlink)
@@ -224,21 +238,24 @@ class Biblio:
     @entries.setter
     def entries(self, entries):
         assert isinstance(entries, list)
-        self.db.entries = entries
+        # Public API: remove all entries then add new list (keeps _entries_by_key in sync)
+        for e in list(self.db.entries):
+            self.db.remove(e)
+        for e in entries:
+            self.db.add(e)
 
     @classmethod
     def loads(cls, bibtex, filesdir):
-        db = bibtexparser.loads(bibtex)
+        db = parse_string(bibtex)
         return cls(db, filesdir)
 
     def dumps(self):
-        return bibtexparser.dumps(self.db)
+        return format_library(self.db)
 
     @classmethod
     def load(cls, bibtex, filesdir, relative_to=None, **kw):
-        # self.bibtex = bibtex
         bibtexs = open(bibtex).read()
-        loaded_bib = cls(bibtexparser.loads(bibtexs), filesdir, relative_to=relative_to if relative_to is not None else os.path.dirname(bibtex), **kw)
+        loaded_bib = cls(parse_string(bibtexs), filesdir, relative_to=relative_to if relative_to is not None else os.path.dirname(bibtex), **kw)
         return loaded_bib
 
     # make sure the path is right
@@ -267,11 +284,9 @@ class Biblio:
 
 
     def sort(self):
-        self.db.entries = sorted(self.db.entries, key=self.key)
-
-    def index_sorted(self, entry):
-        keys = [self.key(ei) for ei in self.db.entries]
-        return bisect.bisect_left(keys, self.key(entry))
+        """Re-order library by block type and entry key (public API: SortBlocksByTypeAndKeyMiddleware)."""
+        from bibtexparser.middlewares import SortBlocksByTypeAndKeyMiddleware
+        self.db = SortBlocksByTypeAndKeyMiddleware().transform(library=self.db)
 
     def insert_entry(self, entry, update_key=False, check_duplicate=False, rename=False, copy=False, metadata={}, **checkopt):
         """
@@ -281,7 +296,7 @@ class Biblio:
             self.set_files(metadata, files)
 
         if update_key:
-            entry['ID'] = self.generate_key(entry)
+            set_entry_key(entry, self.generate_key(entry))
 
         # additional checks on DOI etc...
         if check_duplicate:
@@ -290,19 +305,23 @@ class Biblio:
         else:
             logger.debug('check duplicates : FALSE')
 
-        i = self.index_sorted(entry)  # based on current sort key (e.g. ID)
+        # Key duplicate check: lookup by key (public API), case-insensitive to match entries_dict keys
+        key_lower = self.key(entry)
+        existing_same_key = next(
+            (e for k, e in self.db.entries_dict.items() if k.lower() == key_lower),
+            None,
+        )
+        if existing_same_key is not None:
+            logger.info('key duplicate: '+self.key(existing_same_key))
 
-        if i < len(self.entries) and self.key(self.entries[i]) == self.key(entry):
-            logger.info('key duplicate: '+self.key(self.entries[i]))
-
-            if self.entries[i]["title"] == entry["title"]:
+            if get_entry_val(existing_same_key, 'title', '') == get_entry_val(entry, 'title', ''):
                 logger.info('exact duplicate')
-                return [ self.entries[i] ]
+                return [ existing_same_key ]
 
             if update_key:
-                newkey = self.append_abc_to_key(entry)  # add abc
-                logger.info('update key: {} => {}'.format(entry['ID'], newkey))
-                entry['ID'] = newkey
+                newkey = self.generate_key(entry)  # unique key from content (e.g. DOI)
+                logger.info('update key: {} => {}'.format(get_entry_val(entry, 'ID', ''), newkey))
+                set_entry_key(entry, newkey)
 
             else:
                 raise DuplicateKeyError('Key conflict. Try update_key is True or specify --key KEY explicitly')
@@ -310,7 +329,7 @@ class Biblio:
         else:
             logger.info('new entry: '+self.key(entry))
 
-        self.entries.insert(i, entry)
+        self.db.add(entry)
 
         if rename: self.rename_entry_files(entry, copy=copy)
 
@@ -335,32 +354,46 @@ class Biblio:
 
             candidate = duplicates[0]
 
-            if entry == candidate:
+            if entry_content_equal(entry, candidate):
                 logger.debug('exact duplicate')
+                if mergefiles:
+                    file = merge_files([candidate, entry], relative_to=self.relative_to)
+                    if file and get_entry_val(candidate, 'file', '') != file:
+                        candidate['file'] = file
                 if rename: self.rename_entry_files(candidate, copy=copy)
-                return [ entry ] # do nothing
+                return [ candidate ]
 
-            if update_key and entry['ID'] != candidate['ID']:
-                logger.info('duplicate :: update key to match existing entry: {} => {}'.format(entry['ID'], candidate['ID']))
-                entry['ID'] = candidate['ID']
+            if update_key and get_entry_val(entry, 'ID', '') != get_entry_val(candidate, 'ID', ''):
+                logger.info('duplicate :: update key to match existing entry: {} => {}'.format(get_entry_val(entry, 'ID', ''), get_entry_val(candidate, 'ID', '')))
+                set_entry_key(entry, get_entry_val(candidate, 'ID', ''))
+                if entry_content_equal(entry, candidate):
+                    logger.debug('fixed: exact duplicate after key sync')
+                    return [ candidate ]
 
             if mergefiles:
 
                 file = merge_files([candidate, entry], relative_to=self.relative_to)
-                if len({file, entry.get('file',''), candidate.get('file','')}) > 1:
+                if len({file, get_entry_val(entry, 'file', ''), get_entry_val(candidate, 'file', '')}) > 1:
                     logger.info('duplicate :: merge files')
                     entry['file'] = candidate['file'] = file
 
 
-            if entry == candidate:
+            if entry_content_equal(entry, candidate):
                 logger.debug('fixed: exact duplicate')
-                entry = candidate
                 if rename: self.rename_entry_files(candidate, copy=copy)
-                return [ entry ] # do nothing
+                return [ candidate ]
 
             logger.debug('conflict resolution: '+on_conflict)
+            candidate_key_before = get_entry_val(candidate, 'ID', '')
             resolved = conflict_resolution_on_insert(candidate, entry, mode=on_conflict)
-            self.entries.remove(candidate) # maybe in resolved entries
+            # remove(block) uses block.key; conflict_resolution may have updated candidate.key in place (e.g. mode U).
+            # Restore original key so remove() finds the right dict entry, then restore key for re-insert.
+            candidate_key_after = get_entry_val(candidate, 'ID', '') if resolved and resolved[0] is candidate else None
+            if hasattr(candidate, 'key'):
+                candidate.key = candidate_key_before
+            self.db.remove(candidate)
+            if candidate_key_after is not None and hasattr(candidate, 'key'):
+                candidate.key = candidate_key_after
             entries = []
             for e in resolved:
                 entries.extend( self.insert_entry(e, update_key, rename=rename, copy=copy) )
@@ -376,7 +409,7 @@ class Biblio:
         return key
 
     def append_abc_to_key(self, entry):
-        return append_abc(entry['ID'], keys={self.key(e) for e in self.entries})
+        return append_abc(get_entry_val(entry, 'ID', ''), keys={self.key(e) for e in self.entries})
 
 
     def set_files(self, entry, files, relative_to=None):
@@ -386,12 +419,12 @@ class Biblio:
             del entry['file']
 
     def get_files(self, entry, relative_to=None):
-        return parse_file(entry.get('file', ''), relative_to=relative_to or self.relative_to)
+        return parse_file(get_entry_val(entry, 'file', ''), relative_to=relative_to or self.relative_to)
 
     def add_bibtex(self, bibtex, relative_to=None, attachments=None, convert_to_unicode=False, **kw):
-        bib = bibtexparser.loads(bibtex)
+        bib = parse_string(bibtex)
         if convert_to_unicode:
-            bib = bibtexparser.customization.convert_to_unicode(bib)
+            bib = latex_to_unicode_library(bib)
         entries = []
         for e in bib.entries:
             files = []
@@ -436,18 +469,20 @@ class Biblio:
             bibtex = fetch_bibtex_by_doi(doi)
         else:
             bibtex = extract_pdf_metadata(pdf, search_doi, search_fulltext, scholar=scholar)
-        bib = bibtexparser.loads(bibtex)
+        bib = parse_string(bibtex)
         entry = bib.entries[0]
 
         # convert curly brackets to unicode
-        entry = convert_to_unicode(entry)
+        lib = library_from_entries([entry])
+        lib = latex_to_unicode_library(lib)
+        entry = lib.entries[0]
 
         files = [pdf] if pdf else []
         if attachments:
             files += attachments
 
         self.set_files(entry, [os.path.abspath(f) for f in files])
-        entry['ID'] = self.keyformat(entry)
+        set_entry_key(entry, self.keyformat(entry))
         logger.debug('generated PDF key: '+entry['ID'])
 
         kw["update_key"] = True
@@ -490,13 +525,15 @@ class Biblio:
 
 
     def format(self):
-        return bibtexparser.dumps(self.db)
+        """Return the library as a BibTeX string. Does not sort; call sort() first if you need ordered output."""
+        return format_library(self.db)
 
     def save(self, bibtex):
         if os.path.exists(bibtex):
             shutil.copy(bibtex, backupfile(bibtex))
         if self.relative_to not in (os.path.sep, None) and Path(self.relative_to).resolve() != Path(bibtex).parent.resolve():
             logger.warning("Saving bibtex file with relative paths may break links. Consider using `Biblio.update_file_path(Path(bibtex).parent)` before.")
+        self.sort()  # consistent order before writing
         s = self.format()
         open(bibtex, 'w').write(s)
 
@@ -522,7 +559,6 @@ class Biblio:
         """remove duplicates, in some sensse (see papers.conflict.check_duplicates)
         """
         self.entries = check_duplicates(self.entries, key=key, eq=eq or self.eq, issorted=key is self.key, mode=mode)
-        self.sort() # keep sorted
 
 
     def rename_entry_files(self, e, copy=False, formatter=None, relative_to=None, hardlink=False):
@@ -584,9 +620,8 @@ class Biblio:
 
             # create hidden bib entry for special dir
             bibname = hidden_bibtex(newdir)
-            db = bibtexparser.bibdatabase.BibDatabase()
-            db.entries.append(e)
-            bibtex = bibtexparser.dumps(db)
+            lib = library_from_entries([e])
+            bibtex = format_library(lib)
             if not papers.config.DRYRUN:
                 with open(bibname,'w') as f:
                     f.write(bibtex)
@@ -627,22 +662,22 @@ class Biblio:
         Given an entry in an existing Bilio object, checks the format name and encoding.  Will fetch additional info if it's missing.
         """
 
-        e_old = e.copy()
+        e_old = entry_copy(e)
 
         if format_name:
             for k in ['author','editor']:
                 if k in e:
                     e[k] = standard_name(e[k])
                     if e[k] != e_old[k]:
-                        logger.info(e.get('ID','')+': '+k+' name formatted')
+                        logger.info(get_entry_val(e, 'ID', '')+': '+k+' name formatted')
 
         if encoding:
 
-            assert encoding in ['unicode','latex'], e.get('ID','')+': unknown encoding: '+repr(encoding)
+            assert encoding in ['unicode','latex'], get_entry_val(e, 'ID', '')+': unknown encoding: '+repr(encoding)
 
-            logger.debug(e.get('ID','')+': update encoding')
+            logger.debug(get_entry_val(e, 'ID', '')+': update encoding')
             if encoding == "unicode":
-                e = convert_to_unicode(e)
+                convert_entry_to_unicode(e)
             else:
                 for k in e:
                     if k == k.lower() and k != 'abstract': # all but ENTRYTYPE, ID, abstract
@@ -653,74 +688,75 @@ class Biblio:
                                 e[k] = unicode_to_latex(e[k])
                         # except KeyError as error:
                         except (KeyError, ValueError) as error:
-                            logger.warning(e.get('ID','')+': '+k+': failed to encode: '+str(error))
+                            logger.warning(get_entry_val(e, 'ID', '')+': '+k+': failed to encode: '+str(error))
 
         if fix_doi:
             if 'doi' in e and e['doi']:
                 try:
                     doi = parse_doi('doi:'+e['doi'])
                 except:
-                    logger.warning(e.get('ID','')+': failed to fix doi: '+e['doi'])
+                    logger.warning(get_entry_val(e, 'ID', '')+': failed to fix doi: '+e['doi'])
                     return
 
                 if doi.lower() != e['doi'].lower():
-                    logger.info(e.get('ID','')+': fix doi: {} ==> {}'.format(e['doi'], doi))
+                    logger.info(get_entry_val(e, 'ID', '')+': fix doi: {} ==> {}'.format(e['doi'], doi))
                     e['doi'] = doi
                 else:
-                    logger.debug(e.get('ID','')+': doi OK')
+                    logger.debug(get_entry_val(e, 'ID', '')+': doi OK')
             else:
-                logger.debug(e.get('ID','')+': no DOI')
+                logger.debug(get_entry_val(e, 'ID', '')+': no DOI')
 
 
         if fetch or fetch_all:
             bibtex = None
             if 'doi' in e and e['doi']:
-                logger.info(e.get('ID','')+': fetch doi: '+e['doi'])
+                logger.info(get_entry_val(e, 'ID', '')+': fetch doi: '+e['doi'])
                 try:
                     bibtex = fetch_bibtex_by_doi(e['doi'])
                 except Exception as error:
                     logger.warning('...failed to fetch bibtex (doi): '+str(error))
 
-            elif e.get('title','') and e.get('author','') and fetch_all:
+            elif get_entry_val(e, 'title', '') and get_entry_val(e, 'author', '') and fetch_all:
                 kw = {}
                 kw['title'] = e['title']
                 kw['author'] = ' '.join(family_names(e['author']))
-                logger.info(e.get('ID','')+': fetch-all: '+str(kw))
+                logger.info(get_entry_val(e, 'ID', '')+': fetch-all: '+str(kw))
                 try:
                     bibtex = fetch_bibtex_by_fulltext_crossref('', **kw)
                 except Exception as error:
                     logger.warning('...failed to fetch/update bibtex (all): '+str(error))
 
             if bibtex:
-                db = bibtexparser.loads(bibtex)
+                db = parse_string(bibtex)
                 e2 = db.entries[0]
                 self.fix_entry(e2, encoding=encoding, format_name=True)
-                strip_e = lambda e_: {k:e_[k] for k in e_ if k not in ['ID', 'file'] and k in e2}
+                strip_e = lambda e_: {k: e_[k] for k, _ in e_.items() if k not in ['ID', 'file'] and k in e2}
                 if strip_e(e) != strip_e(e2):
                     logger.info('...fetch-update entry')
-                    e.update(strip_e(e2))
+                    for k, v in strip_e(e2).items():
+                        e[k] = v
                 else:
                     logger.info('...fetch-update: already up to date')
 
 
         if fix_key or auto_key:
-            if auto_key or not isvalidkey(e.get('ID','')):
+            if auto_key or not isvalidkey(get_entry_val(e, 'ID','')):
                 key = self.generate_key(e)
-                if e.get('ID', '') != key:
-                    logger.info('update key {} => {}'.format(e.get('ID', ''), key))
-                    e['ID'] = key
+                if get_entry_val(e, 'ID', '') != key:
+                    logger.info('update key {} => {}'.format(get_entry_val(e, 'ID', ''), key))
+                    set_entry_key(e, key)
 
         if key_ascii:
-            e['ID'] = unicode_to_ascii(e['ID'])
+            set_entry_key(e, unicode_to_ascii(get_entry_val(e, 'ID', '')))
 
-        if interactive and e_old != e:
+        if interactive and not entry_content_equal(e_old, e):
             print(bcolors.OKBLUE+'*** UPDATE ***'+bcolors.ENDC)
             print(entry_diff(e_old, e))
 
             if input('update ? [Y/n] or [Enter] ').lower() not in ('', 'y'):
                 logger.info('cancel changes')
-                e.update(e_old)
-                for k in list(e.keys()):
+                update_entry(e, e_old)
+                for k in [k for k, _ in e.items()]:
                     if k not in e_old:
                         del e[k]
 
@@ -733,17 +769,17 @@ def entry_filecheck_metadata(e, file, image=False):
     ''' parse pdf metadata and compare with entry: only doi for now
     '''
     if 'doi' not in e:
-        raise ValueError(e['ID']+': no doi, skip PDF parsing')
+        raise ValueError(get_entry_val(e, 'ID', '')+': no doi, skip PDF parsing')
 
     try:
         doi = extract_pdf_doi(file, image=image)
     except Exception as error:
-        raise ValueError(e['ID']+': failed to parse doi: "{}"'.format(file))
+        raise ValueError(get_entry_val(e, 'ID', '')+': failed to parse doi: "{}"'.format(file))
     if not isvaliddoi(doi):
-        raise ValueError(e['ID']+': invalid parsed doi: '+doi)
+        raise ValueError(get_entry_val(e, 'ID', '')+': invalid parsed doi: '+doi)
 
     if doi.lower() != e['doi'].lower():
-        raise ValueError(e['ID']+': doi: entry <=> pdf : {} <=> {}'.format(e['doi'].lower(), doi.lower()))
+        raise ValueError(get_entry_val(e, 'ID', '')+': doi: entry <=> pdf : {} <=> {}'.format(e['doi'].lower(), doi.lower()))
 
 
 def entry_filecheck(e, delete_broken=False, fix_mendeley=False,
@@ -767,7 +803,7 @@ def entry_filecheck(e, delete_broken=False, fix_mendeley=False,
 
         realpath = os.path.realpath(file)
         if realpath in realpaths:
-            logger.info(e['ID']+': remove duplicate path: "{}"'.format(fixed.get(file, file)))
+            logger.info(get_entry_val(e, 'ID', '')+': remove duplicate path: "{}"'.format(fixed.get(file, file)))
             continue
         realpaths.add(realpath) # put here so that for identical
                                    # files that are checked and finally not
@@ -780,7 +816,7 @@ def entry_filecheck(e, delete_broken=False, fix_mendeley=False,
             try:
                 file = latex_to_unicode(file)
             except KeyError as error:
-                logger.warning(e['ID']+': '+str(error)+': failed to convert latex symbols to unicode: '+file)
+                logger.warning(get_entry_val(e, 'ID', '')+': '+str(error)+': failed to convert latex symbols to unicode: '+file)
 
             # fix root (e.g. path starts with home instead of /home)
             dirname = os.path.dirname(file)
@@ -793,7 +829,7 @@ def entry_filecheck(e, delete_broken=False, fix_mendeley=False,
                     file = candidate
 
             if old != file:
-                logger.info(e['ID']+': file name fixed: "{}" => "{}".'.format(old, file))
+                logger.info(get_entry_val(e, 'ID', '')+': file name fixed: "{}" => "{}".'.format(old, file))
                 fixed[old] = file # keep record of fixed files
 
         # parse PDF and check for metadata
@@ -805,7 +841,7 @@ def entry_filecheck(e, delete_broken=False, fix_mendeley=False,
 
         # check existence
         if not os.path.exists(file):
-            logger.warning(e['ID']+': "{}" does not exist'.format(file)+delete_broken*' ==> delete')
+            logger.warning(get_entry_val(e, 'ID', '')+': "{}" does not exist'.format(file)+delete_broken*' ==> delete')
             if delete_broken:
                 logger.info('delete file from entry: "{}"'.format(file))
                 continue
@@ -818,7 +854,7 @@ def entry_filecheck(e, delete_broken=False, fix_mendeley=False,
             # hash_ = hashlib.sha256(open(file, 'rb').read()).digest()
             hash_ = checksum(file) # a little faster
             if hash_ in hashes:
-                logger.info(e['ID']+': file already exists (identical checksum): "{}"'.format(file))
+                logger.info(get_entry_val(e, 'ID', '')+': file already exists (identical checksum): "{}"'.format(file))
                 continue
             hashes.add(hash_)
 

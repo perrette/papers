@@ -19,7 +19,7 @@ dependencies = [
     "PyMuPDF",
     "unidecode",
     "crossrefapi",
-    "bibtexparser",
+    "bibtexparser>=2.0.0b2",
     "scholarly",
     "rapidfuzz",
     "python-slugify",
@@ -61,7 +61,7 @@ python =
 [testenv]
 commands = pytest --cov=papers --cov-append --cov-report=term-missing {posargs} -xv
 deps =
-    bibtexparser < 2.0.0
+    bibtexparser>=2.0.0b2
     PyMuPDF
     scholarly
     crossrefapi

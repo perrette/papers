@@ -19,6 +19,7 @@ from papers.extract import fetch_bibtex_by_doi, fetch_bibtex_by_fulltext_crossre
 from papers.encoding import parse_file, format_file, family_names, format_entries, standard_name, format_entry, parse_keywords, format_key
 from papers.config import bcolors, Config, search_config, CONFIG_FILE, CONFIG_FILE_LOCAL, DATA_DIR, CONFIG_FILE_LEGACY, BACKUP_DIR
 from papers.duplicate import list_duplicates, list_uniques, edit_entries
+from papers.entries import get_entry_val
 from papers.bib import (Biblio, FUZZY_RATIO, DEFAULT_SIMILARITY, entry_filecheck,
                         backupfile as backupfile_func, isvalidkey, DuplicateKeyError, clean_filesdir,
                         are_duplicates)
@@ -150,10 +151,10 @@ def _restore_from_backupdir_wrapped(config, restore_files=False):
     assert len(biblio.entries) == len(biblio_clean.entries)
 
     for e, e_clean in zip(biblio.entries, biblio_clean.entries):
-        assert e['ID'] == e_clean['ID'], f"{e['ID']} != {e_clean['ID']})"
+        assert get_entry_val(e, 'ID', '') == get_entry_val(e_clean, 'ID', ''), f"{get_entry_val(e, 'ID', '')} != {get_entry_val(e_clean, 'ID', '')})"
         files = biblio.get_files(e)
         files_clean = biblio_clean.get_files(e_clean)
-        assert len(files) == len(files_clean), f"{e['ID']} :: files {len(files)} != {len(files_clean)})"
+        assert len(files) == len(files_clean), f"{get_entry_val(e, 'ID', '')} :: files {len(files)} != {len(files_clean)})"
 
         new_files = []
 
@@ -163,7 +164,7 @@ def _restore_from_backupdir_wrapped(config, restore_files=False):
                 logger.debug(f"BACKUP FILE DOES NOT EXISTS: {f_clean} ")
                 logger.debug(f"BACKUP ENTRY: {e_clean['file']} ")
                 logger.debug(f"BROKEN ENTRY: {e['file']} ")
-                logger.warning(f"{e['ID']} :: file link broken => {f} ")
+                logger.warning(f"{get_entry_val(e, 'ID', '')} :: file link broken => {f} ")
                 new_files.append(f)
                 continue
 
@@ -177,7 +178,7 @@ def _restore_from_backupdir_wrapped(config, restore_files=False):
                     new_files.append(f)
 
                 else:
-                    logger.warning(f"{e['ID']} :: file found but does not match backup (keep pointer to backup): {f} != {f_clean}")
+                    logger.warning(f"{get_entry_val(e, 'ID', '')} :: file found but does not match backup (keep pointer to backup): {f} != {f_clean}")
                     new_files.append(f_clean)
 
             # original bibtex link is broken, --restore-file is active
@@ -188,7 +189,7 @@ def _restore_from_backupdir_wrapped(config, restore_files=False):
 
                 except Exception as error:
                     logger.error(f"{error}")
-                    logger.error(f"{e['ID']} :: failed to restore file (keep pointer to backup)")
+                    logger.error(f"{get_entry_val(e, 'ID', '')} :: failed to restore file (keep pointer to backup)")
                     new_files.append(f_clean)
                     pass
 
@@ -662,11 +663,11 @@ def addcmd(parser, o, config):
     # compare entries to inform user
     # this is not very efficient but I have yet to hear a complaint about speed
 
-    old_set = set(e["ID"] for e in biblio_init.entries)
-    old_entries_by_key = {e["ID"]:e for e in biblio_init.db.entries}
-    new_set = set(e["ID"] for e in biblio.entries)
-    new_entries_by_key = {e["ID"]:e for e in biblio.db.entries}
-    modified_set = set(e["ID"] for e in entries ).intersection(set.intersection(old_set, new_set))
+    old_set = set(get_entry_val(e, 'ID', '') for e in biblio_init.entries)
+    old_entries_by_key = {get_entry_val(e, 'ID', ''): e for e in biblio_init.db.entries}
+    new_set = set(get_entry_val(e, 'ID', '') for e in biblio.entries)
+    new_entries_by_key = {get_entry_val(e, 'ID', ''): e for e in biblio.db.entries}
+    modified_set = set(get_entry_val(e, 'ID', '') for e in entries).intersection(set.intersection(old_set, new_set))
 
     for ID in sorted(old_set - new_set):
         print(format_entry(biblio_init, old_entries_by_key[ID], prefix="Removed"))
@@ -700,7 +701,7 @@ def checkcmd(parser, o, config):
     #     o.fix_key = True
 
     for e in biblio.entries:
-        if o.keys and e.get('ID','') not in o.keys:
+        if o.keys and get_entry_val(e, 'ID', '') not in o.keys:
             continue
         biblio.fix_entry(e, fix_doi=o.fix_doi, fetch=o.fetch, fetch_all=o.fetch_all, fix_key=o.fix_key,
                      auto_key=o.auto_key, format_name=o.format_name, encoding=o.encoding,
@@ -817,11 +818,11 @@ def listcmd(parser, o, config):
         return _match(word, target, fuzzy=o.fuzzy, substring=not o.strict)
 
     def _nfiles(e):
-        return len(parse_file(e.get('file',''), relative_to=biblio.relative_to))
+        return len(parse_file(get_entry_val(e, 'file', ''), relative_to=biblio.relative_to))
 
 
     def _requiresreview(e):
-        if not isvalidkey(e.get('ID','')): return True
+        if not isvalidkey(get_entry_val(e, 'ID', '')): return True
         if 'doi' in e and not isvaliddoi(e['doi']): return True
         if 'author' not in e: return True
         if 'title' not in e: return True
@@ -845,17 +846,17 @@ def listcmd(parser, o, config):
                 if 'doi' in e and not isvaliddoi(e['doi']):
                     e['doi'] = bcolors.FAIL + e['doi'] + bcolors.ENDC
     if o.has_file:
-        entries = [e for e in entries if e.get('file','')]
+        entries = [e for e in entries if get_entry_val(e, 'file', '')]
     if o.no_file:
-        entries = [e for e in entries if not e.get('file','')]
+        entries = [e for e in entries if not get_entry_val(e, 'file', '')]
     if o.broken_file:
-        entries = [e for e in entries if e.get('file','') and any([not os.path.exists(f) for f in parse_file(e['file'], relative_to=biblio.relative_to)])]
+        entries = [e for e in entries if get_entry_val(e, 'file', '') and any([not os.path.exists(f) for f in parse_file(e['file'], relative_to=biblio.relative_to)])]
 
 
     if o.doi:
         entries = [e for e in entries if 'doi' in e and _longmatch(e['doi'], o.doi)]
     if o.key:
-        entries = [e for e in entries if 'ID' in e and _longmatch(e['ID'], o.key)]
+        entries = [e for e in entries if _longmatch(get_entry_val(e, 'ID', ''), o.key)]
     if o.year:
         entries = [e for e in entries if 'year' in e and _longmatch(e['year'], o.year)]
     if o.first_author:
@@ -882,7 +883,7 @@ def listcmd(parser, o, config):
     if o.duplicates_key:
         entries = list_dup(entries, key=biblio.key, issorted=True)
     if o.duplicates_doi:
-        entries = list_dup(entries, key=lambda e:e.get('doi',''), filter_key=isvaliddoi)
+        entries = list_dup(entries, key=lambda e: get_entry_val(e, 'doi', ''), filter_key=isvaliddoi)
     if o.duplicates_tit:
         entries = list_dup(entries, key=title_id)
     if o.duplicates:
@@ -890,7 +891,7 @@ def listcmd(parser, o, config):
         # I think that's because we might need to be inclusive here, whereas the default is conservative (parameter used for several functions with possibly differing requirements).
         # (otherwise we'd have used the command-line option o.similarity, or possibly DEFAULT_SIMILARITY)
         # Might need to revise later (the question mark is from a review after a long time without use)
-        eq = lambda a, b: a['ID'] == b['ID'] or are_duplicates(a, b, similarity="PARTIAL", fuzzy_ratio=o.fuzzy_ratio)
+        eq = lambda a, b: get_entry_val(a, 'ID', '') == get_entry_val(b, 'ID', '') or are_duplicates(a, b, similarity="PARTIAL", fuzzy_ratio=o.fuzzy_ratio)
         entries = list_dup(entries, eq=eq)
 
     if o.add_keywords:
@@ -920,7 +921,7 @@ def listcmd(parser, o, config):
         otherentries = [e for e in biblio.db.entries if e not in entries]
         try:
             entries = edit_entries(entries)
-            biblio.db.entries = otherentries + entries
+            biblio.entries = otherentries + entries
         except Exception as error:
             logger.error(str(error))
             return
@@ -934,7 +935,7 @@ def listcmd(parser, o, config):
 
     elif o.delete:
         for e in entries:
-            biblio.db.entries.remove(e)
+            biblio.db.remove(e)
         savebib(biblio, config)
 
     elif o.open:
@@ -944,10 +945,10 @@ def listcmd(parser, o, config):
     elif o.field:
         # entries = [{k:e[k] for k in e if k in o.field+['ID','ENTRYTYPE']} for e in entries]
         for e in entries:
-            print(format_key(e, no_key=o.no_key),*[e.get(k, "") for k in o.field])
+            print(format_key(e, no_key=o.no_key),*[get_entry_val(e, k, "") for k in o.field])
     elif o.key_only:
         for e in entries:
-            print(e['ID'])
+            print(get_entry_val(e, 'ID', ''))
     elif o.one_liner:
         for e in entries:
             print(format_entry(biblio, e, no_key=o.no_key))

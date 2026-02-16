@@ -6,6 +6,8 @@ import unittest
 from pathlib import Path
 
 import bibtexparser
+from papers.entries import parse_file as bp_parse_file, parse_string, get_entry_val
+from papers.encoding import entry_to_unicode_dict
 
 from papers.bib import Biblio
 from tests.common import PAPERSCMD, paperscmd, prepare_paper, prepare_paper2, BibTest
@@ -23,18 +25,20 @@ class TestAdd(BibTest):
         self.assertTrue(os.path.exists(self.mybib))
 
     def _checkbib(self, doi_only=False, dismiss_key=False):
-        db1 = bibtexparser.load(open(self.mybib))
+        db1 = bp_parse_file(self.mybib)
         self.assertTrue(len(db1.entries) > 0)
-        file = db1.entries[0].pop('file').strip()
-        db2 = bibtexparser.loads(self.bibtex)
+        entry1 = db1.entries[0]
+        file = get_entry_val(entry1, 'file', '').strip()
+        if 'file' in entry1:
+            entry1.pop('file')
+        db2 = parse_string(self.bibtex)
         if doi_only:
-            self.assertEqual([e['doi'] for e in db1.entries], [e['doi'] for e in db2.entries]) # entry is as expected
-            # self.assertEqual([e['title'].lower() for e in db1.entries], [e['title'].lower() for e in db2.entries]) # entry is as expected
+            self.assertEqual([e['doi'] for e in db1.entries], [e['doi'] for e in db2.entries])  # entry is as expected
         elif dismiss_key:
-            f = lambda e: bibtexparser.customization.convert_to_unicode({k:e[k] for k in e if k!='ID'})
-            self.assertEqual([f(e) for e in db1.entries], [f(e) for e in db2.entries]) # entry is as expected
+            f = entry_to_unicode_dict
+            self.assertEqual([f(e) for e in db1.entries], [f(e) for e in db2.entries])  # entry is as expected
         else:
-            self.assertEqual(db1.entries, db2.entries) # entry is as expected
+            self.assertEqual([dict(e.items()) for e in db1.entries], [dict(e.items()) for e in db2.entries])
         return file
 
     def _checkfile(self, file):
@@ -94,7 +98,7 @@ class TestAdd(BibTest):
         old_path = str(os.path.join(self.filesdir, self.file_rename)).split(os.path.sep)
         self.assertEqual(old_path[-1], new_path[-1])
         self.assertEqual(old_path[0], new_path[0])
-        db = bibtexparser.load(open(self.mybib))
+        db = bp_parse_file(self.mybib)
         journal = db.entries[0]['journal']
         self.assertEqual(journal, new_path[-2]) #TODO a little gross, hardcoded
 
@@ -292,6 +296,7 @@ class TestAddConflict(BibTest):
 }"""
 
 
+    # Field order after exact-duplicate merge: existing entry fields first, then merged 'file' appended
     bibtex_hasfile = """@article{Perrette_2011,
  author = {M. Perrette and A. Yool and G. D. Quartly and E. E. Popova},
  doi = {10.5194/bg-8-515-2011},

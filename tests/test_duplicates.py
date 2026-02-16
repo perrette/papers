@@ -5,6 +5,7 @@ import tempfile
 import unittest
 
 import bibtexparser
+from papers.entries import parse_string as bp_parse_string
 
 from papers.bib import Biblio
 from papers.duplicate import (
@@ -128,10 +129,12 @@ class SimilarityBase(unittest.TestCase):
 
 
     def isduplicate(self, a, b):
-        """test Biblio's eq method for duplicates
+        """test Biblio's eq method for duplicates.
+        Parse a and b separately so v2 (which collapses duplicate keys in one parse) yields two entries.
         """
-        db = bibtexparser.loads(a+'\n'+b)
-        e1, e2 = db.entries
+        db1 = bp_parse_string(a)
+        db2 = bp_parse_string(b)
+        e1, e2 = db1.entries[0], db2.entries[0]
         refs = Biblio(similarity=self.similarity)
         return refs.eq(e1, e2)
 
@@ -205,10 +208,11 @@ class TestDuplicates(TestDuplicatesPartial):
 
     @staticmethod
     def isduplicate(a, b):
-        """test Biblio's eq method for duplicates
-        """
-        db = bibtexparser.loads(a+'\n'+b)
-        e1, e2 = db.entries
+        """test Biblio's eq method for duplicates.
+        Parse a and b separately so v2 yields two entries."""
+        db1 = bp_parse_string(a)
+        db2 = bp_parse_string(b)
+        e1, e2 = db1.entries[0], db2.entries[0]
         refs = Biblio()
         return refs.eq(e1, e2)
 
@@ -368,7 +372,8 @@ class TestCheckResolveDuplicate(BibTest):
 
     def setUp(self):
         self.mybib = tempfile.mktemp(prefix='papers.bib')
-        open(self.mybib, 'w').write(self.original + '\n\n' + self.conflict)
+        # Write conflict first so parse order is (1)=AnotherKey, (2)=Perrette_2011; pick 1/2 tests rely on this order
+        open(self.mybib, 'w').write(self.conflict + '\n\n' + self.original)
 
     def tearDown(self):
         os.remove(self.mybib)

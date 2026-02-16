@@ -3,7 +3,7 @@ import copy
 from pathlib import Path
 import subprocess as sp, sys
 import hashlib
-import bibtexparser
+from papers.entries import parse_string
 from papers import logger
 from papers.filename import Format, NAMEFORMAT, KEYFORMAT
 from papers import __version__
@@ -208,7 +208,7 @@ class Config:
         elif check_files:
             try:
                 bibtexstring = open(self.bibtex).read()
-                db = bibtexparser.loads(bibtexstring)
+                db = parse_string(bibtexstring)
                 if len(db.entries):
                     status = bcolors.OKBLUE+' ({} entries)'.format(len(db.entries))+bcolors.ENDC
                 else:
