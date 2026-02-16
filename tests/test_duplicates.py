@@ -1,3 +1,4 @@
+"""Tests for papers duplicate detection and merging (21% -> higher coverage)"""
 import os
 import subprocess as sp
 import tempfile
@@ -6,7 +7,71 @@ import unittest
 import bibtexparser
 
 from papers.bib import Biblio
+from papers.duplicate import (
+    search_duplicates,
+    list_duplicates,
+    list_uniques,
+    groupby_equal,
+    merge_entries,
+    MergedEntry,
+    ConflictingField,
+)
 from tests.common import PAPERSCMD, paperscmd, BibTest
+
+
+class TestDuplicateSearch(unittest.TestCase):
+    """Unit tests for search_duplicates, list_duplicates, list_uniques"""
+
+    def test_search_duplicates_by_key(self):
+        entries = [(1, 0), (1, 1), (1, 2), (2, 0), (3, 0), (2, 1), (4, 0)]
+        uniques, dups = search_duplicates(entries, key=lambda e: e[0])
+        self.assertEqual(len(uniques), 2)  # (3,0) and (4,0)
+        self.assertEqual(len(dups), 2)  # 2 groups of duplicates
+        self.assertEqual(len(dups[0]), 3)  # three (1,x)
+        self.assertEqual(len(dups[1]), 2)  # two (2,x)
+
+    def test_list_duplicates_returns_all_duplicate_entries(self):
+        entries = [(1, 0), (1, 1), (2, 0), (2, 1)]
+        result = list_duplicates(entries, key=lambda e: e[0])
+        # list_duplicates returns entries in duplicate groups (groups with len > 1)
+        self.assertEqual(len(result), 4)  # (1,0), (1,1), (2,0), (2,1)
+
+    def test_list_uniques_returns_only_unique_entries(self):
+        entries = [(1, 0), (1, 1), (3, 0), (4, 0)]
+        result = list_uniques(entries, key=lambda e: e[0])
+        self.assertEqual(len(result), 2)  # (3,0), (4,0)
+
+
+class TestGroupbyEqual(unittest.TestCase):
+
+    def test_groups_by_equality(self):
+        entries = [(1, 0), (1, 1), (1, 2), (2, 0), (3, 0), (2, 1), (4, 0)]
+        groups = groupby_equal(entries, eq=lambda e1, e2: e1[0] == e2[0])
+        self.assertEqual(len(groups), 4)
+
+
+class TestMergeEntries(unittest.TestCase):
+
+    def test_merge_identical_entries(self):
+        e1 = {"author": "Smith", "year": "2020"}
+        e2 = {"author": "Smith", "year": "2020"}
+        merged = merge_entries([e1, e2])
+        self.assertEqual(merged["author"], "Smith")
+        self.assertEqual(merged["year"], "2020")
+
+    def test_merge_conflicting_entries(self):
+        e1 = {"author": "Smith", "year": "2020"}
+        e2 = {"author": "Jones", "year": "2020"}
+        merged = merge_entries([e1, e2])
+        self.assertIsInstance(merged["author"], ConflictingField)
+        self.assertEqual(merged["year"], "2020")
+
+    def test_merge_force_resolves_conflicts(self):
+        e1 = {"author": "Smith"}
+        e2 = {"author": "Jones"}
+        merged = merge_entries([e1, e2], force=True)
+        self.assertIsInstance(merged, dict)
+        self.assertIn(merged["author"], ["Smith", "Jones"])
 
 
 class SimilarityBase(unittest.TestCase):

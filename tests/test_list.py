@@ -153,6 +153,28 @@ class ListBrokenFileTest(LocalInstallTest):
         self.assertIn('BrokenFile2020', out)
         self.assertIn('Test', out)
 
+class ListDuplicatesTest(LocalInstallTest):
+    """papers list --duplicates lists entries with duplicate DOIs/keys"""
+    initial_content = """@article{Entry1,
+ author = {Author A},
+ doi = {10.5194/same-doi},
+ title = {First Paper},
+ year = {2020}
+}
+@article{Entry2,
+ author = {Author B},
+ doi = {10.5194/same-doi},
+ title = {Second Paper},
+ year = {2021}
+}"""
+    anotherbib_content = None
+
+    def test_list_duplicates(self):
+        out = self.papers('list --plain --duplicates', sp_cmd='check_output')
+        self.assertIn('Entry1', out)
+        self.assertIn('Entry2', out)
+
+
 class ListReviewRequiredTest(LocalInstallTest):
     """papers list --review-required lists suspicious entries (invalid doi, missing fields, etc.)"""
     # Entry with key starting with digit (invalid)
