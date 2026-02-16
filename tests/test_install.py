@@ -344,6 +344,15 @@ class TestUninstall(LocalInstallTest):
         self.assertFalse(self._exists(CONFIG_FILE_LOCAL))
 
 
+class TestStatus(LocalInstallTest):
+    """papers status -v shows configuration (documented in README)"""
+    def test_status_verbose(self):
+        out = self.papers('status -v', sp_cmd='check_output')
+        self.assertIn('configuration', out.lower())
+        self.assertIn(self.mybib, out)
+        self.assertIn(self.filesdir, out)
+
+
 class TestUninstall2(GlobalInstallTest):
     def test_uninstall(self):
         self.assertTrue(self._exists(CONFIG_FILE))

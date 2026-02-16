@@ -1,5 +1,6 @@
 [![pypi](https://img.shields.io/pypi/v/papers-cli)](https://pypi.org/project/papers-cli)
-[![python](https://img.shields.io/badge/python-3.13-blue.svg)]()
+[![python](https://img.shields.io/badge/python-3.9-blue.svg)]()
+[![python](https://img.shields.io/badge/python-3.14t-blue.svg)]()
 [![test](https://github.com/perrette/papers/workflows/CI/badge.svg?query=branch%3Amaster)](https://github.com/perrette/papers/actions)
 
 # papers
@@ -77,6 +78,12 @@ That is equivalent to doing:
     papers add entry.bib --bibtex papers.bib --attachment esd-4-11-2013.pdf --rename --copy
 
 See [Control fields when renaming file](#control-fields-when-renaming-file) for how to specify file naming patterns.
+
+It is also possible to do this on a full directory of files, recursively:
+
+   papers add --rename --recursive /home/perette/playground/papers/papers_test
+
+where, above, the `papers_test` directory contains a few PDF files.  For each PDF, `papers` will attempt to extract the metadata and add the relevant file to the bibliography and renamed files to the files directory.
 
 ### Add library entry from its DOI
 

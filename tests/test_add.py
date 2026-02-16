@@ -203,7 +203,15 @@ class TestAddBib(BibTest):
         func = lambda: paperscmd(f'add --bibtex {self.mybib} --filesdir {self.filesdir} --attachment {self.pdf} --doi 123 --no-query-doi')
         self.assertRaises(Exception, func)
 
-
+    def test_add_doi_only_no_pdf(self):
+        """papers add --doi X --bibtex Y creates bibtex entry without PDF attachment"""
+        open(self.mybib, 'w').write('')
+        doi = '10.5194/bg-8-515-2011'  # use prepare_paper DOI (key1)
+        paperscmd(f'add --bibtex {self.mybib} --doi {doi}')
+        bib = Biblio.load(self.mybib, '')
+        self.assertEqual(len(bib.db.entries), 1)
+        self.assertEqual(bib.db.entries[0]['doi'], doi)
+        self.assertNotIn('file', bib.db.entries[0])  # no file attachment
 
     def tearDown(self):
         os.remove(self.mybib)

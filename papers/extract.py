@@ -74,9 +74,7 @@ def readpdf(pdf, first=None, last=None):
         return readpdf_fitz(pdf, first=first, last=last)
     except ImportError:
         logger.warning("PyMuPDF not installed, using pdftotext")
-        return readpdf_fitz(pdf, first=first, last=last)
-
-    return txt
+        return readpdf_poputils(pdf, first=first, last=last)
 
 
 def readpdf_image(pdf, first=None, last=None):
@@ -419,14 +417,6 @@ def fetch_bibtex_by_doi(doi):
         pass
 
     raise DOIRequestError(f"Unable to fetch BibTeX for DOI {doi}")
-
-
-@cached('crossref-json.json')
-def fetch_json_by_doi(doi):
-    url = "http://api.crossref.org/works/"+doi+"/transform/application/json"
-    jsontxt = work.do_http_request('get', url, custom_header={'user-agent': str(work.etiquette)}).text
-    return jsontxt.dumps(json)
-
 
 
 def _get_page_fast(pagerequest):
