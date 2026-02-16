@@ -3,6 +3,7 @@ Key and file name formatting
 """
 from slugify import slugify
 from papers.encoding import family_names
+from papers.bibtexparser_compat import get_entry_val
 
 def listtag(words, maxlength=30, minwordlen=3, n=100, sep='-'):
     # preformat & filter words
@@ -53,7 +54,7 @@ def make_template_fields(
     Each one of these needs a specific, explicit assignment below.
     """
     # names = bibtexparser.customization.getnames(entry.get('author','unknown').lower().split(' and '))
-    _names = family_names(entry.get("author", UNKNOWN_AUTHOR).lower())
+    _names = family_names(get_entry_val(entry, "author", UNKNOWN_AUTHOR).lower())
     _names = [slugify(nm) for nm in _names]
     author = author_sep.join([nm for nm in _names[:author_num]])
     Author = author_sep.join([nm.capitalize() for nm in _names[:author_num]])
@@ -61,11 +62,11 @@ def make_template_fields(
     authorX = AuthorX.lower()
 
     # a thing that's not a bibtex article won't have a journal
-    journal = entry.get("journal", UNKNOWN_JOURNAL)
+    journal = get_entry_val(entry, "journal", UNKNOWN_JOURNAL)
 
-    year = str(entry.get("year", UNKNOWN_YEAR))
+    year = str(get_entry_val(entry, "year", UNKNOWN_YEAR))
 
-    if not title_word_num or not entry.get("title", ""):
+    if not title_word_num or not get_entry_val(entry, "title", ""):
         title = UNKNOWN_TITLE
         Title = UNKNOWN_TITLE
     else:
@@ -90,10 +91,10 @@ def make_template_fields(
         "year": year,
         "title": title,
         "Title": Title,
-        "ID": entry.get("ID"),
-        "doi": entry.get("doi"),
-        "doi_": slugify(entry.get("doi", "")),
-        "doi_or_id": slugify(entry.get("doi", entry.get("ID", ""))),
+        "ID": get_entry_val(entry, "ID", ""),
+        "doi": get_entry_val(entry, "doi", ""),
+        "doi_": slugify(get_entry_val(entry, "doi", "")),
+        "doi_or_id": slugify(get_entry_val(entry, "doi", get_entry_val(entry, "ID", ""))),
     }
 
 
@@ -133,7 +134,7 @@ class Format:
         return vars(self)
 
     def is_unknown(self, entry):
-        conditions = ( entry.get("author", UNKNOWN_AUTHOR) == UNKNOWN_AUTHOR, entry.get("year", UNKNOWN_YEAR) == UNKNOWN_YEAR, entry.get("title", UNKNOWN_TITLE) == UNKNOWN_TITLE)
+        conditions = ( get_entry_val(entry, "author", UNKNOWN_AUTHOR) == UNKNOWN_AUTHOR, get_entry_val(entry, "year", UNKNOWN_YEAR) == UNKNOWN_YEAR, get_entry_val(entry, "title", UNKNOWN_TITLE) == UNKNOWN_TITLE)
         if self.unknown_strict:
             return all(conditions)
         else:
@@ -148,6 +149,8 @@ class Format:
         return self.template.format(**fields)
 
     def __call__(self, entry):
+        # Support both dict and bibtexparser v2 Entry (convert to dict for ** unpacking)
+        entry = dict(entry.items()) if hasattr(entry, 'items') and not isinstance(entry, dict) else entry
         return self.render(**entry)
 
 

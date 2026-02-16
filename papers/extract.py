@@ -12,7 +12,14 @@ import papers
 from papers.config import cached
 from papers import logger
 from papers.encoding import family_names
-from bibtexparser.customization import convert_to_unicode
+from papers.bibtexparser_compat import (
+    get_entry_val,
+    parse_string,
+    write_string,
+    latex_to_unicode_library,
+    entry_from_dict,
+    library_from_entries,
+)
 
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
@@ -555,13 +562,10 @@ def crossref_to_bibtex(message):
 
     bib_entry = {k: v for k, v in bib_entry.items() if v}  # Remove empty fields
 
-    # Create a BibDatabase object
-    db = bibtexparser.bibdatabase.BibDatabase()
-    db.entries = [bib_entry]
-
-    # Write to a BibTeX string
-    writer = bibtexparser.bwriter.BibTexWriter()
-    bibtex_str = writer.write(db)
+    # Build entry and library (v2 API)
+    entry = entry_from_dict(bib_entry)
+    lib = library_from_entries([entry])
+    bibtex_str = write_string(lib)
 
     return bibtex_str
 
@@ -604,17 +608,19 @@ def fetch_entry(e):
     if 'doi' in e and isvaliddoi(e['doi']):
         bibtex = fetch_bibtex_by_doi(e['doi'])
     else:
-        e = convert_to_unicode(e)
+        lib = library_from_entries([e] if hasattr(e, 'fields_dict') else [entry_from_dict(e)])
+        lib = latex_to_unicode_library(lib)
+        e = lib.entries[0] if lib.entries else e
         kw = {}
-        if e.get('author',''):
+        if get_entry_val(e, 'author', ''):
             kw['author'] = family_names(e['author'])
-        if e.get('title',''):
+        if get_entry_val(e, 'title', ''):
             kw['title'] = e['title']
         if kw:
             bibtex = fetch_bibtex_by_fulltext_crossref('', **kw)
         else:
             ValueError('no author nor title field')
-    db = bibtexparser.loads(bibtex)
+    db = parse_string(bibtex)
     return db.entries[0]
 
 
@@ -644,9 +650,9 @@ def download_bibtex(url):
     return response.text
 
 def parse_bibtex(bibtex_content, target_doi):
-    bib_database = bibtexparser.loads(bibtex_content)
+    bib_database = parse_string(bibtex_content)
     for entry in bib_database.entries:
-        if (entry.get('doi', '') or entry.get('DOI', '')).lower() == target_doi.lower():
+        if (get_entry_val(entry, 'doi', '') or get_entry_val(entry, 'DOI', '')).lower() == target_doi.lower():
             return entry
     return None
 

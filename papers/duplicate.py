@@ -6,11 +6,20 @@ import difflib
 
 import bibtexparser
 
+from papers.bibtexparser_compat import (
+    get_entry_val,
+    parse_string,
+    write_string,
+    library_from_entries,
+    entry_from_dict,
+)
+
 import logging
 logger = logging.getLogger(__name__)
 
 from papers.extract import isvaliddoi, fetch_entry
 from papers.encoding import parse_file, format_file, format_entries
+from papers.bibtexparser_compat import update_entry
 
 from papers.utils import bcolors, checksum
 
@@ -134,13 +143,13 @@ class MergedEntry(dict):
 
 
 def merge_entries(entries, force=False):
-    merged = MergedEntry() # dict
+    merged = MergedEntry()  # dict
     for e in entries:
-        for k in e:
+        for k, v in e.items():
             if k not in merged:
                 merged[k] = ConflictingField([])
-            if e[k] not in merged[k].choices:
-                merged[k].choices.append(e[k])
+            if v not in merged[k].choices:
+                merged[k].choices.append(v)
     return merged.resolve(force)
 
 
@@ -208,9 +217,8 @@ def entry_ndiff(entries, color=True):
             m[k] = SECRET_STRING.format(k)
         elif any(k not in e for e in entries):
             somemissing.append(k)
-    db = bibtexparser.bibdatabase.BibDatabase()
-    db.entries.append(m)
-    s = bibtexparser.dumps(db)
+    lib = library_from_entries([m])
+    s = write_string(lib)
     lines = []
     for line in s.splitlines():
         matches = regex.findall(line)
@@ -245,9 +253,6 @@ def entry_sdiff(entries, color=True, bcolors=bcolors, best=None):
     if not color:
         bcolors = dummybcolors
 
-    db = bibtexparser.bibdatabase.BibDatabase()
-    db.entries.append(None)
-
     merged = merge_entries(entries)
     conflicting_fields = [k for k in merged if isinstance(merged[k], ConflictingField)]
     somemissing = [k for k in merged if any(k not in e for e in entries)]
@@ -255,8 +260,8 @@ def entry_sdiff(entries, color=True, bcolors=bcolors, best=None):
     entry_strings = []
 
     for i, entry in enumerate(entries):
-        db.entries[0] = entry
-        string = bibtexparser.dumps(db)
+        lib = library_from_entries([entry])
+        string = write_string(lib)
         # color the conflicting fields
         lines = []
         for line in string.splitlines():
@@ -286,7 +291,7 @@ def merge_files(entries, relative_to=None):
     checksums = []
     files = []
     for e in entries:
-        for f in parse_file(e.get('file',''), relative_to=relative_to):
+        for f in parse_file(get_entry_val(e, 'file', ''), relative_to=relative_to):
             check = checksum(f) if os.path.exists(f) else None
             if f not in files and (check is None or check not in checksums):
                 files.append(f)
@@ -355,9 +360,8 @@ def edit_entries(entries, diff=False, ndiff=False, editor=None):
         else:
             entrystring = entry_diff(*entries, color=False)
     else:
-        db = bibtexparser.bibdatabase.BibDatabase()
-        db.entries.extend(entries)
-        entrystring = bibtexparser.dumps(db)
+        lib = library_from_entries(entries)
+        entrystring = write_string(lib)
 
     with open(filename, 'w') as f:
         f.write(entrystring)
@@ -366,7 +370,7 @@ def edit_entries(entries, diff=False, ndiff=False, editor=None):
 
     if res == 0:
         logger.info('sucessfully edited file, insert edited entries')
-        db_updated = bibtexparser.loads(open(filename).read())
+        db_updated = parse_string(open(filename).read())
         return db_updated.entries
 
     else:
@@ -376,7 +380,10 @@ def edit_entries(entries, diff=False, ndiff=False, editor=None):
 
 def score(e):
     ' entry score, in terms of reliability '
-    return (100*('doi' in e and isvaliddoi(e['doi'])) + 50*('title' in e) + 10*('author' in e) + 1*('file' in e))*100 + len(e)
+    from papers.bibtexparser_compat import get_entry_val
+    has_doi = get_entry_val(e, 'doi', '') and isvaliddoi(get_entry_val(e, 'doi', ''))
+    n_fields = len(e.fields) if hasattr(e, 'fields') else len(e)
+    return (100*has_doi + 50*('title' in e) + 10*('author' in e) + 1*('file' in e))*100 + n_fields
 
 
 def bestentry(entries):
@@ -507,6 +514,10 @@ class DuplicateHandler:
             elif isinstance(e, dict):
                 self.entries = [e]
 
+            elif hasattr(e, 'fields_dict'):
+                # v2 Entry (user picked one entry by index)
+                self.entries = [e]
+
             elif isinstance(e, list):
                 self.entries = e
 
@@ -598,18 +609,22 @@ def conflict_resolution_on_insert(old, new, mode='i'):
 
     elif mode == 'u':
         logger.info('update missing fields')
-        new.update(old)
-        old.update(new)
+        update_entry(new, old)
+        update_entry(old, new)
         resolved = [old]
 
     elif mode == 'U':
         logger.info('update with other')
-        old.update(new)
+        update_entry(old, new)
         resolved = [old]
 
     # skip
     elif mode == 's':
         resolved = [old]
+
+    # raise on conflict
+    elif mode == 'r':
+        raise ValueError('conflicting entries')
 
     # edit
     elif mode == 'e':
