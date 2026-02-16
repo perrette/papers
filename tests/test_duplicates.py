@@ -5,6 +5,7 @@ import tempfile
 import unittest
 
 import bibtexparser
+from papers.entries import parse_string as bp_parse_string
 
 from papers.bib import Biblio
 from papers.duplicate import (
@@ -16,6 +17,7 @@ from papers.duplicate import (
     MergedEntry,
     ConflictingField,
 )
+from papers.entries import entry_from_dict, get_entry_val
 from tests.common import PAPERSCMD, paperscmd, BibTest
 
 
@@ -128,10 +130,12 @@ class SimilarityBase(unittest.TestCase):
 
 
     def isduplicate(self, a, b):
-        """test Biblio's eq method for duplicates
+        """test Biblio's eq method for duplicates.
+        Parse a and b separately so v2 (which collapses duplicate keys in one parse) yields two entries.
         """
-        db = bibtexparser.loads(a+'\n'+b)
-        e1, e2 = db.entries
+        db1 = bp_parse_string(a)
+        db2 = bp_parse_string(b)
+        e1, e2 = db1.entries[0], db2.entries[0]
         refs = Biblio(similarity=self.similarity)
         return refs.eq(e1, e2)
 
@@ -201,14 +205,126 @@ class TestDuplicatesPartial(TestDuplicatesFair):
         self.assertTrue(self.isduplicate(self.reference, self.conflictdoi))
 
 
+class TestInsertEntryCheckSimilarityLevels(unittest.TestCase):
+    """
+    Test that insert_entry(..., check_duplicate=True) applies each similarity level
+    correctly. Protects the duplicate-check logic (and index optimization) from
+    regressions: duplicates must be merged, non-duplicates must be added.
+    """
+
+    def _add_entry(self, biblio, entry_dict, check_duplicate=True, on_conflict='u'):
+        entry = entry_from_dict(entry_dict)
+        return biblio.insert_entry(
+            entry, check_duplicate=check_duplicate, on_conflict=on_conflict
+        )
+
+    def test_exact_duplicate_merged_non_duplicate_added(self):
+        b = Biblio(similarity='EXACT')
+        e1 = {'ENTRYTYPE': 'article', 'ID': 'Key1', 'author': 'Smith', 'title': 'Same', 'doi': '10.1/a', 'year': '2020'}
+        self._add_entry(b, e1)
+        self.assertEqual(len(b.entries), 1)
+        # Same content (including same key) → entry_content_equal → exact duplicate → merge
+        e2 = {'ENTRYTYPE': 'article', 'ID': 'Key1', 'author': 'Smith', 'title': 'Same', 'doi': '10.1/a', 'year': '2020'}
+        merged = self._add_entry(b, e2)
+        self.assertEqual(len(b.entries), 1, 'EXACT: duplicate should be merged')
+        self.assertEqual(get_entry_val(merged[0], 'ID', '').lower(), 'key1', 'EXACT: should keep first entry')
+        # Different title → not duplicate → add
+        e3 = {'ENTRYTYPE': 'article', 'ID': 'Key3', 'author': 'Smith', 'title': 'Other', 'doi': '10.1/b', 'year': '2020'}
+        self._add_entry(b, e3)
+        self.assertEqual(len(b.entries), 2, 'EXACT: non-duplicate should be added')
+
+    def test_good_duplicate_merged_non_duplicate_added(self):
+        b = Biblio(similarity='GOOD')
+        e1 = {'ENTRYTYPE': 'article', 'ID': 'Key1', 'author': 'Smith, John', 'title': 'A paper', 'doi': '10.1/a', 'year': '2020'}
+        self._add_entry(b, e1)
+        self.assertEqual(len(b.entries), 1)
+        # Same (doi, authortitle), different key/year → GOOD duplicate → merge
+        e2 = {'ENTRYTYPE': 'article', 'ID': 'Key2', 'author': 'Smith, John', 'title': 'A paper', 'doi': '10.1/a', 'year': '2021'}
+        self._add_entry(b, e2)
+        self.assertEqual(len(b.entries), 1, 'GOOD: duplicate should be merged')
+        # Different authortitle → not duplicate
+        e3 = {'ENTRYTYPE': 'article', 'ID': 'Key3', 'author': 'Jones', 'title': 'Other', 'doi': '10.1/b', 'year': '2020'}
+        self._add_entry(b, e3)
+        self.assertEqual(len(b.entries), 2, 'GOOD: non-duplicate should be added')
+
+    def test_fair_duplicate_merged_non_duplicate_added(self):
+        b = Biblio(similarity='FAIR')
+        e1 = {'ENTRYTYPE': 'article', 'ID': 'Key1', 'author': 'Smith', 'title': 'Paper A', 'doi': '10.1/a', 'year': '2020'}
+        self._add_entry(b, e1)
+        self.assertEqual(len(b.entries), 1)
+        # Same doi, different author/title → FAIR duplicate → merge
+        e2 = {'ENTRYTYPE': 'article', 'ID': 'Key2', 'author': 'Jones', 'title': 'Paper B', 'doi': '10.1/a', 'year': '2021'}
+        self._add_entry(b, e2)
+        self.assertEqual(len(b.entries), 1, 'FAIR: duplicate (same doi) should be merged')
+        # Different doi and different authortitle → not duplicate
+        e3 = {'ENTRYTYPE': 'article', 'ID': 'Key3', 'author': 'Lee', 'title': 'Other', 'doi': '10.1/b', 'year': '2020'}
+        self._add_entry(b, e3)
+        self.assertEqual(len(b.entries), 2, 'FAIR: non-duplicate should be added')
+
+    def test_partial_duplicate_merged_non_duplicate_added(self):
+        b = Biblio(similarity='PARTIAL')
+        e1 = {'ENTRYTYPE': 'article', 'ID': 'Key1', 'author': 'Smith', 'title': 'Same title', 'doi': '10.1/a', 'year': '2020'}
+        self._add_entry(b, e1)
+        self.assertEqual(len(b.entries), 1)
+        # Same authortitle, different doi → PARTIAL duplicate → merge
+        e2 = {'ENTRYTYPE': 'article', 'ID': 'Key2', 'author': 'Smith', 'title': 'Same title', 'doi': '10.1/b', 'year': '2021'}
+        self._add_entry(b, e2)
+        self.assertEqual(len(b.entries), 1, 'PARTIAL: duplicate (same authortitle) should be merged')
+        # Different doi and different authortitle → not duplicate
+        e3 = {'ENTRYTYPE': 'article', 'ID': 'Key3', 'author': 'Jones', 'title': 'Other', 'doi': '10.1/c', 'year': '2020'}
+        self._add_entry(b, e3)
+        self.assertEqual(len(b.entries), 2, 'PARTIAL: non-duplicate should be added')
+
+    def test_fuzzy_duplicate_merged_non_duplicate_added(self):
+        b = Biblio(similarity='FUZZY')
+        # Same authortitle → GOOD duplicate (score 103 >= 100) → merge. Exercises FUZZY full-scan path.
+        e1 = {'ENTRYTYPE': 'article', 'ID': 'Key1', 'author': 'Smith, John', 'title': 'Climate change impacts', 'doi': '', 'year': '2020'}
+        self._add_entry(b, e1)
+        self.assertEqual(len(b.entries), 1)
+        e2 = {'ENTRYTYPE': 'article', 'ID': 'Key2', 'author': 'Smith, John', 'title': 'Climate change impacts', 'doi': '', 'year': '2021'}
+        self._add_entry(b, e2)
+        self.assertEqual(len(b.entries), 1, 'FUZZY: duplicate (same authortitle) should be merged')
+        # Clearly different → not duplicate
+        e3 = {'ENTRYTYPE': 'article', 'ID': 'Key3', 'author': 'Jones', 'title': 'Unrelated topic', 'doi': '10.1/x', 'year': '2020'}
+        self._add_entry(b, e3)
+        self.assertEqual(len(b.entries), 2, 'FUZZY: non-duplicate should be added')
+
+    def test_batch_add_with_index_same_result_as_single_add(self):
+        """Index optimization (add_bibtex) must yield same duplicate result as single inserts."""
+        bib_with_dup = """@article{Key1,
+ author = {Smith},
+ title = {Same},
+ doi = {10.1/a},
+ year = {2020}
+}
+@article{Key2,
+ author = {Smith},
+ title = {Same},
+ doi = {10.1/a},
+ year = {2021}
+}
+"""
+        b = Biblio(similarity='PARTIAL')
+        b.add_bibtex(bib_with_dup, check_duplicate=True, on_conflict='u')
+        # Key1 and Key2 are GOOD/PARTIAL duplicates (same doi, same authortitle) → merged to one
+        self.assertEqual(len(b.entries), 1, 'add_bibtex with duplicate pair should merge (index path)')
+        # Same bib added one-by-one should also merge
+        b2 = Biblio(similarity='PARTIAL')
+        db = bp_parse_string(bib_with_dup)
+        for e in db.entries:
+            b2.insert_entry(e, check_duplicate=True, on_conflict='u')
+        self.assertEqual(len(b2.entries), 1, 'single inserts with duplicate pair should merge (no-index path)')
+
+
 class TestDuplicates(TestDuplicatesPartial):
 
     @staticmethod
     def isduplicate(a, b):
-        """test Biblio's eq method for duplicates
-        """
-        db = bibtexparser.loads(a+'\n'+b)
-        e1, e2 = db.entries
+        """test Biblio's eq method for duplicates.
+        Parse a and b separately so v2 yields two entries."""
+        db1 = bp_parse_string(a)
+        db2 = bp_parse_string(b)
+        e1, e2 = db1.entries[0], db2.entries[0]
         refs = Biblio()
         return refs.eq(e1, e2)
 
@@ -368,7 +484,8 @@ class TestCheckResolveDuplicate(BibTest):
 
     def setUp(self):
         self.mybib = tempfile.mktemp(prefix='papers.bib')
-        open(self.mybib, 'w').write(self.original + '\n\n' + self.conflict)
+        # Write conflict first so parse order is (1)=AnotherKey, (2)=Perrette_2011; pick 1/2 tests rely on this order
+        open(self.mybib, 'w').write(self.conflict + '\n\n' + self.original)
 
     def tearDown(self):
         os.remove(self.mybib)

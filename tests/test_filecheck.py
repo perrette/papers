@@ -7,7 +7,8 @@ import shutil
 import tempfile
 
 from papers.bib import Biblio
-from tests.common import paperscmd, prepare_paper, BibTest
+from papers.entries import get_entry_val
+from tests.common import PAPERSCMD, paperscmd, prepare_paper, prepare_paper2, BibTest
 
 
 class TestFileCheck(BibTest):
@@ -44,8 +45,8 @@ EOF""", cwd=self.workdir)
         paperscmd(f'filecheck --bibtex {self.mybib} --filesdir {self.filesdir} --rename', cwd=self.workdir)
         self.assertTrue(os.path.exists(file_rename))
         self.assertFalse(os.path.exists(self.pdf))
-        biblio = Biblio.load(self.mybib, "")
-        e = biblio.entries[[e["ID"] for e in biblio.entries].index(self.key)]
+        biblio = Biblio.load(self.mybib, '')
+        e = next(ent for ent in biblio.entries if get_entry_val(ent, 'ID', '').lower() == self.key.lower())
         files = biblio.get_files(e)
         del biblio
         self.assertTrue(len(files) == 1)

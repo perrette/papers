@@ -1,18 +1,17 @@
 import os
-import bibtexparser
 from pathlib import Path
 from unidecode import unidecode as unicode_to_ascii
-from papers.utils import ansi_link as link, bcolors
-from papers import logger
 
-# fix bibtexparser call on empty strings
-_bloads_orig = bibtexparser.loads
-def _bloads_fixed(s):
-    if s == '':
-        return bibtexparser.bibdatabase.BibDatabase()
-    else:
-        return _bloads_orig(s)
-bibtexparser.loads = _bloads_fixed
+from bibtexparser.middlewares import LatexDecodingMiddleware
+
+from papers import logger
+from papers.entries import (
+    get_entry_val,
+    library_from_entries,
+    format_library,
+    update_entry,
+)
+from papers.utils import ansi_link as link, bcolors
 
 
 # Parse / format bibtex file entry
@@ -65,7 +64,7 @@ def update_file_path(entry, from_relative_to, to_relative_to, check=False):
                 assert os.path.exists(f), f"{f} does not exist"
         new_file = format_file(file_path, to_relative_to)
         if new_file != old_file:
-            logger.debug(f"""update_file_path {entry.get("ID")} {old_file} (relative to {repr(from_relative_to)}) {new_file} (relative to {repr(to_relative_to)})""")
+            logger.debug(f"""update_file_path {get_entry_val(entry, 'ID', '')} {old_file} (relative to {repr(from_relative_to)}) {new_file} (relative to {repr(to_relative_to)})""")
             # logger.debug(f"""{entry.get("ID")}: update file {old_file} to {new_file}""")
         entry["file"] = new_file
         if old_file != new_file:
@@ -86,30 +85,49 @@ def format_file(files, relative_to=None):
 
 
 def format_entries(entries):
-    db = bibtexparser.bibdatabase.BibDatabase()
-    db.entries.extend(entries)
-    return bibtexparser.dumps(db)
+    lib = library_from_entries(entries)
+    return format_library(lib)
+
+
+def latex_to_unicode_library(library):
+    """Apply LaTeX-to-Unicode decoding to a library."""
+    return LatexDecodingMiddleware().transform(library=library)
+
+
+def convert_entry_to_unicode(entry):
+    """Convert a single entry's LaTeX field values to unicode in place."""
+    lib = library_from_entries([entry])
+    lib = latex_to_unicode_library(lib)
+    update_entry(entry, lib.entries[0])
+
+
+def entry_to_unicode_dict(entry):
+    """Return a dict of entry fields (excluding ID) with LaTeX decoded to unicode (for comparison)."""
+    lib = library_from_entries([entry])
+    lib = latex_to_unicode_library(lib)
+    e = lib.entries[0]
+    return {k: get_entry_val(e, k, '') for k, _ in e.items() if k != 'ID'}
 
 def parse_keywords(e):
-    return [w.strip() for w in e.get('keywords', '').split(',') if w.strip()]
+    return [w.strip() for w in get_entry_val(e, 'keywords', '').split(',') if w.strip()]
 
 def format_key(e, no_key=False):
     if no_key:
         key = lambda e: ''
     else:
-        n = len(parse_file(e.get('file','')))
-        key = lambda e: n*(bcolors.BOLD)+bcolors.OKBLUE+e['ID']+':'+bcolors.ENDC
+        n = len(parse_file(get_entry_val(e, 'file', '')))
+        key = lambda e: n*(bcolors.BOLD)+bcolors.OKBLUE+get_entry_val(e, 'ID', '')+':'+bcolors.ENDC
     return key(e)
 
 def format_entry(biblio, e, no_key=False, prefix=""):
     """One-liner formatter
     """
-    tit = e.get('title', '')[:60]+ ('...' if len(e.get('title', ''))>60 else '')
+    tit = get_entry_val(e, 'title', '')[:60]+ ('...' if len(get_entry_val(e, 'title', ''))>60 else '')
     info = []
-    if e.get('doi',''):
+    if get_entry_val(e, 'doi', ''):
         info.append(link(f"https://doi.org/{e['doi']}", 'doi:'+e['doi']))
 
-    files = parse_file(e.get('file',''), relative_to=biblio.relative_to)
+    files = parse_file(get_entry_val(e, 'file', ''), relative_to=biblio.relative_to)
     n = len(files)
 
     if n:
@@ -117,7 +135,7 @@ def format_entry(biblio, e, no_key=False, prefix=""):
         ansi_link = link(file_link, f'{"file" if n == 1 else "files"}:{str(n)}')
         info.append(bcolors.OKGREEN+ansi_link+bcolors.ENDC)
 
-    if e.get('keywords',''):
+    if get_entry_val(e, 'keywords', ''):
         keywords = parse_keywords(e)
         info.append(bcolors.WARNING+" | ".join(keywords)+bcolors.ENDC)
 
@@ -169,7 +187,16 @@ def strip_outmost_brackets(family):
 
 
 def standard_name(author):
-    return " and ".join(bibtexparser.customization.author({"author": author}).get("author",[]))
+    """Normalize author string to 'Last, First' per author (e.g. 'John Smith and Jane Doe' -> 'Smith, John and Doe, Jane')."""
+    parts = [s.strip() for s in author.split(" and ")]
+    result = []
+    for p in parts:
+        if "," in p:
+            result.append(p)
+        else:
+            tokens = p.rsplit(" ", 1)
+            result.append(tokens[1] + ", " + tokens[0] if len(tokens) == 2 else p)
+    return " and ".join(result)
 
 
 def family_names(author_field):
