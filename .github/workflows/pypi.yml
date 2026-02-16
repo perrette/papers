@@ -1,3 +1,7 @@
+# Publishes to PyPI on tag push (e.g. v2.16.1).
+# If this job fails with "400 Bad Request", the package may still be on PyPI: that usually
+# means the workflow ran twice (e.g. tag pushed twice or job re-run) and the second upload
+# failed because the version already exists. Use verbose: true output to see the real error.
 name: Publish to PyPI
 
 on:
@@ -34,3 +38,6 @@ jobs:
 
     - name: Publish to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        # Show full PyPI error (e.g. "400 File already exists") when upload fails
+        verbose: true
