@@ -6,7 +6,9 @@ LaTeX-to-unicode conversion, and parse/write with empty-string handling.
 
 import bibtexparser
 from bibtexparser import Library
+from bibtexparser.middlewares import LatexDecodingMiddleware, SortFieldsAlphabeticallyMiddleware
 from bibtexparser.model import Entry, Field
+from bibtexparser.writer import BibtexFormat
 
 
 def get_entry_val(entry, key, default=''):
@@ -64,15 +66,13 @@ def entry_content_equal(entry, other, skip_keys=()):
 def entry_copy(entry):
     """Return a copy of an entry. v2 Entry has no .copy() method."""
     if hasattr(entry, 'fields_dict'):
-        from bibtexparser.model import Entry as BpEntry, Field
         fields = [Field(f.key, f.value) for f in entry.fields]
-        return BpEntry(entry_type=entry.entry_type, key=entry.key, fields=fields)
+        return Entry(entry_type=entry.entry_type, key=entry.key, fields=fields)
     return dict(entry)
 
 
 def latex_to_unicode_library(library):
     """Apply LaTeX-to-Unicode decoding to a library (replaces v1 convert_to_unicode)."""
-    from bibtexparser.middlewares import LatexDecodingMiddleware
     return LatexDecodingMiddleware().transform(library=library)
 
 
@@ -98,8 +98,6 @@ def parse_file(path, encoding='utf-8'):
 def write_string(library):
     """Serialize a Library to a BibTeX string (single-space indent, double newline between entries).
     Fields are written in alphabetical order (v1-compatible). Mutates the library in place (field order)."""
-    from bibtexparser.middlewares import SortFieldsAlphabeticallyMiddleware
-    from bibtexparser.writer import BibtexFormat
     library = SortFieldsAlphabeticallyMiddleware().transform(library=library)
     fmt = BibtexFormat()
     fmt.indent = " "  # test_add expected strings use one space, not tab

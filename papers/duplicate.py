@@ -380,7 +380,6 @@ def edit_entries(entries, diff=False, ndiff=False, editor=None):
 
 def score(e):
     ' entry score, in terms of reliability '
-    from papers.bibtexparser_compat import get_entry_val
     has_doi = get_entry_val(e, 'doi', '') and isvaliddoi(get_entry_val(e, 'doi', ''))
     n_fields = len(e.fields) if hasattr(e, 'fields') else len(e)
     return (100*has_doi + 50*('title' in e) + 10*('author' in e) + 1*('file' in e))*100 + n_fields
