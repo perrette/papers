@@ -524,7 +524,7 @@ class Biblio:
 
 
     def format(self):
-        self.sort()  # consistent order by type and key before writing
+        """Return the library as a BibTeX string. Does not sort; call sort() first if you need ordered output."""
         return write_string(self.db)
 
     def save(self, bibtex):
@@ -532,6 +532,7 @@ class Biblio:
             shutil.copy(bibtex, backupfile(bibtex))
         if self.relative_to not in (os.path.sep, None) and Path(self.relative_to).resolve() != Path(bibtex).parent.resolve():
             logger.warning("Saving bibtex file with relative paths may break links. Consider using `Biblio.update_file_path(Path(bibtex).parent)` before.")
+        self.sort()  # consistent order before writing
         s = self.format()
         open(bibtex, 'w').write(s)
 

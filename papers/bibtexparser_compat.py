@@ -97,16 +97,14 @@ def parse_file(path, encoding='utf-8'):
 
 def write_string(library):
     """Serialize a Library to a BibTeX string (single-space indent, double newline between entries).
-    Fields are written in alphabetical order (v1-compatible) without mutating the input library."""
-    from copy import deepcopy
+    Fields are written in alphabetical order (v1-compatible). Mutates the library in place (field order)."""
     from bibtexparser.middlewares import SortFieldsAlphabeticallyMiddleware
     from bibtexparser.writer import BibtexFormat
-    lib = deepcopy(library)
-    lib = SortFieldsAlphabeticallyMiddleware().transform(library=lib)
+    library = SortFieldsAlphabeticallyMiddleware().transform(library=library)
     fmt = BibtexFormat()
     fmt.indent = " "  # test_add expected strings use one space, not tab
     fmt.block_separator = "\n"  # one newline between entries (entry already ends with \n => one blank line)
-    return bibtexparser.write_string(lib, bibtex_format=fmt)
+    return bibtexparser.write_string(library, bibtex_format=fmt)
 
 
 def entry_from_dict(d):
