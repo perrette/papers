@@ -136,6 +136,39 @@ class SearchTest(ListTest):
         self.assertMultiLineEqual(out, self.initial_content)
 
 
+class ListBrokenFileTest(LocalInstallTest):
+    """papers list --broken-file lists entries with broken file links"""
+    # Entry with file pointing to non-existent path
+    initial_content = """@article{BrokenFile2020,
+ author = {John Doe},
+ doi = {10.5194/test-2020},
+ file = {:nonexistent/path/to/file.pdf:pdf},
+ title = {Test},
+ year = {2020}
+}"""
+    anotherbib_content = None
+
+    def test_list_broken_file(self):
+        out = self.papers('list --plain --broken-file', sp_cmd='check_output')
+        self.assertIn('BrokenFile2020', out)
+        self.assertIn('Test', out)
+
+class ListReviewRequiredTest(LocalInstallTest):
+    """papers list --review-required lists suspicious entries (invalid doi, missing fields, etc.)"""
+    # Entry with key starting with digit (invalid)
+    initial_content = """@article{2020InvalidKey,
+ author = {John Doe},
+ doi = {10.5194/test-2020},
+ title = {Test Article},
+ year = {2020}
+}"""
+    anotherbib_content = None
+
+    def test_list_review_required_invalid_key(self):
+        out = self.papers('list --plain --review-required', sp_cmd='check_output')
+        self.assertIn('2020InvalidKey', out)
+
+
 class EditTest(ListTest):
     def test_delete(self):
         out = self.papers(f'list --author perrette --delete', sp_cmd='check_output')
