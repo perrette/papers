@@ -9,8 +9,24 @@ from papers.utils import (
     strip_all,
     search_config,
     check_filesdir,
+    checksum,
+    hash_bytestr_iter,
+    file_as_blockiter,
+    ansi_link,
     bcolors,
 )
+
+
+class TestAnsiLink(unittest.TestCase):
+
+    def test_ansi_link_with_label(self):
+        result = ansi_link("https://example.com", "click here")
+        self.assertIn("click here", result)
+        self.assertIn("example.com", result)
+
+    def test_ansi_link_without_label_uses_uri(self):
+        result = ansi_link("https://example.com")
+        self.assertIn("example.com", result)
 
 
 class TestStripColors(unittest.TestCase):
@@ -64,6 +80,30 @@ class TestSearchConfig(unittest.TestCase):
             open(config_file, 'w').close()
             result = search_config(["papersconfig.json"], subdir)
             self.assertEqual(result, config_file)
+
+
+class TestChecksum(unittest.TestCase):
+
+    def test_checksum_deterministic(self):
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.bin') as f:
+            f.write(b'hello world')
+            path = f.name
+        try:
+            c1 = checksum(path)
+            c2 = checksum(path)
+            self.assertEqual(c1, c2)
+            self.assertEqual(len(c1), 32)  # sha256 digest (bytes)
+        finally:
+            os.unlink(path)
+
+
+class TestHashBytestrIter(unittest.TestCase):
+
+    def test_ashexstr_returns_hex_string(self):
+        result = hash_bytestr_iter(iter([b'hello']), __import__('hashlib').sha256(), ashexstr=True)
+        self.assertIsInstance(result, str)
+        self.assertEqual(len(result), 64)
+        self.assertTrue(all(c in '0123456789abcdef' for c in result))
 
 
 class TestCheckFilesdir(unittest.TestCase):

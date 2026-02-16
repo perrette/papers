@@ -6,11 +6,33 @@ from papers.bib import (
     isvalidkey,
     compare_entries,
     are_duplicates,
+    author_id,
+    title_id,
+    entry_id,
+    hidden_bibtex,
+    backupfile as backupfile_fn,
     EXACT_DUPLICATES,
     GOOD_DUPLICATES,
     FAIR_DUPLICATES,
     PARTIAL_DUPLICATES,
 )
+
+
+class TestHiddenBibtex(unittest.TestCase):
+
+    def test_hidden_bibtex(self):
+        self.assertEqual(
+            hidden_bibtex("/path/to/mypaper"),
+            "/path/to/mypaper/.mypaper.bib"
+        )
+
+
+class TestBackupfile(unittest.TestCase):
+
+    def test_backupfile(self):
+        result = backupfile_fn("/path/to/library.bib")
+        self.assertIn("backup", result)
+        self.assertTrue(result.endswith(".backup"))
 
 
 class TestAppendAbc(unittest.TestCase):
@@ -62,6 +84,41 @@ class TestCompareEntries(unittest.TestCase):
         e2 = {"author": "Jones", "title": "Paper B", "year": "2021", "doi": "10.5194/bg-8-515-2011"}
         self.assertEqual(compare_entries(e1, e2), FAIR_DUPLICATES)
 
+    def test_no_match_returns_zero(self):
+        e1 = {"author": "Smith", "title": "Paper A", "doi": "10.1234/a"}
+        e2 = {"author": "Jones", "title": "Paper B", "doi": "10.1234/b"}
+        self.assertEqual(compare_entries(e1, e2, fuzzy=False), 0)
+
+    def test_fuzzy_similarity(self):
+        e1 = {"author": "Smith, John", "title": "Climate change impacts", "doi": ""}
+        e2 = {"author": "Smith, J.", "title": "Climate change impact on oceans", "doi": ""}
+        score = compare_entries(e1, e2, fuzzy=True)
+        self.assertGreater(score, 0)
+        self.assertLessEqual(score, 100)
+
+
+class TestEntryId(unittest.TestCase):
+
+    def test_author_id(self):
+        e = {"author": "Smith, John"}
+        self.assertEqual(author_id(e), "smith")
+
+    def test_title_id(self):
+        e = {"title": "A Test Paper"}
+        self.assertEqual(title_id(e), "a test paper")
+
+    def test_entry_id(self):
+        e = {"author": "Smith, J.", "title": "Paper", "doi": "10.1234/test"}
+        doi, authortitle = entry_id(e)
+        self.assertEqual(doi, "10.1234/test")
+        self.assertIn("smith", authortitle)
+        self.assertIn("paper", authortitle)
+
+    def test_author_id_replaces_unicode(self):
+        """_remove_unicode replaces chars with ord > 128"""
+        e = {"author": "Müller, Hans"}
+        self.assertEqual(author_id(e), "m_ller")
+
 
 class TestAreDuplicates(unittest.TestCase):
 
@@ -73,3 +130,8 @@ class TestAreDuplicates(unittest.TestCase):
         e1 = {"author": "A", "title": "X", "doi": "10.1234/x"}
         e2 = {"author": "B", "title": "Y", "doi": "10.1234/x"}
         self.assertTrue(are_duplicates(e1, e2, similarity="PARTIAL"))
+
+    def test_invalid_similarity_raises(self):
+        e = {"author": "A", "title": "X"}
+        with self.assertRaises(ValueError):
+            are_duplicates(e, e, similarity="INVALID")

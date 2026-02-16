@@ -22,6 +22,17 @@ class TestLatexToUnicode(unittest.TestCase):
         self.assertEqual(latex_to_unicode("\\'{e}"), "é")
         self.assertEqual(latex_to_unicode("\\'{a}"), "á")
 
+    def test_crappy2_combining_accents(self):
+        """unicode_to_crappy_latex2: \\` {e} -> e with combining grave"""
+        self.assertEqual(latex_to_unicode("\\`{e}"), "è")
+        self.assertEqual(latex_to_unicode("\\'{e}"), "é")
+
+    def test_trailing_combining_char_discarded(self):
+        """Trailing combining diacritical (e.g. bare \\') is discarded"""
+        # "\\'" alone maps to U+0301 (combining acute), trailing so discarded -> empty
+        result = latex_to_unicode("\\'")
+        self.assertEqual(result, "")
+
     def test_no_backslash_unchanged(self):
         self.assertEqual(latex_to_unicode("hello"), "hello")
         self.assertEqual(latex_to_unicode("Hello World"), "Hello World")
