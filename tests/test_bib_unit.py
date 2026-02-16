@@ -6,9 +6,6 @@ from papers.bib import (
     isvalidkey,
     compare_entries,
     are_duplicates,
-    author_id,
-    title_id,
-    entry_id,
     hidden_bibtex,
     backupfile as backupfile_fn,
     EXACT_DUPLICATES,
@@ -16,6 +13,7 @@ from papers.bib import (
     FAIR_DUPLICATES,
     PARTIAL_DUPLICATES,
 )
+from papers.duplicate import author_id, title_id, entry_id
 
 
 class TestHiddenBibtex(unittest.TestCase):

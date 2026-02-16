@@ -18,10 +18,79 @@ import logging
 logger = logging.getLogger(__name__)
 
 from papers.extract import isvaliddoi, fetch_entry
-from papers.encoding import parse_file, format_file, format_entries
+from papers.encoding import parse_file, format_file, format_entries, family_names
 from papers.entries import update_entry
 
 from papers.utils import bcolors, checksum
+
+
+# ENTRY IDENTITY (for duplicate indexing and comparison)
+# ======================================================
+
+
+def _remove_unicode(s, replace='_'):
+    s2 = []
+    for c in s:
+        if ord(c) > 128:
+            c = replace
+        s2.append(c)
+    return ''.join(s2)
+
+
+def _simplify_string(s):
+    """Replace unicode, strip, lower case."""
+    s = _remove_unicode(s)
+    return s.lower().strip()
+
+
+def author_id(e):
+    return _simplify_string(' '.join(family_names(get_entry_val(e, 'author', ''))))
+
+
+def title_id(e):
+    return _simplify_string(get_entry_val(e, 'title', ''))
+
+
+def entry_id(e):
+    """Entry identifier which is not the bibtex key. Returns (doi_lower, authortitle)."""
+    authortitle = ''.join([author_id(e), title_id(e)])
+    return (get_entry_val(e, 'doi', '').lower(), authortitle)
+
+
+def _build_duplicate_index(entries):
+    """Build (by_doi, by_authortitle) so duplicate checks only run on candidates. O(n)."""
+    by_doi = {}
+    by_authortitle = {}
+    for e in entries:
+        doi, at = entry_id(e)
+        if doi:
+            by_doi.setdefault(doi, []).append(e)
+        if at:
+            by_authortitle.setdefault(at, []).append(e)
+    return (by_doi, by_authortitle)
+
+
+def _get_duplicate_candidates(entry, by_doi, by_authortitle):
+    """Return list of entries that might duplicate `entry` (same doi or authortitle)."""
+    doi, at = entry_id(entry)
+    candidates = by_doi.get(doi, []) + by_authortitle.get(at, [])
+    # deduplicate by id(); same entry can be in both indices
+    seen = set()
+    out = []
+    for e in candidates:
+        if id(e) not in seen:
+            seen.add(id(e))
+            out.append(e)
+    return out
+
+
+def _add_to_duplicate_index(entry, by_doi, by_authortitle):
+    """Register one entry in the index (after it was added to the library)."""
+    doi, at = entry_id(entry)
+    if doi:
+        by_doi.setdefault(doi, []).append(entry)
+    if at:
+        by_authortitle.setdefault(at, []).append(entry)
 
 
 # SEARCH DUPLICATES

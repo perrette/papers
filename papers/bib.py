@@ -35,7 +35,16 @@ from papers.filename import NAMEFORMAT, KEYFORMAT
 from papers.utils import bcolors, checksum, move as _move
 import papers.config
 
-from papers.duplicate import conflict_resolution_on_insert, entry_diff, merge_files, check_duplicates
+from papers.duplicate import (
+    conflict_resolution_on_insert,
+    entry_diff,
+    merge_files,
+    check_duplicates,
+    entry_id,
+    _build_duplicate_index,
+    _get_duplicate_candidates,
+    _add_to_duplicate_index,
+)
 
 # KEY GENERATION
 # ==============
@@ -67,41 +76,8 @@ def append_abc(key, keys=[]):
     return Key
 
 
-# DUPLICATE DEFINITION
-# ====================
-
-def _remove_unicode(s, replace='_'):
-    s2 = []
-    for c in s:
-        if ord(c) > 128:
-            c = replace
-        s2.append(c)
-    return ''.join(s2)
-
-
-def _simplify_string(s):
-    ' replace unicode, strip, lower case '
-    # try:
-    #     s = latex_to_unicode(s)
-    # except Exception as error:
-    #     raise
-    #     logger.warning('simplify string: failed to remove latex: '+str(error))
-    s = _remove_unicode(s)
-    return s.lower().strip()
-
-
-def author_id(e):
-    return _simplify_string(' '.join(family_names(get_entry_val(e, 'author', ''))))
-
-def title_id(e):
-    return _simplify_string(get_entry_val(e, 'title', ''))
-
-def entry_id(e):
-    """entry identifier which is not the bibtex key
-    """
-    authortitle = ''.join([author_id(e), title_id(e)])
-    return (get_entry_val(e, 'doi', '').lower(), authortitle)
-
+# DUPLICATE DEFINITION (entry_id, author_id, title_id live in papers.duplicate)
+# =============================================================================
 
 FUZZY_RATIO = 80
 
@@ -170,7 +146,6 @@ def are_duplicates(e1, e2, similarity=DEFAULT_SIMILARITY, fuzzy_ratio=FUZZY_RATI
     score = compare_entries(e1, e2, fuzzy=target==FUZZY_DUPLICATES)
     logger.debug('score: {}, target: {}, similarity: {}'.format(score, target, similarity))
     return score >= target
-
 
 
 def hidden_bibtex(direc):
@@ -301,7 +276,10 @@ class Biblio:
         # additional checks on DOI etc...
         if check_duplicate:
             logger.debug('check duplicates : TRUE')
-            return self.insert_entry_check(entry, update_key=update_key, rename=rename, copy=copy, **checkopt)
+            return self.insert_entry_check(
+                entry, update_key=update_key, rename=rename, copy=copy,
+                duplicate_index=checkopt.pop('duplicate_index', None), **checkopt
+            )
         else:
             logger.debug('check duplicates : FALSE')
 
@@ -335,8 +313,17 @@ class Biblio:
 
         return [ entry ]
 
-    def insert_entry_check(self, entry, update_key=False, mergefiles=True, on_conflict='i', rename=False, copy=False):
-        duplicates = [e for e in self.entries if self.eq(e, entry)]
+    def insert_entry_check(self, entry, update_key=False, mergefiles=True, on_conflict='i', rename=False, copy=False, duplicate_index=None):
+        # FUZZY can match on token_set_ratio(authortitle) without same doi/authortitle, so index would miss some duplicates
+        if self.similarity == 'FUZZY':
+            candidates = self.entries
+        elif duplicate_index is not None:
+            by_doi, by_authortitle = duplicate_index
+            candidates = _get_duplicate_candidates(entry, by_doi, by_authortitle)
+        else:
+            by_doi, by_authortitle = _build_duplicate_index(self.entries)
+            candidates = _get_duplicate_candidates(entry, by_doi, by_authortitle)
+        duplicates = [e for e in candidates if self.eq(e, entry)]
 
         if not duplicates:
             logger.debug('not a duplicate')
@@ -426,6 +413,12 @@ class Biblio:
         if convert_to_unicode:
             bib = latex_to_unicode_library(bib)
         entries = []
+        # Build index once so duplicate check is O(candidates) not O(library size) per entry
+        check_dup = kw.get('check_duplicate', True)
+        if check_dup and bib.entries:
+            duplicate_index = _build_duplicate_index(self.entries)
+        else:
+            duplicate_index = None
         for e in bib.entries:
             files = []
             if "file" in e:
@@ -436,7 +429,14 @@ class Biblio:
             if files:
                 self.set_files(e, files)
 
-            entries.extend( self.insert_entry(e, **kw) )
+            run_kw = dict(kw)
+            if duplicate_index is not None:
+                run_kw['duplicate_index'] = duplicate_index
+            added = self.insert_entry(e, **run_kw)
+            entries.extend(added)
+            if duplicate_index is not None:
+                for new_e in added:
+                    _add_to_duplicate_index(new_e, duplicate_index[0], duplicate_index[1])
         return entries
 
 
