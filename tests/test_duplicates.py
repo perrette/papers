@@ -5,7 +5,7 @@ import tempfile
 import unittest
 
 import bibtexparser
-from papers.bibtexparser_compat import parse_string as bp_parse_string
+from papers.entries import parse_string as bp_parse_string
 
 from papers.bib import Biblio
 from papers.duplicate import (
@@ -372,7 +372,8 @@ class TestCheckResolveDuplicate(BibTest):
 
     def setUp(self):
         self.mybib = tempfile.mktemp(prefix='papers.bib')
-        open(self.mybib, 'w').write(self.original + '\n\n' + self.conflict)
+        # Write conflict first so parse order is (1)=AnotherKey, (2)=Perrette_2011; pick 1/2 tests rely on this order
+        open(self.mybib, 'w').write(self.conflict + '\n\n' + self.original)
 
     def tearDown(self):
         os.remove(self.mybib)

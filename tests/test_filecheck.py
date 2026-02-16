@@ -12,7 +12,7 @@ from pathlib import Path
 import bibtexparser
 
 from papers.bib import Biblio
-from papers.bibtexparser_compat import get_entry_val
+from papers.entries import get_entry_val
 from tests.common import PAPERSCMD, paperscmd, prepare_paper, prepare_paper2, BibTest
 
 

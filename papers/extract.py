@@ -12,14 +12,14 @@ import papers
 from papers.config import cached
 from papers import logger
 from papers.encoding import family_names
-from papers.bibtexparser_compat import (
+from papers.entries import (
     get_entry_val,
     parse_string,
-    write_string,
-    latex_to_unicode_library,
+    format_library,
     entry_from_dict,
     library_from_entries,
 )
+from papers.encoding import latex_to_unicode_library
 
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
@@ -565,7 +565,7 @@ def crossref_to_bibtex(message):
     # Build entry and library (v2 API)
     entry = entry_from_dict(bib_entry)
     lib = library_from_entries([entry])
-    bibtex_str = write_string(lib)
+    bibtex_str = format_library(lib)
 
     return bibtex_str
 

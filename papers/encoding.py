@@ -1,10 +1,17 @@
 import os
-import bibtexparser
 from pathlib import Path
 from unidecode import unidecode as unicode_to_ascii
-from papers.utils import ansi_link as link, bcolors
+
+from bibtexparser.middlewares import LatexDecodingMiddleware
+
 from papers import logger
-from papers.bibtexparser_compat import get_entry_val, parse_string, write_string, library_from_entries
+from papers.entries import (
+    get_entry_val,
+    library_from_entries,
+    format_library,
+    update_entry,
+)
+from papers.utils import ansi_link as link, bcolors
 
 
 # Parse / format bibtex file entry
@@ -79,7 +86,27 @@ def format_file(files, relative_to=None):
 
 def format_entries(entries):
     lib = library_from_entries(entries)
-    return write_string(lib)
+    return format_library(lib)
+
+
+def latex_to_unicode_library(library):
+    """Apply LaTeX-to-Unicode decoding to a library."""
+    return LatexDecodingMiddleware().transform(library=library)
+
+
+def convert_entry_to_unicode(entry):
+    """Convert a single entry's LaTeX field values to unicode in place."""
+    lib = library_from_entries([entry])
+    lib = latex_to_unicode_library(lib)
+    update_entry(entry, lib.entries[0])
+
+
+def entry_to_unicode_dict(entry):
+    """Return a dict of entry fields (excluding ID) with LaTeX decoded to unicode (for comparison)."""
+    lib = library_from_entries([entry])
+    lib = latex_to_unicode_library(lib)
+    e = lib.entries[0]
+    return {k: get_entry_val(e, k, '') for k, _ in e.items() if k != 'ID'}
 
 def parse_keywords(e):
     return [w.strip() for w in get_entry_val(e, 'keywords', '').split(',') if w.strip()]

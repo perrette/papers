@@ -3,7 +3,7 @@ Key and file name formatting
 """
 from slugify import slugify
 from papers.encoding import family_names
-from papers.bibtexparser_compat import get_entry_val
+from papers.entries import get_entry_val
 
 def listtag(words, maxlength=30, minwordlen=3, n=100, sep='-'):
     # preformat & filter words

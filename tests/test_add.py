@@ -6,7 +6,8 @@ import unittest
 from pathlib import Path
 
 import bibtexparser
-from papers.bibtexparser_compat import parse_file as bp_parse_file, parse_string, get_entry_val, entry_to_unicode_dict
+from papers.entries import parse_file as bp_parse_file, parse_string, get_entry_val
+from papers.encoding import entry_to_unicode_dict
 
 from papers.bib import Biblio
 from tests.common import PAPERSCMD, paperscmd, prepare_paper, prepare_paper2, BibTest

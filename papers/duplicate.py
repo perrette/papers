@@ -6,10 +6,10 @@ import difflib
 
 import bibtexparser
 
-from papers.bibtexparser_compat import (
+from papers.entries import (
     get_entry_val,
     parse_string,
-    write_string,
+    format_library,
     library_from_entries,
     entry_from_dict,
 )
@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 from papers.extract import isvaliddoi, fetch_entry
 from papers.encoding import parse_file, format_file, format_entries
-from papers.bibtexparser_compat import update_entry
+from papers.entries import update_entry
 
 from papers.utils import bcolors, checksum
 
@@ -218,7 +218,7 @@ def entry_ndiff(entries, color=True):
         elif any(k not in e for e in entries):
             somemissing.append(k)
     lib = library_from_entries([m])
-    s = write_string(lib)
+    s = format_library(lib)
     lines = []
     for line in s.splitlines():
         matches = regex.findall(line)
@@ -261,7 +261,7 @@ def entry_sdiff(entries, color=True, bcolors=bcolors, best=None):
 
     for i, entry in enumerate(entries):
         lib = library_from_entries([entry])
-        string = write_string(lib)
+        string = format_library(lib)
         # color the conflicting fields
         lines = []
         for line in string.splitlines():
@@ -361,7 +361,7 @@ def edit_entries(entries, diff=False, ndiff=False, editor=None):
             entrystring = entry_diff(*entries, color=False)
     else:
         lib = library_from_entries(entries)
-        entrystring = write_string(lib)
+        entrystring = format_library(lib)
 
     with open(filename, 'w') as f:
         f.write(entrystring)

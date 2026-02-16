@@ -2,7 +2,7 @@ import unittest
 import os
 
 from papers.extract import extract_pdf_metadata
-from papers.bibtexparser_compat import parse_string
+from papers.entries import parse_string
 from tests.common import paperscmd, prepare_paper
 
 

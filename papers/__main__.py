@@ -19,7 +19,7 @@ from papers.extract import fetch_bibtex_by_doi, fetch_bibtex_by_fulltext_crossre
 from papers.encoding import parse_file, format_file, family_names, format_entries, standard_name, format_entry, parse_keywords, format_key
 from papers.config import bcolors, Config, search_config, CONFIG_FILE, CONFIG_FILE_LOCAL, DATA_DIR, CONFIG_FILE_LEGACY, BACKUP_DIR
 from papers.duplicate import list_duplicates, list_uniques, edit_entries
-from papers.bibtexparser_compat import get_entry_val
+from papers.entries import get_entry_val
 from papers.bib import (Biblio, FUZZY_RATIO, DEFAULT_SIMILARITY, entry_filecheck,
                         backupfile as backupfile_func, isvalidkey, DuplicateKeyError, clean_filesdir,
                         are_duplicates)

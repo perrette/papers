@@ -5,18 +5,20 @@ from unidecode import unidecode as unicode_to_ascii
 import bibtexparser
 from bibtexparser import Library
 
-from papers.bibtexparser_compat import (
+from papers.entries import (
     get_entry_val,
     set_entry_key,
     update_entry,
     entry_copy,
     entry_content_equal,
     parse_string,
-    write_string,
-    latex_to_unicode_library,
-    convert_entry_to_unicode,
+    format_library,
     entry_from_dict,
     library_from_entries,
+)
+from papers.encoding import (
+    latex_to_unicode_library,
+    convert_entry_to_unicode,
 )
 
 import papers
@@ -249,7 +251,7 @@ class Biblio:
         return cls(db, filesdir)
 
     def dumps(self):
-        return write_string(self.db)
+        return format_library(self.db)
 
     @classmethod
     def load(cls, bibtex, filesdir, relative_to=None, **kw):
@@ -525,7 +527,7 @@ class Biblio:
 
     def format(self):
         """Return the library as a BibTeX string. Does not sort; call sort() first if you need ordered output."""
-        return write_string(self.db)
+        return format_library(self.db)
 
     def save(self, bibtex):
         if os.path.exists(bibtex):
@@ -621,7 +623,7 @@ class Biblio:
             # create hidden bib entry for special dir
             bibname = hidden_bibtex(newdir)
             lib = library_from_entries([e])
-            bibtex = write_string(lib)
+            bibtex = format_library(lib)
             if not papers.config.DRYRUN:
                 with open(bibname,'w') as f:
                     f.write(bibtex)

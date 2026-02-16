@@ -3,7 +3,7 @@ import copy
 from pathlib import Path
 import subprocess as sp, sys
 import hashlib
-from papers.bibtexparser_compat import parse_string
+from papers.entries import parse_string
 from papers import logger
 from papers.filename import Format, NAMEFORMAT, KEYFORMAT
 from papers import __version__
