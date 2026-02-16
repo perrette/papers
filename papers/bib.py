@@ -122,7 +122,7 @@ FUZZY_DUPLICATES = 100
 def compare_entries(e1, e2, fuzzy=False):
     """assess two entries' similarity
     """
-    if e1 == e2:
+    if entry_content_equal(e1, e2):
         return EXACT_DUPLICATES
 
     id1 = entry_id(e1)
@@ -227,7 +227,6 @@ class Biblio:
         self.keyformat = keyformat
         self.similarity = similarity
         self.relative_to = os.path.sep if relative_to is None else relative_to
-        self.sort()
 
     def move(self, file, newfile, copy=False, hardlink=False):
         return _move(file, newfile, copy=copy, dryrun=papers.config.DRYRUN, hardlink=hardlink)
@@ -560,7 +559,6 @@ class Biblio:
         """remove duplicates, in some sensse (see papers.conflict.check_duplicates)
         """
         self.entries = check_duplicates(self.entries, key=key, eq=eq or self.eq, issorted=key is self.key, mode=mode)
-        self.sort() # keep sorted
 
 
     def rename_entry_files(self, e, copy=False, formatter=None, relative_to=None, hardlink=False):

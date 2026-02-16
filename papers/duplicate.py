@@ -275,7 +275,7 @@ def entry_sdiff(entries, color=True, bcolors=bcolors, best=None):
         string = '\n'.join(lines)
         if best is None:
             entry_strings.append(bcolors.OKBLUE+'* ('+str(i+1)+')'+bcolors.ENDC+'\n'+string)
-        elif entry == best:
+        elif entry is best:
             entry_strings.append(bcolors.OKBLUE+'* ('+str(i+1)+')'+bcolors.ENDC+'\n'+string)
         else:
             entry_strings.append(bcolors.OKBLUE+'  ('+str(i+1)+')'+bcolors.ENDC+'\n'+string)
@@ -314,11 +314,11 @@ def _ask_pick_loop(entries, extra=[], select=False):
         if i in entry_choices:
             return entries[int(i)-1]
         elif i in select_choices:
-            return [e for e in entries if e != entries[int(i)-1]]
+            return [e for e in entries if e is not entries[int(i)-1]]
         elif select and len(i.lstrip('-').split()) > 1:
             if i.startswith('-'):
                 deselect = [_process_choice(ii) for ii in i[1:].split()]
-                return [e for e in entries if e not in deselect]
+                return [e for e in entries if not any(e is x for x in deselect)]
             else:
                 return [_process_choice(ii) for ii in i.split()]
         elif i in choices:
