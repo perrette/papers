@@ -81,7 +81,7 @@ See [Control fields when renaming file](#control-fields-when-renaming-file) for 
 
 It is also possible to do this on a full directory of files, recursively:
 
-   papers add --rename --recursive /home/perette/playground/papers/papers_test
+    papers add --rename --recursive /home/perette/playground/papers/papers_test
 
 where, above, the `papers_test` directory contains a few PDF files.  For each PDF, `papers` will attempt to extract the metadata and add the relevant file to the bibliography and renamed files to the files directory.
 
