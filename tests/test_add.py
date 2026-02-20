@@ -2,10 +2,8 @@ import os
 import shutil
 import subprocess as sp
 import tempfile
-import unittest
 from pathlib import Path
 
-import bibtexparser
 from papers.entries import parse_file as bp_parse_file, parse_string, get_entry_val
 from papers.encoding import entry_to_unicode_dict
 

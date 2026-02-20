@@ -11,6 +11,7 @@ import shutil
 import itertools
 import fnmatch   # unix-like match
 from slugify import slugify
+import concurrent.futures
 
 import papers
 from papers import logger
@@ -790,7 +791,40 @@ def fetchcmd(parser, o):
         print(fetch_bibtex_by_fulltext_crossref(field))
 
 def extractcmd(parser, o):
-    print(extract_pdf_metadata(o.pdf, search_doi=not o.fulltext, search_fulltext=True, scholar=o.scholar, minwords=o.word_count, max_query_words=o.word_count, image=o.image))
+    if os.path.isdir(o.pdf) and o.recursive:
+        pdf_files = Path(o.pdf).rglob('*.pdf')
+        futures = []
+        with concurrent.futures.ProcessPoolExecutor() as executor:
+            for pdf in pdf_files:
+                future = executor.submit(extract_pdf_metadata,
+                                         pdf,
+                                         search_doi=not o.fulltext,
+                                         search_fulltext=True,
+                                         scholar=o.scholar,
+                                         minwords=o.word_count,
+                                         max_query_words=o.word_count,
+                                         image=o.image)
+                print(future.result())
+                futures.append(future)
+            del pdf_files
+            # for future in futures:
+            #     print(future.result())
+            del futures
+        # OK, a note on the above: clearly, theres parallelization to
+        # be gained here from doing this all concurrently using futures
+        # boyan.penkov saw this run locally on his machine; however
+        # the parallel writes to .cache/papers/crossref.json and
+        # crossref-bibtex.json have race conditions, and clobber
+        # the file format, leaving the base command papers unusable
+        # with json load failures.  I'd be glad to fix it, but for now
+        # we have to do this serially.
+        # I'd rather leave the futures thing in there, since it does
+        # work and is a nice path to a clear speedup TODO.
+    elif os.path.isfile(o.pdf) == 1 and o.pdf.endswith('.pdf'):
+            print(extract_pdf_metadata(o.pdf, search_doi=not o.fulltext, search_fulltext=True, scholar=o.scholar, minwords=o.word_count, max_query_words=o.word_count, image=o.image))
+    else:
+        raise ValueError('extract requires a single pdf or a directory and --recursive.')
+        # TODO trivially extend this for len(o.file) > 1, but no dir
     # print(fetch_bibtex_by_doi(o.doi))
 
 
@@ -1265,6 +1299,7 @@ def get_parser(config=None):
     extractp.add_argument('--fulltext', action='store_true', help='fulltext only (otherwise DOI-based)')
     extractp.add_argument('--scholar', action='store_true', help='use google scholar instead of default crossref for fulltext search')
     extractp.add_argument('--image', action='store_true', help='convert to image and use tesseract instead of pdftotext')
+    extractp.add_argument('--recursive', action='store_true', help='takes one directory as an arguement; recursively descends into it and shows extracted bibibinfo for each pdf')
 
     # *** Pure OS related file checks ***
 
