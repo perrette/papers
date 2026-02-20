@@ -820,10 +820,10 @@ def extractcmd(parser, o):
         # we have to do this serially.
         # I'd rather leave the futures thing in there, since it does
         # work and is a nice path to a clear speedup TODO.
-    elif len(o.pdf) == 1 and o.pdf.endswith('.pdf'):
+    elif os.path.isfile(o.pdf) == 1 and o.pdf.endswith('.pdf'):
             print(extract_pdf_metadata(o.pdf, search_doi=not o.fulltext, search_fulltext=True, scholar=o.scholar, minwords=o.word_count, max_query_words=o.word_count, image=o.image))
     else:
-        raise ValueError('extract requires a single pdf or a directory.')
+        raise ValueError('extract requires a single pdf or a directory and --recursive.')
         # TODO trivially extend this for len(o.file) > 1, but no dir
     # print(fetch_bibtex_by_doi(o.doi))
 
