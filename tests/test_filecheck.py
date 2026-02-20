@@ -4,16 +4,11 @@ Documented in README: filecheck --rename, --delete-missing (--delete-broken),
 """
 import os
 import shutil
-import subprocess as sp
 import tempfile
-import unittest
-from pathlib import Path
-
-import bibtexparser
 
 from papers.bib import Biblio
 from papers.entries import get_entry_val
-from tests.common import PAPERSCMD, paperscmd, prepare_paper, prepare_paper2, BibTest
+from tests.common import paperscmd, prepare_paper, BibTest
 
 
 class TestFileCheck(BibTest):
