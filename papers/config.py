@@ -250,7 +250,11 @@ def cached(file, hashed_key=False):
 
     def decorator(fun):
         if os.path.exists(file):
-            cache = json.load(open(file))
+            try:
+                cache = json.load(open(file))
+            except JSONDecodeError as error:
+                logger.warning(f"Unable to read cache, clear it and try again.  Not using cache file. Error was {error}")
+                cache = {}
         else:
             cache = {}
         def decorated(doi):
