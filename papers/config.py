@@ -225,8 +225,8 @@ class Config:
                 db = parse_string(bibtexstring)
                 if len(db.entries):
                     file_count = _count_files_in_bibtex(db)
-                    print(file_count)
                     status = bcolors.OKBLUE+' ({} files in {} entries)'.format(file_count, len(db.entries))+bcolors.ENDC
+                    del file_count
                 else:
                     status = bcolors.WARNING+' (empty)'+bcolors.ENDC
             except:
