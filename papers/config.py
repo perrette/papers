@@ -162,6 +162,20 @@ class Config:
 
     def status(self, check_files=False, verbose=False):
 
+        def _count_files_in_bibtex(db):
+            """
+            Given a bibtexparser database, return the file count
+            in it, over all the guys that have multiple files.
+            """
+            file_count = 0
+            for entry in db.entries:
+                # assumes papers only sticks things in a file = {:whatever.pdf:pdf} line
+                if 'file' in entry:
+                    # assumes papers has multiple files separated by ';'
+                    files = entry['file'].split(';')
+                    file_count += len(files)
+            return file_count
+
         def _fmt_path(p):
             if self.local:
                 return os.path.relpath(p, ".")
@@ -210,7 +224,9 @@ class Config:
                 bibtexstring = open(self.bibtex).read()
                 db = parse_string(bibtexstring)
                 if len(db.entries):
-                    status = bcolors.OKBLUE+' ({} entries)'.format(len(db.entries))+bcolors.ENDC
+                    file_count = _count_files_in_bibtex(db)
+                    status = bcolors.OKBLUE+' ({} files in {} entries)'.format(file_count, len(db.entries))+bcolors.ENDC
+                    del file_count
                 else:
                     status = bcolors.WARNING+' (empty)'+bcolors.ENDC
             except:
