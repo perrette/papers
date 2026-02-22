@@ -172,7 +172,7 @@ class Config:
                 # assumes papers only sticks things in a file = {:whatever.pdf:pdf} line
                 if 'file' in entry:
                     # assumes papers has multiple files separated by ';'
-                    files = entry['file'].split(';')
+                    files = entry['file'].split('.pdf:pdf;')
                     file_count += len(files)
             return file_count
 
