@@ -20,10 +20,6 @@ from papers.utils import ansi_link as link, bcolors
 
 def _parse_file(file):
     """parse a single file entry"""
-    # TODO the original version of this
-    # set type and basename and never
-    # used them, only returning path
-    # as a string.
 
     if len(file.split(":")) == 1:  # no ':'
         path, type = file, ""
@@ -35,6 +31,7 @@ def _parse_file(file):
     # :             -> The first colon
     # (?:(.*):)?    -> Optional Group 2: Greedy middle + a colon
     # ([^:]*)$      -> Group 3: Beyond last colon
+
     regex = r"^([^:]*):(?:(.*):)?([^:]*)$"
 
     match = re.match(regex, file)
@@ -46,15 +43,22 @@ def _parse_file(file):
         if g1 is None and g2 is None:
             # 1 part: "path"
             path, type = g3, ""
+            basename = ""
         elif g1 is not None and g2 is None:
             # 2 parts: "path:type"
             path, type = g1, g3
+            basename = ""
         else:
             # 3 parts: "basename:path:type"
             basename, path, type = g1, g2, g3
     else:
         raise ValueError("unknown `file` format: " + repr(file))
 
+    # TODO the original version of this
+    # set type and basename and never
+    # used them, only returning path
+    # as a string.
+    # return basename, path, type
     return path
 
 
