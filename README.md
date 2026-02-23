@@ -195,7 +195,8 @@ Type `papers status -v` to check your configuration.
 
 Note for developers: executing `papers status -v` while the test suite is running locally
 may destroy your papers installation.  This can be restored by reverting your `papersconfig.json`
-to what it was before the tests start running locally.
+to what it was before the tests start running locally.  This also might destroy your git logs
+for the bibtex and filesdir, in which case you'll have to reinstall.
 
 You also notice a cache directory. All internet requests such as crossref requests are saved in the cache directory.
 This happens regardless of whether `papers` is installed or not.
