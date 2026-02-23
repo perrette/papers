@@ -17,22 +17,39 @@ from papers.utils import ansi_link as link, bcolors
 # Parse / format bibtex file entry
 # ================================
 
+
 def _parse_file(file):
-    """ parse a single file entry
-    """
-    sfile = file.split(':')
+    """parse a single file entry"""
+    # TODO the original version of this
+    # set type and basename and never
+    # used them, only returning path
+    # as a string.
 
-    if len(sfile) == 1:  # no ':'
-        path, type = file, ''
+    # TODO this entire thing can be replaced
+    # by a re or regex by someone who is
+    # good at those.
 
+    # remove any leading colons and
+    # split off just the last existing :pdf
+    # rplit() splits from the right
+    sfile = file.lstrip(":").rstrip(":").rsplit(":", 1)
+    if len(sfile) == 1:  # no colon at all
+        basename, path, the_type = "", file.lstrip(":").rstrip(":"), "pdf"
+
+    # check for ['the_paper.pdf:/path/to/thepaper.pdf', 'pdf']
     elif len(sfile) == 2:
-        path, type = sfile
+        # split on on first colon
+        tail = sfile[0].split(":", 1)
+        if len(tail) == 1:
+            path = tail[0]
+            the_type = sfile[1]
+        elif len(tail) == 2:
+            basename = tail[0]
+            path = tail[1]
+            the_type = sfile[1]
 
-    elif len(sfile) == 3:
-        basename, path, type = sfile
-
-    else:
-        raise ValueError('unknown `file` format: '+ repr(file))
+    if len(the_type) != 3:  # three-charachter file extension there: pdf, mov
+        raise ValueError("unknown `file` format: " + repr(file))
 
     return path
 
