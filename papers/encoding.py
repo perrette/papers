@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 from unidecode import unidecode as unicode_to_ascii
-
+import re
 from bibtexparser.middlewares import LatexDecodingMiddleware
 
 from papers import logger
@@ -25,30 +25,34 @@ def _parse_file(file):
     # used them, only returning path
     # as a string.
 
-    # TODO this entire thing can be replaced
-    # by a re or regex by someone who is
-    # good at those.
+    if len(file.split(":")) == 1:  # no ':'
+        path, type = file, ""
+        return path
 
-    # remove any leading colons and
-    # split off just the last existing :pdf
-    # rplit() splits from the right
-    sfile = file.lstrip(":").rstrip(":").rsplit(":", 1)
-    if len(sfile) == 1:  # no colon at all
-        basename, path, the_type = "", file.lstrip(":").rstrip(":"), "pdf"
+    # The regex pattern:
+    # ^          : Start of string
+    # ^([^:]*)      -> Group 1: Up to first colon
+    # :             -> The first colon
+    # (?:(.*):)?    -> Optional Group 2: Greedy middle + a colon
+    # ([^:]*)$      -> Group 3: Beyond last colon
+    regex = r"^([^:]*):(?:(.*):)?([^:]*)$"
 
-    # check for ['the_paper.pdf:/path/to/thepaper.pdf', 'pdf']
-    elif len(sfile) == 2:
-        # split on on first colon
-        tail = sfile[0].split(":", 1)
-        if len(tail) == 1:
-            path = tail[0]
-            the_type = sfile[1]
-        elif len(tail) == 2:
-            basename = tail[0]
-            path = tail[1]
-            the_type = sfile[1]
+    match = re.match(regex, file)
+    if match:
+        # re.match().groups() returns (group1, group2, group3)
+        # If a group isn't matched, it is None.
+        g1, g2, g3 = match.groups()
 
-    if len(the_type) != 3:  # three-charachter file extension there: pdf, mov
+        if g1 is None and g2 is None:
+            # 1 part: "path"
+            path, type = g3, ""
+        elif g1 is not None and g2 is None:
+            # 2 parts: "path:type"
+            path, type = g1, g3
+        else:
+            # 3 parts: "basename:path:type"
+            basename, path, type = g1, g2, g3
+    else:
         raise ValueError("unknown `file` format: " + repr(file))
 
     return path
