@@ -343,11 +343,11 @@ def query_text(txt, max_query_words=200):
 
 def extract_txt_metadata(
         txt,
+        lock,
         search_doi=True,
         search_fulltext=False,
         max_query_words=200,
         scholar=False,
-        lock=None,
 ):
     """
     extract metadata from text, by parsing and doi-query, or by fulltext query in google scholar
@@ -411,9 +411,9 @@ def extract_txt_metadata(
 
     return bibtex
 
-def extract_pdf_metadata(pdf, search_doi=True, search_fulltext=True, maxpages=10, minwords=200, image=False, **kw):
+def extract_pdf_metadata(pdf, lock=None, search_doi=True, search_fulltext=True, maxpages=10, minwords=200, image=False, **kw):
     txt = pdfhead(pdf, maxpages, minwords, image=image)
-    return extract_txt_metadata(txt, search_doi, search_fulltext, **kw)
+    return extract_txt_metadata(txt, lock=lock, search_doi, search_fulltext, **kw)
 
 @cached('crossref.json')
 def fetch_crossref_by_doi(doi):
