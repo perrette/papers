@@ -39,7 +39,7 @@ class TestSimple(unittest.TestCase):
         )
 
     def test_fetch_scholar(self):
-        extract_pdf_metadata(self.pdf, scholar=True)
+        extract_pdf_metadata(self.pdf, None, scholar=True)
 
 
 class TestAddDir(BibTest):

@@ -797,11 +797,11 @@ def extractcmd(parser, o):
         futures = []
         with concurrent.futures.ProcessPoolExecutor() as executor:
             with multiprocessing.Manager() as manager:
-                the_lock = manager.Semaphore(multiprocessing.cpu_count())
+                local_lock = manager.Semaphore(multiprocessing.cpu_count())
                 for pdf in pdf_files:
                     future = executor.submit(extract_pdf_metadata,
                                              pdf,
-                                             lock=the_lock,
+                                             the_lock=local_lock,
                                              search_doi=not o.fulltext,
                                              search_fulltext=True,
                                              scholar=o.scholar,
@@ -811,7 +811,7 @@ def extractcmd(parser, o):
                     futures.append(future)
                 for future in futures:
                     print(future.result())
-                del the_lock
+                del local_lock
         del futures
         del pdf_files
 

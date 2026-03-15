@@ -468,7 +468,7 @@ class Biblio:
         if doi:
             bibtex = fetch_bibtex_by_doi(doi)
         else:
-            bibtex = extract_pdf_metadata(pdf, search_doi, search_fulltext, scholar=scholar)
+            bibtex = extract_pdf_metadata(pdf, None, search_doi, search_fulltext, scholar=scholar)
         bib = parse_string(bibtex)
         entry = bib.entries[0]
 
