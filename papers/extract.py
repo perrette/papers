@@ -345,7 +345,7 @@ def extract_txt_metadata(
         txt,
         search_doi=True,
         search_fulltext=False,
-        lock,
+        lock=None,
         max_query_words=200,
         scholar=False,
 ):
