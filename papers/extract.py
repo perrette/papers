@@ -364,6 +364,7 @@ def extract_txt_metadata(
             logger.debug('query bibtex by doi')
 
             # lock protect the possible cache write here
+            # in the cached decorator
             if lock is not None:
                 with lock:
                     bibtex = fetch_bibtex_by_doi(doi)
@@ -389,23 +390,19 @@ def extract_txt_metadata(
         logger.debug('query bibtex by fulltext')
         query_txt = query_text(txt, max_query_words)
         if scholar:
-            # TODO this may be a different cache file
             # lock protect the possible cache write here
+            # in the decorator
+            # TODO this may be a different cache file
+            # Like, might make sense to pass one lock for arxiv.json
+            # and one for crossref.json
             if lock is not None:
                 with lock:
                     bibtex = fetch_bibtex_by_fulltext_scholar(query_txt)
             else:
                 bibtex = fetch_bibtex_by_fulltext_scholar(query_txt)
         else:
-            # lock protect the possible cache write here
-            # TODO this may be a different cache file
-            if lock is not None:
-                with lock:
-                    bibtex = fetch_bibtex_by_fulltext_crossref(query_txt)
-            else:
-                bibtex = fetch_bibtex_by_fulltext_crossref(query_txt)
+            bibtex = fetch_bibtex_by_fulltext_crossref(query_txt)
         logger.debug('fulltext query successful')
-
     if not bibtex:
         raise ValueError('failed to extract metadata')
 
@@ -596,6 +593,7 @@ def crossref_to_bibtex(message):
 
 
 # @cached('crossref-bibtex-fulltext.json', hashed_key=True)
+# TODO if that gets uncommented above, will have to lock protect that cache
 def fetch_bibtex_by_fulltext_crossref(txt, **kw):
     logger.debug('crossref fulltext seach:\n'+txt)
 

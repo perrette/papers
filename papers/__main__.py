@@ -797,7 +797,9 @@ def extractcmd(parser, o):
         futures = []
         with concurrent.futures.ProcessPoolExecutor() as executor:
             with multiprocessing.Manager() as manager:
-                local_lock = manager.Semaphore(multiprocessing.cpu_count())
+                # One single lock for the cache access
+                # which has to be done serially
+                local_lock = manager.Lock()
                 for pdf in pdf_files:
                     future = executor.submit(extract_pdf_metadata,
                                              pdf,
