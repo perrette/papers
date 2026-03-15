@@ -364,7 +364,7 @@ def extract_txt_metadata(
             logger.debug('query bibtex by doi')
 
             # lock protect the possible cache write here
-            if lock:
+            if lock is not None:
                 with lock:
                     bibtex = fetch_bibtex_by_doi(doi)
             else:
@@ -391,7 +391,7 @@ def extract_txt_metadata(
         if scholar:
             # TODO this may be a different cache file
             # lock protect the possible cache write here
-            if lock:
+            if lock is not None:
                 with lock:
                     bibtex = fetch_bibtex_by_fulltext_scholar(query_txt)
             else:
@@ -399,7 +399,7 @@ def extract_txt_metadata(
         else:
             # lock protect the possible cache write here
             # TODO this may be a different cache file
-            if lock:
+            if lock is not None:
                 with lock:
                     bibtex = fetch_bibtex_by_fulltext_crossref(query_txt)
             else:
