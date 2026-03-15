@@ -341,7 +341,14 @@ def query_text(txt, max_query_words=200):
     return query_txt
 
 
-def extract_txt_metadata(txt, search_doi=True, search_fulltext=False, max_query_words=200, scholar=False):
+def extract_txt_metadata(
+        txt,
+        search_doi=True,
+        search_fulltext=False,
+        max_query_words=200,
+        scholar=False,
+        lock=None,
+):
     """
     extract metadata from text, by parsing and doi-query, or by fulltext query in google scholar
     """
@@ -355,7 +362,14 @@ def extract_txt_metadata(txt, search_doi=True, search_fulltext=False, max_query_
             doi = parse_doi(txt)
             logger.info('found doi:'+doi)
             logger.debug('query bibtex by doi')
-            bibtex = fetch_bibtex_by_doi(doi)
+
+            # lock protect the possible cache write here
+            if lock:
+                with lock:
+                    bibtex = fetch_bibtex_by_doi(doi)
+            else:
+                bibtex = fetch_bibtex_by_doi(doi)
+
             logger.debug('doi query successful')
 
         except DOIParsingError as error:
@@ -375,16 +389,27 @@ def extract_txt_metadata(txt, search_doi=True, search_fulltext=False, max_query_
         logger.debug('query bibtex by fulltext')
         query_txt = query_text(txt, max_query_words)
         if scholar:
-            bibtex = fetch_bibtex_by_fulltext_scholar(query_txt)
+            # TODO this may be a different cache file
+            # lock protect the possible cache write here
+            if lock:
+                with lock:
+                    bibtex = fetch_bibtex_by_fulltext_scholar(query_txt)
+            else:
+                bibtex = fetch_bibtex_by_fulltext_scholar(query_txt)
         else:
-            bibtex = fetch_bibtex_by_fulltext_crossref(query_txt)
+            # lock protect the possible cache write here
+            # TODO this may be a different cache file
+            if lock:
+                with lock:
+                    bibtex = fetch_bibtex_by_fulltext_crossref(query_txt)
+            else:
+                bibtex = fetch_bibtex_by_fulltext_crossref(query_txt)
         logger.debug('fulltext query successful')
 
     if not bibtex:
         raise ValueError('failed to extract metadata')
 
     return bibtex
-
 
 def extract_pdf_metadata(pdf, search_doi=True, search_fulltext=True, maxpages=10, minwords=200, image=False, **kw):
     txt = pdfhead(pdf, maxpages, minwords, image=image)
