@@ -801,19 +801,20 @@ def extractcmd(parser, o):
                 for pdf in pdf_files:
                     future = executor.submit(extract_pdf_metadata,
                                              pdf,
+                                             lock=the_lock,
                                              search_doi=not o.fulltext,
                                              search_fulltext=True,
                                              scholar=o.scholar,
-                                             lock=the_lock,
                                              minwords=o.word_count,
                                              max_query_words=o.word_count,
                                              image=o.image)
                     futures.append(future)
-                del pdf_files
                 for future in futures:
                     print(future.result())
-                del futures
                 del the_lock
+        del futures
+        del pdf_files
+
     elif os.path.isfile(o.pdf) == 1 and o.pdf.endswith('.pdf'):
             print(extract_pdf_metadata(o.pdf, search_doi=not o.fulltext, search_fulltext=True, scholar=o.scholar, minwords=o.word_count, max_query_words=o.word_count, image=o.image))
     else:
