@@ -818,7 +818,7 @@ def extractcmd(parser, o):
         del pdf_files
 
     elif os.path.isfile(o.pdf) == 1 and o.pdf.endswith('.pdf'):
-            print(extract_pdf_metadata(o.pdf, search_doi=not o.fulltext, search_fulltext=True, scholar=o.scholar, minwords=o.word_count, max_query_words=o.word_count, image=o.image))
+            print(extract_pdf_metadata(o.pdf, None, search_doi=not o.fulltext, search_fulltext=True, scholar=o.scholar, minwords=o.word_count, max_query_words=o.word_count, image=o.image))
     else:
         raise ValueError('extract requires a single pdf or a directory and --recursive.')
         # TODO trivially extend this for len(o.file) > 1, but no dir
