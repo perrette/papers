@@ -337,7 +337,8 @@ def query_text(txt, max_query_words=200):
     # limit overall length
     query_txt = ' '.join(query_txt.strip().split()[:max_query_words])
 
-    assert len(query_txt.split()) >= 3, 'needs at least 3 query words, got: '+repr(query_txt)
+    if not len(query_txt.split()) >= 3:
+        raise ValueError('needs at least 3 query words, got: '+repr(query_txt))
     return query_txt
 
 
@@ -388,7 +389,15 @@ def extract_txt_metadata(txt, search_doi=True, search_fulltext=False, max_query_
 
 def extract_pdf_metadata(pdf, search_doi=True, search_fulltext=True, maxpages=10, minwords=200, image=False, **kw):
     txt = pdfhead(pdf, maxpages, minwords, image=image)
-    return extract_txt_metadata(txt, search_doi, search_fulltext, **kw)
+    try:
+        out = extract_txt_metadata(txt, search_doi, search_fulltext, **kw)
+    except ValueError("Failed to return extracted text metadata, returning default."):
+        doi = 0
+        out = '''@misc{{{doi},
+             doi = {{{doi}}},
+             url = {{http://dx.doi.org/{doi}}},
+            }}'''
+    return out
 
 @cached('crossref.json')
 def fetch_crossref_by_doi(doi):
