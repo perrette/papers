@@ -391,7 +391,8 @@ def extract_pdf_metadata(pdf, search_doi=True, search_fulltext=True, maxpages=10
     txt = pdfhead(pdf, maxpages, minwords, image=image)
     try:
         out = extract_txt_metadata(txt, search_doi, search_fulltext, **kw)
-    except ValueError("Failed to return extracted text metadata, returning default."):
+    except ValueError:
+        logger.warn("Failed to return extracted text metadata, returning default.")
         doi = 0
         out = '''@misc{{{doi},
              doi = {{{doi}}},
