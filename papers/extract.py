@@ -397,7 +397,7 @@ def extract_pdf_metadata(pdf, search_doi=True, search_fulltext=True, maxpages=10
         out = '''@misc{{{doi},
              doi = {{{doi}}},
              url = {{http://dx.doi.org/{doi}}},
-            }}'''
+            }}'''.format(doi=doi)
     return out
 
 @cached('crossref.json')
