@@ -129,7 +129,7 @@ Add tags to view papers by topic:
 `papers list` is a powerful command, inspired from unix's `find` and `grep`.
 
 It lets you search in your bibtex in a typical manner (including a number of special flags such as `--duplicates`, `--review-required`, `--broken-file`...),
-then output the result in a number of formats (one-liner, raw bibtex, keys-only, selected fields) or let you perform actions on it (currently `--edit`, `--delete`, `--add-tag`, `--fetch`).
+then output the result in a number of formats (one-liner, raw bibtex, keys-only, selected fields) or let you perform actions on it (currently `--edit`, `--delete`, `--add-tag`, `--fetch`, `--rename`).
 For instance, it is possible to manually merge the duplicates with:
 
     $> papers list --duplicates --edit

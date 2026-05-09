@@ -933,6 +933,11 @@ def listcmd(parser, o, config):
             biblio.fix_entry(e, fix_doi=True, fix_key=True, fetch_all=True, interactive=True)
         savebib(biblio, config)
 
+    elif o.rename:
+        for e in entries:
+            biblio.rename_entry_files(e, copy=o.copy)
+        savebib(biblio, config)
+
     elif o.delete:
         for e in entries:
             biblio.db.remove(e)
@@ -1238,8 +1243,8 @@ def get_parser(config=None):
     grp.add_argument('--fetch', action='store_true', help='fetch and fix metadata')
     grp.add_argument('--add-keywords', '--add-tag', nargs='+', help='add keywords to the selected entries')
     grp.add_argument('--add-files', nargs='+', help='add files to the selected entries (only one entry must be listed)')
-    grp.add_argument('--rename', action='store_true', help='rename added file(s) into files folder. Used together with --add-files')
-    grp.add_argument('--copy', action='store_true', help='copy added file(s) into files folder. Used together with --add-files --rename')
+    grp.add_argument('--rename', action='store_true', help='rename file(s) of the listed entries into the files folder (also applies to files added via --add-files)')
+    grp.add_argument('--copy', action='store_true', help='in combination with --rename, keep a copy of the file(s) in their original location')
     grp.add_argument('-o', '--open', action='store_true', help='open attachments (if any)')
 
     # grp.add_argument('--merge-duplicates', action='store_true')
