@@ -355,6 +355,7 @@ class Biblio:
                 set_entry_key(entry, get_entry_val(candidate, 'ID', ''))
                 if entry_content_equal(entry, candidate):
                     logger.debug('fixed: exact duplicate after key sync')
+                    if rename: self.rename_entry_files(candidate, copy=copy)
                     return [ candidate ]
 
             if mergefiles:
