@@ -457,13 +457,33 @@ class Biblio:
         if str(pdf).startswith("http"):
             # if pdf is a URL, download it
             import requests, tempfile
-            response = requests.get(pdf)
-            if response.status_code == 200:
-                pdf = tempfile.NamedTemporaryFile(delete=False, suffix='.pdf').name
-                with open(pdf, 'wb') as f:
-                    f.write(response.content)
-            else:
-                raise ValueError(f"Failed to download PDF from {pdf}")
+            url = pdf
+            headers = {
+                "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+                              "(KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+                "Accept": "application/pdf,*/*;q=0.8",
+            }
+            response = requests.get(url, headers=headers, timeout=30)
+            ctype = response.headers.get("content-type", "").lower()
+            if response.status_code != 200:
+                hint = ""
+                if response.headers.get("x-amzn-waf-action") or response.status_code == 202:
+                    hint = (" — server appears to require a JavaScript/CAPTCHA challenge "
+                            "(AWS WAF or similar); download the PDF manually in a browser "
+                            "and re-run with the local file path")
+                raise ValueError(
+                    f"Failed to download PDF from {url}: HTTP {response.status_code} "
+                    f"(content-type: {ctype or 'unknown'}){hint}"
+                )
+            if "pdf" not in ctype and not response.content.startswith(b"%PDF"):
+                raise ValueError(
+                    f"URL did not return a PDF: {url} (content-type: {ctype or 'unknown'}). "
+                    "The server likely returned an HTML landing/login page; "
+                    "download the PDF manually in a browser and re-run with the local file path."
+                )
+            pdf = tempfile.NamedTemporaryFile(delete=False, suffix='.pdf').name
+            with open(pdf, 'wb') as f:
+                f.write(response.content)
             kw['rename'] = True  # always rename downloaded files
 
         if doi:
