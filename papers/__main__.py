@@ -19,7 +19,7 @@ from papers.extract import fetch_bibtex_by_doi, fetch_bibtex_by_fulltext_crossre
 from papers.encoding import parse_file, format_file, family_names, format_entries, standard_name, format_entry, parse_keywords, format_key
 from papers.config import bcolors, Config, search_config, CONFIG_FILE, CONFIG_FILE_LOCAL, DATA_DIR, CONFIG_FILE_LEGACY, BACKUP_DIR
 from papers.duplicate import list_duplicates, list_uniques, edit_entries, title_id
-from papers.entries import get_entry_val
+from papers.entries import get_entry_val, entry_content_equal
 from papers.bib import (Biblio, FUZZY_RATIO, DEFAULT_SIMILARITY, entry_filecheck,
                         backupfile as backupfile_func, isvalidkey, DuplicateKeyError, clean_filesdir,
                         are_duplicates, download_url)
@@ -557,6 +557,35 @@ def check_install(parser, o, config, bibtex_must_exist=True):
     return True
 
 
+def _print_biblio_diff(biblio_init, biblio, touched_entries, show_existing=False):
+    """Emit Added/Modified/Removed (and optionally Existing) lines for
+    entries that differ between the pre-command snapshot and the
+    post-command state.
+
+    `touched_entries` scopes the Modified/Existing check to entries the
+    command actually considered (matches addcmd's original semantics).
+    """
+    old_set = set(get_entry_val(e, 'ID', '') for e in biblio_init.entries)
+    old_entries_by_key = {get_entry_val(e, 'ID', ''): e for e in biblio_init.db.entries}
+    new_set = set(get_entry_val(e, 'ID', '') for e in biblio.entries)
+    new_entries_by_key = {get_entry_val(e, 'ID', ''): e for e in biblio.db.entries}
+    modified_set = set(get_entry_val(e, 'ID', '') for e in touched_entries).intersection(set.intersection(old_set, new_set))
+
+    for ID in sorted(old_set - new_set):
+        print(format_entry(biblio_init, old_entries_by_key[ID], prefix="Removed"))
+
+    for ID in sorted(new_set - old_set):
+        print(format_entry(biblio, new_entries_by_key[ID], prefix="Added"))
+
+    for ID in sorted(modified_set):
+        before = old_entries_by_key[ID]
+        after = new_entries_by_key[ID]
+        if not entry_content_equal(before, after):
+            print(format_entry(biblio, after, prefix="Modified"))
+        elif show_existing:
+            print(format_entry(biblio, after, prefix="Existing"))
+
+
 def addcmd(parser, o, config):
     """
     Given an options set and a config, sets up the function call to add the file or all files in the directory to the bibtex, and executes it.
@@ -674,26 +703,7 @@ def addcmd(parser, o, config):
 
     # compare entries to inform user
     # this is not very efficient but I have yet to hear a complaint about speed
-
-    old_set = set(get_entry_val(e, 'ID', '') for e in biblio_init.entries)
-    old_entries_by_key = {get_entry_val(e, 'ID', ''): e for e in biblio_init.db.entries}
-    new_set = set(get_entry_val(e, 'ID', '') for e in biblio.entries)
-    new_entries_by_key = {get_entry_val(e, 'ID', ''): e for e in biblio.db.entries}
-    modified_set = set(get_entry_val(e, 'ID', '') for e in entries).intersection(set.intersection(old_set, new_set))
-
-    for ID in sorted(old_set - new_set):
-        print(format_entry(biblio_init, old_entries_by_key[ID], prefix="Removed"))
-
-    for ID in sorted(new_set - old_set):
-        print(format_entry(biblio, new_entries_by_key[ID], prefix="Added"))
-
-    for ID in sorted(modified_set):
-        before = old_entries_by_key[ID]
-        after = new_entries_by_key[ID]
-        if before != after:
-            print(format_entry(biblio, after, prefix="Modified"))
-        else:
-            print(format_entry(biblio, after, prefix="Existing"))
+    _print_biblio_diff(biblio_init, biblio, entries, show_existing=True)
 
     if o.open:
         for e in entries:
@@ -843,6 +853,7 @@ def listcmd(parser, o, config):
 
 
     biblio = get_biblio(config)
+    biblio_init = copy.deepcopy(biblio)
     entries = biblio.db.entries
 
     if o.fuzzy:
@@ -920,10 +931,20 @@ def listcmd(parser, o, config):
             raise PapersExit("list only one entry to use --add-files")
         e = entries[0]
         files = biblio.get_files(e)
+        resolved = []
+        any_url = False
         for f in o.add_files:
-            if not os.path.exists(f):
+            if str(f).startswith("http://") or str(f).startswith("https://"):
+                resolved.append(download_url(f, expect_pdf=False))
+                any_url = True
+            elif not os.path.exists(f):
                 raise PapersExit(f"file {f} does not exist")
-        files.extend(o.add_files)
+            else:
+                resolved.append(f)
+        if any_url:
+            # downloaded files live in a tempdir; rename so they land in filesdir
+            o.rename = True
+        files.extend(resolved)
         biblio.set_files(e, files)
         if o.rename:
             biblio.rename_entry_files(e, copy=o.copy)
@@ -972,6 +993,10 @@ def listcmd(parser, o, config):
 
     else:
         print(format_entries(entries))
+
+    # report any entry mutations (--add-files, --add-keywords, --edit, --fetch,
+    # --rename, --delete) using the same Added/Modified/Removed convention as addcmd
+    _print_biblio_diff(biblio_init, biblio, entries)
 
 
 def statuscmd(parser, o, config):

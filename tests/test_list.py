@@ -194,7 +194,8 @@ class ListReviewRequiredTest(LocalInstallTest):
 class EditTest(ListTest):
     def test_delete(self):
         out = self.papers(f'list --author perrette --delete', sp_cmd='check_output')
-        self.assertEqual(out, "")
+        self.assertIn("Removed", strip_all(out))
+        self.assertIn("Perrette_2011", strip_all(out))
 
         out = self.papers(f'list', sp_cmd='check_output')
         self.assertEqual(out, "")

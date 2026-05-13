@@ -110,8 +110,14 @@ def download_url(url, expect_pdf=False, dest_dir=None):
             )
 
     basename = _basename_from_url(url)
-    if expect_pdf and not basename.lower().endswith('.pdf'):
-        basename += '.pdf'
+    if expect_pdf:
+        if not basename.lower().endswith('.pdf'):
+            basename += '.pdf'
+    else:
+        import mimetypes
+        ext = mimetypes.guess_extension((ctype or '').split(';')[0].strip())
+        if ext and not basename.lower().endswith(ext.lower()):
+            basename += ext
     dest_dir = dest_dir or tempfile.mkdtemp(prefix='papers_dl_')
     local = os.path.join(dest_dir, basename)
     with open(local, 'wb') as f:

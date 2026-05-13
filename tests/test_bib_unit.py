@@ -228,6 +228,26 @@ class TestDownloadUrl(unittest.TestCase):
         finally:
             os.remove(local)
 
+    def test_attachment_appends_extension_from_content_type(self):
+        url = "https://doi.pangaea.de/10.1594/PANGAEA.760904?format=zip"
+        resp = _fake_response(content=b"PK\x03\x04zip", content_type="application/zip")
+        with mock.patch("papers.bib.requests.get", return_value=resp):
+            local = download_url(url, expect_pdf=False)
+        try:
+            self.assertTrue(local.endswith(".zip"))
+        finally:
+            os.remove(local)
+
+    def test_attachment_does_not_double_extension(self):
+        url = "https://example.org/supp.zip"
+        resp = _fake_response(content=b"PK\x03\x04zip", content_type="application/zip")
+        with mock.patch("papers.bib.requests.get", return_value=resp):
+            local = download_url(url, expect_pdf=False)
+        try:
+            self.assertEqual(os.path.basename(local), "supp.zip")
+        finally:
+            os.remove(local)
+
     def test_http_error_includes_url(self):
         url = "https://example.org/missing.pdf"
         resp = _fake_response(content=b"", content_type="text/plain", status=404)
