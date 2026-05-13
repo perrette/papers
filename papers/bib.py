@@ -463,7 +463,14 @@ class Biblio:
                               "(KHTML, like Gecko) Chrome/120.0 Safari/537.36",
                 "Accept": "application/pdf,*/*;q=0.8",
             }
-            response = requests.get(url, headers=headers, timeout=30)
+            try:
+                response = requests.get(url, headers=headers, timeout=30)
+            except requests.exceptions.RequestException as err:
+                raise ValueError(
+                    f"Failed to download PDF from {url}: {type(err).__name__}: {err}. "
+                    "The connection failed before any HTTP response was received — "
+                    "this is often transient (try again), or due to TLS/network issues."
+                ) from err
             ctype = response.headers.get("content-type", "").lower()
             if response.status_code != 200:
                 hint = ""
