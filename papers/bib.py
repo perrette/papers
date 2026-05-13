@@ -1,6 +1,8 @@
 import os
 from pathlib import Path
 import shutil
+import tempfile
+import requests
 from unidecode import unidecode as unicode_to_ascii
 import bibtexparser
 from bibtexparser import Library
@@ -45,6 +47,77 @@ from papers.duplicate import (
     _get_duplicate_candidates,
     _add_to_duplicate_index,
 )
+
+# URL DOWNLOAD
+# ============
+
+def _basename_from_url(url):
+    from urllib.parse import urlparse, unquote
+    path = urlparse(url).path
+    name = unquote(path.rsplit('/', 1)[-1]) or 'download'
+    # strip characters that would break filesystem paths
+    return name.replace('/', '_').replace('\\', '_')
+
+
+def download_url(url, expect_pdf=False, dest_dir=None):
+    """Download a URL to a local file and return its path.
+
+    The file is saved into a fresh temporary directory using the URL's
+    basename so that downstream renaming preserves a meaningful filename.
+
+    If ``expect_pdf`` is True, the response must look like a PDF (content-type
+    containing ``pdf`` or bytes beginning with ``%PDF``); otherwise only
+    HTML responses are rejected (e.g. login/landing pages).
+    """
+    headers = {
+        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+                      "(KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+        "Accept": "application/pdf,*/*;q=0.8" if expect_pdf else "*/*",
+    }
+    try:
+        response = requests.get(url, headers=headers, timeout=30)
+    except requests.exceptions.RequestException as err:
+        raise ValueError(
+            f"Failed to download from {url}: {type(err).__name__}: {err}. "
+            "The connection failed before any HTTP response was received — "
+            "this is often transient (try again), or due to TLS/network issues."
+        ) from err
+    ctype = response.headers.get("content-type", "").lower()
+    if response.status_code != 200:
+        hint = ""
+        if response.headers.get("x-amzn-waf-action") or response.status_code == 202:
+            hint = (" — server appears to require a JavaScript/CAPTCHA challenge "
+                    "(AWS WAF or similar); download manually in a browser "
+                    "and re-run with the local file path")
+        raise ValueError(
+            f"Failed to download from {url}: HTTP {response.status_code} "
+            f"(content-type: {ctype or 'unknown'}){hint}"
+        )
+    if expect_pdf:
+        if "pdf" not in ctype and not response.content.startswith(b"%PDF"):
+            raise ValueError(
+                f"URL did not return a PDF: {url} (content-type: {ctype or 'unknown'}). "
+                "The server likely returned an HTML landing/login page; "
+                "download the PDF manually in a browser and re-run with the local file path."
+            )
+    else:
+        if "html" in ctype or response.content[:512].lstrip().lower().startswith((b"<!doctype html", b"<html")):
+            raise ValueError(
+                f"URL returned an HTML page rather than a file: {url} "
+                f"(content-type: {ctype or 'unknown'}). The server likely returned "
+                "a landing/login page; download the file manually in a browser "
+                "and re-run with the local file path."
+            )
+
+    basename = _basename_from_url(url)
+    if expect_pdf and not basename.lower().endswith('.pdf'):
+        basename += '.pdf'
+    dest_dir = dest_dir or tempfile.mkdtemp(prefix='papers_dl_')
+    local = os.path.join(dest_dir, basename)
+    with open(local, 'wb') as f:
+        f.write(response.content)
+    return local
+
 
 # KEY GENERATION
 # ==============
@@ -455,42 +528,7 @@ class Biblio:
     def add_pdf(self, pdf, attachments=None, search_doi=True, search_fulltext=True, scholar=False, doi=None, **kw):
 
         if str(pdf).startswith("http"):
-            # if pdf is a URL, download it
-            import requests, tempfile
-            url = pdf
-            headers = {
-                "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
-                              "(KHTML, like Gecko) Chrome/120.0 Safari/537.36",
-                "Accept": "application/pdf,*/*;q=0.8",
-            }
-            try:
-                response = requests.get(url, headers=headers, timeout=30)
-            except requests.exceptions.RequestException as err:
-                raise ValueError(
-                    f"Failed to download PDF from {url}: {type(err).__name__}: {err}. "
-                    "The connection failed before any HTTP response was received — "
-                    "this is often transient (try again), or due to TLS/network issues."
-                ) from err
-            ctype = response.headers.get("content-type", "").lower()
-            if response.status_code != 200:
-                hint = ""
-                if response.headers.get("x-amzn-waf-action") or response.status_code == 202:
-                    hint = (" — server appears to require a JavaScript/CAPTCHA challenge "
-                            "(AWS WAF or similar); download the PDF manually in a browser "
-                            "and re-run with the local file path")
-                raise ValueError(
-                    f"Failed to download PDF from {url}: HTTP {response.status_code} "
-                    f"(content-type: {ctype or 'unknown'}){hint}"
-                )
-            if "pdf" not in ctype and not response.content.startswith(b"%PDF"):
-                raise ValueError(
-                    f"URL did not return a PDF: {url} (content-type: {ctype or 'unknown'}). "
-                    "The server likely returned an HTML landing/login page; "
-                    "download the PDF manually in a browser and re-run with the local file path."
-                )
-            pdf = tempfile.NamedTemporaryFile(delete=False, suffix='.pdf').name
-            with open(pdf, 'wb') as f:
-                f.write(response.content)
+            pdf = download_url(pdf, expect_pdf=True)
             kw['rename'] = True  # always rename downloaded files
 
         if doi:

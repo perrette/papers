@@ -1,5 +1,7 @@
 """Unit tests for papers.bib helpers (66% -> higher coverage)"""
+import os
 import unittest
+from unittest import mock
 
 from papers.bib import (
     append_abc,
@@ -8,12 +10,22 @@ from papers.bib import (
     are_duplicates,
     hidden_bibtex,
     backupfile as backupfile_fn,
+    download_url,
+    _basename_from_url,
     EXACT_DUPLICATES,
     GOOD_DUPLICATES,
     FAIR_DUPLICATES,
     PARTIAL_DUPLICATES,
 )
 from papers.duplicate import author_id, title_id, entry_id
+
+
+def _fake_response(content=b"", status=200, content_type=""):
+    r = mock.Mock()
+    r.status_code = status
+    r.content = content
+    r.headers = {"content-type": content_type}
+    return r
 
 
 class TestHiddenBibtex(unittest.TestCase):
@@ -133,3 +145,94 @@ class TestAreDuplicates(unittest.TestCase):
         e = {"author": "A", "title": "X"}
         with self.assertRaises(ValueError):
             are_duplicates(e, e, similarity="INVALID")
+
+
+class TestBasenameFromUrl(unittest.TestCase):
+
+    def test_basic(self):
+        self.assertEqual(
+            _basename_from_url("https://example.org/path/foo.pdf"),
+            "foo.pdf",
+        )
+
+    def test_strips_query(self):
+        self.assertEqual(
+            _basename_from_url("https://example.org/a/b/file.zip?token=xyz"),
+            "file.zip",
+        )
+
+    def test_url_encoded(self):
+        self.assertEqual(
+            _basename_from_url("https://example.org/foo%20bar.zip"),
+            "foo bar.zip",
+        )
+
+    def test_empty_path_falls_back(self):
+        self.assertEqual(_basename_from_url("https://example.org/"), "download")
+
+
+class TestDownloadUrl(unittest.TestCase):
+
+    def test_pdf_saved_with_url_basename(self):
+        url = "https://example.org/paper.pdf"
+        resp = _fake_response(content=b"%PDF-1.4\n...", content_type="application/pdf")
+        with mock.patch("papers.bib.requests.get", return_value=resp):
+            local = download_url(url, expect_pdf=True)
+        try:
+            self.assertEqual(os.path.basename(local), "paper.pdf")
+            with open(local, "rb") as f:
+                self.assertTrue(f.read().startswith(b"%PDF"))
+        finally:
+            os.remove(local)
+
+    def test_attachment_saved_with_url_basename(self):
+        url = "https://example.org/supp.zip"
+        resp = _fake_response(content=b"PK\x03\x04zipdata", content_type="application/zip")
+        with mock.patch("papers.bib.requests.get", return_value=resp):
+            local = download_url(url, expect_pdf=False)
+        try:
+            self.assertEqual(os.path.basename(local), "supp.zip")
+        finally:
+            os.remove(local)
+
+    def test_rejects_html_for_attachment(self):
+        url = "https://example.org/login.html"
+        resp = _fake_response(content=b"<html><body>login</body></html>", content_type="text/html")
+        with mock.patch("papers.bib.requests.get", return_value=resp):
+            with self.assertRaises(ValueError) as cm:
+                download_url(url, expect_pdf=False)
+        self.assertIn("HTML page", str(cm.exception))
+
+    def test_rejects_html_for_attachment_when_content_type_missing(self):
+        url = "https://example.org/supp.zip"
+        resp = _fake_response(content=b"<!DOCTYPE html><html>", content_type="")
+        with mock.patch("papers.bib.requests.get", return_value=resp):
+            with self.assertRaises(ValueError):
+                download_url(url, expect_pdf=False)
+
+    def test_rejects_non_pdf_when_expect_pdf(self):
+        url = "https://example.org/paper"
+        resp = _fake_response(content=b"<html>landing</html>", content_type="text/html")
+        with mock.patch("papers.bib.requests.get", return_value=resp):
+            with self.assertRaises(ValueError) as cm:
+                download_url(url, expect_pdf=True)
+        self.assertIn("did not return a PDF", str(cm.exception))
+
+    def test_appends_pdf_extension_when_missing(self):
+        url = "https://example.org/article/12345"
+        resp = _fake_response(content=b"%PDF-1.7", content_type="application/pdf")
+        with mock.patch("papers.bib.requests.get", return_value=resp):
+            local = download_url(url, expect_pdf=True)
+        try:
+            self.assertTrue(local.endswith(".pdf"))
+        finally:
+            os.remove(local)
+
+    def test_http_error_includes_url(self):
+        url = "https://example.org/missing.pdf"
+        resp = _fake_response(content=b"", content_type="text/plain", status=404)
+        with mock.patch("papers.bib.requests.get", return_value=resp):
+            with self.assertRaises(ValueError) as cm:
+                download_url(url, expect_pdf=True)
+        self.assertIn("404", str(cm.exception))
+        self.assertIn(url, str(cm.exception))

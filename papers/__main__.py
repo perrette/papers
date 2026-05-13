@@ -22,7 +22,7 @@ from papers.duplicate import list_duplicates, list_uniques, edit_entries, title_
 from papers.entries import get_entry_val
 from papers.bib import (Biblio, FUZZY_RATIO, DEFAULT_SIMILARITY, entry_filecheck,
                         backupfile as backupfile_func, isvalidkey, DuplicateKeyError, clean_filesdir,
-                        are_duplicates)
+                        are_duplicates, download_url)
 from papers.utils import move, checksum, view_pdf, open_folder
 from papers import __version__
 
@@ -581,6 +581,18 @@ def addcmd(parser, o, config):
     if "author" in metadata:
         metadata["author"] = standard_name(metadata["author"])
     if o.attachment:
+        resolved = []
+        any_url = False
+        for a in o.attachment:
+            if str(a).startswith("http://") or str(a).startswith("https://"):
+                resolved.append(download_url(a, expect_pdf=False))
+                any_url = True
+            else:
+                resolved.append(a)
+        o.attachment = resolved
+        if any_url:
+            # downloaded attachments live in a tempdir; rename so they land in filesdir
+            o.rename = True
         metadata['file'] = format_file(biblio.get_files(metadata) + o.attachment, relative_to=biblio.relative_to)
 
     if len(o.file) > 1:
