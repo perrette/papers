@@ -282,6 +282,13 @@ def parse_doi(txt):
     # Clean up trailing periods and colons
     doi = doi.rstrip('.:')
 
+    # Strip unbalanced trailing ')' — DOIs can contain parens but they must be balanced
+    # (e.g. 10.1175/1520-0493(1990)118<2228:WMGD>2.0.CO;2). When a DOI is wrapped in
+    # parens in the source ("(doi:10.../1)" or a URL ending in ")"), the regex greedily
+    # includes the closing paren; this fixes that.
+    while doi.endswith(')') and doi.count(')') > doi.count('('):
+        doi = doi[:-1]
+
     # Quality check
     if len(doi) <= 8:
         raise DOIParsingError('failed to extract doi: '+doi)

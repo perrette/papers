@@ -33,6 +33,21 @@ class TestParseDoi(unittest.TestCase):
         self.assertIn('10.48550', result)
         self.assertIn('1234.5678', result)
 
+    def test_strips_unbalanced_trailing_paren(self):
+        # DOI wrapped in parens — closing ')' must not be slurped
+        self.assertEqual(parse_doi('(doi:10.1007/s00382-010-0904-1)'), '10.1007/s00382-010-0904-1')
+        # URL ending in ')'
+        self.assertEqual(parse_doi('http://dx.doi.org/10.1007/s00382-010-0904-1)'),
+                         '10.1007/s00382-010-0904-1')
+
+    def test_preserves_balanced_parens(self):
+        # DOIs may legitimately contain balanced parens — must survive intact
+        doi = '10.1234/foo(bar)baz'
+        self.assertEqual(parse_doi('doi:'+doi), doi)
+        # Trailing ')' that is part of a balanced pair must be kept
+        doi = '10.1234/foo(bar)'
+        self.assertEqual(parse_doi('doi:'+doi), doi)
+
 
 class TestIsvaliddoi(unittest.TestCase):
 
@@ -42,6 +57,11 @@ class TestIsvaliddoi(unittest.TestCase):
     def test_invalid_returns_false(self):
         self.assertFalse(isvaliddoi('invalid'))
         self.assertFalse(isvaliddoi(''))
+
+    def test_trailing_paren_invalid(self):
+        # The DOI without the trailing paren is valid; with it, should be rejected
+        self.assertTrue(isvaliddoi('10.1007/s00382-010-0904-1'))
+        self.assertFalse(isvaliddoi('10.1007/s00382-010-0904-1)'))
 
 
 class TestParseDoiFromMetadataString(unittest.TestCase):
