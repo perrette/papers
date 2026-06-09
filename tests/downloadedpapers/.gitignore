@@ -1,1 +1,6 @@
+# Ignore stray downloaded PDFs, but track the known test fixtures so CI
+# does not depend on the (flaky) external publisher servers.
 *.pdf
+!bg-8-515-2011.pdf
+!esd-4-11-2013.pdf
+!esd-4-11-2013-supplement.pdf
