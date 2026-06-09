@@ -46,7 +46,7 @@ A few related tools I maintain, useful in a Markdown-based scientific workflow.
 
 **Scientific writing & data**
 
-- [**texmark**](https://perrette.github.io/texmark/) — write scientific articles in Markdown and submit them to any journal (Markdown → LaTeX/PDF).
+- [**texmark**](https://perrette.github.io/texmark/) — write scientific articles in Markdown and convert them to journal-ready LaTeX/PDF.
 - [**papers**](https://perrette.github.io/papers/) — command-line BibTeX bibliography and PDF library manager.
 - [**datamanifest**](https://perrette.github.io/datamanifest/) — declarative, reproducible dataset management. *(See also the [datamanifest.toml](https://perrette.github.io/datamanifest.toml/) format spec and the [DataManifest.jl](https://awi-esc.github.io/DataManifest.jl/) Julia port.)*
 
