@@ -1,0 +1,79 @@
+site_name: papers
+site_description: Command-line tool to manage your bibliography (PDFs + BibTeX)
+site_url: https://perrette.github.io/papers/
+repo_url: https://github.com/perrette/papers
+repo_name: perrette/papers
+edit_uri: edit/master/
+
+# All narrative content already lives as Markdown in docs/ and README.md.
+# Nothing is duplicated here: the homepage pulls the README in via the
+# include-markdown plugin, and every other page is an existing docs/*.md file.
+docs_dir: docs
+
+theme:
+  name: material
+  icon:
+    repo: fontawesome/brands/github
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.sections
+    - navigation.top
+    - toc.follow
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.action.edit
+
+plugins:
+  - search
+  - include-markdown
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.details
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+
+nav:
+  - Home: index.md
+  - Getting started:
+      - Installation: installation.md
+      - Quickstart: quickstart.md
+  - Guides:
+      - Adding entries: adding-entries.md
+      - Listing and searching: listing.md
+      - Renaming files and keys: renaming.md
+      - Configuration and install: configuration.md
+      - Managing your library: library-management.md
+      - Git integration: git.md
+      - Undo and redo: undo-redo.md
+  - About:
+      - Features: features.md
+      - Comparison with other tools: comparison.md
