@@ -71,7 +71,7 @@ detailed documentation.
 
 ## From the same author
 
-A small toolkit for a Markdown-first scientific workflow.
+A few related tools I maintain, useful in a Markdown-based scientific workflow.
 
 **Scientific writing & data**
 
