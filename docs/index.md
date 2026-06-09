@@ -42,15 +42,14 @@ papers add mypaper.pdf --rename --copy --bibtex papers.bib --filesdir files
 
 ## From the same author
 
-A few related tools I maintain, useful in a Markdown-based scientific workflow.
+A few other open-source tools I maintain.
 
 **Scientific writing & data**
 
 - [**texmark**](https://perrette.github.io/texmark/) — write scientific articles in Markdown and convert them to journal-ready LaTeX/PDF.
-- [**papers**](https://perrette.github.io/papers/) — command-line BibTeX bibliography and PDF library manager.
 - [**datamanifest**](https://perrette.github.io/datamanifest/) — declarative, reproducible dataset management. *(See also the [datamanifest.toml](https://perrette.github.io/datamanifest.toml/) format spec and the [DataManifest.jl](https://awi-esc.github.io/DataManifest.jl/) Julia port.)*
 
-**Voice helpers** — handy for dictating and proofreading drafts by ear
+**Speech to Text (dictate) and Text to Speech (read-aloud) tools**
 
-- [**scribe**](https://perrette.github.io/scribe/) — speech-to-text dictation (Whisper).
-- [**bard**](https://perrette.github.io/bard/) — text-to-speech reader (Kokoro / Piper).
+- [**scribe**](https://perrette.github.io/scribe/) — speech-to-text dictation.
+- [**bard**](https://perrette.github.io/bard/) — text-to-speech reader.
