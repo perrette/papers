@@ -574,7 +574,7 @@ class Biblio:
                 try:
                     entry = read_entry_dir(root, relative_to=self.relative_to)
                     yield from self.insert_entry(entry, **kw)
-                except Exception:
+                except Exception as error:
                     logger.warning(root+'::'+str(error))
                 continue
 

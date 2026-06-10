@@ -70,6 +70,14 @@ class SearchTest(ListTest):
         out = self.papers(f'list --plain --author perrette balafon --any', sp_cmd='check_output')
         self.assertMultiLineEqual(out, self.initial_content)
 
+    def test_list_first_author(self):
+        out = self.papers(f'list --plain --first-author perrette', sp_cmd='check_output')
+        self.assertMultiLineEqual(out, self.initial_content)
+
+        # Yool is an author, but not the first author
+        out = self.papers(f'list --plain --first-author yool', sp_cmd='check_output')
+        self.assertEqual(out, "")
+
     def test_list_key(self):
         out = self.papers(f'list --plain --key perrette', sp_cmd='check_output')
         self.assertMultiLineEqual(out, self.initial_content)

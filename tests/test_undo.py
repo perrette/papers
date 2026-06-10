@@ -370,7 +370,7 @@ class TestUndoGitGlobal(GlobalGitLFSInstallTest):
         self.config = Config.load(CONFIG_FILE)
 
     def _format_file(self, name):
-        return os.path.abs(name)
+        return os.path.abspath(name)
 
 
 class TestUndoNoInstall(BaseTest):

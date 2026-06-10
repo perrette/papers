@@ -126,7 +126,6 @@ def _restore_from_backupdir(config, restore_files=False):
     try:
         return _restore_from_backupdir_wrapped(config, restore_files=restore_files)
     except Exception as error:
-        raise
         logger.error(str(error))
         raise PapersExit(repair_message)
 
@@ -506,20 +505,10 @@ def installcmd(parser, o, config):
 
     print(config.status(check_files=not o.no_check_files, verbose=True))
 
-def _dir_is_empty(dir):
-    # TODO this is actually never tested.
-    with os.scandir(dir) as it:
-        return not any(it)
-
 def uninstallcmd(parser, o, config):
-    # TODO this is actually never tested.
     if Path(config.file).exists():
         logger.info(f"The uninstaller will now remove {config.file}")
         os.remove(config.file)
-        parent = os.path.dirname(config.file)
-        if _dir_is_empty(parent):
-            logger.info(f"The config dir {parent} is empty and the uninstaller will now remove it.")
-            os.rmdir(parent)
         config = Config()
     else:
         logger.info(f"The uninstaller found no config file to remove.")
@@ -671,13 +660,10 @@ def addcmd(parser, o, config):
                 entries.extend( biblio.add_bibtex_file(file, attachments=o.attachment, rename=o.rename, copy=o.copy, **kw) )
 
         except Exception as error:
-            # print(error)
-            # addp.error(str(error))
-            raise
             logger.error(str(error))
             if not o.ignore_errors:
-                if len(o.file) or (os.isdir(file) and o.recursive)> 1:
-                    logger.error('use --ignore to add other files anyway')
+                if len(o.file) > 1 or (os.path.isdir(file) and o.recursive):
+                    logger.error('use --ignore-errors to add other files anyway')
                 raise PapersExit()
 
     # The list of new entries potentially contains duplicates if more than one file is added sequentially
@@ -884,7 +870,7 @@ def listcmd(parser, o, config):
         entries = [e for e in entries if 'year' in e and _longmatch(e['year'], o.year)]
     if o.first_author:
         first_author = lambda field : family_names(field)[0]
-        entries = [e for e in entries if 'author' in e and _longmatch(firstauthor(e['author']), o.author)]
+        entries = [e for e in entries if 'author' in e and _longmatch(first_author(e['author']), o.first_author)]
     if o.author:
         author = lambda field : ' '.join(family_names(field))
         entries = [e for e in entries if 'author' in e and _longmatch(author(e['author']), o.author)]
