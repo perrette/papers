@@ -510,9 +510,41 @@ def fetchcmd(parser, o):
     else:
         print(fetch_bibtex_by_fulltext_crossref(field))
 
+def _collect_pdf_files(paths, recursive=False):
+    """Expand the extract arguments into a list of PDF files.
+
+    Plain files are taken as given; directories require `recursive` and are
+    scanned for PDF files (case-insensitively).
+    """
+    files = []
+    for path in paths:
+        if os.path.isdir(path):
+            if not recursive:
+                raise ValueError(f'{path} is a directory, requires --recursive to scan')
+            files.extend(sorted(str(p) for p in Path(path).rglob('*')
+                                if p.is_file() and p.suffix.lower() == '.pdf'))
+        else:
+            files.append(path)
+    return files
+
+
 def extractcmd(parser, o):
-    print(extract_pdf_metadata(o.pdf, search_doi=not o.fulltext, search_fulltext=True, scholar=o.scholar, minwords=o.word_count, max_query_words=o.word_count, image=o.image))
-    # print(fetch_bibtex_by_doi(o.doi))
+    try:
+        files = _collect_pdf_files(o.pdf, recursive=o.recursive)
+    except ValueError as error:
+        parser.error(str(error))
+    if not files:
+        logger.warning('no PDF file found')
+        return
+    for file in files:
+        if len(files) > 1:
+            print(f'% {file}')
+        try:
+            print(extract_pdf_metadata(file, search_doi=not o.fulltext, search_fulltext=True, scholar=o.scholar, minwords=o.word_count, max_query_words=o.word_count, image=o.image))
+        except Exception as error:
+            if len(files) == 1:
+                raise
+            logger.error(f'{file} :: {error}')
 
 
 def _fullsearch_string(e):
@@ -1007,7 +1039,8 @@ def get_parser(config=None):
     # extract
     # ========
     extractp = subparsers.add_parser('extract', description='extract pdf metadata', parents=[loggingp])
-    extractp.add_argument('pdf')
+    extractp.add_argument('pdf', nargs='+', help='one or several PDF files')
+    extractp.add_argument('--recursive', action='store_true', help='accept directories and scan them for PDF files')
     extractp.add_argument('-n', '--word-count', type=int, default=200)
     extractp.add_argument('--fulltext', action='store_true', help='fulltext only (otherwise DOI-based)')
     extractp.add_argument('--scholar', action='store_true', help='use google scholar instead of default crossref for fulltext search')

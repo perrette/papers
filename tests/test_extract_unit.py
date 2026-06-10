@@ -164,3 +164,29 @@ class TestQueryText(unittest.TestCase):
     def test_enough_words(self):
         from papers.extract import query_text
         self.assertEqual(query_text("one two three"), "one two three")
+
+
+class TestCollectPdfFiles(unittest.TestCase):
+
+    def test_collect(self):
+        import os, tempfile
+        from pathlib import Path
+        from papers.__main__ import _collect_pdf_files
+        with tempfile.TemporaryDirectory() as d:
+            open(os.path.join(d, "a.pdf"), "w").write("x")
+            open(os.path.join(d, "b.PDF"), "w").write("x")   # case-insensitive
+            open(os.path.join(d, "notes.txt"), "w").write("x")
+            sub = os.path.join(d, "sub")
+            os.makedirs(sub)
+            open(os.path.join(sub, "c.pdf"), "w").write("x")
+
+            # plain files pass through, several at once
+            self.assertEqual(_collect_pdf_files(["x.pdf", "y.pdf"]), ["x.pdf", "y.pdf"])
+
+            # directories require recursive
+            with self.assertRaises(ValueError):
+                _collect_pdf_files([d])
+
+            found = _collect_pdf_files([d], recursive=True)
+            names = sorted(Path(f).name for f in found)
+            self.assertEqual(names, ["a.pdf", "b.PDF", "c.pdf"])
