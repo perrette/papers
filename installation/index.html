@@ -943,10 +943,20 @@
 <h2 id="name-clash-with-gnome-papers">Name clash with GNOME Papers<a class="headerlink" href="#name-clash-with-gnome-papers" title="Permanent link">&para;</a></h2>
 <p>The <a href="https://gitlab.gnome.org/GNOME/papers">GNOME Papers</a> document viewer
 (the default viewer on recent GNOME desktops) also installs a <code>papers</code>
-command; with both installed, whichever comes first in <code>$PATH</code> wins. The
-package therefore also installs the command under the unambiguous name
-<code>papers-cli</code> — call that, or set a shell alias (e.g.
-<code>alias papers=papers-cli</code>), on systems where the names collide.</p>
+command; with both installed, whichever comes first in <code>$PATH</code> wins. Two
+mitigations are built in:</p>
+<ul>
+<li>The package also installs the command under the unambiguous name
+  <code>papers-cli</code> — call that, or set a shell alias (e.g.
+  <code>alias papers=papers-cli</code>), on systems where the names collide.</li>
+<li>Because this command may mask GNOME Papers, <code>papers somefile.pdf</code> (a plain
+  existing file instead of a subcommand) opens the file with the system's
+  default viewer rather than erroring — which on a GNOME desktop typically
+  launches GNOME Papers itself, so the viewer keeps working for the common
+  case. Subcommand names always take precedence (<code>papers ./list</code> opens a
+  file named <code>list</code>; <code>papers list</code> lists your library), and viewer-specific
+  flags are not forwarded — call the viewer's binary directly for those.</li>
+</ul>
 <h2 id="dependencies">Dependencies<a class="headerlink" href="#dependencies" title="Permanent link">&para;</a></h2>
 <ul>
 <li>python 3.9+</li>
