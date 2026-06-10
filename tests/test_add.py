@@ -478,3 +478,20 @@ class TestAddConflict(BibTest):
         paperscmd(f'add {self.otherbib} --mode u --bibtex {self.mybib} --debug')
         expected = self.bibtex
         self.assertMultiLineEqual(open(self.mybib).read().strip(), expected) # entries did not change
+
+
+class TestScanCurrentDir(unittest.TestCase):
+
+    def test_scan_root_not_skipped(self):
+        # issue #100: `papers add . --recursive` silently skipped the scan root
+        # because basename('.') looks like a hidden directory
+        from papers.utils import set_directory
+        bibtex = "@article{A2000,\n author = {A. Author},\n title = {One},\n year = {2000}\n}"
+        with tempfile.TemporaryDirectory() as d:
+            open(os.path.join(d, 'ref.bib'), 'w').write(bibtex)
+            lib = os.path.join(d, 'lib.bib')
+            open(lib, 'w').write('')
+            my = Biblio.load(lib, '')
+            with set_directory(d):
+                my.scan_dir('.')
+            self.assertEqual(len(my.db.entries), 1)

@@ -563,10 +563,13 @@ class Biblio:
 
     def scan_dir_iter(self, direc, search_doi=True, search_fulltext=True, **kw):
 
+        top = os.path.abspath(direc)
         for root, direcs, files in os.walk(direc):
             dirname = os.path.basename(root)
-            if dirname.startswith('.'): continue
-            if dirname.startswith('_'): continue
+            # never skip the scan root itself: basename('.') == '.' looks hidden
+            if os.path.abspath(root) != top:
+                if dirname.startswith('.'): continue
+                if dirname.startswith('_'): continue
 
             # maybe a special entry directory?
             if os.path.exists(hidden_bibtex(root)):
