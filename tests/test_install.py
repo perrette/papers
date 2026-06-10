@@ -344,6 +344,49 @@ EOF""")
         self.assertFalse(config.gitlfs)
 
 
+class TestInstallEdit(TestBaseInstall):
+
+    def test_edit_reallocates_missing_gitdir(self):
+        # older configs carried a never-created legacy gitdir; enabling git via
+        # --edit should allocate the current (hashed) naming scheme instead
+        from papers.config import BACKUP_DIR
+        self.papers(f'install --force --local --no-git --bibtex {self.mybib} --files {self.filesdir}')
+        config = Config.load(self._path(CONFIG_FILE_LOCAL))
+        legacy = os.path.join(BACKUP_DIR, 'references-never-created')
+        config.gitdir = legacy
+        config.save()
+
+        self.papers(f'install --local --edit --git')
+        config = Config.load(self._path(CONFIG_FILE_LOCAL))
+        self.assertNotEqual(config.gitdir, legacy)
+        self.assertTrue(os.path.isdir(config.gitdir))
+        self.assertFalse(os.path.exists(legacy))
+
+    def test_edit_keeps_existing_gitdir(self):
+        from papers.config import BACKUP_DIR
+        self.papers(f'install --force --local --no-git --bibtex {self.mybib} --files {self.filesdir}')
+        config = Config.load(self._path(CONFIG_FILE_LOCAL))
+        legacy = os.path.join(BACKUP_DIR, 'references')
+        os.makedirs(legacy)
+        config.gitdir = legacy
+        config.save()
+
+        self.papers(f'install --local --edit --git')
+        config = Config.load(self._path(CONFIG_FILE_LOCAL))
+        self.assertEqual(config.gitdir, legacy)
+        self.assertTrue((Path(legacy)/'.git').is_dir())
+
+    def test_edit_no_duplicate_bibtex_candidates(self):
+        # the configured (absolute) bibtex and the same file found by the
+        # directory scan must not be reported as several files
+        from papers import logger
+        self.papers(f'install --force --local --no-git --bibtex {self.anotherbib} --files {self.filesdir}')
+        with self.assertLogs(logger, level='WARNING') as cm:
+            logger.warning('sentinel')  # assertLogs requires at least one record
+            self.papers(f'install --local --edit --no-git')
+        self.assertFalse(any('Several bibtex files' in line for line in cm.output), cm.output)
+
+
 
 class TestUninstall(LocalInstallTest):
     def test_uninstall(self):

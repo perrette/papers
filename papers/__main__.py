@@ -224,8 +224,16 @@ def installcmd(parser, o, config):
         if o.absolute_paths is None:
             o.absolute_paths = True
 
-    bibtex_files = [default_bibtex] + [f for f in bibtex_files if Path(f) != Path(default_bibtex)]
-    bibtex_files = [f for f in bibtex_files if os.path.exists(f)]
+    # deduplicate by resolved path: the same file may appear both as the
+    # configured (absolute) bibtex and as a relative directory-scan result
+    seen = {Path(default_bibtex).resolve()}
+    deduped = [default_bibtex]
+    for f in bibtex_files:
+        resolved = Path(f).resolve()
+        if resolved not in seen:
+            seen.add(resolved)
+            deduped.append(f)
+    bibtex_files = [f for f in deduped if os.path.exists(f)]
 
     if config.filesdir:
         checkdirs = [config.filesdir] + checkdirs
@@ -283,10 +291,11 @@ def installcmd(parser, o, config):
     if o.gitdir:
         config.gitdir = o.gitdir
 
-    elif config.gitdir:
-        pass  # keep the backup directory of the pre-existing install
+    elif config.gitdir and os.path.exists(config.gitdir):
+        pass  # keep the pre-existing backup directory and its history
 
     elif config.bibtex is not None:
+        # never-created gitdir from an older config: allocate the current naming scheme
         config.gitdir = resolve_gitdir(config.bibtex)
 
     if o.editor:
