@@ -9,7 +9,10 @@ papers/_version.py
 dist/
 .coverage
 htmlcov/
-.venv
+.venv*
 .pytest_cache
 papers.sublime-project
 papers.sublime-workspace
+site/
+notes/
+dummy_library.bib
