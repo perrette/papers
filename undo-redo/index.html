@@ -826,11 +826,17 @@
 <p>Did a <code>papers add</code> and are unhappy with the result?</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>papers undo
 </code></pre></div>
-<p>will revert to the previous version. If repeated, it will jump back and forth
-between the latest and before-latest version. Unless papers is installed with
-the <code>--git</code> option, in which case <code>papers undo</code> and <code>papers redo</code> will have
-essentially infinite memory (doing undos and making a new commit risks losing
-history, unless you keep track of the commit).</p>
+<p>will revert to the previous version. Without git-tracking, repeating it only
+jumps back and forth between the latest and before-latest version.</p>
+<p>With git-tracking (the default for fresh installs), <code>papers undo</code> and
+<code>papers redo</code> step through the whole history of the library (<code>-n N</code> steps at
+once).
+History is append-only: undo and redo record <em>restore commits</em> in the backup
+repository instead of rewriting it, so no state is ever lost. In particular,
+making a new change while undone starts a new line of history on top, and the
+states that were still redoable remain reachable with further <code>papers undo</code>
+or with <code>papers restore-backup --ref COMMIT</code> (use <code>papers git log</code> to find
+<code>COMMIT</code>).</p>
 <p>See <a href="../git/">Git integration</a> for how to enable git-tracking.</p>
 
 

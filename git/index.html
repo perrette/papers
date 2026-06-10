@@ -658,10 +658,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#setup-git-tracked-library-optional" class="md-nav__link">
+  <a href="#git-tracked-library" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Setup git-tracked library (optional)
+        Git-tracked library
       
     </span>
   </a>
@@ -854,10 +854,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#setup-git-tracked-library-optional" class="md-nav__link">
+  <a href="#git-tracked-library" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Setup git-tracked library (optional)
+        Git-tracked library
       
     </span>
   </a>
@@ -890,21 +890,41 @@
 
 
 <h1 id="git-integration">Git integration<a class="headerlink" href="#git-integration" title="Permanent link">&para;</a></h1>
-<h2 id="setup-git-tracked-library-optional">Setup git-tracked library (optional)<a class="headerlink" href="#setup-git-tracked-library-optional" title="Permanent link">&para;</a></h2>
-<p>Install comes with the option to git-track any change to the bibtex file
-(<code>--git</code>):</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>$&gt; papers install --bibtex papers.bib --filesdir files --git  [ --git-lfs ]
+<h2 id="git-tracked-library">Git-tracked library<a class="headerlink" href="#git-tracked-library" title="Permanent link">&para;</a></h2>
+<p>By default (when a git binary is available), a fresh <code>papers install</code>
+git-tracks any change to the bibtex file. Pass <code>--no-git</code> to opt out, and
+<code>--git-lfs</code> to also back up the attached files (see below):</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>$&gt; papers install --bibtex papers.bib --filesdir files [ --no-git | --git-lfs ]
 </code></pre></div>
+<p>Installs made by older papers versions keep their saved setting; re-run
+<code>papers install</code> (or <code>papers install --edit --git</code>) to enable git-tracking
+on an existing install.</p>
 <p>From now on, every change to the library will result in an automatic git
 commit. And the <code>papers git ...</code> command will work just as <code>git ...</code> executed
-from the bibtex directory. E.g. <code>papers git add origin *REMOTE URL*</code>;
+from the backup directory. E.g. <code>papers git remote add origin *REMOTE URL*</code>;
 <code>papers git lfs track files</code>; <code>papers git add files</code>; <code>papers git push</code>.</p>
-<p>If <code>--git-lfs</code> is passed, the files will be backed up along with the bibtex.
-Under the hood, bibtex and files (if applicable) are copied (hard-linked) to a
-back-up directory. Details are described in
+<p>Under the hood, every save commits a copy of the bibtex file to the backup
+repository. If <code>--git-lfs</code> is passed, the attached files are backed up along
+with the bibtex: they are hard-linked into the backup directory and tracked
+with git-lfs, together with a copy of the bibtex whose file paths point into
+the backup (so the backup is self-contained). Background in
 <a href="https://github.com/perrette/papers/issues/51">issue 51</a>.</p>
-<p>Backup occurs in a subfolder of <code>~/.local/.share/papers</code> regardless of the type
-of installation. Type <code>papers status -v</code> to find out.</p>
+<p>Backup occurs in a subfolder of <code>~/.local/share/papers/backups</code> regardless of
+the type of installation. Type <code>papers status -v</code> to find out, or
+<code>papers backup list</code> to see every backup directory papers knows of and which
+library each belongs to. Orphaned directories (e.g. whose library was
+deleted) can be cleaned up with <code>papers backup remove NAME</code> (glob patterns
+allowed; asks before deleting unless <code>--force</code> is passed).</p>
+<p>Backup directories are named after the bibtex file and its parent folder,
+plus a hash of the full path (e.g. <code>myproject-references-3f9a1c2b</code>), so two
+libraries can never share a directory and same-named libraries remain
+recognizable.
+Each directory also contains a <code>manifest.json</code> recording the bibtex file it
+backs up; if a backup operation finds a directory that belongs to another
+library (which could happen with directories created by papers versions that
+used the bibtex name alone), it moves the current library to a fresh
+directory instead of mixing the two histories. Directories created by older
+versions keep their name and are adopted as-is.</p>
 <p>For local installs that are already git-tracked, the feature remains useful as
 it is the basis for <code>papers undo</code> and <code>papers redo</code> (see
 <a href="../undo-redo/">Undo and redo</a>).</p>

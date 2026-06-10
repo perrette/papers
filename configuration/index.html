@@ -957,7 +957,7 @@
 
 <h1 id="configuration-and-install">Configuration and install<a class="headerlink" href="#configuration-and-install" title="Permanent link">&para;</a></h1>
 <h2 id="install-make-bibtex-and-files-directory-persistent">install: make bibtex and files directory persistent<a class="headerlink" href="#install-make-bibtex-and-files-directory-persistent" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>$&gt; papers install --bibtex papers.bib --filesdir files
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>$&gt; papers install --global --bibtex papers.bib --filesdir files
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>papers configuration
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>* configuration file: /home/perrette/.config/papersconfig.json
 <a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>* cache directory:    /home/perrette/.cache/papers
@@ -965,19 +965,27 @@
 <a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>* files directory:    files (1 files, 5.8 MB)
 <a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>* bibtex:            papers.bib (1 entries)
 </code></pre></div>
-<p>The configuration file is global (unless <code>--local</code> is specified), so from now
-on, any <code>papers</code> command will know about these settings: no need to specify
-bibtex file or files directory.</p>
+<p>With <code>--global</code>, the configuration applies to the whole user account: any
+<code>papers</code> command, from any directory, will know about these settings. A
+fresh <code>papers install</code> without scope option is <em>local</em> to the current
+directory (see below); re-running <code>papers install</code> on an existing install
+keeps its scope, so <code>--local</code>/<code>--global</code> are only needed to be explicit.</p>
+<p>Running <code>papers install</code> again <em>updates</em> the existing configuration: options
+you pass change, everything else is kept. Pass <code>--reset</code> to discard the
+existing configuration and start over from defaults. Use <code>--no-prompt</code> to
+accept all defaults non-interactively (at the prompts, <code>Enter</code> accepts the
+proposed default, typing a value sets it, and <code>unset</code> clears it).</p>
 <p>Type <code>papers status -v</code> to check your configuration.</p>
 <p>You also notice a cache directory. All internet requests such as crossref
 requests are saved in the cache directory. This happens regardless of whether
 <code>papers</code> is installed or not.</p>
 <h2 id="local-install">Local install<a class="headerlink" href="#local-install" title="Permanent link">&para;</a></h2>
-<p>Sometimes it is desirable to have separate configurations. In that case a local
-install is the way to go:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>$&gt; papers install --local
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>Bibtex file name [default to existing: papers.bib] [Enter/Yes/No]:
-<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>Files folder [default to new: papers] [Enter/Yes/No]: pdfs
+<p>A local install keeps separate configurations per project — one bibliography
+per folder. It is the default for a fresh install (<code>--local</code> makes it
+explicit):</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>$&gt; papers install
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>Bibtex file name [default to existing: papers.bib] [Enter/path/&#39;unset&#39;]:
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>Files folder [default to new: papers] [Enter/path/&#39;unset&#39;]: pdfs
 <a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>papers configuration
 <a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>* configuration file: papersconfig.json
 <a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>* cache directory:    /home/perrette/.cache/papers
@@ -986,11 +994,12 @@ install is the way to go:</p>
 <a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>* files directory:    pdfs (90 files, 337.4 MB)
 <a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>* bibtex:             papers.bib (82 entries)
 </code></pre></div>
-<p>Creates a local configuration file in a hidden <code>.papers</code> folder. By default, it
-expects existing or creates new <code>papers.bib</code> bibliography and <code>papers</code> files
-folder in the local directory, though <code>papers</code> will ask first unless explicitly
-provided. Note that every call from a subfolder will also detect that
-configuration file (it has priority over global install).</p>
+<p>Creates a local configuration file (<code>.papersconfig.json</code>) in the current
+directory. By default, it expects existing or creates new <code>papers.bib</code>
+bibliography and <code>files</code> folder in the local directory, though <code>papers</code> will
+ask first unless explicitly provided. Note that every call from a subfolder
+will also detect that configuration file (it has priority over global
+install).</p>
 <p>By default, the local install is meant to be portable with bibtex and files, so
 the file paths are encoded relatively to the bibtex file. If instead absolute
 paths make more sense (example use case: local bibtex file but central PDF
@@ -1006,6 +1015,9 @@ config with:</p>
 uninstall</code> command:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>papers uninstall
 </code></pre></div>
+<p>It removes the configuration file and reports what it leaves behind (the
+bibtex file, the files directory, and the backup directory if any). Pass
+<code>--remove-backup</code> to also remove the backup directory.</p>
 <p>You may repeat <code>papers status -v</code> and cleaning until a satisfying state is
 reached, or remove all config files recursively up to (and including) global
 install:</p>
