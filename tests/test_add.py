@@ -318,7 +318,8 @@ class TestAddConflict(BibTest):
  title = {Something else entirely}
 }"""
 
-    bibtex_conflict_key_fixed = """@article{10.5194/bg-8-515-2011XXX,
+    # the auto-generated key from an unknown entry is the slugified doi (issue #105)
+    bibtex_conflict_key_fixed = """@article{10-5194-bg-8-515-2011xxx,
  author = {M. Perrette and Another author},
  doi = {10.5194/bg-8-515-2011XXX},
  title = {Something else entirely}

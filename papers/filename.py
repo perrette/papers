@@ -154,5 +154,7 @@ class Format:
         return self.render(**entry)
 
 
-KEYFORMAT = Format(template='{author}{year}', author_num=2, author_sep="_", unknown_template="{doi}")
+# the unknown-key fallback uses the slugified doi: a raw doi (slashes,
+# parentheses, unicode...) makes for an invalid or unwieldy bibtex key
+KEYFORMAT = Format(template='{author}{year}', author_num=2, author_sep="_", unknown_template="{doi_}")
 NAMEFORMAT = Format(template='{authorX}_{year}_{title}', author_sep="_", title_sep="-", unknown_template="unknown_{doi_or_id}")

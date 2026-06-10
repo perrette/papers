@@ -15,3 +15,14 @@ class TestFormatIsUnknown(unittest.TestCase):
         fmt = Format(template="{author}", unknown_strict=False)
         self.assertTrue(fmt.is_unknown({"author": "Smith", "year": "2020", "title": UNKNOWN_TITLE}))
         self.assertFalse(fmt.is_unknown({"author": "Smith", "year": "2020", "title": "A Paper"}))
+
+
+class TestUnknownKeySanitized(unittest.TestCase):
+
+    def test_unknown_key_from_doi_is_sanitized(self):
+        # issue #105: the raw doi (slashes, dots...) used to become the key
+        from papers.filename import KEYFORMAT
+        key = KEYFORMAT({"doi": "10.5194/bg-8(515)-2011"})
+        self.assertTrue(key)
+        for c in '/().':
+            self.assertNotIn(c, key)
