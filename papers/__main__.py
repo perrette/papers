@@ -730,6 +730,20 @@ def listcmd(parser, o, config):
     _print_biblio_diff(biblio_init, biblio, entries)
 
 
+def opencmd(parser, o, config):
+    biblio = get_biblio(config)
+    entries_by_key = {biblio.key(e): e for e in biblio.entries}
+    for key in o.key:
+        e = entries_by_key.get(key.lower())
+        if e is None:
+            logger.error(f'no entry found with key: {key}')
+            continue
+        if not biblio.get_files(e):
+            logger.warning(f'{get_entry_val(e, "ID", "")}: no attached file')
+            continue
+        view_entry_files(biblio, e)
+
+
 def statuscmd(parser, o, config):
     print(config.status(check_files=not o.no_check_files, verbose=o.verbose))
 
@@ -1024,6 +1038,11 @@ def get_parser(config=None):
     # grp.add_argument('--merge-duplicates', action='store_true')
 
 
+    # open
+    # ====
+    openp = subparsers.add_parser('open', description='open the file(s) attached to entries', parents=[cfg])
+    openp.add_argument('key', nargs='+', help='entry key(s), case-insensitive (shortcut for `papers list --key KEY --open`)')
+
     # doi
     # ===
     doip = subparsers.add_parser('doi', description='parse DOI from PDF', parents=[loggingp])
@@ -1147,6 +1166,8 @@ def main(args=None):
         check_install(subp, o, config) and filecheckcmd(subp, o, config)
     elif o.cmd == 'list':
         check_install(subp, o, config) and listcmd(subp, o, config)
+    elif o.cmd == 'open':
+        check_install(subp, o, config) and opencmd(subp, o, config)
     elif o.cmd == 'undo':
         check_install(subp, o, config) and undocmd(subp, o, config)
     elif o.cmd == 'redo':

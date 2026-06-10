@@ -230,3 +230,19 @@ class EditTest(ListTest):
 
             out = self.papers(f'list 2011 perrette -1', sp_cmd='check_output')
             self.assertEqual(strip_all(out), "Perrette_2011: Near-ubiquity of ice-edge blooms in the Arctic (doi:10.5194/bg-8-515-2011, files:4, kiwi | ocean)")
+
+class OpenCmdTest(LocalInstallTest):
+    initial_content = """@article{NoFile2020,
+ author = {No File},
+ title = {Nothing attached},
+ year = {2020}
+}"""
+    anotherbib_content = None
+
+    def test_open_no_file_warns(self):
+        # completes without launching a viewer (no file attached)
+        self.papers('open NoFile2020')
+        self.papers('open nofile2020')  # case-insensitive
+
+    def test_open_unknown_key(self):
+        self.papers('open NoSuchKey')  # logs an error, does not crash
