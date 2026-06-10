@@ -10,11 +10,12 @@ from tests.common import BaseTest, LocalGitInstallTest
 class TestDefaultGitdirNaming(unittest.TestCase):
 
     def test_same_basename_maps_to_different_dirs(self):
-        a = default_gitdir("/somewhere/a/papers.bib")
-        b = default_gitdir("/somewhere/b/papers.bib")
+        a = default_gitdir("/somewhere/projecta/references.bib")
+        b = default_gitdir("/somewhere/projectb/references.bib")
         self.assertNotEqual(a, b)
-        self.assertTrue(os.path.basename(a).startswith("papers-"))
-        self.assertTrue(os.path.basename(b).startswith("papers-"))
+        # the parent folder tells same-named libraries apart at a glance
+        self.assertTrue(os.path.basename(a).startswith("projecta-references-"))
+        self.assertTrue(os.path.basename(b).startswith("projectb-references-"))
 
     def test_deterministic(self):
         self.assertEqual(default_gitdir("/x/lib.bib"), default_gitdir("/x/lib.bib"))

@@ -83,16 +83,18 @@ def run_git(gitdir, cmd, check=True):
 def default_gitdir(bibtex):
     """Allocate a backup directory name for a bibtex file.
 
-    A human-readable slug plus a hash of the resolved absolute path, so that
-    two libraries can never map to the same directory (a bare slug of the
-    bibtex name used to collide, e.g. any local 'papers.bib').
+    A human-readable slug (parent folder + file name, since libraries are
+    often named alike: references.bib, papers.bib...) plus a hash of the
+    resolved absolute path, so that two libraries can never map to the same
+    directory (a bare slug of the bibtex name used to collide).
     """
     from slugify import slugify
     from papers.config import BACKUP_DIR
     path = Path(bibtex).resolve()
     stem = path.stem or "library"
     digest = hashlib.sha256(str(path).encode("utf-8")).hexdigest()[:8]
-    return os.path.join(BACKUP_DIR, f"{slugify(stem)}-{digest}")
+    label = slugify(f"{path.parent.name} {stem}") if path.parent.name else slugify(stem)
+    return os.path.join(BACKUP_DIR, f"{label}-{digest}")
 
 
 def legacy_gitdir(bibtex):

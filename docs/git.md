@@ -33,8 +33,10 @@ library each belongs to. Orphaned directories (e.g. whose library was
 deleted) can be cleaned up with `papers backup remove NAME` (glob patterns
 allowed; asks before deleting unless `--force` is passed).
 
-Backup directories are named after the bibtex file plus a hash of its full
-path (e.g. `papers-3f9a1c2b`), so two libraries can never share a directory.
+Backup directories are named after the bibtex file and its parent folder,
+plus a hash of the full path (e.g. `myproject-references-3f9a1c2b`), so two
+libraries can never share a directory and same-named libraries remain
+recognizable.
 Each directory also contains a `manifest.json` recording the bibtex file it
 backs up; if a backup operation finds a directory that belongs to another
 library (which could happen with directories created by papers versions that
