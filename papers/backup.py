@@ -4,10 +4,15 @@ When papers is installed with --git, every save of the bibtex file is
 mirrored to a dedicated git repository (``config.gitdir``, under
 ``~/.local/share/papers/backups`` by default):
 
-- ``backup_copy.bib``: verbatim copy of the bibtex file
-- ``backup_clean.bib``: copy with file paths expressed relative to the backup
-  directory (and, with --git-lfs, the attached files hard-linked into a
-  ``files/`` subdirectory so they are backed up too)
+- a verbatim copy of the bibtex file, tracked under its own name
+  (e.g. ``papers.bib``)
+- with --git-lfs only: ``backup_clean.bib``, a derived copy with file paths
+  expressed relative to the backup directory, plus the attached files
+  hard-linked into a ``files/`` subdirectory so they are backed up too
+
+(Older versions tracked the verbatim copy as ``backup_copy.bib`` and wrote
+``backup_clean.bib`` unconditionally; the next snapshot drops the legacy
+names, and restore still understands them when materializing old snapshots.)
 
 Each save is committed on a single ``main`` branch, and history is
 append-only: nothing is ever reset away. Undo, redo and
@@ -51,7 +56,8 @@ from papers.utils import checksum, move, PapersExit
 
 MANIFEST_NAME = "manifest.json"
 # version of the backup directory layout, recorded in the manifest
-LAYOUT_VERSION = 1
+# (2: verbatim copy tracked under the bibtex's own name, clean copy only with --git-lfs)
+LAYOUT_VERSION = 2
 
 
 def run_git(gitdir, cmd, check=True):
@@ -242,20 +248,25 @@ def backup_bib(biblio, config, message=None):
     # a snapshot made while undone must append to the full history
     adopt_legacy_undone_state(config.gitdir)
 
+    # stop tracking files under their pre-layout-2 names; restore still
+    # understands them when materializing old snapshots
+    legacy_names = ["backup_copy.bib"] + ([] if config.backup_files else ["backup_clean.bib"])
+    for legacy in legacy_names:
+        if legacy != config.backupfile.name and (backupdir/legacy).exists():
+            (backupdir/legacy).unlink()
+            run_git(config.gitdir, ["rm", "--cached", "--ignore-unmatch", "--quiet", legacy], check=False)
+
     # remove if exists
     config.backupfile.unlink(missing_ok=True)
-    config.backupfile_clean.unlink(missing_ok=True)
 
-    ## Here we could create a copy of biblio since it is modified in place
-    ## For now, we exit the program after saving, so don't bother
     logger.debug(f'BACKUP: cp {config.bibtex} {config.backupfile}')
     shutil.copy(config.bibtex, config.backupfile)
     run_git(config.gitdir, ["add", config.backupfile.name])
 
-    biblio = copy.deepcopy(biblio)
-
     if config.backup_files:
         logger.info('backup bibliography with files')
+        config.backupfile_clean.unlink(missing_ok=True)
+        biblio = copy.deepcopy(biblio)
         backupfilesdir = backupdir/"files"
         backupfilesdir.mkdir(exist_ok=True)
         biblio.filesdir = str(backupfilesdir)
@@ -269,9 +280,6 @@ def backup_bib(biblio, config, message=None):
 
     else:
         logger.info('backup bibliography only (without files)')
-        biblio.update_file_path(relative_to=backupdir)
-        biblio.save(config.backupfile_clean)
-        run_git(config.gitdir, ["add", config.backupfile_clean.name])
 
     message = message or 'papers ' + ' '.join(sys.argv[1:])
     run_git(config.gitdir, ["commit", "-m", message], check=False)
@@ -291,9 +299,22 @@ def silent_backup_bib(biblio, config, level=logging.WARNING, *args, **kwargs):
         logger.setLevel(level0)
 
 
+def _tracked_backupfile(config):
+    """The verbatim bibtex copy in the backup worktree.
+
+    Named after the bibtex itself; falls back to the pre-layout-2 name
+    'backup_copy.bib' when materializing snapshots recorded by older versions.
+    """
+    if not config.backupfile.exists():
+        legacy = Path(config.gitdir) / "backup_copy.bib"
+        if legacy.exists():
+            return legacy
+    return config.backupfile
+
+
 def restore_from_backupdir(config, restore_files=False):
     check_gitdir_ownership(config)
-    restore_cmd = f"papers add {config.backupfile_clean} --rename --copy" if config.backup_files else f"cp {config.backupfile} {config.bibtex}"
+    restore_cmd = f"papers add {config.backupfile_clean} --rename --copy" if config.backup_files else f"cp {_tracked_backupfile(config)} {config.bibtex}"
     repair_message = f"papers backup broken :: cannot repair file links :: try to recover manually with `{restore_cmd}`"
     try:
         return _restore_from_backupdir(config, restore_files=restore_files)
@@ -311,7 +332,7 @@ def _restore_from_backupdir(config, restore_files=False):
 
     if os.path.exists(config.bibtex):
         os.remove(config.bibtex)
-    shutil.copy(config.backupfile, config.bibtex)
+    shutil.copy(_tracked_backupfile(config), config.bibtex)
 
     # Re-name the file according to back-up bibtex
     if not config.backup_files:

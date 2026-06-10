@@ -70,11 +70,17 @@ class Config:
 
     @property
     def backupfile_clean(self):
+        "copy of the bibtex with file paths relative to the backup directory (--git-lfs mode)"
         return Path(self.gitdir)/'backup_clean.bib'
 
     @property
     def backupfile(self):
-        return Path(self.gitdir)/'backup_copy.bib'
+        "tracked verbatim copy of the bibtex, named after it"
+        name = Path(self.bibtex).name if self.bibtex else 'library.bib'
+        if name in ('backup_clean.bib', 'manifest.json'):
+            # avoid clashing with the backup directory's own files
+            name = 'backup_' + name
+        return Path(self.gitdir)/name
 
     @property
     def root(self):

@@ -14,9 +14,11 @@ commit. And the `papers git ...` command will work just as `git ...` executed
 from the backup directory. E.g. `papers git remote add origin *REMOTE URL*`;
 `papers git lfs track files`; `papers git add files`; `papers git push`.
 
-If `--git-lfs` is passed, the files will be backed up along with the bibtex.
-Under the hood, bibtex and files (if applicable) are copied (hard-linked) to a
-back-up directory. Details are described in
+Under the hood, every save commits a copy of the bibtex file to the backup
+repository. If `--git-lfs` is passed, the attached files are backed up along
+with the bibtex: they are hard-linked into the backup directory and tracked
+with git-lfs, together with a copy of the bibtex whose file paths point into
+the backup (so the backup is self-contained). Background in
 [issue 51](https://github.com/perrette/papers/issues/51).
 
 Backup occurs in a subfolder of `~/.local/share/papers/backups` regardless of

@@ -62,3 +62,37 @@ class TestManifest(LocalGitInstallTest):
         out = self.papers('backup list', sp_cmd='check_output')
         self.assertIn(os.path.basename(self.config.gitdir), out)
         self.assertIn(str(Path(self._path(self.mybib)).resolve()), out)
+
+
+class TestLegacyLayout(LocalGitInstallTest):
+    """Backup directories written by older versions tracked backup_copy.bib /
+    backup_clean.bib; the new layout tracks the bibtex under its own name."""
+
+    def _make_legacy(self):
+        from papers.backup import run_git
+        gitdir = self.config.gitdir
+        name = Path(self.config.backupfile).name
+        run_git(gitdir, ["mv", name, "backup_copy.bib"])
+        run_git(gitdir, ["commit", "-m", "simulate pre-layout-2 backup"])
+
+    def test_snapshot_converges_to_new_layout(self):
+        self._make_legacy()
+        self.papers(f'add {self.anotherbib}')
+        gitdir = Path(self.config.gitdir)
+        self.assertTrue(self.config.backupfile.exists())
+        self.assertFalse((gitdir / "backup_copy.bib").exists())
+
+    def test_undo_across_layouts(self):
+        self.papers(f'add {self.anotherbib}')
+        bib1 = open(self._path(self.mybib)).read()
+        self._make_legacy()
+
+        # a new snapshot on top of the legacy layout
+        open(self._path("more.bib"), "w").write(
+            "@article{More2024,\n author = {Mo Re},\n title = {More},\n year = {2024}\n}")
+        self.papers(f'add more.bib')
+
+        # undo materializes the legacy-layout snapshot: restore must fall back
+        # to backup_copy.bib
+        self.papers(f'undo')
+        self.assertMultiLineEqual(open(self._path(self.mybib)).read(), bib1)

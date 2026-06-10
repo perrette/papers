@@ -2,6 +2,7 @@
 import os
 import tempfile
 import unittest
+from pathlib import Path
 
 from papers.config import Config, CONFIG_FILE_LOCAL
 
@@ -69,7 +70,12 @@ class TestConfigBackupFiles(unittest.TestCase):
     def test_backupfile_properties(self):
         cfg = Config(local=True, bibtex="/tmp/x.bib", gitdir="/tmp/git")
         self.assertIn("backup_clean.bib", str(cfg.backupfile_clean))
-        self.assertIn("backup_copy.bib", str(cfg.backupfile))
+        # the tracked backup copy is named after the bibtex itself
+        self.assertEqual("x.bib", Path(cfg.backupfile).name)
+
+    def test_backupfile_reserved_names(self):
+        cfg = Config(local=True, bibtex="/tmp/backup_clean.bib", gitdir="/tmp/git")
+        self.assertNotEqual(Path(cfg.backupfile).name, Path(cfg.backupfile_clean).name)
 
 
 class TestConfigCollections(unittest.TestCase):

@@ -40,16 +40,16 @@ class TimeTravelBase:
         commits.append(self.get_commit())
         print("bib add paper:", self._path(self.mybib))
         print(open(self._path(self.mybib)).read())
-        print("backup after add paper:", self.config.backupfile_clean)
-        print(open(self.config.backupfile_clean).read())
+        print("backup after add paper:", self.config.backupfile)
+        print(open(self.config.backupfile).read())
 
         self.papers(f'list --add-tag change')
         self.assertTrue(self.config.git)
         commits.append(self.get_commit())
         print("bib add-tag:", self._path(self.mybib))
         print(open(self._path(self.mybib)).read())
-        print("backup after add-tag:", self.config.backupfile_clean)
-        print(open(self.config.backupfile_clean).read())
+        print("backup after add-tag:", self.config.backupfile)
+        print(open(self.config.backupfile).read())
 
         # make sure we have 3 distinct commits
         self.config.gitcmd('log')
