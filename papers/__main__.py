@@ -16,7 +16,8 @@ from papers import logger
 from papers.extract import extract_pdf_doi, isvaliddoi, extract_pdf_metadata
 from papers.extract import fetch_bibtex_by_doi, fetch_bibtex_by_fulltext_crossref, fetch_bibtex_by_fulltext_scholar
 from papers.encoding import parse_file, format_file, family_names, format_entries, standard_name, format_entry, parse_keywords, format_key
-from papers.config import bcolors, Config, search_config, CONFIG_FILE, CONFIG_FILE_LOCAL, DATA_DIR, CONFIG_FILE_LEGACY
+from papers.config import (bcolors, Config, search_config, CONFIG_FILE, CONFIG_FILE_LOCAL,
+                           DATA_DIR, CONFIG_FILE_LEGACY, CONFIG_FILE_LEGACY_XDG)
 from papers.duplicate import list_duplicates, list_uniques, edit_entries, title_id
 from papers.entries import get_entry_val, entry_content_equal
 from papers.bib import (Biblio, FUZZY_RATIO, DEFAULT_SIMILARITY, entry_filecheck,
@@ -30,13 +31,18 @@ from papers import __version__
 
 
 def check_legacy_global_config():
-    " move config file from ~/.local/share/papers/ to ~/.config/papersconfig.json "
-    if os.path.exists(CONFIG_FILE_LEGACY):
+    """move the global config file from locations used by previous versions
+    (~/.local/share/papers/config.json on every platform, and the XDG-style
+    location on macOS/Windows where platformdirs now differs)"""
+    for legacy in [CONFIG_FILE_LEGACY, CONFIG_FILE_LEGACY_XDG]:
+        if os.path.realpath(legacy) == os.path.realpath(CONFIG_FILE) or not os.path.exists(legacy):
+            continue
         if not os.path.exists(CONFIG_FILE):
-            logger.warning(f"Move legacy config file {CONFIG_FILE_LEGACY} to {CONFIG_FILE}'")
-            shutil.move(CONFIG_FILE_LEGACY, CONFIG_FILE)
+            logger.warning(f"Move legacy config file {legacy} to {CONFIG_FILE}")
+            os.makedirs(os.path.dirname(CONFIG_FILE), exist_ok=True)
+            shutil.move(legacy, CONFIG_FILE)
         else:
-            logger.warning(f"Legacy config file found: {CONFIG_FILE_LEGACY}. Delete to remove this warning:  rm -f '{CONFIG_FILE_LEGACY}'")
+            logger.warning(f"Legacy config file found: {legacy}. Delete to remove this warning:  rm -f '{legacy}'")
 
 def check_legacy_config(configfile):
     " move config file from ~/.local/.share/papers/ to ~/.config/papersconfig.json and .papers/config.json to .papersconfig.json"
@@ -634,7 +640,6 @@ def backupcmd(parser, o, config):
     infos = list_backup_dirs(config)
     if not infos:
         print('no backup directory found')
-        return
     for info in infos:
         owner = info['bibtex'] or 'unknown library (no manifest)'
         status = ''

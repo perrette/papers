@@ -6,3 +6,4 @@ scholarly
 rapidfuzz
 bs4
 python-slugify
+platformdirs

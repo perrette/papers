@@ -2,6 +2,7 @@ import os, json
 import copy
 from pathlib import Path
 import hashlib
+import platformdirs
 from papers.entries import parse_string
 from papers import logger
 from papers.filename import Format, NAMEFORMAT, KEYFORMAT
@@ -11,19 +12,24 @@ from papers.utils import bcolors, check_filesdir, search_config
 # GIT = False
 DRYRUN = False
 
-# config directory location
-HOME = os.environ.get('HOME',os.path.expanduser('~'))
-CONFIG_HOME = os.environ.get('XDG_CONFIG_HOME', os.path.join(HOME, '.config'))
-CACHE_HOME = os.environ.get('XDG_CACHE_HOME', os.path.join(HOME, '.cache'))
-DATA_HOME = os.environ.get('XDG_DATA_HOME', os.path.join(HOME, '.local','share'))
-
-CONFIG_FILE = os.path.join(CONFIG_HOME, 'papersconfig.json')
-CONFIG_FILE_LEGACY = os.path.join(DATA_HOME, 'config.json')
+# platform-appropriate locations (on Linux these honor the XDG variables and
+# match the paths previous versions derived by hand; they differ on
+# macOS/Windows, where the legacy locations below are checked for migration)
+CONFIG_FILE = os.path.join(platformdirs.user_config_dir(), 'papersconfig.json')
 CONFIG_FILE_LOCAL = '.papersconfig.json'
 
-DATA_DIR = os.path.join(DATA_HOME, 'papers')
-BACKUP_DIR = os.path.join(DATA_HOME, 'papers', 'backups')
-CACHE_DIR = os.path.join(CACHE_HOME, 'papers')
+DATA_DIR = platformdirs.user_data_dir('papers')
+BACKUP_DIR = os.path.join(DATA_DIR, 'backups')
+CACHE_DIR = platformdirs.user_cache_dir('papers')
+
+# locations used by previous versions (XDG conventions on every platform),
+# kept for migration and for listing pre-existing backup directories
+HOME = os.environ.get('HOME', os.path.expanduser('~'))
+_CONFIG_HOME_LEGACY = os.environ.get('XDG_CONFIG_HOME', os.path.join(HOME, '.config'))
+_DATA_HOME_LEGACY = os.environ.get('XDG_DATA_HOME', os.path.join(HOME, '.local', 'share'))
+CONFIG_FILE_LEGACY = os.path.join(_DATA_HOME_LEGACY, 'config.json')
+CONFIG_FILE_LEGACY_XDG = os.path.join(_CONFIG_HOME_LEGACY, 'papersconfig.json')
+BACKUP_DIR_LEGACY = os.path.join(_DATA_HOME_LEGACY, 'papers', 'backups')
 
 
 class Config:

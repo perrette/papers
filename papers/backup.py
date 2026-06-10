@@ -222,11 +222,15 @@ def backup_info(gitdir, config=None):
 
 def list_backup_dirs(config=None):
     """Return information about every backup directory papers knows of."""
-    from papers.config import BACKUP_DIR
+    from papers.config import BACKUP_DIR, BACKUP_DIR_LEGACY
+    roots = [BACKUP_DIR]
+    if Path(BACKUP_DIR_LEGACY) != Path(BACKUP_DIR):
+        roots.append(BACKUP_DIR_LEGACY)
     dirs = []
-    if os.path.isdir(BACKUP_DIR):
-        dirs += [os.path.join(BACKUP_DIR, d) for d in sorted(os.listdir(BACKUP_DIR))
-                 if os.path.isdir(os.path.join(BACKUP_DIR, d))]
+    for root in roots:
+        if os.path.isdir(root):
+            dirs += [os.path.join(root, d) for d in sorted(os.listdir(root))
+                     if os.path.isdir(os.path.join(root, d))]
     if config is not None and config.gitdir and os.path.isdir(config.gitdir):
         if not any(Path(d) == Path(config.gitdir) for d in dirs):
             dirs.append(config.gitdir)

@@ -24,6 +24,7 @@ dependencies = [
     "rapidfuzz",
     "python-slugify",
     "bs4",
+    "platformdirs",
 ]
 dynamic = ["version"]
 
