@@ -76,6 +76,32 @@ class TestBackupListWithoutGit(BaseTest):
         self.assertIn('git-tracking is off', out)
 
 
+class TestBackupRemove(LocalGitInstallTest):
+
+    def test_remove_by_name(self):
+        gitdir = self.config.gitdir
+        self.assertTrue(os.path.isdir(gitdir))
+        self.papers(f'backup remove {os.path.basename(gitdir)} --force')
+        self.assertFalse(os.path.exists(gitdir))
+
+    def test_remove_requires_pattern(self):
+        func = lambda: self.papers('backup remove --force')
+        self.assertRaises(BaseException, func)
+        self.assertTrue(os.path.isdir(self.config.gitdir))
+
+    def test_remove_no_match(self):
+        out = self.papers('backup remove no-such-dir-xyz --force', sp_cmd='check_output')
+        self.assertIn('no matching backup directory', out)
+        self.assertTrue(os.path.isdir(self.config.gitdir))
+
+    def test_list_filter(self):
+        name = os.path.basename(self.config.gitdir)
+        out = self.papers(f'backup list {name}', sp_cmd='check_output')
+        self.assertIn(name, out)
+        out = self.papers('backup list no-such-dir-xyz', sp_cmd='check_output')
+        self.assertNotIn(name, out)
+
+
 class TestLegacyLayout(LocalGitInstallTest):
     """Backup directories written by older versions tracked backup_copy.bib /
     backup_clean.bib; the new layout tracks the bibtex under its own name."""

@@ -636,24 +636,51 @@ def restorecmd(parser, o, config):
         restore_from_backupdir(config, restore_files=o.restore_files)
 
 
+def _print_backup_info(info):
+    owner = info['bibtex'] or 'unknown library (no manifest)'
+    status = ''
+    if info['bibtex'] and not os.path.exists(info['bibtex']):
+        status = bcolors.WARNING + ' (bibtex missing)' + bcolors.ENDC
+    current = ' [current]' if info['current'] else ''
+    snapshots = f"{info['snapshots']} snapshots" if info['snapshots'] is not None else 'no snapshot'
+    last = f", last {info['last']}" if info['last'] else ''
+    size = f"{info['size']/(1024*1024):.1f} MB"
+    print(f"* {os.path.basename(info['gitdir'])}: {owner}{status} ({snapshots}{last}, {size}){current}")
+    print(f"    {info['gitdir']}")
+
+
 def backupcmd(parser, o, config):
     infos = list_backup_dirs(config)
+    if o.patterns:
+        infos = [info for info in infos
+                 if any(fnmatch.fnmatch(os.path.basename(info['gitdir']), p) for p in o.patterns)]
+
+    if o.action == 'remove':
+        if not o.patterns:
+            parser.error('backup remove requires directory name(s) -- see `papers backup list`')
+        if not infos:
+            print('no matching backup directory')
+            return
+        for info in infos:
+            _print_backup_info(info)
+            if info['current']:
+                logger.warning("this is the current library's backup directory; "
+                               "removing it discards its history (a fresh one is created on the next save)")
+            if not o.force:
+                ans = input(f"remove {info['gitdir']} ? [y/N] ")
+                if ans.lower() != 'y':
+                    continue
+            shutil.rmtree(info['gitdir'])
+            print(f"removed {info['gitdir']}")
+        return
+
     if not infos:
-        print('no backup directory found')
+        print('no matching backup directory' if o.patterns else 'no backup directory found')
     for info in infos:
-        owner = info['bibtex'] or 'unknown library (no manifest)'
-        status = ''
-        if info['bibtex'] and not os.path.exists(info['bibtex']):
-            status = bcolors.WARNING + ' (bibtex missing)' + bcolors.ENDC
-        current = ' [current]' if info['current'] else ''
-        snapshots = f"{info['snapshots']} snapshots" if info['snapshots'] is not None else 'no snapshot'
-        last = f", last {info['last']}" if info['last'] else ''
-        size = f"{info['size']/(1024*1024):.1f} MB"
-        print(f"* {os.path.basename(info['gitdir'])}: {owner}{status} ({snapshots}{last}, {size}){current}")
-        print(f"    {info['gitdir']}")
+        _print_backup_info(info)
 
     # always say where the current library stands
-    if config.bibtex:
+    if not o.patterns and config.bibtex:
         if not config.git:
             print(f"current library: {config.bibtex} :: git-tracking is off "
                   f"(enable with `papers install --edit --git`)")
@@ -1208,8 +1235,11 @@ def get_parser(config=None):
     # backup
     # ======
     backupp = subparsers.add_parser('backup', description='manage backup directories', parents=[loggingp])
-    backupp.add_argument('action', nargs='?', choices=['list'], default='list',
-        help='list known backup directories and the library each belongs to (default action)')
+    backupp.add_argument('action', nargs='?', choices=['list', 'remove'], default='list',
+        help='list (default) known backup directories and the library each belongs to, or remove them')
+    backupp.add_argument('patterns', nargs='*', metavar='name',
+        help='directory name(s), glob patterns allowed (filter for list, required for remove)')
+    backupp.add_argument('-f', '--force', action='store_true', help='remove without confirmation')
 
     return parser, subparsers
 
