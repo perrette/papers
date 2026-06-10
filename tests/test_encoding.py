@@ -33,10 +33,17 @@ class TestBibtexFileEntry(unittest.TestCase):
         files = parse_file(':/path/to/file1.pdf:pdf;:/path/to/file2.pdf:pdf')
         self.assertEqual(files, ['/path/to/file1.pdf','/path/to/file2.pdf'])
 
-    def test_parse_file_invalid_format_raises(self):
-        with self.assertRaises(ValueError) as ctx:
-            parse_file('a:b:c:d')
-        self.assertIn('unknown', str(ctx.exception))
+    def test_parse_file_colon_in_path(self):
+        # issue #95: the path itself may contain colons (e.g. journal names)
+        file = parse_file(':/path/to/American Economic Journal: Applied Economics.pdf:pdf')
+        self.assertEqual(file, ['/path/to/American Economic Journal: Applied Economics.pdf'])
+        file = parse_file('desc:/path/with:colon.pdf:pdf')
+        self.assertEqual(file, ['/path/with:colon.pdf'])
+
+    def test_parse_file_empty_path_ignored(self):
+        # issue #91: an empty path used to resolve to the library directory itself
+        self.assertEqual(parse_file('::pdf', relative_to='/some/dir'), [])
+        self.assertEqual(parse_file(':/path/to/file.pdf:pdf;', relative_to=None), ['/path/to/file.pdf'])
 
 
     def test_format_file(self):

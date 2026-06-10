@@ -18,23 +18,21 @@ from papers.utils import ansi_link as link, bcolors
 # ================================
 
 def _parse_file(file):
-    """ parse a single file entry
+    """parse a single file entry: 'path', 'path:type' or 'description:path:type',
+    where the path of the three-field form may itself contain colons
+    (e.g. a journal name like ": Applied Economics" in the file name)
     """
-    sfile = file.split(':')
+    parts = file.split(':')
 
-    if len(sfile) == 1:  # no ':'
-        path, type = file, ''
+    if len(parts) == 1:  # no ':'
+        return file
 
-    elif len(sfile) == 2:
-        path, type = sfile
+    if len(parts) == 2:
+        path, type = parts
+        return path
 
-    elif len(sfile) == 3:
-        basename, path, type = sfile
-
-    else:
-        raise ValueError('unknown `file` format: '+ repr(file))
-
-    return path
+    # description:path:type -- description and type cannot contain ':'
+    return ':'.join(parts[1:-1])
 
 
 def _format_file(file, type=None):
@@ -47,10 +45,19 @@ def parse_file(file, relative_to=None):
     " return list of absolute paths "
     if not file:
         return []
-    else:
-        files = [_parse_file(f) for f in file.split(';')]
-        if relative_to is not None:
-            files = [os.path.abspath(os.path.join(relative_to, f)) for f in files]
+
+    files = []
+    for f in file.split(';'):
+        if not f.strip():
+            continue
+        path = _parse_file(f)
+        if not path:
+            # joining an empty path to relative_to would point at a directory
+            logger.warning(f'empty file path in file field (ignored): {f!r}')
+            continue
+        files.append(path)
+    if relative_to is not None:
+        files = [os.path.abspath(os.path.join(relative_to, f)) for f in files]
 
     return files
 
