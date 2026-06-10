@@ -63,6 +63,18 @@ class TestManifest(LocalGitInstallTest):
         self.assertIn(os.path.basename(self.config.gitdir), out)
         self.assertIn(str(Path(self._path(self.mybib)).resolve()), out)
 
+    def test_backup_defaults_to_list(self):
+        out = self.papers('backup', sp_cmd='check_output')
+        self.assertIn(os.path.basename(self.config.gitdir), out)
+
+
+class TestBackupListWithoutGit(BaseTest):
+
+    def test_backup_list_reports_git_off(self):
+        self.papers(f'install --force --local --no-git --bibtex {self.mybib} --files {self.filesdir}')
+        out = self.papers('backup list', sp_cmd='check_output')
+        self.assertIn('git-tracking is off', out)
+
 
 class TestLegacyLayout(LocalGitInstallTest):
     """Backup directories written by older versions tracked backup_copy.bib /

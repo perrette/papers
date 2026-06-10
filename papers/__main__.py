@@ -652,6 +652,14 @@ def backupcmd(parser, o, config):
         print(f"* {os.path.basename(info['gitdir'])}: {owner}{status} ({snapshots}{last}, {size}){current}")
         print(f"    {info['gitdir']}")
 
+    # always say where the current library stands
+    if config.bibtex:
+        if not config.git:
+            print(f"current library: {config.bibtex} :: git-tracking is off "
+                  f"(enable with `papers install --edit --git`)")
+        elif not any(info['current'] for info in infos):
+            print(f"current library: {config.bibtex} :: no snapshot recorded yet")
+
 
 def gitcmd(parser, o, config):
     try:
@@ -1200,7 +1208,8 @@ def get_parser(config=None):
     # backup
     # ======
     backupp = subparsers.add_parser('backup', description='manage backup directories', parents=[loggingp])
-    backupp.add_argument('action', choices=['list'], help='list known backup directories and the library each belongs to')
+    backupp.add_argument('action', nargs='?', choices=['list'], default='list',
+        help='list known backup directories and the library each belongs to (default action)')
 
     return parser, subparsers
 
