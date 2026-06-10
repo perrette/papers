@@ -31,7 +31,7 @@ class TestLocalInstall(TestBaseInstall):
         config = Config.load(self._path(CONFIG_FILE_LOCAL))
         self.assertEqual(config.bibtex, os.path.abspath(self._path(self.mybib)))
         self.assertEqual(config.filesdir, os.path.abspath(self._path(self.filesdir)))
-        self.assertFalse(config.git)
+        self.assertTrue(config.git)  # fresh install defaults to git
         # bibtex and files directory were created:
         self.assertTrue(self._exists(self.mybib))
         self.assertTrue(self._exists(self.filesdir))
@@ -50,7 +50,7 @@ class TestLocalInstall(TestBaseInstall):
         # self.assertEqual(config.bibtex, os.path.abspath(self._path("papers.bib")))
         self.assertEqual(config.bibtex, os.path.abspath(self._path("papers.bib")))
         self.assertEqual(config.filesdir, os.path.abspath(self._path("files")))
-        self.assertFalse(config.git)
+        self.assertTrue(config.git)
 
 
     def test_install_defaults_preexisting_bibtex(self):
@@ -65,7 +65,7 @@ class TestLocalInstall(TestBaseInstall):
         config = Config.load(self._path(CONFIG_FILE_LOCAL))
         self.assertEqual(config.bibtex, os.path.abspath(self._path(self.anotherbib)))
         self.assertEqual(config.filesdir, os.path.abspath(self._path("files")))
-        self.assertFalse(config.git)
+        self.assertTrue(config.git)
 
 
     def test_install_defaults_preexisting_pdfs(self):
@@ -79,7 +79,7 @@ class TestLocalInstall(TestBaseInstall):
         # self.assertEqual(config.bibtex, os.path.abspath(self._path("papers.bib")))
         self.assertEqual(config.bibtex, os.path.abspath(self._path(self.anotherbib)))
         self.assertEqual(config.filesdir, os.path.abspath(self._path("pdfs")))
-        self.assertFalse(config.git)
+        self.assertTrue(config.git)
 
     def test_install_raise(self):
         self.papers(f'install --force --local --bibtex {self.mybib} --files {self.filesdir}')
@@ -102,7 +102,7 @@ class TestLocalInstall(TestBaseInstall):
         self.assertEqual(config.bibtex, os.path.abspath(self._path(self.mybib + "XX")))
         # The files folder from previous install was forgotten
         self.assertEqual(config.filesdir, os.path.abspath(self._path("files")))
-        self.assertFalse(config.git)
+        self.assertTrue(config.git)
 
     def test_install_edit(self):
         self.papers(f'install --force --local --bibtex {self.mybib} --files {self.filesdir}')
@@ -117,7 +117,7 @@ class TestLocalInstall(TestBaseInstall):
         self.assertEqual(config.bibtex, os.path.abspath(self._path(self.mybib + "XX")))
         # The files folder from previous install is remembered
         self.assertEqual(config.filesdir, os.path.abspath(self._path(self.filesdir)))
-        self.assertFalse(config.git)
+        self.assertTrue(config.git)
 
     def test_install_interactive(self):
         # fully interactive install
@@ -319,9 +319,17 @@ EOF""")
         self.assertFalse(config.gitlfs)
 
     def test_install_interactive4(self):
+        # plain Enter selects the defaults: git on (fresh install), git-lfs off
         self.papers(f"""install --local --filesdir files --bibtex bibbib.bib << EOF
 
+
 EOF""")
+        config = Config.load(self._path(CONFIG_FILE_LOCAL))
+        self.assertTrue(config.git)
+        self.assertFalse(config.gitlfs)
+
+    def test_install_no_git(self):
+        self.papers(f'install --force --local --no-git --bibtex bibbib.bib --filesdir files')
         config = Config.load(self._path(CONFIG_FILE_LOCAL))
         self.assertFalse(config.git)
         self.assertFalse(config.gitlfs)

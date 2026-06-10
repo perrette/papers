@@ -181,6 +181,10 @@ def installcmd(parser, o, config):
             os.remove(config.file)
         config = Config()
 
+    # a fresh install (as opposed to editing an existing one) defaults to
+    # git-tracking when a git binary is available
+    fresh_install = config.file is None
+
     if o.local is None:
         if config.local is not None:
             logger.debug(f'keep config to pre-existing: {config.local}')
@@ -299,7 +303,10 @@ def installcmd(parser, o, config):
     if o.git_lfs:
         o.git = True
 
-    default_git = config.git if config.git is not None else False
+    if fresh_install:
+        default_git = shutil.which('git') is not None
+    else:
+        default_git = config.git if config.git is not None else False
     if o.git is None:
         if prompt:
             ans = input(f"Use git to back-up the bibtex file ? [Enter: {default_git}/Yes/No]: ")

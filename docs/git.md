@@ -1,13 +1,18 @@
 # Git integration
 
-## Setup git-tracked library (optional)
+## Git-tracked library
 
-Install comes with the option to git-track any change to the bibtex file
-(`--git`):
+By default (when a git binary is available), a fresh `papers install`
+git-tracks any change to the bibtex file. Pass `--no-git` to opt out, and
+`--git-lfs` to also back up the attached files (see below):
 
 ```
-$> papers install --bibtex papers.bib --filesdir files --git  [ --git-lfs ]
+$> papers install --bibtex papers.bib --filesdir files [ --no-git | --git-lfs ]
 ```
+
+Installs made by older papers versions keep their saved setting; re-run
+`papers install` (or `papers install --edit --git`) to enable git-tracking
+on an existing install.
 
 From now on, every change to the library will result in an automatic git
 commit. And the `papers git ...` command will work just as `git ...` executed
