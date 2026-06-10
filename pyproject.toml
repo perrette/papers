@@ -43,11 +43,18 @@ docs = [
 homepage = "https://github.com/perrette/papers"
 Documentation = "https://perrette.github.io/papers/"
 
+[tool.setuptools]
+# explicit: auto-discovery fails on stray top-level dirs (site/, notes/...)
+packages = ["papers"]
+
 [tool.setuptools_scm]
 write_to = "papers/_version.py"
 
 [project.scripts]
 papers = "papers.__main__:main_clean_exit"
+# unambiguous alternative for systems where `papers` clashes with the
+# GNOME Papers document viewer (issue #107)
+papers-cli = "papers.__main__:main_clean_exit"
 
 [tool.tox]
 # Tox (https://tox.readthedocs.io/) is a tool for running tests

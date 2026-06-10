@@ -10,6 +10,15 @@ Note there is another project registered on PyPI as `papers`, hence
 `papers-cli` for command-line-interface. The installed command is still
 `papers`.
 
+## Name clash with GNOME Papers
+
+The [GNOME Papers](https://gitlab.gnome.org/GNOME/papers) document viewer
+(the default viewer on recent GNOME desktops) also installs a `papers`
+command; with both installed, whichever comes first in `$PATH` wins. The
+package therefore also installs the command under the unambiguous name
+`papers-cli` — call that, or set a shell alias (e.g.
+`alias papers=papers-cli`), on systems where the names collide.
+
 ## Dependencies
 
 - python 3.9+
