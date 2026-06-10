@@ -16,6 +16,12 @@ The configuration file is global (unless `--local` is specified), so from now
 on, any `papers` command will know about these settings: no need to specify
 bibtex file or files directory.
 
+Running `papers install` again *updates* the existing configuration: options
+you pass change, everything else is kept. Pass `--reset` to discard the
+existing configuration and start over from defaults. Use `--no-prompt` to
+accept all defaults non-interactively (at the prompts, `Enter` accepts the
+proposed default, typing a value sets it, and `unset` clears it).
+
 Type `papers status -v` to check your configuration.
 
 You also notice a cache directory. All internet requests such as crossref
@@ -40,11 +46,12 @@ papers configuration
 * bibtex:             papers.bib (82 entries)
 ```
 
-Creates a local configuration file in a hidden `.papers` folder. By default, it
-expects existing or creates new `papers.bib` bibliography and `papers` files
-folder in the local directory, though `papers` will ask first unless explicitly
-provided. Note that every call from a subfolder will also detect that
-configuration file (it has priority over global install).
+Creates a local configuration file (`.papersconfig.json`) in the current
+directory. By default, it expects existing or creates new `papers.bib`
+bibliography and `files` folder in the local directory, though `papers` will
+ask first unless explicitly provided. Note that every call from a subfolder
+will also detect that configuration file (it has priority over global
+install).
 
 By default, the local install is meant to be portable with bibtex and files, so
 the file paths are encoded relatively to the bibtex file. If instead absolute

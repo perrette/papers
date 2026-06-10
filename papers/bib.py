@@ -833,6 +833,23 @@ class Biblio:
                         del e[k]
 
 
+def get_biblio(config):
+    """
+    This function initializes a Biblio object based on the bibtex file specified as command line argument or in config file.
+    If no bibtex file is specified, it raises a ValueError().
+    """
+    if config.bibtex is None:
+        raise ValueError('bibtex is not initialized')
+    relative_to = os.path.sep if config.absolute_paths else (os.path.dirname(config.bibtex) if config.bibtex else None)
+    if config.bibtex and os.path.exists(config.bibtex):
+        biblio = Biblio.load(config.bibtex, config.filesdir, nameformat=config.nameformat, keyformat=config.keyformat)
+        if biblio.relative_to != relative_to:
+            biblio.update_file_path(relative_to)
+    else:
+        biblio = Biblio.newbib(config.bibtex, config.filesdir, relative_to=relative_to, nameformat=config.nameformat, keyformat=config.keyformat)
+    return biblio
+
+
 def isvalidkey(key):
     return key and not key[0].isdigit()
 

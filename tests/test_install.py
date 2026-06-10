@@ -100,9 +100,19 @@ class TestLocalInstall(TestBaseInstall):
         self.papers(f'install --local --force --bibtex {self.mybib}XX')
         config = Config.load(self._path(CONFIG_FILE_LOCAL))
         self.assertEqual(config.bibtex, os.path.abspath(self._path(self.mybib + "XX")))
-        # The files folder from previous install was forgotten
-        self.assertEqual(config.filesdir, os.path.abspath(self._path("files")))
+        # Re-installing updates the existing configuration: the files folder is kept
+        self.assertEqual(config.filesdir, os.path.abspath(self._path(self.filesdir)))
         self.assertTrue(config.git)
+
+    def test_install_reset(self):
+        self.papers(f'install --force --local --bibtex {self.mybib} --files {self.filesdir}')
+        config = Config.load(self._path(CONFIG_FILE_LOCAL))
+        self.assertEqual(config.filesdir, os.path.abspath(self._path(self.filesdir)))
+        self.papers(f'install --local --force --reset --bibtex {self.mybib}XX')
+        config = Config.load(self._path(CONFIG_FILE_LOCAL))
+        self.assertEqual(config.bibtex, os.path.abspath(self._path(self.mybib + "XX")))
+        # --reset starts over: the files folder from the previous install is forgotten
+        self.assertEqual(config.filesdir, os.path.abspath(self._path("files")))
 
     def test_install_edit(self):
         self.papers(f'install --force --local --bibtex {self.mybib} --files {self.filesdir}')
@@ -134,10 +144,8 @@ EOF""", shell=True, cwd=self.temp_dir.name)
         self.assertEqual(config.filesdir, os.path.abspath(self._path(self.filesdir)))
         self.assertFalse(config.git)
 
-        # Now try simple carriage return (select default)
+        # Now try simple carriage return (select defaults): everything is kept
         sp.check_call(f"""{PAPERSCMD} install --local << EOF
-
-e
 
 
 
@@ -149,9 +157,8 @@ EOF""", shell=True, cwd=self.temp_dir.name)
         self.assertEqual(config.bibtex, os.path.abspath(self._path(self.mybib)))
         self.assertEqual(config.filesdir, os.path.abspath(self._path(self.filesdir)))
 
-        # edit existing install (--edit)
+        # update existing install interactively (the default behavior)
         sp.check_call(f"""{PAPERSCMD} install --local --bibtex {self.mybib}XX << EOF
-e
 y
 n
 EOF""", shell=True, cwd=self.temp_dir.name)
@@ -161,9 +168,8 @@ EOF""", shell=True, cwd=self.temp_dir.name)
         self.assertEqual(config.filesdir, os.path.abspath(self._path(self.filesdir)))
         self.assertFalse(config.git)
 
-        # overwrite existing install (--force)
-        sp.check_call(f"""{PAPERSCMD} install --local --bibtex {self.mybib}XX << EOF
-o
+        # start over from defaults (--reset)
+        sp.check_call(f"""{PAPERSCMD} install --local --reset --bibtex {self.mybib}XX << EOF
 y
 n
 EOF""", shell=True, cwd=self.temp_dir.name)
@@ -173,9 +179,8 @@ EOF""", shell=True, cwd=self.temp_dir.name)
         self.assertEqual(config.filesdir, os.path.abspath(self._path("files")))
         self.assertFalse(config.git)
 
-        # reset default values from install
+        # unset values from install with the reset words
         sp.check_call(f"""{PAPERSCMD} install --local << EOF
-e
 reset
 reset
 n
@@ -188,7 +193,6 @@ EOF""", shell=True, cwd=self.temp_dir.name)
 
         # install with git tracking
         sp.check_call(f"""{PAPERSCMD} install --local << EOF
-e
 
 
 y
@@ -213,9 +217,12 @@ class TestInstallNewBibTex(TestBaseInstall):
         self.assertFalse(self._exists(self.mybib))
         self.assertFalse(self._exists(self.anotherbib))
         self.papers(f"""install --local --filesdir files << EOF
-e
 my.bib
+n
 EOF""")
+        self.assertTrue(self._exists("my.bib"))
+        config = Config.load(self._path(CONFIG_FILE_LOCAL))
+        self.assertEqual(config.bibtex, os.path.abspath(self._path("my.bib")))
 
 
 class TestInstallEditor(TestBaseInstall):

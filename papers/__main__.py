@@ -22,11 +22,11 @@ from papers.duplicate import list_duplicates, list_uniques, edit_entries, title_
 from papers.entries import get_entry_val, entry_content_equal
 from papers.bib import (Biblio, FUZZY_RATIO, DEFAULT_SIMILARITY, entry_filecheck,
                         backupfile as backupfile_func, isvalidkey, DuplicateKeyError, clean_filesdir,
-                        are_duplicates, download_url)
+                        are_duplicates, download_url, get_biblio)
+from papers.install import resolve_install, apply_install, InputAsker, DefaultAsker
 from papers.utils import view_pdf, open_folder, PapersExit
-from papers.backup import (backup_bib, silent_backup_bib, restore_from_backupdir,
-                           git_undo, git_redo, git_restore_state,
-                           resolve_gitdir, claim_gitdir, list_backup_dirs)
+from papers.backup import (silent_backup_bib, restore_from_backupdir,
+                           git_undo, git_redo, git_restore_state, list_backup_dirs)
 from papers import __version__
 
 
@@ -57,23 +57,6 @@ def check_legacy_config(configfile):
             configfile = newname
 
     return configfile
-
-
-def get_biblio(config):
-    """
-    This function initializes a Biblio object based on the bibtex file specified as command line argument or in config file.
-    If no bibtex file is specified, it raises a ValueError().
-    """
-    if config.bibtex is None:
-        raise ValueError('bibtex is not initialized')
-    relative_to = os.path.sep if config.absolute_paths else (os.path.dirname(config.bibtex) if config.bibtex else None)
-    if config.bibtex and os.path.exists(config.bibtex):
-        biblio = Biblio.load(config.bibtex, config.filesdir, nameformat=config.nameformat, keyformat=config.keyformat)
-        if biblio.relative_to != relative_to:
-            biblio.update_file_path(relative_to)
-    else:
-        biblio = Biblio.newbib(config.bibtex, config.filesdir, relative_to=relative_to, nameformat=config.nameformat, keyformat=config.keyformat)
-    return biblio
 
 
 def savebib(biblio, config):
@@ -146,239 +129,26 @@ def set_nameformat_config_from_cmd(o, config):
 def installcmd(parser, o, config):
     """
     Given options and a config state, installs the expected config files.
+
+    The decision logic lives in papers.install (resolve_install); this
+    function only wires up prompting and applies the resulting plan.
     """
-    prompt = o.prompt and not o.edit
-    # installed = config.file is not None
-    # WARNING if pre-existing config file
-    if config.file is not None and prompt:
-        if ((o.local and config.local) or ((not o.local and not config.local))):
-            while True:
-                ans = input(f'An existing {"local" if config.local else "global"} install was found: {config.file}. Overwrite (O) or Edit (E) ? [o / e]')
-                if ans.lower() in ('o', 'e'):
-                    break
-                else:
-                    print('Use the --edit option to selectively edit existing configuration, or --force to ignore pre-existing configuration.')
-            o.edit = ans.lower() == 'e'
+    if o.edit and o.reset:
+        parser.error('--edit and --reset are mutually exclusive')
+    if o.edit:
+        # historical behavior: --edit means "apply my flags, ask nothing"
+        o.prompt = False
+    asker = InputAsker() if o.prompt else DefaultAsker()
 
-        elif not o.local and config.local:
-            print(f"A local configuration file was found that will have precedence over the global install: {config.file}. Delete (D) or Ignore (any other key) ?")
-            ans = input()
-            if ans.lower() == "d":
-                logger.info(f"Removing pre-existing local configuration file {config.file}")
-                os.remove(config.file)
-                config = Config()
+    plan = resolve_install(config, o, asker=asker)
 
-        elif o.local and not config.local:
-            logger.warning(f"A global configuration file was found, but the local install will have precedence: {config.file}. Delete the global configuration file (D) or Ignore (any other key) ?")
-            ans = input()
-            if ans.lower() == "d":
-                logger.info(f"Removing pre-existing global configuration file {config.file}")
-                os.remove(config.file)
-                config = Config()
+    set_nameformat_config_from_cmd(o, plan.config)
+    set_keyformat_config_from_cmd(o, plan.config)
 
-        else:
-            raise PapersExit("Unexpected configuration state")
-
-
-    if not o.edit:
-        if config.file and os.path.exists(config.file) and ((o.local and config.local) or ((not o.local and not config.local))):
-            # if we don't do that the local install will take precedence over global install
-            logger.warning(f"remove pre-existing configuration file: {config.file}")
-            os.remove(config.file)
-        config = Config()
-
-    # a fresh install (as opposed to editing an existing one) defaults to
-    # git-tracking when a git binary is available
-    fresh_install = config.file is None
-
-    if o.local is None:
-        if config.local is not None:
-            logger.debug(f'keep config to pre-existing: {config.local}')
-            o.local = config.local
-        else:
-            logger.debug(f'default to global config')
-            # default ?
-            o.local = False
-
-    set_nameformat_config_from_cmd(o, config)
-    set_keyformat_config_from_cmd(o, config)
-
-    checkdirs = ["files", "pdfs", "pdf", "papers", "bibliography"]
-    default_bibtex = config.bibtex or "papers.bib"
-    default_filesdir = config.filesdir or "files"
-
-    if o.local:
-        papersconfig = config.file or CONFIG_FILE_LOCAL
-        workdir = Path('.')
-        bibtex_files = [str(f) for f in sorted(workdir.glob("*.bib"))]
-
-        if o.absolute_paths is None:
-            o.absolute_paths = False
-
-    else:
-        papersconfig = CONFIG_FILE
-        workdir = Path(DATA_DIR)
-        bibtex_files = [str(f) for f in sorted(Path('.').glob("*.bib"))] + [str(f) for f in sorted(workdir.glob("*.bib"))]
-        checkdirs = [os.path.join(DATA_DIR, "files")] + checkdirs
-
-        if o.absolute_paths is None:
-            o.absolute_paths = True
-
-    # deduplicate by resolved path: the same file may appear both as the
-    # configured (absolute) bibtex and as a relative directory-scan result
-    seen = {Path(default_bibtex).resolve()}
-    deduped = [default_bibtex]
-    for f in bibtex_files:
-        resolved = Path(f).resolve()
-        if resolved not in seen:
-            seen.add(resolved)
-            deduped.append(f)
-    bibtex_files = [f for f in deduped if os.path.exists(f)]
-
-    if config.filesdir:
-        checkdirs = [config.filesdir] + checkdirs
-
-    for d in checkdirs:
-        if os.path.exists(str(d)):
-            default_filesdir = d
-            break
-
-    RESET_DEFAULT = ('none', 'null', 'unset', 'undefined', 'reset', 'delete', 'no', 'n')
-    ACCEPT_DEFAULT = ('yes', 'y', '')
-
-    if not o.bibtex:
-        if len(bibtex_files) > 1:
-            logger.warning("Several bibtex files found: "+" ".join([str(b) for b in bibtex_files]))
-        if bibtex_files:
-            default_bibtex = bibtex_files[0]
-        if prompt:
-            if os.path.exists(default_bibtex):
-                user_input = input(f"Bibtex file name [default to existing: {default_bibtex}] [Enter/Yes/No]: ")
-            else:
-                user_input = input(f"Bibtex file name [default to new: {default_bibtex}] [Enter/Yes/No]: ")
-            if user_input in ACCEPT_DEFAULT:
-                pass
-            elif user_input:
-                default_bibtex = user_input
-        o.bibtex = default_bibtex
-
-    if o.bibtex and o.bibtex.lower() in RESET_DEFAULT:
-        o.bibtex = None
-
-    if not o.filesdir:
-        if prompt:
-            if Path(default_filesdir).exists():
-                user_input = input(f"Files folder [default to existing: {default_filesdir}] [Enter/Yes/No]: ")
-            else:
-                user_input = input(f"Files folder [default to new: {default_filesdir}] [Enter/Yes/No]: ")
-            if user_input in ACCEPT_DEFAULT:
-                pass
-            elif user_input:
-                default_filesdir = user_input
-        o.filesdir = default_filesdir
-
-    if o.filesdir and o.filesdir.lower() in RESET_DEFAULT:
-        o.filesdir = None
-
-    config.bibtex = o.bibtex
-    config.filesdir = o.filesdir
-    config.file = papersconfig
-    config.local = o.local
-    config.absolute_paths = o.absolute_paths
-
-    # Unless otherwise specified (option not advertized -- help suppressed)
-    # the git directory is centralized in the back up dir.
-    if o.gitdir:
-        config.gitdir = o.gitdir
-
-    elif config.gitdir and os.path.exists(config.gitdir):
-        pass  # keep the pre-existing backup directory and its history
-
-    elif config.bibtex is not None:
-        # never-created gitdir from an older config: allocate the current naming scheme
-        config.gitdir = resolve_gitdir(config.bibtex)
-
-    if o.editor:
-        config.editor = o.editor
-
-    # create bibtex file if not existing
-    bibtex = Path(o.bibtex) if o.bibtex else None
-
-    if bibtex and not bibtex.exists():
-        logger.info(f'create empty bibliography database: {bibtex}')
-        bibtex.parent.mkdir(parents=True, exist_ok=True)
-        bibtex.open('w', encoding="utf-8").write('')
-
-    # create bibtex file if not existing
-    filesdir = Path(o.filesdir) if o.filesdir else None
-    if filesdir and not filesdir.exists():
-        logger.info(f'create empty files directory: {filesdir}')
-        filesdir.mkdir(parents=True)
-
-    if o.git_lfs:
-        o.git = True
-
-    if fresh_install:
-        default_git = shutil.which('git') is not None
-    else:
-        default_git = config.git if config.git is not None else False
-    if o.git is None:
-        if prompt:
-            ans = input(f"Use git to back-up the bibtex file ? [Enter: {default_git}/Yes/No]: ")
-            if ans.strip() == '':
-                o.git = default_git
-            else:
-                o.git = ans.strip() in ACCEPT_DEFAULT
-        else:
-            o.git = default_git
-    config.git = o.git
-
-    if not config.git:
-        o.git_lfs = False
-
-    default_git_lfs = config.gitlfs if config.gitlfs is not None else False
-    if o.git_lfs is None:
-        if prompt:
-            ans = input(f"Use git-lfs to back-up associated files ? [Enter: {default_git_lfs}/Yes/No]: ")
-            if ans.strip() == '':
-                o.git_lfs = default_git_lfs
-            else:
-                o.git_lfs = ans.strip() in ACCEPT_DEFAULT
-        else:
-            o.git_lfs = default_git_lfs
-    config.gitlfs = o.git_lfs
-
-    config.backup_files = config.gitlfs
-
-    logger.info('save config file: '+config.file)
-    if os.path.dirname(config.file):
-        # typically is current dir = ""
-        os.makedirs(os.path.dirname(config.file), exist_ok=True)
-
-    config.git = o.git
-
-    config.save()
-
-    if config.git:
-        # add a gitignore file to skip gitdir
-        if (Path(config.gitdir)/'.git').exists():
-            logger.warning(f'{config.gitdir} is already initialized')
-        else:
-            os.makedirs(config.gitdir, exist_ok=True)
-            config.gitcmd('init')
-
-        # an explicit install takes ownership of the backup directory
-        claim_gitdir(config)
-
-        if config.gitlfs:
-            config.gitcmd('lfs track "files/"')
-            config.gitcmd('add .gitattributes')
-            config.gitcmd(f'commit -m "papers install: .gitattribute"', check=False)
-
-        biblio = get_biblio(config)
-        backup_bib(biblio, config)
+    config = apply_install(plan)
 
     print(config.status(check_files=not o.no_check_files, verbose=True))
+
 
 def uninstallcmd(parser, o, config):
     if Path(config.file).exists():
@@ -993,9 +763,12 @@ def get_parser(config=None):
 
     installp = subparsers.add_parser('install', description='setup or update papers install',
         parents=[cfg, namefmt, keyfmt])
-    installp.add_argument('--edit', action='store_true', help=f'edit existing install if any (found: {config.file})')
-    installp.add_argument('--force', '--no-prompt', action='store_false', dest="prompt",
-        help='no prompt, use default (useful for tests)')
+    installp.add_argument('--edit', action='store_true',
+        help=f'update existing install non-interactively (updating is the default; --edit also suppresses prompts) (found: {config.file})')
+    installp.add_argument('--reset', action='store_true',
+        help='discard the pre-existing configuration and start over from defaults (default: update it)')
+    installp.add_argument('--no-prompt', '--force', action='store_false', dest="prompt",
+        help='non-interactive: accept defaults without asking')
 
     installp.add_argument('--local', action="store_true", default=None,
         help="""setup papers locally in current directory (global install by default), exposing bibtex and filesdir,
