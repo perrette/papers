@@ -9,11 +9,20 @@ mirrored to a dedicated git repository (``config.gitdir``, under
   directory (and, with --git-lfs, the attached files hard-linked into a
   ``files/`` subdirectory so they are backed up too)
 
-Each save is committed and the ``main`` branch is (re)set to the new commit.
-Undo/redo move a ``history`` branch back and forth along ``main`` with
-``git reset --hard``, then restore the bibtex from the backup copy. New
-commits made while undone reset ``main`` and drop the commits that were
-still redoable.
+Each save is committed on a single ``main`` branch, and history is
+append-only: nothing is ever reset away. Undo, redo and
+``restore-backup --ref`` append a *restore commit* whose tree is the older
+state, marked with a ``Papers-Restores: <commit>`` trailer naming the state
+it represents. That trailer doubles as the cursor: a consecutive undo walks
+back from the restored state rather than from the tip, and redo walks the
+first-parent chain forward again, skipping restore commits. Making a new
+change while undone simply appends on top; the states that were still
+redoable remain in history and can be recovered with further undos or
+``restore-backup --ref``.
+
+Repositories last written by the pre-append-only model (which moved a
+``history`` branch around with ``git reset --hard``) are adopted on first
+use: their checked-out state is recorded onto ``main`` as a restore commit.
 """
 import copy
 import logging
@@ -56,6 +65,9 @@ def backup_bib(biblio, config, message=None):
         raise PapersExit('cannot backup without --git enabled')
     backupdir = Path(config.gitdir)
     backupdir.mkdir(exist_ok=True)
+
+    # a snapshot made while undone must append to the full history
+    adopt_legacy_undone_state(config.gitdir)
 
     # remove if exists
     config.backupfile.unlink(missing_ok=True)
@@ -187,21 +199,95 @@ def _restore_from_backupdir(config, restore_files=False):
     biblio.save(config.bibtex)
 
 
-def git_reset_to_commit(config, commit, restore_files=False):
-    run_git(config.gitdir, ["reset", "--hard", commit])
+RESTORES_TRAILER = "Papers-Restores"
+
+
+def _restores_target(message_body):
+    """Return the commit named by the Papers-Restores trailer, or None."""
+    for line in reversed(message_body.strip().splitlines()):
+        if line.startswith(RESTORES_TRAILER + ":"):
+            return line.split(":", 1)[1].strip()
+    return None
+
+
+def cursor_commit(gitdir):
+    """The commit representing the current library state.
+
+    The tip itself, unless the tip is a restore commit, in which case the
+    commit its Papers-Restores trailer points to.
+    """
+    body = run_git(gitdir, ["log", "-1", "--pretty=%B"]).stdout
+    return _restores_target(body) or run_git(gitdir, ["rev-parse", "HEAD"]).stdout.strip()
+
+
+def _append_restore_commit(config, target, kind):
+    """Append a commit on HEAD with `target`'s tree and move branch + worktree to it."""
+    gitdir = config.gitdir
+    target_info = run_git(gitdir, ["log", "-1", "--pretty=%h %s", target]).stdout.strip()
+    message = f"papers {kind}: back to {target_info}\n\n{RESTORES_TRAILER}: {target}"
+    tree = run_git(gitdir, ["rev-parse", f"{target}^{{tree}}"]).stdout.strip()
+    new = run_git(gitdir, ["commit-tree", tree, "-p", "HEAD", "-m", message]).stdout.strip()
+    # the new commit has HEAD as parent, so this discards nothing;
+    # it moves the branch forward and updates the working tree
+    run_git(gitdir, ["reset", "--hard", new])
+
+
+def adopt_legacy_undone_state(gitdir):
+    """Linearize an old-model undone state (HEAD on 'history' behind 'main') onto main."""
+    res = run_git(gitdir, ["rev-parse", "--abbrev-ref", "HEAD"], check=False)
+    if res.returncode != 0 or res.stdout.strip() != "history":
+        return
+    if run_git(gitdir, ["rev-parse", "--verify", "--quiet", "main"], check=False).returncode != 0:
+        return
+    head = run_git(gitdir, ["rev-parse", "HEAD"]).stdout.strip()
+    main = run_git(gitdir, ["rev-parse", "main"]).stdout.strip()
+    if head == main:
+        run_git(gitdir, ["checkout", "main"])
+        run_git(gitdir, ["branch", "-D", "history"], check=False)
+        return
+    logger.info("adopt pre-append-only undone state into linear history")
+    head_info = run_git(gitdir, ["log", "-1", "--pretty=%h %s", head]).stdout.strip()
+    message = f"papers: adopt undone state {head_info}\n\n{RESTORES_TRAILER}: {head}"
+    tree = run_git(gitdir, ["rev-parse", f"{head}^{{tree}}"]).stdout.strip()
+    new = run_git(gitdir, ["commit-tree", tree, "-p", main, "-m", message]).stdout.strip()
+    run_git(gitdir, ["checkout", "-B", "main", new])
+    run_git(gitdir, ["branch", "-D", "history"], check=False)
+
+
+def git_restore_state(config, ref, restore_files=False, kind="restore-backup"):
+    """Append a restore commit for `ref` and restore the bibtex from it."""
+    res = run_git(config.gitdir, ["rev-parse", "--verify", "--quiet", f"{ref}^{{commit}}"], check=False)
+    if res.returncode != 0:
+        raise PapersExit(f"unknown git reference: {ref}")
+    target = res.stdout.strip()
+    _append_restore_commit(config, target, kind=kind)
     restore_from_backupdir(config, restore_files=restore_files)
 
 
 def git_undo(config, restore_files=False, steps=1):
-    run_git(config.gitdir, ["checkout", "-B", "history"])
-    git_reset_to_commit(config, 'HEAD' + '^'*steps, restore_files=restore_files)
+    adopt_legacy_undone_state(config.gitdir)
+    cur = cursor_commit(config.gitdir)
+    res = run_git(config.gitdir, ["rev-parse", "--verify", "--quiet", f"{cur}~{steps}"], check=False)
+    if res.returncode != 0:
+        raise PapersExit("nothing to undo")
+    _append_restore_commit(config, res.stdout.strip(), kind="undo")
+    restore_from_backupdir(config, restore_files=restore_files)
 
 
 def git_redo(config, restore_files=False, steps=1):
-    current = run_git(config.gitdir, ["rev-parse", "HEAD"]).stdout.strip()
-    futures = run_git(config.gitdir, ["rev-list", f"{current}..main"]).stdout.strip().splitlines()[::-1]
-    try:
-        future = futures[steps-1]
-    except IndexError:
+    adopt_legacy_undone_state(config.gitdir)
+    cur = cursor_commit(config.gitdir)
+    out = run_git(config.gitdir, ["log", "--first-parent", "--reverse", "-z",
+                                  "--pretty=format:%H %B", f"{cur}..HEAD"]).stdout
+    # oldest first; skip restore commits, which do not introduce new states
+    futures = []
+    for record in out.split("\x00"):
+        if not record.strip():
+            continue
+        sha, _, body = record.partition(" ")
+        if _restores_target(body) is None:
+            futures.append(sha)
+    if len(futures) < steps:
         raise PapersExit("nothing to redo")
-    git_reset_to_commit(config, future, restore_files=restore_files)
+    _append_restore_commit(config, futures[steps-1], kind="redo")
+    restore_from_backupdir(config, restore_files=restore_files)

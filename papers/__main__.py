@@ -25,7 +25,7 @@ from papers.bib import (Biblio, FUZZY_RATIO, DEFAULT_SIMILARITY, entry_filecheck
                         are_duplicates, download_url)
 from papers.utils import view_pdf, open_folder, PapersExit
 from papers.backup import (backup_bib, silent_backup_bib, restore_from_backupdir,
-                           git_undo, git_redo, git_reset_to_commit)
+                           git_undo, git_redo, git_restore_state)
 from papers import __version__
 
 
@@ -613,7 +613,7 @@ def restorecmd(parser, o, config):
         parser.print_help()
         raise PapersExit('only valid with --git enabled')
     if o.ref:
-        git_reset_to_commit(config, o.ref, restore_files=o.restore_files)
+        git_restore_state(config, o.ref, restore_files=o.restore_files)
     else:
         restore_from_backupdir(config, restore_files=o.restore_files)
 

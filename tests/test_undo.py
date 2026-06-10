@@ -22,7 +22,9 @@ bibtex2 = """@article{SomeOneElse2000,
 class TimeTravelBase:
 
     def get_commit(self):
-        return sp.check_output(f"git rev-parse HEAD", shell=True, cwd=self.config.gitdir).strip().decode()
+        "commit representing the current library state (undo/redo append restore commits)"
+        from papers.backup import cursor_commit
+        return cursor_commit(self.config.gitdir)
 
     def test_undo(self):
         ## Make sure git undo / redo travels as expected
@@ -96,6 +98,30 @@ class TimeTravelBase:
         self.papers(f'restore-backup --ref {commits[-1]}')
         current = self.get_commit()
         self.assertEqual(current, commits[-1])
+
+    def test_undo_then_change_keeps_history(self):
+        ## A new change made while undone must not discard the redoable states
+
+        commits = [self.get_commit()]
+
+        self.papers(f'add {self.anotherbib}')
+        commits.append(self.get_commit())
+
+        self.papers(f'list --add-tag change')
+        commits.append(self.get_commit())
+        future_bib = open(self._path(self.mybib)).read()
+
+        self.papers(f'undo')
+        self.assertEqual(self.get_commit(), commits[1])
+
+        # new line of history on top of the undone state
+        self.papers(f'list --add-tag another')
+        self.assertNotIn(self.get_commit(), commits)
+
+        # the state that was still redoable remains reachable
+        self.papers(f'restore-backup --ref {commits[2]}')
+        self.assertEqual(self.get_commit(), commits[2])
+        self.assertMultiLineEqual(open(self._path(self.mybib)).read(), future_bib)
 
 
 class TestTimeTravelGitLocal(LocalGitInstallTest, TimeTravelBase):
