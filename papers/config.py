@@ -105,12 +105,12 @@ class Config:
         if not self.local:
             return str(Path(p).resolve())  # abspath
 
-        # otherwise express path relative to bibtex (parent of config file)
+        # otherwise express path relative to bibtex (parent of config file),
+        # with '..' components if needed (e.g. files directory outside it)
         try:
-            # logger.info(f"rel path: (p)", p)
-            return str((self.root / p).relative_to(self.root))
-        except Exception as error:
-            print(error)
+            return os.path.relpath(self.root / p, self.root)
+        except ValueError:
+            # e.g. different drive on Windows
             logger.warning(f"config :: can't save {p} as relative path to {self.root}")
             return p
 

@@ -346,6 +346,16 @@ EOF""")
 
 class TestInstallEdit(TestBaseInstall):
 
+    def test_filesdir_outside_library_dir(self):
+        # the files directory may live outside the library folder: the local
+        # config then stores a '..'-style relative path, not an absolute one
+        with tempfile.TemporaryDirectory() as outside:
+            self.papers(f'install --force --local --no-git --bibtex {self.mybib} --files {outside}')
+            js = json.load(open(self._path(CONFIG_FILE_LOCAL)))
+            self.assertTrue(js['filesdir'].startswith('..'), js['filesdir'])
+            config = Config.load(self._path(CONFIG_FILE_LOCAL))
+            self.assertEqual(os.path.realpath(config.filesdir), os.path.realpath(outside))
+
     def test_edit_reallocates_missing_gitdir(self):
         # older configs carried a never-created legacy gitdir; enabling git via
         # --edit should allocate the current (hashed) naming scheme instead
