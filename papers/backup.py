@@ -23,19 +23,35 @@ redoable remain in history and can be recovered with further undos or
 Repositories last written by the pre-append-only model (which moved a
 ``history`` branch around with ``git reset --hard``) are adopted on first
 use: their checked-out state is recorded onto ``main`` as a restore commit.
+
+Each backup repository carries an (untracked, git-excluded) ``manifest.json``
+naming the bibtex file it backs up. Backup directories are allocated under
+``BACKUP_DIR`` as ``<slug>-<sha256(absolute bibtex path)[:8]>``, so two
+libraries can never share a directory by name; the manifest is the safety
+net for directories allocated by older versions (or set by hand): any backup
+operation that finds a manifest belonging to another library moves the
+current library to a fresh directory instead of mixing histories, whereas an
+explicit ``papers install`` claims the directory for its bibtex.
 """
 import copy
+import hashlib
+import json
 import logging
 import os
 import shlex
 import shutil
 import subprocess as sp
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
-from papers import logger
+from papers import logger, __version__
 from papers.entries import get_entry_val
 from papers.utils import checksum, move, PapersExit
+
+MANIFEST_NAME = "manifest.json"
+# version of the backup directory layout, recorded in the manifest
+LAYOUT_VERSION = 1
 
 
 def run_git(gitdir, cmd, check=True):
@@ -58,6 +74,159 @@ def run_git(gitdir, cmd, check=True):
     return res
 
 
+def default_gitdir(bibtex):
+    """Allocate a backup directory name for a bibtex file.
+
+    A human-readable slug plus a hash of the resolved absolute path, so that
+    two libraries can never map to the same directory (a bare slug of the
+    bibtex name used to collide, e.g. any local 'papers.bib').
+    """
+    from slugify import slugify
+    from papers.config import BACKUP_DIR
+    path = Path(bibtex).resolve()
+    stem = path.stem or "library"
+    digest = hashlib.sha256(str(path).encode("utf-8")).hexdigest()[:8]
+    return os.path.join(BACKUP_DIR, f"{slugify(stem)}-{digest}")
+
+
+def legacy_gitdir(bibtex):
+    """The backup directory name older versions derived from the bibtex path."""
+    from slugify import slugify
+    from papers.config import BACKUP_DIR
+    bibtex = str(bibtex)
+    stem = bibtex[:-len(".bib")] if bibtex.endswith(".bib") else bibtex
+    return os.path.join(BACKUP_DIR, slugify(stem))
+
+
+def resolve_gitdir(bibtex):
+    """Pick the backup directory for a bibtex: an existing one if any, else a new name."""
+    new = default_gitdir(bibtex)
+    if os.path.exists(new):
+        return new
+    for legacy in {legacy_gitdir(bibtex), legacy_gitdir(Path(bibtex).resolve())}:
+        if os.path.exists(legacy):
+            return legacy
+    return new
+
+
+def read_manifest(gitdir):
+    f = Path(gitdir) / MANIFEST_NAME
+    if not f.exists():
+        return None
+    try:
+        return json.loads(f.read_text())
+    except (OSError, ValueError) as error:
+        logger.warning(f"unreadable backup manifest {f}: {error}")
+        return None
+
+
+def write_manifest(gitdir, bibtex, created=None):
+    manifest = {
+        "bibtex": str(Path(bibtex).resolve()),
+        "created": created or datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "layout": LAYOUT_VERSION,
+        "papers_version": __version__,
+    }
+    _exclude_from_git(gitdir, MANIFEST_NAME)
+    (Path(gitdir) / MANIFEST_NAME).write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
+    return manifest
+
+
+def _exclude_from_git(gitdir, name):
+    """Exclude `name` via .git/info/exclude: the manifest describes the directory
+    itself and must not be tracked (restore commits would revert it) nor swept
+    by `git clean -f` (a .gitignore would itself be untracked)."""
+    exclude = Path(gitdir) / ".git" / "info" / "exclude"
+    if not exclude.parent.is_dir():
+        return
+    lines = exclude.read_text().splitlines() if exclude.exists() else []
+    if name not in lines:
+        exclude.write_text("\n".join(lines + [name]) + "\n")
+
+
+def claim_gitdir(config):
+    """Mark config.gitdir as backing up config.bibtex (explicit install)."""
+    manifest = read_manifest(config.gitdir)
+    if manifest is not None and Path(manifest.get("bibtex", "")) != Path(config.bibtex).resolve():
+        logger.warning(f"backup directory {config.gitdir} previously backed up {manifest.get('bibtex')}; "
+                       f"it now backs up {config.bibtex} (history of both remains in `papers git log`)")
+    write_manifest(config.gitdir, config.bibtex, created=manifest.get("created") if manifest else None)
+
+
+def check_gitdir_ownership(config):
+    """Ensure config.gitdir backs up config.bibtex before any backup operation.
+
+    Pre-manifest directories are adopted for the current library. A directory
+    whose manifest names another library is left untouched: the current
+    library moves to a freshly allocated directory instead of mixing
+    histories (collision healing).
+    """
+    gitdir = Path(config.gitdir)
+    if not (gitdir / ".git").exists():
+        return
+    manifest = read_manifest(gitdir)
+    bibtex = Path(config.bibtex).resolve()
+    if manifest is None:
+        logger.info(f"write backup manifest for {bibtex} in {gitdir}")
+        write_manifest(gitdir, bibtex)
+        return
+    if Path(manifest.get("bibtex", "")) == bibtex:
+        return
+
+    # collision: this directory belongs to another library
+    newdir = default_gitdir(bibtex)
+    n = 2
+    while Path(newdir) == gitdir or (
+            read_manifest(newdir) is not None
+            and Path(read_manifest(newdir).get("bibtex", "")) != bibtex):
+        newdir = default_gitdir(bibtex) + f"-{n}"
+        n += 1
+    logger.error(f"backup directory {gitdir} belongs to another library ({manifest.get('bibtex')}) "
+                 f"-- the present library moves to a fresh backup directory: {newdir}")
+    config.gitdir = newdir
+    os.makedirs(newdir, exist_ok=True)
+    if not (Path(newdir) / ".git").exists():
+        run_git(newdir, ["init"])
+    write_manifest(newdir, bibtex)
+    if config.file:
+        config.save()
+
+
+def backup_info(gitdir, config=None):
+    """Collect display information about one backup directory."""
+    gitdir = Path(gitdir)
+    manifest = read_manifest(gitdir) or {}
+    info = {
+        "gitdir": str(gitdir),
+        "bibtex": manifest.get("bibtex"),
+        "snapshots": None,
+        "last": None,
+        "size": sum(f.stat().st_size for f in gitdir.glob("**/*") if f.is_file()),
+        "current": config is not None and config.gitdir and Path(config.gitdir) == gitdir,
+    }
+    if (gitdir / ".git").exists():
+        res = run_git(gitdir, ["rev-list", "--count", "HEAD"], check=False)
+        if res.returncode == 0:
+            info["snapshots"] = int(res.stdout.strip())
+        res = run_git(gitdir, ["log", "-1", "--pretty=%ad", "--date=short"], check=False)
+        if res.returncode == 0:
+            info["last"] = res.stdout.strip() or None
+    return info
+
+
+def list_backup_dirs(config=None):
+    """Return information about every backup directory papers knows of."""
+    from papers.config import BACKUP_DIR
+    dirs = []
+    if os.path.isdir(BACKUP_DIR):
+        dirs += [os.path.join(BACKUP_DIR, d) for d in sorted(os.listdir(BACKUP_DIR))
+                 if os.path.isdir(os.path.join(BACKUP_DIR, d))]
+    if config is not None and config.gitdir and os.path.isdir(config.gitdir):
+        if not any(Path(d) == Path(config.gitdir) for d in dirs):
+            dirs.append(config.gitdir)
+    return [backup_info(d, config=config) for d in dirs]
+
+
 def backup_bib(biblio, config, message=None):
     from papers.bib import clean_filesdir
 
@@ -65,6 +234,10 @@ def backup_bib(biblio, config, message=None):
         raise PapersExit('cannot backup without --git enabled')
     backupdir = Path(config.gitdir)
     backupdir.mkdir(exist_ok=True)
+
+    # never mix the histories of two libraries in one backup directory
+    check_gitdir_ownership(config)
+    backupdir = Path(config.gitdir)  # may have been re-allocated
 
     # a snapshot made while undone must append to the full history
     adopt_legacy_undone_state(config.gitdir)
@@ -119,6 +292,7 @@ def silent_backup_bib(biblio, config, level=logging.WARNING, *args, **kwargs):
 
 
 def restore_from_backupdir(config, restore_files=False):
+    check_gitdir_ownership(config)
     restore_cmd = f"papers add {config.backupfile_clean} --rename --copy" if config.backup_files else f"cp {config.backupfile} {config.bibtex}"
     repair_message = f"papers backup broken :: cannot repair file links :: try to recover manually with `{restore_cmd}`"
     try:
@@ -254,8 +428,15 @@ def adopt_legacy_undone_state(gitdir):
     run_git(gitdir, ["branch", "-D", "history"], check=False)
 
 
+def _require_history(gitdir):
+    if run_git(gitdir, ["rev-parse", "--verify", "--quiet", "HEAD"], check=False).returncode != 0:
+        raise PapersExit("no backup history (no snapshot recorded yet)")
+
+
 def git_restore_state(config, ref, restore_files=False, kind="restore-backup"):
     """Append a restore commit for `ref` and restore the bibtex from it."""
+    check_gitdir_ownership(config)
+    _require_history(config.gitdir)
     res = run_git(config.gitdir, ["rev-parse", "--verify", "--quiet", f"{ref}^{{commit}}"], check=False)
     if res.returncode != 0:
         raise PapersExit(f"unknown git reference: {ref}")
@@ -265,6 +446,8 @@ def git_restore_state(config, ref, restore_files=False, kind="restore-backup"):
 
 
 def git_undo(config, restore_files=False, steps=1):
+    check_gitdir_ownership(config)
+    _require_history(config.gitdir)
     adopt_legacy_undone_state(config.gitdir)
     cur = cursor_commit(config.gitdir)
     res = run_git(config.gitdir, ["rev-parse", "--verify", "--quiet", f"{cur}~{steps}"], check=False)
@@ -275,6 +458,8 @@ def git_undo(config, restore_files=False, steps=1):
 
 
 def git_redo(config, restore_files=False, steps=1):
+    check_gitdir_ownership(config)
+    _require_history(config.gitdir)
     adopt_legacy_undone_state(config.gitdir)
     cur = cursor_commit(config.gitdir)
     out = run_git(config.gitdir, ["log", "--first-parent", "--reverse", "-z",

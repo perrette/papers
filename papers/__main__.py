@@ -10,14 +10,13 @@ import subprocess as sp
 import shutil
 import itertools
 import fnmatch   # unix-like match
-from slugify import slugify
 
 import papers
 from papers import logger
 from papers.extract import extract_pdf_doi, isvaliddoi, extract_pdf_metadata
 from papers.extract import fetch_bibtex_by_doi, fetch_bibtex_by_fulltext_crossref, fetch_bibtex_by_fulltext_scholar
 from papers.encoding import parse_file, format_file, family_names, format_entries, standard_name, format_entry, parse_keywords, format_key
-from papers.config import bcolors, Config, search_config, CONFIG_FILE, CONFIG_FILE_LOCAL, DATA_DIR, CONFIG_FILE_LEGACY, BACKUP_DIR
+from papers.config import bcolors, Config, search_config, CONFIG_FILE, CONFIG_FILE_LOCAL, DATA_DIR, CONFIG_FILE_LEGACY
 from papers.duplicate import list_duplicates, list_uniques, edit_entries, title_id
 from papers.entries import get_entry_val, entry_content_equal
 from papers.bib import (Biblio, FUZZY_RATIO, DEFAULT_SIMILARITY, entry_filecheck,
@@ -25,7 +24,8 @@ from papers.bib import (Biblio, FUZZY_RATIO, DEFAULT_SIMILARITY, entry_filecheck
                         are_duplicates, download_url)
 from papers.utils import view_pdf, open_folder, PapersExit
 from papers.backup import (backup_bib, silent_backup_bib, restore_from_backupdir,
-                           git_undo, git_redo, git_restore_state)
+                           git_undo, git_redo, git_restore_state,
+                           resolve_gitdir, claim_gitdir, list_backup_dirs)
 from papers import __version__
 
 
@@ -273,9 +273,11 @@ def installcmd(parser, o, config):
     if o.gitdir:
         config.gitdir = o.gitdir
 
+    elif config.gitdir:
+        pass  # keep the backup directory of the pre-existing install
+
     elif config.bibtex is not None:
-        bibi = config.bibtex[:-len(".bib")] if config.bibtex.endswith(".bib") else config.bibtex
-        config.gitdir = os.path.join(BACKUP_DIR, slugify(bibi))
+        config.gitdir = resolve_gitdir(config.bibtex)
 
     if o.editor:
         config.editor = o.editor
@@ -342,6 +344,9 @@ def installcmd(parser, o, config):
         else:
             os.makedirs(config.gitdir, exist_ok=True)
             config.gitcmd('init')
+
+        # an explicit install takes ownership of the backup directory
+        claim_gitdir(config)
 
         if config.gitlfs:
             config.gitcmd('lfs track "files/"')
@@ -616,6 +621,24 @@ def restorecmd(parser, o, config):
         git_restore_state(config, o.ref, restore_files=o.restore_files)
     else:
         restore_from_backupdir(config, restore_files=o.restore_files)
+
+
+def backupcmd(parser, o, config):
+    infos = list_backup_dirs(config)
+    if not infos:
+        print('no backup directory found')
+        return
+    for info in infos:
+        owner = info['bibtex'] or 'unknown library (no manifest)'
+        status = ''
+        if info['bibtex'] and not os.path.exists(info['bibtex']):
+            status = bcolors.WARNING + ' (bibtex missing)' + bcolors.ENDC
+        current = ' [current]' if info['current'] else ''
+        snapshots = f"{info['snapshots']} snapshots" if info['snapshots'] is not None else 'no snapshot'
+        last = f", last {info['last']}" if info['last'] else ''
+        size = f"{info['size']/(1024*1024):.1f} MB"
+        print(f"* {os.path.basename(info['gitdir'])}: {owner}{status} ({snapshots}{last}, {size}){current}")
+        print(f"    {info['gitdir']}")
 
 
 def gitcmd(parser, o, config):
@@ -1162,6 +1185,11 @@ def get_parser(config=None):
     gitp = subparsers.add_parser('git', description='git subcommand')
     gitp.add_argument('gitargs', nargs=argparse.REMAINDER)
 
+    # backup
+    # ======
+    backupp = subparsers.add_parser('backup', description='manage backup directories', parents=[loggingp])
+    backupp.add_argument('action', choices=['list'], help='list known backup directories and the library each belongs to')
+
     return parser, subparsers
 
 #############
@@ -1244,6 +1272,8 @@ def main(args=None):
         if not installed:
             subp.error('papers must be installed to use git command')
         gitcmd(subp, o, config)
+    elif o.cmd == 'backup':
+        backupcmd(subp, o, config)
     elif o.cmd == 'doi':
         doicmd(subp, o)
     elif o.cmd == 'fetch':
