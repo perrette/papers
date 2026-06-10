@@ -205,6 +205,33 @@ class TestCheckDuplicatesResolution(unittest.TestCase):
         self.assertEqual(len(result), 1)
         self.assertTrue(hasattr(result[0], 'fields_dict'))
 
+    def test_quit_keeps_everything(self):
+        with patch('builtins.input', side_effect=['q']):
+            result = check_duplicates(self.entries(), eq=self.eq, mode='i')
+        self.assertEqual(len(result), 4)
+
+    def test_delete_requires_confirmation(self):
+        # 'd' then decline -> nothing deleted; 'n' keeps each group
+        with patch('builtins.input', side_effect=['d', 'n', 'n', 'n']):
+            result = check_duplicates(self.entries(), eq=self.eq, mode='i')
+        self.assertEqual(len(result), 4)
+
+        # 'd' then confirm -> the first group (2 entries) is deleted
+        with patch('builtins.input', side_effect=['d', 'y', 'n']):
+            result = check_duplicates(self.entries(), eq=self.eq, mode='i')
+        self.assertEqual(len(result), 2)
+
+    def test_invalid_input_reprompts(self):
+        with patch('builtins.input', side_effect=['x', '99', 'q']):
+            result = check_duplicates(self.entries(), eq=self.eq, mode='i')
+        self.assertEqual(len(result), 4)
+
+    def test_pick_works_in_diff_view(self):
+        # toggling to diff view used to remove the number choices entirely
+        with patch('builtins.input', side_effect=['v', '1', 'n']):
+            result = check_duplicates(self.entries(), eq=self.eq, mode='i')
+        self.assertEqual(len(result), 3)  # group 1 reduced to entry 1, group 2 kept
+
 
 class TestEditEntriesRoundTrip(unittest.TestCase):
 

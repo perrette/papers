@@ -828,7 +828,7 @@ class Biblio:
             print(bcolors.OKBLUE+'*** UPDATE ***'+bcolors.ENDC)
             print(entry_diff(e_old, e))
 
-            if input('update ? [Y/n] or [Enter] ').lower() not in ('', 'y'):
+            if input('update? [Y/n] ').lower() not in ('', 'y'):
                 logger.info('cancel changes')
                 update_entry(e, e_old)
                 for k in [k for k, _ in e.items()]:

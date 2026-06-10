@@ -397,7 +397,8 @@ def _ask_pick_loop(entries, extra=[], select=False):
         i = input('>>> ')
         try:
             return _process_choice(i)
-        except:
+        except (ValueError, IndexError):
+            print(f'invalid choice: {i!r}')
             continue
 
 
@@ -556,31 +557,32 @@ class DuplicateHandler:
 
         while len(self.entries) > 1:
 
-            choices = list('mefdnsSvV')
-            txt = '''
+            choices = list('mfednsSvVq')
+            n = len(self.entries)
+            txt = f'''
 
-(m)erge
-(e)dit
-(f)etch metadata
-(d)elete
-(n)ot a duplicate (validate several entries)
-(s)kip (cancel)
-(S)kip all
-(v)iew toggle (diff - split)
+Keep entries by number -- or choose an action:
+  N     keep only entry N, delete the others (e.g. 1)
+  N M   keep entries N and M, delete the others (e.g. 1 2)
+  -N    keep all entries but entry N
+(m)erge the group into one entry (conflicts resolved from *, shown for review)
+(f)etch metadata for the * entry and add the result to the group
+(e)dit the group in an editor
+(d)elete the whole group (all {n} entries!)
+(n)ot duplicates: keep all entries and stop asking about this group
+(s)kip this group (decide later)
+(S)kip all remaining groups (decide later)
+(v)iew toggle (split - diff)
 (V)iew toggle for diff mode
+(q)uit: stop checking, keep everything not yet decided
 '''
+            header = bcolors.OKBLUE + f'{n} duplicates -- * marks the most complete entry (used by merge and fetch):' + bcolors.ENDC
             if not diffview:
-                msg = bcolors.OKBLUE + 'Pick entry or choose one of the following actions:'+bcolors.ENDC+txt
-                e = choose_entry_interactive(self.entries, extra=choices, msg=msg, select=True, best=self.best())
+                e = choose_entry_interactive(self.entries, extra=choices, msg=header+txt, select=True, best=self.best())
             else:
-                print(entry_ndiff(self.entries))
-                print(bcolors.OKBLUE + 'Choose one of the following actions:'+bcolors.ENDC + txt)
-# .replace('(s)','('+_colordiffline('s','-')+')'))
-                ans = None
-                while ans not in choices:
-                    print('choices: '+', '.join(choices))
-                    ans = input('>>> ')
-                e = ans
+                print(self.format(diffview=True, update=update))
+                print(header + txt)
+                e = _ask_pick_loop(self.entries, extra=choices, select=True)
 
             if e == 'm':
                 self.merge()
@@ -589,13 +591,15 @@ class DuplicateHandler:
                 self.edit(diffview, update)
 
             elif e == 'd':
-                self.delete()
+                ans = input(f'delete all {n} entries? [y/N] ')
+                if ans.lower() == 'y':
+                    self.delete()
 
             elif e == 'f':
                 self.entries.append(self.fetch())
                 self.remove_duplicates()
 
-            elif e == 'S':
+            elif e in ('S', 'q'):
                 raise DuplicateSkipAll()
 
             elif e == 's':
@@ -677,22 +681,26 @@ def conflict_resolution_on_insert(old, new, mode='i'):
     """conflict resolution with two entries
     """
     if mode == 'i':
+        print(bcolors.OKBLUE + 'duplicate found -- comparing:' + bcolors.ENDC)
+        print(_colordiffline('  - existing entry, already in your library', '-'))
+        print(_colordiffline('  + new entry, being added', '+'))
         print(entry_diff(old, new))
         print(bcolors.OKBLUE + 'what to do?' + bcolors.ENDC)
         print('''
-(u)pdate missing (discard conflicting fields in new entry)
-(U)pdate other (overwrite conflicting fields in old entry)
-(o)verwrite
-(e)dit diff
-(E)dit split (not a duplicate)
-(s)kip
-(a)ppend anyway
-(r)aise'''.strip()
+(u)pdate existing with the new entry's missing fields (existing values win on conflict)
+(U)pdate existing with the new entry's values (new values win on conflict)
+(o)verwrite: replace the existing entry entirely with the new one
+(s)kip the new entry (keep the existing one unchanged)
+(a)ppend the new entry anyway (keep both)
+(e)dit the merged diff in an editor
+(E)dit both entries separately (they are not duplicates)
+(r)aise an error (abort)'''.strip()
 )
-# .replace('(s)','('+_colordiffline('s','-')+')'))
-        choices = list('uUoeEsar')
+        choices = list('uUosaeEr')
         ans = None
         while ans not in choices:
+            if ans is not None:
+                print(f'invalid choice: {ans!r}')
             print('choices: '+', '.join(choices))
             ans = input('>>> ')
         mode = ans
