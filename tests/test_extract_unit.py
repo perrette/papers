@@ -151,3 +151,16 @@ class TestCrossrefToBibtex(unittest.TestCase):
         }
         bib = crossref_to_bibtex(msg)
         self.assertIn("@book{", bib)
+
+
+class TestQueryText(unittest.TestCase):
+
+    def test_too_short_raises_valueerror(self):
+        # used to be an AssertionError, which callers do not handle
+        from papers.extract import query_text
+        with self.assertRaises(ValueError):
+            query_text("one two")
+
+    def test_enough_words(self):
+        from papers.extract import query_text
+        self.assertEqual(query_text("one two three"), "one two three")

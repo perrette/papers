@@ -344,7 +344,9 @@ def query_text(txt, max_query_words=200):
     # limit overall length
     query_txt = ' '.join(query_txt.strip().split()[:max_query_words])
 
-    assert len(query_txt.split()) >= 3, 'needs at least 3 query words, got: '+repr(query_txt)
+    if len(query_txt.split()) < 3:
+        # a proper exception, not AssertionError: callers handle query failures
+        raise ValueError('needs at least 3 query words, got: '+repr(query_txt))
     return query_txt
 
 
