@@ -414,6 +414,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#name-clash-with-gnome-papers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Name clash with GNOME Papers
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#dependencies" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -876,6 +887,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#name-clash-with-gnome-papers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Name clash with GNOME Papers
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#dependencies" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -918,6 +940,13 @@
 <p>Note there is another project registered on PyPI as <code>papers</code>, hence
 <code>papers-cli</code> for command-line-interface. The installed command is still
 <code>papers</code>.</p>
+<h2 id="name-clash-with-gnome-papers">Name clash with GNOME Papers<a class="headerlink" href="#name-clash-with-gnome-papers" title="Permanent link">&para;</a></h2>
+<p>The <a href="https://gitlab.gnome.org/GNOME/papers">GNOME Papers</a> document viewer
+(the default viewer on recent GNOME desktops) also installs a <code>papers</code>
+command; with both installed, whichever comes first in <code>$PATH</code> wins. The
+package therefore also installs the command under the unambiguous name
+<code>papers-cli</code> — call that, or set a shell alias (e.g.
+<code>alias papers=papers-cli</code>), on systems where the names collide.</p>
 <h2 id="dependencies">Dependencies<a class="headerlink" href="#dependencies" title="Permanent link">&para;</a></h2>
 <ul>
 <li>python 3.9+</li>
