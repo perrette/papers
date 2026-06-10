@@ -1,8 +1,15 @@
 import os, json
+import contextlib
 import copy
+import tempfile
 from pathlib import Path
 import hashlib
 import platformdirs
+
+try:
+    import fcntl  # not available on Windows
+except ImportError:
+    fcntl = None
 from papers.entries import parse_string
 from papers import logger
 from papers.filename import Format, NAMEFORMAT, KEYFORMAT
@@ -242,6 +249,44 @@ def _init_cache():
         os.makedirs(CACHE_DIR)
 
 
+@contextlib.contextmanager
+def _cache_lock(file):
+    """advisory inter-process lock on a sidecar file (no-op without fcntl)"""
+    if fcntl is None:
+        yield
+        return
+    with open(file + '.lock', 'w') as lockfile:
+        fcntl.flock(lockfile, fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            fcntl.flock(lockfile, fcntl.LOCK_UN)
+
+
+def _read_cache_file(file):
+    if os.path.exists(file):
+        try:
+            return json.load(open(file))
+        except (json.JSONDecodeError, OSError) as error:
+            # a corrupt cache file must not break every query
+            logger.warning(f"unreadable cache file {file}: {error} -- starting over with an empty cache")
+    return {}
+
+
+def _write_cache_file(cache, file):
+    """atomic replace, so an interrupted write cannot truncate the cache"""
+    fd, tmp = tempfile.mkstemp(dir=os.path.dirname(file) or '.',
+                               prefix=os.path.basename(file) + '.', suffix='.tmp')
+    try:
+        with os.fdopen(fd, 'w') as f:
+            json.dump(cache, f)
+        os.replace(tmp, file)
+    except BaseException:
+        with contextlib.suppress(OSError):
+            os.remove(tmp)
+        raise
+
+
 def cached(file, hashed_key=False):
 
     file = os.path.join(CACHE_DIR, file)
@@ -253,13 +298,7 @@ def cached(file, hashed_key=False):
             nonlocal cache
             if cache is None:
                 _init_cache()
-                cache = {}
-                if os.path.exists(file):
-                    try:
-                        cache = json.load(open(file))
-                    except (json.JSONDecodeError, OSError) as error:
-                        # a corrupt cache file must not break every query
-                        logger.warning(f"unreadable cache file {file}: {error} -- starting over with an empty cache")
+                cache = _read_cache_file(file)
             if hashed_key: # use hashed parameter as key (for full text query)
                 key = hashlib.sha256(doi.encode('utf-8')).hexdigest()[:6]
             else:
@@ -270,7 +309,11 @@ def cached(file, hashed_key=False):
             else:
                 res = cache[key] = fun(doi)
                 if not DRYRUN:
-                    json.dump(cache, open(file,'w'))
+                    with _cache_lock(file):
+                        # merge entries written meanwhile by other processes,
+                        # keeping our own values for keys present in both
+                        cache = {**_read_cache_file(file), **cache}
+                        _write_cache_file(cache, file)
             return res
         return decorated
     return decorator
