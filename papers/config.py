@@ -216,7 +216,10 @@ class Config:
                 bibtexstring = open(self.bibtex).read()
                 db = parse_string(bibtexstring)
                 if len(db.entries):
-                    status = bcolors.OKBLUE+' ({} entries)'.format(len(db.entries))+bcolors.ENDC
+                    from papers.encoding import parse_file
+                    from papers.entries import get_entry_val
+                    nfiles = sum(len(parse_file(get_entry_val(e, 'file', ''))) for e in db.entries)
+                    status = bcolors.OKBLUE+' ({} entries, {} file links)'.format(len(db.entries), nfiles)+bcolors.ENDC
                 else:
                     status = bcolors.WARNING+' (empty)'+bcolors.ENDC
             except:

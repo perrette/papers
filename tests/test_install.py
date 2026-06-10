@@ -449,6 +449,12 @@ class TestStatus(LocalInstallTest):
         self.assertIn(self.mybib, out)
         self.assertIn(self.filesdir, out)
 
+    def test_status_counts_file_links(self):
+        self.papers(f'add {self.anotherbib}')
+        out = self.papers('status -v', sp_cmd='check_output')
+        # one entry, no attachment
+        self.assertIn('1 entries, 0 file links', out)
+
 
 class TestUninstall2(GlobalInstallTest):
     def test_uninstall(self):
