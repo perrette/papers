@@ -1,5 +1,5 @@
 import bibtexparser
-from tests.common import LocalInstallTest, Biblio, tempfile
+from tests.common import LocalInstallTest, BaseTest, Biblio, tempfile
 from papers.utils import strip_all
 
 bibtex = """@article{Perrette_2011,
@@ -246,3 +246,43 @@ class OpenCmdTest(LocalInstallTest):
 
     def test_open_unknown_key(self):
         self.papers('open NoSuchKey')  # logs an error, does not crash
+
+    def test_open_file_path(self):
+        # `papers open` also accepts existing file paths directly
+        from unittest.mock import patch
+        f = self._path('direct.pdf')
+        open(f, 'w').write('x')
+        with patch('papers.__main__.view_pdf') as viewer:
+            self.papers(f'open {f}')
+            viewer.assert_called_once_with(f)
+
+    def test_bare_file_argument_opens_viewer(self):
+        # `papers somefile.pdf` behaves like the (possibly masked) document
+        # viewer: the file is opened with the system viewer (issue #107)
+        from unittest.mock import patch
+        f = self._path('direct.pdf')
+        open(f, 'w').write('x')
+        with patch('papers.__main__.view_pdf') as viewer:
+            self.papers(f'{f}')
+            viewer.assert_called_once_with(f)
+
+    def test_subcommand_wins_over_file(self):
+        # a file named like a subcommand does not hijack the CLI
+        from unittest.mock import patch
+        open(self._path('status'), 'w').write('x')
+        with patch('papers.__main__.view_pdf') as viewer:
+            self.papers('status')
+            viewer.assert_not_called()
+
+
+class ViewerPassthroughNoInstallTest(BaseTest):
+    anotherbib_content = None
+
+    def test_bare_file_argument_without_install(self):
+        # the viewer passthrough must work without any papers install
+        from unittest.mock import patch
+        f = self._path('doc.pdf')
+        open(f, 'w').write('x')
+        with patch('papers.__main__.view_pdf') as viewer:
+            self.papers(f'{f}')
+            viewer.assert_called_once_with(f)

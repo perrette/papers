@@ -14,10 +14,19 @@ Note there is another project registered on PyPI as `papers`, hence
 
 The [GNOME Papers](https://gitlab.gnome.org/GNOME/papers) document viewer
 (the default viewer on recent GNOME desktops) also installs a `papers`
-command; with both installed, whichever comes first in `$PATH` wins. The
-package therefore also installs the command under the unambiguous name
-`papers-cli` — call that, or set a shell alias (e.g.
-`alias papers=papers-cli`), on systems where the names collide.
+command; with both installed, whichever comes first in `$PATH` wins. Two
+mitigations are built in:
+
+- The package also installs the command under the unambiguous name
+  `papers-cli` — call that, or set a shell alias (e.g.
+  `alias papers=papers-cli`), on systems where the names collide.
+- Because this command may mask GNOME Papers, `papers somefile.pdf` (a plain
+  existing file instead of a subcommand) opens the file with the system's
+  default viewer rather than erroring — which on a GNOME desktop typically
+  launches GNOME Papers itself, so the viewer keeps working for the common
+  case. Subcommand names always take precedence (`papers ./list` opens a
+  file named `list`; `papers list` lists your library), and viewer-specific
+  flags are not forwarded — call the viewer's binary directly for those.
 
 ## Dependencies
 

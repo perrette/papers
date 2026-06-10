@@ -731,9 +731,21 @@ def listcmd(parser, o, config):
 
 
 def opencmd(parser, o, config):
-    biblio = get_biblio(config)
-    entries_by_key = {biblio.key(e): e for e in biblio.entries}
+    biblio = None
+    entries_by_key = {}
     for key in o.key:
+        # an existing file is opened directly with the system viewer; anything
+        # else is looked up as an entry key in the bibliography
+        if os.path.isfile(key):
+            logger.info(f"opening {key} ...")
+            view_pdf(key)
+            continue
+        if biblio is None:
+            try:
+                biblio = get_biblio(config)
+            except ValueError:
+                raise PapersExit(f"'{key}' is not an existing file, and no bibliography is configured to look it up as a key")
+            entries_by_key = {biblio.key(e): e for e in biblio.entries}
         e = entries_by_key.get(key.lower())
         if e is None:
             logger.error(f'no entry found with key: {key}')
@@ -1040,8 +1052,8 @@ def get_parser(config=None):
 
     # open
     # ====
-    openp = subparsers.add_parser('open', description='open the file(s) attached to entries', parents=[cfg])
-    openp.add_argument('key', nargs='+', help='entry key(s), case-insensitive (shortcut for `papers list --key KEY --open`)')
+    openp = subparsers.add_parser('open', description='open entry attachments or files with the system viewer', parents=[cfg])
+    openp.add_argument('key', nargs='+', help='entry key(s) (case-insensitive), or existing file path(s) to open directly')
 
     # doi
     # ===
@@ -1125,6 +1137,22 @@ def main(args=None):
 
     parser, subparsers = get_parser(config)
 
+    # viewer passthrough (#107): this command often masks the GNOME Papers
+    # document viewer in $PATH, so `papers somefile.pdf` opens the file(s)
+    # with the system viewer instead of erroring. xdg-open resolves the
+    # handler via desktop entries, not $PATH, so this typically launches the
+    # masked viewer itself. Subcommand names always take precedence, and any
+    # flag disables the passthrough (it cannot be meant for this tool).
+    argv = sys.argv[1:]
+    if argv and all(not a.startswith('-') for a in argv) \
+            and argv[0] not in subparsers.choices \
+            and all(os.path.isfile(a) for a in argv):
+        for f in argv:
+            print(f"papers-cli: opening {f!r} with the system viewer "
+                  f"(see `papers --help` for the bibliography tool)", file=sys.stderr)
+            view_pdf(f)
+        return
+
     o, args = parser.parse_known_args(args)
 
     if o.version:
@@ -1167,7 +1195,9 @@ def main(args=None):
     elif o.cmd == 'list':
         check_install(subp, o, config) and listcmd(subp, o, config)
     elif o.cmd == 'open':
-        check_install(subp, o, config) and opencmd(subp, o, config)
+        # no install required when opening plain files; opencmd reports the
+        # missing bibliography itself when an argument must be looked up as a key
+        opencmd(subp, o, config)
     elif o.cmd == 'undo':
         check_install(subp, o, config) and undocmd(subp, o, config)
     elif o.cmd == 'redo':
