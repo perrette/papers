@@ -392,7 +392,7 @@ class TestUndoGitOnlyLocal(LocalGitInstallTest):
 class TestUndoGitGlobal(GlobalGitLFSInstallTest):
 
     def _install(self):
-        self.papers(f'install --no-prompt --bibtex {self.mybib} --files {self.filesdir} --git --git-lfs')
+        self.papers(f'install --no-prompt --global --bibtex {self.mybib} --files {self.filesdir} --git --git-lfs')
         self.config = Config.load(CONFIG_FILE)
 
     def _format_file(self, name):

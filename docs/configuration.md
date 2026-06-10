@@ -3,7 +3,7 @@
 ## install: make bibtex and files directory persistent
 
 ```
-$> papers install --bibtex papers.bib --filesdir files
+$> papers install --global --bibtex papers.bib --filesdir files
 papers configuration
 * configuration file: /home/perrette/.config/papersconfig.json
 * cache directory:    /home/perrette/.cache/papers
@@ -12,9 +12,11 @@ papers configuration
 * bibtex:            papers.bib (1 entries)
 ```
 
-The configuration file is global (unless `--local` is specified), so from now
-on, any `papers` command will know about these settings: no need to specify
-bibtex file or files directory.
+With `--global`, the configuration applies to the whole user account: any
+`papers` command, from any directory, will know about these settings. A
+fresh `papers install` without scope option is *local* to the current
+directory (see below); re-running `papers install` on an existing install
+keeps its scope, so `--local`/`--global` are only needed to be explicit.
 
 Running `papers install` again *updates* the existing configuration: options
 you pass change, everything else is kept. Pass `--reset` to discard the
@@ -30,13 +32,14 @@ requests are saved in the cache directory. This happens regardless of whether
 
 ## Local install
 
-Sometimes it is desirable to have separate configurations. In that case a local
-install is the way to go:
+A local install keeps separate configurations per project — one bibliography
+per folder. It is the default for a fresh install (`--local` makes it
+explicit):
 
 ```
-$> papers install --local
-Bibtex file name [default to existing: papers.bib] [Enter/Yes/No]:
-Files folder [default to new: papers] [Enter/Yes/No]: pdfs
+$> papers install
+Bibtex file name [default to existing: papers.bib] [Enter/path/'unset']:
+Files folder [default to new: papers] [Enter/path/'unset']: pdfs
 papers configuration
 * configuration file: papersconfig.json
 * cache directory:    /home/perrette/.cache/papers

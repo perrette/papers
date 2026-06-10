@@ -255,7 +255,7 @@ class LocalInstallTest(BaseTest):
 class GlobalInstallTest(BaseTest):
     def setUp(self):
         super().setUp()
-        self.papers(f'install --force --bibtex {self.mybib} --files {self.filesdir}')
+        self.papers(f'install --force --global --bibtex {self.mybib} --files {self.filesdir}')
 
     @property
     def config(self):
@@ -270,7 +270,7 @@ class LocalGitInstallTest(LocalInstallTest):
 class GlobalGitInstallTest(GlobalInstallTest):
     def setUp(self):
         super().setUp()
-        self.papers(f'install --force --git --bibtex {self.mybib} --files {self.filesdir}')
+        self.papers(f'install --force --global --git --bibtex {self.mybib} --files {self.filesdir}')
 
 class LocalGitLFSInstallTest(LocalInstallTest):
     def setUp(self):
@@ -281,4 +281,4 @@ class LocalGitLFSInstallTest(LocalInstallTest):
 class GlobalGitLFSInstallTest(GlobalInstallTest):
     def setUp(self):
         super().setUp()
-        self.papers(f'install --force --git --git-lfs --bibtex {self.mybib} --files {self.filesdir}')
+        self.papers(f'install --force --global --git --git-lfs --bibtex {self.mybib} --files {self.filesdir}')

@@ -118,9 +118,10 @@ def resolve_install(config, o, probe=None, asker=None):
     """
     asker = asker or DefaultAsker()
 
-    # scope: keep the existing install's scope unless specified
+    # scope: keep the existing install's scope unless specified;
+    # a fresh install is local by default
     if o.local is None:
-        o.local = config.local if config.local is not None else False
+        o.local = bool(config.local) if config.file is not None else True
     o.local = bool(o.local)
 
     same_scope = config.file is not None and bool(config.local) == o.local

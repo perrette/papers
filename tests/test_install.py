@@ -257,13 +257,24 @@ class TestDefaultLocal2(GlobalInstallTest):
         self.assertFalse(config.local)
 
 
+class TestDefaultScopeIsLocal(TestBaseInstall):
+    def test_fresh_install_is_local(self):
+        # a fresh install without scope option is local; an existing install
+        # keeps its scope (covered by TestDefaultLocal2)
+        self.papers(f'install --no-prompt --bibtex {self.mybib} --files {self.filesdir}')
+        self.assertTrue(self._exists(CONFIG_FILE_LOCAL))
+        self.assertFalse(os.path.exists(CONFIG_FILE))
+        config = Config.load(self._path(CONFIG_FILE_LOCAL))
+        self.assertTrue(config.local)
+
+
 class TestGlobalInstall(TestBaseInstall):
 
     def test_install(self):
         self.assertFalse(self._exists(self.mybib))
         self.assertFalse(self._exists(self.filesdir))
         self.assertFalse(os.path.exists(CONFIG_FILE))
-        self.papers(f'install --no-prompt --bibtex {self.mybib} --files {self.filesdir}')
+        self.papers(f'install --no-prompt --global --bibtex {self.mybib} --files {self.filesdir}')
         self.assertTrue(self._exists(self.mybib))
         self.assertTrue(self._exists(self.filesdir))
         self.assertTrue(os.path.exists(CONFIG_FILE))

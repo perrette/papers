@@ -784,9 +784,10 @@ def get_parser(config=None):
         help='non-interactive: accept defaults without asking')
 
     installp.add_argument('--local', action="store_true", default=None,
-        help="""setup papers locally in current directory (global install by default), exposing bibtex and filesdir,
-        and having the rest under .papers (config options). Only keep the cache globally.
-        This might not play out too well with git tracking (local install usuall have their own git) but might be OK.""")
+        help="""setup papers locally in the current directory (.papersconfig.json), exposing bibtex and filesdir.
+        This is the default for a fresh install; an existing install keeps its scope.""")
+    installp.add_argument('--global', action="store_false", dest='local', default=None,
+        help="setup papers globally for the user account (configuration under ~/.config)")
 
     installp.add_argument('--git', '--backup', action='store_true', default=None, help="""Track bibtex files with git.""")
     installp.add_argument('--git-lfs', '--backup-files', action='store_true', default=None, help="""Backup files with git-lfs (implies --git)""")
