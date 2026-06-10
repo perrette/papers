@@ -307,7 +307,7 @@ def addcmd(parser, o, config):
                 else:
                     raise ValueError(file+' is a directory, requires --recursive to explore')
 
-            elif file.endswith('.pdf'):
+            elif file.lower().endswith('.pdf'):
                 entries.extend( biblio.add_pdf(file, attachments=o.attachment, rename=o.rename, copy=o.copy,
                            search_doi=not o.no_query_doi,
                            search_fulltext=not o.no_query_fulltext,

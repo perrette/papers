@@ -583,9 +583,9 @@ class Biblio:
                     continue
                 path = os.path.join(root, file)
                 try:
-                    if file.endswith('.pdf'):
+                    if file.lower().endswith('.pdf'):
                         yield from self.add_pdf(path, search_doi=search_doi, search_fulltext=search_fulltext, **kw)
-                    elif file.endswith('.bib'):
+                    elif file.lower().endswith('.bib'):
                         yield from self.add_bibtex_file(path, **kw)
                 except Exception as error:
                     logger.warning(path+'::'+str(error))
@@ -922,7 +922,7 @@ def entry_filecheck(e, delete_broken=False, fix_mendeley=False,
                 fixed[old] = file # keep record of fixed files
 
         # parse PDF and check for metadata
-        if check_metadata and file.endswith('.pdf'):
+        if check_metadata and file.lower().endswith('.pdf'):
             try:
                 entry_filecheck_metadata(e, file, image=image)
             except ValueError as error:

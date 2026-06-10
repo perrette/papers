@@ -116,3 +116,14 @@ class TestCheckFilesdir(unittest.TestCase):
             count, size = check_filesdir(d)
             self.assertEqual(count, 2)
             self.assertEqual(size, 1500)
+
+
+class TestCheckFilesdirCase(unittest.TestCase):
+
+    def test_uppercase_pdf_counted(self):
+        # issue #94: .PDF files were silently ignored
+        with tempfile.TemporaryDirectory() as d:
+            open(os.path.join(d, "a.PDF"), "w").write("dummy")
+            open(os.path.join(d, "b.pdf"), "w").write("dummy")
+            count, size = check_filesdir(d)
+            self.assertEqual(count, 2)

@@ -65,7 +65,7 @@ def check_filesdir(folder):
     for (path, dirs, files) in os.walk(folder):
       for file in files:
         filename = os.path.join(path, file)
-        if filename.endswith('.pdf'):
+        if filename.lower().endswith('.pdf'):
             folder_size += os.path.getsize(filename)
             file_count += 1
     return file_count, folder_size
