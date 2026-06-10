@@ -29,13 +29,14 @@ from papers.backup import (backup_bib, silent_backup_bib, restore_from_backupdir
 from papers import __version__
 
 
-if os.path.exists(CONFIG_FILE_LEGACY):
-    # move config file from ~/.local/.share/papers/ to ~/.config/papersconfig.json .papers/config.json to .papersconfig.json"
-    if not os.path.exists(CONFIG_FILE):
-        logger.warning(f"Move legacy config file {CONFIG_FILE_LEGACY} to {CONFIG_FILE}'")
-        shutil.move(CONFIG_FILE_LEGACY, CONFIG_FILE)
-    else:
-        logger.warning(f"Legacy config file found: {CONFIG_FILE_LEGACY}. Delete to remove this warning:  rm -f '{CONFIG_FILE_LEGACY}'")
+def check_legacy_global_config():
+    " move config file from ~/.local/share/papers/ to ~/.config/papersconfig.json "
+    if os.path.exists(CONFIG_FILE_LEGACY):
+        if not os.path.exists(CONFIG_FILE):
+            logger.warning(f"Move legacy config file {CONFIG_FILE_LEGACY} to {CONFIG_FILE}'")
+            shutil.move(CONFIG_FILE_LEGACY, CONFIG_FILE)
+        else:
+            logger.warning(f"Legacy config file found: {CONFIG_FILE_LEGACY}. Delete to remove this warning:  rm -f '{CONFIG_FILE_LEGACY}'")
 
 def check_legacy_config(configfile):
     " move config file from ~/.local/.share/papers/ to ~/.config/papersconfig.json and .papers/config.json to .papersconfig.json"
@@ -1180,6 +1181,7 @@ def main(args=None):
         # used in the commit message
         sys.argv = sys.argv[:1] + args
 
+    check_legacy_global_config()
     configfile = search_config([CONFIG_FILE_LOCAL, os.path.join(".papers", "config.json")], start_dir=".", default=CONFIG_FILE)
     configfile = check_legacy_config(configfile)
     if not os.path.exists(configfile):

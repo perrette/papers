@@ -229,18 +229,22 @@ def _init_cache():
         logger.info('make cache directory for DOI requests: '+CACHE_DIR)
         os.makedirs(CACHE_DIR)
 
-_init_cache()
 
 def cached(file, hashed_key=False):
 
     file = os.path.join(CACHE_DIR, file)
 
     def decorator(fun):
-        if os.path.exists(file):
-            cache = json.load(open(file))
-        else:
-            cache = {}
+        # load lazily on first call so that importing papers does not touch the cache
+        cache = None
         def decorated(doi):
+            nonlocal cache
+            if cache is None:
+                _init_cache()
+                if os.path.exists(file):
+                    cache = json.load(open(file))
+                else:
+                    cache = {}
             if hashed_key: # use hashed parameter as key (for full text query)
                 key = hashlib.sha256(doi.encode('utf-8')).hexdigest()[:6]
             else:
