@@ -253,10 +253,13 @@ def cached(file, hashed_key=False):
             nonlocal cache
             if cache is None:
                 _init_cache()
+                cache = {}
                 if os.path.exists(file):
-                    cache = json.load(open(file))
-                else:
-                    cache = {}
+                    try:
+                        cache = json.load(open(file))
+                    except (json.JSONDecodeError, OSError) as error:
+                        # a corrupt cache file must not break every query
+                        logger.warning(f"unreadable cache file {file}: {error} -- starting over with an empty cache")
             if hashed_key: # use hashed parameter as key (for full text query)
                 key = hashlib.sha256(doi.encode('utf-8')).hexdigest()[:6]
             else:

@@ -90,3 +90,23 @@ class TestConfigCollections(unittest.TestCase):
             self.assertIn("lib.bib", colls)
             self.assertIn("other.bib", colls)
             self.assertEqual(len(colls), 2)
+
+
+class TestCachedCorruptFile(unittest.TestCase):
+
+    def test_corrupt_cache_file_is_ignored(self):
+        # a corrupt cache file used to crash every cached query
+        import papers.config as pconfig
+        with tempfile.TemporaryDirectory() as d:
+            old_cache_dir = pconfig.CACHE_DIR
+            pconfig.CACHE_DIR = d
+            try:
+                open(os.path.join(d, "testcache.json"), "w").write("{corrupt json")
+
+                @pconfig.cached("testcache.json")
+                def fn(x):
+                    return x.upper()
+
+                self.assertEqual(fn("a"), "A")
+            finally:
+                pconfig.CACHE_DIR = old_cache_dir
