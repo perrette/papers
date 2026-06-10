@@ -10,7 +10,8 @@ from papers.config import CONFIG_FILE, CONFIG_FILE_LOCAL
 from papers.bib import Biblio
 # from pathlib import Path
 
-from tests.common import paperscmd, prepare_paper, run, PAPERSCMD, BaseTest as TestBaseInstall, LocalInstallTest, GlobalInstallTest
+from tests.common import (paperscmd, prepare_paper, run, PAPERSCMD, BaseTest as TestBaseInstall,
+                          LocalInstallTest, GlobalInstallTest, LocalGitLFSInstallTest)
 
 bibtex2 = """@article{SomeOneElse2000,
  author = {Some One},
@@ -409,6 +410,23 @@ class TestUninstall(LocalInstallTest):
     def test_uninstall(self):
         self.assertTrue(self._exists(CONFIG_FILE_LOCAL))
         self.papers(f'uninstall')
+        self.assertFalse(self._exists(CONFIG_FILE_LOCAL))
+
+    def test_uninstall_reports_leftovers(self):
+        out = self.papers('uninstall', sp_cmd='check_output')
+        self.assertIn('the bibliography remains', out)
+        # the bibtex and files are not touched
+        self.assertTrue(self._exists(self.mybib))
+        self.assertTrue(self._exists(self.filesdir))
+
+
+class TestUninstallRemoveBackup(LocalGitLFSInstallTest):
+    def test_uninstall_remove_backup(self):
+        gitdir = self.config.gitdir
+        self.assertTrue(os.path.isdir(gitdir))
+        out = self.papers('uninstall --remove-backup', sp_cmd='check_output')
+        self.assertIn('removed backup directory', out)
+        self.assertFalse(os.path.exists(gitdir))
         self.assertFalse(self._exists(CONFIG_FILE_LOCAL))
 
 

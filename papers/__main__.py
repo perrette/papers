@@ -152,17 +152,30 @@ def installcmd(parser, o, config):
 
 def uninstallcmd(parser, o, config):
     if Path(config.file).exists():
-        logger.info(f"The uninstaller will now remove {config.file}")
+        print(f"remove configuration file: {config.file}")
         os.remove(config.file)
-        config = Config()
     else:
         logger.info(f"The uninstaller found no config file to remove.")
         return
 
+    # be transparent about what is left behind
+    if config.bibtex and os.path.exists(config.bibtex):
+        print(f"the bibliography remains: {config.bibtex}")
+    if config.filesdir and os.path.exists(config.filesdir):
+        print(f"the files directory remains: {config.filesdir}")
+    if config.gitdir and os.path.isdir(config.gitdir):
+        if o.remove_backup:
+            shutil.rmtree(config.gitdir)
+            print(f"removed backup directory: {config.gitdir}")
+        else:
+            print(f"the backup directory remains: {config.gitdir}")
+            print(f"  remove it with `papers backup remove {os.path.basename(config.gitdir)}`")
+
     if o.recursive:
-        config.file = search_config([CONFIG_FILE_LOCAL, os.path.join(".papers", "config.json")], start_dir=".", default=CONFIG_FILE)
-        config.file = check_legacy_config(config.file)
-        uninstallcmd(parser, o, config)
+        configfile = search_config([CONFIG_FILE_LOCAL, os.path.join(".papers", "config.json")], start_dir=".", default=CONFIG_FILE)
+        configfile = check_legacy_config(configfile)
+        if os.path.exists(configfile):
+            uninstallcmd(parser, o, Config.load(configfile))
 
 def check_install(parser, o, config, bibtex_must_exist=True):
     """
@@ -793,6 +806,7 @@ def get_parser(config=None):
     uninstallp = subparsers.add_parser('uninstall', description='remove configuration file',
         parents=[loggingp])
     uninstallp.add_argument("--recursive", action="store_true", help="if true, uninstall all papers configuration found on the path, recursively (config file only)")
+    uninstallp.add_argument("--remove-backup", action="store_true", help="also remove the backup directory of the uninstalled configuration(s)")
 
 
     # add

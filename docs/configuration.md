@@ -78,6 +78,10 @@ uninstall` command:
 papers uninstall
 ```
 
+It removes the configuration file and reports what it leaves behind (the
+bibtex file, the files directory, and the backup directory if any). Pass
+`--remove-backup` to also remove the backup directory.
+
 You may repeat `papers status -v` and cleaning until a satisfying state is
 reached, or remove all config files recursively up to (and including) global
 install:
