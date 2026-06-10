@@ -222,24 +222,18 @@ def merge_entries(entries, force=False):
     return merged.resolve(force)
 
 
-def handle_merge_conflict(merged):
-    # TODO: boil down this command to the minimum, or build all into a merge class
-
-    if not isinstance(merged, MergedEntry):
-        return merged  # all GOOD_DUPLICATES !
-
-    elif isinstance(merged, MergedEntry):
-        fields = [k for k in merged if isinstance(merged[k], ConflictingField)]
-        raise ValueError('conflicting entries for fields: '+str(fields))
-
-    return merged
-
-
-
 class DummyBcolors:
     def __getattr__(self, s):
         return ''
 dummybcolors = DummyBcolors()
+
+
+def _has_field(entry, k):
+    """Field membership that also works for ID/ENTRYTYPE on bibtexparser-v2
+    entries (`'ID' in entry` is always False for those)."""
+    if k in ('ID', 'ENTRYTYPE') and hasattr(entry, 'fields_dict'):
+        return True
+    return k in entry
 
 
 
@@ -284,7 +278,7 @@ def entry_ndiff(entries, color=True):
         if isinstance(m[k], ConflictingField):
             choices[k] = m[k].choices
             m[k] = SECRET_STRING.format(k)
-        elif any(k not in e for e in entries):
+        elif any(not _has_field(e, k) for e in entries):
             somemissing.append(k)
     lib = library_from_entries([m])
     s = format_library(lib)
@@ -324,7 +318,8 @@ def entry_sdiff(entries, color=True, bcolors=bcolors, best=None):
 
     merged = merge_entries(entries)
     conflicting_fields = [k for k in merged if isinstance(merged[k], ConflictingField)]
-    somemissing = [k for k in merged if any(k not in e for e in entries)]
+    somemissing = [k for k in merged if k not in conflicting_fields
+                   and any(not _has_field(e, k) for e in entries)]
 
     entry_strings = []
 
@@ -337,7 +332,9 @@ def entry_sdiff(entries, color=True, bcolors=bcolors, best=None):
             for k in conflicting_fields+somemissing:
                 fmt = lambda s : (bcolors.WARNING if k in conflicting_fields else bcolors.BOLD)+s+bcolors.ENDC
                 if k != k.lower() and '@' in line:
-                    line = line.replace(entry[k], fmt(entry[k]))
+                    value = get_entry_val(entry, k, '')
+                    if value:
+                        line = line.replace(value, fmt(value))
                 elif line.strip().startswith('{} = {{'.format(k)):
                     line = fmt(line)
             lines.append(line)
@@ -437,19 +434,38 @@ def edit_entries(entries, diff=False, ndiff=False, editor=None):
 
     res = os.system('{} {}'.format(editor or os.getenv('EDITOR'), filename))
 
-    if res == 0:
-        logger.info('sucessfully edited file, insert edited entries')
-        db_updated = parse_string(open(filename).read())
-        return db_updated.entries
+    if res != 0:
+        logger.error('failed to edit file -- keeping original entries')
+        return entries
 
-    else:
-        logger.info('failed to edit file')
-        return db
+    db_updated = parse_string(open(filename).read())
+    new_entries = db_updated.entries
+
+    # validate the round trip: an edited diff saved with its +/- markers, or
+    # any other text that does not parse back to sane bibtex, must not be
+    # silently inserted into the library
+    failed = getattr(db_updated, 'failed_blocks', None)
+    if failed:
+        logger.error('some edited blocks could not be parsed as bibtex -- keeping original entries')
+        return entries
+    if entries and not new_entries:
+        logger.error('edited file contains no bibtex entry -- keeping original entries')
+        return entries
+    fieldname = re.compile(r'^[A-Za-z][\w-]*$')
+    for e in new_entries:
+        bad = [k for k, _ in e.items() if not fieldname.match(k)]
+        if bad:
+            logger.error(f'edited entry {get_entry_val(e, "ID", "")!r} has malformed field name(s) {bad} '
+                         '(unedited diff markers?) -- keeping original entries')
+            return entries
+
+    logger.info('successfully edited file, insert edited entries')
+    return new_entries
 
 
 def score(e):
     ' entry score, in terms of reliability '
-    has_doi = get_entry_val(e, 'doi', '') and isvaliddoi(get_entry_val(e, 'doi', ''))
+    has_doi = bool(get_entry_val(e, 'doi', '')) and isvaliddoi(get_entry_val(e, 'doi', ''))
     n_fields = len(e.fields) if hasattr(e, 'fields') else len(e)
     return (100*has_doi + 50*('title' in e) + 10*('author' in e) + 1*('file' in e))*100 + n_fields
 
@@ -506,23 +522,32 @@ class DuplicateHandler:
             for e in self.entries:
                 e['file'] = file
 
-    def merge(self):
+    def merge(self, interactive=True):
+        """Merge the group into one entry; conflicting fields take the best
+        entry's value. In interactive mode a conflicting merge is appended to
+        the group as a proposal for review instead of replacing it.
+        """
         self.merge_files()
         merged = merge_entries(self.entries)
-        try:
-            e = handle_merge_conflict(merged)
-            self.entries = [e]
+        had_conflict = isinstance(merged, MergedEntry)
 
-        except Exception as error:
-            logger.warning(str(error))
+        if had_conflict:
+            fields = [k for k in merged if isinstance(merged[k], ConflictingField)]
+            logger.warning('conflicting entries for fields: '+str(fields)+' (resolved from the best entry)')
             best = self.best()
-            for k in list(merged.keys()):
-                if isinstance(merged[k], ConflictingField):
-                    merged[k] = best[k] # ID, ENTRYFIELD
-                    # if k != k.lower():
-                    # else:
-                    #     del merged[k]
-            self.entries.append(merged)
+            for k in fields:
+                merged[k] = get_entry_val(best, k, None) or merged[k].choices[0]
+            merged = dict(merged)
+
+        # the library only accepts proper Entry objects, not dicts
+        proposal = entry_from_dict(merged) if isinstance(merged, dict) else merged
+
+        if interactive and had_conflict:
+            # conflicts were auto-resolved: append as a proposal for review
+            print(f'the merged entry is appended to the group as ({len(self.entries)+1})')
+            self.entries.append(proposal)
+        else:
+            self.entries = [proposal]
 
     # interactive loops
     def interactive_loop(self, diffview=False, update=False):
@@ -580,7 +605,8 @@ class DuplicateHandler:
                 break
 
             elif isinstance(e, dict):
-                self.entries = [e]
+                # the library only accepts proper Entry objects
+                self.entries = [entry_from_dict(e)]
 
             elif hasattr(e, 'fields_dict'):
                 # v2 Entry (user picked one entry by index)
@@ -613,6 +639,8 @@ def resolve_duplicates(duplicates, mode='i'):
     if len(conflict.entries) > 1:
         if mode == 'i':
             conflict.interactive_loop()
+        elif mode == 'm':
+            conflict.merge(interactive=False)
         elif mode == 's':
             pass
         else:
@@ -629,13 +657,14 @@ def check_duplicates(entries, key=None, eq=None, issorted=False, filter_key=None
     entries, duplicate_groups = search_duplicates(entries, key, eq, issorted, filter_key)
     logger.info(str(len(duplicate_groups))+' duplicate(s)')
 
-    for duplicates in duplicate_groups:
+    for i, duplicates in enumerate(duplicate_groups):
         try:
             entries.extend(resolve_duplicates(duplicates, mode))
         except DuplicateSkip:
             entries.extend(duplicates)
         except DuplicateSkipAll:
-            entries.extend(itertools.chain(duplicates))
+            # keep this group AND every group not yet processed untouched
+            entries.extend(itertools.chain(duplicates, *duplicate_groups[i+1:]))
             break
     return entries
 
@@ -649,7 +678,7 @@ def conflict_resolution_on_insert(old, new, mode='i'):
     """
     if mode == 'i':
         print(entry_diff(old, new))
-        print(bcolors.OKBLUE + 'what to do? ')
+        print(bcolors.OKBLUE + 'what to do?' + bcolors.ENDC)
         print('''
 (u)pdate missing (discard conflicting fields in new entry)
 (U)pdate other (overwrite conflicting fields in old entry)
@@ -658,7 +687,7 @@ def conflict_resolution_on_insert(old, new, mode='i'):
 (E)dit split (not a duplicate)
 (s)kip
 (a)ppend anyway
-(r)aise'''.strip() + bcolors.ENDC
+(r)aise'''.strip()
 )
 # .replace('(s)','('+_colordiffline('s','-')+')'))
         choices = list('uUoeEsar')

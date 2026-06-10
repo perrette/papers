@@ -4,6 +4,8 @@ import subprocess as sp
 import tempfile
 import unittest
 
+from unittest.mock import patch
+
 import bibtexparser
 from papers.entries import parse_string as bp_parse_string
 
@@ -16,8 +18,13 @@ from papers.duplicate import (
     merge_entries,
     MergedEntry,
     ConflictingField,
+    check_duplicates,
+    edit_entries,
+    entry_sdiff,
+    title_id,
 )
-from papers.entries import entry_from_dict, get_entry_val
+from papers.entries import entry_from_dict, get_entry_val, format_library, library_from_entries
+from papers.utils import bcolors
 from tests.common import PAPERSCMD, paperscmd, BibTest
 
 
@@ -138,6 +145,116 @@ class SimilarityBase(unittest.TestCase):
         e1, e2 = db1.entries[0], db2.entries[0]
         refs = Biblio(similarity=self.similarity)
         return refs.eq(e1, e2)
+
+
+class TestCheckDuplicatesResolution(unittest.TestCase):
+    """Resolution machinery of `papers check --duplicates` (check_duplicates)."""
+
+    bib = """@article{A2000,
+ author = {A. Author},
+ title = {One},
+ year = {2000}
+}
+@article{A2000b,
+ author = {A. Author},
+ title = {One},
+ year = {2001}
+}
+@article{B2010,
+ author = {B. Author},
+ title = {Two},
+ year = {2010}
+}
+@article{B2010b,
+ author = {B. Author},
+ title = {Two},
+ year = {2011}
+}"""
+
+    eq = staticmethod(lambda a, b: title_id(a) == title_id(b))
+
+    def entries(self):
+        return bp_parse_string(self.bib).entries
+
+    def test_skip_all_keeps_remaining_groups(self):
+        # 'S' (skip all) used to silently DELETE every not-yet-processed group
+        with patch('builtins.input', side_effect=['S']):
+            result = check_duplicates(self.entries(), eq=self.eq, mode='i')
+        self.assertEqual(sorted(get_entry_val(e, 'ID') for e in result),
+                         ['A2000', 'A2000b', 'B2010', 'B2010b'])
+
+    def test_skip_keeps_current_group(self):
+        with patch('builtins.input', side_effect=['s', 's']):
+            result = check_duplicates(self.entries(), eq=self.eq, mode='i')
+        self.assertEqual(len(result), 4)
+
+    def test_merge_mode(self):
+        # advertised by `papers check --duplicates -m m` but never implemented
+        result = check_duplicates(self.entries()[:2], eq=self.eq, mode='m')
+        self.assertEqual(len(result), 1)
+        # conflicting year resolved, common fields kept
+        self.assertEqual(get_entry_val(result[0], 'title'), 'One')
+        # the merged entry must be a proper Entry, insertable into a Library
+        self.assertTrue(hasattr(result[0], 'fields_dict'))
+        self.assertIn('@article', format_library(library_from_entries(result)))
+
+    def test_interactive_merge_then_pick_is_saveable(self):
+        # merging used to produce a plain dict that crashed the library on save
+        with patch('builtins.input', side_effect=['m', '3']):
+            result = check_duplicates(self.entries()[:2], eq=self.eq, mode='i')
+        self.assertEqual(len(result), 1)
+        self.assertTrue(hasattr(result[0], 'fields_dict'))
+
+
+class TestEditEntriesRoundTrip(unittest.TestCase):
+
+    bib = """@article{A2000,
+ author = {A. Author},
+ journal = {Journal One},
+ title = {One},
+ year = {2000}
+}
+@article{A2000b,
+ author = {A. Author},
+ title = {One},
+ year = {2001}
+}"""
+
+    def entries(self):
+        return bp_parse_string(self.bib).entries
+
+    def test_editor_failure_returns_originals(self):
+        entries = self.entries()
+        # used to crash with NameError ('db' undefined)
+        result = edit_entries(entries, editor='false')
+        self.assertEqual(result, entries)
+
+    def test_unedited_diff_is_not_inserted(self):
+        # saving the raw +/- diff text unchanged used to corrupt the library
+        entries = self.entries()
+        result = edit_entries(entries, diff=True, editor='true')
+        self.assertEqual(result, entries)
+
+
+class TestSplitDiffRendering(unittest.TestCase):
+
+    def test_no_spurious_highlight(self):
+        # bibtexparser-v2 entries always tested False for `'ID' in entry`, so the
+        # entry type was always bold and a conflicting key was wrapped twice
+        entries = bp_parse_string("""@article{A2000,
+ author = {A. Author},
+ title = {One},
+ year = {2000}
+}
+@article{A2000b,
+ author = {A. Author},
+ title = {One},
+ year = {2000}
+}""").entries
+        out = entry_sdiff(entries)
+        self.assertNotIn(bcolors.BOLD + 'article', out)              # same type: no highlight
+        self.assertNotIn(bcolors.WARNING + bcolors.WARNING, out)     # key: single wrap
+        self.assertIn(bcolors.WARNING + 'A2000' + bcolors.ENDC, out) # conflicting key: one wrap
 
 
 class TestDuplicatesExact(SimilarityBase):
