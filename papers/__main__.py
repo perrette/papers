@@ -23,7 +23,9 @@ from papers.entries import get_entry_val, entry_content_equal
 from papers.bib import (Biblio, FUZZY_RATIO, DEFAULT_SIMILARITY, entry_filecheck,
                         backupfile as backupfile_func, isvalidkey, DuplicateKeyError, clean_filesdir,
                         are_duplicates, download_url)
-from papers.utils import move, checksum, view_pdf, open_folder
+from papers.utils import view_pdf, open_folder, PapersExit
+from papers.backup import (backup_bib, silent_backup_bib, restore_from_backupdir,
+                           git_undo, git_redo, git_reset_to_commit)
 from papers import __version__
 
 
@@ -67,161 +69,6 @@ def get_biblio(config):
     return biblio
 
 
-def _backup_bib(biblio, config, message=None):
-    if not config.git:
-        raise PapersExit('cannot backup without --git enabled')
-    # backupdir = Path(config.file).parent
-    backupdir = Path(config.gitdir)
-    backupdir.mkdir(exist_ok=True)
-
-    # remove if exists
-    config.backupfile.unlink(missing_ok=True)
-    config.backupfile_clean.unlink(missing_ok=True)
-
-    ## Here we could create a copy of biblio since it is modified in place
-    ## For now, we exit the program after saving, so don't bother
-    logger.debug(f'BACKUP: cp {config.bibtex} {config.backupfile}')
-    shutil.copy(config.bibtex, config.backupfile)
-    config.gitcmd(f"add {config.backupfile.name}")
-
-    biblio = copy.deepcopy(biblio)
-
-    if config.backup_files:
-        logger.info('backup bibliography with files')
-        backupfilesdir = backupdir/"files"
-        backupfilesdir.mkdir(exist_ok=True)
-        biblio.filesdir = str(backupfilesdir)
-        biblio.rename_entries_files(copy=True, relative_to=backupdir, hardlink=True)
-        biblio.save(config.backupfile_clean)
-        config.gitcmd(f"add {config.backupfile_clean.name}")
-
-        # Remove unlink files
-        clean_filesdir(biblio, interactive=False, ignore_files=[config.backupfile, config.backupfile_clean])
-        config.gitcmd(f"add files")
-
-    else:
-        logger.info('backup bibliography only (without files)')
-        biblio.update_file_path(relative_to=backupdir)
-        biblio.save(config.backupfile_clean)
-        config.gitcmd(f"add {config.backupfile_clean.name}")
-
-    message = message or f'papers ' +' '.join(sys.argv[1:])
-    res = config.gitcmd(f"commit -m '{message}'", check=False)
-    # work on "main" branch for comitting (out of history branch)
-    config.gitcmd(f"checkout -B main")
-    config.gitcmd(f"clean -f")
-
-def _silent_backup_bib(biblio, config, level=logging.WARNING, *args, **kwargs):
-    " this is useful when passing --info to avoid having too many outputs"
-    level0 = logger.getEffectiveLevel()
-    if level0 > logging.DEBUG: # if DEBUG, also show back debug logs
-        logger.setLevel(level)
-    _backup_bib(biblio, config, *args, **kwargs)
-    logger.setLevel(level0)
-
-
-def _restore_from_backupdir(config, restore_files=False):
-    restore_cmd = f"papers add {config.backupfile_clean} --rename --copy" if config.backup_files else f"cp {config.backupfile} {config.bibtex}"
-    repair_message = f"papers backup broken :: cannot repair file links :: try to recover manually with `{restore_cmd}`"
-    try:
-        return _restore_from_backupdir_wrapped(config, restore_files=restore_files)
-    except Exception as error:
-        logger.error(str(error))
-        raise PapersExit(repair_message)
-
-
-def _restore_from_backupdir_wrapped(config, restore_files=False):
-    # current = sp.check_output(f"git rev-parse --short HEAD", shell=True, cwd=config.gitdir).strip().decode()
-    current = sp.check_output(f"git rev-parse HEAD", shell=True, cwd=config.gitdir).strip().decode()
-    message = sp.check_output(f"git log {current} --pretty='format:%C(auto)%h %s (%ad)' -1", shell=True, cwd=config.gitdir).strip().decode()
-    logger.info(f'restore bibliography to {message}')
-
-    if os.path.exists(config.bibtex):
-        os.remove(config.bibtex)
-    shutil.copy(config.backupfile, config.bibtex)
-
-    # Re-name the file according to back-up bibtex
-    if not config.backup_files:
-        return
-
-    biblio = Biblio.load(config.bibtex, config.filesdir)
-    biblio_clean = Biblio.load(config.backupfile_clean, config.filesdir)
-
-    assert len(biblio.entries) == len(biblio_clean.entries)
-
-    for e, e_clean in zip(biblio.entries, biblio_clean.entries):
-        assert get_entry_val(e, 'ID', '') == get_entry_val(e_clean, 'ID', ''), f"{get_entry_val(e, 'ID', '')} != {get_entry_val(e_clean, 'ID', '')})"
-        files = biblio.get_files(e)
-        files_clean = biblio_clean.get_files(e_clean)
-        assert len(files) == len(files_clean), f"{get_entry_val(e, 'ID', '')} :: files {len(files)} != {len(files_clean)})"
-
-        new_files = []
-
-        for f, f_clean in zip(files, files_clean):
-            # broken link in the backup
-            if not os.path.exists(f_clean):
-                logger.debug(f"BACKUP FILE DOES NOT EXISTS: {f_clean} ")
-                logger.debug(f"BACKUP ENTRY: {e_clean['file']} ")
-                logger.debug(f"BROKEN ENTRY: {e['file']} ")
-                logger.warning(f"{get_entry_val(e, 'ID', '')} :: file link broken => {f} ")
-                new_files.append(f)
-                continue
-
-            # backup file is fine
-
-            # original bibtex link matches something on disk
-            if os.path.exists(f):
-
-                # same file: nothing to do
-                if os.path.samefile(f, f_clean) or checksum(f_clean) == checksum(f):
-                    new_files.append(f)
-
-                else:
-                    logger.warning(f"{get_entry_val(e, 'ID', '')} :: file found but does not match backup (keep pointer to backup): {f} != {f_clean}")
-                    new_files.append(f_clean)
-
-            # original bibtex link is broken, --restore-file is active
-            elif restore_files:
-                try:
-                    move(f_clean, f, copy=True, interactive=False)
-                    new_files.append(f)
-
-                except Exception as error:
-                    logger.error(f"{error}")
-                    logger.error(f"{get_entry_val(e, 'ID', '')} :: failed to restore file (keep pointer to backup)")
-                    new_files.append(f_clean)
-                    pass
-
-            # original bibtex link is broken, default without --restore-file : do not do anything
-            else:
-                new_files.append(f_clean)
-
-        biblio.set_files(e, new_files)
-
-    biblio.save(config.bibtex)
-
-
-def _git_reset_to_commit(config, commit, restore_files=False):
-    config.gitcmd(f"reset --hard {commit}")
-    _restore_from_backupdir(config, restore_files=restore_files)
-
-
-def _git_undo(config, restore_files=False, steps=1):
-    sp.check_call(f"git checkout -B history", shell=True, cwd=config.gitdir)
-    _git_reset_to_commit(config, 'HEAD'+'^'*steps, restore_files=restore_files)
-    # _git_reset_to_commit(config, 'HEAD^', restore_files=o.restore_files)
-
-
-def _git_redo(config, restore_files=False, steps=1):
-    current = sp.check_output(f"git rev-parse HEAD", shell=True, cwd=config.gitdir).strip().decode()
-    futures = sp.check_output(f"git rev-list {current}..main", shell=True, cwd=config.gitdir).strip().decode().splitlines()[::-1]
-    try:
-        future = futures[steps-1]
-    except Exception as error:
-        raise PapersExit("nothing to redo")
-    _git_reset_to_commit(config, future, restore_files=restore_files)
-
-
 def savebib(biblio, config):
     """
     Given a Biblio object and its configuration, save them to disk.  If you're using the git bib tracker, will trigger a git commit there.
@@ -233,7 +80,7 @@ def savebib(biblio, config):
     if biblio is not None:
         biblio.save(config.bibtex)
     if config.file and config.git:
-        _silent_backup_bib(biblio, config)
+        silent_backup_bib(biblio, config)
     else:
         logger.debug(f'do not backup bib: {config.file}, {config.git}')
     # if config.git:
@@ -501,7 +348,7 @@ def installcmd(parser, o, config):
             config.gitcmd(f'commit -m "papers install: .gitattribute"', check=False)
 
         biblio = get_biblio(config)
-        _backup_bib(biblio, config)
+        backup_bib(biblio, config)
 
     print(config.status(check_files=not o.no_check_files, verbose=True))
 
@@ -742,13 +589,13 @@ def filecheckcmd(parser, o, config):
 
 def redocmd(parser, o, config):
     if config.git:
-        return _git_redo(config, restore_files=o.restore_files, steps=o.steps)
+        return git_redo(config, restore_files=o.restore_files, steps=o.steps)
     else:
         undocmd(parser, o, config)
 
 def undocmd(parser, o, config):
     if config.git:
-        return _git_undo(config, restore_files=o.restore_files, steps=o.steps)
+        return git_undo(config, restore_files=o.restore_files, steps=o.steps)
 
     logger.warning("git-tracking is not installed: undo / redo is limited to 1 step back and forth")
     back = backupfile_func(config.bibtex)
@@ -765,9 +612,9 @@ def restorecmd(parser, o, config):
         parser.print_help()
         raise PapersExit('only valid with --git enabled')
     if o.ref:
-        _git_reset_to_commit(config, o.ref, restore_files=o.restore_files)
+        git_reset_to_commit(config, o.ref, restore_files=o.restore_files)
     else:
-        _restore_from_backupdir(config, restore_files=o.restore_files)
+        restore_from_backupdir(config, restore_files=o.restore_files)
 
 
 def gitcmd(parser, o, config):
@@ -1405,10 +1252,6 @@ def main(args=None):
         parser.print_help()
         raise PapersExit()
         # parser.exit(1)
-
-
-class PapersExit(Exception):
-    pass
 
 
 def main_clean_exit(args=None):

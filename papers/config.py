@@ -1,7 +1,6 @@
 import os, json
 import copy
 from pathlib import Path
-import subprocess as sp, sys
 import hashlib
 from papers.entries import parse_string
 from papers import logger
@@ -84,21 +83,9 @@ class Config:
         else:
             return Path(os.path.sep)
 
-    def gitcmd(self, cmd, check=True, **kw):
-        logger.debug(f"git {cmd} -C {self.gitdir}")
-        try:
-            sp.run(
-                f"git {cmd}",
-                cwd=self.gitdir,
-                stdout=sp.DEVNULL,
-                stderr=sp.DEVNULL,
-                check=check,
-                shell=True,
-                **kw,
-            )
-        except sp.CalledProcessError as e:
-            logger.error(f"Command failed: 'git {cmd}'")
-            raise
+    def gitcmd(self, cmd, check=True):
+        from papers.backup import run_git
+        return run_git(self.gitdir, cmd, check=check)
 
 
     def _relpath(self, p):

@@ -9,6 +9,10 @@ from pathlib import Path
 from papers import logger
 
 
+class PapersExit(Exception):
+    """Expected command-line error: caught at the top level for a clean exit."""
+
+
 class bcolors:
     # https://stackoverflow.com/a/287944/2192272
     HEADER = '\033[95m'
