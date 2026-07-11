@@ -196,6 +196,22 @@ class TestAddBib(BibTest):
         self.assertEqual(bib.db.entries[0]['ID'], self.key1)
         self.assertTrue(self.key2 not in [e['ID'] for e in self.my.db.entries])
 
+    def test_addbib_cmd_update_key(self):
+        # --update-key regenerates the key of entries added from a bibtex file
+        # according to the key template (issue #108)
+        paperscmd(f'add {self.somebib} --bibtex {self.mybib} --update-key')
+        bib = Biblio.load(self.mybib, '')
+        self.assertEqual(len(bib.db.entries), 2)
+        self.assertEqual(bib.db.entries[0]['ID'], self.key1)  # pre-existing entry untouched
+        self.assertEqual(bib.db.entries[1]['ID'], self.newkey2)  # default template {author}{year}
+
+    def test_addbib_cmd_update_key_custom_template(self):
+        paperscmd(f'add {self.somebib} --bibtex {self.mybib} -u --key-template "{{year}}"')
+        bib = Biblio.load(self.mybib, '')
+        self.assertEqual(len(bib.db.entries), 2)
+        self.assertEqual(bib.db.entries[0]['ID'], self.key1)
+        self.assertEqual(bib.db.entries[1]['ID'], self.year)
+
     def test_attachment_fails_with_multiple_entries(self):
         func = lambda: paperscmd(f'add {self.pdf} {self.pdf} --bibtex {self.mybib} --filesdir {self.filesdir} --attachment {self.pdf}')
         self.assertRaises(Exception, func)

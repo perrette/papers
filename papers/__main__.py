@@ -794,7 +794,10 @@ def get_parser(config=None):
     keyfmt = argparse.ArgumentParser(add_help=False)
     grp = keyfmt.add_argument_group('bibtex key format')
     grp.add_argument('--key-template', default=config.keyformat.template,
-        help='python template for generating keys (default:%(default)s)')
+        help='''python template for generating keys (default:%(default)s).
+        The template applies to entries generated from a PDF or a DOI;
+        entries added from a bibtex file keep their original key unless
+        -u/--update-key is passed.''')
     grp.add_argument('--key-author-num', type=int, default=config.keyformat.author_num,
         help='number of authors to include in key (default:%(default)s)')
     grp.add_argument('--key-author-sep', default=config.keyformat.author_sep,
@@ -884,7 +887,10 @@ def get_parser(config=None):
     grp.add_argument('--no-merge-files', action='store_true',
         help='distinct "file" field considered a conflict, all other things being equal')
     grp.add_argument('-u', '--update-key', action='store_true',
-        help='update added key according to any existing duplicate (otherwise an error might be raised on identical insert key)')
+        help='''regenerate the key of added entries from the key template
+        (see "bibtex key format" options); if a duplicate is found, use the
+        existing entry's key instead (otherwise an error might be raised on
+        identical insert key)''')
     # grp.add_argument('-f', '--force', action='store_true', help='no interactive')
     grp.add_argument('-m', '--mode', default='i', choices=['u', 'U', 'o', 's', 'r', 'i', 'a'],
         help='''if duplicates are found, the default is to start an (i)nteractive dialogue,
