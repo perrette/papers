@@ -23,6 +23,7 @@ from papers.encoding import latex_to_unicode_library
 
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
+import pymupdf
 
 
 my_etiquette = Etiquette('papers', papers.__version__, 'https://github.com/perrette/papers', 'mahe.perrette@gmail.com')
@@ -37,11 +38,10 @@ class DOIRequestError(ValueError):
 
 # PDF parsing / crossref requests
 # ===============================
-def readpdf_fitz(pdf_path, pages=None, first=None, last=None):
-    import fitz
+def readpdf_pymupdf(pdf_path, pages=None, first=None, last=None):
 
     # Open the PDF file
-    document = fitz.open(pdf_path)
+    document = pymupdf.open(pdf_path)
     text = ""
 
     # Iterate through the pages
@@ -78,7 +78,7 @@ def readpdf(pdf, first=None, last=None):
     if not os.path.isfile(pdf):
         raise ValueError(repr(pdf) + ": not a file")
     try:
-        return readpdf_fitz(pdf, first=first, last=last)
+        return readpdf_pymupdf(pdf, first=first, last=last)
     except ImportError:
         logger.warning("PyMuPDF not installed, using pdftotext")
         return readpdf_poputils(pdf, first=first, last=last)
@@ -144,11 +144,9 @@ def parse_doi_from_pdf_metadata_poppler(pdf_path):
         pass
     return None
 
-def parse_doi_from_pdf_metadata_fitz(pdf_path):
-    """Extract DOI from PDF metadata using PyMuPDF/fitz."""
-    import fitz
-
-    with fitz.open(pdf_path) as doc:
+def parse_doi_from_pdf_metadata_pymupdf(pdf_path):
+    """Extract DOI from PDF metadata using PyMuPDF."""
+    with pymupdf.open(pdf_path) as doc:
         metadata = doc.metadata
 
         # Try direct metadata fields first
@@ -170,11 +168,11 @@ def parse_doi_from_pdf_metadata_fitz(pdf_path):
 
 
 def parse_doi_from_pdf_metadata(pdf_path):
-    """Extract DOI from PDF metadata (tries fitz, falls back to poppler)."""
-    # Try fitz first (no subprocess overhead)
+    """Extract DOI from PDF metadata (tries pymupdf, falls back to poppler)."""
+    # Try pymupdf first (no subprocess overhead)
 
     try:
-        return parse_doi_from_pdf_metadata_fitz(pdf_path)
+        return parse_doi_from_pdf_metadata_pymupdf(pdf_path)
     except ImportError:
         # Fall back to poppler-utils
         return parse_doi_from_pdf_metadata_poppler(pdf_path)
