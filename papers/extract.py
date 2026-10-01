@@ -23,7 +23,6 @@ from papers.encoding import latex_to_unicode_library
 
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
-import pymupdf
 
 
 my_etiquette = Etiquette('papers', papers.__version__, 'https://github.com/perrette/papers', 'mahe.perrette@gmail.com')
@@ -39,6 +38,7 @@ class DOIRequestError(ValueError):
 # PDF parsing / crossref requests
 # ===============================
 def readpdf_pymupdf(pdf_path, pages=None, first=None, last=None):
+    import pymupdf
 
     # Open the PDF file
     document = pymupdf.open(pdf_path)
@@ -146,6 +146,8 @@ def parse_doi_from_pdf_metadata_poppler(pdf_path):
 
 def parse_doi_from_pdf_metadata_pymupdf(pdf_path):
     """Extract DOI from PDF metadata using PyMuPDF."""
+    import pymupdf
+
     with pymupdf.open(pdf_path) as doc:
         metadata = doc.metadata
 
