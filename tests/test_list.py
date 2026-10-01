@@ -1,5 +1,11 @@
 import bibtexparser
+import os
+import unittest
+from unittest.mock import patch
+from urllib.parse import quote
 from tests.common import LocalInstallTest, BaseTest, Biblio, tempfile
+from papers.__main__ import VIEWER_PASSTHROUGH_ENV
+from papers.utils import PapersExit, find_masked_viewer, file_uri_to_path
 from papers.utils import strip_all
 
 bibtex = """@article{Perrette_2011,
@@ -258,31 +264,98 @@ class OpenCmdTest(LocalInstallTest):
 
     def test_bare_file_argument_opens_viewer(self):
         # `papers somefile.pdf` behaves like the (possibly masked) document
-        # viewer: the file is opened with the system viewer (issue #107)
-        from unittest.mock import patch
+        # viewer: without another `papers` in $PATH, the file is opened with
+        # the system viewer (issue #107)
         f = self._path('direct.pdf')
         open(f, 'w').write('x')
-        with patch('papers.__main__.view_pdf') as viewer:
+        with patch.dict(os.environ), \
+                patch('papers.__main__.find_masked_viewer', return_value=None), \
+                patch('papers.__main__.view_pdf') as viewer:
+            os.environ.pop(VIEWER_PASSTHROUGH_ENV, None)
             self.papers(f'{f}')
             viewer.assert_called_once_with(f)
 
     def test_subcommand_wins_over_file(self):
         # a file named like a subcommand does not hijack the CLI
-        from unittest.mock import patch
         open(self._path('status'), 'w').write('x')
-        with patch('papers.__main__.view_pdf') as viewer:
+        with patch('papers.__main__.find_masked_viewer') as finder, \
+                patch('papers.__main__.view_pdf') as viewer:
             self.papers('status')
+            finder.assert_not_called()
             viewer.assert_not_called()
 
 
 class ViewerPassthroughNoInstallTest(BaseTest):
     anotherbib_content = None
 
+    def setUp(self):
+        super().setUp()
+        self.pdf = self._path('doc.pdf')
+        open(self.pdf, 'w').write('x')
+        env = patch.dict(os.environ)
+        env.start()
+        self.addCleanup(env.stop)
+        os.environ.pop(VIEWER_PASSTHROUGH_ENV, None)
+
     def test_bare_file_argument_without_install(self):
         # the viewer passthrough must work without any papers install
-        from unittest.mock import patch
-        f = self._path('doc.pdf')
-        open(f, 'w').write('x')
-        with patch('papers.__main__.view_pdf') as viewer:
-            self.papers(f'{f}')
-            viewer.assert_called_once_with(f)
+        with patch('papers.__main__.find_masked_viewer', return_value=None), \
+                patch('papers.__main__.view_pdf') as viewer:
+            self.papers(f'{self.pdf}')
+            viewer.assert_called_once_with(self.pdf)
+
+    def test_file_uri_argument(self):
+        # desktop entries launch the viewer as `papers %U`, i.e. with file:// URIs
+        uri = 'file://' + quote(self.pdf)
+        with patch('papers.__main__.find_masked_viewer', return_value=None), \
+                patch('papers.__main__.view_pdf') as viewer:
+            self.papers(f"'{uri}'")
+            viewer.assert_called_once_with(self.pdf)
+
+    def test_masked_viewer_receives_arguments_unchanged(self):
+        # the masked viewer is exec'd with the original arguments, instead of
+        # xdg-open, which may resolve back to this command
+        uri = 'file://' + quote(self.pdf)
+        with patch('papers.__main__.find_masked_viewer', return_value='/usr/bin/papers'), \
+                patch('papers.__main__.os.execv') as execv, \
+                patch('papers.__main__.view_pdf') as viewer:
+            self.papers(f"'{uri}' {self.pdf}")
+            execv.assert_called_once_with('/usr/bin/papers', ['/usr/bin/papers', uri, self.pdf])
+            viewer.assert_not_called()
+
+    def test_loop_guard(self):
+        # handed to the system viewer once already: stop instead of looping
+        os.environ[VIEWER_PASSTHROUGH_ENV] = '1'
+        with patch('papers.__main__.find_masked_viewer', return_value=None), \
+                patch('papers.__main__.view_pdf') as viewer:
+            with self.assertRaises(PapersExit):
+                self.papers(f'{self.pdf}')
+            viewer.assert_not_called()
+
+
+class FindMaskedViewerTest(unittest.TestCase):
+
+    def _executable(self, path, content):
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        open(path, 'w').write(content)
+        os.chmod(path, 0o755)
+
+    def test_skips_papers_cli_scripts(self):
+        with tempfile.TemporaryDirectory() as d:
+            script = '#!/usr/bin/python3\nfrom papers.__main__ import main_clean_exit\n'
+            self._executable(os.path.join(d, 'venv', 'papers'), script)
+            self._executable(os.path.join(d, 'pipx', 'papers'), script)
+            self._executable(os.path.join(d, 'usr', 'papers'), '#!/bin/sh\n')
+            path = os.pathsep.join(os.path.join(d, x) for x in ['venv', 'empty', 'pipx', 'usr'])
+            with patch.dict(os.environ, {'PATH': path}):
+                self.assertEqual(find_masked_viewer(), os.path.join(d, 'usr', 'papers'))
+
+    def test_none_without_other_viewer(self):
+        with tempfile.TemporaryDirectory() as d:
+            self._executable(os.path.join(d, 'papers'), 'from papers.__main__ import main\n')
+            with patch.dict(os.environ, {'PATH': d}):
+                self.assertIsNone(find_masked_viewer())
+
+    def test_file_uri_to_path(self):
+        self.assertEqual(file_uri_to_path('file:///tmp/a%20b,%203.pdf'), '/tmp/a b, 3.pdf')
+        self.assertEqual(file_uri_to_path('/tmp/a b.pdf'), '/tmp/a b.pdf')

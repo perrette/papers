@@ -24,7 +24,7 @@ from papers.bib import (Biblio, FUZZY_RATIO, DEFAULT_SIMILARITY, entry_filecheck
                         backupfile as backupfile_func, isvalidkey, DuplicateKeyError, clean_filesdir,
                         are_duplicates, download_url, get_biblio)
 from papers.install import resolve_install, apply_install, InputAsker, DefaultAsker
-from papers.utils import view_pdf, open_folder, PapersExit
+from papers.utils import view_pdf, open_folder, PapersExit, file_uri_to_path, find_masked_viewer
 from papers.backup import (silent_backup_bib, restore_from_backupdir,
                            git_undo, git_redo, git_restore_state, list_backup_dirs)
 from papers import __version__
@@ -1125,6 +1125,10 @@ def handle_logging(o):
     logger.debug("LOGGER LEVEL: "+logging.getLevelName(logger.getEffectiveLevel()))
 
 
+# set while handing files to the system viewer, to detect a passthrough loop (#107)
+VIEWER_PASSTHROUGH_ENV = 'PAPERS_CLI_VIEWER_PASSTHROUGH'
+
+
 def main(args=None):
     papers.config.DRYRUN = False  # reset in case main() if called directly
     if args is not None:
@@ -1144,16 +1148,31 @@ def main(args=None):
     parser, subparsers = get_parser(config)
 
     # viewer passthrough (#107): this command often masks the GNOME Papers
-    # document viewer in $PATH, so `papers somefile.pdf` opens the file(s)
-    # with the system viewer instead of erroring. xdg-open resolves the
-    # handler via desktop entries, not $PATH, so this typically launches the
-    # masked viewer itself. Subcommand names always take precedence, and any
-    # flag disables the passthrough (it cannot be meant for this tool).
+    # document viewer in $PATH. Its desktop entry runs `papers %U`, so file
+    # managers and xdg-open land here with file paths or file:// URIs. When
+    # every argument is an existing file, the call is handed over unchanged
+    # to the masked viewer (the next `papers` on $PATH that is not this tool).
+    # xdg-open is only a fallback when there is no such viewer: it resolves
+    # the desktop entry, which may lead back to this command, hence the
+    # environment guard against a loop. Subcommand names always take
+    # precedence, and any flag disables the passthrough (it cannot be meant
+    # for this tool).
     argv = sys.argv[1:]
     if argv and all(not a.startswith('-') for a in argv) \
             and argv[0] not in subparsers.choices \
-            and all(os.path.isfile(a) for a in argv):
-        for f in argv:
+            and all(os.path.isfile(file_uri_to_path(a)) for a in argv):
+        viewer = find_masked_viewer()
+        if viewer:
+            print(f"papers-cli: passing {' '.join(map(repr, argv))} to {viewer} "
+                  f"(see `papers --help` for the bibliography tool)", file=sys.stderr)
+            os.execv(viewer, [viewer] + argv)
+            return  # only reached when os.execv is mocked
+        if os.environ.get(VIEWER_PASSTHROUGH_ENV):
+            raise PapersExit("the system viewer for these files leads back to this "
+                             "command, and no other `papers` viewer is in $PATH")
+        os.environ[VIEWER_PASSTHROUGH_ENV] = '1'  # inherited by the viewer
+        for a in argv:
+            f = file_uri_to_path(a)
             print(f"papers-cli: opening {f!r} with the system viewer "
                   f"(see `papers --help` for the bibliography tool)", file=sys.stderr)
             view_pdf(f)

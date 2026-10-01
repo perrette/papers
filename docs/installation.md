@@ -20,13 +20,17 @@ mitigations are built in:
 - The package also installs the command under the unambiguous name
   `papers-cli` — call that, or set a shell alias (e.g.
   `alias papers=papers-cli`), on systems where the names collide.
-- Because this command may mask GNOME Papers, `papers somefile.pdf` (a plain
-  existing file instead of a subcommand) opens the file with the system's
-  default viewer rather than erroring — which on a GNOME desktop typically
-  launches GNOME Papers itself, so the viewer keeps working for the common
-  case. Subcommand names always take precedence (`papers ./list` opens a
-  file named `list`; `papers list` lists your library), and viewer-specific
-  flags are not forwarded — call the viewer's binary directly for those.
+- Because this command may mask GNOME Papers, a call whose arguments are all
+  existing files (paths or `file://` URIs, as passed by file managers through
+  the viewer's desktop entry) is handed over unchanged to the next `papers`
+  executable in `$PATH` that is not this tool, i.e. GNOME Papers itself.
+  Double-clicking a PDF and `papers somefile.pdf` therefore keep opening the
+  viewer. If no other `papers` is found, the files are opened with the
+  system's default viewer (`xdg-open`) instead; should that lead back to
+  this command, it stops with an error rather than looping. Subcommand names
+  always take precedence (`papers ./list` opens a file named `list`;
+  `papers list` lists your library), and any flag disables the hand-over —
+  call the viewer's binary directly for viewer-specific flags.
 
 ## Dependencies
 

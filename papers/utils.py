@@ -203,6 +203,42 @@ def view_pdf(filepath):
         subprocess.call(('xdg-open', filepath))
 
 
+def file_uri_to_path(arg):
+    """Return the local path of a file:// URI, or `arg` unchanged otherwise
+
+    Desktop entries launch viewers with `%U`, i.e. with file:// URIs.
+    """
+    if arg.startswith('file://'):
+        from urllib.parse import urlparse, unquote
+        return unquote(urlparse(arg).path)
+    return arg
+
+
+def _is_papers_cli_script(path):
+    """True if `path` is a console script of this package (`papers` or `papers-cli`)"""
+    try:
+        with open(path, 'rb') as f:
+            head = f.read(1024)
+    except OSError:
+        return False
+    return b'papers.__main__' in head
+
+
+def find_masked_viewer(name='papers'):
+    """Return the first `name` executable on $PATH that is not this tool, or None
+
+    This tool's `papers` command often masks the GNOME Papers document viewer
+    in $PATH (issue #107). Console scripts of this package are recognized by
+    their content, so other installs of it (pipx, venvs) are skipped too.
+    """
+    for d in os.environ.get('PATH', '').split(os.pathsep):
+        candidate = os.path.join(d or '.', name)
+        if os.path.isfile(candidate) and os.access(candidate, os.X_OK) \
+                and not _is_papers_cli_script(candidate):
+            return candidate
+    return None
+
+
 def open_folder(path):
     system_platform = platform.system()
 
