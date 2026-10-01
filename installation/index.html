@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
     
     
       
@@ -31,7 +31,7 @@
       
     
     
-      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -949,13 +949,17 @@ mitigations are built in:</p>
 <li>The package also installs the command under the unambiguous name
   <code>papers-cli</code> — call that, or set a shell alias (e.g.
   <code>alias papers=papers-cli</code>), on systems where the names collide.</li>
-<li>Because this command may mask GNOME Papers, <code>papers somefile.pdf</code> (a plain
-  existing file instead of a subcommand) opens the file with the system's
-  default viewer rather than erroring — which on a GNOME desktop typically
-  launches GNOME Papers itself, so the viewer keeps working for the common
-  case. Subcommand names always take precedence (<code>papers ./list</code> opens a
-  file named <code>list</code>; <code>papers list</code> lists your library), and viewer-specific
-  flags are not forwarded — call the viewer's binary directly for those.</li>
+<li>Because this command may mask GNOME Papers, a call whose arguments are all
+  existing files (paths or <code>file://</code> URIs, as passed by file managers through
+  the viewer's desktop entry) is handed over unchanged to the next <code>papers</code>
+  executable in <code>$PATH</code> that is not this tool, i.e. GNOME Papers itself.
+  Double-clicking a PDF and <code>papers somefile.pdf</code> therefore keep opening the
+  viewer. If no other <code>papers</code> is found, the files are opened with the
+  system's default viewer (<code>xdg-open</code>) instead; should that lead back to
+  this command, it stops with an error rather than looping. Subcommand names
+  always take precedence (<code>papers ./list</code> opens a file named <code>list</code>;
+  <code>papers list</code> lists your library), and any flag disables the hand-over —
+  call the viewer's binary directly for viewer-specific flags.</li>
 </ul>
 <h2 id="dependencies">Dependencies<a class="headerlink" href="#dependencies" title="Permanent link">&para;</a></h2>
 <ul>
@@ -1032,7 +1036,7 @@ mitigations are built in:</p>
       <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.instant", "navigation.tracking", "navigation.sections", "navigation.top", "toc.follow", "search.suggest", "search.highlight", "content.code.copy", "content.action.edit"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>
