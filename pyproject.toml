@@ -90,8 +90,8 @@ deps =
     pytest
     pytest-cov
 depends =
-    {py39,py310,py311,py312,py313,py314,py314t,py3.15,py3.15t}: clean
-    report: py39,py310,py311,py312,py313,py314,py314t,py3.15,py3.15t
+    {py39,py310,py311,py312,py313,py314,py314t,py3.15}: clean
+    report: py39,py310,py311,py312,py313,py314,py314t,py3.15
 
 
 [testenv:report]
