@@ -591,8 +591,8 @@ class TestAddResolveDuplicate(BibTest):
 
     def test_conflict_updated_from_original_but_originalkey(self):
 
-        # the auto-generated key from an unknown entry is the slugified doi (issue #105)
-        expected = """@article{10-5194-bg-8-515-2011,
+        # with --update-key a duplicate is merged under the existing entry's key
+        expected = """@article{Perrette_2011,
  author = {New Author Field},
  doi = {10.5194/bg-8-515-2011},
  journal = {ConflictJournal},

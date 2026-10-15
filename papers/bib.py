@@ -463,7 +463,13 @@ class Biblio:
                 candidate.key = candidate_key_after
             entries = []
             for e in resolved:
-                entries.extend( self.insert_entry(e, update_key, rename=rename, copy=copy) )
+                # the existing entry keeps its key (and so does the single
+                # resolved entry that carries it, e.g. an overwrite with
+                # --update-key): only entries new to the library get a key
+                # regenerated from the template
+                keeps_key = e is candidate or (
+                    len(resolved) == 1 and get_entry_val(e, 'ID', '') == candidate_key_before)
+                entries.extend( self.insert_entry(e, update_key and not keeps_key, rename=rename, copy=copy) )
             return entries
 
 

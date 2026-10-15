@@ -565,3 +565,63 @@ class TestAddBibRelocateFiles(BibTest):
         self.assertEqual(field, ':files/author_2000_some-title.pdf:pdf')
         self.assertTrue(os.path.exists(os.path.join(self.dest, 'files', 'author_2000_some-title.pdf')))
         self.assertTrue(os.path.exists(self.pdf))  # copied, not moved
+
+
+class TestAddDuplicateKeepsExistingKey(BibTest):
+    """-u/--update-key: a duplicate of an existing entry is merged under the
+    existing entry's key, whatever the merge mode"""
+
+    existing = """@article{Perrette2013ESD,
+ author = {Perrette, M. and Landerer, F. and Riva, R. and Frieler, K. and Meinshausen, M.},
+ doi = {10.5194/esd-4-11-2013},
+ journal = {Earth System Dynamics},
+ title = {A scaling approach to project regional sea level rise and its uncertainties},
+ year = {2013}
+}"""
+
+    # same DOI, other author formatting, one more field
+    new = """@article{perrette_landerer2013,
+ author = {M. Perrette and F. Landerer and R. Riva and K. Frieler and M. Meinshausen},
+ doi = {10.5194/esd-4-11-2013},
+ journal = {Earth System Dynamics},
+ pages = {11-29},
+ title = {A scaling approach to project regional sea level rise and its uncertainties},
+ year = {2013}
+}"""
+
+    def setUp(self):
+        self.mybib = tempfile.mktemp(prefix='papers.bib')
+        self.otherbib = tempfile.mktemp(prefix='papers.otherbib')
+        open(self.mybib, 'w').write(self.existing)
+        open(self.otherbib, 'w').write(self.new)
+
+    def tearDown(self):
+        os.remove(self.mybib)
+        os.remove(self.otherbib)
+
+    def _entry(self):
+        bib = Biblio.load(self.mybib, '')
+        self.assertEqual(len(bib.entries), 1)
+        return bib.entries[0]
+
+    def test_update_missing_keeps_existing_key(self):
+        paperscmd(f'add {self.otherbib} --bibtex {self.mybib} -u -m u')
+        e = self._entry()
+        self.assertEqual(e['ID'], 'Perrette2013ESD')
+        self.assertEqual(e['pages'], '11-29')  # missing field merged in
+        self.assertEqual(e['author'], 'Perrette, M. and Landerer, F. and Riva, R. and Frieler, K. and Meinshausen, M.')  # existing wins
+
+    def test_update_with_new_keeps_existing_key(self):
+        paperscmd(f'add {self.otherbib} --bibtex {self.mybib} -u -m U')
+        e = self._entry()
+        self.assertEqual(e['ID'], 'Perrette2013ESD')
+        self.assertEqual(e['author'], 'M. Perrette and F. Landerer and R. Riva and K. Frieler and M. Meinshausen')  # new wins
+
+    def test_overwrite_keeps_existing_key(self):
+        paperscmd(f'add {self.otherbib} --bibtex {self.mybib} -u -m o')
+        self.assertEqual(self._entry()['ID'], 'Perrette2013ESD')
+
+    def test_append_keeps_existing_key_and_generates_new(self):
+        paperscmd(f'add {self.otherbib} --bibtex {self.mybib} -u -m a')
+        bib = Biblio.load(self.mybib, '')
+        self.assertEqual(sorted(e['ID'] for e in bib.entries), ['Perrette2013ESD', 'perrette_landerer2013'])

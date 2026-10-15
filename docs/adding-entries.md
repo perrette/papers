@@ -59,3 +59,24 @@ bibtex:
 ```
 papers add entry.bib --attachment esd-4-11-2013.pdf
 ```
+
+## Duplicates and keys
+
+Before inserting an entry, `papers add` looks for a duplicate in the library
+(same DOI, or same authors and title). The `-m/--mode` option says what to do
+when one is found: `i` (interactive, the default), `u` (update the existing
+entry with the new entry's missing fields, existing values win), `U` (update
+the existing entry with the new entry's values, new values win), `o`
+(overwrite), `s` (skip the new entry), `a` (append it anyway), `r` (raise an
+error).
+
+Entries added from a bibtex file keep their own key, unless `-u/--update-key`
+is passed, in which case the key is regenerated from the key template (see
+[Renaming files and keys](renaming.md)). Entries extracted from a PDF or
+fetched from a DOI always get a generated key.
+
+With `-u/--update-key`, a duplicate is always merged under the key of the entry
+already in the library, in every mode (`u`, `U`, `o`; with `a` the existing
+entry keeps its key and the appended entry gets a fresh one). Without `-u`,
+modes `u` and `s` keep the existing entry's key, while `U` and `o` take over
+the new entry's key.
