@@ -480,13 +480,17 @@ class Biblio:
 
 
     def set_files(self, entry, files, relative_to=None):
-        entry['file'] = format_file(list(sorted(set(files), key=lambda f: files.index(f))), relative_to=relative_to or self.relative_to)
+        if relative_to is None:
+            relative_to = self.relative_to
+        entry['file'] = format_file(list(sorted(set(files), key=lambda f: files.index(f))), relative_to=relative_to)
         # delete field if empty
         if not entry['file'].strip():
             del entry['file']
 
     def get_files(self, entry, relative_to=None):
-        return parse_file(get_entry_val(entry, 'file', ''), relative_to=relative_to or self.relative_to)
+        if relative_to is None:
+            relative_to = self.relative_to
+        return parse_file(get_entry_val(entry, 'file', ''), relative_to=relative_to)
 
     def add_bibtex(self, bibtex, relative_to=None, attachments=None, convert_to_unicode=False, **kw):
         bib = parse_string(bibtex)
@@ -522,7 +526,9 @@ class Biblio:
 
     def add_bibtex_file(self, file, **kw):
         bibtex = open(file).read()
-        return self.add_bibtex(bibtex, relative_to=os.path.dirname(file), **kw)
+        # file links in the added bibtex are relative to its own directory
+        # (the absolute path matters: dirname('papers.bib') is '')
+        return self.add_bibtex(bibtex, relative_to=os.path.dirname(os.path.abspath(file)), **kw)
 
 
     def fetch_doi(self, doi, **kw):

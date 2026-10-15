@@ -512,3 +512,56 @@ class TestScanCurrentDir(unittest.TestCase):
             with set_directory(d):
                 my.scan_dir('.')
             self.assertEqual(len(my.db.entries), 1)
+
+
+class TestAddBibRelocateFiles(BibTest):
+    """`papers add source.bib` into another library: file links must be
+    resolved relative to the source bibtex and stored so that they are valid
+    from the destination bibtex"""
+
+    bibtex = """@article{Author2000,
+ author = {A. Author},
+ file = {:pdfs/paper.pdf:pdf},
+ title = {Some Title},
+ year = {2000}
+}"""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.src = os.path.join(self.tmp.name, 'src')
+        self.dest = os.path.join(self.tmp.name, 'dest')
+        os.makedirs(os.path.join(self.src, 'pdfs'))
+        os.makedirs(os.path.join(self.dest, 'files'))
+        self.pdf = os.path.join(self.src, 'pdfs', 'paper.pdf')
+        open(self.pdf, 'w').write('not really a pdf')
+        open(os.path.join(self.src, 'papers.bib'), 'w').write(self.bibtex)
+        self.mybib = os.path.join(self.dest, 'references.bib')
+        open(self.mybib, 'w').write('')
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def _file_field(self):
+        bib = Biblio.load(self.mybib, '')
+        self.assertEqual(len(bib.entries), 1)
+        return get_entry_val(bib.entries[0], 'file', '')
+
+    def test_relative_paths_point_to_source_file(self):
+        # run from the source directory, with the bibtex given as a bare name
+        paperscmd(f'add --no-query-doi --relative-paths --bibtex {self.mybib} --filesdir {self.dest}/files papers.bib', cwd=self.src)
+        field = self._file_field()
+        self.assertEqual(field, ':../src/pdfs/paper.pdf:pdf')
+        # valid from the destination's point of view, file not moved
+        self.assertTrue(os.path.exists(os.path.join(self.dest, '../src/pdfs/paper.pdf')))
+        self.assertTrue(os.path.exists(self.pdf))
+
+    def test_absolute_paths_point_to_source_file(self):
+        paperscmd(f'add --no-query-doi --absolute-paths --bibtex {self.mybib} papers.bib', cwd=self.src)
+        self.assertEqual(self._file_field(), f':{self.pdf}:pdf')
+
+    def test_rename_copy_into_destination_filesdir(self):
+        paperscmd(f'add --no-query-doi --relative-paths -rc --bibtex {self.mybib} --filesdir {self.dest}/files papers.bib', cwd=self.src)
+        field = self._file_field()
+        self.assertEqual(field, ':files/author_2000_some-title.pdf:pdf')
+        self.assertTrue(os.path.exists(os.path.join(self.dest, 'files', 'author_2000_some-title.pdf')))
+        self.assertTrue(os.path.exists(self.pdf))  # copied, not moved
