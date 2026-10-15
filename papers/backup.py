@@ -244,12 +244,20 @@ def backup_bib(biblio, config, message=None):
 
     if not config.git:
         raise PapersExit('cannot backup without --git enabled')
+    if not config.gitdir:
+        config.gitdir = resolve_gitdir(config.bibtex)
     backupdir = Path(config.gitdir)
-    backupdir.mkdir(exist_ok=True)
+    backupdir.mkdir(parents=True, exist_ok=True)
 
     # never mix the histories of two libraries in one backup directory
     check_gitdir_ownership(config)
     backupdir = Path(config.gitdir)  # may have been re-allocated
+
+    # a backup directory that was never initialized (or removed since the install)
+    if not (backupdir / ".git").exists():
+        logger.info(f"initialize backup repository: {backupdir}")
+        run_git(config.gitdir, ["init"])
+        write_manifest(config.gitdir, config.bibtex)
 
     # a snapshot made while undone must append to the full history
     adopt_legacy_undone_state(config.gitdir)

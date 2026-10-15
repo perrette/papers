@@ -69,10 +69,14 @@ def savebib(biblio, config):
     logger.info(f'Saving {config.bibtex}')
     if biblio is not None:
         biblio.save(config.bibtex)
-    if config.file and config.git:
-        silent_backup_bib(biblio, config)
+    if config.git:
+        # the backup comes last: a failure must not undo the work done above
+        try:
+            silent_backup_bib(biblio, config)
+        except Exception as error:
+            logger.error(f'the bibliography was saved, but its git backup failed: {error}')
     else:
-        logger.debug(f'do not backup bib: {config.file}, {config.git}')
+        logger.debug(f'do not backup bib: git is off')
     # if config.git:
         # config.gitcommit()
 
@@ -177,11 +181,43 @@ def uninstallcmd(parser, o, config):
         if os.path.exists(configfile):
             uninstallcmd(parser, o, Config.load(configfile))
 
+def config_for_bibtex(bibtex, config):
+    """The configuration to use when --bibtex is passed on the command line.
+
+    If it is another library than the configured one, the local configuration
+    of that library (searched from the bibtex's directory upwards, as for the
+    current directory) applies: its files directory, git backup and formats.
+    Without one, the current configuration applies to the bibtex, except that
+    it is never written back to disk and the backup goes to a directory of
+    the bibtex's own.
+    """
+    if config.bibtex and os.path.realpath(bibtex) == os.path.realpath(config.bibtex):
+        return config
+
+    configfile = search_config([CONFIG_FILE_LOCAL, os.path.join(".papers", "config.json")],
+                               start_dir=os.path.dirname(os.path.abspath(bibtex)), default=None)
+    if configfile is not None:
+        other = Config.load(check_legacy_config(configfile))
+        if other.bibtex and os.path.realpath(other.bibtex) == os.path.realpath(bibtex):
+            logger.info(f'configuration of {bibtex}: {configfile}')
+            return other
+
+    logger.debug(f'{bibtex} has no configuration of its own: use {config.file} without saving it')
+    config = copy.copy(config)
+    config.file = None
+    if config.git:
+        from papers.backup import resolve_gitdir
+        config.gitdir = resolve_gitdir(bibtex)
+    return config
+
+
 def check_install(parser, o, config, bibtex_must_exist=True):
     """
     Given an option and config, checks to see if the install is done correctly on this filesystem.
+    Returns the configuration to use (see config_for_bibtex).
     """
     if getattr(o, "bibtex", None) is not None:
+        config = config_for_bibtex(o.bibtex, config)
         config.bibtex = o.bibtex
     if getattr(o, "filesdir", None) is not None:
         config.filesdir = o.filesdir
@@ -201,7 +237,7 @@ def check_install(parser, o, config, bibtex_must_exist=True):
         raise PapersExit()
     logger.info(f'bibtex: {config.bibtex!r}')
     logger.info(f'filesdir: {config.filesdir!r}')
-    return True
+    return config
 
 
 def _print_biblio_diff(biblio_init, biblio, touched_entries, show_existing=False):
@@ -1212,23 +1248,23 @@ def main(args=None):
         uninstallcmd(subp, o, config)
         print(config.status(verbose=True))
     elif o.cmd == 'add':
-        check_install(subp, o, config) and addcmd(subp, o, config)
+        addcmd(subp, o, check_install(subp, o, config))
     elif o.cmd == 'check':
-        check_install(subp, o, config) and checkcmd(subp, o, config)
+        checkcmd(subp, o, check_install(subp, o, config))
     elif o.cmd == 'filecheck':
-        check_install(subp, o, config) and filecheckcmd(subp, o, config)
+        filecheckcmd(subp, o, check_install(subp, o, config))
     elif o.cmd == 'list':
-        check_install(subp, o, config) and listcmd(subp, o, config)
+        listcmd(subp, o, check_install(subp, o, config))
     elif o.cmd == 'open':
         # no install required when opening plain files; opencmd reports the
         # missing bibliography itself when an argument must be looked up as a key
         opencmd(subp, o, config)
     elif o.cmd == 'undo':
-        check_install(subp, o, config) and undocmd(subp, o, config)
+        undocmd(subp, o, check_install(subp, o, config))
     elif o.cmd == 'redo':
-        check_install(subp, o, config) and redocmd(subp, o, config)
+        redocmd(subp, o, check_install(subp, o, config))
     elif o.cmd == 'restore-backup':
-        check_install(subp, o, config, bibtex_must_exist=False) and restorecmd(subp, o, config)
+        restorecmd(subp, o, check_install(subp, o, config, bibtex_must_exist=False))
     elif o.cmd == 'git':
         if not installed:
             subp.error('papers must be installed to use git command')
