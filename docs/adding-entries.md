@@ -20,6 +20,17 @@ papers extract esd-4-11-2013.pdf > entry.bib
 papers add entry.bib --bibtex papers.bib --attachment esd-4-11-2013.pdf --rename --copy
 ```
 
+Without `--rename` (`-r`) the PDF is linked where it is: the `file` field
+points to its current location and nothing is moved or copied into the files
+directory. `--rename` moves the file into `--filesdir` under a name made from
+the name template, and `--copy` (`-c`) makes a copy there instead of moving
+the original (it has no effect without `--rename`). The same applies to the
+files linked from the entries of a bibtex file added with `papers add
+other.bib`: their paths are read relative to that bibtex and stored so that
+they remain valid from your own bibtex (absolute, or relative to it, according
+to `--absolute-paths`/`--relative-paths` or the installed setting); with
+`--rename` they are moved (or copied with `--copy`) into the files directory.
+
 See [Renaming files and keys](renaming.md) for how to specify file naming
 patterns.
 

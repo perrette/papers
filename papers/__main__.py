@@ -954,12 +954,17 @@ def get_parser(config=None):
     grp.add_argument('--no-query-fulltext', action='store_true', help='do not attempt to query fulltext in case doi query fails')
     grp.add_argument('--scholar', action='store_true', help='use google scholar instead of crossref')
 
-    grp = addp.add_argument_group('attached files')
-    grp.add_argument('-a','--attachment', nargs='+') #'supplementary material')
+    grp = addp.add_argument_group('attached files',
+        description='''Without -r/--rename, the PDF (and the files of a bibtex entry) are linked
+        where they are: the file field points to their current location and nothing is
+        moved or copied into the files directory. -r moves them into the files directory
+        (--filesdir) under a name made from the name template; with -c the original is
+        kept and a copy is made instead (-c has no effect without -r).''')
+    grp.add_argument('-a','--attachment', nargs='+', help='attach these files to the entry (supplementary material)')
     grp.add_argument('-r','--rename', action='store_true',
-        help='rename PDFs according to key')
+        help='move the files into the files directory, renamed according to the name template')
     grp.add_argument('-c','--copy', action='store_true',
-        help='copy file instead of moving them')
+        help='with -r, copy the files instead of moving them')
 
     grp = addp.add_argument_group('actions')
     grp.add_argument('-e', '--edit', action='store_true', help='edit entry')
