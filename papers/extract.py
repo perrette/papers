@@ -179,7 +179,16 @@ def parse_doi_from_pdf_metadata(pdf_path):
         # Fall back to poppler-utils
         return parse_doi_from_pdf_metadata_poppler(pdf_path)
 
-def parse_doi(txt):
+# DOI prefixes of data repositories (Zenodo, Dryad, figshare, USGS, SEANOE,
+# PANGAEA): a data DOI cited in a paper (abstract, data availability
+# statement) is not the paper's own DOI
+DATA_REPOSITORY_PREFIXES = ('10.5281', '10.5061', '10.6084', '10.5066', '10.17882', '10.1594')
+
+def is_data_repository_doi(doi):
+    return doi.lower().split('/')[0] in DATA_REPOSITORY_PREFIXES
+
+
+def _normalize_doi_text(txt):
     # Remove invisible Unicode characters and normalize dashes and slashes
     # U+200B: zero-width space, U+00AD: soft hyphen, U+2013: en-dash, U+2014: em-dash
     # \x02: STX (Start of Text) sometimes used instead of slash in PDFs
@@ -200,16 +209,11 @@ def parse_doi(txt):
 
     # Don't join across newlines generally - it causes more problems than it solves
     # The newline naturally stops incorrect matches from extending into following text
-    matches = REGEXP.findall(txt_lower)
+    return txt_lower
 
-    if not matches:
-        # Try arxiv pattern
-        match = ARXIV.search(txt_lower)
-        if match:
-            return f"10.48550/arXiv.{match.group(1)}"
 
-        raise DOIParsingError('parse_doi::no matches')
-
+def _pick_doi(matches, txt_lower):
+    """the most likely article DOI among the regexp matches (in order of appearance)"""
     # Start with first match as default
     doi = matches[0]
 
@@ -243,6 +247,10 @@ def parse_doi(txt):
                     doi = m
                     break
 
+    return doi
+
+
+def _clean_doi(doi):
     # Remove non-DOI suffixes: known publisher paths and common junk
     # Strategy: if we find these patterns, remove them AND everything after
     suffixes = [
@@ -294,6 +302,50 @@ def parse_doi(txt):
         raise DOIParsingError('failed to extract doi: '+doi)
 
     return doi
+
+
+def parse_dois(txt):
+    """Return the DOIs found in the text, the most likely article DOI first.
+
+    DOIs of data repositories (see DATA_REPOSITORY_PREFIXES) come last when
+    other DOIs are present: they are cited by the paper, not the paper's own.
+    """
+    txt_lower = _normalize_doi_text(txt)
+    matches = REGEXP.findall(txt_lower)
+
+    if not matches:
+        # Try arxiv pattern
+        match = ARXIV.search(txt_lower)
+        if match:
+            return [f"10.48550/arXiv.{match.group(1)}"]
+
+        raise DOIParsingError('parse_doi::no matches')
+
+    matches = list(dict.fromkeys(matches))  # unique, in order of appearance
+    articles = [m for m in matches if not is_data_repository_doi(m)] or matches
+    data = [m for m in matches if m not in articles]
+
+    doi = _pick_doi(articles, txt_lower)
+    candidates = [doi] + [m for m in articles if m != doi] + data
+
+    dois = []
+    for candidate in candidates:
+        try:
+            candidate = _clean_doi(candidate)
+        except DOIParsingError as error:
+            logger.debug(str(error))
+            continue
+        if candidate not in dois:
+            dois.append(candidate)
+    if not dois:
+        raise DOIParsingError('failed to extract doi: '+doi)
+    return dois
+
+
+def parse_doi(txt):
+    return parse_dois(txt)[0]
+
+
 def isvaliddoi(doi):
     try:
         doi2 = parse_doi('doi:'+doi)
@@ -350,6 +402,62 @@ def query_text(txt, max_query_words=200):
     return query_txt
 
 
+def _doi_stub(doi):
+    """a bare entry for a DOI without metadata (to complete later with `papers check --fetch`)"""
+    return '''@misc{{{doi},
+             doi = {{{doi}}},
+             url = {{http://dx.doi.org/{doi}}},
+            }}'''.format(doi=doi)
+
+
+def _normalize_for_match(s):
+    from unidecode import unidecode
+    return re.sub(r'[^a-z0-9]', '', unidecode(s).lower())
+
+
+def title_in_text(title, txt):
+    """True if the title appears in the text (ignoring case, accents, spacing
+    and punctuation, so that line breaks and hyphenation do not matter)"""
+    title = _normalize_for_match(title)
+    if len(title) < 10:
+        return True  # too short to tell
+    return title in _normalize_for_match(txt)
+
+
+def fetch_bibtex_by_doi_candidates(dois, txt):
+    """Fetch the metadata of the first candidate DOI that has some.
+
+    With several candidates, a DOI whose title appears in the text is
+    preferred; the first with metadata is used when none matches. Returns
+    None if no candidate has bibliographic metadata (title or author).
+    """
+    fallback = None
+    for doi in dois:
+        try:
+            bibtex = fetch_bibtex_by_doi(doi)
+        except DOIRequestError as error:
+            logger.warning(f'{doi}: no metadata found ({error})')
+            continue
+        entries = parse_string(bibtex).entries
+        if not entries:
+            logger.warning(f'{doi}: no metadata found')
+            continue
+        title = get_entry_val(entries[0], 'title', '')
+        if not title and not get_entry_val(entries[0], 'author', ''):
+            logger.warning(f'{doi}: metadata without title or author, skip')
+            continue
+        if len(dois) == 1 or not title or title_in_text(title, txt):
+            return bibtex
+        logger.info(f'{doi}: title not found in the text: {title}')
+        if fallback is None:
+            fallback = (doi, bibtex)
+    if fallback is not None:
+        doi, bibtex = fallback
+        logger.warning(f'{doi}: title not found in the text, use its metadata anyway')
+        return bibtex
+    return None
+
+
 def extract_txt_metadata(txt, search_doi=True, search_fulltext=False, max_query_words=200, scholar=False):
     """
     extract metadata from text, by parsing and doi-query, or by fulltext query in google scholar
@@ -357,36 +465,38 @@ def extract_txt_metadata(txt, search_doi=True, search_fulltext=False, max_query_
     assert search_doi or search_fulltext, 'no search criteria specified for metadata'
 
     bibtex = None
+    dois = []
 
     if search_doi:
         try:
             logger.debug('parse doi')
-            doi = parse_doi(txt)
-            logger.info('found doi:'+doi)
-            logger.debug('query bibtex by doi')
-            bibtex = fetch_bibtex_by_doi(doi)
-            logger.debug('doi query successful')
-
+            dois = parse_dois(txt)
+            logger.info('found doi(s): ' + ', '.join(dois))
         except DOIParsingError as error:
             logger.debug('doi parsing error: '+str(error))
 
-        except DOIRequestError as error:
-            return '''@misc{{{doi},
-             doi = {{{doi}}},
-             url = {{http://dx.doi.org/{doi}}},
-            }}'''.format(doi=doi)
-
-        except ValueError as error:
-            raise
-            # logger.debug(u'failed to obtained bibtex by doi search: '+str(error))
+        if dois:
+            logger.debug('query bibtex by doi')
+            bibtex = fetch_bibtex_by_doi_candidates(dois, txt)
+            if bibtex:
+                logger.debug('doi query successful')
+            elif not search_fulltext:
+                logger.warning(f'{dois[0]}: no metadata found, create a bare entry (doi only)')
+                return _doi_stub(dois[0])
 
     if search_fulltext and not bibtex:
         logger.debug('query bibtex by fulltext')
-        query_txt = query_text(txt, max_query_words)
-        if scholar:
-            bibtex = fetch_bibtex_by_fulltext_scholar(query_txt)
-        else:
-            bibtex = fetch_bibtex_by_fulltext_crossref(query_txt)
+        try:
+            query_txt = query_text(txt, max_query_words)
+            if scholar:
+                bibtex = fetch_bibtex_by_fulltext_scholar(query_txt)
+            else:
+                bibtex = fetch_bibtex_by_fulltext_crossref(query_txt)
+        except Exception as error:
+            if not dois:
+                raise
+            logger.warning(f'fulltext query failed ({error}): {dois[0]}: create a bare entry (doi only)')
+            return _doi_stub(dois[0])
         logger.debug('fulltext query successful')
 
     if not bibtex:

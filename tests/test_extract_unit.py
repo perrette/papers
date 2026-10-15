@@ -190,3 +190,108 @@ class TestCollectPdfFiles(unittest.TestCase):
             found = _collect_pdf_files([d], recursive=True)
             names = sorted(Path(f).name for f in found)
             self.assertEqual(names, ["a.pdf", "b.PDF", "c.pdf"])
+
+
+# first page of a Copernicus preprint as extracted by pymupdf: the stamped
+# header (with the article DOI) comes after the manuscript text, which cites a
+# data DOI in the abstract
+ESSD_TEXT = """A gridded dataset of something important
+Author One, Author Two
+Abstract. We present a dataset of something important. The data are available
+at https://doi.org/10.5281/zenodo.15385035 (One and Two, 2025).
+1 Introduction
+Something important has been measured for a long time.
+https://doi.org/10.5194/essd-2025-300
+Preprint. Discussion started: 10 July 2025
+"""
+
+
+class TestParseDoiCandidates(unittest.TestCase):
+
+    def test_prefers_article_doi_over_data_repository(self):
+        self.assertEqual(parse_doi(ESSD_TEXT), '10.5194/essd-2025-300')
+
+    def test_candidates_ordered(self):
+        from papers.extract import parse_dois
+        self.assertEqual(parse_dois(ESSD_TEXT), ['10.5194/essd-2025-300', '10.5281/zenodo.15385035'])
+
+    def test_data_repository_doi_alone_is_kept(self):
+        txt = 'Data: https://doi.org/10.5281/zenodo.15385035 and nothing else'
+        self.assertEqual(parse_doi(txt), '10.5281/zenodo.15385035')
+
+    def test_url_context_preference_ignores_data_repository(self):
+        # the article DOI is not in a URL, the data DOI is
+        txt = 'doi:10.5194/essd-2025-300\nData: https://doi.org/10.5281/zenodo.15385035'
+        self.assertEqual(parse_doi(txt), '10.5194/essd-2025-300')
+
+
+class TestExtractTxtMetadataCandidates(unittest.TestCase):
+    """metadata lookup over several DOI candidates (crossref is mocked)"""
+
+    def _bibtex(self, doi, title, author='One, Author and Two, Author'):
+        return f"@article{{{doi},\n author = {{{author}}},\n doi = {{{doi}}},\n title = {{{title}}},\n year = {{2025}}\n}}"
+
+    def test_article_doi_fetched_first(self):
+        from unittest import mock
+        from papers.extract import extract_txt_metadata
+        fetch = mock.Mock(return_value=self._bibtex('10.5194/essd-2025-300', 'A gridded dataset of something important'))
+        with mock.patch('papers.extract.fetch_bibtex_by_doi', fetch):
+            bibtex = extract_txt_metadata(ESSD_TEXT, search_doi=True, search_fulltext=False)
+        self.assertIn('A gridded dataset of something important', bibtex)
+        fetch.assert_called_once_with('10.5194/essd-2025-300')
+
+    def test_next_candidate_on_request_error(self):
+        from unittest import mock
+        from papers.extract import extract_txt_metadata, DOIRequestError
+        txt = 'see https://doi.org/10.1234/not-registered and https://doi.org/10.5678/registered-paper\nThe registered paper'
+        def fetch(doi):
+            if doi == '10.1234/not-registered':
+                raise DOIRequestError(doi)
+            return self._bibtex(doi, 'The registered paper')
+        with mock.patch('papers.extract.fetch_bibtex_by_doi', side_effect=fetch):
+            with self.assertLogs('papers', level='WARNING'):
+                bibtex = extract_txt_metadata(txt, search_doi=True, search_fulltext=False)
+        self.assertIn('10.5678/registered-paper', bibtex)
+
+    def test_prefers_candidate_whose_title_is_in_text(self):
+        from unittest import mock
+        from papers.extract import extract_txt_metadata
+        txt = 'Building on earlier work (doi:10.1000/earlier-work), we present\nThe Actual Paper Title\nhttps://doi.org/10.1000/actual-paper'
+        titles = {'10.1000/earlier-work': 'Some Earlier Work', '10.1000/actual-paper': 'The Actual Paper Title'}
+        with mock.patch('papers.extract.fetch_bibtex_by_doi', side_effect=lambda doi: self._bibtex(doi, titles[doi])):
+            bibtex = extract_txt_metadata(txt, search_doi=True, search_fulltext=False)
+        self.assertIn('10.1000/actual-paper', bibtex)
+        self.assertNotIn('earlier-work', bibtex)
+
+    def test_metadata_without_title_or_author_is_skipped(self):
+        from unittest import mock
+        from papers.extract import extract_txt_metadata
+        txt = 'https://doi.org/10.1000/empty-record then https://doi.org/10.1000/complete-record\nComplete Record Title'
+        def fetch(doi):
+            if doi == '10.1000/empty-record':
+                return f"@misc{{{doi},\n doi = {{{doi}}}\n}}"
+            return self._bibtex(doi, 'Complete Record Title')
+        with mock.patch('papers.extract.fetch_bibtex_by_doi', side_effect=fetch):
+            with self.assertLogs('papers', level='WARNING'):
+                bibtex = extract_txt_metadata(txt, search_doi=True, search_fulltext=False)
+        self.assertIn('10.1000/complete-record', bibtex)
+
+    def test_stub_only_as_last_resort_with_warning(self):
+        from unittest import mock
+        from papers.extract import extract_txt_metadata, DOIRequestError
+        with mock.patch('papers.extract.fetch_bibtex_by_doi', side_effect=DOIRequestError('nope')):
+            with self.assertLogs('papers', level='WARNING'):
+                bibtex = extract_txt_metadata(ESSD_TEXT, search_doi=True, search_fulltext=False)
+        # the stub carries the article DOI, not the data DOI
+        self.assertIn('10.5194/essd-2025-300', bibtex)
+        self.assertNotIn('zenodo', bibtex)
+
+    def test_fulltext_search_before_stub(self):
+        from unittest import mock
+        from papers.extract import extract_txt_metadata, DOIRequestError
+        fulltext = mock.Mock(return_value=self._bibtex('10.5194/essd-2025-300', 'A gridded dataset of something important'))
+        with mock.patch('papers.extract.fetch_bibtex_by_doi', side_effect=DOIRequestError('nope')), \
+                mock.patch('papers.extract.fetch_bibtex_by_fulltext_crossref', fulltext):
+            bibtex = extract_txt_metadata(ESSD_TEXT, search_doi=True, search_fulltext=True)
+        fulltext.assert_called_once()
+        self.assertIn('Author', bibtex)
