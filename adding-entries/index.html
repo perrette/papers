@@ -1010,6 +1010,17 @@ patterns.</p>
 <p>where, above, the <code>papers_test</code> directory contains a few PDF files. For each
 PDF, <code>papers</code> will attempt to extract the metadata and add the relevant file to
 the bibliography, and rename files into the files directory.</p>
+<p>The metadata of a PDF are found as follows:</p>
+<ol>
+<li>a DOI in the PDF metadata is used as is;</li>
+<li>otherwise, the DOIs printed in the text (first pages, and the last page,
+   where some publishers add a cover page) are looked up in turn, and the
+   first one whose title appears in the first pages is used: this skips the
+   DOIs of cited papers;</li>
+<li>otherwise, a crossref search on the text of the first pages, whose result
+   is also accepted only if its title appears in the text.</li>
+</ol>
+<p>If none matches, the PDF is not added: pass its DOI with <code>--doi</code> (see below).</p>
 <h2 id="add-an-entry-from-its-doi">Add an entry from its DOI<a class="headerlink" href="#add-an-entry-from-its-doi" title="Permanent link">&para;</a></h2>
 <p>If you already know the DOI of a PDF, and don't want to gamble the fulltext
 search and match, you can indicate it via <code>--doi</code>:</p>
