@@ -237,6 +237,13 @@ class EditTest(ListTest):
             out = self.papers(f'list 2011 perrette -1', sp_cmd='check_output')
             self.assertEqual(strip_all(out), "Perrette_2011: Near-ubiquity of ice-edge blooms in the Arctic (doi:10.5194/bg-8-515-2011, files:4, kiwi | ocean)")
 
+    def test_add_files_file_uri(self):
+        with tempfile.NamedTemporaryFile(suffix=' a.pdf') as temp:
+            uri = 'file://' + temp.name.replace(' ', '%20')
+            self.papers(f'list 2011 perrette --add-files {uri}')
+            out = self.papers(f'list 2011 perrette -1', sp_cmd='check_output')
+            self.assertIn('files:3', strip_all(out))
+
 class OpenCmdTest(LocalInstallTest):
     initial_content = """@article{NoFile2020,
  author = {No File},

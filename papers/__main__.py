@@ -817,9 +817,9 @@ def get_parser(config=None):
 
     cfg = argparse.ArgumentParser(add_help=False, parents=[loggingp])
     grp = cfg.add_argument_group('config')
-    grp.add_argument('--filesdir', default=None,
+    grp.add_argument('--filesdir', default=None, type=file_uri_to_path,
         help=f'files directory (default: {config.filesdir}')
-    grp.add_argument('--bibtex', default=None,
+    grp.add_argument('--bibtex', default=None, type=file_uri_to_path,
         help=f'bibtex database (default: {config.bibtex}')
     grp.add_argument('--dry-run', action='store_true',
         help='no PDF renaming/copying, no bibtex writing on disk (for testing)')
@@ -914,7 +914,7 @@ def get_parser(config=None):
     # ===
     addp = subparsers.add_parser('add', description='add PDF(s) or bibtex(s) to library',
         parents=[cfg, namefmt, keyfmt])
-    addp.add_argument('file', nargs='*', default=[])
+    addp.add_argument('file', nargs='*', default=[], type=file_uri_to_path)
     # addp.add_argument('-f','--force', action='store_true', help='disable interactive')
 
     grp = addp.add_argument_group('duplicate check')
@@ -960,7 +960,7 @@ def get_parser(config=None):
         moved or copied into the files directory. -r moves them into the files directory
         (--filesdir) under a name made from the name template; with -c the original is
         kept and a copy is made instead (-c has no effect without -r).''')
-    grp.add_argument('-a','--attachment', nargs='+', help='attach these files to the entry (supplementary material)')
+    grp.add_argument('-a','--attachment', nargs='+', type=file_uri_to_path, help='attach these files to the entry (supplementary material)')
     grp.add_argument('-r','--rename', action='store_true',
         help='move the files into the files directory, renamed according to the name template')
     grp.add_argument('-c','--copy', action='store_true',
@@ -1089,7 +1089,7 @@ def get_parser(config=None):
     grp.add_argument('-e', '--edit', action='store_true', help='interactive edit text file with entries, and re-insert them')
     grp.add_argument('--fetch', action='store_true', help='fetch and fix metadata')
     grp.add_argument('--add-keywords', '--add-tag', nargs='+', help='add keywords to the selected entries')
-    grp.add_argument('--add-files', nargs='+', help='add files to the selected entries (only one entry must be listed)')
+    grp.add_argument('--add-files', nargs='+', type=file_uri_to_path, help='add files to the selected entries (only one entry must be listed)')
     grp.add_argument('--rename', action='store_true', help='rename file(s) of the listed entries into the files folder (also applies to files added via --add-files)')
     grp.add_argument('--copy', action='store_true', help='in combination with --rename, keep a copy of the file(s) in their original location')
     grp.add_argument('-o', '--open', action='store_true', help='open attachments (if any)')
@@ -1100,12 +1100,12 @@ def get_parser(config=None):
     # open
     # ====
     openp = subparsers.add_parser('open', description='open entry attachments or files with the system viewer', parents=[cfg])
-    openp.add_argument('key', nargs='+', help='entry key(s) (case-insensitive), or existing file path(s) to open directly')
+    openp.add_argument('key', nargs='+', type=file_uri_to_path, help='entry key(s) (case-insensitive), or existing file path(s) to open directly')
 
     # doi
     # ===
     doip = subparsers.add_parser('doi', description='parse DOI from PDF', parents=[loggingp])
-    doip.add_argument('pdf')
+    doip.add_argument('pdf', type=file_uri_to_path)
     doip.add_argument('--image', action='store_true', help='convert to image and use tesseract instead of pdftotext')
 
     # fetch
@@ -1117,7 +1117,7 @@ def get_parser(config=None):
     # extract
     # ========
     extractp = subparsers.add_parser('extract', description='extract pdf metadata', parents=[loggingp])
-    extractp.add_argument('pdf', nargs='+', help='one or several PDF files')
+    extractp.add_argument('pdf', nargs='+', type=file_uri_to_path, help='one or several PDF files')
     extractp.add_argument('--recursive', action='store_true', help='accept directories and scan them for PDF files')
     extractp.add_argument('-n', '--word-count', type=int, default=200)
     extractp.add_argument('--fulltext', action='store_true', help='fulltext only (otherwise DOI-based)')
