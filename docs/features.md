@@ -3,7 +3,7 @@
 ## Current features
 
 - parse PDF to extract DOI
-- fetch bibtex entry from DOI (using crossref API)
+- fetch bibtex entry from DOI (using crossref API, or doi.org for DOIs registered elsewhere, e.g. DataCite)
 - fetch bibtex entry by fulltext search (using crossref API or google scholar)
 - create and maintain bibtex file
 - add entry as PDF (`papers add ...`)

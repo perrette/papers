@@ -46,6 +46,18 @@ where, above, the `papers_test` directory contains a few PDF files. For each
 PDF, `papers` will attempt to extract the metadata and add the relevant file to
 the bibliography, and rename files into the files directory.
 
+The metadata of a PDF are found as follows:
+
+1. a DOI in the PDF metadata is used as is;
+2. otherwise, the DOIs printed in the text (first pages, and the last page,
+   where some publishers add a cover page) are looked up in turn, and the
+   first one whose title appears in the first pages is used: this skips the
+   DOIs of cited papers;
+3. otherwise, a crossref search on the text of the first pages, whose result
+   is also accepted only if its title appears in the text.
+
+If none matches, the PDF is not added: pass its DOI with `--doi` (see below).
+
 ## Add an entry from its DOI
 
 If you already know the DOI of a PDF, and don't want to gamble the fulltext
