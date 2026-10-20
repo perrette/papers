@@ -260,6 +260,26 @@ def backupfile(bibtex):
 class DuplicateKeyError(ValueError):
     pass
 
+def scan_dir_walk(direc):
+    """the files scanned by Biblio.scan_dir: yield ('entry', dir) for entry
+    directories (with a hidden bibtex), ('file', path) for other files"""
+    top = os.path.abspath(direc)
+    for root, direcs, files in os.walk(direc):
+        dirname = os.path.basename(root)
+        # never skip the scan root itself: basename('.') == '.' looks hidden
+        if os.path.abspath(root) != top:
+            if dirname.startswith('.'): continue
+            if dirname.startswith('_'): continue
+
+        if os.path.exists(hidden_bibtex(root)):
+            yield 'entry', root
+            continue
+
+        for file in files:
+            if not file.startswith('.'):
+                yield 'file', os.path.join(root, file)
+
+
 class Biblio:
     """
     The bibtex object that we operate on, which is mainly used to read and write to dynamically, and can then send the changes to be stored in a specified bibtex file on disk.
@@ -575,36 +595,25 @@ class Biblio:
 
     def scan_dir_iter(self, direc, search_doi=True, search_fulltext=True, **kw):
 
-        top = os.path.abspath(direc)
-        for root, direcs, files in os.walk(direc):
-            dirname = os.path.basename(root)
-            # never skip the scan root itself: basename('.') == '.' looks hidden
-            if os.path.abspath(root) != top:
-                if dirname.startswith('.'): continue
-                if dirname.startswith('_'): continue
-
-            # maybe a special entry directory?
-            if os.path.exists(hidden_bibtex(root)):
+        for kind, path in scan_dir_walk(direc):
+            # a special entry directory
+            if kind == 'entry':
                 logger.debug('read from hidden bibtex')
                 try:
-                    entry = read_entry_dir(root, relative_to=self.relative_to)
+                    entry = read_entry_dir(path, relative_to=self.relative_to)
                     yield from self.insert_entry(entry, **kw)
                 except Exception as error:
-                    logger.warning(root+'::'+str(error))
+                    logger.warning(path+'::'+str(error))
                 continue
 
-            for file in files:
-                if file.startswith('.'):
-                    continue
-                path = os.path.join(root, file)
-                try:
-                    if file.lower().endswith('.pdf'):
-                        yield from self.add_pdf(path, search_doi=search_doi, search_fulltext=search_fulltext, **kw)
-                    elif file.lower().endswith('.bib'):
-                        yield from self.add_bibtex_file(path, **kw)
-                except Exception as error:
-                    logger.warning(path+'::'+str(error))
-                    continue
+            try:
+                if path.lower().endswith('.pdf'):
+                    yield from self.add_pdf(path, search_doi=search_doi, search_fulltext=search_fulltext, **kw)
+                elif path.lower().endswith('.bib'):
+                    yield from self.add_bibtex_file(path, **kw)
+            except Exception as error:
+                logger.warning(path+'::'+str(error))
+                continue
 
     def scan_dir(self, direc, **kw):
         " like scan_dir_iter but returns a list"

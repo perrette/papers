@@ -13,7 +13,7 @@ import fnmatch   # unix-like match
 
 import papers
 from papers import logger
-from papers.extract import extract_pdf_doi, isvaliddoi, extract_pdf_metadata
+from papers.extract import extract_pdf_doi, isvaliddoi, extract_pdf_metadata, prefetch_pdf_metadata
 from papers.extract import fetch_bibtex_by_doi, fetch_bibtex_by_fulltext_crossref, fetch_bibtex_by_fulltext_scholar
 from papers.encoding import parse_file, format_file, family_names, format_entries, standard_name, format_entry, parse_keywords, format_key
 from papers.config import (bcolors, Config, search_config, CONFIG_FILE, CONFIG_FILE_LOCAL,
@@ -22,7 +22,7 @@ from papers.duplicate import list_duplicates, list_uniques, edit_entries, title_
 from papers.entries import get_entry_val, entry_content_equal
 from papers.bib import (Biblio, FUZZY_RATIO, DEFAULT_SIMILARITY, entry_filecheck,
                         backupfile as backupfile_func, isvalidkey, DuplicateKeyError, clean_filesdir,
-                        are_duplicates, download_url, get_biblio)
+                        are_duplicates, download_url, get_biblio, scan_dir_walk)
 from papers.install import resolve_install, apply_install, InputAsker, DefaultAsker
 from papers.utils import view_pdf, open_folder, PapersExit, file_uri_to_path, find_masked_viewer
 from papers.backup import (silent_backup_bib, restore_from_backupdir,
@@ -331,6 +331,17 @@ def addcmd(parser, o, config):
 
         entries.extend( biblio.insert_entry(metadata, **kw) )
 
+
+    # several PDFs: fetch their metadata concurrently first
+    if not o.doi and not o.scholar and not (o.no_query_doi and o.no_query_fulltext):
+        pdfs = []
+        for file in o.file:
+            if os.path.isdir(file) and o.recursive:
+                pdfs.extend(path for kind, path in scan_dir_walk(file) if kind == 'file' and path.lower().endswith('.pdf'))
+            elif os.path.isfile(file) and file.lower().endswith('.pdf'):
+                pdfs.append(file)
+        if len(pdfs) > 1:
+            prefetch_pdf_metadata(pdfs, search_doi=not o.no_query_doi, search_fulltext=not o.no_query_fulltext)
 
     for file in o.file:
         try:

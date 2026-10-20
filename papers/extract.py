@@ -4,8 +4,12 @@ import subprocess as sp
 import re
 import tempfile
 
+import threading
+import logging
+from concurrent.futures import ThreadPoolExecutor
+from urllib.parse import quote
+
 import requests
-from crossref.restful import Works, Etiquette
 import bibtexparser
 
 import papers
@@ -25,14 +29,31 @@ from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 
 
-my_etiquette = Etiquette('papers', papers.__version__, 'https://github.com/perrette/papers', 'mahe.perrette@gmail.com')
-work = Works(etiquette=my_etiquette)
+# crossref "polite pool": identify the client and a contact address
+USER_AGENT = f'papers/{papers.__version__} (https://github.com/perrette/papers; mailto:mahe.perrette@gmail.com)'
+TIMEOUT = 30  # seconds
+
+_thread_local = threading.local()
+
+def http_get(url, **kw):
+    """GET with a timeout, through a session per thread so that connections
+    are reused across requests"""
+    session = getattr(_thread_local, 'session', None)
+    if session is None:
+        session = _thread_local.session = requests.Session()
+        session.headers['User-Agent'] = USER_AGENT
+    kw.setdefault('timeout', TIMEOUT)
+    return session.get(url, **kw)
+
 
 class DOIParsingError(ValueError):
     pass
 
 class DOIRequestError(ValueError):
     pass
+
+class DOINotFoundError(DOIRequestError):
+    """the DOI does not exist (unknown to doi.org)"""
 
 
 # PDF parsing / crossref requests
@@ -137,9 +158,25 @@ def _parse_doi_from_metadata_string(metadata):
             return match.group(1)
     return None
 
+def _parse_doi_from_info_fields(fields):
+    """DOI in the document info fields (subject, keywords, title)"""
+    for key in ['subject', 'keywords', 'title']:
+        value = fields.get(key) or ''
+        doi_match = re.search(r'10\.\d{4,9}/[-._;()/:a-z0-9]+', value, re.IGNORECASE)
+        if doi_match:
+            return doi_match.group(0)
+    return None
+
+
 def parse_doi_from_pdf_metadata_poppler(pdf_path):
     """Extract DOI from PDF metadata using pdfinfo (poppler-utils)."""
     try:
+        result = sp.run(['pdfinfo', pdf_path], capture_output=True, text=True, timeout=5)
+        if result.returncode == 0:
+            fields = dict(line.split(':', 1) for line in result.stdout.splitlines() if ':' in line)
+            doi = _parse_doi_from_info_fields({k.strip().lower(): v.strip() for k, v in fields.items()})
+            if doi:
+                return doi
         result = sp.run(['pdfinfo', '-meta', pdf_path],
                        capture_output=True, text=True, timeout=5)
         if result.returncode == 0:
@@ -157,14 +194,9 @@ def parse_doi_from_pdf_metadata_pymupdf(pdf_path):
 
         # Try direct metadata fields first
         if metadata:
-            # Check common metadata fields
-            for key in ['subject', 'keywords', 'title']:
-                value = metadata.get(key, '')
-                if value and '10.' in value:
-                    # Try to extract DOI from the field
-                    doi_match = re.search(r'10\.\d{4,9}/[-._;()/:a-z0-9]+', value, re.IGNORECASE)
-                    if doi_match:
-                        return doi_match.group(0)
+            doi = _parse_doi_from_info_fields(metadata)
+            if doi:
+                return doi
 
         # Fall back to XMP metadata
         xmp = doc.get_xml_metadata() if hasattr(doc, 'get_xml_metadata') else doc.xref_get_key(-1, "Metadata")
@@ -388,7 +420,10 @@ def pdftail(pdf):
     try:
         import pymupdf
     except ImportError:
-        return ''
+        pages = re.search(r'^Pages:\s*(\d+)', sp.run(['pdfinfo', pdf], capture_output=True, text=True).stdout, re.M)
+        if not pages or int(pages.group(1)) < 2:
+            return ''
+        return readpdf_poputils(pdf, first=int(pages.group(1)), last=int(pages.group(1)))
     with pymupdf.open(pdf) as document:
         if len(document) < 2:
             return ''
@@ -542,52 +577,140 @@ def extract_txt_metadata(txt, search_doi=True, search_fulltext=False, max_query_
     raise ValueError('failed to extract metadata (pass the DOI explicitly with --doi)')
 
 
-def extract_pdf_metadata(pdf, search_doi=True, search_fulltext=True, maxpages=10, minwords=200, image=False, **kw):
+def _metadata_from_pdf_contents(metadata_doi, read_text, search_doi=True, search_fulltext=True, **kw):
+    """the network part of extract_pdf_metadata: read_text() returns the text
+    of the first pages and of the last page"""
     # a DOI in the PDF metadata is the article's own: no need to parse the text
-    if search_doi:
-        doi = parse_doi_from_pdf_metadata(pdf)
-        if doi:
-            logger.info(f'found doi in pdf metadata: {doi}')
-            try:
-                return fetch_bibtex_by_doi(doi)
-            except DOIRequestError as error:
-                logger.warning(f'{doi}: no metadata found ({error}), search the text')
-    txt = pdfhead(pdf, maxpages, minwords, image=image)
-    tail = '' if image else pdftail(pdf)
+    if search_doi and metadata_doi:
+        logger.info(f'found doi in pdf metadata: {metadata_doi}')
+        try:
+            return fetch_bibtex_by_doi(metadata_doi)
+        except DOIRequestError as error:
+            logger.warning(f'{metadata_doi}: no metadata found ({error}), search the text')
+    txt, tail = read_text()
     return extract_txt_metadata(txt, search_doi, search_fulltext, tail=tail, **kw)
 
-@cached('crossref.json')
+
+def extract_pdf_metadata(pdf, search_doi=True, search_fulltext=True, maxpages=10, minwords=200, image=False, **kw):
+    metadata_doi = parse_doi_from_pdf_metadata(pdf) if search_doi else None
+    read_text = lambda: (pdfhead(pdf, maxpages, minwords, image=image), '' if image else pdftail(pdf))
+    return _metadata_from_pdf_contents(metadata_doi, read_text, search_doi, search_fulltext, **kw)
+
+
+def prefetch_pdf_metadata(pdfs, workers=3, search_doi=True, search_fulltext=True, **kw):
+    """Fill the cache with the metadata of several PDFs, with up to `workers`
+    requests at a time (crossref's limit), so that adding them one by one
+    afterwards is fast. Errors and log messages are left to that second pass.
+    """
+    contents = []
+    for pdf in pdfs:  # read in this thread: PyMuPDF is not thread-safe
+        try:
+            metadata_doi = parse_doi_from_pdf_metadata(pdf) if search_doi else None
+            text = ('', '') if metadata_doi else (pdfhead(pdf), pdftail(pdf))
+        except Exception:
+            continue
+        contents.append((metadata_doi, text))
+
+    def fetch(content):
+        metadata_doi, text = content
+        try:
+            _metadata_from_pdf_contents(metadata_doi, lambda: text, search_doi, search_fulltext, **kw)
+        except Exception:
+            pass
+
+    logger.info(f'fetch the metadata of {len(contents)} PDFs')
+    level = logger.level
+    logger.setLevel(logging.CRITICAL)  # the second pass logs
+    try:
+        with ThreadPoolExecutor(workers) as executor:
+            list(executor.map(fetch, contents))
+    finally:
+        logger.setLevel(level)
+
+def _drop_references(message):
+    # the cited references are most of the record's size, and are not used
+    message.pop('reference', None)
+    return message
+
+
+def _migrate_crossref_cache(response):
+    message = response.get('message') if isinstance(response, dict) else None
+    return _drop_references(message) if isinstance(message, dict) else None
+
+
 def fetch_crossref_by_doi(doi):
-    url = "http://api.crossref.org/works/"+doi
-    response = work.do_http_request('get', url, custom_header={'user-agent': str(work.etiquette)})
+    """crossref record of a DOI ("message" field of the API response)"""
+    response = http_get('https://api.crossref.org/works/' + quote(doi, safe='/'))
+    if response.status_code == 404:
+        raise DOINotFoundError(f'{doi}: not found on crossref')
     try:
         response.raise_for_status()
+        return response.json()['message']
     except Exception as error:
         raise DOIRequestError(repr(doi)+': '+repr(error))
-    return response.json()
 
-@cached('arxiv.json')
+
+# CSL types (doi.org content negotiation) -> crossref types
+CSL_TYPES = {
+    'article-journal': 'journal-article',
+    'chapter': 'book-chapter',
+    'paper-conference': 'proceedings-article',
+}
+
+def fetch_csl_by_doi(doi):
+    """metadata of a DOI of any registration agency (crossref, DataCite...)
+    by content negotiation on doi.org, as a crossref-like record"""
+    response = http_get('https://doi.org/' + quote(doi, safe='/'),
+                        headers={'Accept': 'application/vnd.citationstyles.csl+json'})
+    if response.status_code == 404:
+        raise DOINotFoundError(f'{doi}: unknown to doi.org')
+    if not response.ok or 'json' not in response.headers.get('content-type', ''):
+        # the DOI exists but its metadata are not available (yet)
+        raise DOIRequestError(f'{doi}: no metadata on doi.org (HTTP {response.status_code})')
+    message = response.json()
+    for field in ['title', 'container-title']:
+        if isinstance(message.get(field), str):
+            message[field] = [message[field]]
+    message['type'] = CSL_TYPES.get(message.get('type'), message.get('type'))
+    return message
+
+
+@cached('doi', legacy='crossref.json', migrate=_migrate_crossref_cache, trim=_drop_references, not_found=DOINotFoundError)
+def fetch_doi_metadata(doi):
+    """crossref-like record of a DOI: from the crossref API, or from doi.org
+    for DOIs registered elsewhere (DataCite, mEDRA...). A DOI unknown to
+    doi.org raises DOINotFoundError (remembered for a day: a new paper's
+    DOI may be printed before it is registered)."""
+    try:
+        return fetch_crossref_by_doi(doi)
+    except DOIRequestError as error:
+        logger.debug(f'{error}: try doi.org')
+    return fetch_csl_by_doi(doi)
+
+
+@cached('arxiv', legacy='arxiv.json', migrate=lambda bibtex: None if bibtex.startswith('Error') else bibtex)
 def fetch_bibtex_by_arxiv(arxiv_id):
-    url = f"https://arxiv.org/bibtex/{arxiv_id}"
-    response = requests.get(url)
-    if response.status_code == 200:
-        return response.text
-    else:
-        return f"Error: Unable to fetch BibTeX (HTTP {response.status_code})"
+    response = http_get(f"https://arxiv.org/bibtex/{arxiv_id}")
+    if response.status_code != 200:
+        raise DOIRequestError(f"{arxiv_id}: unable to fetch BibTeX from arxiv (HTTP {response.status_code})")
+    return response.text
+
 
 def fetch_bibtex_by_doi(doi):
     if "arxiv" in doi.lower():
         return fetch_bibtex_by_arxiv(doi.split("arXiv.")[1])
     try:
-        json_data = fetch_crossref_by_doi(doi)
-        return crossref_to_bibtex(json_data['message'])
+        return crossref_to_bibtex(fetch_doi_metadata(doi.lower()))
+    except DOINotFoundError:
+        raise
     except DOIRequestError as error:
-        pass
+        logger.debug(str(error))
 
+    # registered but without metadata (yet): the publisher's page may link a bibtex
     try:
         return fetch_bibtex_on_journal_website(doi, as_string=True)
-    except:
-        pass
+    except Exception as error:
+        logger.debug(f'{doi}: no bibtex on the journal website: {error}')
 
     raise DOIRequestError(f"Unable to fetch BibTeX for DOI {doi}")
 
@@ -608,7 +731,7 @@ def _scholar_score(txt, bib):
     return sum(token_set_ratio(bib[k], txt) for k in ['title', 'author', 'abstract'] if k in bib)
 
 
-@cached('scholar-bibtex.json', hashed_key=True)
+@cached('scholar', hashed_key=True)
 def fetch_bibtex_by_fulltext_scholar(txt, assess_results=True):
     from scholarly import scholarly
     # scholarly._get_page = _get_page_fast  # remove waiting time
@@ -736,35 +859,38 @@ def crossref_to_bibtex(message):
     return bibtex_str
 
 
-# @cached('crossref-bibtex-fulltext.json', hashed_key=True)
-def fetch_bibtex_by_fulltext_crossref(txt, **kw):
-    logger.debug('crossref fulltext seach:\n'+txt)
+# record fields used by crossref_to_bibtex and _crossref_score
+CROSSREF_SELECT = ','.join(['DOI', 'URL', 'type', 'title', 'author', 'editor', 'container-title',
+    'volume', 'issue', 'page', 'publisher', 'publisher-location', 'ISBN', 'issued',
+    'published-print', 'published-online', 'abstract'])
 
-    # get the most likely match of the first results
-    # results = []
-    # for i, r in enumerate(work.query(txt).sort('score')):
-    #     results.append(r)
-    #     if i > 50:
-    #         break
-    query = work.query(txt, **kw).sort('score')
-    query_result = query.do_http_request('get', query.url, custom_header={'user-agent':str(query.etiquette)}).text
-    results = json.loads(query_result)['message']['items']
 
-    if len(results) > 1:
-        maxscore = 0
-        result = results[0]
-        for res in results:
-            score = _crossref_score(txt, res)
-            if score > maxscore:
-                maxscore = score
-                result = res
-        logger.info('score: '+str(maxscore))
+@cached('crossref-query', hashed_key=True)
+def _crossref_query(params):
+    response = http_get('https://api.crossref.org/works', params=json.loads(params))
+    response.raise_for_status()
+    return response.json()['message']['items']
 
-    elif len(results) == 0:
+
+def fetch_bibtex_by_fulltext_crossref(txt, title=None, author=None, rows=5):
+    """best match of a crossref bibliographic search (title, authors, other text)"""
+    if author and not isinstance(author, str):
+        author = ' '.join(author)
+    params = {'rows': rows, 'select': CROSSREF_SELECT}
+    query = ' '.join(x for x in [title, txt] if x)
+    if query:
+        params['query.bibliographic'] = query
+    if author:
+        params['query.author'] = author
+    logger.debug('crossref fulltext search: ' + repr(params))
+    results = _crossref_query(json.dumps(params, sort_keys=True))
+
+    if len(results) == 0:
         raise ValueError('crossref fulltext: no results')
 
-    else:
-        result = results[0]
+    scoretxt = ' '.join(x for x in [query, author] if x)
+    result = max(results, key=lambda res: _crossref_score(scoretxt, res))
+    logger.info('score: '+str(_crossref_score(scoretxt, result)))
 
     # convert to bibtex
     return crossref_to_bibtex(result).strip()
@@ -797,7 +923,7 @@ def fetch_entry(e):
 # Thanks Le Chat for near-instantaneous and elegantly designed code
 
 def fetch_html(url):
-    response = requests.get(url)
+    response = http_get(url)
     response.raise_for_status()  # Raise an error for bad status codes
     return response.text
 
@@ -811,7 +937,7 @@ def find_bibtex_links(html_content, base_url):
             yield full_url
 
 def download_bibtex(url):
-    response = requests.get(url)
+    response = http_get(url)
     response.raise_for_status()
     return response.text
 

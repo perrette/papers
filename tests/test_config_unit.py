@@ -95,113 +95,139 @@ class TestConfigCollections(unittest.TestCase):
             self.assertEqual(len(colls), 2)
 
 
-class TestCachedCorruptFile(unittest.TestCase):
+class CacheTest(unittest.TestCase):
+    """the cache writes one json file per key under CACHE_DIR/<name>/"""
+
+    def setUp(self):
+        import papers.config as pconfig
+        self.pconfig = pconfig
+        self.tmp = tempfile.TemporaryDirectory()
+        self.old_cache_dir = pconfig.CACHE_DIR
+        pconfig.CACHE_DIR = self.tmp.name
+
+    def tearDown(self):
+        self.pconfig.CACHE_DIR = self.old_cache_dir
+        self.tmp.cleanup()
+
+    def test_one_file_per_doi(self):
+        calls = []
+
+        @self.pconfig.cached("doi")
+        def fn(x):
+            calls.append(x)
+            return {"title": x}
+
+        self.assertEqual(fn("10.1234/a/b:c"), {"title": "10.1234/a/b:c"})
+        self.assertEqual(fn("10.1234/a/b:c"), {"title": "10.1234/a/b:c"})
+        self.assertEqual(calls, ["10.1234/a/b:c"])
+        self.assertTrue(os.path.isfile(os.path.join(self.tmp.name, "doi", "10.1234", "a%2Fb%3Ac.json")))
+
+    def test_hashed_key_passes_the_argument(self):
+        @self.pconfig.cached("query", hashed_key=True)
+        def fn(x):
+            return x.upper()
+
+        self.assertEqual(fn("some long text"), "SOME LONG TEXT")
+        self.assertEqual(fn("some long text"), "SOME LONG TEXT")
 
     def test_corrupt_cache_file_is_ignored(self):
-        # a corrupt cache file used to crash every cached query
-        import papers.config as pconfig
-        with tempfile.TemporaryDirectory() as d:
-            old_cache_dir = pconfig.CACHE_DIR
-            pconfig.CACHE_DIR = d
-            try:
-                open(os.path.join(d, "testcache.json"), "w").write("{corrupt json")
+        file = os.path.join(self.tmp.name, "doi", "10.1234", "a.json")
+        os.makedirs(os.path.dirname(file))
+        open(file, "w").write("{corrupt json")
 
-                @pconfig.cached("testcache.json")
-                def fn(x):
-                    return x.upper()
+        @self.pconfig.cached("doi")
+        def fn(x):
+            return x.upper()
 
-                self.assertEqual(fn("a"), "A")
-            finally:
-                pconfig.CACHE_DIR = old_cache_dir
+        with self.assertLogs("papers", level="WARNING"):
+            self.assertEqual(fn("10.1234/a"), "10.1234/A")
+        self.assertEqual(json.load(open(file)), {"value": "10.1234/A"})
+
+    def test_not_found_is_remembered_for_a_while(self):
+        calls = []
+
+        class NotFound(ValueError):
+            pass
+
+        @self.pconfig.cached("doi", not_found=NotFound)
+        def fn(x):
+            calls.append(x)
+            raise NotFound(x)
+
+        for _ in range(2):
+            with self.assertRaises(NotFound):
+                fn("10.1234/a")
+        self.assertEqual(len(calls), 1)
+
+        # expired: asked again
+        file = os.path.join(self.tmp.name, "doi", "10.1234", "a.json")
+        json.dump({"not_found": time.time() - self.pconfig.NOT_FOUND_TTL - 1}, open(file, "w"))
+        with self.assertRaises(NotFound):
+            fn("10.1234/a")
+        self.assertEqual(len(calls), 2)
+
+    def test_other_errors_are_not_cached(self):
+        calls = []
+
+        @self.pconfig.cached("doi", not_found=KeyError)
+        def fn(x):
+            calls.append(x)
+            raise ValueError("network down")
+
+        for _ in range(2):
+            with self.assertRaises(ValueError):
+                fn("10.1234/a")
+        self.assertEqual(len(calls), 2)
+
+    def test_trim(self):
+        @self.pconfig.cached("doi", trim=lambda r: {k: v for k, v in r.items() if k != "reference"})
+        def fn(x):
+            return {"title": "T", "reference": ["long", "list"]}
+
+        self.assertEqual(fn("10.1234/a"), {"title": "T"})
+
+    def test_legacy_cache_is_migrated(self):
+        legacy = os.path.join(self.tmp.name, "crossref.json")
+        json.dump({"10.1234/A": {"message": {"title": ["A"], "reference": [1]}},
+                   "10.1234/b": {"message": {"title": ["B"]}},
+                   "10.1234/drop": "garbage"}, open(legacy, "w"))
+        migrate = lambda v: v["message"] if isinstance(v, dict) else None
+
+        @self.pconfig.cached("doi", legacy="crossref.json", migrate=migrate)
+        def fn(x):
+            raise AssertionError("should come from the migrated cache")
+
+        self.assertEqual(fn("10.1234/a"), {"title": ["A"], "reference": [1]})  # keys lower-cased
+        self.assertEqual(fn("10.1234/b"), {"title": ["B"]})
+        self.assertFalse(os.path.exists(legacy))
+        self.assertTrue(os.path.exists(legacy + ".bak"))
+        self.assertFalse(os.path.exists(os.path.join(self.tmp.name, "doi", "10.1234", "drop.json")))
+
+    def test_concurrent_writers_keep_all_keys(self):
+        # several processes writing in parallel must not clobber each other
+        keys = ["10.1234/doi%d" % i for i in range(4)]
+        procs = [multiprocessing.Process(target=_concurrent_cache_worker, args=(self.tmp.name, key))
+                 for key in keys]
+        for p in procs:
+            p.start()
+        for p in procs:
+            p.join()
+
+        @self.pconfig.cached("concurrent")
+        def fn(x):
+            raise AssertionError("should be cached")
+
+        for key in keys:
+            self.assertEqual(fn(key), "value-" + key)
 
 
 def _concurrent_cache_worker(cache_dir, key):
-    # runs in a child process: each process holds its own in-memory cache
     import papers.config as pconfig
     pconfig.CACHE_DIR = cache_dir
 
-    @pconfig.cached("concurrent.json")
+    @pconfig.cached("concurrent")
     def fn(x):
-        # widen the window between cache load and cache write
         time.sleep(0.2)
         return "value-" + x
 
     fn(key)
-
-
-class TestCachedConcurrency(unittest.TestCase):
-
-    def test_concurrent_writers_keep_all_keys(self):
-        # several processes writing in parallel must not clobber each other
-        keys = ["doi%d" % i for i in range(4)]
-        with tempfile.TemporaryDirectory() as d:
-            procs = [multiprocessing.Process(target=_concurrent_cache_worker, args=(d, key))
-                     for key in keys]
-            for p in procs:
-                p.start()
-            for p in procs:
-                p.join()
-            cache = json.load(open(os.path.join(d, "concurrent.json")))
-            for key in keys:
-                self.assertEqual(cache.get(key), "value-" + key)
-
-    def test_write_merges_with_file_content(self):
-        # a write must merge with entries another process added meanwhile
-        import papers.config as pconfig
-        with tempfile.TemporaryDirectory() as d:
-            old_cache_dir = pconfig.CACHE_DIR
-            pconfig.CACHE_DIR = d
-            try:
-                file = os.path.join(d, "merge.json")
-
-                @pconfig.cached("merge.json")
-                def fn(x):
-                    # while we compute, another process writes its own entry
-                    json.dump({"other": "OTHER"}, open(file, "w"))
-                    return x.upper()
-
-                self.assertEqual(fn("a"), "A")
-                cache = json.load(open(file))
-                self.assertEqual(cache.get("a"), "A")
-                self.assertEqual(cache.get("other"), "OTHER")
-            finally:
-                pconfig.CACHE_DIR = old_cache_dir
-
-    def test_in_memory_values_win_on_merge(self):
-        # for keys present both in memory and on disk, ours win
-        import papers.config as pconfig
-        with tempfile.TemporaryDirectory() as d:
-            old_cache_dir = pconfig.CACHE_DIR
-            pconfig.CACHE_DIR = d
-            try:
-                file = os.path.join(d, "winner.json")
-
-                @pconfig.cached("winner.json")
-                def fn(x):
-                    json.dump({"a": "stale"}, open(file, "w"))
-                    return x.upper()
-
-                self.assertEqual(fn("a"), "A")
-                cache = json.load(open(file))
-                self.assertEqual(cache["a"], "A")
-            finally:
-                pconfig.CACHE_DIR = old_cache_dir
-
-    def test_write_is_atomic_replace(self):
-        # no partial state is ever visible at the cache path: writes go to a
-        # temp file and are renamed over; the temp file does not linger
-        import papers.config as pconfig
-        with tempfile.TemporaryDirectory() as d:
-            old_cache_dir = pconfig.CACHE_DIR
-            pconfig.CACHE_DIR = d
-            try:
-                @pconfig.cached("atomic.json")
-                def fn(x):
-                    return x.upper()
-
-                fn("a")
-                files = os.listdir(d)
-                self.assertIn("atomic.json", files)
-                self.assertFalse([f for f in files if f.endswith(".tmp")])
-            finally:
-                pconfig.CACHE_DIR = old_cache_dir

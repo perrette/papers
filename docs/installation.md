@@ -37,10 +37,8 @@ mitigations are built in:
 - python 3.9+
 - [PyMuPDF](https://github.com/pymupdf/PyMuPDF) (preferred) or
   [poppler-utils](https://en.wikipedia.org/wiki/Poppler_(software))
-  (only `pdftotext`; deprecated): convert PDF to text for parsing
+  (only `pdftotext` and `pdfinfo`; deprecated): convert PDF to text for parsing
 - [bibtexparser](https://bibtexparser.readthedocs.io): parse bibtex files
-- [crossrefapi](https://github.com/fabiobatalha/crossrefapi): make polite
-  requests to the crossref API
 - [scholarly](https://github.com/OrganicIrradiation/scholarly): interface for
   google scholar
 - [rapidfuzz](https://github.com/rhasspy/rapidfuzz): calculate score to sort

@@ -20,7 +20,6 @@ dependencies = [
     # build from source there: see https://github.com/pymupdf/PyMuPDF/issues/5170
     "PyMuPDF<2",
     "unidecode",
-    "crossrefapi",
     "bibtexparser>=2.0.0b2",
     "scholarly",
     "rapidfuzz",
