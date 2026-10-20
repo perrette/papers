@@ -978,7 +978,10 @@ proposed default, typing a value sets it, and <code>unset</code> clears it).</p>
 <p>Type <code>papers status -v</code> to check your configuration.</p>
 <p>You also notice a cache directory. All internet requests such as crossref
 requests are saved in the cache directory. This happens regardless of whether
-<code>papers</code> is installed or not.</p>
+<code>papers</code> is installed or not. The metadata of each DOI is a json file under
+<code>doi/</code>, e.g. <code>doi/10.1126/science.1166510.json</code> (DOIs that do not exist are
+remembered for a day). Deleting the directory, or any file in it, is safe:
+the requests are made again when needed.</p>
 <h2 id="local-install">Local install<a class="headerlink" href="#local-install" title="Permanent link">&para;</a></h2>
 <p>A local install keeps separate configurations per project — one bibliography
 per folder. It is the default for a fresh install (<code>--local</code> makes it
