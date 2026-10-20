@@ -1020,20 +1020,25 @@ the bibliography, and rename files into the files directory.</p>
 <li>otherwise, a crossref search on the text of the first pages, whose result
    is also accepted only if its title appears in the text.</li>
 </ol>
-<p>If none matches, the PDF is not added: pass its DOI with <code>--doi</code> (see below).</p>
+<p>If none matches, the PDF is not added: pass its DOI with <code>--doi</code> (see below),
+or, for a reference without DOI (older papers, books, reports...), describe it
+and attach the PDF:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>papers add --title "Self-consistent equilibrium ocean tides" --author "Agnew, Duncan C. and Farrell, W. E." \
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>    --year 1978 --journal "Geophysical Journal International" --attachment agnew1978.pdf --rename
+</code></pre></div>
 <h2 id="add-an-entry-from-its-doi">Add an entry from its DOI<a class="headerlink" href="#add-an-entry-from-its-doi" title="Permanent link">&para;</a></h2>
 <p>If you already know the DOI of a PDF, and don't want to gamble the fulltext
 search and match, you can indicate it via <code>--doi</code>:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>papers add esd-4-11-2013.pdf --doi 10.5194/esd-4-11-2013 --bibtex papers.bib
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>papers add esd-4-11-2013.pdf --doi 10.5194/esd-4-11-2013 --bibtex papers.bib
 </code></pre></div>
 <p>The <code>add</code> command above also works without any PDF (create a bibtex entry
 without file attachment):</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>papers add --doi 10.5194/esd-4-11-2013 --bibtex papers.bib
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>papers add --doi 10.5194/esd-4-11-2013 --bibtex papers.bib
 </code></pre></div>
 <h2 id="add-an-entry-without-doi-from-bibtex-pdf">Add an entry without DOI from bibtex + PDF<a class="headerlink" href="#add-an-entry-without-doi-from-bibtex-pdf" title="Permanent link">&para;</a></h2>
 <p>Some old files don't have a DOI. The best approach is to add the entry from its
 bibtex:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>papers add entry.bib --attachment esd-4-11-2013.pdf
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>papers add entry.bib --attachment esd-4-11-2013.pdf
 </code></pre></div>
 <h2 id="duplicates-and-keys">Duplicates and keys<a class="headerlink" href="#duplicates-and-keys" title="Permanent link">&para;</a></h2>
 <p>Before inserting an entry, <code>papers add</code> looks for a duplicate in the library
