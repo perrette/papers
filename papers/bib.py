@@ -260,6 +260,26 @@ def backupfile(bibtex):
 class DuplicateKeyError(ValueError):
     pass
 
+def scan_dir_walk(direc):
+    """the files scanned by Biblio.scan_dir: yield ('entry', dir) for entry
+    directories (with a hidden bibtex), ('file', path) for other files"""
+    top = os.path.abspath(direc)
+    for root, direcs, files in os.walk(direc):
+        dirname = os.path.basename(root)
+        # never skip the scan root itself: basename('.') == '.' looks hidden
+        if os.path.abspath(root) != top:
+            if dirname.startswith('.'): continue
+            if dirname.startswith('_'): continue
+
+        if os.path.exists(hidden_bibtex(root)):
+            yield 'entry', root
+            continue
+
+        for file in files:
+            if not file.startswith('.'):
+                yield 'file', os.path.join(root, file)
+
+
 class Biblio:
     """
     The bibtex object that we operate on, which is mainly used to read and write to dynamically, and can then send the changes to be stored in a specified bibtex file on disk.
@@ -463,7 +483,13 @@ class Biblio:
                 candidate.key = candidate_key_after
             entries = []
             for e in resolved:
-                entries.extend( self.insert_entry(e, update_key, rename=rename, copy=copy) )
+                # the existing entry keeps its key (and so does the single
+                # resolved entry that carries it, e.g. an overwrite with
+                # --update-key): only entries new to the library get a key
+                # regenerated from the template
+                keeps_key = e is candidate or (
+                    len(resolved) == 1 and get_entry_val(e, 'ID', '') == candidate_key_before)
+                entries.extend( self.insert_entry(e, update_key and not keeps_key, rename=rename, copy=copy) )
             return entries
 
 
@@ -480,13 +506,17 @@ class Biblio:
 
 
     def set_files(self, entry, files, relative_to=None):
-        entry['file'] = format_file(list(sorted(set(files), key=lambda f: files.index(f))), relative_to=relative_to or self.relative_to)
+        if relative_to is None:
+            relative_to = self.relative_to
+        entry['file'] = format_file(list(sorted(set(files), key=lambda f: files.index(f))), relative_to=relative_to)
         # delete field if empty
         if not entry['file'].strip():
             del entry['file']
 
     def get_files(self, entry, relative_to=None):
-        return parse_file(get_entry_val(entry, 'file', ''), relative_to=relative_to or self.relative_to)
+        if relative_to is None:
+            relative_to = self.relative_to
+        return parse_file(get_entry_val(entry, 'file', ''), relative_to=relative_to)
 
     def add_bibtex(self, bibtex, relative_to=None, attachments=None, convert_to_unicode=False, **kw):
         bib = parse_string(bibtex)
@@ -522,7 +552,9 @@ class Biblio:
 
     def add_bibtex_file(self, file, **kw):
         bibtex = open(file).read()
-        return self.add_bibtex(bibtex, relative_to=os.path.dirname(file), **kw)
+        # file links in the added bibtex are relative to its own directory
+        # (the absolute path matters: dirname('papers.bib') is '')
+        return self.add_bibtex(bibtex, relative_to=os.path.dirname(os.path.abspath(file)), **kw)
 
 
     def fetch_doi(self, doi, **kw):
@@ -563,36 +595,25 @@ class Biblio:
 
     def scan_dir_iter(self, direc, search_doi=True, search_fulltext=True, **kw):
 
-        top = os.path.abspath(direc)
-        for root, direcs, files in os.walk(direc):
-            dirname = os.path.basename(root)
-            # never skip the scan root itself: basename('.') == '.' looks hidden
-            if os.path.abspath(root) != top:
-                if dirname.startswith('.'): continue
-                if dirname.startswith('_'): continue
-
-            # maybe a special entry directory?
-            if os.path.exists(hidden_bibtex(root)):
+        for kind, path in scan_dir_walk(direc):
+            # a special entry directory
+            if kind == 'entry':
                 logger.debug('read from hidden bibtex')
                 try:
-                    entry = read_entry_dir(root, relative_to=self.relative_to)
+                    entry = read_entry_dir(path, relative_to=self.relative_to)
                     yield from self.insert_entry(entry, **kw)
                 except Exception as error:
-                    logger.warning(root+'::'+str(error))
+                    logger.warning(path+'::'+str(error))
                 continue
 
-            for file in files:
-                if file.startswith('.'):
-                    continue
-                path = os.path.join(root, file)
-                try:
-                    if file.lower().endswith('.pdf'):
-                        yield from self.add_pdf(path, search_doi=search_doi, search_fulltext=search_fulltext, **kw)
-                    elif file.lower().endswith('.bib'):
-                        yield from self.add_bibtex_file(path, **kw)
-                except Exception as error:
-                    logger.warning(path+'::'+str(error))
-                    continue
+            try:
+                if path.lower().endswith('.pdf'):
+                    yield from self.add_pdf(path, search_doi=search_doi, search_fulltext=search_fulltext, **kw)
+                elif path.lower().endswith('.bib'):
+                    yield from self.add_bibtex_file(path, **kw)
+            except Exception as error:
+                logger.warning(path+'::'+str(error))
+                continue
 
     def scan_dir(self, direc, **kw):
         " like scan_dir_iter but returns a list"

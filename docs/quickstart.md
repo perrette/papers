@@ -43,6 +43,9 @@ INFO:papers:renamed file(s): 1
 (the `--info` argument asks for the above output information to be printed out
 to the terminal)
 
+Without `--rename` the PDF is linked where it is, and nothing is copied into
+the files directory; `--copy` only applies together with `--rename`.
+
 See [Adding entries](adding-entries.md) for the full range of ways to add
 entries, and [Renaming files and keys](renaming.md) for how to specify file
 naming patterns.

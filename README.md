@@ -63,6 +63,12 @@ papers add esd-4-11-2013.pdf --rename --copy --bibtex papers.bib --filesdir file
 papers list perrette scaling approach sea level
 ```
 
+Without `--rename` (`-r`) the PDF is linked where it is: the entry points to
+its current location and nothing is copied into the files directory. `--rename`
+moves it into `--filesdir` under a name made from the name template, and
+`--copy` (`-c`) makes a copy instead of moving (it has no effect without
+`--rename`).
+
 See the [quickstart](https://perrette.github.io/papers/quickstart/) for a full
 walkthrough.
 

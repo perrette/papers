@@ -13,18 +13,18 @@ import fnmatch   # unix-like match
 
 import papers
 from papers import logger
-from papers.extract import extract_pdf_doi, isvaliddoi, extract_pdf_metadata
+from papers.extract import extract_pdf_doi, isvaliddoi, extract_pdf_metadata, prefetch_pdf_metadata
 from papers.extract import fetch_bibtex_by_doi, fetch_bibtex_by_fulltext_crossref, fetch_bibtex_by_fulltext_scholar
 from papers.encoding import parse_file, format_file, family_names, format_entries, standard_name, format_entry, parse_keywords, format_key
 from papers.config import (bcolors, Config, search_config, CONFIG_FILE, CONFIG_FILE_LOCAL,
                            DATA_DIR, CONFIG_FILE_LEGACY, CONFIG_FILE_LEGACY_XDG)
 from papers.duplicate import list_duplicates, list_uniques, edit_entries, title_id
-from papers.entries import get_entry_val, entry_content_equal
+from papers.entries import get_entry_val, entry_content_equal, entry_from_dict
 from papers.bib import (Biblio, FUZZY_RATIO, DEFAULT_SIMILARITY, entry_filecheck,
                         backupfile as backupfile_func, isvalidkey, DuplicateKeyError, clean_filesdir,
-                        are_duplicates, download_url, get_biblio)
+                        are_duplicates, download_url, get_biblio, scan_dir_walk)
 from papers.install import resolve_install, apply_install, InputAsker, DefaultAsker
-from papers.utils import view_pdf, open_folder, PapersExit
+from papers.utils import view_pdf, open_folder, PapersExit, file_uri_to_path, find_masked_viewer
 from papers.backup import (silent_backup_bib, restore_from_backupdir,
                            git_undo, git_redo, git_restore_state, list_backup_dirs)
 from papers import __version__
@@ -69,10 +69,14 @@ def savebib(biblio, config):
     logger.info(f'Saving {config.bibtex}')
     if biblio is not None:
         biblio.save(config.bibtex)
-    if config.file and config.git:
-        silent_backup_bib(biblio, config)
+    if config.git:
+        # the backup comes last: a failure must not undo the work done above
+        try:
+            silent_backup_bib(biblio, config)
+        except Exception as error:
+            logger.error(f'the bibliography was saved, but its git backup failed: {error}')
     else:
-        logger.debug(f'do not backup bib: {config.file}, {config.git}')
+        logger.debug(f'do not backup bib: git is off')
     # if config.git:
         # config.gitcommit()
 
@@ -177,11 +181,43 @@ def uninstallcmd(parser, o, config):
         if os.path.exists(configfile):
             uninstallcmd(parser, o, Config.load(configfile))
 
+def config_for_bibtex(bibtex, config):
+    """The configuration to use when --bibtex is passed on the command line.
+
+    If it is another library than the configured one, the local configuration
+    of that library (searched from the bibtex's directory upwards, as for the
+    current directory) applies: its files directory, git backup and formats.
+    Without one, the current configuration applies to the bibtex, except that
+    it is never written back to disk and the backup goes to a directory of
+    the bibtex's own.
+    """
+    if config.bibtex and os.path.realpath(bibtex) == os.path.realpath(config.bibtex):
+        return config
+
+    configfile = search_config([CONFIG_FILE_LOCAL, os.path.join(".papers", "config.json")],
+                               start_dir=os.path.dirname(os.path.abspath(bibtex)), default=None)
+    if configfile is not None:
+        other = Config.load(check_legacy_config(configfile))
+        if other.bibtex and os.path.realpath(other.bibtex) == os.path.realpath(bibtex):
+            logger.info(f'configuration of {bibtex}: {configfile}')
+            return other
+
+    logger.debug(f'{bibtex} has no configuration of its own: use {config.file} without saving it')
+    config = copy.copy(config)
+    config.file = None
+    if config.git:
+        from papers.backup import resolve_gitdir
+        config.gitdir = resolve_gitdir(bibtex)
+    return config
+
+
 def check_install(parser, o, config, bibtex_must_exist=True):
     """
     Given an option and config, checks to see if the install is done correctly on this filesystem.
+    Returns the configuration to use (see config_for_bibtex).
     """
     if getattr(o, "bibtex", None) is not None:
+        config = config_for_bibtex(o.bibtex, config)
         config.bibtex = o.bibtex
     if getattr(o, "filesdir", None) is not None:
         config.filesdir = o.filesdir
@@ -201,7 +237,7 @@ def check_install(parser, o, config, bibtex_must_exist=True):
         raise PapersExit()
     logger.info(f'bibtex: {config.bibtex!r}')
     logger.info(f'filesdir: {config.filesdir!r}')
-    return True
+    return config
 
 
 def _print_biblio_diff(biblio_init, biblio, touched_entries, show_existing=False):
@@ -293,8 +329,19 @@ def addcmd(parser, o, config):
             metadata = edit_entries(metadata)
             o.edit = False
 
-        entries.extend( biblio.insert_entry(metadata, **kw) )
+        entries.extend( biblio.insert_entry(entry_from_dict(metadata), rename=o.rename, copy=o.copy, **kw) )
 
+
+    # several PDFs: fetch their metadata concurrently first
+    if not o.doi and not o.scholar and not (o.no_query_doi and o.no_query_fulltext):
+        pdfs = []
+        for file in o.file:
+            if os.path.isdir(file) and o.recursive:
+                pdfs.extend(path for kind, path in scan_dir_walk(file) if kind == 'file' and path.lower().endswith('.pdf'))
+            elif os.path.isfile(file) and file.lower().endswith('.pdf'):
+                pdfs.append(file)
+        if len(pdfs) > 1:
+            prefetch_pdf_metadata(pdfs, search_doi=not o.no_query_doi, search_fulltext=not o.no_query_fulltext)
 
     for file in o.file:
         try:
@@ -781,9 +828,9 @@ def get_parser(config=None):
 
     cfg = argparse.ArgumentParser(add_help=False, parents=[loggingp])
     grp = cfg.add_argument_group('config')
-    grp.add_argument('--filesdir', default=None,
+    grp.add_argument('--filesdir', default=None, type=file_uri_to_path,
         help=f'files directory (default: {config.filesdir}')
-    grp.add_argument('--bibtex', default=None,
+    grp.add_argument('--bibtex', default=None, type=file_uri_to_path,
         help=f'bibtex database (default: {config.bibtex}')
     grp.add_argument('--dry-run', action='store_true',
         help='no PDF renaming/copying, no bibtex writing on disk (for testing)')
@@ -878,7 +925,7 @@ def get_parser(config=None):
     # ===
     addp = subparsers.add_parser('add', description='add PDF(s) or bibtex(s) to library',
         parents=[cfg, namefmt, keyfmt])
-    addp.add_argument('file', nargs='*', default=[])
+    addp.add_argument('file', nargs='*', default=[], type=file_uri_to_path)
     # addp.add_argument('-f','--force', action='store_true', help='disable interactive')
 
     grp = addp.add_argument_group('duplicate check')
@@ -918,12 +965,17 @@ def get_parser(config=None):
     grp.add_argument('--no-query-fulltext', action='store_true', help='do not attempt to query fulltext in case doi query fails')
     grp.add_argument('--scholar', action='store_true', help='use google scholar instead of crossref')
 
-    grp = addp.add_argument_group('attached files')
-    grp.add_argument('-a','--attachment', nargs='+') #'supplementary material')
+    grp = addp.add_argument_group('attached files',
+        description='''Without -r/--rename, the PDF (and the files of a bibtex entry) are linked
+        where they are: the file field points to their current location and nothing is
+        moved or copied into the files directory. -r moves them into the files directory
+        (--filesdir) under a name made from the name template; with -c the original is
+        kept and a copy is made instead (-c has no effect without -r).''')
+    grp.add_argument('-a','--attachment', nargs='+', type=file_uri_to_path, help='attach these files to the entry (supplementary material)')
     grp.add_argument('-r','--rename', action='store_true',
-        help='rename PDFs according to key')
+        help='move the files into the files directory, renamed according to the name template')
     grp.add_argument('-c','--copy', action='store_true',
-        help='copy file instead of moving them')
+        help='with -r, copy the files instead of moving them')
 
     grp = addp.add_argument_group('actions')
     grp.add_argument('-e', '--edit', action='store_true', help='edit entry')
@@ -1048,7 +1100,7 @@ def get_parser(config=None):
     grp.add_argument('-e', '--edit', action='store_true', help='interactive edit text file with entries, and re-insert them')
     grp.add_argument('--fetch', action='store_true', help='fetch and fix metadata')
     grp.add_argument('--add-keywords', '--add-tag', nargs='+', help='add keywords to the selected entries')
-    grp.add_argument('--add-files', nargs='+', help='add files to the selected entries (only one entry must be listed)')
+    grp.add_argument('--add-files', nargs='+', type=file_uri_to_path, help='add files to the selected entries (only one entry must be listed)')
     grp.add_argument('--rename', action='store_true', help='rename file(s) of the listed entries into the files folder (also applies to files added via --add-files)')
     grp.add_argument('--copy', action='store_true', help='in combination with --rename, keep a copy of the file(s) in their original location')
     grp.add_argument('-o', '--open', action='store_true', help='open attachments (if any)')
@@ -1059,12 +1111,12 @@ def get_parser(config=None):
     # open
     # ====
     openp = subparsers.add_parser('open', description='open entry attachments or files with the system viewer', parents=[cfg])
-    openp.add_argument('key', nargs='+', help='entry key(s) (case-insensitive), or existing file path(s) to open directly')
+    openp.add_argument('key', nargs='+', type=file_uri_to_path, help='entry key(s) (case-insensitive), or existing file path(s) to open directly')
 
     # doi
     # ===
     doip = subparsers.add_parser('doi', description='parse DOI from PDF', parents=[loggingp])
-    doip.add_argument('pdf')
+    doip.add_argument('pdf', type=file_uri_to_path)
     doip.add_argument('--image', action='store_true', help='convert to image and use tesseract instead of pdftotext')
 
     # fetch
@@ -1076,7 +1128,7 @@ def get_parser(config=None):
     # extract
     # ========
     extractp = subparsers.add_parser('extract', description='extract pdf metadata', parents=[loggingp])
-    extractp.add_argument('pdf', nargs='+', help='one or several PDF files')
+    extractp.add_argument('pdf', nargs='+', type=file_uri_to_path, help='one or several PDF files')
     extractp.add_argument('--recursive', action='store_true', help='accept directories and scan them for PDF files')
     extractp.add_argument('-n', '--word-count', type=int, default=200)
     extractp.add_argument('--fulltext', action='store_true', help='fulltext only (otherwise DOI-based)')
@@ -1125,6 +1177,10 @@ def handle_logging(o):
     logger.debug("LOGGER LEVEL: "+logging.getLevelName(logger.getEffectiveLevel()))
 
 
+# set while handing files to the system viewer, to detect a passthrough loop (#107)
+VIEWER_PASSTHROUGH_ENV = 'PAPERS_CLI_VIEWER_PASSTHROUGH'
+
+
 def main(args=None):
     papers.config.DRYRUN = False  # reset in case main() if called directly
     if args is not None:
@@ -1144,16 +1200,31 @@ def main(args=None):
     parser, subparsers = get_parser(config)
 
     # viewer passthrough (#107): this command often masks the GNOME Papers
-    # document viewer in $PATH, so `papers somefile.pdf` opens the file(s)
-    # with the system viewer instead of erroring. xdg-open resolves the
-    # handler via desktop entries, not $PATH, so this typically launches the
-    # masked viewer itself. Subcommand names always take precedence, and any
-    # flag disables the passthrough (it cannot be meant for this tool).
+    # document viewer in $PATH. Its desktop entry runs `papers %U`, so file
+    # managers and xdg-open land here with file paths or file:// URIs. When
+    # every argument is an existing file, the call is handed over unchanged
+    # to the masked viewer (the next `papers` on $PATH that is not this tool).
+    # xdg-open is only a fallback when there is no such viewer: it resolves
+    # the desktop entry, which may lead back to this command, hence the
+    # environment guard against a loop. Subcommand names always take
+    # precedence, and any flag disables the passthrough (it cannot be meant
+    # for this tool).
     argv = sys.argv[1:]
     if argv and all(not a.startswith('-') for a in argv) \
             and argv[0] not in subparsers.choices \
-            and all(os.path.isfile(a) for a in argv):
-        for f in argv:
+            and all(os.path.isfile(file_uri_to_path(a)) for a in argv):
+        viewer = find_masked_viewer()
+        if viewer:
+            print(f"papers-cli: passing {' '.join(map(repr, argv))} to {viewer} "
+                  f"(see `papers --help` for the bibliography tool)", file=sys.stderr)
+            os.execv(viewer, [viewer] + argv)
+            return  # only reached when os.execv is mocked
+        if os.environ.get(VIEWER_PASSTHROUGH_ENV):
+            raise PapersExit("the system viewer for these files leads back to this "
+                             "command, and no other `papers` viewer is in $PATH")
+        os.environ[VIEWER_PASSTHROUGH_ENV] = '1'  # inherited by the viewer
+        for a in argv:
+            f = file_uri_to_path(a)
             print(f"papers-cli: opening {f!r} with the system viewer "
                   f"(see `papers --help` for the bibliography tool)", file=sys.stderr)
             view_pdf(f)
@@ -1193,23 +1264,23 @@ def main(args=None):
         uninstallcmd(subp, o, config)
         print(config.status(verbose=True))
     elif o.cmd == 'add':
-        check_install(subp, o, config) and addcmd(subp, o, config)
+        addcmd(subp, o, check_install(subp, o, config))
     elif o.cmd == 'check':
-        check_install(subp, o, config) and checkcmd(subp, o, config)
+        checkcmd(subp, o, check_install(subp, o, config))
     elif o.cmd == 'filecheck':
-        check_install(subp, o, config) and filecheckcmd(subp, o, config)
+        filecheckcmd(subp, o, check_install(subp, o, config))
     elif o.cmd == 'list':
-        check_install(subp, o, config) and listcmd(subp, o, config)
+        listcmd(subp, o, check_install(subp, o, config))
     elif o.cmd == 'open':
         # no install required when opening plain files; opencmd reports the
         # missing bibliography itself when an argument must be looked up as a key
         opencmd(subp, o, config)
     elif o.cmd == 'undo':
-        check_install(subp, o, config) and undocmd(subp, o, config)
+        undocmd(subp, o, check_install(subp, o, config))
     elif o.cmd == 'redo':
-        check_install(subp, o, config) and redocmd(subp, o, config)
+        redocmd(subp, o, check_install(subp, o, config))
     elif o.cmd == 'restore-backup':
-        check_install(subp, o, config, bibtex_must_exist=False) and restorecmd(subp, o, config)
+        restorecmd(subp, o, check_install(subp, o, config, bibtex_must_exist=False))
     elif o.cmd == 'git':
         if not installed:
             subp.error('papers must be installed to use git command')
