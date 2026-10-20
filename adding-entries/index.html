@@ -561,6 +561,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#duplicates-and-keys" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Duplicates and keys
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -930,6 +941,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#duplicates-and-keys" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Duplicates and keys
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -969,6 +991,16 @@ attachment.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>papers extract esd-4-11-2013.pdf &gt; entry.bib
 <a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>papers add entry.bib --bibtex papers.bib --attachment esd-4-11-2013.pdf --rename --copy
 </code></pre></div>
+<p>Without <code>--rename</code> (<code>-r</code>) the PDF is linked where it is: the <code>file</code> field
+points to its current location and nothing is moved or copied into the files
+directory. <code>--rename</code> moves the file into <code>--filesdir</code> under a name made from
+the name template, and <code>--copy</code> (<code>-c</code>) makes a copy there instead of moving
+the original (it has no effect without <code>--rename</code>). The same applies to the
+files linked from the entries of a bibtex file added with <code>papers add
+other.bib</code>: their paths are read relative to that bibtex and stored so that
+they remain valid from your own bibtex (absolute, or relative to it, according
+to <code>--absolute-paths</code>/<code>--relative-paths</code> or the installed setting); with
+<code>--rename</code> they are moved (or copied with <code>--copy</code>) into the files directory.</p>
 <p>See <a href="../renaming/">Renaming files and keys</a> for how to specify file naming
 patterns.</p>
 <h2 id="add-a-whole-directory-of-pdfs">Add a whole directory of PDFs<a class="headerlink" href="#add-a-whole-directory-of-pdfs" title="Permanent link">&para;</a></h2>
@@ -992,6 +1024,23 @@ without file attachment):</p>
 bibtex:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>papers add entry.bib --attachment esd-4-11-2013.pdf
 </code></pre></div>
+<h2 id="duplicates-and-keys">Duplicates and keys<a class="headerlink" href="#duplicates-and-keys" title="Permanent link">&para;</a></h2>
+<p>Before inserting an entry, <code>papers add</code> looks for a duplicate in the library
+(same DOI, or same authors and title). The <code>-m/--mode</code> option says what to do
+when one is found: <code>i</code> (interactive, the default), <code>u</code> (update the existing
+entry with the new entry's missing fields, existing values win), <code>U</code> (update
+the existing entry with the new entry's values, new values win), <code>o</code>
+(overwrite), <code>s</code> (skip the new entry), <code>a</code> (append it anyway), <code>r</code> (raise an
+error).</p>
+<p>Entries added from a bibtex file keep their own key, unless <code>-u/--update-key</code>
+is passed, in which case the key is regenerated from the key template (see
+<a href="../renaming/">Renaming files and keys</a>). Entries extracted from a PDF or
+fetched from a DOI always get a generated key.</p>
+<p>With <code>-u/--update-key</code>, a duplicate is always merged under the key of the entry
+already in the library, in every mode (<code>u</code>, <code>U</code>, <code>o</code>; with <code>a</code> the existing
+entry keeps its key and the appended entry gets a fresh one). Without <code>-u</code>,
+modes <code>u</code> and <code>s</code> keep the existing entry's key, while <code>U</code> and <code>o</code> take over
+the new entry's key.</p>
 
 
 
