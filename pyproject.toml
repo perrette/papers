@@ -16,7 +16,9 @@ classifiers = [
     "Programming Language :: Python :: 3",
 ]
 dependencies = [
-    "PyMuPDF",
+    # PyMuPDF 2.0 has no wheel for free-threaded python (3.14t), and does not
+    # build from source there: see https://github.com/pymupdf/PyMuPDF/issues/5170
+    "PyMuPDF<2",
     "unidecode",
     "crossrefapi",
     "bibtexparser>=2.0.0b2",
@@ -63,7 +65,7 @@ papers-cli = "papers.__main__:main_clean_exit"
 # and then run "tox" from this directory.
 legacy_tox_ini = """
 [tox]
-envlist = clean, py39, py310, py311, py312, py313, py314, report
+envlist = clean, py39, py310, py311, py312, py313, py314, py315, report
 
 [gh-actions]
 python =
@@ -74,23 +76,17 @@ python =
     3.13: py313
     3.14: py314
     3.14t: py314t
+    3.15: py315
+    3.15t: py315t
 
 [testenv]
 commands = pytest --cov=papers --cov-append --cov-report=term-missing {posargs} -xv
 deps =
-    bibtexparser>=2.0.0b2
-    PyMuPDF
-    scholarly
-    crossrefapi
-    rapidfuzz
-    unidecode
-    python-slugify
-    bs4
     pytest
     pytest-cov
 depends =
-    {py39,py310,py311,py312,py313,py314,py314t}: clean
-    report: py39,py310,py311,py312,py313,py314,py314t
+    {py39,py310,py311,py312,py313,py314,py314t,py315,py315t}: clean
+    report: py39,py310,py311,py312,py313,py314,py314t,py315,py315t
 
 
 [testenv:report]
