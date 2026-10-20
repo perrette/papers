@@ -249,8 +249,7 @@ class TestExtractTxtMetadataCandidates(unittest.TestCase):
                 raise DOIRequestError(doi)
             return self._bibtex(doi, 'The registered paper')
         with mock.patch('papers.extract.fetch_bibtex_by_doi', side_effect=fetch):
-            with self.assertLogs('papers', level='WARNING'):
-                bibtex = extract_txt_metadata(txt, search_doi=True, search_fulltext=False)
+            bibtex = extract_txt_metadata(txt, search_doi=True, search_fulltext=False)
         self.assertIn('10.5678/registered-paper', bibtex)
 
     def test_prefers_candidate_whose_title_is_in_text(self):
@@ -272,21 +271,28 @@ class TestExtractTxtMetadataCandidates(unittest.TestCase):
                 return f"@misc{{{doi},\n doi = {{{doi}}}\n}}"
             return self._bibtex(doi, 'Complete Record Title')
         with mock.patch('papers.extract.fetch_bibtex_by_doi', side_effect=fetch):
-            with self.assertLogs('papers', level='WARNING'):
-                bibtex = extract_txt_metadata(txt, search_doi=True, search_fulltext=False)
+            bibtex = extract_txt_metadata(txt, search_doi=True, search_fulltext=False)
         self.assertIn('10.1000/complete-record', bibtex)
 
-    def test_stub_only_as_last_resort_with_warning(self):
+    def test_unregistered_dois_fail(self):
+        # a DOI without metadata cannot be checked against the text: no bare entry
         from unittest import mock
         from papers.extract import extract_txt_metadata, DOIRequestError
         with mock.patch('papers.extract.fetch_bibtex_by_doi', side_effect=DOIRequestError('nope')):
             with self.assertLogs('papers', level='WARNING'):
-                bibtex = extract_txt_metadata(ESSD_TEXT, search_doi=True, search_fulltext=False)
-        # the stub carries the article DOI, not the data DOI
-        self.assertIn('10.5194/essd-2025-300', bibtex)
-        self.assertNotIn('zenodo', bibtex)
+                with self.assertRaises(ValueError):
+                    extract_txt_metadata(ESSD_TEXT, search_doi=True, search_fulltext=False)
 
-    def test_fulltext_search_before_stub(self):
+    def test_fulltext_query_error_fails(self):
+        from unittest import mock
+        from papers.extract import extract_txt_metadata, DOIRequestError
+        with mock.patch('papers.extract.fetch_bibtex_by_doi', side_effect=DOIRequestError('nope')), \
+                mock.patch('papers.extract.fetch_bibtex_by_fulltext_crossref', side_effect=ValueError('crossref down')):
+            with self.assertLogs('papers', level='WARNING'):
+                with self.assertRaises(ValueError):
+                    extract_txt_metadata(ESSD_TEXT, search_doi=True, search_fulltext=True)
+
+    def test_fulltext_search_when_no_doi_has_metadata(self):
         from unittest import mock
         from papers.extract import extract_txt_metadata, DOIRequestError
         fulltext = mock.Mock(return_value=self._bibtex('10.5194/essd-2025-300', 'A gridded dataset of something important'))
@@ -295,3 +301,130 @@ class TestExtractTxtMetadataCandidates(unittest.TestCase):
             bibtex = extract_txt_metadata(ESSD_TEXT, search_doi=True, search_fulltext=True)
         fulltext.assert_called_once()
         self.assertIn('Author', bibtex)
+
+
+# Science print layout: page 1 ends the previous article (with its DOI) and the
+# article's own DOI is printed alone under the dates; the cover page appended
+# by science.org carries "DOI: ..."
+SCIENCE_HEAD = """References and Notes
+1. J. H. Mercer, Nature 271, 321 (1978).
+21 September 2006; accepted 23 November 2006
+10.1126/science.1000001
+The Sea-Level Fingerprint of
+West Antarctic Collapse
+Jerry X. Mitrovica, Natalya Gomez, Peter U. Clark
+29 September 2008; accepted 20 November 2008
+10.1126/science.1000002
+"""
+SCIENCE_TAIL = """The Sea-Level Fingerprint of West Antarctic Collapse
+View the article online
+https://www.science.org/doi/10.1126/science.1000002
+Science 323 (5915), . DOI: 10.1126/science.1000002
+"""
+
+
+class TestTextDoiCandidates(unittest.TestCase):
+
+    def test_bare_doi_on_its_own_line(self):
+        from papers.extract import parse_dois
+        self.assertEqual(parse_dois('research article\n10.1002/2014JC009976\nPreliminary analysis'),
+                         ['10.1002/2014jc009976'])
+
+    def test_doi_glued_to_a_word_or_number_is_ignored(self):
+        with self.assertRaises(DOIParsingError):
+            parse_doi('page x10.1234/abc and 2010.1234/abc')
+
+    def test_springer_glued_suffix(self):
+        self.assertEqual(parse_doi('https://doi.org/10.1007/s10712-019-09525-z(0123456789().,-volV)(0123456789().,-volV)'),
+                         '10.1007/s10712-019-09525-z')
+
+    def test_nsidc_is_a_data_repository(self):
+        from papers.extract import parse_dois
+        self.assertEqual(parse_dois('data (dois: 10.5067/abcdef) and doi:10.1000/article'),
+                         ['10.1000/article', '10.5067/abcdef'])
+
+    def test_tail_labeled_dois_come_after_the_text_dois(self):
+        from papers.extract import parse_dois
+        self.assertEqual(parse_dois(SCIENCE_HEAD, SCIENCE_TAIL),
+                         ['10.1126/science.1000001', '10.1126/science.1000002'])
+
+    def test_tail_unlabeled_dois_are_ignored(self):
+        from papers.extract import parse_dois
+        self.assertEqual(parse_dois('doi:10.1000/article', 'J. Geophys. Res. 108, 10.1029/2001jb000679'),
+                         ['10.1000/article'])
+
+    def test_tail_only(self):
+        from papers.extract import parse_dois
+        self.assertEqual(parse_dois('no doi here', SCIENCE_TAIL), ['10.1126/science.1000002'])
+
+
+class TestTitleCheck(unittest.TestCase):
+    """a DOI or fulltext result is accepted only if its title is in the text (crossref is mocked)"""
+
+    def _bibtex(self, doi, title):
+        return f"@article{{{doi},\n author = {{One, Author}},\n doi = {{{doi}}},\n title = {{{title}}},\n year = {{2009}}\n}}"
+
+    def test_previous_article_doi_is_rejected(self):
+        from unittest import mock
+        from papers.extract import extract_txt_metadata
+        titles = {'10.1126/science.1000001': 'A Semi-Empirical Approach to Projecting Future Sea-Level Rise',
+                  '10.1126/science.1000002': 'The Sea-Level Fingerprint of West Antarctic Collapse'}
+        with mock.patch('papers.extract.fetch_bibtex_by_doi', side_effect=lambda doi: self._bibtex(doi, titles[doi])):
+            bibtex = extract_txt_metadata(SCIENCE_HEAD, search_fulltext=False, tail=SCIENCE_TAIL)
+        self.assertIn('10.1126/science.1000002', bibtex)
+
+    def test_single_doi_with_another_title_is_rejected(self):
+        from unittest import mock
+        from papers.extract import extract_txt_metadata
+        with mock.patch('papers.extract.fetch_bibtex_by_doi', return_value=self._bibtex('10.1000/x', 'Some Other Paper Entirely')):
+            with self.assertLogs('papers', level='WARNING'):
+                with self.assertRaises(ValueError):
+                    extract_txt_metadata('doi:10.1000/x\nThe Real Title Of This Paper', search_fulltext=False)
+
+    def test_fulltext_result_with_another_title_is_rejected(self):
+        from unittest import mock
+        from papers.extract import extract_txt_metadata
+        fulltext = mock.Mock(return_value=self._bibtex('10.1126/sciadv.abf7787',
+            'Rapid postglacial rebound amplifies global sea level rise following West Antarctic Ice Sheet collapse'))
+        with mock.patch('papers.extract.fetch_bibtex_by_fulltext_crossref', fulltext):
+            with self.assertLogs('papers', level='WARNING'):
+                with self.assertRaises(ValueError):
+                    extract_txt_metadata('The Sea-Level Fingerprint of West Antarctic Collapse',
+                                         search_doi=True, search_fulltext=True)
+
+    def test_title_markup_and_accents_are_ignored(self):
+        from papers.extract import title_in_text
+        self.assertTrue(title_in_text('Ocean CO<sub>2</sub> uptake in the Weddell Sea', 'Ocean CO2 uptake\nin the Weddell Sea'))
+        self.assertTrue(title_in_text('Évolution du niveau de la mer', 'EVOLUTION DU NI-\nVEAU DE LA MER'))
+
+
+class TestExtractPdfMetadataFromPdfMetadata(unittest.TestCase):
+    """a DOI in the PDF metadata is used without parsing the text (crossref is mocked)"""
+
+    BIBTEX = "@article{x,\n author = {One, Author},\n doi = {10.1000/meta},\n title = {From Metadata},\n year = {2025}\n}"
+
+    def test_metadata_doi_skips_text(self):
+        from unittest import mock
+        from papers.extract import extract_pdf_metadata
+        with mock.patch('papers.extract.parse_doi_from_pdf_metadata', return_value='10.1000/meta'), \
+             mock.patch('papers.extract.fetch_bibtex_by_doi', return_value=self.BIBTEX) as fetch, \
+             mock.patch('papers.extract.pdfhead') as pdfhead:
+            bibtex = extract_pdf_metadata('paper.pdf')
+        self.assertIn('From Metadata', bibtex)
+        fetch.assert_called_once_with('10.1000/meta')
+        pdfhead.assert_not_called()
+
+    def test_unregistered_metadata_doi_falls_back_to_text(self):
+        from unittest import mock
+        from papers.extract import extract_pdf_metadata, DOIRequestError
+        def fetch(doi):
+            if doi == '10.1000/meta':
+                raise DOIRequestError(doi)
+            return self.BIBTEX
+        with mock.patch('papers.extract.parse_doi_from_pdf_metadata', return_value='10.1000/meta'), \
+             mock.patch('papers.extract.fetch_bibtex_by_doi', side_effect=fetch), \
+             mock.patch('papers.extract.pdfhead', return_value='doi:10.1000/from-text\nFrom Metadata'), \
+             mock.patch('papers.extract.pdftail', return_value=''):
+            with self.assertLogs('papers', level='WARNING'):
+                bibtex = extract_pdf_metadata('paper.pdf', search_fulltext=False)
+        self.assertIn('From Metadata', bibtex)

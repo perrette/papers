@@ -116,7 +116,11 @@ def readpdf_image(pdf, first=None, last=None):
     return txt
 
 # CrossRef DOI standard: /^10.\d{4,9}/[-._;()/:A-Z0-9]+$/i
-REGEXP = re.compile(r'[doi,doi.org/][\s\.\:]{0,2}(10\.\d{4,9}/[-._;()/:a-z0-9]+)')
+# any DOI not glued to a preceding word, number or dot (bare DOIs included:
+# Science and AGU print the article's DOI alone on a line)
+REGEXP = re.compile(r'(?<![\w.\-])(10\.\d{4,9}/[-._;()/:a-z0-9]+)')
+# DOI introduced by a "doi" label or a doi.org URL
+LABELED_REGEXP = re.compile(r'(?:doi:?\s*|doi\.org/)(10\.\d{4,9}/[-._;()/:a-z0-9]+)')
 ARXIV = re.compile(r'arxiv:\s*(\d{4}\.\d{4,5})')
 
 def _parse_doi_from_metadata_string(metadata):
@@ -180,9 +184,9 @@ def parse_doi_from_pdf_metadata(pdf_path):
         return parse_doi_from_pdf_metadata_poppler(pdf_path)
 
 # DOI prefixes of data repositories (Zenodo, Dryad, figshare, USGS, SEANOE,
-# PANGAEA): a data DOI cited in a paper (abstract, data availability
+# PANGAEA, NSIDC): a data DOI cited in a paper (abstract, data availability
 # statement) is not the paper's own DOI
-DATA_REPOSITORY_PREFIXES = ('10.5281', '10.5061', '10.6084', '10.5066', '10.17882', '10.1594')
+DATA_REPOSITORY_PREFIXES = ('10.5281', '10.5061', '10.6084', '10.5066', '10.17882', '10.1594', '10.5067')
 
 def is_data_repository_doi(doi):
     return doi.lower().split('/')[0] in DATA_REPOSITORY_PREFIXES
@@ -257,6 +261,8 @@ def _clean_doi(doi):
         # Publisher-specific paths
         '/-/dcsupplemental',
         '/-/dc',
+        # Springer prints "(0123456789().,-volV)" right after the DOI
+        '(0123456789',
         # Common file extension
         '.pdf',
         # Document status markers that clearly shouldn't be in DOI
@@ -304,12 +310,34 @@ def _clean_doi(doi):
     return doi
 
 
-def parse_dois(txt):
+def parse_dois(txt, tail=''):
     """Return the DOIs found in the text, the most likely article DOI first.
 
     DOIs of data repositories (see DATA_REPOSITORY_PREFIXES) come last when
     other DOIs are present: they are cited by the paper, not the paper's own.
+
+    tail is the end of the document (e.g. the cover page publishers append
+    to the PDF): its labeled DOIs ("doi:", doi.org URL) are added after the
+    DOIs of the text.
     """
+    tail_dois = []
+    for candidate in LABELED_REGEXP.findall(_normalize_doi_text(tail)):
+        try:
+            candidate = _clean_doi(candidate)
+        except DOIParsingError:
+            continue
+        if candidate not in tail_dois:
+            tail_dois.append(candidate)
+    try:
+        dois = _parse_dois(txt)
+    except DOIParsingError:
+        if not tail_dois:
+            raise
+        dois = []
+    return dois + [doi for doi in tail_dois if doi not in dois]
+
+
+def _parse_dois(txt):
     txt_lower = _normalize_doi_text(txt)
     matches = REGEXP.findall(txt_lower)
 
@@ -354,6 +382,19 @@ def isvaliddoi(doi):
     return doi.lower() == doi2.lower()
 
 
+def pdftail(pdf):
+    """text of the last page, if the pdf has more than one page
+    (publishers such as AAAS append a cover page with the DOI)"""
+    try:
+        import pymupdf
+    except ImportError:
+        return ''
+    with pymupdf.open(pdf) as document:
+        if len(document) < 2:
+            return ''
+        return document[-1].get_text()
+
+
 def pdfhead(pdf, maxpages=10, minwords=200, image=False):
     """
     read pdf header
@@ -371,13 +412,19 @@ def pdfhead(pdf, maxpages=10, minwords=200, image=False):
 
 
 def extract_pdf_doi(pdf, image=False):
-    # Try PDF metadata first (fast and reliable for many publishers)
+    """The article's DOI: from the PDF metadata if present (trusted as is),
+    otherwise the first DOI of the text whose title appears in the text
+    (one crossref request per candidate)"""
     metadata_doi = parse_doi_from_pdf_metadata(pdf)
     if metadata_doi:
         return metadata_doi
 
-    # Fall back to text extraction if metadata doesn't have DOI
-    return parse_doi(pdfhead(pdf, image=image))
+    txt = pdfhead(pdf, image=image)
+    tail = '' if image else pdftail(pdf)
+    confirmed = confirm_doi(parse_dois(txt, tail), txt)  # the title is on the first page(s)
+    if not confirmed:
+        raise DOIParsingError('no DOI found whose title appears in the text')
+    return confirmed[0]
 
 
 def query_text(txt, max_query_words=200):
@@ -402,16 +449,9 @@ def query_text(txt, max_query_words=200):
     return query_txt
 
 
-def _doi_stub(doi):
-    """a bare entry for a DOI without metadata (to complete later with `papers check --fetch`)"""
-    return '''@misc{{{doi},
-             doi = {{{doi}}},
-             url = {{http://dx.doi.org/{doi}}},
-            }}'''.format(doi=doi)
-
-
 def _normalize_for_match(s):
     from unidecode import unidecode
+    s = re.sub(r'<[^>]+>', '', s)  # markup in crossref titles, e.g. CO<sub>2</sub>
     return re.sub(r'[^a-z0-9]', '', unidecode(s).lower())
 
 
@@ -424,67 +464,65 @@ def title_in_text(title, txt):
     return title in _normalize_for_match(txt)
 
 
-def fetch_bibtex_by_doi_candidates(dois, txt):
-    """Fetch the metadata of the first candidate DOI that has some.
+def _bibtex_title(bibtex):
+    entries = parse_string(bibtex).entries
+    return get_entry_val(entries[0], 'title', '') if entries else ''
 
-    With several candidates, a DOI whose title appears in the text is
-    preferred; the first with metadata is used when none matches. Returns
-    None if no candidate has bibliographic metadata (title or author).
+
+def confirm_doi(dois, txt):
+    """The first candidate DOI whose title (from crossref) appears in the
+    text, as (doi, bibtex), or None.
+
+    A candidate is never accepted on faith: a DOI cited in the text, or the
+    DOI of the previous article printed on the same page, is a valid DOI of
+    another paper. DOIs without metadata or without title cannot be checked
+    and are skipped.
     """
-    fallback = None
     for doi in dois:
         try:
             bibtex = fetch_bibtex_by_doi(doi)
         except DOIRequestError as error:
-            logger.warning(f'{doi}: no metadata found ({error})')
+            logger.info(f'{doi}: no metadata found ({error})')
             continue
-        entries = parse_string(bibtex).entries
-        if not entries:
-            logger.warning(f'{doi}: no metadata found')
+        title = _bibtex_title(bibtex)
+        if not title:
+            logger.info(f'{doi}: metadata without title, skip')
             continue
-        title = get_entry_val(entries[0], 'title', '')
-        if not title and not get_entry_val(entries[0], 'author', ''):
-            logger.warning(f'{doi}: metadata without title or author, skip')
-            continue
-        if len(dois) == 1 or not title or title_in_text(title, txt):
-            return bibtex
+        if title_in_text(title, txt):
+            return doi, bibtex
         logger.info(f'{doi}: title not found in the text: {title}')
-        if fallback is None:
-            fallback = (doi, bibtex)
-    if fallback is not None:
-        doi, bibtex = fallback
-        logger.warning(f'{doi}: title not found in the text, use its metadata anyway')
-        return bibtex
     return None
 
 
-def extract_txt_metadata(txt, search_doi=True, search_fulltext=False, max_query_words=200, scholar=False):
+def extract_txt_metadata(txt, search_doi=True, search_fulltext=False, max_query_words=200, scholar=False, tail=''):
     """
     extract metadata from text, by parsing and doi-query, or by fulltext query in google scholar
+
+    The result is accepted only if its title appears in txt (not in the tail:
+    for most papers the last page is the reference list, where cited papers
+    have both their title and DOI). Raise ValueError otherwise.
     """
     assert search_doi or search_fulltext, 'no search criteria specified for metadata'
 
-    bibtex = None
     dois = []
 
     if search_doi:
         try:
             logger.debug('parse doi')
-            dois = parse_dois(txt)
+            dois = parse_dois(txt, tail)
             logger.info('found doi(s): ' + ', '.join(dois))
         except DOIParsingError as error:
             logger.debug('doi parsing error: '+str(error))
 
         if dois:
             logger.debug('query bibtex by doi')
-            bibtex = fetch_bibtex_by_doi_candidates(dois, txt)
-            if bibtex:
+            confirmed = confirm_doi(dois, txt)
+            if confirmed:
                 logger.debug('doi query successful')
-            elif not search_fulltext:
-                logger.warning(f'{dois[0]}: no metadata found, create a bare entry (doi only)')
-                return _doi_stub(dois[0])
+                return confirmed[1]
+            logger.warning('no DOI found whose title appears in the text: ' + ', '.join(dois))
 
-    if search_fulltext and not bibtex:
+    if search_fulltext:
         logger.debug('query bibtex by fulltext')
         try:
             query_txt = query_text(txt, max_query_words)
@@ -493,21 +531,30 @@ def extract_txt_metadata(txt, search_doi=True, search_fulltext=False, max_query_
             else:
                 bibtex = fetch_bibtex_by_fulltext_crossref(query_txt)
         except Exception as error:
-            if not dois:
-                raise
-            logger.warning(f'fulltext query failed ({error}): {dois[0]}: create a bare entry (doi only)')
-            return _doi_stub(dois[0])
-        logger.debug('fulltext query successful')
+            logger.warning(f'fulltext query failed: {error}')
+        else:
+            title = _bibtex_title(bibtex)
+            if title and title_in_text(title, txt):
+                logger.debug('fulltext query successful')
+                return bibtex
+            logger.warning(f'fulltext query: title not found in the text: {title[:100]}')
 
-    if not bibtex:
-        raise ValueError('failed to extract metadata')
-
-    return bibtex
+    raise ValueError('failed to extract metadata (pass the DOI explicitly with --doi)')
 
 
 def extract_pdf_metadata(pdf, search_doi=True, search_fulltext=True, maxpages=10, minwords=200, image=False, **kw):
+    # a DOI in the PDF metadata is the article's own: no need to parse the text
+    if search_doi:
+        doi = parse_doi_from_pdf_metadata(pdf)
+        if doi:
+            logger.info(f'found doi in pdf metadata: {doi}')
+            try:
+                return fetch_bibtex_by_doi(doi)
+            except DOIRequestError as error:
+                logger.warning(f'{doi}: no metadata found ({error}), search the text')
     txt = pdfhead(pdf, maxpages, minwords, image=image)
-    return extract_txt_metadata(txt, search_doi, search_fulltext, **kw)
+    tail = '' if image else pdftail(pdf)
+    return extract_txt_metadata(txt, search_doi, search_fulltext, tail=tail, **kw)
 
 @cached('crossref.json')
 def fetch_crossref_by_doi(doi):
