@@ -19,7 +19,7 @@ from papers.encoding import parse_file, format_file, family_names, format_entrie
 from papers.config import (bcolors, Config, search_config, CONFIG_FILE, CONFIG_FILE_LOCAL,
                            DATA_DIR, CONFIG_FILE_LEGACY, CONFIG_FILE_LEGACY_XDG)
 from papers.duplicate import list_duplicates, list_uniques, edit_entries, title_id
-from papers.entries import get_entry_val, entry_content_equal
+from papers.entries import get_entry_val, entry_content_equal, entry_from_dict
 from papers.bib import (Biblio, FUZZY_RATIO, DEFAULT_SIMILARITY, entry_filecheck,
                         backupfile as backupfile_func, isvalidkey, DuplicateKeyError, clean_filesdir,
                         are_duplicates, download_url, get_biblio, scan_dir_walk)
@@ -329,7 +329,7 @@ def addcmd(parser, o, config):
             metadata = edit_entries(metadata)
             o.edit = False
 
-        entries.extend( biblio.insert_entry(metadata, **kw) )
+        entries.extend( biblio.insert_entry(entry_from_dict(metadata), rename=o.rename, copy=o.copy, **kw) )
 
 
     # several PDFs: fetch their metadata concurrently first

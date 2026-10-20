@@ -625,3 +625,33 @@ class TestAddDuplicateKeepsExistingKey(BibTest):
         paperscmd(f'add {self.otherbib} --bibtex {self.mybib} -u -m a')
         bib = Biblio.load(self.mybib, '')
         self.assertEqual(sorted(e['ID'] for e in bib.entries), ['Perrette2013ESD', 'perrette_landerer2013'])
+
+
+class TestAddWithoutDoi(unittest.TestCase):
+    """an entry described on the command line (e.g. an old paper without DOI),
+    with its PDF attached"""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.mybib = os.path.join(self.tmp.name, 'papers.bib')
+        self.filesdir = os.path.join(self.tmp.name, 'files')
+        self.pdf = os.path.join(self.tmp.name, 'old paper.pdf')
+        open(self.mybib, 'w').write('')
+        open(self.pdf, 'w').write('not really a pdf')
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def test_add_metadata_and_attachment(self):
+        paperscmd(f'add --bibtex {self.mybib} --filesdir {self.filesdir} --rename '
+                  f'--title "Self-consistent equilibrium ocean tides" --author "Agnew, Duncan C. and Farrell, W. E." '
+                  f'--year 1978 --attachment "{self.pdf}"')
+        bib = Biblio.load(self.mybib, self.filesdir)
+        self.assertEqual(len(bib.entries), 1)
+        e = bib.entries[0]
+        self.assertEqual(e['title'], 'Self-consistent equilibrium ocean tides')
+        self.assertEqual(e['year'], '1978')
+        files = bib.get_files(e)
+        self.assertEqual(len(files), 1)
+        self.assertTrue(os.path.abspath(files[0]).startswith(self.filesdir))  # --rename moved it
+        self.assertFalse(os.path.exists(self.pdf))

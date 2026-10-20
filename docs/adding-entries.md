@@ -56,7 +56,14 @@ The metadata of a PDF are found as follows:
 3. otherwise, a crossref search on the text of the first pages, whose result
    is also accepted only if its title appears in the text.
 
-If none matches, the PDF is not added: pass its DOI with `--doi` (see below).
+If none matches, the PDF is not added: pass its DOI with `--doi` (see below),
+or, for a reference without DOI (older papers, books, reports...), describe it
+and attach the PDF:
+
+```
+papers add --title "Self-consistent equilibrium ocean tides" --author "Agnew, Duncan C. and Farrell, W. E." \
+    --year 1978 --journal "Geophysical Journal International" --attachment agnew1978.pdf --rename
+```
 
 ## Add an entry from its DOI
 
