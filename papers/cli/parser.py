@@ -1,0 +1,603 @@
+"""The command-line parser of papers"""
+import argparse
+import logging
+
+import papers.config
+from papers.config import SETTINGS
+from papers.duplicate import FUZZY_RATIO
+from papers.identifiers import ACCEPTED as ENTRY_IDS
+from papers.merge import ON_DUPLICATE
+from papers.utils import file_uri_to_path
+
+
+def get_parser(config=None):
+    if config is None:
+        config = papers.config.Config()
+
+    parser = argparse.ArgumentParser(prog='papers', description='library management tool')
+    parser.add_argument('--version', action='store_true', help='Print version string and exit.')
+    parser.add_argument('-C', metavar='DIR', dest='directory',
+        help='run as if papers was started in DIR (before the command name)')
+
+    subparsers = parser.add_subparsers(dest='cmd')
+
+    # entries named on the command line (see papers.identifiers)
+    _selection_help = (f'KEY: {ENTRY_IDS} (a former key in the ids field works too); '
+                       '- reads them from the standard input, one per line')
+
+    def _default(value):
+        "a configured value shown in a help text (argparse formats help with %)"
+        return str(value).replace('%', '%%')
+
+    # configuration (re-used everywhere)
+    # =============
+    loggingp = argparse.ArgumentParser(add_help=False)
+    grp = loggingp.add_argument_group('logging level (default warn)')
+    egrp = grp.add_mutually_exclusive_group()
+    egrp.add_argument('--debug', action='store_const', dest='logging_level', const=logging.DEBUG)
+    egrp.add_argument('--info', action='store_const', dest='logging_level', const=logging.INFO)
+    egrp.add_argument('--warn', action='store_const', dest='logging_level', const=logging.WARN)
+    egrp.add_argument('--error', action='store_const', dest='logging_level', const=logging.ERROR)
+
+    cfg = argparse.ArgumentParser(add_help=False, parents=[loggingp])
+    grp = cfg.add_argument_group('config')
+    grp.add_argument('--filesdir', default=None, type=file_uri_to_path,
+        help=f'files directory (default: {_default(config.filesdir)})')
+    grp.add_argument('--bibtex', default=None, type=file_uri_to_path,
+        help=f'bibtex database (default: {_default(config.bibtex)})')
+    grp.add_argument('--dry-run', action='store_true',
+        help='no PDF renaming/copying, no bibtex writing on disk (for testing)')
+    grp.add_argument('--relative-paths', action="store_false", dest="absolute_paths", default=None,
+        help='store file paths relative to the bibtex file (deprecated: `papers config paths relative`)')
+    grp.add_argument('--absolute-paths', action="store_true", default=None,
+        help='store absolute file paths (deprecated: `papers config paths absolute`)')
+    grp.add_argument('--no-git', action='store_false', dest='git', default=None, help="""Do not commit the current action, whatever happens""")
+
+    # the format options default to None: the configured values apply
+    keyfmt = argparse.ArgumentParser(add_help=False)
+    grp = keyfmt.add_argument_group('bibtex key format')
+    grp.add_argument('--key-template',
+        help=f'''python template for generating keys (default: {_default(config.keyformat.template)}).
+        The template applies to entries generated from a PDF or a DOI;
+        entries added from a bibtex file keep their original key unless
+        -u/--update-key is passed.''')
+    grp.add_argument('--key-author-num', type=int,
+        help=f'number of authors to include in key (default: {config.keyformat.author_num})')
+    grp.add_argument('--key-author-sep',
+        help=f'separator for authors in key (default: {_default(config.keyformat.author_sep)})')
+    grp.add_argument('--key-title-word-num', type=int,
+        help=f'number of title words to include in key (default: {config.keyformat.title_word_num})')
+    grp.add_argument('--key-title-word-size', type=int,
+        help=f'min size of title words to include in key (default: {config.keyformat.title_word_size})')
+    grp.add_argument('--key-title-sep',
+        help=f'separator for title words in key (default: {_default(config.keyformat.title_sep)})')
+
+    namefmt = argparse.ArgumentParser(add_help=False)
+    grp = namefmt.add_argument_group('filename format')
+    grp.add_argument('--name-template',
+        help=f'python template for renaming files (default: {_default(config.nameformat.template)})')
+    grp.add_argument('--name-author-num', type=int,
+        help=f'number of authors to include in filename (default: {config.nameformat.author_num})')
+    grp.add_argument('--name-author-sep',
+        help=f'separator for authors in filename (default: {_default(config.nameformat.author_sep)})')
+    grp.add_argument('--name-title-word-num', type=int,
+        help=f'number of title words to include in filename (default: {config.nameformat.title_word_num})')
+    grp.add_argument('--name-title-word-size', type=int,
+        help=f'min size of title words to include in filename (default: {config.nameformat.title_word_size})')
+    grp.add_argument('--name-title-length', type=int,
+        help=f'title length to include in filename (default: {config.nameformat.title_length})')
+    grp.add_argument('--name-title-sep',
+        help=f'separator for title words in filename (default: {_default(config.nameformat.title_sep)})')
+
+
+    # status
+    # ======
+    statusp = subparsers.add_parser('status',
+        description='show the library, its pools and its settings',
+        parents=[cfg])
+    statusp.add_argument('--no-check-files', action='store_true', help='faster, less info')
+    statusp.add_argument('-v','--verbose', action='store_true', help='also show where each setting comes from')
+
+    # init
+    # ====
+    initp = subparsers.add_parser('init', description='create a library in the current directory, '
+        'or in DIR (created if missing)',
+        parents=[loggingp, namefmt, keyfmt])
+    initp.add_argument('dir', nargs='?', metavar='DIR',
+        help='directory of the library (default: the current directory); --bibtex and '
+             '--filesdir are relative to it')
+    initp.add_argument('--bibtex', type=file_uri_to_path,
+        help='bibtex file (default: papers.bib, or the first .bib file of the directory)')
+    initp.add_argument('--filesdir', type=file_uri_to_path,
+        help='files directory (default: files, or an existing pdfs/, papers/... folder)')
+    initp.add_argument('--pool', nargs='+', action='extend', metavar='NAME|PATH',
+        help='pools of the library: names of the per-machine configuration, or paths '
+             '(containing a /, relative to the library) (default: default)')
+    initp.add_argument('--paths', choices=['relative', 'absolute'],
+        help='file links in the bibtex relative to the bibtex directory, or absolute '
+             f'(default: {config.inherited("paths")})')
+    initp.add_argument('--git', action='store_true', default=None,
+        help='back up the bibtex with git (default: true when git is installed)')
+    initp.add_argument('--no-git', action='store_false', dest='git', default=None, help='no git backup')
+    initp.add_argument('--git-lfs', action='store_true', default=None, help='also back up the files with git-lfs (implies --git)')
+    initp.add_argument('--editor', help='command to open a text editor; it must wait until the editor is closed, e.g. vim or "subl -w"')
+    initp.add_argument('--light', action='store_true',
+        help='a light library: its file links point to the files of its first pool (see `papers migrate --light`)')
+    initp.add_argument('--no-check-files', action='store_true', help=argparse.SUPPRESS)
+
+    # config
+    # ======
+    configp = subparsers.add_parser('config', parents=[loggingp],
+        description='get or set the settings of the library (git style): without KEY, list the '
+                    'settings and where each comes from (library, machine or default); with KEY, '
+                    'print its value; with KEY VALUE..., set it in the library configuration',
+        epilog='settings: ' + ', '.join(SETTINGS) + '; with --machine, also pools.NAME (path of a pool)')
+    configp.add_argument('key', nargs='?', metavar='KEY')
+    configp.add_argument('values', nargs='*', metavar='VALUE', help='several values for pools')
+    configp.add_argument('--unset', metavar='KEY', help='remove the setting: the per-machine or default value applies again')
+    configp.add_argument('--machine', '--global', action='store_true',
+        help=f'the per-machine configuration ({papers.config.MACHINE_CONFIG_FILE}) instead of the library\'s')
+    configp.add_argument('--dry-run', action='store_true', help='do not save')
+
+    # migrate
+    # =======
+    migratep = subparsers.add_parser('migrate', parents=[cfg],
+        description='one-time upgrades from papers v2. Without option: turn the global configuration '
+                    'of v2 into a library configuration next to its bibtex, and register its directory '
+                    'as the default pool.')
+    migratep.add_argument('--relative', action='store_true',
+        help='store the file links of the migrated library relative to its bibtex '
+             '(default: keep the previous setting)')
+    migratep.add_argument('--folders', action='store_true',
+        help='move the files of entries kept in folders of papers < 2.19 (<name>/ with a hidden '
+             '.<name>.bib) to the flat layout of the files directory')
+    migratep.add_argument('--light', action='store_true',
+        help='make the library light: each file that the first pool has for the same paper (same content) '
+             'is replaced by a link to the pool\'s file, and the library\'s copy in its files directory is '
+             'deleted. Files that are not in the pool are kept and listed (push them first).')
+    migratep.add_argument('--full', action='store_true',
+        help='make the library full again: copy (a hard link when possible) the pool files it links to '
+             'into its files directory, named with its name template')
+
+    # install
+    # =======
+
+    installp = subparsers.add_parser('install', description='deprecated alias of `papers init`; on an existing library, '
+        'updates it (deprecated: use `papers config`)',
+        parents=[cfg, namefmt, keyfmt])
+    installp.add_argument('--edit', action='store_true',
+        help=f'update existing install non-interactively (updating is the default; --edit also suppresses prompts) (found: {config.file})')
+    installp.add_argument('--reset', action='store_true',
+        help='discard the pre-existing configuration and start over from defaults (default: update it)')
+    installp.add_argument('--no-prompt', '--force', action='store_false', dest="prompt",
+        help='non-interactive: accept defaults without asking')
+
+    installp.add_argument('--local', action="store_true", default=None,
+        help="""ignored (a library configuration is always local)""")
+    installp.add_argument('--global', action="store_false", dest='local', default=None,
+        help="deprecated: create or update the library configuration next to the bibtex, and register "
+             "its directory as the default pool (used outside of any library)")
+
+    installp.add_argument('--git', '--backup', action='store_true', default=None, help="""Track bibtex files with git.""")
+    installp.add_argument('--git-lfs', '--backup-files', action='store_true', default=None, help="""Backup files with git-lfs (implies --git)""")
+    installp.add_argument('--gitdir', default=None, help=argparse.SUPPRESS)
+    installp.add_argument('--editor', help="""Set command to open text editor. Need to wait until closing ! E.g. vim or subl -w""")
+    installp.add_argument('--pool', nargs='+', action='extend', metavar='NAME|PATH', help=argparse.SUPPRESS)
+
+    grp = installp.add_argument_group('status')
+    grp.add_argument('--no-check-files', action='store_true', help='faster, less info')
+
+
+    # uninstall
+    # =======
+    uninstallp = subparsers.add_parser('uninstall', description='remove the library configuration',
+        parents=[loggingp])
+    uninstallp.add_argument("--recursive", action="store_true", help="deprecated: also remove the library configurations found in the parent directories, and the global configuration of papers v2 (config files only)")
+    uninstallp.add_argument("--remove-backup", action="store_true", help="also remove the backup directory of the uninstalled configuration(s)")
+
+
+    # add
+    # ===
+    addp = subparsers.add_parser('add', description='add PDF(s) or bibtex(s) to library',
+        parents=[cfg, namefmt, keyfmt])
+    addp.add_argument('file', nargs='*', default=[], type=file_uri_to_path)
+
+    grp = addp.add_argument_group('duplicate check',
+        description='''An added entry is the same paper as a library entry when they have
+        the same DOI, arXiv id, ISBN (two books), or else the same authors and title.
+        The library entry keeps its key; fields only in the added entry are added and
+        the file links are merged. An entry that brings nothing new is not asked about.''')
+    grp.add_argument('--on-duplicate', choices=ON_DUPLICATE,
+        help='''what to do when the added entry is in the library, with conflicting
+        values or fields to add: ask (dialogue; the default in a terminal), keep (merge,
+        conflicts keep the library value), update (merge, conflicts take the added value),
+        skip (leave the library entry untouched, do not add), error (stop before saving;
+        the default without a terminal)''')
+    grp.add_argument('--no-check-duplicate', action='store_true',
+        help='disable duplicate check (faster, create duplicates)')
+    grp.add_argument('--no-pool', action='store_true',
+        help='''do not look in the pools first (by default, a PDF, DOI or bibtex entry that is
+        the same paper as a pool entry is taken from the pool, with its files, without fetching)''')
+    grp.add_argument('--no-merge-files', action='store_true',
+        help='deprecated and ignored: file links are always merged')
+    grp.add_argument('-u', '--update-key', action='store_true',
+        help='''regenerate the key of the entries new to the library from the key template
+        (see "bibtex key format" options). A duplicate always keeps the key of the library.''')
+    grp.add_argument('-m', '--mode', choices=['u', 'U', 'o', 's', 'r', 'i', 'a'],
+        help='''deprecated: use --on-duplicate (i: ask, u: keep, U and o: update, s: skip,
+        r: error, a: --no-check-duplicate)''')
+
+    grp = addp.add_argument_group('directory scan')
+    grp.add_argument('--recursive', action='store_true',
+        help='accept directory as argument, for recursive scan \
+        of .pdf and .bib files; files named <name>--<label>.<ext> next to <name>.pdf \
+        are added as attachments of its entry')
+    grp.add_argument('--ignore-errors', action='store_true',
+        help='ignore errors when adding multiple files')
+
+    grp = addp.add_argument_group('metadata')
+    grp.add_argument('--doi', help='provide DOI -- skip parsing PDF')
+    grp.add_argument('--key', help='manually set the key')
+    grp.add_argument('--type', help='document type')
+    grp.add_argument('--title', help='manually set the title')
+    grp.add_argument('--author', help='manually set the author')
+    grp.add_argument('--journal', help='manually set the journal')
+    grp.add_argument('--year', help='manually set the year')
+    grp.add_argument('--metadata', nargs="+", metavar="KEY=VALUE", type=lambda meta: meta.split('=', 1), help='the metadata fields manually')
+    grp.add_argument('--no-query-doi', action='store_true', help='do not attempt to parse and query doi')
+    grp.add_argument('--no-query-fulltext', action='store_true', help='do not attempt to query fulltext in case doi query fails')
+    grp.add_argument('--scholar', action='store_true', help='use google scholar instead of crossref')
+
+    grp = addp.add_argument_group('files',
+        description=f'''What happens to the added PDF, the files of an added bibtex, and the
+        attached files, is the `files` setting of the library (found: {config.files}):
+        move: place them in the files directory, under a name made from the name
+        template, and remove the original; copy: place them there, and keep the original
+        (a hard link when possible, otherwise a copy); link: leave them where they are,
+        the entry links to them there. A file that belongs to another library (inside
+        its files directory) is never moved: it is copied instead.''')
+    grp.add_argument('--attach', nargs='+', type=file_uri_to_path, dest='attachment', metavar='FILE',
+        help='attach these files to the entry (e.g. supplementary material)')
+    grp.add_argument('--attachment', nargs='+', type=file_uri_to_path, dest='attachment_deprecated',
+        help='deprecated: use --attach')
+    grp.add_argument('--move', action='store_true', help='files mode move, whatever the setting')
+    grp.add_argument('-r','--rename', action='store_true', help='same as --move')
+    grp.add_argument('-c','--copy', action='store_true', help='files mode copy, whatever the setting')
+    grp.add_argument('--link', action='store_true', help='files mode link, whatever the setting')
+
+    grp = addp.add_argument_group('actions')
+    grp.add_argument('-e', '--edit', action='store_true', help='edit entry')
+    grp.add_argument('-o', '--open', action='store_true', help='open files')
+
+    # check
+    # =====
+    checkp = subparsers.add_parser('check', description='check and fix entries',
+        parents=[cfg, keyfmt])
+    checkp.add_argument('entries', nargs='*', metavar='KEY',
+        help='check these entries only (default: all): ' + _selection_help)
+    checkp.add_argument('-k', '--keys', nargs='+', help='apply check on this key subset (same as the KEY arguments)')
+    checkp.add_argument('-f','--force', action='store_true', help='do not ask')
+
+    grp = checkp.add_argument_group('entry key')
+    grp.add_argument('--fix-key', action='store_true', help='fix key based on author name and date (in case missing or digit)')
+    grp.add_argument('--key-ascii', action='store_true', help='replace keys unicode character with ascii')
+    grp.add_argument('--auto-key', action='store_true', help='new, auto-generated key for all entries')
+
+    grp = checkp.add_argument_group('crossref fetch and fix')
+    grp.add_argument('--fix-doi', action='store_true', help='fix doi for some common issues (e.g. DOI: inside doi, .received at the end')
+    grp.add_argument('--fetch', action='store_true', help='fetch metadata from doi and update entry')
+    grp.add_argument('--fetch-all', action='store_true', help='fetch metadata from title and author field and update entry (only when doi is missing)')
+
+    grp = checkp.add_argument_group('names')
+    grp.add_argument('--format-name', action='store_true', help='author name as family, given, without brackets')
+    grp.add_argument('--encoding', choices=['latex','unicode'], help='bibtex field encoding')
+
+    grp = checkp.add_argument_group('duplicates')
+    grp.add_argument('--duplicates',action='store_true',
+        help='''merge the entries that are the same paper (same DOI, arXiv id, ISBN of two books,
+        or else same authors and title). The entry with most fields is entry 1, the
+        target: it keeps its key, and the keys of the others go to its ids field.''')
+    grp.add_argument('--on-duplicate', choices=[m for m in ON_DUPLICATE if m != 'update'],
+        help='''what to do with each group: ask (dialogue; the default in a terminal),
+        keep (merge, conflicts keep the value of entry 1), skip (leave the group),
+        error (exit with status 1 if there is any group; the default without a terminal,
+        and skip with --force)''')
+    grp.add_argument('-m', '--mode', choices=list('ims'), help='deprecated: use --on-duplicate (i: ask, m: keep, s: skip)')
+
+
+    # file
+    # ====
+    filep = subparsers.add_parser('file', description='the files of the entries: rename, move, attach, '
+        'detach, check them, and clean the files directory')
+    filesub = filep.add_subparsers(dest='file_cmd', metavar='{rename,mv,attach,detach,check,clean}')
+    filep.subcommands = filesub.choices
+
+    p = filesub.add_parser('rename', parents=[cfg, namefmt],
+        help='place the files in the files directory under their template name',
+        description='place the files of the entries (all entries without KEY) in the files directory, '
+                    'under the name made from the name template. A file that belongs to another library '
+                    '(inside its files directory) is copied, not moved.')
+    p.add_argument('entries', nargs='*', metavar='KEY', help=_selection_help)
+    p.add_argument('--keep-source', action='store_true',
+        help='keep the files where they are too (a hard link when possible, otherwise a copy)')
+
+    p = filesub.add_parser('mv', parents=[cfg],
+        help='move files or folders, and update the links of the entries',
+        description='move files or folders like mv, with the rules of git mv, and update the links of the '
+                    'entries to the moved files: a source file must be linked from an entry; a source folder '
+                    'must contain a linked file, and moves as a whole; with several sources, DEST must be an '
+                    'existing folder; an existing DEST file is an error unless -f. Moving the files directory '
+                    'also updates the filesdir setting. Nothing moves if a check fails.')
+    p.add_argument('paths', nargs='+', metavar='SRC... DEST', type=file_uri_to_path)
+    p.add_argument('-f', '--force', action='store_true', help='replace an existing destination file')
+    p.add_argument('-n', action='store_true', dest='dry_run', help='show the moves and the links that change (same as --dry-run)')
+
+    p = filesub.add_parser('attach', parents=[cfg, namefmt],
+        help='attach files to an entry',
+        description='attach files to an existing entry. What happens to the files is the files setting '
+                    f'(found: {config.files}), as for `papers add`; the files the entry had are left as they are.')
+    p.add_argument('key', metavar='KEY', help=f'{ENTRY_IDS} of the entry')
+    p.add_argument('files', nargs='+', metavar='FILE', type=file_uri_to_path, help='files or URLs')
+    p.add_argument('--move', action='store_true', help='files mode move, whatever the setting')
+    p.add_argument('--copy', action='store_true', help='files mode copy, whatever the setting')
+    p.add_argument('--link', action='store_true', help='files mode link, whatever the setting')
+
+    p = filesub.add_parser('detach', parents=[cfg],
+        help='remove file links from an entry',
+        description='remove the links to FILE (all its files without FILE) from the entry KEY. '
+                    'The files are kept, unless --delete-files.')
+    p.add_argument('args', nargs='*', metavar='KEY [FILE...]', type=file_uri_to_path,
+        help=f'KEY: {ENTRY_IDS} of the entry; with --broken: KEY... (all entries without KEY)')
+    p.add_argument('--broken', action='store_true', help='remove the broken links only')
+    p.add_argument('--delete-files', action='store_true',
+        help='also delete the detached files that no other entry links to')
+
+    p = filesub.add_parser('check', parents=[cfg],
+        help='report broken links, identical files, DOI mismatches',
+        description='report broken links, links that can be repaired (paths saved by Mendeley), files linked '
+                    'twice and identical files (same checksum) of an entry, and with --metadata a DOI of the PDF '
+                    'that differs from the entry\'s. Nothing changes without --fix.')
+    p.add_argument('entries', nargs='*', metavar='KEY', help=_selection_help + ' (default: all entries)')
+    p.add_argument('--metadata', action='store_true', help='also compare the DOI of the PDFs with the entry (parses the PDFs)')
+    p.add_argument('--fix', action='store_true',
+        help='apply the safe repairs: repair the paths, remove the second link of a file linked twice or of '
+             'identical files (the files are kept)')
+
+    p = filesub.add_parser('clean', parents=[cfg],
+        help='remove the files of the files directory that no entry links to',
+        description='remove the files of the files directory (and its subfolders) that no entry links to, '
+                    'asking for each one. Hidden files and folders, and .bib files, are skipped.')
+    p.add_argument('-y', '--yes', action='store_true', help='do not ask')
+
+    # filecheck
+    # =====
+    filecheckp = subparsers.add_parser('filecheck', description='deprecated: use the subcommands of `papers file`',
+        parents=[cfg, namefmt])
+
+    # action on files
+    filecheckp.add_argument('-r','--rename', action='store_true',
+        help='rename files')
+    filecheckp.add_argument('-c','--copy', action='store_true',
+        help='in combination with --rename, keep a copy of the file in its original location')
+
+    # various metadata and duplicate checks
+    filecheckp.add_argument('--metadata-check', action='store_true',
+        help='parse pdf metadata and check against metadata (currently doi only)')
+
+    filecheckp.add_argument('--hash-check', action='store_true',
+        help='check file hash sum to remove any duplicates')
+
+    filecheckp.add_argument('-d', '--delete-broken', action='store_true',
+        help='remove file entry if the file link is broken')
+
+    filecheckp.add_argument('--clean-filesdir', action='store_true',
+        help='remove files in filesdir if not referred to in any entry')
+
+    filecheckp.add_argument('--fix-mendeley', action='store_true',
+        help='fix a Mendeley bug where the leading "/" is omitted.')
+
+    filecheckp.add_argument('--force', action='store_true', help='no interactive prompt, strictly follow options')
+
+    # list
+    # ======
+    listp = subparsers.add_parser('list', description='list (a subset of) entries in the existing bib file',
+        parents=[cfg])
+
+    listp.add_argument('fullsearch', nargs='*', help='''Search field. Usually no quotes required. See keywords to search specific fields. All words must find a match, unless --any is passed.''')
+
+    mgrp = listp.add_mutually_exclusive_group()
+    mgrp.add_argument('--strict', action='store_true', help='exact matching - instead of substring')
+    mgrp.add_argument('--fuzzy', action='store_true', help='fuzzy matching - instead of substring')
+    listp.add_argument('--fuzzy-ratio', type=int,
+        help=f'threshold for fuzzy matching of title, author, abstract (default: 50), '
+             f'and of authors and title with --duplicates --fuzzy (default: {FUZZY_RATIO})')
+    listp.add_argument('--similarity', help='deprecated and ignored')
+    listp.add_argument('--invert', action='store_true', help='list the entries that do not match')
+    listp.add_argument('--any', action='store_true', help='when several keywords: any of them')
+
+    grp = listp.add_argument_group('search')
+    grp.add_argument('-a','--author', nargs='+', help='any of the authors')
+    grp.add_argument('--first-author', nargs='+', help='family name of the first author')
+    grp.add_argument('-y','--year', nargs='+', help='year')
+    grp.add_argument('-t','--title', help='title', nargs="+")
+    grp.add_argument('--abstract', help='abstract', nargs="+")
+    grp.add_argument('-k', '--key', '--id', nargs='+', help='entry key')
+    grp.add_argument('--doi', nargs='+', help='DOI')
+    grp.add_argument('--keywords', '--tag', nargs='+', help='keywords (tags)')
+
+
+    grp = listp.add_argument_group('check')
+    grp.add_argument('--duplicates-key', action='store_true', help='deprecated: --duplicates')
+    grp.add_argument('--duplicates-doi', action='store_true', help='deprecated: --duplicates')
+    grp.add_argument('--duplicates-tit', action='store_true', help='deprecated: --duplicates')
+    grp.add_argument('--duplicates', action='store_true',
+        help='''entries that are the same paper, as `papers check --duplicates` finds them, and
+        the entries it would ask about; with --fuzzy, also the entries with similar
+        authors and title (see --fuzzy-ratio)''')
+    grp.add_argument('--has-file', action='store_true', help='entries with at least one file')
+    grp.add_argument('--no-file', action='store_true', help='entries without file')
+    grp.add_argument('--broken-file', action='store_true', help='entries with a file link to a missing file')
+    grp.add_argument('--review-required', action='store_true', help='suspicious entry (invalid dois, missing field etc.)')
+
+    grp = listp.add_argument_group('formatting')
+    mgrp = grp.add_mutually_exclusive_group()
+    mgrp.add_argument('--plain', action='store_false', dest="one_liner", help='print in bibtex format')
+    mgrp.add_argument('-l', '-1', '--one-liner', action='store_true', help='one liner')
+    mgrp.add_argument('-K', '--key-only', action='store_true',
+        help='print the keys only, one per line (to pipe into commands that take -, e.g. `papers file rename -`)')
+    mgrp.add_argument('-f', '--field', nargs='+', help='specific field(s) only')
+    grp.add_argument('--no-key', action='store_true', help='do not print the keys')
+
+    grp = listp.add_argument_group('action on listed results',
+        description='shortcuts of `papers edit`, `papers rm` and `papers tag`; the other commands that act '
+                    'on entries read the keys of `papers list -K` with -, e.g. `papers list smith -K | papers file rename -`')
+    grp.add_argument('--delete', action='store_true',
+        help='remove the listed entries, as `papers rm` (asks whether to delete their files, in a terminal)')
+    grp.add_argument('--delete-files', action='store_true', help='with --delete: also delete their files, as `papers rm --delete-files`')
+    grp.add_argument('--keep-files', action='store_true', help='with --delete: keep their files, without asking')
+    grp.add_argument('-e', '--edit', action='store_true', help='edit the listed entries in a text editor, as `papers edit`')
+    grp.add_argument('--fetch', action='store_true', help='deprecated: `papers check --fetch -`')
+    grp.add_argument('--add-keywords', '--add-tag', nargs='+', help='add keywords (tags) to the listed entries, as `papers tag --add`')
+    grp.add_argument('--add-files', nargs='+', type=file_uri_to_path, help='deprecated: `papers file attach KEY FILE...`')
+    grp.add_argument('--rename', action='store_true', help='deprecated: `papers file rename -`')
+    grp.add_argument('--copy', action='store_true', help='deprecated: `papers file rename --keep-source -`')
+    grp.add_argument('-o', '--open', action='store_true', help='deprecated: `papers open -`')
+
+    # edit, rm, tag
+    # =============
+    editp = subparsers.add_parser('edit', parents=[cfg],
+        description='edit entries in a text editor (the editor setting, or $EDITOR)')
+    editp.add_argument('entries', nargs='+', metavar='KEY',
+        help=_selection_help)
+
+    rmp = subparsers.add_parser('rm', parents=[cfg],
+        description='remove entries. Their files that no other entry links to may be deleted too: in a '
+                    'terminal, papers asks for those in the files directory; without a terminal, they are kept. '
+                    'Files outside the files directory are only deleted with --delete-files.')
+    rmp.add_argument('entries', nargs='+', metavar='KEY',
+        help=_selection_help)
+    rmp.add_argument('--delete-files', action='store_true',
+        help='also delete the files of the entries that no other entry links to, without asking '
+             '(also those outside the files directory)')
+    rmp.add_argument('--keep-files', action='store_true', help='keep the files, without asking')
+
+    tagp = subparsers.add_parser('tag', parents=[cfg],
+        description='tags are the keywords field of the entries (comma-separated). Without option, list '
+                    'the tags of the library (or of the entries KEY...) with the number of entries.')
+    tagp.add_argument('entries', nargs='*', metavar='KEY',
+        help=_selection_help)
+    tagp.add_argument('--add', nargs='+', metavar='TAG', help='add tags to the entries')
+    tagp.add_argument('--rm', nargs='+', metavar='TAG', help='remove tags from the entries')
+    tagp.add_argument('--rename', nargs=2, metavar=('OLD', 'NEW'), help='rename a tag in the whole library')
+
+    # pull, push, export, pool
+    # ========================
+    _exchange_help = '''what to do with an entry changed on both
+        sides since the last pull or push: ask (dialogue; the default in a terminal), keep (the
+        {receiving} values are kept), update (the {incoming} values are taken), skip (the entry is
+        left as it is, and comes again next time), error (stop before saving; the default
+        without a terminal). Fields changed on one side only need no decision.'''
+    pullp = subparsers.add_parser('pull', parents=[cfg],
+        description='''update the entries of the library from their pool entries (three-way merge
+        with the origin copy of the entry, .papers/origin.bib): a field changed in the pool only is
+        taken, a field changed in the library only is kept, a field changed on both sides is a
+        conflict. Entries without origin copy are matched to the pools by the same-paper rule.
+        The keys of the library never change. New pool files are copied (or linked) as the files
+        setting says; a light library links to them.''')
+    pullp.add_argument('entries', nargs='*', metavar='KEY', help=_selection_help + ' (default: all entries)')
+    pullp.add_argument('--on-duplicate', choices=ON_DUPLICATE,
+        help=_exchange_help.format(receiving='library', incoming='pool'))
+    pullp.add_argument('--check', action='store_true',
+        help='only report: the pools that changed since the last pull, and the entries changed in the pools')
+    pullp.set_defaults(mode=None, force=False)
+
+    pushp = subparsers.add_parser('push', parents=[cfg],
+        description='''add the entries of the library to the first pool, or merge their changes
+        into the pool entries (three-way merge with the origin copy, as pull does in the other
+        direction). Entries new to the pool get a key from the pool's key template; their files
+        are copied (a hard link when possible) into the pool's files directory, named with the
+        pool's name template. The default pool is created if it does not exist.''')
+    pushp.add_argument('entries', nargs='*', metavar='KEY', help=_selection_help + ' (default: all entries)')
+    pushp.add_argument('--pool', metavar='NAME|PATH', help='push to this pool (default: the first pool of the library)')
+    pushp.add_argument('--on-duplicate', choices=ON_DUPLICATE,
+        help=_exchange_help.format(receiving='pool', incoming='library'))
+    pushp.set_defaults(mode=None, force=False)
+
+    exportp = subparsers.add_parser('export', parents=[cfg],
+        description='''write entries as a new library in DIR: bibtex, files, configuration, with
+        file links relative to the bibtex. `papers add DIR --recursive` adds it back.''')
+    exportp.add_argument('dir', metavar='DIR', help='directory of the new library (must not exist, or be empty)')
+    exportp.add_argument('entries', nargs='*', metavar='KEY', help=_selection_help + ' (default: all entries)')
+    exportp.add_argument('--files', choices=['copy', 'link', 'none'], default='copy',
+        help='copy the files into DIR/files (a hard link when possible; default), link to them where '
+             'they are, or leave the file links out')
+    exportp.add_argument('--pool', action='store_true', help='also add DIR to the pools of the library')
+
+    poolp = subparsers.add_parser('pool', parents=[loggingp],
+        description='the pools of the per-machine configuration (the same as `papers config --machine '
+                    'pools.NAME PATH`). Without subcommand: list them, and the pools of the library.')
+    poolsub = poolp.add_subparsers(dest='pool_cmd')
+    poolsub.add_parser('list', parents=[loggingp], help='list the pools of the machine and of the library')
+    p = poolsub.add_parser('add', parents=[loggingp], help='name a pool of this machine')
+    p.add_argument('name', metavar='NAME')
+    p.add_argument('path', metavar='PATH')
+    p.add_argument('--dry-run', action='store_true', help='do not save')
+    p = poolsub.add_parser('remove', parents=[loggingp], help='remove a pool name of this machine (not the library)')
+    p.add_argument('name', metavar='NAME')
+    p.add_argument('--dry-run', action='store_true', help='do not save')
+
+    # open
+    # ====
+    openp = subparsers.add_parser('open', description='open entry attachments or files with the system viewer', parents=[cfg])
+    openp.add_argument('key', nargs='+', type=file_uri_to_path, help='entries (' + _selection_help + '), or existing file path(s) to open directly')
+
+    # doi
+    # ===
+    doip = subparsers.add_parser('doi', description='parse DOI from PDF', parents=[loggingp])
+    doip.add_argument('pdf', type=file_uri_to_path)
+    doip.add_argument('--image', action='store_true', help='convert to image and use tesseract instead of pdftotext')
+
+    # fetch
+    # =====
+    fetchp = subparsers.add_parser('fetch', description='fetch bibtex from DOI or full-text', parents=[loggingp])
+    fetchp.add_argument('doi_or_text', nargs='+', help='DOI or full text.')
+    fetchp.add_argument('--scholar', action='store_true', help='use google scholar instead of default crossref for fulltext search')
+
+    # extract
+    # ========
+    extractp = subparsers.add_parser('extract', description='extract pdf metadata', parents=[loggingp])
+    extractp.add_argument('pdf', nargs='+', type=file_uri_to_path, help='one or several PDF files')
+    extractp.add_argument('--recursive', action='store_true', help='accept directories and scan them for PDF files')
+    extractp.add_argument('-n', '--word-count', type=int, default=200)
+    extractp.add_argument('--fulltext', action='store_true', help='fulltext only (otherwise DOI-based)')
+    extractp.add_argument('--scholar', action='store_true', help='use google scholar instead of default crossref for fulltext search')
+    extractp.add_argument('--image', action='store_true', help='convert to image and use tesseract instead of pdftotext')
+
+    # undo
+    # ====
+    _restorep = argparse.ArgumentParser(add_help=False)
+    _restorep.add_argument('--restore-files', action='store_true', help='Use this option to restore files that have been renamed. By default the file link points to the back-up repository. This command has no effect without --git-lfs, and will result in broken file links.')
+
+    _stepsp = argparse.ArgumentParser(add_help=False)
+    _stepsp.add_argument('-n', '--steps', type=int, default=1, help='number of times undo/redo should be performed')
+
+    subparsers.add_parser('undo', parents=[cfg, _restorep, _stepsp], help='Undo changes on bibtex (if --git is not enabled, only back and forth with last modification). If --git-lfs is enabled, the file entry may differ if it does not exist on disk any more, unless --restore-files was passed.')
+    subparsers.add_parser('redo', parents=[cfg, _restorep, _stepsp], help='Redo changes on bibtex (if --git is not enabled, this has the same effect as papers undo)')
+    restorep = subparsers.add_parser('restore-backup', parents=[cfg, _restorep], help='Restore bibtex from backup. Also restore files if --restore-files if passed (--git-lfs only).')
+    restorep.add_argument('--ref', help='Optional: restore specific commit (execute `papers git whatchanged` to obtain appropriate reference)')
+
+    # git
+    # ===
+    gitp = subparsers.add_parser('git', description='git subcommand')
+    gitp.add_argument('gitargs', nargs=argparse.REMAINDER)
+
+    # backup
+    # ======
+    backupp = subparsers.add_parser('backup', description='manage backup directories', parents=[loggingp])
+    backupp.add_argument('action', nargs='?', choices=['list', 'remove'], default='list',
+        help='list (default) known backup directories and the library each belongs to, or remove them')
+    backupp.add_argument('patterns', nargs='*', metavar='name',
+        help='directory name(s), glob patterns allowed (filter for list, required for remove)')
+    backupp.add_argument('-f', '--force', action='store_true', help='remove without confirmation')
+
+    return parser, subparsers

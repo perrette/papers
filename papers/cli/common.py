@@ -1,0 +1,253 @@
+"""Helpers shared by the commands: the library of the command line
+(check_install), the format and files options, the duplicate resolver,
+entry selection and the report of the changes."""
+import os
+import sys
+
+import papers.config
+from papers import logger
+from papers.config import SETTINGS, is_pool_path, short_home
+from papers.duplicate import edit_entries
+from papers.encoding import format_entry
+from papers.entries import entry_content_equal, get_entry_val
+from papers.files import hidden_bibtex
+from papers.identifiers import select_entries
+from papers.library import config_for_bibtex, savebib
+from papers.merge import Resolver
+from papers.utils import PapersExit, open_folder, view_pdf
+
+
+def view_entry_files(biblio, entry):
+    files = biblio.get_files(entry)
+
+    # several files in a directory of previous versions' layout (<name>/ with
+    # a hidden .<name>.bib): open the directory instead of the single files
+    if len(files) > 1:
+        parent = os.path.commonpath(files)
+        if os.path.isfile(hidden_bibtex(parent)):
+            open_folder(parent)
+            return
+
+    for f in biblio.get_files(entry):
+        logger.info(f"opening {f} ...")
+        view_pdf(f)
+
+
+def format_options(o, kind=('name', 'key')):
+    """the name and key format settings passed on the command line, by
+    setting name (`--name-author-num 1` -> {'name.author-num': 1})"""
+    options = {}
+    for name in SETTINGS:
+        if name.startswith(tuple(k + '.' for k in kind)):
+            value = getattr(o, name.replace('.', '_').replace('-', '_'), None)
+            if value is not None:
+                options[name] = value
+    return options
+
+
+def set_keyformat_config_from_cmd(o, config):
+    """
+    Given options and a config state, applies the desired key options to the config.
+    """
+    for name, value in format_options(o, ['key']).items():
+        setattr(config.keyformat, name.split('.')[1].replace('-', '_'), value)
+
+
+def set_nameformat_config_from_cmd(o, config):
+    """
+    Given options and a config state, applies the desired name options to the config.
+    """
+    for name, value in format_options(o, ['name']).items():
+        setattr(config.nameformat, name.split('.')[1].replace('-', '_'), value)
+
+
+def check_pools(config, pools):
+    "warn about pool names that the per-machine configuration does not define"
+    for pool in pools:
+        if not is_pool_path(pool) and config.machine.pool_path(pool) is None:
+            logger.warning(f"unknown pool name: {pool} (define it with `papers config --machine pools.{pool} PATH`, "
+                           "or write a path with a / to use a folder)")
+
+
+def init_hint(config):
+    "how to create a library, here or for the default pool"
+    pool = short_home(config.machine.pool_path('default'))
+    return f"Create a library with `papers init` (here) or `papers init {pool}` (the default pool)"
+
+
+def check_install(parser, o, config, bibtex_must_exist=True):
+    """
+    Given an option and config, checks to see if the install is done correctly on this filesystem.
+    Returns the configuration to use (see config_for_bibtex).
+    """
+    if getattr(o, "bibtex", None) is not None:
+        config = config_for_bibtex(o.bibtex, config)
+        config.bibtex = o.bibtex
+    if getattr(o, "filesdir", None) is not None:
+        config.filesdir = o.filesdir
+    if getattr(o, "absolute_paths", None) is not None:
+        option = '--absolute-paths' if o.absolute_paths else '--relative-paths'
+        logger.warning(f"{option} is deprecated: file paths are a setting of the library, "
+                       f"`papers config paths {'absolute' if o.absolute_paths else 'relative'}`")
+        config.absolute_paths = o.absolute_paths
+    if getattr(o, "git", None) is not None:
+        config.git = o.git
+
+    if not config.bibtex:
+        print(f"papers: error: no library found in this directory or above, and the default pool "
+              f"({config.machine.pool_path('default')}) is not a library. {init_hint(config)}, or pass --bibtex")
+        raise PapersExit()
+
+    if bibtex_must_exist and not os.path.exists(config.bibtex):
+        print(f'papers: error: no bibtex file found, do `touch {config.bibtex}` or `papers init --bibtex {config.bibtex}`')
+        raise PapersExit()
+    logger.info(f'bibtex: {config.bibtex!r}')
+    logger.info(f'filesdir: {config.filesdir!r}')
+    return config
+
+
+def _print_biblio_diff(biblio_init, biblio, touched_entries, show_existing=False):
+    """Emit Added/Modified/Removed (and optionally Existing) lines for
+    entries that differ between the pre-command snapshot and the
+    post-command state.
+
+    `touched_entries` scopes the Modified/Existing check to entries the
+    command actually considered (matches addcmd's original semantics).
+    """
+    old_set = set(get_entry_val(e, 'ID', '') for e in biblio_init.entries)
+    old_entries_by_key = {get_entry_val(e, 'ID', ''): e for e in biblio_init.db.entries}
+    new_set = set(get_entry_val(e, 'ID', '') for e in biblio.entries)
+    new_entries_by_key = {get_entry_val(e, 'ID', ''): e for e in biblio.db.entries}
+    modified_set = set(get_entry_val(e, 'ID', '') for e in touched_entries).intersection(set.intersection(old_set, new_set))
+
+    for ID in sorted(old_set - new_set):
+        print(format_entry(biblio_init, old_entries_by_key[ID], prefix="Removed"))
+
+    for ID in sorted(new_set - old_set):
+        print(format_entry(biblio, new_entries_by_key[ID], prefix="Added"))
+
+    for ID in sorted(modified_set):
+        before = old_entries_by_key[ID]
+        after = new_entries_by_key[ID]
+        if not entry_content_equal(before, after):
+            print(format_entry(biblio, after, prefix="Modified"))
+        elif show_existing:
+            print(format_entry(biblio, after, prefix="Existing"))
+
+
+def files_mode(o, config):
+    """the files mode of the command line (--move or -r/--rename, --copy,
+    --link), else the `files` setting. Without files directory, files can
+    only be linked where they are."""
+    if getattr(o, 'link', False) and (getattr(o, 'move', False) or getattr(o, 'rename', False)
+                                      or getattr(o, 'copy', False)):
+        raise PapersExit('--link excludes --move, -r/--rename and --copy')
+    if getattr(o, 'copy', False):
+        mode = 'copy'
+    elif getattr(o, 'link', False):
+        mode = 'link'
+    elif getattr(o, 'move', False) or getattr(o, 'rename', False):
+        mode = 'move'
+    else:
+        mode = config.files or 'move'
+        if config.filesdir is None:
+            return 'link'
+    if config.filesdir is None and mode != 'link':
+        raise PapersExit(f'--{mode}: the library has no files directory (pass --filesdir, '
+                         'or set it with `papers config filesdir DIR`)')
+    return mode
+
+
+# v2 letters of -m/--mode, and the --on-duplicate word they map to
+ADD_MODES = {'i': 'ask', 'u': 'keep', 'U': 'update', 'o': 'update', 's': 'skip', 'r': 'error'}
+
+
+CHECK_MODES = {'i': 'ask', 'm': 'keep', 's': 'skip'}
+
+
+def on_duplicate_mode(o, cmd):
+    """the --on-duplicate word of the command line: the option, else the
+    deprecated -m/--mode letter, else ask in a terminal and error otherwise
+    (check --force: skip)"""
+    mode = o.on_duplicate
+    if o.mode is not None:
+        if cmd == 'add' and o.mode == 'a':
+            logger.warning('-m/--mode a is deprecated: use --no-check-duplicate')
+            o.no_check_duplicate = True
+        else:
+            new = (ADD_MODES if cmd == 'add' else CHECK_MODES)[o.mode]
+            note = {'o': ' (the key and the fields only in the library are now kept)',
+                    's': ' (the file of the added entry is no longer attached; keep does that)'}.get(o.mode, '') \
+                if cmd == 'add' else ''
+            logger.warning(f'-m/--mode {o.mode} is deprecated: use --on-duplicate {new}{note}')
+            if mode is None:
+                mode = new
+    if mode is None:
+        if cmd == 'check' and o.force:
+            mode = 'skip'
+        else:
+            mode = 'ask' if stdin_is_terminal() else 'error'
+    return mode
+
+
+def duplicate_resolver(o, cmd):
+    return Resolver(on_duplicate_mode(o, cmd), color=sys.stdout.isatty())
+
+
+def _entries_or_all(biblio, args):
+    "the entries named on the command line (keys, DOIs, -), or all entries without argument"
+    return select_entries(biblio, args) if args else list(biblio.entries)
+
+
+def _one_entry(biblio, key):
+    entries = select_entries(biblio, [key])
+    if len(entries) != 1:
+        raise PapersExit(f"{key}: give one entry ({len(entries)} given)")
+    return entries[0]
+
+
+def save_exchange(exchange):
+    """save what an exchange with the pools changed: the pools pushed to,
+    the pairs that are not the same paper of the other pools, the origin
+    records, and the library"""
+    for pool in exchange.changed_pools:
+        savebib(pool.biblio, pool.config)
+        exchange.after_push(pool)
+    if not papers.config.DRYRUN:
+        for pool in exchange.pools.all(quiet=True):
+            if pool._biblio is not None and not any(pool is p for p in exchange.changed_pools):
+                pool.biblio.distinct.save()
+    exchange.origin.save()
+    savebib(exchange.biblio, exchange.config)
+
+
+def stdin_is_terminal():
+    try:
+        return sys.stdin.isatty()
+    except (AttributeError, ValueError, OSError):
+        return False
+
+
+def edit_selected(biblio, entries):
+    "edit entries in a text editor, and put them back in the bibliography; False on failure"
+    others = [e for e in biblio.db.entries if not any(e is x for x in entries)]
+    try:
+        edited = edit_entries(entries)
+    except Exception as error:
+        logger.error(str(error))
+        return False
+    biblio.entries = others + edited
+    return True
+
+
+def print_kept_files(kept, in_pool):
+    for f in kept:
+        print(f"kept {f}: another entry links to it")
+    for f in in_pool:
+        print(f"kept {f}: it is a file of a pool")
+
+
+def _delete_files_option(parser, o):
+    if o.delete_files and o.keep_files:
+        parser.error('--delete-files and --keep-files are mutually exclusive')
+    return True if o.delete_files else (False if o.keep_files else None)

@@ -258,7 +258,7 @@ class TestScanFlatLayout(BibTest):
     def test_scan(self):
         from unittest import mock
         with mock.patch('papers.bib.extract_pdf_metadata', self.fake_metadata), \
-                mock.patch('papers.cli.prefetch_pdf_metadata', lambda *a, **k: None):
+                mock.patch('papers.cli.entry_cmds.prefetch_pdf_metadata', lambda *a, **k: None):
             paperscmd('add --recursive files --bibtex lib.bib --no-git --relative-paths', cwd=self.dir)
         self.assertEqual(sorted(self.scanned), ['main.pdf', 'other.pdf'])
         biblio = Biblio.load(os.path.join(self.dir, 'lib.bib'), None)
@@ -282,7 +282,7 @@ class TestScanFlatLayout(BibTest):
 }
 """)
         with mock.patch('papers.bib.extract_pdf_metadata', self.fake_metadata), \
-                mock.patch('papers.cli.prefetch_pdf_metadata', lambda *a, **k: None):
+                mock.patch('papers.cli.entry_cmds.prefetch_pdf_metadata', lambda *a, **k: None):
             paperscmd('add --recursive scanned --bibtex lib.bib --no-git --relative-paths', cwd=self.dir)
         self.assertEqual(self.scanned, ['other.pdf'])
         biblio = Biblio.load(os.path.join(self.dir, 'lib.bib'), None)

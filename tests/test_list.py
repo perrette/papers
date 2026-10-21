@@ -264,7 +264,7 @@ class OpenCmdTest(LocalInstallTest):
         from unittest.mock import patch
         f = self._path('direct.pdf')
         open(f, 'w').write('x')
-        with patch('papers.cli.view_pdf') as viewer:
+        with patch('papers.cli.entry_cmds.view_pdf') as viewer:
             self.papers(f'open {f}')
             viewer.assert_called_once_with(f)
 

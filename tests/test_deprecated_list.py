@@ -41,7 +41,7 @@ class TestListDeprecated(FileTest):
         self.assertEqual(len(self.libfiles()), 1)
 
     def test_open(self):
-        with patch('papers.cli.view_entry_files') as view:
+        with patch('papers.cli.entry_cmds.view_entry_files') as view:
             self.warns('list --key one2000 -o', 'papers open -')
         view.assert_called_once()
 
