@@ -328,7 +328,7 @@ def addcmd(parser, o, config):
         pdfs = []
         for file in o.file:
             if os.path.isdir(file) and o.recursive:
-                pdfs.extend(path for kind, path in scan_dir_walk(file) if kind == 'file' and path.lower().endswith('.pdf'))
+                pdfs.extend(path for kind, path, _ in scan_dir_walk(file) if kind == 'file' and path.lower().endswith('.pdf'))
             elif os.path.isfile(file) and file.lower().endswith('.pdf'):
                 pdfs.append(file)
         if len(pdfs) > 1:
@@ -939,7 +939,8 @@ def get_parser(config=None):
     grp = addp.add_argument_group('directory scan')
     grp.add_argument('--recursive', action='store_true',
         help='accept directory as argument, for recursive scan \
-        of .pdf files (bibtex files are ignored in this mode')
+        of .pdf and .bib files; files named <name>--<label>.<ext> next to <name>.pdf \
+        are added as attachments of its entry')
     grp.add_argument('--ignore-errors', action='store_true',
         help='ignore errors when adding multiple files')
 

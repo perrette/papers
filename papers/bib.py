@@ -312,9 +312,38 @@ def backupfile(bibtex):
 class DuplicateKeyError(ValueError):
     pass
 
+def group_attachments(names):
+    """split the file names of a directory into main files and attachments:
+    <name>--<label>.<ext> is an attachment of <name>.pdf when that file is
+    among the names (the layout of `Biblio.rename_entry_files`). Returns a
+    dict {main: [attachments]} in which every name that is not an attachment
+    is a main file (with an empty list in most cases)."""
+    stems = {os.path.splitext(name)[0]: name for name in names if name.lower().endswith('.pdf')}
+    groups = {}
+    attached = {}
+    for name in names:
+        stem = os.path.splitext(name)[0]
+        # the longest main stem that this name continues with '--'
+        prefixes = [s for s in stems if stems[s] != name and stem.startswith(s + ATTACHMENT_SEP)]
+        if prefixes:
+            attached[name] = stems[max(prefixes, key=len)]
+    for name in names:
+        if name not in attached:
+            groups[name] = []
+    for name in names:
+        if name in attached:
+            main = attached[name]
+            while main in attached:  # a--b--c.pdf continues a--b.pdf, an attachment of a.pdf
+                main = attached[main]
+            groups[main].append(name)
+    return groups
+
+
 def scan_dir_walk(direc):
-    """the files scanned by Biblio.scan_dir: yield ('entry', dir) for entry
-    directories (with a hidden bibtex), ('file', path) for other files"""
+    """the files scanned by Biblio.scan_dir: yield ('entry', dir, []) for
+    entry directories of the pre-2.19 layout (with a hidden bibtex), and
+    ('file', path, attachments) for other files, where attachments are the
+    files named after it (see `group_attachments`)"""
     top = os.path.abspath(direc)
     for root, direcs, files in os.walk(direc):
         dirname = os.path.basename(root)
@@ -324,12 +353,12 @@ def scan_dir_walk(direc):
             if dirname.startswith('_'): continue
 
         if os.path.exists(hidden_bibtex(root)):
-            yield 'entry', root
+            yield 'entry', root, []
             continue
 
-        for file in files:
-            if not file.startswith('.'):
-                yield 'file', os.path.join(root, file)
+        names = sorted(file for file in files if not file.startswith('.'))
+        for name, attachments in group_attachments(names).items():
+            yield 'file', os.path.join(root, name), [os.path.join(root, a) for a in attachments]
 
 
 class Biblio:
@@ -647,7 +676,7 @@ class Biblio:
 
     def scan_dir_iter(self, direc, search_doi=True, search_fulltext=True, **kw):
 
-        for kind, path in scan_dir_walk(direc):
+        for kind, path, attachments in scan_dir_walk(direc):
             # a special entry directory
             if kind == 'entry':
                 logger.debug('read from hidden bibtex')
@@ -660,7 +689,7 @@ class Biblio:
 
             try:
                 if path.lower().endswith('.pdf'):
-                    yield from self.add_pdf(path, search_doi=search_doi, search_fulltext=search_fulltext, **kw)
+                    yield from self.add_pdf(path, attachments=attachments, search_doi=search_doi, search_fulltext=search_fulltext, **kw)
                 elif path.lower().endswith('.bib'):
                     yield from self.add_bibtex_file(path, **kw)
             except Exception as error:

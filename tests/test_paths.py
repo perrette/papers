@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from papers.bib import Biblio
+from papers.bib import Biblio, group_attachments
 from papers.config import Config, CONFIG_FILE_LOCAL
 from papers.utils import move
 from tests.common import paperscmd, BibTest
@@ -203,3 +203,66 @@ class TestFlatLayout(BibTest):
     def test_source_directory_is_kept(self):
         self.rename(self.touch('downloads/a.pdf', 'downloads/b.pdf'))
         self.assertTrue(os.path.isdir(os.path.join(self.dir, 'downloads')))
+
+
+class TestGroupAttachments(unittest.TestCase):
+
+    def test_groups(self):
+        names = ['main.pdf', 'main--si.pdf', 'main--sound.mp3', 'other.pdf', 'notes.txt']
+        self.assertEqual(group_attachments(names), {
+            'main.pdf': ['main--si.pdf', 'main--sound.mp3'],
+            'other.pdf': [],
+            'notes.txt': [],
+        })
+
+    def test_attachment_without_main(self):
+        # no x.pdf: x--si.pdf is a paper of its own
+        self.assertEqual(group_attachments(['x--si.pdf', 'y.pdf']), {'x--si.pdf': [], 'y.pdf': []})
+
+    def test_main_must_be_pdf(self):
+        self.assertEqual(group_attachments(['x.djvu', 'x--si.pdf']), {'x.djvu': [], 'x--si.pdf': []})
+
+    def test_longest_main(self):
+        # a main file whose own name contains '--'
+        names = ['a.pdf', 'a--b.pdf', 'a--b--c.pdf']
+        self.assertEqual(group_attachments(names), {'a.pdf': ['a--b.pdf', 'a--b--c.pdf']})
+        names = ['a--b.pdf', 'a--b--c.pdf']
+        self.assertEqual(group_attachments(names), {'a--b.pdf': ['a--b--c.pdf']})
+
+    def test_prefix_without_separator(self):
+        self.assertEqual(group_attachments(['a.pdf', 'ab.pdf', 'a-b.pdf']), {'a.pdf': [], 'ab.pdf': [], 'a-b.pdf': []})
+
+
+class TestScanFlatLayout(BibTest):
+    """papers add --recursive on a files directory of the flat layout"""
+
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.dir = self.temp_dir.name
+        self.files = os.path.join(self.dir, 'files')
+        os.makedirs(self.files)
+        for name in ['main.pdf', 'main--si.pdf', 'main--sound.mp3', 'other.pdf']:
+            Path(self.files, name).write_text(name)
+        Path(self.dir, 'lib.bib').write_text('')
+        self.scanned = []
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
+    def fake_metadata(self, pdf, *args, **kwargs):
+        self.scanned.append(os.path.basename(pdf))
+        name = os.path.splitext(os.path.basename(pdf))[0]
+        return f'@article{{{name},\n author = {{{name.capitalize()}, A.}},\n title = {{Paper {name}}},\n year = {{2020}}\n}}\n'
+
+    def test_scan(self):
+        from unittest import mock
+        with mock.patch('papers.bib.extract_pdf_metadata', self.fake_metadata), \
+                mock.patch('papers.__main__.prefetch_pdf_metadata', lambda *a, **k: None):
+            paperscmd('add --recursive files --bibtex lib.bib --no-git --relative-paths', cwd=self.dir)
+        self.assertEqual(sorted(self.scanned), ['main.pdf', 'other.pdf'])
+        biblio = Biblio.load(os.path.join(self.dir, 'lib.bib'), None)
+        files = {e['title']: [os.path.basename(f) for f in biblio.get_files(e)] for e in biblio.entries}
+        self.assertEqual(files, {
+            'Paper main': ['main.pdf', 'main--si.pdf', 'main--sound.mp3'],
+            'Paper other': ['other.pdf'],
+        })
