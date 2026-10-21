@@ -177,7 +177,15 @@ def _install(o, config, asker, target=None):
 
 
 def initcmd(parser, o, config):
-    """create a library in the current directory"""
+    """create a library in the current directory, or in DIR (created if missing)"""
+    if o.dir is None:
+        return _initcmd(parser, o, config)
+    os.makedirs(o.dir, exist_ok=True)
+    with set_directory(o.dir):
+        _initcmd(parser, o, find_config(machine=config.machine))
+
+
+def _initcmd(parser, o, config):
     for name in LIBRARY_CONFIG_FILES:
         if os.path.exists(name):
             raise PapersExit(f"a library already exists here ({name}): "
@@ -486,9 +494,8 @@ def config_for_bibtex(bibtex, config):
 
 def init_hint(config):
     "how to create a library, here or for the default pool"
-    pool = config.machine.pool_path('default')
-    mkdir = '' if os.path.isdir(pool) else f"mkdir -p {pool} && "
-    return f"Create a library with `papers init` (here) or `{mkdir}papers -C {pool} init` (the default pool)"
+    pool = short_home(config.machine.pool_path('default'))
+    return f"Create a library with `papers init` (here) or `papers init {pool}` (the default pool)"
 
 
 def check_install(parser, o, config, bibtex_must_exist=True):
@@ -1587,8 +1594,12 @@ def get_parser(config=None):
 
     # init
     # ====
-    initp = subparsers.add_parser('init', description='create a library in the current directory',
+    initp = subparsers.add_parser('init', description='create a library in the current directory, '
+        'or in DIR (created if missing)',
         parents=[loggingp, namefmt, keyfmt])
+    initp.add_argument('dir', nargs='?', metavar='DIR',
+        help='directory of the library (default: the current directory); --bibtex and '
+             '--filesdir are relative to it')
     initp.add_argument('--bibtex', type=file_uri_to_path,
         help='bibtex file (default: papers.bib, or the first .bib file of the directory)')
     initp.add_argument('--filesdir', type=file_uri_to_path,

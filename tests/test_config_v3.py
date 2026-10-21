@@ -208,6 +208,22 @@ class TestInit(ConfigTest):
         with self.assertRaises(PapersExit):
             self.papers('init --no-git')
 
+    def test_init_dir(self):
+        cwd = os.getcwd()
+        self.papers('init --no-git lib/sub')
+        self.assertEqual(os.getcwd(), cwd)
+        self.assertEqual(self.json('lib', 'sub')['bibtex'], 'papers.bib')
+        self.assertTrue(os.path.isfile(self.path('lib', 'sub', 'papers.bib')))
+        self.assertTrue(os.path.isdir(self.path('lib', 'sub', 'files')))
+        self.assertFalse(os.path.exists(self.path(CONFIG_FILE_LOCAL)))
+        with self.assertRaises(PapersExit):
+            self.papers('init --no-git lib/sub')
+        # an existing directory; --bibtex and --filesdir are relative to it
+        self.papers('init --no-git lib --bibtex refs.bib --filesdir pdfs')
+        js = self.json('lib')
+        self.assertEqual((js['bibtex'], js['filesdir']), ('refs.bib', 'pdfs'))
+        self.assertTrue(os.path.isfile(self.path('lib', 'refs.bib')))
+
     def test_install_is_init(self):
         self.papers('install --no-prompt --no-git')
         self.assertEqual(self.json()['pools'], ['default'])
@@ -265,6 +281,10 @@ class TestDefaultPool(ConfigTest):
             self.papers('config bibtex')
         out = self.papers('status', sp_cmd='check_output')
         self.assertIn('papers init', out)
+        self.assertIn(f'`papers init {papers.config.short_home(TEST_DEFAULT_POOL)}`', out)
+        # the hint works
+        self.papers(f'init --no-git {TEST_DEFAULT_POOL}')
+        self.assertIn('(default pool)', self.papers('status', sp_cmd='check_output'))
 
     def test_builtin_default(self):
         # without per-machine configuration

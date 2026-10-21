@@ -4,7 +4,8 @@
 
 A library is a bibtex file, a files directory, and a configuration file
 next to them (`.papersconfig.json`). `papers init` creates one in the
-current directory:
+current directory, and `papers init DIR` in the directory `DIR` (created if
+missing, with its parents):
 
 ```
 $> papers init
@@ -29,6 +30,8 @@ the directory) and the files directory is `files` (or an existing `pdfs`,
 `--bibtex`, `--filesdir`, `--pool NAME|PATH...` (see [Pools](#pools)),
 `--paths relative|absolute`, `--git`/`--no-git`, `--git-lfs`, `--editor` and
 the name and key format options (see [Renaming files and keys](renaming.md)).
+With `DIR`, the paths given to `--bibtex` and `--filesdir` are relative to
+`DIR`.
 `papers init` does not prompt, and fails if the directory already has a
 library configuration: change the settings of an existing library with
 `papers config`.
@@ -127,7 +130,7 @@ Without per-machine configuration, the pool `default` is
 any library, once it is one:
 
 ```
-mkdir -p ~/Documents/papers && papers -C ~/Documents/papers init
+papers init ~/Documents/papers
 ```
 
 `papers status` lists the pools of the library with their paths, and says
