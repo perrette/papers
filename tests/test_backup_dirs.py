@@ -1,12 +1,13 @@
 import os
 import json
+import shutil
 import tempfile
 from pathlib import Path
 import unittest
 
 from papers.backup import default_gitdir, read_manifest, write_manifest
 from papers.bib import Biblio
-from papers.config import CONFIG_FILE_LOCAL
+from papers.config import CONFIG_FILE_LOCAL, BACKUP_DIR, Config
 from tests.common import BaseTest, LocalGitInstallTest, paperscmd
 
 
@@ -219,3 +220,74 @@ class TestAddFromAnotherDirectory(LocalGitInstallTest):
             with self.assertLogs('papers', level='ERROR'):
                 self.papers(f'add {self.anotherbib}')
         self.assertEqual(len(Biblio.load(self._path(self.mybib), '').entries), 1)
+
+
+class TestGitdirByName(unittest.TestCase):
+    """the library configuration names its backup directory, resolved under
+    the backup folder of the machine (BACKUP_DIR)"""
+
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.dir = os.path.realpath(self.temp_dir.name)
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
+    def path(self, *p):
+        return os.path.join(self.dir, *p)
+
+    def json(self, *p):
+        return json.load(open(self.path(*p, CONFIG_FILE_LOCAL)))
+
+    def config(self, gitdir):
+        config = Config(file=self.path(CONFIG_FILE_LOCAL), local=True,
+                        bibtex=self.path('lib.bib'), gitdir=gitdir)
+        config.save()
+        return Config.load(config.file)
+
+    def test_by_name(self):
+        gitdir = os.path.join(BACKUP_DIR, 'lib-0123abcd')
+        config = self.config(gitdir)
+        self.assertEqual(self.json()['gitdir'], 'lib-0123abcd')
+        self.assertEqual(config.gitdir, gitdir)
+
+    def test_custom_location(self):
+        gitdir = self.path('elsewhere', 'backup')
+        config = self.config(gitdir)
+        self.assertEqual(self.json()['gitdir'], gitdir)
+        self.assertEqual(config.gitdir, gitdir)
+
+    def test_absolute_path_of_previous_versions(self):
+        gitdir = os.path.join(BACKUP_DIR, 'lib-0123abcd')
+        json.dump({'bibtex': 'lib.bib', 'gitdir': gitdir, 'version': 3},
+                  open(self.path(CONFIG_FILE_LOCAL), 'w'))
+        config = Config.load(self.path(CONFIG_FILE_LOCAL))
+        self.assertEqual(config.gitdir, gitdir)
+        config.save()
+        self.assertEqual(self.json()['gitdir'], 'lib-0123abcd')
+
+    def test_init_and_copied_library(self):
+        os.makedirs(self.path('a'))
+        paperscmd('init --git', cwd=self.path('a'))
+        name = self.json('a')['gitdir']
+        self.assertEqual(os.path.basename(name), name)
+        gitdir = os.path.join(BACKUP_DIR, name)
+        self.assertTrue(os.path.isdir(os.path.join(gitdir, '.git')))
+        self.assertEqual(Config.load(self.path('a', CONFIG_FILE_LOCAL)).gitdir, gitdir)
+        out = paperscmd('backup list', cwd=self.path('a'), sp_cmd='check_output')
+        self.assertIn(f'* {name}: {self.path("a", "papers.bib")}', out)
+        self.assertIn('[current]', out)
+
+        # a copy of the library names the same backup directory: it moves
+        # to a fresh one instead of sharing it
+        shutil.copytree(self.path('a'), self.path('b'))
+        open(self.path('new.bib'), 'w').write(bibtex_new)
+        paperscmd('add ../new.bib', cwd=self.path('b'))
+        nameb = self.json('b')['gitdir']
+        self.assertNotEqual(nameb, name)
+        self.assertEqual(os.path.basename(nameb), nameb)
+        self.assertEqual(Path(read_manifest(os.path.join(BACKUP_DIR, nameb))['bibtex']),
+                         Path(self.path('b', 'papers.bib')))
+        self.assertEqual(Path(read_manifest(gitdir)['bibtex']), Path(self.path('a', 'papers.bib')))
+        self.assertEqual(_snapshots(gitdir), 1)
+        self.assertEqual(self.json('a')['gitdir'], name)

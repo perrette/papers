@@ -198,6 +198,33 @@ def short_home(path):
     return path
 
 
+def gitdir_to_json(gitdir):
+    """how a library configuration stores its backup directory: by name if it
+    is in the backup folder of the machine (BACKUP_DIR), else as absolute path"""
+    if gitdir is None:
+        return None
+    gitdir = os.path.abspath(gitdir)
+    if os.path.realpath(os.path.dirname(gitdir)) == os.path.realpath(BACKUP_DIR):
+        return os.path.basename(gitdir)
+    return gitdir
+
+
+def gitdir_from_json(value, root):
+    """backup directory of a library configuration: a name is a directory of
+    the machine's backup folder, a path is relative to the library (root)"""
+    if value is None:
+        return None
+    if is_backup_name(value):
+        return os.path.join(BACKUP_DIR, value)
+    return str(Path(root).resolve() / value)
+
+
+def is_backup_name(value):
+    "a name, not a path, of a backup directory"
+    return (value not in ('.', '..') and os.path.sep not in value
+            and not (os.path.altsep and os.path.altsep in value) and not value.startswith('~'))
+
+
 def is_pool_path(pool):
     """a pool entry of a library is a path if it contains a path separator or
     starts with '.' or '~', otherwise a name of the per-machine configuration"""
@@ -461,7 +488,8 @@ class Config:
         js = {
             "filesdir": self._relpath(self.filesdir),
             "bibtex": self._relpath(self.bibtex),
-            "gitdir": self._abspath(self.gitdir), # central gitdir
+            # by name under the backup folder of each machine
+            "gitdir": gitdir_to_json(self._abspath(self.gitdir)) if self.local else self._abspath(self.gitdir),
         }
         for name in INHERITED:
             if self.is_set(name):
@@ -489,8 +517,11 @@ class Config:
         if local is None:
             # v2 global configurations (papersconfig.json, not hidden) are not local
             local = os.path.basename(the_file) != os.path.basename(CONFIG_FILE)
+        gitdir = js.get('gitdir')
+        if gitdir is not None and local:
+            gitdir = gitdir_from_json(gitdir, Path(the_file).parent)
         cfg = cls(file=the_file, local=local, machine=machine,
-                  bibtex=js.get('bibtex'), filesdir=js.get('filesdir'), gitdir=js.get('gitdir'))
+                  bibtex=js.get('bibtex'), filesdir=js.get('filesdir'), gitdir=gitdir)
         if not local and json_get(js, 'paths') is None:
             js['paths'] = 'absolute'  # default of v2 for a global configuration
         for name in INHERITED:

@@ -36,7 +36,9 @@ allowed; asks before deleting unless `--force` is passed).
 Backup directories are named after the bibtex file and its parent folder,
 plus a hash of the full path (e.g. `myproject-references-3f9a1c2b`), so two
 libraries can never share a directory and same-named libraries remain
-recognizable.
+recognizable. The library configuration stores the name of its backup
+directory, which each machine looks up in its own backup folder; only a
+backup directory outside that folder is stored as an absolute path.
 Each directory also contains a `manifest.json` recording the bibtex file it
 backs up; if a backup operation finds a directory that belongs to another
 library (which could happen with directories created by papers versions that
