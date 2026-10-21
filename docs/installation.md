@@ -34,7 +34,7 @@ mitigations are built in:
 
 ## Dependencies
 
-- python 3.9+
+- python 3.11+
 - [PyMuPDF](https://github.com/pymupdf/PyMuPDF) (preferred) or
   [poppler-utils](https://en.wikipedia.org/wiki/Poppler_(software))
   (only `pdftotext` and `pdfinfo`; deprecated): convert PDF to text for parsing
