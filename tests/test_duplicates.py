@@ -138,10 +138,16 @@ class TestTitleGuard(unittest.TestCase):
         b = entry('b', doi='10.1000/x', title='Sea level rise')
         self.assertEqual(kind(a, b), SAME)
 
-    def test_similar_titles(self):
+    def test_titles_equal_after_normalization(self):
         a = entry('a', doi='10.1000/x', title='Climate sensitivity revisited')
-        b = entry('b', type='misc', doi='10.1000/x', title='Climate Sensitivity Revisited: a new look')
+        b = entry('b', type='misc', doi='10.1000/x', title='{Climate} Sensitivity  Revisited')
         self.assertEqual(kind(a, b), SAME)
+
+    def test_dataset_of_article(self):
+        # a near-identical title is not enough when the types differ
+        a = entry('a', doi='10.1000/x', title='Climate sensitivity revisited')
+        b = entry('b', type='misc', doi='10.1000/x', title='Data for: Climate sensitivity revisited')
+        self.assertEqual(kind(a, b), ASK)
 
     def test_arxiv_guard(self):
         a = entry('a', eprint='2101.01234', title='Climate sensitivity revisited')

@@ -445,7 +445,8 @@ Old `-m` letters can stay accepted with a deprecation warning that prints the ne
    book's ISBN, and editions have their own); otherwise author family names + title. Two
    entries with different values of the first identifier both have are not the same
    paper. **Title guard** (narrow): equal DOIs (or arXiv ids, ISBNs) are not merged
-   automatically only when the entry types differ AND the titles clearly differ: the
+   automatically only when the entry types differ AND the titles differ (after
+   normalization: case, braces, accents, spacing): the
    answer is "ask" (e.g. a `@incollection` exported with its `@book`'s DOI, a `@misc`
    dataset deposited under the `@article`'s DOI); without a terminal this stops like any
    other conflict (`error`). Same type and same DOI is always the same paper, whatever the

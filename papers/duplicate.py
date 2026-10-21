@@ -14,8 +14,9 @@ and so will `pull` and `push`. It compares, in this order:
 
 The first identifier that both entries have decides: equal values make the
 same paper, different values two papers. Title guard: equal identifiers with
-different entry types AND clearly different titles (e.g. a chapter exported
-with the DOI of its book) give "ask" instead of "same".
+different entry types AND different titles (normalized; e.g. a chapter
+exported with the DOI of its book, a dataset "Data for: X" deposited under
+the DOI of article "X") give "ask" instead of "same".
 
 Pairs that the user answered "not the same paper" for are kept in
 `.papers/distinct.json` of the library (see `Distinct`), and same_paper
@@ -37,9 +38,6 @@ from papers.latexenc import latex_to_unicode
 SAME = 'same'
 DIFFERENT = 'different'
 ASK = 'ask'
-
-# titles less similar than this (rapidfuzz ratio, 0-100) "clearly differ"
-TITLE_GUARD_RATIO = 80
 
 # minimum author+title score of `list --duplicates --fuzzy`
 FUZZY_RATIO = 80
@@ -166,17 +164,15 @@ def identity(e):
     return ident
 
 
-def titles_clearly_differ(a, b):
+def titles_differ(a, b):
+    "both titles known, and different after normalization"
     ta, tb = title_id(a), title_id(b)
-    if not ta or not tb:
-        return False
-    from rapidfuzz.fuzz import ratio
-    return ratio(ta, tb) < TITLE_GUARD_RATIO
+    return bool(ta and tb and ta != tb)
 
 
 def _guard(a, b, reason):
     "the title guard on equal identifiers"
-    if entry_type(a) != entry_type(b) and titles_clearly_differ(a, b):
+    if entry_type(a) != entry_type(b) and titles_differ(a, b):
         return Verdict(ASK, f'{reason}, but the entry types ({entry_type(a)}, {entry_type(b)}) '
                             'and the titles differ')
     return Verdict(SAME, reason)

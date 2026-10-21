@@ -157,9 +157,10 @@ article with different DOIs are two entries, even with the same authors and
 title.
 
 Equal identifiers make the same paper, except in one case: when the entry
-types differ and the titles clearly differ (less than 80% similar), papers
-asks instead of merging. This happens with a chapter exported with the DOI
-of its book, or a dataset deposited under the DOI of the article. Without a
+types differ (e.g. `@book` and `@incollection`) and the titles differ
+(after ignoring case, braces, accents and spacing), papers asks instead of
+merging. This happens with a chapter exported with the DOI of its book, or a
+dataset "Data for: X" deposited under the DOI of the article "X". Without a
 terminal, such a pair is never merged.
 
 When you answer that two entries are not the same paper (`n`, below), papers
