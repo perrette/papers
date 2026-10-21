@@ -23,14 +23,14 @@ papers add mypaper.pdf --rename --copy --bibtex papers.bib --filesdir files
 - **[Installation](installation.md)** — pip install and external dependencies.
 - **[Quickstart](quickstart.md)** — extract metadata, add a PDF, list entries.
 - **[Adding entries](adding-entries.md)** — from PDFs, DOIs, bibtex, or whole directories.
-- **[Configuration and install](configuration.md)** — make your bibtex and files directory persistent.
+- **[Configuration](configuration.md)** — libraries, settings and pools.
 
 ## Guides
 
 - [Adding entries](adding-entries.md)
 - [Listing and searching](listing.md)
 - [Renaming files and keys](renaming.md)
-- [Configuration and install](configuration.md)
+- [Configuration](configuration.md)
 - [Managing your library](library-management.md)
 - [Git integration](git.md)
 - [Undo and redo](undo-redo.md)

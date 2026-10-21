@@ -36,7 +36,7 @@ Full documentation lives at **<https://perrette.github.io/papers/>**:
 - [Adding entries](https://perrette.github.io/papers/adding-entries/)
 - [Listing and searching](https://perrette.github.io/papers/listing/)
 - [Renaming files and keys](https://perrette.github.io/papers/renaming/)
-- [Configuration and install](https://perrette.github.io/papers/configuration/)
+- [Configuration](https://perrette.github.io/papers/configuration/)
 - Also: [managing your library](https://perrette.github.io/papers/library-management/),
   [git integration](https://perrette.github.io/papers/git/),
   [undo/redo](https://perrette.github.io/papers/undo-redo/),

@@ -64,13 +64,14 @@ See [Listing and searching](listing.md) for the full power of `papers list`.
 ## Make settings persistent
 
 In the common case where the bibtex, files directory and naming formats do not
-change, install `papers` so that you don't need to pass them every time:
+change, create a library so that you don't need to pass them every time:
 
 ```
-papers install --bibtex papers.bib --filesdir files
+papers init --bibtex papers.bib --filesdir files
 ```
 
-See [Configuration and install](configuration.md) for details.
+Commands run in that directory (or below) then act on this library. See
+[Configuration](configuration.md) for details.
 
 !!! tip
     Consult the inline help (`papers --help`, `papers <command> --help`) for

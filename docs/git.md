@@ -2,17 +2,17 @@
 
 ## Git-tracked library
 
-By default (when a git binary is available), a fresh `papers install`
-git-tracks any change to the bibtex file. Pass `--no-git` to opt out, and
-`--git-lfs` to also back up the attached files (see below):
+By default (when a git binary is available), a library created with
+`papers init` git-tracks any change to the bibtex file. Pass `--no-git` to
+opt out, and `--git-lfs` to also back up the attached files (see below):
 
 ```
-$> papers install --bibtex papers.bib --filesdir files [ --no-git | --git-lfs ]
+$> papers init --bibtex papers.bib --filesdir files [ --no-git | --git-lfs ]
 ```
 
-Installs made by older papers versions keep their saved setting; re-run
-`papers install` (or `papers install --edit --git`) to enable git-tracking
-on an existing install.
+Libraries made by older papers versions keep their saved setting; run
+`papers config git true` (or `papers config git-lfs true`) to enable
+git-tracking on an existing library.
 
 From now on, every change to the library will result in an automatic git
 commit. And the `papers git ...` command will work just as `git ...` executed
@@ -26,8 +26,8 @@ with git-lfs, together with a copy of the bibtex whose file paths point into
 the backup (so the backup is self-contained). Background in
 [issue 51](https://github.com/perrette/papers/issues/51).
 
-Backup occurs in a subfolder of `~/.local/share/papers/backups` regardless of
-the type of installation. Type `papers status -v` to find out, or
+Backup occurs in a subfolder of `~/.local/share/papers/backups`, whatever the
+location of the library. Type `papers status -v` to find out, or
 `papers backup list` to see every backup directory papers knows of and which
 library each belongs to. Orphaned directories (e.g. whose library was
 deleted) can be cleaned up with `papers backup remove NAME` (glob patterns
@@ -44,6 +44,6 @@ used the bibtex name alone), it moves the current library to a fresh
 directory instead of mixing the two histories. Directories created by older
 versions keep their name and are adopted as-is.
 
-For local installs that are already git-tracked, the feature remains useful as
+For libraries that are already in a git repository, the feature remains useful as
 it is the basis for `papers undo` and `papers redo` (see
 [Undo and redo](undo-redo.md)).

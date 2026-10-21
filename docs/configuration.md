@@ -1,104 +1,201 @@
-# Configuration and install
+# Configuration
 
-## install: make bibtex and files directory persistent
+## Libraries
+
+A library is a bibtex file, a files directory, and a configuration file
+next to them (`.papersconfig.json`). `papers init` creates one in the
+current directory:
 
 ```
-$> papers install --global --bibtex papers.bib --filesdir files
-papers configuration
-* configuration file: /home/perrette/.config/papersconfig.json
+$> papers init
+papers library: /home/perrette/projects/sealevel
+version 3.0.0
+* configuration file: .papersconfig.json
+* per-machine config: /home/perrette/.config/papers/config.json (none)
 * cache directory:    /home/perrette/.cache/papers
-* absolute paths:     True
-* files directory:    files (1 files, 5.8 MB)
-* bibtex:            papers.bib (1 entries)
+* backup (git):       True
+* backup files (git-lfs): False
+* backup directory:   /home/perrette/.local/share/papers/backups/sealevel-papers-3f9a1c2b
+* files directory:    files (empty)
+* bibtex:             papers.bib (empty)
+* pools:
+    default: /home/perrette/Documents/papers (missing)
+...
 ```
 
-With `--global`, the configuration applies to the whole user account: any
-`papers` command, from any directory, will know about these settings. A
-fresh `papers install` without scope option is *local* to the current
-directory (see below); re-running `papers install` on an existing install
-keeps its scope, so `--local`/`--global` are only needed to be explicit.
+By default the bibtex is `papers.bib` (or the `.bib` file already present in
+the directory) and the files directory is `files` (or an existing `pdfs`,
+`pdf`, `papers` or `bibliography` folder). The options of `papers init` are
+`--bibtex`, `--filesdir`, `--pool NAME|PATH...` (see [Pools](#pools)),
+`--paths relative|absolute`, `--git`/`--no-git`, `--git-lfs`, `--editor` and
+the name and key format options (see [Renaming files and keys](renaming.md)).
+`papers init` does not prompt, and fails if the directory already has a
+library configuration: change the settings of an existing library with
+`papers config`.
 
-Running `papers install` again *updates* the existing configuration: options
-you pass change, everything else is kept. Pass `--reset` to discard the
-existing configuration and start over from defaults. Use `--no-prompt` to
-accept all defaults non-interactively (at the prompts, `Enter` accepts the
-proposed default, typing a value sets it, and `unset` clears it).
-
-Type `papers status -v` to check your configuration.
-
-You also notice a cache directory. All internet requests such as crossref
-requests are saved in the cache directory. This happens regardless of whether
-`papers` is installed or not. The metadata of each DOI is a json file under
-`doi/`, e.g. `doi/10.1126/science.1166510.json` (DOIs that do not exist are
-remembered for a day). Deleting the directory, or any file in it, is safe:
-the requests are made again when needed.
-
-## Local install
-
-A local install keeps separate configurations per project — one bibliography
-per folder. It is the default for a fresh install (`--local` makes it
-explicit):
+Every command run in the library directory or in one of its subdirectories
+acts on that library. `-C DIR`, before the command name, runs papers as if it
+was started in `DIR`:
 
 ```
-$> papers install
-Bibtex file name [default to existing: papers.bib] [Enter/path/'unset']:
-Files folder [default to new: papers] [Enter/path/'unset']: pdfs
-papers configuration
-* configuration file: papersconfig.json
-* cache directory:    /home/perrette/.cache/papers
-* absolute paths:     True
-* git-tracked:        False
-* files directory:    pdfs (90 files, 337.4 MB)
-* bibtex:             papers.bib (82 entries)
+papers -C ~/projects/sealevel list smith
 ```
 
-Creates a local configuration file (`.papersconfig.json`) in the current
-directory. By default, it expects existing or creates new `papers.bib`
-bibliography and `files` folder in the local directory, though `papers` will
-ask first unless explicitly provided. Note that every call from a subfolder
-will also detect that configuration file (it has priority over global
-install).
+`--bibtex` and `--filesdir` still override the library for one command. If
+the bibtex given with `--bibtex` belongs to another library (a configuration
+file in its directory or above), the settings of that library apply.
 
-By default, the local install is meant to be portable with bibtex and files, so
-the file paths are encoded relatively to the bibtex file. If instead absolute
-paths make more sense (example use case: local bibtex file but central PDF
-folder), then simply specify `--absolute-paths`:
+Outside of any library, commands act on the default pool if it is a library
+(see [Pools](#pools)), and otherwise fail with a message that explains how to
+create one.
+
+Type `papers status` to see which library a command acts on, and
+`papers status -v` to also see its settings and where each one comes from.
+
+## Settings
+
+`papers config` gets and sets the settings, in the style of `git config`:
 
 ```
-papers install --local --absolute-paths --filesdir /path/to/central/pdfs
+papers config                          # list the settings and where each comes from
+papers config name.template            # print one setting
+papers config name.template '{author}_{year}_{title}'   # set it in the library
+papers config --unset name.template    # remove it from the library
+papers config pools default ../shared  # settings with several values
 ```
+
+Each setting comes from the library configuration if it sets it, otherwise
+from the per-machine configuration, otherwise from its built-in default.
+`papers config` without argument shows the source of each setting as
+`(library)`, `(machine)` or `(default)`.
+
+| Setting | Values |
+|---|---|
+| `bibtex` | path of the bibtex file |
+| `filesdir` | path of the files directory |
+| `pools` | names or paths of the library's pools (default: `default`) |
+| `paths` | `relative` (default) or `absolute`: how file links are written in the bibtex |
+| `git` | `true` or `false`: back up the bibtex with git (see [Git integration](git.md)) |
+| `git-lfs` | `true` or `false`: also back up the files with git-lfs |
+| `editor` | command that opens a text editor, e.g. `vim` or `subl -w` |
+| `name.template`, `name.author-num`, `name.author-sep`, `name.title-word-num`, `name.title-word-size`, `name.title-length`, `name.title-sep`, `name.unknown-template`, `name.unknown-strict` | file name format |
+| `key.template`, `key.author-num`, `key.author-sep`, `key.title-word-num`, `key.title-word-size`, `key.title-sep`, `key.unknown-template`, `key.unknown-strict` | bibtex key format |
+
+The name and key settings correspond to the `--name-*` and `--key-*` options
+of the commands (see [Renaming files and keys](renaming.md)), which override
+them for one command.
+
+Paths in the library configuration are stored relative to its directory, so
+that the library can be moved or shared as a whole.
+
+Setting `git` to `true` initializes the backup directory and records the
+current bibtex. Setting `paths` rewrites the file links of the bibtex. `light`
+is not a setting of `papers config`: it will be changed with
+`papers migrate --light` (not implemented yet), because it also moves files.
+
+### Per-machine configuration
+
+`papers config --machine` (or `--global`) reads and writes the per-machine
+configuration instead of the library's: `~/.config/papers/config.json` on
+Linux (the platform's user configuration directory elsewhere). It holds the
+pool names and the settings used by libraries that do not set them
+(everything except `bibtex`, `filesdir` and `pools`):
+
+```
+papers config --machine editor vim
+papers config --machine name.template '{author}_{year}'
+papers config --machine pools.teaching /mnt/shared/teaching
+papers config --machine                # list it
+```
+
+`papers init` stores `paths`, `git` and `git-lfs` in the new library, taking
+their values from the per-machine configuration when it sets them. The other
+settings are only stored in the library when you set them.
+
+## Pools
+
+A pool is a library that other libraries take entries from. Each library
+lists its pools in the `pools` setting, as names or paths. A name is looked
+up in the per-machine configuration (`pools.NAME`), so that the same library
+works on machines where the pool is in a different place. An entry that
+contains a `/` or starts with `.` or `~` is a path, relative to the library
+(e.g. `../shared-with-bob`).
+
+Without per-machine configuration, the pool `default` is
+`~/Documents/papers`. It is also the library that commands act on outside of
+any library, once it is one:
+
+```
+mkdir -p ~/Documents/papers && papers -C ~/Documents/papers init
+```
+
+`papers status` lists the pools of the library with their paths, and says
+when a pool is missing or is not a library. Exchanging entries with pools
+(`pull`, `push`) is not implemented yet.
+
+## Relative versus absolute paths
+
+The file links in the bibtex are relative to the bibtex directory by default,
+so that a library folder can be moved or shared with its files. Set
+`papers config paths absolute` to store absolute paths instead, e.g. for a
+bibtex that links to files in a central folder.
+
+The options `--relative-paths` and `--absolute-paths` of the commands still
+override the setting for one command, with a deprecation warning.
+
+## Migrating from papers 2
+
+`papers migrate` performs the one-time upgrades from version 2:
+
+- The global configuration of version 2 (`~/.config/papersconfig.json` on
+  Linux) defined a library for the whole user account. `papers migrate`
+  writes its settings to a library configuration next to its bibtex (if
+  there is none yet), registers the directory of that bibtex as the
+  `default` pool in the per-machine configuration (unless another default
+  pool is set there), and renames the old file to `papersconfig.json.v2.bak`.
+  The bibtex, files and backup stay where they are. File links stay
+  absolute, as they were, unless `--relative` is passed. Running
+  `papers migrate` again does nothing. Until then, papers prints a warning
+  and keeps using the global configuration outside of libraries.
+- `papers migrate --folders` moves the files of entries that are still kept
+  in folders of papers before 2.19 (`<name>/` with a hidden `.<name>.bib`)
+  into the files directory, named after the name template (as
+  `papers filecheck --rename` names them).
+
+Library configurations (`.papersconfig.json`) of version 2 keep working
+without migration.
+
+### `papers install`
+
+`papers install` is a deprecated alias of `papers init` that asks for the
+bibtex, the files directory and git (`--no-prompt` accepts the defaults). On
+an existing library it updates the library configuration, as in version 2,
+with a deprecation warning: use `papers config` instead (`--edit` and
+`--reset` keep working). `papers install --global` writes the library
+configuration next to the bibtex and registers its directory as the `default`
+pool. `--local` is ignored.
 
 ## Uninstall
-
-Getting confused with papers config files scattered in subfolders? Check the
-config with:
-
-```
-papers status -v
-```
-
-and remove the configuration file by hand (`rm ...`). Or use the `papers
-uninstall` command:
 
 ```
 papers uninstall
 ```
 
-It removes the configuration file and reports what it leaves behind (the
+removes the library configuration and reports what it leaves behind (the
 bibtex file, the files directory, and the backup directory if any). Pass
-`--remove-backup` to also remove the backup directory.
+`--remove-backup` to also remove the backup directory. It never removes the
+per-machine configuration. From outside of any library it does not remove
+the default pool's configuration: run `papers -C DIR uninstall` for that.
 
-You may repeat `papers status -v` and cleaning until a satisfying state is
-reached, or remove all config files recursively up to (and including) global
-install:
+`papers uninstall --recursive` (deprecated) also removes the library
+configurations of the parent directories, and the global configuration of
+version 2 if there is one.
 
-```
-papers uninstall --recursive
-```
+## Cache
 
-## Relative versus absolute paths
-
-By default, the file paths in the bibtex are stored as absolute paths (starting
-with `/`), except for local installs. It is possible to change this behaviour
-explicitly during install or in a case-by-case basis with `--relative-paths` or
-`--absolute-paths`, with or without install.
+All internet requests, such as crossref requests, are saved in the cache
+directory (shown by `papers status -v`), whether or not a library is
+configured. The metadata of each DOI is a json file under `doi/`, e.g.
+`doi/10.1126/science.1166510.json` (DOIs that do not exist are remembered for
+a day). Deleting the directory, or any file in it, is safe: the requests are
+made again when needed.

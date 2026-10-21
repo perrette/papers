@@ -15,15 +15,15 @@ Papers tries to be as little opinionated as possible about how files are
 organized, and so it relies on your own judgement and use case. When loading a
 bibtex, it always interprets relative file links as being relative to the
 bibtex file. When saving a bibtex, it will save file links according to the
-default setting path (usually absolute, unless local install or unless you
-specify otherwise).
+`paths` setting of the library (relative to the bibtex by default, see
+[Configuration](configuration.md#relative-versus-absolute-paths)).
 
 In any case, the following set of commands will always work provided the
 initial file links are valid (optional parameters in brackets):
 
 ```
 touch new.bib
-papers add /path/to/old.bib --bib new.bib [ --rename ] [ --relative-paths ] [ --filesdir newfilesdir ]
+papers add /path/to/old.bib --bib new.bib [ --rename ] [ --filesdir newfilesdir ]
 rm -f /path/to/old.bib
 ```
 

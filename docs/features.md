@@ -13,7 +13,7 @@
 - attachments (e.g. supplementary material), named after the main file (`papers add ... -a FILE`)
 - merging (`papers check --duplicates ...`)
 - fix entries (`papers check --format-name --encoding unicode --fix-doi --fix-key ...`)
-- configuration file with default bibtex and files directory (`papers install --bibtex BIB --filesdir DIR ...`)
+- library configuration with its bibtex, files directory and settings (`papers init --bibtex BIB --filesdir DIR ...`, `papers config`)
 - integration with git
 - undo/redo command (`papers undo / redo`)
 - display / search / list entries: format as bibtex or key or whatever (`papers list ... [--key-only, -l]`)
@@ -41,7 +41,7 @@ Currently covers:
     - add pdf file, bibtex, directory
     - add one pdf file with attachments
     - conflict resolution
-- `papers install`
+- `papers init`, `papers config`, `papers migrate`, `papers install`
 - internals:
     - duplicate test with levels `EXACT`, `GOOD`, `FAIR` (the default), `PARTIAL`
 - `papers list`

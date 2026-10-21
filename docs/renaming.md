@@ -80,4 +80,5 @@ replacing the prefix `--name-` with `--key-`, e.g. `--key-template`.
 
 In the common case where the bibtex (`--bibtex`), files directory
 (`--filesdir`), and name and key formats (e.g. `--name-template`) do not
-change, it is convenient to [install](configuration.md) `papers`.
+change, it is convenient to store them in a [library configuration](configuration.md)
+(`papers init`, `papers config name.template ...`).

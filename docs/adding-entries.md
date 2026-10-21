@@ -27,8 +27,8 @@ the name template, and `--copy` (`-c`) makes a copy there instead of moving
 the original (it has no effect without `--rename`). The same applies to the
 files linked from the entries of a bibtex file added with `papers add
 other.bib`: their paths are read relative to that bibtex and stored so that
-they remain valid from your own bibtex (absolute, or relative to it, according
-to `--absolute-paths`/`--relative-paths` or the installed setting); with
+they remain valid from your own bibtex (relative to it, or absolute, according
+to the `paths` setting of the library); with
 `--rename` they are moved (or copied with `--copy`) into the files directory.
 
 See [Renaming files and keys](renaming.md) for how to specify file naming
