@@ -264,7 +264,7 @@ class OpenCmdTest(LocalInstallTest):
         from unittest.mock import patch
         f = self._path('direct.pdf')
         open(f, 'w').write('x')
-        with patch('papers.cli.entry_cmds.view_pdf') as viewer:
+        with patch('papers.cli.entry_cmds.open_with_system') as viewer:
             self.papers(f'open {f}')
             viewer.assert_called_once_with(f)
 
@@ -276,7 +276,7 @@ class OpenCmdTest(LocalInstallTest):
         open(f, 'w').write('x')
         with patch.dict(os.environ), \
                 patch('papers.cli.find_masked_viewer', return_value=None), \
-                patch('papers.cli.view_pdf') as viewer:
+                patch('papers.cli.open_with_system') as viewer:
             os.environ.pop(VIEWER_PASSTHROUGH_ENV, None)
             self.papers(f'{f}')
             viewer.assert_called_once_with(f)
@@ -285,7 +285,7 @@ class OpenCmdTest(LocalInstallTest):
         # a file named like a subcommand does not hijack the CLI
         open(self._path('status'), 'w').write('x')
         with patch('papers.cli.find_masked_viewer') as finder, \
-                patch('papers.cli.view_pdf') as viewer:
+                patch('papers.cli.open_with_system') as viewer:
             self.papers('status')
             finder.assert_not_called()
             viewer.assert_not_called()
@@ -306,7 +306,7 @@ class ViewerPassthroughNoInstallTest(BaseTest):
     def test_bare_file_argument_without_install(self):
         # the viewer passthrough must work without any papers install
         with patch('papers.cli.find_masked_viewer', return_value=None), \
-                patch('papers.cli.view_pdf') as viewer:
+                patch('papers.cli.open_with_system') as viewer:
             self.papers(f'{self.pdf}')
             viewer.assert_called_once_with(self.pdf)
 
@@ -314,7 +314,7 @@ class ViewerPassthroughNoInstallTest(BaseTest):
         # desktop entries launch the viewer as `papers %U`, i.e. with file:// URIs
         uri = 'file://' + quote(self.pdf)
         with patch('papers.cli.find_masked_viewer', return_value=None), \
-                patch('papers.cli.view_pdf') as viewer:
+                patch('papers.cli.open_with_system') as viewer:
             self.papers(f"'{uri}'")
             viewer.assert_called_once_with(self.pdf)
 
@@ -324,7 +324,7 @@ class ViewerPassthroughNoInstallTest(BaseTest):
         uri = 'file://' + quote(self.pdf)
         with patch('papers.cli.find_masked_viewer', return_value='/usr/bin/papers'), \
                 patch('papers.cli.os.execv') as execv, \
-                patch('papers.cli.view_pdf') as viewer:
+                patch('papers.cli.open_with_system') as viewer:
             self.papers(f"'{uri}' {self.pdf}")
             execv.assert_called_once_with('/usr/bin/papers', ['/usr/bin/papers', uri, self.pdf])
             viewer.assert_not_called()
@@ -333,7 +333,7 @@ class ViewerPassthroughNoInstallTest(BaseTest):
         # handed to the system viewer once already: stop instead of looping
         os.environ[VIEWER_PASSTHROUGH_ENV] = '1'
         with patch('papers.cli.find_masked_viewer', return_value=None), \
-                patch('papers.cli.view_pdf') as viewer:
+                patch('papers.cli.open_with_system') as viewer:
             with self.assertRaises(PapersExit):
                 self.papers(f'{self.pdf}')
             viewer.assert_not_called()

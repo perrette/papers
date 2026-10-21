@@ -7,7 +7,7 @@ import papers.config
 from papers import __version__, logger
 from papers.config import CONFIG_FILE
 from papers.library import check_legacy_global_config, find_config
-from papers.utils import PapersExit, file_uri_to_path, find_masked_viewer, set_directory, view_pdf
+from papers.utils import PapersExit, file_uri_to_path, find_masked_viewer, set_directory, open_with_system
 from papers.cli.common import check_install
 from papers.cli.parser import get_parser
 
@@ -86,7 +86,7 @@ def _main(argv):
             f = file_uri_to_path(a)
             print(f"papers-cli: opening {f!r} with the system viewer "
                   f"(see `papers --help` for the bibliography tool)", file=sys.stderr)
-            view_pdf(f)
+            open_with_system(f)
         return
 
     o, args = parser.parse_known_args(argv)

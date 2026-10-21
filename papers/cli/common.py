@@ -14,7 +14,7 @@ from papers.files import hidden_bibtex
 from papers.identifiers import select_entries
 from papers.library import config_for_bibtex, savebib
 from papers.merge import Resolver
-from papers.utils import PapersExit, edit_text, open_folder, view_pdf
+from papers.utils import PapersExit, edit_text, open_with_system
 
 
 def view_entry_files(biblio, entry):
@@ -25,12 +25,12 @@ def view_entry_files(biblio, entry):
     if len(files) > 1:
         parent = os.path.commonpath(files)
         if os.path.isfile(hidden_bibtex(parent)):
-            open_folder(parent)
+            open_with_system(parent)
             return
 
     for f in biblio.get_files(entry):
         logger.info(f"opening {f} ...")
-        view_pdf(f)
+        open_with_system(f)
 
 
 def format_options(o, kind=('name', 'key')):

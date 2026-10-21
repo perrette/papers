@@ -18,7 +18,7 @@ from papers.identifiers import read_selection, select_entries
 from papers.library import get_biblio, savebib
 from papers.merge import DuplicateError
 from papers.pools import Exchange, PoolLookup, Pools, report_lines, use_pool_files
-from papers.utils import PapersExit, view_pdf
+from papers.utils import PapersExit, open_with_system
 from papers.cli.common import (view_entry_files, set_format_config_from_cmd, _print_biblio_diff, files_mode,
                                duplicate_resolver, save_exchange, stdin_is_terminal, edit_entries, edit_selected,
                                print_kept_files, _delete_files_option)
@@ -528,7 +528,7 @@ def opencmd(parser, o, config):
         # else is looked up as an entry key (or DOI) in the bibliography
         if os.path.isfile(key):
             logger.info(f"opening {key} ...")
-            view_pdf(key)
+            open_with_system(key)
             continue
         if biblio is None:
             try:

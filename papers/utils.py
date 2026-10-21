@@ -205,16 +205,15 @@ def set_directory(path: Path):
         os.chdir(origin)
 
 
-def view_pdf(filepath):
-    """
-    https://stackoverflow.com/questions/434597/open-document-with-default-os-application-in-python-both-in-windows-and-mac-os
-    """
+def open_with_system(path):
+    """open a file or a folder with the application the system associates with it
+    (https://stackoverflow.com/questions/434597)"""
     if platform.system() == 'Darwin':       # macOS
-        subprocess.call(('open', filepath))
+        subprocess.call(('open', path))
     elif platform.system() == 'Windows':    # Windows
-        os.startfile(filepath)
+        os.startfile(path)
     else:                                   # linux variants
-        subprocess.call(('xdg-open', filepath))
+        subprocess.call(('xdg-open', path))
 
 
 def file_uri_to_path(arg):
@@ -250,19 +249,6 @@ def find_masked_viewer(name='papers'):
                 and not _is_papers_cli_script(candidate):
             return candidate
     return None
-
-
-def open_folder(path):
-    system_platform = platform.system()
-
-    if system_platform == "Windows":
-        os.startfile(path)
-    elif system_platform == "Darwin":  # macOS
-        os.system(f'open "{path}"')
-    elif system_platform == "Linux":
-        os.system(f'xdg-open "{path}"')
-    else:
-        print("Unsupported operating system.")
 
 
 def edit_text(text, editor=None):
