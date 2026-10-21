@@ -22,7 +22,7 @@ from papers.duplicate import list_duplicates, list_uniques, edit_entries, title_
 from papers.entries import get_entry_val, entry_content_equal, entry_from_dict
 from papers.bib import (Biblio, FUZZY_RATIO, DEFAULT_SIMILARITY, entry_filecheck,
                         backupfile as backupfile_func, isvalidkey, DuplicateKeyError, clean_filesdir,
-                        are_duplicates, download_url, get_biblio, scan_dir_walk)
+                        are_duplicates, download_url, get_biblio, scan_dir_walk, hidden_bibtex)
 from papers.install import resolve_install, apply_install, InputAsker, DefaultAsker
 from papers.utils import view_pdf, open_folder, PapersExit, file_uri_to_path, find_masked_viewer
 from papers.backup import (silent_backup_bib, restore_from_backupdir,
@@ -82,23 +82,14 @@ def savebib(biblio, config):
 
 
 
-def is_subdirectory(parent, child):
-    # Resolve paths to absolute paths
-    parent = Path(parent).resolve()
-    child = Path(child).resolve()
-
-    # Check if the child path is relative to the parent path
-    return parent in child.parents
-
-
 def view_entry_files(biblio, entry):
     files = biblio.get_files(entry)
 
-    # in case several attachments are present and the files are ordered under filesdir,
-    # open the subfolder instead of the single files
+    # several files in a directory of previous versions' layout (<name>/ with
+    # a hidden .<name>.bib): open the directory instead of the single files
     if len(files) > 1:
         parent = os.path.commonpath(files)
-        if is_subdirectory(biblio.filesdir, parent):
+        if os.path.isfile(hidden_bibtex(parent)):
             open_folder(parent)
             return
 

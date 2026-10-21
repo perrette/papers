@@ -134,3 +134,72 @@ class TestLocalConfigSubfolder(BibTest):
         js = json.load(open(configfile))
         self.assertEqual(js['bibtex'], os.path.join('refs', 'papers.bib'))
         self.assertEqual(js['filesdir'], 'files')
+
+
+class TestFlatLayout(BibTest):
+    """the files of an entry: <name>.<ext> and <name>--<label>.<ext>"""
+
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.dir = self.temp_dir.name
+        self.filesdir = os.path.join(self.dir, 'files')
+        self.biblio = Biblio(filesdir=self.filesdir)
+        self.biblio.add_bibtex(ENTRY.replace('file = {:a.pdf:pdf}', ''))
+        self.entry = self.biblio.entries[0]
+        self.name = self.biblio.nameformat(self.entry)
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
+    def touch(self, *names):
+        paths = []
+        for name in names:
+            path = os.path.join(self.dir, name)
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            Path(path).write_text(name)
+            paths.append(path)
+        return paths
+
+    def rename(self, files=None):
+        if files is not None:
+            self.biblio.set_files(self.entry, files)
+        self.biblio.rename_entry_files(self.entry)
+        return [os.path.relpath(f, self.filesdir) for f in self.biblio.get_files(self.entry)]
+
+    def test_names(self):
+        files = self.rename(self.touch('a.pdf', 'supplement.pdf', 'data.zip'))
+        n = self.name
+        self.assertEqual(files, [f'{n}.pdf', f'{n}--supplement.pdf', f'{n}--data.zip'])
+        self.assertEqual(Path(self.filesdir, f'{n}--data.zip').read_text(), 'data.zip')
+        # renaming again changes nothing
+        self.assertEqual(self.rename(), files)
+
+    def test_new_name_keeps_labels(self):
+        self.rename(self.touch('a.pdf', 'supplement.pdf'))
+        self.entry['year'] = '2021'
+        n = self.biblio.nameformat(self.entry)
+        self.assertNotEqual(n, self.name)
+        self.assertEqual(self.rename(), [f'{n}.pdf', f'{n}--supplement.pdf'])
+        self.assertEqual(sorted(os.listdir(self.filesdir)), [f'{n}--supplement.pdf', f'{n}.pdf'])
+
+    def test_same_labels(self):
+        files = self.rename(self.touch('a.pdf', 'x/si.pdf', 'y/si.pdf'))
+        n = self.name
+        self.assertEqual(files, [f'{n}.pdf', f'{n}--si.pdf', f'{n}--si-2.pdf'])
+        self.assertEqual(self.rename(), files)
+
+    def test_legacy_directory(self):
+        n = self.name
+        legacy = self.touch(f'files/{n}/{n}.pdf', f'files/{n}/si.pdf', f'files/{n}/.{n}.bib')[:2]
+        self.assertEqual(self.rename(legacy), [f'{n}.pdf', f'{n}--si.pdf'])
+        self.assertFalse(os.path.exists(os.path.join(self.filesdir, n)))
+
+    def test_legacy_directory_with_other_files(self):
+        n = self.name
+        legacy = self.touch(f'files/{n}/{n}.pdf', f'files/{n}/si.pdf', f'files/{n}/.{n}.bib', f'files/{n}/notes.txt')[:2]
+        self.assertEqual(self.rename(legacy), [f'{n}.pdf', f'{n}--si.pdf'])
+        self.assertTrue(os.path.exists(os.path.join(self.filesdir, n, 'notes.txt')))
+
+    def test_source_directory_is_kept(self):
+        self.rename(self.touch('downloads/a.pdf', 'downloads/b.pdf'))
+        self.assertTrue(os.path.isdir(os.path.join(self.dir, 'downloads')))

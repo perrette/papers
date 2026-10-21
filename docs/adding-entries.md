@@ -32,7 +32,7 @@ to `--absolute-paths`/`--relative-paths` or the installed setting); with
 `--rename` they are moved (or copied with `--copy`) into the files directory.
 
 See [Renaming files and keys](renaming.md) for how to specify file naming
-patterns.
+patterns, and how the files of an entry with attachments are named.
 
 ## Add a whole directory of PDFs
 

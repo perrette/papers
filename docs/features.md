@@ -10,7 +10,7 @@
 - add entry as bibtex (`papers add ...`)
 - scan directory for PDFs (`papers add ...`)
 - rename PDFs according to bibtex key and year (`papers filecheck --rename [--copy]`)
-- some support for attachment
+- attachments (e.g. supplementary material), named after the main file (`papers add ... -a FILE`)
 - merging (`papers check --duplicates ...`)
 - fix entries (`papers check --format-name --encoding unicode --fix-doi --fix-key ...`)
 - configuration file with default bibtex and files directory (`papers install --bibtex BIB --filesdir DIR ...`)
@@ -39,7 +39,7 @@ Currently covers:
 - `papers add`
     - add entry and manage conflict
     - add pdf file, bibtex, directory
-    - add one pdf file with attachment (beta, API will change)
+    - add one pdf file with attachments
     - conflict resolution
 - `papers install`
 - internals:
