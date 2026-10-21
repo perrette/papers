@@ -7,7 +7,8 @@ from papers.bib import Biblio
 from papers.entries import parse_string
 from papers.utils import PapersExit
 from papers.identifiers import read_selection, select_entries
-from papers.identifiers import normalize_doi, normalize_arxiv, normalize_isbn, parse_identifier
+from papers.identifiers import normalize_doi, normalize_arxiv, normalize_isbn, parse_identifier, arxiv_of_doi, entry_arxiv
+from papers.entries import entry_from_dict
 from tests.common import LocalInstallTest
 
 bibtex = """@article{Alpha2000,
@@ -126,6 +127,20 @@ class IdentifierTest(unittest.TestCase):
         self.assertEqual(parse_identifier('hep-th/9901001'), ('arxiv', 'hep-th/9901001'))
         self.assertEqual(parse_identifier('math.GT/0309136v1'), ('arxiv', 'math.gt/0309136'))
         self.assertIsNone(normalize_arxiv('smith/2000'))
+
+    def test_arxiv_of_doi(self):
+        self.assertEqual(arxiv_of_doi('10.48550/arXiv.2101.01234v2'), '2101.01234v2')
+        self.assertEqual(arxiv_of_doi('10.48550/arxiv.2101.01234'), '2101.01234')
+        self.assertIsNone(arxiv_of_doi('10.1000/arxiv.2101.01234'))
+
+    def test_entry_arxiv(self):
+        entry = lambda **fields: entry_from_dict(dict(fields, ID='key', ENTRYTYPE='article'))
+        self.assertEqual(entry_arxiv(entry(eprint='2101.01234v1')), '2101.01234')
+        self.assertEqual(entry_arxiv(entry(doi='10.48550/arXiv.2101.01234')), '2101.01234')
+        # the eprint field first
+        self.assertEqual(entry_arxiv(entry(eprint='2101.01234', doi='10.48550/arXiv.2202.02345')), '2101.01234')
+        self.assertEqual(entry_arxiv(entry(eprint='2101.01234', archiveprefix='HAL')), '')
+        self.assertEqual(entry_arxiv(entry(doi='10.1000/abc')), '')
 
     def test_isbn(self):
         self.assertEqual(normalize_isbn('978-0-306-40615-7'), '9780306406157')

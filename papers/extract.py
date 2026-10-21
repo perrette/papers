@@ -15,6 +15,7 @@ from unidecode import unidecode
 import papers
 from papers.cache import cached
 from papers import logger
+from papers.identifiers import arxiv_of_doi
 from papers.entries import (
     get_entry_val,
     parse_string,
@@ -692,8 +693,9 @@ def fetch_bibtex_by_arxiv(arxiv_id):
 
 
 def fetch_bibtex_by_doi(doi):
-    if "arxiv" in doi.lower():
-        return fetch_bibtex_by_arxiv(doi.split("arXiv.")[1])
+    arxiv = arxiv_of_doi(doi)
+    if arxiv:
+        return fetch_bibtex_by_arxiv(arxiv)
     try:
         return crossref_to_bibtex(fetch_doi_metadata(doi.lower()))
     except DOINotFoundError:

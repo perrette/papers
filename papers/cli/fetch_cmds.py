@@ -4,7 +4,8 @@ from pathlib import Path
 
 from papers import logger
 from papers.extract import (extract_pdf_doi, extract_pdf_metadata, fetch_bibtex_by_doi,
-                            fetch_bibtex_by_fulltext_crossref, fetch_bibtex_by_fulltext_scholar, isvaliddoi)
+                            fetch_bibtex_by_fulltext_crossref, fetch_bibtex_by_fulltext_scholar)
+from papers.identifiers import normalize_doi
 
 
 def doicmd(parser, o, config):
@@ -13,10 +14,11 @@ def doicmd(parser, o, config):
 
 def fetchcmd(parser, o, config):
     # either one or several DOIs
-    if all(isvaliddoi(field) for field in o.doi_or_text):
+    dois = [normalize_doi(field) for field in o.doi_or_text]
+    if all(dois):
         if o.scholar:
             parser.error("Fetching from DOI does not support Google Scholar option")
-        for doi in o.doi_or_text:
+        for doi in dois:
             print(fetch_bibtex_by_doi(doi))
         return
 

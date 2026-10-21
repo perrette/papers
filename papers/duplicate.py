@@ -30,7 +30,7 @@ from unidecode import unidecode
 
 from papers import logger
 from papers.entries import get_entry_val
-from papers.identifiers import normalize_doi, normalize_arxiv, normalize_isbn, _ARXIV_DOI
+from papers.identifiers import normalize_doi, normalize_isbn, entry_arxiv
 from papers.latexenc import latex_to_unicode
 
 
@@ -123,19 +123,6 @@ def doi_id(e):
     return normalize_doi(get_entry_val(e, 'doi', '')) or ''
 
 
-def arxiv_id(e):
-    "arXiv identifier of the eprint field (arXiv or no archivePrefix), else of an arXiv DOI"
-    prefix = get_entry_val(e, 'archiveprefix', '') or get_entry_val(e, 'archivePrefix', '')
-    if prefix.strip().lower() in ('', 'arxiv'):
-        arxiv = normalize_arxiv(get_entry_val(e, 'eprint', ''))
-        if arxiv:
-            return arxiv
-    m = _ARXIV_DOI.match(doi_id(e))
-    if m:
-        return normalize_arxiv(m.group(1)) or ''
-    return ''
-
-
 def isbn_ids(e):
     "the normalized ISBNs of a @book entry (none for other types)"
     if entry_type(e) != 'book':
@@ -151,8 +138,8 @@ def identity(e):
     ident = {}
     if doi_id(e):
         ident['doi'] = doi_id(e)
-    if arxiv_id(e):
-        ident['arxiv'] = arxiv_id(e)
+    if entry_arxiv(e):
+        ident['arxiv'] = entry_arxiv(e)
     if isbn_ids(e):
         ident['isbn'] = ','.join(sorted(isbn_ids(e)))
     if authortitle_id(e):
@@ -189,7 +176,7 @@ def same_paper(a, b, distinct=None):
             return Verdict(DIFFERENT, 'different DOIs')
         return _guard(a, b, f'same DOI {doi_a}')
 
-    arxiv_a, arxiv_b = arxiv_id(a), arxiv_id(b)
+    arxiv_a, arxiv_b = entry_arxiv(a), entry_arxiv(b)
     if arxiv_a and arxiv_b:
         if arxiv_a != arxiv_b:
             return Verdict(DIFFERENT, 'different arXiv ids')

@@ -534,6 +534,14 @@ class TestDoiRequests(unittest.TestCase):
                     fetch_bibtex_by_arxiv('2101.00001')
         self.assertEqual(len(calls), 2)
 
+    def test_arxiv_doi_fetched_from_arxiv(self):
+        from unittest import mock
+        from papers.extract import fetch_bibtex_by_doi
+        for doi in ['10.48550/arXiv.2101.00001', '10.48550/arxiv.2101.00001']:
+            with mock.patch('papers.extract.fetch_bibtex_by_arxiv', return_value='@misc{x}') as arxiv:
+                self.assertEqual(fetch_bibtex_by_doi(doi), '@misc{x}')
+            arxiv.assert_called_once_with('2101.00001')
+
     def test_fulltext_query_parameters(self):
         from unittest import mock
         from papers.extract import fetch_bibtex_by_fulltext_crossref

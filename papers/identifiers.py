@@ -57,6 +57,32 @@ def normalize_isbn(text):
     return None
 
 
+def arxiv_of_doi(doi):
+    "the arXiv identifier of an arXiv DOI (10.48550/arXiv.<id>), as written in the DOI, or None"
+    m = _ARXIV_DOI.match(doi.strip())
+    return m.group(1) if m else None
+
+
+def _eprint_arxiv(e):
+    "the arXiv identifier of the eprint field (arXiv or no archivePrefix), or None"
+    prefix = get_entry_val(e, 'archiveprefix', '') or get_entry_val(e, 'archivePrefix', '')
+    if prefix.strip().lower() in ('', 'arxiv'):
+        return normalize_arxiv(get_entry_val(e, 'eprint', ''))
+    return None
+
+
+def _doi_arxiv(e):
+    "the arXiv identifier of an arXiv DOI of the entry, or None"
+    doi = normalize_doi(get_entry_val(e, 'doi', ''))
+    arxiv = arxiv_of_doi(doi) if doi else None
+    return normalize_arxiv(arxiv) if arxiv else None
+
+
+def entry_arxiv(e):
+    "the arXiv identifier of an entry: of the eprint field, else of an arXiv DOI ('' if none)"
+    return _eprint_arxiv(e) or _doi_arxiv(e) or ''
+
+
 def parse_identifier(arg):
     """(kind, normalized value) of a command-line identifier, kind being
     'doi', 'arxiv', 'isbn' or 'key'. Raise ValueError for an argument that
@@ -87,12 +113,8 @@ def entry_identifiers(e):
     doi = normalize_doi(get_entry_val(e, 'doi', ''))
     if doi:
         ids.add(('doi', doi))
-        m = _ARXIV_DOI.match(doi)
-        if m and normalize_arxiv(m.group(1)):
-            ids.add(('arxiv', normalize_arxiv(m.group(1))))
-    prefix = get_entry_val(e, 'archiveprefix', '') or get_entry_val(e, 'archivePrefix', '')
-    if prefix.strip().lower() in ('', 'arxiv'):
-        arxiv = normalize_arxiv(get_entry_val(e, 'eprint', ''))
+    # both, if the eprint field and the DOI disagree
+    for arxiv in (_doi_arxiv(e), _eprint_arxiv(e)):
         if arxiv:
             ids.add(('arxiv', arxiv))
     for isbn in _split(get_entry_val(e, 'isbn', ''), '[,;]'):
