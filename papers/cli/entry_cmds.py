@@ -19,8 +19,7 @@ from papers.library import get_biblio, savebib
 from papers.merge import DuplicateError
 from papers.pools import Exchange, PoolLookup, Pools, report_lines, use_pool_files
 from papers.utils import PapersExit, view_pdf
-from papers.cli.common import (view_entry_files, set_keyformat_config_from_cmd,
-                               set_nameformat_config_from_cmd, _print_biblio_diff, files_mode,
+from papers.cli.common import (view_entry_files, set_format_config_from_cmd, _print_biblio_diff, files_mode,
                                duplicate_resolver, save_exchange, stdin_is_terminal, edit_selected,
                                print_kept_files, _delete_files_option)
 
@@ -30,8 +29,8 @@ def addcmd(parser, o, config):
     Given an options set and a config, sets up the function call to add the file or all files in the directory to the bibtex, and executes it.
     """
 
-    set_nameformat_config_from_cmd(o, config)
-    set_keyformat_config_from_cmd(o, config)
+    set_format_config_from_cmd(o, config, 'name')
+    set_format_config_from_cmd(o, config, 'key')
 
     pools = Pools(config)
     if config.light:
@@ -192,7 +191,7 @@ def checkcmd(parser, o, config):
     """
     Loops over the entire bib file that the Papers install sees, and checks each entry for formatting and for the existance of duplicates.  Then writes the Biblio object back to your Bibtex file.
     """
-    set_keyformat_config_from_cmd(o, config)
+    set_format_config_from_cmd(o, config, 'key')
 
     biblio = get_biblio(config)
 

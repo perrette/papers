@@ -104,11 +104,11 @@ class Format:
 
     Example
     -------
-    To rename esd-4-11-2013.pdf as perrette_2013.pdf, template should be '{author}_{year}' with --name-nauthor 1.
+    To rename esd-4-11-2013.pdf as perrette_2013.pdf, template should be '{author}_{year}' with --name-author-num 1.
     If that happens to be the entry ID, 'ID' also works.
     To rename esd-4-11-2013.pdf as
     2013/Perrette2013-AScalingApproachToProjectRegionalSeaLevelRiseAndItsUncertainties.pdf,
-    template should be '{year}/{Author}{year}-{Title}' with --name-nauthor 1 (note the case).
+    template should be '{year}/{Author}{year}-{Title}' with --name-author-num 1 (note the case).
     Entries are case-sensitive, so that:
         'author' generates 'perrette'
         'Author' generates 'Perrette'

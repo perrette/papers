@@ -45,20 +45,12 @@ def format_options(o, kind=('name', 'key')):
     return options
 
 
-def set_keyformat_config_from_cmd(o, config):
-    """
-    Given options and a config state, applies the desired key options to the config.
-    """
-    for name, value in format_options(o, ['key']).items():
-        setattr(config.keyformat, name.split('.')[1].replace('-', '_'), value)
-
-
-def set_nameformat_config_from_cmd(o, config):
-    """
-    Given options and a config state, applies the desired name options to the config.
-    """
-    for name, value in format_options(o, ['name']).items():
-        setattr(config.nameformat, name.split('.')[1].replace('-', '_'), value)
+def set_format_config_from_cmd(o, config, kind):
+    """apply the name or key format options of the command line (kind: name
+    or key) to the configuration of the run"""
+    fmt = config.nameformat if kind == 'name' else config.keyformat
+    for name, value in format_options(o, [kind]).items():
+        setattr(fmt, name.split('.')[1].replace('-', '_'), value)
 
 
 def check_pools(config, pools):

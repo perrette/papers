@@ -11,7 +11,7 @@ from papers.files import (attach_files, check_entry_files, clean_filesdir, delet
 from papers.library import get_biblio, savebib
 from papers.pools import Exchange, Pools
 from papers.utils import PapersExit
-from papers.cli.common import (set_nameformat_config_from_cmd, _print_biblio_diff, files_mode,
+from papers.cli.common import (set_format_config_from_cmd, _print_biblio_diff, files_mode,
                                _entries_or_all, _one_entry, print_kept_files)
 
 
@@ -30,7 +30,7 @@ def filecheckcmd(parser, o, config):
         new.append('papers file clean' + (' --yes' if o.force else ''))
     logger.warning(f"`papers filecheck` is deprecated: use {' and '.join('`'+cmd+'`' for cmd in new)}")
 
-    set_nameformat_config_from_cmd(o, config)
+    set_format_config_from_cmd(o, config, 'name')
     biblio = get_biblio(config)
 
     if check:
@@ -53,7 +53,7 @@ def filecheckcmd(parser, o, config):
 
 
 def file_renamecmd(parser, o, config):
-    set_nameformat_config_from_cmd(o, config)
+    set_format_config_from_cmd(o, config, 'name')
     biblio = get_biblio(config)
     biblio_init = copy.deepcopy(biblio)
     entries = _entries_or_all(biblio, o.entries)
@@ -104,7 +104,7 @@ def file_mvcmd(parser, o, config):
 
 
 def file_attachcmd(parser, o, config):
-    set_nameformat_config_from_cmd(o, config)
+    set_format_config_from_cmd(o, config, 'name')
     biblio = get_biblio(config)
     biblio_init = copy.deepcopy(biblio)
     e = _one_entry(biblio, o.key)

@@ -17,6 +17,43 @@ from papers.cli.library_cmds import statuscmd, initcmd, configcmd, migratecmd, i
 from papers.cli.pool_cmds import pullcmd, pushcmd, exportcmd, poolcmd
 
 
+# help of the name.* and key.* settings on the command line (`what` is key or
+# filename; the template has its own help). A field without help (e.g.
+# unknown-template) has no command-line option.
+_FORMAT_HELP = {
+    'author-num': 'number of authors to include in {what}',
+    'author-sep': 'separator for authors in {what}',
+    'title-word-num': 'number of title words to include in {what}',
+    'title-word-size': 'min size of title words to include in {what}',
+    'title-length': 'title length to include in {what}',
+    'title-sep': 'separator for title words in {what}',
+}
+
+
+def _default(value):
+    "a configured value shown in a help text (argparse formats help with %)"
+    return str(value).replace('%', '%%')
+
+
+def _format_parser(kind, title, what, fmt, template_help):
+    """parent parser of the options --<kind>-template, --<kind>-author-num...
+    of the name or key format settings (kind: name or key), defaulting to
+    None: the configured values (`fmt`, a papers.filename.Format) apply"""
+    parser = argparse.ArgumentParser(add_help=False)
+    grp = parser.add_argument_group(title)
+    for name, type_ in SETTINGS.items():
+        field = name[len(kind) + 1:]
+        if not name.startswith(kind + '.') or (field != 'template' and field not in _FORMAT_HELP):
+            continue
+        default = _default(getattr(fmt, field.replace('-', '_')))
+        if field == 'template':
+            help = template_help.format(default=default)
+        else:
+            help = _FORMAT_HELP[field].format(what=what) + f' (default: {default})'
+        grp.add_argument(f'--{kind}-{field}', type=int if type_ == 'int' else None, help=help)
+    return parser
+
+
 def get_parser(config=None):
     if config is None:
         config = papers.config.Config()
@@ -31,10 +68,6 @@ def get_parser(config=None):
     # entries named on the command line (see papers.identifiers)
     _selection_help = (f'KEY: {ENTRY_IDS} (a former key in the ids field works too); '
                        '- reads them from the standard input, one per line')
-
-    def _default(value):
-        "a configured value shown in a help text (argparse formats help with %)"
-        return str(value).replace('%', '%%')
 
     def _command(p, func, library=False, bibtex_must_exist=True):
         """the function of a command, called as func(p, o, config) by
@@ -76,40 +109,12 @@ def get_parser(config=None):
     grp.add_argument('--no-git', action='store_false', dest='git', default=None, help="""Do not commit the current action, whatever happens""")
 
     # the format options default to None: the configured values apply
-    keyfmt = argparse.ArgumentParser(add_help=False)
-    grp = keyfmt.add_argument_group('bibtex key format')
-    grp.add_argument('--key-template',
-        help=f'''python template for generating keys (default: {_default(config.keyformat.template)}).
-        The template applies to entries generated from a PDF or a DOI;
-        entries added from a bibtex file keep their original key unless
-        -u/--update-key is passed.''')
-    grp.add_argument('--key-author-num', type=int,
-        help=f'number of authors to include in key (default: {config.keyformat.author_num})')
-    grp.add_argument('--key-author-sep',
-        help=f'separator for authors in key (default: {_default(config.keyformat.author_sep)})')
-    grp.add_argument('--key-title-word-num', type=int,
-        help=f'number of title words to include in key (default: {config.keyformat.title_word_num})')
-    grp.add_argument('--key-title-word-size', type=int,
-        help=f'min size of title words to include in key (default: {config.keyformat.title_word_size})')
-    grp.add_argument('--key-title-sep',
-        help=f'separator for title words in key (default: {_default(config.keyformat.title_sep)})')
-
-    namefmt = argparse.ArgumentParser(add_help=False)
-    grp = namefmt.add_argument_group('filename format')
-    grp.add_argument('--name-template',
-        help=f'python template for renaming files (default: {_default(config.nameformat.template)})')
-    grp.add_argument('--name-author-num', type=int,
-        help=f'number of authors to include in filename (default: {config.nameformat.author_num})')
-    grp.add_argument('--name-author-sep',
-        help=f'separator for authors in filename (default: {_default(config.nameformat.author_sep)})')
-    grp.add_argument('--name-title-word-num', type=int,
-        help=f'number of title words to include in filename (default: {config.nameformat.title_word_num})')
-    grp.add_argument('--name-title-word-size', type=int,
-        help=f'min size of title words to include in filename (default: {config.nameformat.title_word_size})')
-    grp.add_argument('--name-title-length', type=int,
-        help=f'title length to include in filename (default: {config.nameformat.title_length})')
-    grp.add_argument('--name-title-sep',
-        help=f'separator for title words in filename (default: {_default(config.nameformat.title_sep)})')
+    keyfmt = _format_parser('key', 'bibtex key format', 'key', config.keyformat,
+        '''python template for generating keys (default: {default}). The template applies to entries
+        generated from a PDF or a DOI; entries added from a bibtex file keep their original key
+        unless -u/--update-key is passed.''')
+    namefmt = _format_parser('name', 'filename format', 'filename', config.nameformat,
+        'python template for renaming files (default: {default})')
 
 
     # status
