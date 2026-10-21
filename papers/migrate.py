@@ -9,9 +9,9 @@ library), and the old file is renamed to <name>.v2.bak.
 import os
 
 from papers import logger
-from papers.bib import hidden_bibtex
 from papers.config import (Config, CONFIG_FILE, CONFIG_FILE_LOCAL, CONFIG_FILE_LEGACY,
                            CONFIG_FILE_LEGACY_XDG, INHERITED, short_home)
+from papers.files import hidden_bibtex
 from papers.library import get_biblio, savebib, convert_file_links
 
 

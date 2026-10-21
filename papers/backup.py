@@ -53,10 +53,11 @@ from pathlib import Path
 from slugify import slugify
 
 from papers import logger, __version__
-from papers.bib import Biblio, clean_filesdir
+from papers.bib import Biblio
 from papers.config import BACKUP_DIR, BACKUP_DIR_LEGACY
 from papers.duplicate import DISTINCT_FILE
 from papers.entries import get_entry_val
+from papers.files import clean_filesdir
 from papers.utils import checksum, move, PapersExit
 
 MANIFEST_NAME = "manifest.json"

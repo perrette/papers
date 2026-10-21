@@ -11,6 +11,7 @@ import shutil
 import fnmatch   # unix-like match
 
 import papers
+import papers.files
 from papers import logger
 from papers.extract import extract_pdf_doi, isvaliddoi, extract_pdf_metadata, prefetch_pdf_metadata
 from papers.extract import fetch_bibtex_by_doi, fetch_bibtex_by_fulltext_crossref, fetch_bibtex_by_fulltext_scholar
@@ -20,15 +21,14 @@ from papers.config import (Config, CONFIG_FILE, CONFIG_FILE_LOCAL, LIBRARY_CONFI
 from papers.duplicate import edit_entries, duplicate_groups, fuzzy_pairs, FUZZY_RATIO
 from papers.merge import Resolver, DuplicateError, ON_DUPLICATE
 from papers.entries import get_entry_val, entry_content_equal, entry_from_dict
-from papers.bib import (backupfile as backupfile_func, isvalidkey, DuplicateKeyError, clean_filesdir,
-                        download_url, scan_dir_items, hidden_bibtex)
+from papers.bib import backupfile as backupfile_func, isvalidkey, DuplicateKeyError
 from papers.install import (resolve_install, apply_install, _ask_path, RESET_WORDS,
                             InputAsker, DefaultAsker)
 from papers.utils import bcolors, search_config, view_pdf, open_folder, PapersExit, file_uri_to_path, find_masked_viewer, set_directory
 from papers.identifiers import read_selection, select_entries, ACCEPTED as ENTRY_IDS
-from papers.files import (FilesPolicy, realpath, is_download, plan_moves, link_snapshot,
+from papers.files import (files_policy, rename_files, attach_files, detach_links, realpath, plan_moves, link_snapshot,
                           moved_links, execute_moves, files_to_delete, describe_file, delete_files,
-                          check_entry_files)
+                          check_entry_files, clean_filesdir, download_url, scan_dir_items, hidden_bibtex)
 from papers.pools import (Pools, Exchange, PoolLookup, use_pool_files, report_lines,
                           export, status_lines, machine_pool_lines, pool_path_setting, library_config_file)
 from papers.library import (check_legacy_global_config, check_legacy_config, find_config,
@@ -452,15 +452,6 @@ def files_mode(o, config):
     return mode
 
 
-def files_policy(config, mode, keep=()):
-    "what to do with each file, see papers.files.FilesPolicy"
-    pool_dirs = Pools(config).files_dirs()
-    # files placed in the pool by a light library (see papers.pools.use_pool_files)
-    light = config.light and any(realpath(config.filesdir or '') == realpath(d) for d in pool_dirs)
-    return FilesPolicy(mode, config.filesdir, current_config=config.file, machine=config.machine, keep=keep,
-                       pool_dirs=pool_dirs, light=light)
-
-
 # v2 letters of -m/--mode, and the --on-duplicate word they map to
 ADD_MODES = {'i': 'ask', 'u': 'keep', 'U': 'update', 'o': 'update', 's': 'skip', 'r': 'error'}
 CHECK_MODES = {'i': 'ask', 'm': 'keep', 's': 'skip'}
@@ -521,7 +512,7 @@ def addcmd(parser, o, config):
 
     # what to do with the files: see papers.files.FilesPolicy
     mode = files_mode(o, config)
-    policy = files_policy(config, mode)
+    policy = files_policy(config, mode, pools.files_dirs())
     rename = mode != 'link'
 
     metadata = {k: v for k, v in o.metadata or []}
@@ -708,7 +699,7 @@ def filecheckcmd(parser, o, config):
             detach_links(biblio, e, [f for f in biblio.get_files(e) if not os.path.exists(f)])
 
     if o.rename:
-        rename_files(biblio, biblio.entries, config, keep_source=o.copy)
+        rename_files(biblio, biblio.entries, config, Pools(config).files_dirs(), keep_source=o.copy)
 
     if o.clean_filesdir:
         print("Check files directory for unlinked files")
@@ -732,50 +723,12 @@ def _one_entry(biblio, key):
     return entries[0]
 
 
-def rename_files(biblio, entries, config, keep_source=False):
-    """place the files of the entries in the files directory, under their
-    template name (a file that belongs to another library is copied, see
-    FilesPolicy)"""
-    if config.filesdir is None:
-        raise PapersExit('the library has no files directory: pass --filesdir, '
-                         'or set it with `papers config filesdir DIR`')
-    policy = files_policy(config, 'copy' if keep_source else 'move')
-    for e in entries:
-        try:
-            biblio.rename_entry_files(e, copy=policy)
-        except Exception as error:
-            logger.error(f"{get_entry_val(e, 'ID', '')}: {error}")
-
-
-def attach_files(biblio, e, files, config, mode):
-    """add files to the links of an entry, and place them as the files mode
-    says (the files the entry had stay where they are)"""
-    old = biblio.get_files(e)
-    new = []
-    for f in files:
-        if str(f).startswith("http://") or str(f).startswith("https://"):
-            new.append(download_url(f, expect_pdf=False))  # moved into the files directory
-        elif not os.path.exists(f):
-            raise PapersExit(f"file {f} does not exist")
-        else:
-            new.append(os.path.abspath(f))
-    biblio.set_files(e, old + new)
-    if mode != 'link' or any(is_download(f) for f in new):
-        biblio.rename_entry_files(e, copy=files_policy(config, mode, keep=old))
-
-
-def detach_links(biblio, e, files):
-    "remove links from an entry (files are compared by real path)"
-    remove = {realpath(f) for f in files}
-    biblio.set_files(e, [f for f in biblio.get_files(e) if realpath(f) not in remove])
-
-
 def file_renamecmd(parser, o, config):
     set_nameformat_config_from_cmd(o, config)
     biblio = get_biblio(config)
     biblio_init = copy.deepcopy(biblio)
     entries = _entries_or_all(biblio, o.entries)
-    rename_files(biblio, entries, config, keep_source=o.keep_source)
+    rename_files(biblio, entries, config, Pools(config).files_dirs(), keep_source=o.keep_source)
     savebib(biblio, config)
     _print_biblio_diff(biblio_init, biblio, entries)
 
@@ -826,7 +779,7 @@ def file_attachcmd(parser, o, config):
     biblio = get_biblio(config)
     biblio_init = copy.deepcopy(biblio)
     e = _one_entry(biblio, o.key)
-    attach_files(biblio, e, o.files, config, files_mode(o, config))
+    attach_files(biblio, e, o.files, config, files_mode(o, config), Pools(config).files_dirs())
     savebib(biblio, config)
     _print_biblio_diff(biblio_init, biblio, [e])
 
@@ -1053,11 +1006,8 @@ def remove_entries(biblio, entries, config, delete_files=None, ask=True):
     directory, and keeps them without a terminal. A file outside the files
     directory is only deleted with delete_files=True.
     """
-    files = [f for e in entries for f in biblio.get_files(e)]
-    for e in entries:
-        biblio.db.remove(e)
-    inside, outside, kept, in_pool = files_to_delete(biblio, files, config.filesdir,
-                                                     pool_dirs=Pools(config).files_dirs())
+    inside, outside, kept, in_pool = papers.files.remove_entries(biblio, entries, config.filesdir,
+                                                                 pool_dirs=Pools(config).files_dirs())
     if delete_files is False:
         return []
     print_kept_files(kept, in_pool)
@@ -1476,7 +1426,7 @@ def listcmd(parser, o, config):
             raise PapersExit("list only one entry to use --add-files")
         e = entries[0]
         attach_files(biblio, e, o.add_files, config,
-                     ('copy' if o.copy else 'move') if o.rename else 'link')
+                     ('copy' if o.copy else 'move') if o.rename else 'link', Pools(config).files_dirs())
         savebib(biblio, config)
 
     elif o.edit:
@@ -1491,7 +1441,7 @@ def listcmd(parser, o, config):
         savebib(biblio, config)
 
     elif o.rename:
-        rename_files(biblio, entries, config, keep_source=o.copy)
+        rename_files(biblio, entries, config, Pools(config).files_dirs(), keep_source=o.copy)
         savebib(biblio, config)
 
     elif o.delete:

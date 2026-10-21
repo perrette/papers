@@ -3,8 +3,7 @@ import os
 import tempfile
 import unittest
 
-from papers.encoding import update_file_path, standard_name
-from papers.bib import parse_file, format_file
+from papers.encoding import update_file_path, standard_name, parse_file, format_file
 from papers.encoding import (
     family_names,
     parse_keywords,

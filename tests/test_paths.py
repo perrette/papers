@@ -5,7 +5,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from papers.bib import Biblio, group_attachments
+from papers.bib import Biblio
+from papers.files import group_attachments
 from papers.config import Config, CONFIG_FILE_LOCAL
 from papers.utils import move
 from tests.common import paperscmd, BibTest

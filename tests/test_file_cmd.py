@@ -337,11 +337,11 @@ class TestCheck(FileTest):
         self.assertTrue(os.path.exists(self.b))  # the file itself is kept
 
     def test_metadata(self):
-        with patch('papers.bib.extract_pdf_doi', return_value='10.1000/other') as extract:
+        with patch('papers.files.extract_pdf_doi', return_value='10.1000/other') as extract:
             out = self.out('file check one2000 --metadata')
         self.assertTrue(extract.called)
         self.assertIn('10.1000/one <=> 10.1000/other', out)
-        with patch('papers.bib.extract_pdf_doi') as extract:
+        with patch('papers.files.extract_pdf_doi') as extract:
             self.out('file check one2000')
             extract.assert_not_called()
 
