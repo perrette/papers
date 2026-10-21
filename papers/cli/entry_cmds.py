@@ -366,6 +366,7 @@ def listcmd(parser, o, config):
             return (any if o.any else all)([_match(word, t, fuzzy, substring) for t in target])
 
         if fuzzy:
+            from rapidfuzz import fuzz
             ratio = o.fuzzy_ratio if o.fuzzy_ratio is not None else 50
             res = (target.lower() in word.lower() or fuzz.token_set_ratio(word.lower(), target.lower(), score_cutoff=ratio) > ratio)
         elif substring:
@@ -406,10 +407,6 @@ def listcmd(parser, o, config):
     biblio = get_biblio(config)
     biblio_init = copy.deepcopy(biblio)
     entries = biblio.db.entries
-
-    if o.fuzzy:
-        from rapidfuzz import fuzz
-
 
     if o.review_required:
         if o.invert:
