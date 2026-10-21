@@ -112,6 +112,54 @@ def savebib(biblio, config):
 
 
 
+def read_selection(args, stdin=None):
+    """the keys and DOIs of the command line, where `-` stands for the lines
+    of the standard input (one key or DOI per line, blank lines ignored)"""
+    selection = []
+    for arg in args:
+        if arg == '-':
+            text = (stdin or sys.stdin).read()
+            selection.extend(line.strip() for line in text.splitlines() if line.strip())
+        else:
+            selection.append(arg)
+    return selection
+
+
+def is_doi_selector(arg):
+    "a DOI starts with `10.`, while a key cannot start with a digit"
+    return arg.startswith('10.')
+
+
+def select_entries(biblio, args, stdin=None):
+    """the entries named by keys or DOIs (see `read_selection`), in the order
+    given and without repetition. A key is matched case-insensitively, a DOI
+    against the doi field (case-insensitively too). An unknown key or DOI is
+    an error, raised before the command changes anything."""
+    selection = read_selection(args, stdin=stdin)
+    by_key = {}
+    by_doi = {}
+    for e in biblio.entries:
+        by_key.setdefault(biblio.key(e), e)
+        doi = get_entry_val(e, 'doi', '').strip().lower()
+        if doi:
+            by_doi.setdefault(doi, []).append(e)
+    entries = []
+    unknown = []
+    for arg in selection:
+        if is_doi_selector(arg):
+            found = by_doi.get(arg.lower()) or ([by_key[arg.lower()]] if arg.lower() in by_key else [])
+        else:
+            found = [by_key[arg.lower()]] if arg.lower() in by_key else []
+        if not found:
+            unknown.append(arg)
+        for e in found:
+            if not any(e is x for x in entries):
+                entries.append(e)
+    if unknown:
+        raise PapersExit(f"unknown key or DOI: {', '.join(unknown)} (nothing was changed)")
+    return entries
+
+
 def view_entry_files(biblio, entry):
     files = biblio.get_files(entry)
 
@@ -687,9 +735,9 @@ def checkcmd(parser, o, config):
     #     o.fetch_all = True
     #     o.fix_key = True
 
-    for e in biblio.entries:
-        if o.keys and get_entry_val(e, 'ID', '') not in o.keys:
-            continue
+    selection = list(o.entries) + list(o.keys or [])
+    entries = select_entries(biblio, selection) if selection else list(biblio.entries)
+    for e in entries:
         biblio.fix_entry(e, fix_doi=o.fix_doi, fetch=o.fetch, fetch_all=o.fetch_all, fix_key=o.fix_key,
                      auto_key=o.auto_key, format_name=o.format_name, encoding=o.encoding,
                      key_ascii=o.key_ascii, interactive=not o.force)
@@ -1053,10 +1101,9 @@ def listcmd(parser, o, config):
 
 def opencmd(parser, o, config):
     biblio = None
-    entries_by_key = {}
-    for key in o.key:
+    for key in read_selection(o.key):
         # an existing file is opened directly with the system viewer; anything
-        # else is looked up as an entry key in the bibliography
+        # else is looked up as an entry key (or DOI) in the bibliography
         if os.path.isfile(key):
             logger.info(f"opening {key} ...")
             view_pdf(key)
@@ -1066,9 +1113,9 @@ def opencmd(parser, o, config):
                 biblio = get_biblio(config)
             except ValueError:
                 raise PapersExit(f"'{key}' is not an existing file, and no bibliography is configured to look it up as a key")
-            entries_by_key = {biblio.key(e): e for e in biblio.entries}
-        e = entries_by_key.get(key.lower())
-        if e is None:
+        try:
+            e, = select_entries(biblio, [key])[:1]
+        except PapersExit:
             logger.error(f'no entry found with key: {key}')
             continue
         if not biblio.get_files(e):
@@ -1324,7 +1371,9 @@ def get_parser(config=None):
     # =====
     checkp = subparsers.add_parser('check', description='check and fix entries',
         parents=[cfg, keyfmt])
-    checkp.add_argument('-k', '--keys', nargs='+', help='apply check on this key subset')
+    checkp.add_argument('entries', nargs='*', metavar='KEY|DOI',
+        help='check these entries only (default: all); - reads keys or DOIs from the standard input, one per line')
+    checkp.add_argument('-k', '--keys', nargs='+', help='apply check on this key subset (same as the KEY arguments)')
     checkp.add_argument('-f','--force', action='store_true', help='do not ask')
 
     grp = checkp.add_argument_group('entry key')
@@ -1430,7 +1479,8 @@ def get_parser(config=None):
     mgrp = grp.add_mutually_exclusive_group()
     mgrp.add_argument('--plain', action='store_false', dest="one_liner", help='print in bibtex format')
     mgrp.add_argument('-l', '-1', '--one-liner', action='store_true', help='one liner')
-    mgrp.add_argument('--key-only', action='store_true', help='print the keys only (one per line)')
+    mgrp.add_argument('-K', '--key-only', action='store_true',
+        help='print the keys only, one per line (to pipe into commands that take -, e.g. `papers file rename -`)')
     mgrp.add_argument('-f', '--field', nargs='+', help='specific field(s) only')
     grp.add_argument('--no-key', action='store_true', help='do not print the keys')
 
@@ -1450,7 +1500,8 @@ def get_parser(config=None):
     # open
     # ====
     openp = subparsers.add_parser('open', description='open entry attachments or files with the system viewer', parents=[cfg])
-    openp.add_argument('key', nargs='+', type=file_uri_to_path, help='entry key(s) (case-insensitive), or existing file path(s) to open directly')
+    openp.add_argument('key', nargs='+', type=file_uri_to_path, help='entry key(s) (case-insensitive) or DOI(s), or existing file path(s) to open directly; '
+             '- reads them from the standard input, one per line')
 
     # doi
     # ===
