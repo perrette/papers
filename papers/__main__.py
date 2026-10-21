@@ -27,7 +27,9 @@ from papers.bib import (Biblio, FUZZY_RATIO, DEFAULT_SIMILARITY, entry_filecheck
 from papers.install import (resolve_install, apply_install, init_backup, _ask_path, RESET_WORDS,
                             InputAsker, DefaultAsker)
 from papers.utils import view_pdf, open_folder, PapersExit, file_uri_to_path, find_masked_viewer, set_directory
-from papers.files import FilesPolicy
+from papers.files import (FilesPolicy, realpath, is_inside, is_download, plan_moves, link_snapshot,
+                          moved_links, execute_moves, files_to_delete, describe_file, delete_files,
+                          check_entry_files)
 from papers.backup import (silent_backup_bib, restore_from_backupdir,
                            git_undo, git_redo, git_restore_state, list_backup_dirs)
 from papers import __version__
@@ -791,23 +793,226 @@ def checkcmd(parser, o, config):
     savebib(biblio, config)
 
 def filecheckcmd(parser, o, config):
-    set_nameformat_config_from_cmd(o, config)
+    """deprecated: the options of filecheck run the `papers file` subcommands"""
+    check = o.fix_mendeley or o.hash_check or o.metadata_check or not (o.delete_broken or o.rename or o.clean_filesdir)
+    new = []
+    if check:
+        new.append('papers file check' + (' --metadata' if o.metadata_check else '')
+                   + (' --fix' if o.fix_mendeley or o.hash_check else ''))
+    if o.delete_broken:
+        new.append('papers file detach --broken')
+    if o.rename:
+        new.append('papers file rename' + (' --keep-source' if o.copy else ''))
+    if o.clean_filesdir:
+        new.append('papers file clean' + (' --yes' if o.force else ''))
+    logger.warning(f"`papers filecheck` is deprecated: use {' and '.join('`'+cmd+'`' for cmd in new)}")
 
+    set_nameformat_config_from_cmd(o, config)
     biblio = get_biblio(config)
 
-    # fix ':home' entry as saved by Mendeley
-    for e in biblio.entries:
-        entry_filecheck(e, delete_broken=o.delete_broken, fix_mendeley=o.fix_mendeley,
-                        check_hash=o.hash_check, check_metadata=o.metadata_check, interactive=not o.force, relative_to=biblio.relative_to)
+    if check:
+        for e in biblio.entries:
+            for line in check_entry_files(biblio, e, metadata=o.metadata_check, fix=o.fix_mendeley or o.hash_check):
+                print(line)
+
+    if o.delete_broken:
+        for e in biblio.entries:
+            detach_links(biblio, e, [f for f in biblio.get_files(e) if not os.path.exists(f)])
 
     if o.rename:
-        biblio.rename_entries_files(o.copy)
+        rename_files(biblio, biblio.entries, config, keep_source=o.copy)
 
     if o.clean_filesdir:
         print("Check files directory for unlinked files")
         clean_filesdir(biblio, interactive=not o.force, ignore_files=[config.bibtex])
 
     savebib(biblio, config)
+
+
+# papers file
+# ===========
+
+def _entries_or_all(biblio, args):
+    "the entries named on the command line (keys, DOIs, -), or all entries without argument"
+    return select_entries(biblio, args) if args else list(biblio.entries)
+
+
+def _one_entry(biblio, key):
+    entries = select_entries(biblio, [key])
+    if len(entries) != 1:
+        raise PapersExit(f"{key}: {len(entries)} entries have this DOI, give a key instead")
+    return entries[0]
+
+
+def rename_files(biblio, entries, config, keep_source=False):
+    """place the files of the entries in the files directory, under their
+    template name (a file that belongs to another library is copied, see
+    FilesPolicy)"""
+    if config.filesdir is None:
+        raise PapersExit('the library has no files directory: pass --filesdir, '
+                         'or set it with `papers config filesdir DIR`')
+    policy = files_policy(config, 'copy' if keep_source else 'move')
+    for e in entries:
+        try:
+            biblio.rename_entry_files(e, copy=policy)
+        except Exception as error:
+            logger.error(f"{get_entry_val(e, 'ID', '')}: {error}")
+
+
+def attach_files(biblio, e, files, config, mode):
+    """add files to the links of an entry, and place them as the files mode
+    says (the files the entry had stay where they are)"""
+    old = biblio.get_files(e)
+    new = []
+    for f in files:
+        if str(f).startswith("http://") or str(f).startswith("https://"):
+            new.append(download_url(f, expect_pdf=False))  # moved into the files directory
+        elif not os.path.exists(f):
+            raise PapersExit(f"file {f} does not exist")
+        else:
+            new.append(os.path.abspath(f))
+    biblio.set_files(e, old + new)
+    if mode != 'link' or any(is_download(f) for f in new):
+        biblio.rename_entry_files(e, copy=files_policy(config, mode, keep=old))
+
+
+def detach_links(biblio, e, files):
+    "remove links from an entry (files are compared by real path)"
+    remove = {realpath(f) for f in files}
+    biblio.set_files(e, [f for f in biblio.get_files(e) if realpath(f) not in remove])
+
+
+def file_renamecmd(parser, o, config):
+    set_nameformat_config_from_cmd(o, config)
+    biblio = get_biblio(config)
+    biblio_init = copy.deepcopy(biblio)
+    entries = _entries_or_all(biblio, o.entries)
+    rename_files(biblio, entries, config, keep_source=o.keep_source)
+    savebib(biblio, config)
+    _print_biblio_diff(biblio_init, biblio, entries)
+
+
+def file_mvcmd(parser, o, config):
+    if len(o.paths) < 2:
+        parser.error('papers file mv SRC... DEST')
+    *sources, dest = o.paths
+    biblio = get_biblio(config)
+    moves = plan_moves(biblio, sources, dest, force=o.force, protected=[config.bibtex, config.file])
+    snapshot = link_snapshot(biblio)
+
+    def _filesdir(moves):
+        "the new files directory, if it moves"
+        if config.filesdir is None or o.filesdir is not None:
+            return None
+        return next(filter(None, (m.new_path(realpath(config.filesdir)) for m in moves)), None)
+
+    if papers.config.DRYRUN:
+        for m in moves:
+            print(f"DRYRUN: mv {m.src} {m.target}")
+        for e, old, new in moved_links(snapshot, moves):
+            for a, b in zip(old, new):
+                if a != b:
+                    print(f"DRYRUN: {get_entry_val(e, 'ID', '')}: {a} -> {b}")
+        if _filesdir(moves):
+            print(f"DRYRUN: filesdir = {_filesdir(moves)}")
+        return
+
+    done, error = execute_moves(moves, force=o.force)
+    changes = moved_links(snapshot, done)
+    for e, old, new in changes:
+        biblio.set_files(e, new)
+    savebib(biblio, config)
+    filesdir = _filesdir(done)
+    if filesdir:
+        config.filesdir = filesdir
+        if config.file:
+            config.save()
+            print(f"filesdir = {config._relpath(filesdir)} (in {config.file})")
+    print(f"moved {len(done)} of {len(moves)} file(s) or folder(s), {len(changes)} entries updated")
+    if error:
+        raise PapersExit(f"{error}: the links of the files moved before were saved")
+
+
+def file_attachcmd(parser, o, config):
+    set_nameformat_config_from_cmd(o, config)
+    biblio = get_biblio(config)
+    biblio_init = copy.deepcopy(biblio)
+    e = _one_entry(biblio, o.key)
+    attach_files(biblio, e, o.files, config, files_mode(o, config))
+    savebib(biblio, config)
+    _print_biblio_diff(biblio_init, biblio, [e])
+
+
+def file_detachcmd(parser, o, config):
+    biblio = get_biblio(config)
+    biblio_init = copy.deepcopy(biblio)
+    if o.broken:
+        entries = _entries_or_all(biblio, o.args)
+        detached = {id(e): [f for f in biblio.get_files(e) if not os.path.exists(f)] for e in entries}
+    else:
+        if not o.args:
+            parser.error('papers file detach KEY [FILE...] (or --broken [KEY...])')
+        key, *files = o.args
+        e = _one_entry(biblio, key)
+        linked = biblio.get_files(e)
+        if files:
+            by_real = {realpath(f): f for f in linked}
+            unknown = [f for f in files if realpath(f) not in by_real]
+            if unknown:
+                raise PapersExit(f"not linked from {key}: {', '.join(unknown)} (nothing was changed)")
+            files = [by_real[realpath(f)] for f in files]
+        else:
+            files = linked
+        entries = [e]
+        detached = {id(e): files}
+
+    for e in entries:
+        detach_links(biblio, e, detached[id(e)])
+
+    alldetached = [f for e in entries for f in detached[id(e)]]
+    if o.delete_files:
+        inside, outside, kept = files_to_delete(biblio, alldetached, config.filesdir)
+    savebib(biblio, config)
+    _print_biblio_diff(biblio_init, biblio, entries)
+    if o.delete_files:
+        for f in kept:
+            print(f"kept {f}: another entry links to it")
+        delete_files(inside + outside, dryrun=papers.config.DRYRUN)
+
+
+def file_checkcmd(parser, o, config):
+    biblio = get_biblio(config)
+    entries = _entries_or_all(biblio, o.entries)
+    issues = []
+    for e in entries:
+        issues.extend(check_entry_files(biblio, e, metadata=o.metadata, fix=o.fix))
+    for line in issues:
+        print(line)
+    if issues:
+        print(f"{len(issues)} issue(s) in the files of {len(entries)} entries")
+    else:
+        print(f"no issue found in the files of {len(entries)} entries")
+    if o.fix and issues:
+        savebib(biblio, config)
+
+
+def file_cleancmd(parser, o, config):
+    biblio = get_biblio(config)
+    if config.filesdir is None:
+        raise PapersExit('the library has no files directory')
+    removed = clean_filesdir(biblio, interactive=not o.yes, ignore_files=[config.bibtex])
+    print(f"{'DRYRUN: ' if papers.config.DRYRUN else ''}removed {len(removed)} unlinked file(s) "
+          f"from {config.filesdir}")
+
+
+FILE_COMMANDS = {
+    'rename': file_renamecmd,
+    'mv': file_mvcmd,
+    'attach': file_attachcmd,
+    'detach': file_detachcmd,
+    'check': file_checkcmd,
+    'clean': file_cleancmd,
+}
 
 def redocmd(parser, o, config):
     if config.git:
@@ -1445,9 +1650,74 @@ def get_parser(config=None):
     # checkp.add_argument('--duplicates',action='store_true', help='remove / merge duplicates')
 
 
+    # file
+    # ====
+    filep = subparsers.add_parser('file', description='the files of the entries: rename, move, attach, '
+        'detach, check them, and clean the files directory')
+    filesub = filep.add_subparsers(dest='file_cmd', metavar='{rename,mv,attach,detach,check,clean}')
+    filep.subcommands = filesub.choices
+    _selection_help = 'keys or DOIs; - reads them from the standard input, one per line'
+
+    p = filesub.add_parser('rename', parents=[cfg, namefmt],
+        help='place the files in the files directory under their template name',
+        description='place the files of the entries (all entries without KEY) in the files directory, '
+                    'under the name made from the name template. A file that belongs to another library '
+                    '(inside its files directory) is copied, not moved.')
+    p.add_argument('entries', nargs='*', metavar='KEY|DOI', help=_selection_help)
+    p.add_argument('--keep-source', action='store_true',
+        help='keep the files where they are too (a hard link when possible, otherwise a copy)')
+
+    p = filesub.add_parser('mv', parents=[cfg],
+        help='move files or folders, and update the links of the entries',
+        description='move files or folders like mv, with the rules of git mv, and update the links of the '
+                    'entries to the moved files: a source file must be linked from an entry; a source folder '
+                    'must contain a linked file, and moves as a whole; with several sources, DEST must be an '
+                    'existing folder; an existing DEST file is an error unless -f. Moving the files directory '
+                    'also updates the filesdir setting. Nothing moves if a check fails.')
+    p.add_argument('paths', nargs='+', metavar='SRC... DEST', type=file_uri_to_path)
+    p.add_argument('-f', '--force', action='store_true', help='replace an existing destination file')
+    p.add_argument('-n', action='store_true', dest='dry_run', help='show the moves and the links that change (same as --dry-run)')
+
+    p = filesub.add_parser('attach', parents=[cfg, namefmt],
+        help='attach files to an entry',
+        description='attach files to an existing entry. What happens to the files is the files setting '
+                    f'(found: {config.files}), as for `papers add`; the files the entry had are left as they are.')
+    p.add_argument('key', metavar='KEY|DOI')
+    p.add_argument('files', nargs='+', metavar='FILE', type=file_uri_to_path, help='files or URLs')
+    p.add_argument('--move', action='store_true', help='files mode move, whatever the setting')
+    p.add_argument('--copy', action='store_true', help='files mode copy, whatever the setting')
+    p.add_argument('--link', action='store_true', help='files mode link, whatever the setting')
+
+    p = filesub.add_parser('detach', parents=[cfg],
+        help='remove file links from an entry',
+        description='remove the links to FILE (all its files without FILE) from the entry KEY. '
+                    'The files are kept, unless --delete-files.')
+    p.add_argument('args', nargs='*', metavar='KEY [FILE...]', type=file_uri_to_path,
+        help='with --broken: KEY... (all entries without KEY)')
+    p.add_argument('--broken', action='store_true', help='remove the broken links only')
+    p.add_argument('--delete-files', action='store_true',
+        help='also delete the detached files that no other entry links to')
+
+    p = filesub.add_parser('check', parents=[cfg],
+        help='report broken links, identical files, DOI mismatches',
+        description='report broken links, links that can be repaired (paths saved by Mendeley), files linked '
+                    'twice and identical files (same checksum) of an entry, and with --metadata a DOI of the PDF '
+                    'that differs from the entry\'s. Nothing changes without --fix.')
+    p.add_argument('entries', nargs='*', metavar='KEY|DOI', help=_selection_help + ' (default: all entries)')
+    p.add_argument('--metadata', action='store_true', help='also compare the DOI of the PDFs with the entry (parses the PDFs)')
+    p.add_argument('--fix', action='store_true',
+        help='apply the safe repairs: repair the paths, remove the second link of a file linked twice or of '
+             'identical files (the files are kept)')
+
+    p = filesub.add_parser('clean', parents=[cfg],
+        help='remove the files of the files directory that no entry links to',
+        description='remove the files of the files directory (and its subfolders) that no entry links to, '
+                    'asking for each one. Hidden files and folders, and .bib files, are skipped.')
+    p.add_argument('-y', '--yes', action='store_true', help='do not ask')
+
     # filecheck
     # =====
-    filecheckp = subparsers.add_parser('filecheck', description='check attached file(s)',
+    filecheckp = subparsers.add_parser('filecheck', description='deprecated: use the subcommands of `papers file`',
         parents=[cfg, namefmt])
     # filecheckp.add_argument('-f','--force', action='store_true',
     #     help='do not ask before performing actions')
@@ -1734,6 +2004,12 @@ def _main(argv):
         checkcmd(subp, o, check_install(subp, o, config))
     elif o.cmd == 'filecheck':
         filecheckcmd(subp, o, check_install(subp, o, config))
+    elif o.cmd == 'file':
+        if not o.file_cmd:
+            subp.print_help()
+            raise PapersExit()
+        filesubp = subp.subcommands[o.file_cmd]
+        FILE_COMMANDS[o.file_cmd](filesubp, o, check_install(filesubp, o, config))
     elif o.cmd == 'list':
         listcmd(subp, o, check_install(subp, o, config))
     elif o.cmd == 'open':
