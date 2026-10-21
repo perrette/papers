@@ -19,11 +19,12 @@ from papers.encoding import parse_file, format_file, family_names, format_entrie
 from papers.config import (bcolors, Config, MachineConfig, search_config, CONFIG_FILE, CONFIG_FILE_LOCAL,
                            DATA_DIR, CONFIG_FILE_LEGACY, CONFIG_FILE_LEGACY_XDG,
                            SETTINGS, LIBRARY_ONLY, parse_value, format_value, is_pool_path, short_home)
-from papers.duplicate import list_duplicates, list_uniques, edit_entries, title_id
+from papers.duplicate import edit_entries, duplicate_groups, fuzzy_pairs, FUZZY_RATIO
+from papers.merge import Resolver, DuplicateError, ON_DUPLICATE
 from papers.entries import get_entry_val, entry_content_equal, entry_from_dict
-from papers.bib import (Biblio, FUZZY_RATIO, DEFAULT_SIMILARITY, entry_filecheck,
+from papers.bib import (Biblio, entry_filecheck,
                         backupfile as backupfile_func, isvalidkey, DuplicateKeyError, clean_filesdir,
-                        are_duplicates, download_url, get_biblio, scan_dir_items, hidden_bibtex)
+                        download_url, get_biblio, scan_dir_items, hidden_bibtex)
 from papers.install import (resolve_install, apply_install, init_backup, _ask_path, RESET_WORDS,
                             InputAsker, DefaultAsker)
 from papers.utils import view_pdf, open_folder, PapersExit, file_uri_to_path, find_masked_viewer, set_directory
@@ -573,6 +574,40 @@ def files_policy(config, mode, keep=()):
     return FilesPolicy(mode, config.filesdir, current_config=config.file, machine=config.machine, keep=keep)
 
 
+# v2 letters of -m/--mode, and the --on-duplicate word they map to
+ADD_MODES = {'i': 'ask', 'u': 'keep', 'U': 'update', 'o': 'update', 's': 'skip', 'r': 'error'}
+CHECK_MODES = {'i': 'ask', 'm': 'keep', 's': 'skip'}
+
+
+def on_duplicate_mode(o, cmd):
+    """the --on-duplicate word of the command line: the option, else the
+    deprecated -m/--mode letter, else ask in a terminal and error otherwise
+    (check --force: skip)"""
+    mode = o.on_duplicate
+    if o.mode is not None:
+        if cmd == 'add' and o.mode == 'a':
+            logger.warning('-m/--mode a is deprecated: use --no-check-duplicate')
+            o.no_check_duplicate = True
+        else:
+            new = (ADD_MODES if cmd == 'add' else CHECK_MODES)[o.mode]
+            note = {'o': ' (the key and the fields only in the library are now kept)',
+                    's': ' (the file of the added entry is no longer attached; keep does that)'}.get(o.mode, '') \
+                if cmd == 'add' else ''
+            logger.warning(f'-m/--mode {o.mode} is deprecated: use --on-duplicate {new}{note}')
+            if mode is None:
+                mode = new
+    if mode is None:
+        if cmd == 'check' and o.force:
+            mode = 'skip'
+        else:
+            mode = 'ask' if stdin_is_terminal() else 'error'
+    return mode
+
+
+def duplicate_resolver(o, cmd):
+    return Resolver(on_duplicate_mode(o, cmd), color=sys.stdout.isatty())
+
+
 def addcmd(parser, o, config):
     """
     Given an options set and a config, sets up the function call to add the file or all files in the directory to the bibtex, and executes it.
@@ -626,8 +661,11 @@ def addcmd(parser, o, config):
             logger.error('--doi, --metadata, --key, --attachment and other metadata keys are only valid for one PDF / BIBTEX entry')
             raise PapersExit()
 
-    kw = {'on_conflict':o.mode, 'check_duplicate':not o.no_check_duplicate,
-            'mergefiles':not o.no_merge_files, 'update_key':o.update_key, 'metadata':metadata}
+    if o.no_merge_files:
+        logger.warning('--no-merge-files is deprecated and ignored: the file links of duplicates are always merged')
+    resolver = duplicate_resolver(o, 'add')
+    kw = {'on_duplicate':resolver, 'check_duplicate':not o.no_check_duplicate,
+            'update_key':o.update_key, 'metadata':metadata}
 
     if len(o.file) == 0 and o.doi and not o.no_query_doi:
         entries.extend( biblio.fetch_doi(o.doi, attachments=o.attachment, rename=rename, copy=policy, **kw) )
@@ -678,8 +716,8 @@ def addcmd(parser, o, config):
             else: # file.endswith('.bib'):
                 entries.extend( biblio.add_bibtex_file(file, attachments=o.attachment, rename=rename, copy=policy, **kw) )
 
-        except EOFError:
-            raise  # a question without answer stops the command (see main_clean_exit)
+        except (EOFError, DuplicateError):
+            raise  # a question without answer, or --on-duplicate error, stops the command (see main_clean_exit)
         except Exception as error:
             logger.error(str(error))
             if not o.ignore_errors:
@@ -738,10 +776,9 @@ def checkcmd(parser, o, config):
 
 
     if o.duplicates:
-        mode = o.mode
-        if o.force and mode == 'i':
-            mode = 's'  # --force means non-interactive: leave unresolved duplicates alone
-        biblio.check_duplicates(mode=mode)
+        biblio.check_duplicates(on_duplicate=duplicate_resolver(o, 'check'))
+    elif o.on_duplicate or o.mode:
+        logger.warning('--on-duplicate and -m/--mode only apply with --duplicates')
 
     savebib(biblio, config)
 
@@ -1299,7 +1336,8 @@ def listcmd(parser, o, config):
             return (any if o.any else all)([_match(word, t, fuzzy, substring) for t in target])
 
         if fuzzy:
-            res = (target.lower() in word.lower() or fuzz.token_set_ratio(word.lower(), target.lower(), score_cutoff=o.fuzzy_ratio) > o.fuzzy_ratio)
+            ratio = o.fuzzy_ratio if o.fuzzy_ratio is not None else 50
+            res = (target.lower() in word.lower() or fuzz.token_set_ratio(word.lower(), target.lower(), score_cutoff=ratio) > ratio)
         elif substring:
             res = target.lower() in word.lower()
         else:
@@ -1385,24 +1423,25 @@ def listcmd(parser, o, config):
         o.strict = False
         entries = [e for e in entries if _longmatch(_fullsearch_string(e), o.fullsearch)]
 
-    _check_duplicates = lambda uniques, groups: uniques if o.invert else list(itertools.chain(*groups))
+    for name in ('duplicates_key', 'duplicates_doi', 'duplicates_tit'):
+        if getattr(o, name):
+            logger.warning(f'--{name.replace("_", "-")} is deprecated: use --duplicates (--fuzzy for near matches)')
+            o.duplicates = True
+    if o.similarity is not None:
+        logger.warning('--similarity is deprecated and ignored: entries are the same paper by identifier, '
+                       'or by authors and title (see the documentation of papers add)')
 
-    # if o.duplicates_key or o.duplicates_doi or o.duplicates_tit or o.duplicates or o.duplicates_fuzzy:
-    list_dup = list_uniques if o.invert else list_duplicates
-
-    if o.duplicates_key:
-        entries = list_dup(entries, key=biblio.key, issorted=True)
-    if o.duplicates_doi:
-        entries = list_dup(entries, key=lambda e: get_entry_val(e, 'doi', ''), filter_key=isvaliddoi)
-    if o.duplicates_tit:
-        entries = list_dup(entries, key=title_id)
     if o.duplicates:
-        # QUESTION MARK: in latest HEAD before merge with @malfatti's PR, I used hard-coded "PARTIAL".
-        # I think that's because we might need to be inclusive here, whereas the default is conservative (parameter used for several functions with possibly differing requirements).
-        # (otherwise we'd have used the command-line option o.similarity, or possibly DEFAULT_SIMILARITY)
-        # Might need to revise later (the question mark is from a review after a long time without use)
-        eq = lambda a, b: get_entry_val(a, 'ID', '') == get_entry_val(b, 'ID', '') or are_duplicates(a, b, similarity="PARTIAL", fuzzy_ratio=o.fuzzy_ratio)
-        entries = list_dup(entries, eq=eq)
+        listed = []
+        for g in duplicate_groups(entries, biblio.distinct):
+            listed.extend(e for e in g.entries if not any(e is x for x in listed))
+        if o.fuzzy:
+            for a, b in fuzzy_pairs(entries, o.fuzzy_ratio if o.fuzzy_ratio is not None else FUZZY_RATIO):
+                listed.extend(e for e in (a, b) if not any(e is x for x in listed))
+        if o.invert:
+            entries = [e for e in entries if not any(e is x for x in listed)]
+        else:
+            entries = listed
 
     if o.add_keywords:
         add_tags(entries, o.add_keywords)
@@ -1677,22 +1716,27 @@ def get_parser(config=None):
     addp.add_argument('file', nargs='*', default=[], type=file_uri_to_path)
     # addp.add_argument('-f','--force', action='store_true', help='disable interactive')
 
-    grp = addp.add_argument_group('duplicate check')
+    grp = addp.add_argument_group('duplicate check',
+        description='''An added entry is the same paper as a library entry when they have
+        the same DOI, arXiv id, ISBN (two books), or else the same authors and title.
+        The library entry keeps its key; fields only in the added entry are added and
+        the file links are merged. An entry that brings nothing new is not asked about.''')
+    grp.add_argument('--on-duplicate', choices=ON_DUPLICATE,
+        help='''what to do when the added entry is in the library, with conflicting
+        values or fields to add: ask (dialogue; the default in a terminal), keep (merge,
+        conflicts keep the library value), update (merge, conflicts take the added value),
+        skip (leave the library entry untouched, do not add), error (stop before saving;
+        the default without a terminal)''')
     grp.add_argument('--no-check-duplicate', action='store_true',
         help='disable duplicate check (faster, create duplicates)')
     grp.add_argument('--no-merge-files', action='store_true',
-        help='distinct "file" field considered a conflict, all other things being equal')
+        help='deprecated and ignored: file links are always merged')
     grp.add_argument('-u', '--update-key', action='store_true',
-        help='''regenerate the key of added entries from the key template
-        (see "bibtex key format" options); if a duplicate is found, use the
-        existing entry's key instead (otherwise an error might be raised on
-        identical insert key)''')
-    # grp.add_argument('-f', '--force', action='store_true', help='no interactive')
-    grp.add_argument('-m', '--mode', default='i', choices=['u', 'U', 'o', 's', 'r', 'i', 'a'],
-        help='''if duplicates are found, the default is to start an (i)nteractive dialogue,
-        unless "mode" is set to (r)aise, (s)kip new, (u)pdate missing, (U)pdate with new,
-        (o)verwrite completely, (a)ppend anyway.
-        ''')
+        help='''regenerate the key of the entries new to the library from the key template
+        (see "bibtex key format" options). A duplicate always keeps the key of the library.''')
+    grp.add_argument('-m', '--mode', choices=['u', 'U', 'o', 's', 'r', 'i', 'a'],
+        help='''deprecated: use --on-duplicate (i: ask, u: keep, U and o: update, s: skip,
+        r: error, a: --no-check-duplicate)''')
 
     grp = addp.add_argument_group('directory scan')
     grp.add_argument('--recursive', action='store_true',
@@ -1762,9 +1806,17 @@ def get_parser(config=None):
     grp.add_argument('--format-name', action='store_true', help='author name as family, given, without brackets')
     grp.add_argument('--encoding', choices=['latex','unicode'], help='bibtex field encoding')
 
-    grp = checkp.add_argument_group('merge/conflict')
-    grp.add_argument('--duplicates',action='store_true', help='solve duplicates')
-    grp.add_argument('-m', '--mode', default='i', choices=list('ims'), help='''(i)nteractive by default, otherwise (m)erge or (s)kip the duplicates''')
+    grp = checkp.add_argument_group('duplicates')
+    grp.add_argument('--duplicates',action='store_true',
+        help='''merge the entries that are the same paper (same DOI, arXiv id, ISBN of two books,
+        or else same authors and title). The entry with most fields is entry 1, the
+        target: it keeps its key, and the keys of the others go to its ids field.''')
+    grp.add_argument('--on-duplicate', choices=[m for m in ON_DUPLICATE if m != 'update'],
+        help='''what to do with each group: ask (dialogue; the default in a terminal),
+        keep (merge, conflicts keep the value of entry 1), skip (leave the group),
+        error (exit with status 1 if there is any group; the default without a terminal,
+        and skip with --force)''')
+    grp.add_argument('-m', '--mode', choices=list('ims'), help='deprecated: use --on-duplicate (i: ask, m: keep, s: skip)')
     # grp.add_argument('--ignore', action='store_true', help='ignore unresolved conflicts')
     # checkp.add_argument('--merge-keys', nargs='+', help='only merge remove / merge duplicates')
     # checkp.add_argument('--duplicates',action='store_true', help='remove / merge duplicates')
@@ -1882,8 +1934,10 @@ def get_parser(config=None):
     mgrp = listp.add_mutually_exclusive_group()
     mgrp.add_argument('--strict', action='store_true', help='exact matching - instead of substring')
     mgrp.add_argument('--fuzzy', action='store_true', help='fuzzy matching - instead of substring')
-    listp.add_argument('--fuzzy-ratio', type=int, default=50, help='threshold for fuzzy matching of title, author, abstract (default:%(default)s)')
-    listp.add_argument('--similarity', choices=['EXACT','GOOD','FAIR','PARTIAL','FUZZY'], default=DEFAULT_SIMILARITY, help='duplicate testing (default:%(default)s)')
+    listp.add_argument('--fuzzy-ratio', type=int,
+        help=f'threshold for fuzzy matching of title, author, abstract (default: 50), '
+             f'and of authors and title with --duplicates --fuzzy (default: {FUZZY_RATIO})')
+    listp.add_argument('--similarity', help='deprecated and ignored')
     listp.add_argument('--invert', action='store_true', help='list the entries that do not match')
     listp.add_argument('--any', action='store_true', help='when several keywords: any of them')
 
@@ -1899,10 +1953,13 @@ def get_parser(config=None):
 
 
     grp = listp.add_argument_group('check')
-    grp.add_argument('--duplicates-key', action='store_true', help='list key duplicates only')
-    grp.add_argument('--duplicates-doi', action='store_true', help='list doi duplicates only')
-    grp.add_argument('--duplicates-tit', action='store_true', help='list title duplicates only')
-    grp.add_argument('--duplicates', action='store_true', help='list all duplicates (see --similarity)')
+    grp.add_argument('--duplicates-key', action='store_true', help='deprecated: --duplicates')
+    grp.add_argument('--duplicates-doi', action='store_true', help='deprecated: --duplicates')
+    grp.add_argument('--duplicates-tit', action='store_true', help='deprecated: --duplicates')
+    grp.add_argument('--duplicates', action='store_true',
+        help='''entries that are the same paper, as `papers check --duplicates` finds them, and
+        the entries it would ask about; with --fuzzy, also the entries with similar
+        authors and title (see --fuzzy-ratio)''')
     grp.add_argument('--has-file', action='store_true', help='entries with at least one file')
     grp.add_argument('--no-file', action='store_true', help='entries without file')
     grp.add_argument('--broken-file', action='store_true', help='entries with a file link to a missing file')
@@ -2211,7 +2268,7 @@ def main_clean_exit(args=None):
             raise
         logger.error('papers asked a question, but there is no input to answer it: '
                      'run the command in a terminal, or answer with its options '
-                     '(e.g. -m/--mode for duplicates, --force)')
+                     '(e.g. --on-duplicate for duplicates, --force)')
         sys.exit(1)
 
 if __name__ == "__main__":

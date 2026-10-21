@@ -1,0 +1,683 @@
+"""Merge of entries that are the same paper, and the dialogue that decides it.
+
+A merge combines a target entry (entries[0], it keeps its key) with other
+entries:
+
+- fields present in the target only are kept, fields missing in the target
+  are added (`+`);
+- `file` links are the union of all links (a file linked under two paths,
+  or two files with the same content, once);
+- values equal after normalization are not conflicts (case, braces,
+  whitespace, DOI case; author initials and full first names): the target's
+  spelling is kept, except for names, where the fuller form is kept;
+- the remaining differences are conflicts (`!`), decided by the user or by
+  the --on-duplicate option;
+- with keys_to_ids (check), the keys of the other entries go to the `ids`
+  field of the target (biblatex key aliases).
+
+The model (Merge), the screen and the reading of an answer (Dialogue) do no
+input or output; `ask` runs the dialogue in a terminal. A three-way mode
+(library, pool, origin) only adds a status of a field to the model.
+"""
+import builtins
+import os
+import re
+
+from bibtexparser.model import Entry, Field
+
+from papers import logger
+from papers.duplicate import normalize_text, split_names, parse_name, ASK
+from papers.encoding import parse_file, format_file
+from papers.entries import get_entry_val, parse_string, format_library, library_from_entries
+from papers.identifiers import normalize_doi
+from papers.utils import bcolors, checksum, PapersExit
+
+
+SAME = ' '
+ADDED = '+'
+CONFLICT = '!'
+
+# fields with their own merge rule
+SPECIAL_FIELDS = ('ID', 'file', 'ids')
+
+
+# EQUIVALENT VALUES
+# =================
+
+def _given_tokens(given):
+    return [t for t in re.split(r'[\s.\-~]+', normalize_text(given)) if t]
+
+
+def _given_compatible(g1, g2):
+    "John / J. / J. D. / John David: each word equal, or an initial of the other"
+    for x, y in zip(_given_tokens(g1), _given_tokens(g2)):
+        if x == y:
+            continue
+        if len(x) == 1 and y.startswith(x) or len(y) == 1 and x.startswith(y):
+            continue
+        return False
+    return True
+
+
+def names_compatible(field1, field2):
+    "two author lists that only differ by initials versus full first names, or by name order"
+    n1, n2 = split_names(field1), split_names(field2)
+    if len(n1) != len(n2):
+        return False
+    for a, b in zip(n1, n2):
+        (fa, ga), (fb, gb) = parse_name(a), parse_name(b)
+        if normalize_text(fa) != normalize_text(fb) or not _given_compatible(ga, gb):
+            return False
+    return True
+
+
+def _fullness(field):
+    return sum(len(t) for n in split_names(field) for t in _given_tokens(parse_name(n)[1]))
+
+
+def equivalent(name, v1, v2):
+    if name in ('author', 'editor'):
+        return names_compatible(v1, v2)
+    if name == 'doi':
+        d1, d2 = normalize_doi(v1), normalize_doi(v2)
+        if d1 and d2:
+            return d1 == d2
+    return normalize_text(v1) == normalize_text(v2)
+
+
+def preferred(name, values):
+    "the value kept among equivalent values: the first, or the fuller names"
+    if name in ('author', 'editor'):
+        best = values[0]
+        for v in values[1:]:
+            if _fullness(v) > _fullness(best):
+                best = v
+        return best
+    return values[0]
+
+
+# THE MERGE
+# =========
+
+class FieldMerge:
+    """one field of a merge: `values` holds the value of each entry (None if
+    absent), `status` is SAME, ADDED or CONFLICT, `choice` the entry whose
+    value is used (for SAME and ADDED, `value` is set directly)"""
+
+    def __init__(self, name, values):
+        self.name = name
+        original = values
+        # an empty value is no value
+        values = [v if v is not None and str(v).strip() else None for v in values]
+        self.values = values
+        present = [v for v in values if v is not None]
+        target = values[0]
+        self._value = None
+        if not present:
+            self.choice = 0
+            self._value = original[0] if original[0] is not None else ''
+            self.status = SAME
+            return
+        self.choice = 0 if target is not None else next(i for i, v in enumerate(values) if v is not None)
+        if all(equivalent(name, present[0], v) for v in present[1:]):
+            self._value = preferred(name, present)
+            self.status = SAME if target is not None else ADDED
+        else:
+            self.status = CONFLICT
+
+    @property
+    def value(self):
+        if self._value is not None:
+            return self._value
+        return self.values[self.choice]
+
+    def choose(self, i):
+        "use the value of entry i (ignored when entry i does not have the field)"
+        if self.status == CONFLICT and 0 <= i < len(self.values) and self.values[i] is not None:
+            self.choice = i
+
+    def alternatives(self):
+        """[(entries, value)] of the values not used, grouped by value, in entry order"""
+        groups = []
+        for i, v in enumerate(self.values):
+            if v is None or i == self.choice or equivalent(self.name, v, self.value):
+                continue
+            for g in groups:
+                if equivalent(self.name, g[1], v):
+                    g[0].append(i)
+                    break
+            else:
+                groups.append(([i], v))
+        return groups
+
+
+class Merge:
+    """merge of entries[0] (the target) with the other entries (see the
+    module documentation). `relative_to` is the directory the file links of
+    the entries are relative to."""
+
+    def __init__(self, entries, relative_to=None, keys_to_ids=False):
+        self.entries = list(entries)
+        self.relative_to = relative_to
+        self.keys_to_ids = keys_to_ids
+        self.fields = []
+        names = []
+        for e in self.entries:
+            for k, _ in e.items():
+                if k not in SPECIAL_FIELDS and k not in names:
+                    names.append(k)
+        for name in names:
+            values = [get_entry_val(e, name, None) if (name == 'ENTRYTYPE' or name in _field_names(e)) else None
+                      for e in self.entries]
+            if name == 'ENTRYTYPE':
+                values = [v.lower() for v in values]
+            self.fields.append(FieldMerge(name, values))
+        self._merge_files()
+        self._merge_ids()
+
+    @property
+    def target(self):
+        return self.entries[0]
+
+    @property
+    def key(self):
+        return get_entry_val(self.target, 'ID', '')
+
+    @property
+    def others(self):
+        return self.entries[1:]
+
+    def _files(self, e):
+        return parse_file(get_entry_val(e, 'file', ''), relative_to=self.relative_to)
+
+    def _merge_files(self):
+        "union of the file links: the same file (real path, or content) once"
+        self.files = []
+        seen = set()
+        for e in self.entries:
+            for f in self._files(e):
+                ids = {os.path.realpath(f)}
+                if os.path.isfile(f):
+                    ids.add(checksum(f))
+                if not ids & seen:
+                    self.files.append(f)
+                seen |= ids
+        own = {os.path.realpath(f) for f in self._files(self.target)}
+        self.new_files = [f for f in self.files if os.path.realpath(f) not in own]
+
+    def _merge_ids(self):
+        key = self.key.lower()
+        ids = []
+        sources = [get_entry_val(e, 'ids', '') for e in self.entries]
+        if self.keys_to_ids:
+            sources += [get_entry_val(e, 'ID', '') for e in self.others]
+        for source in sources:
+            for i in source.split(','):
+                i = i.strip()
+                if i and i.lower() != key and i.lower() not in {x.lower() for x in ids}:
+                    ids.append(i)
+        self.ids = ids
+        self.ids_added = [i for i in ids if i.lower() not in
+                          {x.strip().lower() for x in get_entry_val(self.target, 'ids', '').split(',')}]
+
+    @property
+    def conflicts(self):
+        return [f for f in self.fields if f.status == CONFLICT]
+
+    @property
+    def additions(self):
+        return [f for f in self.fields if f.status == ADDED]
+
+    def is_exact(self):
+        "nothing to decide: no conflict, and no field to add (files and key aliases aside)"
+        return not self.conflicts and not self.additions
+
+    def choose_all(self, i):
+        "resolve every conflict with the value of entry i, where it has one"
+        for f in self.conflicts:
+            f.choose(i)
+
+    def with_target(self, i):
+        "the same merge with entry i as target"
+        entries = [self.entries[i]] + [e for j, e in enumerate(self.entries) if j != i]
+        return Merge(entries, relative_to=self.relative_to, keys_to_ids=self.keys_to_ids)
+
+    def result(self):
+        "the merged entry, with the key of the target"
+        fields = [Field(f.name, f.value) for f in self.fields if f.name != 'ENTRYTYPE']
+        if self.files:
+            fields.append(Field('file', format_file(self.files, relative_to=self.relative_to)))
+        if self.ids:
+            fields.append(Field('ids', ', '.join(self.ids)))
+        etype = next((f.value for f in self.fields if f.name == 'ENTRYTYPE'), self.target.entry_type)
+        return Entry(entry_type=etype, key=self.key, fields=fields)
+
+    def edit_text(self):
+        "the merged entry as plain bibtex, and the alternatives as % comment lines below it"
+        text = format_library(library_from_entries([self.result()]))
+        lines = []
+        for f in self.conflicts:
+            for idx, v in f.alternatives():
+                lines.append(f'% {f.name} = {{{_oneline(v)}}}   ({", ".join(str(i+1) for i in idx)})')
+        if lines:
+            text = text.rstrip('\n') + '\n\n% values of the other entries (lines starting with % are ignored):\n' + '\n'.join(lines) + '\n'
+        return text
+
+    def parse_edit(self, text):
+        """the entry of an edited text (see edit_text), with the key of the
+        target; None if it is not exactly one valid bibtex entry"""
+        text = '\n'.join(line for line in text.splitlines() if not line.lstrip().startswith('%'))
+        try:
+            lib = parse_string(text)
+        except Exception as error:
+            logger.error(f'the edited entry could not be parsed: {error}')
+            return None
+        if getattr(lib, 'failed_blocks', None) or len(lib.entries) != 1:
+            logger.error('the edited text is not one bibtex entry')
+            return None
+        e = lib.entries[0]
+        fieldname = re.compile(r'^[A-Za-z][\w-]*$')
+        bad = [k for k in _field_names(e) if not fieldname.match(k)]
+        if bad:
+            logger.error(f'malformed field name(s) in the edited entry: {bad}')
+            return None
+        if e.key != self.key:
+            logger.warning(f'the key {self.key} is kept (edited key {e.key} ignored)')
+            e.key = self.key
+        return e
+
+
+def _field_names(e):
+    return [k for k, _ in e.items() if k not in ('ID', 'ENTRYTYPE')]
+
+
+def _oneline(value, width=None):
+    s = ' '.join(str(value).split())
+    if width and len(s) > width:
+        s = s[:width-3] + '...'
+    return s
+
+
+def apply_entry(target, entry):
+    "make the target entry (in the library) equal to `entry`, in place"
+    target.entry_type = entry.entry_type
+    target.key = entry.key
+    target.fields = [Field(f.key, f.value) for f in entry.fields]
+
+
+# THE DIALOGUE
+# ============
+
+class Answer:
+    "a parsed answer: kind is one of take, fields, edit, target, distinct, skip, quit, help, invalid"
+
+    def __init__(self, kind, index=None, text=''):
+        self.kind = kind
+        self.index = index
+        self.text = text
+
+    def __repr__(self):
+        return f'Answer({self.kind!r}, {self.index!r})'
+
+
+class Dialogue:
+    """screen and answers for one merge decision; no input or output.
+
+    context: 'add' (entry 1 is the library entry, entry 2 the added entry)
+    or 'check' (a group of library entries).
+    reason: why the entries are the same paper (from same_paper)."""
+
+    def __init__(self, merge, context, reason='', color=False):
+        self.merge = merge
+        self.context = context
+        self.reason = reason
+        self.color = color
+
+    # labels
+
+    def label(self, i):
+        if self.context == 'add':
+            return 'library' if i == 0 else 'new'
+        return get_entry_val(self.merge.entries[i], 'ID', '')
+
+    def _c(self, s, color):
+        return (color + s + bcolors.ENDC) if self.color else s
+
+    # screen
+
+    def header(self):
+        m = self.merge
+        if self.context == 'add':
+            line = f'Already in library: {m.key}' + (f' ({self.reason})' if self.reason else '')
+        else:
+            line = f'Same paper: {len(m.entries)} entries' + (f' ({self.reason})' if self.reason else '')
+        lines = [self._c(line, bcolors.OKBLUE)]
+        rows = []
+        for i, e in enumerate(m.entries):
+            files = [os.path.relpath(f) if os.path.isabs(f) else f for f in m._files(e)]
+            doi = get_entry_val(e, 'doi', '')
+            rows.append([str(i+1), self.label(i) if self.context == 'add' else '',
+                         get_entry_val(e, 'ID', ''), get_entry_val(e, 'ENTRYTYPE', '').lower(),
+                         f'doi {doi}' if doi else 'no doi', ' '.join(files)])
+        widths = [max(len(r[j]) for r in rows) for j in range(len(rows[0]))]
+        for r in rows:
+            lines.append('  ' + '  '.join(c.ljust(w) for c, w in zip(r, widths) if w).rstrip())
+        return '\n'.join(lines)
+
+    def entry_lines(self):
+        m = self.merge
+        etype = next(f for f in m.fields if f.name == 'ENTRYTYPE')
+        names = [f.name for f in m.fields if f.name != 'ENTRYTYPE'] + ['file', 'ids']
+        width = max([len(n) for n in names] + [4])
+        out = [f'@{etype.value}{{{m.key},']
+
+        def line(mark, name, value, alternatives=()):
+            text = f'{mark}  {name.ljust(width)} = {value}'
+            color = {ADDED: bcolors.OKGREEN, CONFLICT: bcolors.WARNING}.get(mark)
+            out.append(self._c(text, color) if color else text)
+            for idx, v in alternatives:
+                alt = f'{CONFLICT}  {" " * width}   {",".join(str(i+1) for i in idx)}: {v}'
+                out.append(self._c(alt, bcolors.WARNING))
+
+        if etype.status == CONFLICT:
+            line(CONFLICT, 'type', etype.value, etype.alternatives())
+        others = [get_entry_val(e, 'ID', '') for e in m.others]
+        if self.context == 'check' and any(k != m.key for k in others):
+            alts = [([i+1], f'{k} (kept in ids)') for i, k in enumerate(others) if k != m.key]
+            line(CONFLICT, 'key', m.key, alts)
+        rows = []
+        for f in m.fields:
+            if f.name == 'ENTRYTYPE':
+                continue
+            if f.status == CONFLICT:
+                rows.append((CONFLICT, f.name, '{' + _oneline(f.value) + '}',
+                             [(idx, '{' + _oneline(v) + '}') for idx, v in f.alternatives()]))
+            else:
+                rows.append((f.status, f.name, '{' + _oneline(f.value, None if f.status == ADDED else 70) + '}', ()))
+        if m.files:
+            files = ';'.join(os.path.relpath(f) if os.path.isabs(f) else f for f in m.files)
+            rows.append((ADDED if m.new_files else SAME, 'file', '{' + files + '}', ()))
+        if m.ids:
+            rows.append((ADDED if m.ids_added else SAME, 'ids', '{' + ', '.join(m.ids) + '}', ()))
+        for row in sorted(rows, key=lambda r: r[1]):
+            line(*row)
+        out.append('}')
+        return out
+
+    def summary(self):
+        m = self.merge
+        n = len(m.conflicts)
+        conflicts = 'No conflict' if n == 0 else f'{n} conflict' + ('s' if n > 1 else '')
+        if self.context == 'add':
+            return f'{conflicts}. The key {m.key} is kept; + lines are added.'
+        others = ', '.join(str(i+2) for i in range(len(m.others)))
+        if len(m.others) == 1:
+            return f'{conflicts}. Entry {others} is removed after the merge; its key goes to ids.'
+        return f'{conflicts}. Entries {others} are removed after the merge; their keys go to ids.'
+
+    def menu(self):
+        m = self.merge
+        n = len(m.entries)
+        first = []
+        if m.conflicts:
+            if self.context == 'add':
+                first += ['1 keep library values', '2 take new values']
+            else:
+                first += [f'{i+1} {"keep" if i == 0 else "take"} values of {i+1}' for i in range(n)]
+            first += ['f field by field']
+        else:
+            first += ['1 merge']
+        first += ['e edit']
+        second = []
+        if self.context == 'check':
+            second.append('t N make entry N the target')
+        if self.context == 'add':
+            second.append(f'n not the same paper (add {get_entry_val(m.others[0], "ID", "")} separately)')
+        else:
+            second.append('n not the same paper')
+        second += ['s skip', 'q quit', '? help']
+        return '  ' + '   '.join(first) + '\n  ' + '   '.join(second)
+
+    def screen(self):
+        return '\n'.join([self.header(), ''] + self.entry_lines() + [self.summary(), self.menu()])
+
+    def help(self):
+        n = len(self.merge.entries)
+        lines = [
+            f'  1..{n}  resolve all remaining conflicts with the values of that entry, and merge',
+            '  f      go through the conflicts one at a time',
+            '  e      edit the merged entry in the editor (the other values are % comment lines)',
+        ]
+        if self.context == 'check':
+            lines.append('  t N    make entry N the target: its key is kept, the other keys go to ids')
+            lines.append('  n      not the same paper: keep the entries separate, and do not ask again')
+        else:
+            lines.append('  n      not the same paper: add the new entry separately, and do not ask again')
+        lines += [
+            '  s      skip: change nothing for this one (asked again next time)',
+            '  q      quit: skip this one and all remaining duplicates',
+            '  ?      this help',
+            'Lines: unmarked = same on all sides, + = added from another entry, ! = conflict '
+            '(the value used, then the other values, numbered by entry).',
+        ]
+        return '\n'.join(lines)
+
+    def field_question(self, f):
+        "the question for one conflicting field (answer with parse_field)"
+        rows = [(str(i+1), _oneline(v), self.label(i)) for i, v in enumerate(f.values) if v is not None]
+        width = max(len(r[1]) for r in rows)
+        lines = [f'{f.name if f.name != "ENTRYTYPE" else "type"}:']
+        lines += [f'  {n}  {v.ljust(width)}  {label}' for n, v, label in rows]
+        choices = '/'.join(r[0] for r in rows)
+        return '\n'.join(lines) + f'\n  [{choices}/e] >>> '
+
+    # answers
+
+    def parse(self, text):
+        s = text.strip()
+        n = len(self.merge.entries)
+        if s.isdigit():
+            i = int(s)
+            if 1 <= i <= n:
+                return Answer('take', i - 1, s)
+            return Answer('invalid', text=s)
+        if s in ('f', 'e', 'n', 's', 'q', '?'):
+            if s == 'f' and not self.merge.conflicts:
+                return Answer('invalid', text=s)
+            return Answer({'f': 'fields', 'e': 'edit', 'n': 'distinct', 's': 'skip',
+                           'q': 'quit', '?': 'help'}[s], text=s)
+        m = re.fullmatch(r't\s*(\d+)', s)
+        if m and self.context == 'check':
+            i = int(m.group(1))
+            if 1 <= i <= n:
+                return Answer('target', i - 1, s)
+        return Answer('invalid', text=s)
+
+    def parse_field(self, f, text):
+        "answer to field_question: Answer take (entry index) or edit, or invalid"
+        s = text.strip()
+        if s == 'e':
+            return Answer('edit', text=s)
+        if s.isdigit() and 1 <= int(s) <= len(f.values) and f.values[int(s)-1] is not None:
+            return Answer('take', int(s) - 1, s)
+        return Answer('invalid', text=s)
+
+
+def _input(prompt):
+    return builtins.input(prompt)
+
+
+def _output(text):
+    print(text)
+
+
+class Decision:
+    """outcome of a duplicate decision: kind is 'merge' (entry: the merged
+    entry, merge: the Merge decided, whose target may have changed with t N),
+    'distinct', 'skip' or 'quit'"""
+
+    def __init__(self, kind, merge=None, entry=None):
+        self.kind = kind
+        self.merge = merge
+        self.entry = entry
+
+    def __repr__(self):
+        return f'Decision({self.kind!r})'
+
+
+def edit_text(text, editor=None):
+    """edit a text in the editor; the edited text, or None if the editor failed"""
+    import tempfile
+    fd, filename = tempfile.mkstemp(suffix='.bib')
+    try:
+        with os.fdopen(fd, 'w') as f:
+            f.write(text)
+        res = os.system('{} {}'.format(editor or os.getenv('EDITOR') or 'vi', filename))
+        if res != 0:
+            logger.error('the editor failed')
+            return None
+        with open(filename) as f:
+            return f.read()
+    finally:
+        os.remove(filename)
+
+
+def ask(merge, context, reason='', input=None, output=None, editor=None, color=True):
+    """run the dialogue in a terminal, and return a Decision"""
+    input = input or _input
+    output = output or _output
+    show = True
+    while True:
+        dialogue = Dialogue(merge, context, reason, color=color)
+        if show:
+            output(dialogue.screen())
+        show = True
+        answer = dialogue.parse(input('>>> '))
+
+        if answer.kind == 'take':
+            merge.choose_all(answer.index)
+            return Decision('merge', merge, merge.result())
+
+        elif answer.kind == 'fields':
+            decision = _ask_fields(dialogue, input, output, editor)
+            if decision is not None:
+                return decision
+
+        elif answer.kind == 'edit':
+            decision = _edit(merge, editor)
+            if decision is not None:
+                return decision
+
+        elif answer.kind == 'target':
+            merge = merge.with_target(answer.index)
+
+        elif answer.kind in ('distinct', 'skip', 'quit'):
+            return Decision(answer.kind, merge)
+
+        elif answer.kind == 'help':
+            output(dialogue.help())
+            show = False
+
+        else:
+            output(f'invalid answer: {answer.text!r} (? for help)')
+            show = False
+
+
+def _edit(merge, editor):
+    text = edit_text(merge.edit_text(), editor=editor)
+    entry = merge.parse_edit(text) if text is not None else None
+    if entry is None:
+        logger.error('edit failed: back to the menu (nothing was changed)')
+        return None
+    return Decision('merge', merge, entry)
+
+
+def _ask_fields(dialogue, input, output, editor):
+    "field by field; None when the user went back to the menu (failed edit)"
+    merge = dialogue.merge
+    for f in merge.conflicts:
+        while True:
+            question, prompt = dialogue.field_question(f).rsplit('\n', 1)
+            output(question)
+            answer = dialogue.parse_field(f, input(prompt))
+            if answer.kind == 'take':
+                f.choose(answer.index)
+                break
+            elif answer.kind == 'edit':
+                return _edit(merge, editor)
+            output(f'invalid answer: {answer.text!r}')
+    return Decision('merge', merge, merge.result())
+
+
+# WHAT TO DO WITH A DUPLICATE
+# ===========================
+
+ON_DUPLICATE = ('ask', 'keep', 'update', 'skip', 'error')
+
+
+class DuplicateError(PapersExit):
+    "a duplicate with --on-duplicate error: stop before saving"
+
+
+class Resolver:
+    """the --on-duplicate mode of a command, and what was answered so far
+    (after q, the remaining duplicates are skipped)
+
+    ask: the dialogue; keep: merge, conflicts keep the value of entry 1;
+    update: merge, conflicts take the value of entry 2 (add only); skip:
+    change nothing; error: raise DuplicateError.
+    """
+
+    def __init__(self, mode='error', input=None, output=None, editor=None, color=False):
+        if mode not in ON_DUPLICATE:
+            raise ValueError(f'on_duplicate must be one of {", ".join(ON_DUPLICATE)}')
+        self.mode = mode
+        self.input = input
+        self.output = output
+        self.editor = editor
+        self.color = color
+        self.quit = False
+
+    def decide(self, merge, context, verdict):
+        "a Decision for this merge (see Decision); verdict: from same_paper"
+        if self.quit:
+            return Decision('skip', merge)
+
+        if self.mode == 'error':
+            raise DuplicateError(self.describe(merge, context, verdict)
+                                 + '\n' + option_hint(context))
+
+        if self.mode == 'skip':
+            return Decision('skip', merge)
+
+        if verdict.kind == ASK and self.mode != 'ask':
+            logger.warning(f'{self.describe(merge, context, verdict)}: not merged, '
+                           'decide in the dialogue (--on-duplicate ask)')
+            return Decision('skip', merge)
+
+        if self.mode == 'ask':
+            decision = ask(merge, context, verdict.reason, input=self.input, output=self.output,
+                           editor=self.editor, color=self.color)
+            if decision.kind == 'quit':
+                self.quit = True
+                decision.kind = 'skip'
+            return decision
+
+        merge.choose_all(0 if self.mode == 'keep' else 1)
+        return Decision('merge', merge, merge.result())
+
+    @staticmethod
+    def describe(merge, context, verdict):
+        n = len(merge.conflicts)
+        what = f'{n} conflict' + ('s' if n != 1 else '') if n or not merge.additions else 'fields to add'
+        if context == 'add':
+            new = get_entry_val(merge.others[0], 'ID', '')
+            return f'{new}: already in library as {merge.key} ({verdict.reason}; {what})'
+        keys = ', '.join(get_entry_val(e, 'ID', '') for e in merge.entries)
+        return f'same paper: {keys} ({verdict.reason}; {what})'
+
+
+def option_hint(context):
+    words = 'ask, keep, update, skip' if context == 'add' else 'ask, keep, skip'
+    return (f'Pass --on-duplicate with one of: {words} (ask is the default in a terminal), '
+            f'see `papers {context} --help`.')

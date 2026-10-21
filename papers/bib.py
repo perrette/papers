@@ -38,15 +38,25 @@ from papers.utils import bcolors, checksum, move as _move
 import papers.config
 
 from papers.duplicate import (
-    conflict_resolution_on_insert,
-    entry_diff,
-    merge_files,
-    check_duplicates,
-    entry_id,
-    _build_duplicate_index,
-    _get_duplicate_candidates,
-    _add_to_duplicate_index,
+    SAME,
+    Distinct,
+    IdentityIndex,
+    find_duplicates,
+    duplicate_groups,
 )
+from papers.merge import Merge, Resolver, Decision, DuplicateError, apply_entry
+
+
+def entry_diff(e_old, e, color=True):
+    "line diff of two entries, as bibtex"
+    import difflib
+    lines = difflib.ndiff(format_entries([e_old]).splitlines(1), format_entries([e]).splitlines(1))
+    diff = ''.join(lines)
+    if not color:
+        return diff
+    colors = {'+': bcolors.OKGREEN, '-': bcolors.FAIL, '?': bcolors.WARNING}
+    return '\n'.join(colors[line[0]] + line + bcolors.ENDC if line[:1] in colors else line
+                     for line in diff.splitlines())
 
 # URL DOWNLOAD
 # ============
@@ -157,78 +167,6 @@ def append_abc(key, keys=[]):
             break
     assert Key not in keys, 'not enough letters in the alphabets to solve key conflict? or maybe something went wrong...'
     return Key
-
-
-# DUPLICATE DEFINITION (entry_id, author_id, title_id live in papers.duplicate)
-# =============================================================================
-
-FUZZY_RATIO = 80
-
-# Default similarity is used in papers add
-# False positive (to weak a test) and distinct entries will be merged
-# False negative and duplicates will be created
-# PARTIAL means that If either DOI or author+title agree, that is good enough to be considered a duplicate
-# I cant think of any situation where two legitimately distinct papers test True with partial similarity.
-DEFAULT_SIMILARITY = 'PARTIAL'
-
-EXACT_DUPLICATES = 104
-GOOD_DUPLICATES = 103
-FAIR_DUPLICATES = 102
-PARTIAL_DUPLICATES = 101
-FUZZY_DUPLICATES = 100
-
-
-def compare_entries(e1, e2, fuzzy=False):
-    """assess two entries' similarity
-    """
-    if entry_content_equal(e1, e2):
-        return EXACT_DUPLICATES
-
-    id1 = entry_id(e1)
-    id2 = entry_id(e2)
-
-    logger.debug('{} ?= {}'.format(id1, id2))
-
-    if id1 == id2:
-        score = GOOD_DUPLICATES
-
-    elif get_entry_val(e1, 'doi') and get_entry_val(e2, 'doi') and e1['doi'] == e2['doi']:
-        score = FAIR_DUPLICATES
-
-    # elif all([f1==f2 for f1, f2 in zip(id1, id2) if f1 and f2]): # ID and AUTHORTITLE agree
-    #     score = FAIR_DUPLICATES
-    # COMMENT: same as GOOD_DUPLICATES when all fields are defined, but also returns true when one field is missing in one entry
-
-    elif any([f1==f2 for f1, f2 in zip(id1, id2) if f1 and f2]): # any of ID or AUTHORTITLE agree
-        score = PARTIAL_DUPLICATES
-
-    elif not fuzzy:
-        score = 0
-
-    else:
-        from rapidfuzz.fuzz import token_set_ratio
-        doi1, tag1 = id1
-        doi2, tag2 = id2
-        score = token_set_ratio(tag1, tag2)
-
-    return score
-
-def are_duplicates(e1, e2, similarity=DEFAULT_SIMILARITY, fuzzy_ratio=FUZZY_RATIO):
-    level = dict(
-        EXACT = EXACT_DUPLICATES,
-        GOOD = GOOD_DUPLICATES,
-        FAIR = FAIR_DUPLICATES,
-        PARTIAL = PARTIAL_DUPLICATES,
-        FUZZY = FUZZY_DUPLICATES,
-        )
-    try:
-        target = level[similarity]
-    except KeyError:
-        raise ValueError('similarity must be one of EXACT, GOOD, FAIR, PARTIAL, FUZZY')
-
-    score = compare_entries(e1, e2, fuzzy=target==FUZZY_DUPLICATES)
-    logger.debug('score: {}, target: {}, similarity: {}'.format(score, target, similarity))
-    return score >= target
 
 
 def hidden_bibtex(direc):
@@ -401,7 +339,7 @@ class Biblio:
     """
     The bibtex object that we operate on, which is mainly used to read and write to dynamically, and can then send the changes to be stored in a specified bibtex file on disk.
     """
-    def __init__(self, db=None, filesdir=None, key_field='ID', nameformat=NAMEFORMAT, keyformat=KEYFORMAT, similarity=DEFAULT_SIMILARITY, relative_to=None):
+    def __init__(self, db=None, filesdir=None, key_field='ID', nameformat=NAMEFORMAT, keyformat=KEYFORMAT, relative_to=None, distinct=None):
         """
         relative_to : bibtex directory, optional
             use relative paths instead of absolute path
@@ -416,7 +354,8 @@ class Biblio:
         self.db = db
         self.nameformat = nameformat
         self.keyformat = keyformat
-        self.similarity = similarity
+        # pairs of entries that are not the same paper (see papers.duplicate.Distinct)
+        self.distinct = distinct if distinct is not None else Distinct()
         self.relative_to = os.path.sep if relative_to is None else relative_to
 
     def move(self, file, newfile, copy=False, hardlink=False):
@@ -446,6 +385,7 @@ class Biblio:
     @classmethod
     def load(cls, bibtex, filesdir, relative_to=None, **kw):
         bibtexs = open(bibtex).read()
+        kw.setdefault('distinct', Distinct.for_bibtex(bibtex))
         loaded_bib = cls(parse_string(bibtexs), filesdir, relative_to=relative_to if relative_to is not None else os.path.dirname(bibtex), **kw)
         return loaded_bib
 
@@ -467,37 +407,39 @@ class Biblio:
     def key(self, e):
         return e[self.key_field].lower()
 
-    def eq(self, e1, e2):
-        return are_duplicates(e1, e2, similarity=self.similarity)
-
-    def __contains___(self, entry):
-        return any({self.eq(entry, e) for e in self.entries})
-
 
     def sort(self):
         """Re-order library by block type and entry key (public API: SortBlocksByTypeAndKeyMiddleware)."""
         from bibtexparser.middlewares import SortBlocksByTypeAndKeyMiddleware
         self.db = SortBlocksByTypeAndKeyMiddleware().transform(library=self.db)
 
-    def insert_entry(self, entry, update_key=False, check_duplicate=False, rename=False, copy=False, metadata={}, **checkopt):
-        """
+    def insert_entry(self, entry, update_key=False, check_duplicate=False, rename=False, copy=False, metadata={},
+                     on_duplicate='error', duplicate_index=None):
+        """insert an entry, and return the entries of the library it ended in
+        (none when a duplicate was skipped).
+
+        update_key: give the entry a key from the key template (entries new
+            to the library only: a duplicate keeps the key of the library)
+        check_duplicate: look for the same paper in the library (see
+            papers.duplicate.same_paper), and merge or not as `on_duplicate`
+            says: one of ask, keep, update, skip, error, or a Resolver
+        duplicate_index: an IdentityIndex of the library, kept up to date
         """
         if metadata:
             files = self.get_files(entry) + self.get_files(metadata)
             self.set_files(metadata, files)
 
+        if check_duplicate:
+            resolver = on_duplicate if isinstance(on_duplicate, Resolver) else Resolver(on_duplicate)
+            return self._insert_entry_check(entry, resolver, update_key=update_key, rename=rename, copy=copy,
+                                            index=duplicate_index)
+
+        return self._insert_new(entry, update_key=update_key, rename=rename, copy=copy, index=duplicate_index)
+
+    def _insert_new(self, entry, update_key=False, rename=False, copy=False, index=None, free_key=False):
+        "insert an entry new to the library"
         if update_key:
             set_entry_key(entry, self.generate_key(entry))
-
-        # additional checks on DOI etc...
-        if check_duplicate:
-            logger.debug('check duplicates : TRUE')
-            return self.insert_entry_check(
-                entry, update_key=update_key, rename=rename, copy=copy,
-                duplicate_index=checkopt.pop('duplicate_index', None), **checkopt
-            )
-        else:
-            logger.debug('check duplicates : FALSE')
 
         # Key duplicate check: lookup by key (public API), case-insensitive to match entries_dict keys
         key_lower = self.key(entry)
@@ -508,7 +450,12 @@ class Biblio:
         if existing_same_key is not None:
             logger.info('key duplicate: '+self.key(existing_same_key))
 
-            if get_entry_val(existing_same_key, 'title', '') == get_entry_val(entry, 'title', ''):
+            if free_key:
+                newkey = self.append_abc_to_key(entry)
+                logger.info('key conflict: {} => {}'.format(get_entry_val(entry, 'ID', ''), newkey))
+                set_entry_key(entry, newkey)
+
+            elif get_entry_val(existing_same_key, 'title', '') == get_entry_val(entry, 'title', ''):
                 logger.info('exact duplicate')
                 # keep the files of the new entry
                 files = self.get_files(existing_same_key) + self.get_files(entry)
@@ -517,107 +464,59 @@ class Biblio:
                 if rename: self.rename_entry_files(existing_same_key, copy=copy)
                 return [ existing_same_key ]
 
-            if update_key:
+            elif update_key:
                 newkey = self.generate_key(entry)  # unique key from content (e.g. DOI)
                 logger.info('update key: {} => {}'.format(get_entry_val(entry, 'ID', ''), newkey))
                 set_entry_key(entry, newkey)
 
             else:
-                raise DuplicateKeyError('Key conflict. Try update_key is True or specify --key KEY explicitly')
+                raise DuplicateKeyError(f'{get_entry_val(entry, "ID", "")}: this key is already in the library, '
+                                        'for another paper: pass -u/--update-key to generate a new key, '
+                                        'or --key KEY')
 
         else:
             logger.info('new entry: '+self.key(entry))
 
         self.db.add(entry)
+        if index is not None:
+            index.add(entry)
 
         if rename: self.rename_entry_files(entry, copy=copy)
 
         return [ entry ]
 
-    def insert_entry_check(self, entry, update_key=False, mergefiles=True, on_conflict='i', rename=False, copy=False, duplicate_index=None):
-        # FUZZY can match on token_set_ratio(authortitle) without same doi/authortitle, so index would miss some duplicates
-        if self.similarity == 'FUZZY':
-            candidates = self.entries
-        elif duplicate_index is not None:
-            by_doi, by_authortitle = duplicate_index
-            candidates = _get_duplicate_candidates(entry, by_doi, by_authortitle)
-        else:
-            by_doi, by_authortitle = _build_duplicate_index(self.entries)
-            candidates = _get_duplicate_candidates(entry, by_doi, by_authortitle)
-        duplicates = [e for e in candidates if self.eq(e, entry)]
-
-        if not duplicates:
+    def _insert_entry_check(self, entry, resolver, update_key=False, rename=False, copy=False, index=None):
+        found = find_duplicates(entry, self.entries, self.distinct, index=index)
+        if not found:
             logger.debug('not a duplicate')
-            return self.insert_entry(entry, update_key, rename=rename, copy=copy)
+            return self._insert_new(entry, update_key=update_key, rename=rename, copy=copy, index=index)
 
+        existing, verdict = found[0]
+        logger.debug(f'duplicate of {get_entry_val(existing, "ID", "")}: {verdict.reason}')
+        merge = Merge([existing, entry], relative_to=self.relative_to)
 
+        if verdict.kind == SAME and merge.is_exact():
+            decision = Decision('merge', merge, merge.result())
+            n = len(merge.new_files)
+            print(f'already in library: {merge.key}' + (f' (+{n} file{"s" if n > 1 else ""})' if n else ''))
         else:
-            # some duplicates...
-            logger.debug('duplicate(s) found: {}'.format(len(duplicates)))
+            decision = resolver.decide(merge, 'add', verdict)
 
-            # pick only the most similar duplicate, if more than one
-            # the point of check_duplicate is to avoid increasing disorder, not to clean the existing mess
-            if len(duplicates) > 1:
-                duplicates.sort(key=lambda e: compare_entries(entry, e), reverse=True)
+        if decision.kind == 'merge':
+            if index is not None:
+                index.remove(existing)
+            apply_entry(existing, decision.entry)
+            if index is not None:
+                index.add(existing)
+            if rename: self.rename_entry_files(existing, copy=copy)
+            return [ existing ]
 
-            candidate = duplicates[0]
+        if decision.kind == 'distinct':
+            self.distinct.add(existing, entry)
+            return self._insert_new(entry, update_key=update_key, rename=rename, copy=copy, index=index, free_key=True)
 
-            if entry_content_equal(entry, candidate):
-                logger.debug('exact duplicate')
-                if mergefiles:
-                    file = merge_files([candidate, entry], relative_to=self.relative_to)
-                    if file and get_entry_val(candidate, 'file', '') != file:
-                        candidate['file'] = file
-                if rename: self.rename_entry_files(candidate, copy=copy)
-                return [ candidate ]
-
-            if update_key and get_entry_val(entry, 'ID', '') != get_entry_val(candidate, 'ID', ''):
-                logger.info('duplicate :: update key to match existing entry: {} => {}'.format(get_entry_val(entry, 'ID', ''), get_entry_val(candidate, 'ID', '')))
-                set_entry_key(entry, get_entry_val(candidate, 'ID', ''))
-                if entry_content_equal(entry, candidate):
-                    logger.debug('fixed: exact duplicate after key sync')
-                    if rename: self.rename_entry_files(candidate, copy=copy)
-                    return [ candidate ]
-
-            if mergefiles:
-
-                file = merge_files([candidate, entry], relative_to=self.relative_to)
-                if len({file, get_entry_val(entry, 'file', ''), get_entry_val(candidate, 'file', '')}) > 1:
-                    logger.info('duplicate :: merge files')
-                    entry['file'] = candidate['file'] = file
-
-
-            if entry_content_equal(entry, candidate):
-                logger.debug('fixed: exact duplicate')
-                if rename: self.rename_entry_files(candidate, copy=copy)
-                return [ candidate ]
-
-            logger.debug('conflict resolution: '+on_conflict)
-            candidate_key_before = get_entry_val(candidate, 'ID', '')
-            resolved = conflict_resolution_on_insert(candidate, entry, mode=on_conflict)
-            # remove(block) uses block.key; conflict_resolution may have updated candidate.key in place (e.g. mode U).
-            # Restore original key so remove() finds the right dict entry, then restore key for re-insert.
-            candidate_key_after = get_entry_val(candidate, 'ID', '') if resolved and resolved[0] is candidate else None
-            if hasattr(candidate, 'key'):
-                candidate.key = candidate_key_before
-            self.db.remove(candidate)
-            if candidate_key_after is not None and hasattr(candidate, 'key'):
-                candidate.key = candidate_key_after
-            entries = []
-            for e in resolved:
-                # the existing entry keeps its key (and so does the single
-                # resolved entry that carries it, e.g. an overwrite with
-                # --update-key): only entries new to the library get a key
-                # regenerated from the template
-                keeps_key = e is candidate or (
-                    len(resolved) == 1 and get_entry_val(e, 'ID', '') == candidate_key_before)
-                if not keeps_key and not update_key and self.key(e) in {self.key(x) for x in self.entries}:
-                    # both entries kept (append): the new one needs a free key
-                    newkey = self.append_abc_to_key(e)
-                    logger.info('key conflict: {} => {}'.format(get_entry_val(e, 'ID', ''), newkey))
-                    set_entry_key(e, newkey)
-                entries.extend( self.insert_entry(e, update_key and not keeps_key, rename=rename, copy=copy) )
-            return entries
+        print(f'skipped: {get_entry_val(entry, "ID", "")} (already in library: {merge.key})')
+        return []
 
 
     def generate_key(self, entry):
@@ -650,12 +549,10 @@ class Biblio:
         if convert_to_unicode:
             bib = latex_to_unicode_library(bib)
         entries = []
-        # Build index once so duplicate check is O(candidates) not O(library size) per entry
-        check_dup = kw.get('check_duplicate', True)
-        if check_dup and bib.entries:
-            duplicate_index = _build_duplicate_index(self.entries)
-        else:
-            duplicate_index = None
+        # one index for all entries, so that the duplicate search compares an
+        # entry with the entries that share an identifier only
+        if kw.get('check_duplicate') and kw.get('duplicate_index') is None and bib.entries:
+            kw['duplicate_index'] = IdentityIndex(self.entries)
         for e in bib.entries:
             files = []
             if "file" in e:
@@ -666,14 +563,7 @@ class Biblio:
             if files:
                 self.set_files(e, files)
 
-            run_kw = dict(kw)
-            if duplicate_index is not None:
-                run_kw['duplicate_index'] = duplicate_index
-            added = self.insert_entry(e, **run_kw)
-            entries.extend(added)
-            if duplicate_index is not None:
-                for new_e in added:
-                    _add_to_duplicate_index(new_e, duplicate_index[0], duplicate_index[1])
+            entries.extend(self.insert_entry(e, **kw))
         return entries
 
 
@@ -729,6 +619,8 @@ class Biblio:
                 try:
                     entry = read_entry_dir(path, relative_to=self.relative_to)
                     yield from self.insert_entry(entry, **kw)
+                except (EOFError, DuplicateError):
+                    raise
                 except Exception as error:
                     logger.warning(path+'::'+str(error))
                 continue
@@ -738,8 +630,8 @@ class Biblio:
                     yield from self.add_pdf(path, attachments=attachments, search_doi=search_doi, search_fulltext=search_fulltext, **kw)
                 elif path.lower().endswith('.bib'):
                     yield from self.add_bibtex_file(path, **kw)
-            except EOFError:
-                raise  # a question without answer stops the scan
+            except (EOFError, DuplicateError):
+                raise  # a question without answer, or --on-duplicate error, stops the scan
             except Exception as error:
                 logger.warning(path+'::'+str(error))
                 continue
@@ -761,6 +653,12 @@ class Biblio:
         self.sort()  # consistent order before writing
         s = self.format()
         open(bibtex, 'w').write(s)
+        if self.distinct.changed:
+            if self.distinct.path is None:
+                ondisk = Distinct.for_bibtex(bibtex)
+                ondisk.update(self.distinct)
+                self.distinct = ondisk
+            self.distinct.save()
 
 
     def update_file_path(self, relative_to):
@@ -780,11 +678,51 @@ class Biblio:
 
 
 
-    def check_duplicates(self, key=None, eq=None, mode='i'):
-        """remove duplicates, in some sensse (see papers.conflict.check_duplicates)
-        """
-        self.entries = check_duplicates(self.entries, key=key, eq=eq or self.eq, issorted=key is self.key, mode=mode)
+    def check_duplicates(self, on_duplicate='error'):
+        """merge the entries of the library that are the same paper (see
+        papers.duplicate.duplicate_groups). The target of each group (entry
+        1) is the entry with most fields; it keeps its key, and the keys of
+        the other entries go to its ids field.
 
+        on_duplicate: ask, keep, skip, error, or a Resolver
+        """
+        resolver = on_duplicate if isinstance(on_duplicate, Resolver) else Resolver(on_duplicate)
+        if resolver.mode == 'update':
+            raise ValueError('--on-duplicate update is not available for check (no side is new)')
+        groups = duplicate_groups(self.entries, self.distinct)
+        logger.info(f'{len(groups)} group(s) of duplicates')
+        if resolver.mode == 'skip':
+            return
+        if resolver.mode == 'error' and groups:
+            from papers.merge import option_hint
+            lines = []
+            for g in groups:
+                lines.append(Resolver.describe(Merge(g.entries, relative_to=self.relative_to, keys_to_ids=True),
+                                               'check', g))
+            raise DuplicateError('\n'.join(lines) + '\n' + option_hint('check'))
+
+        for g in groups:
+            if resolver.quit:
+                break
+            merge = Merge(g.entries, relative_to=self.relative_to, keys_to_ids=True)
+            if g.kind == SAME and merge.is_exact():
+                decision = Decision('merge', merge, merge.result())
+            else:
+                decision = resolver.decide(merge, 'check', g)
+
+            if decision.kind == 'merge':
+                target = decision.merge.target
+                others = decision.merge.others
+                apply_entry(target, decision.entry)
+                for e in others:
+                    self.db.remove(e)
+                print(f'merged into {get_entry_val(target, "ID", "")}: '
+                      + ', '.join(get_entry_val(e, 'ID', '') for e in others) + ' (kept in ids)')
+
+            elif decision.kind == 'distinct':
+                for i, a in enumerate(g.entries):
+                    for b in g.entries[i+1:]:
+                        self.distinct.add(a, b)
 
     def rename_entry_files(self, e, copy=False, formatter=None, relative_to=None, hardlink=True):
         """ Rename files
