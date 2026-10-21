@@ -1,4 +1,4 @@
-"""papers file: rename, mv, attach, detach, check, clean (and filecheck)"""
+"""papers file: rename, mv, attach, detach, check, clean"""
 import io
 import json
 import os
@@ -325,24 +325,3 @@ class TestClean(FileTest):
     def test_dry_run(self):
         self.lib('file clean -y --dry-run')
         self.assertTrue(os.path.exists(self.unlinked))
-
-
-class TestFilecheckAlias(FileTest):
-
-    def setUp(self):
-        super().setUp()
-        self.a = self.write('src', 'a.pdf')
-        self.bib(entry('one2000', self.a, 'files/broken.pdf'))
-
-    def test_rename(self):
-        with self.assertLogs('papers', level='WARNING') as logs:
-            self.lib('filecheck --rename --copy')
-        self.assertIn('papers file rename --keep-source', '\n'.join(logs.output))
-        self.assertTrue(os.path.exists(self.a))
-        self.assertEqual(len(self.libfiles()), 1)
-
-    def test_delete_broken(self):
-        with self.assertLogs('papers', level='WARNING') as logs:
-            self.lib('filecheck --delete-broken --force')
-        self.assertIn('papers file detach --broken', '\n'.join(logs.output))
-        self.assertEqual(self.files('one2000'), [self.a])

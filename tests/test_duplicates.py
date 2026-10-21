@@ -567,52 +567,6 @@ class TestAddDialogue(LibraryTest):
         self.assertEqual(len(self.distinct()), 1)
 
 
-class TestAddDeprecated(LibraryTest):
-
-    lib = LIB
-
-    def setUp(self):
-        super().setUp()
-        self.new = self.write('new.bib', NEW)
-
-    def warns(self, cmd, text):
-        with self.assertLogs('papers', level='WARNING') as logs:
-            self.papers(cmd)
-        self.assertIn(text, '\n'.join(logs.output))
-
-    def test_mode_u(self):
-        self.warns(f'add {self.new} -m u', '-m/--mode u is deprecated: use --on-duplicate keep')
-        self.assertEqual(self.entry('smith2020climate')['journal'], 'Nature')
-
-    def test_mode_U(self):
-        self.warns(f'add {self.new} -m U', 'use --on-duplicate update')
-        self.assertEqual(self.entry('smith2020climate')['journal'], 'Nature Climate Change')
-
-    def test_mode_o(self):
-        self.warns(f'add {self.new} -m o', 'use --on-duplicate update (the key and the fields only in the library')
-        self.assertEqual(self.entry('smith2020climate')['keywords'], 'climate, mine')
-
-    def test_mode_s(self):
-        self.warns(f'add {self.new} -m s', 'use --on-duplicate skip')
-        self.assertEqual(Path(self.bibtex).read_text(), LIB)
-
-    def test_mode_r(self):
-        with self.assertRaises(DuplicateError):
-            self.papers(f'add {self.new} -m r')
-
-    def test_mode_a(self):
-        self.warns(f'add {self.new} -m a', 'use --no-check-duplicate')
-        self.assertEqual(sorted(self.entries()), ['Smith_2020', 'smith2020climate'])
-
-    def test_option_wins(self):
-        self.warns(f'add {self.new} -m u --on-duplicate update', 'deprecated')
-        self.assertEqual(self.entry('smith2020climate')['journal'], 'Nature Climate Change')
-
-    def test_no_merge_files(self):
-        self.warns(f'add {self.new} --no-merge-files --on-duplicate keep', '--no-merge-files is deprecated')
-        self.assertIn('other/smith-preprint.pdf', self.entry('smith2020climate')['file'])
-
-
 # CHECK
 # =====
 
@@ -749,9 +703,7 @@ class TestCheckDialogue(LibraryTest):
 # LIST
 # ====
 
-class TestListDuplicates(LibraryTest):
-
-    lib = GROUP + """
+LIST = GROUP + """
 @book{handbook,
  doi = {10.1000/book},
  title = {Handbook of climate}
@@ -762,6 +714,11 @@ class TestListDuplicates(LibraryTest):
  title = {Sea level rise}
 }
 """
+
+
+class TestListDuplicates(LibraryTest):
+
+    lib = LIST
 
     def keys(self, cmd):
         return self.papers(cmd + ' -K').split()
@@ -782,15 +739,6 @@ class TestListDuplicates(LibraryTest):
     def test_fuzzy(self):
         self.assertIn('smith2019preprint', self.keys('list --duplicates --fuzzy'))
 
-    def test_deprecated(self):
-        for option in ('--duplicates-doi', '--duplicates-tit', '--duplicates-key'):
-            with self.assertLogs('papers', level='WARNING') as logs:
-                keys = self.keys(f'list {option}')
-            self.assertIn('deprecated: use --duplicates', '\n'.join(logs.output))
-            self.assertEqual(len(keys), 4)
-        with self.assertLogs('papers', level='WARNING') as logs:
-            self.assertEqual(len(self.keys('list --duplicates --similarity FAIR')), 4)
-        self.assertIn('--similarity is deprecated and ignored', '\n'.join(logs.output))
 
 
 class TestEditEntries(unittest.TestCase):
