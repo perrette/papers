@@ -444,16 +444,23 @@ Old `-m` letters can stay accepted with a deprecation warning that prints the ne
    `archivePrefix = arXiv`); ISBN for two `@book` entries only (a chapter carries its
    book's ISBN, and editions have their own); otherwise author family names + title. Two
    entries with different values of the first identifier both have are not the same
-   paper. **Title guard**: equal DOIs (or arXiv ids, ISBNs) with clearly different titles
-   are not merged automatically: the answer is "ask" (e.g. a chapter exported with its
-   book's DOI, a dataset deposited under the article's DOI); without a terminal this stops
-   like any other conflict (`error`). Chapters normally have their own DOI, so book and
+   paper. **Title guard** (narrow): equal DOIs (or arXiv ids, ISBNs) are not merged
+   automatically only when the entry types differ AND the titles clearly differ: the
+   answer is "ask" (e.g. a `@incollection` exported with its `@book`'s DOI, a `@misc`
+   dataset deposited under the `@article`'s DOI); without a terminal this stops like any
+   other conflict (`error`). Same type and same DOI is always the same paper, whatever the
+   titles. Chapters normally have their own DOI, so book and
    chapter are already distinct. Documented in the user docs.
 7. **One implementation**: a single function `same_paper(a, b)` returns *same*,
    *different*, or *ask* (with the reason), applies the identifiers, the title guard and
    `.papers/distinct.json`, and is the only duplicate rule used by `add` (including
    `add DIR` and the pool lookup), `check --duplicates`, `list --duplicates` (which also
    lists the "ask" pairs), `pull` and `push`.
+8. **Tests** cover each identifier (DOI, arXiv id, ISBN for books, author+title), the
+   order between them, the title guard (types differ and titles differ: ask; same type or
+   similar titles: same), name equality (initials vs full names, fuller form kept),
+   `distinct.json` (recorded, honoured, merged on push/pull), and each `--on-duplicate`
+   mode in `add`, `check`, `pull`.
 6. **"Not the same paper"** is remembered in `.papers/distinct.json` of the library, as pairs
    of identities (DOI, arXiv id, ISBN, or normalized author+title), not keys, so that the
    file means the same in every library: `push`/`pull` merge it (union) with the pool's.
