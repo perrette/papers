@@ -12,7 +12,7 @@ from urllib.parse import quote
 import requests
 
 import papers
-from papers.config import cached
+from papers.cache import cached
 from papers import logger
 from papers.entries import (
     get_entry_val,
