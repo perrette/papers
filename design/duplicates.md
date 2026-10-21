@@ -429,3 +429,23 @@ Old `-m` letters can stay accepted with a deprecation warning that prints the ne
 - `check --duplicates` without a terminal: `EOFError` traceback.
 - `add` without `-u`: `U` and `o` replace the library key.
 - `--no-check-duplicate`: key collision with the same title drops the new entry and its file.
+
+---
+
+## Decisions (2026-10-21)
+
+1. **No terminal**: default `--on-duplicate error`; the error names the option to pass.
+2. **Keys removed by a merge in `check`** are kept in the biblatex `ids` field, and printed.
+3. **`skip` stays** a mode of its own (the library entry is left completely untouched), separate from `keep`.
+4. **Initials versus full first names** (`Smith, J.` / `Smith, John`) are not a conflict;
+   the fuller form is kept, whichever side it comes from (citation styles can always
+   abbreviate). Different first names (`Smith, John` / `Smith, Jane`) are a conflict.
+5. **Identity, in order**: DOI (case-insensitive); arXiv identifier (`eprint` with
+   `archivePrefix = arXiv`); ISBN for `@book` entries only (chapters share their book's
+   ISBN); otherwise author family names + title. Two entries with different values of the
+   first identifier both have are not the same paper. Documented in the user docs.
+6. **"Not the same paper"** is remembered in `.papers/distinct.json` of the library, as pairs
+   of identities (DOI, arXiv id, ISBN, or normalized author+title), not keys, so that the
+   file means the same in every library: `push`/`pull` merge it (union) with the pool's.
+   Mostly needed for entries without DOI, and for entries that share a DOI but are distinct
+   (a book and its chapters, a dataset deposited under the article's DOI).
