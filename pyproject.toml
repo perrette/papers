@@ -16,9 +16,13 @@ classifiers = [
     "Programming Language :: Python :: 3",
 ]
 dependencies = [
-    # PyMuPDF 2.0 has no wheel for free-threaded python (3.14t), and does not
-    # build from source there: see https://github.com/pymupdf/PyMuPDF/issues/5170
-    "PyMuPDF<2",
+    # PyMuPDF 2.0 has no wheel for free-threaded python and does not build
+    # from source there; pymupdf-lite 2.0 (the same pymupdf module, without
+    # the layout/LLM features) has free-threaded wheels for linux x86_64 only,
+    # and no source distribution. 1.28 has a 3.14t wheel, but none for 3.15t.
+    # See https://github.com/pymupdf/PyMuPDF/issues/5170
+    "PyMuPDF<2; python_version < '3.15' or sys_platform != 'linux' or platform_machine != 'x86_64'",
+    "pymupdf-lite>=2; python_version >= '3.15' and sys_platform == 'linux' and platform_machine == 'x86_64'",
     "unidecode",
     "bibtexparser>=2.0.0b2",
     "scholarly",

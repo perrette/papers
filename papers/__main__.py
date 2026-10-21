@@ -820,14 +820,16 @@ def get_parser(config=None):
     cfg = argparse.ArgumentParser(add_help=False, parents=[loggingp])
     grp = cfg.add_argument_group('config')
     grp.add_argument('--filesdir', default=None, type=file_uri_to_path,
-        help=f'files directory (default: {config.filesdir}')
+        help=f'files directory (default: {config.filesdir})')
     grp.add_argument('--bibtex', default=None, type=file_uri_to_path,
-        help=f'bibtex database (default: {config.bibtex}')
+        help=f'bibtex database (default: {config.bibtex})')
     grp.add_argument('--dry-run', action='store_true',
         help='no PDF renaming/copying, no bibtex writing on disk (for testing)')
-    grp.add_argument('--relative-paths', action="store_false", dest="absolute_paths", default=None)
-    grp.add_argument('--absolute-paths', action="store_true", default=None)
-    grp.add_argument('--no-git', action='store_false', dest='git', default=None, help="""Do not commit the currrent action, whatever happens""")
+    grp.add_argument('--relative-paths', action="store_false", dest="absolute_paths", default=None,
+        help='store file paths relative to the bibtex file (default for a local install)')
+    grp.add_argument('--absolute-paths', action="store_true", default=None,
+        help='store absolute file paths (default for a global install)')
+    grp.add_argument('--no-git', action='store_false', dest='git', default=None, help="""Do not commit the current action, whatever happens""")
 
     keyfmt = argparse.ArgumentParser(add_help=False)
     grp = keyfmt.add_argument_group('bibtex key format')
@@ -843,7 +845,7 @@ def get_parser(config=None):
     grp.add_argument('--key-title-word-num', type=int, default=config.keyformat.title_word_num,
         help='number of title words to include in key (default:%(default)s)')
     grp.add_argument('--key-title-word-size', type=int, default=config.keyformat.title_word_size,
-        help='number of title words to include in key (default:%(default)s)')
+        help='min size of title words to include in key (default:%(default)s)')
     grp.add_argument('--key-title-sep', default=config.keyformat.title_sep,
         help='separator for title words in key (default:%(default)s)')
 
@@ -981,7 +983,7 @@ def get_parser(config=None):
     checkp.add_argument('-f','--force', action='store_true', help='do not ask')
 
     grp = checkp.add_argument_group('entry key')
-    grp.add_argument('--fix-key', action='store_true', help='fix key based on author name and date (in case misssing or digit)')
+    grp.add_argument('--fix-key', action='store_true', help='fix key based on author name and date (in case missing or digit)')
     grp.add_argument('--key-ascii', action='store_true', help='replace keys unicode character with ascii')
     grp.add_argument('--auto-key', action='store_true', help='new, auto-generated key for all entries')
     #     grp.add_argument('--nauthor', type=int, default=config.nauthor, help='number of authors to include in key (default:%(default)s)')
@@ -999,7 +1001,7 @@ def get_parser(config=None):
 
     grp = checkp.add_argument_group('merge/conflict')
     grp.add_argument('--duplicates',action='store_true', help='solve duplicates')
-    grp.add_argument('-m', '--mode', default='i', choices=list('ims'), help='''(i)interactive mode by default, otherwise (m)erge or (s)kip failed''')
+    grp.add_argument('-m', '--mode', default='i', choices=list('ims'), help='''(i)nteractive by default, otherwise (m)erge or (s)kip the duplicates''')
     # grp.add_argument('--ignore', action='store_true', help='ignore unresolved conflicts')
     # checkp.add_argument('--merge-keys', nargs='+', help='only merge remove / merge duplicates')
     # checkp.add_argument('--duplicates',action='store_true', help='remove / merge duplicates')
@@ -1055,40 +1057,40 @@ def get_parser(config=None):
     mgrp.add_argument('--fuzzy', action='store_true', help='fuzzy matching - instead of substring')
     listp.add_argument('--fuzzy-ratio', type=int, default=50, help='threshold for fuzzy matching of title, author, abstract (default:%(default)s)')
     listp.add_argument('--similarity', choices=['EXACT','GOOD','FAIR','PARTIAL','FUZZY'], default=DEFAULT_SIMILARITY, help='duplicate testing (default:%(default)s)')
-    listp.add_argument('--invert', action='store_true')
+    listp.add_argument('--invert', action='store_true', help='list the entries that do not match')
     listp.add_argument('--any', action='store_true', help='when several keywords: any of them')
 
     grp = listp.add_argument_group('search')
     grp.add_argument('-a','--author', nargs='+', help='any of the authors')
-    grp.add_argument('--first-author', nargs='+')
-    grp.add_argument('-y','--year', nargs='+')
+    grp.add_argument('--first-author', nargs='+', help='family name of the first author')
+    grp.add_argument('-y','--year', nargs='+', help='year')
     grp.add_argument('-t','--title', help='title', nargs="+")
     grp.add_argument('--abstract', help='abstract', nargs="+")
-    grp.add_argument('-k', '--key', '--id', nargs='+')
-    grp.add_argument('--doi', nargs='+')
-    grp.add_argument('--keywords', '--tag', nargs='+')
+    grp.add_argument('-k', '--key', '--id', nargs='+', help='entry key')
+    grp.add_argument('--doi', nargs='+', help='DOI')
+    grp.add_argument('--keywords', '--tag', nargs='+', help='keywords (tags)')
 
 
     grp = listp.add_argument_group('check')
     grp.add_argument('--duplicates-key', action='store_true', help='list key duplicates only')
     grp.add_argument('--duplicates-doi', action='store_true', help='list doi duplicates only')
-    grp.add_argument('--duplicates-tit', action='store_true', help='list tit duplicates only')
+    grp.add_argument('--duplicates-tit', action='store_true', help='list title duplicates only')
     grp.add_argument('--duplicates', action='store_true', help='list all duplicates (see --similarity)')
-    grp.add_argument('--has-file', action='store_true')
-    grp.add_argument('--no-file', action='store_true')
-    grp.add_argument('--broken-file', action='store_true')
+    grp.add_argument('--has-file', action='store_true', help='entries with at least one file')
+    grp.add_argument('--no-file', action='store_true', help='entries without file')
+    grp.add_argument('--broken-file', action='store_true', help='entries with a file link to a missing file')
     grp.add_argument('--review-required', action='store_true', help='suspicious entry (invalid dois, missing field etc.)')
 
     grp = listp.add_argument_group('formatting')
     mgrp = grp.add_mutually_exclusive_group()
     mgrp.add_argument('--plain', action='store_false', dest="one_liner", help='print in bibtex format')
     mgrp.add_argument('-l', '-1', '--one-liner', action='store_true', help='one liner')
-    mgrp.add_argument('--key-only', action='store_true')
+    mgrp.add_argument('--key-only', action='store_true', help='print the keys only (one per line)')
     mgrp.add_argument('-f', '--field', nargs='+', help='specific field(s) only')
-    grp.add_argument('--no-key', action='store_true')
+    grp.add_argument('--no-key', action='store_true', help='do not print the keys')
 
     grp = listp.add_argument_group('action on listed results (pipe)')
-    grp.add_argument('--delete', action='store_true')
+    grp.add_argument('--delete', action='store_true', help='delete the listed entries (their files are kept)')
     grp.add_argument('-e', '--edit', action='store_true', help='interactive edit text file with entries, and re-insert them')
     grp.add_argument('--fetch', action='store_true', help='fetch and fix metadata')
     grp.add_argument('--add-keywords', '--add-tag', nargs='+', help='add keywords to the selected entries')
