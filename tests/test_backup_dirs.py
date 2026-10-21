@@ -8,7 +8,7 @@ import unittest
 from papers.backup import default_gitdir, read_manifest, write_manifest
 from papers.bib import Biblio
 from papers.config import CONFIG_FILE_LOCAL, BACKUP_DIR, Config
-from tests.common import BaseTest, LocalGitInstallTest, paperscmd
+from tests.common import BaseTest, GitInitTest, paperscmd
 
 
 class TestDefaultGitdirNaming(unittest.TestCase):
@@ -25,7 +25,7 @@ class TestDefaultGitdirNaming(unittest.TestCase):
         self.assertEqual(default_gitdir("/x/lib.bib"), default_gitdir("/x/lib.bib"))
 
 
-class TestManifest(LocalGitInstallTest):
+class TestManifest(GitInitTest):
 
     def test_install_writes_manifest(self):
         manifest = read_manifest(self.config.gitdir)
@@ -76,12 +76,12 @@ class TestManifest(LocalGitInstallTest):
 class TestBackupListWithoutGit(BaseTest):
 
     def test_backup_list_reports_git_off(self):
-        self.papers(f'install --force --local --no-git --bibtex {self.mybib} --files {self.filesdir}')
+        self.papers(f'init --no-git --bibtex {self.mybib} --filesdir {self.filesdir}')
         out = self.papers('backup list', sp_cmd='check_output')
         self.assertIn('git-tracking is off', out)
 
 
-class TestBackupRemove(LocalGitInstallTest):
+class TestBackupRemove(GitInitTest):
 
     def test_remove_by_name(self):
         gitdir = self.config.gitdir
@@ -107,7 +107,7 @@ class TestBackupRemove(LocalGitInstallTest):
         self.assertNotIn(name, out)
 
 
-class TestLegacyLayout(LocalGitInstallTest):
+class TestLegacyLayout(GitInitTest):
     """Backup directories written by older versions tracked backup_copy.bib /
     backup_clean.bib; the new layout tracks the bibtex under its own name."""
 
@@ -154,7 +154,7 @@ def _snapshots(gitdir):
     return backup_info(gitdir)['snapshots'] or 0
 
 
-class TestAddFromAnotherDirectory(LocalGitInstallTest):
+class TestAddFromAnotherDirectory(GitInitTest):
     """`papers add --bibtex /path/to/library.bib` run from another directory:
     the configuration (and backup directory) of that library applies,
     whatever the current directory holds"""
@@ -180,7 +180,7 @@ class TestAddFromAnotherDirectory(LocalGitInstallTest):
 
     def test_cwd_local_config_with_broken_git_setup(self):
         # the current directory is another library whose backup directory does not exist
-        paperscmd('install --force --local --bibtex other.bib --files otherfiles', cwd=self.other.name)
+        paperscmd('init --bibtex other.bib --filesdir otherfiles', cwd=self.other.name)
         otherconfig = os.path.join(self.other.name, CONFIG_FILE_LOCAL)
         js = json.load(open(otherconfig))
         js['git'] = True

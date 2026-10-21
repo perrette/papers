@@ -2,11 +2,10 @@ import os
 from pathlib import Path
 import subprocess as sp
 from papers.backup import run_git
-from papers.config import Config
-from papers.config import CONFIG_FILE, CONFIG_FILE_LOCAL
+from papers.config import CONFIG_FILE_LOCAL
 from papers.bib import Biblio
 
-from tests.common import prepare_paper, BaseTest, LocalGitInstallTest, LocalGitLFSInstallTest, GlobalGitInstallTest, GlobalGitLFSInstallTest
+from tests.common import prepare_paper, BaseTest, GitInitTest, GitLFSInitTest
 
 bibtex2 = """@article{SomeOneElse2000,
  author = {Some One},
@@ -120,14 +119,11 @@ class TimeTravelBase:
         self.assertMultiLineEqual(open(self._path(self.mybib)).read(), future_bib)
 
 
-class TestTimeTravelGitLocal(LocalGitInstallTest, TimeTravelBase):
-    pass
-
-class TestTimeTravelGitGlobal(GlobalGitInstallTest, TimeTravelBase):
+class TestTimeTravelGitLocal(GitInitTest, TimeTravelBase):
     pass
 
 
-class TestRestoreGitLocal(LocalGitInstallTest):
+class TestRestoreGitLocal(GitInitTest):
 
     def get_commit(self):
         return sp.check_output("git rev-parse HEAD", shell=True, cwd=self.config.gitdir).strip().decode()
@@ -147,7 +143,7 @@ class TestRestoreGitLocal(LocalGitInstallTest):
         self.assertMultiLineEqual(biblio.format(), biblio2.format())
 
 
-class TestUndoGitLocal(LocalGitLFSInstallTest):
+class TestUndoGitLocal(GitLFSInitTest):
 
     def test_undo(self):
 
@@ -379,22 +375,6 @@ class TestUndoGitLocal(LocalGitLFSInstallTest):
 
 
 
-class TestUndoGitOnlyLocal(LocalGitInstallTest):
-    def _install(self):
-        self.papers(f'install --local --no-prompt --bibtex {self.mybib} --files {self.filesdir} --git')
-        self.config = Config.load(self._path(CONFIG_FILE_LOCAL))
-
-
-class TestUndoGitGlobal(GlobalGitLFSInstallTest):
-
-    def _install(self):
-        self.papers(f'install --no-prompt --global --bibtex {self.mybib} --files {self.filesdir} --git --git-lfs')
-        self.config = Config.load(self._path(CONFIG_FILE_LOCAL))
-
-    def _format_file(self, name):
-        return os.path.abspath(name)
-
-
 class TestUndoNoInstall(BaseTest):
 
     def test_undo(self):
@@ -434,17 +414,8 @@ class TestUndoNoInstall(BaseTest):
 
 
 
-class TestUninstall(LocalGitLFSInstallTest):
+class TestUninstall(GitLFSInitTest):
     def test_uninstall(self):
         self.assertTrue(self._exists(CONFIG_FILE_LOCAL))
         self.papers('uninstall')
-        self.assertFalse(self._exists(CONFIG_FILE_LOCAL))
-
-
-class TestUninstall2(GlobalGitLFSInstallTest):
-    def test_uninstall(self):
-        # v3: install --global writes a library configuration next to the bibtex
-        self.assertTrue(self._exists(CONFIG_FILE_LOCAL))
-        self.assertFalse(os.path.exists(CONFIG_FILE))
-        self.papers('uninstall --recursive')
         self.assertFalse(self._exists(CONFIG_FILE_LOCAL))

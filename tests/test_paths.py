@@ -113,19 +113,6 @@ class TestLocalConfigSubfolder(BibTest):
     def tearDown(self):
         self.temp_dir.cleanup()
 
-    def test_reinstall_keeps_paths(self):
-        paperscmd('install --local --no-prompt --no-git --bibtex refs/papers.bib --filesdir files', cwd=self.dir)
-        configfile = os.path.join(self.dir, CONFIG_FILE_LOCAL)
-        for _ in range(2):
-            js = json.load(open(configfile))
-            self.assertEqual(js['bibtex'], os.path.join('refs', 'papers.bib'))
-            self.assertEqual(js['filesdir'], 'files')
-            config = Config.load(configfile)
-            self.assertEqual(Path(config.bibtex), Path(self.dir, 'refs', 'papers.bib').resolve())
-            self.assertEqual(Path(config.filesdir), Path(self.dir, 'files').resolve())
-            # update the install
-            paperscmd('install --no-prompt --editor vim', cwd=self.dir)
-
     def test_save_from_another_directory(self):
         configfile = os.path.join(self.dir, CONFIG_FILE_LOCAL)
         config = Config(file=configfile, local=True,

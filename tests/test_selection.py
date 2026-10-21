@@ -9,7 +9,7 @@ from papers.utils import PapersExit
 from papers.identifiers import read_selection, select_entries
 from papers.identifiers import normalize_doi, normalize_arxiv, normalize_isbn, parse_identifier, arxiv_of_doi, entry_arxiv
 from papers.entries import entry_from_dict
-from tests.common import LocalInstallTest
+from tests.common import InitTest
 
 bibtex = """@article{Alpha2000,
  author = {A. Alpha},
@@ -194,7 +194,7 @@ class SelectIdentifiersTest(unittest.TestCase):
             self.select('2000book')
 
 
-class SelectionCommandsTest(LocalInstallTest):
+class SelectionCommandsTest(InitTest):
     initial_content = bibtex
     anotherbib_content = None
 

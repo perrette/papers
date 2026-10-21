@@ -254,7 +254,7 @@ class TestAddDir(BibTest):
         shutil.copy(self.pdf1, self.somedir)
         shutil.copy(self.pdf2, self.subdir)
         self.mybib = tempfile.mktemp(prefix='papers.bib')
-        paperscmd(f'install --local --no-prompt --bibtex {self.mybib}')
+        paperscmd(f'init --bibtex {self.mybib}')
 
     def test_adddir_pdf(self):
         self.my = Biblio.load(self.mybib, '')

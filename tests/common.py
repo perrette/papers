@@ -255,46 +255,26 @@ class BaseTest(BibTest):
 
 
 
-class LocalInstallTest(BaseTest):
+class InitTest(BaseTest):
+    """a library created with `papers init` in the temporary directory"""
+
+    init_options = ''
+
     def setUp(self):
         super().setUp()
-        self.papers(f'install --force --local --bibtex {self.mybib} --files {self.filesdir}')
+        self.papers(f'init {self.init_options} --bibtex {self.mybib} --filesdir {self.filesdir}')
 
     @property
     def config(self):
         return Config.load(self._path(CONFIG_FILE_LOCAL))
 
-class GlobalInstallTest(BaseTest):
-    def setUp(self):
-        super().setUp()
-        self.papers(f'install --force --global --bibtex {self.mybib} --files {self.filesdir}')
 
-    @property
-    def config(self):
-        # v3: the library configuration is written next to the bibtex
-        return Config.load(self._path(CONFIG_FILE_LOCAL))
+class GitInitTest(InitTest):
+    init_options = '--git'
 
 
-class LocalGitInstallTest(LocalInstallTest):
-    def setUp(self):
-        super().setUp()
-        self.papers(f'install --force --local --git --bibtex {self.mybib} --files {self.filesdir}')
-
-class GlobalGitInstallTest(GlobalInstallTest):
-    def setUp(self):
-        super().setUp()
-        self.papers(f'install --force --global --git --bibtex {self.mybib} --files {self.filesdir}')
-
-class LocalGitLFSInstallTest(LocalInstallTest):
-    def setUp(self):
-        super().setUp()
-        self.papers(f'install --force --local --git --git-lfs --bibtex {self.mybib} --files {self.filesdir}')
-
-
-class GlobalGitLFSInstallTest(GlobalInstallTest):
-    def setUp(self):
-        super().setUp()
-        self.papers(f'install --force --global --git --git-lfs --bibtex {self.mybib} --files {self.filesdir}')
+class GitLFSInitTest(InitTest):
+    init_options = '--git-lfs'
 
 
 class ConfigTest(BibTest):

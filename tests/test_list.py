@@ -2,7 +2,7 @@ import os
 import unittest
 from unittest.mock import patch
 from urllib.parse import quote
-from tests.common import LocalInstallTest, BaseTest, BibTest, tempfile, paperscmd
+from tests.common import InitTest, BaseTest, BibTest, tempfile, paperscmd
 from papers.cli import VIEWER_PASSTHROUGH_ENV
 from papers.utils import PapersExit, find_masked_viewer, file_uri_to_path
 from papers.utils import strip_all
@@ -24,7 +24,7 @@ bibtex = """@article{Perrette_2011,
 }"""
 
 
-class ListTest(LocalInstallTest):
+class ListTest(InitTest):
     initial_content = bibtex
     anotherbib_content = None
 
@@ -149,7 +149,7 @@ class SearchTest(ListTest):
         self.assertMultiLineEqual(out, self.initial_content)
 
 
-class ListBrokenFileTest(LocalInstallTest):
+class ListBrokenFileTest(InitTest):
     """papers list --broken-file lists entries with broken file links"""
     # Entry with file pointing to non-existent path
     initial_content = """@article{BrokenFile2020,
@@ -166,7 +166,7 @@ class ListBrokenFileTest(LocalInstallTest):
         self.assertIn('BrokenFile2020', out)
         self.assertIn('Test', out)
 
-class ListDuplicatesTest(LocalInstallTest):
+class ListDuplicatesTest(InitTest):
     """papers list --duplicates lists entries with duplicate DOIs/keys"""
     initial_content = """@article{Entry1,
  author = {Author A},
@@ -188,7 +188,7 @@ class ListDuplicatesTest(LocalInstallTest):
         self.assertIn('Entry2', out)
 
 
-class ListReviewRequiredTest(LocalInstallTest):
+class ListReviewRequiredTest(InitTest):
     """papers list --review-required lists suspicious entries (invalid doi, missing fields, etc.)"""
     # Entry with key starting with digit (invalid)
     initial_content = """@article{2020InvalidKey,
@@ -243,7 +243,7 @@ class EditTest(ListTest):
             out = self.papers('list 2011 perrette -1', sp_cmd='check_output')
             self.assertIn('files:3', strip_all(out))
 
-class OpenCmdTest(LocalInstallTest):
+class OpenCmdTest(InitTest):
     initial_content = """@article{NoFile2020,
  author = {No File},
  title = {Nothing attached},

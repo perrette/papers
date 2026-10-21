@@ -45,7 +45,7 @@ EOF""", cwd=self.workdir)
     def test_filecheck_delete_broken(self):
         """papers filecheck --delete-broken --force removes broken file links from entries"""
         os.makedirs(self.filesdir, exist_ok=True)
-        self.papers(f'install --local --no-prompt --bibtex {self.mybib} --filesdir {self.filesdir}')
+        self.papers(f'init --bibtex {self.mybib} --filesdir {self.filesdir}')
         # Add entry with valid file first
         self.papers(f'add {self.pdf} --doi {self.doi}')
         # Manually add a broken file link to the entry
@@ -67,7 +67,7 @@ EOF""", cwd=self.workdir)
         os.makedirs(self.filesdir, exist_ok=True)
         pdf_copy = os.path.join(self.filesdir, 'duplicate.pdf')
         shutil.copy(self.pdf, pdf_copy)
-        self.papers(f'install --local --no-prompt --bibtex {self.mybib} --filesdir {self.filesdir}')
+        self.papers(f'init --bibtex {self.mybib} --filesdir {self.filesdir}')
         self.papers(f'add {self.pdf} --doi {self.doi}')
         biblio = Biblio.load(self.mybib, self.filesdir)
         e = biblio.entries[0]
@@ -84,7 +84,7 @@ EOF""", cwd=self.workdir)
     def test_filecheck_clean_filesdir(self):
         """papers filecheck --clean-filesdir --force removes unlinked files from filesdir"""
         os.makedirs(self.filesdir, exist_ok=True)
-        self.papers(f'install --local --no-prompt --bibtex {self.mybib} --filesdir {self.filesdir}')
+        self.papers(f'init --bibtex {self.mybib} --filesdir {self.filesdir}')
         self.papers(f'add {self.pdf} --doi {self.doi}')
         orphan = os.path.join(self.filesdir, 'orphan_unlinked.pdf')
         shutil.copy(self.pdf, orphan)

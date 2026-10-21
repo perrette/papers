@@ -200,10 +200,6 @@ class TestInit(ConfigTest):
         self.assertEqual((js['bibtex'], js['filesdir']), ('refs.bib', 'pdfs'))
         self.assertTrue(os.path.isfile(self.path('lib', 'refs.bib')))
 
-    def test_install_is_init(self):
-        self.papers('install --no-prompt --no-git')
-        self.assertEqual(self.json()['pools'], ['default'])
-
     def test_relative_paths_by_default(self):
         self.papers('init --no-git')
         Path(self.path('a.pdf')).write_text('pdf')
