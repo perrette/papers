@@ -78,20 +78,16 @@ def readpdf_pymupdf(pdf_path, pages=None, first=None, last=None):
     return text
 
 def readpdf_poputils(pdf, first=None, last=None, pages=None):
-    # DEPRECATED
-    tmptxt = tempfile.mktemp(suffix='.txt')
-
-    cmd = ['pdftotext']
-    if first is not None: cmd.extend(['-f', str(first)])
-    if last is not None: cmd.extend(['-l', str(last)])
-    cmd.extend([pdf, tmptxt])
-    logger.info(' '.join(cmd))
-    sp.check_call(cmd)
-
-    txt = open(tmptxt).read()
-    os.remove(tmptxt)
-
-    return txt
+    "text of a PDF with pdftotext (poppler-utils), when PyMuPDF is not installed"
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmptxt = os.path.join(tmpdir, 'pdf.txt')
+        cmd = ['pdftotext']
+        if first is not None: cmd.extend(['-f', str(first)])
+        if last is not None: cmd.extend(['-l', str(last)])
+        cmd.extend([pdf, tmptxt])
+        logger.info(' '.join(cmd))
+        sp.check_call(cmd)
+        return open(tmptxt).read()
 
 def readpdf(pdf, first=None, last=None):
     # TODO the python package pdftotext can do this directly, with no temp file and no I/O.
@@ -109,29 +105,25 @@ def readpdf_image(pdf, first=None, last=None):
     if not os.path.isfile(pdf):
         raise ValueError(repr(pdf) + ": not a file")
 
-    tmpbase = tempfile.mktemp()
-    tmppng = tmpbase + '.png'
-    tmptxt = tmpbase + '.txt'
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmpbase = os.path.join(tmpdir, 'pdf')
+        tmppng = tmpbase + '.png'
+        tmptxt = tmpbase + '.txt'
 
-    # 1st create a .png image from the uniq pdf file
-    cmd = ['pdftoppm', '-singlefile', '-png', '-q']
-    if first is not None: cmd.extend(['-f', str(first)])
-    if last is not None: cmd.extend(['-l', str(last)])
-    cmd.extend([pdf, tmpbase])
-    logger.info(' '.join(cmd))
-    sp.check_call(cmd)
+        # 1st create a .png image from the uniq pdf file
+        cmd = ['pdftoppm', '-singlefile', '-png', '-q']
+        if first is not None: cmd.extend(['-f', str(first)])
+        if last is not None: cmd.extend(['-l', str(last)])
+        cmd.extend([pdf, tmpbase])
+        logger.info(' '.join(cmd))
+        sp.check_call(cmd)
 
-    # 2nd extract text from .png using tesseract
-    cmd = ["tesseract", tmppng, tmpbase, "-l", "eng", "quiet"]
-    logger.info(' '.join(cmd))
-    sp.check_call(cmd)
+        # 2nd extract text from .png using tesseract
+        cmd = ["tesseract", tmppng, tmpbase, "-l", "eng", "quiet"]
+        logger.info(' '.join(cmd))
+        sp.check_call(cmd)
 
-    txt = open(tmptxt).read()
-
-    os.remove(tmptxt)
-    os.remove(tmppng)
-
-    return txt
+        return open(tmptxt).read()
 
 # CrossRef DOI standard: /^10.\d{4,9}/[-._;()/:A-Z0-9]+$/i
 # any DOI not glued to a preceding word, number or dot (bare DOIs included:
@@ -881,10 +873,11 @@ def fetch_bibtex_by_fulltext_crossref(txt, title=None, author=None, rows=5):
     return crossref_to_bibtex(result).strip()
 
 
-############### HERE A HACK DESIGNED FOR THE ESD JOURNAL ################
-# That journal often provides DOI that are not yet registered in crossref
-# so we need to fetch the bibtex from the journal website
-# Thanks Le Chat for near-instantaneous and elegantly designed code
+# BIBTEX FROM THE JOURNAL WEBSITE
+# ===============================
+# For DOIs registered without metadata yet (the ESD journal prints DOIs
+# before crossref has them): look for a link to a .bib file on the page
+# the DOI resolves to, and take the entry with that DOI.
 
 def fetch_html(url):
     response = http_get(url)

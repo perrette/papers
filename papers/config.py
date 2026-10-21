@@ -14,6 +14,7 @@ DRYRUN = False
 # platform-appropriate locations (on Linux these honor the XDG variables and
 # match the paths previous versions derived by hand; they differ on
 # macOS/Windows, where the legacy locations below are checked for migration)
+# the global configuration of papers v2 (v2 compatibility, remove with migrate)
 CONFIG_FILE = os.path.join(platformdirs.user_config_dir(), 'papersconfig.json')
 CONFIG_FILE_LOCAL = '.papersconfig.json'
 # file names of a library configuration (.papers/config.json: older versions)
@@ -25,6 +26,7 @@ CACHE_DIR = platformdirs.user_cache_dir('papers')
 
 # locations used by previous versions (XDG conventions on every platform),
 # kept for migration and for listing pre-existing backup directories
+# v2 compatibility, remove with migrate (but BACKUP_DIR_LEGACY)
 HOME = os.environ.get('HOME', os.path.expanduser('~'))
 _CONFIG_HOME_LEGACY = os.environ.get('XDG_CONFIG_HOME', os.path.join(HOME, '.config'))
 _DATA_HOME_LEGACY = os.environ.get('XDG_DATA_HOME', os.path.join(HOME, '.local', 'share'))
@@ -37,6 +39,7 @@ BACKUP_DIR_LEGACY = os.path.join(_DATA_HOME_LEGACY, 'papers', 'backups')
 # version was written by papers v2
 CONFIG_VERSION = 3
 # settings of the v2 file format, only read from files without version
+# v2 compatibility, remove with migrate
 _V2_KEYS = ('absolute_paths', 'backup_files', 'local')
 
 
@@ -118,7 +121,7 @@ def json_get(js, name):
     if name == 'paths':
         if js.get('paths') is not None:
             return js['paths']
-        if js.get('absolute_paths') is not None:  # files of v2
+        if js.get('absolute_paths') is not None:  # files of v2 (v2 compatibility, remove with migrate)
             return 'absolute' if js['absolute_paths'] else 'relative'
         return None
     if name == 'git-lfs':
@@ -302,6 +305,7 @@ class Config:
         gitdir=None, git=None, gitlfs=None, local=None, absolute_paths=None,
         pools=None, files=None, sync=None, light=False, machine=None):
         self.file = file
+        # False for the global configuration of v2 (v2 compatibility, remove with migrate)
         self.local = local
         self.machine = machine if machine is not None else MachineConfig.load()
         # how the configuration was found (see papers.library.find_config)
@@ -433,7 +437,7 @@ class Config:
 
     def _relpath(self, p):
         if p is None: return p
-        if not self.local:
+        if not self.local:  # v2 compatibility, remove with migrate
             return str(Path(p).resolve())  # abspath
 
         # otherwise express path relative to the directory of the config file
@@ -448,7 +452,7 @@ class Config:
 
     def _abspath(self, p, root=None):
         if p is None: return p
-        if not self.local:
+        if not self.local:  # v2 compatibility, remove with migrate
             return str(Path(p).resolve())  # abspath
         p2 = str((Path(root).resolve() if root is not None else self.configdir) / p)
         return p2
@@ -470,7 +474,7 @@ class Config:
             js["light"] = True
         if self.local:
             js["version"] = CONFIG_VERSION
-        else:
+        else:  # v2 compatibility, remove with migrate
             js["local"] = False  # global configuration of v2 (file format of v2)
         return js
 
@@ -486,6 +490,7 @@ class Config:
         version = file_version(js, the_file)
         if local is None and version >= 3:
             local = True  # v3 has no global configuration
+        # v2 compatibility, remove with migrate
         if local is None:
             local = js.get('local')
         if local is None:
@@ -497,7 +502,7 @@ class Config:
         cfg = cls(file=the_file, local=local, machine=machine,
                   bibtex=js.get('bibtex'), filesdir=js.get('filesdir'), gitdir=gitdir,
                   light=bool(js.get('light', False)))
-        if not local and json_get(js, 'paths') is None:
+        if not local and json_get(js, 'paths') is None:  # v2 compatibility, remove with migrate
             js['paths'] = 'absolute'  # default of v2 for a global configuration
         for name in INHERITED:
             value = json_get(js, name)
@@ -533,7 +538,7 @@ class Config:
         def _fmt_path(p):
             if self.local:
                 return os.path.relpath(p, ".")
-            else:
+            else:  # v2 compatibility, remove with migrate
                 return p
 
         lines = []

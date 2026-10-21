@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# Vendored module (bibserver, as customized in bibtexparser v1): not edited by hand.
 
 # Original source: github.com/okfn/bibserver
 # Authors:

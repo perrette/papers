@@ -75,7 +75,8 @@ def check_filesdir(folder):
 
 
 def search_config(filenames, start_dir, default=None):
-    """Thanks Chat GPT !"""
+    """the first of `filenames` found in start_dir or a directory above it
+    (the root directory excluded), else `default`"""
     current_dir = os.path.abspath(start_dir)
     root_dir = os.path.abspath(os.sep)
     while True:
