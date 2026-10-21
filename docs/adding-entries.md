@@ -129,23 +129,150 @@ bibtex:
 papers add entry.bib --attach esd-4-11-2013.pdf --bibtex papers.bib --filesdir files
 ```
 
-## Duplicates and keys
+## Duplicates
 
-Before inserting an entry, `papers add` looks for a duplicate in the library
-(same DOI, or same authors and title). The `-m/--mode` option says what to do
-when one is found: `i` (interactive, the default), `u` (update the existing
-entry with the new entry's missing fields, existing values win), `U` (update
-the existing entry with the new entry's values, new values win), `o`
-(overwrite), `s` (skip the new entry), `a` (append it anyway), `r` (raise an
-error).
+Before inserting an entry, `papers add` looks for the same paper in the
+library. `papers check --duplicates` and `papers list --duplicates` use the
+same rule (see [Managing your library](library-management.md#duplicates)).
+
+### Same paper
+
+Two entries are the same paper when they have the same identifier, checked
+in this order:
+
+1. the DOI (case-insensitive; `doi:` and `https://doi.org/` prefixes are
+   ignored);
+2. the arXiv identifier: the `eprint` field when `archivePrefix` is arXiv
+   or absent, and arXiv DOIs (`10.48550/arXiv.<id>`), whatever the version;
+3. the ISBN, for two `@book` entries only (a chapter carries the ISBN of its
+   book, and each edition has its own ISBN);
+4. otherwise the family names of the authors and the title, compared without
+   case, braces, accents and extra spaces. Both entries need authors and a
+   title: two entries titled "Editorial" without authors are not the same
+   paper.
+
+The first identifier that both entries have decides: equal values make the
+same paper, different values two papers. A preprint and the published
+article with different DOIs are two entries, even with the same authors and
+title.
+
+Equal identifiers make the same paper, except in one case: when the entry
+types differ and the titles clearly differ (less than 80% similar), papers
+asks instead of merging. This happens with a chapter exported with the DOI
+of its book, or a dataset deposited under the DOI of the article. Without a
+terminal, such a pair is never merged.
+
+When you answer that two entries are not the same paper (`n`, below), papers
+records it in `.papers/distinct.json`, next to the bibtex, and does not ask
+about them again. The file records the identifiers of both entries (DOI,
+arXiv id, ISBN, authors and title), not their keys.
+
+### What a merge does
+
+The entry already in the library (entry 1) is the target:
+
+- it keeps its key;
+- fields that only the added entry has are added;
+- the file links of both entries are kept (a file linked twice, or two
+  copies with the same content, once);
+- values that differ only by case, braces, spaces, or the case of a DOI are
+  not conflicts, and the library's spelling is kept. Author names with
+  initials and with full first names (`Smith, J.` and `Smith, John`) are not
+  a conflict either: the fuller form is kept, whichever entry it comes
+  from. Different first names (`Smith, John` and `Smith, Jane`) are a
+  conflict;
+- the remaining differences are conflicts.
+
+An added entry that brings nothing new (no conflict, no field to add) is
+merged without a question: its files are added, and papers prints
+`already in library: smith2020climate (+1 file)`.
+
+### --on-duplicate
+
+`--on-duplicate` says what to do when the added entry has conflicts or
+fields to add:
+
+| Value | What happens |
+|---|---|
+| `ask` | the dialogue below (default when the standard input is a terminal) |
+| `keep` | merge; conflicts keep the library value |
+| `update` | merge; conflicts take the value of the added entry |
+| `skip` | the entry is not added; the library entry, its files and the added file are left as they are |
+| `error` | stop before saving, and exit with status 1 (default without a terminal, e.g. in a script) |
+
+`--no-check-duplicate` adds the entries without looking for duplicates.
+
+### The dialogue
+
+```
+$> papers add new.bib
+Already in library: smith2020climate (same DOI 10.1000/abc123)
+  1  library  smith2020climate  article  doi 10.1000/abc123  files/smith.pdf
+  2  new      Smith_2020        article  doi 10.1000/ABC123  other/smith-preprint.pdf
+
+@article{smith2020climate,
+   author   = {Smith, John and Doe, Jane}
+   doi      = {10.1000/abc123}
++  file     = {files/smith.pdf;other/smith-preprint.pdf}
+!  journal  = {Nature}
+!             2: {Nature Climate Change}
+   keywords = {climate, mine}
+   title    = {Climate sensitivity revisited}
++  volume   = {10}
+   year     = {2020}
+}
+1 conflict. The key smith2020climate is kept; + lines are added.
+  1 keep library values   2 take new values   f field by field   e edit
+  n not the same paper (add Smith_2020 separately)   s skip   q quit   ? help
+>>>
+```
+
+Unmarked lines are the same in both entries (here the title and the author
+names, which differ only by case and initials), `+` lines are added from the
+other entry, and `!` lines are conflicts: the value that will be used, then
+the other values, numbered by entry.
+
+| Answer | Meaning |
+|---|---|
+| `1`, `2` | resolve all conflicts with the values of that entry, and merge |
+| `f` | go through the conflicts one at a time |
+| `e` | edit the merged entry in the editor, as plain bibtex; the values of the other entry are `%` comment lines below it. If the editor fails or the text is not one bibtex entry, papers comes back to this menu |
+| `n` | not the same paper: add the entry separately (with a free key if its key is taken), and remember it |
+| `s` | skip: change nothing for this entry; it is asked again next time |
+| `q` | quit: skip this entry and all the remaining duplicates of this command; the other entries are added |
+| `?` | help |
+
+`f` asks for each conflict:
+
+```
+journal:
+  1  Nature                 library
+  2  Nature Climate Change  new
+  [1/2/e] >>>
+```
+
+To stop without saving anything, use Ctrl-C.
+
+### Keys
 
 Entries added from a bibtex file keep their own key, unless `-u/--update-key`
 is passed, in which case the key is regenerated from the key template (see
 [Renaming files and keys](renaming.md)). Entries extracted from a PDF or
-fetched from a DOI always get a generated key.
+fetched from a DOI always get a generated key. Either way, this only
+concerns entries new to the library: an entry merged into a duplicate takes
+the key of the library entry.
 
-With `-u/--update-key`, a duplicate is always merged under the key of the entry
-already in the library, in every mode (`u`, `U`, `o`; with `a` the existing
-entry keeps its key and the appended entry gets a fresh one). Without `-u`,
-modes `u` and `s` keep the existing entry's key, while `U` and `o` take over
-the new entry's key.
+### Options of earlier versions
+
+These options still work, with a warning, and will be removed:
+
+| Old | New |
+|---|---|
+| `-m i` | `--on-duplicate ask` |
+| `-m u` | `--on-duplicate keep` |
+| `-m U` | `--on-duplicate update` (the library key is kept) |
+| `-m o` | `--on-duplicate update` (the library key and the fields only in the library are kept) |
+| `-m s` | `--on-duplicate skip` (the file of the added entry is not attached; `keep` does that) |
+| `-m r` | `--on-duplicate error` |
+| `-m a` | `--no-check-duplicate` |
+| `--no-merge-files` | ignored: file links are always merged |

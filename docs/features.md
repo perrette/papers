@@ -13,7 +13,7 @@
 - rename PDFs according to bibtex key and year (`papers file rename [--keep-source]`)
 - move files and folders and update the links (`papers file mv`)
 - attachments (e.g. supplementary material), named after the main file (`papers add ... --attach FILE`, `papers file attach KEY FILE`)
-- merging (`papers check --duplicates ...`)
+- duplicate detection by DOI, arXiv id, ISBN or authors and title, and merging (`papers add`, `papers check --duplicates`)
 - fix entries (`papers check --format-name --encoding unicode --fix-doi --fix-key ...`)
 - library configuration with its bibtex, files directory and settings (`papers init --bibtex BIB --filesdir DIR ...`, `papers config`)
 - integration with git
@@ -45,8 +45,8 @@ Currently covers:
     - conflict resolution
 - `papers init`, `papers config`, `papers migrate`, `papers install`
 - internals:
-    - duplicate test with levels `EXACT`, `GOOD`, `FAIR` (the default), `PARTIAL`
+    - duplicate rule (identifiers and their order, title guard, `.papers/distinct.json`), merge and dialogue
 - `papers list`
 - `papers undo / redo` (partial)
 - `papers file` subcommands, `papers rm`, `papers tag`, `papers edit`
-- `papers check --duplicate` (fix DOI etc.) (superficial)
+- `papers check --duplicates` and the other checks (fix DOI etc.) (superficial)
