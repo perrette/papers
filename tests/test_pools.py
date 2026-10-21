@@ -517,5 +517,97 @@ class TestPush(PoolTest):
         self.assertEqual(len(biblio.entries), 1)
 
 
+# EXPORT
+# ======
+
+class TestExport(PoolTest):
+
+    def setUp(self):
+        super().setUp()
+        self.lib('config files copy')
+        Path(self.path('new.bib')).write_text(NEW_BIB)
+        Path(self.path('mine.pdf')).write_text('mine')
+        self.lib('add ../new.bib')
+        self.take_smith()
+        self.lib_pdf = self.files('mine2022')[0]
+
+    def test_copy(self):
+        self.lib('export ../out --no-git')
+        biblio, entries = self.bib('out')
+        self.assertEqual(sorted(entries), ['mine2022', 'smith2020climate'])
+        files = biblio.get_files(entries['mine2022'])
+        self.assertTrue(files[0].startswith(self.path('out', 'files')))
+        self.assertTrue(os.path.samefile(files[0], self.lib_pdf))
+        text = Path(self.path('out', 'papers.bib')).read_text()
+        self.assertIn('file = {:files/', text)  # relative links
+        self.assertTrue(os.path.exists(self.path('out', '.papersconfig.json')))
+        # add of the folder restores it
+        self.papers('init back --no-git')
+        self.papers('add ../out --recursive --no-pool', cwd=self.path('back'))
+        self.assertEqual(sorted(self.bib('back')[1]), ['mine2022', 'smith2020climate'])
+
+    def test_selection_and_link(self):
+        self.lib('export ../out mine2022 --files link --no-git')
+        biblio, entries = self.bib('out')
+        self.assertEqual(list(entries), ['mine2022'])
+        self.assertEqual(biblio.get_files(entries['mine2022']), [self.lib_pdf])
+        self.assertIn('file = {:../lib/files/', Path(self.path('out', 'papers.bib')).read_text())
+
+    def test_none(self):
+        self.lib('export ../out --files none --no-git')
+        self.assertNotIn('file', self.entry('mine2022', 'out'))
+        self.assertEqual(os.listdir(self.path('out', 'files')), [])
+
+    def test_not_empty(self):
+        os.makedirs(self.path('out'))
+        Path(self.path('out', 'x')).write_text('x')
+        with self.assertRaisesRegex(PapersExit, 'not an empty directory'):
+            self.lib('export ../out --no-git')
+
+    def test_pool(self):
+        self.lib('export ../out --pool --no-git')
+        self.assertEqual(self.json('lib')['pools'], ['../pool', '../out'])
+        record = self.origin().get(self.entry('mine2022'))
+        self.assertEqual(record.pool, '../out')
+        # the new pool is used by pull
+        text = Path(self.path('out', 'papers.bib')).read_text()
+        Path(self.path('out', 'papers.bib')).write_text(text.replace('title = {My own paper}', 'title = {My own paper},\n volume = {3}'))
+        self.lib('pull')
+        self.assertEqual(self.entry('mine2022')['volume'], '3')
+
+
+# POOL COMMAND
+# ============
+
+class TestPoolCommand(PoolTest):
+
+    def test_add_list_remove(self):
+        self.papers(f'pool add shared {self.path("pool")}')
+        self.assertEqual(MachineConfig.load().pool_path('shared'), self.path('pool'))
+        self.assertEqual(self.papers('config --machine pools.shared', sp_cmd='check_output'), self.path('pool'))
+        out = self.out('pool list')
+        self.assertIn(f'shared: {self.path("pool")}', out)
+        self.assertIn('default:', out)
+        self.assertIn('pools of the library', out)
+        self.assertIn(self.path('pool') + ' (not pulled from yet)', out)
+        self.papers('pool remove shared')
+        self.assertNotIn('shared', MachineConfig.load().pools)
+        with self.assertRaises(PapersExit):
+            self.papers('pool remove shared')
+
+    def test_add_not_a_library(self):
+        with self.assertLogs(papers.logger, level='WARNING'):
+            self.papers(f'pool add x {self.path("nothing")}')
+
+    def test_status(self):
+        out = self.out('status')
+        self.assertIn('* pools:', out)
+        self.assertIn(self.path('pool'), out)
+        self.assertIn('* light:              no', out)
+        self.assertIn('* sync:               none', out)
+        self.lib('config sync push')
+        self.assertIn('* sync:               push', self.out('status'))
+
+
 if __name__ == '__main__':
     unittest.main()

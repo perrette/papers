@@ -1064,6 +1064,53 @@ def pushcmd(parser, o, config):
     save_exchange(exchange)
 
 
+def exportcmd(parser, o, config):
+    biblio = get_biblio(config)
+    entries = _entries_or_all(biblio, o.entries)
+    new, target = export(biblio, config, entries, o.dir, files=o.files, git=o.git)
+    savebib(target, new)
+    print(f'exported {len(entries)} entries to {new.configdir} (files: {o.files})')
+    if o.pool:
+        if config.file is None:
+            raise PapersExit('--pool: no library to add the pool to')
+        name = pool_path_setting(config, o.dir)
+        config.set('pools', config.pools + [name])
+        config.save()
+        exchange = Exchange(config, biblio)
+        pool = exchange.pools.resolve(name)
+        for e in target.entries:
+            exchange.origin.set(e.key, pool.id, e)
+        exchange.origin.set_pulled(pool.id, pool.bibtex_mtime())
+        exchange.origin.save()
+        print(f'pools = {" ".join(config.pools)} (in {config.file})')
+
+
+def poolcmd(parser, o, config):
+    """the pools of the per-machine configuration (as `papers config
+    --machine pools.NAME`), and the pools of the library"""
+    machine = config.machine
+    if o.pool_cmd in (None, 'list'):
+        print(f'pools of this machine ({machine.file}):')
+        print('\n'.join(machine_pool_lines(machine)))
+        if config.file:
+            print(f'pools of the library ({config.file}):' + ('' if config.pools else ' none'))
+            print('\n'.join(status_lines(config)))
+        return
+    if o.pool_cmd == 'add':
+        path = os.path.abspath(os.path.expanduser(o.path))
+        if library_config_file(path) is None:
+            logger.warning(f'{path} is not a library yet: create it with `papers init {short_home(path)}`')
+        machine.set_pool(o.name, short_home(path))
+    elif o.pool_cmd == 'remove':
+        if o.name not in machine.data.get('pools', {}):
+            raise PapersExit(f'{o.name} is not a pool of {machine.file}')
+        machine.set_pool(o.name, None)
+    if papers.config.DRYRUN:
+        print(f'DRYRUN: {machine.file} not saved')
+        return
+    machine.save()
+
+
 # papers edit, rm, tag
 # ====================
 
@@ -2095,8 +2142,8 @@ def get_parser(config=None):
     tagp.add_argument('--rm', nargs='+', metavar='TAG', help='remove tags from the entries')
     tagp.add_argument('--rename', nargs=2, metavar=('OLD', 'NEW'), help='rename a tag in the whole library')
 
-    # pull, push
-    # ==========
+    # pull, push, export, pool
+    # ========================
     _exchange_help = '''what to do with an entry changed on both
         sides since the last pull or push: ask (dialogue; the default in a terminal), keep (the
         {receiving} values are kept), update (the {incoming} values are taken), skip (the entry is
@@ -2127,6 +2174,29 @@ def get_parser(config=None):
     pushp.add_argument('--on-duplicate', choices=ON_DUPLICATE,
         help=_exchange_help.format(receiving='pool', incoming='library'))
     pushp.set_defaults(mode=None, force=False)
+
+    exportp = subparsers.add_parser('export', parents=[cfg],
+        description='''write entries as a new library in DIR: bibtex, files, configuration, with
+        file links relative to the bibtex. `papers add DIR --recursive` adds it back.''')
+    exportp.add_argument('dir', metavar='DIR', help='directory of the new library (must not exist, or be empty)')
+    exportp.add_argument('entries', nargs='*', metavar='KEY', help=_selection_help + ' (default: all entries)')
+    exportp.add_argument('--files', choices=['copy', 'link', 'none'], default='copy',
+        help='copy the files into DIR/files (a hard link when possible; default), link to them where '
+             'they are, or leave the file links out')
+    exportp.add_argument('--pool', action='store_true', help='also add DIR to the pools of the library')
+
+    poolp = subparsers.add_parser('pool', parents=[loggingp],
+        description='the pools of the per-machine configuration (the same as `papers config --machine '
+                    'pools.NAME PATH`). Without subcommand: list them, and the pools of the library.')
+    poolsub = poolp.add_subparsers(dest='pool_cmd')
+    poolsub.add_parser('list', parents=[loggingp], help='list the pools of the machine and of the library')
+    p = poolsub.add_parser('add', parents=[loggingp], help='name a pool of this machine')
+    p.add_argument('name', metavar='NAME')
+    p.add_argument('path', metavar='PATH')
+    p.add_argument('--dry-run', action='store_true', help='do not save')
+    p = poolsub.add_parser('remove', parents=[loggingp], help='remove a pool name of this machine (not the library)')
+    p.add_argument('name', metavar='NAME')
+    p.add_argument('--dry-run', action='store_true', help='do not save')
 
     # open
     # ====
@@ -2328,6 +2398,10 @@ def _main(argv):
         pullcmd(subp, o, check_install(subp, o, config))
     elif o.cmd == 'push':
         pushcmd(subp, o, check_install(subp, o, config))
+    elif o.cmd == 'export':
+        exportcmd(subp, o, check_install(subp, o, config))
+    elif o.cmd == 'pool':
+        poolcmd(subp, o, config)
     elif o.cmd == 'tag':
         tagcmd(subp, o, check_install(subp, o, config))
     elif o.cmd == 'file':
