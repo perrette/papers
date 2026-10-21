@@ -877,9 +877,10 @@ class Biblio:
             if 'doi' in e and e['doi']:
                 try:
                     doi = parse_doi('doi:'+e['doi'])
-                except:
+                except Exception:
+                    # keep the DOI as it is, and go on with the other fixes
                     logger.warning(get_entry_val(e, 'ID', '')+': failed to fix doi: '+e['doi'])
-                    return
+                    doi = e['doi']
 
                 if doi.lower() != e['doi'].lower():
                     logger.info(get_entry_val(e, 'ID', '')+': fix doi: {} ==> {}'.format(e['doi'], doi))

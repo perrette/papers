@@ -2,6 +2,7 @@ import operator
 import os
 import itertools
 import re
+import shlex
 import difflib
 
 import bibtexparser
@@ -422,8 +423,15 @@ def edit_entries(entries, diff=False, ndiff=False, editor=None):
     '''
     # write the listed entries to temporary file
     import tempfile
-    # filename = tempfile.mktemp(prefix='.', suffix='.txt', dir=os.path.curdir)
-    filename = tempfile.mktemp(suffix='.txt')
+    fd, filename = tempfile.mkstemp(suffix='.txt')
+    os.close(fd)
+    try:
+        return _edit_entries_file(filename, entries, diff, ndiff, editor)
+    finally:
+        os.remove(filename)
+
+
+def _edit_entries_file(filename, entries, diff, ndiff, editor):
 
     if (diff or ndiff) and len(entries) > 1:
         if ndiff or len(entries) > 2:
@@ -437,7 +445,8 @@ def edit_entries(entries, diff=False, ndiff=False, editor=None):
     with open(filename, 'w') as f:
         f.write(entrystring)
 
-    res = os.system('{} {}'.format(editor or os.getenv('EDITOR'), filename))
+    editor = editor or os.environ.get('VISUAL') or os.environ.get('EDITOR') or 'vi'
+    res = os.system('{} {}'.format(editor, shlex.quote(filename)))
 
     if res != 0:
         logger.error('failed to edit file -- keeping original entries')

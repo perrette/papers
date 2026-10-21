@@ -802,3 +802,21 @@ class TestAddConflicts(unittest.TestCase):
         biblio.add_bibtex(self.new.replace('2001', '2000'), check_duplicate=False)
         self.assertEqual(self.keys(biblio), ['A2000'])
         self.assertEqual(sorted(biblio.get_files(biblio.entries[0])), ['/tmp/new.pdf', '/tmp/old.pdf'])
+
+
+class TestEditEntriesTempFile(unittest.TestCase):
+
+    def test_temporary_file_removed(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            with patch('tempfile.tempdir', d):
+                edit_entries(bp_parse_string(TestDeselect.bib).entries, editor='true')
+            self.assertEqual(os.listdir(d), [])
+
+    def test_editor_fallback(self):
+        # without $EDITOR, the command used to be "None <file>"
+        with patch.dict(os.environ, {}, clear=False) as env, patch('os.system', return_value=1) as system:
+            env.pop('EDITOR', None)
+            env.pop('VISUAL', None)
+            edit_entries(bp_parse_string(TestDeselect.bib).entries)
+        self.assertTrue(system.call_args[0][0].startswith('vi '))

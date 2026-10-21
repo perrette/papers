@@ -636,9 +636,6 @@ def listcmd(parser, o, config):
             entries = [e for e in entries if not _requiresreview(e)]
         else:
             entries = [e for e in entries if _requiresreview(e)]
-            for e in entries:
-                if 'doi' in e and not isvaliddoi(e['doi']):
-                    e['doi'] = bcolors.FAIL + e['doi'] + bcolors.ENDC
     if o.has_file:
         entries = [e for e in entries if get_entry_val(e, 'file', '')]
     if o.no_file:
