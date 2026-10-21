@@ -98,6 +98,18 @@ class TestModes(FilesModeTest):
         self.assertEqual(self.files(), [new])
         self.assertEqual(os.stat(new).st_ino, os.stat(self.pdf).st_ino)
 
+    def test_copy_without_hard_link(self):
+        # e.g. the files directory is on another file system
+        from unittest import mock
+        self.lib('config files copy')
+        with mock.patch('os.link', side_effect=OSError('Invalid cross-device link')):
+            self.lib('add ../src/a.bib')
+        self.assertTrue(os.path.exists(self.pdf))
+        new = self.moved_name()
+        self.assertEqual(self.files(), [new])
+        self.assertNotEqual(os.stat(new).st_ino, os.stat(self.pdf).st_ino)
+        self.assertEqual(Path(new).read_text(), 'pdf a')
+
     def test_link(self):
         self.lib('config files link')
         self.lib('add ../src/a.bib')
