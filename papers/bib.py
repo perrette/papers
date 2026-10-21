@@ -59,6 +59,10 @@ def _basename_from_url(url):
     return name.replace('/', '_').replace('\\', '_')
 
 
+# prefix of the temporary directories of downloaded files
+DOWNLOAD_PREFIX = 'papers_dl_'
+
+
 def download_url(url, expect_pdf=False, dest_dir=None):
     """Download a URL to a local file and return its path.
 
@@ -118,7 +122,7 @@ def download_url(url, expect_pdf=False, dest_dir=None):
         ext = mimetypes.guess_extension((ctype or '').split(';')[0].strip())
         if ext and not basename.lower().endswith(ext.lower()):
             basename += ext
-    dest_dir = dest_dir or tempfile.mkdtemp(prefix='papers_dl_')
+    dest_dir = dest_dir or tempfile.mkdtemp(prefix=DOWNLOAD_PREFIX)
     local = os.path.join(dest_dir, basename)
     with open(local, 'wb') as f:
         f.write(response.content)
@@ -782,7 +786,7 @@ class Biblio:
         self.entries = check_duplicates(self.entries, key=key, eq=eq or self.eq, issorted=key is self.key, mode=mode)
 
 
-    def rename_entry_files(self, e, copy=False, formatter=None, relative_to=None, hardlink=False):
+    def rename_entry_files(self, e, copy=False, formatter=None, relative_to=None, hardlink=True):
         """ Rename files
 
         The first file is named after the entry: <filesdir>/<name>.<ext>, and
@@ -790,6 +794,11 @@ class Biblio:
         <label> is the file's original name (see `attachment_names`).
         Directories of previous versions (<name>/ with a hidden .<name>.bib)
         are emptied into that layout, and removed when nothing else is left.
+
+        copy: keep the original file (a hard link when possible, with
+            hardlink=True, otherwise a copy). It can also be a function that
+            tells for each file what to do: 'move', 'copy', or 'link' (leave
+            the file where it is), see papers.files.FilesPolicy.
 
         See `papers.filename.Format` class and REAMDE.md for infos.
         """
@@ -807,27 +816,33 @@ class Biblio:
         # absolute, to compare with the (absolute) current file paths
         target = os.path.join(os.path.abspath(self.filesdir), newname)
 
+        if callable(copy):
+            actions = [copy(file) for file in files]
+        else:
+            actions = ['copy' if copy else 'move' for file in files]
+
         count = 0
         newfiles = []
-        for file, newfile in zip(files, attachment_names(files, target)):
-            if not os.path.exists(file):
+        for file, newfile, action in zip(files, attachment_names(files, target), actions):
+            if action == 'link':
+                newfile = file
+            elif not os.path.exists(file):
                 logger.warning(file+': original file link is broken')
                 newfile = file
             elif file != newfile:
-                self.move(file, newfile, copy, hardlink=hardlink)
+                self.move(file, newfile, action == 'copy', hardlink=hardlink)
                 count += 1
             newfiles.append(newfile)
         self.set_files(e, newfiles, relative_to=relative_to)
 
-        if not copy:
-            for direc in {os.path.dirname(file) for file in files}:
-                remove_entry_dir_if_empty(direc)
+        for direc in {os.path.dirname(file) for file, action in zip(files, actions) if action == 'move'}:
+            remove_entry_dir_if_empty(direc)
 
         if count > 0:
             logger.info('renamed file(s): {}'.format(count))
 
 
-    def rename_entries_files(self, copy=False, relative_to=None, hardlink=False):
+    def rename_entries_files(self, copy=False, relative_to=None, hardlink=True):
         for e in self.db.entries:
             try:
                 self.rename_entry_files(e, copy, relative_to=relative_to, hardlink=hardlink)

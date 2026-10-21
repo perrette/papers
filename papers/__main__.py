@@ -27,6 +27,7 @@ from papers.bib import (Biblio, FUZZY_RATIO, DEFAULT_SIMILARITY, entry_filecheck
 from papers.install import (resolve_install, apply_install, init_backup, _ask_path, RESET_WORDS,
                             InputAsker, DefaultAsker)
 from papers.utils import view_pdf, open_folder, PapersExit, file_uri_to_path, find_masked_viewer, set_directory
+from papers.files import FilesPolicy
 from papers.backup import (silent_backup_bib, restore_from_backupdir,
                            git_undo, git_redo, git_restore_state, list_backup_dirs)
 from papers import __version__
@@ -61,7 +62,7 @@ def check_legacy_config(configfile):
     return configfile
 
 
-LIBRARY_CONFIG_FILES = [CONFIG_FILE_LOCAL, os.path.join(".papers", "config.json")]
+from papers.config import LIBRARY_CONFIG_FILES
 
 
 def find_config(start_dir='.', machine=None):
@@ -589,6 +590,34 @@ def _print_biblio_diff(biblio_init, biblio, touched_entries, show_existing=False
             print(format_entry(biblio, after, prefix="Existing"))
 
 
+def files_mode(o, config):
+    """the files mode of the command line (--move or -r/--rename, --copy,
+    --link), else the `files` setting. Without files directory, files can
+    only be linked where they are."""
+    if getattr(o, 'link', False) and (getattr(o, 'move', False) or getattr(o, 'rename', False)
+                                      or getattr(o, 'copy', False)):
+        raise PapersExit('--link excludes --move, -r/--rename and --copy')
+    if getattr(o, 'copy', False):
+        mode = 'copy'
+    elif getattr(o, 'link', False):
+        mode = 'link'
+    elif getattr(o, 'move', False) or getattr(o, 'rename', False):
+        mode = 'move'
+    else:
+        mode = config.files or 'move'
+        if config.filesdir is None:
+            return 'link'
+    if config.filesdir is None and mode != 'link':
+        raise PapersExit(f'--{mode}: the library has no files directory (pass --filesdir, '
+                         'or set it with `papers config filesdir DIR`)')
+    return mode
+
+
+def files_policy(config, mode, keep=()):
+    "what to do with each file, see papers.files.FilesPolicy"
+    return FilesPolicy(mode, config.filesdir, current_config=config.file, machine=config.machine, keep=keep)
+
+
 def addcmd(parser, o, config):
     """
     Given an options set and a config, sets up the function call to add the file or all files in the directory to the bibtex, and executes it.
@@ -601,6 +630,15 @@ def addcmd(parser, o, config):
     biblio_init = copy.deepcopy(biblio)
 
     entries = []
+
+    if o.attachment_deprecated:
+        logger.warning("--attachment is deprecated: use --attach")
+        o.attachment = (o.attachment or []) + o.attachment_deprecated
+
+    # what to do with the files: see papers.files.FilesPolicy
+    mode = files_mode(o, config)
+    policy = files_policy(config, mode)
+    rename = mode != 'link'
 
     metadata = {k: v for k, v in o.metadata or []}
     if o.doi: metadata['doi'] = o.doi
@@ -623,8 +661,9 @@ def addcmd(parser, o, config):
                 resolved.append(a)
         o.attachment = resolved
         if any_url:
-            # downloaded attachments live in a tempdir; rename so they land in filesdir
-            o.rename = True
+            # downloaded attachments live in a tempdir: they are moved into
+            # the files directory whatever the mode (see FilesPolicy)
+            rename = True
         metadata['file'] = format_file(biblio.get_files(metadata) + o.attachment, relative_to=biblio.relative_to)
 
     if len(o.file) > 1:
@@ -636,7 +675,7 @@ def addcmd(parser, o, config):
             'mergefiles':not o.no_merge_files, 'update_key':o.update_key, 'metadata':metadata}
 
     if len(o.file) == 0 and o.doi and not o.no_query_doi:
-        entries.extend( biblio.fetch_doi(o.doi, attachments=o.attachment, rename=o.rename, copy=o.copy, **kw) )
+        entries.extend( biblio.fetch_doi(o.doi, attachments=o.attachment, rename=rename, copy=policy, **kw) )
 
     elif len(o.file) == 0:
         if not o.edit and not o.metadata and not o.key and not o.doi and not o.attachment and not o.title and not o.author and not o.journal and not o.year:
@@ -649,7 +688,7 @@ def addcmd(parser, o, config):
             metadata = edit_entries(metadata)
             o.edit = False
 
-        entries.extend( biblio.insert_entry(entry_from_dict(metadata), rename=o.rename, copy=o.copy, **kw) )
+        entries.extend( biblio.insert_entry(entry_from_dict(metadata), rename=rename, copy=policy, **kw) )
 
 
     # several PDFs: fetch their metadata concurrently first
@@ -667,7 +706,7 @@ def addcmd(parser, o, config):
         try:
             if os.path.isdir(file):
                 if o.recursive:
-                    entries.extend( biblio.scan_dir(file, rename=o.rename, copy=o.copy,
+                    entries.extend( biblio.scan_dir(file, rename=rename, copy=policy,
                                 search_doi=not o.no_query_doi,
                                 search_fulltext=not o.no_query_fulltext,
                                 **kw) )
@@ -675,14 +714,14 @@ def addcmd(parser, o, config):
                     raise ValueError(file+' is a directory, requires --recursive to explore')
 
             elif file.lower().endswith('.pdf'):
-                entries.extend( biblio.add_pdf(file, attachments=o.attachment, rename=o.rename, copy=o.copy,
+                entries.extend( biblio.add_pdf(file, attachments=o.attachment, rename=rename, copy=policy,
                            search_doi=not o.no_query_doi,
                            search_fulltext=not o.no_query_fulltext,
                            scholar=o.scholar, doi=o.doi,
                            **kw) )
 
             else: # file.endswith('.bib'):
-                entries.extend( biblio.add_bibtex_file(file, attachments=o.attachment, rename=o.rename, copy=o.copy, **kw) )
+                entries.extend( biblio.add_bibtex_file(file, attachments=o.attachment, rename=rename, copy=policy, **kw) )
 
         except EOFError:
             raise  # a question without answer stops the command (see main_clean_exit)
@@ -1351,17 +1390,22 @@ def get_parser(config=None):
     grp.add_argument('--no-query-fulltext', action='store_true', help='do not attempt to query fulltext in case doi query fails')
     grp.add_argument('--scholar', action='store_true', help='use google scholar instead of crossref')
 
-    grp = addp.add_argument_group('attached files',
-        description='''Without -r/--rename, the PDF (and the files of a bibtex entry) are linked
-        where they are: the file field points to their current location and nothing is
-        moved or copied into the files directory. -r moves them into the files directory
-        (--filesdir) under a name made from the name template; with -c the original is
-        kept and a copy is made instead (-c has no effect without -r).''')
-    grp.add_argument('-a','--attachment', nargs='+', type=file_uri_to_path, help='attach these files to the entry (supplementary material)')
-    grp.add_argument('-r','--rename', action='store_true',
-        help='move the files into the files directory, renamed according to the name template')
-    grp.add_argument('-c','--copy', action='store_true',
-        help='with -r, copy the files instead of moving them')
+    grp = addp.add_argument_group('files',
+        description=f'''What happens to the added PDF, the files of an added bibtex, and the
+        attached files, is the `files` setting of the library (found: {config.files}):
+        move: place them in the files directory, under a name made from the name
+        template, and remove the original; copy: place them there, and keep the original
+        (a hard link when possible, otherwise a copy); link: leave them where they are,
+        the entry links to them there. A file that belongs to another library (inside
+        its files directory) is never moved: it is copied instead.''')
+    grp.add_argument('--attach', nargs='+', type=file_uri_to_path, dest='attachment', metavar='FILE',
+        help='attach these files to the entry (e.g. supplementary material)')
+    grp.add_argument('--attachment', nargs='+', type=file_uri_to_path, dest='attachment_deprecated',
+        help='deprecated: use --attach')
+    grp.add_argument('--move', action='store_true', help='files mode move, whatever the setting')
+    grp.add_argument('-r','--rename', action='store_true', help='same as --move')
+    grp.add_argument('-c','--copy', action='store_true', help='files mode copy, whatever the setting')
+    grp.add_argument('--link', action='store_true', help='files mode link, whatever the setting')
 
     grp = addp.add_argument_group('actions')
     grp.add_argument('-e', '--edit', action='store_true', help='edit entry')

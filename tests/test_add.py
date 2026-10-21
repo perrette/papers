@@ -135,7 +135,7 @@ class TestAdd2(TestAdd):
         open(self.mybib, 'w').write('')
 
     def test_add_attachment(self):
-        paperscmd(f'add -rc --bibtex {self.mybib} --filesdir {self.filesdir} {self.pdf} -a {self.si}')
+        paperscmd(f'add -rc --bibtex {self.mybib} --filesdir {self.filesdir} {self.pdf} --attach {self.si}')
 
         file_ = self._checkbib(dismiss_key=True)
         self.assertTrue(';' in file_)

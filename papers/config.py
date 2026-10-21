@@ -22,6 +22,8 @@ DRYRUN = False
 # macOS/Windows, where the legacy locations below are checked for migration)
 CONFIG_FILE = os.path.join(platformdirs.user_config_dir(), 'papersconfig.json')
 CONFIG_FILE_LOCAL = '.papersconfig.json'
+# file names of a library configuration (.papers/config.json: older versions)
+LIBRARY_CONFIG_FILES = [CONFIG_FILE_LOCAL, os.path.join('.papers', 'config.json')]
 
 DATA_DIR = platformdirs.user_data_dir('papers')
 BACKUP_DIR = os.path.join(DATA_DIR, 'backups')
@@ -56,6 +58,7 @@ SETTINGS = {
     'filesdir': 'path',
     'pools': 'list',
     'paths': ('relative', 'absolute'),
+    'files': ('move', 'copy', 'link'),
     'git': 'bool',
     'git-lfs': 'bool',
     'editor': 'str',
@@ -78,7 +81,7 @@ def default_value(name):
         return getattr(NAMEFORMAT, _attr(name))
     if name.startswith('key.'):
         return getattr(KEYFORMAT, _attr(name))
-    return copy.deepcopy({'pools': ['default'], 'paths': 'relative', 'git': False,
+    return copy.deepcopy({'pools': ['default'], 'paths': 'relative', 'files': 'move', 'git': False,
                           'git-lfs': False, 'editor': None}.get(name))
 
 
@@ -251,7 +254,7 @@ class Config:
         nameformat=None,
         editor=None,
         gitdir=None, git=None, gitlfs=None, local=None, absolute_paths=None, backup_files=None,
-        pools=None, machine=None):
+        pools=None, files=None, machine=None):
         self.file = file
         self.local = local
         self.machine = machine if machine is not None else MachineConfig.load()
@@ -272,6 +275,9 @@ class Config:
             gitlfs = backup_files if backup_files is not None else self.inherited('git-lfs')
         self.gitlfs = gitlfs
         self.pools = list(pools) if pools is not None else self.inherited('pools')
+        # what `add` does with a file: move or copy it into the files
+        # directory, or link it where it is (see papers.files.FilesPolicy)
+        self.files = files if files is not None else self.inherited('files')
 
 
     @property
