@@ -1005,6 +1005,181 @@ def file_cleancmd(parser, o, config):
           f"from {config.filesdir}")
 
 
+# papers edit, rm, tag
+# ====================
+
+def stdin_is_terminal():
+    try:
+        return sys.stdin.isatty()
+    except (AttributeError, ValueError, OSError):
+        return False
+
+
+def edit_selected(biblio, entries):
+    "edit entries in a text editor, and put them back in the bibliography; False on failure"
+    others = [e for e in biblio.db.entries if not any(e is x for x in entries)]
+    try:
+        edited = edit_entries(entries)
+    except Exception as error:
+        logger.error(str(error))
+        return False
+    biblio.entries = others + edited
+    return True
+
+
+def remove_entries(biblio, entries, config, delete_files=None, ask=True):
+    """remove entries from the bibliography, and return the files to delete
+    once the bibliography is saved.
+
+    Candidates are the files of the removed entries that no remaining entry
+    links to. delete_files=True deletes them all; False keeps them; None
+    asks, in a terminal (ask=True), whether to delete those inside the files
+    directory, and keeps them without a terminal. A file outside the files
+    directory is only deleted with delete_files=True.
+    """
+    files = [f for e in entries for f in biblio.get_files(e)]
+    for e in entries:
+        biblio.db.remove(e)
+    inside, outside, kept = files_to_delete(biblio, files, config.filesdir)
+    if delete_files is False:
+        return []
+    for f in kept:
+        print(f"kept {f}: another entry links to it")
+    if delete_files:
+        return inside + outside
+    if outside:
+        print(f"kept {len(outside)} file(s) outside the files directory (`--delete-files` deletes them):")
+        for f in outside:
+            print(f"  {f}")
+    if not inside:
+        return []
+    if ask and stdin_is_terminal():
+        print(f"files of the removed entries that no other entry links to:")
+        for f in inside:
+            print(f"  {describe_file(f)}")
+        if input(f"also delete {len(inside)} file(s)? [y/N] ").lower() in ('y', 'yes'):
+            return inside
+        return []
+    print(f"kept {len(inside)} file(s) of the removed entries in the files directory:")
+    for f in inside:
+        print(f"  {f}")
+    print("delete them with `papers file clean`, or remove the entries with `--delete-files`")
+    return []
+
+
+def _delete_files_option(parser, o):
+    if o.delete_files and o.keep_files:
+        parser.error('--delete-files and --keep-files are mutually exclusive')
+    return True if o.delete_files else (False if o.keep_files else None)
+
+
+def tag_counts(entries):
+    counts = {}
+    for e in entries:
+        for tag in parse_keywords(e):
+            counts[tag] = counts.get(tag, 0) + 1
+    return counts
+
+
+def set_tags(e, tags):
+    "write the tags in the keywords field (comma-separated), removing it when empty"
+    if tags:
+        e['keywords'] = ", ".join(tags)
+    elif get_entry_val(e, 'keywords', None) is not None:
+        del e['keywords']
+
+
+def add_tags(entries, tags):
+    for e in entries:
+        old = parse_keywords(e)
+        new = old + [t for i, t in enumerate(tags) if t not in old and t not in tags[:i]]
+        if new != old:
+            set_tags(e, new)
+
+
+def remove_tags(entries, tags):
+    for e in entries:
+        old = parse_keywords(e)
+        new = [t for t in old if t not in tags]
+        if new != old:
+            set_tags(e, new)
+
+
+def rename_tag(entries, old, new):
+    "rename a tag in all entries; return the number of entries changed"
+    count = 0
+    for e in entries:
+        tags = parse_keywords(e)
+        if old not in tags:
+            continue
+        renamed = []
+        for t in tags:
+            t = new if t == old else t
+            if t not in renamed:
+                renamed.append(t)
+        set_tags(e, renamed)
+        count += 1
+    return count
+
+
+def editcmd(parser, o, config):
+    biblio = get_biblio(config)
+    biblio_init = copy.deepcopy(biblio)
+    entries = select_entries(biblio, o.entries)
+    if not entries:
+        return
+    if '-' in o.entries and not stdin_is_terminal():
+        # the keys came from a pipe: the editor reads the terminal
+        try:
+            fd = os.open('/dev/tty', os.O_RDONLY)
+            os.dup2(fd, 0)
+            os.close(fd)
+        except OSError:
+            pass
+    if edit_selected(biblio, entries):
+        savebib(biblio, config)
+        _print_biblio_diff(biblio_init, biblio, biblio.entries)
+
+
+def rmcmd(parser, o, config):
+    biblio = get_biblio(config)
+    biblio_init = copy.deepcopy(biblio)
+    entries = select_entries(biblio, o.entries)
+    todelete = remove_entries(biblio, entries, config, delete_files=_delete_files_option(parser, o),
+                              ask='-' not in o.entries)
+    savebib(biblio, config)
+    _print_biblio_diff(biblio_init, biblio, entries)
+    delete_files(todelete, dryrun=papers.config.DRYRUN)
+
+
+def tagcmd(parser, o, config):
+    biblio = get_biblio(config)
+    biblio_init = copy.deepcopy(biblio)
+    if o.rename:
+        if o.entries or o.add or o.rm:
+            parser.error('--rename OLD NEW applies to the whole library: no KEY, --add or --rm')
+        old, new = o.rename
+        count = rename_tag(biblio.entries, old, new)
+        savebib(biblio, config)
+        print(f"renamed tag {old} to {new} in {count} entries")
+        return
+
+    if o.add or o.rm:
+        if not o.entries:
+            parser.error('--add and --rm need the entries: KEY..., or - to read them from the standard input')
+        entries = select_entries(biblio, o.entries)
+        add_tags(entries, o.add or [])
+        remove_tags(entries, o.rm or [])
+        savebib(biblio, config)
+        _print_biblio_diff(biblio_init, biblio, entries)
+        return
+
+    entries = select_entries(biblio, o.entries) if o.entries else biblio.entries
+    counts = tag_counts(entries)
+    for tag, count in sorted(counts.items(), key=lambda kv: (-kv[1], kv[0].lower())):
+        print(f"{tag} ({count})")
+
+
 FILE_COMMANDS = {
     'rename': file_renamecmd,
     'mv': file_mvcmd,
@@ -1262,12 +1437,7 @@ def listcmd(parser, o, config):
         entries = list_dup(entries, eq=eq)
 
     if o.add_keywords:
-        for e in entries:
-            keywords = parse_keywords(e)
-            for w in o.add_keywords:
-                if w not in keywords:
-                    keywords.append(w)
-            e['keywords'] = ", ".join(keywords)
+        add_tags(entries, o.add_keywords)
         savebib(biblio, config)
 
     elif o.add_files:
@@ -1295,14 +1465,9 @@ def listcmd(parser, o, config):
         savebib(biblio, config)
 
     elif o.edit:
-        otherentries = [e for e in biblio.db.entries if e not in entries]
-        try:
-            entries = edit_entries(entries)
-            biblio.entries = otherentries + entries
-        except Exception as error:
-            logger.error(str(error))
+        if not edit_selected(biblio, entries):
             return
-
+        entries = biblio.entries
         savebib(biblio, config)
 
     elif o.fetch:
@@ -1316,9 +1481,9 @@ def listcmd(parser, o, config):
         savebib(biblio, config)
 
     elif o.delete:
-        for e in entries:
-            biblio.db.remove(e)
+        todelete = remove_entries(biblio, entries, config, delete_files=_delete_files_option(parser, o))
         savebib(biblio, config)
+        delete_files(todelete, dryrun=papers.config.DRYRUN)
 
     elif o.open:
         for e in entries:
@@ -1799,10 +1964,13 @@ def get_parser(config=None):
     grp.add_argument('--no-key', action='store_true', help='do not print the keys')
 
     grp = listp.add_argument_group('action on listed results (pipe)')
-    grp.add_argument('--delete', action='store_true', help='delete the listed entries (their files are kept)')
-    grp.add_argument('-e', '--edit', action='store_true', help='interactive edit text file with entries, and re-insert them')
+    grp.add_argument('--delete', action='store_true',
+        help='remove the listed entries, as `papers rm` (asks whether to delete their files, in a terminal)')
+    grp.add_argument('--delete-files', action='store_true', help='with --delete: also delete their files, as `papers rm --delete-files`')
+    grp.add_argument('--keep-files', action='store_true', help='with --delete: keep their files, without asking')
+    grp.add_argument('-e', '--edit', action='store_true', help='edit the listed entries in a text editor, as `papers edit`')
     grp.add_argument('--fetch', action='store_true', help='fetch and fix metadata')
-    grp.add_argument('--add-keywords', '--add-tag', nargs='+', help='add keywords to the selected entries')
+    grp.add_argument('--add-keywords', '--add-tag', nargs='+', help='add keywords (tags) to the listed entries, as `papers tag --add`')
     grp.add_argument('--add-files', nargs='+', type=file_uri_to_path, help='add files to the selected entries (only one entry must be listed)')
     grp.add_argument('--rename', action='store_true', help='rename file(s) of the listed entries into the files folder (also applies to files added via --add-files)')
     grp.add_argument('--copy', action='store_true', help='in combination with --rename, keep a copy of the file(s) in their original location')
@@ -1810,6 +1978,33 @@ def get_parser(config=None):
 
     # grp.add_argument('--merge-duplicates', action='store_true')
 
+
+    # edit, rm, tag
+    # =============
+    editp = subparsers.add_parser('edit', parents=[cfg],
+        description='edit entries in a text editor (the editor setting, or $EDITOR)')
+    editp.add_argument('entries', nargs='+', metavar='KEY|DOI',
+        help='keys or DOIs; - reads them from the standard input, one per line')
+
+    rmp = subparsers.add_parser('rm', parents=[cfg],
+        description='remove entries. Their files that no other entry links to may be deleted too: in a '
+                    'terminal, papers asks for those in the files directory; without a terminal, they are kept. '
+                    'Files outside the files directory are only deleted with --delete-files.')
+    rmp.add_argument('entries', nargs='+', metavar='KEY|DOI',
+        help='keys or DOIs; - reads them from the standard input, one per line')
+    rmp.add_argument('--delete-files', action='store_true',
+        help='also delete the files of the entries that no other entry links to, without asking '
+             '(also those outside the files directory)')
+    rmp.add_argument('--keep-files', action='store_true', help='keep the files, without asking')
+
+    tagp = subparsers.add_parser('tag', parents=[cfg],
+        description='tags are the keywords field of the entries (comma-separated). Without option, list '
+                    'the tags of the library (or of the entries KEY...) with the number of entries.')
+    tagp.add_argument('entries', nargs='*', metavar='KEY|DOI',
+        help='keys or DOIs; - reads them from the standard input, one per line')
+    tagp.add_argument('--add', nargs='+', metavar='TAG', help='add tags to the entries')
+    tagp.add_argument('--rm', nargs='+', metavar='TAG', help='remove tags from the entries')
+    tagp.add_argument('--rename', nargs=2, metavar=('OLD', 'NEW'), help='rename a tag in the whole library')
 
     # open
     # ====
@@ -2004,6 +2199,12 @@ def _main(argv):
         checkcmd(subp, o, check_install(subp, o, config))
     elif o.cmd == 'filecheck':
         filecheckcmd(subp, o, check_install(subp, o, config))
+    elif o.cmd == 'edit':
+        editcmd(subp, o, check_install(subp, o, config))
+    elif o.cmd == 'rm':
+        rmcmd(subp, o, check_install(subp, o, config))
+    elif o.cmd == 'tag':
+        tagcmd(subp, o, check_install(subp, o, config))
     elif o.cmd == 'file':
         if not o.file_cmd:
             subp.print_help()
