@@ -16,8 +16,13 @@ entries:
   field of the target (biblatex key aliases).
 
 The model (Merge), the screen and the reading of an answer (Dialogue) do no
-input or output; `ask` runs the dialogue in a terminal. A three-way mode
-(library, pool, origin) only adds a status of a field to the model.
+input or output; `ask` runs the dialogue in a terminal.
+
+Three-way mode (`pull`, `push`: Merge with a `base`, the origin copy of the
+entry): a field changed in the other entry only (since the base) is an
+addition (`+`), a field changed in the target only is kept without asking,
+a field changed on both sides is a conflict. A field removed on one side is
+kept from the other side. The `ids` field is the target's.
 """
 import builtins
 import os
@@ -99,17 +104,33 @@ def preferred(name, values):
 # THE MERGE
 # =========
 
+def _no_empty(v):
+    return v if v is not None and str(v).strip() else None
+
+
+# where a field changed since the base (three-way mode)
+CHANGED_TARGET = 'target'
+CHANGED_OTHER = 'other'
+CHANGED_BOTH = 'both'
+
+
 class FieldMerge:
     """one field of a merge: `values` holds the value of each entry (None if
     absent), `status` is SAME, ADDED or CONFLICT, `choice` the entry whose
-    value is used (for SAME and ADDED, `value` is set directly)"""
+    value is used (for SAME and ADDED, `value` is set directly).
 
-    def __init__(self, name, values):
+    In three-way mode (`three_way`, with `base` the value of the origin
+    copy), `changed` says which side changed the field since the base:
+    CHANGED_TARGET, CHANGED_OTHER, CHANGED_BOTH, or None."""
+
+    def __init__(self, name, values, base=None, three_way=False):
         self.name = name
         original = values
         # an empty value is no value
-        values = [v if v is not None and str(v).strip() else None for v in values]
+        values = [_no_empty(v) for v in values]
         self.values = values
+        self.base = _no_empty(base)
+        self.changed = None
         present = [v for v in values if v is not None]
         target = values[0]
         self._value = None
@@ -119,11 +140,42 @@ class FieldMerge:
             self.status = SAME
             return
         self.choice = 0 if target is not None else next(i for i, v in enumerate(values) if v is not None)
-        if all(equivalent(name, present[0], v) for v in present[1:]):
+        if all(equivalent(name, present[0], v) for v in present[1:]) and not (three_way and target is None):
             self._value = preferred(name, present)
             self.status = SAME if target is not None else ADDED
+        elif three_way:
+            self._three_way(name, values[0], values[1])
         else:
             self.status = CONFLICT
+
+    def _three_way(self, name, target, other):
+        "target and other differ (one of them may be absent)"
+        base = self.base
+        same = lambda a, b: a is not None and b is not None and equivalent(name, a, b)
+        if other is None or same(other, base):
+            # changed (or added) in the target only, or removed in the other: kept
+            self.status = SAME
+            self.choice = 0
+            self.changed = CHANGED_TARGET if other is not None or base is None else None
+        elif target is None and base is None:
+            self.status = ADDED
+            self.changed = CHANGED_OTHER
+        elif same(target, base):
+            # changed in the other entry only: offered
+            self.status = ADDED
+            self._value = other
+            self.choice = 1
+            self.changed = CHANGED_OTHER
+        else:
+            self.status = CONFLICT
+            self.changed = CHANGED_BOTH
+
+    def decline(self):
+        "do not take an addition: keep the value of the target (none if it has none)"
+        if self.status == ADDED:
+            self.status = SAME
+            self._value = None
+            self.choice = 0
 
     @property
     def value(self):
@@ -154,12 +206,18 @@ class FieldMerge:
 class Merge:
     """merge of entries[0] (the target) with the other entries (see the
     module documentation). `relative_to` is the directory the file links of
-    the entries are relative to."""
+    the entries are relative to.
 
-    def __init__(self, entries, relative_to=None, keys_to_ids=False):
+    base: the origin copy of the entry, for a three-way merge of two
+    entries (pull, push); its key and file links are not used."""
+
+    def __init__(self, entries, relative_to=None, keys_to_ids=False, base=None):
         self.entries = list(entries)
         self.relative_to = relative_to
         self.keys_to_ids = keys_to_ids
+        self.base = base
+        if base is not None and len(self.entries) != 2:
+            raise ValueError('a three-way merge combines two entries')
         self.fields = []
         names = []
         for e in self.entries:
@@ -167,13 +225,17 @@ class Merge:
                 if k not in SPECIAL_FIELDS and k not in names:
                     names.append(k)
         for name in names:
-            values = [get_entry_val(e, name, None) if (name == 'ENTRYTYPE' or name in _field_names(e)) else None
-                      for e in self.entries]
-            if name == 'ENTRYTYPE':
-                values = [v.lower() for v in values]
-            self.fields.append(FieldMerge(name, values))
+            values = [_value(e, name) for e in self.entries]
+            if base is not None:
+                self.fields.append(FieldMerge(name, values, base=_value(base, name), three_way=True))
+            else:
+                self.fields.append(FieldMerge(name, values))
         self._merge_files()
         self._merge_ids()
+
+    @property
+    def three_way(self):
+        return self.base is not None
 
     @property
     def target(self):
@@ -208,7 +270,8 @@ class Merge:
     def _merge_ids(self):
         key = self.key.lower()
         ids = []
-        sources = [get_entry_val(e, 'ids', '') for e in self.entries]
+        # the key aliases of a pool mean nothing in a library, and conversely
+        sources = [get_entry_val(e, 'ids', '') for e in (self.entries[:1] if self.three_way else self.entries)]
         if self.keys_to_ids:
             sources += [get_entry_val(e, 'ID', '') for e in self.others]
         for source in sources:
@@ -240,11 +303,11 @@ class Merge:
     def with_target(self, i):
         "the same merge with entry i as target"
         entries = [self.entries[i]] + [e for j, e in enumerate(self.entries) if j != i]
-        return Merge(entries, relative_to=self.relative_to, keys_to_ids=self.keys_to_ids)
+        return Merge(entries, relative_to=self.relative_to, keys_to_ids=self.keys_to_ids, base=self.base)
 
     def result(self):
         "the merged entry, with the key of the target"
-        fields = [Field(f.name, f.value) for f in self.fields if f.name != 'ENTRYTYPE']
+        fields = [Field(f.name, f.value) for f in self.fields if f.name != 'ENTRYTYPE' and f.value is not None]
         if self.files:
             fields.append(Field('file', format_file(self.files, relative_to=self.relative_to)))
         if self.ids:
@@ -291,6 +354,13 @@ def _field_names(e):
     return [k for k, _ in e.items() if k not in ('ID', 'ENTRYTYPE')]
 
 
+def _value(e, name):
+    "value of a field of an entry for the merge (the entry type in lower case), None if absent"
+    if name == 'ENTRYTYPE':
+        return get_entry_val(e, name, '').lower()
+    return get_entry_val(e, name, None) if name in _field_names(e) else None
+
+
 def _oneline(value, width=None):
     s = ' '.join(str(value).split())
     if width and len(s) > width:
@@ -323,9 +393,14 @@ class Answer:
 class Dialogue:
     """screen and answers for one merge decision; no input or output.
 
-    context: 'add' (entry 1 is the library entry, entry 2 the added entry)
-    or 'check' (a group of library entries).
-    reason: why the entries are the same paper (from same_paper)."""
+    context: 'add' (entry 1 is the library entry, entry 2 the added entry),
+    'check' (a group of library entries), 'pull' (entry 1 is the library
+    entry, entry 2 the pool entry) or 'push' (entry 1 is the pool entry,
+    entry 2 the library entry).
+    reason: why the entries are the same paper (from same_paper); for pull
+    and push, the pool."""
+
+    LABELS = {'add': ('library', 'new'), 'pull': ('library', 'pool'), 'push': ('pool', 'library')}
 
     def __init__(self, merge, context, reason='', color=False):
         self.merge = merge
@@ -333,12 +408,27 @@ class Dialogue:
         self.reason = reason
         self.color = color
 
+    @property
+    def exchange(self):
+        "pull or push"
+        return self.context in ('pull', 'push')
+
     # labels
 
     def label(self, i):
-        if self.context == 'add':
-            return 'library' if i == 0 else 'new'
+        if self.context in self.LABELS:
+            return self.LABELS[self.context][i]
         return get_entry_val(self.merge.entries[i], 'ID', '')
+
+    def change_note(self, f):
+        "where a field changed, in three-way mode"
+        if f.changed == CHANGED_TARGET:
+            return f'changed in {self.label(0)}, kept'
+        if f.changed == CHANGED_OTHER:
+            return f'{"added" if f.values[0] is None else "changed"} in {self.label(1)}'
+        if f.changed == CHANGED_BOTH:
+            return 'changed on both sides'
+        return ''
 
     def _c(self, s, color):
         return (color + s + bcolors.ENDC) if self.color else s
@@ -349,6 +439,10 @@ class Dialogue:
         m = self.merge
         if self.context == 'add':
             line = f'Already in library: {m.key}' + (f' ({self.reason})' if self.reason else '')
+        elif self.context == 'pull':
+            line = f'{m.key}  <-  {self.reason or "pool"} ({get_entry_val(m.others[0], "ID", "")})'
+        elif self.context == 'push':
+            line = f'{get_entry_val(m.others[0], "ID", "")}  ->  {self.reason or "pool"} ({m.key})'
         else:
             line = f'Same paper: {len(m.entries)} entries' + (f' ({self.reason})' if self.reason else '')
         lines = [self._c(line, bcolors.OKBLUE)]
@@ -356,12 +450,14 @@ class Dialogue:
         for i, e in enumerate(m.entries):
             files = [os.path.relpath(f) if os.path.isabs(f) else f for f in m._files(e)]
             doi = get_entry_val(e, 'doi', '')
-            rows.append([str(i+1), self.label(i) if self.context == 'add' else '',
+            rows.append([str(i+1), self.label(i) if self.context in self.LABELS else '',
                          get_entry_val(e, 'ID', ''), get_entry_val(e, 'ENTRYTYPE', '').lower(),
                          f'doi {doi}' if doi else 'no doi', ' '.join(files)])
         widths = [max(len(r[j]) for r in rows) for j in range(len(rows[0]))]
         for r in rows:
             lines.append('  ' + '  '.join(c.ljust(w) for c, w in zip(r, widths) if w).rstrip())
+        if m.three_way:
+            lines.append('     origin = the pool version at the last pull or push')
         return '\n'.join(lines)
 
     def entry_lines(self):
@@ -371,29 +467,37 @@ class Dialogue:
         width = max([len(n) for n in names] + [4])
         out = [f'@{etype.value}{{{m.key},']
 
-        def line(mark, name, value, alternatives=()):
+        def line(mark, name, value, alternatives=(), note=''):
             text = f'{mark}  {name.ljust(width)} = {value}'
+            if note:
+                text = text.ljust(50) + '   ' + note
             color = {ADDED: bcolors.OKGREEN, CONFLICT: bcolors.WARNING}.get(mark)
             out.append(self._c(text, color) if color else text)
             for idx, v in alternatives:
-                alt = f'{CONFLICT}  {" " * width}   {",".join(str(i+1) for i in idx)}: {v}'
+                which = ",".join(str(i+1) if isinstance(i, int) else i for i in idx)
+                alt = f'{CONFLICT}  {" " * width}   {which}: {v}'
                 out.append(self._c(alt, bcolors.WARNING))
 
+        def origin(f):
+            return [] if f.base is None or not m.three_way else [(['origin'], '{' + _oneline(f.base) + '}')]
+
         if etype.status == CONFLICT:
-            line(CONFLICT, 'type', etype.value, etype.alternatives())
+            line(CONFLICT, 'type', etype.value, etype.alternatives() + origin(etype), self.change_note(etype))
         others = [get_entry_val(e, 'ID', '') for e in m.others]
         if self.context == 'check' and any(k != m.key for k in others):
             alts = [([i+1], f'{k} (kept in ids)') for i, k in enumerate(others) if k != m.key]
             line(CONFLICT, 'key', m.key, alts)
         rows = []
         for f in m.fields:
-            if f.name == 'ENTRYTYPE':
+            if f.name == 'ENTRYTYPE' or f.value is None:
                 continue
             if f.status == CONFLICT:
                 rows.append((CONFLICT, f.name, '{' + _oneline(f.value) + '}',
-                             [(idx, '{' + _oneline(v) + '}') for idx, v in f.alternatives()]))
+                             [(idx, '{' + _oneline(v) + '}') for idx, v in f.alternatives()] + origin(f),
+                             self.change_note(f)))
             else:
-                rows.append((f.status, f.name, '{' + _oneline(f.value, None if f.status == ADDED else 70) + '}', ()))
+                rows.append((f.status, f.name, '{' + _oneline(f.value, None if f.status == ADDED else 70) + '}', (),
+                             self.change_note(f)))
         if m.files:
             files = ';'.join(os.path.relpath(f) if os.path.isabs(f) else f for f in m.files)
             rows.append((ADDED if m.new_files else SAME, 'file', '{' + files + '}', ()))
@@ -410,7 +514,11 @@ class Dialogue:
         conflicts = 'No conflict' if n == 0 else f'{n} conflict' + ('s' if n > 1 else '')
         if self.context == 'add':
             return f'{conflicts}. The key {m.key} is kept; + lines are added.'
-        others = ', '.join(str(i+2) for i in range(len(m.others)))
+        if self.exchange:
+            n = len(m.additions)
+            return (f'{conflicts}, {n} change{"s" if n != 1 else ""} from the {self.label(1)}. '
+                    f'The key {m.key} is kept.')
+        others =', '.join(str(i+2) for i in range(len(m.others)))
         if len(m.others) == 1:
             return f'{conflicts}. Entry {others} is removed after the merge; its key goes to ids.'
         return f'{conflicts}. Entries {others} are removed after the merge; their keys go to ids.'
@@ -420,22 +528,24 @@ class Dialogue:
         n = len(m.entries)
         first = []
         if m.conflicts:
-            if self.context == 'add':
-                first += ['1 keep library values', '2 take new values']
+            if self.context in self.LABELS:
+                first += [f'1 keep {self.label(0)} values', f'2 take {self.label(1)} values']
             else:
                 first += [f'{i+1} {"keep" if i == 0 else "take"} values of {i+1}' for i in range(n)]
             first += ['f field by field']
         else:
             first += ['1 merge']
+            if m.three_way and m.additions:
+                first += ['f field by field']
         first += ['e edit']
         second = []
         if self.context == 'check':
             second.append('t N make entry N the target')
         if self.context == 'add':
             second.append(f'n not the same paper (add {get_entry_val(m.others[0], "ID", "")} separately)')
-        else:
+        elif not self.exchange:
             second.append('n not the same paper')
-        second += ['s skip', 'q quit', '? help']
+        second += [f's skip ({self.context} again later)' if self.exchange else 's skip', 'q quit', '? help']
         return '  ' + '   '.join(first) + '\n  ' + '   '.join(second)
 
     def screen(self):
@@ -445,13 +555,14 @@ class Dialogue:
         n = len(self.merge.entries)
         lines = [
             f'  1..{n}  resolve all remaining conflicts with the values of that entry, and merge',
-            '  f      go through the conflicts one at a time',
+            '  f      go through the conflicts one at a time'
+            + (' (and the changes from the other side)' if self.merge.three_way else ''),
             '  e      edit the merged entry in the editor (the other values are % comment lines)',
         ]
         if self.context == 'check':
             lines.append('  t N    make entry N the target: its key is kept, the other keys go to ids')
             lines.append('  n      not the same paper: keep the entries separate, and do not ask again')
-        else:
+        elif not self.exchange:
             lines.append('  n      not the same paper: add the new entry separately, and do not ask again')
         lines += [
             '  s      skip: change nothing for this one (asked again next time)',
@@ -463,8 +574,10 @@ class Dialogue:
         return '\n'.join(lines)
 
     def field_question(self, f):
-        "the question for one conflicting field (answer with parse_field)"
-        rows = [(str(i+1), _oneline(v), self.label(i)) for i, v in enumerate(f.values) if v is not None]
+        """the question for one conflicting field, or in three-way mode an
+        addition (answer with parse_field)"""
+        rows = [(str(i+1), _oneline(v) if v is not None else '(none)', self.label(i))
+                for i, v in enumerate(f.values) if v is not None or f.status == ADDED]
         width = max(len(r[1]) for r in rows)
         lines = [f'{f.name if f.name != "ENTRYTYPE" else "type"}:']
         lines += [f'  {n}  {v.ljust(width)}  {label}' for n, v, label in rows]
@@ -482,7 +595,9 @@ class Dialogue:
                 return Answer('take', i - 1, s)
             return Answer('invalid', text=s)
         if s in ('f', 'e', 'n', 's', 'q', '?'):
-            if s == 'f' and not self.merge.conflicts:
+            if s == 'f' and not self.field_questions():
+                return Answer('invalid', text=s)
+            if s == 'n' and self.exchange:
                 return Answer('invalid', text=s)
             return Answer({'f': 'fields', 'e': 'edit', 'n': 'distinct', 's': 'skip',
                            'q': 'quit', '?': 'help'}[s], text=s)
@@ -498,9 +613,13 @@ class Dialogue:
         s = text.strip()
         if s == 'e':
             return Answer('edit', text=s)
-        if s.isdigit() and 1 <= int(s) <= len(f.values) and f.values[int(s)-1] is not None:
+        if s.isdigit() and 1 <= int(s) <= len(f.values) and (f.values[int(s)-1] is not None or f.status == ADDED):
             return Answer('take', int(s) - 1, s)
         return Answer('invalid', text=s)
+
+    def field_questions(self):
+        "the fields that `f` asks about: the conflicts, and in three-way mode the additions"
+        return self.merge.conflicts + (self.merge.additions if self.merge.three_way else [])
 
 
 def _input(prompt):
@@ -595,13 +714,17 @@ def _edit(merge, editor):
 def _ask_fields(dialogue, input, output, editor):
     "field by field; None when the user went back to the menu (failed edit)"
     merge = dialogue.merge
-    for f in merge.conflicts:
+    for f in dialogue.field_questions():
         while True:
             question, prompt = dialogue.field_question(f).rsplit('\n', 1)
             output(question)
             answer = dialogue.parse_field(f, input(prompt))
             if answer.kind == 'take':
-                f.choose(answer.index)
+                if f.status == ADDED:
+                    if answer.index == 0:
+                        f.decline()
+                else:
+                    f.choose(answer.index)
                 break
             elif answer.kind == 'edit':
                 return _edit(merge, editor)
@@ -624,7 +747,7 @@ class Resolver:
     (after q, the remaining duplicates are skipped)
 
     ask: the dialogue; keep: merge, conflicts keep the value of entry 1;
-    update: merge, conflicts take the value of entry 2 (add only); skip:
+    update: merge, conflicts take the value of entry 2 (add, pull, push); skip:
     change nothing; error: raise DuplicateError.
     """
 
@@ -673,11 +796,17 @@ class Resolver:
         if context == 'add':
             new = get_entry_val(merge.others[0], 'ID', '')
             return f'{new}: already in library as {merge.key} ({verdict.reason}; {what})'
+        if context == 'pull':
+            pool = get_entry_val(merge.others[0], 'ID', '')
+            return f'{merge.key}: changed in the library and in {verdict.reason} ({pool}; {what})'
+        if context == 'push':
+            key = get_entry_val(merge.others[0], 'ID', '')
+            return f'{key}: changed in the library and in {verdict.reason} ({merge.key}; {what})'
         keys = ', '.join(get_entry_val(e, 'ID', '') for e in merge.entries)
         return f'same paper: {keys} ({verdict.reason}; {what})'
 
 
 def option_hint(context):
-    words = 'ask, keep, update, skip' if context == 'add' else 'ask, keep, skip'
+    words = 'ask, keep, skip' if context == 'check' else 'ask, keep, update, skip'
     return (f'Pass --on-duplicate with one of: {words} (ask is the default in a terminal), '
             f'see `papers {context} --help`.')
