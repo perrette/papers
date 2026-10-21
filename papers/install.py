@@ -47,17 +47,6 @@ class DefaultAsker(Asker):
         return ''
 
 
-class ScriptedAsker(Asker):
-    "for tests: replay prepared answers, record the questions"
-    def __init__(self, *answers):
-        self.answers = list(answers)
-        self.questions = []
-
-    def ask(self, question, default=''):
-        self.questions.append(question)
-        return self.answers.pop(0) if self.answers else ''
-
-
 @dataclass
 class FsProbe:
     """What the filesystem offers as defaults, gathered up front."""

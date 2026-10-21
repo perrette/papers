@@ -1,16 +1,12 @@
 import os
 from pathlib import Path
 import json
-import shutil
 import tempfile
-import unittest
 import subprocess as sp
 from papers.config import Config, MachineConfig
 from papers.config import CONFIG_FILE, CONFIG_FILE_LOCAL
-from papers.bib import Biblio
-# from pathlib import Path
 
-from tests.common import (paperscmd, prepare_paper, run, PAPERSCMD, BaseTest as TestBaseInstall,
+from tests.common import (paperscmd, PAPERSCMD, BaseTest as TestBaseInstall,
                           LocalInstallTest, GlobalInstallTest, LocalGitLFSInstallTest)
 
 bibtex2 = """@article{SomeOneElse2000,
@@ -45,7 +41,7 @@ class TestLocalInstall(TestBaseInstall):
         # pre-existing bibtex?
         os.remove(self._path(self.anotherbib))
         self.assertFalse(self._exists(self.anotherbib))
-        self.papers(f'install --force --local')
+        self.papers('install --force --local')
         self.assertTrue(self._exists(CONFIG_FILE_LOCAL))
         config = Config.load(self._path(CONFIG_FILE_LOCAL))
         # self.assertEqual(config.bibtex, os.path.abspath(self._path("papers.bib")))
@@ -61,7 +57,7 @@ class TestLocalInstall(TestBaseInstall):
         # pre-existing bibtex
         self.assertTrue(self._exists(self.anotherbib))
         self.assertFalse(self._exists("papers.bib"))
-        self.papers(f'install --force --local')
+        self.papers('install --force --local')
         self.assertTrue(self._exists(CONFIG_FILE_LOCAL))
         config = Config.load(self._path(CONFIG_FILE_LOCAL))
         self.assertEqual(config.bibtex, os.path.abspath(self._path(self.anotherbib)))
@@ -74,7 +70,7 @@ class TestLocalInstall(TestBaseInstall):
         self.assertFalse(self._exists(CONFIG_FILE_LOCAL))
         # pre-existing pdfs folder (pre-defined set of names)
         os.makedirs(self._path("pdfs"))
-        self.papers(f'install --force --local')
+        self.papers('install --force --local')
         self.assertTrue(self._exists(CONFIG_FILE_LOCAL))
         config = Config.load(self._path(CONFIG_FILE_LOCAL))
         # self.assertEqual(config.bibtex, os.path.abspath(self._path("papers.bib")))
@@ -217,7 +213,7 @@ class TestInstallNewBibTex(TestBaseInstall):
     def test_install(self):
         self.assertFalse(self._exists(self.mybib))
         self.assertFalse(self._exists(self.anotherbib))
-        self.papers(f"""install --local --filesdir files << EOF
+        self.papers("""install --local --filesdir files << EOF
 my.bib
 n
 EOF""")
@@ -233,7 +229,7 @@ class TestInstallEditor(TestBaseInstall):
     anotherbib_content = None
 
     def test_install(self):
-        self.papers(f'install --force --local --editor "subl -w"')
+        self.papers('install --force --local --editor "subl -w"')
         config = Config.load(self._path(CONFIG_FILE_LOCAL))
         self.assertEqual(config.editor, "subl -w")
 
@@ -242,7 +238,7 @@ class TestDefaultLocal(LocalInstallTest):
     def test_install(self):
         self.assertTrue(self._exists(CONFIG_FILE_LOCAL))
         self.assertTrue(self.config.local)
-        self.papers(f'install --edit')
+        self.papers('install --edit')
         self.assertTrue(self._exists(CONFIG_FILE_LOCAL))
         config = Config.load(self._path(CONFIG_FILE_LOCAL))
         self.assertTrue(config.local)
@@ -253,7 +249,7 @@ class TestDefaultLocal2(GlobalInstallTest):
         self.assertFalse(os.path.exists(CONFIG_FILE))
         self.assertTrue(self._exists(CONFIG_FILE_LOCAL))
         self.assertTrue(self.config.local)
-        self.papers(f'install --edit')
+        self.papers('install --edit')
         self.assertTrue(self._exists(CONFIG_FILE_LOCAL))
         self.assertFalse(os.path.exists(CONFIG_FILE))
 
@@ -290,7 +286,7 @@ class TestGlobalInstall(TestBaseInstall):
 class TestGitInstall(TestBaseInstall):
 
     def test_install_gitlfs(self):
-        self.papers(f'install --local --no-prompt --git-lfs')
+        self.papers('install --local --no-prompt --git-lfs')
         config = Config.load(self._path(CONFIG_FILE_LOCAL))
         self.assertTrue(config.git)
         # self.assertTrue(self._exists(".git"))
@@ -316,7 +312,7 @@ class TestGitInstall(TestBaseInstall):
         self.assertEqual(int(count2), int(count)+1)
 
     def test_install_interactive(self):
-        self.papers(f"""install --local --filesdir files --bibtex bibbib.bib << EOF
+        self.papers("""install --local --filesdir files --bibtex bibbib.bib << EOF
 y
 y
 EOF""")
@@ -325,7 +321,7 @@ EOF""")
         self.assertTrue(config.gitlfs)
 
     def test_install_interactive2(self):
-        self.papers(f"""install --local --filesdir files --bibtex bibbib.bib << EOF
+        self.papers("""install --local --filesdir files --bibtex bibbib.bib << EOF
 y
 n
 EOF""")
@@ -334,7 +330,7 @@ EOF""")
         self.assertFalse(config.gitlfs)
 
     def test_install_interactive3(self):
-        self.papers(f"""install --local --filesdir files --bibtex bibbib.bib << EOF
+        self.papers("""install --local --filesdir files --bibtex bibbib.bib << EOF
 n
 EOF""")
         config = Config.load(self._path(CONFIG_FILE_LOCAL))
@@ -343,7 +339,7 @@ EOF""")
 
     def test_install_interactive4(self):
         # plain Enter selects the defaults: git on (fresh install), git-lfs off
-        self.papers(f"""install --local --filesdir files --bibtex bibbib.bib << EOF
+        self.papers("""install --local --filesdir files --bibtex bibbib.bib << EOF
 
 
 EOF""")
@@ -352,13 +348,13 @@ EOF""")
         self.assertFalse(config.gitlfs)
 
     def test_install_no_git(self):
-        self.papers(f'install --force --local --no-git --bibtex bibbib.bib --filesdir files')
+        self.papers('install --force --local --no-git --bibtex bibbib.bib --filesdir files')
         config = Config.load(self._path(CONFIG_FILE_LOCAL))
         self.assertFalse(config.git)
         self.assertFalse(config.gitlfs)
 
     def test_install_interactive5(self):
-        self.papers(f"""install --local --filesdir files --bibtex bibbib.bib << EOF
+        self.papers("""install --local --filesdir files --bibtex bibbib.bib << EOF
 y
 
 EOF""")
@@ -389,7 +385,7 @@ class TestInstallEdit(TestBaseInstall):
         config.gitdir = legacy
         config.save()
 
-        self.papers(f'install --local --edit --git')
+        self.papers('install --local --edit --git')
         config = Config.load(self._path(CONFIG_FILE_LOCAL))
         self.assertNotEqual(config.gitdir, legacy)
         self.assertTrue(os.path.isdir(config.gitdir))
@@ -404,7 +400,7 @@ class TestInstallEdit(TestBaseInstall):
         config.gitdir = legacy
         config.save()
 
-        self.papers(f'install --local --edit --git')
+        self.papers('install --local --edit --git')
         config = Config.load(self._path(CONFIG_FILE_LOCAL))
         self.assertEqual(config.gitdir, legacy)
         self.assertTrue((Path(legacy)/'.git').is_dir())
@@ -416,7 +412,7 @@ class TestInstallEdit(TestBaseInstall):
         self.papers(f'install --force --local --no-git --bibtex {self.anotherbib} --files {self.filesdir}')
         with self.assertLogs(logger, level='WARNING') as cm:
             logger.warning('sentinel')  # assertLogs requires at least one record
-            self.papers(f'install --local --edit --no-git')
+            self.papers('install --local --edit --no-git')
         self.assertFalse(any('Several bibtex files' in line for line in cm.output), cm.output)
 
 
@@ -424,7 +420,7 @@ class TestInstallEdit(TestBaseInstall):
 class TestUninstall(LocalInstallTest):
     def test_uninstall(self):
         self.assertTrue(self._exists(CONFIG_FILE_LOCAL))
-        self.papers(f'uninstall')
+        self.papers('uninstall')
         self.assertFalse(self._exists(CONFIG_FILE_LOCAL))
 
     def test_uninstall_reports_leftovers(self):

@@ -11,7 +11,6 @@ from papers.utils import (
     check_filesdir,
     checksum,
     hash_bytestr_iter,
-    file_as_blockiter,
     ansi_link,
     bcolors,
 )

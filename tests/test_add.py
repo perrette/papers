@@ -5,12 +5,17 @@ import tempfile
 import unittest
 from pathlib import Path
 
-import bibtexparser
-from papers.entries import parse_file as bp_parse_file, parse_string, get_entry_val
-from papers.encoding import entry_to_unicode_dict
+from papers.entries import parse_file as bp_parse_file, parse_string, get_entry_val, library_from_entries
+from papers.encoding import latex_to_unicode_library
 
 from papers.bib import Biblio
 from tests.common import PAPERSCMD, paperscmd, prepare_paper, prepare_paper2, BibTest
+
+
+def unicode_fields(entry):
+    "the fields of an entry but its key, with LaTeX decoded to unicode (for comparison)"
+    e = latex_to_unicode_library(library_from_entries([entry])).entries[0]
+    return {k: get_entry_val(e, k, '') for k, _ in e.items() if k != 'ID'}
 
 
 class TestAdd(BibTest):
@@ -35,7 +40,7 @@ class TestAdd(BibTest):
         if doi_only:
             self.assertEqual([e['doi'] for e in db1.entries], [e['doi'] for e in db2.entries])  # entry is as expected
         elif dismiss_key:
-            f = entry_to_unicode_dict
+            f = unicode_fields
             self.assertEqual([f(e) for e in db1.entries], [f(e) for e in db2.entries])  # entry is as expected
         else:
             self.assertEqual([dict(e.items()) for e in db1.entries], [dict(e.items()) for e in db2.entries])
@@ -160,7 +165,6 @@ class TestAddBib(BibTest):
         self.somebib = tempfile.mktemp(prefix='papers.somebib.bib')
         self.pdf1, self.doi, self.key1, self.newkey1, self.year, self.bibtex1, self.file_rename1 = prepare_paper()
         self.pdf2, self.si, self.doi, self.key2, self.newkey2, self.year, self.bibtex2, self.file_rename2 = prepare_paper2()
-        bib = '\n'.join([self.bibtex1, self.bibtex2])
         open(self.mybib,'w').write(self.bibtex1)
         open(self.somebib,'w').write(self.bibtex2)
         self.my = Biblio.load(self.mybib, '')
@@ -269,7 +273,7 @@ class TestAddDir(BibTest):
     def tearDown(self):
         os.remove(self.mybib)
         shutil.rmtree(self.somedir)
-        paperscmd(f'uninstall')
+        paperscmd('uninstall')
 
 
 

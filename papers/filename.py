@@ -53,7 +53,6 @@ def make_template_fields(
     - doi- : slugified doi (for use in filenames)
     Each one of these needs a specific, explicit assignment below.
     """
-    # names = bibtexparser.customization.getnames(entry.get('author','unknown').lower().split(' and '))
     _names = family_names(get_entry_val(entry, "author", UNKNOWN_AUTHOR).lower())
     _names = [slugify(nm) for nm in _names]
     author = author_sep.join([nm for nm in _names[:author_num]])
@@ -117,7 +116,6 @@ class Format:
     any other case, like 'AuTHoR', will retrieve the field from 'e' with unaltered case.
 
     """
-    # def __init__(self, template="{author}{year}{title}", author_num=2, title_word_num=5, author_sep="_", title_sep="-")
     def __init__(self, template, author_num=2, title_word_num=100, title_word_size=1, title_length=100,
                  author_sep="_", title_sep="-", unknown_strict=False, unknown_template=None):
         self.template = template
@@ -129,9 +127,6 @@ class Format:
         self.title_word_size = title_word_size
         self.unknown_strict = unknown_strict
         self.unknown_template = unknown_template
-
-    def todict(self):
-        return vars(self)
 
     def is_unknown(self, entry):
         conditions = ( get_entry_val(entry, "author", UNKNOWN_AUTHOR) == UNKNOWN_AUTHOR, get_entry_val(entry, "year", UNKNOWN_YEAR) == UNKNOWN_YEAR, get_entry_val(entry, "title", UNKNOWN_TITLE) == UNKNOWN_TITLE)

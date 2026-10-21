@@ -10,11 +10,10 @@ import platformdirs
 
 from papers.entries import parse_string
 from papers import logger
-from papers.filename import Format, NAMEFORMAT, KEYFORMAT
+from papers.filename import NAMEFORMAT, KEYFORMAT
 from papers import __version__
-from papers.utils import bcolors, check_filesdir, search_config, PapersExit
+from papers.utils import bcolors, check_filesdir, PapersExit
 
-# GIT = False
 DRYRUN = False
 
 # platform-appropriate locations (on Linux these honor the XDG variables and
@@ -428,13 +427,6 @@ class Config:
             return self.machine.pool_path(pool)
         return os.path.abspath(os.path.join(self.configdir, os.path.expanduser(pool)))
 
-    def collections(self):
-        files = []
-        for root, dirs, files in os.walk(os.path.dirname(self.bibtex)):
-            break
-        # return sorted(f[:-4] for f in files if f.endswith('.bib'))
-        return sorted(f for f in files if f.endswith('.bib'))
-
     @property
     def backupfile_clean(self):
         "copy of the bibtex with file paths relative to the backup directory (--git-lfs mode)"
@@ -448,13 +440,6 @@ class Config:
             # avoid clashing with the backup directory's own files
             name = 'backup_' + name
         return Path(self.gitdir)/name
-
-    @property
-    def root(self):
-        if self.local and self.bibtex:
-            return Path(self.bibtex).parent.resolve()
-        else:
-            return Path(os.path.sep)
 
     def gitcmd(self, cmd, check=True):
         from papers.backup import run_git

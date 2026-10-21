@@ -1,6 +1,5 @@
 import os
 from pathlib import Path
-from unidecode import unidecode as unicode_to_ascii
 
 from bibtexparser.middlewares import LatexDecodingMiddleware
 
@@ -108,13 +107,6 @@ def convert_entry_to_unicode(entry):
     update_entry(entry, lib.entries[0])
 
 
-def entry_to_unicode_dict(entry):
-    """Return a dict of entry fields (excluding ID) with LaTeX decoded to unicode (for comparison)."""
-    lib = library_from_entries([entry])
-    lib = latex_to_unicode_library(lib)
-    e = lib.entries[0]
-    return {k: get_entry_val(e, k, '') for k, _ in e.items() if k != 'ID'}
-
 def parse_keywords(e):
     return [w.strip() for w in get_entry_val(e, 'keywords', '').split(',') if w.strip()]
 
@@ -156,42 +148,6 @@ def format_entry(biblio, e, no_key=False, prefix=""):
 
 # Parse name entry
 # ================
-
-def _outermost_bracket_groups(string, type='{}'):
-    '''
-    >>> outermost_bracket_groups('{my name}')
-    ['my name']
-    >>> outermost_bracket_groups("{my nam\\'{e}}")
-    ["my nam\\\'{e}"]
-    >>> outermost_bracket_groups('{my} {name}')
-    ['my', 'name']
-    >>> outermost_bracket_groups("{my} {nam\\'{e}}")
-    ['my', "nam\\'{e}"]
-    '''
-    l, r = type
-    level = 0
-    matches = []
-    for c in string:
-        if c == l:
-            level += 1
-            if level == 1:
-                expr = []
-        elif c == r:
-            level -= 1
-            if level == 0:  # close main
-                matches.append(''.join(expr))
-        elif level >= 1:
-            expr.append(c)
-    return matches
-
-
-def strip_outmost_brackets(family):
-    # strip brakets
-    brackets = _outermost_bracket_groups(family)
-    if len(brackets) == 1 and brackets[0] == family[1:-1]:
-        family = family[1:-1] # strip name' bracket
-    return family
-
 
 def standard_name(author):
     """Normalize author string to 'Last, First' per author (e.g. 'John Smith and Jane Doe' -> 'Smith, John and Doe, Jane')."""

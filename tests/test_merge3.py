@@ -1,6 +1,5 @@
 """Three-way merge (pull, push): the model and the dialogue"""
 import unittest
-from unittest.mock import patch
 
 from papers.duplicate import Verdict, SAME
 from papers.entries import entry_from_dict

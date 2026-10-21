@@ -34,8 +34,8 @@ class TestManifest(LocalGitInstallTest):
 
     def test_manifest_untracked_and_survives_operations(self):
         self.papers(f'add {self.anotherbib}')
-        self.papers(f'undo')
-        self.papers(f'redo')
+        self.papers('undo')
+        self.papers('redo')
         manifest = read_manifest(self.config.gitdir)
         self.assertIsNotNone(manifest)
         self.assertEqual(Path(manifest["bibtex"]), Path(self._path(self.mybib)).resolve())
@@ -133,11 +133,11 @@ class TestLegacyLayout(LocalGitInstallTest):
         # a new snapshot on top of the legacy layout
         open(self._path("more.bib"), "w").write(
             "@article{More2024,\n author = {Mo Re},\n title = {More},\n year = {2024}\n}")
-        self.papers(f'add more.bib')
+        self.papers('add more.bib')
 
         # undo materializes the legacy-layout snapshot: restore must fall back
         # to backup_copy.bib
-        self.papers(f'undo')
+        self.papers('undo')
         self.assertMultiLineEqual(open(self._path(self.mybib)).read(), bib1)
 
 
@@ -180,7 +180,7 @@ class TestAddFromAnotherDirectory(LocalGitInstallTest):
 
     def test_cwd_local_config_with_broken_git_setup(self):
         # the current directory is another library whose backup directory does not exist
-        paperscmd(f'install --force --local --bibtex other.bib --files otherfiles', cwd=self.other.name)
+        paperscmd('install --force --local --bibtex other.bib --files otherfiles', cwd=self.other.name)
         otherconfig = os.path.join(self.other.name, CONFIG_FILE_LOCAL)
         js = json.load(open(otherconfig))
         js['git'] = True

@@ -7,26 +7,7 @@ import time
 import unittest
 from pathlib import Path
 
-from papers.config import Config, CONFIG_FILE_LOCAL
-
-
-class TestConfigRoot(unittest.TestCase):
-
-    def test_root_non_local_returns_sep(self):
-        """When local=False, root is Path('/')"""
-        cfg = Config(local=False, bibtex="/tmp/x.bib")
-        self.assertEqual(cfg.root, __import__('pathlib').Path(os.path.sep))
-
-    def test_root_local_with_bibtex(self):
-        """When local=True and bibtex set, root is parent of bibtex"""
-        with tempfile.NamedTemporaryFile(suffix='.bib', delete=False) as f:
-            path = f.name
-        try:
-            cfg = Config(local=True, bibtex=path)
-            expected = __import__('pathlib').Path(path).parent.resolve()
-            self.assertEqual(cfg.root, expected)
-        finally:
-            os.unlink(path)
+from papers.config import Config
 
 
 class TestConfigRelpath(unittest.TestCase):
@@ -79,20 +60,6 @@ class TestConfigBackupFiles(unittest.TestCase):
     def test_backupfile_reserved_names(self):
         cfg = Config(local=True, bibtex="/tmp/backup_clean.bib", gitdir="/tmp/git")
         self.assertNotEqual(Path(cfg.backupfile).name, Path(cfg.backupfile_clean).name)
-
-
-class TestConfigCollections(unittest.TestCase):
-
-    def test_collections(self):
-        with tempfile.TemporaryDirectory() as d:
-            open(os.path.join(d, "lib.bib"), 'w').close()
-            open(os.path.join(d, "other.bib"), 'w').close()
-            open(os.path.join(d, "readme.txt"), 'w').close()
-            cfg = Config(local=True, bibtex=os.path.join(d, "lib.bib"))
-            colls = cfg.collections()
-            self.assertIn("lib.bib", colls)
-            self.assertIn("other.bib", colls)
-            self.assertEqual(len(colls), 2)
 
 
 class CacheTest(unittest.TestCase):

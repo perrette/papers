@@ -288,14 +288,6 @@ class Pools:
         "a pool named on the command line: a name, or a path relative to the current directory"
         return self.resolve(pool, relative_to=os.getcwd(), create=create and pool == 'default')
 
-    def by_id(self, id):
-        "the pool of an origin record, or None if it cannot be used"
-        try:
-            return self.resolve(id)
-        except PoolError as error:
-            logger.warning(str(error))
-            return None
-
     def files_dirs(self):
         "the files directories of the pools that exist"
         return [p.filesdir for p in self.all(quiet=True) if p.filesdir]
@@ -882,9 +874,6 @@ class PoolLookup:
                 return self._take(biblio, pool, pe, e.key, entry=e, files=files)
         return None
 
-    def is_taken(self, entry):
-        return id(entry) in self._taken
-
     def inserted(self, entry, result):
         "record the origin of the library entries that an entry taken from a pool ended in"
         pool, pe = self._taken.pop(id(entry), (None, None))
@@ -963,7 +952,7 @@ def status_lines(config):
         else:
             try:
                 status = f' ({pool_state(origin, pools.resolve(name))})'
-            except PoolError as error:
+            except PoolError:
                 reason = 'unknown pool name' if path is None else 'not a library'
                 status = bcolors.WARNING + f' ({reason})' + bcolors.ENDC
         lines.append(f'    {label+": " if label else ""}{path or name}' + status)

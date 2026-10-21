@@ -10,12 +10,10 @@ from concurrent.futures import ThreadPoolExecutor
 from urllib.parse import quote
 
 import requests
-import bibtexparser
 
 import papers
 from papers.config import cached
 from papers import logger
-from papers.encoding import family_names
 from papers.entries import (
     get_entry_val,
     parse_string,
@@ -23,7 +21,6 @@ from papers.entries import (
     entry_from_dict,
     library_from_entries,
 )
-from papers.encoding import latex_to_unicode_library
 
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
@@ -120,13 +117,11 @@ def readpdf_image(pdf, first=None, last=None):
     if last is not None: cmd.extend(['-l', str(last)])
     cmd.extend([pdf, tmpbase])
     logger.info(' '.join(cmd))
-    # print(' '.join(cmd))
     sp.check_call(cmd)
 
     # 2nd extract text from .png using tesseract
     cmd = ["tesseract", tmppng, tmpbase, "-l", "eng", "quiet"]
     logger.info(' '.join(cmd))
-    # print(' '.join(cmd))
     sp.check_call(cmd)
 
     txt = open(tmptxt).read()
@@ -715,16 +710,6 @@ def fetch_bibtex_by_doi(doi):
     raise DOIRequestError(f"Unable to fetch BibTeX for DOI {doi}")
 
 
-def _get_page_fast(pagerequest):
-    """Return the data for a page on scholar.google.com"""
-    from scholarly import scholarly
-    resp = scholarly._SESSION.get(pagerequest, headers=scholarly._HEADERS, cookies=scholarly._COOKIES)
-    if resp.status_code == 200:
-        return resp.text
-    else:
-        raise Exception('Error: {} {}'.format(resp.status_code, resp.reason))
-
-
 def _scholar_score(txt, bib):
     # high score means high similarity
     from rapidfuzz.fuzz import token_set_ratio
@@ -734,7 +719,6 @@ def _scholar_score(txt, bib):
 @cached('scholar', hashed_key=True)
 def fetch_bibtex_by_fulltext_scholar(txt, assess_results=True):
     from scholarly import scholarly
-    # scholarly._get_page = _get_page_fast  # remove waiting time
     logger.debug(txt)
     search_query = scholarly.search_pubs(txt)
 
@@ -787,7 +771,6 @@ def format_authors(authors):
         family = author.get("family", "")
         # Format as "Family, Given" for BibTeX
         formatted = f"{family}, {given}" if family else given
-        # author_list.append(unidecode(formatted))
         author_list.append(formatted)
     return " and ".join(author_list)
 
@@ -894,27 +877,6 @@ def fetch_bibtex_by_fulltext_crossref(txt, title=None, author=None, rows=5):
 
     # convert to bibtex
     return crossref_to_bibtex(result).strip()
-
-
-def fetch_entry(e):
-    if 'doi' in e and isvaliddoi(e['doi']):
-        bibtex = fetch_bibtex_by_doi(e['doi'])
-    else:
-        lib = library_from_entries([e] if hasattr(e, 'fields_dict') else [entry_from_dict(e)])
-        lib = latex_to_unicode_library(lib)
-        e = lib.entries[0] if lib.entries else e
-        kw = {}
-        if get_entry_val(e, 'author', ''):
-            kw['author'] = family_names(e['author'])
-        if get_entry_val(e, 'title', ''):
-            kw['title'] = e['title']
-        if kw:
-            bibtex = fetch_bibtex_by_fulltext_crossref('', **kw)
-        else:
-            ValueError('no author nor title field')
-    db = parse_string(bibtex)
-    return db.entries[0]
-
 
 
 ############### HERE A HACK DESIGNED FOR THE ESD JOURNAL ################

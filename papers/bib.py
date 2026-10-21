@@ -4,7 +4,6 @@ import shutil
 import tempfile
 import requests
 from unidecode import unidecode as unicode_to_ascii
-import bibtexparser
 from bibtexparser import Library
 
 from papers.entries import (
@@ -15,7 +14,6 @@ from papers.entries import (
     entry_content_equal,
     parse_string,
     format_library,
-    entry_from_dict,
     library_from_entries,
 )
 from papers.encoding import (
@@ -30,11 +28,11 @@ from papers.extract import extract_pdf_doi, isvaliddoi, parse_doi
 from papers.extract import extract_pdf_metadata
 from papers.extract import fetch_bibtex_by_fulltext_crossref, fetch_bibtex_by_doi
 
-from papers.encoding import parse_file, format_file, standard_name, family_names, format_entries, update_file_path, format_entry
+from papers.encoding import parse_file, format_file, standard_name, family_names, format_entries, update_file_path
 from papers.latexenc import unicode_to_latex, latex_to_unicode
 
 from papers.filename import NAMEFORMAT, KEYFORMAT
-from papers.utils import bcolors, checksum, move as _move
+from papers.utils import bcolors, move as _move
 import papers.config
 
 from papers.duplicate import (
@@ -179,7 +177,6 @@ def hidden_bibtex(direc):
 def read_entry_dir(direc, update_files=True, relative_to=None):
     """add a directory that contain files from a single entry
     """
-    dirname = os.path.basename(direc)
     hidden_bib = hidden_bibtex(direc)
     if not os.path.exists(hidden_bib):
         raise TypeError('hidden bib missing: not an entry dir')
@@ -339,14 +336,12 @@ class Biblio:
     """
     The bibtex object that we operate on, which is mainly used to read and write to dynamically, and can then send the changes to be stored in a specified bibtex file on disk.
     """
-    def __init__(self, db=None, filesdir=None, key_field='ID', nameformat=NAMEFORMAT, keyformat=KEYFORMAT, relative_to=None, distinct=None):
+    def __init__(self, db=None, filesdir=None, nameformat=NAMEFORMAT, keyformat=KEYFORMAT, relative_to=None, distinct=None):
         """
         relative_to : bibtex directory, optional
             use relative paths instead of absolute path
         """
         self.filesdir = filesdir
-        # assume an already sorted list
-        self.key_field = key_field
         if db is None:
             db = Library()
         elif not isinstance(db, Library):
@@ -377,26 +372,11 @@ class Biblio:
             self.db.add(e)
 
     @classmethod
-    def loads(cls, bibtex, filesdir):
-        db = parse_string(bibtex)
-        return cls(db, filesdir)
-
-    def dumps(self):
-        return format_library(self.db)
-
-    @classmethod
     def load(cls, bibtex, filesdir, relative_to=None, **kw):
         bibtexs = open(bibtex).read()
         kw.setdefault('distinct', Distinct.for_bibtex(bibtex))
         loaded_bib = cls(parse_string(bibtexs), filesdir, relative_to=relative_to if relative_to is not None else os.path.dirname(bibtex), **kw)
         return loaded_bib
-
-    # make sure the path is right
-    # def assert_files_exist(self):
-    #     for e in self.entries:
-    #         files = parse_file(e["file"], self.relative_to)
-    #         for f in files:
-    #             assert os.path.exists(f), f"{f} does not exist"
 
     @classmethod
     def newbib(cls, bibtex, filesdir, relative_to=None, **kw):
@@ -407,7 +387,7 @@ class Biblio:
         return cls.load(bibtex, filesdir, relative_to=relative_to, **kw)
 
     def key(self, e):
-        return e[self.key_field].lower()
+        return e['ID'].lower()
 
 
     def sort(self):
@@ -525,7 +505,7 @@ class Biblio:
         " generate a unique key not yet present in the record "
         keys = {self.key(e) for e in self.db.entries}
         key = self.keyformat(entry)
-        if keys and key in keys: # and not isinstance(keys, set):
+        if keys and key in keys:
             key = append_abc(key, keys)
         return key
 
@@ -843,11 +823,7 @@ class Biblio:
                 for k in e:
                     if k == k.lower() and k != 'abstract': # all but ENTRYTYPE, ID, abstract
                         try:
-                            if encoding == 'unicode':
-                                e[k] = latex_to_unicode(e[k])
-                            elif encoding == 'latex':
-                                e[k] = unicode_to_latex(e[k])
-                        # except KeyError as error:
+                            e[k] = unicode_to_latex(e[k])
                         except (KeyError, ValueError) as error:
                             logger.warning(get_entry_val(e, 'ID', '')+': '+k+': failed to encode: '+str(error))
 
@@ -930,8 +906,8 @@ def get_biblio(config):
     """
     if config.bibtex is None:
         raise ValueError('bibtex is not initialized')
-    relative_to = os.path.sep if config.absolute_paths else (os.path.dirname(config.bibtex) if config.bibtex else None)
-    if config.bibtex and os.path.exists(config.bibtex):
+    relative_to = os.path.sep if config.absolute_paths else os.path.dirname(config.bibtex)
+    if os.path.exists(config.bibtex):
         biblio = Biblio.load(config.bibtex, config.filesdir, nameformat=config.nameformat, keyformat=config.keyformat)
         if biblio.relative_to != relative_to:
             biblio.update_file_path(relative_to)
@@ -976,7 +952,7 @@ def entry_filecheck_metadata(e, file, image=False):
 
     try:
         doi = extract_pdf_doi(file, image=image)
-    except Exception as error:
+    except Exception:
         raise ValueError(get_entry_val(e, 'ID', '')+': failed to parse doi: "{}"'.format(file))
     if not isvaliddoi(doi):
         raise ValueError(get_entry_val(e, 'ID', '')+': invalid parsed doi: '+doi)
@@ -1002,72 +978,6 @@ def fix_mendeley_path(file, key=''):
         and os.path.exists(os.path.dirname(candidate))): # simply requires that '/'+directory exists
             file = candidate
     return file
-
-
-def entry_filecheck(e, delete_broken=False, fix_mendeley=False,
-    check_hash=False, check_metadata=False, interactive=True, image=False, relative_to=None):
-    """
-    Checks the bib entry file actually corresponds to an existing, correct file on disk.
-    """
-
-    if 'file' not in e:
-        return
-
-    if check_hash:
-        import hashlib
-
-    newfiles = []
-    hashes = set()
-    realpaths = set()
-    fixed = {}
-
-    for i, file in enumerate(parse_file(e['file'], relative_to=relative_to)):
-
-        realpath = os.path.realpath(file)
-        if realpath in realpaths:
-            logger.info(get_entry_val(e, 'ID', '')+': remove duplicate path: "{}"'.format(fixed.get(file, file)))
-            continue
-        realpaths.add(realpath) # put here so that for identical
-                                   # files that are checked and finally not
-                                   # included, the work is done only once
-
-        if fix_mendeley and not os.path.exists(file):
-            old = file
-            file = fix_mendeley_path(file, key=get_entry_val(e, 'ID', ''))
-
-            if old != file:
-                logger.info(get_entry_val(e, 'ID', '')+': file name fixed: "{}" => "{}".'.format(old, file))
-                fixed[old] = file # keep record of fixed files
-
-        # parse PDF and check for metadata
-        if check_metadata and file.lower().endswith('.pdf'):
-            try:
-                entry_filecheck_metadata(e, file, image=image)
-            except ValueError as error:
-                logger.warning(error)
-
-        # check existence
-        if not os.path.exists(file):
-            logger.warning(get_entry_val(e, 'ID', '')+': "{}" does not exist'.format(file)+delete_broken*' ==> delete')
-            if delete_broken:
-                logger.info('delete file from entry: "{}"'.format(file))
-                continue
-            elif interactive:
-                ans = input('delete file from entry ? [Y/n] ')
-                if ans.lower() == 'y':
-                    continue
-
-        elif check_hash:
-            # hash_ = hashlib.sha256(open(file, 'rb').read()).digest()
-            hash_ = checksum(file) # a little faster
-            if hash_ in hashes:
-                logger.info(get_entry_val(e, 'ID', '')+': file already exists (identical checksum): "{}"'.format(file))
-                continue
-            hashes.add(hash_)
-
-        newfiles.append(file)
-
-    e['file'] = format_file(newfiles, relative_to=relative_to)
 
 
 def clean_filesdir(biblio, interactive=True, ignore_files=None, ignore_folders=None):

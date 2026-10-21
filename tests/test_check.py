@@ -2,11 +2,8 @@ import unittest
 """Tests for papers check --format-name --encoding --fix-doi --fix-key
 Documented in README: fix entries (papers check --format-name --encoding unicode --fix-doi --fix-key ...)
 """
-import os
-
 from tests.common import LocalInstallTest
 from papers.bib import Biblio
-from papers.config import CONFIG_FILE_LOCAL
 
 
 # Entry with author in "First Last" format (will be formatted to "Last, First")

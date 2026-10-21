@@ -8,7 +8,6 @@ import logging
 import argparse
 import subprocess as sp
 import shutil
-import itertools
 import fnmatch   # unix-like match
 
 import papers
@@ -16,23 +15,22 @@ from papers import logger
 from papers.extract import extract_pdf_doi, isvaliddoi, extract_pdf_metadata, prefetch_pdf_metadata
 from papers.extract import fetch_bibtex_by_doi, fetch_bibtex_by_fulltext_crossref, fetch_bibtex_by_fulltext_scholar
 from papers.encoding import parse_file, format_file, family_names, format_entries, standard_name, format_entry, parse_keywords, format_key
-from papers.config import (bcolors, Config, MachineConfig, search_config, CONFIG_FILE, CONFIG_FILE_LOCAL,
-                           DATA_DIR, CONFIG_FILE_LEGACY, CONFIG_FILE_LEGACY_XDG,
+from papers.config import (Config, MachineConfig, CONFIG_FILE, CONFIG_FILE_LOCAL, LIBRARY_CONFIG_FILES,
+                           CONFIG_FILE_LEGACY, CONFIG_FILE_LEGACY_XDG,
                            SETTINGS, LIBRARY_ONLY, parse_value, format_value, is_pool_path, short_home)
 from papers.duplicate import edit_entries, duplicate_groups, fuzzy_pairs, FUZZY_RATIO
 from papers.merge import Resolver, DuplicateError, ON_DUPLICATE
 from papers.entries import get_entry_val, entry_content_equal, entry_from_dict
-from papers.bib import (Biblio, entry_filecheck,
-                        backupfile as backupfile_func, isvalidkey, DuplicateKeyError, clean_filesdir,
+from papers.bib import (backupfile as backupfile_func, isvalidkey, DuplicateKeyError, clean_filesdir,
                         download_url, get_biblio, scan_dir_items, hidden_bibtex)
 from papers.install import (resolve_install, apply_install, init_backup, _ask_path, RESET_WORDS,
                             InputAsker, DefaultAsker)
-from papers.utils import view_pdf, open_folder, PapersExit, file_uri_to_path, find_masked_viewer, set_directory
+from papers.utils import bcolors, search_config, view_pdf, open_folder, PapersExit, file_uri_to_path, find_masked_viewer, set_directory
 from papers.identifiers import read_selection, select_entries, ACCEPTED as ENTRY_IDS
-from papers.files import (FilesPolicy, realpath, is_inside, is_download, plan_moves, link_snapshot,
+from papers.files import (FilesPolicy, realpath, is_download, plan_moves, link_snapshot,
                           moved_links, execute_moves, files_to_delete, describe_file, delete_files,
                           check_entry_files)
-from papers.pools import (Pools, PoolError, Exchange, PoolLookup, use_pool_files, report_lines,
+from papers.pools import (Pools, Exchange, PoolLookup, use_pool_files, report_lines,
                           export, status_lines, machine_pool_lines, pool_path_setting, library_config_file)
 from papers.backup import (silent_backup_bib, restore_from_backupdir,
                            git_undo, git_redo, git_restore_state, list_backup_dirs)
@@ -66,9 +64,6 @@ def check_legacy_config(configfile):
             configfile = newname
 
     return configfile
-
-
-from papers.config import LIBRARY_CONFIG_FILES
 
 
 def find_config(start_dir='.', machine=None):
@@ -113,10 +108,7 @@ def savebib(biblio, config):
         except Exception as error:
             logger.error(f'the bibliography was saved, but its git backup failed: {error}')
     else:
-        logger.debug(f'do not backup bib: git is off')
-    # if config.git:
-        # config.gitcommit()
-
+        logger.debug('do not backup bib: git is off')
 
 
 def view_entry_files(biblio, entry):
@@ -282,7 +274,7 @@ def uninstallcmd(parser, o, config):
         print(f"remove configuration file: {config.file}")
         os.remove(config.file)
     else:
-        logger.info(f"The uninstaller found no config file to remove.")
+        logger.info("The uninstaller found no config file to remove.")
         return
 
     # be transparent about what is left behind
@@ -800,11 +792,6 @@ def checkcmd(parser, o, config):
 
     biblio = get_biblio(config)
 
-    # if o.fix_all:
-    #     o.fix_doi = True
-    #     o.fetch_all = True
-    #     o.fix_key = True
-
     selection = list(o.entries) + list(o.keys or [])
     entries = select_entries(biblio, selection) if selection else list(biblio.entries)
     for e in entries:
@@ -1210,7 +1197,7 @@ def remove_entries(biblio, entries, config, delete_files=None, ask=True):
     if not inside:
         return []
     if ask and stdin_is_terminal():
-        print(f"files of the removed entries that no other entry links to:")
+        print("files of the removed entries that no other entry links to:")
         for f in inside:
             print(f"  {describe_file(f)}")
         if input(f"also delete {len(inside)} file(s)? [y/N] ").lower() in ('y', 'yes'):
@@ -1365,12 +1352,10 @@ def undocmd(parser, o, config):
     logger.warning("git-tracking is not installed: undo / redo is limited to 1 step back and forth")
     back = backupfile_func(config.bibtex)
     tmp = config.bibtex + '.tmp'
-    # my = :config.bibtex, config.filesdir)
     logger.info(config.bibtex+' <==> '+back)
     shutil.copy(config.bibtex, tmp)
     shutil.move(back, config.bibtex)
     shutil.move(tmp, back)
-    # o.savebib()
 
 def restorecmd(parser, o, config):
     if not config.git:
@@ -1522,10 +1507,6 @@ def listcmd(parser, o, config):
     def _longmatch(word, target):
         return _match(word, target, fuzzy=o.fuzzy, substring=not o.strict)
 
-    def _nfiles(e):
-        return len(parse_file(get_entry_val(e, 'file', ''), relative_to=biblio.relative_to))
-
-
     def _requiresreview(e):
         if not isvalidkey(get_entry_val(e, 'ID', '')): return True
         if 'doi' in e and not isvaliddoi(e['doi']): return True
@@ -1650,7 +1631,6 @@ def listcmd(parser, o, config):
             view_entry_files(biblio, e)
 
     elif o.field:
-        # entries = [{k:e[k] for k in e if k in o.field+['ID','ENTRYTYPE']} for e in entries]
         for e in entries:
             print(format_key(e, no_key=o.no_key),*[get_entry_val(e, k, "") for k in o.field])
     elif o.key_only:
@@ -1875,11 +1855,7 @@ def get_parser(config=None):
     installp.add_argument('--pool', nargs='+', action='extend', metavar='NAME|PATH', help=argparse.SUPPRESS)
 
     grp = installp.add_argument_group('status')
-    # grp.add_argument('-l','--status', action='store_true')
-    # grp.add_argument('-v','--verbose', action='store_true')
-    # grp.add_argument('-c','--check-files', action='store_true')
     grp.add_argument('--no-check-files', action='store_true', help='faster, less info')
-    # grp.add_argument('-v','--verbose', action='store_true', help='app status info')
 
 
     # uninstall
@@ -1895,7 +1871,6 @@ def get_parser(config=None):
     addp = subparsers.add_parser('add', description='add PDF(s) or bibtex(s) to library',
         parents=[cfg, namefmt, keyfmt])
     addp.add_argument('file', nargs='*', default=[], type=file_uri_to_path)
-    # addp.add_argument('-f','--force', action='store_true', help='disable interactive')
 
     grp = addp.add_argument_group('duplicate check',
         description='''An added entry is the same paper as a library entry when they have
@@ -1977,9 +1952,6 @@ def get_parser(config=None):
     grp.add_argument('--fix-key', action='store_true', help='fix key based on author name and date (in case missing or digit)')
     grp.add_argument('--key-ascii', action='store_true', help='replace keys unicode character with ascii')
     grp.add_argument('--auto-key', action='store_true', help='new, auto-generated key for all entries')
-    #     grp.add_argument('--nauthor', type=int, default=config.nauthor, help='number of authors to include in key (default:%(default)s)')
-    #     grp.add_argument('--ntitle', type=int, default=config.ntitle, help='number of title words to include in key (default:%(default)s)')
-    # grp.add_argument('--ascii-key', action='store_true', help='replace unicode characters with closest ascii')
 
     grp = checkp.add_argument_group('crossref fetch and fix')
     grp.add_argument('--fix-doi', action='store_true', help='fix doi for some common issues (e.g. DOI: inside doi, .received at the end')
@@ -2001,9 +1973,6 @@ def get_parser(config=None):
         error (exit with status 1 if there is any group; the default without a terminal,
         and skip with --force)''')
     grp.add_argument('-m', '--mode', choices=list('ims'), help='deprecated: use --on-duplicate (i: ask, m: keep, s: skip)')
-    # grp.add_argument('--ignore', action='store_true', help='ignore unresolved conflicts')
-    # checkp.add_argument('--merge-keys', nargs='+', help='only merge remove / merge duplicates')
-    # checkp.add_argument('--duplicates',action='store_true', help='remove / merge duplicates')
 
 
     # file
@@ -2074,8 +2043,6 @@ def get_parser(config=None):
     # =====
     filecheckp = subparsers.add_parser('filecheck', description='deprecated: use the subcommands of `papers file`',
         parents=[cfg, namefmt])
-    # filecheckp.add_argument('-f','--force', action='store_true',
-    #     help='do not ask before performing actions')
 
     # action on files
     filecheckp.add_argument('-r','--rename', action='store_true',
@@ -2100,13 +2067,6 @@ def get_parser(config=None):
         help='fix a Mendeley bug where the leading "/" is omitted.')
 
     filecheckp.add_argument('--force', action='store_true', help='no interactive prompt, strictly follow options')
-    # filecheckp.add_argument('--search-for-files', action='store_true',
-    #     help='search for missing files')
-    # filecheckp.add_argument('--searchdir', nargs='+',
-    #     help='search missing file link for existing bibtex entries, based on doi')
-    # filecheckp.add_argument('-D', '--delete-free', action='store_true',
-        # help='delete file which is not associated with any entry')
-    # filecheckp.add_argument('-a', '--all', action='store_true', help='--hash and --meta')
 
     # list
     # ======
@@ -2172,9 +2132,6 @@ def get_parser(config=None):
     grp.add_argument('--rename', action='store_true', help='deprecated: `papers file rename -`')
     grp.add_argument('--copy', action='store_true', help='deprecated: `papers file rename --keep-source -`')
     grp.add_argument('-o', '--open', action='store_true', help='deprecated: `papers open -`')
-
-    # grp.add_argument('--merge-duplicates', action='store_true')
-
 
     # edit, rm, tag
     # =============
@@ -2286,8 +2243,6 @@ def get_parser(config=None):
     extractp.add_argument('--scholar', action='store_true', help='use google scholar instead of default crossref for fulltext search')
     extractp.add_argument('--image', action='store_true', help='convert to image and use tesseract instead of pdftotext')
 
-    # *** Pure OS related file checks ***
-
     # undo
     # ====
     _restorep = argparse.ArgumentParser(add_help=False)
@@ -2296,8 +2251,8 @@ def get_parser(config=None):
     _stepsp = argparse.ArgumentParser(add_help=False)
     _stepsp.add_argument('-n', '--steps', type=int, default=1, help='number of times undo/redo should be performed')
 
-    undop = subparsers.add_parser('undo', parents=[cfg, _restorep, _stepsp], help='Undo changes on bibtex (if --git is not enabled, only back and forth with last modification). If --git-lfs is enabled, the file entry may differ if it does not exist on disk any more, unless --restore-files was passed.')
-    redop = subparsers.add_parser('redo', parents=[cfg, _restorep, _stepsp], help='Redo changes on bibtex (if --git is not enabled, this has the same effect as papers undo)')
+    subparsers.add_parser('undo', parents=[cfg, _restorep, _stepsp], help='Undo changes on bibtex (if --git is not enabled, only back and forth with last modification). If --git-lfs is enabled, the file entry may differ if it does not exist on disk any more, unless --restore-files was passed.')
+    subparsers.add_parser('redo', parents=[cfg, _restorep, _stepsp], help='Redo changes on bibtex (if --git is not enabled, this has the same effect as papers undo)')
     restorep = subparsers.add_parser('restore-backup', parents=[cfg, _restorep], help='Restore bibtex from backup. Also restore files if --restore-files if passed (--git-lfs only).')
     restorep.add_argument('--ref', help='Optional: restore specific commit (execute `papers git whatchanged` to obtain appropriate reference)')
 
@@ -2498,7 +2453,6 @@ def _main(argv):
     else:
         parser.print_help()
         raise PapersExit()
-        # parser.exit(1)
 
 
 def main_clean_exit(args=None):

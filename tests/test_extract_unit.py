@@ -553,7 +553,6 @@ class TestPrefetch(unittest.TestCase):
 
     def test_prefetch_runs_each_pdf_and_restores_logging(self):
         from unittest import mock
-        import logging
         from papers import logger
         from papers.extract import prefetch_pdf_metadata
         seen = []

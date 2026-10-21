@@ -90,8 +90,6 @@ def search_config(filenames, start_dir, default=None):
             return default
         current_dir = parent_dir
 
-    return default
-
 
 def hash_bytestr_iter(bytesiter, hasher, ashexstr=False):
     for block in bytesiter:

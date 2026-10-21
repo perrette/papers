@@ -3,10 +3,9 @@ import os
 import tempfile
 import unittest
 
-from papers.encoding import update_file_path, standard_name, strip_outmost_brackets
+from papers.encoding import update_file_path, standard_name
 from papers.bib import parse_file, format_file
 from papers.encoding import (
-    _outermost_bracket_groups,
     family_names,
     parse_keywords,
     format_key,
@@ -89,22 +88,6 @@ class TestUpdateFilePath(unittest.TestCase):
             self.assertIn("file", entry)
 
 
-class TestOutermostBracketGroups(unittest.TestCase):
-    """Test _outermost_bracket_groups (used for name parsing)"""
-
-    def test_single_group(self):
-        self.assertEqual(_outermost_bracket_groups('{my name}'), ['my name'])
-
-    def test_multiple_groups(self):
-        self.assertEqual(_outermost_bracket_groups('{my} {name}'), ['my', 'name'])
-
-    def test_nested_braces(self):
-        # The function extracts content between outermost braces; inner {} are included
-        result = _outermost_bracket_groups("{my nam\\'{e}}")
-        self.assertEqual(len(result), 1)
-        self.assertIn("my nam", result[0])
-
-
 class TestStandardName(unittest.TestCase):
 
     def test_standard_name(self):
@@ -112,12 +95,6 @@ class TestStandardName(unittest.TestCase):
         result = standard_name("Doe, Jane and Smith, John")
         self.assertIn("Doe", result)
         self.assertIn("Smith", result)
-
-
-class TestStripOutmostBrackets(unittest.TestCase):
-
-    def test_strips_single_bracket_group(self):
-        self.assertEqual(strip_outmost_brackets("{Smith}"), "Smith")
 
 
 class TestFamilyNames(unittest.TestCase):
