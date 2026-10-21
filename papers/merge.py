@@ -32,8 +32,8 @@ from bibtexparser.model import Entry, Field
 
 from papers import logger
 from papers.duplicate import normalize_text, split_names, parse_name, ASK
-from papers.encoding import parse_file, format_file
-from papers.entries import get_entry_val, parse_string, format_library, library_from_entries
+from papers.entries import (get_entry_val, parse_string, format_library, library_from_entries, parse_file,
+                            format_file)
 from papers.identifiers import normalize_doi
 from papers.utils import bcolors, checksum, edit_text, PapersExit
 

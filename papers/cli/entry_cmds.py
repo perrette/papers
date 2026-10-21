@@ -8,9 +8,8 @@ import papers.files
 from papers import logger
 from papers.bib import isvalidkey
 from papers.duplicate import FUZZY_RATIO, duplicate_groups, fuzzy_pairs
-from papers.encoding import (family_names, format_entries, format_entry, format_file, format_key, parse_file,
-                             parse_keywords, standard_name)
-from papers.entries import entry_from_dict, get_entry_val
+from papers.encoding import family_names, format_entries, format_entry, format_key, parse_keywords, standard_name
+from papers.entries import entry_from_dict, get_entry_val, format_file, parse_file
 from papers.extract import isvaliddoi, prefetch_pdf_metadata
 from papers.files import (attach_files, delete_files, describe_file, download_url, files_policy, rename_files,
                           scan_dir_items)

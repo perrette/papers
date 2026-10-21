@@ -15,6 +15,9 @@ from papers.entries import (
     parse_string,
     format_library,
     library_from_entries,
+    parse_file,
+    format_file,
+    update_file_path,
 )
 from papers.encoding import (
     latex_to_unicode_library,
@@ -28,7 +31,7 @@ from papers.extract import parse_doi
 from papers.extract import extract_pdf_metadata
 from papers.extract import fetch_bibtex_by_fulltext_crossref, fetch_bibtex_by_doi
 
-from papers.encoding import parse_file, format_file, standard_name, family_names, format_entries, update_file_path
+from papers.encoding import standard_name, family_names, format_entries
 from papers.latexenc import unicode_to_latex
 
 from papers.filename import NAMEFORMAT, KEYFORMAT

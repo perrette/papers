@@ -16,8 +16,7 @@ import requests
 import papers.config
 from papers import logger
 from papers.config import Config, LIBRARY_CONFIG_FILES
-from papers.encoding import parse_file, format_file
-from papers.entries import get_entry_val, parse_string
+from papers.entries import get_entry_val, parse_string, parse_file, format_file
 from papers.extract import extract_pdf_doi, isvaliddoi
 from papers.latexenc import latex_to_unicode
 from papers.utils import checksum, search_config, PapersExit

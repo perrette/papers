@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from papers.entries import parse_file as bp_parse_file, parse_string, get_entry_val, library_from_entries
+from papers.entries import parse_bibtex_file, parse_string, get_entry_val, library_from_entries
 from papers.encoding import latex_to_unicode_library
 
 from papers.bib import Biblio
@@ -30,7 +30,7 @@ class TestAdd(BibTest):
         self.assertTrue(os.path.exists(self.mybib))
 
     def _checkbib(self, doi_only=False, dismiss_key=False):
-        db1 = bp_parse_file(self.mybib)
+        db1 = parse_bibtex_file(self.mybib)
         self.assertTrue(len(db1.entries) > 0)
         entry1 = db1.entries[0]
         file = get_entry_val(entry1, 'file', '').strip()
@@ -103,7 +103,7 @@ class TestAdd(BibTest):
         old_path = str(os.path.join(self.filesdir, self.file_rename)).split(os.path.sep)
         self.assertEqual(old_path[-1], new_path[-1])
         self.assertEqual(old_path[0], new_path[0])
-        db = bp_parse_file(self.mybib)
+        db = parse_bibtex_file(self.mybib)
         journal = db.entries[0]['journal']
         self.assertEqual(journal, new_path[-2]) #TODO a little gross, hardcoded
 

@@ -3,8 +3,7 @@ import copy
 from pathlib import Path
 import platformdirs
 
-from papers.encoding import parse_file
-from papers.entries import parse_string, get_entry_val
+from papers.entries import parse_string, get_entry_val, parse_file
 from papers import logger
 from papers.filename import NAMEFORMAT, KEYFORMAT
 from papers import __version__
