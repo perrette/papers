@@ -3,7 +3,7 @@ import os
 import unittest
 from unittest.mock import patch
 from urllib.parse import quote
-from tests.common import LocalInstallTest, BaseTest, Biblio, tempfile
+from tests.common import LocalInstallTest, BaseTest, BibTest, Biblio, tempfile, paperscmd
 from papers.__main__ import VIEWER_PASSTHROUGH_ENV
 from papers.utils import PapersExit, find_masked_viewer, file_uri_to_path
 from papers.utils import strip_all
@@ -366,3 +366,23 @@ class FindMaskedViewerTest(unittest.TestCase):
     def test_file_uri_to_path(self):
         self.assertEqual(file_uri_to_path('file:///tmp/a%20b,%203.pdf'), '/tmp/a b, 3.pdf')
         self.assertEqual(file_uri_to_path('/tmp/a b.pdf'), '/tmp/a b.pdf')
+
+
+class TestReviewRequiredKeepsDoi(BibTest):
+
+    def test_doi_unchanged(self):
+        # the invalid DOI used to be wrapped in color codes, and saved by an action
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            bib = os.path.join(d, 'lib.bib')
+            open(bib, 'w').write("""@article{a2000,
+ author = {Author, A.},
+ title = {One},
+ year = {2000},
+ doi = {not a doi}
+}
+""")
+            paperscmd(f'list --review-required --add-keywords checked --bibtex {bib} --no-git')
+            text = open(bib).read()
+        self.assertIn('doi = {not a doi}', text)
+        self.assertIn('checked', text)

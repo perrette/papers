@@ -25,6 +25,7 @@ returns "different" for them.
 import json
 import os
 import re
+import shlex
 import tempfile
 
 from unidecode import unidecode
@@ -442,11 +443,20 @@ def fuzzy_pairs(entries, ratio=FUZZY_RATIO):
 def edit_entries(entries, editor=None):
     '''edit entries in a text editor; returns the edited entries, or the
     original entries if the edit failed or does not parse as bibtex'''
-    filename = tempfile.mktemp(suffix='.txt')
+    fd, filename = tempfile.mkstemp(suffix='.txt')
+    os.close(fd)
+    try:
+        return _edit_entries_file(filename, entries, editor)
+    finally:
+        os.remove(filename)
+
+
+def _edit_entries_file(filename, entries, editor):
     with open(filename, 'w') as f:
         f.write(format_library(library_from_entries(entries)))
 
-    res = os.system('{} {}'.format(editor or os.getenv('EDITOR'), filename))
+    editor = editor or os.environ.get('VISUAL') or os.environ.get('EDITOR') or 'vi'
+    res = os.system('{} {}'.format(editor, shlex.quote(filename)))
 
     if res != 0:
         logger.error('failed to edit file -- keeping original entries')

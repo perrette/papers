@@ -834,3 +834,27 @@ class TestEditEntries(unittest.TestCase):
     def test_editor_failure_returns_originals(self):
         entries = parse_string('@article{A2000,\n title = {One}\n}').entries
         self.assertIs(edit_entries(entries, editor='false'), entries)
+
+
+class TestEditEntriesTempFile(unittest.TestCase):
+
+    bib = """@article{A2000,
+ author = {A. Author},
+ title = {One},
+ year = {2000}
+}"""
+
+    def test_temporary_file_removed(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            with patch('tempfile.tempdir', d):
+                edit_entries(parse_string(self.bib).entries, editor='true')
+            self.assertEqual(os.listdir(d), [])
+
+    def test_editor_fallback(self):
+        # without $EDITOR, the command used to be "None <file>"
+        with patch.dict(os.environ, {}, clear=False) as env, patch('os.system', return_value=1) as system:
+            env.pop('EDITOR', None)
+            env.pop('VISUAL', None)
+            edit_entries(parse_string(self.bib).entries)
+        self.assertTrue(system.call_args[0][0].startswith('vi '))
