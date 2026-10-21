@@ -361,6 +361,38 @@ def scan_dir_walk(direc):
             yield 'file', os.path.join(root, name), [os.path.join(root, a) for a in attachments]
 
 
+def scan_dir_items(direc, quiet=False):
+    """the items of `scan_dir_walk`, in the order Biblio.scan_dir adds them:
+    entry directories and bibtex files first, then the other files, without
+    those linked from the bibtex files (their entry comes from the bibtex,
+    so they are neither parsed nor looked up online)"""
+    first, others = [], []
+    for item in scan_dir_walk(direc):
+        kind, path, _ = item
+        (first if kind == 'entry' or path.lower().endswith('.bib') else others).append(item)
+    linked = set()
+    for kind, path, _ in first:
+        if kind != 'file':
+            continue
+        try:
+            db = parse_string(open(path).read())
+        except Exception as error:
+            logger.warning(path+'::'+str(error))
+            continue
+        relative_to = os.path.dirname(os.path.abspath(path))
+        for e in db.entries:
+            for file in parse_file(get_entry_val(e, 'file', ''), relative_to=relative_to):
+                linked.add(os.path.realpath(file))
+    rest = []
+    for item in others:
+        if os.path.realpath(item[1]) in linked:
+            if not quiet:
+                logger.info(f'{item[1]}: linked from a scanned bibtex file, not scanned')
+            continue
+        rest.append(item)
+    return first + rest
+
+
 class Biblio:
     """
     The bibtex object that we operate on, which is mainly used to read and write to dynamically, and can then send the changes to be stored in a specified bibtex file on disk.
@@ -676,7 +708,7 @@ class Biblio:
 
     def scan_dir_iter(self, direc, search_doi=True, search_fulltext=True, **kw):
 
-        for kind, path, attachments in scan_dir_walk(direc):
+        for kind, path, attachments in scan_dir_items(direc):
             # a special entry directory
             if kind == 'entry':
                 logger.debug('read from hidden bibtex')

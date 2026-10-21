@@ -22,7 +22,7 @@ from papers.duplicate import list_duplicates, list_uniques, edit_entries, title_
 from papers.entries import get_entry_val, entry_content_equal, entry_from_dict
 from papers.bib import (Biblio, FUZZY_RATIO, DEFAULT_SIMILARITY, entry_filecheck,
                         backupfile as backupfile_func, isvalidkey, DuplicateKeyError, clean_filesdir,
-                        are_duplicates, download_url, get_biblio, scan_dir_walk, hidden_bibtex)
+                        are_duplicates, download_url, get_biblio, scan_dir_items, hidden_bibtex)
 from papers.install import resolve_install, apply_install, InputAsker, DefaultAsker
 from papers.utils import view_pdf, open_folder, PapersExit, file_uri_to_path, find_masked_viewer
 from papers.backup import (silent_backup_bib, restore_from_backupdir,
@@ -328,7 +328,7 @@ def addcmd(parser, o, config):
         pdfs = []
         for file in o.file:
             if os.path.isdir(file) and o.recursive:
-                pdfs.extend(path for kind, path, _ in scan_dir_walk(file) if kind == 'file' and path.lower().endswith('.pdf'))
+                pdfs.extend(path for kind, path, _ in scan_dir_items(file, quiet=True) if kind == 'file' and path.lower().endswith('.pdf'))
             elif os.path.isfile(file) and file.lower().endswith('.pdf'):
                 pdfs.append(file)
         if len(pdfs) > 1:

@@ -266,3 +266,28 @@ class TestScanFlatLayout(BibTest):
             'Paper main': ['main.pdf', 'main--si.pdf', 'main--sound.mp3'],
             'Paper other': ['other.pdf'],
         })
+
+    def test_scan_with_bibtex(self):
+        """files linked from a bibtex of the scanned tree are not scanned"""
+        from unittest import mock
+        Path(self.files, 'main--sound.mp3').unlink()
+        Path(self.dir, 'scanned').mkdir()
+        os.rename(self.files, os.path.join(self.dir, 'scanned', 'files'))
+        Path(self.dir, 'scanned', 'refs.bib').write_text("""@article{mykey,
+ author = {Main, A.},
+ title = {Paper main, adapted title},
+ year = {2020},
+ file = {:files/main.pdf:pdf;:files/main--si.pdf:pdf}
+}
+""")
+        with mock.patch('papers.bib.extract_pdf_metadata', self.fake_metadata), \
+                mock.patch('papers.__main__.prefetch_pdf_metadata', lambda *a, **k: None):
+            paperscmd('add --recursive scanned --bibtex lib.bib --no-git --relative-paths', cwd=self.dir)
+        self.assertEqual(self.scanned, ['other.pdf'])
+        biblio = Biblio.load(os.path.join(self.dir, 'lib.bib'), None)
+        files = {e.key: [os.path.relpath(f, self.dir) for f in biblio.get_files(e)] for e in biblio.entries}
+        self.assertEqual(files, {
+            'mykey': [os.path.join('scanned', 'files', 'main.pdf'), os.path.join('scanned', 'files', 'main--si.pdf')],
+            'other2020': [os.path.join('scanned', 'files', 'other.pdf')],
+        })
+        self.assertEqual(biblio.entries[0]['title'], 'Paper main, adapted title')

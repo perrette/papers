@@ -51,8 +51,10 @@ attachments (`<name>--<label>.<ext>` next to `<name>.pdf`, see
 [Renaming files and keys](renaming.md#entries-with-several-files)), are added
 as attachments of that PDF's entry, whatever their type, instead of being
 scanned as papers of their own. Bibtex files found in the directory are added
-too, and folders of the pre-2.19 layout (with a hidden `.<name>.bib`) are read
-from their hidden bibtex.
+too, before the PDFs, and the files they link to are not scanned: their entry
+comes from the bibtex, so a folder that holds a bibtex and its files is added
+without looking anything up online. Folders of the pre-2.19 layout (with a
+hidden `.<name>.bib`) are read from their hidden bibtex.
 
 The metadata of a PDF are found as follows:
 
