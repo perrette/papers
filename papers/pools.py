@@ -33,7 +33,9 @@ from papers import logger
 from papers.config import Config, is_pool_path, CONFIG_FILE_LOCAL, LIBRARY_CONFIG_FILES
 from papers.duplicate import Distinct, IdentityIndex, find_duplicates, same_paper, SAME, Verdict
 from papers.entries import get_entry_val, set_entry_key, entry_copy, parse_string, format_library
+from papers.bib import Biblio
 from papers.files import realpath, is_inside
+from papers.library import get_biblio
 from papers.merge import Merge, apply_entry
 from papers.utils import PapersExit, checksum, bcolors
 
@@ -70,7 +72,6 @@ def create_library(path, machine, bibtex='papers.bib', git=None):
 
 def load_biblio(config):
     "the bibliography of a library, without creating its bibtex if it does not exist yet"
-    from papers.bib import Biblio, get_biblio
     if config.bibtex and os.path.exists(config.bibtex):
         return get_biblio(config)
     relative_to = os.path.sep if config.absolute_paths else os.path.dirname(config.bibtex)
@@ -906,7 +907,6 @@ def export(biblio, config, entries, dest, files='copy', git=None):
     none) as a new library in directory `dest`, which must not exist or be
     empty. Return (configuration, bibliography) of the new library, for the
     caller to save."""
-    from papers.bib import Biblio
     if os.path.exists(dest) and (not os.path.isdir(dest) or os.listdir(dest)):
         raise PapersExit(f'{dest}: exists and is not an empty directory')
     if papers.config.DRYRUN:

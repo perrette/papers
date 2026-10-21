@@ -280,7 +280,7 @@ def init_backup(config, snapshot=True):
 
 def snapshot_backup(config):
     "commit the current bibtex to the backup directory"
-    from papers.bib import get_biblio
+    from papers.library import get_biblio
     from papers.backup import backup_bib
     biblio = get_biblio(config)
     backup_bib(biblio, config)

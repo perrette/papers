@@ -216,7 +216,7 @@ class TestAddFromAnotherDirectory(LocalGitInstallTest):
 
     def test_backup_failure_does_not_abort_the_command(self):
         from unittest import mock
-        with mock.patch('papers.__main__.silent_backup_bib', side_effect=RuntimeError('git is broken')):
+        with mock.patch('papers.library.silent_backup_bib', side_effect=RuntimeError('git is broken')):
             with self.assertLogs('papers', level='ERROR'):
                 self.papers(f'add {self.anotherbib}')
         self.assertEqual(len(Biblio.load(self._path(self.mybib), '').entries), 1)

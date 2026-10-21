@@ -9,8 +9,10 @@ library), and the old file is renamed to <name>.v2.bak.
 import os
 
 from papers import logger
+from papers.bib import hidden_bibtex
 from papers.config import (Config, CONFIG_FILE, CONFIG_FILE_LOCAL, CONFIG_FILE_LEGACY,
                            CONFIG_FILE_LEGACY_XDG, INHERITED, short_home)
+from papers.library import get_biblio, savebib, convert_file_links
 
 
 def v2_global_configs():
@@ -27,13 +29,13 @@ def _same_path(a, b):
     return os.path.realpath(os.path.expanduser(a)) == os.path.realpath(os.path.expanduser(b))
 
 
-def migrate_v2_global(machine, relative=False, dryrun=False, convert_links=None):
+def migrate_v2_global(machine, relative=False, dryrun=False):
     """Migrate the global configuration(s) of v2. Return the number of files
     migrated (0: nothing to do).
 
     relative: store the file links relative to the bibtex (by default the
         library keeps its previous setting, absolute in most cases); the
-        file links of the bibtex are converted (with `convert_links(config)`).
+        file links of the bibtex are converted.
     """
     files = v2_global_configs()
     prefix = 'DRYRUN: ' if dryrun else ''
@@ -60,8 +62,8 @@ def migrate_v2_global(machine, relative=False, dryrun=False, convert_links=None)
                 print(f"  {prefix}create the library configuration {target} (paths: {new.get('paths')})")
                 if not dryrun:
                     new.save()
-                    if relative and old.absolute_paths and os.path.exists(new.bibtex) and convert_links:
-                        convert_links(new)
+                    if relative and old.absolute_paths and os.path.exists(new.bibtex):
+                        convert_file_links(new)
                         print(f"  the file links of {new.bibtex} are now relative to its directory")
 
             current = machine.data.get('pools', {}).get('default')
@@ -81,3 +83,19 @@ def migrate_v2_global(machine, relative=False, dryrun=False, convert_links=None)
     if files:
         logger.info(f"migrated {len(files)} global configuration file(s)")
     return len(files)
+
+
+def migrate_folders(config):
+    """move the files of the entries kept in folders of papers < 2.19
+    (<name>/ with a hidden .<name>.bib) to the flat layout of the files directory"""
+    biblio = get_biblio(config)
+    count = 0
+    for e in biblio.entries:
+        files = biblio.get_files(e)
+        if any(os.path.isfile(hidden_bibtex(os.path.dirname(f))) for f in files):
+            logger.info(f"{biblio.key(e)}: move files out of {os.path.dirname(files[0])}")
+            biblio.rename_entry_files(e)
+            count += 1
+    if count:
+        savebib(biblio, config)
+    print(f"{count} entries moved out of the folders of papers < 2.19")

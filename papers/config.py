@@ -309,7 +309,7 @@ class Config:
         self.file = file
         self.local = local
         self.machine = machine if machine is not None else MachineConfig.load()
-        # how the configuration was found (see papers.__main__.find_config)
+        # how the configuration was found (see papers.library.find_config)
         self.origin = None
         self.explicit = set()
         self.filesdir = filesdir

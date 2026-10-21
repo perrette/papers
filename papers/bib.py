@@ -899,47 +899,6 @@ class Biblio:
                         del e[k]
 
 
-def get_biblio(config):
-    """
-    This function initializes a Biblio object based on the bibtex file specified as command line argument or in config file.
-    If no bibtex file is specified, it raises a ValueError().
-    """
-    if config.bibtex is None:
-        raise ValueError('bibtex is not initialized')
-    relative_to = os.path.sep if config.absolute_paths else os.path.dirname(config.bibtex)
-    if os.path.exists(config.bibtex):
-        biblio = Biblio.load(config.bibtex, config.filesdir, nameformat=config.nameformat, keyformat=config.keyformat)
-        if biblio.relative_to != relative_to:
-            biblio.update_file_path(relative_to)
-    else:
-        biblio = Biblio.newbib(config.bibtex, config.filesdir, relative_to=relative_to, nameformat=config.nameformat, keyformat=config.keyformat)
-    if getattr(config, 'light', False):
-        _repair_pool_links(biblio, config)
-    return biblio
-
-
-_REPAIRING = set()
-
-
-def _repair_pool_links(biblio, config):
-    """a light library links to the files of its pool: links broken because
-    the pool renamed a file are repaired by looking the entry up in the pools
-    (saved on the next write)"""
-    from papers.pools import Exchange
-    key = os.path.realpath(config.bibtex)
-    if key in _REPAIRING:  # two light libraries that are each other's pool
-        return
-    _REPAIRING.add(key)
-    try:
-        biblio.repaired_links = Exchange(config, biblio).repair_links()
-        for e, old, new in biblio.repaired_links:
-            logger.info(f'{get_entry_val(e, "ID", "")}: broken link to a pool file repaired: {new}')
-    except Exception as error:
-        logger.warning(f'could not repair the links to the pool files: {error}')
-    finally:
-        _REPAIRING.discard(key)
-
-
 def isvalidkey(key):
     return key and not key[0].isdigit()
 

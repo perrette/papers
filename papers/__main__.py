@@ -15,14 +15,13 @@ from papers import logger
 from papers.extract import extract_pdf_doi, isvaliddoi, extract_pdf_metadata, prefetch_pdf_metadata
 from papers.extract import fetch_bibtex_by_doi, fetch_bibtex_by_fulltext_crossref, fetch_bibtex_by_fulltext_scholar
 from papers.encoding import parse_file, format_file, family_names, format_entries, standard_name, format_entry, parse_keywords, format_key
-from papers.config import (Config, MachineConfig, CONFIG_FILE, CONFIG_FILE_LOCAL, LIBRARY_CONFIG_FILES,
-                           CONFIG_FILE_LEGACY, CONFIG_FILE_LEGACY_XDG,
+from papers.config import (Config, CONFIG_FILE, CONFIG_FILE_LOCAL, LIBRARY_CONFIG_FILES,
                            SETTINGS, LIBRARY_ONLY, parse_value, format_value, is_pool_path, short_home)
 from papers.duplicate import edit_entries, duplicate_groups, fuzzy_pairs, FUZZY_RATIO
 from papers.merge import Resolver, DuplicateError, ON_DUPLICATE
 from papers.entries import get_entry_val, entry_content_equal, entry_from_dict
 from papers.bib import (backupfile as backupfile_func, isvalidkey, DuplicateKeyError, clean_filesdir,
-                        download_url, get_biblio, scan_dir_items, hidden_bibtex)
+                        download_url, scan_dir_items, hidden_bibtex)
 from papers.install import (resolve_install, apply_install, init_backup, _ask_path, RESET_WORDS,
                             InputAsker, DefaultAsker)
 from papers.utils import bcolors, search_config, view_pdf, open_folder, PapersExit, file_uri_to_path, find_masked_viewer, set_directory
@@ -32,83 +31,12 @@ from papers.files import (FilesPolicy, realpath, is_download, plan_moves, link_s
                           check_entry_files)
 from papers.pools import (Pools, Exchange, PoolLookup, use_pool_files, report_lines,
                           export, status_lines, machine_pool_lines, pool_path_setting, library_config_file)
-from papers.backup import (silent_backup_bib, restore_from_backupdir,
+from papers.library import (check_legacy_global_config, check_legacy_config, find_config,
+                            config_for_bibtex, get_biblio, savebib, convert_file_links)
+from papers.migrate import migrate_v2_global, migrate_folders
+from papers.backup import (restore_from_backupdir,
                            git_undo, git_redo, git_restore_state, list_backup_dirs)
 from papers import __version__
-
-
-def check_legacy_global_config():
-    """move the global config file from locations used by previous versions
-    (~/.local/share/papers/config.json on every platform, and the XDG-style
-    location on macOS/Windows where platformdirs now differs)"""
-    for legacy in [CONFIG_FILE_LEGACY, CONFIG_FILE_LEGACY_XDG]:
-        if os.path.realpath(legacy) == os.path.realpath(CONFIG_FILE) or not os.path.exists(legacy):
-            continue
-        if not os.path.exists(CONFIG_FILE):
-            logger.warning(f"Move legacy config file {legacy} to {CONFIG_FILE}")
-            os.makedirs(os.path.dirname(CONFIG_FILE), exist_ok=True)
-            shutil.move(legacy, CONFIG_FILE)
-        else:
-            logger.warning(f"Legacy config file found: {legacy}. Delete to remove this warning:  rm -f '{legacy}'")
-
-def check_legacy_config(configfile):
-    " move config file from ~/.local/.share/papers/ to ~/.config/papersconfig.json and .papers/config.json to .papersconfig.json"
-    if os.path.exists(configfile):
-        p = Path(configfile)
-        if configfile == CONFIG_FILE_LEGACY:
-            shutil.move(configfile, CONFIG_FILE)
-            configfile = CONFIG_FILE
-        elif p.name == "config.json" and p.parent.name == ".papers":
-            newname = str(p.parent.parent/CONFIG_FILE_LOCAL)
-            shutil.move(configfile, newname)
-            configfile = newname
-
-    return configfile
-
-
-def find_config(start_dir='.', machine=None):
-    """The configuration that commands act on, with `origin` telling where it
-    was found:
-    - 'library': a library configuration in start_dir or above;
-    - 'v2-global': the global configuration of papers v2, until `papers migrate`;
-    - 'default-pool': the library of the default pool;
-    - None: no library (a Config with the inherited settings only).
-    """
-    machine = machine or MachineConfig.load()
-    configfile = search_config(LIBRARY_CONFIG_FILES, start_dir=start_dir, default=None)
-    origin = 'library'
-    if configfile is None and os.path.exists(CONFIG_FILE):
-        configfile, origin = CONFIG_FILE, 'v2-global'
-    if configfile is None:
-        pool = machine.pool_path('default')
-        if pool and os.path.exists(os.path.join(pool, CONFIG_FILE_LOCAL)):
-            configfile, origin = os.path.join(pool, CONFIG_FILE_LOCAL), 'default-pool'
-    if configfile is None:
-        return Config(machine=machine)
-    config = Config.load(check_legacy_config(configfile), machine=machine,
-                         local=False if origin == 'v2-global' else None)
-    config.origin = origin
-    return config
-
-
-def savebib(biblio, config):
-    """
-    Given a Biblio object and its configuration, save them to disk.  If you're using the git bib tracker, will trigger a git commit there.
-    """
-    if papers.config.DRYRUN:
-        logger.info(f'DRYRUN: NOT saving {config.bibtex}')
-        return
-    logger.info(f'Saving {config.bibtex}')
-    if biblio is not None:
-        biblio.save(config.bibtex)
-    if config.git:
-        # the backup comes last: a failure must not undo the work done above
-        try:
-            silent_backup_bib(biblio, config)
-        except Exception as error:
-            logger.error(f'the bibliography was saved, but its git backup failed: {error}')
-    else:
-        logger.debug('do not backup bib: git is off')
 
 
 def view_entry_files(biblio, entry):
@@ -244,8 +172,7 @@ def install_global(parser, o, config, asker):
 
     # the global configuration of v2 becomes a library and the default pool,
     # as with `papers migrate` (the library below then updates or replaces it)
-    from papers.migrate import migrate_v2_global
-    migrate_v2_global(machine, dryrun=papers.config.DRYRUN, convert_links=convert_file_links)
+    migrate_v2_global(machine, dryrun=papers.config.DRYRUN)
 
     libdir = os.path.dirname(bibtex)
     target = os.path.join(libdir, CONFIG_FILE_LOCAL)
@@ -379,13 +306,6 @@ def configcmd(parser, o, config):
         convert_file_links(config)
 
 
-def convert_file_links(config):
-    "write the file links of the bibtex as the `paths` setting says (relative or absolute)"
-    biblio = get_biblio(config)  # converts to absolute links if needed
-    biblio.update_file_path(biblio.relative_to)  # converts to relative links if needed
-    savebib(biblio, config)
-
-
 def machine_configcmd(parser, o, machine, name):
     if not name:
         print(f"# {machine.file}" + ("" if machine.exists() else " (does not exist)"))
@@ -437,57 +357,8 @@ def migratecmd(parser, o, config):
         return migrate_light(config, light=o.light)
     if o.folders:
         return migrate_folders(check_install(parser, o, config))
-    from papers.migrate import migrate_v2_global
-    if not migrate_v2_global(config.machine, relative=o.relative, dryrun=papers.config.DRYRUN,
-                             convert_links=convert_file_links):
+    if not migrate_v2_global(config.machine, relative=o.relative, dryrun=papers.config.DRYRUN):
         print("nothing to migrate: no global configuration of papers v2 was found")
-
-
-def migrate_folders(config):
-    """move the files of the entries kept in folders of papers < 2.19
-    (<name>/ with a hidden .<name>.bib) to the flat layout of the files directory"""
-    biblio = get_biblio(config)
-    count = 0
-    for e in biblio.entries:
-        files = biblio.get_files(e)
-        if any(os.path.isfile(hidden_bibtex(os.path.dirname(f))) for f in files):
-            logger.info(f"{biblio.key(e)}: move files out of {os.path.dirname(files[0])}")
-            biblio.rename_entry_files(e)
-            count += 1
-    if count:
-        savebib(biblio, config)
-    print(f"{count} entries moved out of the folders of papers < 2.19")
-
-
-def config_for_bibtex(bibtex, config):
-    """The configuration to use when --bibtex is passed on the command line.
-
-    If it is another library than the configured one, the local configuration
-    of that library (searched from the bibtex's directory upwards, as for the
-    current directory) applies: its files directory, git backup and formats.
-    Without one, the current configuration applies to the bibtex, except that
-    it is never written back to disk and the backup goes to a directory of
-    the bibtex's own.
-    """
-    if config.bibtex and os.path.realpath(bibtex) == os.path.realpath(config.bibtex):
-        return config
-
-    configfile = search_config(LIBRARY_CONFIG_FILES,
-                               start_dir=os.path.dirname(os.path.abspath(bibtex)), default=None)
-    if configfile is not None:
-        other = Config.load(check_legacy_config(configfile), machine=config.machine)
-        if other.bibtex and os.path.realpath(other.bibtex) == os.path.realpath(bibtex):
-            logger.info(f'configuration of {bibtex}: {configfile}')
-            other.origin = 'library'
-            return other
-
-    logger.debug(f'{bibtex} has no configuration of its own: use {config.file} without saving it')
-    config = copy.copy(config)
-    config.file = None
-    if config.git:
-        from papers.backup import resolve_gitdir
-        config.gitdir = resolve_gitdir(bibtex)
-    return config
 
 
 def init_hint(config):
