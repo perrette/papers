@@ -609,5 +609,151 @@ class TestPoolCommand(PoolTest):
         self.assertIn('* sync:               push', self.out('status'))
 
 
+# LIGHT LIBRARIES
+# ===============
+
+class LightTest(PoolTest):
+
+    def setUp(self):
+        super().setUp()
+        self.lib('config files copy')
+        Path(self.path('new.bib')).write_text(NEW_BIB)
+        Path(self.path('mine.pdf')).write_text('mine')
+        self.lib('add ../new.bib')
+        self.take_smith()
+        self.lib_smith = self.files('smith2020climate')[0]
+        self.lib_mine = self.files('mine2022')[0]
+
+
+class TestMigrateLight(LightTest):
+
+    def test_light(self):
+        out = self.out('migrate --light')
+        self.assertTrue(self.json('lib')['light'])
+        # in the pool: relinked, the library's copy deleted
+        self.assertEqual(self.files('smith2020climate'), [self.pool_pdf])
+        self.assertFalse(os.path.exists(self.lib_smith))
+        self.assertTrue(os.path.exists(self.pool_pdf))
+        # not in the pool: kept and listed
+        self.assertEqual(self.files('mine2022'), [self.lib_mine])
+        self.assertTrue(os.path.exists(self.lib_mine))
+        self.assertIn('mine2022: some of its files are not in the pool', out)
+        self.assertIn('papers push', out)
+        self.assertIn('light:              yes', self.out('status'))
+
+    def test_push_then_light(self):
+        self.lib('push')
+        self.lib('migrate --light')
+        self.assertTrue(self.files('mine2022')[0].startswith(self.path('pool', 'files')))
+        self.assertFalse(os.path.exists(self.lib_mine))
+        self.assertEqual(os.listdir(self.path('lib', 'files')), [])
+
+    def test_same_paper_different_content_is_kept(self):
+        Path(self.lib_smith).unlink()
+        Path(self.lib_smith).write_text('another version')
+        self.lib('migrate --light')
+        self.assertEqual(self.files('smith2020climate'), [self.lib_smith])
+        self.assertTrue(os.path.exists(self.lib_smith))
+
+    def test_dry_run(self):
+        self.lib('migrate --light --dry-run')
+        self.assertNotIn('light', self.json('lib'))
+        self.assertTrue(os.path.exists(self.lib_smith))
+
+    def test_full(self):
+        self.lib('push')
+        self.lib('migrate --light')
+        self.lib('migrate --full')
+        self.assertNotIn('light', self.json('lib'))
+        for key in ('smith2020climate', 'mine2022'):
+            files = self.files(key)
+            self.assertTrue(files[0].startswith(self.path('lib', 'files')), files)
+        self.assertTrue(os.path.samefile(self.files('smith2020climate')[0], self.pool_pdf))
+        self.assertTrue(os.path.exists(self.pool_pdf))
+
+    def test_config_refuses_light(self):
+        with self.assertRaisesRegex(PapersExit, 'migrate --light'):
+            self.lib('config light true')
+
+    def test_init_light(self):
+        self.papers('init other --no-git --light --pool ../pool')
+        self.assertTrue(self.json('other')['light'])
+
+
+class TestLight(LightTest):
+
+    def setUp(self):
+        super().setUp()
+        self.lib('push')
+        self.lib('migrate --light')
+
+    def test_rm_never_deletes_pool_files(self):
+        out = self.out('rm smith2020climate --delete-files')
+        self.assertTrue(os.path.exists(self.pool_pdf))
+        self.assertIn('it is a file of a pool', out)
+        self.assertNotIn('smith2020climate', self.bib()[1])
+
+    def test_add_places_files_in_pool(self):
+        self.papers('config name.template {title}', cwd=self.path('pool'))
+        Path(self.path('other.bib')).write_text(NEW_BIB.replace('mine2022', 'other2023').replace(
+            'My own paper', 'Another paper').replace('mine.pdf', 'other.pdf').replace('2022', '2023'))
+        Path(self.path('other.pdf')).write_text('other')
+        self.lib('add ../other.bib')
+        files = self.files('other2023')
+        self.assertEqual(files, [self.path('pool', 'files', 'another-paper.pdf')])
+        self.assertTrue(os.path.exists(self.path('other.pdf')))  # files: copy
+        pool = self.bib('pool')[1]
+        key = self.origin().get(self.entry('other2023')).pool_key
+        self.assertEqual(self.bib('pool')[0].get_files(pool[key]), files)
+
+    def test_add_from_pool_links_to_pool_file(self):
+        self.lib('rm smith2020climate --keep-files')
+        self.take_smith()
+        self.assertEqual(self.files('smith2020climate'), [self.pool_pdf])
+        self.assertEqual(os.listdir(self.path('pool', 'files')).count('smith.pdf'), 1)
+        self.assertEqual(len(self.bib('pool')[1]), 3)  # not added again
+
+    def test_pull_links_to_pool_files(self):
+        Path(self.path('pool', 'files', 'smith-si.pdf')).write_text('supplement')
+        text = Path(self.path('pool', 'papers.bib')).read_text()
+        Path(self.path('pool', 'papers.bib')).write_text(
+            text.replace('file = {:files/smith.pdf:pdf}', 'file = {:files/smith.pdf:pdf;:files/smith-si.pdf:pdf}'))
+        self.lib('pull')
+        self.assertEqual(self.files('smith2020climate'), [self.pool_pdf, self.path('pool', 'files', 'smith-si.pdf')])
+
+    def rename_in_pool(self):
+        new = self.path('pool', 'files', 'renamed.pdf')
+        os.rename(self.pool_pdf, new)
+        text = Path(self.path('pool', 'papers.bib')).read_text()
+        Path(self.path('pool', 'papers.bib')).write_text(text.replace('files/smith.pdf', 'files/renamed.pdf'))
+        return new
+
+    def test_broken_link_repaired_on_load(self):
+        new = self.rename_in_pool()
+        self.lib('tag smith2020climate --add x')  # any command that writes
+        self.assertEqual(self.files('smith2020climate'), [new])
+
+    def test_file_check_fix(self):
+        new = self.rename_in_pool()
+        out = self.out('file check')
+        self.assertIn('broken link to a pool file', out)
+        self.assertIn('fix with --fix', out)
+        self.assertNotEqual(self.files('smith2020climate'), [new])
+        self.lib('file check --fix')
+        self.assertEqual(self.files('smith2020climate'), [new])
+
+
+class TestFullLibraryRepair(PoolTest):
+
+    def test_file_check_fix(self):
+        self.take_smith()  # files: link, the entry links to the pool file
+        new = self.path('pool', 'files', 'renamed.pdf')
+        os.rename(self.pool_pdf, new)
+        text = Path(self.path('pool', 'papers.bib')).read_text()
+        Path(self.path('pool', 'papers.bib')).write_text(text.replace('files/smith.pdf', 'files/renamed.pdf'))
+        self.lib('file check --fix')
+        self.assertEqual(self.files('smith2020climate'), [new])
+
+
 if __name__ == '__main__':
     unittest.main()

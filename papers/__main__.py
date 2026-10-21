@@ -175,6 +175,8 @@ def _install(o, config, asker, target=None):
     plan = resolve_install(config, o, asker=asker, target=target)
     for name, value in format_options(o).items():
         plan.config.set(name, value)
+    if getattr(o, 'light', False):
+        plan.config.light = True  # a new library: no files to convert
     check_pools(plan.config, plan.config.pools)
     return apply_install(plan)
 
@@ -310,8 +312,7 @@ def uninstallcmd(parser, o, config):
 def _check_setting_name(name, machine):
     if name == 'light':
         raise PapersExit("light is not changed with `papers config`, because it changes the file "
-                         "links and the files too: use `papers migrate --light` or `papers migrate --full` "
-                         "(not implemented yet)")
+                         "links and the files too: use `papers migrate --light` or `papers migrate --full`")
     if machine and name.startswith('pools.') and len(name) > len('pools.'):
         return
     if name not in SETTINGS:
@@ -435,8 +436,13 @@ def machine_configcmd(parser, o, machine, name):
 
 def migratecmd(parser, o, config):
     """one-time upgrades from papers v2"""
+    if o.light and o.full:
+        parser.error('--light and --full are mutually exclusive')
     if o.light or o.full:
-        raise PapersExit("migrate --light / --full: not implemented yet")
+        config = check_install(parser, o, config)
+        if config.file is None:
+            raise PapersExit('migrate --light / --full: the library has no configuration file')
+        return migrate_light(config, light=o.light)
     if o.folders:
         return migrate_folders(check_install(parser, o, config))
     from papers.migrate import migrate_v2_global
@@ -583,8 +589,11 @@ def files_mode(o, config):
 
 def files_policy(config, mode, keep=()):
     "what to do with each file, see papers.files.FilesPolicy"
+    pool_dirs = Pools(config).files_dirs()
+    # files placed in the pool by a light library (see papers.pools.use_pool_files)
+    light = config.light and any(realpath(config.filesdir or '') == realpath(d) for d in pool_dirs)
     return FilesPolicy(mode, config.filesdir, current_config=config.file, machine=config.machine, keep=keep,
-                       pool_dirs=Pools(config).files_dirs())
+                       pool_dirs=pool_dirs, light=light)
 
 
 # v2 letters of -m/--mode, and the --on-duplicate word they map to
@@ -630,6 +639,8 @@ def addcmd(parser, o, config):
     set_keyformat_config_from_cmd(o, config)
 
     pools = Pools(config)
+    if config.light:
+        use_pool_files(config, pools)  # files go to the first pool
     biblio = get_biblio(config)
     biblio_init = copy.deepcopy(biblio)
     exchange = Exchange(config, biblio, pools)
@@ -988,12 +999,12 @@ def file_detachcmd(parser, o, config):
 
     alldetached = [f for e in entries for f in detached[id(e)]]
     if o.delete_files:
-        inside, outside, kept = files_to_delete(biblio, alldetached, config.filesdir)
+        inside, outside, kept, in_pool = files_to_delete(biblio, alldetached, config.filesdir,
+                                                         pool_dirs=Pools(config).files_dirs())
     savebib(biblio, config)
     _print_biblio_diff(biblio_init, biblio, entries)
     if o.delete_files:
-        for f in kept:
-            print(f"kept {f}: another entry links to it")
+        print_kept_files(kept, in_pool)
         delete_files(inside + outside, dryrun=papers.config.DRYRUN)
 
 
@@ -1001,6 +1012,14 @@ def file_checkcmd(parser, o, config):
     biblio = get_biblio(config)
     entries = _entries_or_all(biblio, o.entries)
     issues = []
+    # broken links to pool files (repaired on load in a light library)
+    selected = {id(e) for e in entries}
+    repaired = [r for r in getattr(biblio, 'repaired_links', []) + Exchange(config, biblio).repair_links(entries)
+                if id(r[0]) in selected]
+    for e, old, new in repaired:
+        gone = [f for f in old if f not in new]
+        issues.append(f"{e.key}: broken link to a pool file: {';'.join(gone)} -> the pool's file "
+                      f"{';'.join(f for f in new if f not in old)} ({'fixed' if o.fix else 'fix with --fix'})")
     for e in entries:
         issues.extend(check_entry_files(biblio, e, metadata=o.metadata, fix=o.fix))
     for line in issues:
@@ -1111,6 +1130,37 @@ def poolcmd(parser, o, config):
     machine.save()
 
 
+def migrate_light(config, light):
+    """papers migrate --light: link to the files of the first pool and
+    delete the library's copies; --full: copy the pool files linked into
+    the library's files directory"""
+    biblio = get_biblio(config)
+    biblio_init = copy.deepcopy(biblio)
+    exchange = Exchange(config, biblio)
+    if light:
+        relinked, missing, delete, kept = exchange.to_light()
+        for e in missing:
+            print(f'{e.key}: some of its files are not in the pool: kept as they are')
+        if missing:
+            print(f'{len(missing)} entries have files that are not in the pool: run `papers push` first, '
+                  'then `papers migrate --light` again')
+        for f in kept:
+            print(f'kept {f}: the entry links to the pool file now, but this file is outside the files directory')
+    else:
+        relinked = exchange.to_full()
+        delete = []
+    config.light = light
+    if papers.config.DRYRUN:
+        print(f'DRYRUN: light = {"true" if light else "false"} not saved to {config.file}')
+    else:
+        config.save()
+    exchange.origin.save()
+    savebib(biblio, config)
+    _print_biblio_diff(biblio_init, biblio, relinked)
+    delete_files(delete, dryrun=papers.config.DRYRUN)
+    print(f'{len(relinked)} entries relinked; the library is {"light" if light else "full"}')
+
+
 # papers edit, rm, tag
 # ====================
 
@@ -1146,11 +1196,11 @@ def remove_entries(biblio, entries, config, delete_files=None, ask=True):
     files = [f for e in entries for f in biblio.get_files(e)]
     for e in entries:
         biblio.db.remove(e)
-    inside, outside, kept = files_to_delete(biblio, files, config.filesdir)
+    inside, outside, kept, in_pool = files_to_delete(biblio, files, config.filesdir,
+                                                     pool_dirs=Pools(config).files_dirs())
     if delete_files is False:
         return []
-    for f in kept:
-        print(f"kept {f}: another entry links to it")
+    print_kept_files(kept, in_pool)
     if delete_files:
         return inside + outside
     if outside:
@@ -1171,6 +1221,13 @@ def remove_entries(biblio, entries, config, delete_files=None, ask=True):
         print(f"  {f}")
     print("delete them with `papers file clean`, or remove the entries with `--delete-files`")
     return []
+
+
+def print_kept_files(kept, in_pool):
+    for f in kept:
+        print(f"kept {f}: another entry links to it")
+    for f in in_pool:
+        print(f"kept {f}: it is a file of a pool")
 
 
 def _delete_files_option(parser, o):
@@ -1757,6 +1814,8 @@ def get_parser(config=None):
     initp.add_argument('--no-git', action='store_false', dest='git', default=None, help='no git backup')
     initp.add_argument('--git-lfs', action='store_true', default=None, help='also back up the files with git-lfs (implies --git)')
     initp.add_argument('--editor', help='command to open a text editor; it must wait until the editor is closed, e.g. vim or "subl -w"')
+    initp.add_argument('--light', action='store_true',
+        help='a light library: its file links point to the files of its first pool (see `papers migrate --light`)')
     initp.add_argument('--no-check-files', action='store_true', help=argparse.SUPPRESS)
 
     # config
@@ -1785,8 +1844,13 @@ def get_parser(config=None):
     migratep.add_argument('--folders', action='store_true',
         help='move the files of entries kept in folders of papers < 2.19 (<name>/ with a hidden '
              '.<name>.bib) to the flat layout of the files directory')
-    migratep.add_argument('--light', action='store_true', help='not implemented yet')
-    migratep.add_argument('--full', action='store_true', help='not implemented yet')
+    migratep.add_argument('--light', action='store_true',
+        help='make the library light: each file that the first pool has for the same paper (same content) '
+             'is replaced by a link to the pool\'s file, and the library\'s copy in its files directory is '
+             'deleted. Files that are not in the pool are kept and listed (push them first).')
+    migratep.add_argument('--full', action='store_true',
+        help='make the library full again: copy (a hard link when possible) the pool files it links to '
+             'into its files directory, named with its name template')
 
     # install
     # =======

@@ -479,11 +479,6 @@ class TestMigrateV2Global(ConfigTest):
             out = self.papers('status', cwd=self.path('elsewhere'), sp_cmd='check_output')
         self.assertIn('(default pool)', out)
 
-    def test_not_implemented(self):
-        for option in ['--light', '--full']:
-            with self.assertRaises(PapersExit):
-                self.papers('migrate ' + option)
-
 
 class TestMigrateFolders(ConfigTest):
 

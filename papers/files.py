@@ -269,17 +269,16 @@ def execute_moves(moves, force=False):
 # papers rm, papers file detach --delete-files
 # ===========================================
 
-def files_to_delete(biblio, removed_files, filesdir, remaining=None):
+def files_to_delete(biblio, removed_files, filesdir, remaining=None, pool_dirs=()):
     """the files of removed entries or links that may be deleted:
-    (inside, outside, kept) where `inside` are in the files directory,
-    `outside` are elsewhere, and `kept` are still linked by a remaining entry
-    (they are never deleted). Only existing files are returned, once each.
-
-    TODO (light libraries): the files of a pool are never deleted from a
-    light library.
+    (inside, outside, kept, in_pool) where `inside` are in the files
+    directory, `outside` are elsewhere, `kept` are still linked by a
+    remaining entry, and `in_pool` are in the files directory of a pool
+    (`pool_dirs`): those two are never deleted. Only existing files are
+    returned, once each.
     """
     still_linked = linked_files(biblio, remaining)
-    inside, outside, kept = [], [], []
+    inside, outside, kept, in_pool = [], [], [], []
     seen = set()
     for file in removed_files:
         real = realpath(file)
@@ -288,11 +287,13 @@ def files_to_delete(biblio, removed_files, filesdir, remaining=None):
         seen.add(real)
         if real in still_linked:
             kept.append(file)
+        elif any(is_inside(file, d) for d in pool_dirs if d) and not is_inside(file, filesdir):
+            in_pool.append(file)
         elif is_inside(file, filesdir):
             inside.append(file)
         else:
             outside.append(file)
-    return inside, outside, kept
+    return inside, outside, kept, in_pool
 
 
 def is_hard_link(file):
