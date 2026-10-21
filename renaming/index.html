@@ -574,6 +574,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#entries-with-several-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Entries with several files
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#control-fields-when-renaming-files" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -876,6 +887,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#entries-with-several-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Entries with several files
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#control-fields-when-renaming-files" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -934,13 +956,32 @@
 
 
 <h1 id="renaming-files-and-keys">Renaming files and keys<a class="headerlink" href="#renaming-files-and-keys" title="Permanent link">&para;</a></h1>
+<h2 id="entries-with-several-files">Entries with several files<a class="headerlink" href="#entries-with-several-files" title="Permanent link">&para;</a></h2>
+<p>The first file of an entry (the PDF) is named after the name template, and
+any other file (attachments, e.g. supplementary material added with <code>-a</code>) is
+placed next to it, under the same name followed by <code>--</code> and the file's
+original name:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>files/perrette_et_al_2013_a-scaling-approach.pdf
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>files/perrette_et_al_2013_a-scaling-approach--esd-4-11-2013-supplement.pdf
+</code></pre></div>
+<p>The label after <code>--</code> is kept when the entry is renamed again (e.g. after its
+title or year was fixed), so only the part before <code>--</code> changes. If two
+attachments have the same original name, the second one gets a <code>-2</code> suffix.</p>
+<p>Versions before 2.19 placed the files of an entry with several files in a
+folder named after the entry, with a hidden copy of the entry
+(<code>files/&lt;name&gt;/.&lt;name&gt;.bib</code>). Such folders keep working as they are: their
+files are linked from the bibtex, and nothing is moved until the entry is
+renamed. Renaming (<code>papers filecheck --rename</code>, or <code>papers list ... --rename</code>)
+moves the files out of the folder into the layout above, and removes the
+folder if nothing but the hidden bibtex is left in it (a folder with other
+files is kept, and the files left in it are reported).</p>
 <h2 id="control-fields-when-renaming-files">Control fields when renaming files<a class="headerlink" href="#control-fields-when-renaming-files" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>$&gt; papers add --rename --info --name-template "{AuthorX}{year}-{Title}" --name-title-sep '' --name-author-sep '' esd-4-11-2013
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>INFO:papers:found doi:10.5194/esd-4-11-2013
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>INFO:papers:new entry: perrette2013scaling
-<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>INFO:papers:create directory: files/2013
-<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>INFO:papers:mv /home/perrette/playground/papers/esd-4-11-2013.pdf files/PerretteEtAl2013-AScalingApproachToProjectRegionalSeaLevelRiseAndItsUncertainties.pdf
-<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>INFO:papers:renamed file(s): 1
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>$&gt; papers add --rename --info --name-template "{AuthorX}{year}-{Title}" --name-title-sep '' --name-author-sep '' esd-4-11-2013
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>INFO:papers:found doi:10.5194/esd-4-11-2013
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>INFO:papers:new entry: perrette2013scaling
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>INFO:papers:create directory: files/2013
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>INFO:papers:mv /home/perrette/playground/papers/esd-4-11-2013.pdf files/PerretteEtAl2013-AScalingApproachToProjectRegionalSeaLevelRiseAndItsUncertainties.pdf
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>INFO:papers:renamed file(s): 1
 </code></pre></div>
 <p>where <code>--name-template</code> is a python template (formatted via the <code>.format()</code>
 method) with valid fields being any field available in the bibtex. Fields not

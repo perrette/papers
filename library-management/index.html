@@ -981,10 +981,12 @@ folders:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>papers filecheck --clean-filesdir
 </code></pre></div>
 <p>That command will ask before removing anything, unless <code>--force</code> is passed.
-Currently it ignores hidden files and folders, and will only consider folders
-that have a <code>.{folder}.bib</code> file inside, which is the convention <code>papers</code>
-follows to store multiple attachments. That command works best when the files
-are in their own folder, and not mixed up with other things, obviously.</p>
+Currently it ignores hidden files and folders, and of the folders it only
+considers those with a <code>.{folder}.bib</code> file inside, which is how versions
+before 2.19 stored entries with several files (see
+<a href="../renaming/#entries-with-several-files">Renaming files and keys</a>). That
+command works best when the files are in their own folder, and not mixed up
+with other things, obviously.</p>
 
 
 
