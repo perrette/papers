@@ -24,7 +24,8 @@ from papers.entries import get_entry_val, entry_content_equal, entry_from_dict
 from papers.bib import (Biblio, FUZZY_RATIO, DEFAULT_SIMILARITY, entry_filecheck,
                         backupfile as backupfile_func, isvalidkey, DuplicateKeyError, clean_filesdir,
                         are_duplicates, download_url, get_biblio, scan_dir_items, hidden_bibtex)
-from papers.install import resolve_install, apply_install, init_backup, _ask_path, InputAsker, DefaultAsker
+from papers.install import (resolve_install, apply_install, init_backup, _ask_path, RESET_WORDS,
+                            InputAsker, DefaultAsker)
 from papers.utils import view_pdf, open_folder, PapersExit, file_uri_to_path, find_masked_viewer, set_directory
 from papers.backup import (silent_backup_bib, restore_from_backupdir,
                            git_undo, git_redo, git_restore_state, list_backup_dirs)
@@ -236,7 +237,7 @@ def install_global(parser, o, config, asker):
     existing = Config.load(target, machine=machine) if os.path.exists(target) else Config(machine=machine)
 
     o.bibtex = bibtex
-    if o.filesdir and o.filesdir.lower() not in ('none', 'null', 'unset', 'undefined', 'reset', 'delete'):
+    if o.filesdir and o.filesdir.lower() not in RESET_WORDS:
         o.filesdir = os.path.abspath(o.filesdir)
     os.makedirs(libdir, exist_ok=True)
     with set_directory(libdir):
@@ -1170,7 +1171,7 @@ def get_parser(config=None):
     initp = subparsers.add_parser('init', description='create a library in the current directory',
         parents=[loggingp, namefmt, keyfmt])
     initp.add_argument('--bibtex', type=file_uri_to_path,
-        help='bibtex file (default: papers.bib, or the only .bib file of the directory)')
+        help='bibtex file (default: papers.bib, or the first .bib file of the directory)')
     initp.add_argument('--filesdir', type=file_uri_to_path,
         help='files directory (default: files, or an existing pdfs/, papers/... folder)')
     initp.add_argument('--pool', nargs='+', action='extend', metavar='NAME|PATH',

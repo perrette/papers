@@ -23,7 +23,7 @@ version 3.0.0
 ...
 ```
 
-By default the bibtex is `papers.bib` (or the `.bib` file already present in
+By default the bibtex is `papers.bib` (or the first `.bib` file present in
 the directory) and the files directory is `files` (or an existing `pdfs`,
 `pdf`, `papers` or `bibliography` folder). The options of `papers init` are
 `--bibtex`, `--filesdir`, `--pool NAME|PATH...` (see [Pools](#pools)),
