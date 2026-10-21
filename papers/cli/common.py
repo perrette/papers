@@ -86,13 +86,12 @@ def check_install(parser, o, config, bibtex_must_exist=True):
         config.git = o.git
 
     if not config.bibtex:
-        print(f"papers: error: no library found in this directory or above, and the default pool "
-              f"({config.machine.pool_path('default')}) is not a library. {init_hint(config)}, or pass --bibtex")
-        raise PapersExit()
+        raise PapersExit(f"no library found in this directory or above, and the default pool "
+                         f"({config.machine.pool_path('default')}) is not a library. {init_hint(config)}, "
+                         "or pass --bibtex")
 
     if bibtex_must_exist and not os.path.exists(config.bibtex):
-        print(f'papers: error: no bibtex file found, do `touch {config.bibtex}` or `papers init --bibtex {config.bibtex}`')
-        raise PapersExit()
+        raise PapersExit(f'no bibtex file found, do `touch {config.bibtex}` or `papers init --bibtex {config.bibtex}`')
     logger.info(f'bibtex: {config.bibtex!r}')
     logger.info(f'filesdir: {config.filesdir!r}')
     return config

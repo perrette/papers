@@ -32,7 +32,6 @@ def undocmd(parser, o, config):
 
 def restorecmd(parser, o, config):
     if not config.git:
-        parser.print_help()
         raise PapersExit('only valid with --git enabled')
     if o.ref:
         git_restore_state(config, o.ref, restore_files=o.restore_files)

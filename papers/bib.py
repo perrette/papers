@@ -34,7 +34,7 @@ from papers.latexenc import unicode_to_latex
 from papers.filename import NAMEFORMAT, KEYFORMAT
 from papers.files import (download_url, read_entry_dir, attachment_names, remove_entry_dir_if_empty,
                           scan_dir_items)
-from papers.utils import bcolors, move as _move
+from papers.utils import bcolors, move as _move, PapersExit
 import papers.config
 
 from papers.duplicate import (
@@ -90,8 +90,8 @@ def append_abc(key, keys=[]):
 def backupfile(bibtex):
     return os.path.join(os.path.dirname(bibtex), '.'+os.path.basename(bibtex)+'.backup')
 
-class DuplicateKeyError(ValueError):
-    pass
+class DuplicateKeyError(PapersExit):
+    "a new entry has the key of another paper of the library"
 
 class Biblio:
     """

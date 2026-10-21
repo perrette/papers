@@ -364,8 +364,7 @@ def restore_from_backupdir(config, restore_files=False):
     try:
         return _restore_from_backupdir(config, restore_files=restore_files)
     except Exception as error:
-        logger.error(str(error))
-        raise PapersExit(repair_message)
+        raise PapersExit(f'{error}\n{repair_message}') from error
 
 
 def _restore_from_backupdir(config, restore_files=False):

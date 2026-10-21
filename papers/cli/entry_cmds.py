@@ -81,8 +81,8 @@ def addcmd(parser, o, config):
 
     if len(o.file) > 1:
         if metadata:
-            logger.error('--doi, --metadata, --key, --attachment and other metadata keys are only valid for one PDF / BIBTEX entry')
-            raise PapersExit()
+            raise PapersExit('--doi, --metadata, --key, --attachment and other metadata keys are only valid '
+                             'for one PDF / BIBTEX entry')
 
     if o.no_merge_files:
         logger.warning('--no-merge-files is deprecated and ignored: the file links of duplicates are always merged')
@@ -95,8 +95,8 @@ def addcmd(parser, o, config):
 
     elif len(o.file) == 0:
         if not o.edit and not o.metadata and not o.key and not o.doi and not o.attachment and not o.title and not o.author and not o.journal and not o.year:
-            logger.error("No entry added: use --doi, --metadata, --key, --attachment, --title, --author, --journal, --year to add a new entry")
-            raise PapersExit()
+            raise PapersExit("No entry added: use --doi, --metadata, --key, --attachment, --title, --author, "
+                             "--journal, --year to add a new entry")
 
         metadata.setdefault('ID', biblio.keyformat(metadata))
         metadata.setdefault('ENTRYTYPE', 'article')
@@ -144,11 +144,12 @@ def addcmd(parser, o, config):
         except (EOFError, DuplicateError):
             raise  # a question without answer, or --on-duplicate error, stops the command (see main_clean_exit)
         except Exception as error:
-            logger.error(str(error))
-            if not o.ignore_errors:
-                if len(o.file) > 1 or (os.path.isdir(file) and o.recursive):
-                    logger.error('use --ignore-errors to add other files anyway')
-                raise PapersExit()
+            if o.ignore_errors:
+                logger.error(str(error))
+            elif len(o.file) > 1 or (os.path.isdir(file) and o.recursive):
+                raise PapersExit(f'{error}\nuse --ignore-errors to add other files anyway') from error
+            else:
+                raise PapersExit(str(error)) from error
 
     # The list of new entries potentially contains duplicates if more than one file is added sequentially
     # If action is required on the added entry, we need to make sure we're consistent with the biblio.

@@ -5,7 +5,6 @@ import sys
 
 import papers.config
 from papers import __version__, logger
-from papers.bib import DuplicateKeyError
 from papers.config import CONFIG_FILE
 from papers.library import check_legacy_global_config, find_config
 from papers.utils import PapersExit, file_uri_to_path, find_masked_viewer, set_directory, view_pdf
@@ -129,7 +128,7 @@ def main_clean_exit(args=None):
     logging.basicConfig()
     try:
         main(args)
-    except (PapersExit, DuplicateKeyError) as error:
+    except PapersExit as error:
         if logger.getEffectiveLevel() == logging.DEBUG:
             raise
         if error.args:
