@@ -475,8 +475,11 @@ class TestMigrateV2Global(ConfigTest):
         self.assertEqual(js['nameformat'], {'template': '{author}-{year}'})
         self.assertEqual(MachineConfig.load().pool_path('default'), self.path('lib'))
         # no more warning about the v2 configuration
-        with self.assertNoLogs(papers.logger, level='WARNING'):
+        # no warning (assertNoLogs needs python 3.10): the marker is the only one
+        with self.assertLogs(papers.logger, level='WARNING') as logs:
+            papers.logger.warning('marker')
             out = self.papers('status', cwd=self.path('elsewhere'), sp_cmd='check_output')
+        self.assertEqual(logs.output, ['WARNING:papers:marker'])
         self.assertIn('(default pool)', out)
 
     def test_not_implemented(self):
