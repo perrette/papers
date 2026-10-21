@@ -7,11 +7,11 @@ from papers.extract import (extract_pdf_doi, extract_pdf_metadata, fetch_bibtex_
                             fetch_bibtex_by_fulltext_crossref, fetch_bibtex_by_fulltext_scholar, isvaliddoi)
 
 
-def doicmd(parser, o):
+def doicmd(parser, o, config):
     print(extract_pdf_doi(o.pdf, image=o.image))
 
 
-def fetchcmd(parser, o):
+def fetchcmd(parser, o, config):
     # either one or several DOIs
     if all(isvaliddoi(field) for field in o.doi_or_text):
         if o.scholar:
@@ -46,7 +46,7 @@ def _collect_pdf_files(paths, recursive=False):
     return files
 
 
-def extractcmd(parser, o):
+def extractcmd(parser, o, config):
     try:
         files = _collect_pdf_files(o.pdf, recursive=o.recursive)
     except ValueError as error:

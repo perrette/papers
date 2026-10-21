@@ -8,6 +8,13 @@ from papers.duplicate import FUZZY_RATIO
 from papers.identifiers import ACCEPTED as ENTRY_IDS
 from papers.merge import ON_DUPLICATE
 from papers.utils import file_uri_to_path
+from papers.cli.backup_cmds import undocmd, redocmd, restorecmd, backupcmd, gitcmd
+from papers.cli.entry_cmds import addcmd, checkcmd, listcmd, editcmd, rmcmd, tagcmd, opencmd
+from papers.cli.fetch_cmds import doicmd, fetchcmd, extractcmd
+from papers.cli.file_cmds import (filecheckcmd, file_renamecmd, file_mvcmd, file_attachcmd, file_detachcmd,
+                                  file_checkcmd, file_cleancmd)
+from papers.cli.library_cmds import statuscmd, initcmd, configcmd, migratecmd, installcmd, uninstallcmd
+from papers.cli.pool_cmds import pullcmd, pushcmd, exportcmd, poolcmd
 
 
 def get_parser(config=None):
@@ -28,6 +35,21 @@ def get_parser(config=None):
     def _default(value):
         "a configured value shown in a help text (argparse formats help with %)"
         return str(value).replace('%', '%%')
+
+    def _command(p, func, library=False, bibtex_must_exist=True):
+        """the function of a command, called as func(p, o, config) by
+        papers.cli.main; with library=True, config is the library of the
+        command line (see papers.cli.common.check_install)"""
+        p.set_defaults(func=func, library=library, bibtex_must_exist=bibtex_must_exist, command_parser=p)
+
+    def _files_mode_options(grp, add=False):
+        "the files mode options of add (with its aliases -r/--rename and -c) and file attach"
+        grp.add_argument('--move', action='store_true', help='files mode move, whatever the setting')
+        if add:
+            grp.add_argument('-r','--rename', action='store_true', help='same as --move')
+        grp.add_argument(*(['-c'] if add else []), '--copy', action='store_true',
+            help='files mode copy, whatever the setting')
+        grp.add_argument('--link', action='store_true', help='files mode link, whatever the setting')
 
     # configuration (re-used everywhere)
     # =============
@@ -97,6 +119,7 @@ def get_parser(config=None):
         parents=[cfg])
     statusp.add_argument('--no-check-files', action='store_true', help='faster, less info')
     statusp.add_argument('-v','--verbose', action='store_true', help='also show where each setting comes from')
+    _command(statusp, statuscmd)
 
     # init
     # ====
@@ -124,6 +147,7 @@ def get_parser(config=None):
     initp.add_argument('--light', action='store_true',
         help='a light library: its file links point to the files of its first pool (see `papers migrate --light`)')
     initp.add_argument('--no-check-files', action='store_true', help=argparse.SUPPRESS)
+    _command(initp, initcmd)
 
     # config
     # ======
@@ -138,6 +162,7 @@ def get_parser(config=None):
     configp.add_argument('--machine', '--global', action='store_true',
         help=f'the per-machine configuration ({papers.config.MACHINE_CONFIG_FILE}) instead of the library\'s')
     configp.add_argument('--dry-run', action='store_true', help='do not save')
+    _command(configp, configcmd)
 
     # migrate
     # =======
@@ -158,6 +183,7 @@ def get_parser(config=None):
     migratep.add_argument('--full', action='store_true',
         help='make the library full again: copy (a hard link when possible) the pool files it links to '
              'into its files directory, named with its name template')
+    _command(migratep, migratecmd)
 
     # install
     # =======
@@ -186,6 +212,7 @@ def get_parser(config=None):
 
     grp = installp.add_argument_group('status')
     grp.add_argument('--no-check-files', action='store_true', help='faster, less info')
+    _command(installp, installcmd)
 
 
     # uninstall
@@ -194,6 +221,7 @@ def get_parser(config=None):
         parents=[loggingp])
     uninstallp.add_argument("--recursive", action="store_true", help="deprecated: also remove the library configurations found in the parent directories, and the global configuration of papers v2 (config files only)")
     uninstallp.add_argument("--remove-backup", action="store_true", help="also remove the backup directory of the uninstalled configuration(s)")
+    _command(uninstallp, uninstallcmd)
 
 
     # add
@@ -260,14 +288,12 @@ def get_parser(config=None):
         help='attach these files to the entry (e.g. supplementary material)')
     grp.add_argument('--attachment', nargs='+', type=file_uri_to_path, dest='attachment_deprecated',
         help='deprecated: use --attach')
-    grp.add_argument('--move', action='store_true', help='files mode move, whatever the setting')
-    grp.add_argument('-r','--rename', action='store_true', help='same as --move')
-    grp.add_argument('-c','--copy', action='store_true', help='files mode copy, whatever the setting')
-    grp.add_argument('--link', action='store_true', help='files mode link, whatever the setting')
+    _files_mode_options(grp, add=True)
 
     grp = addp.add_argument_group('actions')
     grp.add_argument('-e', '--edit', action='store_true', help='edit entry')
     grp.add_argument('-o', '--open', action='store_true', help='open files')
+    _command(addp, addcmd, library=True)
 
     # check
     # =====
@@ -303,6 +329,7 @@ def get_parser(config=None):
         error (exit with status 1 if there is any group; the default without a terminal,
         and skip with --force)''')
     grp.add_argument('-m', '--mode', choices=list('ims'), help='deprecated: use --on-duplicate (i: ask, m: keep, s: skip)')
+    _command(checkp, checkcmd, library=True)
 
 
     # file
@@ -310,7 +337,7 @@ def get_parser(config=None):
     filep = subparsers.add_parser('file', description='the files of the entries: rename, move, attach, '
         'detach, check them, and clean the files directory')
     filesub = filep.add_subparsers(dest='file_cmd', metavar='{rename,mv,attach,detach,check,clean}')
-    filep.subcommands = filesub.choices
+    _command(filep, None)  # without subcommand: the help of papers file
 
     p = filesub.add_parser('rename', parents=[cfg, namefmt],
         help='place the files in the files directory under their template name',
@@ -320,6 +347,7 @@ def get_parser(config=None):
     p.add_argument('entries', nargs='*', metavar='KEY', help=_selection_help)
     p.add_argument('--keep-source', action='store_true',
         help='keep the files where they are too (a hard link when possible, otherwise a copy)')
+    _command(p, file_renamecmd, library=True)
 
     p = filesub.add_parser('mv', parents=[cfg],
         help='move files or folders, and update the links of the entries',
@@ -331,6 +359,7 @@ def get_parser(config=None):
     p.add_argument('paths', nargs='+', metavar='SRC... DEST', type=file_uri_to_path)
     p.add_argument('-f', '--force', action='store_true', help='replace an existing destination file')
     p.add_argument('-n', action='store_true', dest='dry_run', help='show the moves and the links that change (same as --dry-run)')
+    _command(p, file_mvcmd, library=True)
 
     p = filesub.add_parser('attach', parents=[cfg, namefmt],
         help='attach files to an entry',
@@ -338,9 +367,8 @@ def get_parser(config=None):
                     f'(found: {config.files}), as for `papers add`; the files the entry had are left as they are.')
     p.add_argument('key', metavar='KEY', help=f'{ENTRY_IDS} of the entry')
     p.add_argument('files', nargs='+', metavar='FILE', type=file_uri_to_path, help='files or URLs')
-    p.add_argument('--move', action='store_true', help='files mode move, whatever the setting')
-    p.add_argument('--copy', action='store_true', help='files mode copy, whatever the setting')
-    p.add_argument('--link', action='store_true', help='files mode link, whatever the setting')
+    _files_mode_options(p)
+    _command(p, file_attachcmd, library=True)
 
     p = filesub.add_parser('detach', parents=[cfg],
         help='remove file links from an entry',
@@ -351,6 +379,7 @@ def get_parser(config=None):
     p.add_argument('--broken', action='store_true', help='remove the broken links only')
     p.add_argument('--delete-files', action='store_true',
         help='also delete the detached files that no other entry links to')
+    _command(p, file_detachcmd, library=True)
 
     p = filesub.add_parser('check', parents=[cfg],
         help='report broken links, identical files, DOI mismatches',
@@ -362,17 +391,20 @@ def get_parser(config=None):
     p.add_argument('--fix', action='store_true',
         help='apply the safe repairs: repair the paths, remove the second link of a file linked twice or of '
              'identical files (the files are kept)')
+    _command(p, file_checkcmd, library=True)
 
     p = filesub.add_parser('clean', parents=[cfg],
         help='remove the files of the files directory that no entry links to',
         description='remove the files of the files directory (and its subfolders) that no entry links to, '
                     'asking for each one. Hidden files and folders, and .bib files, are skipped.')
     p.add_argument('-y', '--yes', action='store_true', help='do not ask')
+    _command(p, file_cleancmd, library=True)
 
     # filecheck
     # =====
     filecheckp = subparsers.add_parser('filecheck', description='deprecated: use the subcommands of `papers file`',
         parents=[cfg, namefmt])
+    _command(filecheckp, filecheckcmd, library=True)
 
     # action on files
     filecheckp.add_argument('-r','--rename', action='store_true',
@@ -462,6 +494,7 @@ def get_parser(config=None):
     grp.add_argument('--rename', action='store_true', help='deprecated: `papers file rename -`')
     grp.add_argument('--copy', action='store_true', help='deprecated: `papers file rename --keep-source -`')
     grp.add_argument('-o', '--open', action='store_true', help='deprecated: `papers open -`')
+    _command(listp, listcmd, library=True)
 
     # edit, rm, tag
     # =============
@@ -469,6 +502,7 @@ def get_parser(config=None):
         description='edit entries in a text editor (the editor setting, or $EDITOR)')
     editp.add_argument('entries', nargs='+', metavar='KEY',
         help=_selection_help)
+    _command(editp, editcmd, library=True)
 
     rmp = subparsers.add_parser('rm', parents=[cfg],
         description='remove entries. Their files that no other entry links to may be deleted too: in a '
@@ -480,6 +514,7 @@ def get_parser(config=None):
         help='also delete the files of the entries that no other entry links to, without asking '
              '(also those outside the files directory)')
     rmp.add_argument('--keep-files', action='store_true', help='keep the files, without asking')
+    _command(rmp, rmcmd, library=True)
 
     tagp = subparsers.add_parser('tag', parents=[cfg],
         description='tags are the keywords field of the entries (comma-separated). Without option, list '
@@ -489,6 +524,7 @@ def get_parser(config=None):
     tagp.add_argument('--add', nargs='+', metavar='TAG', help='add tags to the entries')
     tagp.add_argument('--rm', nargs='+', metavar='TAG', help='remove tags from the entries')
     tagp.add_argument('--rename', nargs=2, metavar=('OLD', 'NEW'), help='rename a tag in the whole library')
+    _command(tagp, tagcmd, library=True)
 
     # pull, push, export, pool
     # ========================
@@ -510,6 +546,7 @@ def get_parser(config=None):
     pullp.add_argument('--check', action='store_true',
         help='only report: the pools that changed since the last pull, and the entries changed in the pools')
     pullp.set_defaults(mode=None, force=False)
+    _command(pullp, pullcmd, library=True)
 
     pushp = subparsers.add_parser('push', parents=[cfg],
         description='''add the entries of the library to the first pool, or merge their changes
@@ -522,6 +559,7 @@ def get_parser(config=None):
     pushp.add_argument('--on-duplicate', choices=ON_DUPLICATE,
         help=_exchange_help.format(receiving='pool', incoming='library'))
     pushp.set_defaults(mode=None, force=False)
+    _command(pushp, pushcmd, library=True)
 
     exportp = subparsers.add_parser('export', parents=[cfg],
         description='''write entries as a new library in DIR: bibtex, files, configuration, with
@@ -532,10 +570,12 @@ def get_parser(config=None):
         help='copy the files into DIR/files (a hard link when possible; default), link to them where '
              'they are, or leave the file links out')
     exportp.add_argument('--pool', action='store_true', help='also add DIR to the pools of the library')
+    _command(exportp, exportcmd, library=True)
 
     poolp = subparsers.add_parser('pool', parents=[loggingp],
         description='the pools of the per-machine configuration (the same as `papers config --machine '
                     'pools.NAME PATH`). Without subcommand: list them, and the pools of the library.')
+    _command(poolp, poolcmd)
     poolsub = poolp.add_subparsers(dest='pool_cmd')
     poolsub.add_parser('list', parents=[loggingp], help='list the pools of the machine and of the library')
     p = poolsub.add_parser('add', parents=[loggingp], help='name a pool of this machine')
@@ -550,18 +590,21 @@ def get_parser(config=None):
     # ====
     openp = subparsers.add_parser('open', description='open entry attachments or files with the system viewer', parents=[cfg])
     openp.add_argument('key', nargs='+', type=file_uri_to_path, help='entries (' + _selection_help + '), or existing file path(s) to open directly')
+    _command(openp, opencmd)
 
     # doi
     # ===
     doip = subparsers.add_parser('doi', description='parse DOI from PDF', parents=[loggingp])
     doip.add_argument('pdf', type=file_uri_to_path)
     doip.add_argument('--image', action='store_true', help='convert to image and use tesseract instead of pdftotext')
+    _command(doip, doicmd)
 
     # fetch
     # =====
     fetchp = subparsers.add_parser('fetch', description='fetch bibtex from DOI or full-text', parents=[loggingp])
     fetchp.add_argument('doi_or_text', nargs='+', help='DOI or full text.')
     fetchp.add_argument('--scholar', action='store_true', help='use google scholar instead of default crossref for fulltext search')
+    _command(fetchp, fetchcmd)
 
     # extract
     # ========
@@ -572,6 +615,7 @@ def get_parser(config=None):
     extractp.add_argument('--fulltext', action='store_true', help='fulltext only (otherwise DOI-based)')
     extractp.add_argument('--scholar', action='store_true', help='use google scholar instead of default crossref for fulltext search')
     extractp.add_argument('--image', action='store_true', help='convert to image and use tesseract instead of pdftotext')
+    _command(extractp, extractcmd)
 
     # undo
     # ====
@@ -581,15 +625,19 @@ def get_parser(config=None):
     _stepsp = argparse.ArgumentParser(add_help=False)
     _stepsp.add_argument('-n', '--steps', type=int, default=1, help='number of times undo/redo should be performed')
 
-    subparsers.add_parser('undo', parents=[cfg, _restorep, _stepsp], help='Undo changes on bibtex (if --git is not enabled, only back and forth with last modification). If --git-lfs is enabled, the file entry may differ if it does not exist on disk any more, unless --restore-files was passed.')
-    subparsers.add_parser('redo', parents=[cfg, _restorep, _stepsp], help='Redo changes on bibtex (if --git is not enabled, this has the same effect as papers undo)')
+    undop = subparsers.add_parser('undo', parents=[cfg, _restorep, _stepsp], help='Undo changes on bibtex (if --git is not enabled, only back and forth with last modification). If --git-lfs is enabled, the file entry may differ if it does not exist on disk any more, unless --restore-files was passed.')
+    _command(undop, undocmd, library=True)
+    redop = subparsers.add_parser('redo', parents=[cfg, _restorep, _stepsp], help='Redo changes on bibtex (if --git is not enabled, this has the same effect as papers undo)')
+    _command(redop, redocmd, library=True)
     restorep = subparsers.add_parser('restore-backup', parents=[cfg, _restorep], help='Restore bibtex from backup. Also restore files if --restore-files if passed (--git-lfs only).')
     restorep.add_argument('--ref', help='Optional: restore specific commit (execute `papers git whatchanged` to obtain appropriate reference)')
+    _command(restorep, restorecmd, library=True, bibtex_must_exist=False)
 
     # git
     # ===
     gitp = subparsers.add_parser('git', description='git subcommand')
     gitp.add_argument('gitargs', nargs=argparse.REMAINDER)
+    _command(gitp, gitcmd)
 
     # backup
     # ======
@@ -599,5 +647,6 @@ def get_parser(config=None):
     backupp.add_argument('patterns', nargs='*', metavar='name',
         help='directory name(s), glob patterns allowed (filter for list, required for remove)')
     backupp.add_argument('-f', '--force', action='store_true', help='remove without confirmation')
+    _command(backupp, backupcmd)
 
     return parser, subparsers

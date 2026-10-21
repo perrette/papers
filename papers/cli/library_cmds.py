@@ -122,6 +122,15 @@ def install_global(parser, o, config, asker):
 
 
 def uninstallcmd(parser, o, config):
+    if config.file is None:
+        parser.error('no library configuration was found')
+    if o.recursive:
+        logger.warning("uninstall --recursive is deprecated: remove the configuration of each library instead")
+    _uninstall(parser, o, config)
+    print(config.status(verbose=True))
+
+
+def _uninstall(parser, o, config):
     if config.origin == 'default-pool':
         raise PapersExit(f"no library in this directory or above. The default pool ({config.configdir}) "
                          f"is used outside of libraries: remove its configuration with "
@@ -154,7 +163,7 @@ def uninstallcmd(parser, o, config):
         if os.path.exists(configfile):
             other = Config.load(configfile, machine=config.machine)
             other.origin = 'library'
-            uninstallcmd(parser, o, other)
+            _uninstall(parser, o, other)
 
 
 def _check_setting_name(name, machine):

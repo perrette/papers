@@ -93,6 +93,8 @@ def backupcmd(parser, o, config):
 
 
 def gitcmd(parser, o, config):
+    if config.file is None:
+        parser.error('papers must be installed to use git command')
     try:
         out = sp.check_output(['git']+o.gitargs, cwd=config.gitdir)
         print(out.decode())

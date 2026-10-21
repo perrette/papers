@@ -9,14 +9,8 @@ from papers.bib import DuplicateKeyError
 from papers.config import CONFIG_FILE
 from papers.library import check_legacy_global_config, find_config
 from papers.utils import PapersExit, file_uri_to_path, find_masked_viewer, set_directory, view_pdf
-from papers.cli.backup_cmds import redocmd, undocmd, restorecmd, backupcmd, gitcmd
 from papers.cli.common import check_install
-from papers.cli.entry_cmds import addcmd, checkcmd, editcmd, rmcmd, tagcmd, listcmd, opencmd
-from papers.cli.fetch_cmds import doicmd, fetchcmd, extractcmd
-from papers.cli.file_cmds import filecheckcmd, FILE_COMMANDS
-from papers.cli.library_cmds import initcmd, installcmd, uninstallcmd, configcmd, migratecmd, statuscmd
 from papers.cli.parser import get_parser
-from papers.cli.pool_cmds import pullcmd, pushcmd, exportcmd, poolcmd
 
 
 def handle_logging(o):
@@ -63,8 +57,6 @@ def main(args=None):
 def _main(argv):
     check_legacy_global_config()
     config = find_config()
-
-    installed = config.file is not None
 
     parser, subparsers = get_parser(config)
 
@@ -125,77 +117,12 @@ def _main(argv):
     if args:
         subp.parse_args(args)
 
-    if o.cmd == 'status':
-        return statuscmd(subp, o, config)
-
-    if o.cmd == 'init':
-        initcmd(subp, o, config)
-    elif o.cmd == 'config':
-        configcmd(subp, o, config)
-    elif o.cmd == 'migrate':
-        migratecmd(subp, o, config)
-    elif o.cmd == 'install':
-        installcmd(subp, o, config)
-    elif o.cmd == 'uninstall':
-        if not installed:
-            subp.error('no library configuration was found')
-        if o.recursive:
-            logger.warning("uninstall --recursive is deprecated: remove the configuration of each library instead")
-        uninstallcmd(subp, o, config)
-        print(config.status(verbose=True))
-    elif o.cmd == 'add':
-        addcmd(subp, o, check_install(subp, o, config))
-    elif o.cmd == 'check':
-        checkcmd(subp, o, check_install(subp, o, config))
-    elif o.cmd == 'filecheck':
-        filecheckcmd(subp, o, check_install(subp, o, config))
-    elif o.cmd == 'edit':
-        editcmd(subp, o, check_install(subp, o, config))
-    elif o.cmd == 'rm':
-        rmcmd(subp, o, check_install(subp, o, config))
-    elif o.cmd == 'pull':
-        pullcmd(subp, o, check_install(subp, o, config))
-    elif o.cmd == 'push':
-        pushcmd(subp, o, check_install(subp, o, config))
-    elif o.cmd == 'export':
-        exportcmd(subp, o, check_install(subp, o, config))
-    elif o.cmd == 'pool':
-        poolcmd(subp, o, config)
-    elif o.cmd == 'tag':
-        tagcmd(subp, o, check_install(subp, o, config))
-    elif o.cmd == 'file':
-        if not o.file_cmd:
-            subp.print_help()
-            raise PapersExit()
-        filesubp = subp.subcommands[o.file_cmd]
-        FILE_COMMANDS[o.file_cmd](filesubp, o, check_install(filesubp, o, config))
-    elif o.cmd == 'list':
-        listcmd(subp, o, check_install(subp, o, config))
-    elif o.cmd == 'open':
-        # no install required when opening plain files; opencmd reports the
-        # missing bibliography itself when an argument must be looked up as a key
-        opencmd(subp, o, config)
-    elif o.cmd == 'undo':
-        undocmd(subp, o, check_install(subp, o, config))
-    elif o.cmd == 'redo':
-        redocmd(subp, o, check_install(subp, o, config))
-    elif o.cmd == 'restore-backup':
-        restorecmd(subp, o, check_install(subp, o, config, bibtex_must_exist=False))
-    elif o.cmd == 'git':
-        if not installed:
-            subp.error('papers must be installed to use git command')
-        gitcmd(subp, o, config)
-    elif o.cmd == 'backup':
-        backupcmd(subp, o, config)
-    elif o.cmd == 'doi':
-        doicmd(subp, o)
-    elif o.cmd == 'fetch':
-        fetchcmd(subp, o)
-    elif o.cmd == 'extract':
-        extractcmd(subp, o)
-    else:
-        parser.print_help()
+    if o.func is None:  # papers file without subcommand
+        subp.print_help()
         raise PapersExit()
+    if o.library:
+        config = check_install(o.command_parser, o, config, bibtex_must_exist=o.bibtex_must_exist)
+    o.func(o.command_parser, o, config)
 
 
 def main_clean_exit(args=None):

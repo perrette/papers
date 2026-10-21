@@ -181,13 +181,3 @@ def file_cleancmd(parser, o, config):
     removed = clean_filesdir(biblio, interactive=not o.yes, ignore_files=[config.bibtex])
     print(f"{'DRYRUN: ' if papers.config.DRYRUN else ''}removed {len(removed)} unlinked file(s) "
           f"from {config.filesdir}")
-
-
-FILE_COMMANDS = {
-    'rename': file_renamecmd,
-    'mv': file_mvcmd,
-    'attach': file_attachcmd,
-    'detach': file_detachcmd,
-    'check': file_checkcmd,
-    'clean': file_cleancmd,
-}
