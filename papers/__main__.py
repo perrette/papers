@@ -32,6 +32,8 @@ from papers.identifiers import read_selection, select_entries, ACCEPTED as ENTRY
 from papers.files import (FilesPolicy, realpath, is_inside, is_download, plan_moves, link_snapshot,
                           moved_links, execute_moves, files_to_delete, describe_file, delete_files,
                           check_entry_files)
+from papers.pools import (Pools, PoolError, Exchange, PoolLookup, use_pool_files, report_lines,
+                          export, status_lines, machine_pool_lines, pool_path_setting, library_config_file)
 from papers.backup import (silent_backup_bib, restore_from_backupdir,
                            git_undo, git_redo, git_restore_state, list_backup_dirs)
 from papers import __version__
@@ -581,7 +583,8 @@ def files_mode(o, config):
 
 def files_policy(config, mode, keep=()):
     "what to do with each file, see papers.files.FilesPolicy"
-    return FilesPolicy(mode, config.filesdir, current_config=config.file, machine=config.machine, keep=keep)
+    return FilesPolicy(mode, config.filesdir, current_config=config.file, machine=config.machine, keep=keep,
+                       pool_dirs=Pools(config).files_dirs())
 
 
 # v2 letters of -m/--mode, and the --on-duplicate word they map to
@@ -626,8 +629,13 @@ def addcmd(parser, o, config):
     set_nameformat_config_from_cmd(o, config)
     set_keyformat_config_from_cmd(o, config)
 
+    pools = Pools(config)
     biblio = get_biblio(config)
     biblio_init = copy.deepcopy(biblio)
+    exchange = Exchange(config, biblio, pools)
+    if not o.no_pool:
+        lookup = PoolLookup(exchange)
+        biblio.pool_lookup = lookup if lookup else None
 
     entries = []
 
@@ -702,6 +710,8 @@ def addcmd(parser, o, config):
                 pdfs.extend(path for kind, path, _ in scan_dir_items(file, quiet=True) if kind == 'file' and path.lower().endswith('.pdf'))
             elif os.path.isfile(file) and file.lower().endswith('.pdf'):
                 pdfs.append(file)
+        if biblio.pool_lookup:
+            pdfs = [pdf for pdf in pdfs if not biblio.pool_lookup.has_file(pdf)]
         if len(pdfs) > 1:
             prefetch_pdf_metadata(pdfs, search_doi=not o.no_query_doi, search_fulltext=not o.no_query_fulltext)
 
@@ -754,7 +764,14 @@ def addcmd(parser, o, config):
         entries = [{k:v for k,v in e.items() if v != ""} for e in entries]
         biblio.db.entries = sorted(otherentries + entries, key=lambda e: biblio.key(e))
 
-    savebib(biblio, config)
+    # light library or sync push: also in the first pool
+    before = {biblio.key(e) for e in biblio_init.entries}
+    added = {get_entry_val(e, 'ID', '').lower() for e in entries}
+    pushed = exchange.push_added([e for e in biblio.entries if biblio.key(e) in added],
+                                 [e for e in biblio.entries if biblio.key(e) not in before], resolver)
+    if pushed:
+        print('\n'.join(report_lines(pushed, f'push to {pushed[0][1].label}')))
+    save_exchange(exchange)
 
     # compare entries to inform user
     # this is not very efficient but I have yet to hear a complaint about speed
@@ -1003,6 +1020,24 @@ def file_cleancmd(parser, o, config):
     removed = clean_filesdir(biblio, interactive=not o.yes, ignore_files=[config.bibtex])
     print(f"{'DRYRUN: ' if papers.config.DRYRUN else ''}removed {len(removed)} unlinked file(s) "
           f"from {config.filesdir}")
+
+
+# pools
+# =====
+
+def save_exchange(exchange):
+    """save what an exchange with the pools changed: the pools pushed to,
+    the pairs that are not the same paper of the other pools, the origin
+    records, and the library"""
+    for pool in exchange.changed_pools:
+        savebib(pool.biblio, pool.config)
+        exchange.after_push(pool)
+    if not papers.config.DRYRUN:
+        for pool in exchange.pools.all(quiet=True):
+            if pool._biblio is not None and not any(pool is p for p in exchange.changed_pools):
+                pool.biblio.distinct.save()
+    exchange.origin.save()
+    savebib(exchange.biblio, exchange.config)
 
 
 # papers edit, rm, tag
@@ -1743,6 +1778,9 @@ def get_parser(config=None):
         the default without a terminal)''')
     grp.add_argument('--no-check-duplicate', action='store_true',
         help='disable duplicate check (faster, create duplicates)')
+    grp.add_argument('--no-pool', action='store_true',
+        help='''do not look in the pools first (by default, a PDF, DOI or bibtex entry that is
+        the same paper as a pool entry is taken from the pool, with its files, without fetching)''')
     grp.add_argument('--no-merge-files', action='store_true',
         help='deprecated and ignored: file links are always merged')
     grp.add_argument('-u', '--update-key', action='store_true',

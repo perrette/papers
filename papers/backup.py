@@ -277,6 +277,17 @@ def backup_bib(biblio, config, message=None):
     shutil.copy(config.bibtex, config.backupfile)
     run_git(config.gitdir, ["add", config.backupfile.name])
 
+    # the files of the library next to its bibtex: origin copies of the
+    # entries taken from pools, and the pairs that are not the same paper
+    from papers.pools import ORIGIN_FILE
+    from papers.duplicate import DISTINCT_FILE
+    for name in (ORIGIN_FILE, DISTINCT_FILE):
+        source = Path(config.bibtex).parent / name
+        if source.exists():
+            (backupdir / name).parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy(source, backupdir / name)
+            run_git(config.gitdir, ["add", name])
+
     if config.backup_files:
         logger.info('backup bibliography with files')
         config.backupfile_clean.unlink(missing_ok=True)

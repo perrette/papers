@@ -91,19 +91,24 @@ class FilesPolicy:
       in copy mode too, since a copy would leave an unlinked file there;
     - a file downloaded by papers into a temporary directory is always moved;
     - `keep` lists files to leave where they are, whatever the mode (e.g. the
-      files an entry already had before `file attach`).
-
-    TODO (light libraries): in a light library, files are placed in the
-    files directory of the first pool instead.
+      files an entry already had before `file attach`);
+    - a file in the files directory of a pool (`pool_dirs`) is never moved:
+      it is copied (a hard link when possible), or linked in link mode;
+    - with `light`, `filesdir` is the files directory of the pool of a light
+      library (papers.pools.use_pool_files): the files already there are
+      linked where they are, never renamed, since other libraries may link
+      to them.
     """
 
-    def __init__(self, mode, filesdir=None, current_config=None, machine=None, keep=()):
+    def __init__(self, mode, filesdir=None, current_config=None, machine=None, keep=(), pool_dirs=(), light=False):
         if mode not in FILES_MODES:
             raise ValueError(f'files mode must be one of {", ".join(FILES_MODES)}, got {mode!r}')
         self.mode = mode
         self.filesdir = filesdir
         self.others = OtherLibraries(current_config, machine=machine)
         self.keep = {realpath(f) for f in keep}
+        self.pool_dirs = [d for d in pool_dirs if d]
+        self.light = light
         self._said = set()
 
     def __call__(self, file):
@@ -114,7 +119,9 @@ class FilesPolicy:
         if self.mode == 'link':
             return 'link'
         if is_inside(file, self.filesdir):
-            return 'move'
+            return 'link' if self.light else 'move'
+        if any(is_inside(file, d) for d in self.pool_dirs):
+            return 'copy'
         if self.mode == 'move':
             owner = self.others.owner(file)
             if owner is not None:

@@ -357,6 +357,8 @@ class Biblio:
         # pairs of entries that are not the same paper (see papers.duplicate.Distinct)
         self.distinct = distinct if distinct is not None else Distinct()
         self.relative_to = os.path.sep if relative_to is None else relative_to
+        # `add` looks in the pools first (see papers.pools.PoolLookup)
+        self.pool_lookup = None
 
     def move(self, file, newfile, copy=False, hardlink=False):
         return _move(file, newfile, copy=copy, dryrun=papers.config.DRYRUN, hardlink=hardlink)
@@ -563,8 +565,18 @@ class Biblio:
             if files:
                 self.set_files(e, files)
 
-            entries.extend(self.insert_entry(e, **kw))
+            taken = self.pool_lookup.entry(self, e) if self.pool_lookup else None
+            if taken is not None:
+                entries.extend(self._insert_taken(taken, **kw))
+            else:
+                entries.extend(self.insert_entry(e, **kw))
         return entries
+
+    def _insert_taken(self, entry, **kw):
+        "insert an entry taken from a pool, and record its origin"
+        result = self.insert_entry(entry, **kw)
+        self.pool_lookup.inserted(entry, result)
+        return result
 
 
     def add_bibtex_file(self, file, **kw):
@@ -575,6 +587,12 @@ class Biblio:
 
 
     def fetch_doi(self, doi, **kw):
+        attachments = [os.path.abspath(f) for f in kw.get('attachments') or []]
+        taken = self.pool_lookup.doi(self, doi, attachments) if self.pool_lookup else None
+        if taken is not None:
+            kw.pop('attachments', None)
+            kw["update_key"] = True
+            return self._insert_taken(taken, **kw)
         bibtex = fetch_bibtex_by_doi(doi)
         kw["update_key"] = True  # fetched key is always updated
         return self.add_bibtex(bibtex, **kw)
@@ -585,6 +603,13 @@ class Biblio:
         if str(pdf).startswith("http"):
             pdf = download_url(pdf, expect_pdf=True)
             kw['rename'] = True  # always rename downloaded files
+
+        if self.pool_lookup:
+            files = [os.path.abspath(f) for f in [pdf] + list(attachments or [])]
+            taken = self.pool_lookup.pdf(self, files[0], files=files, doi=doi)
+            if taken is not None:
+                kw["update_key"] = True
+                return self._insert_taken(taken, **kw)
 
         if doi:
             bibtex = fetch_bibtex_by_doi(doi)

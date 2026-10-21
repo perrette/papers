@@ -80,6 +80,7 @@ SETTINGS = {
     'pools': 'list',
     'paths': ('relative', 'absolute'),
     'files': ('move', 'copy', 'link'),
+    'sync': ('none', 'push'),
     'git': 'bool',
     'git-lfs': 'bool',
     'editor': 'str',
@@ -102,7 +103,7 @@ def default_value(name):
         return getattr(NAMEFORMAT, _attr(name))
     if name.startswith('key.'):
         return getattr(KEYFORMAT, _attr(name))
-    return copy.deepcopy({'pools': ['default'], 'paths': 'relative', 'files': 'move', 'git': False,
+    return copy.deepcopy({'pools': ['default'], 'paths': 'relative', 'files': 'move', 'sync': 'none','git': False,
                           'git-lfs': False, 'editor': None}.get(name))
 
 
@@ -305,7 +306,7 @@ class Config:
         nameformat=None,
         editor=None,
         gitdir=None, git=None, gitlfs=None, local=None, absolute_paths=None, backup_files=None,
-        pools=None, files=None, machine=None):
+        pools=None, files=None, sync=None, light=False, machine=None):
         self.file = file
         self.local = local
         self.machine = machine if machine is not None else MachineConfig.load()
@@ -329,6 +330,12 @@ class Config:
         # what `add` does with a file: move or copy it into the files
         # directory, or link it where it is (see papers.files.FilesPolicy)
         self.files = files if files is not None else self.inherited('files')
+        # sync push: `add` also adds the new entries to the first pool
+        self.sync = sync if sync is not None else self.inherited('sync')
+        # a light library links to the files of its first pool instead of
+        # having files of its own. Not one of SETTINGS: it is changed by
+        # `papers migrate --light/--full`, which also changes links and files
+        self.light = bool(light)
 
 
     @property
@@ -494,6 +501,8 @@ class Config:
         for name in INHERITED:
             if self.is_set(name):
                 json_set(js, name, self.get(name))
+        if self.light:
+            js["light"] = True
         if self.local:
             js["version"] = CONFIG_VERSION
         else:
@@ -521,7 +530,8 @@ class Config:
         if gitdir is not None and local:
             gitdir = gitdir_from_json(gitdir, Path(the_file).parent)
         cfg = cls(file=the_file, local=local, machine=machine,
-                  bibtex=js.get('bibtex'), filesdir=js.get('filesdir'), gitdir=gitdir)
+                  bibtex=js.get('bibtex'), filesdir=js.get('filesdir'), gitdir=gitdir,
+                  light=bool(js.get('light', False)))
         if not local and json_get(js, 'paths') is None:
             js['paths'] = 'absolute'  # default of v2 for a global configuration
         for name in INHERITED:
@@ -619,19 +629,12 @@ class Config:
         lines.append(f'* bibtex:             {_fmt_path(self.bibtex) if self.bibtex else self.bibtex}'+status)
 
         if self.file:
+            from papers.pools import status_lines
             lines.append('* pools:'+('' if self.pools else ' none'))
-            for pool in self.pools:
-                path = self.pool_path(pool)
-                if path is None:
-                    status = bcolors.WARNING+' (unknown pool name)'+bcolors.ENDC
-                elif not os.path.exists(path):
-                    status = bcolors.WARNING+' (missing)'+bcolors.ENDC
-                elif not os.path.exists(os.path.join(path, CONFIG_FILE_LOCAL)):
-                    status = bcolors.WARNING+' (not a library)'+bcolors.ENDC
-                else:
-                    status = ''
-                label = pool if not is_pool_path(pool) else ''
-                lines.append(f'    {label+": " if label else ""}{path or pool}'+status)
+            lines.extend(status_lines(self))
+            lines.append('* light:              ' + ('yes (the files are those of the first pool)' if self.light else 'no'))
+            lines.append(f'* sync:               {self.sync}' + (' (add also adds new entries to the first pool)'
+                                                                   if self.sync == 'push' else ''))
 
         if verbose:
             lines.append('* settings:')
