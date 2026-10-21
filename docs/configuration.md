@@ -28,7 +28,8 @@ By default the bibtex is `papers.bib` (or the first `.bib` file present in
 the directory) and the files directory is `files` (or an existing `pdfs`,
 `pdf`, `papers` or `bibliography` folder). The options of `papers init` are
 `--bibtex`, `--filesdir`, `--pool NAME|PATH...` (see [Pools](#pools)),
-`--paths relative|absolute`, `--git`/`--no-git`, `--git-lfs`, `--editor` and
+`--paths relative|absolute`, `--git`/`--no-git`, `--git-lfs`, `--editor`, `--light`
+(see [Light libraries](pools.md#light-libraries)) and
 the name and key format options (see [Renaming files and keys](renaming.md)).
 With `DIR`, the paths given to `--bibtex` and `--filesdir` are relative to
 `DIR`.
@@ -79,6 +80,7 @@ from the per-machine configuration, otherwise from its built-in default.
 | `pools` | names or paths of the library's pools (default: `default`) |
 | `paths` | `relative` (default) or `absolute`: how file links are written in the bibtex |
 | `files` | `move` (default), `copy` or `link`: what `papers add` does with a file (see [Files](files.md#what-add-does-with-a-file)) |
+| `sync` | `none` (default) or `push`: `papers add` also adds the new entries to the first pool (see [Pools](pools.md)) |
 | `git` | `true` or `false`: back up the bibtex with git (see [Git integration](git.md)) |
 | `git-lfs` | `true` or `false`: also back up the files with git-lfs |
 | `editor` | command that opens a text editor, e.g. `vim` or `subl -w` |
@@ -97,8 +99,10 @@ directory.
 
 Setting `git` to `true` initializes the backup directory and records the
 current bibtex. Setting `paths` rewrites the file links of the bibtex. `light`
-is not a setting of `papers config`: it will be changed with
-`papers migrate --light` (not implemented yet), because it also moves files.
+is not a setting of `papers config`: it is changed with
+`papers migrate --light` and `papers migrate --full`, because it also
+changes the file links and the files (see
+[Light libraries](pools.md#light-libraries)).
 
 ### Per-machine configuration
 
@@ -121,9 +125,12 @@ settings are only stored in the library when you set them.
 
 ## Pools
 
-A pool is a library that other libraries take entries from. Each library
+A pool is a library that other libraries exchange entries with (see
+[Pools](pools.md) for `add`, `pull`, `push`, `export` and light
+libraries). Each library
 lists its pools in the `pools` setting, as names or paths. A name is looked
-up in the per-machine configuration (`pools.NAME`), so that the same library
+up in the per-machine configuration (`pools.NAME`, or `papers pool add NAME
+PATH`), so that the same library
 works on machines where the pool is in a different place. An entry that
 contains a `/` or starts with `.` or `~` is a path, relative to the library
 (e.g. `../shared-with-bob`).
@@ -136,9 +143,10 @@ any library, once it is one:
 papers init ~/Documents/papers
 ```
 
-`papers status` lists the pools of the library with their paths, and says
-when a pool is missing or is not a library. Exchanging entries with pools
-(`pull`, `push`) is not implemented yet.
+`papers status` lists the pools of the library with their paths, says when
+a pool is missing or is not a library, and whether it changed since the last
+`papers pull`. It also shows whether the library is light, and the `sync`
+setting.
 
 ## Relative versus absolute paths
 

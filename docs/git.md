@@ -20,7 +20,10 @@ from the backup directory. E.g. `papers git remote add origin *REMOTE URL*`;
 `papers git lfs track files`; `papers git add files`; `papers git push`.
 
 Under the hood, every save commits a copy of the bibtex file to the backup
-repository. If `--git-lfs` is passed, the attached files are backed up along
+repository, with the files `.papers/origin.bib` (origin copies of the entries
+taken from pools, see [Pools](pools.md#origin-copies)) and
+`.papers/distinct.json` (pairs that are not the same paper) when they exist.
+If `--git-lfs` is passed, the attached files are backed up along
 with the bibtex: they are hard-linked into the backup directory and tracked
 with git-lfs, together with a copy of the bibtex whose file paths point into
 the backup (so the backup is self-contained). Background in

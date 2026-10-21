@@ -31,6 +31,7 @@ papers add mypaper.pdf --copy --bibtex papers.bib --filesdir files
 - [Listing and searching](listing.md)
 - [Renaming files and keys](renaming.md)
 - [Configuration](configuration.md)
+- [Pools](pools.md)
 - [Managing your library](library-management.md)
 - [Git integration](git.md)
 - [Undo and redo](undo-redo.md)

@@ -104,6 +104,14 @@ papers add --title "Self-consistent equilibrium ocean tides" --author "Agnew, Du
     --year 1978 --journal "Geophysical Journal International" --attach agnew1978.pdf
 ```
 
+## Entries already in a pool
+
+Before querying crossref, `papers add` looks in the pools of the library
+(see [Pools](pools.md#add-looks-in-the-pools-first)): a PDF with the same
+content as a pool file, or whose DOI is in a pool, a DOI that a pool entry
+has, or a bibtex entry that is the same paper as a pool entry, is taken from
+the pool, with its files. `--no-pool` skips this.
+
 ## Add an entry from its DOI
 
 If you already know the DOI of a PDF, and don't want to gamble the fulltext

@@ -72,6 +72,7 @@ nav:
       - Renaming files and keys: renaming.md
       - Files: files.md
       - Configuration: configuration.md
+      - Pools: pools.md
       - Managing your library: library-management.md
       - Git integration: git.md
       - Undo and redo: undo-redo.md
