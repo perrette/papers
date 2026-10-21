@@ -7,7 +7,7 @@ import papers.config
 import papers.files
 from papers import logger
 from papers.bib import isvalidkey
-from papers.duplicate import FUZZY_RATIO, duplicate_groups, edit_entries, fuzzy_pairs
+from papers.duplicate import FUZZY_RATIO, duplicate_groups, fuzzy_pairs
 from papers.encoding import (family_names, format_entries, format_entry, format_file, format_key, parse_file,
                              parse_keywords, standard_name)
 from papers.entries import entry_from_dict, get_entry_val
@@ -20,7 +20,7 @@ from papers.merge import DuplicateError
 from papers.pools import Exchange, PoolLookup, Pools, report_lines, use_pool_files
 from papers.utils import PapersExit, view_pdf
 from papers.cli.common import (view_entry_files, set_format_config_from_cmd, _print_biblio_diff, files_mode,
-                               duplicate_resolver, save_exchange, stdin_is_terminal, edit_selected,
+                               duplicate_resolver, save_exchange, stdin_is_terminal, edit_entries, edit_selected,
                                print_kept_files, _delete_files_option)
 
 

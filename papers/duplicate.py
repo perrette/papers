@@ -25,13 +25,11 @@ returns "different" for them.
 import json
 import os
 import re
-import shlex
-import tempfile
 
 from unidecode import unidecode
 
 from papers import logger
-from papers.entries import get_entry_val, parse_string, format_library, library_from_entries
+from papers.entries import get_entry_val
 from papers.identifiers import normalize_doi, normalize_arxiv, normalize_isbn, _ARXIV_DOI
 from papers.latexenc import latex_to_unicode
 
@@ -435,50 +433,3 @@ def fuzzy_pairs(entries, ratio=FUZZY_RATIO):
             if token_set_ratio(sa, sb, score_cutoff=ratio):
                 pairs.append((a, b))
     return pairs
-
-
-# EDIT
-# ====
-
-def edit_entries(entries, editor=None):
-    '''edit entries in a text editor; returns the edited entries, or the
-    original entries if the edit failed or does not parse as bibtex'''
-    fd, filename = tempfile.mkstemp(suffix='.txt')
-    os.close(fd)
-    try:
-        return _edit_entries_file(filename, entries, editor)
-    finally:
-        os.remove(filename)
-
-
-def _edit_entries_file(filename, entries, editor):
-    with open(filename, 'w') as f:
-        f.write(format_library(library_from_entries(entries)))
-
-    editor = editor or os.environ.get('VISUAL') or os.environ.get('EDITOR') or 'vi'
-    res = os.system('{} {}'.format(editor, shlex.quote(filename)))
-
-    if res != 0:
-        logger.error('failed to edit file -- keeping original entries')
-        return entries
-
-    db_updated = parse_string(open(filename).read())
-    new_entries = db_updated.entries
-
-    failed = getattr(db_updated, 'failed_blocks', None)
-    if failed:
-        logger.error('some edited blocks could not be parsed as bibtex -- keeping original entries')
-        return entries
-    if entries and not new_entries:
-        logger.error('edited file contains no bibtex entry -- keeping original entries')
-        return entries
-    fieldname = re.compile(r'^[A-Za-z][\w-]*$')
-    for e in new_entries:
-        bad = [k for k, _ in e.items() if not fieldname.match(k)]
-        if bad:
-            logger.error(f'edited entry {get_entry_val(e, "ID", "")!r} has malformed field name(s) {bad} '
-                         '-- keeping original entries')
-            return entries
-
-    logger.info('successfully edited file, insert edited entries')
-    return new_entries

@@ -12,8 +12,9 @@ from pathlib import Path
 from unittest.mock import patch
 
 from papers.bib import Biblio
+from papers.cli.common import edit_entries
 from papers.duplicate import (
-    same_paper, SAME, DIFFERENT, ASK, Distinct, duplicate_groups, fuzzy_pairs, edit_entries,
+    same_paper, SAME, DIFFERENT, ASK, Distinct, duplicate_groups, fuzzy_pairs,
 )
 from papers.entries import entry_from_dict, parse_string
 from papers.merge import (

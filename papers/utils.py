@@ -1,8 +1,10 @@
 import os
 import re
+import shlex
 import shutil
 import hashlib
 import subprocess, platform
+import tempfile
 from contextlib import contextmanager
 from pathlib import Path
 from urllib.parse import urlparse, unquote
@@ -261,3 +263,21 @@ def open_folder(path):
         os.system(f'xdg-open "{path}"')
     else:
         print("Unsupported operating system.")
+
+
+def edit_text(text, editor=None):
+    """edit a text in a text editor ($VISUAL, else $EDITOR, else vi): the
+    edited text, or None if the editor failed. The editor is a command that
+    may have arguments (e.g. "subl -w"); it must wait until the file is closed."""
+    editor = editor or os.environ.get('VISUAL') or os.environ.get('EDITOR') or 'vi'
+    fd, filename = tempfile.mkstemp(suffix='.bib')
+    try:
+        with os.fdopen(fd, 'w') as f:
+            f.write(text)
+        if os.system(f'{editor} {shlex.quote(filename)}') != 0:
+            logger.error('the editor failed')
+            return None
+        with open(filename) as f:
+            return f.read()
+    finally:
+        os.remove(filename)

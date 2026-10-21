@@ -2,19 +2,19 @@
 (check_install), the format and files options, the duplicate resolver,
 entry selection and the report of the changes."""
 import os
+import re
 import sys
 
 import papers.config
 from papers import logger
 from papers.config import SETTINGS, is_pool_path, short_home
-from papers.duplicate import edit_entries
 from papers.encoding import format_entry
-from papers.entries import entry_content_equal, get_entry_val
+from papers.entries import entry_content_equal, get_entry_val, parse_string, format_library, library_from_entries
 from papers.files import hidden_bibtex
 from papers.identifiers import select_entries
 from papers.library import config_for_bibtex, savebib
 from papers.merge import Resolver
-from papers.utils import PapersExit, open_folder, view_pdf
+from papers.utils import PapersExit, edit_text, open_folder, view_pdf
 
 
 def view_entry_files(biblio, entry):
@@ -217,6 +217,36 @@ def stdin_is_terminal():
         return sys.stdin.isatty()
     except (AttributeError, ValueError, OSError):
         return False
+
+
+def edit_entries(entries, editor=None):
+    """edit entries in a text editor; returns the edited entries, or the
+    original entries if the edit failed or does not parse as bibtex"""
+    text = edit_text(format_library(library_from_entries(entries)), editor=editor)
+    if text is None:
+        logger.error('failed to edit file -- keeping original entries')
+        return entries
+
+    db_updated = parse_string(text)
+    new_entries = db_updated.entries
+
+    failed = getattr(db_updated, 'failed_blocks', None)
+    if failed:
+        logger.error('some edited blocks could not be parsed as bibtex -- keeping original entries')
+        return entries
+    if entries and not new_entries:
+        logger.error('edited file contains no bibtex entry -- keeping original entries')
+        return entries
+    fieldname = re.compile(r'^[A-Za-z][\w-]*$')
+    for e in new_entries:
+        bad = [k for k, _ in e.items() if not fieldname.match(k)]
+        if bad:
+            logger.error(f'edited entry {get_entry_val(e, "ID", "")!r} has malformed field name(s) {bad} '
+                         '-- keeping original entries')
+            return entries
+
+    logger.info('successfully edited file, insert edited entries')
+    return new_entries
 
 
 def edit_selected(biblio, entries):

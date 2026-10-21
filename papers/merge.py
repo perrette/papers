@@ -35,7 +35,7 @@ from papers.duplicate import normalize_text, split_names, parse_name, ASK
 from papers.encoding import parse_file, format_file
 from papers.entries import get_entry_val, parse_string, format_library, library_from_entries
 from papers.identifiers import normalize_doi
-from papers.utils import bcolors, checksum, PapersExit
+from papers.utils import bcolors, checksum, edit_text, PapersExit
 
 
 SAME = ' '
@@ -642,23 +642,6 @@ class Decision:
 
     def __repr__(self):
         return f'Decision({self.kind!r})'
-
-
-def edit_text(text, editor=None):
-    """edit a text in the editor; the edited text, or None if the editor failed"""
-    import tempfile
-    fd, filename = tempfile.mkstemp(suffix='.bib')
-    try:
-        with os.fdopen(fd, 'w') as f:
-            f.write(text)
-        res = os.system('{} {}'.format(editor or os.getenv('EDITOR') or 'vi', filename))
-        if res != 0:
-            logger.error('the editor failed')
-            return None
-        with open(filename) as f:
-            return f.read()
-    finally:
-        os.remove(filename)
 
 
 def ask(merge, context, reason='', input=None, output=None, editor=None, color=True):
