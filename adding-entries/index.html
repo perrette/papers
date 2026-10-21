@@ -1015,8 +1015,10 @@ attachments (<code>&lt;name&gt;--&lt;label&gt;.&lt;ext&gt;</code> next to <code>
 <a href="../renaming/#entries-with-several-files">Renaming files and keys</a>), are added
 as attachments of that PDF's entry, whatever their type, instead of being
 scanned as papers of their own. Bibtex files found in the directory are added
-too, and folders of the pre-2.19 layout (with a hidden <code>.&lt;name&gt;.bib</code>) are read
-from their hidden bibtex.</p>
+too, before the PDFs, and the files they link to are not scanned: their entry
+comes from the bibtex, so a folder that holds a bibtex and its files is added
+without looking anything up online. Folders of the pre-2.19 layout (with a
+hidden <code>.&lt;name&gt;.bib</code>) are read from their hidden bibtex.</p>
 <p>The metadata of a PDF are found as follows:</p>
 <ol>
 <li>a DOI in the PDF metadata is used as is;</li>
