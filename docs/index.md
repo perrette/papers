@@ -17,7 +17,7 @@ Command-line tool to manage your bibliography (PDFs + BibTeX).
 
 ```bash
 pip install papers-cli
-papers add mypaper.pdf --rename --copy --bibtex papers.bib --filesdir files
+papers add mypaper.pdf --copy --bibtex papers.bib --filesdir files
 ```
 
 - **[Installation](installation.md)** — pip install and external dependencies.

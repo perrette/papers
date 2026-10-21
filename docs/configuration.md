@@ -75,6 +75,7 @@ from the per-machine configuration, otherwise from its built-in default.
 | `filesdir` | path of the files directory |
 | `pools` | names or paths of the library's pools (default: `default`) |
 | `paths` | `relative` (default) or `absolute`: how file links are written in the bibtex |
+| `files` | `move` (default), `copy` or `link`: what `papers add` does with a file (see [Files](files.md#what-add-does-with-a-file)) |
 | `git` | `true` or `false`: back up the bibtex with git (see [Git integration](git.md)) |
 | `git-lfs` | `true` or `false`: also back up the files with git-lfs |
 | `editor` | command that opens a text editor, e.g. `vim` or `subl -w` |
@@ -160,7 +161,7 @@ override the setting for one command, with a deprecation warning.
 - `papers migrate --folders` moves the files of entries that are still kept
   in folders of papers before 2.19 (`<name>/` with a hidden `.<name>.bib`)
   into the files directory, named after the name template (as
-  `papers filecheck --rename` names them).
+  `papers file rename` names them).
 
 Library configurations (`.papersconfig.json`) of version 2 keep working
 without migration.

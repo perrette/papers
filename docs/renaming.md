@@ -3,9 +3,9 @@
 ## Entries with several files
 
 The first file of an entry (the PDF) is named after the name template, and
-any other file (attachments, e.g. supplementary material added with `-a`) is
-placed next to it, under the same name followed by `--` and the file's
-original name:
+any other file (attachments, e.g. supplementary material added with
+`--attach` or `papers file attach`) is placed next to it, under the same
+name followed by `--` and the file's original name:
 
 ```
 files/perrette_et_al_2013_a-scaling-approach.pdf
@@ -20,15 +20,34 @@ Versions before 2.19 placed the files of an entry with several files in a
 folder named after the entry, with a hidden copy of the entry
 (`files/<name>/.<name>.bib`). Such folders keep working as they are: their
 files are linked from the bibtex, and nothing is moved until the entry is
-renamed. Renaming (`papers filecheck --rename`, or `papers list ... --rename`)
-moves the files out of the folder into the layout above, and removes the
-folder if nothing but the hidden bibtex is left in it (a folder with other
-files is kept, and the files left in it are reported).
+renamed. Renaming (`papers file rename`) moves the files out of the folder
+into the layout above, and removes the folder if nothing but the hidden
+bibtex is left in it (a folder with other files is kept, and the files left
+in it are reported).
+
+## Renaming the files of existing entries
+
+`papers add` places new files in the files directory under their template
+name (unless the `files` setting is `link`, see [Files](files.md)). To rename
+the files of entries already in the library, e.g. after changing the name
+template or fixing an entry's title:
+
+```
+papers file rename                      # all entries
+papers file rename perrette2013         # some entries
+papers list --year 2013 -K | papers file rename -
+```
+
+Each file is moved into the files directory under its new name;
+`--keep-source` keeps the original too (a hard link when possible). A file
+that belongs to another library is copied, not moved. The deprecated
+`papers filecheck --rename` and `papers list ... --rename` run this
+command.
 
 ## Control fields when renaming files
 
 ```
-$> papers add --rename --info --name-template "{AuthorX}{year}-{Title}" --name-title-sep '' --name-author-sep '' esd-4-11-2013
+$> papers add --move --info --name-template "{AuthorX}{year}-{Title}" --name-title-sep '' --name-author-sep '' esd-4-11-2013
 INFO:papers:found doi:10.5194/esd-4-11-2013
 INFO:papers:new entry: perrette2013scaling
 INFO:papers:create directory: files/2013

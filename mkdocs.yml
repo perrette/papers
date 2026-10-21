@@ -70,6 +70,7 @@ nav:
       - Adding entries: adding-entries.md
       - Listing and searching: listing.md
       - Renaming files and keys: renaming.md
+      - Files: files.md
       - Configuration: configuration.md
       - Managing your library: library-management.md
       - Git integration: git.md

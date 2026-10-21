@@ -18,14 +18,27 @@ bibtex file. When saving a bibtex, it will save file links according to the
 `paths` setting of the library (relative to the bibtex by default, see
 [Configuration](configuration.md#relative-versus-absolute-paths)).
 
-In any case, the following set of commands will always work provided the
-initial file links are valid (optional parameters in brackets):
+To move the files directory, or some of its files, use `papers file mv`: it
+updates the links of the entries, and the `filesdir` setting when the files
+directory itself moves (see [Files](files.md#moving-files)):
+
+```
+papers file mv files ../shared/files
+```
+
+The following set of commands also works, provided the initial file links are
+valid (optional parameters in brackets):
 
 ```
 touch new.bib
-papers add /path/to/old.bib --bib new.bib [ --rename ] [ --filesdir newfilesdir ]
+papers add /path/to/old.bib --bib new.bib [ --copy | --link ] [ --filesdir newfilesdir ]
 rm -f /path/to/old.bib
 ```
+
+By default the files of `old.bib` are moved into the files directory
+(`--copy` keeps them in place too, `--link` links to them where they are),
+except the files inside the files directory of another library, which are
+copied.
 
 ## check
 
@@ -36,43 +49,39 @@ once in a while, do:
 papers check --duplicates
 ```
 
-## filecheck
+## Checking and fixing files
 
-Check for broken links, rename files etc. Example:
-
-```
-papers filecheck --rename
-```
-
-The command can be used to move around the file directory:
+`papers file check` reports broken links, files linked twice, identical
+files and, with `--metadata`, DOIs of PDFs that differ from their entry's
+DOI. It changes nothing unless `--fix` is passed, which applies the safe
+repairs only. Broken links are removed with `papers file detach --broken`:
 
 ```
-papers filecheck --rename --filesdir newfilesdir
+papers file check
+papers file check --fix
+papers file detach --broken
 ```
 
-That command is also convenient to check what's actually tracked and what is
-not. Example workflow:
+`papers file rename` places the files in the files directory under their
+template name (see [Renaming files and keys](renaming.md)).
+
+`papers file clean` removes the files of the files directory (and its
+subfolders) that no entry links to:
 
 ```
-papers filecheck --rename --filesdir tmp
-# check what's left over in your initial files directory, e.g.
-# papers extract files/leftover1.pdf
-# papers add files/leftover1.pdf
-# ...
-papers filecheck --rename --filesdir files
+papers file clean
 ```
 
-There is also a command specifically designed to clean up zombie files and
-folders:
+It asks before removing anything, unless `-y/--yes` is passed. It ignores
+hidden files and folders and `.bib` files; a folder with a `.{folder}.bib`
+file inside, which is how versions before 2.19 stored entries with several
+files (see
+[Renaming files and keys](renaming.md#entries-with-several-files)), is removed
+as a whole when no entry links to its files. That command works best when the
+files are in their own folder, and not mixed up with other things, obviously.
 
-```
-papers filecheck --clean-filesdir
-```
+`papers file clean --dry-run --yes` lists the files that no entry links to, without
+removing them: a way to check what is actually tracked and what is not.
 
-That command will ask before removing anything, unless `--force` is passed.
-Currently it ignores hidden files and folders, and of the folders it only
-considers those with a `.{folder}.bib` file inside, which is how versions
-before 2.19 stored entries with several files (see
-[Renaming files and keys](renaming.md#entries-with-several-files)). That
-command works best when the files are in their own folder, and not mixed up
-with other things, obviously.
+See [Files](files.md) for all the `papers file` commands. `papers filecheck`
+is the deprecated form of these commands (it still works, with a warning).
