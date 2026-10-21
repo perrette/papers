@@ -11,8 +11,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # 3.15t: add when PyMuPDF supports it (https://github.com/pymupdf/PyMuPDF/issues/5170, #113)
-        python-version: [ "3.9", "3.10", "3.11", "3.12", "3.13", "3.14", "3.14t", "3.15" ]
+        python-version: [ "3.9", "3.10", "3.11", "3.12", "3.13", "3.14", "3.14t", "3.15", "3.15t" ]
 
     steps:
     - uses: actions/checkout@v6
