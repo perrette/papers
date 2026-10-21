@@ -16,15 +16,16 @@ from papers import logger
 from papers.extract import extract_pdf_doi, isvaliddoi, extract_pdf_metadata, prefetch_pdf_metadata
 from papers.extract import fetch_bibtex_by_doi, fetch_bibtex_by_fulltext_crossref, fetch_bibtex_by_fulltext_scholar
 from papers.encoding import parse_file, format_file, family_names, format_entries, standard_name, format_entry, parse_keywords, format_key
-from papers.config import (bcolors, Config, search_config, CONFIG_FILE, CONFIG_FILE_LOCAL,
-                           DATA_DIR, CONFIG_FILE_LEGACY, CONFIG_FILE_LEGACY_XDG)
+from papers.config import (bcolors, Config, MachineConfig, search_config, CONFIG_FILE, CONFIG_FILE_LOCAL,
+                           DATA_DIR, CONFIG_FILE_LEGACY, CONFIG_FILE_LEGACY_XDG,
+                           SETTINGS, LIBRARY_ONLY, parse_value, format_value, is_pool_path, short_home)
 from papers.duplicate import list_duplicates, list_uniques, edit_entries, title_id
 from papers.entries import get_entry_val, entry_content_equal, entry_from_dict
 from papers.bib import (Biblio, FUZZY_RATIO, DEFAULT_SIMILARITY, entry_filecheck,
                         backupfile as backupfile_func, isvalidkey, DuplicateKeyError, clean_filesdir,
                         are_duplicates, download_url, get_biblio, scan_dir_items, hidden_bibtex)
-from papers.install import resolve_install, apply_install, InputAsker, DefaultAsker
-from papers.utils import view_pdf, open_folder, PapersExit, file_uri_to_path, find_masked_viewer
+from papers.install import resolve_install, apply_install, init_backup, _ask_path, InputAsker, DefaultAsker
+from papers.utils import view_pdf, open_folder, PapersExit, file_uri_to_path, find_masked_viewer, set_directory
 from papers.backup import (silent_backup_bib, restore_from_backupdir,
                            git_undo, git_redo, git_restore_state, list_backup_dirs)
 from papers import __version__
@@ -57,6 +58,34 @@ def check_legacy_config(configfile):
             configfile = newname
 
     return configfile
+
+
+LIBRARY_CONFIG_FILES = [CONFIG_FILE_LOCAL, os.path.join(".papers", "config.json")]
+
+
+def find_config(start_dir='.', machine=None):
+    """The configuration that commands act on, with `origin` telling where it
+    was found:
+    - 'library': a library configuration in start_dir or above;
+    - 'v2-global': the global configuration of papers v2, until `papers migrate`;
+    - 'default-pool': the library of the default pool;
+    - None: no library (a Config with the inherited settings only).
+    """
+    machine = machine or MachineConfig.load()
+    configfile = search_config(LIBRARY_CONFIG_FILES, start_dir=start_dir, default=None)
+    origin = 'library'
+    if configfile is None and os.path.exists(CONFIG_FILE):
+        configfile, origin = CONFIG_FILE, 'v2-global'
+    if configfile is None:
+        pool = machine.pool_path('default')
+        if pool and os.path.exists(os.path.join(pool, CONFIG_FILE_LOCAL)):
+            configfile, origin = os.path.join(pool, CONFIG_FILE_LOCAL), 'default-pool'
+    if configfile is None:
+        return Config(machine=machine)
+    config = Config.load(check_legacy_config(configfile), machine=machine,
+                         local=False if origin == 'v2-global' else None)
+    config.origin = origin
+    return config
 
 
 def savebib(biblio, config):
@@ -98,28 +127,62 @@ def view_entry_files(biblio, entry):
         view_pdf(f)
 
 
+def format_options(o, kind=('name', 'key')):
+    """the name and key format settings passed on the command line, by
+    setting name (`--name-author-num 1` -> {'name.author-num': 1})"""
+    options = {}
+    for name in SETTINGS:
+        if name.startswith(tuple(k + '.' for k in kind)):
+            value = getattr(o, name.replace('.', '_').replace('-', '_'), None)
+            if value is not None:
+                options[name] = value
+    return options
+
+
 def set_keyformat_config_from_cmd(o, config):
     """
     Given options and a config state, applies the desired key options to the config.
     """
-    config.keyformat.template = o.key_template
-    config.keyformat.author_num = o.key_author_num
-    config.keyformat.author_sep = o.key_author_sep
-    config.keyformat.title_word_num = o.key_title_word_num
-    config.keyformat.title_word_size = o.key_title_word_size
-    config.keyformat.title_sep = o.key_title_sep
+    for name, value in format_options(o, ['key']).items():
+        setattr(config.keyformat, name.split('.')[1].replace('-', '_'), value)
 
 def set_nameformat_config_from_cmd(o, config):
     """
     Given options and a config state, applies the desired name options to the config.
     """
-    config.nameformat.template = o.name_template
-    config.nameformat.author_num = o.name_author_num
-    config.nameformat.author_sep = o.name_author_sep
-    config.nameformat.title_length = o.name_title_length
-    config.nameformat.title_word_num = o.name_title_word_num
-    config.nameformat.title_word_size = o.name_title_word_size
-    config.nameformat.title_sep = o.name_title_sep
+    for name, value in format_options(o, ['name']).items():
+        setattr(config.nameformat, name.split('.')[1].replace('-', '_'), value)
+
+
+def check_pools(config, pools):
+    "warn about pool names that the per-machine configuration does not define"
+    for pool in pools:
+        if not is_pool_path(pool) and config.machine.pool_path(pool) is None:
+            logger.warning(f"unknown pool name: {pool} (define it with `papers config --machine pools.{pool} PATH`, "
+                           "or write a path with a / to use a folder)")
+
+
+def _install(o, config, asker, target=None):
+    "resolve and apply an install of a library, with the format options of the command line"
+    plan = resolve_install(config, o, asker=asker, target=target)
+    for name, value in format_options(o).items():
+        plan.config.set(name, value)
+    check_pools(plan.config, plan.config.pools)
+    return apply_install(plan)
+
+
+def initcmd(parser, o, config):
+    """create a library in the current directory"""
+    for name in LIBRARY_CONFIG_FILES:
+        if os.path.exists(name):
+            raise PapersExit(f"a library already exists here ({name}): "
+                             "change its settings with `papers config`")
+    if config.origin == 'library':
+        logger.info(f"the new library is inside the library of {config.file}")
+    o.reset = False
+    config = _install(o, Config(machine=config.machine), DefaultAsker(), target=CONFIG_FILE_LOCAL)
+    print(config.status(check_files=not o.no_check_files, verbose=True))
+
 
 def installcmd(parser, o, config):
     """
@@ -135,17 +198,62 @@ def installcmd(parser, o, config):
         o.prompt = False
     asker = InputAsker() if o.prompt else DefaultAsker()
 
-    plan = resolve_install(config, o, asker=asker)
+    if o.local is True:
+        logger.warning("--local is ignored: a library configuration is always local (see `papers init`)")
+    if o.local is False:
+        return install_global(parser, o, config, asker)
 
-    set_nameformat_config_from_cmd(o, plan.config)
-    set_keyformat_config_from_cmd(o, plan.config)
+    if config.origin == 'library':
+        logger.warning(f"`papers install` on an existing library is deprecated: "
+                       f"change its settings with `papers config` (updating {config.file})")
+        target = None
+    else:
+        # behave like `papers init`: a new library in the current directory
+        config = Config(machine=config.machine)
+        target = CONFIG_FILE_LOCAL
 
-    config = apply_install(plan)
+    config = _install(o, config, asker, target=target)
+    print(config.status(check_files=not o.no_check_files, verbose=True))
 
+
+def install_global(parser, o, config, asker):
+    """`papers install --global` (deprecated): create or update the library
+    configuration next to the bibtex, and register the library's directory
+    as the `default` pool of the per-machine configuration"""
+    logger.warning("`papers install --global` is deprecated: there is no global configuration in v3. "
+                   "The library configuration is written next to the bibtex, and its directory "
+                   "becomes the `default` pool, used outside of any library.")
+    machine = config.machine
+    bibtex = o.bibtex
+    if not bibtex:
+        default = config.bibtex if config.origin in ('v2-global', 'default-pool') and config.bibtex else 'papers.bib'
+        bibtex = _ask_path(asker, "Bibtex file name", default)
+    if not bibtex:
+        raise PapersExit("install --global needs a bibtex file")
+    bibtex = os.path.abspath(bibtex)
+    libdir = os.path.dirname(bibtex)
+    target = os.path.join(libdir, CONFIG_FILE_LOCAL)
+    existing = Config.load(target, machine=machine) if os.path.exists(target) else Config(machine=machine)
+
+    o.bibtex = bibtex
+    if o.filesdir and o.filesdir.lower() not in ('none', 'null', 'unset', 'undefined', 'reset', 'delete'):
+        o.filesdir = os.path.abspath(o.filesdir)
+    os.makedirs(libdir, exist_ok=True)
+    with set_directory(libdir):
+        config = _install(o, existing, asker, target=target)
+
+    if not papers.config.DRYRUN:
+        machine.set_pool('default', short_home(libdir))
+        machine.save()
+    print(f"registered {libdir} as the default pool in {machine.file}")
     print(config.status(check_files=not o.no_check_files, verbose=True))
 
 
 def uninstallcmd(parser, o, config):
+    if config.origin == 'default-pool':
+        raise PapersExit(f"no library in this directory or above. The default pool ({config.configdir}) "
+                         f"is used outside of libraries: remove its configuration with "
+                         f"`papers -C {config.configdir} uninstall`")
     if Path(config.file).exists():
         print(f"remove configuration file: {config.file}")
         os.remove(config.file)
@@ -167,10 +275,172 @@ def uninstallcmd(parser, o, config):
             print(f"  remove it with `papers backup remove {os.path.basename(config.gitdir)}`")
 
     if o.recursive:
-        configfile = search_config([CONFIG_FILE_LOCAL, os.path.join(".papers", "config.json")], start_dir=".", default=CONFIG_FILE)
+        # library configurations above, then the global configuration of v2
+        # (never the per-machine configuration)
+        configfile = search_config(LIBRARY_CONFIG_FILES, start_dir=".", default=CONFIG_FILE)
         configfile = check_legacy_config(configfile)
         if os.path.exists(configfile):
-            uninstallcmd(parser, o, Config.load(configfile))
+            other = Config.load(configfile, machine=config.machine)
+            other.origin = 'library'
+            uninstallcmd(parser, o, other)
+
+
+def _check_setting_name(name, machine):
+    if name == 'light':
+        raise PapersExit("light is not changed with `papers config`, because it changes the file "
+                         "links and the files too: use `papers migrate --light` or `papers migrate --full` "
+                         "(not implemented yet)")
+    if machine and name.startswith('pools.') and len(name) > len('pools.'):
+        return
+    if name not in SETTINGS:
+        raise PapersExit(f"unknown setting: {name}. Settings: {', '.join(SETTINGS)}"
+                         + (", pools.NAME (with --machine)" if not machine else ", pools.NAME"))
+    if machine and name in LIBRARY_ONLY:
+        raise PapersExit(f"{name} is a setting of a library, not of the machine"
+                         + (" (the per-machine configuration names pools: pools.NAME PATH)" if name == 'pools' else ''))
+
+
+def _parse_setting(name, values):
+    try:
+        return parse_value(name, values)
+    except ValueError as error:
+        raise PapersExit(str(error))
+
+
+def configcmd(parser, o, config):
+    """get and set the settings of the library (or with --machine, of the
+    per-machine configuration)"""
+    if o.unset and o.key:
+        parser.error('--unset takes the setting name: papers config --unset KEY')
+    name = o.unset or o.key
+    if name:
+        _check_setting_name(name, o.machine)
+    if o.machine:
+        return machine_configcmd(parser, o, config.machine, name)
+
+    if config.file is None:
+        raise PapersExit(f"no library found in this directory or above, and the default pool is not a library. "
+                         f"{init_hint(config)}, or use `papers config --machine`")
+
+    if not name:
+        print(f"# {config.file}")
+        print('\n'.join(config.settings_lines()))
+        return
+
+    if not o.unset and not o.values:
+        value = config.get(name)
+        if name in ('bibtex', 'filesdir') and value is not None:
+            value = config._relpath(value)
+        print(format_value(value))
+        return
+
+    if config.origin == 'v2-global':
+        raise PapersExit(f"{config.file} is the global configuration of papers v2: "
+                         "run `papers migrate` first, to turn it into a library")
+
+    if o.unset:
+        config.unset(name)
+        if name == 'git' and not config.git:
+            config.set('git-lfs', False)
+    else:
+        value = _parse_setting(name, o.values)
+        if name in ('bibtex', 'filesdir'):
+            if not os.path.exists(value):
+                logger.warning(f"{value} does not exist")
+            value = os.path.abspath(value)
+        if name == 'pools':
+            check_pools(config, value)
+        config.set(name, value)
+        if name == 'git-lfs' and value:
+            config.set('git', True)
+        if name == 'git' and not value and config.gitlfs:
+            config.set('git-lfs', False)
+
+    if papers.config.DRYRUN:
+        print(f"DRYRUN: {name} = {format_value(config.get(name))} not saved to {config.file}")
+        return
+    config.save()
+
+    if name in ('git', 'git-lfs') and config.git:
+        init_backup(config)
+    if name == 'paths' and config.bibtex and os.path.exists(config.bibtex):
+        convert_file_links(config)
+
+
+def convert_file_links(config):
+    "write the file links of the bibtex as the `paths` setting says (relative or absolute)"
+    biblio = get_biblio(config)  # converts to absolute links if needed
+    biblio.update_file_path(biblio.relative_to)  # converts to relative links if needed
+    savebib(biblio, config)
+
+
+def machine_configcmd(parser, o, machine, name):
+    if not name:
+        print(f"# {machine.file}" + ("" if machine.exists() else " (does not exist)"))
+        for pool, path in machine.pools.items():
+            source = 'machine' if pool in machine.data.get('pools', {}) else 'default'
+            print(f"pools.{pool} = {path}  ({source})")
+        for setting in SETTINGS:
+            value = machine.get(setting)
+            if value is not None:
+                print(f"{setting} = {format_value(value)}")
+        return
+
+    is_pool = name.startswith('pools.')
+    if not o.unset and not o.values:
+        value = machine.pools.get(name[len('pools.'):]) if is_pool else machine.get(name)
+        if value is not None:
+            print(format_value(value))
+        return
+
+    if o.unset:
+        value = None
+    elif is_pool:
+        if len(o.values) != 1:
+            raise PapersExit(f"{name} takes one path")
+        value = o.values[0]
+        if not value.startswith('~'):
+            value = short_home(value)
+    else:
+        value = _parse_setting(name, o.values)
+
+    if is_pool:
+        machine.set_pool(name[len('pools.'):], value)
+    else:
+        machine.set(name, value)
+    if papers.config.DRYRUN:
+        print(f"DRYRUN: {machine.file} not saved")
+        return
+    machine.save()
+
+
+def migratecmd(parser, o, config):
+    """one-time upgrades from papers v2"""
+    if o.light or o.full:
+        raise PapersExit("migrate --light / --full: not implemented yet")
+    if o.folders:
+        return migrate_folders(check_install(parser, o, config))
+    from papers.migrate import migrate_v2_global
+    if not migrate_v2_global(config.machine, relative=o.relative, dryrun=papers.config.DRYRUN,
+                             convert_links=convert_file_links):
+        print("nothing to migrate: no global configuration of papers v2 was found")
+
+
+def migrate_folders(config):
+    """move the files of the entries kept in folders of papers < 2.19
+    (<name>/ with a hidden .<name>.bib) to the flat layout of the files directory"""
+    biblio = get_biblio(config)
+    count = 0
+    for e in biblio.entries:
+        files = biblio.get_files(e)
+        if any(os.path.isfile(hidden_bibtex(os.path.dirname(f))) for f in files):
+            logger.info(f"{biblio.key(e)}: move files out of {os.path.dirname(files[0])}")
+            biblio.rename_entry_files(e)
+            count += 1
+    if count:
+        savebib(biblio, config)
+    print(f"{count} entries moved out of the folders of papers < 2.19")
+
 
 def config_for_bibtex(bibtex, config):
     """The configuration to use when --bibtex is passed on the command line.
@@ -185,12 +455,13 @@ def config_for_bibtex(bibtex, config):
     if config.bibtex and os.path.realpath(bibtex) == os.path.realpath(config.bibtex):
         return config
 
-    configfile = search_config([CONFIG_FILE_LOCAL, os.path.join(".papers", "config.json")],
+    configfile = search_config(LIBRARY_CONFIG_FILES,
                                start_dir=os.path.dirname(os.path.abspath(bibtex)), default=None)
     if configfile is not None:
-        other = Config.load(check_legacy_config(configfile))
+        other = Config.load(check_legacy_config(configfile), machine=config.machine)
         if other.bibtex and os.path.realpath(other.bibtex) == os.path.realpath(bibtex):
             logger.info(f'configuration of {bibtex}: {configfile}')
+            other.origin = 'library'
             return other
 
     logger.debug(f'{bibtex} has no configuration of its own: use {config.file} without saving it')
@@ -200,6 +471,13 @@ def config_for_bibtex(bibtex, config):
         from papers.backup import resolve_gitdir
         config.gitdir = resolve_gitdir(bibtex)
     return config
+
+
+def init_hint(config):
+    "how to create a library, here or for the default pool"
+    pool = config.machine.pool_path('default')
+    mkdir = '' if os.path.isdir(pool) else f"mkdir -p {pool} && "
+    return f"Create a library with `papers init` (here) or `{mkdir}papers -C {pool} init` (the default pool)"
 
 
 def check_install(parser, o, config, bibtex_must_exist=True):
@@ -213,18 +491,20 @@ def check_install(parser, o, config, bibtex_must_exist=True):
     if getattr(o, "filesdir", None) is not None:
         config.filesdir = o.filesdir
     if getattr(o, "absolute_paths", None) is not None:
+        option = '--absolute-paths' if o.absolute_paths else '--relative-paths'
+        logger.warning(f"{option} is deprecated: file paths are a setting of the library, "
+                       f"`papers config paths {'absolute' if o.absolute_paths else 'relative'}`")
         config.absolute_paths = o.absolute_paths
     if getattr(o, "git", None) is not None:
         config.git = o.git
 
-    install_doc = f"first execute `papers install --bibtex {config.bibtex or '...'} [ --local ]`"
     if not config.bibtex:
-        parser.print_help()
-        print(f"--bibtex must be specified, or {install_doc}")
+        print(f"papers: error: no library found in this directory or above, and the default pool "
+              f"({config.machine.pool_path('default')}) is not a library. {init_hint(config)}, or pass --bibtex")
         raise PapersExit()
 
     if bibtex_must_exist and not os.path.exists(config.bibtex):
-        print(f'papers: error: no bibtex file found, do `touch {config.bibtex}` or {install_doc}')
+        print(f'papers: error: no bibtex file found, do `touch {config.bibtex}` or `papers init --bibtex {config.bibtex}`')
         raise PapersExit()
     logger.info(f'bibtex: {config.bibtex!r}')
     logger.info(f'filesdir: {config.filesdir!r}')
@@ -516,7 +796,7 @@ def backupcmd(parser, o, config):
     if not o.patterns and config.bibtex:
         if not config.git:
             print(f"current library: {config.bibtex} :: git-tracking is off "
-                  f"(enable with `papers install --edit --git`)")
+                  f"(enable with `papers config git true`)")
         elif not any(info['current'] for info in infos):
             print(f"current library: {config.bibtex} :: no snapshot recorded yet")
 
@@ -796,6 +1076,9 @@ def opencmd(parser, o, config):
 
 def statuscmd(parser, o, config):
     print(config.status(check_files=not o.no_check_files, verbose=o.verbose))
+    if config.file is None:
+        print(f"* default pool:       {config.machine.pool_path('default')} (not a library)")
+        print(init_hint(config))
 
 
 def get_parser(config=None):
@@ -804,8 +1087,14 @@ def get_parser(config=None):
 
     parser = argparse.ArgumentParser(prog='papers', description='library management tool')
     parser.add_argument('--version', action='store_true', help='Print version string and exit.')
+    parser.add_argument('-C', metavar='DIR', dest='directory',
+        help='run as if papers was started in DIR (before the command name)')
 
     subparsers = parser.add_subparsers(dest='cmd')
+
+    def _default(value):
+        "a configured value shown in a help text (argparse formats help with %)"
+        return str(value).replace('%', '%%')
 
     # configuration (re-used everywhere)
     # =============
@@ -820,65 +1109,117 @@ def get_parser(config=None):
     cfg = argparse.ArgumentParser(add_help=False, parents=[loggingp])
     grp = cfg.add_argument_group('config')
     grp.add_argument('--filesdir', default=None, type=file_uri_to_path,
-        help=f'files directory (default: {config.filesdir})')
+        help=f'files directory (default: {_default(config.filesdir)})')
     grp.add_argument('--bibtex', default=None, type=file_uri_to_path,
-        help=f'bibtex database (default: {config.bibtex})')
+        help=f'bibtex database (default: {_default(config.bibtex)})')
     grp.add_argument('--dry-run', action='store_true',
         help='no PDF renaming/copying, no bibtex writing on disk (for testing)')
     grp.add_argument('--relative-paths', action="store_false", dest="absolute_paths", default=None,
-        help='store file paths relative to the bibtex file (default for a local install)')
+        help='store file paths relative to the bibtex file (deprecated: `papers config paths relative`)')
     grp.add_argument('--absolute-paths', action="store_true", default=None,
-        help='store absolute file paths (default for a global install)')
+        help='store absolute file paths (deprecated: `papers config paths absolute`)')
     grp.add_argument('--no-git', action='store_false', dest='git', default=None, help="""Do not commit the current action, whatever happens""")
 
+    # the format options default to None: the configured values apply
     keyfmt = argparse.ArgumentParser(add_help=False)
     grp = keyfmt.add_argument_group('bibtex key format')
-    grp.add_argument('--key-template', default=config.keyformat.template,
-        help='''python template for generating keys (default:%(default)s).
+    grp.add_argument('--key-template',
+        help=f'''python template for generating keys (default: {_default(config.keyformat.template)}).
         The template applies to entries generated from a PDF or a DOI;
         entries added from a bibtex file keep their original key unless
         -u/--update-key is passed.''')
-    grp.add_argument('--key-author-num', type=int, default=config.keyformat.author_num,
-        help='number of authors to include in key (default:%(default)s)')
-    grp.add_argument('--key-author-sep', default=config.keyformat.author_sep,
-        help='separator for authors in key (default:%(default)s)')
-    grp.add_argument('--key-title-word-num', type=int, default=config.keyformat.title_word_num,
-        help='number of title words to include in key (default:%(default)s)')
-    grp.add_argument('--key-title-word-size', type=int, default=config.keyformat.title_word_size,
-        help='min size of title words to include in key (default:%(default)s)')
-    grp.add_argument('--key-title-sep', default=config.keyformat.title_sep,
-        help='separator for title words in key (default:%(default)s)')
+    grp.add_argument('--key-author-num', type=int,
+        help=f'number of authors to include in key (default: {config.keyformat.author_num})')
+    grp.add_argument('--key-author-sep',
+        help=f'separator for authors in key (default: {_default(config.keyformat.author_sep)})')
+    grp.add_argument('--key-title-word-num', type=int,
+        help=f'number of title words to include in key (default: {config.keyformat.title_word_num})')
+    grp.add_argument('--key-title-word-size', type=int,
+        help=f'min size of title words to include in key (default: {config.keyformat.title_word_size})')
+    grp.add_argument('--key-title-sep',
+        help=f'separator for title words in key (default: {_default(config.keyformat.title_sep)})')
 
     namefmt = argparse.ArgumentParser(add_help=False)
     grp = namefmt.add_argument_group('filename format')
-    grp.add_argument('--name-template', default=config.nameformat.template,
-        help='python template for renaming files (default:%(default)s)')
-    grp.add_argument('--name-author-num', type=int, default=config.nameformat.author_num,
-        help='number of authors to include in filename (default:%(default)s)')
-    grp.add_argument('--name-author-sep', default=config.nameformat.author_sep,
-        help='separator for authors in filename (default:%(default)s)')
-    grp.add_argument('--name-title-word-num', type=int, default=config.nameformat.title_word_num,
-        help='number of title words to include in filename (default:%(default)s)')
-    grp.add_argument('--name-title-word-size', type=int, default=config.nameformat.title_word_size,
-        help='min size of title words to include in filename (default:%(default)s)')
-    grp.add_argument('--name-title-length', type=int, default=config.nameformat.title_length,
-        help='title length to include in filename (default:%(default)s)')
-    grp.add_argument('--name-title-sep', default=config.nameformat.title_sep,
-        help='separator for title words in filename (default:%(default)s)')
+    grp.add_argument('--name-template',
+        help=f'python template for renaming files (default: {_default(config.nameformat.template)})')
+    grp.add_argument('--name-author-num', type=int,
+        help=f'number of authors to include in filename (default: {config.nameformat.author_num})')
+    grp.add_argument('--name-author-sep',
+        help=f'separator for authors in filename (default: {_default(config.nameformat.author_sep)})')
+    grp.add_argument('--name-title-word-num', type=int,
+        help=f'number of title words to include in filename (default: {config.nameformat.title_word_num})')
+    grp.add_argument('--name-title-word-size', type=int,
+        help=f'min size of title words to include in filename (default: {config.nameformat.title_word_size})')
+    grp.add_argument('--name-title-length', type=int,
+        help=f'title length to include in filename (default: {config.nameformat.title_length})')
+    grp.add_argument('--name-title-sep',
+        help=f'separator for title words in filename (default: {_default(config.nameformat.title_sep)})')
 
 
     # status
     # ======
     statusp = subparsers.add_parser('status',
-        description='view install status',
+        description='show the library, its pools and its settings',
         parents=[cfg])
     statusp.add_argument('--no-check-files', action='store_true', help='faster, less info')
-    statusp.add_argument('-v','--verbose', action='store_true', help='app status info')
+    statusp.add_argument('-v','--verbose', action='store_true', help='also show where each setting comes from')
+
+    # init
+    # ====
+    initp = subparsers.add_parser('init', description='create a library in the current directory',
+        parents=[loggingp, namefmt, keyfmt])
+    initp.add_argument('--bibtex', type=file_uri_to_path,
+        help='bibtex file (default: papers.bib, or the only .bib file of the directory)')
+    initp.add_argument('--filesdir', type=file_uri_to_path,
+        help='files directory (default: files, or an existing pdfs/, papers/... folder)')
+    initp.add_argument('--pool', nargs='+', action='extend', metavar='NAME|PATH',
+        help='pools of the library: names of the per-machine configuration, or paths '
+             '(containing a /, relative to the library) (default: default)')
+    initp.add_argument('--paths', choices=['relative', 'absolute'],
+        help='file links in the bibtex relative to the bibtex directory, or absolute '
+             f'(default: {config.inherited("paths")})')
+    initp.add_argument('--git', action='store_true', default=None,
+        help='back up the bibtex with git (default: true when git is installed)')
+    initp.add_argument('--no-git', action='store_false', dest='git', default=None, help='no git backup')
+    initp.add_argument('--git-lfs', action='store_true', default=None, help='also back up the files with git-lfs (implies --git)')
+    initp.add_argument('--editor', help='command to open a text editor; it must wait until the editor is closed, e.g. vim or "subl -w"')
+    initp.add_argument('--no-check-files', action='store_true', help=argparse.SUPPRESS)
+
+    # config
+    # ======
+    configp = subparsers.add_parser('config', parents=[loggingp],
+        description='get or set the settings of the library (git style): without KEY, list the '
+                    'settings and where each comes from (library, machine or default); with KEY, '
+                    'print its value; with KEY VALUE..., set it in the library configuration',
+        epilog='settings: ' + ', '.join(SETTINGS) + '; with --machine, also pools.NAME (path of a pool)')
+    configp.add_argument('key', nargs='?', metavar='KEY')
+    configp.add_argument('values', nargs='*', metavar='VALUE', help='several values for pools')
+    configp.add_argument('--unset', metavar='KEY', help='remove the setting: the per-machine or default value applies again')
+    configp.add_argument('--machine', '--global', action='store_true',
+        help=f'the per-machine configuration ({papers.config.MACHINE_CONFIG_FILE}) instead of the library\'s')
+    configp.add_argument('--dry-run', action='store_true', help='do not save')
+
+    # migrate
+    # =======
+    migratep = subparsers.add_parser('migrate', parents=[cfg],
+        description='one-time upgrades from papers v2. Without option: turn the global configuration '
+                    'of v2 into a library configuration next to its bibtex, and register its directory '
+                    'as the default pool.')
+    migratep.add_argument('--relative', action='store_true',
+        help='store the file links of the migrated library relative to its bibtex '
+             '(default: keep the previous setting)')
+    migratep.add_argument('--folders', action='store_true',
+        help='move the files of entries kept in folders of papers < 2.19 (<name>/ with a hidden '
+             '.<name>.bib) to the flat layout of the files directory')
+    migratep.add_argument('--light', action='store_true', help='not implemented yet')
+    migratep.add_argument('--full', action='store_true', help='not implemented yet')
 
     # install
     # =======
 
-    installp = subparsers.add_parser('install', description='setup or update papers install',
+    installp = subparsers.add_parser('install', description='deprecated alias of `papers init`; on an existing library, '
+        'updates it (deprecated: use `papers config`)',
         parents=[cfg, namefmt, keyfmt])
     installp.add_argument('--edit', action='store_true',
         help=f'update existing install non-interactively (updating is the default; --edit also suppresses prompts) (found: {config.file})')
@@ -888,15 +1229,16 @@ def get_parser(config=None):
         help='non-interactive: accept defaults without asking')
 
     installp.add_argument('--local', action="store_true", default=None,
-        help="""setup papers locally in the current directory (.papersconfig.json), exposing bibtex and filesdir.
-        This is the default for a fresh install; an existing install keeps its scope.""")
+        help="""ignored (a library configuration is always local)""")
     installp.add_argument('--global', action="store_false", dest='local', default=None,
-        help="setup papers globally for the user account (configuration under ~/.config)")
+        help="deprecated: create or update the library configuration next to the bibtex, and register "
+             "its directory as the default pool (used outside of any library)")
 
     installp.add_argument('--git', '--backup', action='store_true', default=None, help="""Track bibtex files with git.""")
     installp.add_argument('--git-lfs', '--backup-files', action='store_true', default=None, help="""Backup files with git-lfs (implies --git)""")
     installp.add_argument('--gitdir', default=None, help=argparse.SUPPRESS)
     installp.add_argument('--editor', help="""Set command to open text editor. Need to wait until closing ! E.g. vim or subl -w""")
+    installp.add_argument('--pool', nargs='+', action='extend', metavar='NAME|PATH', help=argparse.SUPPRESS)
 
     grp = installp.add_argument_group('status')
     # grp.add_argument('-l','--status', action='store_true')
@@ -908,9 +1250,9 @@ def get_parser(config=None):
 
     # uninstall
     # =======
-    uninstallp = subparsers.add_parser('uninstall', description='remove configuration file',
+    uninstallp = subparsers.add_parser('uninstall', description='remove the library configuration',
         parents=[loggingp])
-    uninstallp.add_argument("--recursive", action="store_true", help="if true, uninstall all papers configuration found on the path, recursively (config file only)")
+    uninstallp.add_argument("--recursive", action="store_true", help="deprecated: also remove the library configurations found in the parent directories, and the global configuration of papers v2 (config files only)")
     uninstallp.add_argument("--remove-backup", action="store_true", help="also remove the backup directory of the uninstalled configuration(s)")
 
 
@@ -1175,19 +1517,39 @@ def handle_logging(o):
 VIEWER_PASSTHROUGH_ENV = 'PAPERS_CLI_VIEWER_PASSTHROUGH'
 
 
+def _pop_directory_options(argv):
+    """the directory of the -C DIR options before the command name (several
+    -C combine as in git), and the remaining arguments"""
+    directory = None
+    while argv and argv[0].startswith('-C'):
+        if argv[0] == '-C':
+            if len(argv) < 2:
+                raise PapersExit('-C requires a directory')
+            d, argv = argv[1], argv[2:]
+        else:
+            d, argv = argv[0][2:], argv[1:]
+        directory = os.path.join(directory, d) if directory else d
+    return directory, argv
+
+
 def main(args=None):
     papers.config.DRYRUN = False  # reset in case main() if called directly
     if args is not None:
         # used in the commit message
         sys.argv = sys.argv[:1] + args
 
+    directory, argv = _pop_directory_options(sys.argv[1:])
+    if directory is None:
+        return _main(argv)
+    if not os.path.isdir(directory):
+        raise PapersExit(f'-C {directory}: not a directory')
+    with set_directory(directory):
+        return _main(argv)
+
+
+def _main(argv):
     check_legacy_global_config()
-    configfile = search_config([CONFIG_FILE_LOCAL, os.path.join(".papers", "config.json")], start_dir=".", default=CONFIG_FILE)
-    configfile = check_legacy_config(configfile)
-    if not os.path.exists(configfile):
-        config = Config()
-    else:
-        config = Config.load(configfile)
+    config = find_config()
 
     installed = config.file is not None
 
@@ -1203,7 +1565,6 @@ def main(args=None):
     # environment guard against a loop. Subcommand names always take
     # precedence, and any flag disables the passthrough (it cannot be meant
     # for this tool).
-    argv = sys.argv[1:]
     if argv and all(not a.startswith('-') for a in argv) \
             and argv[0] not in subparsers.choices \
             and all(os.path.isfile(file_uri_to_path(a)) for a in argv):
@@ -1224,13 +1585,17 @@ def main(args=None):
             view_pdf(f)
         return
 
-    o, args = parser.parse_known_args(args)
+    o, args = parser.parse_known_args(argv)
 
     if o.version:
         print(__version__)
         return
 
     handle_logging(o)
+
+    if os.path.exists(CONFIG_FILE) and o.cmd != 'migrate':
+        logger.warning(f"found the global configuration of papers v2 ({CONFIG_FILE}): it still applies "
+                       "outside of libraries; `papers migrate` turns it into a library and the default pool")
 
     # modify disk state?
     if hasattr(o,'dry_run'):
@@ -1250,11 +1615,19 @@ def main(args=None):
     if o.cmd == 'status':
         return statuscmd(subp, o, config)
 
-    if o.cmd == 'install':
+    if o.cmd == 'init':
+        initcmd(subp, o, config)
+    elif o.cmd == 'config':
+        configcmd(subp, o, config)
+    elif o.cmd == 'migrate':
+        migratecmd(subp, o, config)
+    elif o.cmd == 'install':
         installcmd(subp, o, config)
     elif o.cmd == 'uninstall':
         if not installed:
-            subp.error('no papers install was found')
+            subp.error('no library configuration was found')
+        if o.recursive:
+            logger.warning("uninstall --recursive is deprecated: remove the configuration of each library instead")
         uninstallcmd(subp, o, config)
         print(config.status(verbose=True))
     elif o.cmd == 'add':

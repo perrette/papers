@@ -5,7 +5,7 @@ import shutil
 import tempfile
 import unittest
 import subprocess as sp
-from papers.config import Config
+from papers.config import Config, MachineConfig
 from papers.config import CONFIG_FILE, CONFIG_FILE_LOCAL
 from papers.bib import Biblio
 # from pathlib import Path
@@ -249,12 +249,13 @@ class TestDefaultLocal(LocalInstallTest):
 
 class TestDefaultLocal2(GlobalInstallTest):
     def test_install(self):
-        self.assertTrue(self._exists(CONFIG_FILE))
-        self.assertFalse(self.config.local)
+        # v3: install --global writes a library configuration next to the bibtex
+        self.assertFalse(os.path.exists(CONFIG_FILE))
+        self.assertTrue(self._exists(CONFIG_FILE_LOCAL))
+        self.assertTrue(self.config.local)
         self.papers(f'install --edit')
-        self.assertTrue(self._exists(CONFIG_FILE))
-        config = Config.load(CONFIG_FILE)
-        self.assertFalse(config.local)
+        self.assertTrue(self._exists(CONFIG_FILE_LOCAL))
+        self.assertFalse(os.path.exists(CONFIG_FILE))
 
 
 class TestDefaultScopeIsLocal(TestBaseInstall):
@@ -277,10 +278,13 @@ class TestGlobalInstall(TestBaseInstall):
         self.papers(f'install --no-prompt --global --bibtex {self.mybib} --files {self.filesdir}')
         self.assertTrue(self._exists(self.mybib))
         self.assertTrue(self._exists(self.filesdir))
-        self.assertTrue(os.path.exists(CONFIG_FILE))
-        config = Config.load(self._path(CONFIG_FILE))
+        # v3: a library configuration next to the bibtex, registered as the default pool
+        self.assertFalse(os.path.exists(CONFIG_FILE))
+        config = Config.load(self._path(CONFIG_FILE_LOCAL))
         self.assertEqual(config.bibtex, os.path.abspath(self._path(self.mybib)))
         self.assertEqual(config.filesdir, os.path.abspath(self._path(self.filesdir)))
+        self.assertEqual(os.path.realpath(MachineConfig.load().pool_path('default')),
+                         os.path.realpath(self.temp_dir.name))
 
 
 class TestGitInstall(TestBaseInstall):
@@ -456,20 +460,25 @@ class TestStatus(LocalInstallTest):
         self.assertIn('1 entries, 0 file links', out)
 
 
-class TestUninstall2(GlobalInstallTest):
+class TestUninstall2(LocalInstallTest):
+    """uninstall --recursive (deprecated) removes the library configurations
+    found upwards and the global configuration of v2, never the per-machine one"""
     def test_uninstall(self):
-        self.assertTrue(self._exists(CONFIG_FILE))
-        self.papers(f'install --force --local')
-        self.assertTrue(self._exists(CONFIG_FILE_LOCAL))
-        self.assertTrue(self._exists(CONFIG_FILE))
-        self.papers(f'uninstall')
-        self.assertFalse(self._exists(CONFIG_FILE_LOCAL))
-        self.assertTrue(self._exists(CONFIG_FILE))
+        import papers.config
+        os.makedirs(self._path('sub'))
+        paperscmd('init --no-git', cwd=self._path('sub'))
+        self.assertTrue(self._exists(os.path.join('sub', CONFIG_FILE_LOCAL)))
+        json.dump({'bibtex': self._path(self.mybib), 'local': False}, open(CONFIG_FILE, 'w'))
+        machine = open(papers.config.MACHINE_CONFIG_FILE).read()
 
-    def test_uninstall(self):
-        self.papers(f'install --force --local')
+        paperscmd('uninstall', cwd=self._path('sub'))
+        self.assertFalse(self._exists(os.path.join('sub', CONFIG_FILE_LOCAL)))
         self.assertTrue(self._exists(CONFIG_FILE_LOCAL))
-        self.assertTrue(self._exists(CONFIG_FILE))
-        self.papers(f'uninstall --recursive')
+        self.assertTrue(os.path.exists(CONFIG_FILE))
+
+        paperscmd('init --no-git', cwd=self._path('sub'))
+        paperscmd('uninstall --recursive', cwd=self._path('sub'))
+        self.assertFalse(self._exists(os.path.join('sub', CONFIG_FILE_LOCAL)))
         self.assertFalse(self._exists(CONFIG_FILE_LOCAL))
-        self.assertFalse(self._exists(CONFIG_FILE))
+        self.assertFalse(os.path.exists(CONFIG_FILE))
+        self.assertEqual(open(papers.config.MACHINE_CONFIG_FILE).read(), machine)

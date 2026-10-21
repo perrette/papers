@@ -142,6 +142,10 @@ class BibTest(unittest.TestCase):
         else:
             cls._backup_dir = None
 
+        # the per-machine configuration (default pool) as set in tests/__init__.py
+        cls._machine_config = open(papers.config.MACHINE_CONFIG_FILE).read() \
+            if os.path.exists(papers.config.MACHINE_CONFIG_FILE) else None
+
     @classmethod
     def tearDownClass(cls):
         """ Restore any pre-existing global config
@@ -157,6 +161,11 @@ class BibTest(unittest.TestCase):
         if cls._backup_dir is not None:
             shutil.move(os.path.join(cls._backup_dir.name, os.path.basename(DATA_DIR)), DATA_DIR)
             cls._backup_dir.cleanup()
+
+        if cls._machine_config is not None:
+            open(papers.config.MACHINE_CONFIG_FILE, 'w').write(cls._machine_config)
+        elif os.path.exists(papers.config.MACHINE_CONFIG_FILE):
+            os.remove(papers.config.MACHINE_CONFIG_FILE)
 
 
     def assertMultiLineEqual(self, first, second, msg=None):
@@ -259,7 +268,8 @@ class GlobalInstallTest(BaseTest):
 
     @property
     def config(self):
-        return Config.load(CONFIG_FILE)
+        # v3: the library configuration is written next to the bibtex
+        return Config.load(self._path(CONFIG_FILE_LOCAL))
 
 
 class LocalGitInstallTest(LocalInstallTest):

@@ -393,7 +393,7 @@ class TestUndoGitGlobal(GlobalGitLFSInstallTest):
 
     def _install(self):
         self.papers(f'install --no-prompt --global --bibtex {self.mybib} --files {self.filesdir} --git --git-lfs')
-        self.config = Config.load(CONFIG_FILE)
+        self.config = Config.load(self._path(CONFIG_FILE_LOCAL))
 
     def _format_file(self, name):
         return os.path.abspath(name)
@@ -447,18 +447,8 @@ class TestUninstall(LocalGitLFSInstallTest):
 
 class TestUninstall2(GlobalGitLFSInstallTest):
     def test_uninstall(self):
-        self.assertTrue(self._exists(CONFIG_FILE))
-        self.papers(f'install --force --local')
+        # v3: install --global writes a library configuration next to the bibtex
         self.assertTrue(self._exists(CONFIG_FILE_LOCAL))
-        self.assertTrue(self._exists(CONFIG_FILE))
-        self.papers(f'uninstall')
-        self.assertFalse(self._exists(CONFIG_FILE_LOCAL))
-        self.assertTrue(self._exists(CONFIG_FILE))
-
-    def test_uninstall(self):
-        self.papers(f'install --force --local')
-        self.assertTrue(self._exists(CONFIG_FILE_LOCAL))
-        self.assertTrue(self._exists(CONFIG_FILE))
+        self.assertFalse(os.path.exists(CONFIG_FILE))
         self.papers(f'uninstall --recursive')
         self.assertFalse(self._exists(CONFIG_FILE_LOCAL))
-        self.assertFalse(self._exists(CONFIG_FILE))
