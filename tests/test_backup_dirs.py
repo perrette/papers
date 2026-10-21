@@ -1,10 +1,13 @@
 import os
+import json
+import tempfile
 from pathlib import Path
 import unittest
 
 from papers.backup import default_gitdir, read_manifest, write_manifest
 from papers.bib import Biblio
-from tests.common import BaseTest, LocalGitInstallTest
+from papers.config import CONFIG_FILE_LOCAL
+from tests.common import BaseTest, LocalGitInstallTest, paperscmd
 
 
 class TestDefaultGitdirNaming(unittest.TestCase):
@@ -135,3 +138,84 @@ class TestLegacyLayout(LocalGitInstallTest):
         # to backup_copy.bib
         self.papers(f'undo')
         self.assertMultiLineEqual(open(self._path(self.mybib)).read(), bib1)
+
+
+bibtex_new = """@article{SomeOneElse2000,
+ author = {Some One},
+ doi = {10.5194/xxxx},
+ title = {Interesting Stuff},
+ year = {2000}
+}"""
+
+
+def _snapshots(gitdir):
+    from papers.backup import backup_info
+    return backup_info(gitdir)['snapshots'] or 0
+
+
+class TestAddFromAnotherDirectory(LocalGitInstallTest):
+    """`papers add --bibtex /path/to/library.bib` run from another directory:
+    the configuration (and backup directory) of that library applies,
+    whatever the current directory holds"""
+
+    def setUp(self):
+        super().setUp()
+        self.other = tempfile.TemporaryDirectory()
+        open(os.path.join(self.other.name, 'new.bib'), 'w').write(bibtex_new)
+
+    def tearDown(self):
+        self.other.cleanup()
+        super().tearDown()
+
+    def _add_from_other(self):
+        paperscmd(f'add --bibtex {self._path(self.mybib)} --filesdir {self._path(self.filesdir)} new.bib', cwd=self.other.name)
+
+    def test_backup_in_library_gitdir(self):
+        gitdir = self.config.gitdir
+        n = _snapshots(gitdir)
+        self._add_from_other()
+        self.assertEqual(len(Biblio.load(self._path(self.mybib), '').entries), 1)
+        self.assertEqual(_snapshots(gitdir), n + 1)
+
+    def test_cwd_local_config_with_broken_git_setup(self):
+        # the current directory is another library whose backup directory does not exist
+        paperscmd(f'install --force --local --bibtex other.bib --files otherfiles', cwd=self.other.name)
+        otherconfig = os.path.join(self.other.name, CONFIG_FILE_LOCAL)
+        js = json.load(open(otherconfig))
+        js['git'] = True
+        js['gitdir'] = os.path.join(self.other.name, 'no-such-backup')
+        json.dump(js, open(otherconfig, 'w'))
+        before = open(otherconfig).read()
+
+        gitdir = self.config.gitdir
+        n = _snapshots(gitdir)
+        self._add_from_other()
+        self.assertEqual(len(Biblio.load(self._path(self.mybib), '').entries), 1)
+        self.assertEqual(_snapshots(gitdir), n + 1)
+        # the other library is left alone
+        self.assertEqual(open(otherconfig).read(), before)
+        self.assertFalse(os.path.exists(js['gitdir']))
+
+    def test_bibtex_without_config_gets_its_own_backup(self):
+        # here the roles are reversed: the current directory holds the
+        # git-enabled library, --bibtex points to a bare bibtex elsewhere
+        from papers.backup import resolve_gitdir
+        otherbib = os.path.join(self.other.name, 'lib.bib')
+        open(otherbib, 'w').write('')
+        config_before = open(self._path(CONFIG_FILE_LOCAL)).read()
+        n = _snapshots(self.config.gitdir)
+
+        self.papers(f'add --bibtex {otherbib} {self.anotherbib}')
+
+        self.assertEqual(len(Biblio.load(otherbib, '').entries), 1)
+        # backed up in a directory of its own, the current library untouched
+        self.assertEqual(_snapshots(resolve_gitdir(otherbib)), 1)
+        self.assertEqual(_snapshots(self.config.gitdir), n)
+        self.assertEqual(open(self._path(CONFIG_FILE_LOCAL)).read(), config_before)
+
+    def test_backup_failure_does_not_abort_the_command(self):
+        from unittest import mock
+        with mock.patch('papers.__main__.silent_backup_bib', side_effect=RuntimeError('git is broken')):
+            with self.assertLogs('papers', level='ERROR'):
+                self.papers(f'add {self.anotherbib}')
+        self.assertEqual(len(Biblio.load(self._path(self.mybib), '').entries), 1)

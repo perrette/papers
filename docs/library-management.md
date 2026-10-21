@@ -70,7 +70,9 @@ papers filecheck --clean-filesdir
 ```
 
 That command will ask before removing anything, unless `--force` is passed.
-Currently it ignores hidden files and folders, and will only consider folders
-that have a `.{folder}.bib` file inside, which is the convention `papers`
-follows to store multiple attachments. That command works best when the files
-are in their own folder, and not mixed up with other things, obviously.
+Currently it ignores hidden files and folders, and of the folders it only
+considers those with a `.{folder}.bib` file inside, which is how versions
+before 2.19 stored entries with several files (see
+[Renaming files and keys](renaming.md#entries-with-several-files)). That
+command works best when the files are in their own folder, and not mixed up
+with other things, obviously.

@@ -1,5 +1,30 @@
 # Renaming files and keys
 
+## Entries with several files
+
+The first file of an entry (the PDF) is named after the name template, and
+any other file (attachments, e.g. supplementary material added with `-a`) is
+placed next to it, under the same name followed by `--` and the file's
+original name:
+
+```
+files/perrette_et_al_2013_a-scaling-approach.pdf
+files/perrette_et_al_2013_a-scaling-approach--esd-4-11-2013-supplement.pdf
+```
+
+The label after `--` is kept when the entry is renamed again (e.g. after its
+title or year was fixed), so only the part before `--` changes. If two
+attachments have the same original name, the second one gets a `-2` suffix.
+
+Versions before 2.19 placed the files of an entry with several files in a
+folder named after the entry, with a hidden copy of the entry
+(`files/<name>/.<name>.bib`). Such folders keep working as they are: their
+files are linked from the bibtex, and nothing is moved until the entry is
+renamed. Renaming (`papers filecheck --rename`, or `papers list ... --rename`)
+moves the files out of the folder into the layout above, and removes the
+folder if nothing but the hidden bibtex is left in it (a folder with other
+files is kept, and the files left in it are reported).
+
 ## Control fields when renaming files
 
 ```

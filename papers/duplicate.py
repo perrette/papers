@@ -271,7 +271,8 @@ def entry_ndiff(entries, color=True):
     ' diff of many entries '
     m = merge_entries(entries)
     SECRET_STRING = 'REPLACE_{}_FIELD'
-    regex = re.compile(SECRET_STRING.format('(.*)')) # reg exp to find
+    # non-greedy: the "@type{key," line can hold two placeholders
+    regex = re.compile(SECRET_STRING.format('(.+?)'))
     choices = {}
     somemissing = []
     for k in m:
@@ -286,11 +287,14 @@ def entry_ndiff(entries, color=True):
     for line in s.splitlines():
         matches = regex.findall(line)
         if matches:
-            k = matches[0]
-            template = SECRET_STRING.format(k)
             lines.append('\u2304'*3)
-            for c in choices[k]:
-                newline = '  '+line.replace(template, '{}'.format(c))
+            # one line per alternative; with several conflicting fields on
+            # the line, the j-th line takes the j-th choice of each
+            for j in range(max(len(choices[k]) for k in matches)):
+                newline = line
+                for k in matches:
+                    newline = newline.replace(SECRET_STRING.format(k), '{}'.format(choices[k][min(j, len(choices[k])-1)]))
+                newline = '  '+newline
                 lines.append(_colordiffline(newline, '!') if color else newline)
                 lines.append('---')
             lines.pop() # remove last ---
@@ -380,7 +384,7 @@ def _ask_pick_loop(entries, extra=[], select=False):
         if i in entry_choices:
             return entries[int(i)-1]
         elif i in select_choices:
-            return [e for e in entries if e is not entries[int(i)-1]]
+            return [e for e in entries if e is not entries[int(i[1:])-1]]
         elif select and len(i.lstrip('-').split()) > 1:
             if i.startswith('-'):
                 deselect = [_process_choice(ii) for ii in i[1:].split()]
@@ -680,6 +684,7 @@ def check_duplicates(entries, key=None, eq=None, issorted=False, filter_key=None
 def conflict_resolution_on_insert(old, new, mode='i'):
     """conflict resolution with two entries
     """
+    asked = mode == 'i'
     if mode == 'i':
         print(bcolors.OKBLUE + 'duplicate found -- comparing:' + bcolors.ENDC)
         print(_colordiffline('  - existing entry, already in your library', '-'))
@@ -732,11 +737,15 @@ def conflict_resolution_on_insert(old, new, mode='i'):
         raise ValueError('conflicting entries')
 
     # edit
-    elif mode == 'e':
-        resolved = edit_entries([old, new], diff=True)
-
-    elif mode == 'E':
-        resolved = edit_entries([old, new])
+    elif mode in ('e', 'E'):
+        edited = [old, new]
+        resolved = edit_entries(edited, diff=mode == 'e')
+        if resolved is edited:
+            # the edit failed (see the error above): nothing was decided, and
+            # returning both entries would add the new one as a separate entry
+            if asked:
+                return conflict_resolution_on_insert(old, new, mode='i')
+            raise ValueError('conflicting entries (the edit failed)')
 
     else:
         raise ValueError('conflicting entries')

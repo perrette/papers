@@ -117,7 +117,8 @@ def checksum(fname):
 # move / copy
 def move(f1, f2, copy=False, interactive=True, dryrun=False, hardlink=False):
     maybe = 'dry-run:: ' if dryrun else ''
-    if f1 == f2:
+    # the same path, possibly spelled differently (relative vs absolute, symlinks)
+    if f1 == f2 or os.path.realpath(f1) == os.path.realpath(f2):
         logger.info('dest is identical to src: '+f1)
         return
     dirname = os.path.dirname(f2)
@@ -125,8 +126,20 @@ def move(f1, f2, copy=False, interactive=True, dryrun=False, hardlink=False):
         logger.info(f'{maybe}create directory: {dirname}')
         if not dryrun: os.makedirs(dirname)
 
+    if os.path.exists(f2) and os.path.samefile(f1, f2) \
+            and os.path.normcase(os.path.realpath(f1)).lower() == os.path.normcase(os.path.realpath(f2)).lower():
+        # case-only rename on a case-insensitive file system: f2 *is* f1,
+        # removing either one would remove the file
+        if copy:
+            logger.info(f'{maybe}dest is identical to src (case-insensitive file system): {f1}')
+            return
+        logger.info(f'{maybe}mv {f1} {f2}')
+        if not dryrun:
+            os.rename(f1, f2)
+        return
+
     if os.path.exists(f2):
-        # if identical file, pretend nothing happened, skip copying
+        # if identical file (e.g. hard link or identical content), pretend nothing happened, skip copying
         if os.path.samefile(f1, f2) or checksum(f2) == checksum(f1):
             if not copy and not dryrun:
                 logger.info(f'{maybe}rm {f1}')
@@ -201,6 +214,42 @@ def view_pdf(filepath):
         os.startfile(filepath)
     else:                                   # linux variants
         subprocess.call(('xdg-open', filepath))
+
+
+def file_uri_to_path(arg):
+    """Return the local path of a file:// URI, or `arg` unchanged otherwise
+
+    Desktop entries launch viewers with `%U`, i.e. with file:// URIs.
+    """
+    if arg.startswith('file://'):
+        from urllib.parse import urlparse, unquote
+        return unquote(urlparse(arg).path)
+    return arg
+
+
+def _is_papers_cli_script(path):
+    """True if `path` is a console script of this package (`papers` or `papers-cli`)"""
+    try:
+        with open(path, 'rb') as f:
+            head = f.read(1024)
+    except OSError:
+        return False
+    return b'papers.__main__' in head
+
+
+def find_masked_viewer(name='papers'):
+    """Return the first `name` executable on $PATH that is not this tool, or None
+
+    This tool's `papers` command often masks the GNOME Papers document viewer
+    in $PATH (issue #107). Console scripts of this package are recognized by
+    their content, so other installs of it (pipx, venvs) are skipped too.
+    """
+    for d in os.environ.get('PATH', '').split(os.pathsep):
+        candidate = os.path.join(d or '.', name)
+        if os.path.isfile(candidate) and os.access(candidate, os.X_OK) \
+                and not _is_papers_cli_script(candidate):
+            return candidate
+    return None
 
 
 def open_folder(path):

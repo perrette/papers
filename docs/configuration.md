@@ -28,7 +28,10 @@ Type `papers status -v` to check your configuration.
 
 You also notice a cache directory. All internet requests such as crossref
 requests are saved in the cache directory. This happens regardless of whether
-`papers` is installed or not.
+`papers` is installed or not. The metadata of each DOI is a json file under
+`doi/`, e.g. `doi/10.1126/science.1166510.json` (DOIs that do not exist are
+remembered for a day). Deleting the directory, or any file in it, is safe:
+the requests are made again when needed.
 
 ## Local install
 

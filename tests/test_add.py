@@ -142,15 +142,12 @@ class TestAdd2(TestAdd):
         main_, si_ = file_.split(';')
         main = self._checkfile(main_)
         si = self._checkfile(si_)
-        # files have been moved in an appropriately named directory
-        dirmain = os.path.dirname(main)
-        dirsi = os.path.dirname(si)
-        self.assertEqual(dirmain, dirsi)
-        dirmains = dirmain.split(os.path.sep)
-        self.assertEqual(Path(dirmain).name, Path(self.file_rename).stem)
-        # individual files have not been renamed
-        self.assertEqual(os.path.basename(main), os.path.basename(self.pdf))
-        self.assertEqual(os.path.basename(si), os.path.basename(self.si))
+        # flat layout: the main file is named after the entry, the other
+        # one next to it, with its original name as a label
+        self.assertEqual(os.path.dirname(main), os.path.dirname(si))
+        name = Path(self.file_rename).stem
+        self.assertEqual(os.path.basename(main), name + '.pdf')
+        self.assertEqual(os.path.basename(si), name + '--' + os.path.basename(self.si))
         # old pdfs still exists
         self.assertTrue(os.path.exists(self.pdf))
         self.assertTrue(os.path.exists(self.si))
@@ -512,3 +509,146 @@ class TestScanCurrentDir(unittest.TestCase):
             with set_directory(d):
                 my.scan_dir('.')
             self.assertEqual(len(my.db.entries), 1)
+
+
+class TestAddBibRelocateFiles(BibTest):
+    """`papers add source.bib` into another library: file links must be
+    resolved relative to the source bibtex and stored so that they are valid
+    from the destination bibtex"""
+
+    bibtex = """@article{Author2000,
+ author = {A. Author},
+ file = {:pdfs/paper.pdf:pdf},
+ title = {Some Title},
+ year = {2000}
+}"""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.src = os.path.join(self.tmp.name, 'src')
+        self.dest = os.path.join(self.tmp.name, 'dest')
+        os.makedirs(os.path.join(self.src, 'pdfs'))
+        os.makedirs(os.path.join(self.dest, 'files'))
+        self.pdf = os.path.join(self.src, 'pdfs', 'paper.pdf')
+        open(self.pdf, 'w').write('not really a pdf')
+        open(os.path.join(self.src, 'papers.bib'), 'w').write(self.bibtex)
+        self.mybib = os.path.join(self.dest, 'references.bib')
+        open(self.mybib, 'w').write('')
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def _file_field(self):
+        bib = Biblio.load(self.mybib, '')
+        self.assertEqual(len(bib.entries), 1)
+        return get_entry_val(bib.entries[0], 'file', '')
+
+    def test_relative_paths_point_to_source_file(self):
+        # run from the source directory, with the bibtex given as a bare name
+        paperscmd(f'add --no-query-doi --relative-paths --bibtex {self.mybib} --filesdir {self.dest}/files papers.bib', cwd=self.src)
+        field = self._file_field()
+        self.assertEqual(field, ':../src/pdfs/paper.pdf:pdf')
+        # valid from the destination's point of view, file not moved
+        self.assertTrue(os.path.exists(os.path.join(self.dest, '../src/pdfs/paper.pdf')))
+        self.assertTrue(os.path.exists(self.pdf))
+
+    def test_absolute_paths_point_to_source_file(self):
+        paperscmd(f'add --no-query-doi --absolute-paths --bibtex {self.mybib} papers.bib', cwd=self.src)
+        self.assertEqual(self._file_field(), f':{self.pdf}:pdf')
+
+    def test_rename_copy_into_destination_filesdir(self):
+        paperscmd(f'add --no-query-doi --relative-paths -rc --bibtex {self.mybib} --filesdir {self.dest}/files papers.bib', cwd=self.src)
+        field = self._file_field()
+        self.assertEqual(field, ':files/author_2000_some-title.pdf:pdf')
+        self.assertTrue(os.path.exists(os.path.join(self.dest, 'files', 'author_2000_some-title.pdf')))
+        self.assertTrue(os.path.exists(self.pdf))  # copied, not moved
+
+
+class TestAddDuplicateKeepsExistingKey(BibTest):
+    """-u/--update-key: a duplicate of an existing entry is merged under the
+    existing entry's key, whatever the merge mode"""
+
+    existing = """@article{Perrette2013ESD,
+ author = {Perrette, M. and Landerer, F. and Riva, R. and Frieler, K. and Meinshausen, M.},
+ doi = {10.5194/esd-4-11-2013},
+ journal = {Earth System Dynamics},
+ title = {A scaling approach to project regional sea level rise and its uncertainties},
+ year = {2013}
+}"""
+
+    # same DOI, other author formatting, one more field
+    new = """@article{perrette_landerer2013,
+ author = {M. Perrette and F. Landerer and R. Riva and K. Frieler and M. Meinshausen},
+ doi = {10.5194/esd-4-11-2013},
+ journal = {Earth System Dynamics},
+ pages = {11-29},
+ title = {A scaling approach to project regional sea level rise and its uncertainties},
+ year = {2013}
+}"""
+
+    def setUp(self):
+        self.mybib = tempfile.mktemp(prefix='papers.bib')
+        self.otherbib = tempfile.mktemp(prefix='papers.otherbib')
+        open(self.mybib, 'w').write(self.existing)
+        open(self.otherbib, 'w').write(self.new)
+
+    def tearDown(self):
+        os.remove(self.mybib)
+        os.remove(self.otherbib)
+
+    def _entry(self):
+        bib = Biblio.load(self.mybib, '')
+        self.assertEqual(len(bib.entries), 1)
+        return bib.entries[0]
+
+    def test_update_missing_keeps_existing_key(self):
+        paperscmd(f'add {self.otherbib} --bibtex {self.mybib} -u -m u')
+        e = self._entry()
+        self.assertEqual(e['ID'], 'Perrette2013ESD')
+        self.assertEqual(e['pages'], '11-29')  # missing field merged in
+        self.assertEqual(e['author'], 'Perrette, M. and Landerer, F. and Riva, R. and Frieler, K. and Meinshausen, M.')  # existing wins
+
+    def test_update_with_new_keeps_existing_key(self):
+        paperscmd(f'add {self.otherbib} --bibtex {self.mybib} -u -m U')
+        e = self._entry()
+        self.assertEqual(e['ID'], 'Perrette2013ESD')
+        self.assertEqual(e['author'], 'M. Perrette and F. Landerer and R. Riva and K. Frieler and M. Meinshausen')  # new wins
+
+    def test_overwrite_keeps_existing_key(self):
+        paperscmd(f'add {self.otherbib} --bibtex {self.mybib} -u -m o')
+        self.assertEqual(self._entry()['ID'], 'Perrette2013ESD')
+
+    def test_append_keeps_existing_key_and_generates_new(self):
+        paperscmd(f'add {self.otherbib} --bibtex {self.mybib} -u -m a')
+        bib = Biblio.load(self.mybib, '')
+        self.assertEqual(sorted(e['ID'] for e in bib.entries), ['Perrette2013ESD', 'perrette_landerer2013'])
+
+
+class TestAddWithoutDoi(unittest.TestCase):
+    """an entry described on the command line (e.g. an old paper without DOI),
+    with its PDF attached"""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.mybib = os.path.join(self.tmp.name, 'papers.bib')
+        self.filesdir = os.path.join(self.tmp.name, 'files')
+        self.pdf = os.path.join(self.tmp.name, 'old paper.pdf')
+        open(self.mybib, 'w').write('')
+        open(self.pdf, 'w').write('not really a pdf')
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def test_add_metadata_and_attachment(self):
+        paperscmd(f'add --bibtex {self.mybib} --filesdir {self.filesdir} --rename '
+                  f'--title "Self-consistent equilibrium ocean tides" --author "Agnew, Duncan C. and Farrell, W. E." '
+                  f'--year 1978 --attachment "{self.pdf}"')
+        bib = Biblio.load(self.mybib, self.filesdir)
+        self.assertEqual(len(bib.entries), 1)
+        e = bib.entries[0]
+        self.assertEqual(e['title'], 'Self-consistent equilibrium ocean tides')
+        self.assertEqual(e['year'], '1978')
+        files = bib.get_files(e)
+        self.assertEqual(len(files), 1)
+        self.assertTrue(os.path.abspath(files[0]).startswith(self.filesdir))  # --rename moved it
+        self.assertFalse(os.path.exists(self.pdf))

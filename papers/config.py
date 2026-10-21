@@ -4,12 +4,10 @@ import copy
 import tempfile
 from pathlib import Path
 import hashlib
+import time
+from urllib.parse import quote
 import platformdirs
 
-try:
-    import fcntl  # not available on Windows
-except ImportError:
-    fcntl = None
 from papers.entries import parse_string
 from papers import logger
 from papers.filename import Format, NAMEFORMAT, KEYFORMAT
@@ -107,25 +105,31 @@ class Config:
         return run_git(self.gitdir, cmd, check=check)
 
 
+    @property
+    def configdir(self):
+        "directory that relative paths of a local configuration file refer to"
+        return Path(self.file).parent.resolve() if self.file else Path.cwd()
+
     def _relpath(self, p):
         if p is None: return p
         if not self.local:
             return str(Path(p).resolve())  # abspath
 
-        # otherwise express path relative to bibtex (parent of config file),
-        # with '..' components if needed (e.g. files directory outside it)
+        # otherwise express path relative to the directory of the config file
+        # (as `load` reads it), with '..' components if needed (e.g. files
+        # directory outside it); a relative p is relative to the current directory
         try:
-            return os.path.relpath(self.root / p, self.root)
+            return os.path.relpath(Path(p).resolve(), self.configdir)
         except ValueError:
             # e.g. different drive on Windows
-            logger.warning(f"config :: can't save {p} as relative path to {self.root}")
+            logger.warning(f"config :: can't save {p} as relative path to {self.configdir}")
             return p
 
     def _abspath(self, p, root=None):
         if p is None: return p
         if not self.local:
             return str(Path(p).resolve())  # abspath
-        p2 = str((Path(root).resolve() if root is not None else self.root) / p)
+        p2 = str((Path(root).resolve() if root is not None else self.configdir) / p)
         return p2
 
 
@@ -246,24 +250,17 @@ class Config:
         return '\n'.join(lines)
 
 
-def _init_cache():
-    if not os.path.exists(CACHE_DIR):
-        logger.info('make cache directory for DOI requests: '+CACHE_DIR)
-        os.makedirs(CACHE_DIR)
-
-
-@contextlib.contextmanager
-def _cache_lock(file):
-    """advisory inter-process lock on a sidecar file (no-op without fcntl)"""
-    if fcntl is None:
-        yield
-        return
-    with open(file + '.lock', 'w') as lockfile:
-        fcntl.flock(lockfile, fcntl.LOCK_EX)
-        try:
-            yield
-        finally:
-            fcntl.flock(lockfile, fcntl.LOCK_UN)
+def _cache_path(folder, key):
+    """one json file per key: <folder>/<prefix>/<rest>.json, split at the first
+    slash so that DOIs are grouped by registrant (10.1126/science.1166510 ->
+    10.1126/science.1166510.json); characters unsafe in file names are quoted"""
+    head, sep, tail = key.partition('/')
+    if not sep:
+        head, tail = key[:2], key
+    name = quote(tail, safe='')
+    if len(name) > 200:  # file name length limit
+        name = hashlib.sha256(tail.encode('utf-8')).hexdigest()
+    return os.path.join(folder, quote(head, safe=''), name + '.json')
 
 
 def _read_cache_file(file):
@@ -272,17 +269,18 @@ def _read_cache_file(file):
             return json.load(open(file))
         except (json.JSONDecodeError, OSError) as error:
             # a corrupt cache file must not break every query
-            logger.warning(f"unreadable cache file {file}: {error} -- starting over with an empty cache")
-    return {}
+            logger.warning(f"unreadable cache file {file}: {error} -- ignored")
+    return None
 
 
-def _write_cache_file(cache, file):
-    """atomic replace, so an interrupted write cannot truncate the cache"""
-    fd, tmp = tempfile.mkstemp(dir=os.path.dirname(file) or '.',
+def _write_cache_file(data, file):
+    """atomic replace, so an interrupted write cannot truncate the file"""
+    os.makedirs(os.path.dirname(file), exist_ok=True)
+    fd, tmp = tempfile.mkstemp(dir=os.path.dirname(file),
                                prefix=os.path.basename(file) + '.', suffix='.tmp')
     try:
         with os.fdopen(fd, 'w') as f:
-            json.dump(cache, f)
+            json.dump(data, f)
         os.replace(tmp, file)
     except BaseException:
         with contextlib.suppress(OSError):
@@ -290,33 +288,59 @@ def _write_cache_file(cache, file):
         raise
 
 
-def cached(file, hashed_key=False):
+def _migrate_legacy_cache(legacy, folder, migrate):
+    """split a cache of previous versions (one json file for all keys) into
+    the per-key files; the legacy file is kept as <legacy>.bak"""
+    data = _read_cache_file(legacy)
+    if data:
+        logger.info(f'migrate cache {legacy} to {folder}')
+        for key, value in data.items():
+            if migrate:
+                value = migrate(value)
+            if value is not None:
+                # lower-case: DOIs are case-insensitive, and looked up in lower case
+                _write_cache_file({'value': value}, _cache_path(folder, key.lower()))
+    with contextlib.suppress(OSError):  # another process may have migrated it
+        os.replace(legacy, legacy + '.bak')
 
-    file = os.path.join(CACHE_DIR, file)
 
+NOT_FOUND_TTL = 24 * 3600  # seconds
+
+
+def cached(name, hashed_key=False, legacy=None, migrate=None, trim=None, not_found=None):
+    """cache the results of fun(key) as json files under CACHE_DIR/name/
+
+    legacy: cache file of previous versions, migrated on first use (with
+        migrate(value) -> value, or None to drop it)
+    trim: applied to results before they are stored
+    not_found: exception class raised by fun when the key does not exist:
+        it is remembered (and raised again) for NOT_FOUND_TTL seconds
+    """
     def decorator(fun):
-        # load lazily on first call so that importing papers does not touch the cache
-        cache = None
-        def decorated(doi):
-            nonlocal cache
-            if cache is None:
-                _init_cache()
-                cache = _read_cache_file(file)
+        def decorated(arg):
+            key = arg
+            folder = os.path.join(CACHE_DIR, name)
+            if legacy and not DRYRUN and os.path.exists(os.path.join(CACHE_DIR, legacy)):
+                _migrate_legacy_cache(os.path.join(CACHE_DIR, legacy), folder, migrate)
             if hashed_key: # use hashed parameter as key (for full text query)
-                key = hashlib.sha256(doi.encode('utf-8')).hexdigest()[:6]
-            else:
-                key = doi
-            if key in cache:
-                logger.debug('load from cache: '+repr((file, key)))
-                return cache[key]
-            else:
-                res = cache[key] = fun(doi)
-                if not DRYRUN:
-                    with _cache_lock(file):
-                        # merge entries written meanwhile by other processes,
-                        # keeping our own values for keys present in both
-                        cache = {**_read_cache_file(file), **cache}
-                        _write_cache_file(cache, file)
+                key = hashlib.sha256(arg.encode('utf-8')).hexdigest()[:16]
+            file = _cache_path(folder, key)
+            data = _read_cache_file(file)
+            if data and 'value' in data:
+                logger.debug('load from cache: '+repr((name, key)))
+                return data['value']
+            if data and not_found and time.time() - data.get('not_found', 0) < NOT_FOUND_TTL:
+                raise not_found(f'{key}: not found (cached until {time.ctime(data["not_found"] + NOT_FOUND_TTL)})')
+            try:
+                res = fun(arg)
+            except Exception as error:
+                if not_found and isinstance(error, not_found) and not DRYRUN:
+                    _write_cache_file({'not_found': time.time()}, file)
+                raise
+            if trim:
+                res = trim(res)
+            if not DRYRUN:
+                _write_cache_file({'value': res}, file)
             return res
         return decorated
     return decorator

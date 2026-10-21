@@ -2,7 +2,7 @@
 
 [![pypi](https://img.shields.io/pypi/v/papers-cli)](https://pypi.org/project/papers-cli)
 [![python](https://img.shields.io/badge/python-3.9-blue.svg)]()
-[![python](https://img.shields.io/badge/python-3.14t-blue.svg)]()
+[![python](https://img.shields.io/badge/python-3.15-blue.svg)]()
 [![test](https://github.com/perrette/papers/workflows/CI/badge.svg?query=branch%3Amaster)](https://github.com/perrette/papers/actions)
 [![docs](https://img.shields.io/badge/docs-perrette.github.io%2Fpapers-blue)](https://perrette.github.io/papers/)
 
@@ -62,6 +62,12 @@ papers add esd-4-11-2013.pdf --rename --copy --bibtex papers.bib --filesdir file
 # list and search your library
 papers list perrette scaling approach sea level
 ```
+
+Without `--rename` (`-r`) the PDF is linked where it is: the entry points to
+its current location and nothing is copied into the files directory. `--rename`
+moves it into `--filesdir` under a name made from the name template, and
+`--copy` (`-c`) makes a copy instead of moving (it has no effect without
+`--rename`).
 
 See the [quickstart](https://perrette.github.io/papers/quickstart/) for a full
 walkthrough.
