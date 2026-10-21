@@ -50,7 +50,12 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
+from slugify import slugify
+
 from papers import logger, __version__
+from papers.bib import Biblio, clean_filesdir
+from papers.config import BACKUP_DIR, BACKUP_DIR_LEGACY
+from papers.duplicate import DISTINCT_FILE
 from papers.entries import get_entry_val
 from papers.utils import checksum, move, PapersExit
 
@@ -88,8 +93,6 @@ def default_gitdir(bibtex):
     resolved absolute path, so that two libraries can never map to the same
     directory (a bare slug of the bibtex name used to collide).
     """
-    from slugify import slugify
-    from papers.config import BACKUP_DIR
     path = Path(bibtex).resolve()
     stem = path.stem or "library"
     digest = hashlib.sha256(str(path).encode("utf-8")).hexdigest()[:8]
@@ -99,8 +102,6 @@ def default_gitdir(bibtex):
 
 def legacy_gitdir(bibtex):
     """The backup directory name older versions derived from the bibtex path."""
-    from slugify import slugify
-    from papers.config import BACKUP_DIR
     bibtex = str(bibtex)
     stem = bibtex[:-len(".bib")] if bibtex.endswith(".bib") else bibtex
     return os.path.join(BACKUP_DIR, slugify(stem))
@@ -159,6 +160,28 @@ def claim_gitdir(config):
         logger.warning(f"backup directory {config.gitdir} previously backed up {manifest.get('bibtex')}; "
                        f"it now backs up {config.bibtex} (history of both remains in `papers git log`)")
     write_manifest(config.gitdir, config.bibtex, created=manifest.get("created") if manifest else None)
+
+
+def init_backup(config):
+    """Set up the git backup of a library: initialize its backup directory
+    (an existing one is kept, otherwise one is allocated) and take ownership
+    of it. Used by install and by `papers config git true`, followed by a
+    first snapshot (papers.library.snapshot_backup)."""
+    if not (config.gitdir and os.path.exists(config.gitdir)) and config.bibtex:
+        config.gitdir = resolve_gitdir(config.bibtex)
+    if (Path(config.gitdir)/'.git').exists():
+        logger.warning(f'{config.gitdir} is already initialized')
+    else:
+        os.makedirs(config.gitdir, exist_ok=True)
+        run_git(config.gitdir, 'init')
+
+    # an explicit install takes ownership of the backup directory
+    claim_gitdir(config)
+
+    if config.gitlfs:
+        run_git(config.gitdir, 'lfs track "files/"')
+        run_git(config.gitdir, 'add .gitattributes')
+        run_git(config.gitdir, 'commit -m "papers install: .gitattribute"', check=False)
 
 
 def check_gitdir_ownership(config):
@@ -224,7 +247,6 @@ def backup_info(gitdir, config=None):
 
 def list_backup_dirs(config=None):
     """Return information about every backup directory papers knows of."""
-    from papers.config import BACKUP_DIR, BACKUP_DIR_LEGACY
     roots = [BACKUP_DIR]
     if Path(BACKUP_DIR_LEGACY) != Path(BACKUP_DIR):
         roots.append(BACKUP_DIR_LEGACY)
@@ -240,8 +262,6 @@ def list_backup_dirs(config=None):
 
 
 def backup_bib(biblio, config, message=None):
-    from papers.bib import clean_filesdir
-
     if not config.git:
         raise PapersExit('cannot backup without --git enabled')
     if not config.gitdir:
@@ -264,7 +284,7 @@ def backup_bib(biblio, config, message=None):
 
     # stop tracking files under their pre-layout-2 names; restore still
     # understands them when materializing old snapshots
-    legacy_names = ["backup_copy.bib"] + ([] if config.backup_files else ["backup_clean.bib"])
+    legacy_names = ["backup_copy.bib"] + ([] if config.gitlfs else ["backup_clean.bib"])
     for legacy in legacy_names:
         if legacy != config.backupfile.name and (backupdir/legacy).exists():
             (backupdir/legacy).unlink()
@@ -279,8 +299,7 @@ def backup_bib(biblio, config, message=None):
 
     # the files of the library next to its bibtex: origin copies of the
     # entries taken from pools, and the pairs that are not the same paper
-    from papers.pools import ORIGIN_FILE
-    from papers.duplicate import DISTINCT_FILE
+    from papers.pools import ORIGIN_FILE  # papers.pools imports this module (through papers.library)
     for name in (ORIGIN_FILE, DISTINCT_FILE):
         source = Path(config.bibtex).parent / name
         if source.exists():
@@ -288,7 +307,7 @@ def backup_bib(biblio, config, message=None):
             shutil.copy(source, backupdir / name)
             run_git(config.gitdir, ["add", name])
 
-    if config.backup_files:
+    if config.gitlfs:
         logger.info('backup bibliography with files')
         config.backupfile_clean.unlink(missing_ok=True)
         biblio = copy.deepcopy(biblio)
@@ -339,7 +358,7 @@ def _tracked_backupfile(config):
 
 def restore_from_backupdir(config, restore_files=False):
     check_gitdir_ownership(config)
-    restore_cmd = f"papers add {config.backupfile_clean} --rename --copy" if config.backup_files else f"cp {_tracked_backupfile(config)} {config.bibtex}"
+    restore_cmd = f"papers add {config.backupfile_clean} --rename --copy" if config.gitlfs else f"cp {_tracked_backupfile(config)} {config.bibtex}"
     repair_message = f"papers backup broken :: cannot repair file links :: try to recover manually with `{restore_cmd}`"
     try:
         return _restore_from_backupdir(config, restore_files=restore_files)
@@ -349,8 +368,6 @@ def restore_from_backupdir(config, restore_files=False):
 
 
 def _restore_from_backupdir(config, restore_files=False):
-    from papers.bib import Biblio
-
     current = run_git(config.gitdir, ["rev-parse", "HEAD"]).stdout.strip()
     message = run_git(config.gitdir, ["log", current, "--pretty=format:%C(auto)%h %s (%ad)", "-1"]).stdout.strip()
     logger.info(f'restore bibliography to {message}')
@@ -360,7 +377,7 @@ def _restore_from_backupdir(config, restore_files=False):
     shutil.copy(_tracked_backupfile(config), config.bibtex)
 
     # Re-name the file according to back-up bibtex
-    if not config.backup_files:
+    if not config.gitlfs:
         return
 
     biblio = Biblio.load(config.bibtex, config.filesdir)

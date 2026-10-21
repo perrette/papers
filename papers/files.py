@@ -11,7 +11,7 @@ from papers import logger
 from papers.entries import get_entry_val
 from papers.bib import DOWNLOAD_PREFIX
 from papers.config import Config, LIBRARY_CONFIG_FILES
-from papers.utils import search_config, PapersExit
+from papers.utils import checksum, search_config, PapersExit
 
 
 FILES_MODES = ('move', 'copy', 'link')
@@ -328,7 +328,6 @@ def check_entry_files(biblio, e, metadata=False, fix=False):
     the same or an identical file, the file itself is kept).
     """
     from papers.bib import fix_mendeley_path, entry_filecheck_metadata
-    from papers.utils import checksum
 
     key = get_entry_val(e, 'ID', '')
     files = biblio.get_files(e)

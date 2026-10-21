@@ -5,6 +5,7 @@ import hashlib
 import subprocess, platform
 from contextlib import contextmanager
 from pathlib import Path
+from urllib.parse import urlparse, unquote
 
 from papers import logger
 
@@ -220,7 +221,6 @@ def file_uri_to_path(arg):
     Desktop entries launch viewers with `%U`, i.e. with file:// URIs.
     """
     if arg.startswith('file://'):
-        from urllib.parse import urlparse, unquote
         return unquote(urlparse(arg).path)
     return arg
 

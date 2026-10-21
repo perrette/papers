@@ -26,7 +26,7 @@ import os
 from types import SimpleNamespace
 
 from bibtexparser import Library
-from bibtexparser.model import ExplicitComment
+from bibtexparser.model import Entry, ExplicitComment, Field
 
 import papers.config
 from papers import logger
@@ -34,7 +34,9 @@ from papers.config import Config, is_pool_path, CONFIG_FILE_LOCAL, LIBRARY_CONFI
 from papers.duplicate import Distinct, IdentityIndex, find_duplicates, same_paper, SAME, Verdict
 from papers.entries import get_entry_val, set_entry_key, entry_copy, parse_string, format_library
 from papers.bib import Biblio
-from papers.files import realpath, is_inside
+from papers.extract import parse_doi_from_pdf_metadata, parse_dois, pdfhead, pdftail, title_in_text
+from papers.files import FilesPolicy, realpath, is_inside
+from papers.install import resolve_install, apply_install, DefaultAsker
 from papers.library import get_biblio
 from papers.merge import Merge, apply_entry
 from papers.utils import PapersExit, checksum, bcolors
@@ -59,7 +61,6 @@ def library_config_file(path):
 def create_library(path, machine, bibtex='papers.bib', git=None):
     """create a library in directory `path` (as `papers init` does, without
     questions), and return its configuration file"""
-    from papers.install import resolve_install, apply_install, DefaultAsker
     os.makedirs(path, exist_ok=True)
     o = SimpleNamespace(bibtex=os.path.join(path, bibtex), filesdir=os.path.join(path, 'files'),
                         reset=False, paths=None, absolute_paths=None, pool=None, gitdir=None,
@@ -162,7 +163,6 @@ class Pool:
         return pe
 
     def find_doi(self, doi):
-        from bibtexparser.model import Entry, Field
         return self.find(Entry('misc', 'doi', [Field('doi', doi)]))
 
     def find_file(self, file):
@@ -385,7 +385,6 @@ class Origin:
     def set(self, key, pool, pool_entry):
         """record the pool's version of an entry (the record does not change
         if it is the same as before, its time included)"""
-        from bibtexparser.model import Field
         new = _strip(pool_entry, ('file',) + _ORIGIN_FIELDS)
         old = self.entries.get(key.lower())
         if old is not None and get_entry_val(old, POOL_FIELD, '') == pool \
@@ -486,7 +485,6 @@ class Exchange:
         papers.files.FilesPolicy): in a light library they are linked where
         they are, otherwise as the files mode says (a pool file is copied,
         never moved)"""
-        from papers.files import FilesPolicy
         if self.config.light:
             mode = 'link'
         mode = mode or self.config.files or 'move'
@@ -632,7 +630,6 @@ class Exchange:
 
     def _pool_policy(self, pool, keep=()):
         "files pushed to a pool: copied (a hard link when possible), with the pool's name template"
-        from papers.files import FilesPolicy
         return FilesPolicy('copy', pool.filesdir, current_config=pool.config.file,
                            machine=self.config.machine, keep=keep, light=True)
 
@@ -751,7 +748,6 @@ class Exchange:
             if not any(os.path.exists(f) and any(is_inside(f, d) for d in dirs) for f in files):
                 continue
             keep = [f for f in files if not any(is_inside(f, d) for d in dirs)]
-            from papers.files import FilesPolicy
             policy = FilesPolicy('copy', self.biblio.filesdir, current_config=self.config.file,
                                  machine=self.config.machine, keep=keep, pool_dirs=dirs)
             self.biblio.rename_entry_files(e, copy=policy)
@@ -840,7 +836,6 @@ class PoolLookup:
                 return self._take(biblio, pool, pe, biblio.keyformat(pe), files=files)
         if doi:
             return self.doi(biblio, doi, files)
-        from papers.extract import parse_doi_from_pdf_metadata, parse_dois, pdfhead, pdftail, title_in_text
         try:
             doi = parse_doi_from_pdf_metadata(pdf)
             if doi:
@@ -920,7 +915,6 @@ def export(biblio, config, entries, dest, files='copy', git=None):
     new.save()
     target = Biblio(filesdir=new.filesdir, nameformat=new.nameformat, keyformat=new.keyformat,
                     relative_to=os.path.dirname(new.bibtex), distinct=Distinct.for_bibtex(new.bibtex))
-    from papers.files import FilesPolicy
     for e in entries:
         c = entry_for(e, biblio, target)
         if files == 'none' and 'file' in c.fields_dict:

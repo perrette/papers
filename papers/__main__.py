@@ -22,7 +22,7 @@ from papers.merge import Resolver, DuplicateError, ON_DUPLICATE
 from papers.entries import get_entry_val, entry_content_equal, entry_from_dict
 from papers.bib import (backupfile as backupfile_func, isvalidkey, DuplicateKeyError, clean_filesdir,
                         download_url, scan_dir_items, hidden_bibtex)
-from papers.install import (resolve_install, apply_install, init_backup, _ask_path, RESET_WORDS,
+from papers.install import (resolve_install, apply_install, _ask_path, RESET_WORDS,
                             InputAsker, DefaultAsker)
 from papers.utils import bcolors, search_config, view_pdf, open_folder, PapersExit, file_uri_to_path, find_masked_viewer, set_directory
 from papers.identifiers import read_selection, select_entries, ACCEPTED as ENTRY_IDS
@@ -32,9 +32,9 @@ from papers.files import (FilesPolicy, realpath, is_download, plan_moves, link_s
 from papers.pools import (Pools, Exchange, PoolLookup, use_pool_files, report_lines,
                           export, status_lines, machine_pool_lines, pool_path_setting, library_config_file)
 from papers.library import (check_legacy_global_config, check_legacy_config, find_config,
-                            config_for_bibtex, get_biblio, savebib, convert_file_links)
+                            config_for_bibtex, get_biblio, savebib, convert_file_links, snapshot_backup)
 from papers.migrate import migrate_v2_global, migrate_folders
-from papers.backup import (restore_from_backupdir,
+from papers.backup import (init_backup, restore_from_backupdir,
                            git_undo, git_redo, git_restore_state, list_backup_dirs)
 from papers import __version__
 
@@ -302,6 +302,8 @@ def configcmd(parser, o, config):
 
     if name in ('git', 'git-lfs') and config.git:
         init_backup(config)
+        if config.bibtex and os.path.exists(config.bibtex):
+            snapshot_backup(config)
     if name == 'paths' and config.bibtex and os.path.exists(config.bibtex):
         convert_file_links(config)
 

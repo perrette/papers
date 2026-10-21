@@ -3,7 +3,8 @@ import copy
 from pathlib import Path
 import platformdirs
 
-from papers.entries import parse_string
+from papers.encoding import parse_file
+from papers.entries import parse_string, get_entry_val
 from papers import logger
 from papers.filename import NAMEFORMAT, KEYFORMAT
 from papers import __version__
@@ -299,7 +300,7 @@ class Config:
         keyformat=None,
         nameformat=None,
         editor=None,
-        gitdir=None, git=None, gitlfs=None, local=None, absolute_paths=None, backup_files=None,
+        gitdir=None, git=None, gitlfs=None, local=None, absolute_paths=None,
         pools=None, files=None, sync=None, light=False, machine=None):
         self.file = file
         self.local = local
@@ -317,9 +318,7 @@ class Config:
             absolute_paths = self.inherited('paths') == 'absolute'
         self.absolute_paths = absolute_paths
         self.git = git if git is not None else self.inherited('git')
-        if gitlfs is None:
-            gitlfs = backup_files if backup_files is not None else self.inherited('git-lfs')
-        self.gitlfs = gitlfs
+        self.gitlfs = gitlfs if gitlfs is not None else self.inherited('git-lfs')
         self.pools = list(pools) if pools is not None else self.inherited('pools')
         # what `add` does with a file: move or copy it into the files
         # directory, or link it where it is (see papers.files.FilesPolicy)
@@ -341,15 +340,6 @@ class Config:
         if value is not None:
             os.environ['EDITOR'] = value
         self._editor = value
-
-    @property
-    def backup_files(self):
-        "the files are backed up with git-lfs"
-        return self.gitlfs
-
-    @backup_files.setter
-    def backup_files(self, value):
-        self.gitlfs = value
 
     # settings by name (see SETTINGS)
     # -------------------------------
@@ -435,10 +425,6 @@ class Config:
             # avoid clashing with the backup directory's own files
             name = 'backup_' + name
         return Path(self.gitdir)/name
-
-    def gitcmd(self, cmd, check=True):
-        from papers.backup import run_git
-        return run_git(self.gitdir, cmd, check=check)
 
 
     @property
@@ -594,8 +580,6 @@ class Config:
                 bibtexstring = open(self.bibtex).read()
                 db = parse_string(bibtexstring)
                 if len(db.entries):
-                    from papers.encoding import parse_file
-                    from papers.entries import get_entry_val
                     nfiles = sum(len(parse_file(get_entry_val(e, 'file', ''))) for e in db.entries)
                     status = bcolors.OKBLUE+' ({} entries, {} file links)'.format(len(db.entries), nfiles)+bcolors.ENDC
                 else:
@@ -609,7 +593,7 @@ class Config:
         lines.append(f'* bibtex:             {_fmt_path(self.bibtex) if self.bibtex else self.bibtex}'+status)
 
         if self.file:
-            from papers.pools import status_lines
+            from papers.pools import status_lines  # papers.pools imports this module
             lines.append('* pools:'+('' if self.pools else ' none'))
             lines.extend(status_lines(self))
             lines.append('* light:              ' + ('yes (the files are those of the first pool)' if self.light else 'no'))

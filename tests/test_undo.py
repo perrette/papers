@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 import subprocess as sp
+from papers.backup import run_git
 from papers.config import Config
 from papers.config import CONFIG_FILE, CONFIG_FILE_LOCAL
 from papers.bib import Biblio
@@ -47,7 +48,7 @@ class TimeTravelBase:
         print(open(self.config.backupfile).read())
 
         # make sure we have 3 distinct commits
-        self.config.gitcmd('log')
+        run_git(self.config.gitdir, 'log')
         print(commits)
         print(self.config.gitdir)
         sp.check_call(f'ls {self.config.gitdir}', shell=True)

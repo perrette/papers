@@ -20,7 +20,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from papers import logger
+from papers.backup import init_backup, resolve_gitdir
 from papers.config import Config, CONFIG_FILE_LOCAL
+from papers.library import snapshot_backup
 
 # words that clear a value at a prompt or on the command line
 RESET_WORDS = ('none', 'null', 'unset', 'undefined', 'reset', 'delete')
@@ -186,7 +188,6 @@ def resolve_install(config, o, probe=None, asker=None, target=None):
     elif config.gitdir and os.path.exists(config.gitdir):
         pass  # keep the pre-existing backup directory and its history
     elif config.bibtex is not None:
-        from papers.backup import resolve_gitdir
         config.gitdir = resolve_gitdir(config.bibtex)
 
     if o.editor:
@@ -244,43 +245,9 @@ def apply_install(plan):
     config.save()
 
     if plan.init_git:
-        init_backup(config, snapshot=False)
+        init_backup(config)
 
     if plan.snapshot:
         snapshot_backup(config)
 
     return config
-
-
-def init_backup(config, snapshot=True):
-    """Set up the git backup of a library: initialize its backup directory
-    (an existing one is kept, otherwise one is allocated), take ownership of
-    it, and with `snapshot` record the bibtex. Used by install and by
-    `papers config git true`."""
-    from papers.backup import claim_gitdir, resolve_gitdir
-    if not (config.gitdir and os.path.exists(config.gitdir)) and config.bibtex:
-        config.gitdir = resolve_gitdir(config.bibtex)
-    if (Path(config.gitdir)/'.git').exists():
-        logger.warning(f'{config.gitdir} is already initialized')
-    else:
-        os.makedirs(config.gitdir, exist_ok=True)
-        config.gitcmd('init')
-
-    # an explicit install takes ownership of the backup directory
-    claim_gitdir(config)
-
-    if config.gitlfs:
-        config.gitcmd('lfs track "files/"')
-        config.gitcmd('add .gitattributes')
-        config.gitcmd('commit -m "papers install: .gitattribute"', check=False)
-
-    if snapshot and config.bibtex and os.path.exists(config.bibtex):
-        snapshot_backup(config)
-
-
-def snapshot_backup(config):
-    "commit the current bibtex to the backup directory"
-    from papers.library import get_biblio
-    from papers.backup import backup_bib
-    biblio = get_biblio(config)
-    backup_bib(biblio, config)

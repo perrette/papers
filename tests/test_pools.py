@@ -238,9 +238,9 @@ class TestAdd(PoolTest):
         Path(self.path('other.pdf')).write_text('another pdf')
         with patch('papers.bib.fetch_bibtex_by_doi', no_fetch), \
              patch('papers.bib.extract_pdf_metadata', no_fetch), \
-             patch('papers.extract.parse_doi_from_pdf_metadata', lambda pdf: None), \
-             patch('papers.extract.pdfhead', lambda pdf: 'Climate sensitivity revisited\ndoi:10.1000/abc123'), \
-             patch('papers.extract.pdftail', lambda pdf: ''):
+             patch('papers.pools.parse_doi_from_pdf_metadata', lambda pdf: None), \
+             patch('papers.pools.pdfhead', lambda pdf: 'Climate sensitivity revisited\ndoi:10.1000/abc123'), \
+             patch('papers.pools.pdftail', lambda pdf: ''):
             self.lib('add ../other.pdf')
         biblio, entries = self.bib()
         e = list(entries.values())[0]

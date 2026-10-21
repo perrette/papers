@@ -1,10 +1,15 @@
+import difflib
+import mimetypes
 import os
 from pathlib import Path
 import shutil
 import tempfile
+from urllib.parse import urlparse, unquote
+
 import requests
 from unidecode import unidecode as unicode_to_ascii
 from bibtexparser import Library
+from bibtexparser.middlewares import SortBlocksByTypeAndKeyMiddleware
 
 from papers.entries import (
     get_entry_val,
@@ -42,12 +47,11 @@ from papers.duplicate import (
     find_duplicates,
     duplicate_groups,
 )
-from papers.merge import Merge, Resolver, Decision, DuplicateError, apply_entry
+from papers.merge import Merge, Resolver, Decision, DuplicateError, apply_entry, option_hint
 
 
 def entry_diff(e_old, e, color=True):
     "line diff of two entries, as bibtex"
-    import difflib
     lines = difflib.ndiff(format_entries([e_old]).splitlines(1), format_entries([e]).splitlines(1))
     diff = ''.join(lines)
     if not color:
@@ -60,7 +64,6 @@ def entry_diff(e_old, e, color=True):
 # ============
 
 def _basename_from_url(url):
-    from urllib.parse import urlparse, unquote
     path = urlparse(url).path
     name = unquote(path.rsplit('/', 1)[-1]) or 'download'
     # strip characters that would break filesystem paths
@@ -126,7 +129,6 @@ def download_url(url, expect_pdf=False, dest_dir=None):
         if not basename.lower().endswith('.pdf'):
             basename += '.pdf'
     else:
-        import mimetypes
         ext = mimetypes.guess_extension((ctype or '').split(';')[0].strip())
         if ext and not basename.lower().endswith(ext.lower()):
             basename += ext
@@ -392,7 +394,6 @@ class Biblio:
 
     def sort(self):
         """Re-order library by block type and entry key (public API: SortBlocksByTypeAndKeyMiddleware)."""
-        from bibtexparser.middlewares import SortBlocksByTypeAndKeyMiddleware
         self.db = SortBlocksByTypeAndKeyMiddleware().transform(library=self.db)
 
     def insert_entry(self, entry, update_key=False, check_duplicate=False, rename=False, copy=False, metadata={},
@@ -699,7 +700,6 @@ class Biblio:
         if resolver.mode == 'skip':
             return
         if resolver.mode == 'error' and groups:
-            from papers.merge import option_hint
             lines = []
             for g in groups:
                 lines.append(Resolver.describe(Merge(g.entries, relative_to=self.relative_to, keys_to_ids=True),

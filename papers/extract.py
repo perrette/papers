@@ -10,6 +10,7 @@ from concurrent.futures import ThreadPoolExecutor
 from urllib.parse import quote
 
 import requests
+from unidecode import unidecode
 
 import papers
 from papers.cache import cached
@@ -480,7 +481,6 @@ def query_text(txt, max_query_words=200):
 
 
 def _normalize_for_match(s):
-    from unidecode import unidecode
     s = re.sub(r'<[^>]+>', '', s)  # markup in crossref titles, e.g. CO<sub>2</sub>
     return re.sub(r'[^a-z0-9]', '', unidecode(s).lower())
 

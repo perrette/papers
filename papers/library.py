@@ -9,7 +9,7 @@ from pathlib import Path
 
 import papers.config
 from papers import logger
-from papers.backup import silent_backup_bib, resolve_gitdir
+from papers.backup import backup_bib, silent_backup_bib, resolve_gitdir
 from papers.bib import Biblio
 from papers.entries import get_entry_val
 from papers.config import (Config, MachineConfig, CONFIG_FILE, CONFIG_FILE_LOCAL, LIBRARY_CONFIG_FILES,
@@ -167,3 +167,8 @@ def convert_file_links(config):
     biblio = get_biblio(config)  # converts to absolute links if needed
     biblio.update_file_path(biblio.relative_to)  # converts to relative links if needed
     savebib(biblio, config)
+
+
+def snapshot_backup(config):
+    "commit the current bibtex to the backup directory"
+    backup_bib(get_biblio(config), config)
