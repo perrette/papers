@@ -126,6 +126,7 @@ def _main(argv):
 
 
 def main_clean_exit(args=None):
+    logging.basicConfig()
     try:
         main(args)
     except (PapersExit, DuplicateKeyError) as error:

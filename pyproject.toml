@@ -28,13 +28,13 @@ dependencies = [
     "scholarly",
     "rapidfuzz",
     "python-slugify",
-    "bs4",
+    "requests",
+    "beautifulsoup4",
     "platformdirs",
 ]
 dynamic = ["version"]
 
 [project.optional-dependencies]
-# all = ["package"]
 docs = [
     # Pin below MkDocs 2.0: that release drops the plugin/theme/config system
     # with no migration path and is incompatible with Material for MkDocs.

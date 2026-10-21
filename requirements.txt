@@ -1,9 +1,0 @@
-PyMuPDF
-unidecode
-crossrefapi
-bibtexparser>=2.0.0b2
-scholarly
-rapidfuzz
-bs4
-python-slugify
-platformdirs
