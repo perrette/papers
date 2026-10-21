@@ -117,7 +117,8 @@ def checksum(fname):
 # move / copy
 def move(f1, f2, copy=False, interactive=True, dryrun=False, hardlink=False):
     maybe = 'dry-run:: ' if dryrun else ''
-    if f1 == f2:
+    # the same path, possibly spelled differently (relative vs absolute, symlinks)
+    if f1 == f2 or os.path.realpath(f1) == os.path.realpath(f2):
         logger.info('dest is identical to src: '+f1)
         return
     dirname = os.path.dirname(f2)
@@ -125,8 +126,20 @@ def move(f1, f2, copy=False, interactive=True, dryrun=False, hardlink=False):
         logger.info(f'{maybe}create directory: {dirname}')
         if not dryrun: os.makedirs(dirname)
 
+    if os.path.exists(f2) and os.path.samefile(f1, f2) \
+            and os.path.normcase(os.path.realpath(f1)).lower() == os.path.normcase(os.path.realpath(f2)).lower():
+        # case-only rename on a case-insensitive file system: f2 *is* f1,
+        # removing either one would remove the file
+        if copy:
+            logger.info(f'{maybe}dest is identical to src (case-insensitive file system): {f1}')
+            return
+        logger.info(f'{maybe}mv {f1} {f2}')
+        if not dryrun:
+            os.rename(f1, f2)
+        return
+
     if os.path.exists(f2):
-        # if identical file, pretend nothing happened, skip copying
+        # if identical file (e.g. hard link or identical content), pretend nothing happened, skip copying
         if os.path.samefile(f1, f2) or checksum(f2) == checksum(f1):
             if not copy and not dryrun:
                 logger.info(f'{maybe}rm {f1}')

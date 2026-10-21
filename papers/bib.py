@@ -669,7 +669,8 @@ class Biblio:
         files = self.get_files(e)
         # newname = entrydir(e, root)
 
-        direc = self.filesdir
+        # absolute, to compare with the (absolute) current file paths
+        direc = os.path.abspath(self.filesdir)
 
         if not files:
             logger.info('no files to rename')
@@ -724,7 +725,9 @@ class Biblio:
 
             # remove old direc if empty?
             direcs = list({os.path.dirname(file) for file in files})
-            if len(direcs) == 1:
+            if len(direcs) == 1 and os.path.realpath(direcs[0]) == os.path.realpath(newdir):
+                pass  # files already in place
+            elif len(direcs) == 1:
                 leftovers = os.listdir(direcs[0])
                 if not leftovers or len(leftovers) == 1 and leftovers[0] == os.path.basename(hidden_bibtex(direcs[0])):
                     logger.debug('remove tree: '+direcs[0])
