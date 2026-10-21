@@ -636,6 +636,8 @@ def addcmd(parser, o, config):
             else: # file.endswith('.bib'):
                 entries.extend( biblio.add_bibtex_file(file, attachments=o.attachment, rename=o.rename, copy=o.copy, **kw) )
 
+        except EOFError:
+            raise  # a question without answer stops the command (see main_clean_exit)
         except Exception as error:
             logger.error(str(error))
             if not o.ignore_errors:
@@ -1675,6 +1677,14 @@ def main_clean_exit(args=None):
             raise
         if error.args:
             logger.error(str(error))
+        sys.exit(1)
+    except EOFError:
+        # a question was asked, but the standard input is closed (script, pipe)
+        if logger.getEffectiveLevel() == logging.DEBUG:
+            raise
+        logger.error('papers asked a question, but there is no input to answer it: '
+                     'run the command in a terminal, or answer with its options '
+                     '(e.g. -m/--mode for duplicates, --force)')
         sys.exit(1)
 
 if __name__ == "__main__":
