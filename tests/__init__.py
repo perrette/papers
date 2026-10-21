@@ -26,6 +26,10 @@ import json
 import papers.config
 TEST_DEFAULT_POOL = os.path.join(_TEST_HOME, 'Documents', 'papers')
 papers.config.DEFAULT_POOLS['default'] = TEST_DEFAULT_POOL
+# The files mode is `link` (the default is `move`): `papers add` then leaves
+# the PDFs where they are, as in v2, so that the cached PDFs of
+# tests/downloadedpapers are never moved. The tests of the files modes set
+# the mode they test.
 os.makedirs(os.path.dirname(papers.config.MACHINE_CONFIG_FILE))
 with open(papers.config.MACHINE_CONFIG_FILE, 'w') as f:
-    json.dump({'pools': {'default': TEST_DEFAULT_POOL}}, f)
+    json.dump({'pools': {'default': TEST_DEFAULT_POOL}, 'files': 'link'}, f)

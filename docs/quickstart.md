@@ -33,18 +33,20 @@ Add the PDF to your `papers.bib` library, and rename a copy of it in a files
 directory `files`:
 
 ```
-$> papers add esd-4-11-2013.pdf --rename --copy --bibtex papers.bib --filesdir files --info
+$> papers add esd-4-11-2013.pdf --copy --bibtex papers.bib --filesdir files --info
 INFO:papers:found doi:10.5194/esd-4-11-2013
 INFO:papers:new entry: perrette_landerer2013
-INFO:papers:mv /home/perrette/playground/papers/esd-4-11-2013.pdf files/perrette_et_al_2013_a-scaling-approach-to-project-regional-sea-level-rise-and-its-uncertainties.pdf
+INFO:papers:ln /home/perrette/playground/papers/esd-4-11-2013.pdf files/perrette_et_al_2013_a-scaling-approach-to-project-regional-sea-level-rise-and-its-uncertainties.pdf
 INFO:papers:renamed file(s): 1
 ```
 
 (the `--info` argument asks for the above output information to be printed out
 to the terminal)
 
-Without `--rename` the PDF is linked where it is, and nothing is copied into
-the files directory; `--copy` only applies together with `--rename`.
+`--copy` keeps the original PDF where it is (a hard link when possible);
+without it the PDF is moved into the files directory, and with `--link` it is
+left where it is and the entry links to it there. The `files` setting of a
+library sets the default (see [Files](files.md)).
 
 See [Adding entries](adding-entries.md) for the full range of ways to add
 entries, and [Renaming files and keys](renaming.md) for how to specify file

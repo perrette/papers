@@ -9,19 +9,21 @@
 - add entry as PDF (`papers add ...`)
 - add entry as bibtex (`papers add ...`)
 - scan directory for PDFs (`papers add ...`)
-- rename PDFs according to bibtex key and year (`papers filecheck --rename [--copy]`)
-- attachments (e.g. supplementary material), named after the main file (`papers add ... -a FILE`)
+- move, copy or link the added PDFs into a files directory (`files` setting, `papers add --move/--copy/--link`)
+- rename PDFs according to bibtex key and year (`papers file rename [--keep-source]`)
+- move files and folders and update the links (`papers file mv`)
+- attachments (e.g. supplementary material), named after the main file (`papers add ... --attach FILE`, `papers file attach KEY FILE`)
 - merging (`papers check --duplicates ...`)
 - fix entries (`papers check --format-name --encoding unicode --fix-doi --fix-key ...`)
 - library configuration with its bibtex, files directory and settings (`papers init --bibtex BIB --filesdir DIR ...`, `papers config`)
 - integration with git
 - undo/redo command (`papers undo / redo`)
-- display / search / list entries: format as bibtex or key or whatever (`papers list ... [--key-only, -l]`)
-- list + edit or remove entry by key or else (`papers list ... [--edit, --delete]`)
-- fix broken PDF links (`papers filecheck ...`):
-    - remove duplicate file names (always) or file copies (`--hash-check`)
-    - remove missing link (`--delete-missing`)
-    - fix files name after a Mendeley export (`--fix-mendeley`):
+- display / search / list entries: format as bibtex or key or whatever (`papers list ... [-K/--key-only, -l]`)
+- edit, remove and tag entries by key or DOI, or from a pipe (`papers edit`, `papers rm`, `papers tag`, `papers list ... -K | papers rm -`)
+- check and fix file links (`papers file check [--fix]`, `papers file detach --broken`, `papers file clean`):
+    - report broken links, files linked twice and identical files
+    - remove duplicate links (`--fix`)
+    - fix files name after a Mendeley export (`--fix`):
         - leading `/` missing is added
         - latex characters, e.g. `{\_}` or `{\'{e}}` replaced with unicode
 
@@ -46,5 +48,5 @@ Currently covers:
     - duplicate test with levels `EXACT`, `GOOD`, `FAIR` (the default), `PARTIAL`
 - `papers list`
 - `papers undo / redo` (partial)
-- `papers filecheck --rename` (superficial)
+- `papers file` subcommands, `papers rm`, `papers tag`, `papers edit`
 - `papers check --duplicate` (fix DOI etc.) (superficial)

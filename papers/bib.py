@@ -59,6 +59,10 @@ def _basename_from_url(url):
     return name.replace('/', '_').replace('\\', '_')
 
 
+# prefix of the temporary directories of downloaded files
+DOWNLOAD_PREFIX = 'papers_dl_'
+
+
 def download_url(url, expect_pdf=False, dest_dir=None):
     """Download a URL to a local file and return its path.
 
@@ -118,7 +122,7 @@ def download_url(url, expect_pdf=False, dest_dir=None):
         ext = mimetypes.guess_extension((ctype or '').split(';')[0].strip())
         if ext and not basename.lower().endswith(ext.lower()):
             basename += ext
-    dest_dir = dest_dir or tempfile.mkdtemp(prefix='papers_dl_')
+    dest_dir = dest_dir or tempfile.mkdtemp(prefix=DOWNLOAD_PREFIX)
     local = os.path.join(dest_dir, basename)
     with open(local, 'wb') as f:
         f.write(response.content)
@@ -782,7 +786,7 @@ class Biblio:
         self.entries = check_duplicates(self.entries, key=key, eq=eq or self.eq, issorted=key is self.key, mode=mode)
 
 
-    def rename_entry_files(self, e, copy=False, formatter=None, relative_to=None, hardlink=False):
+    def rename_entry_files(self, e, copy=False, formatter=None, relative_to=None, hardlink=True):
         """ Rename files
 
         The first file is named after the entry: <filesdir>/<name>.<ext>, and
@@ -790,6 +794,11 @@ class Biblio:
         <label> is the file's original name (see `attachment_names`).
         Directories of previous versions (<name>/ with a hidden .<name>.bib)
         are emptied into that layout, and removed when nothing else is left.
+
+        copy: keep the original file (a hard link when possible, with
+            hardlink=True, otherwise a copy). It can also be a function that
+            tells for each file what to do: 'move', 'copy', or 'link' (leave
+            the file where it is), see papers.files.FilesPolicy.
 
         See `papers.filename.Format` class and REAMDE.md for infos.
         """
@@ -807,27 +816,33 @@ class Biblio:
         # absolute, to compare with the (absolute) current file paths
         target = os.path.join(os.path.abspath(self.filesdir), newname)
 
+        if callable(copy):
+            actions = [copy(file) for file in files]
+        else:
+            actions = ['copy' if copy else 'move' for file in files]
+
         count = 0
         newfiles = []
-        for file, newfile in zip(files, attachment_names(files, target)):
-            if not os.path.exists(file):
+        for file, newfile, action in zip(files, attachment_names(files, target), actions):
+            if action == 'link':
+                newfile = file
+            elif not os.path.exists(file):
                 logger.warning(file+': original file link is broken')
                 newfile = file
             elif file != newfile:
-                self.move(file, newfile, copy, hardlink=hardlink)
+                self.move(file, newfile, action == 'copy', hardlink=hardlink)
                 count += 1
             newfiles.append(newfile)
         self.set_files(e, newfiles, relative_to=relative_to)
 
-        if not copy:
-            for direc in {os.path.dirname(file) for file in files}:
-                remove_entry_dir_if_empty(direc)
+        for direc in {os.path.dirname(file) for file, action in zip(files, actions) if action == 'move'}:
+            remove_entry_dir_if_empty(direc)
 
         if count > 0:
             logger.info('renamed file(s): {}'.format(count))
 
 
-    def rename_entries_files(self, copy=False, relative_to=None, hardlink=False):
+    def rename_entries_files(self, copy=False, relative_to=None, hardlink=True):
         for e in self.db.entries:
             try:
                 self.rename_entry_files(e, copy, relative_to=relative_to, hardlink=hardlink)
@@ -982,6 +997,25 @@ def entry_filecheck_metadata(e, file, image=False):
         raise ValueError(get_entry_val(e, 'ID', '')+': doi: entry <=> pdf : {} <=> {}'.format(e['doi'].lower(), doi.lower()))
 
 
+def fix_mendeley_path(file, key=''):
+    """the path of a file link as saved by Mendeley, repaired: latex symbols
+    (e.g. "{\\_}") converted, and the leading "/" restored when it was omitted
+    (home/... instead of /home/...)"""
+    try:
+        file = latex_to_unicode(file)
+    except KeyError as error:
+        logger.warning(key+': '+str(error)+': failed to convert latex symbols to unicode: '+file)
+
+    # fix root (e.g. path starts with home instead of /home)
+    dirname = os.path.dirname(file)
+    candidate = os.path.sep + file
+    if (not file.startswith(os.path.sep) and dirname # only apply when some directory name is specified
+        and not os.path.exists(dirname)
+        and os.path.exists(os.path.dirname(candidate))): # simply requires that '/'+directory exists
+            file = candidate
+    return file
+
+
 def entry_filecheck(e, delete_broken=False, fix_mendeley=False,
     check_hash=False, check_metadata=False, interactive=True, image=False, relative_to=None):
     """
@@ -1011,22 +1045,7 @@ def entry_filecheck(e, delete_broken=False, fix_mendeley=False,
 
         if fix_mendeley and not os.path.exists(file):
             old = file
-
-            # replace any "{\_}" with "_"
-            try:
-                file = latex_to_unicode(file)
-            except KeyError as error:
-                logger.warning(get_entry_val(e, 'ID', '')+': '+str(error)+': failed to convert latex symbols to unicode: '+file)
-
-            # fix root (e.g. path starts with home instead of /home)
-            dirname = os.path.dirname(file)
-            candidate = os.path.sep + file
-            if (not file.startswith(os.path.sep) and dirname # only apply when some directory name is specified
-                and not os.path.exists(dirname)
-                and os.path.exists(os.path.dirname(candidate))): # simply requires that '/'+directory exists
-                # and os.path.exists(newfile)):
-                    # logger.info('prepend "/" to file name: "{}"'.format(file))
-                    file = candidate
+            file = fix_mendeley_path(file, key=get_entry_val(e, 'ID', ''))
 
             if old != file:
                 logger.info(get_entry_val(e, 'ID', '')+': file name fixed: "{}" => "{}".'.format(old, file))
@@ -1064,68 +1083,86 @@ def entry_filecheck(e, delete_broken=False, fix_mendeley=False,
 
 
 def clean_filesdir(biblio, interactive=True, ignore_files=None, ignore_folders=None):
+    """remove the files of the files directory that no entry links to, and
+    the folders of versions before 2.19 (<name>/ with a hidden .<name>.bib)
+    that no entry links to. Subfolders are scanned too (name templates may
+    contain /); hidden files and folders, .bib files and folders named in
+    ignore_folders are skipped. Returns the removed files."""
     if biblio.filesdir is None:
         raise ValueError('filesdir is not defined, cannot clean')
     removed_files = []
 
-    allfiles = set(os.path.abspath(file) for e in biblio.entries for file in biblio.get_files(e))
+    def _real(path):
+        return os.path.normcase(os.path.realpath(path))
+
+    allfiles = set(_real(file) for e in biblio.entries for file in biblio.get_files(e))
     if ignore_files:
         for f in ignore_files:
-            allfiles.add(os.path.abspath(f))
-    allfolders = set(os.path.abspath(folder) for e in biblio.entries for folder in {os.path.dirname(file) for file in biblio.get_files(e)})
+            allfiles.add(_real(f))
+    allfolders = set(_real(folder) for e in biblio.entries for folder in {os.path.dirname(file) for file in biblio.get_files(e)})
 
-    if ignore_folders is None:
-        ignore_folders = []
+    ignore_folders = [_real(f) if os.path.sep in f else f for f in (ignore_folders or [])]
+
+    def _remove(path, folder=False):
+        if papers.config.DRYRUN:
+            print(f'DRYRUN: remove {path}')
+        elif folder:
+            shutil.rmtree(path)
+        else:
+            os.remove(path)
 
     for root, direcs, files in os.walk(biblio.filesdir):
 
         ANS = None  # Y(es) or N(o) for all files in this folder (reset at each pass)
-        if root in ignore_folders:
+        if _real(root) in ignore_folders:
+            direcs[:] = []
             continue
-        if '.git' in root.split(os.path.sep):
-            continue
-        for file in files:
+        for file in sorted(files):
             path = os.path.abspath(os.path.join(root, file))
             if file.startswith('.') or file.endswith('.bib'):
                 continue
-            if path not in allfiles:
+            if _real(path) not in allfiles:
+                name = os.path.relpath(path, biblio.filesdir)
                 if interactive:
                     if ANS is None:
-                        ans = input(f"File: {os.path.relpath(path, biblio.filesdir)} not in library. Remove ? [Y/n/Y/N] ")
+                        ans = input(f"File: {name} not in library. Remove ? [Y/n/Y/N] ")
                     else:
                         ans = ANS
                     if ans in ['Y', 'N']:
                         ans = ANS = ans.lower()  # same reply for all files in this folder
                     if ans.lower() == 'y':
-                        os.remove(path)
+                        _remove(path)
                         removed_files.append(path)
                 else:
-                    logger.info(f"Remove unlinked file {os.path.relpath(path, biblio.filesdir)}.")
-                    os.remove(path)
+                    logger.info(f"Remove unlinked file {name}.")
+                    _remove(path)
                     removed_files.append(path)
 
-        for direc in direcs:
-            if direc.startswith('.'):
+        subfolders = []
+        for direc in sorted(direcs):
+            # hidden folders (.git...) are never scanned
+            if direc.startswith('.') or direc in ignore_folders:
                 continue
-            if direc in ignore_folders:
-                continue
-
-            # Check multifile entries
-            bibtex = os.path.join(root, direc, '.'+direc+'.bib')
-            if not os.path.exists(bibtex):
-                continue
-
             direcpath = os.path.abspath(os.path.join(root, direc))
+            if _real(direcpath) in ignore_folders:
+                continue
 
-            if direcpath not in allfolders:
+            # folders of an entry with several files (versions before 2.19):
+            # removed as a whole when no entry links to them, never scanned
+            if not os.path.exists(hidden_bibtex(direcpath)):
+                subfolders.append(direc)
+                continue
+
+            if _real(direcpath) not in allfolders:
+                name = os.path.relpath(direcpath, biblio.filesdir)
                 if interactive:
-                    ans = input(f"Folder: {os.path.relpath(direcpath, root)} not in library. Remove ? [Y/n] ")
+                    ans = input(f"Folder: {name} not in library. Remove ? [Y/n] ")
                     if ans.lower() == 'y':
-                        shutil.rmtree(os.path.join(root, direcpath))
+                        _remove(direcpath, folder=True)
                 else:
-                    logger.info(f"Remove folder {direc}.")
-                    shutil.rmtree(os.path.join(root, direcpath))
+                    logger.info(f"Remove folder {name}.")
+                    _remove(direcpath, folder=True)
 
-        break
+        direcs[:] = subfolders
 
     return removed_files
