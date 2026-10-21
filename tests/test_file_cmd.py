@@ -195,7 +195,7 @@ class TestMv(FileTest):
         self.lib('file mv files library-files')
         self.assertEqual(json.load(open(self.path('lib', '.papersconfig.json')))['filesdir'], 'library-files')
         self.assertEqual(self.files('two2000'), [self.path('lib', 'library-files', 'sub', 'b.pdf')])
-        self.assertEqual(self.lib('config filesdir', sp_cmd='check_output'), 'library-files')
+        self.assertEqual(self.lib('config filesdir', sp_cmd='check_output'), self.path('lib', 'library-files'))
 
     def test_bibtex_is_not_moved(self):
         with self.assertRaisesRegex(PapersExit, 'cannot be moved'):

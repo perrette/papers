@@ -347,10 +347,7 @@ def configcmd(parser, o, config):
         return
 
     if not o.unset and not o.values:
-        value = config.get(name)
-        if name in ('bibtex', 'filesdir') and value is not None:
-            value = config._relpath(value)
-        print(format_value(value))
+        print(format_value(config.get(name)))
         return
 
     if config.origin == 'v2-global':

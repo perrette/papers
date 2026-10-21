@@ -511,14 +511,13 @@ class Config:
 
 
     def settings_lines(self, names=None):
-        "lines `name = value (source)` of `papers config` and `papers status -v`"
+        """lines `name = value (source)` of `papers config` and `papers status -v`
+        (bibtex and filesdir as absolute paths, as `papers config KEY` prints them)"""
         names = names or list(SETTINGS)
         width = max(len(name) for name in names)
         lines = []
         for name in names:
             value = self.get(name)
-            if name in ('bibtex', 'filesdir') and value is not None and self.file:
-                value = self._relpath(value)
             lines.append(f'{name.ljust(width)} = {format_value(value)}  ({self.source(name)})')
         return lines
 

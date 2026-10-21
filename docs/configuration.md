@@ -90,7 +90,10 @@ of the commands (see [Renaming files and keys](renaming.md)), which override
 them for one command.
 
 Paths in the library configuration are stored relative to its directory, so
-that the library can be moved or shared as a whole.
+that the library can be moved or shared as a whole. `papers config bibtex`,
+`papers config filesdir` and the list of `papers config` show them as
+absolute paths. A relative path given to set them is relative to the current
+directory.
 
 Setting `git` to `true` initializes the backup directory and records the
 current bibtex. Setting `paths` rewrites the file links of the bibtex. `light`

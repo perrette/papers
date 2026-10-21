@@ -246,7 +246,7 @@ class TestDirectoryOption(ConfigTest):
         self.assertEqual(os.getcwd(), cwd)
         self.assertTrue(os.path.exists(self.path('lib', CONFIG_FILE_LOCAL)))
         out = self.papers('-C lib config bibtex', sp_cmd='check_output')
-        self.assertEqual(out, 'papers.bib')
+        self.assertEqual(out, self.path('lib', 'papers.bib'))
         # several -C combine
         os.makedirs(self.path('lib', 'sub'))
         out = self.papers('-C lib -C sub status', sp_cmd='check_output')
@@ -332,6 +332,18 @@ class TestConfigCommand(ConfigTest):
         self.assertEqual(self.json()['editor'], 'subl -w')
         self.papers('config filesdir pdfs')
         self.assertEqual(self.json()['filesdir'], 'pdfs')
+
+    def test_paths_are_absolute(self):
+        # stored relative to the library, printed absolute (from anywhere)
+        os.makedirs(self.path('sub'))
+        self.papers('config bibtex refs.bib', cwd=self.path('sub'))
+        self.assertEqual(self.json()['bibtex'], 'sub/refs.bib')
+        self.assertEqual(self.get('bibtex'), self.path('sub', 'refs.bib'))
+        out = self.papers('config filesdir', cwd=self.path('sub'), sp_cmd='check_output')
+        self.assertEqual(out, self.path('files'))
+        lines = {line.split('=')[0].strip(): line for line in self.get('').splitlines()[1:]}
+        self.assertEqual(lines['bibtex'].split('=', 1)[1].strip(), self.path('sub', 'refs.bib') + '  (library)')
+        self.assertEqual(lines['filesdir'].split('=', 1)[1].strip(), self.path('files') + '  (library)')
 
     def test_paths_converts_links(self):
         Path(self.path('a.pdf')).write_text('pdf')
