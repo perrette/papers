@@ -3,8 +3,8 @@ import os
 from pathlib import Path
 
 from papers import logger
-from papers.extract import (extract_pdf_doi, extract_pdf_metadata, fetch_bibtex_by_doi,
-                            fetch_bibtex_by_fulltext_crossref, fetch_bibtex_by_fulltext_scholar)
+from papers.extract import extract_pdf_doi, extract_pdf_metadata
+from papers.fetch import fetch_bibtex_by_doi, fetch_bibtex_by_fulltext_crossref, fetch_bibtex_by_fulltext_scholar
 from papers.identifiers import normalize_doi
 
 

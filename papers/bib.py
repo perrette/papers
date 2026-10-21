@@ -29,7 +29,7 @@ from papers import logger
 
 from papers.extract import parse_doi
 from papers.extract import extract_pdf_metadata
-from papers.extract import fetch_bibtex_by_fulltext_crossref, fetch_bibtex_by_doi
+from papers.fetch import fetch_bibtex_by_fulltext_crossref, fetch_bibtex_by_doi
 
 from papers.encoding import standard_name, family_names, format_entries
 from papers.latexenc import unicode_to_latex
