@@ -110,6 +110,58 @@ class TestResolution(unittest.TestCase):
         self.assertEqual(js['paths'], 'absolute')
         self.assertNotIn('absolute_paths', js)
         self.assertTrue(js['gitlfs'])
+        self.assertEqual(js['version'], 3)
+
+
+class TestFormatVersion(unittest.TestCase):
+    """configuration files written by v3 carry "version": 3"""
+
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.file = os.path.join(self.temp_dir.name, CONFIG_FILE_LOCAL)
+        self.machine = MachineConfig(os.path.join(self.temp_dir.name, 'machine.json'))
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
+    def write(self, js, file=None):
+        json.dump(js, open(file or self.file, 'w'))
+
+    def test_written(self):
+        self.write({'bibtex': 'lib.bib'})
+        Config.load(self.file, machine=self.machine).save()
+        self.assertEqual(json.load(open(self.file))['version'], 3)
+        self.machine.set('editor', 'vim')
+        self.machine.save()
+        self.assertEqual(json.load(open(self.machine.file)), {'editor': 'vim', 'version': 3})
+        # not a setting
+        self.assertNotIn('version', MachineConfig.load(self.machine.file).data)
+
+    def test_v3_ignores_v2_settings(self):
+        # absolute_paths, backup_files and local are only read from files of v2
+        self.write({'bibtex': 'lib.bib', 'version': 3, 'absolute_paths': True,
+                    'backup_files': True, 'local': False})
+        config = Config.load(self.file, machine=self.machine)
+        self.assertTrue(config.local)
+        self.assertEqual(config.get('paths'), 'relative')
+        self.assertFalse(config.gitlfs)
+        self.write({'bibtex': 'lib.bib', 'absolute_paths': True, 'backup_files': True})
+        config = Config.load(self.file, machine=self.machine)
+        self.assertEqual(config.get('paths'), 'absolute')
+        self.assertTrue(config.gitlfs)
+
+    def test_newer_version(self):
+        self.write({'bibtex': 'lib.bib', 'version': 4})
+        with self.assertRaisesRegex(PapersExit, 'newer papers'):
+            Config.load(self.file, machine=self.machine)
+        self.write({'version': 4}, self.machine.file)
+        with self.assertRaisesRegex(PapersExit, 'newer papers'):
+            MachineConfig.load(self.machine.file)
+
+    def test_newer_version_command(self):
+        self.write({'bibtex': 'lib.bib', 'version': 4})
+        with self.assertRaises(PapersExit):
+            paperscmd('status', cwd=self.temp_dir.name)
 
 
 class TestInit(ConfigTest):

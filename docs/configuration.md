@@ -164,7 +164,10 @@ override the setting for one command, with a deprecation warning.
   `papers file rename` names them).
 
 Library configurations (`.papersconfig.json`) of version 2 keep working
-without migration.
+without migration. The configuration files written by version 3 carry
+`"version": 3`; a file without `version` is read as a file of version 2. A
+file with a higher version was written by a newer papers, and papers stops
+with an error.
 
 ### `papers install`
 

@@ -12,7 +12,7 @@ from papers.entries import parse_string
 from papers import logger
 from papers.filename import Format, NAMEFORMAT, KEYFORMAT
 from papers import __version__
-from papers.utils import bcolors, check_filesdir, search_config
+from papers.utils import bcolors, check_filesdir, search_config, PapersExit
 
 # GIT = False
 DRYRUN = False
@@ -37,6 +37,27 @@ _DATA_HOME_LEGACY = os.environ.get('XDG_DATA_HOME', os.path.join(HOME, '.local',
 CONFIG_FILE_LEGACY = os.path.join(_DATA_HOME_LEGACY, 'config.json')
 CONFIG_FILE_LEGACY_XDG = os.path.join(_CONFIG_HOME_LEGACY, 'papersconfig.json')
 BACKUP_DIR_LEGACY = os.path.join(_DATA_HOME_LEGACY, 'papers', 'backups')
+
+
+# version of the configuration files written by this papers; a file without
+# version was written by papers v2
+CONFIG_VERSION = 3
+# settings of the v2 file format, only read from files without version
+_V2_KEYS = ('absolute_paths', 'backup_files', 'local')
+
+
+def file_version(js, file):
+    "format version of a configuration file (2 without version); raise PapersExit if it is too new"
+    version = js.get('version', 2)
+    if not isinstance(version, int) or isinstance(version, bool):
+        raise PapersExit(f"{file}: invalid configuration version {version!r}")
+    if version > CONFIG_VERSION:
+        raise PapersExit(f"{file} was written by a newer papers (configuration version {version}; "
+                         f"papers {__version__} reads up to version {CONFIG_VERSION}): upgrade papers")
+    if version >= 3:
+        for key in _V2_KEYS:
+            js.pop(key, None)
+    return version
 
 
 # per-machine configuration: pool names and default settings for libraries
@@ -205,6 +226,8 @@ class MachineConfig:
                 data = json.load(open(file))
             except (json.JSONDecodeError, OSError) as error:
                 logger.warning(f"unreadable per-machine configuration {file}: {error} -- ignored")
+        file_version(data, file)
+        data.pop('version', None)
         return cls(file, data)
 
     def exists(self):
@@ -238,7 +261,8 @@ class MachineConfig:
 
     def save(self):
         os.makedirs(os.path.dirname(self.file), exist_ok=True)
-        json.dump(self.data, open(self.file, 'w'), sort_keys=True, indent=2, separators=(',', ': '))
+        json.dump({**self.data, 'version': CONFIG_VERSION}, open(self.file, 'w'),
+                  sort_keys=True, indent=2, separators=(',', ': '))
 
 
 class Config:
@@ -442,8 +466,10 @@ class Config:
         for name in INHERITED:
             if self.is_set(name):
                 json_set(js, name, self.get(name))
-        if not self.local:
-            js["local"] = False  # global configuration of v2
+        if self.local:
+            js["version"] = CONFIG_VERSION
+        else:
+            js["local"] = False  # global configuration of v2 (file format of v2)
         return js
 
     def save(self):
@@ -455,6 +481,9 @@ class Config:
         """local=False for a global configuration of v2 (the default tells
         them apart by the file content or name)"""
         js = json.load(open(the_file))
+        version = file_version(js, the_file)
+        if local is None and version >= 3:
+            local = True  # v3 has no global configuration
         if local is None:
             local = js.get('local')
         if local is None:
