@@ -37,7 +37,7 @@ class TestRm(EntryTest):
 
     def rm(self, cmd, terminal=False, answer='n'):
         out = io.StringIO()
-        with patch('papers.__main__.stdin_is_terminal', return_value=terminal), \
+        with patch('papers.cli.stdin_is_terminal', return_value=terminal), \
                 patch('builtins.input', return_value=answer) as ask, redirect_stdout(out):
             self.lib(cmd)
         self.asked = ask.call_count
@@ -177,13 +177,13 @@ class TestEdit(EntryTest):
             self.assertEqual([e.key for e in entries], ['two2000'])
             entries[0]['title'] = 'Edited'
             return entries
-        with patch('papers.__main__.edit_entries', side_effect=edit):
+        with patch('papers.cli.edit_entries', side_effect=edit):
             self.lib('edit two2000')
         self.assertEqual(self.entry('two2000')['title'], 'Edited')
         self.assertEqual(self.keys(), ['one2000', 'two2000'])
 
     def test_unknown_key(self):
-        with patch('papers.__main__.edit_entries') as edit:
+        with patch('papers.cli.edit_entries') as edit:
             with self.assertRaises(PapersExit):
                 self.lib('edit nope2000')
             edit.assert_not_called()
@@ -192,6 +192,6 @@ class TestEdit(EntryTest):
         def edit(entries):
             entries[0]['title'] = 'Edited'
             return entries
-        with patch('papers.__main__.edit_entries', side_effect=edit):
+        with patch('papers.cli.edit_entries', side_effect=edit):
             self.lib('list --key one2000 -e')
         self.assertEqual(self.entry('one2000')['title'], 'Edited')

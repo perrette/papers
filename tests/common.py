@@ -14,7 +14,7 @@ import shlex
 import papers
 from papers import logger, logging
 from papers.utils import set_directory
-from papers.__main__ import main
+from papers.cli import main
 from papers.config import CONFIG_FILE, CONFIG_FILE_LOCAL, Config, DATA_DIR
 from papers.bib import Biblio
 

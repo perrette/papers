@@ -6,7 +6,7 @@ from unittest.mock import patch
 from papers.bib import Biblio
 from papers.entries import parse_string
 from papers.utils import PapersExit
-from papers.__main__ import read_selection, select_entries
+from papers.identifiers import read_selection, select_entries
 from papers.identifiers import normalize_doi, normalize_arxiv, normalize_isbn, parse_identifier
 from tests.common import LocalInstallTest
 
@@ -200,7 +200,7 @@ class SelectionCommandsTest(LocalInstallTest):
             fix.assert_not_called()
 
     def test_open_stdin(self):
-        with patch('papers.__main__.view_entry_files') as view, \
+        with patch('papers.cli.view_entry_files') as view, \
                 patch('papers.bib.Biblio.get_files', return_value=['x.pdf']):
             with patch('sys.stdin', io.StringIO('Alpha2000\n10.1000/beta\n')):
                 self.papers('open -')

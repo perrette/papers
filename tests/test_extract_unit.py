@@ -171,7 +171,7 @@ class TestCollectPdfFiles(unittest.TestCase):
     def test_collect(self):
         import os, tempfile
         from pathlib import Path
-        from papers.__main__ import _collect_pdf_files
+        from papers.cli import _collect_pdf_files
         with tempfile.TemporaryDirectory() as d:
             open(os.path.join(d, "a.pdf"), "w").write("x")
             open(os.path.join(d, "b.PDF"), "w").write("x")   # case-insensitive

@@ -50,7 +50,7 @@ Documentation = "https://perrette.github.io/papers/"
 
 [tool.setuptools]
 # explicit: auto-discovery fails on stray top-level dirs (site/, notes/...)
-packages = ["papers"]
+packages = ["papers", "papers.cli"]
 
 [tool.setuptools_scm]
 write_to = "papers/_version.py"
