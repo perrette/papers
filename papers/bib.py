@@ -506,6 +506,11 @@ class Biblio:
 
             if get_entry_val(existing_same_key, 'title', '') == get_entry_val(entry, 'title', ''):
                 logger.info('exact duplicate')
+                # keep the files of the new entry
+                files = self.get_files(existing_same_key) + self.get_files(entry)
+                if files:
+                    self.set_files(existing_same_key, files)
+                if rename: self.rename_entry_files(existing_same_key, copy=copy)
                 return [ existing_same_key ]
 
             if update_key:
@@ -602,6 +607,11 @@ class Biblio:
                 # regenerated from the template
                 keeps_key = e is candidate or (
                     len(resolved) == 1 and get_entry_val(e, 'ID', '') == candidate_key_before)
+                if not keeps_key and not update_key and self.key(e) in {self.key(x) for x in self.entries}:
+                    # both entries kept (append): the new one needs a free key
+                    newkey = self.append_abc_to_key(e)
+                    logger.info('key conflict: {} => {}'.format(get_entry_val(e, 'ID', ''), newkey))
+                    set_entry_key(e, newkey)
                 entries.extend( self.insert_entry(e, update_key and not keeps_key, rename=rename, copy=copy) )
             return entries
 
@@ -724,6 +734,8 @@ class Biblio:
                     yield from self.add_pdf(path, attachments=attachments, search_doi=search_doi, search_fulltext=search_fulltext, **kw)
                 elif path.lower().endswith('.bib'):
                     yield from self.add_bibtex_file(path, **kw)
+            except EOFError:
+                raise  # a question without answer stops the scan
             except Exception as error:
                 logger.warning(path+'::'+str(error))
                 continue

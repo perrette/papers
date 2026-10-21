@@ -21,6 +21,7 @@ from papers.duplicate import (
     check_duplicates,
     edit_entries,
     entry_sdiff,
+    entry_ndiff,
     title_id,
 )
 from papers.entries import entry_from_dict, get_entry_val, format_library, library_from_entries
@@ -231,6 +232,42 @@ class TestCheckDuplicatesResolution(unittest.TestCase):
         with patch('builtins.input', side_effect=['v', '1', 'n']):
             result = check_duplicates(self.entries(), eq=self.eq, mode='i')
         self.assertEqual(len(result), 3)  # group 1 reduced to entry 1, group 2 kept
+
+
+class TestDeselect(unittest.TestCase):
+    """'-N' keeps every entry of the group except entry N"""
+
+    bib = """@article{A2000,
+ author = {A. Author},
+ title = {One},
+ year = {2000}
+}
+@article{A2001,
+ author = {A. Author},
+ title = {One},
+ year = {2001}
+}
+@article{A2002,
+ author = {A. Author},
+ title = {One},
+ year = {2002}
+}"""
+
+    eq = staticmethod(lambda a, b: title_id(a) == title_id(b))
+
+    def check(self, answer):
+        # the remaining entries are presented again as a smaller group: keep them
+        with patch('builtins.input', side_effect=[answer, 'n']):
+            result = check_duplicates(bp_parse_string(self.bib).entries, eq=self.eq, mode='i')
+        return sorted(get_entry_val(e, 'ID') for e in result)
+
+    def test_first(self):
+        # used to remove entry 2
+        self.assertEqual(self.check('-1'), ['A2001', 'A2002'])
+
+    def test_last(self):
+        # used to be rejected as an invalid choice
+        self.assertEqual(self.check('-3'), ['A2000', 'A2001'])
 
 
 class TestEditEntriesRoundTrip(unittest.TestCase):
@@ -686,3 +723,82 @@ class TestCheckResolveDuplicate(BibTest):
         func = lambda: sp.check_call(self.command('m\n3'), shell=True)
         self.assertRaises(Exception, func)
 
+
+
+class TestNdiffTypeAndKey(unittest.TestCase):
+
+    def test_type_and_key_differ(self):
+        # used to raise KeyError: 'ENTRYTYPE_FIELD{REPLACE_ID'
+        entries = bp_parse_string("""@article{A2000,
+ author = {A. Author},
+ title = {One}
+}
+@misc{A2000b,
+ author = {A. Author},
+ title = {One}
+}""").entries
+        text = entry_ndiff(entries, color=False)
+        self.assertIn('@article{A2000,', text)
+        self.assertIn('@misc{A2000b,', text)
+
+
+class TestNoInput(unittest.TestCase):
+    """a duplicate question with a closed standard input: clean error, no traceback"""
+
+    def test_check_duplicates(self):
+        import subprocess, sys, tempfile
+        with tempfile.TemporaryDirectory() as d:
+            open(os.path.join(d, 'lib.bib'), 'w').write(TestDeselect.bib)
+            env = dict(os.environ, PYTHONPATH=os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+            res = subprocess.run([sys.executable, '-m', 'papers', 'check', '--duplicates', '--bibtex', 'lib.bib', '--no-git'],
+                                 cwd=d, stdin=subprocess.DEVNULL, capture_output=True, text=True, env=env)
+        self.assertEqual(res.returncode, 1)
+        self.assertNotIn('Traceback', res.stderr)
+        self.assertIn('no input to answer it', res.stderr)
+
+
+class TestAddConflicts(unittest.TestCase):
+    """add-time duplicate resolution (Biblio.add_bibtex)"""
+
+    old = """@article{A2000,
+ author = {A. Author},
+ title = {One},
+ year = {2000},
+ file = {:/tmp/old.pdf:pdf}
+}"""
+    new = """@article{A2000,
+ author = {A. Author},
+ title = {One},
+ year = {2001},
+ file = {:/tmp/new.pdf:pdf}
+}"""
+
+    def biblio(self):
+        from papers.bib import Biblio
+        biblio = Biblio()
+        biblio.add_bibtex(self.old)
+        return biblio
+
+    def keys(self, biblio):
+        return sorted(get_entry_val(e, 'ID') for e in biblio.entries)
+
+    def test_append_same_key(self):
+        # used to abort the whole add with a key conflict after the user chose (a)ppend
+        biblio = self.biblio()
+        biblio.add_bibtex(self.new, check_duplicate=True, on_conflict='a')
+        self.assertEqual(self.keys(biblio), ['A2000', 'A2000b'])
+
+    def test_failed_edit_asks_again(self):
+        # a failed edit used to add the new entry separately
+        biblio = self.biblio()
+        with patch('papers.duplicate.edit_entries', side_effect=lambda entries, **kw: entries), \
+                patch('builtins.input', side_effect=['e', 's']):
+            biblio.add_bibtex(self.new.replace('{A2000,', '{Other2001,'), check_duplicate=True, on_conflict='i')
+        self.assertEqual(self.keys(biblio), ['A2000'])
+
+    def test_no_check_duplicate_keeps_files(self):
+        # same key and title: the new entry's file used to be dropped
+        biblio = self.biblio()
+        biblio.add_bibtex(self.new.replace('2001', '2000'), check_duplicate=False)
+        self.assertEqual(self.keys(biblio), ['A2000'])
+        self.assertEqual(sorted(biblio.get_files(biblio.entries[0])), ['/tmp/new.pdf', '/tmp/old.pdf'])
