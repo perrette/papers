@@ -156,6 +156,11 @@ class TestResolution(PoolTest):
         with self.assertLogs(papers.logger, level='WARNING'):
             self.assertEqual([p.id for p in pools.all()], ['../pool'])
 
+    def test_push_to_unknown_pool(self):
+        with self.assertRaisesRegex(PapersExit, 'unknown pool name'):
+            self.lib('push --pool nope')
+
+
 # ORIGIN
 # ======
 
@@ -298,6 +303,218 @@ class TestAdd(PoolTest):
         # an entry taken from the pool is not added again
         self.take_smith()
         self.assertEqual(len(self.bib('pool')[1]), 3)
+
+
+# PULL
+# ====
+
+class TestPull(PoolTest):
+
+    def setUp(self):
+        super().setUp()
+        self.take_smith()
+        self.edit_lib('year = {2020}', 'keywords = {mine},\n year = {2020}')
+
+    def test_nothing_changed(self):
+        out = self.out('pull')
+        self.assertIn('pull: 1 unchanged', out)
+
+    def test_pool_change_taken_library_change_kept(self):
+        self.edit_pool('journal = {Nat.}', 'journal = {Nature},\n volume = {10}')
+        self.lib('pull')  # no conflict: no question, even without terminal
+        e = self.entry('smith2020climate')
+        self.assertEqual(e['journal'], 'Nature')
+        self.assertEqual(e['volume'], '10')
+        self.assertEqual(e['keywords'], 'mine')
+        self.assertEqual(self.origin().get(e).entry['journal'], 'Nature')
+
+    def conflict(self):
+        self.edit_pool('journal = {Nat.}', 'journal = {Nature Climate Change},\n volume = {10}')
+        self.edit_lib('journal = {Nat.}', 'journal = {Nature}')
+
+    def test_conflict_error(self):
+        self.conflict()
+        with self.assertRaisesRegex(PapersExit, 'changed in the library and in pool ../pool'):
+            self.lib('pull')
+        self.assertEqual(self.entry('smith2020climate')['journal'], 'Nature')
+        self.assertNotIn('volume', self.entry('smith2020climate'))
+
+    def test_conflict_keep(self):
+        self.conflict()
+        self.lib('pull --on-duplicate keep')
+        e = self.entry('smith2020climate')
+        self.assertEqual((e['journal'], e['volume']), ('Nature', '10'))
+        self.assertEqual(self.origin().get(e).entry['journal'], 'Nature Climate Change')
+        # next time: no conflict (the origin is the pool version)
+        self.assertIn('pull: 1 unchanged', self.out('pull'))
+
+    def test_conflict_update(self):
+        self.conflict()
+        self.lib('pull --on-duplicate update')
+        e = self.entry('smith2020climate')
+        self.assertEqual(e['journal'], 'Nature Climate Change')
+        self.assertEqual(e['keywords'], 'mine')
+        self.assertEqual(e.key, 'smith2020climate')
+
+    def test_conflict_skip(self):
+        self.conflict()
+        self.lib('pull --on-duplicate skip')
+        e = self.entry('smith2020climate')
+        self.assertEqual(e['journal'], 'Nature')
+        self.assertNotIn('volume', e)
+        self.assertEqual(self.origin().get(e).entry['journal'], 'Nat.')  # not updated
+
+    def test_conflict_ask(self):
+        self.conflict()
+        with patch('builtins.input', lambda prompt: '2'):
+            self.lib('pull --on-duplicate ask')
+        self.assertEqual(self.entry('smith2020climate')['journal'], 'Nature Climate Change')
+
+    def test_key_never_changes(self):
+        self.edit_pool('@article{Smith_2020,', '@article{Renamed_2020,')
+        self.edit_pool('journal = {Nat.}', 'journal = {Nature}')
+        self.lib('pull')
+        self.assertEqual(self.entry('smith2020climate')['journal'], 'Nature')
+
+    def test_new_pool_file(self):
+        self.lib('config files copy')
+        Path(self.path('pool', 'files', 'smith-si.pdf')).write_text('supplement')
+        self.edit_pool('file = {:files/smith.pdf:pdf}', 'file = {:files/smith.pdf:pdf;:files/smith-si.pdf:pdf}')
+        self.lib('pull')
+        files = self.files('smith2020climate')
+        self.assertEqual(len(files), 2)
+        self.assertTrue(files[1].startswith(self.path('lib', 'files')))
+        self.assertTrue(os.path.samefile(files[1], self.path('pool', 'files', 'smith-si.pdf')))
+
+    def test_entry_without_origin_is_linked(self):
+        Path(self.path('lib', ORIGIN_FILE)).unlink()
+        out = self.out('pull')
+        self.assertIn('linked: smith2020climate', out)
+        self.assertIsNotNone(self.origin().get(self.entry('smith2020climate')))
+
+    def test_select(self):
+        self.edit_pool('journal = {Nat.}', 'journal = {Nature}')
+        self.lib('pull 10.1000/abc123')
+        self.assertEqual(self.entry('smith2020climate')['journal'], 'Nature')
+        self.assertIsNone(self.origin().pulled('../pool'))  # only a full pull counts as a pull
+
+    def test_distinct_merged(self):
+        pool_distinct = Distinct.for_bibtex(self.path('pool', 'papers.bib'))
+        pool_distinct.pairs.append([{'doi': '10.1/a'}, {'doi': '10.1/b'}])
+        pool_distinct.changed = True
+        pool_distinct.save()
+        self.lib('pull')
+        self.assertIn([{'doi': '10.1/a'}, {'doi': '10.1/b'}],
+                      Distinct.for_bibtex(self.path('lib', 'papers.bib')).pairs)
+
+    def test_check_and_status(self):
+        self.lib('pull')
+        self.assertIn('unchanged since last pull', self.out('status'))
+        self.edit_pool('journal = {Nat.}', 'journal = {Nature}')
+        os.utime(self.path('pool', 'papers.bib'), ns=(1, 1))
+        self.assertIn('changed since last pull', self.out('status'))
+        out = self.out('pull --check')
+        self.assertIn('pool ../pool: changed since last pull', out)
+        self.assertIn('smith2020climate: changed in pool ../pool: journal', out)
+        self.assertEqual(self.entry('smith2020climate')['journal'], 'Nat.')  # nothing pulled
+        self.lib('pull')
+        self.assertIn('unchanged since last pull', self.out('status'))
+
+
+# PUSH
+# ====
+
+class TestPush(PoolTest):
+
+    def setUp(self):
+        super().setUp()
+        Path(self.path('new.bib')).write_text(NEW_BIB)
+        Path(self.path('mine.pdf')).write_text('mine')
+        self.lib('add ../new.bib')
+
+    def test_new_entry(self):
+        self.papers('config key.template {author}-{year}', cwd=self.path('pool'))
+        self.lib('push')
+        pool_biblio, pool = self.bib('pool')
+        self.assertIn('mine-2022', pool)
+        files = pool_biblio.get_files(pool['mine-2022'])
+        self.assertEqual(len(files), 1)
+        self.assertTrue(files[0].startswith(self.path('pool', 'files')))
+        self.assertTrue(os.path.exists(self.path('mine.pdf')))  # copied
+        self.assertIn('mine2022', self.bib()[1])  # library key kept
+        self.assertEqual(self.origin().get(self.entry('mine2022')).pool_key, 'mine-2022')
+        self.assertIn('push to pool ../pool: 1 unchanged', self.out('push'))  # nothing new
+
+    def test_pool_name_template(self):
+        self.papers('config name.template {title}', cwd=self.path('pool'))
+        self.lib('push')
+        self.assertTrue(os.path.exists(self.path('pool', 'files', 'my-own-paper.pdf')))
+
+    def test_changes(self):
+        self.lib('push')
+        key = self.origin().get(self.entry('mine2022')).pool_key
+        self.edit_lib('year = {2022}', 'journal = {J. Mine},\n year = {2022}')
+        self.edit_pool('title = {My own paper},', 'note = {pool note},\n title = {My own paper},')
+        self.lib('push')
+        e = self.entry(key, 'pool')
+        self.assertEqual(e['journal'], 'J. Mine')
+        self.assertEqual(e['note'], 'pool note')  # changed in the pool only: kept
+        self.assertNotIn('note', self.entry('mine2022'))  # push does not change the library
+
+    def conflict(self):
+        self.lib('push')
+        key = self.origin().get(self.entry('mine2022')).pool_key
+        self.edit_lib('title = {My own paper}', 'title = {My own paper (library)}')
+        self.edit_pool('title = {My own paper}', 'title = {My own paper (pool)}')
+        return key
+
+    def test_conflict_keep(self):
+        key = self.conflict()
+        self.lib('push --on-duplicate keep')
+        self.assertEqual(self.entry(key, 'pool')['title'], 'My own paper (pool)')
+
+    def test_conflict_update(self):
+        key = self.conflict()
+        self.lib('push --on-duplicate update')
+        self.assertEqual(self.entry(key, 'pool')['title'], 'My own paper (library)')
+        self.assertEqual(self.entry(key, 'pool').key, key)
+
+    def test_conflict_error(self):
+        self.conflict()
+        with self.assertRaises(PapersExit):
+            self.lib('push')
+
+    def test_existing_pool_entry(self):
+        # the same paper is in the pool, without origin record: merged, not added
+        Path(self.path('smith.bib')).write_text(SMITH_BIB.replace('year = {2020}', 'volume = {10},\n year = {2020}'))
+        self.lib('add ../smith.bib --no-pool')
+        self.lib('push --on-duplicate keep smith2020climate')
+        pool = self.bib('pool')[1]
+        self.assertEqual(len(pool), 2)
+        self.assertEqual(pool['Smith_2020']['volume'], '10')
+        self.assertEqual(pool['Smith_2020']['doi'], '10.1000/abc123')
+
+    def test_distinct_merged(self):
+        lib = Distinct.for_bibtex(self.path('lib', 'papers.bib'))
+        lib.pairs.append([{'doi': '10.1/a'}, {'doi': '10.1/b'}])
+        lib.changed = True
+        lib.save()
+        self.lib('push')
+        self.assertIn([{'doi': '10.1/a'}, {'doi': '10.1/b'}],
+                      Distinct.for_bibtex(self.path('pool', 'papers.bib')).pairs)
+
+    def test_status_after_push(self):
+        self.lib('pull')
+        self.lib('push')
+        self.assertIn('unchanged since last pull', self.out('status'))
+
+    def test_default_pool_created(self):
+        self.lib('config pools default')
+        self.lib('push')
+        from tests import TEST_DEFAULT_POOL
+        self.assertTrue(os.path.exists(os.path.join(TEST_DEFAULT_POOL, '.papersconfig.json')))
+        biblio = Biblio.load(os.path.join(TEST_DEFAULT_POOL, 'papers.bib'), '')
+        self.assertEqual(len(biblio.entries), 1)
 
 
 if __name__ == '__main__':

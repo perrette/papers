@@ -1022,8 +1022,8 @@ def file_cleancmd(parser, o, config):
           f"from {config.filesdir}")
 
 
-# pools
-# =====
+# papers pull, push, export, pool
+# ===============================
 
 def save_exchange(exchange):
     """save what an exchange with the pools changed: the pools pushed to,
@@ -1038,6 +1038,30 @@ def save_exchange(exchange):
                 pool.biblio.distinct.save()
     exchange.origin.save()
     savebib(exchange.biblio, exchange.config)
+
+
+def pullcmd(parser, o, config):
+    biblio = get_biblio(config)
+    biblio_init = copy.deepcopy(biblio)
+    exchange = Exchange(config, biblio)
+    entries = _entries_or_all(biblio, o.entries)
+    if o.check:
+        print('\n'.join(exchange.check(entries, all_entries=not o.entries)) or 'nothing to pull')
+        return
+    report = exchange.pull(entries, duplicate_resolver(o, 'pull'), record_pull=not o.entries)
+    print('\n'.join(report_lines(report, 'pull')))
+    save_exchange(exchange)
+    _print_biblio_diff(biblio_init, biblio, entries)
+
+
+def pushcmd(parser, o, config):
+    biblio = get_biblio(config)
+    exchange = Exchange(config, biblio)
+    pool = exchange.pools.get(o.pool, create=True) if o.pool else exchange.pools.first(create=True)
+    entries = _entries_or_all(biblio, o.entries)
+    report = exchange.push(entries, pool, duplicate_resolver(o, 'push'))
+    print('\n'.join(report_lines(report, f'push to {pool.label}')))
+    save_exchange(exchange)
 
 
 # papers edit, rm, tag
@@ -2071,6 +2095,39 @@ def get_parser(config=None):
     tagp.add_argument('--rm', nargs='+', metavar='TAG', help='remove tags from the entries')
     tagp.add_argument('--rename', nargs=2, metavar=('OLD', 'NEW'), help='rename a tag in the whole library')
 
+    # pull, push
+    # ==========
+    _exchange_help = '''what to do with an entry changed on both
+        sides since the last pull or push: ask (dialogue; the default in a terminal), keep (the
+        {receiving} values are kept), update (the {incoming} values are taken), skip (the entry is
+        left as it is, and comes again next time), error (stop before saving; the default
+        without a terminal). Fields changed on one side only need no decision.'''
+    pullp = subparsers.add_parser('pull', parents=[cfg],
+        description='''update the entries of the library from their pool entries (three-way merge
+        with the origin copy of the entry, .papers/origin.bib): a field changed in the pool only is
+        taken, a field changed in the library only is kept, a field changed on both sides is a
+        conflict. Entries without origin copy are matched to the pools by the same-paper rule.
+        The keys of the library never change. New pool files are copied (or linked) as the files
+        setting says; a light library links to them.''')
+    pullp.add_argument('entries', nargs='*', metavar='KEY', help=_selection_help + ' (default: all entries)')
+    pullp.add_argument('--on-duplicate', choices=ON_DUPLICATE,
+        help=_exchange_help.format(receiving='library', incoming='pool'))
+    pullp.add_argument('--check', action='store_true',
+        help='only report: the pools that changed since the last pull, and the entries changed in the pools')
+    pullp.set_defaults(mode=None, force=False)
+
+    pushp = subparsers.add_parser('push', parents=[cfg],
+        description='''add the entries of the library to the first pool, or merge their changes
+        into the pool entries (three-way merge with the origin copy, as pull does in the other
+        direction). Entries new to the pool get a key from the pool's key template; their files
+        are copied (a hard link when possible) into the pool's files directory, named with the
+        pool's name template. The default pool is created if it does not exist.''')
+    pushp.add_argument('entries', nargs='*', metavar='KEY', help=_selection_help + ' (default: all entries)')
+    pushp.add_argument('--pool', metavar='NAME|PATH', help='push to this pool (default: the first pool of the library)')
+    pushp.add_argument('--on-duplicate', choices=ON_DUPLICATE,
+        help=_exchange_help.format(receiving='pool', incoming='library'))
+    pushp.set_defaults(mode=None, force=False)
+
     # open
     # ====
     openp = subparsers.add_parser('open', description='open entry attachments or files with the system viewer', parents=[cfg])
@@ -2267,6 +2324,10 @@ def _main(argv):
         editcmd(subp, o, check_install(subp, o, config))
     elif o.cmd == 'rm':
         rmcmd(subp, o, check_install(subp, o, config))
+    elif o.cmd == 'pull':
+        pullcmd(subp, o, check_install(subp, o, config))
+    elif o.cmd == 'push':
+        pushcmd(subp, o, check_install(subp, o, config))
     elif o.cmd == 'tag':
         tagcmd(subp, o, check_install(subp, o, config))
     elif o.cmd == 'file':
