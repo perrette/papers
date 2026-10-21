@@ -1,17 +1,14 @@
 """Duplicate detection (same_paper, distinct.json), merge, the dialogue, and
 the --on-duplicate option of add and check (see design/duplicates.md)"""
-import io
 import json
 import os
 import subprocess
 import sys
 import tempfile
 import unittest
-from contextlib import redirect_stdout
 from pathlib import Path
 from unittest.mock import patch
 
-from papers.bib import Biblio
 from papers.cli.common import edit_entries
 from papers.duplicate import (
     same_paper, SAME, DIFFERENT, ASK, Distinct, duplicate_groups, fuzzy_pairs,
@@ -20,7 +17,7 @@ from papers.entries import entry_from_dict, parse_string
 from papers.merge import (
     Merge, Dialogue, DuplicateError, names_compatible, CONFLICT, ADDED, SAME as UNCHANGED,
 )
-from tests.common import paperscmd
+from tests.common import LibraryTest
 
 
 def entry(key='key', type='article', **fields):
@@ -399,47 +396,9 @@ EXACT = """@article{otherkey,
 """
 
 
-class LibraryTest(unittest.TestCase):
+class TestAddOnDuplicate(LibraryTest):
 
     lib = LIB
-
-    def setUp(self):
-        self.tmp = tempfile.TemporaryDirectory()
-        self.dir = os.path.realpath(self.tmp.name)
-        self.bibtex = self.path('papers.bib')
-        Path(self.bibtex).write_text(self.lib)
-
-    def tearDown(self):
-        self.tmp.cleanup()
-
-    def path(self, *p):
-        return os.path.join(self.dir, *p)
-
-    def write(self, name, content):
-        Path(self.path(name)).write_text(content)
-        return self.path(name)
-
-    def papers(self, cmd, answers=None, editor=None):
-        "run papers in the library directory; the text it printed"
-        out = io.StringIO()
-        env = {'EDITOR': editor} if editor else {}
-        with patch('builtins.input', side_effect=list(answers or [])), patch.dict(os.environ, env), \
-                redirect_stdout(out):
-            paperscmd(f'{cmd} --bibtex {self.bibtex} --no-git', cwd=self.dir)
-        return out.getvalue()
-
-    def entries(self):
-        return {e.key: e for e in Biblio.load(self.bibtex, '').entries}
-
-    def entry(self, key):
-        return self.entries()[key]
-
-    def distinct(self):
-        path = self.path('.papers', 'distinct.json')
-        return json.load(open(path))['distinct'] if os.path.exists(path) else []
-
-
-class TestAddOnDuplicate(LibraryTest):
 
     def setUp(self):
         super().setUp()
@@ -521,6 +480,8 @@ class TestAddOnDuplicate(LibraryTest):
 
 
 class TestAddDialogue(LibraryTest):
+
+    lib = LIB
 
     def setUp(self):
         super().setUp()
@@ -607,6 +568,8 @@ class TestAddDialogue(LibraryTest):
 
 
 class TestAddDeprecated(LibraryTest):
+
+    lib = LIB
 
     def setUp(self):
         super().setUp()

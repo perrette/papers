@@ -13,7 +13,7 @@ from papers.entries import entry_from_dict, parse_string
 from papers.pools import Pools, PoolError, Origin, ORIGIN_FILE, POOL_FIELD
 from papers.utils import PapersExit
 
-from tests.test_config_v3 import ConfigTest
+from tests.common import ConfigTest
 
 
 POOL_BIB = """@article{Smith_2020,

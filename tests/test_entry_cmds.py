@@ -8,7 +8,7 @@ from papers.bib import Biblio
 from papers.encoding import parse_keywords
 from papers.utils import PapersExit
 
-from tests.test_file_cmd import FileTest, entry
+from tests.common import FileTest, entry
 
 
 def tagged(key, keywords, *files):

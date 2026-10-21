@@ -2,16 +2,19 @@ import os
 import subprocess as sp
 import tempfile
 import shutil
-# import json
+import json
 import unittest
 import difflib
+from tests import TEST_DEFAULT_POOL
 from tests.download import downloadpdf
 from pathlib import Path
 import io
 from contextlib import redirect_stdout
+from unittest.mock import patch
 import shlex
 
 import papers
+import papers.config
 from papers import logger, logging
 from papers.utils import set_directory
 from papers.cli import main
@@ -292,3 +295,115 @@ class GlobalGitLFSInstallTest(GlobalInstallTest):
     def setUp(self):
         super().setUp()
         self.papers(f'install --force --global --git --git-lfs --bibtex {self.mybib} --files {self.filesdir}')
+
+
+class ConfigTest(BibTest):
+    """a temporary directory, as current directory of the commands"""
+
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.dir = os.path.realpath(self.temp_dir.name)
+        self.machine_config = open(papers.config.MACHINE_CONFIG_FILE).read()
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+        shutil.rmtree(TEST_DEFAULT_POOL, ignore_errors=True)
+        open(papers.config.MACHINE_CONFIG_FILE, 'w').write(self.machine_config)
+
+    def papers(self, cmd, cwd=None, **kw):
+        return paperscmd(cmd, cwd=cwd or self.dir, **kw)
+
+    def path(self, *p):
+        return os.path.join(self.dir, *p)
+
+    def json(self, *p):
+        return json.load(open(self.path(*p, CONFIG_FILE_LOCAL)))
+
+
+def entry(key, *files, doi=None):
+    "the bibtex of an entry with these files"
+    file = ';'.join(f':{f}:pdf' for f in files)
+    return (f"@article{{{key},\n author = {{Some One}},\n"
+            + (f" doi = {{{doi}}},\n" if doi else "")
+            + (f" file = {{{file}}},\n" if files else "")
+            + f" title = {{Title of {key}}},\n year = {{2000}}\n}}\n\n")
+
+
+class FileTest(ConfigTest):
+    """a library in lib/ with files in lib/files"""
+
+    def setUp(self):
+        super().setUp()
+        os.makedirs(self.path('lib'))
+        self.lib('init --no-git')
+        os.makedirs(self.path('lib', 'files'), exist_ok=True)
+
+    def lib(self, cmd, **kw):
+        return self.papers(cmd, cwd=self.path('lib'), **kw)
+
+    def out(self, cmd):
+        out = io.StringIO()
+        with redirect_stdout(out):
+            self.lib(cmd)
+        return out.getvalue()
+
+    def write(self, *p, content=None):
+        path = self.path(*p)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        Path(path).write_text(content or os.path.basename(path))
+        return path
+
+    def bib(self, *entries):
+        Path(self.path('lib', 'papers.bib')).write_text(''.join(entries))
+
+    def files(self, key):
+        biblio = Biblio.load(self.path('lib', 'papers.bib'), '')
+        e = next(e for e in biblio.entries if e.key == key)
+        return biblio.get_files(e)
+
+    def libfiles(self):
+        "the files of lib/files (relative paths)"
+        return sorted(os.path.relpath(os.path.join(root, f), self.path('lib', 'files'))
+                      for root, _, files in os.walk(self.path('lib', 'files')) for f in files)
+
+
+class LibraryTest(unittest.TestCase):
+    """a library papers.bib with the content `lib` in a temporary
+    directory, used with --bibtex (no library configuration)"""
+
+    lib = ''
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.dir = os.path.realpath(self.tmp.name)
+        self.bibtex = self.path('papers.bib')
+        Path(self.bibtex).write_text(self.lib)
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def path(self, *p):
+        return os.path.join(self.dir, *p)
+
+    def write(self, name, content):
+        Path(self.path(name)).write_text(content)
+        return self.path(name)
+
+    def papers(self, cmd, answers=None, editor=None):
+        "run papers in the library directory; the text it printed"
+        out = io.StringIO()
+        env = {'EDITOR': editor} if editor else {}
+        with patch('builtins.input', side_effect=list(answers or [])), patch.dict(os.environ, env), \
+                redirect_stdout(out):
+            paperscmd(f'{cmd} --bibtex {self.bibtex} --no-git', cwd=self.dir)
+        return out.getvalue()
+
+    def entries(self):
+        return {e.key: e for e in Biblio.load(self.bibtex, '').entries}
+
+    def entry(self, key):
+        return self.entries()[key]
+
+    def distinct(self):
+        path = self.path('.papers', 'distinct.json')
+        return json.load(open(path))['distinct'] if os.path.exists(path) else []

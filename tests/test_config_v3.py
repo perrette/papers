@@ -2,7 +2,6 @@
 migrate, -C and the default pool"""
 import json
 import os
-import shutil
 import tempfile
 import unittest
 from pathlib import Path
@@ -13,7 +12,7 @@ from papers.bib import Biblio
 from papers.utils import PapersExit
 
 from tests import TEST_DEFAULT_POOL
-from tests.common import paperscmd, BibTest
+from tests.common import paperscmd, ConfigTest
 
 ENTRY = """@article{someone2000,
  author = {Some One},
@@ -21,29 +20,6 @@ ENTRY = """@article{someone2000,
  year = {2000}
 }
 """
-
-
-class ConfigTest(BibTest):
-    """a temporary directory, as current directory of the commands"""
-
-    def setUp(self):
-        self.temp_dir = tempfile.TemporaryDirectory()
-        self.dir = os.path.realpath(self.temp_dir.name)
-        self.machine_config = open(papers.config.MACHINE_CONFIG_FILE).read()
-
-    def tearDown(self):
-        self.temp_dir.cleanup()
-        shutil.rmtree(TEST_DEFAULT_POOL, ignore_errors=True)
-        open(papers.config.MACHINE_CONFIG_FILE, 'w').write(self.machine_config)
-
-    def papers(self, cmd, cwd=None, **kw):
-        return paperscmd(cmd, cwd=cwd or self.dir, **kw)
-
-    def path(self, *p):
-        return os.path.join(self.dir, *p)
-
-    def json(self, *p):
-        return json.load(open(self.path(*p, CONFIG_FILE_LOCAL)))
 
 
 class TestResolution(unittest.TestCase):

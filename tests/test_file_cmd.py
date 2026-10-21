@@ -3,61 +3,12 @@ import io
 import json
 import os
 import subprocess as sp
-from contextlib import redirect_stdout
 from pathlib import Path
 from unittest.mock import patch
 
-from papers.bib import Biblio
 from papers.utils import PapersExit
 
-from tests.common import PAPERSCMD
-from tests.test_config_v3 import ConfigTest
-
-
-def entry(key, *files, doi=None):
-    file = ';'.join(f':{f}:pdf' for f in files)
-    return (f"@article{{{key},\n author = {{Some One}},\n"
-            + (f" doi = {{{doi}}},\n" if doi else "")
-            + (f" file = {{{file}}},\n" if files else "")
-            + f" title = {{Title of {key}}},\n year = {{2000}}\n}}\n\n")
-
-
-class FileTest(ConfigTest):
-    """a library in lib/ with files in lib/files"""
-
-    def setUp(self):
-        super().setUp()
-        os.makedirs(self.path('lib'))
-        self.lib('init --no-git')
-        os.makedirs(self.path('lib', 'files'), exist_ok=True)
-
-    def lib(self, cmd, **kw):
-        return self.papers(cmd, cwd=self.path('lib'), **kw)
-
-    def out(self, cmd):
-        out = io.StringIO()
-        with redirect_stdout(out):
-            self.lib(cmd)
-        return out.getvalue()
-
-    def write(self, *p, content=None):
-        path = self.path(*p)
-        os.makedirs(os.path.dirname(path), exist_ok=True)
-        Path(path).write_text(content or os.path.basename(path))
-        return path
-
-    def bib(self, *entries):
-        Path(self.path('lib', 'papers.bib')).write_text(''.join(entries))
-
-    def files(self, key):
-        biblio = Biblio.load(self.path('lib', 'papers.bib'), '')
-        e = next(e for e in biblio.entries if e.key == key)
-        return biblio.get_files(e)
-
-    def libfiles(self):
-        "the files of lib/files (relative paths)"
-        return sorted(os.path.relpath(os.path.join(root, f), self.path('lib', 'files'))
-                      for root, _, files in os.walk(self.path('lib', 'files')) for f in files)
+from tests.common import PAPERSCMD, FileTest, entry
 
 
 class TestRename(FileTest):

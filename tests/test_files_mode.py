@@ -11,7 +11,7 @@ from papers.config import Config, MachineConfig
 from papers.bib import Biblio
 from papers.utils import PapersExit
 
-from tests.test_config_v3 import ConfigTest
+from tests.common import ConfigTest
 
 
 def bib_with_file(key, file):

@@ -2,7 +2,7 @@
 import os
 from unittest.mock import patch
 
-from tests.test_file_cmd import FileTest, entry
+from tests.common import FileTest, entry
 
 
 class TestListDeprecated(FileTest):
