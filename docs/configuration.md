@@ -177,7 +177,8 @@ an existing library it updates the library configuration, as in version 2,
 with a deprecation warning: use `papers config` instead (`--edit` and
 `--reset` keep working). `papers install --global` writes the library
 configuration next to the bibtex and registers its directory as the `default`
-pool. `--local` is ignored.
+pool; if a global configuration of version 2 exists, it first migrates it as
+`papers migrate` does. `--local` is ignored.
 
 ## Uninstall
 

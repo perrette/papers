@@ -236,6 +236,12 @@ def install_global(parser, o, config, asker):
     if not bibtex:
         raise PapersExit("install --global needs a bibtex file")
     bibtex = os.path.abspath(bibtex)
+
+    # the global configuration of v2 becomes a library and the default pool,
+    # as with `papers migrate` (the library below then updates or replaces it)
+    from papers.migrate import migrate_v2_global
+    migrate_v2_global(machine, dryrun=papers.config.DRYRUN, convert_links=convert_file_links)
+
     libdir = os.path.dirname(bibtex)
     target = os.path.join(libdir, CONFIG_FILE_LOCAL)
     existing = Config.load(target, machine=machine) if os.path.exists(target) else Config(machine=machine)
@@ -2111,7 +2117,7 @@ def _main(argv):
 
     handle_logging(o)
 
-    if os.path.exists(CONFIG_FILE) and o.cmd != 'migrate':
+    if os.path.exists(CONFIG_FILE) and o.cmd != 'migrate' and not (o.cmd == 'install' and o.local is False):
         logger.warning(f"found the global configuration of papers v2 ({CONFIG_FILE}): it still applies "
                        "outside of libraries; `papers migrate` turns it into a library and the default pool")
 

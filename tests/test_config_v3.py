@@ -432,6 +432,21 @@ class TestMigrateV2Global(ConfigTest):
         self.assertIn('not changed', out)
         self.assertEqual(MachineConfig.load().pool_path('default'), '/some/where')
 
+    def test_install_global_migrates(self):
+        # install --global performs the migration of the v2 global configuration
+        self.papers('install --global --no-prompt --no-git', cwd=self.path('elsewhere'))
+        self.assertFalse(os.path.exists(CONFIG_FILE))
+        self.assertTrue(os.path.exists(CONFIG_FILE + '.v2.bak'))
+        js = self.json('lib')
+        self.assertEqual(js['bibtex'], 'lib.bib')
+        self.assertEqual(js['editor'], 'nano')
+        self.assertEqual(js['nameformat'], {'template': '{author}-{year}'})
+        self.assertEqual(MachineConfig.load().pool_path('default'), self.path('lib'))
+        # no more warning about the v2 configuration
+        with self.assertNoLogs(papers.logger, level='WARNING'):
+            out = self.papers('status', cwd=self.path('elsewhere'), sp_cmd='check_output')
+        self.assertIn('(default pool)', out)
+
     def test_not_implemented(self):
         for option in ['--light', '--full']:
             with self.assertRaises(PapersExit):
