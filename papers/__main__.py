@@ -1371,6 +1371,21 @@ def listcmd(parser, o, config):
         return False
 
 
+    # file actions moved to other commands (removed in v4)
+    if o.add_files:
+        logger.warning("`papers list --add-files` is deprecated: use `papers file attach KEY FILE...`"
+                       + (" (--copy or --move)" if o.rename else ""))
+    elif o.rename:
+        logger.warning("`papers list --rename` is deprecated: use `papers list ... -K | papers file rename "
+                       + ("--keep-source " if o.copy else "") + "-`")
+    elif o.copy:
+        logger.warning("`papers list --copy` is deprecated (and has no effect without --rename): "
+                       "use `papers list ... -K | papers file rename --keep-source -`")
+    if o.open:
+        logger.warning("`papers list --open` is deprecated: use `papers list ... -K | papers open -`")
+    if o.fetch:
+        logger.warning("`papers list --fetch` is deprecated: use `papers list ... -K | papers check --fetch -`")
+
     biblio = get_biblio(config)
     biblio_init = copy.deepcopy(biblio)
     entries = biblio.db.entries
@@ -1444,24 +1459,8 @@ def listcmd(parser, o, config):
         if len(entries) != 1:
             raise PapersExit("list only one entry to use --add-files")
         e = entries[0]
-        files = biblio.get_files(e)
-        resolved = []
-        any_url = False
-        for f in o.add_files:
-            if str(f).startswith("http://") or str(f).startswith("https://"):
-                resolved.append(download_url(f, expect_pdf=False))
-                any_url = True
-            elif not os.path.exists(f):
-                raise PapersExit(f"file {f} does not exist")
-            else:
-                resolved.append(f)
-        if any_url:
-            # downloaded files live in a tempdir; rename so they land in filesdir
-            o.rename = True
-        files.extend(resolved)
-        biblio.set_files(e, files)
-        if o.rename:
-            biblio.rename_entry_files(e, copy=o.copy)
+        attach_files(biblio, e, o.add_files, config,
+                     ('copy' if o.copy else 'move') if o.rename else 'link')
         savebib(biblio, config)
 
     elif o.edit:
@@ -1476,8 +1475,7 @@ def listcmd(parser, o, config):
         savebib(biblio, config)
 
     elif o.rename:
-        for e in entries:
-            biblio.rename_entry_files(e, copy=o.copy)
+        rename_files(biblio, entries, config, keep_source=o.copy)
         savebib(biblio, config)
 
     elif o.delete:
@@ -1963,18 +1961,20 @@ def get_parser(config=None):
     mgrp.add_argument('-f', '--field', nargs='+', help='specific field(s) only')
     grp.add_argument('--no-key', action='store_true', help='do not print the keys')
 
-    grp = listp.add_argument_group('action on listed results (pipe)')
+    grp = listp.add_argument_group('action on listed results',
+        description='shortcuts of `papers edit`, `papers rm` and `papers tag`; the other commands that act '
+                    'on entries read the keys of `papers list -K` with -, e.g. `papers list smith -K | papers file rename -`')
     grp.add_argument('--delete', action='store_true',
         help='remove the listed entries, as `papers rm` (asks whether to delete their files, in a terminal)')
     grp.add_argument('--delete-files', action='store_true', help='with --delete: also delete their files, as `papers rm --delete-files`')
     grp.add_argument('--keep-files', action='store_true', help='with --delete: keep their files, without asking')
     grp.add_argument('-e', '--edit', action='store_true', help='edit the listed entries in a text editor, as `papers edit`')
-    grp.add_argument('--fetch', action='store_true', help='fetch and fix metadata')
+    grp.add_argument('--fetch', action='store_true', help='deprecated: `papers check --fetch -`')
     grp.add_argument('--add-keywords', '--add-tag', nargs='+', help='add keywords (tags) to the listed entries, as `papers tag --add`')
-    grp.add_argument('--add-files', nargs='+', type=file_uri_to_path, help='add files to the selected entries (only one entry must be listed)')
-    grp.add_argument('--rename', action='store_true', help='rename file(s) of the listed entries into the files folder (also applies to files added via --add-files)')
-    grp.add_argument('--copy', action='store_true', help='in combination with --rename, keep a copy of the file(s) in their original location')
-    grp.add_argument('-o', '--open', action='store_true', help='open attachments (if any)')
+    grp.add_argument('--add-files', nargs='+', type=file_uri_to_path, help='deprecated: `papers file attach KEY FILE...`')
+    grp.add_argument('--rename', action='store_true', help='deprecated: `papers file rename -`')
+    grp.add_argument('--copy', action='store_true', help='deprecated: `papers file rename --keep-source -`')
+    grp.add_argument('-o', '--open', action='store_true', help='deprecated: `papers open -`')
 
     # grp.add_argument('--merge-duplicates', action='store_true')
 
