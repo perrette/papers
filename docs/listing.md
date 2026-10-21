@@ -51,11 +51,31 @@ Perrette2013: A scaling approach to project regional sea level rise and it... (d
 number of formats: one-liner (`-l`), raw bibtex (`--plain`), keys only
 (`-K/--key-only`), selected fields (`-f/--field`).
 
+## Naming entries
+
+The commands that act on entries take KEY arguments, where KEY is any of:
+
+- the key of the entry (case-insensitive), or a former key listed in its
+  biblatex `ids` field (comma-separated);
+- a DOI: `10.1000/xyz`, also written `doi:10.1000/xyz` or
+  `https://doi.org/10.1000/xyz` (case-insensitive);
+- an arXiv identifier: `2101.01234`, `2101.01234v2`, `arXiv:2101.01234`, or
+  of the old style `hep-th/9901001`; it matches the `eprint` field (when
+  `archivePrefix` is arXiv or absent) and arXiv DOIs (`10.48550/arXiv.<id>`),
+  whatever the version;
+- an ISBN, 10 or 13 digits, with hyphens or spaces (the ISBN-10 and ISBN-13
+  forms of a book are the same), matched against the `isbn` field.
+
+A key cannot start with a digit, so an argument that starts with a digit is
+never a key. An identifier that matches no entry, or several entries (e.g.
+an ISBN shared by the chapters of a book), is an error, reported before
+anything changes.
+
 ## Piping
 
-The commands that act on entries take keys or DOIs (a DOI starts with `10.`),
-and `-` reads them from the standard input, one per line. `papers list -K`
-prints the keys of the listed entries, one per line:
+`-` reads the identifiers from the standard input, one per line (blank lines
+are ignored). `papers list -K` prints the keys of the listed entries, one per
+line:
 
 ```
 papers list smith 2020 -K | papers file rename -
@@ -64,8 +84,7 @@ papers list --no-file -K | papers check --fetch -
 papers list --review-required -K | papers edit -
 ```
 
-An unknown key or DOI is an error, reported before anything changes. These
-commands take `-`: `edit`, `rm`, `tag`, `open`, `check`, and the
+These commands take `-`: `edit`, `rm`, `tag`, `open`, `check`, and the
 `papers file` commands that act on entries (`rename`, `detach`, `check`).
 
 ## Actions on the listed entries

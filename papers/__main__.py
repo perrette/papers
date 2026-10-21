@@ -27,6 +27,7 @@ from papers.bib import (Biblio, FUZZY_RATIO, DEFAULT_SIMILARITY, entry_filecheck
 from papers.install import (resolve_install, apply_install, init_backup, _ask_path, RESET_WORDS,
                             InputAsker, DefaultAsker)
 from papers.utils import view_pdf, open_folder, PapersExit, file_uri_to_path, find_masked_viewer, set_directory
+from papers.identifiers import read_selection, select_entries, ACCEPTED as ENTRY_IDS
 from papers.files import (FilesPolicy, realpath, is_inside, is_download, plan_moves, link_snapshot,
                           moved_links, execute_moves, files_to_delete, describe_file, delete_files,
                           check_entry_files)
@@ -113,54 +114,6 @@ def savebib(biblio, config):
     # if config.git:
         # config.gitcommit()
 
-
-
-def read_selection(args, stdin=None):
-    """the keys and DOIs of the command line, where `-` stands for the lines
-    of the standard input (one key or DOI per line, blank lines ignored)"""
-    selection = []
-    for arg in args:
-        if arg == '-':
-            text = (stdin or sys.stdin).read()
-            selection.extend(line.strip() for line in text.splitlines() if line.strip())
-        else:
-            selection.append(arg)
-    return selection
-
-
-def is_doi_selector(arg):
-    "a DOI starts with `10.`, while a key cannot start with a digit"
-    return arg.startswith('10.')
-
-
-def select_entries(biblio, args, stdin=None):
-    """the entries named by keys or DOIs (see `read_selection`), in the order
-    given and without repetition. A key is matched case-insensitively, a DOI
-    against the doi field (case-insensitively too). An unknown key or DOI is
-    an error, raised before the command changes anything."""
-    selection = read_selection(args, stdin=stdin)
-    by_key = {}
-    by_doi = {}
-    for e in biblio.entries:
-        by_key.setdefault(biblio.key(e), e)
-        doi = get_entry_val(e, 'doi', '').strip().lower()
-        if doi:
-            by_doi.setdefault(doi, []).append(e)
-    entries = []
-    unknown = []
-    for arg in selection:
-        if is_doi_selector(arg):
-            found = by_doi.get(arg.lower()) or ([by_key[arg.lower()]] if arg.lower() in by_key else [])
-        else:
-            found = [by_key[arg.lower()]] if arg.lower() in by_key else []
-        if not found:
-            unknown.append(arg)
-        for e in found:
-            if not any(e is x for x in entries):
-                entries.append(e)
-    if unknown:
-        raise PapersExit(f"unknown key or DOI: {', '.join(unknown)} (nothing was changed)")
-    return entries
 
 
 def view_entry_files(biblio, entry):
@@ -840,7 +793,7 @@ def _entries_or_all(biblio, args):
 def _one_entry(biblio, key):
     entries = select_entries(biblio, [key])
     if len(entries) != 1:
-        raise PapersExit(f"{key}: {len(entries)} entries have this DOI, give a key instead")
+        raise PapersExit(f"{key}: give one entry ({len(entries)} given)")
     return entries[0]
 
 
@@ -1522,8 +1475,8 @@ def opencmd(parser, o, config):
                 raise PapersExit(f"'{key}' is not an existing file, and no bibliography is configured to look it up as a key")
         try:
             e, = select_entries(biblio, [key])[:1]
-        except PapersExit:
-            logger.error(f'no entry found with key: {key}')
+        except PapersExit as error:
+            logger.error(str(error))
             continue
         if not biblio.get_files(e):
             logger.warning(f'{get_entry_val(e, "ID", "")}: no attached file')
@@ -1548,6 +1501,10 @@ def get_parser(config=None):
         help='run as if papers was started in DIR (before the command name)')
 
     subparsers = parser.add_subparsers(dest='cmd')
+
+    # entries named on the command line (see papers.identifiers)
+    _selection_help = (f'KEY: {ENTRY_IDS} (a former key in the ids field works too); '
+                       '- reads them from the standard input, one per line')
 
     def _default(value):
         "a configured value shown in a help text (argparse formats help with %)"
@@ -1783,8 +1740,8 @@ def get_parser(config=None):
     # =====
     checkp = subparsers.add_parser('check', description='check and fix entries',
         parents=[cfg, keyfmt])
-    checkp.add_argument('entries', nargs='*', metavar='KEY|DOI',
-        help='check these entries only (default: all); - reads keys or DOIs from the standard input, one per line')
+    checkp.add_argument('entries', nargs='*', metavar='KEY',
+        help='check these entries only (default: all): ' + _selection_help)
     checkp.add_argument('-k', '--keys', nargs='+', help='apply check on this key subset (same as the KEY arguments)')
     checkp.add_argument('-f','--force', action='store_true', help='do not ask')
 
@@ -1819,14 +1776,13 @@ def get_parser(config=None):
         'detach, check them, and clean the files directory')
     filesub = filep.add_subparsers(dest='file_cmd', metavar='{rename,mv,attach,detach,check,clean}')
     filep.subcommands = filesub.choices
-    _selection_help = 'keys or DOIs; - reads them from the standard input, one per line'
 
     p = filesub.add_parser('rename', parents=[cfg, namefmt],
         help='place the files in the files directory under their template name',
         description='place the files of the entries (all entries without KEY) in the files directory, '
                     'under the name made from the name template. A file that belongs to another library '
                     '(inside its files directory) is copied, not moved.')
-    p.add_argument('entries', nargs='*', metavar='KEY|DOI', help=_selection_help)
+    p.add_argument('entries', nargs='*', metavar='KEY', help=_selection_help)
     p.add_argument('--keep-source', action='store_true',
         help='keep the files where they are too (a hard link when possible, otherwise a copy)')
 
@@ -1845,7 +1801,7 @@ def get_parser(config=None):
         help='attach files to an entry',
         description='attach files to an existing entry. What happens to the files is the files setting '
                     f'(found: {config.files}), as for `papers add`; the files the entry had are left as they are.')
-    p.add_argument('key', metavar='KEY|DOI')
+    p.add_argument('key', metavar='KEY', help=f'{ENTRY_IDS} of the entry')
     p.add_argument('files', nargs='+', metavar='FILE', type=file_uri_to_path, help='files or URLs')
     p.add_argument('--move', action='store_true', help='files mode move, whatever the setting')
     p.add_argument('--copy', action='store_true', help='files mode copy, whatever the setting')
@@ -1856,7 +1812,7 @@ def get_parser(config=None):
         description='remove the links to FILE (all its files without FILE) from the entry KEY. '
                     'The files are kept, unless --delete-files.')
     p.add_argument('args', nargs='*', metavar='KEY [FILE...]', type=file_uri_to_path,
-        help='with --broken: KEY... (all entries without KEY)')
+        help=f'KEY: {ENTRY_IDS} of the entry; with --broken: KEY... (all entries without KEY)')
     p.add_argument('--broken', action='store_true', help='remove the broken links only')
     p.add_argument('--delete-files', action='store_true',
         help='also delete the detached files that no other entry links to')
@@ -1866,7 +1822,7 @@ def get_parser(config=None):
         description='report broken links, links that can be repaired (paths saved by Mendeley), files linked '
                     'twice and identical files (same checksum) of an entry, and with --metadata a DOI of the PDF '
                     'that differs from the entry\'s. Nothing changes without --fix.')
-    p.add_argument('entries', nargs='*', metavar='KEY|DOI', help=_selection_help + ' (default: all entries)')
+    p.add_argument('entries', nargs='*', metavar='KEY', help=_selection_help + ' (default: all entries)')
     p.add_argument('--metadata', action='store_true', help='also compare the DOI of the PDFs with the entry (parses the PDFs)')
     p.add_argument('--fix', action='store_true',
         help='apply the safe repairs: repair the paths, remove the second link of a file linked twice or of '
@@ -1983,15 +1939,15 @@ def get_parser(config=None):
     # =============
     editp = subparsers.add_parser('edit', parents=[cfg],
         description='edit entries in a text editor (the editor setting, or $EDITOR)')
-    editp.add_argument('entries', nargs='+', metavar='KEY|DOI',
-        help='keys or DOIs; - reads them from the standard input, one per line')
+    editp.add_argument('entries', nargs='+', metavar='KEY',
+        help=_selection_help)
 
     rmp = subparsers.add_parser('rm', parents=[cfg],
         description='remove entries. Their files that no other entry links to may be deleted too: in a '
                     'terminal, papers asks for those in the files directory; without a terminal, they are kept. '
                     'Files outside the files directory are only deleted with --delete-files.')
-    rmp.add_argument('entries', nargs='+', metavar='KEY|DOI',
-        help='keys or DOIs; - reads them from the standard input, one per line')
+    rmp.add_argument('entries', nargs='+', metavar='KEY',
+        help=_selection_help)
     rmp.add_argument('--delete-files', action='store_true',
         help='also delete the files of the entries that no other entry links to, without asking '
              '(also those outside the files directory)')
@@ -2000,8 +1956,8 @@ def get_parser(config=None):
     tagp = subparsers.add_parser('tag', parents=[cfg],
         description='tags are the keywords field of the entries (comma-separated). Without option, list '
                     'the tags of the library (or of the entries KEY...) with the number of entries.')
-    tagp.add_argument('entries', nargs='*', metavar='KEY|DOI',
-        help='keys or DOIs; - reads them from the standard input, one per line')
+    tagp.add_argument('entries', nargs='*', metavar='KEY',
+        help=_selection_help)
     tagp.add_argument('--add', nargs='+', metavar='TAG', help='add tags to the entries')
     tagp.add_argument('--rm', nargs='+', metavar='TAG', help='remove tags from the entries')
     tagp.add_argument('--rename', nargs=2, metavar=('OLD', 'NEW'), help='rename a tag in the whole library')
@@ -2009,8 +1965,7 @@ def get_parser(config=None):
     # open
     # ====
     openp = subparsers.add_parser('open', description='open entry attachments or files with the system viewer', parents=[cfg])
-    openp.add_argument('key', nargs='+', type=file_uri_to_path, help='entry key(s) (case-insensitive) or DOI(s), or existing file path(s) to open directly; '
-             '- reads them from the standard input, one per line')
+    openp.add_argument('key', nargs='+', type=file_uri_to_path, help='entries (' + _selection_help + '), or existing file path(s) to open directly')
 
     # doi
     # ===

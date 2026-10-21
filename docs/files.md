@@ -36,8 +36,9 @@ into the files directory.
 ## `papers file`
 
 The commands of `papers file` act on the files of the entries. Those that
-take entries accept keys or DOIs, and `-` to read them from the standard
-input, one per line (see [Listing and searching](listing.md#piping)):
+take entries accept keys, DOIs, arXiv identifiers or ISBNs (see
+[Naming entries](listing.md#naming-entries)), and `-` to read them from the
+standard input, one per line:
 
 | Command | Action |
 |---|---|
