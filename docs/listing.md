@@ -51,6 +51,22 @@ Perrette2013: A scaling approach to project regional sea level rise and it... (d
 number of formats: one-liner (`-l`), raw bibtex (`--plain`), keys only
 (`-K/--key-only`), selected fields (`-f/--field`).
 
+## Duplicates
+
+`papers list --duplicates` lists the entries that are the same paper, by the
+rule of `papers add` (see [Adding entries](adding-entries.md#same-paper)):
+the groups that `papers check --duplicates` would merge or ask about, and
+not the pairs recorded as distinct in `.papers/distinct.json`. With
+`--invert`, it lists the other entries.
+
+With `--fuzzy`, it also lists the entries whose authors and title are
+similar (rapidfuzz token set ratio of at least `--fuzzy-ratio`, default 80).
+This is for looking only: papers never merges entries on this score.
+
+`--duplicates-key`, `--duplicates-doi` and `--duplicates-tit` are deprecated
+and do the same as `--duplicates`; `--similarity` is deprecated and has no
+effect.
+
 ## Naming entries
 
 The commands that act on entries take KEY arguments, where KEY is any of:
@@ -98,7 +114,8 @@ commands:
   answer without asking, see [Files](files.md#removing-entries-and-their-files));
 - `--add-tag TAG...`: add tags, as `papers tag --add`.
 
-For instance, it is possible to manually merge duplicates with:
+For instance, the duplicates can be edited by hand with (`papers check
+--duplicates` merges them, see [Managing your library](library-management.md#duplicates)):
 
 ```
 $> papers list --duplicates --edit

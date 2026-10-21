@@ -40,7 +40,7 @@ By default the files of `old.bib` are moved into the files directory
 except the files inside the files directory of another library, which are
 copied.
 
-## check
+## Duplicates
 
 It's easy to end up with duplicates in your bibtex. After adding PDFs, or every
 once in a while, do:
@@ -48,6 +48,73 @@ once in a while, do:
 ```
 papers check --duplicates
 ```
+
+It groups the entries that are the same paper, by the rule of `papers add`
+(same DOI, arXiv id, ISBN of two books, or else same authors and title; see
+[Adding entries](adding-entries.md#same-paper)), and merges each group into
+one entry. A group never holds two entries with different DOIs: a copy
+without DOI that matches both goes with one of them, and the other comes up
+on the next check if it is still a match.
+
+Entry 1 of a group, the target, is the entry with most fields. The merge
+works as in `papers add`: the target keeps its key, fields missing in it
+are added, the file links are kept. The other entries are removed, and
+their keys are added to the biblatex `ids` field of the target, so that
+`\cite` commands with the old keys keep working with biblatex (BibTeX
+ignores the field). Commands that take a KEY also accept a key of the `ids`
+field.
+
+```
+$> papers check --duplicates
+Same paper: 2 entries (same title and authors)
+  1  smith2020climate  article  doi 10.1000/abc123  files/smith.pdf
+  2  Smith_2020        article  no doi              other/smith-preprint.pdf
+
+@article{smith2020climate,
+!  key      = smith2020climate
+!             2: Smith_2020 (kept in ids)
+   author   = {Smith, John and Doe, Jane}
+   doi      = {10.1000/abc123}
++  file     = {files/smith.pdf;other/smith-preprint.pdf}
++  ids      = {Smith_2020}
+!  journal  = {Nature}
+!             2: {Nature Climate Change}
+   keywords = {climate, mine}
+   title    = {Climate sensitivity revisited}
+   year     = {2020}
+}
+1 conflict. Entry 2 is removed after the merge; its key goes to ids.
+  1 keep values of 1   2 take values of 2   f field by field   e edit
+  t N make entry N the target   n not the same paper   s skip   q quit   ? help
+>>> 1
+merged into smith2020climate: Smith_2020 (kept in ids)
+```
+
+The answers are those of the dialogue of `papers add` (see
+[Adding entries](adding-entries.md#the-dialogue)), with one more: `t N`
+makes entry N the target, so that its key is kept. `n` (not the same paper)
+leaves the entries as they are and records them in `.papers/distinct.json`,
+so that the next check does not ask again. A group whose entries differ
+only by key and file links is merged without a question.
+
+`--on-duplicate` sets what to do with each group without asking:
+
+| Value | What happens |
+|---|---|
+| `ask` | the dialogue (default when the standard input is a terminal) |
+| `keep` | merge; conflicts keep the value of entry 1 |
+| `skip` | leave the groups as they are (also with `--force`) |
+| `error` | exit with status 1 if there is any group, and list them (default without a terminal) |
+
+Groups that the title guard asks about (same DOI, but different entry types
+and titles) are never merged with `keep`.
+
+To only see the groups, use `papers list --duplicates` (see
+[Listing](listing.md#duplicates)).
+
+The `-m/--mode` option of earlier versions still works, with a warning:
+`-m i` is `--on-duplicate ask`, `-m m` is `keep`, `-m s` is `skip`. To
+remove entries, use `papers rm`.
 
 ## Checking and fixing files
 

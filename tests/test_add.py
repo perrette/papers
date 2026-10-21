@@ -396,9 +396,9 @@ class TestAddConflict(BibTest):
 
 
     def test_add_same_but_key_interactive(self):
-        # fails in raise mode
+        # an entry that differs by its key only is not asked about
         open(self.otherbib, 'w').write(self.bibtex_otherkey)
-        sp.check_call(f'echo u | {PAPERSCMD} add {self.otherbib} --bibtex {self.mybib}', shell=True)
+        sp.check_call(f'{PAPERSCMD} add {self.otherbib} --bibtex {self.mybib} < /dev/null', shell=True)
         self.assertMultiLineEqual(open(self.mybib).read().strip(), self.bibtex) # entries did not change
 
 
@@ -408,11 +408,11 @@ class TestAddConflict(BibTest):
         self.assertMultiLineEqual(open(self.mybib).read().strip(), self.bibtex) # entries did not change
 
 
-    def test_add_same_but_key_fails(self):
-        # fails in raise mode
+    def test_add_same_but_key_error_mode(self):
+        # nothing to decide: no error, even with --on-duplicate error
         open(self.otherbib, 'w').write(self.bibtex_otherkey)
-        func = lambda x: paperscmd(f'add {self.otherbib} --bibtex {self.mybib} --mode r')
-        self.assertRaises(Exception, func)
+        paperscmd(f'add {self.otherbib} --bibtex {self.mybib} --on-duplicate error')
+        self.assertMultiLineEqual(open(self.mybib).read().strip(), self.bibtex)
 
 
     def test_add_same_but_file(self):
@@ -424,7 +424,7 @@ class TestAddConflict(BibTest):
     def test_add_conflict_key_check_raises(self):
         # key conflict: raises exception whatever mode is indicated
         open(self.otherbib, 'w').write(self.bibtex_conflict_key)
-        func = lambda : paperscmd(f'add {self.otherbib} --bibtex {self.mybib} --mode s --debug')
+        func = lambda : paperscmd(f'add {self.otherbib} --bibtex {self.mybib} --on-duplicate skip --debug')
         self.assertRaises(Exception, func)
 
     def test_add_conflict_key_nocheck_raises(self):
@@ -449,47 +449,59 @@ class TestAddConflict(BibTest):
     def test_add_same_doi_unchecked(self):
         # does not normally test doi
         open(self.otherbib, 'w').write(self.bibtex_same_doi)
-        paperscmd(f'add {self.otherbib} --no-check-duplicate --bibtex {self.mybib} --mode r')
+        paperscmd(f'add {self.otherbib} --no-check-duplicate --bibtex {self.mybib} --on-duplicate error')
         expected = self.bibtex+'\n\n'+self.bibtex_same_doi
         self.assertMultiLineEqual(open(self.mybib).read().strip(), expected) # entries did not change
 
-    def test_add_same_doi_fails(self):
-        # test doi and triggers conflict
+    def test_add_same_doi_other_key(self):
+        # same DOI, same content, other key: nothing to decide, the library is unchanged
         open(self.otherbib, 'w').write(self.bibtex_same_doi)
-        func = lambda : paperscmd(f'add {self.otherbib} --bibtex {self.mybib} --mode r')
+        paperscmd(f'add {self.otherbib} --bibtex {self.mybib} --on-duplicate error')
+        self.assertMultiLineEqual(open(self.mybib).read().strip(), self.bibtex)
+
+    def test_add_same_doi_conflict_fails(self):
+        open(self.otherbib, 'w').write(self.bibtex_same_doi.replace('{feb}', '{mar}'))
+        func = lambda : paperscmd(f'add {self.otherbib} --bibtex {self.mybib} --on-duplicate error')
         self.assertRaises(Exception, func)
 
     def test_add_same_doi_update_key(self):
         # test doi and update key and identical entry detected
         open(self.otherbib, 'w').write(self.bibtex_same_doi)
-        paperscmd(f'add {self.otherbib} --update-key --bibtex {self.mybib} --mode r')
+        paperscmd(f'add {self.otherbib} --update-key --bibtex {self.mybib} --on-duplicate error')
         expected = self.bibtex
         self.assertMultiLineEqual(open(self.mybib).read().strip(), expected) # entries did not change
 
-    def test_add_miss_field_fails(self):
-        # miss field and triggers conflict
+    def test_add_miss_field_nothing_new(self):
+        # the added entry has fewer fields: nothing to add, nothing to decide
         open(self.otherbib, 'w').write(self.bibtex_miss_field)
-        func = lambda : paperscmd(f'add {self.otherbib} --bibtex {self.mybib} --mode r')
+        paperscmd(f'add {self.otherbib} --bibtex {self.mybib} --on-duplicate error')
+        self.assertMultiLineEqual(open(self.mybib).read().strip(), self.bibtex)
+
+    def test_add_more_fields_fails(self):
+        # the library entry has fewer fields: they would be added, which is a decision
+        open(self.mybib, 'w').write(self.bibtex_miss_field)
+        open(self.otherbib, 'w').write(self.bibtex)
+        func = lambda : paperscmd(f'add {self.otherbib} --bibtex {self.mybib} --on-duplicate error')
         self.assertRaises(Exception, func)
 
     def test_add_miss_merge(self):
         # miss field but merges
         open(self.otherbib, 'w').write(self.bibtex_miss_field)
-        paperscmd(f'add {self.otherbib} --mode u --bibtex {self.mybib}')
+        paperscmd(f'add {self.otherbib} --on-duplicate keep --bibtex {self.mybib}')
         expected = self.bibtex
         self.assertMultiLineEqual(open(self.mybib).read().strip(), expected) # entries did not change
 
     def test_add_miss_doi_merge(self):
         # miss field but merges
         open(self.otherbib, 'w').write(self.bibtex_miss_doi_field)
-        paperscmd(f'add {self.otherbib} --mode u --bibtex {self.mybib}')
+        paperscmd(f'add {self.otherbib} --on-duplicate keep --bibtex {self.mybib}')
         expected = self.bibtex
         self.assertMultiLineEqual(open(self.mybib).read().strip(), expected) # entries did not change
 
     def test_add_miss_titauthor_merge(self):
         # miss field but merges
         open(self.otherbib, 'w').write(self.bibtex_miss_titauthor_field)
-        paperscmd(f'add {self.otherbib} --mode u --bibtex {self.mybib} --debug')
+        paperscmd(f'add {self.otherbib} --on-duplicate keep --bibtex {self.mybib} --debug')
         expected = self.bibtex
         self.assertMultiLineEqual(open(self.mybib).read().strip(), expected) # entries did not change
 
@@ -565,8 +577,8 @@ class TestAddBibRelocateFiles(BibTest):
 
 
 class TestAddDuplicateKeepsExistingKey(BibTest):
-    """-u/--update-key: a duplicate of an existing entry is merged under the
-    existing entry's key, whatever the merge mode"""
+    """a duplicate of an existing entry is merged under the existing entry's
+    key, whatever the mode, with or without -u/--update-key"""
 
     existing = """@article{Perrette2013ESD,
  author = {Perrette, M. and Landerer, F. and Riva, R. and Frieler, K. and Meinshausen, M.},
@@ -602,23 +614,30 @@ class TestAddDuplicateKeepsExistingKey(BibTest):
         return bib.entries[0]
 
     def test_update_missing_keeps_existing_key(self):
-        paperscmd(f'add {self.otherbib} --bibtex {self.mybib} -u -m u')
+        paperscmd(f'add {self.otherbib} --bibtex {self.mybib} -u --on-duplicate keep')
         e = self._entry()
         self.assertEqual(e['ID'], 'Perrette2013ESD')
         self.assertEqual(e['pages'], '11-29')  # missing field merged in
         self.assertEqual(e['author'], 'Perrette, M. and Landerer, F. and Riva, R. and Frieler, K. and Meinshausen, M.')  # existing wins
 
     def test_update_with_new_keeps_existing_key(self):
-        paperscmd(f'add {self.otherbib} --bibtex {self.mybib} -u -m U')
-        e = self._entry()
-        self.assertEqual(e['ID'], 'Perrette2013ESD')
-        self.assertEqual(e['author'], 'M. Perrette and F. Landerer and R. Riva and K. Frieler and M. Meinshausen')  # new wins
+        open(self.otherbib, 'w').write(self.new.replace('Earth System Dynamics', 'Earth Syst. Dynam.'))
+        for options in ('-u --on-duplicate update', '--on-duplicate update'):
+            open(self.mybib, 'w').write(self.existing)
+            paperscmd(f'add {self.otherbib} --bibtex {self.mybib} {options}')
+            e = self._entry()
+            self.assertEqual(e['ID'], 'Perrette2013ESD')
+            self.assertEqual(e['journal'], 'Earth Syst. Dynam.')  # new wins
+            # the same names in another order are not a conflict: the library spelling stays
+            self.assertEqual(e['author'], 'Perrette, M. and Landerer, F. and Riva, R. and Frieler, K. and Meinshausen, M.')
 
     def test_overwrite_keeps_existing_key(self):
-        paperscmd(f'add {self.otherbib} --bibtex {self.mybib} -u -m o')
+        # deprecated -m o: --on-duplicate update
+        paperscmd(f'add {self.otherbib} --bibtex {self.mybib} -m o')
         self.assertEqual(self._entry()['ID'], 'Perrette2013ESD')
 
     def test_append_keeps_existing_key_and_generates_new(self):
+        # deprecated -m a: --no-check-duplicate
         paperscmd(f'add {self.otherbib} --bibtex {self.mybib} -u -m a')
         bib = Biblio.load(self.mybib, '')
         self.assertEqual(sorted(e['ID'] for e in bib.entries), ['Perrette2013ESD', 'perrette_landerer2013'])
