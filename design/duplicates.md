@@ -441,11 +441,21 @@ Old `-m` letters can stay accepted with a deprecation warning that prints the ne
    the fuller form is kept, whichever side it comes from (citation styles can always
    abbreviate). Different first names (`Smith, John` / `Smith, Jane`) are a conflict.
 5. **Identity, in order**: DOI (case-insensitive); arXiv identifier (`eprint` with
-   `archivePrefix = arXiv`); ISBN for `@book` entries only (chapters share their book's
-   ISBN); otherwise author family names + title. Two entries with different values of the
-   first identifier both have are not the same paper. Documented in the user docs.
+   `archivePrefix = arXiv`); ISBN for two `@book` entries only (a chapter carries its
+   book's ISBN, and editions have their own); otherwise author family names + title. Two
+   entries with different values of the first identifier both have are not the same
+   paper. **Title guard**: equal DOIs (or arXiv ids, ISBNs) with clearly different titles
+   are not merged automatically: the answer is "ask" (e.g. a chapter exported with its
+   book's DOI, a dataset deposited under the article's DOI); without a terminal this stops
+   like any other conflict (`error`). Chapters normally have their own DOI, so book and
+   chapter are already distinct. Documented in the user docs.
+7. **One implementation**: a single function `same_paper(a, b)` returns *same*,
+   *different*, or *ask* (with the reason), applies the identifiers, the title guard and
+   `.papers/distinct.json`, and is the only duplicate rule used by `add` (including
+   `add DIR` and the pool lookup), `check --duplicates`, `list --duplicates` (which also
+   lists the "ask" pairs), `pull` and `push`.
 6. **"Not the same paper"** is remembered in `.papers/distinct.json` of the library, as pairs
    of identities (DOI, arXiv id, ISBN, or normalized author+title), not keys, so that the
    file means the same in every library: `push`/`pull` merge it (union) with the pool's.
-   Mostly needed for entries without DOI, and for entries that share a DOI but are distinct
-   (a book and its chapters, a dataset deposited under the article's DOI).
+   Mostly needed for entries without DOI, and to stop the title guard from asking again
+   about entries that share a DOI but are distinct.
