@@ -43,7 +43,6 @@ papers list
 ## About
 
 - [Features](features.md)
-- [Comparison with other tools](comparison.md)
 
 ## From the same author
 
