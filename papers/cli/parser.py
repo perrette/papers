@@ -360,7 +360,12 @@ def get_parser(config=None):
     grp = checkp.add_argument_group('crossref fetch and fix')
     grp.add_argument('--fix-doi', action='store_true', help='fix doi for some common issues (e.g. DOI: inside doi, .received at the end')
     grp.add_argument('--fetch', action='store_true', help='fetch metadata from doi and update entry')
-    grp.add_argument('--fetch-all', action='store_true', help='fetch metadata from title and author field and update entry (only when doi is missing)')
+    grp.add_argument('--fetch-all', action='store_true',
+        help='''--fetch, and for entries without DOI, a crossref search by title and authors.
+        The best result is taken only if its title is the same or nearly the same (after
+        normalization) and it has an author family name in common with the entry; otherwise
+        the entry is left unchanged and a warning is printed. The fetched fields replace or add
+        to those of the entry; the key and the files are kept. Asks before each change unless -y.''')
 
     grp = checkp.add_argument_group('names')
     grp.add_argument('--format-name', action='store_true', help='author name as family, given, without brackets')

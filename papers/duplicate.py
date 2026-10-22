@@ -41,6 +41,10 @@ ASK = 'ask'
 # minimum author+title score of `list --duplicates --fuzzy`
 FUZZY_RATIO = 80
 
+# minimum title score for a search result to be taken for the entry
+# (`check --fetch-all`)
+TITLE_MATCH_RATIO = 90
+
 
 class Verdict:
     """result of same_paper: `kind` is SAME, DIFFERENT or ASK, `reason`
@@ -154,6 +158,25 @@ def titles_differ(a, b):
     "both titles known, and different after normalization"
     ta, tb = title_id(a), title_id(b)
     return bool(ta and tb and ta != tb)
+
+
+def search_result_mismatch(e, found, ratio=TITLE_MATCH_RATIO):
+    """why a bibliographic search result `found` is not the paper of entry
+    `e`, or '' when it is: the normalized titles must be equal or score at
+    least `ratio` (rapidfuzz ratio, 0-100), and the authors must have a
+    family name in common"""
+    from rapidfuzz.fuzz import ratio as fuzz_ratio
+    ta, tb = title_id(e), title_id(found)
+    if not ta or not tb:
+        return 'no title'
+    if ta != tb:
+        score = fuzz_ratio(ta, tb)
+        if score < ratio:
+            return f'different title ({score:.0f}% similar)'
+    common = set(family_name_ids(get_entry_val(e, 'author', ''))) & set(family_name_ids(get_entry_val(found, 'author', '')))
+    if not common - {''}:
+        return 'no author in common'
+    return ''
 
 
 def _guard(a, b, reason):

@@ -48,6 +48,7 @@ from papers.duplicate import (
     IdentityIndex,
     find_duplicates,
     duplicate_groups,
+    search_result_mismatch,
 )
 from papers.merge import Merge, Resolver, Decision, DuplicateError, apply_entry, option_hint
 
@@ -694,6 +695,7 @@ class Biblio:
 
         if fetch or fetch_all:
             bibtex = None
+            searched = False
             if 'doi' in e and e['doi']:
                 logger.info(get_entry_val(e, 'ID', '')+': fetch doi: '+e['doi'])
                 try:
@@ -708,6 +710,7 @@ class Biblio:
                 logger.info(get_entry_val(e, 'ID', '')+': fetch-all: '+str(kw))
                 try:
                     bibtex = fetch_bibtex_by_fulltext_crossref('', **kw)
+                    searched = True
                 except Exception as error:
                     logger.warning('...failed to fetch/update bibtex (all): '+str(error))
 
@@ -715,6 +718,13 @@ class Biblio:
                 db = parse_string(bibtex)
                 e2 = db.entries[0]
                 self.fix_entry(e2, encoding=encoding, format_name=True)
+                # the best search result may be another paper
+                mismatch = searched and search_result_mismatch(e, e2)
+                if mismatch:
+                    logger.warning('...fetch-all: rejected search result ({}): {} ({})'.format(
+                        mismatch, get_entry_val(e2, 'title', ''), get_entry_val(e2, 'doi', 'no doi')))
+                    bibtex = None
+            if bibtex:
                 strip_e = lambda e_: {k: e_[k] for k, _ in e_.items() if k not in ['ID', 'file'] and k in e2}
                 if strip_e(e) != strip_e(e2):
                     logger.info('...fetch-update entry')

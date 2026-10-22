@@ -96,6 +96,41 @@ class TestFixEntry(unittest.TestCase):
         search.assert_called_once_with('', title='One', author='Author')
         self.assertEqual(e['doi'], '10.1000/a')
 
+    def test_fetch_all_rejects_another_paper(self):
+        # the best crossref result may be another paper: it must not
+        # overwrite the entry
+        biblio = biblio_of(ENTRY.replace(' doi = {10.1000/a},\n', ''))
+        e = biblio.entries[0]
+        other = FETCHED.replace('title = {One}', 'title = {Something Else Entirely}').replace('10.1000/a', '10.1000/other')
+        with mock.patch('papers.bib.fetch_bibtex_by_fulltext_crossref', return_value=other):
+            with self.assertLogs('papers', level='WARNING') as logs:
+                biblio.fix_entry(e, fetch_all=True)
+        self.assertNotIn('doi', e)
+        self.assertNotIn('journal', e)
+        self.assertEqual(e['title'], 'One')
+        self.assertIn('rejected', '\n'.join(logs.output))
+
+    def test_fetch_all_rejects_other_authors(self):
+        biblio = biblio_of(ENTRY.replace(' doi = {10.1000/a},\n', ''))
+        e = biblio.entries[0]
+        other = FETCHED.replace('Author, Anne', 'Somebody, Else')
+        with mock.patch('papers.bib.fetch_bibtex_by_fulltext_crossref', return_value=other):
+            with self.assertLogs('papers', level='WARNING'):
+                biblio.fix_entry(e, fetch_all=True)
+        self.assertNotIn('doi', e)
+        self.assertEqual(e['author'], 'Author, A.')
+
+    def test_fetch_all_accepts_close_title(self):
+        # case, braces, accents and a small difference are accepted
+        bib = ENTRY.replace(' doi = {10.1000/a},\n', '').replace('{One}', '{The {Role} of Ocean Heat Uptake in Climate Change}')
+        biblio = biblio_of(bib)
+        e = biblio.entries[0]
+        fetched = FETCHED.replace('{One}', '{The role of ocean heat uptake in climate change.}')
+        with mock.patch('papers.bib.fetch_bibtex_by_fulltext_crossref', return_value=fetched):
+            biblio.fix_entry(e, fetch_all=True)
+        self.assertEqual(e['doi'], '10.1000/a')
+        self.assertEqual(e['journal'], 'Journal')
+
     def test_fetch_all_failure(self):
         biblio = biblio_of(ENTRY.replace(' doi = {10.1000/a},\n', ''))
         with mock.patch('papers.bib.fetch_bibtex_by_fulltext_crossref', side_effect=ValueError('no results')):
