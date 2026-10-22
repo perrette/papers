@@ -67,14 +67,25 @@ class TestInitSummary(ConfigTest):
             f'created the library {papers.config.short_home(self.path("lib"))}',
             '* bibtex:  papers.bib',
             '* files:   files (the files directory of the library)',
+            f'* pool:    {papers.config.short_home(TEST_GLOBAL_POOL)} (shared entries; the PDFs stay in this library)',
             '* backup:  off',
             '`papers status -v` shows all settings'])
+
+    def test_local_pool_path(self):
+        self.papers('init pool --no-git --pool none')
+        out = self.papers('init lib --local --no-git --pool ../pool', sp_cmd='check_output')
+        self.assertIn('* pool:    ../pool (shared entries; the PDFs stay in this library)\n', out)
+
+    def test_local_no_pool(self):
+        out = self.papers('init lib --local --no-git --pool none', sp_cmd='check_output')
+        self.assertNotIn('* pool:', out)
 
     def test_not_local(self):
         self.papers('config --global local false')
         out = self.papers('init lib --git', sp_cmd='check_output')
         self.assertIn(f'* files:   in the pool {papers.config.short_home(TEST_GLOBAL_POOL)}', out)
         self.assertIn('* backup:  git', out)
+        self.assertNotIn('* pool:', out)  # the files line names the pool
         self.assertNotIn('settings:', out)
 
 
