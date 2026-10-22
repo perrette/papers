@@ -1139,8 +1139,7 @@ missing, with its parents):</p>
 <p>By default the bibtex is <code>papers.bib</code> (or the first <code>.bib</code> file present in
 the directory) and the files directory is <code>files</code> (or an existing <code>pdfs</code>,
 <code>pdf</code>, <code>papers</code> or <code>bibliography</code> folder). The options of <code>papers init</code> are
-<code>--bibtex</code>, <code>--filesdir</code>, <code>--pool PATH|none</code> (repeated for several pools)
-and <code>--local</code> (see
+<code>--bibtex</code>, <code>--filesdir</code>, <code>--pool PATH|none</code> and <code>--local</code> (see
 <a href="#pools">Pools</a>), <code>--paths relative|absolute</code>, <code>--git</code>/<code>--no-git</code>,
 <code>--git-lfs</code>, <code>--editor</code> and the name and key format options (see
 <a href="../renaming/">Renaming files and keys</a>).
@@ -1191,7 +1190,7 @@ from the global configuration, otherwise from its built-in default.
 </tr>
 <tr>
 <td><code>pool</code></td>
-<td>path of the library's pool (relative to the library), several paths (looked up in order, the first one written to), or <code>none</code> (default: the global pool setting)</td>
+<td>path of the library's pool (relative to the library), or <code>none</code> (default: the global pool)</td>
 </tr>
 <tr>
 <td><code>local</code></td>
@@ -1257,36 +1256,31 @@ the global pool (see <a href="../pools/">Pools</a>).</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>papers config --global editor vim
 <a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>papers config --global name.template '{author}_{year}'
 <a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>papers config --global pool ~/Dropbox/papers   # the global pool
-<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>papers config --global pool ~/Dropbox/papers /media/usb/papers   # several pools
-<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>papers config --global local true              # new libraries keep their own files
-<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>papers config --global                         # list it
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>papers config --global local true              # new libraries keep their own files
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>papers config --global                         # list it
 </code></pre></div>
 <p>In the global configuration, <code>pool</code> is the path of the global pool (default
-<code>~/Documents/papers</code>), several paths (the first is the global pool, the
-main pool of the libraries that do not set theirs, and the others are the
-pools they search), or
-<code>none</code> (no sharing: new libraries get <code>pool: none</code>, and so are local), and
-<code>local</code> the default of new libraries (default <code>false</code>).</p>
+<code>~/Documents/papers</code>), or <code>none</code> (no sharing: new libraries get
+<code>pool: none</code>, and so are local), and <code>local</code> the default of new libraries
+(default <code>false</code>).</p>
 <p><code>papers init</code> stores <code>paths</code>, <code>git</code>, <code>git-lfs</code> and <code>local</code> in the new
 library, taking their values from the global configuration when it sets
 them, and <code>pool</code> when it is not the global pool. The other settings are
 only stored in the library when you set them.</p>
 <h2 id="pools">Pools<a class="headerlink" href="#pools" title="Permanent link">&para;</a></h2>
 <p>A pool is a library that other libraries exchange entries with (see
-<a href="../pools/">Pools</a> for <code>add</code>, <code>pull</code>, <code>push</code>, <code>sync</code> and <code>export</code>). The pool
-of a library is its <code>pool</code> setting: by default the global pool (the <code>pool</code>
+<a href="../pools/">Pools</a> for <code>add</code>, <code>pull</code>, <code>push</code>, <code>sync</code> and <code>export</code>). A library
+has one pool, its <code>pool</code> setting: by default the global pool (the <code>pool</code>
 setting of the global configuration, <code>~/Documents/papers</code> without one), a
-path relative to the library (e.g. <code>../shared-with-bob</code>), several paths, or
-<code>none</code>. With several pools, the first is the main pool, the one that
-<code>pull</code>, <code>push</code> and <code>sync</code> exchange with and that new entries go to; the
-others are searched when adding or pulling, never written to (see
-<a href="../pools/#several-pools">Several pools</a>). The
-configuration file stores a single path as a string, several as a list, and
-no pool as <code>"none"</code>. A
+path relative to the library (e.g. <code>../shared-with-bob</code>), or <code>none</code>. A
 library that uses the global pool stores no path, so that the same project
 uses the global pool of each machine. The global pool is created the first
 time papers writes to it; it is also the library that commands act on
 outside of any library, once it is one.</p>
+<p>A configuration file written by a test build that took several pools may
+store <code>pool</code> as a list: a list of one path is read as that path, and a list
+of several paths is an error that names the file. Write one path, or
+<code>none</code>, in that file.</p>
 <p><code>local</code> says where the files of the library are: in the files directory of
 the pool (<code>false</code>, the default: the library links to them) or in its own
 (<code>true</code>). A project folder shared with others (git, Dropbox) should be
@@ -1295,10 +1289,8 @@ local: the links of a library that is not local point into your own pool.</p>
 <a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>papers init --local            # its own files
 <a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>papers init --pool ../shared   # another pool
 <a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>papers init --pool none        # no pool, hence local
-<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>papers init --pool ~/Documents/papers --pool ../shared   # two pools
-<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>papers config pool ~/Documents/papers ../shared          # the same, in an existing library
 </code></pre></div>
-<p><code>papers status</code> shows each pool of the library (its path, or none), whether
+<p><code>papers status</code> shows the pool of the library (its path, or none), whether
 it is the global pool, is missing or is not a library, and whether it
 changed since the last exchange with it. It also shows <code>local</code>, and the
 <code>auto-push</code> setting of a local library.</p>
