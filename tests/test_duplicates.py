@@ -1,5 +1,5 @@
 """Duplicate detection (same_paper, distinct.json), merge, the dialogue, and
-the --on-duplicate option of add and check (see design/duplicates.md)"""
+the --on-duplicate option of add and check"""
 import json
 import os
 import subprocess
