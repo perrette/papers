@@ -301,3 +301,44 @@ class TestScanDir(unittest.TestCase):
         biblio = Biblio()
         with self.assertLogs('papers', level='WARNING'):
             self.assertEqual(biblio.scan_dir(self.dir), [])
+
+
+class TestAddMore(unittest.TestCase):
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.dir = self.tmp.name
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def test_pdf_url_is_downloaded_and_renamed(self):
+        pdf = os.path.join(self.dir, 'dl.pdf')
+        Path(pdf).write_text('pdf')
+        biblio = Biblio(filesdir=os.path.join(self.dir, 'files'))
+        with mock.patch('papers.bib.download_url', return_value=pdf) as download, \
+                mock.patch('papers.bib.extract_pdf_metadata', return_value=FETCHED):
+            entries = biblio.add_pdf('https://example.org/paper.pdf')
+        download.assert_called_once_with('https://example.org/paper.pdf', expect_pdf=True)
+        self.assertTrue(biblio.get_files(entries[0])[0].startswith(os.path.join(self.dir, 'files')))
+        self.assertFalse(os.path.exists(pdf))
+
+    def test_convert_to_unicode(self):
+        biblio = Biblio()
+        biblio.add_bibtex(ENTRY.replace('One', '{\\"U}ber'), convert_to_unicode=True)
+        self.assertEqual(biblio.entries[0]['title'], 'Über')
+
+    def test_attachments_of_a_bibtex(self):
+        biblio = Biblio()
+        biblio.add_bibtex(ENTRY, attachments=['si.pdf'])
+        self.assertEqual(biblio.get_files(biblio.entries[0]), [os.path.abspath('si.pdf')])
+
+    def test_attach_to_existing_copies(self):
+        filesdir = os.path.join(self.dir, 'files')
+        biblio = biblio_of(ENTRY, filesdir=filesdir)
+        new = os.path.join(self.dir, 'new.pdf')
+        Path(new).write_text('new')
+        biblio.attach_to_existing(biblio.entries[0], [new], rename=True, copy=True)
+        files = biblio.get_files(biblio.entries[0])
+        self.assertTrue(files[0].startswith(filesdir))
+        self.assertTrue(os.path.exists(new))  # copied
