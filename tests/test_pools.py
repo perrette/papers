@@ -293,6 +293,33 @@ class TestAdd(PoolTest):
         self.assertEqual(biblio.get_files(e), [self.pool_pdf])  # the pool's copy, once
         self.assertTrue(os.path.exists(self.path('copy.pdf')))
 
+    def test_pdf_same_content_move_mode(self):
+        # the PDF given is stored already (the pool's file): with move, it is removed
+        for mode, kept in [('copy', True), ('link', True), ('move', False)]:
+            with self.subTest(mode=mode):
+                Path(self.path('lib', 'papers.bib')).write_text('')
+                Path(self.path('copy.pdf')).write_text('pdf of smith')
+                with patch('papers.bib.fetch_bibtex_by_doi', no_fetch), \
+                     patch('papers.bib.extract_pdf_metadata', no_fetch):
+                    self.lib(f'add ../copy.pdf --{mode}')
+                biblio, entries = self.bib()
+                files = biblio.get_files(list(entries.values())[0])
+                self.assertEqual(len(files), 1)
+                self.assertTrue(os.path.samefile(files[0], self.pool_pdf))
+                self.assertEqual(os.path.exists(self.path('copy.pdf')), kept)
+                self.assertTrue(os.path.exists(self.pool_pdf))
+
+    def test_attachment_different_content_move_mode(self):
+        # a different version is attached as another file, and moved
+        Path(self.path('other.pdf')).write_text('another version')
+        with patch('papers.bib.fetch_bibtex_by_doi', no_fetch):
+            self.lib('add --doi 10.1000/abc123 --attach ../other.pdf --move')
+        biblio, entries = self.bib()
+        files = biblio.get_files(list(entries.values())[0])
+        self.assertEqual(len(files), 2)
+        self.assertFalse(os.path.exists(self.path('other.pdf')))
+        self.assertEqual(Path(files[1]).read_text(), 'another version')
+
     def test_pdf_doi_in_text(self):
         Path(self.path('other.pdf')).write_text('another pdf')
         with patch('papers.bib.fetch_bibtex_by_doi', no_fetch), \
@@ -1027,6 +1054,18 @@ class TestNonLocal(NonLocalTest):
         self.lib('add ../other.bib')
         files = self.files('other2023')
         self.assertTrue(files[0].startswith(os.path.join(TEST_GLOBAL_POOL, 'files')), files)
+
+    def test_add_same_pdf_move_mode(self):
+        self.lib('rm smith2020climate --keep-files')
+        Path(self.path('copy.pdf')).write_text('pdf of smith')
+        with patch('papers.bib.fetch_bibtex_by_doi', no_fetch), \
+             patch('papers.bib.extract_pdf_metadata', no_fetch):
+            self.lib('add ../copy.pdf --move')
+        self.assertFalse(os.path.exists(self.path('copy.pdf')))  # stored in the pool already
+        biblio, entries = self.bib()
+        linked = [f for e in entries.values() for f in biblio.get_files(e)]
+        self.assertIn(self.pool_pdf, linked)
+        self.assertTrue(os.path.exists(self.pool_pdf))
 
     def test_add_output(self):
         # one line per entry, with where else it went or where it came from

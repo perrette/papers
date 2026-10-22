@@ -964,6 +964,7 @@ class PoolLookup:
         self.exchange = exchange
         self.pools = exchange.pools.all()
         self._taken = {}
+        self._same = {}  # the files given that have the content of a file of the pool entry
         self.taken_from = {}  # lower-case library key -> the pool of the entry taken
 
     def __bool__(self):
@@ -984,6 +985,7 @@ class PoolLookup:
         if extra:
             biblio.set_files(new, have + extra)
         self._taken[id(new)] = (pool, pe)
+        self._same[id(new)] = [f for f in files if f not in extra]
         logger.info(f'found in {pool.label}: {pe.key}')
         return new
 
@@ -1033,15 +1035,41 @@ class PoolLookup:
                 return self._take(biblio, pool, pe, e.key, entry=e, files=files)
         return None
 
-    def inserted(self, entry, result):
-        "record the origin of the library entries that an entry taken from a pool ended in"
+    def inserted(self, entry, result, biblio=None, rename=False, copy=False):
+        """record the origin of the library entries that an entry taken from
+        a pool ended in. In `move` mode (rename, and `copy` a FilesPolicy
+        that moves the file), a file given that has the same content as a
+        file that the entry links to now is removed: it is stored already"""
         pool, pe = self._taken.pop(id(entry), (None, None))
+        same = self._same.pop(id(entry), [])
         if pool is None:
             return
         for e in result:
             self.taken_from[e.key.lower()] = pool
             if self.exchange.origin.get(e) is None:
                 self.exchange.origin.set(e.key, pool.id, pe)
+        if biblio is not None and rename and callable(copy):
+            self._remove_moved(biblio, result, [f for f in same if copy(f) == 'move'])
+
+    def _remove_moved(self, biblio, result, files):
+        linked = {realpath(f) for e in biblio.entries for f in biblio.get_files(e)}
+        stored = {}
+        for e in result:
+            for f in biblio.get_files(e):
+                if os.path.isfile(f):
+                    stored.setdefault(checksum(f), f)
+        dirs = [p.filesdir for p in self.pools if p.filesdir]
+        for f in files:
+            if not os.path.isfile(f) or realpath(f) in linked or any(is_inside(f, d) for d in dirs):
+                continue
+            target = stored.get(checksum(f))
+            if target is None or os.path.samefile(target, f):
+                continue
+            if papers.config.DRYRUN:
+                logger.info(f'DRYRUN: {f} not removed (the same as {target})')
+                continue
+            logger.info(f'{f}: removed, the same as {target} (files mode move)')
+            os.remove(f)
 
 
 def use_pool_files(config, pools):

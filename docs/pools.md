@@ -174,7 +174,11 @@ The entry gets the pool's files: in a local library in `copy` and `move`
 mode they are copied into the library's files directory (a hard link when
 possible), named with the library's name template; a pool file is never
 moved. In `link` mode, and in a library that is not local, the entry links
-to the pool's file. The origin copy is recorded. `--no-pool` skips the
+to the pool's file. A PDF given that has the same content as a file of
+the pool entry is removed in `move` mode, since it is stored already, and
+kept in `copy` and `link` mode; a PDF with other content is attached to
+the entry as another file, placed as the files mode says. The origin copy
+is recorded. `--no-pool` skips the
 lookup.
 
 ## `papers pull`

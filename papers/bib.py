@@ -341,7 +341,7 @@ class Biblio:
     def _insert_taken(self, entry, **kw):
         "insert an entry taken from a pool, and record its origin"
         result = self.insert_entry(entry, **kw)
-        self.pool_lookup.inserted(entry, result)
+        self.pool_lookup.inserted(entry, result, self, rename=kw.get('rename', False), copy=kw.get('copy', False))
         return result
 
 
