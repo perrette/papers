@@ -778,7 +778,8 @@ def clean_filesdir(biblio, interactive=True, ignore_files=None, ignore_folders=N
     the folders of versions before 2.19 (<name>/ with a hidden .<name>.bib)
     that no entry links to. Subfolders are scanned too (name templates may
     contain /); hidden files and folders, .bib files and folders named in
-    ignore_folders are skipped. Returns the removed files."""
+    ignore_folders are skipped. Returns the removed files (with those of the
+    removed folders, except their hidden .<name>.bib)."""
     if biblio.filesdir is None:
         raise ValueError('filesdir is not defined, cannot clean')
     removed_files = []
@@ -845,10 +846,13 @@ def clean_filesdir(biblio, interactive=True, ignore_files=None, ignore_folders=N
                 name = os.path.relpath(direcpath, biblio.filesdir)
                 if interactive:
                     ans = input(f"Folder: {name} not in library. Remove ? [Y/n] ")
-                    if ans.lower() == 'y':
-                        _remove(direcpath, folder=True)
                 else:
                     logger.info(f"Remove folder {name}.")
+                    ans = 'y'
+                if ans.lower() == 'y':
+                    # its files, but the hidden .<name>.bib
+                    removed_files.extend(os.path.join(r, f) for r, _, fs in os.walk(direcpath)
+                                         for f in sorted(fs) if not f.startswith('.'))
                     _remove(direcpath, folder=True)
 
         direcs[:] = subfolders

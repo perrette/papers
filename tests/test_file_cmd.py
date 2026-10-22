@@ -465,3 +465,13 @@ class TestClean(FileTest):
     def test_dry_run(self):
         self.lib('file clean -y --dry-run')
         self.assertTrue(os.path.exists(self.unlinked))
+
+    def test_old_layout_folder_is_counted(self):
+        # used to print 2: the files of the removed folder were not counted
+        folder = self.path('lib', 'files', 'old2000')
+        self.write('lib', 'files', 'old2000', '.old2000.bib', content=entry('old2000'))
+        self.write('lib', 'files', 'old2000', 'x.pdf')
+        self.write('lib', 'files', 'old2000', 'y.pdf')
+        out = self.out('file clean -y')
+        self.assertFalse(os.path.exists(folder))
+        self.assertIn('removed 4 unlinked file(s)', out)

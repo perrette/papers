@@ -282,9 +282,9 @@ class TestClean(TmpTest):
     def test_not_interactive(self):
         unlinked = self.write('files', 'sub', 'unlinked.pdf')
         self.write('files', 'old', '.old.bib', content=entry('old2000'))
-        self.write('files', 'old', 'old.pdf')
+        old = self.write('files', 'old', 'old.pdf')
         removed = clean_filesdir(self.biblio_, interactive=False)
-        self.assertEqual(removed, [unlinked])
+        self.assertEqual(sorted(removed), [old, unlinked])  # the files of the folder, without .old.bib
         self.assertFalse(os.path.exists(os.path.join(self.filesdir, 'old')))  # old-layout folder
         self.assertTrue(os.path.exists(self.linked))
 
