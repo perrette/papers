@@ -458,14 +458,18 @@ def get_parser(config=None):
 
     p = filesub.add_parser('check', parents=[cfg],
         help='report broken links, identical files, DOI mismatches',
-        description='report broken links, links that can be repaired (paths saved by Mendeley), files linked '
-                    'twice and identical files (same checksum) of an entry, and with --metadata a DOI of the PDF '
-                    'that differs from the entry\'s. Nothing changes without --fix.')
+        description='report broken links and the files found for them, links that can be repaired (paths '
+                    'saved by Mendeley), files linked twice and identical files (same checksum) of an entry, and '
+                    'with --metadata a DOI of the PDF that differs from the entry\'s. Nothing changes without --fix.')
     p.add_argument('entries', nargs='*', metavar='KEY', help=_selection_help + ' (default: all entries)')
     p.add_argument('--metadata', action='store_true', help='also compare the DOI of the PDFs with the entry (parses the PDFs)')
     p.add_argument('--fix', action='store_true',
         help='apply the safe repairs: repair the paths, remove the second link of a file linked twice or of '
-             'identical files (the files are kept)')
+             'identical files (the files are kept), and relink the broken links to the files found in the pool '
+             '(same paper) or in the --search folders, placed as `papers file attach` does')
+    p.add_argument('--search', action='append', metavar='DIR',
+        help='also look for the files of the broken links in DIR (recursively), by file name, else by the '
+             'template name of the entry (can be repeated)')
     _command(p, file_checkcmd, library=True)
 
     p = filesub.add_parser('clean', parents=[cfg],

@@ -5,9 +5,10 @@ import os
 import papers.config
 from papers import logger
 from papers.entries import get_entry_val
-from papers.files import (attach_files, check_entry_files, clean_filesdir, delete_files, detach_links,
-                          execute_moves, files_to_delete, link_snapshot, linked_files, links_to_paths, moved_links,
-                          plan_moves, realpath, remove_empty_folders, rename_files)
+from papers.config import short_home
+from papers.files import (SearchFolders, attach_files, broken_links, check_entry_files, clean_filesdir,
+                          delete_files, detach_links, execute_moves, files_to_delete, link_snapshot, linked_files,
+                          links_to_paths, moved_links, plan_moves, realpath, remove_empty_folders, rename_files)
 from papers.library import get_biblio, savebib
 from papers.pools import Exchange, Pools
 from papers.utils import PapersExit
@@ -173,28 +174,148 @@ def file_rmcmd(parser, o, config):
             remove_empty_folders(deleted, path, keep=[config.filesdir], dryrun=papers.config.DRYRUN)
 
 
+def _search_names(e, link, rest, nameformat):
+    """the names to look for in the --search folders for the broken link
+    `link` of an entry (`rest`: its broken links not found in the pool): the
+    link's file name, then the name that the library's name template gives
+    the entry, with the link's extension (only when no other broken link
+    has that extension: the template names one file)"""
+    names = [os.path.basename(link)]
+    ext = os.path.splitext(link)[1]
+    if sum(os.path.splitext(f)[1].lower() == ext.lower() for f in rest) == 1:
+        try:
+            names.append(os.path.basename(nameformat(e)) + ext)
+        except Exception as error:
+            logger.debug(f'{e.key}: no template name: {error}')
+    return names
+
+
+def plan_relinks(exchange, entries, search, nameformat):
+    """the files found for the broken links of the entries (see
+    `papers file check --fix`), without parsing any file: the pool of the
+    library first (Exchange.pool_relinks), then the --search folders (by the
+    link's file name, else by the template name of the entry). Return
+    (plans, unclear, count): plans [(entry, {link: [files]}, {link: source})]
+    where source is 'pool' or the --search folder; unclear [(entry, link,
+    reason)] for the links that several files match; count, the number of
+    broken links."""
+    biblio = exchange.biblio
+    pool = exchange.pools.pool(quiet=True)
+    plans, unclear, count = [], [], 0
+    claims = {}  # real path of a file found in a --search folder: [(plan, link)]
+    for e in entries:
+        broken = broken_links(biblio, e)
+        if not broken:
+            continue
+        count += len(broken)
+        found = exchange.pool_relinks(e, pool, broken) if pool is not None else {}
+        plan = (e, found, dict.fromkeys(found, 'pool'))
+        linked = {realpath(f) for f in biblio.get_files(e) + [g for fs in found.values() for g in fs]
+                  if os.path.exists(f)}
+        rest = [f for f in broken if f not in found]
+        for link in rest:
+            for name in _search_names(e, link, rest, nameformat):
+                candidates = [f for f in search.find(name) if realpath(f) not in linked]
+                if candidates:
+                    break
+            if len(candidates) > 1:
+                unclear.append((e, link, 'several files match in the --search folders: '
+                                         + ', '.join(short_home(f) for f in candidates)))
+            elif candidates:
+                found[link] = candidates
+                plan[2][link] = search.folder(candidates[0])
+                claims.setdefault(realpath(candidates[0]), []).append((plan, link))
+        plans.append(plan)
+    # a file found for the broken links of several entries goes to none of them
+    for real, links in claims.items():
+        if len(links) > 1:
+            keys = ', '.join(plan[0].key for plan, _ in links)
+            for plan, link in links:
+                unclear.append((plan[0], link, f'{short_home(real)} matches the broken links of {keys}'))
+                del plan[1][link], plan[2][link]
+    return [plan for plan in plans if plan[1]], unclear, count
+
+
+def _links(n):
+    return f"{n} link{'' if n == 1 else 's'}"
+
+
+def _source(source):
+    return 'from the pool' if source == 'pool' else f'found in {short_home(source)}'
+
+
 def file_checkcmd(parser, o, config):
+    nameformat = config.nameformat  # the library's own (a non-local library places files with the pool's)
+    place = o.fix and not papers.config.DRYRUN
+    pools = library_pools(config) if place else Pools(config)
     biblio = get_biblio(config)
     entries = _entries_or_all(biblio, o.entries)
-    issues = []
-    # broken links to pool files (repaired on load in a non-local library)
     selected = {id(e) for e in entries}
-    repaired = [r for r in getattr(biblio, 'repaired_links', []) + Exchange(config, biblio).repair_links(entries)
-                if id(r[0]) in selected]
-    for e, old, new in repaired:
-        gone = [f for f in old if f not in new]
-        issues.append(f"{e.key}: broken link to a pool file: {';'.join(gone)} -> the pool's file "
-                      f"{';'.join(f for f in new if f not in old)} ({'fixed' if o.fix else 'fix with --fix'})")
+    exchange = Exchange(config, biblio, pools)
+    search = SearchFolders(o.search or [])
+
+    # the links to pool files repaired when a non-local library is loaded (already linked), then the others
+    loaded = [(e, found, dict.fromkeys(found, 'pool')) for e, found in getattr(biblio, 'repaired_links', [])
+              if id(e) in selected]
+    plans, unclear, count = plan_relinks(exchange, entries, search, nameformat)
+    count += sum(len(found) for _, found, _ in loaded)
+
+    lines = []
+    for (e, found, sources), linked in [(p, True) for p in loaded] + [(p, False) for p in plans]:
+        if place and not linked:
+            # placed as `papers file attach` does, in place of the broken links
+            positions, i = {}, 0
+            for f in biblio.get_files(e):
+                n = len(found.get(f, [f]))
+                positions[f] = range(i, i + n)
+                i += n
+            attach_files(biblio, e, [], config, files_mode(o, config), pools.files_dirs(), replace=found,
+                         pool_files=[f for link in found if sources[link] == 'pool' for f in found[link]])
+            newfiles = biblio.get_files(e)
+            found = {link: [newfiles[j] for j in positions[link]] for link in found}
+        found = {link: ', '.join(short_home(f) for f in files) for link, files in found.items() if files}
+        if place:
+            lines.append(f"{e.key}: relinked to "
+                         + '; '.join(f'{files} ({_source(sources[link])})' for link, files in found.items()))
+        elif o.fix:
+            lines.extend(f"DRYRUN: {e.key}: relink {short_home(link)} -> {files} ({_source(sources[link])})"
+                         for link, files in found.items())
+        else:
+            lines.extend(f"{e.key}: broken link: {short_home(link)} -> {files} "
+                         f"({_source(sources[link])}; relink with --fix)" for link, files in found.items())
+    for e, link, reason in unclear:
+        lines.append(f"{e.key}: broken link: {short_home(link)}: {reason} (not relinked)")
+
+    relinked = sum(len(found) for _, found, _ in loaded + plans)
+    issues = list(lines)
+    skip = {link for _, link, _ in unclear}
+    if not place:
+        skip |= {link for _, found, _ in plans for link in found}
     for e in entries:
-        issues.extend(check_entry_files(biblio, e, metadata=o.metadata, fix=o.fix))
+        issues.extend(check_entry_files(biblio, e, metadata=o.metadata, fix=o.fix, skip=skip))
     for line in issues:
         print(line)
+    if count:
+        left = count - relinked
+        detach = ' (papers file detach --broken removes them)' if left else ''
+        if o.fix:
+            print(f"{'DRYRUN: ' if not place else ''}{_links(relinked)} relinked, {left} still broken{detach}")
+        else:
+            print(f"{_links(relinked)} can be relinked{' (papers file check --fix)' if relinked else ''}, "
+                  f"{left} without a file found{detach}")
     if issues:
         print(f"{len(issues)} issue(s) in the files of {len(entries)} entries")
     else:
         print(f"no issue found in the files of {len(entries)} entries")
     if o.fix and issues:
-        savebib(biblio, config)
+        if place:
+            # a non-local library: the files placed in the pool from the --search folders go to the pool
+            # entries (a conflict on the fields is left to `papers push`)
+            pushed = [e for e, _, sources in plans if any(s != 'pool' for s in sources.values())]
+            for note in push_to_pool(exchange, pushed, on_conflict='skip').items():
+                print('{}: {}'.format(*note))
+        else:
+            savebib(biblio, config)
 
 
 def file_cleancmd(parser, o, config):

@@ -55,7 +55,7 @@ standard input, one per line:
 | `papers file detach --key KEY...` | remove all the links of the entries |
 | `papers file detach --broken [--key KEY...]` | remove the broken links (of all entries without `--key`) |
 | `papers file rm FILE... [-r] [--key KEY...]` | remove the links to the files, then delete the files, like `git rm` (below) |
-| `papers file check [KEY...]` | report broken links, files linked twice, identical files (same checksum) of an entry, and with `--metadata` a DOI of the PDF that differs from the DOI of the entry (this parses the PDFs) |
+| `papers file check [KEY...]` | report broken links and the files found for them (in the pool, and in the folders of `--search DIR`), files linked twice, identical files (same checksum) of an entry, and with `--metadata` a DOI of the PDF that differs from the DOI of the entry (this parses the PDFs) |
 | `papers file clean` | remove the files of the files directory and its subfolders that no entry links to, asking for each one (`-y/--yes` does not ask) |
 
 `papers file attach KEY FILE...` is the low-level form of
@@ -67,11 +67,12 @@ way, without fetching anything (see
 `papers file check` changes nothing unless `--fix` is passed. `--fix` only
 applies the repairs that cannot lose anything: paths saved by Mendeley
 (missing leading `/`, latex symbols such as `{\_}`) are repaired when the
-repaired path exists, and the second link to the same file, or to an
+repaired path exists, the second link to the same file, or to an
 identical file, is removed from the entry (the file itself stays on disk;
-`papers file clean` removes it). A broken link to a file of a pool (the pool
-renamed the file) is replaced by the pool entry's current file. Other
-broken links are reported, and removed with `papers file detach --broken`.
+`papers file clean` removes it), and broken links are relinked to the files
+found for them (see [Reconnecting PDFs and a bibtex](#reconnecting-pdfs-and-a-bibtex)).
+The other broken links are reported, and removed with
+`papers file detach --broken`.
 
 `papers file clean` skips hidden files and folders (such as `.git`) and
 `.bib` files. A folder of the layout of versions before 2.19 (with a hidden
@@ -152,6 +153,58 @@ papers file rm files/old-version.pdf
 papers file rm -r files/2013 --dry-run
 papers list --tag draft -K | papers file detach --broken --key -
 ```
+
+## Reconnecting PDFs and a bibtex
+
+When the links of a library are broken because the PDFs moved (another
+library that shared the files directory moved them into a pool, a folder
+was renamed, a backup was restored elsewhere...), `papers file check --fix`
+looks for each missing file, without parsing any PDF:
+
+1. in the pool of the library: the pool entry of the same paper (same DOI,
+   arXiv identifier, ISBN, or same title and authors) has a file with the
+   same file name as the broken link; or, if the entry has one broken link
+   and the pool entry one file, that file;
+2. in the folders given with `--search DIR` (searched recursively; the
+   option can be repeated): a file with the same file name as the broken
+   link, else a file named as the library's name template names the entry
+   (with the extension of the link). When several files match, none is
+   taken, and papers says which.
+
+The file found replaces the broken link, and is placed as
+`papers file attach KEY FILE` places it: in a library that is not local, a
+file of the pool is linked where it is, and a file of a `--search` folder
+goes to the pool (as the `files` setting says: moved, copied or linked); in
+a local library, the file goes to the files directory as the `files`
+setting says, and a file of the pool is copied (a hard link when possible),
+never moved.
+
+Without `--fix`, `papers file check` reports the files it would relink, and
+where they come from. `--fix --dry-run` shows the links that `--fix` would
+change, and changes nothing.
+
+```
+$ papers file check
+alpha2000: broken link: ~/shared/a.pdf -> ~/P/files/alpha_2000_paper-a.pdf (from the pool; relink with --fix)
+b2000: broken link: ~/shared/b.pdf -> ~/P/files/beta_2000_paper-b.pdf (from the pool; relink with --fix)
+2 links can be relinked (papers file check --fix), 0 without a file found
+2 issue(s) in the files of 3 entries
+$ papers file check --fix
+alpha2000: relinked to ~/P/files/alpha_2000_paper-a.pdf (from the pool)
+b2000: relinked to ~/P/files/beta_2000_paper-b.pdf (from the pool)
+2 links relinked, 0 still broken
+2 issue(s) in the files of 3 entries
+$ papers file check --fix --search ~/Downloads --search /media/backup/papers
+```
+
+For PDFs whose names say nothing about the paper, `papers add -R DIR` is
+the fallback: it parses each PDF, and a PDF with the DOI of a library
+entry is attached to that entry, without new entry and without duplicate
+dialogue (a PDF with the content of a file of the entry is not attached
+again; see
+[Adding entries](adding-entries.md#entries-already-in-the-library)). The
+broken links stay next to the new ones: remove them with
+`papers file detach --broken`.
 
 ## Removing entries and their files
 

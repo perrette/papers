@@ -889,11 +889,51 @@ class Exchange:
     # links to pool files
     # -------------------
 
+    def pool_relinks(self, e, pool, broken):
+        """the pool files for the broken links `broken` of a library entry:
+        {link: [pool files]}, taken from the pool entry of the same paper
+        (see pool_entry), among its files that exist and that the entry does
+        not link to already:
+
+        - the pool file of the same file name as the link;
+        - otherwise, if the entry has one broken link and the pool entry
+          one file, that file;
+        - otherwise, the first link into the files directory of the pool
+          (the pool renamed its files) gets the pool entry's files left,
+          and the other links into it are dropped ([]).
+
+        A link without a pool file is not in the result."""
+        if not broken:
+            return {}
+        pe, _ = self.pool_entry(e, pool)
+        if pe is None:
+            return {}
+        pool_files = pool.biblio.get_files(pe)
+        linked = {realpath(f) for f in self.biblio.get_files(e) if os.path.exists(f)}
+        left = [f for f in pool_files if os.path.exists(f) and realpath(f) not in linked]
+        found = {}
+        for link in broken:
+            same = next((f for f in left if os.path.basename(f) == os.path.basename(link)), None)
+            if same is not None:
+                found[link] = [same]
+                left.remove(same)
+        rest = [link for link in broken if link not in found]
+        if not rest or not left:
+            return found
+        if len(broken) == 1 and len(pool_files) == 1:
+            found[rest[0]] = left
+        elif pool.filesdir:
+            inside = [link for link in rest if is_inside(link, pool.filesdir)]
+            if inside:
+                found[inside[0]] = left
+                found.update((link, []) for link in inside[1:])
+        return found
+
     def repair_links(self, entries=None, pool=None):
         """replace the broken links to the files of a pool (default: the pool
         of the library; the pool renamed or moved them) by the files of the
-        pool entry. Return [(entry, old links, new links)] of the entries
-        repaired."""
+        pool entry (see pool_relinks), linked where they are. Return
+        [(entry, {old link: [new links]})] of the entries repaired."""
         pool = pool if pool is not None else self.pools.pool(quiet=True)
         if pool is None or not pool.filesdir:
             return []
@@ -901,18 +941,11 @@ class Exchange:
         for e in (self.biblio.entries if entries is None else entries):
             files = self.biblio.get_files(e)
             broken = [f for f in files if not os.path.exists(f) and is_inside(f, pool.filesdir)]
-            if not broken:
+            found = self.pool_relinks(e, pool, broken)
+            if not found:
                 continue
-            pe, _ = self.pool_entry(e, pool)
-            if pe is None:
-                continue
-            linked = {realpath(f) for f in files if os.path.exists(f)}
-            new = [f for f in pool.biblio.get_files(pe) if os.path.exists(f) and realpath(f) not in linked]
-            if not new:
-                continue
-            newfiles = [f for f in files if f not in broken] + new
-            self.biblio.set_files(e, newfiles)
-            repaired.append((e, files, newfiles))
+            self.biblio.set_files(e, [g for f in files for g in found.get(f, [f])])
+            repaired.append((e, found))
         return repaired
 
     # conversions of the files (papers config local, papers config pool)

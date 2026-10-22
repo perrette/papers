@@ -1237,10 +1237,12 @@ class TestNonLocal(NonLocalTest):
     def test_file_check_fix(self):
         new = self.rename_in_pool()
         out = self.out('file check')
-        self.assertIn('broken link to a pool file', out)
-        self.assertIn('fix with --fix', out)
+        self.assertIn(f'smith2020climate: broken link: {self.pool_pdf} -> {new} (from the pool; relink with --fix)', out)
+        self.assertIn('1 link can be relinked (papers file check --fix), 0 without a file found', out)
         self.assertNotEqual(self.files('smith2020climate'), [new])
-        self.lib('file check --fix')
+        out = self.out('file check --fix')
+        self.assertIn(f'smith2020climate: relinked to {new} (from the pool)', out)
+        self.assertIn('1 link relinked, 0 still broken', out)
         self.assertEqual(self.files('smith2020climate'), [new])
 
 

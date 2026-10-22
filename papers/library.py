@@ -134,7 +134,8 @@ def _repair_pool_links(biblio, config):
     _REPAIRING.add(key)
     try:
         biblio.repaired_links = Exchange(config, biblio).repair_links()
-        for e, old, new in biblio.repaired_links:
+        for e, found in biblio.repaired_links:
+            new = [f for files in found.values() for f in files]
             logger.info(f'{get_entry_val(e, "ID", "")}: broken link to a pool file repaired: {new}')
     except Exception as error:
         logger.warning(f'could not repair the links to the pool files: {error}')

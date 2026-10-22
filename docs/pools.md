@@ -76,7 +76,9 @@ In a library that is not local:
 - `pull` links to the pool's files instead of copying them;
 - when the pool renames a file, the link breaks: it is repaired by looking
   the entry up in the pool, when the library is loaded (saved on the next
-  write) and by `papers file check --fix`.
+  write) and by `papers file check --fix`. A broken link to a file outside
+  the pool is relinked to the pool's file by `papers file check --fix`
+  only (see [Reconnecting PDFs and a bibtex](files.md#reconnecting-pdfs-and-a-bibtex)).
 
 In any library, `rm --delete-files` and `file rm` never delete a file of the
 pool. Deleting a file in a pool breaks the links of the libraries that use
@@ -453,11 +455,18 @@ What to watch for, since each library only knows its own entries:
 - `papers rm --delete-files` and `papers file rm` keep a PDF that another
   entry of the same library links to, but not one that another library
   links to.
-- `papers file rename` in one library renames the shared PDF, and the link of the other library breaks. `papers file check`
-  reports the broken link there, and `--fix` does not repair it (the repair
-  of broken links only covers the files of a pool): remove the link with
-  `papers file detach --broken --key KEY`, and attach the renamed file with
-  `papers file attach KEY FILE`.
+- `papers file rename` in one library renames the shared PDF, and the
+  link of the other library breaks. `papers file check` reports the broken
+  link there. `papers file check --fix --search FOLDER` relinks it if the
+  new name is the one that the library's name template gives the entry
+  (the two libraries use the same template); otherwise attach the renamed
+  file with `papers file attach KEY FILE`, and remove the link with
+  `papers file detach --broken --key KEY`.
+- `papers config local false` in one library moves the shared PDFs into
+  its pool, and the links of the other library break. Once the other
+  library uses the same pool, `papers file check --fix` relinks them to the
+  pool's files (see
+  [Reconnecting PDFs and a bibtex](files.md#reconnecting-pdfs-and-a-bibtex)).
 
 ## Example
 

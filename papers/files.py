@@ -179,15 +179,17 @@ class FilesPolicy:
     - a file downloaded by papers into a temporary directory is always moved;
     - `keep` lists files to leave where they are, whatever the mode (e.g. the
       files an entry already had before `file attach`);
-    - a file in the files directory of a pool (`pool_dirs`) is never moved:
-      it is copied (a hard link when possible), or linked in link mode;
+    - a file in the files directory of a pool (`pool_dirs`), or a file of a
+      pool entry (`pool_files`), is never moved: it is copied (a hard link
+      when possible), or linked in link mode;
     - with `in_pool`, `filesdir` is the files directory of the pool of a non-local
       library (papers.pools.use_pool_files): the files already there are
       linked where they are, never renamed, since other libraries may link
       to them.
     """
 
-    def __init__(self, mode, filesdir=None, current_config=None, machine=None, keep=(), pool_dirs=(), in_pool=False):
+    def __init__(self, mode, filesdir=None, current_config=None, machine=None, keep=(), pool_dirs=(), in_pool=False,
+                 pool_files=()):
         if mode not in FILES_MODES:
             raise ValueError(f'files mode must be one of {", ".join(FILES_MODES)}, got {mode!r}')
         self.mode = mode
@@ -195,6 +197,7 @@ class FilesPolicy:
         self.others = OtherLibraries(current_config, machine=machine)
         self.keep = {realpath(f) for f in keep}
         self.pool_dirs = [d for d in pool_dirs if d]
+        self.pool_files = {realpath(f) for f in pool_files}
         self.in_pool = in_pool
         self._said = set()
 
@@ -207,6 +210,8 @@ class FilesPolicy:
             return 'link'
         if is_inside(file, self.filesdir):
             return 'link' if self.in_pool else 'move'
+        if realpath(file) in self.pool_files:
+            return 'link' if self.in_pool else 'copy'
         if any(is_inside(file, d) for d in self.pool_dirs):
             return 'copy'
         if self.mode == 'move':
@@ -219,13 +224,14 @@ class FilesPolicy:
         return self.mode
 
 
-def files_policy(config, mode, pool_dirs=(), keep=()):
+def files_policy(config, mode, pool_dirs=(), keep=(), pool_files=()):
     """the FilesPolicy of a library (its configuration) for a files mode;
-    pool_dirs: the files directories of its pools"""
+    pool_dirs: the files directories of its pools; pool_files: files of
+    pool entries (outside pool_dirs too)"""
     # files placed in the pool by a non-local library (see papers.pools.use_pool_files)
     in_pool = not config.local and any(realpath(config.filesdir or '') == realpath(d) for d in pool_dirs)
     return FilesPolicy(mode, config.filesdir, current_config=config.file, machine=config.machine, keep=keep,
-                       pool_dirs=pool_dirs, in_pool=in_pool)
+                       pool_dirs=pool_dirs, in_pool=in_pool, pool_files=pool_files)
 
 
 # names of the files of an entry, directory scan
@@ -407,21 +413,56 @@ def rename_files(biblio, entries, config, pool_dirs=(), keep_source=False):
             logger.error(f"{get_entry_val(e, 'ID', '')}: {error}")
 
 
-def attach_files(biblio, e, files, config, mode, pool_dirs=()):
+def attach_files(biblio, e, files, config, mode, pool_dirs=(), replace=None, pool_files=()):
     """add files to the links of an entry, and place them as the files mode
-    says (the files the entry had stay where they are)"""
-    old = biblio.get_files(e)
-    new = []
-    for f in files:
+    says (the files the entry had stay where they are).
+
+    replace: {link: [files]}: links of the entry (broken links) replaced in
+    place by files, placed in the same way (`files` come after them).
+    pool_files: files of pool entries, never moved (see FilesPolicy)."""
+    def resolve(f):
         if str(f).startswith("http://") or str(f).startswith("https://"):
-            new.append(download_url(f, expect_pdf=False))  # moved into the files directory
-        elif not os.path.exists(f):
+            return download_url(f, expect_pdf=False)  # moved into the files directory
+        if not os.path.exists(f):
             raise PapersExit(f"file {f} does not exist")
-        else:
-            new.append(os.path.abspath(f))
-    biblio.set_files(e, old + new)
-    if mode != 'link' or any(is_download(f) for f in new):
-        biblio.rename_entry_files(e, copy=files_policy(config, mode, pool_dirs, keep=old))
+        return os.path.abspath(f)
+
+    old = biblio.get_files(e)
+    replace = {link: [resolve(f) for f in fs] for link, fs in (replace or {}).items()}
+    new = [resolve(f) for f in files]
+    kept = [f for f in old if f not in replace]
+    added = [f for fs in replace.values() for f in fs] + new
+    biblio.set_files(e, [g for f in old for g in replace.get(f, [f])] + new)
+    if mode != 'link' or any(is_download(f) for f in added):
+        biblio.rename_entry_files(e, copy=files_policy(config, mode, pool_dirs, keep=kept, pool_files=pool_files))
+
+
+class SearchFolders:
+    """the files of the --search folders of `papers file check`, by file
+    name: the folders are searched recursively, hidden files and folders
+    skipped; a file found twice (folders inside one another, symbolic
+    links) counts once"""
+
+    def __init__(self, folders):
+        self.folders = [os.path.abspath(os.path.expanduser(d)) for d in folders]
+        self._names = {}
+        for top, given in zip(self.folders, folders):
+            if not os.path.isdir(top):
+                raise PapersExit(f'--search {given}: not a folder')
+            for root, dirs, files in os.walk(top):
+                dirs[:] = sorted(d for d in dirs if not d.startswith('.'))
+                for name in sorted(files):
+                    if not name.startswith('.'):
+                        path = os.path.join(root, name)
+                        self._names.setdefault(name, {}).setdefault(realpath(path), path)
+
+    def find(self, name):
+        "the files of this name"
+        return list(self._names.get(name, {}).values())
+
+    def folder(self, file):
+        "the --search folder of a file found"
+        return next(d for d in self.folders if is_inside(file, d))
 
 
 def detach_links(biblio, e, files):
@@ -712,7 +753,35 @@ def fix_mendeley_path(file, key=''):
     return file
 
 
-def check_entry_files(biblio, e, metadata=False, fix=False):
+def repaired_paths(biblio, e):
+    """for each link of an entry: the repaired path of a broken link saved by
+    Mendeley (missing leading /, latex symbols), if that path exists, else None"""
+    key = get_entry_val(e, 'ID', '')
+    # the links as written: get_files makes a link without its leading /
+    # (saved by Mendeley) relative to the bibtex directory
+    written = parse_file(get_entry_val(e, 'file', ''))
+    result = []
+    for file, link in zip(biblio.get_files(e), written):
+        repaired = None
+        if not os.path.exists(file):
+            repaired = fix_mendeley_path(file, key=key)
+            if not os.path.exists(repaired) and not os.path.isabs(link):
+                candidate = fix_mendeley_path(link, key=key)
+                if os.path.isabs(candidate):
+                    repaired = candidate
+            if repaired == file or not os.path.exists(repaired):
+                repaired = None
+        result.append(repaired)
+    return result
+
+
+def broken_links(biblio, e):
+    "the broken links of an entry, without those that a repair of the path fixes (see repaired_paths)"
+    return [f for f, repaired in zip(biblio.get_files(e), repaired_paths(biblio, e))
+            if repaired is None and not os.path.exists(f)]
+
+
+def check_entry_files(biblio, e, metadata=False, fix=False, skip=()):
     """the problems of the files of an entry, as lines to print:
     broken links, links that a repair of the path would fix (links saved by
     Mendeley), the same file linked twice, identical files (same checksum),
@@ -720,6 +789,8 @@ def check_entry_files(biblio, e, metadata=False, fix=False):
 
     fix: apply the safe repairs (repaired paths; remove the second link of
     the same or an identical file, the file itself is kept).
+    skip: broken links not to report (`papers file check` reports those it
+    found a file for itself)
     """
     key = get_entry_val(e, 'ID', '')
     files = biblio.get_files(e)
@@ -728,22 +799,16 @@ def check_entry_files(biblio, e, metadata=False, fix=False):
     seen = {}
     hashes = {}
     done = 'fixed' if fix else 'fix with --fix'
-    # the links as written: get_files makes a link without its leading /
-    # (saved by Mendeley) relative to the bibtex directory
-    written = parse_file(get_entry_val(e, 'file', ''))
-    for file, link in zip(files, written):
+    for file, repaired in zip(files, repaired_paths(biblio, e)):
         if not os.path.exists(file):
-            repaired = fix_mendeley_path(file, key=key)
-            if not os.path.exists(repaired) and not os.path.isabs(link):
-                candidate = fix_mendeley_path(link, key=key)
-                if os.path.isabs(candidate):
-                    repaired = candidate
-            if repaired != file and os.path.exists(repaired):
+            if repaired is not None:
                 issues.append(f'{key}: path can be repaired: {file} -> {repaired} ({done})')
                 if fix:
                     file = repaired
             else:
-                issues.append(f'{key}: broken link: {file} (remove it with `papers file detach --broken --key {key}`)')
+                if file not in skip:
+                    issues.append(f'{key}: broken link: {file} '
+                                  f'(remove it with `papers file detach --broken --key {key}`)')
                 newfiles.append(file)
                 continue
         real = realpath(file)

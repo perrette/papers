@@ -232,11 +232,12 @@ def library_pools(config):
     return pools
 
 
-def push_to_pool(exchange, entries):
+def push_to_pool(exchange, entries, on_conflict=None):
     """save the library; in a non-local library, first push the entries to
-    the pool, which holds their files (as `add` does). Return the notes of
-    the push for _print_biblio_diff."""
-    resolver = Resolver('ask' if stdin_is_terminal() else 'error', color=papers.utils.COLOR)
+    the pool, which holds their files (as `add` does). on_conflict: the
+    --on-duplicate mode of the push (default: ask in a terminal, else
+    error). Return the notes of the push for _print_biblio_diff."""
+    resolver = Resolver(on_conflict or ('ask' if stdin_is_terminal() else 'error'), color=papers.utils.COLOR)
     pushed = exchange.push_added(entries, [], resolver) if not exchange.config.local else []
     save_exchange(exchange)
     return push_notes(pushed)
