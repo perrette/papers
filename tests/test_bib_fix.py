@@ -290,6 +290,15 @@ class TestBiblio(unittest.TestCase):
         biblio.add_bibtex(ENTRY.replace('One', 'Two').replace('10.1000/a', '10.1000/b'), update_key=True)
         self.assertEqual(sorted(e.key for e in biblio.entries), ['a2000', 'author2000'])
 
+    def test_same_key_and_title_other_paper(self):
+        # the same title is not enough: different DOIs are different papers
+        biblio = biblio_of(ENTRY)
+        with self.assertRaises(DuplicateKeyError):
+            biblio.add_bibtex(ENTRY.replace('10.1000/a', '10.1000/b'))
+        self.assertEqual(len(biblio.entries), 1)
+        biblio.add_bibtex(ENTRY)  # the same paper: merged
+        self.assertEqual(len(biblio.entries), 1)
+
     def test_update_key_ignores_case(self):
         # keys are compared ignoring case: a key template with capitals used
         # to give the key of another entry (Author2000 for author2000)

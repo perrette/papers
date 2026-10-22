@@ -48,6 +48,7 @@ from papers.duplicate import (
     IdentityIndex,
     find_duplicates,
     duplicate_groups,
+    same_paper,
     search_result_mismatch,
 )
 from papers.merge import Merge, Resolver, Decision, DuplicateError, apply_entry, option_hint
@@ -222,7 +223,8 @@ class Biblio:
                 logger.info('key conflict: {} => {}'.format(get_entry_val(entry, 'ID', ''), newkey))
                 set_entry_key(entry, newkey)
 
-            elif get_entry_val(existing_same_key, 'title', '') == get_entry_val(entry, 'title', ''):
+            elif get_entry_val(existing_same_key, 'title', '') == get_entry_val(entry, 'title', '') \
+                    and same_paper(existing_same_key, entry, self.distinct).kind == SAME:
                 logger.info('exact duplicate')
                 # keep the files of the new entry
                 files = self.get_files(existing_same_key) + self.get_files(entry)
