@@ -35,7 +35,8 @@ _FORMAT_HELP = {
 class _Deprecated(argparse.Action):
     """a deprecated form of an option (removed in v4): warns with the new
     form, and sets the option's destination (the values given, or `const`
-    for a flag)"""
+    for a flag). The warning is printed once per parser, though the option
+    is repeated or the arguments parsed again (papers.cli._main does)"""
 
     def __init__(self, option_strings, dest, new, nargs=0, const=True, help=None, **kw):
         super().__init__(option_strings, dest, nargs=nargs, const=const,
@@ -43,7 +44,10 @@ class _Deprecated(argparse.Action):
         self.new = new
 
     def __call__(self, parser, namespace, values, option_string=None):
-        logger.warning(f'{option_string} is deprecated: use {self.new}')
+        warned = parser.__dict__.setdefault('_deprecated_warned', set())
+        if option_string not in warned:
+            warned.add(option_string)
+            logger.warning(f'{option_string} is deprecated: use {self.new}')
         setattr(namespace, self.dest, self.const if self.nargs == 0 else values)
 
 

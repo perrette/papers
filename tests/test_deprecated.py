@@ -306,3 +306,13 @@ class TestRenamedOptions(FileTest):
     def test_paths_options(self):
         self.warns('list --relative-paths', '--relative-paths is deprecated')
         self.warns('list --absolute-paths', '`papers config paths absolute`')
+
+    def test_warns_once(self):
+        # the subparser parses its arguments again for the error messages
+        # (papers.cli._main), and an option can be repeated
+        from papers.cli.parser import get_parser
+        parser, subparsers = get_parser()
+        with self.assertLogs('papers', level='WARNING') as logs:
+            parser.parse_known_args(['check', '-f', '-f'])
+            subparsers.choices['check'].parse_args(['-f'])
+        self.assertEqual(len(logs.output), 1)
