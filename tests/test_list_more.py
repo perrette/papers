@@ -62,6 +62,10 @@ class TestListFilters(FileTest):
         self.assertEqual(self.keys('--title "Titel of one2000"'), [])
         self.assertIn('one2000', self.keys('--title "Titel of one2000" --fuzzy'))
 
+    def test_fuzzy_ratio_is_a_minimum(self):
+        # the same words in another order score 100: a match with --fuzzy-ratio 100
+        self.assertEqual(self.keys('--title "one2000 of Title" --fuzzy --fuzzy-ratio 100'), ['one2000'])
+
     def test_field(self):
         self.assertEqual(self.out('list --key one2000 --field doi year --no-key').split(), ['10.1000/one', '2000'])
 

@@ -416,7 +416,7 @@ def listcmd(parser, o, config):
         if fuzzy:
             from rapidfuzz import fuzz
             ratio = o.fuzzy_ratio if o.fuzzy_ratio is not None else 50
-            res = (target.lower() in word.lower() or fuzz.token_set_ratio(word.lower(), target.lower(), score_cutoff=ratio) > ratio)
+            res = (target.lower() in word.lower() or fuzz.token_set_ratio(word.lower(), target.lower(), score_cutoff=ratio) >= ratio)
         elif substring:
             res = target.lower() in word.lower()
         else:
