@@ -15,7 +15,7 @@ from papers.files import hidden_bibtex
 from papers.identifiers import read_selection, select_entries
 from papers.library import config_for_bibtex, savebib
 from papers.merge import Resolver
-from papers.pools import Exchange, PoolError, Pools, report_counts, use_pool_files
+from papers.pools import Exchange, PoolError, Pools, check_readable, report_counts, use_pool_files
 from papers.utils import PapersExit, edit_text, open_with_system
 
 
@@ -348,6 +348,8 @@ def save_exchange(exchange):
     """save what an exchange with a pool changed: the pools pushed to,
     the pairs that are not the same paper of the pool, the origin
     records, and the library"""
+    for pool in exchange.changed_pools:
+        check_readable(pool)
     for pool in exchange.changed_pools:
         savebib(pool.biblio, pool.config)
         exchange.after_push(pool)

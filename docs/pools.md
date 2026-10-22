@@ -373,6 +373,17 @@ version that was pushed, and the fields that only the pool entry has come
 with the next `pull` (or `papers sync`). The pool is created if it does not
 exist yet.
 
+### A pool with entries papers cannot read
+
+An entry that the bibtex parser cannot read, such as one with a field
+given twice or a missing brace, is kept in the file as it is, but papers
+does not see it. Every command that loads that bibtex warns about it, with
+its line. Papers does not write to a pool that has such an entry: it would
+not find that paper there, and would add it again. `push`, `sync` and the
+commands that add to the pool stop with an error, and nothing is changed,
+until the entry is fixed in the pool's bibtex. Reading from the pool
+(`pull`, `add` looking in the pool) still works.
+
 ## `papers sync`
 
 ```

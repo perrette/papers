@@ -148,6 +148,16 @@ def mtime(file):
 GLOBAL_POOL_ID = 'global'
 
 
+def check_readable(pool):
+    """a pool with entries that could not be read is not written to: papers
+    does not see them, and would add the same papers again"""
+    unreadable = getattr(pool.biblio, 'unreadable', ())
+    if unreadable:
+        from papers.bib import unreadable_message
+        raise PapersExit(unreadable_message(short_home(pool.config.bibtex), unreadable)
+                         + f'. Fix {short_home(pool.config.bibtex)} before writing to the pool (nothing was changed)')
+
+
 class Pool:
     """a library used as a pool. `id` is how the library names it in its
     origin records: `global` for the global pool, otherwise its path
@@ -780,6 +790,7 @@ class Exchange:
         [(entry, pool, what)], what being 'added', 'updated', 'linked',
         'unchanged', 'skipped' or 'empty' (an entry without fields or key,
         not pushed)."""
+        check_readable(pool)
         self.merge_distinct(pool)
         if self.is_own(pool) and pool.id not in self._after:
             before = pool.bibtex_mtime()

@@ -117,6 +117,30 @@ def backupfile(bibtex):
 class DuplicateKeyError(PapersExit):
     "a new entry has the key of another paper of the library"
 
+def unreadable_blocks(db):
+    """the entries of a parsed bibtex that bibtexparser could not read (a
+    field given twice, a syntax error): [(line, reason)]. Their text is
+    written back as it is, but papers does not see them."""
+    found = []
+    for block in getattr(db, 'failed_blocks', []):
+        if type(block).__name__ == 'DuplicateFieldKeyBlock':
+            reason = str(block.error).split('. Note')[0].replace('Duplicate field keys on entry', 'a field given twice')
+        else:
+            reason = 'syntax error'
+        found.append(((block.start_line or 0) + 1, reason))
+    return found
+
+
+def unreadable_message(bibtex, unreadable):
+    lines = '; '.join(f'line {line}: {reason}' for line, reason in unreadable)
+    n = len(unreadable)
+    home = os.path.expanduser('~')
+    if bibtex.startswith(home + os.sep):
+        bibtex = '~' + bibtex[len(home):]
+    return (f'{bibtex}: {n} entr{"ies" if n > 1 else "y"} could not be read ({lines}): '
+            'papers ignores them until they are fixed')
+
+
 class Biblio:
     """
     The bibtex object that we operate on, which is mainly used to read and write to dynamically, and can then send the changes to be stored in a specified bibtex file on disk.
@@ -158,11 +182,17 @@ class Biblio:
         for e in entries:
             self.db.add(e)
 
+    unreadable = ()  # [(line, reason)] of the entries of the bibtex that could not be read
+
     @classmethod
     def load(cls, bibtex, filesdir, relative_to=None, **kw):
         bibtexs = open(bibtex).read()
         kw.setdefault('distinct', Distinct.for_bibtex(bibtex))
-        loaded_bib = cls(parse_string(bibtexs), filesdir, relative_to=relative_to if relative_to is not None else os.path.dirname(bibtex), **kw)
+        db = parse_string(bibtexs)
+        loaded_bib = cls(db, filesdir, relative_to=relative_to if relative_to is not None else os.path.dirname(bibtex), **kw)
+        loaded_bib.unreadable = unreadable_blocks(db)
+        if loaded_bib.unreadable:
+            logger.warning(unreadable_message(bibtex, loaded_bib.unreadable))
         return loaded_bib
 
     @classmethod
