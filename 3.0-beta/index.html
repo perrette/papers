@@ -1034,12 +1034,15 @@ with a main command <code>papers</code> and a range of subcommands. It lets you:
   undo/redo for every change.</li>
 </ul>
 <h2 id="get-started">Get started<a class="headerlink" href="#get-started" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pip<span class="w"> </span>install<span class="w"> </span>papers-cli
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>papers<span class="w"> </span>add<span class="w"> </span>mypaper.pdf<span class="w"> </span>--copy<span class="w"> </span>--bibtex<span class="w"> </span>papers.bib<span class="w"> </span>--filesdir<span class="w"> </span>files
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pip<span class="w"> </span>install<span class="w"> </span>--pre<span class="w"> </span>papers-cli<span class="w">    </span><span class="c1"># the 3.0 beta</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="nb">cd</span><span class="w"> </span>~/projects/my-paper
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>papers<span class="w"> </span>init<span class="w">                     </span><span class="c1"># a library: papers.bib here, PDFs in ~/Documents/papers</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>papers<span class="w"> </span>add<span class="w"> </span>~/Downloads/paper.pdf
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>papers<span class="w"> </span>list
 </code></pre></div>
 <ul>
 <li><strong><a href="installation/">Installation</a></strong> — pip install and external dependencies.</li>
-<li><strong><a href="quickstart/">Quickstart</a></strong> — extract metadata, add a PDF, list entries.</li>
+<li><strong><a href="quickstart/">Quickstart</a></strong> — create a library, add and list papers, share the PDFs between projects.</li>
 <li><strong><a href="adding-entries/">Adding entries</a></strong> — from PDFs, DOIs, bibtex, or whole directories.</li>
 <li><strong><a href="configuration/">Configuration</a></strong> — libraries, settings and pools.</li>
 </ul>
@@ -1048,6 +1051,7 @@ with a main command <code>papers</code> and a range of subcommands. It lets you:
 <li><a href="adding-entries/">Adding entries</a></li>
 <li><a href="listing/">Listing and searching</a></li>
 <li><a href="renaming/">Renaming files and keys</a></li>
+<li><a href="files/">Files</a></li>
 <li><a href="configuration/">Configuration</a></li>
 <li><a href="pools/">Pools</a></li>
 <li><a href="library-management/">Managing your library</a></li>

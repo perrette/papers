@@ -437,10 +437,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#extract-pdf-metadata-and-add-to-library" class="md-nav__link">
+  <a href="#install" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Extract PDF metadata and add to library
+        Install
       
     </span>
   </a>
@@ -448,10 +448,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#list-entries" class="md-nav__link">
+  <a href="#create-a-library" class="md-nav__link">
     <span class="md-ellipsis">
       
-        List entries
+        Create a library
       
     </span>
   </a>
@@ -459,10 +459,76 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#make-settings-persistent" class="md-nav__link">
+  <a href="#add-papers" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Make settings persistent
+        Add papers
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#list-and-search" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        List and search
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#undo" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Undo
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#a-second-project" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A second project
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#keep-projects-up-to-date" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Keep projects up to date
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#keep-the-pdfs-in-the-project" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Keep the PDFs in the project
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Settings
       
     </span>
   </a>
@@ -938,10 +1004,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#extract-pdf-metadata-and-add-to-library" class="md-nav__link">
+  <a href="#install" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Extract PDF metadata and add to library
+        Install
       
     </span>
   </a>
@@ -949,10 +1015,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#list-entries" class="md-nav__link">
+  <a href="#create-a-library" class="md-nav__link">
     <span class="md-ellipsis">
       
-        List entries
+        Create a library
       
     </span>
   </a>
@@ -960,10 +1026,76 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#make-settings-persistent" class="md-nav__link">
+  <a href="#add-papers" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Make settings persistent
+        Add papers
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#list-and-search" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        List and search
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#undo" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Undo
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#a-second-project" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A second project
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#keep-projects-up-to-date" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Keep projects up to date
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#keep-the-pdfs-in-the-project" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Keep the PDFs in the project
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Settings
       
     </span>
   </a>
@@ -996,67 +1128,164 @@
 
 
 <h1 id="quickstart">Quickstart<a class="headerlink" href="#quickstart" title="Permanent link">&para;</a></h1>
-<p>This tool's interface is built like <code>git</code>, with a main command <code>papers</code> and a
-range of subcommands. This page walks through the most common first steps.</p>
-<h2 id="extract-pdf-metadata-and-add-to-library">Extract PDF metadata and add to library<a class="headerlink" href="#extract-pdf-metadata-and-add-to-library" title="Permanent link">&para;</a></h2>
-<p>Start with a PDF of your choice (modern enough to have a DOI, e.g. anything
-from the Copernicus publications). For the sake of the example, one of mine:
-<a href="https://www.earth-syst-dynam.net/4/11/2013/esd-4-11-2013.pdf">https://www.earth-syst-dynam.net/4/11/2013/esd-4-11-2013.pdf</a></p>
-<p>Extract the PDF metadata (DOI-based if available, otherwise crossref, or google
-scholar if so specified):</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>$&gt; papers extract esd-4-11-2013.pdf
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>@article{Perrette_2013,
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>doi = {10.5194/esd-4-11-2013},
-<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>url = {https://doi.org/10.5194%2Fesd-4-11-2013},
-<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>year = 2013,
-<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>month = {jan},
-<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>publisher = {Copernicus {GmbH}},
-<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>volume = {4},
-<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>number = {1},
-<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>pages = {11--29},
-<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>author = {M. Perrette and F. Landerer and R. Riva and K. Frieler and M. Meinshausen},
-<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>title = {A scaling approach to project regional sea level rise and its uncertainties},
-<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>journal = {Earth System Dynamics}
-<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>}
+<p><code>papers</code> works like <code>git</code>: one command with subcommands, run inside a
+folder that holds a library. A library is a bibtex file and a small
+configuration file, <code>.papersconfig.json</code>. By default the PDFs of all your
+libraries are kept in one folder, <code>~/Documents/papers</code>, called the pool, so
+that a paper used in several projects is stored once.</p>
+<p>The examples below use two papers of the Copernicus journals, whose PDFs
+contain their DOI: <code>papers</code> reads the DOI from the PDF and fetches the
+bibtex entry from crossref.</p>
+<h2 id="install">Install<a class="headerlink" href="#install" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pip install --pre papers-cli
 </code></pre></div>
-<p>Add the PDF to your <code>papers.bib</code> library, and rename a copy of it in a files
-directory <code>files</code>:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>$&gt; papers add esd-4-11-2013.pdf --copy --bibtex papers.bib --filesdir files --info
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>INFO:papers:found doi:10.5194/esd-4-11-2013
-<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>INFO:papers:new entry: perrette_landerer2013
-<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>INFO:papers:ln /home/perrette/playground/papers/esd-4-11-2013.pdf files/perrette_et_al_2013_a-scaling-approach-to-project-regional-sea-level-rise-and-its-uncertainties.pdf
-<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>INFO:papers:renamed file(s): 1
+<p><code>--pre</code> installs the 3.0 beta. Python 3.11 or later is needed. See
+<a href="../installation/">Installation</a> for other ways to install.</p>
+<h2 id="create-a-library">Create a library<a class="headerlink" href="#create-a-library" title="Permanent link">&para;</a></h2>
+<p>Run <code>papers init</code> in the folder of your project:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>$ cd ~/projects/sea-level
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>$ papers init
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>created the library ~/projects/sea-level
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>* bibtex:  papers.bib
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>* files:   in the pool ~/Documents/papers
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>* backup:  git
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>`papers status -v` shows all settings
 </code></pre></div>
-<p>(the <code>--info</code> argument asks for the above output information to be printed out
-to the terminal)</p>
-<p><code>--copy</code> keeps the original PDF where it is (a hard link when possible);
-without it the PDF is moved into the files directory, and with <code>--link</code> it is
-left where it is and the entry links to it there. The <code>files</code> setting of a
-library sets the default (see <a href="../files/">Files</a>).</p>
-<p>See <a href="../adding-entries/">Adding entries</a> for the full range of ways to add
-entries, and <a href="../renaming/">Renaming files and keys</a> for how to specify file
-naming patterns.</p>
-<h2 id="list-entries">List entries<a class="headerlink" href="#list-entries" title="Permanent link">&para;</a></h2>
-<p>Pretty listing by default (otherwise pass <code>--plain</code> for plain bibtex):</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>$&gt; papers list
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>Perrette2013: A scaling approach to project regional sea level rise and it... (doi:10.5194/esd-4-11-2013, file:1)
+<p>Commands run in this folder, or below it, use this library.</p>
+<h2 id="add-papers">Add papers<a class="headerlink" href="#add-papers" title="Permanent link">&para;</a></h2>
+<p>Add a PDF. It is moved to the pool and renamed after the entry, and the
+entry is added to the bibtex of the project and to the pool's own bibtex
+(the pool is created the first time):</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>$ papers add ~/Downloads/esd-4-11-2013.pdf
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>added: perrette_landerer2013 (pool ~/Documents/papers)
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>push to pool ~/Documents/papers: 1 added
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>Added -&gt; perrette_landerer2013: A scaling approach to project regional sea level rise and it... (doi:10.5194/esd-4-11-2013, file:1)
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>$ ls ~/Documents/papers/files
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>perrette_et_al_2013_a-scaling-approach-to-project-regional-sea-level-rise-and-its-uncertainties.pdf
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>$ grep "file =" papers.bib
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a> file = {:../../Documents/papers/files/perrette_et_al_2013_a-scaling-approach-to-project-regional-sea-level-rise-and-its-uncertainties.pdf:pdf},
 </code></pre></div>
-<p>See <a href="../listing/">Listing and searching</a> for the full power of <code>papers list</code>.</p>
-<h2 id="make-settings-persistent">Make settings persistent<a class="headerlink" href="#make-settings-persistent" title="Permanent link">&para;</a></h2>
-<p>In the common case where the bibtex, files directory and naming formats do not
-change, create a library so that you don't need to pass them every time:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>papers init --bibtex papers.bib --filesdir files --local
+<p>Add an entry from its DOI, without a PDF:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>$ papers add --doi 10.5194/bg-8-515-2011
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>added: perrette_yool2011 (pool ~/Documents/papers)
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>push to pool ~/Documents/papers: 1 added
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>Added -&gt; perrette_yool2011: Near-ubiquity of ice-edge blooms in the Arctic (doi:10.5194/bg-8-515-2011)
 </code></pre></div>
-<p>Commands run in that directory (or below) then act on this library. With
-<code>--local</code>, the files added later go to <code>files</code> too; without it, they go to
-the files directory of the global pool (<code>~/Documents/papers</code>), and the
-library links to them there (see <a href="../pools/">Pools</a>). See
-<a href="../configuration/">Configuration</a> for details.</p>
-<div class="admonition tip">
-<p class="admonition-title">Tip</p>
-<p>Consult the inline help (<code>papers --help</code>, <code>papers &lt;command&gt; --help</code>) for
-more detailed documentation of every option.</p>
-</div>
+<p>Attach another file to an entry, such as a supplement. It is named after
+the entry, with its original name as a label:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>$ papers file attach perrette_landerer2013 ~/Downloads/esd-4-11-2013-supplement.pdf
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>updated: perrette_landerer2013 (pool ~/Documents/papers)
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>push to pool ~/Documents/papers: 1 updated
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>Modified -&gt; perrette_landerer2013: A scaling approach to project regional sea level rise and it... (doi:10.5194/esd-4-11-2013, files:2)
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>$ ls ~/Documents/papers/files
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>perrette_et_al_2013_a-scaling-approach-to-project-regional-sea-level-rise-and-its-uncertainties--esd-4-11-2013-supplement.pdf
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>perrette_et_al_2013_a-scaling-approach-to-project-regional-sea-level-rise-and-its-uncertainties.pdf
+</code></pre></div>
+<p><code>add</code> also takes a bibtex file (<code>papers add refs.bib</code>), a folder of PDFs
+(<code>papers add -R ~/Downloads/papers/</code>), or fields given by hand. See
+<a href="../adding-entries/">Adding entries</a> and <a href="../files/">Files</a>.</p>
+<h2 id="list-and-search">List and search<a class="headerlink" href="#list-and-search" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>$ papers list
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>perrette_landerer2013: A scaling approach to project regional sea level rise and it... (doi:10.5194/esd-4-11-2013, files:2)
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>perrette_yool2011: Near-ubiquity of ice-edge blooms in the Arctic (doi:10.5194/bg-8-515-2011)
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>$ papers list -a yool
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>perrette_yool2011: Near-ubiquity of ice-edge blooms in the Arctic (doi:10.5194/bg-8-515-2011)
+</code></pre></div>
+<p><code>papers list --format bibtex</code> prints the entries as bibtex, and
+<code>papers list -K</code> prints their keys only, to pass them to another command
+(<code>papers list -a yool -K | papers file rename -</code>). See
+<a href="../listing/">Listing and searching</a>.</p>
+<h2 id="undo">Undo<a class="headerlink" href="#undo" title="Permanent link">&para;</a></h2>
+<p>Every change to the bibtex is recorded in a git repository of its own, so
+<code>papers undo</code> takes back the last change of the library (when git is
+installed). It acts on this library only: the pool keeps what was added to
+it. See <a href="../git/">Git integration</a>.</p>
+<h2 id="a-second-project">A second project<a class="headerlink" href="#a-second-project" title="Permanent link">&para;</a></h2>
+<p>In another project, a paper that is already in the pool is taken from it:
+nothing is fetched online, and the PDF is not stored twice.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>$ cd ~/projects/new-paper
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>$ papers init
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>$ papers add --doi 10.5194/esd-4-11-2013
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>found in pool ~/Documents/papers: perrette_landerer2013
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>push to pool ~/Documents/papers: 1 unchanged
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>Added -&gt; perrette_landerer2013: A scaling approach to project regional sea level rise and it... (doi:10.5194/esd-4-11-2013, files:2)
+</code></pre></div>
+<p>Take entries from the pool by key (or DOI) with <code>pull</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>$ papers pull perrette_yool2011
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>added: perrette_yool2011 (pool ~/Documents/papers)
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>pull: 1 added
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>Added -&gt; perrette_yool2011: Near-ubiquity of ice-edge blooms in the Arctic (doi:10.5194/bg-8-515-2011)
+</code></pre></div>
+<p>or all the entries of an earlier project:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>$ cd ~/projects/review
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>$ papers init
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>$ papers pull --pool ../sea-level --all
+</code></pre></div>
+<p>The pool is an ordinary library: <code>papers -C ~/Documents/papers list</code> lists
+all your papers.</p>
+<h2 id="keep-projects-up-to-date">Keep projects up to date<a class="headerlink" href="#keep-projects-up-to-date" title="Permanent link">&para;</a></h2>
+<p>The entries taken from the pool stay linked to it. A correction made in one
+project is sent to the pool with <code>papers push</code>, and reaches the other
+projects with <code>papers pull</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>$ cd ~/projects/sea-level
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>$ papers tag perrette_yool2011 --add arctic
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>Modified -&gt; perrette_yool2011: Near-ubiquity of ice-edge blooms in the Arctic (doi:10.5194/bg-8-515-2011, arctic)
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>$ papers push
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>updated: perrette_yool2011 (pool ~/Documents/papers)
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>push to pool ~/Documents/papers: 1 unchanged, 1 updated
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>$ cd ~/projects/new-paper
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>$ papers status
+<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a>[...]
+<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a>* pool:               ~/Documents/papers (global pool, changed since last pull or push)
+<a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a>$ papers pull
+<a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a>updated: perrette_yool2011 (pool ~/Documents/papers)
+<a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a>pull: 1 unchanged, 1 updated
+<a id="__codelineno-9-15" name="__codelineno-9-15" href="#__codelineno-9-15"></a>Modified -&gt; perrette_yool2011: Near-ubiquity of ice-edge blooms in the Arctic (doi:10.5194/bg-8-515-2011, arctic)
+</code></pre></div>
+<p><code>papers sync</code> runs <code>pull</code>, then <code>push</code>. Nothing is exchanged without these
+commands, except that <code>add</code> adds new papers to the pool. Each project keeps
+its own keys: <code>pull</code> and <code>push</code> never rename the entries of the library
+they write to. See <a href="../pools/">Pools</a>.</p>
+<h2 id="keep-the-pdfs-in-the-project">Keep the PDFs in the project<a class="headerlink" href="#keep-the-pdfs-in-the-project" title="Permanent link">&para;</a></h2>
+<p>With <code>--local</code>, a library keeps its PDFs in its own <code>files/</code> folder, for
+example when the project folder is shared with coauthors (git, Dropbox):
+the links of a library that uses the pool point to your own
+<code>~/Documents/papers</code>, which they do not have.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>$ cd ~/thesis
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>$ papers init --local
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>created the library ~/thesis
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>* bibtex:  papers.bib
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>* files:   files (the files directory of the library)
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>* backup:  git
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>`papers status -v` shows all settings
+</code></pre></div>
+<p>A local library still uses the pool for entries: <code>add</code> looks there first,
+and <code>pull</code> and <code>push</code> work as above; only the PDFs are copied into the
+project (as hard links when they are on the same disk, which takes no
+space). <code>papers config local true</code> turns an existing library into a local
+one, and copies its PDFs:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>$ cd ~/projects/new-paper
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>$ papers config local true
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>copy 2 files of the pool into files (hard links when possible), and link to the copies (the pool keeps its files):
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>  perrette_landerer2013: ~/Documents/papers/files/perrette_et_al_2013_a-scaling-approach-to-project-regional-sea-level-rise-and-its-uncertainties.pdf
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>  perrette_landerer2013: ~/Documents/papers/files/perrette_et_al_2013_a-scaling-approach-to-project-regional-sea-level-rise-and-its-uncertainties--esd-4-11-2013-supplement.pdf
+<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>Continue? [y/N] y
+<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a>Modified -&gt; perrette_landerer2013: A scaling approach to project regional sea level rise and it... (doi:10.5194/esd-4-11-2013, files:2)
+<a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a>local = true (in ~/projects/new-paper/.papersconfig.json)
+</code></pre></div>
+<p><code>papers init --pool none</code> creates a library without any pool: its PDFs are
+in the project, and nothing is shared.</p>
+<h2 id="settings">Settings<a class="headerlink" href="#settings" title="Permanent link">&para;</a></h2>
+<p><code>papers config</code> shows and changes the settings of the library, and
+<code>papers config --global</code> the defaults of your user account. For example,
+to keep the pool elsewhere:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>$ papers config --global pool /data/papers
+</code></pre></div>
+<p>or to use no pool at all:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>$ papers config --global pool none
+</code></pre></div>
+<p>See <a href="../configuration/">Configuration</a>.</p>
 
 
 
