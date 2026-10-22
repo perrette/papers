@@ -48,9 +48,15 @@ What a library does with its pool:
   since the last exchange with it: `up to date`, or `changed since last
   pull or push`.
 
-Nothing is pulled or pushed automatically, except in libraries that are not
-local and with the `auto-push` setting (below): an older project does not
-change because of work in a newer one.
+`pull`, `push` and `sync` merge each entry field by field: whatever one
+side changed since the last exchange wins; if both sides changed the same
+field, you decide (the origin copy is papers' memory of the entry at the
+last exchange, see [Origin copies](#origin-copies)).
+
+Nothing is pulled automatically, and nothing is pushed automatically
+unless the `auto-push` setting is on (see [Auto-push](#auto-push)), except
+that `add` in a library that is not local adds the new entries to the pool.
+An older project does not change because of work in a newer one.
 
 ## Local or not
 
@@ -70,9 +76,14 @@ In a library that is not local:
 
 - `add` places new files in the pool's files directory, named with the
   pool's name template (a name template set on the library is not used),
-  and adds the entry to the pool too (its origin is recorded, see
-  [Origin copies](#origin-copies)); `papers file attach` and
-  `papers file rename` do the same with the files they place;
+  and adds the new entries to the pool too, whatever the `auto-push`
+  setting (their origin is recorded, see [Origin copies](#origin-copies)).
+  A change that `add` makes to an entry the library has already is pushed
+  only with auto-push;
+- `papers file attach`, `file rename` and `file check --fix` place the
+  files they handle in the pool's files directory too. With auto-push
+  off, the pool entry links to them after the next `papers push`; until
+  then, `papers file clean` in the pool lists them as unlinked;
 - `pull` links to the pool's files instead of copying them;
 - when the pool renames a file, the link breaks: it is repaired by looking
   the entry up in the pool, when the library is loaded (saved on the next
@@ -84,10 +95,6 @@ In any library, `rm --delete-files` and `file rm` never delete a file of the
 pool. Deleting a file in a pool breaks the links of the libraries that use
 it: it shows up as a broken link there (`papers file check`). The pool keeps
 no list of the libraries that depend on it.
-
-A local library with `papers config auto-push true` also adds the entries
-new to it to its pool when `papers add` adds them, as `papers push` would.
-Changes to existing entries are never pushed automatically.
 
 ### Sharing a project folder
 
@@ -117,6 +124,37 @@ files of a pool are never deleted.
 
 Metadata is not merged by these commands: `papers push` does that.
 
+## Auto-push
+
+`papers config auto-push true` makes the commands that change entries push
+them to the pool, in a local library or not: `add`, `edit`, `tag`,
+`list --add-tag` and the other actions of `list`, `check`, `file attach`,
+`file rename`, `file detach`, `file rm`, `file mv` and `file check --fix`.
+After the command, the entries it changed that are shared with the pool,
+and the entries new to the library, are pushed as `papers push KEY...`
+would push them, files included. The other entries are not pushed.
+
+- `rm` is never pushed: removing an entry from the library does not
+  remove it from the pool.
+- A conflict (the same field changed in the pool since the last exchange)
+  does not stop the command: the entry is saved in the library, is not
+  pushed, and its line says so:
+
+```
+$ papers tag Smith_2020 --add bar
+Modified -> Smith_2020: Climate sensitivity revisited (doi:10.1000/abc123, foo | bar) [not pushed: changed in the pool too; papers sync decides]
+```
+
+With `auto-push false` (the default, local or not), nothing is pushed
+automatically, apart from the new entries of `add` in a library that is
+not local: run `papers push` or `papers sync`.
+
+## A finished paper
+
+Do not sync the library of a finished paper. Its keys stay as they are,
+but a `pull` can change journal abbreviations and other fields that the
+paper was written with. Leave `auto-push` off there, and do not pull.
+
 ## Keys and identity
 
 The key of an entry belongs to each library: it is what LaTeX documents
@@ -124,6 +162,15 @@ cite. `pull` and `push` never change the key of an entry that the library
 they write to has. An entry new to the pool gets a key from the pool's key
 template; an entry of the pool new to the library keeps the pool key, with
 a letter suffix if the library has that key already (`Smith_2020b`).
+
+Three fields are not merged by `pull` and `push`: each side keeps its own.
+
+- the key, as above;
+- `ids`, the former keys of the entry in that library: they mean nothing
+  in the other library;
+- `file`, the links of each library to its own copies of the files. A file
+  that the other side has and this side does not is linked or copied (see
+  [`papers pull`](#papers-pull) and [`papers push`](#papers-push)).
 
 A library entry and a pool entry are matched by the same rule as duplicates
 (see [Same paper](adding-entries.md#same-paper)): same DOI, arXiv
@@ -225,17 +272,16 @@ Without KEY, `pull` updates the entries shared with the pool: those with
 an origin copy. For each of them (or each entry named, or every entry with
 `--all`), papers finds its entry in the pool (by its origin copy,
 else by the same-paper rule) and merges it into the library entry, field by
-field:
+field. A removed field counts as a change:
 
-| Field changed since the origin copy | Result |
+| Field since the origin copy | Result |
 |---|---|
-| in the pool only | taken from the pool (`+` in the dialogue) |
-| in the library only (e.g. a field adapted to a journal style) | kept, without asking |
-| on both sides, to different values | a conflict (`!`) |
+| changed or removed in the pool only | taken from the pool (`+` in the dialogue, `(removed)` for a removal) |
+| changed or removed in the library only (e.g. a field adapted to a journal style) | kept, without asking |
+| changed on both sides to different values, or removed on one side and changed on the other | a conflict (`!`) |
+| removed on both sides | removed |
 
-A field removed on one side keeps the other side's state: removed in the
-pool, it stays in the library; removed in the library, it does not come
-back. File links are merged: new files of the pool entry are linked in a
+File links are merged: new files of the pool entry are linked in a
 library that is not local, and otherwise copied into the library's files
 directory as the `files` setting says. The key of the library entry never
 changes. After the merge, the origin copy is the pool's current version.
@@ -246,7 +292,8 @@ An entry without origin copy (added before the pool was used, or with
 command line, or with `--all`, it is matched to the pool by the same-paper
 rule. Its differences
 with the pool entry are conflicts (there is no origin to tell which side
-changed), and the origin copy is recorded afterwards ("linked").
+changed), a field that only the pool entry has is added, and the origin
+copy is recorded afterwards ("linked").
 
 An entry that the pool does not have is reported (`Not found`) only when it
 is named on the command line. Without KEY, it is left as it is.
@@ -274,9 +321,12 @@ then the counts when more than one entry was involved: `added`,
 `modified`, `skipped`, `not found`, `unchanged`, and `linked` (an entry
 without origin copy, the same as its pool entry: its origin copy is
 recorded). `push` prints the same lines for the
-pool entries. When `add` (or `file attach`) also adds or changes the entry
-in the pool, or takes it from the pool, its line says so in brackets:
-`[also added to pool ~/Documents/papers]`, `[from pool ~/Documents/papers]`.
+pool entries. When a command also adds or changes the entry in the pool
+(see [Auto-push](#auto-push)), or `add` takes it from the pool, its line
+says so in brackets: `[also added to pool ~/Documents/papers]`,
+`[also modified in pool ~/Documents/papers]`,
+`[not pushed: changed in the pool too; papers sync decides]`,
+`[from pool ~/Documents/papers]`.
 
 Conflicts are decided as for duplicates (see
 [The dialogue](adding-entries.md#the-dialogue)), with `--on-duplicate`:
@@ -314,8 +364,8 @@ pushes the entries named, and `push --all` every entry of the library:
   pool's key template; its files are copied into the pool's files directory
   (a hard link when possible), named with the pool's name template;
 - an entry that is in the pool is merged three-way into the pool entry:
-  fields changed in the library only are taken, fields changed in the pool
-  only are kept, conflicts are decided with `--on-duplicate` (`keep`: the
+  fields changed or removed in the library only are taken, fields changed
+  or removed in the pool only are kept, conflicts are decided with `--on-duplicate` (`keep`: the
   pool values, `update`: the library values). The pool key does not change.
 
 Push does not change the library: after it, the origin copy is the library

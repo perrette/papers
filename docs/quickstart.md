@@ -167,7 +167,9 @@ everything once: each side gets the entries it does not have, with copies
 of their PDFs. See [One-time exchanges](pools.md#one-time-exchanges).
 
 Nothing is exchanged without these commands, except that `add` adds new
-papers to the pool. Each library keeps its own keys. `papers pull` and
+papers to the pool (in a library that is not local, as here), and that the
+`auto-push` setting pushes the changes of each command (see
+[Auto-push](pools.md#auto-push)). Each library keeps its own keys. `papers pull` and
 `papers push` do each half of `sync`, and `papers status` tells whether the
 pool changed since the last exchange: see [Pools](pools.md).
 

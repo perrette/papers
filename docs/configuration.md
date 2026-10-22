@@ -72,7 +72,7 @@ from the global configuration, otherwise from its built-in default.
 | `local` | `true`: the files are in the files directory of the library; `false`: in the files directory of the pool (see [Pools](pools.md#local-or-not)) |
 | `paths` | `relative` (default) or `absolute`: how file links are written in the bibtex |
 | `files` | `move` (default), `copy` or `link`: what `papers add` does with a file (see [Files](files.md#what-add-does-with-a-file)) |
-| `auto-push` | `false` (default) or `true`: in a local library, `papers add` also adds the new entries to the pool (see [Pools](pools.md#local-or-not)) |
+| `auto-push` | `false` (default) or `true`: the commands that change entries push them to the pool (the entries shared with it, and new ones), see [Pools](pools.md#auto-push) |
 | `git` | `true` or `false`: back up the bibtex with git (see [Git integration](git.md)) |
 | `git-lfs` | `true` or `false`: also back up the files with git-lfs |
 | `editor` | command that opens a text editor, e.g. `vim` or `subl -w` (it wins over `$VISUAL` and `$EDITOR`, which are used without it) |
@@ -157,7 +157,7 @@ papers init --pool none        # no pool, hence local
 `papers status` shows the pool of the library (its path, or none), whether
 it is the global pool, is missing or is not a library, and whether it
 changed since the last exchange with it. It also shows `local`, and the
-`auto-push` setting of a local library.
+`auto-push` setting of a library that has a pool.
 
 ## Relative versus absolute paths
 

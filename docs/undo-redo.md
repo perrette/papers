@@ -34,8 +34,8 @@ attach`), papers lists them: `papers file clean` removes them.
 ## Undo in a library that has a pool
 
 A pool is a library with its own backup and its own history. A command that
-exchanges entries with the pool (`add` in a library that is not local, or
-with auto-push; `push`, `pull`, `sync`) writes both, and each records a
+exchanges entries with the pool (`add` in a library that is not local, a
+command that changes entries with auto-push; `push`, `pull`, `sync`) writes both, and each records a
 step in its own history.
 
 - `papers undo` and `papers redo` in the library change the library only.
@@ -56,9 +56,9 @@ copies of that step:
 - After an undo in the pool, the origin copies of the library still have the
   newer version, so the pool shows as changed, and a `pull` takes the pool's
   older values for the fields the library did not change since. A field
-  that the pool undo removes is the exception: a field removed on one side
-  keeps the other side's state (see [`papers pull`](pools.md#papers-pull)), so the library
-  keeps it, and the next `push` adds it to the pool again.
+  that the pool undo removes is a removal in the pool: the `pull` removes it
+  from the library too, unless the library changed it since (a conflict, see
+  [`papers pull`](pools.md#papers-pull)).
 
 Without git-tracking, undo swaps the bibtex only: the origin copies stay as
 the last exchange left them. The undone change then counts as a change of
