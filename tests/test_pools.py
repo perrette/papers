@@ -502,11 +502,18 @@ class TestPull(PoolTest):
         self.assertTrue(files[1].startswith(self.path('lib', 'files')))
         self.assertTrue(os.path.samefile(files[1], self.path('pool', 'files', 'smith-si.pdf')))
 
-    def test_entry_without_origin_is_linked(self):
+    def test_entry_without_origin_is_not_shared(self):
+        # without KEY or --all, pull only updates the entries shared with the pool
         Path(self.path('lib', ORIGIN_FILE)).unlink()
-        out = self.out('pull')
-        self.assertIn('pull from pool ../pool: 1 linked', out)
-        self.assertIsNotNone(self.origin().get(self.entry('smith2020climate')))
+        self.out('pull')
+        self.assertIsNone(self.origin().get(self.entry('smith2020climate')))
+
+    def test_entry_without_origin_is_linked(self):
+        for cmd in ['pull smith2020climate', 'pull --all']:
+            with self.subTest(cmd=cmd):
+                Path(self.path('lib', ORIGIN_FILE)).unlink(missing_ok=True)
+                self.out(cmd)
+                self.assertIsNotNone(self.origin().get(self.entry('smith2020climate')))
 
     def test_select(self):
         before = self.origin().pulled('../pool')  # the add from the pool (setUp)
@@ -755,7 +762,7 @@ class TestExport(PoolTest):
         self.assertEqual(self.json('lib')['pool'], '../out')
         text = Path(self.path('out', 'papers.bib')).read_text()
         Path(self.path('out', 'papers.bib')).write_text(text.replace('title = {My own paper}', 'title = {My own paper},\n volume = {3}'))
-        self.lib('pull --on-duplicate update')  # no origin copies yet: differences are conflicts
+        self.lib('pull --all --on-duplicate update')  # nothing shared yet: --all; differences are conflicts
         self.assertEqual(self.entry('mine2022')['volume'], '3')
         self.assertEqual(self.origin().get(self.entry('mine2022')).pool, '../out')
 

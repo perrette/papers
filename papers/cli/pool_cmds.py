@@ -93,10 +93,12 @@ def pullcmd(parser, o, config):
     pools, own = _pull_pools(exchange, o)
     if o.check:
         entries = _entries_or_all(biblio, o.entries)
+        if not o.entries and not o.all:
+            entries = exchange.shared(entries, pools)
         print('\n'.join(exchange.check(entries, all_entries=not o.entries, pools=None if own else pools))
               or 'nothing to pull')
         return
-    report = _pull(o, exchange, duplicate_resolver(o, 'pull'), pools, own)
+    report = _pull(o, exchange, duplicate_resolver(o, 'pull'), pools, own, shared_only=True)
     print_exchange(report, 'pull', biblio, pools)
 
 

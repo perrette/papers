@@ -23,7 +23,7 @@ class TestPullCheck(PoolTest):
 
     def test_not_pulled_yet(self):
         Path(self.path('lib', 'papers.bib')).write_text(SMITH_BIB)
-        self.assertIn('smith2020climate: in pool ../pool as Smith_2020, not pulled yet', self.out('pull --check'))
+        self.assertIn('smith2020climate: in pool ../pool as Smith_2020, not pulled yet', self.out('pull --check smith2020climate'))
 
     def test_new_pool_file(self):
         self.take_smith()

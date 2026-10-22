@@ -626,19 +626,21 @@ def get_parser(config=None):
         description='''update the entries of the library from their pool entries (three-way merge
         with the origin copy of the entry, .papers/origin.bib): a field changed in the pool only is
         taken, a field changed in the library only is kept, a field changed on both sides is a
-        conflict. An entry with an origin copy is updated from the pool it came from; entries
-        without origin copy are matched by the same-paper rule, in the pools in order (the first
-        match wins). The keys of the library never change. KEY may also be an entry of a pool only
+        conflict. Without KEY, only the entries shared with the pools (with an origin copy) are
+        updated, each from the pool it came from; an entry named, or all entries with --all, is
+        matched by the same-paper rule when it has no origin copy, in the pools in order (the
+        first match wins). The keys of the library never change. KEY may also be an entry of a pool only
         (its key, DOI, arXiv id or ISBN; the pools are searched in order): it is added to the
         library, under the pool key (with a letter suffix if the library has that key already). New pool files are linked in a library that
         is not local, and otherwise copied (a hard link when possible) as the files setting says.
         Unlike `papers add other.bib`, which copies entries once, the entries pulled keep their
         link to the pool (origin copy): later pulls bring the corrections made in the pool.''')
-    pullp.add_argument('entries', nargs='*', metavar='KEY', help=_selection_help + ' (default: all entries)')
+    pullp.add_argument('entries', nargs='*', metavar='KEY', help=_selection_help + ' (default: the entries shared with the pools)')
     pullp.add_argument('--pool', metavar='PATH', help=_pool_help.format(what='pull from, once'))
     pullp.add_argument('--all', action='store_true',
-        help='also add to the library every entry of the pools that it does not have (same-paper rule; '
-             'the pools in order, a paper taken from one pool is not taken again from another)')
+        help='all entries: the entries of the library not shared yet are matched by the same-paper rule, '
+             'and every entry of the pools that the library does not have is added (the pools in order, '
+             'a paper taken from one pool is not taken again from another)')
     pullp.add_argument('--on-duplicate', choices=ON_DUPLICATE,
         help=_exchange_help.format(receiving='library', incoming='pool'))
     pullp.add_argument('--check', action='store_true',

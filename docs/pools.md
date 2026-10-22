@@ -39,8 +39,8 @@ none` turns sharing off: new libraries get `pool: none`.
 What a library does with its pool:
 
 - `papers add` looks in the pool first;
-- `papers pull` updates the entries of the library from the pool, and adds
-  entries of the pool to the library;
+- `papers pull` updates the entries shared with the pool, and adds the
+  entries of the pool named, or all of them with `--all`;
 - `papers push` updates the entries shared with the pool (those taken from
   it, or added to it before), and adds the entries named, or all of them
   with `--all`;
@@ -245,9 +245,11 @@ lookup.
 papers pull [KEY...|-] [--all] [--pool PATH] [--on-duplicate MODE] [--check]
 ```
 
-For each entry of the library (or the entries named), papers finds its pool
-entry (by its origin copy, else by the same-paper rule) and merges it into
-the library entry, field by field:
+Without KEY, `pull` updates the entries shared with the pool: those with an
+origin copy, each from the pool it came from. For each of them (or each
+entry named, or every entry with `--all`), papers finds its pool entry (by
+its origin copy, else by the same-paper rule) and merges it into the library
+entry, field by field:
 
 | Field changed since the origin copy | Result |
 |---|---|
@@ -264,7 +266,9 @@ changes. After the merge, the origin copy is the pool's current version.
 A skipped conflict leaves the pool shown as changed in `papers status`.
 
 An entry without origin copy (added before the pool was used, or with
-`--no-pool`) is matched to the pool by the same-paper rule. Its differences
+`--no-pool`) is not shared: `pull` without KEY leaves it alone. Named on the
+command line, or with `--all`, it is matched to the pool by the same-paper
+rule. Its differences
 with the pool entry are conflicts (there is no origin to tell which side
 changed), and the origin copy is recorded afterwards ("linked").
 
@@ -279,7 +283,7 @@ library that is not local, otherwise copied as the `files` setting says (a
 hard link when possible). An identifier found in neither is an error, and
 nothing is changed. `--all` adds every entry of the pool that the library
 does not have (same-paper rule). Without KEY or `--all`, `pull` only updates
-the entries of the library. A pool that does not exist or is not a library
+the entries shared with the pool, like `push` and `sync`. A pool that does not exist or is not a library
 is an error of `pull`, `pull --check` and `sync`, and nothing is changed
 (the global pool that was not created yet is not: there is nothing to
 pull).
@@ -314,7 +318,8 @@ mode.
 
 `papers pull --check` only reports: whether the pool changed since the last
 pull (a modification time check), and the entries whose pool version
-changed since their origin copy, with the fields. `papers status` shows the
+changed since their origin copy, with the fields (without KEY, the entries
+shared with the pool). `papers status` shows the
 first part too.
 
 ## `papers push`
