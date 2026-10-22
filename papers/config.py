@@ -57,9 +57,9 @@ def file_version(js, file):
     return version
 
 
-# per-machine configuration: pool names and default settings for libraries
+# global configuration: pool names and default settings for libraries
 MACHINE_CONFIG_FILE = os.path.join(platformdirs.user_config_dir('papers'), 'config.json')
-# pools known without per-machine configuration
+# pools known without global configuration
 DEFAULT_POOLS = {'default': os.path.join('~', 'Documents', 'papers')}
 
 
@@ -86,10 +86,10 @@ for _kind in ('name', 'key'):
         SETTINGS[_kind + '.' + _field] = 'int' if _field in _INT_FIELDS else (
             'bool' if _field == 'unknown-strict' else 'str')
 
-# settings that only make sense for a library (the per-machine configuration
+# settings that only make sense for a library (the global configuration
 # names its pools with pools.NAME instead)
 LIBRARY_ONLY = ('bibtex', 'filesdir', 'pools')
-# settings a library inherits from the per-machine configuration when unset
+# settings a library inherits from the global configuration when unset
 INHERITED = [name for name in SETTINGS if name not in ('bibtex', 'filesdir')]
 
 
@@ -187,7 +187,7 @@ def format_value(value):
 
 
 def short_home(path):
-    "a path under the home directory as ~/..., as written in the per-machine configuration"
+    "a path under the home directory as ~/..., as written in the global configuration"
     home = os.path.expanduser('~')
     path = os.path.abspath(path)
     if path == home or path.startswith(home + os.path.sep):
@@ -224,13 +224,13 @@ def is_backup_name(value):
 
 def is_pool_path(pool):
     """a pool entry of a library is a path if it contains a path separator or
-    starts with '.' or '~', otherwise a name of the per-machine configuration"""
+    starts with '.' or '~', otherwise a name of the global configuration"""
     return (os.path.sep in pool or (os.path.altsep and os.path.altsep in pool)
             or pool.startswith(('.', '~')))
 
 
 class MachineConfig:
-    """per-machine configuration: pool names and the defaults of library settings
+    """global configuration: pool names and the defaults of library settings
 
     The file has the layout of a library configuration, except that `pools`
     maps names to paths (~ allowed):
@@ -249,7 +249,7 @@ class MachineConfig:
             try:
                 data = json.load(open(file))
             except (json.JSONDecodeError, OSError) as error:
-                logger.warning(f"unreadable per-machine configuration {file}: {error} -- ignored")
+                logger.warning(f"unreadable global configuration {file}: {error} -- ignored")
         file_version(data, file)
         data.pop('version', None)
         return cls(file, data)
@@ -293,7 +293,7 @@ class Config:
     """configuration of a library
 
     Each setting comes from the library's configuration file, else from the
-    per-machine configuration, else from its built-in default. The attributes
+    global configuration, else from its built-in default. The attributes
     hold the resulting values; `explicit` names the settings set in the file.
     """
     def __init__(self, file=None,
@@ -398,17 +398,17 @@ class Config:
         return name in self.explicit or self.get(name) != self.inherited(name)
 
     def source(self, name):
-        "where the value of a setting comes from: library, machine or default"
+        "where the value of a setting comes from: library, global or default"
         if self.file and self.is_set(name):
             return 'library'
         if name not in ('bibtex', 'filesdir') and self.machine.get(name) is not None:
-            return 'machine'
+            return 'global'
         return 'default'
 
     # pools
     # -----
     def pool_path(self, pool):
-        """path of a pool entry: a name of the per-machine configuration, or
+        """path of a pool entry: a name of the global configuration, or
         a path relative to the library; None for an unknown name"""
         if not is_pool_path(pool):
             return self.machine.pool_path(pool)
@@ -550,7 +550,7 @@ class Config:
         lines.append(bcolors.BOLD+f'version {__version__}'+bcolors.ENDC)
         if verbose:
             lines.append('* configuration file: '+(_fmt_path(self.file) if self.file and os.path.exists(self.file) else bcolors.WARNING+'none'+bcolors.ENDC))
-            lines.append('* per-machine config: '+self.machine.file+('' if self.machine.exists() else ' (none)'))
+            lines.append('* global config:      '+self.machine.file+('' if self.machine.exists() else ' (none)'))
             lines.append('* cache directory:    '+CACHE_DIR)
             lines.append('* backup (git):       '+str(self.git))
             if self.git:

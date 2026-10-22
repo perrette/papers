@@ -22,9 +22,9 @@ os.environ['XDG_CONFIG_HOME'] = os.path.join(_TEST_HOME, 'config')
 os.environ['XDG_DATA_HOME'] = os.path.join(_TEST_HOME, 'data')
 atexit.register(shutil.rmtree, _TEST_HOME, ignore_errors=True)
 
-# The default pool (~/Documents/papers without per-machine configuration) is
+# The default pool (~/Documents/papers without global configuration) is
 # used outside of any library: point it to the temporary directory too, both
-# as built-in default (in this process) and in the per-machine configuration
+# as built-in default (in this process) and in the global configuration
 # (also read by the subprocesses).
 import json
 import papers.config

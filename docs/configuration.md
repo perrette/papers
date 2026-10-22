@@ -12,7 +12,7 @@ $> papers init
 papers library: /home/perrette/projects/sealevel
 version 3.0.0
 * configuration file: .papersconfig.json
-* per-machine config: /home/perrette/.config/papers/config.json (none)
+* global config:      /home/perrette/.config/papers/config.json (none)
 * cache directory:    /home/perrette/.cache/papers
 * backup (git):       True
 * backup files (git-lfs): False
@@ -69,9 +69,9 @@ papers config pools default ../shared  # settings with several values
 ```
 
 Each setting comes from the library configuration if it sets it, otherwise
-from the per-machine configuration, otherwise from its built-in default.
+from the global configuration, otherwise from its built-in default.
 `papers config` without argument shows the source of each setting as
-`(library)`, `(machine)` or `(default)`.
+`(library)`, `(global)` or `(default)`.
 
 | Setting | Values |
 |---|---|
@@ -104,23 +104,25 @@ is not a setting of `papers config`: it is changed with
 changes the file links and the files (see
 [Light libraries](pools.md#light-libraries)).
 
-### Per-machine configuration
+### Global configuration
 
-`papers config --machine` (or `--global`) reads and writes the per-machine
-configuration instead of the library's: `~/.config/papers/config.json` on
-Linux (the platform's user configuration directory elsewhere). It holds the
-pool names and the settings used by libraries that do not set them
-(everything except `bibtex`, `filesdir` and `pools`):
+`papers config --global` reads and writes the global configuration (per
+user, as in `git config --global`) instead of the library's:
+`~/.config/papers/config.json` on Linux (the platform's user configuration
+directory elsewhere). It holds the pool names and the default settings of
+the libraries that do not set them (everything except `bibtex`, `filesdir`
+and `pools`). It defines no library: the global library of papers v2 is now
+the default pool (see [Pools](pools.md)).
 
 ```
-papers config --machine editor vim
-papers config --machine name.template '{author}_{year}'
-papers config --machine pools.teaching /mnt/shared/teaching
-papers config --machine                # list it
+papers config --global editor vim
+papers config --global name.template '{author}_{year}'
+papers config --global pools.teaching /mnt/shared/teaching
+papers config --global                # list it
 ```
 
 `papers init` stores `paths`, `git` and `git-lfs` in the new library, taking
-their values from the per-machine configuration when it sets them. The other
+their values from the global configuration when it sets them. The other
 settings are only stored in the library when you set them.
 
 ## Pools
@@ -129,13 +131,13 @@ A pool is a library that other libraries exchange entries with (see
 [Pools](pools.md) for `add`, `pull`, `push`, `export` and light
 libraries). Each library
 lists its pools in the `pools` setting, as names or paths. A name is looked
-up in the per-machine configuration (`pools.NAME`, or `papers pool add NAME
+up in the global configuration (`pools.NAME`, or `papers pool add NAME
 PATH`), so that the same library
 works on machines where the pool is in a different place. An entry that
 contains a `/` or starts with `.` or `~` is a path, relative to the library
 (e.g. `../shared-with-bob`).
 
-Without per-machine configuration, the pool `default` is
+Without global configuration, the pool `default` is
 `~/Documents/papers`. It is also the library that commands act on outside of
 any library, once it is one:
 
@@ -166,7 +168,7 @@ override the setting for one command, with a deprecation warning.
   Linux) defined a library for the whole user account. `papers migrate`
   writes its settings to a library configuration next to its bibtex (if
   there is none yet), registers the directory of that bibtex as the
-  `default` pool in the per-machine configuration (unless another default
+  `default` pool in the global configuration (unless another default
   pool is set there), and renames the old file to `papersconfig.json.v2.bak`.
   The bibtex, files and backup stay where they are. File links stay
   absolute, as they were, unless `--relative` is passed. Running
@@ -186,7 +188,8 @@ with an error.
 ### `papers install`
 
 `papers install` is a deprecated alias of `papers init` that asks for the
-bibtex, the files directory and git (`-y/--yes` accepts the defaults; `--no-prompt` and `--force` are its deprecated forms). On
+bibtex, the files directory and git (`-y/--yes` accepts the defaults;
+`--no-prompt` and `--force` are its deprecated forms). On
 an existing library it updates the library configuration, as in version 2,
 with a deprecation warning: use `papers config` instead (`--edit` and
 `--reset` keep working). `papers install --global` writes the library
@@ -203,7 +206,7 @@ papers uninstall
 removes the library configuration and reports what it leaves behind (the
 bibtex file, the files directory, and the backup directory if any). Pass
 `--remove-backup` to also remove the backup directory. It never removes the
-per-machine configuration. From outside of any library it does not remove
+global configuration. From outside of any library it does not remove
 the default pool's configuration: run `papers -C DIR uninstall` for that.
 
 `papers uninstall --recursive` is deprecated and ignored (there is no global

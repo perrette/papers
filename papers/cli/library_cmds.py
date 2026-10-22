@@ -86,10 +86,11 @@ def installcmd(parser, o, config):
 def install_global(parser, o, config, asker):
     """`papers install --global` (deprecated): create or update the library
     configuration next to the bibtex, and register the library's directory
-    as the `default` pool of the per-machine configuration"""
-    logger.warning("`papers install --global` is deprecated: there is no global configuration in v3. "
-                   "The library configuration is written next to the bibtex, and its directory "
-                   "becomes the `default` pool, used outside of any library.")
+    as the `default` pool of the global configuration"""
+    logger.warning("`papers install --global` is deprecated: the global library of papers v2 is now the "
+                   "default pool, used outside of any library. Use `papers init DIR` (DIR: the library) and "
+                   "`papers pool add default DIR`. This command does both: the library configuration is "
+                   "written next to the bibtex, and its directory becomes the `default` pool.")
     machine = config.machine
     bibtex = o.bibtex
     if not bibtex:
@@ -157,18 +158,20 @@ def _uninstall(parser, o, config):
             print(f"  remove it with `papers backup remove {os.path.basename(config.gitdir)}`")
 
 
-def _check_setting_name(name, machine):
+def _check_setting_name(name, is_global):
     if name == 'light':
         raise PapersExit("light is not changed with `papers config`, because it changes the file "
                          "links and the files too: use `papers migrate --light` or `papers migrate --full`")
-    if machine and name.startswith('pools.') and len(name) > len('pools.'):
+    if is_global and name.startswith('pools.') and len(name) > len('pools.'):
         return
     if name not in SETTINGS:
         raise PapersExit(f"unknown setting: {name}. Settings: {', '.join(SETTINGS)}"
-                         + (", pools.NAME (with --machine)" if not machine else ", pools.NAME"))
-    if machine and name in LIBRARY_ONLY:
-        raise PapersExit(f"{name} is a setting of a library, not of the machine"
-                         + (" (the per-machine configuration names pools: pools.NAME PATH)" if name == 'pools' else ''))
+                         + (", pools.NAME (with --global)" if not is_global else ", pools.NAME"))
+    if is_global and name in LIBRARY_ONLY:
+        raise PapersExit(f"{name} is a setting of a library: the global configuration holds the default "
+                         "settings of the libraries, and defines no library (the global library of papers v2 "
+                         "is now the default pool, see `papers pool list`)"
+                         + ("; it names the pools with pools.NAME PATH" if name == 'pools' else ''))
 
 
 def _parse_setting(name, values):
@@ -179,19 +182,19 @@ def _parse_setting(name, values):
 
 
 def configcmd(parser, o, config):
-    """get and set the settings of the library (or with --machine, of the
-    per-machine configuration)"""
+    """get and set the settings of the library (or with --global, of the
+    global configuration)"""
     if o.unset and o.key:
         parser.error('--unset takes the setting name: papers config --unset KEY')
     name = o.unset or o.key
     if name:
-        _check_setting_name(name, o.machine)
-    if o.machine:
+        _check_setting_name(name, o.is_global)
+    if o.is_global:
         return machine_configcmd(parser, o, config.machine, name)
 
     if config.file is None:
         raise PapersExit(f"no library found in this directory or above, and the default pool is not a library. "
-                         f"{init_hint(config)}, or use `papers config --machine`")
+                         f"{init_hint(config)}, or use `papers config --global`")
 
     if not name:
         print(f"# {config.file}")
@@ -241,7 +244,7 @@ def machine_configcmd(parser, o, machine, name):
     if not name:
         print(f"# {machine.file}" + ("" if machine.exists() else " (does not exist)"))
         for pool, path in machine.pools.items():
-            source = 'machine' if pool in machine.data.get('pools', {}) else 'default'
+            source = "global" if pool in machine.data.get("pools", {}) else "default"
             print(f"pools.{pool} = {path}  ({source})")
         for setting in SETTINGS:
             value = machine.get(setting)

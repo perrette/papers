@@ -20,7 +20,7 @@ files attached with `--attach`:
 | `link` | no: the entry links to the file where it is | no |
 
 Set it for a library with `papers config files copy`, or for all libraries
-of the machine with `papers config --machine files copy`. The options
+of the user with `papers config --global files copy`. The options
 `--move`, `--copy` and `--link` of `papers add` override it for one command;
 `-r/--rename` is the same as `--move`, and `-c` the same as `--copy`.
 

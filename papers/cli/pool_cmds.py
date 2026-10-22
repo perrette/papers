@@ -58,11 +58,11 @@ def exportcmd(parser, o, config):
 
 
 def poolcmd(parser, o, config):
-    """the pools of the per-machine configuration (as `papers config
-    --machine pools.NAME`), and the pools of the library"""
+    """the pools of the global configuration (as `papers config
+    --global pools.NAME`), and the pools of the library"""
     machine = config.machine
     if o.pool_cmd in (None, 'list'):
-        print(f'pools of this machine ({machine.file}):')
+        print(f'pools of the global configuration ({machine.file}):')
         print('\n'.join(machine_pool_lines(machine)))
         if config.file:
             print(f'pools of the library ({config.file}):' + ('' if config.pools else ' none'))

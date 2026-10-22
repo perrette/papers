@@ -54,10 +54,10 @@ def set_format_config_from_cmd(o, config, kind):
 
 
 def check_pools(config, pools):
-    "warn about pool names that the per-machine configuration does not define"
+    "warn about pool names that the global configuration does not define"
     for pool in pools:
         if not is_pool_path(pool) and config.machine.pool_path(pool) is None:
-            logger.warning(f"unknown pool name: {pool} (define it with `papers config --machine pools.{pool} PATH`, "
+            logger.warning(f"unknown pool name: {pool} (define it with `papers config --global pools.{pool} PATH`, "
                            "or write a path with a / to use a folder)")
 
 

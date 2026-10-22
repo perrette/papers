@@ -3,7 +3,7 @@
 The global configuration of v2 defined a library for the whole user account.
 In v3 it becomes an ordinary library: its settings are written to a library
 configuration next to its bibtex, its directory is registered as the
-`default` pool of the per-machine configuration (used outside of any
+`default` pool of the global configuration (used outside of any
 library), and the old file is renamed to <name>.v2.bak.
 """
 import os
@@ -74,7 +74,7 @@ def migrate_v2_global(machine, relative=False, dryrun=False):
                     machine.save()
             else:
                 print(f"  the default pool is already {current}: not changed "
-                      f"(change it with `papers config --machine pools.default PATH`)")
+                      f"(change it with `papers config --global pools.default PATH`)")
 
         backup = file + '.v2.bak'
         print(f"  {prefix}rename {file} to {backup}")

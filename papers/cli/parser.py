@@ -149,7 +149,9 @@ def get_parser(config=None):
     # init
     # ====
     initp = subparsers.add_parser('init', description='create a library in the current directory, '
-        'or in DIR (created if missing)',
+        'or in DIR (created if missing). It asks no questions: every setting has a default (from the '
+        'global configuration, or built in), the options below override them, and later changes go '
+        'through `papers config`.',
         parents=[loggingp, namefmt, keyfmt])
     initp.add_argument('dir', nargs='?', metavar='DIR',
         help='directory of the library (default: the current directory); --bibtex and '
@@ -159,7 +161,7 @@ def get_parser(config=None):
     initp.add_argument('--filesdir', type=file_uri_to_path,
         help='files directory (default: files, or an existing pdfs/, papers/... folder)')
     initp.add_argument('--pool', nargs='+', action='extend', metavar='NAME|PATH',
-        help='pools of the library: names of the per-machine configuration, or paths '
+        help='pools of the library: names of the global configuration, or paths '
              '(containing a /, relative to the library) (default: default)')
     initp.add_argument('--paths', choices=['relative', 'absolute'],
         help='file links in the bibtex relative to the bibtex directory, or absolute '
@@ -178,14 +180,15 @@ def get_parser(config=None):
     # ======
     configp = subparsers.add_parser('config', parents=[loggingp],
         description='get or set the settings of the library (git style): without KEY, list the '
-                    'settings and where each comes from (library, machine or default); with KEY, '
+                    'settings and where each comes from (library, global or default); with KEY, '
                     'print its value; with KEY VALUE..., set it in the library configuration',
-        epilog='settings: ' + ', '.join(SETTINGS) + '; with --machine, also pools.NAME (path of a pool)')
+        epilog='settings: ' + ', '.join(SETTINGS) + '; with --global, also pools.NAME (path of a pool)')
     configp.add_argument('key', nargs='?', metavar='KEY')
     configp.add_argument('values', nargs='*', metavar='VALUE', help='several values for pools')
-    configp.add_argument('--unset', metavar='KEY', help='remove the setting: the per-machine or default value applies again')
-    configp.add_argument('--machine', '--global', action='store_true',
-        help=f'the per-machine configuration ({papers.config.MACHINE_CONFIG_FILE}) instead of the library\'s')
+    configp.add_argument('--unset', metavar='KEY', help='remove the setting: the global or default value applies again')
+    configp.add_argument('--global', action='store_true', dest='is_global',
+        help=f'the global configuration, per user ({_default(papers.config.MACHINE_CONFIG_FILE)}), instead of '
+             'the library\'s: the default settings of the libraries, and the pool names')
     configp.add_argument('--dry-run', action='store_true', help='do not save')
     _command(configp, configcmd)
 
@@ -629,16 +632,16 @@ def get_parser(config=None):
     _command(exportp, exportcmd, library=True)
 
     poolp = subparsers.add_parser('pool', parents=[loggingp],
-        description='the pools of the per-machine configuration (the same as `papers config --machine '
+        description='the pools of the global configuration (the same as `papers config --global '
                     'pools.NAME PATH`). Without subcommand: list them, and the pools of the library.')
     _command(poolp, poolcmd)
     poolsub = poolp.add_subparsers(dest='pool_cmd')
-    poolsub.add_parser('list', parents=[loggingp], help='list the pools of the machine and of the library')
-    p = poolsub.add_parser('add', parents=[loggingp], help='name a pool of this machine')
+    poolsub.add_parser('list', parents=[loggingp], help='list the pools of the global configuration and of the library')
+    p = poolsub.add_parser('add', parents=[loggingp], help='name a pool in the global configuration')
     p.add_argument('name', metavar='NAME')
     p.add_argument('path', metavar='PATH')
     p.add_argument('--dry-run', action='store_true', help='do not save')
-    p = poolsub.add_parser('remove', parents=[loggingp], help='remove a pool name of this machine (not the library)')
+    p = poolsub.add_parser('remove', parents=[loggingp], help='remove a pool name from the global configuration (not from the library)')
     p.add_argument('name', metavar='NAME')
     p.add_argument('--dry-run', action='store_true', help='do not save')
 

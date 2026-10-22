@@ -1,4 +1,4 @@
-"""v3 configuration: library and per-machine configuration, init, config,
+"""v3 configuration: library and global configuration, init, config,
 migrate, -C and the default pool"""
 import json
 import os
@@ -24,7 +24,7 @@ ENTRY = """@article{someone2000,
 
 
 class TestResolution(unittest.TestCase):
-    """library configuration, then per-machine configuration, then default"""
+    """library configuration, then global configuration, then default"""
 
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
@@ -45,9 +45,9 @@ class TestResolution(unittest.TestCase):
         self.assertTrue(config.absolute_paths)
         self.assertEqual(config.source('paths'), 'library')
         self.assertEqual(config.nameformat.template, '{title}')
-        self.assertEqual(config.source('name.template'), 'machine')
+        self.assertEqual(config.source('name.template'), 'global')
         self.assertEqual(config.editor, 'vim')
-        self.assertEqual(config.source('editor'), 'machine')
+        self.assertEqual(config.source('editor'), 'global')
         self.assertEqual(config.nameformat.author_num, papers.filename.NAMEFORMAT.author_num)
         self.assertEqual(config.source('name.author-num'), 'default')
         self.assertEqual(config.pools, ['default'])
@@ -69,7 +69,7 @@ class TestResolution(unittest.TestCase):
         config = Config.load(self.file, machine=self.machine)
         config.unset('key.template')
         self.assertEqual(config.keyformat.template, '{year}')
-        self.assertEqual(config.source('key.template'), 'machine')
+        self.assertEqual(config.source('key.template'), 'global')
         config.save()
         self.assertNotIn('keyformat', json.load(open(self.file)))
 
@@ -173,8 +173,8 @@ class TestInit(ConfigTest):
         self.assertTrue(os.path.isdir(os.path.join(config.gitdir, '.git')))
 
     def test_init_machine_defaults(self):
-        self.papers('config --machine git false')
-        self.papers('config --machine paths absolute')
+        self.papers('config --global git false')
+        self.papers('config --global paths absolute')
         self.papers('init')
         js = self.json()
         self.assertFalse(js['git'])
@@ -260,7 +260,7 @@ class TestDefaultPool(ConfigTest):
         self.assertIn('(default pool)', self.papers('status', sp_cmd='check_output'))
 
     def test_builtin_default(self):
-        # without per-machine configuration
+        # without global configuration
         machine = MachineConfig.load(os.path.join(self.dir, 'none.json'))
         self.assertEqual(machine.pool_path('default'), TEST_DEFAULT_POOL)
         self.assertEqual(Config(machine=machine).pools, ['default'])
@@ -328,23 +328,23 @@ class TestConfigCommand(ConfigTest):
         self.assertEqual(Biblio.load(self.path('papers.bib'), '').entries[0]['file'], f':{self.path("a.pdf")}:pdf')
 
     def test_list(self):
-        self.papers('config --machine editor vim')
+        self.papers('config --global editor vim')
         out = self.get('')
         self.assertIn('bibtex', out)
         lines = {line.split('=')[0].strip(): line for line in out.splitlines()[1:]}
         self.assertTrue(lines['bibtex'].endswith('(library)'))
-        self.assertTrue(lines['editor'].endswith('(machine)'))
+        self.assertTrue(lines['editor'].endswith('(global)'))
         self.assertTrue(lines['name.template'].endswith('(default)'))
 
-    def test_machine(self):
-        self.papers('config --machine name.template "{year}"')
+    def test_global(self):
+        self.papers('config --global name.template "{year}"')
         self.assertEqual(self.get('name.template'), '{year}')
-        self.assertEqual(self.get('--machine name.template'), '{year}')
+        self.assertEqual(self.get('--global name.template'), '{year}')
         self.papers('config --global pools.teaching /mnt/teaching')
         machine = MachineConfig.load()
         self.assertEqual(machine.pool_path('teaching'), '/mnt/teaching')
-        self.assertIn('pools.teaching = /mnt/teaching', self.get('--machine'))
-        self.papers('config --machine --unset pools.teaching')
+        self.assertIn('pools.teaching = /mnt/teaching', self.get('--global'))
+        self.papers('config --global --unset pools.teaching')
         self.assertNotIn('teaching', MachineConfig.load().pools)
         # the library does not change
         self.assertNotIn('nameformat', self.json())
@@ -352,9 +352,15 @@ class TestConfigCommand(ConfigTest):
     def test_errors(self):
         for cmd in ['light true', 'foo bar', 'git maybe', 'name.author-num x',
                     'paths sometimes', 'git true false',
-                    '--machine bibtex x.bib', '--machine pools default']:
+                    '--global bibtex x.bib', '--global pools default']:
             with self.assertRaises(PapersExit, msg=cmd):
                 self.papers('config ' + cmd)
+
+    def test_global_library_only(self):
+        with self.assertRaisesRegex(PapersExit, 'global library of papers v2 is now the default pool'):
+            self.papers('config --global filesdir files')
+        with self.assertRaises(SystemExit):  # --machine was the name on the v3 branch only
+            self.papers('config --machine editor vim')
 
     def test_git(self):
         self.papers('config git true')
@@ -380,7 +386,7 @@ class TestMigrateV2Global(ConfigTest):
                    'editor': 'nano', 'nameformat': {'template': '{author}-{year}'}},
                   open(CONFIG_FILE, 'w'))
         os.makedirs(self.path('elsewhere'))
-        # no per-machine configuration yet
+        # no global configuration yet
         os.remove(papers.config.MACHINE_CONFIG_FILE)
 
     def tearDown(self):
@@ -432,14 +438,17 @@ class TestMigrateV2Global(ConfigTest):
         self.assertFalse(os.path.exists(CONFIG_FILE))
 
     def test_other_default_pool_is_kept(self):
-        self.papers('config --machine pools.default /some/where')
+        self.papers('config --global pools.default /some/where')
         out = self.papers('migrate', sp_cmd='check_output')
         self.assertIn('not changed', out)
         self.assertEqual(MachineConfig.load().pool_path('default'), '/some/where')
 
     def test_install_global_migrates(self):
         # install --global performs the migration of the v2 global configuration
-        self.papers('install --global --no-prompt --no-git', cwd=self.path('elsewhere'))
+        with self.assertLogs('papers', level='WARNING') as logs:
+            self.papers('install --global -y --no-git', cwd=self.path('elsewhere'))
+        self.assertIn('`papers init DIR`', '\n'.join(logs.output))
+        self.assertIn('`papers pool add default DIR`', '\n'.join(logs.output))
         self.assertFalse(os.path.exists(CONFIG_FILE))
         self.assertTrue(os.path.exists(CONFIG_FILE + '.v2.bak'))
         js = self.json('lib')

@@ -19,10 +19,10 @@ A library lists its pools as names or paths:
 papers config pools default ../shared-with-bob
 ```
 
-A name is looked up in the per-machine configuration (`papers pool add`,
+A name is looked up in the global configuration (`papers pool add`,
 below), so that the same project works on machines where the pool is in a
 different place. A path (it contains a `/`, or starts with `.` or `~`) is
-relative to the library. Without per-machine configuration, the name
+relative to the library. Without global configuration, the name
 `default` is `~/Documents/papers`, and a library created without `--pool`
 has `"pools": ["default"]`. A library never uses itself as a pool.
 
@@ -179,15 +179,15 @@ exported entries as origin copies: this turns a library into a pool.
 
 ## `papers pool`
 
-The pool names of the per-machine configuration:
+The pool names of the global configuration:
 
 ```
-papers pool add NAME PATH      # same as: papers config --machine pools.NAME PATH
+papers pool add NAME PATH      # same as: papers config --global pools.NAME PATH
 papers pool remove NAME
 papers pool list               # or: papers pool
 ```
 
-`papers pool list` shows the pools of the machine and those of the current
+`papers pool list` shows the pools of the global configuration and those of the current
 library, with their paths and whether each changed since the last pull.
 
 ## Light libraries

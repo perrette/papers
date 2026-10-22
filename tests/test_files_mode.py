@@ -40,7 +40,7 @@ class FilesModeTest(ConfigTest):
         return self.papers(cmd, cwd=self.path('lib'), **kw)
 
     def unset_machine_files(self):
-        "the per-machine configuration of the tests sets files to link: remove it"
+        "the global configuration of the tests sets files to link: remove it"
         machine = MachineConfig.load()
         machine.set('files', None)
         machine.save()

@@ -122,7 +122,7 @@ class TestResolution(PoolTest):
         self.assertIs(pools.first(), pool)
 
     def test_name(self):
-        self.papers(f'config --machine pools.shared {self.path("pool")}')
+        self.papers(f'config --global pools.shared {self.path("pool")}')
         pools = Pools(self.config(['shared']))
         self.assertEqual(pools.first().path, self.path('pool'))
         self.assertEqual(pools.first().id, 'shared')
@@ -581,7 +581,7 @@ class TestPoolCommand(PoolTest):
     def test_add_list_remove(self):
         self.papers(f'pool add shared {self.path("pool")}')
         self.assertEqual(MachineConfig.load().pool_path('shared'), self.path('pool'))
-        self.assertEqual(self.papers('config --machine pools.shared', sp_cmd='check_output'), self.path('pool'))
+        self.assertEqual(self.papers('config --global pools.shared', sp_cmd='check_output'), self.path('pool'))
         out = self.out('pool list')
         self.assertIn(f'shared: {self.path("pool")}', out)
         self.assertIn('default:', out)

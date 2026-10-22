@@ -145,7 +145,7 @@ class BibTest(unittest.TestCase):
         else:
             cls._backup_dir = None
 
-        # the per-machine configuration (default pool) as set in tests/__init__.py
+        # the global configuration (default pool) as set in tests/__init__.py
         cls._machine_config = open(papers.config.MACHINE_CONFIG_FILE).read() \
             if os.path.exists(papers.config.MACHINE_CONFIG_FILE) else None
 

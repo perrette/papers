@@ -1,6 +1,6 @@
 """Pools: the libraries that a library exchanges entries with.
 
-A library lists its pools in the `pools` setting: names of the per-machine
+A library lists its pools in the `pools` setting: names of the global
 configuration, or paths relative to the library. Any library can be a pool.
 
 - `Pools` resolves the `pools` setting to libraries, loaded when first used
@@ -954,7 +954,7 @@ def status_lines(config):
 
 
 def machine_pool_lines(machine):
-    "lines of `papers pool list` on the pools of the per-machine configuration"
+    "lines of `papers pool list` on the pools of the global configuration"
     lines = []
     for name, path in machine.pools.items():
         full = machine.pool_path(name)
