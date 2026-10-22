@@ -167,7 +167,7 @@ class TestResolution(PoolTest):
         self.assertEqual(pool.path, TEST_GLOBAL_POOL)
         self.assertEqual(pool.id, 'global')
         self.assertEqual(pool.label, f'pool {papers.config.short_home(TEST_GLOBAL_POOL)}')
-        self.assertEqual(pool.config.pool, 'none')
+        self.assertEqual(pool.config.pool, [])
         self.assertTrue(pool.config.local)
 
     def test_global_pool_on_a_disk_not_mounted(self):
@@ -188,7 +188,7 @@ class TestResolution(PoolTest):
         os.chmod(self.path('readonly'), 0o500)
         try:
             with self.assertRaisesRegex(PapersExit, 'readonly/pool: could not be created'):
-                self.lib('push --pool ../readonly/pool')
+                self.lib('push --all --pool ../readonly/pool')
         finally:
             os.chmod(self.path('readonly'), 0o700)
 
@@ -528,7 +528,8 @@ class TestPull(PoolTest):
         self.edit_pool('@article{Smith_2020,', '@article{Other_2020,')
         self.edit_pool('doi = {10.1000/abc123}', 'doi = {10.1000/other}')
         self.edit_pool('title = {Climate sensitivity revisited}', 'title = {Other}')
-        out = self.out('pull')
+        self.assertEqual(self.out('pull'), 'pull from pool ../pool: nothing to do')  # not named: not reported
+        out = self.out('pull smith2020climate')
         self.assertRegex(out, r'^Not found -> smith2020climate: .* \[not in pool ../pool\]$')
 
     def test_distinct_merged(self):
@@ -567,7 +568,7 @@ class TestPush(PoolTest):
 
     def test_new_entry(self):
         self.papers('config key.template {author}-{year}', cwd=self.path('pool'))
-        self.lib('push')
+        self.lib('push --all')
         pool_biblio, pool = self.bib('pool')
         self.assertIn('mine-2022', pool)
         files = pool_biblio.get_files(pool['mine-2022'])
@@ -576,26 +577,36 @@ class TestPush(PoolTest):
         self.assertTrue(os.path.exists(self.path('mine.pdf')))  # copied
         self.assertIn('mine2022', self.bib()[1])  # library key kept
         self.assertEqual(self.origin().get(self.entry('mine2022')).pool_key, 'mine-2022')
-        self.assertIn('push to pool ../pool: 1 unchanged', self.out('push'))  # nothing new
+        self.assertIn('push to pool ../pool: 1 unchanged', self.out('push'))  # shared: nothing new
+
+    def test_shared_entries_only(self):
+        # without KEY or --all, only the entries shared with the pool
+        out = self.out('push')
+        self.assertEqual(out, 'push to pool ../pool: no entries shared with it '
+                              '(`papers push KEY` or `papers push --all` adds entries to it)')
+        self.assertEqual(len(self.bib('pool')[1]), 2)
+        self.lib('push mine2022')
+        self.assertEqual(len(self.bib('pool')[1]), 3)
+        self.assertIn('push to pool ../pool: 1 unchanged', self.out('push'))
 
     def test_pool_name_template(self):
         self.papers('config name.template {title}', cwd=self.path('pool'))
-        self.lib('push')
+        self.lib('push --all')
         self.assertTrue(os.path.exists(self.path('pool', 'files', 'my-own-paper.pdf')))
 
     def test_changes(self):
-        self.lib('push')
+        self.lib('push --all')
         key = self.origin().get(self.entry('mine2022')).pool_key
         self.edit_lib('year = {2022}', 'journal = {J. Mine},\n year = {2022}')
         self.edit_pool('title = {My own paper},', 'note = {pool note},\n title = {My own paper},')
-        self.lib('push')
+        self.lib('push --all')
         e = self.entry(key, 'pool')
         self.assertEqual(e['journal'], 'J. Mine')
         self.assertEqual(e['note'], 'pool note')  # changed in the pool only: kept
         self.assertNotIn('note', self.entry('mine2022'))  # push does not change the library
 
     def conflict(self):
-        self.lib('push')
+        self.lib('push --all')
         key = self.origin().get(self.entry('mine2022')).pool_key
         self.edit_lib('title = {My own paper}', 'title = {My own paper (library)}')
         self.edit_pool('title = {My own paper}', 'title = {My own paper (pool)}')
@@ -615,7 +626,7 @@ class TestPush(PoolTest):
     def test_conflict_error(self):
         self.conflict()
         with self.assertRaises(PapersExit):
-            self.lib('push')
+            self.lib('push --all')
 
     def test_existing_pool_entry(self):
         # the same paper is in the pool, without origin record: merged, not added
@@ -652,13 +663,13 @@ class TestPush(PoolTest):
 
     def test_push_keeps_a_pool_change(self):
         # a field changed in the pool only, during a push: kept in the pool, and pulled after
-        self.lib('push')
+        self.lib('push --all')
         key = self.origin().get(self.entry('mine2022')).pool_key
         self.edit_pool('title = {My own paper}', 'title = {My own paper (pool)}')
         self.edit_lib('year = {2022}', 'journal = {J. Mine},\n year = {2022}')
-        self.lib('push')
+        self.lib('push --all')
         self.assertEqual(self.entry(key, 'pool')['title'], 'My own paper (pool)')
-        self.lib('push')  # the pool's title is not taken back by a second push
+        self.lib('push --all')  # the pool's title is not taken back by a second push
         self.assertEqual(self.entry(key, 'pool')['title'], 'My own paper (pool)')
         self.lib('pull')
         self.assertEqual(self.entry('mine2022')['title'], 'My own paper (pool)')
@@ -668,18 +679,18 @@ class TestPush(PoolTest):
         lib.pairs.append([{'doi': '10.1/a'}, {'doi': '10.1/b'}])
         lib.changed = True
         lib.save()
-        self.lib('push')
+        self.lib('push --all')
         self.assertIn([{'doi': '10.1/a'}, {'doi': '10.1/b'}],
                       Distinct.for_bibtex(self.path('pool', 'papers.bib')).pairs)
 
     def test_status_after_push(self):
         self.lib('pull')
-        self.lib('push')
+        self.lib('push --all')
         self.assertIn('up to date', self.out('status'))
 
     def test_global_pool_created(self):
         self.lib('config --unset pool')
-        out = self.out('push')
+        out = self.out('push --all')
         self.assertNotIn('create the library', out)  # quietly
         self.assertTrue(os.path.exists(os.path.join(TEST_GLOBAL_POOL, '.papersconfig.json')))
         biblio = Biblio.load(os.path.join(TEST_GLOBAL_POOL, 'papers.bib'), '')
@@ -1053,7 +1064,7 @@ class TestNonLocal(NonLocalTest):
         for bib in ['@article{empty2020,\n}\n', '@article{,\n title = {No key}\n}\n']:
             with self.subTest(bib=bib):
                 Path(self.path('lib', 'papers.bib')).write_text(bib)
-                out = self.out('push')
+                out = self.out('push --all')
                 self.assertIn('not pushed to pool ../pool', out)
                 self.assertEqual(len(self.bib('pool')[1]), pool_entries)
 

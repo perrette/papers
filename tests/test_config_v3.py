@@ -50,7 +50,7 @@ class TestResolution(unittest.TestCase):
         self.assertEqual(config.source('editor'), 'global')
         self.assertEqual(config.nameformat.author_num, papers.filename.NAMEFORMAT.author_num)
         self.assertEqual(config.source('name.author-num'), 'default')
-        self.assertEqual(config.pool, papers.config.DEFAULT_POOL)
+        self.assertEqual(config.pool, [papers.config.DEFAULT_POOL])
         self.assertEqual(config.source('pool'), 'default')
         self.assertTrue(config.uses_global_pool)
 
@@ -144,7 +144,7 @@ class TestFormatVersion(unittest.TestCase):
                         **({'light': light} if light is not None else {})})
             config = Config.load(self.file, machine=self.machine)
             self.assertEqual(config.local, local, pools)
-            self.assertEqual(config.pool if config.is_set('pool') else None, pool, pools)
+            self.assertEqual(config.pool if config.is_set('pool') else None, papers.config.pool_list(pool), pools)
             js = config.tojson()
             self.assertNotIn('pools', js)
             self.assertNotIn('light', js)
@@ -382,7 +382,7 @@ class TestConfigCommand(ConfigTest):
 
     def test_errors(self):
         for cmd in ['light true', 'pools x', 'sync push', 'foo bar', 'git maybe', 'name.author-num x',
-                    'paths sometimes', 'git true false', 'pool a b', '--unset local',
+                    'paths sometimes', 'git true false', 'pool none a', '--unset local',
                     '--global bibtex x.bib', '--global pools.default x']:
             with self.assertRaises(PapersExit, msg=cmd):
                 self.papers('config ' + cmd)

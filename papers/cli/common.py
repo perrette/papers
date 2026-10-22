@@ -273,22 +273,38 @@ _EXCHANGE_LINES = {
 }
 
 
-def print_exchange(report, kind, biblio, pool):
+def pools_label(pools, conj='and'):
+    "the pools named in a message: 'pool A', 'pool A and pool B', 'pool A, pool B and pool C'"
+    labels = [p.label for p in pools]
+    if len(labels) <= 1:
+        return ''.join(labels)
+    return ', '.join(labels[:-1]) + f' {conj} ' + labels[-1]
+
+
+def exchange_lines(report, kind, biblio, pools):
     """the report of pull or push (see papers.pools.Exchange.pull, push):
-    one line per entry added, modified, skipped or not found, then the
-    counts when more than one entry was involved (or when no line was
-    printed)"""
-    label = pool.label if pool is not None else None
+    (one line per entry added, modified, skipped or not found, the line of
+    the counts or None). The counts are given when more than one entry was
+    involved, or when there is no entry line. pools: the pools of the
+    exchange."""
+    pools = [p for p in pools if p is not None]
     lines = []
     for e, p, what in report:
         if what in _EXCHANGE_LINES[kind]:
             prefix, note = _EXCHANGE_LINES[kind][what]
-            where = p.label if p is not None else (label or 'the pool')
+            where = p.label if p is not None else (pools_label(pools, 'or') or 'the pool')
             lines.append(format_entry(biblio, e, prefix=prefix) + f' [{note.format(where)}]')
+    summary = None
     if len(report) > 1 or not lines:
-        verb = kind if label is None else f'{kind} {"from" if kind == "pull" else "to"} {label}'
-        lines.append(f'{verb}: {report_counts(report)}')
-    print('\n'.join(lines))
+        verb = kind if not pools else f'{kind} {"from" if kind == "pull" else "to"} {pools_label(pools)}'
+        summary = f'{verb}: {report_counts(report)}'
+    return lines, summary
+
+
+def print_exchange(report, kind, biblio, pools):
+    "print the report of pull or push (see exchange_lines)"
+    lines, summary = exchange_lines(report, kind, biblio, pools)
+    print('\n'.join(lines + ([summary] if summary else [])))
 
 
 def save_exchange(exchange):

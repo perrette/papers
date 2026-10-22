@@ -19,7 +19,7 @@ class TestPullCheck(PoolTest):
         self.take_smith()
         self.edit_pool('doi = {10.1000/abc123}', 'doi = {10.1000/other}')
         self.edit_pool('@article{Smith_2020,', '@article{Other_2020,')
-        self.assertIn('smith2020climate: not found in the pool', self.out('pull --check'))
+        self.assertIn('smith2020climate: not found in pool ../pool', self.out('pull --check'))
 
     def test_not_pulled_yet(self):
         Path(self.path('lib', 'papers.bib')).write_text(SMITH_BIB)
@@ -193,7 +193,7 @@ class TestPullEntries(PoolTest):
         Path(self.path('lib', 'papers.bib')).write_text(SMITH_BIB)
         out = self.out('pull --all --on-duplicate keep')
         self.assertRegex(out, r'Added -> Brown_2021: .* \[from pool ../pool\]\n')
-        self.assertIn('pull from pool ../pool: 1 updated, 1 added', out)
+        self.assertIn('pull from pool ../pool: 1 modified, 1 added', out)
         self.assertEqual(sorted(self.bib()[1]), ['Brown_2021', 'smith2020climate'])
 
     def test_other_pool(self):
@@ -221,23 +221,51 @@ class TestSync(PoolTest):
         self.lib('add ../new.bib')
 
     def test_pull_then_push(self):
+        # without --all: the shared entries only (smith2020climate, taken from the pool)
         self.edit_pool('journal = {Nat.}', 'journal = {Nature}')
-        out = self.out('sync')
-        lines = out.splitlines()
+        lines = self.out('sync').splitlines()
         self.assertRegex(lines[0], r'^Modified -> smith2020climate: .* \[from pool ../pool\]$')
-        self.assertRegex(lines[1], r'^Added -> mine2022: .* \[to pool ../pool\]$')
-        self.assertEqual(lines[2], 'push to pool ../pool: 1 added, 1 unchanged')
-        self.assertEqual(len(lines), 3)
+        self.assertEqual(lines[1], 'push to pool ../pool: 1 unchanged')
+        self.assertEqual(len(lines), 2)
         self.assertEqual(self.entry('smith2020climate')['journal'], 'Nature')
-        self.assertEqual(len(self.bib('pool')[1]), 3)  # mine2022 pushed
+        self.assertEqual(len(self.bib('pool')[1]), 2)  # mine2022 is not shared: not pushed
+        self.assertEqual(self.out('sync'), 'nothing to sync with pool ../pool (1 entry unchanged)')
+        # --all: each side gets what it does not have
+        lines = self.out('sync --all').splitlines()
+        self.assertRegex(lines[0], r'^Added -> Brown_2021: .* \[from pool ../pool\]$')
+        self.assertEqual(lines[1], 'pull from pool ../pool: 1 unchanged, 1 added')
+        self.assertRegex(lines[2], r'^Added -> mine2022: .* \[to pool ../pool\]$')
+        self.assertEqual(lines[3], 'push to pool ../pool: 2 unchanged, 1 added')
+        self.assertEqual(len(lines), 4)
+        self.assertEqual(len(self.bib('pool')[1]), 3)
+        self.assertEqual(self.out('sync'), 'nothing to sync with pool ../pool (3 entries unchanged)')
+
+    def test_nothing_shared(self):
+        self.papers('init other --no-git --pool none')
+        out = self.out('sync --pool ../other')
+        self.assertEqual(out, 'nothing to sync with pool ../other: no entries shared with it '
+                              '(`papers sync --all` adds the entries missing on each side)')
+        self.assertEqual(self.bib('other')[1], {})
+        self.assertIn('push to pool ../other: no entries shared with it', self.out('push --pool ../other'))
+        self.assertEqual(self.bib('other')[1], {})
+
+    def test_not_found_only_for_keys_given(self):
+        self.edit_pool('@article{Smith_2020,', '@article{Other_2020,')
+        self.edit_pool('doi = {10.1000/abc123}', 'doi = {10.1000/other}')
+        self.edit_pool('title = {Climate sensitivity revisited}', 'title = {Other}')
+        self.assertNotIn('Not found', self.out('pull'))
+        self.assertRegex(self.out('pull smith2020climate'), r'Not found -> smith2020climate: .* \[not in pool ../pool\]')
+        out = self.out('sync')  # not found in the pool: pushed to it
+        self.assertNotIn('Not found', out)
+        self.assertRegex(out, r'^Added -> smith2020climate: .* \[to pool ../pool\]$')
 
     def test_conflict_stops_before_push(self):
         self.edit_pool('journal = {Nat.}', 'journal = {Nature Climate Change}')
         self.edit_lib('journal = {Nat.}', 'journal = {Nature}')
         with self.assertRaisesRegex(PapersExit, 'not pushed'):
-            self.lib('sync --on-duplicate skip')
+            self.lib('sync --all --on-duplicate skip')
         self.assertEqual(len(self.bib('pool')[1]), 2)  # nothing pushed
-        self.lib('sync --on-duplicate keep')
+        self.lib('sync --all --on-duplicate keep')
         self.assertEqual(len(self.bib('pool')[1]), 3)
         self.assertIn('journal = {Nature}', Path(self.path('pool', 'papers.bib')).read_text())
 

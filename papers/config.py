@@ -65,6 +65,29 @@ DEFAULT_POOL = os.path.join('~', 'Documents', 'papers')
 NO_POOL = 'none'
 
 
+def pool_list(value):
+    """the pool setting as a list of paths (as written): `none` is the
+    empty list, a single path a list of one; None stays None (unset)"""
+    if value is None:
+        return None
+    if isinstance(value, str):
+        value = [value]
+    paths = [p for p in value if isinstance(p, str) and p]
+    if NO_POOL in paths:
+        if len(paths) > 1:
+            logger.warning(f'pool: {NO_POOL} among several paths is ignored')
+        paths = [p for p in paths if p != NO_POOL]
+    return paths
+
+
+def pool_to_json(paths):
+    "how a configuration file stores the pool setting: `none`, one path as a string, or a list"
+    paths = pool_list(paths)
+    if not paths:
+        return NO_POOL
+    return paths[0] if len(paths) == 1 else list(paths)
+
+
 # Settings of `papers config`, by name. The name and key format fields map to
 # the attributes of papers.filename.Format (name.author-num -> author_num).
 _FORMAT_FIELDS = ['template', 'author-num', 'author-sep', 'title-word-num', 'title-word-size', 'title-length',
@@ -101,7 +124,7 @@ def default_value(name):
         return getattr(NAMEFORMAT, _attr(name))
     if name.startswith('key.'):
         return getattr(KEYFORMAT, _attr(name))
-    return {'pool': DEFAULT_POOL, 'local': False, 'paths': 'relative', 'files': 'move', 'auto-push': False,
+    return {'pool': [DEFAULT_POOL], 'local': False, 'paths': 'relative', 'files': 'move', 'auto-push': False,
             'git': False, 'git-lfs': False, 'editor': None}.get(name)
 
 
@@ -125,6 +148,8 @@ def json_get(js, name):
         if js.get('absolute_paths') is not None:  # files of v2 (v2 compatibility, remove with migrate)
             return 'absolute' if js['absolute_paths'] else 'relative'
         return None
+    if name == 'pool':
+        return pool_list(js.get('pool'))
     if name == 'git-lfs':
         return js.get('gitlfs', js.get('backup_files'))
     return js.get(name)
@@ -146,6 +171,8 @@ def json_set(js, name, value):
     if name == 'git-lfs':
         js.pop('backup_files', None)
         name = 'gitlfs'
+    if name == 'pool' and value is not None:
+        value = pool_to_json(value)
     if value is None:
         js.pop(name, None)
     else:
@@ -155,6 +182,14 @@ def json_set(js, name, value):
 def parse_value(name, values):
     """check and convert the command-line value(s) of a setting; raise ValueError"""
     kind = SETTINGS[name]
+    if kind == 'pool':
+        if not values:
+            raise ValueError(f'{name}: give one or more paths, or {NO_POOL}')
+        if NO_POOL in values:
+            if len(values) > 1:
+                raise ValueError(f'{name}: {NO_POOL} cannot be given with paths')
+            return []
+        return list(values)
     if len(values) != 1:
         raise ValueError(f'{name} takes one value, got {len(values)}')
     value = values[0]
@@ -181,6 +216,8 @@ def format_value(value):
         return ''
     if isinstance(value, bool):
         return 'true' if value else 'false'
+    if isinstance(value, list):  # the pool setting
+        return ' '.join(value) if value else NO_POOL
     return str(value)
 
 
@@ -248,6 +285,18 @@ def pool_setting(path, libdir, base=None):
     return short_home(full)
 
 
+def pool_settings(paths, libdir, base=None):
+    """the pool setting of a library for the pool paths given on the command
+    line (a list, or a single path or `none`; see pool_setting): a list,
+    empty for none"""
+    paths = [paths] if isinstance(paths, str) else list(paths)
+    if NO_POOL in paths:
+        if len(paths) > 1:
+            raise PapersExit(f'pool: {NO_POOL} cannot be given with paths')
+        return []
+    return [pool_setting(p, libdir, base=base) for p in paths]
+
+
 class MachineConfig:
     """global configuration: the global pool and the defaults of library settings
 
@@ -294,14 +343,19 @@ class MachineConfig:
 
     @property
     def pool(self):
-        "the global pool as written (with ~), or none"
-        return self.get('pool') or DEFAULT_POOL
+        "the pools of the global pool setting as written (with ~): a list, empty for none"
+        value = self.get('pool')
+        return value if value is not None else [DEFAULT_POOL]
+
+    def pool_paths(self):
+        "absolute paths of the pools of the global pool setting"
+        return [os.path.abspath(os.path.expanduser(p)) for p in self.pool]
 
     def pool_path(self):
-        "absolute path of the global pool, or None (pool none)"
-        if self.pool == NO_POOL:
-            return None
-        return os.path.abspath(os.path.expanduser(self.pool))
+        """absolute path of the global pool (the first of the global pool
+        setting), or None (pool none)"""
+        paths = self.pool_paths()
+        return paths[0] if paths else None
 
     def save(self):
         os.makedirs(os.path.dirname(self.file), exist_ok=True)
@@ -364,9 +418,9 @@ class Config:
         self.absolute_paths = absolute_paths
         self.git = git if git is not None else self.inherited('git')
         self.gitlfs = gitlfs if gitlfs is not None else self.inherited('git-lfs')
-        # the pool: a path (relative to the library), or none; a library
-        # that does not set it uses the global pool of the machine
-        self.pool = pool if pool is not None else self.inherited('pool')
+        # the pools: a list of paths (relative to the library), empty for
+        # none; a library that does not set it uses the global pool setting
+        self.pool = pool_list(pool) if pool is not None else self.inherited('pool')
         # local: the files of the library are in its files directory;
         # otherwise they are in the files directory of its pool, and the
         # library links to them. `papers config local` converts the files.
@@ -416,6 +470,8 @@ class Config:
             self.absolute_paths = value == 'absolute'
         elif name == 'git-lfs':
             self.gitlfs = value
+        elif name == 'pool':
+            self.pool = pool_list(value)
         else:
             setattr(self, name.replace('-', '_'), value)
         self.explicit.add(name)
@@ -447,30 +503,44 @@ class Config:
         "the library does not set its pool: it uses the global pool of the machine"
         return not (self.file and self.is_set('pool'))
 
-    def pool_path(self):
-        """absolute path of the pool of the library (the global pool, or a
-        path relative to the library), or None (pool none)"""
+    def _pools(self):
+        """(absolute path, label) of each pool of the pool setting, in order:
+        the global pool setting for a library that does not set it, else
+        paths relative to the library. The label is how `init`, `status`
+        and the messages name it: with ~ for the global pool setting, else
+        as the library's setting writes it."""
         if self.uses_global_pool:
-            return self.machine.pool_path()
-        if self.pool == NO_POOL:
-            return None
-        return os.path.abspath(os.path.join(self.configdir, os.path.expanduser(self.pool)))
+            return [(path, short_home(path)) for path in self.machine.pool_paths()]
+        return [(os.path.abspath(os.path.join(self.configdir, os.path.expanduser(p))), p) for p in self.pool]
+
+    def _is_self(self, path):
+        return bool(self.file) and os.path.realpath(path) == os.path.realpath(self.configdir)
+
+    def pool_paths(self):
+        "absolute paths of the pools of the library, in order (never the library itself)"
+        return [path for path, _ in self._pools() if not self._is_self(path)]
+
+    def pool_labels(self):
+        "the pools of the library as the messages name them (see _pools), in order"
+        return [label for path, label in self._pools() if not self._is_self(path)]
+
+    def pool_path(self):
+        """absolute path of the first pool of the library, the one it writes
+        to, or None (pool none)"""
+        paths = self.pool_paths()
+        return paths[0] if paths else None
 
     def pool_label(self):
-        """the pool as `init`, `status` and the messages name it: the global
-        pool with ~, otherwise the pool setting (relative to the library)"""
-        path = self.pool_path()
-        if path is None:
-            return None
-        return short_home(path) if self.uses_global_pool else self.pool
+        "the first pool as the messages name it (see _pools), or None"
+        labels = self.pool_labels()
+        return labels[0] if labels else None
 
     def is_pool_library(self):
-        "the library is its own pool (the global pool), so it has none"
-        path = self.pool_path()
-        return bool(self.file) and path is not None and os.path.realpath(path) == os.path.realpath(self.configdir)
+        "the library is in its own pool setting (e.g. the global pool), and it is not a pool of itself"
+        return any(self._is_self(path) for path, _ in self._pools())
 
     def has_pool(self):
-        return self.pool_path() is not None and not self.is_pool_library()
+        return bool(self.pool_paths())
 
     @property
     def backupfile_clean(self):
@@ -675,8 +745,11 @@ class Config:
         lines.append(f'* bibtex:             {_fmt_path(self.bibtex) if self.bibtex else self.bibtex}'+status)
 
         if self.file:
-            from papers.pools import status_line  # papers.pools imports this module
-            lines.append('* pool:               ' + status_line(self))
+            from papers.pools import status_lines  # papers.pools imports this module
+            pool_lines = status_lines(self)
+            lines.append(('* pools:              ' if len(pool_lines) > 1 else '* pool:               ')
+                         + pool_lines[0])
+            lines.extend(' ' * 22 + line for line in pool_lines[1:])
             lines.append('* local:              ' + ('true (the files are in the files directory of the library)'
                          if self.local else "false (the files are in the pool)"))
             if self.local and self.has_pool():

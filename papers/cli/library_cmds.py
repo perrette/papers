@@ -8,7 +8,7 @@ import papers.config
 from papers import logger
 from papers.backup import init_backup
 from papers.config import (CONFIG_FILE_LOCAL, Config, LIBRARY_CONFIG_FILES, LIBRARY_ONLY, NO_POOL,
-                           SETTINGS, format_value, parse_value, pool_setting, short_home)
+                           SETTINGS, format_value, parse_value, pool_settings, short_home)
 from papers.files import delete_files, is_inside
 from papers.install import DefaultAsker, InputAsker, RESET_WORDS, _ask_path, apply_install, resolve_install
 from papers.library import convert_file_links, find_config, get_biblio, snapshot_backup
@@ -62,8 +62,12 @@ def init_summary(config):
     lines = [f'created the library {short_home(str(config.configdir))}',
              f'* bibtex:  {_show(config.bibtex) if config.bibtex else "none"}',
              f'* files:   {files}']
-    if config.local and config.has_pool():
-        lines.append(f'* pool:    {config.pool_label()} (shared entries; the PDFs stay in this library)')
+    labels = config.pool_labels()
+    if len(labels) > 1:
+        lines.append(f'* pools:   {", ".join(labels)} (looked up in this order; new entries go to the first'
+                     + ('; the PDFs stay in this library)' if config.local else ')'))
+    elif config.local and labels:
+        lines.append(f'* pool:    {labels[0]} (shared entries; the PDFs stay in this library)')
     return lines + ['* backup:  ' + ('git' + (' and git-lfs' if config.gitlfs else '') if config.git else 'off'),
                     '`papers status -v` shows all settings']
 
@@ -315,7 +319,8 @@ def _save_setting(config, changes):
         else:
             config.set(name, value)
     config.save()
-    print(', '.join(f'{name} = {format_value(config.get(name))}' for name in changes) + f' (in {config.file})')
+    print(', '.join(f'{name} = {format_value(config.get(name))}' for name in changes)
+          + f' (in {short_home(config.file)})')
 
 
 def _set_pool_or_local(o, config, name):
@@ -331,11 +336,10 @@ def _set_pool_or_local(o, config, name):
         changes = {'pool': None}
     else:
         value = _parse_setting('pool', o.values)
-        changes = {'pool': pool_setting(value, str(config.configdir), base=os.getcwd())}
+        changes = {'pool': pool_settings(value, str(config.configdir), base=os.getcwd())}
     for key, value in changes.items():
         new.unset(key) if value is None else new.set(key, value)
-    has_pool = new.pool_path() is not None and not new.is_pool_library()
-    if new.local is False and not has_pool:
+    if new.local is False and not new.has_pool():
         if name == 'local':
             raise PapersExit('local false needs a pool, and the library has none (pool none): '
                              'set one with `papers config pool PATH` first')
@@ -344,19 +348,28 @@ def _set_pool_or_local(o, config, name):
 
     def done():
         if papers.config.DRYRUN:
-            print('DRYRUN: ' + ', '.join(f'{k} = {format_value(v)}' for k, v in changes.items())
-                  + f' not saved to {config.file}')
+            print('DRYRUN: ' + ', '.join(f'{k} = {format_value(new.get(k))}' for k in changes)
+                  + f' not saved to {short_home(config.file)}')
             return
         _save_setting(config, changes)
 
+    # the files move only when the first pool changes (the one that holds the
+    # files of a library that is not local), or with local true / pool none
     old_pools = Pools(config)
     old_pool = old_pools.pool(quiet=True) if not config.local else None
-    old_dirs = [old_pool.filesdir] if old_pool is not None and old_pool.filesdir else []
     to_local = not config.local and changes.get('local', new.local)
     to_pool = (not new.local) and (config.local or old_pool is None
                                    or os.path.realpath(old_pool.path) != os.path.realpath(new.pool_path()))
     if not to_local and not to_pool:
         return done()
+    if to_local:
+        # all the pool files that the library links to are copied
+        old_dirs = [p.filesdir for p in old_pools.all(quiet=True) if p.filesdir] if not config.local else []
+    else:
+        # the files of the pools that leave the list are copied to the new first pool
+        kept = {os.path.realpath(p) for p in new.pool_paths()}
+        old_dirs = [p.filesdir for p in old_pools.all(quiet=True)
+                    if p.filesdir and os.path.realpath(p.path) not in kept] if not config.local else []
 
     biblio = get_biblio(config)
     biblio_init = copy.deepcopy(biblio)
@@ -399,7 +412,7 @@ def machine_configcmd(parser, o, machine, name):
     if not name:
         print(f"# {machine.file}" + ("" if machine.exists() else " (does not exist)"))
         if machine.get('pool') is None:
-            print(f"pool = {machine.pool}  (default)")
+            print(f"pool = {format_value(machine.pool)}  (default)")
         for setting in SETTINGS:
             value = machine.get(setting)
             if value is not None:
@@ -418,8 +431,8 @@ def machine_configcmd(parser, o, machine, name):
         value = None
     else:
         value = _parse_setting(name, o.values)
-        if name == 'pool' and value != NO_POOL:
-            value = short_home(os.path.abspath(os.path.expanduser(value)))
+        if name == 'pool':
+            value = [short_home(os.path.abspath(os.path.expanduser(p))) for p in value]
     machine.set(name, value)
     if papers.config.DRYRUN:
         print(f"DRYRUN: {machine.file} not saved")
@@ -440,4 +453,6 @@ def statuscmd(parser, o, config):
     if config.file is None:
         pool = config.machine.pool_path()
         print(f"* global pool:        {short_home(pool) + ' (not a library)' if pool else 'none'}")
+        for other in config.machine.pool_paths()[1:]:
+            print(f"* other pool:         {short_home(other)}")
         print(init_hint(config))

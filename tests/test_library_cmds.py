@@ -43,9 +43,14 @@ class TestConfigCmd(FileTest):
         with self.assertRaises(PapersExit):
             self.lib('config key.author-num many')
 
-    def test_global_pool_takes_one_path(self):
-        with self.assertRaisesRegex(PapersExit, 'takes one value'):
-            self.lib('config --global pool a b')
+    def test_global_pool_several_paths(self):
+        self.lib('config --global pool /a ~/b')
+        self.assertEqual(papers.config.MachineConfig.load().data['pool'], ['/a', '~/b'])
+        self.assertEqual(self.lib('config --global pool', sp_cmd='check_output'), '/a ~/b')
+        self.lib('config --global pool /a')
+        self.assertEqual(papers.config.MachineConfig.load().data['pool'], '/a')
+        with self.assertRaisesRegex(PapersExit, 'none cannot be given with paths'):
+            self.lib('config --global pool none /a')
 
     def test_global_dry_run(self):
         out = self.out('config --global pool /a/b --dry-run')

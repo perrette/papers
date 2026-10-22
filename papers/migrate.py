@@ -13,7 +13,7 @@ import os
 
 from papers import logger
 from papers.config import (Config, CONFIG_FILE, CONFIG_FILE_LOCAL, CONFIG_FILE_LEGACY,
-                           CONFIG_FILE_LEGACY_XDG, INHERITED, NO_POOL, short_home)
+                           CONFIG_FILE_LEGACY_XDG, INHERITED, NO_POOL, format_value, short_home)
 from papers.files import hidden_bibtex
 from papers.library import get_biblio, savebib, convert_file_links
 
@@ -71,13 +71,13 @@ def migrate_v2_global(machine, relative=False, dryrun=False):
                         print(f"  the file links of {new.bibtex} are now relative to its directory")
 
             current = machine.get('pool')
-            if current is None or _same_path(current, libdir):
+            if current is None or (len(current) == 1 and _same_path(current[0], libdir)):
                 print(f"  {prefix}register {libdir} as the global pool in {machine.file}")
                 if not dryrun:
                     machine.set('pool', short_home(libdir))
                     machine.save()
             else:
-                print(f"  the global pool is already {current}: not changed "
+                print(f"  the global pool is already {format_value(current)}: not changed "
                       f"(change it with `papers config --global pool PATH`)")
 
         backup = file + '.v2.bak'
