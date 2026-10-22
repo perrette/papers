@@ -69,10 +69,13 @@ In the common case where the bibtex, files directory and naming formats do not
 change, create a library so that you don't need to pass them every time:
 
 ```
-papers init --bibtex papers.bib --filesdir files
+papers init --bibtex papers.bib --filesdir files --local
 ```
 
-Commands run in that directory (or below) then act on this library. See
+Commands run in that directory (or below) then act on this library. With
+`--local`, the files added later go to `files` too; without it, they go to
+the files directory of the global pool (`~/Documents/papers`), and the
+library links to them there (see [Pools](pools.md)). See
 [Configuration](configuration.md) for details.
 
 !!! tip

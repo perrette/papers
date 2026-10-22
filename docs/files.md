@@ -28,11 +28,16 @@ A file that belongs to another library, i.e. a file inside the files
 directory of a library whose configuration (`.papersconfig.json`) is found
 in the file's directory or above, is never moved: in `move` mode it is
 copied instead (a hard link when possible), so that the other library keeps
-its link. The same holds for a file in the files directory of a pool of the
-library (see [Pools](pools.md)). A file already in the files directory of the current library is
+its link. The same holds for a file in the files directory of the pool of
+the library (see [Pools](pools.md)). A file already in the files directory of the current library is
 renamed in `copy` mode too, rather than copied next to itself. A file
 downloaded by papers (a URL given to `add` or `--attach`) is always moved
 into the files directory.
+
+In a library that is not local (`local: false`, the default), the files
+directory where `add`, `file attach` and `file rename` place the files is
+that of the pool, and the name template is the pool's (see
+[Local or not](pools.md#local-or-not)).
 
 ## `papers file`
 
@@ -126,8 +131,8 @@ from every entry that links to it, then deletes the file.
   the links in the same way, without deleting anything.
 - With `--key`, only the links of those entries are removed; a file that
   another entry still links to is kept on disk, and papers says so.
-- A file of a pool is never deleted (e.g. the files a light library links
-  to): only the link is removed, and papers says so.
+- A file of the pool is never deleted (e.g. the files that a library that
+  is not local links to): only the link is removed, and papers says so.
 - papers does not ask: the file was named on the command line. `--dry-run`
   shows the links that would be removed and the files and folders that
   would be deleted.
@@ -162,8 +167,8 @@ files that no remaining entry links to may be deleted too:
 - a file outside the files directory is deleted only with `--delete-files`.
 
 A file still linked from another entry is never deleted, nor a file in the
-files directory of a pool of the library (e.g. the files a light library
-links to, see [Light libraries](pools.md#light-libraries)). A file that is a
+files directory of the pool of the library (e.g. the files that a library
+that is not local links to, see [Local or not](pools.md#local-or-not)). A file that is a
 hard link (e.g. to the file of another library) can be deleted: this only
 removes this link, and papers says so.
 

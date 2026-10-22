@@ -23,8 +23,11 @@ papers add entry.bib --attach esd-4-11-2013.pdf --bibtex papers.bib --filesdir f
 ## What happens to the files
 
 By default, `papers add` moves the PDF into the files directory of the
-library, under a name made from the name template. The `files` setting of
-the library changes that (see [Files](files.md#what-add-does-with-a-file)):
+library, under a name made from the name template: in a library that is not
+local (the default for new libraries), the files directory and the name
+template of its pool (see [Local or not](pools.md#local-or-not)). The
+`files` setting of the library changes what happens to the original (see
+[Files](files.md#what-add-does-with-a-file)):
 
 - `move` (default): place the file in the files directory and remove the
   original;
@@ -124,15 +127,24 @@ other files of the entry are not touched. An arXiv DOI
 (`10.48550/arXiv.<id>`) matches an entry whose `eprint` is that arXiv
 identifier. `--no-check-duplicate` skips this, and adds a new entry.
 
-The order is: the library, then the pools (below), then online.
+The order is: the library, then the pool (below), then online.
 
-## Entries already in a pool
+## Entries already in the pool
 
-Before querying crossref, `papers add` looks in the pools of the library
-(see [Pools](pools.md#add-looks-in-the-pools-first)): a PDF with the same
-content as a pool file, or whose DOI is in a pool, a DOI that a pool entry
+Before querying crossref, `papers add` looks in the pool of the library
+(see [Pools](pools.md#add-looks-in-the-pool-first)): a PDF with the same
+content as a pool file, or whose DOI is in the pool, a DOI that a pool entry
 has, or a bibtex entry that is the same paper as a pool entry, is taken from
 the pool, with its files. `--no-pool` skips this.
+
+In a library that is not local (the default), the files of the added
+entries go to the files directory of the pool, and the entries to the pool
+too (see [Local or not](pools.md#local-or-not)).
+
+`papers add other.bib` copies the entries of `other.bib` once, with no
+memory of the source. To take entries from the pool so that they stay
+linked to it (later pulls bring the corrections made there), use
+`papers pull KEY` (see [`papers pull`](pools.md#papers-pull)).
 
 ## Add an entry from its DOI
 

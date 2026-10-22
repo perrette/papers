@@ -43,7 +43,8 @@ Currently covers:
     - add pdf file, bibtex, directory
     - add one pdf file with attachments
     - conflict resolution
-- `papers init`, `papers config`, `papers migrate`, `papers install`
+- `papers init`, `papers config` (including the file moves of `local` and `pool`), `papers migrate`, `papers install`
+- `papers pull`, `papers push`, `papers sync`, `papers export` (pools)
 - internals:
     - duplicate rule (identifiers and their order, title guard, `.papers/distinct.json`), merge and dialogue
 - `papers list`

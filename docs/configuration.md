@@ -19,18 +19,18 @@ version 3.0.0
 * backup directory:   /home/perrette/.local/share/papers/backups/sealevel-papers-3f9a1c2b
 * files directory:    files (empty)
 * bibtex:             papers.bib (empty)
-* pools:
-    default: /home/perrette/Documents/papers (missing)
+* pool:               ~/Documents/papers (global pool, not created yet)
+* local:              false (the files are in the files directory of the pool)
 ...
 ```
 
 By default the bibtex is `papers.bib` (or the first `.bib` file present in
 the directory) and the files directory is `files` (or an existing `pdfs`,
 `pdf`, `papers` or `bibliography` folder). The options of `papers init` are
-`--bibtex`, `--filesdir`, `--pool NAME|PATH...` (see [Pools](#pools)),
-`--paths relative|absolute`, `--git`/`--no-git`, `--git-lfs`, `--editor`, `--light`
-(see [Light libraries](pools.md#light-libraries)) and
-the name and key format options (see [Renaming files and keys](renaming.md)).
+`--bibtex`, `--filesdir`, `--pool PATH|none` and `--local` (see
+[Pools](#pools)), `--paths relative|absolute`, `--git`/`--no-git`,
+`--git-lfs`, `--editor` and the name and key format options (see
+[Renaming files and keys](renaming.md)).
 With `DIR`, the paths given to `--bibtex` and `--filesdir` are relative to
 `DIR`.
 `papers init` does not prompt, and fails if the directory already has a
@@ -49,7 +49,7 @@ papers -C ~/projects/sealevel list smith
 the bibtex given with `--bibtex` belongs to another library (a configuration
 file in its directory or above), the settings of that library apply.
 
-Outside of any library, commands act on the default pool if it is a library
+Outside of any library, commands act on the global pool if it is a library
 (see [Pools](#pools)), and otherwise fail with a message that explains how to
 create one.
 
@@ -65,7 +65,6 @@ papers config                          # list the settings and where each comes 
 papers config name.template            # print one setting
 papers config name.template '{author}_{year}_{title}'   # set it in the library
 papers config --unset name.template    # remove it from the library
-papers config pools default ../shared  # settings with several values
 ```
 
 Each setting comes from the library configuration if it sets it, otherwise
@@ -77,10 +76,11 @@ from the global configuration, otherwise from its built-in default.
 |---|---|
 | `bibtex` | path of the bibtex file |
 | `filesdir` | path of the files directory |
-| `pools` | names or paths of the library's pools (default: `default`) |
+| `pool` | path of the library's pool (relative to the library), or `none` (default: the global pool) |
+| `local` | `true`: the files are in the files directory of the library; `false`: in the files directory of the pool (see [Pools](pools.md#local-or-not)) |
 | `paths` | `relative` (default) or `absolute`: how file links are written in the bibtex |
 | `files` | `move` (default), `copy` or `link`: what `papers add` does with a file (see [Files](files.md#what-add-does-with-a-file)) |
-| `sync` | `none` (default) or `push`: `papers add` also adds the new entries to the first pool (see [Pools](pools.md)) |
+| `auto-push` | `false` (default) or `true`: in a local library, `papers add` also adds the new entries to the pool (see [Pools](pools.md#local-or-not)) |
 | `git` | `true` or `false`: back up the bibtex with git (see [Git integration](git.md)) |
 | `git-lfs` | `true` or `false`: also back up the files with git-lfs |
 | `editor` | command that opens a text editor, e.g. `vim` or `subl -w` (it wins over `$VISUAL` and `$EDITOR`, which are used without it) |
@@ -98,57 +98,69 @@ absolute paths. A relative path given to set them is relative to the current
 directory.
 
 Setting `git` to `true` initializes the backup directory and records the
-current bibtex. Setting `paths` rewrites the file links of the bibtex. `light`
-is not a setting of `papers config`: it is changed with
-`papers migrate --light` and `papers migrate --full`, because it also
-changes the file links and the files (see
-[Light libraries](pools.md#light-libraries)).
+current bibtex. Setting `paths` rewrites the file links of the bibtex.
+Setting `local` or `pool` moves the files of the library, after listing what
+it will do and asking to continue (`-y` does not ask, `--dry-run` only
+lists; see [Changing local and pool](pools.md#changing-local-and-pool)).
+`local` is always set in a library (`papers init` stores it), so it has no
+`--unset`.
 
 ### Global configuration
 
 `papers config --global` reads and writes the global configuration (per
 user, as in `git config --global`) instead of the library's:
 `~/.config/papers/config.json` on Linux (the platform's user configuration
-directory elsewhere). It holds the pool names and the default settings of
-the libraries that do not set them (everything except `bibtex`, `filesdir`
-and `pools`). It defines no library: the global library of papers v2 is now
-the default pool (see [Pools](pools.md)).
+directory elsewhere). It holds the global pool and the default settings of
+the libraries that do not set them (everything except `bibtex` and
+`filesdir`). It defines no library: the global library of papers v2 is now
+the global pool (see [Pools](pools.md)).
 
 ```
 papers config --global editor vim
 papers config --global name.template '{author}_{year}'
-papers config --global pools.teaching /mnt/shared/teaching
-papers config --global                # list it
+papers config --global pool ~/Dropbox/papers   # the global pool
+papers config --global local true              # new libraries keep their own files
+papers config --global                         # list it
 ```
 
-`papers init` stores `paths`, `git` and `git-lfs` in the new library, taking
-their values from the global configuration when it sets them. The other
-settings are only stored in the library when you set them.
+In the global configuration, `pool` is the path of the global pool (default
+`~/Documents/papers`), or `none` (no sharing: new libraries get
+`pool: none`, and so are local), and `local` the default of new libraries
+(default `false`).
+
+`papers init` stores `paths`, `git`, `git-lfs` and `local` in the new
+library, taking their values from the global configuration when it sets
+them, and `pool` when it is not the global pool. The other settings are
+only stored in the library when you set them.
 
 ## Pools
 
 A pool is a library that other libraries exchange entries with (see
-[Pools](pools.md) for `add`, `pull`, `push`, `export` and light
-libraries). Each library
-lists its pools in the `pools` setting, as names or paths. A name is looked
-up in the global configuration (`pools.NAME`, or `papers pool add NAME
-PATH`), so that the same library
-works on machines where the pool is in a different place. An entry that
-contains a `/` or starts with `.` or `~` is a path, relative to the library
-(e.g. `../shared-with-bob`).
+[Pools](pools.md) for `add`, `pull`, `push`, `sync` and `export`). A library
+has one pool, its `pool` setting: by default the global pool (the `pool`
+setting of the global configuration, `~/Documents/papers` without one), a
+path relative to the library (e.g. `../shared-with-bob`), or `none`. A
+library that uses the global pool stores no path, so that the same project
+uses the global pool of each machine. The global pool is created the first
+time papers writes to it; it is also the library that commands act on
+outside of any library, once it is one.
 
-Without global configuration, the pool `default` is
-`~/Documents/papers`. It is also the library that commands act on outside of
-any library, once it is one:
+`local` says where the files of the library are: in the files directory of
+the pool (`false`, the default: the library links to them) or in its own
+(`true`). A project folder shared with others (git, Dropbox) should be
+local: the links of a library that is not local point into your own pool.
 
 ```
-papers init ~/Documents/papers
+papers init                    # the global pool, not local
+papers init --local            # its own files
+papers init --pool ../shared   # another pool
+papers init --pool none        # no pool, hence local
 ```
 
-`papers status` lists the pools of the library with their paths, says when
-a pool is missing or is not a library, and whether it changed since the last
-`papers pull`. It also shows whether the library is light, and the `sync`
-setting.
+`papers status` shows the pool of the library (its path, or none), whether
+it is the global pool, is missing or is not a library, and whether it
+changed since the last `papers pull`. It also shows `local`, and the
+`auto-push` setting of a local library.
 
 ## Relative versus absolute paths
 
@@ -167,9 +179,10 @@ override the setting for one command, with a deprecation warning.
 - The global configuration of version 2 (`~/.config/papersconfig.json` on
   Linux) defined a library for the whole user account. `papers migrate`
   writes its settings to a library configuration next to its bibtex (if
-  there is none yet), registers the directory of that bibtex as the
-  `default` pool in the global configuration (unless another default
-  pool is set there), and renames the old file to `papersconfig.json.v2.bak`.
+  there is none yet; the library keeps its files and has no pool), makes the
+  directory of that bibtex the global pool in the global configuration
+  (unless another global pool is set there), and renames the old file to
+  `papersconfig.json.v2.bak`.
   The bibtex, files and backup stay where they are. File links stay
   absolute, as they were, unless `--relative` is passed. Running
   `papers migrate` again does nothing. Until then, papers prints a warning
@@ -180,7 +193,8 @@ override the setting for one command, with a deprecation warning.
   `papers file rename` names them).
 
 Library configurations (`.papersconfig.json`) of version 2 keep working
-without migration. The configuration files written by version 3 carry
+without migration: they are read as local libraries (their files are their
+own) that use the global pool. The configuration files written by version 3 carry
 `"version": 3`; a file without `version` is read as a file of version 2. A
 file with a higher version was written by a newer papers, and papers stops
 with an error.
@@ -193,8 +207,8 @@ bibtex, the files directory and git (`-y/--yes` accepts the defaults;
 an existing library it updates the library configuration, as in version 2,
 with a deprecation warning: use `papers config` instead (`--edit` and
 `--reset` keep working). `papers install --global` writes the library
-configuration next to the bibtex and registers its directory as the `default`
-pool; if a global configuration of version 2 exists, it first migrates it as
+configuration next to the bibtex and makes its directory the global pool;
+if a global configuration of version 2 exists, it first migrates it as
 `papers migrate` does. `--local` is ignored.
 
 ## Uninstall
@@ -207,7 +221,7 @@ removes the library configuration and reports what it leaves behind (the
 bibtex file, the files directory, and the backup directory if any). Pass
 `--remove-backup` to also remove the backup directory. It never removes the
 global configuration. From outside of any library it does not remove
-the default pool's configuration: run `papers -C DIR uninstall` for that.
+the global pool's configuration: run `papers -C DIR uninstall` for that.
 
 `papers uninstall --recursive` is deprecated and ignored (there is no global
 library configuration to walk up to in v3): only the configuration of the
