@@ -19,8 +19,7 @@ created the library ~/projects/sealevel
 By default the bibtex is `papers.bib` (or the first `.bib` file present in
 the directory) and the files directory is `files` (or an existing `pdfs`,
 `pdf`, `papers` or `bibliography` folder). The options of `papers init` are
-`--bibtex`, `--filesdir`, `--pool PATH|none` (repeated for several pools)
-and `--local` (see
+`--bibtex`, `--filesdir`, `--pool PATH|none` and `--local` (see
 [Pools](#pools)), `--paths relative|absolute`, `--git`/`--no-git`,
 `--git-lfs`, `--editor` and the name and key format options (see
 [Renaming files and keys](renaming.md)).
@@ -69,7 +68,7 @@ from the global configuration, otherwise from its built-in default.
 |---|---|
 | `bibtex` | path of the bibtex file |
 | `filesdir` | path of the files directory |
-| `pool` | path of the library's pool (relative to the library), several paths (looked up in order, the first one written to), or `none` (default: the global pool setting) |
+| `pool` | path of the library's pool (relative to the library), or `none` (default: the global pool) |
 | `local` | `true`: the files are in the files directory of the library; `false`: in the files directory of the pool (see [Pools](pools.md#local-or-not)) |
 | `paths` | `relative` (default) or `absolute`: how file links are written in the bibtex |
 | `files` | `move` (default), `copy` or `link`: what `papers add` does with a file (see [Files](files.md#what-add-does-with-a-file)) |
@@ -112,17 +111,14 @@ the global pool (see [Pools](pools.md)).
 papers config --global editor vim
 papers config --global name.template '{author}_{year}'
 papers config --global pool ~/Dropbox/papers   # the global pool
-papers config --global pool ~/Dropbox/papers /media/usb/papers   # several pools
 papers config --global local true              # new libraries keep their own files
 papers config --global                         # list it
 ```
 
 In the global configuration, `pool` is the path of the global pool (default
-`~/Documents/papers`), several paths (the first is the global pool, the
-main pool of the libraries that do not set theirs, and the others are the
-pools they search), or
-`none` (no sharing: new libraries get `pool: none`, and so are local), and
-`local` the default of new libraries (default `false`).
+`~/Documents/papers`), or `none` (no sharing: new libraries get
+`pool: none`, and so are local), and `local` the default of new libraries
+(default `false`).
 
 `papers init` stores `paths`, `git`, `git-lfs` and `local` in the new
 library, taking their values from the global configuration when it sets
@@ -132,20 +128,19 @@ only stored in the library when you set them.
 ## Pools
 
 A pool is a library that other libraries exchange entries with (see
-[Pools](pools.md) for `add`, `pull`, `push`, `sync` and `export`). The pool
-of a library is its `pool` setting: by default the global pool (the `pool`
+[Pools](pools.md) for `add`, `pull`, `push`, `sync` and `export`). A library
+has one pool, its `pool` setting: by default the global pool (the `pool`
 setting of the global configuration, `~/Documents/papers` without one), a
-path relative to the library (e.g. `../shared-with-bob`), several paths, or
-`none`. With several pools, the first is the main pool, the one that
-`pull`, `push` and `sync` exchange with and that new entries go to; the
-others are searched when adding or pulling, never written to (see
-[Several pools](pools.md#several-pools)). The
-configuration file stores a single path as a string, several as a list, and
-no pool as `"none"`. A
+path relative to the library (e.g. `../shared-with-bob`), or `none`. A
 library that uses the global pool stores no path, so that the same project
 uses the global pool of each machine. The global pool is created the first
 time papers writes to it; it is also the library that commands act on
 outside of any library, once it is one.
+
+A configuration file written by a test build that took several pools may
+store `pool` as a list: a list of one path is read as that path, and a list
+of several paths is an error that names the file. Write one path, or
+`none`, in that file.
 
 `local` says where the files of the library are: in the files directory of
 the pool (`false`, the default: the library links to them) or in its own
@@ -157,11 +152,9 @@ papers init                    # the global pool, not local
 papers init --local            # its own files
 papers init --pool ../shared   # another pool
 papers init --pool none        # no pool, hence local
-papers init --pool ~/Documents/papers --pool ../shared   # two pools
-papers config pool ~/Documents/papers ../shared          # the same, in an existing library
 ```
 
-`papers status` shows each pool of the library (its path, or none), whether
+`papers status` shows the pool of the library (its path, or none), whether
 it is the global pool, is missing or is not a library, and whether it
 changed since the last exchange with it. It also shows `local`, and the
 `auto-push` setting of a local library.

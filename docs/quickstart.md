@@ -181,10 +181,8 @@ in its `files/` folder: create it with `papers init --local`, or run
 `papers config local true` in an existing library, which copies its PDFs
 from the pool (as hard links when possible). A local library still uses
 the pool for entries. `papers init --pool none` creates a library without
-pool: its PDFs are in the project, and nothing is shared. A library can
-also have several pools: the first is synced, the others are only searched
-when adding or pulling (see [Several pools](pools.md#several-pools)), and several libraries without a
-pool can share one PDF folder, as in papers 2 (see
+pool: its PDFs are in the project, and nothing is shared. Several
+libraries without a pool can share one PDF folder, as in papers 2 (see
 [A shared files folder without a pool](pools.md#a-shared-files-folder-without-a-pool)). See
 [Pools](configuration.md#pools) in the configuration, and
 [Local or not](pools.md#local-or-not) and
