@@ -185,7 +185,6 @@ def get_parser(config=None):
     initp.add_argument('--no-git', action='store_false', dest='git', default=None, help='no git backup')
     initp.add_argument('--git-lfs', action='store_true', default=None, help='also back up the files with git-lfs (implies --git)')
     initp.add_argument('--editor', help='command to open a text editor; it must wait until the editor is closed, e.g. vim or "subl -w"')
-    initp.add_argument('--no-check-files', action='store_true', help=argparse.SUPPRESS)
     _command(initp, initcmd)
 
     # config

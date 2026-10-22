@@ -98,6 +98,12 @@ class TestOtherCommands(ConfigTest):
         out = self.papers('migrate', sp_cmd='check_output')
         self.assertIn('nothing to migrate', out)
 
+    def test_init_no_check_files_is_gone(self):
+        # it did nothing on init; install keeps it (it skips the files count of the status)
+        with self.assertRaises(SystemExit):
+            self.papers('init --no-git --no-check-files')
+        self.assertFalse(os.path.exists(self.path('.papersconfig.json')))
+
     def test_init_in_a_library(self):
         self.papers('init --no-git')
         os.makedirs(self.path('sub'))
