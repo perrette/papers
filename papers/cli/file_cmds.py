@@ -1,4 +1,4 @@
-"""papers file rename, mv, attach, detach, check, clean, and filecheck (deprecated)"""
+"""papers file rename, mv, attach, detach, rm, check, clean, and filecheck (deprecated)"""
 import copy
 import os
 
@@ -6,13 +6,13 @@ import papers.config
 from papers import logger
 from papers.entries import get_entry_val
 from papers.files import (attach_files, check_entry_files, clean_filesdir, delete_files, detach_links,
-                          execute_moves, files_to_delete, link_snapshot, moved_links, plan_moves, realpath,
-                          rename_files)
+                          execute_moves, files_to_delete, link_snapshot, links_to_paths, moved_links, plan_moves,
+                          realpath, remove_empty_folders, rename_files)
 from papers.library import get_biblio, savebib
 from papers.pools import Exchange, Pools
 from papers.utils import PapersExit
 from papers.cli.common import (set_format_config_from_cmd, _print_biblio_diff, files_mode,
-                               _entries_or_all, _one_entry, print_kept_files)
+                               _entries_or_all, _one_entry, _key_option_entries, print_kept_files)
 
 
 def filecheckcmd(parser, o, config):
@@ -113,41 +113,52 @@ def file_attachcmd(parser, o, config):
     _print_biblio_diff(biblio_init, biblio, [e])
 
 
+def _detach(biblio, links):
+    "remove the links [(entry, files)], and say which entries lost a link"
+    prefix = 'DRYRUN: ' if papers.config.DRYRUN else ''
+    for e, files in links:
+        detach_links(biblio, e, files)
+        for f in files:
+            print(f"{prefix}{e.key}: removed the link to {f}")
+
+
 def file_detachcmd(parser, o, config):
     biblio = get_biblio(config)
-    biblio_init = copy.deepcopy(biblio)
+    entries = _key_option_entries(biblio, o.key)
     if o.broken:
-        entries = _entries_or_all(biblio, o.args)
-        detached = {id(e): [f for f in biblio.get_files(e) if not os.path.exists(f)] for e in entries}
+        if o.files:
+            parser.error('--broken takes no FILE (--key limits it to entries)')
+        links = [(e, [f for f in biblio.get_files(e) if not os.path.exists(f)])
+                 for e in (biblio.entries if entries is None else entries)]
+    elif o.files:
+        links = links_to_paths(biblio, o.files, entries, recursive=o.recursive)
+    elif entries is not None:
+        links = [(e, biblio.get_files(e)) for e in entries]
     else:
-        if not o.args:
-            parser.error('papers file detach KEY [FILE...] (or --broken [KEY...])')
-        key, *files = o.args
-        e = _one_entry(biblio, key)
-        linked = biblio.get_files(e)
-        if files:
-            by_real = {realpath(f): f for f in linked}
-            unknown = [f for f in files if realpath(f) not in by_real]
-            if unknown:
-                raise PapersExit(f"not linked from {key}: {', '.join(unknown)} (nothing was changed)")
-            files = [by_real[realpath(f)] for f in files]
-        else:
-            files = linked
-        entries = [e]
-        detached = {id(e): files}
-
-    for e in entries:
-        detach_links(biblio, e, detached[id(e)])
-
-    alldetached = [f for e in entries for f in detached[id(e)]]
-    if o.delete_files:
-        inside, outside, kept, in_pool = files_to_delete(biblio, alldetached, config.filesdir,
-                                                         pool_dirs=Pools(config).files_dirs())
+        parser.error('papers file detach FILE... [--key KEY...], --key KEY... or --broken [--key KEY...]')
+    links = [(e, files) for e, files in links if files]
+    _detach(biblio, links)
     savebib(biblio, config)
-    _print_biblio_diff(biblio_init, biblio, entries)
-    if o.delete_files:
-        print_kept_files(kept, in_pool)
-        delete_files(inside + outside, dryrun=papers.config.DRYRUN)
+    if not links:
+        print('no link removed')
+
+
+def file_rmcmd(parser, o, config):
+    biblio = get_biblio(config)
+    entries = _key_option_entries(biblio, o.key)
+    if not o.files:
+        parser.error('papers file rm FILE... [-r] [--key KEY...]')
+    links = links_to_paths(biblio, o.files, entries, recursive=o.recursive)
+    _detach(biblio, links)
+    inside, outside, kept, in_pool = files_to_delete(biblio, [f for _, files in links for f in files],
+                                                     config.filesdir, pool_dirs=Pools(config).files_dirs())
+    savebib(biblio, config)
+    print_kept_files(kept, in_pool)
+    deleted = inside + outside
+    delete_files(deleted, dryrun=papers.config.DRYRUN)
+    for path in o.files:
+        if os.path.isdir(path):
+            remove_empty_folders(deleted, path, keep=[config.filesdir], dryrun=papers.config.DRYRUN)
 
 
 def file_checkcmd(parser, o, config):

@@ -431,6 +431,57 @@ def detach_links(biblio, e, files):
     biblio.set_files(e, [f for f in biblio.get_files(e) if realpath(f) not in remove])
 
 
+def links_to_paths(biblio, paths, entries=None, recursive=False):
+    """the links of `papers file detach` and `papers file rm PATH...`:
+    [(entry, [links])] of the entries (`entries`, default all) that link to
+    a PATH, or with recursive=True to a file inside a PATH folder. Links
+    are compared by real path, so a broken link can be named too.
+
+    A PATH that none of the entries links to is an error, and so is a folder
+    without recursive: the error is raised before anything changes."""
+    whom = 'no entry' if entries is None else 'none of the entries of --key'
+    links = [(e, biblio.get_files(e)) for e in (biblio.entries if entries is None else entries)]
+    found = {}
+    errors = []
+    for path in paths:
+        isdir = os.path.isdir(path) and not os.path.islink(path)
+        if isdir and not recursive:
+            errors.append(f'{path}: is a folder (-r for the linked files inside it)')
+            continue
+        real = realpath(path)
+        match = (lambda f: is_inside(f, path)) if isdir else (lambda f: realpath(f) == real)
+        hit = False
+        for e, files in links:
+            for f in files:
+                if match(f):
+                    hit = True
+                    found.setdefault(id(e), (e, []))[1].append(f)
+        if not hit:
+            errors.append(f'{path}: {whom} links to {"a file in this folder" if isdir else "this file"}')
+    if errors:
+        raise PapersExit('\n'.join(errors) + '\n(nothing was changed)')
+    return [(e, list(dict.fromkeys(files))) for e, files in found.values()]
+
+
+def remove_empty_folders(deleted, top, keep=(), dryrun=False):
+    """after `papers file rm -r top`: remove the folders of the deleted files
+    that are left empty, from the file's folder up to `top` included, as
+    `git rm -r` does; the folders in `keep` (the files directory) stay"""
+    keep = {realpath(k) for k in keep if k}
+    gone = {realpath(f) for f in deleted}  # with dryrun, what would be deleted
+    for file in deleted:
+        folder = os.path.dirname(os.path.abspath(file))
+        while is_inside(folder, top) and realpath(folder) not in keep and realpath(folder) not in gone:
+            if not os.path.isdir(folder) or any(realpath(os.path.join(folder, f)) not in gone
+                                                for f in os.listdir(folder)):
+                break
+            print(f'{"DRYRUN: " if dryrun else ""}remove folder {folder}')
+            if not dryrun:
+                os.rmdir(folder)
+            gone.add(realpath(folder))
+            folder = os.path.dirname(folder)
+
+
 # links
 # =====
 
@@ -565,8 +616,8 @@ def execute_moves(moves, force=False):
     return done, None
 
 
-# papers rm, papers file detach --delete-files
-# ===========================================
+# papers rm, papers file rm
+# =============================
 
 def files_to_delete(biblio, removed_files, filesdir, remaining=None, pool_dirs=()):
     """the files of removed entries or links that may be deleted:
@@ -686,7 +737,7 @@ def check_entry_files(biblio, e, metadata=False, fix=False):
                 if fix:
                     file = repaired
             else:
-                issues.append(f'{key}: broken link: {file} (remove it with `papers file detach --broken {key}`)')
+                issues.append(f'{key}: broken link: {file} (remove it with `papers file detach --broken --key {key}`)')
                 newfiles.append(file)
                 continue
         real = realpath(file)

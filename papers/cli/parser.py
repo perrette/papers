@@ -11,7 +11,7 @@ from papers.utils import file_uri_to_path
 from papers.cli.backup_cmds import undocmd, redocmd, restorecmd, backupcmd, gitcmd
 from papers.cli.entry_cmds import addcmd, checkcmd, listcmd, editcmd, rmcmd, tagcmd, opencmd
 from papers.cli.fetch_cmds import doicmd, fetchcmd, extractcmd
-from papers.cli.file_cmds import (filecheckcmd, file_renamecmd, file_mvcmd, file_attachcmd, file_detachcmd,
+from papers.cli.file_cmds import (filecheckcmd, file_renamecmd, file_mvcmd, file_attachcmd, file_detachcmd, file_rmcmd,
                                   file_checkcmd, file_cleancmd)
 from papers.cli.library_cmds import statuscmd, initcmd, configcmd, migratecmd, installcmd, uninstallcmd
 from papers.cli.pool_cmds import pullcmd, pushcmd, exportcmd, poolcmd
@@ -340,8 +340,8 @@ def get_parser(config=None):
     # file
     # ====
     filep = subparsers.add_parser('file', description='the files of the entries: rename, move, attach, '
-        'detach, check them, and clean the files directory')
-    filesub = filep.add_subparsers(dest='file_cmd', metavar='{rename,mv,attach,detach,check,clean}')
+        'detach, remove, check them, and clean the files directory')
+    filesub = filep.add_subparsers(dest='file_cmd', metavar="{rename,mv,attach,detach,rm,check,clean}")
     _command(filep, None)  # without subcommand: the help of papers file
 
     p = filesub.add_parser('rename', parents=[cfg, namefmt],
@@ -375,16 +375,30 @@ def get_parser(config=None):
     _files_mode_options(p)
     _command(p, file_attachcmd, library=True)
 
+    _key_help = (f'only the links of these entries ({ENTRY_IDS}; - reads them from the standard input); '
+                 'write the files before --key, which takes several values')
     p = filesub.add_parser('detach', parents=[cfg],
-        help='remove file links from an entry',
-        description='remove the links to FILE (all its files without FILE) from the entry KEY. '
-                    'The files are kept, unless --delete-files.')
-    p.add_argument('args', nargs='*', metavar='KEY [FILE...]', type=file_uri_to_path,
-        help=f'KEY: {ENTRY_IDS} of the entry; with --broken: KEY... (all entries without KEY)')
-    p.add_argument('--broken', action='store_true', help='remove the broken links only')
-    p.add_argument('--delete-files', action='store_true',
-        help='also delete the detached files that no other entry links to')
+        help='remove file links from the entries (the files are kept)',
+        description='remove the links to FILE from every entry that links to it (only from the entries of '
+                    '--key with --key); with --key and no FILE, remove all the links of these entries; with '
+                    '--broken, remove the broken links. The files are never deleted (`papers file rm` does that).')
+    p.add_argument('files', nargs='*', metavar='FILE', type=file_uri_to_path)
+    p.add_argument('-k', '--key', nargs='+', action='extend', metavar='KEY', help=_key_help)
+    p.add_argument('-r', action='store_true', dest='recursive', help='FILE can be a folder: the links to the files inside it')
+    p.add_argument('--broken', action='store_true', help='remove the broken links (of all entries without --key)')
     _command(p, file_detachcmd, library=True)
+
+    p = filesub.add_parser('rm', parents=[cfg],
+        help='remove file links from the entries and delete the files',
+        description='like git rm: remove the links to FILE from every entry that links to it, then delete '
+                    'the file. A file that no entry links to is an error, and nothing changes. With --key, only '
+                    'the links of these entries are removed, and a file that another entry still links to is '
+                    'kept. A file of a pool is never deleted, only the link. -r FOLDER: the linked files '
+                    'inside FOLDER (the unlinked files stay, and the folders left empty are removed).')
+    p.add_argument('files', nargs='*', metavar='FILE', type=file_uri_to_path)
+    p.add_argument('-k', '--key', nargs='+', action='extend', metavar='KEY', help=_key_help)
+    p.add_argument('-r', action='store_true', dest='recursive', help='FILE can be a folder: the linked files inside it')
+    _command(p, file_rmcmd, library=True)
 
     p = filesub.add_parser('check', parents=[cfg],
         help='report broken links, identical files, DOI mismatches',

@@ -11,7 +11,7 @@ from papers.config import SETTINGS, is_pool_path, short_home
 from papers.encoding import format_entry
 from papers.entries import entry_content_equal, get_entry_val, parse_string, format_library, library_from_entries
 from papers.files import hidden_bibtex
-from papers.identifiers import select_entries
+from papers.identifiers import read_selection, select_entries
 from papers.library import config_for_bibtex, savebib
 from papers.merge import Resolver
 from papers.utils import PapersExit, edit_text, open_with_system
@@ -188,6 +188,27 @@ def duplicate_resolver(o, cmd):
 def _entries_or_all(biblio, args):
     "the entries named on the command line (keys, DOIs, -), or all entries without argument"
     return select_entries(biblio, args) if args else list(biblio.entries)
+
+
+# extensions of the files a --key value is likely to be (see _key_option_entries)
+_FILE_EXTENSIONS = ('.pdf', '.djvu', '.epub', '.ps', '.txt', '.zip', '.doc', '.docx', '.html')
+
+
+def _key_option_entries(biblio, keys):
+    """the entries of the -k/--key option of `papers file detach` and
+    `papers file rm` (None without the option). As the option takes several
+    values, it swallows the files written after it: a value that is not an
+    entry but a path is an error that says so."""
+    if not keys:
+        return None
+    keys = read_selection(keys)
+    for key in keys:
+        if os.path.lexists(key) or key.lower().endswith(_FILE_EXTENSIONS):
+            try:
+                select_entries(biblio, [key])
+            except PapersExit:
+                raise PapersExit(f'{key} is not an entry: put the files before --key (nothing was changed)')
+    return select_entries(biblio, keys)
 
 
 def _one_entry(biblio, key):

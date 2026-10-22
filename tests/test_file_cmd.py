@@ -223,42 +223,171 @@ class TestDetach(FileTest):
         self.b = self.write('lib', 'files', 'b.pdf')
         self.shared = self.write('lib', 'files', 'shared.pdf')
         self.bib(entry('one2000', 'files/a.pdf', 'files/b.pdf', 'files/shared.pdf', 'files/broken.pdf'),
-                 entry('two2000', 'files/shared.pdf', 'files/broken2.pdf'))
+                 entry('two2000', 'files/shared.pdf', 'files/broken2.pdf', doi='10.1000/two'),
+                 entry('three2000', 'files/shared.pdf'))
 
     def test_file(self):
-        self.lib('file detach one2000 files/b.pdf')
+        out = self.out('file detach files/b.pdf')
         self.assertNotIn(self.b, self.files('one2000'))
         self.assertIn(self.a, self.files('one2000'))
         self.assertTrue(os.path.exists(self.b))
+        self.assertIn('one2000: removed the link to', out)
 
-    def test_all(self):
-        self.lib('file detach one2000')
+    def test_shared_file_every_entry(self):
+        out = self.out('file detach files/shared.pdf')
+        for key in ('one2000', 'two2000', 'three2000'):
+            self.assertNotIn(self.shared, self.files(key))
+            self.assertIn(f'{key}: removed the link', out)
+        self.assertTrue(os.path.exists(self.shared))
+
+    def test_file_key(self):
+        self.lib('file detach files/shared.pdf --key 10.1000/two')
+        self.assertIn(self.shared, self.files('one2000'))
+        self.assertNotIn(self.shared, self.files('two2000'))
+
+    def test_several_keys(self):
+        self.lib('file detach files/shared.pdf --key one2000 two2000')
+        self.assertNotIn(self.shared, self.files('one2000'))
+        self.assertNotIn(self.shared, self.files('two2000'))
+        self.assertIn(self.shared, self.files('three2000'))
+
+    def test_repeated_key(self):
+        self.lib('file detach files/shared.pdf -k one2000 --key three2000')
+        self.assertNotIn(self.shared, self.files('one2000'))
+        self.assertIn(self.shared, self.files('two2000'))
+        self.assertNotIn(self.shared, self.files('three2000'))
+
+    def test_key_stdin(self):
+        with patch('sys.stdin', io.StringIO('two2000\nthree2000\n')):
+            self.lib('file detach files/shared.pdf --key -')
+        self.assertIn(self.shared, self.files('one2000'))
+        self.assertNotIn(self.shared, self.files('two2000'))
+        self.assertNotIn(self.shared, self.files('three2000'))
+
+    def test_swallowed_file(self):
+        before = open(self.path('lib', 'papers.bib')).read()
+        with self.assertRaisesRegex(PapersExit, 'files/b.pdf is not an entry: put the files before --key'):
+            self.lib('file detach --key one2000 files/b.pdf')
+        self.assertEqual(open(self.path('lib', 'papers.bib')).read(), before)
+
+    def test_key_all_links(self):
+        self.lib('file detach --key one2000')
         self.assertEqual(self.files('one2000'), [])
         self.assertTrue(os.path.exists(self.a))
 
     def test_not_linked(self):
         self.write('lib', 'files', 'other.pdf')
-        with self.assertRaisesRegex(PapersExit, 'not linked'):
-            self.lib('file detach one2000 files/b.pdf files/other.pdf')
+        with self.assertRaisesRegex(PapersExit, 'no entry links to this file'):
+            self.lib('file detach files/b.pdf files/other.pdf')
         self.assertIn(self.b, self.files('one2000'))
+
+    def test_not_linked_from_key(self):
+        with self.assertRaisesRegex(PapersExit, 'none of the entries of --key'):
+            self.lib('file detach files/b.pdf --key two2000')
+        self.assertIn(self.b, self.files('one2000'))
+
+    def test_folder(self):
+        with self.assertRaisesRegex(PapersExit, 'is a folder'):
+            self.lib('file detach files')
+        self.lib('file detach -r files --key one2000')
+        self.assertEqual(self.files('one2000'), [])  # broken.pdf too: its path is in files/
+        self.assertTrue(os.path.exists(self.a))
 
     def test_broken(self):
         self.lib('file detach --broken')
         self.assertEqual(len(self.files('one2000')), 3)
         self.assertEqual(self.files('two2000'), [self.shared])
 
-    def test_broken_keys(self):
-        self.lib('file detach --broken two2000')
+    def test_broken_key(self):
+        self.lib('file detach --broken --key two2000')
         self.assertEqual(len(self.files('one2000')), 4)
         self.assertEqual(len(self.files('two2000')), 1)
 
-    def test_delete_files(self):
-        out = self.out('file detach one2000 --delete-files')
+    def test_no_argument(self):
+        with self.assertRaises(SystemExit):
+            self.lib('file detach')
+
+
+class TestFileRm(FileTest):
+
+    def setUp(self):
+        super().setUp()
+        self.a = self.write('lib', 'files', 'a.pdf')
+        self.b = self.write('lib', 'files', 'sub', 'b.pdf')
+        self.notes = self.write('lib', 'files', 'sub', 'notes.txt')
+        self.c = self.write('lib', 'files', 'sub2', 'deep', 'c.pdf')
+        self.shared = self.write('lib', 'files', 'shared.pdf')
+        self.outside = self.write('elsewhere', 'out.pdf')
+        self.bib(entry('one2000', 'files/a.pdf', 'files/sub/b.pdf', 'files/shared.pdf', '../elsewhere/out.pdf'),
+                 entry('two2000', 'files/shared.pdf', 'files/sub2/deep/c.pdf'))
+
+    def test_file(self):
+        out = self.out('file rm files/a.pdf ../elsewhere/out.pdf')
         self.assertFalse(os.path.exists(self.a))
-        self.assertFalse(os.path.exists(self.b))
-        self.assertTrue(os.path.exists(self.shared))  # two2000 links to it
+        self.assertFalse(os.path.exists(self.outside))
+        self.assertEqual(self.files('one2000'), [self.b, self.shared])
+        self.assertIn('one2000: removed the link to', out)
+        self.assertIn('delete', out)
+
+    def test_shared_file(self):
+        self.lib('file rm files/shared.pdf')
+        self.assertFalse(os.path.exists(self.shared))
+        self.assertNotIn(self.shared, self.files('one2000'))
+        self.assertNotIn(self.shared, self.files('two2000'))
+
+    def test_key_keeps_file_linked_elsewhere(self):
+        out = self.out('file rm files/shared.pdf --key one2000')
+        self.assertTrue(os.path.exists(self.shared))
+        self.assertNotIn(self.shared, self.files('one2000'))
+        self.assertIn(self.shared, self.files('two2000'))
         self.assertIn('another entry links to it', out)
 
+    def test_several_keys(self):
+        self.lib('file rm files/shared.pdf --key one2000 two2000')
+        self.assertFalse(os.path.exists(self.shared))
+
+    def test_swallowed_file(self):
+        with self.assertRaisesRegex(PapersExit, 'is not an entry: put the files before --key'):
+            self.lib('file rm --key one2000 files/a.pdf')
+        self.assertTrue(os.path.exists(self.a))
+
+    def test_unlinked_is_error(self):
+        before = open(self.path('lib', 'papers.bib')).read()
+        with self.assertRaisesRegex(PapersExit, 'no entry links to this file'):
+            self.lib('file rm files/a.pdf files/sub/notes.txt')
+        self.assertTrue(os.path.exists(self.a))
+        self.assertEqual(open(self.path('lib', 'papers.bib')).read(), before)
+
+    def test_folder_needs_r(self):
+        with self.assertRaisesRegex(PapersExit, 'is a folder'):
+            self.lib('file rm files/sub')
+        self.assertTrue(os.path.exists(self.b))
+
+    def test_recursive(self):
+        self.lib('file rm -r files/sub files/sub2')
+        self.assertFalse(os.path.exists(self.b))
+        self.assertTrue(os.path.exists(self.notes))  # not linked: kept, as git rm -r
+        self.assertTrue(os.path.isdir(self.path('lib', 'files', 'sub')))
+        self.assertFalse(os.path.exists(self.path('lib', 'files', 'sub2')))  # left empty: removed
+        self.assertEqual(self.files('two2000'), [self.shared])
+
+    def test_recursive_keeps_filesdir(self):
+        self.lib('file rm -r files')
+        self.assertTrue(os.path.isdir(self.path('lib', 'files')))
+        self.assertEqual(self.libfiles(), ['sub/notes.txt'])
+
+    def test_dry_run(self):
+        before = open(self.path('lib', 'papers.bib')).read()
+        out = self.out('file rm -r files/sub2 --dry-run')
+        self.assertTrue(os.path.exists(self.c))
+        self.assertEqual(open(self.path('lib', 'papers.bib')).read(), before)
+        self.assertIn('DRYRUN: delete', out)
+        self.assertIn('DRYRUN: remove folder', out)
+
+    def test_broken_link(self):
+        self.bib(entry('one2000', 'files/a.pdf', 'files/gone.pdf'))
+        self.lib('file rm files/gone.pdf')
+        self.assertEqual(self.files('one2000'), [self.a])
 
 class TestCheck(FileTest):
 

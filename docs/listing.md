@@ -101,7 +101,8 @@ papers list --review-required -K | papers edit -
 ```
 
 These commands take `-`: `edit`, `rm`, `tag`, `open`, `check`, and the
-`papers file` commands that act on entries (`rename`, `detach`, `check`).
+`papers file` commands that act on entries (`rename`, `check`, and the
+`--key` option of `detach` and `rm`).
 
 ## Actions on the listed entries
 

@@ -46,7 +46,10 @@ standard input, one per line:
 | `papers file rename [KEY...]` | place the files of the entries (all without KEY) in the files directory, under their template name; `--keep-source` keeps the originals too (hard links when possible) |
 | `papers file mv SRC... DEST` | move files or folders, and update the links of the entries (below) |
 | `papers file attach KEY FILE...` | attach files to an existing entry, following the `files` setting (`--move`, `--copy`, `--link` override it); the files the entry already has are not touched |
-| `papers file detach KEY [FILE...]` | remove links to files from the entry (all its links without FILE); `--broken [KEY...]` removes the broken links only, of all entries without KEY; `--delete-files` also deletes the detached files that no other entry links to |
+| `papers file detach FILE... [--key KEY...]` | remove the links to the files from every entry that links to them (only from the entries of `--key` with `--key`); the files are kept (below) |
+| `papers file detach --key KEY...` | remove all the links of the entries |
+| `papers file detach --broken [--key KEY...]` | remove the broken links (of all entries without `--key`) |
+| `papers file rm FILE... [-r] [--key KEY...]` | remove the links to the files, then delete the files, like `git rm` (below) |
 | `papers file check [KEY...]` | report broken links, files linked twice, identical files (same checksum) of an entry, and with `--metadata` a DOI of the PDF that differs from the DOI of the entry (this parses the PDFs) |
 | `papers file clean` | remove the files of the files directory and its subfolders that no entry links to, asking for each one (`-y/--yes` does not ask) |
 
@@ -93,6 +96,49 @@ papers file mv -n files/a.pdf files/b.pdf files/new/
 
 Links from other libraries to the moved files break: papers cannot know
 about them.
+
+### Detaching and removing files
+
+A file can be linked from several entries: the chapters of a book that
+share the PDF of the volume, two papers that share a supplement.
+`papers file detach FILE...` removes the links to FILE from all of them and
+prints which entries lost a link. Links are compared by real path, so a
+broken link can be named too. The files stay on disk: `papers file detach`
+never deletes a file.
+
+`papers file rm FILE...` works like `git rm`: it removes the links to FILE
+from every entry that links to it, then deletes the file.
+
+- A FILE that no entry links to is an error, and nothing changes (with
+  `--key`: that none of the entries of `--key` links to).
+- `-r FOLDER` removes the linked files inside FOLDER (and its subfolders).
+  Files that no entry links to stay where they are; the folders left empty
+  are removed, FOLDER included, except the files directory of the library.
+  Without `-r`, a folder is an error. `papers file detach -r FOLDER` removes
+  the links in the same way, without deleting anything.
+- With `--key`, only the links of those entries are removed; a file that
+  another entry still links to is kept on disk, and papers says so.
+- A file of a pool is never deleted (e.g. the files a light library links
+  to): only the link is removed, and papers says so.
+- papers does not ask: the file was named on the command line. `--dry-run`
+  shows the links that would be removed and the files and folders that
+  would be deleted.
+
+`-k/--key` takes one or more entries (keys, DOIs, arXiv identifiers or
+ISBNs), and can be repeated: `--key K1 K2` is `--key K1 --key K2`; `-`
+reads them from the standard input. As it takes several values, write the
+files before it: in `papers file rm --key K1 file.pdf`, `file.pdf` would be
+read as an entry, and papers stops with the error `file.pdf is not an
+entry: put the files before --key`.
+
+```
+papers file detach files/volume.pdf                    # from all the chapters
+papers file detach files/volume.pdf --key smith2020    # from one chapter
+papers file detach --key smith2020                     # all its links
+papers file rm files/old-version.pdf
+papers file rm -r files/2013 --dry-run
+papers list --tag draft -K | papers file detach --broken --key -
+```
 
 ## Removing entries and their files
 

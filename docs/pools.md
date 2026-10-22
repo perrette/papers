@@ -200,7 +200,7 @@ light changes what papers does with files:
   template (a name template set on the light library is not used), and so
   adds the entry to the pool too;
 - `pull` links to the pool's files instead of copying them;
-- `rm --delete-files` and `file detach --delete-files` never delete a file
+- `rm --delete-files` and `file rm` never delete a file
   of a pool (this holds in any library);
 - when a pool renames a file, the link breaks: it is repaired by looking the
   entry up in the pools, when the library is loaded (saved on the next

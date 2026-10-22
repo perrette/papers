@@ -690,6 +690,12 @@ class TestLight(LightTest):
         self.assertIn('it is a file of a pool', out)
         self.assertNotIn('smith2020climate', self.bib()[1])
 
+    def test_file_rm_never_deletes_pool_files(self):
+        out = self.out(f'file rm {self.pool_pdf}')
+        self.assertTrue(os.path.exists(self.pool_pdf))
+        self.assertIn('it is a file of a pool', out)
+        self.assertEqual(self.files('smith2020climate'), [])
+
     def test_add_places_files_in_pool(self):
         self.papers('config name.template {title}', cwd=self.path('pool'))
         Path(self.path('other.bib')).write_text(NEW_BIB.replace('mine2022', 'other2023').replace(
