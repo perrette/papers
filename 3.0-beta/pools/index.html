@@ -1372,7 +1372,9 @@ field, you decide (the origin copy is papers' memory of the entry at the
 last exchange, see <a href="#origin-copies">Origin copies</a>).</p>
 <p>Nothing is pulled automatically, and nothing is pushed automatically
 unless the <code>auto-push</code> setting is on (see <a href="#auto-push">Auto-push</a>), except
-that <code>add</code> in a library that is not local adds the new entries to the pool.
+that in a library that is not local, <code>add</code> adds the new entries to the pool
+and the file links of an entry are updated in the pool entry (see
+<a href="#local-or-not">Local or not</a>).
 An older project does not change because of work in a newer one.</p>
 <h2 id="local-or-not">Local or not<a class="headerlink" href="#local-or-not" title="Permanent link">&para;</a></h2>
 <p>The <code>local</code> setting of a library says where its files are:</p>
@@ -1395,9 +1397,21 @@ is the <code>local</code> setting of the global configuration
   A change that <code>add</code> makes to an entry the library has already is pushed
   only with auto-push;</li>
 <li><code>papers file attach</code>, <code>file rename</code> and <code>file check --fix</code> place the
-  files they handle in the pool's files directory too. With auto-push
-  off, the pool entry links to them after the next <code>papers push</code>; until
-  then, <code>papers file clean</code> in the pool lists them as unlinked;</li>
+  files they handle in the pool's files directory too;</li>
+<li>the file links are always pushed, whatever the <code>auto-push</code> setting: a
+  command that changes the files of an entry (<code>file attach</code>, <code>file rename</code>,
+  <code>file detach</code>, <code>file rm</code>, <code>file mv</code>, <code>file check --fix</code>, <code>edit</code>...) sets
+  the links of the pool entry to match right away, and its line ends with
+  <code>[file links also updated in pool ...]</code>. The pool entry links to the
+  files of the library entry that are in the pool's files directory, and
+  no longer to the files that the library entry no longer links to. Only
+  the links change: the other fields are pushed only with auto-push, and
+  nothing is recorded in the origin copy. No file is deleted: a pool file
+  detached or removed (<code>file rm</code>) stays in the pool, and <code>papers file
+  clean</code> in the pool lists it if no pool entry links to it any more. An
+  entry not shared with the pool gets the links of the pool entry of the
+  same paper updated; if the pool does not have it, the entry is added to
+  the pool, as <code>add</code> does;</li>
 <li><code>pull</code> links to the pool's files instead of copying them;</li>
 <li>when the pool renames a file, the link breaks: it is repaired by looking
   the entry up in the pool, when the library is loaded (saved on the next
@@ -1474,8 +1488,9 @@ would push them, files included. The other entries are not pushed.</p>
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>Modified -&gt; Smith_2020: Climate sensitivity revisited (doi:10.1000/abc123, foo | bar) [not pushed: changed in the pool too; papers sync decides]
 </code></pre></div>
 <p>With <code>auto-push false</code> (the default, local or not), nothing is pushed
-automatically, apart from the new entries of <code>add</code> in a library that is
-not local: run <code>papers push</code> or <code>papers sync</code>.</p>
+automatically, apart from the new entries of <code>add</code> and the file links in a
+library that is not local (see <a href="#local-or-not">Local or not</a>): run
+<code>papers push</code> or <code>papers sync</code>.</p>
 <h2 id="a-finished-paper">A finished paper<a class="headerlink" href="#a-finished-paper" title="Permanent link">&para;</a></h2>
 <p>Do not sync the library of a finished paper. Its keys stay as they are,
 but a <code>pull</code> can change journal abbreviations and other fields that the
