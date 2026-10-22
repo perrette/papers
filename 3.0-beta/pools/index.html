@@ -714,6 +714,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#several-pools" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Several pools
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#keys-and-identity" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -795,6 +806,17 @@
     <span class="md-ellipsis">
       
         papers export
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#a-shared-files-folder-without-a-pool" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A shared files folder without a pool
       
     </span>
   </a>
@@ -1076,6 +1098,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#several-pools" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Several pools
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#keys-and-identity" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1164,6 +1197,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#a-shared-files-folder-without-a-pool" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A shared files folder without a pool
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#example" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1207,7 +1251,8 @@
 own library.</p>
 <p>A <strong>pool</strong> is a library that other libraries exchange entries with. Nothing
 in the pool marks it as a pool: any library can serve as one, and a pool can
-be used by several libraries. A library has one pool, its <code>pool</code> setting:</p>
+be used by several libraries. The pool of a library is its <code>pool</code> setting
+(a library can also have several pools, see <a href="#several-pools">Several pools</a>):</p>
 <ul>
 <li>by default, the <strong>global pool</strong>: the <code>pool</code> setting of the global
   configuration, <code>~/Documents/papers</code> unless set otherwise
@@ -1236,8 +1281,9 @@ none</code> turns sharing off: new libraries get <code>pool: none</code>.</p>
 <li><code>papers add</code> looks in the pool first;</li>
 <li><code>papers pull</code> updates the entries of the library from the pool, and adds
   entries of the pool to the library;</li>
-<li><code>papers push</code> adds entries of the library to the pool, or updates them
-  there;</li>
+<li><code>papers push</code> updates the entries shared with the pool (those taken from
+  it, or added to it before), and adds the entries named, or all of them
+  with <code>--all</code>;</li>
 <li><code>papers sync</code> does both;</li>
 <li><code>papers status</code> and <code>papers pull --check</code> tell whether the pool changed
   since the last exchange with it: <code>up to date</code>, or <code>changed since last
@@ -1316,13 +1362,55 @@ files of a pool are never deleted.</p>
 <td>the setting changes</td>
 </tr>
 <tr>
-<td><code>papers config pool PATH</code> (or <code>--unset pool</code>: the global pool)</td>
+<td><code>papers config pool PATH...</code> (or <code>--unset pool</code>: the global pool setting)</td>
 <td>the files go to the new pool, as with <code>local false</code>; the files of the former pool are copied there (hard links when possible), since other projects may use them</td>
 <td>the setting changes</td>
 </tr>
 </tbody>
 </table>
+<p>With several pools (see <a href="#several-pools">Several pools</a>), the files move
+only when the first pool changes, or when the list becomes empty (<code>pool
+none</code>). Adding or removing pools further down the list moves nothing.
+When the first pool changes, the files of the library go to the new first
+pool, and the files of the pools that leave the list are copied there;
+files in a pool that stays in the list stay where they are.</p>
 <p>Metadata is not merged by these commands: <code>papers push</code> does that.</p>
+<h2 id="several-pools">Several pools<a class="headerlink" href="#several-pools" title="Permanent link">&para;</a></h2>
+<p>The <code>pool</code> setting can list several pools:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>papers config pool ~/Documents/papers ../shared-with-bob
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>papers init --pool ~/Documents/papers --pool ../shared-with-bob
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>papers config --global pool ~/Documents/papers /media/usb/papers
+</code></pre></div>
+<p>The configuration file stores one pool as a string and several as a list
+(<code>"pool": ["~/Documents/papers", "../shared-with-bob"]</code>); <code>none</code> is stored
+as <code>"none"</code>. A library that does not set <code>pool</code> uses the global setting, and
+stores nothing. The first pool of the global setting is the global pool
+(origin records name it <code>global</code>, see <a href="#origin-copies">Origin copies</a>).</p>
+<p>The pools are used in order:</p>
+<ul>
+<li>lookups go through the pools in order, and the first match wins: <code>add</code>
+  (a PDF, <code>--doi</code>, <code>--key</code>, a bibtex entry), <code>pull KEY</code>, and the files of
+  the pools;</li>
+<li><code>pull</code> without KEY updates each entry from the pool it came from (its
+  origin copy). <code>pull --all</code> adds the entries of each pool that the library
+  does not have, the pools in order: a paper taken from one pool is not
+  taken again from a later one;</li>
+<li>writing goes to the first pool only: <code>push</code>, the push of <code>sync</code>, the
+  files of a library that is not local, and the entries that <code>add</code> adds to
+  the pool (also an entry that <code>add</code> took from a later pool);</li>
+<li><code>sync</code> pulls from all the pools, then pushes to the first.</li>
+</ul>
+<p><code>--pool PATH</code> on <code>pull</code>, <code>push</code>, <code>sync</code> uses only that pool. <code>papers status</code>
+and <code>papers init</code> list each pool:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>* pools:              ~/Documents/papers (global pool, new entries go here, up to date)
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>                      ../shared-with-bob (up to date)
+</code></pre></div>
+<p>A pool of the list that is missing (e.g. a disk that is not mounted) is a
+warning, and the other pools are still used. An entry that came from the
+missing pool is not looked up in the others. If the first pool is missing,
+<code>sync</code> stops with an error before changing anything; <code>push</code>, and <code>add</code> in a
+library that is not local, create it if its parent directory exists, and
+otherwise stop with an error, as with a single pool.</p>
 <h2 id="keys-and-identity">Keys and identity<a class="headerlink" href="#keys-and-identity" title="Permanent link">&para;</a></h2>
 <p>The key of an entry belongs to each library: it is what LaTeX documents
 cite. <code>pull</code> and <code>push</code> never change the key of an entry that the library
@@ -1386,7 +1474,7 @@ the entry as another file, placed as the files mode says. The origin copy
 is recorded. <code>--no-pool</code> skips the
 lookup.</p>
 <h2 id="papers-pull"><code>papers pull</code><a class="headerlink" href="#papers-pull" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>papers pull [KEY...|-] [--all] [--pool PATH] [--on-duplicate MODE] [--check]
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>papers pull [KEY...|-] [--all] [--pool PATH] [--on-duplicate MODE] [--check]
 </code></pre></div>
 <p>For each entry of the library (or the entries named), papers finds its pool
 entry (by its origin copy, else by the same-paper rule) and merges it into
@@ -1424,6 +1512,8 @@ A skipped conflict leaves the pool shown as changed in <code>papers status</code
 <code>--no-pool</code>) is matched to the pool by the same-paper rule. Its differences
 with the pool entry are conflicts (there is no origin to tell which side
 changed), and the origin copy is recorded afterwards ("linked").</p>
+<p>An entry that the pool does not have is reported (<code>Not found</code>) only when it
+is named on the command line. Without KEY, it is left as it is.</p>
 <p>A KEY is looked up in the library first, then in the pool (its key, DOI,
 arXiv identifier or ISBN): an entry of the pool that the library does not
 have is added to it, with its origin copy (<code>added</code>), under the pool key
@@ -1438,10 +1528,13 @@ is an error of <code>pull</code>, <code>pull --check</code> and <code>sync</code
 pull).</p>
 <p><code>--pool PATH</code> pulls from another pool, once: the origin copies record that
 pool.</p>
-<p><code>pull</code> prints one line per entry added (<code>Added -&gt;</code>), updated
-(<code>Modified -&gt;</code>), left with a conflict (<code>Conflict -&gt;</code>) or not found in the
-pool (<code>Not found -&gt;</code>), with the pool in brackets, then the counts when
-more than one entry was involved. <code>push</code> prints the same lines for the
+<p><code>pull</code> prints one line per entry added (<code>Added -&gt;</code>), modified
+(<code>Modified -&gt;</code>), left with a conflict (<code>Conflict -&gt;</code>) or, among the entries
+named, not found in the pool (<code>Not found -&gt;</code>), with the pool in brackets,
+then the counts when more than one entry was involved: <code>added</code>,
+<code>modified</code>, <code>skipped</code>, <code>not found</code>, <code>unchanged</code>, and <code>linked</code> (an entry
+without origin copy, the same as its pool entry: its origin copy is
+recorded). <code>push</code> prints the same lines for the
 pool entries. When <code>add</code> (or <code>file attach</code>) also adds or changes the entry
 in the pool, or takes it from the pool, its line says so in brackets:
 <code>[also added to pool ~/Documents/papers]</code>, <code>[from pool ~/Documents/papers]</code>.</p>
@@ -1484,10 +1577,13 @@ pull (a modification time check), and the entries whose pool version
 changed since their origin copy, with the fields. <code>papers status</code> shows the
 first part too.</p>
 <h2 id="papers-push"><code>papers push</code><a class="headerlink" href="#papers-push" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>papers push [KEY...|-] [--pool PATH] [--on-duplicate MODE]
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>papers push [KEY...|-] [--all] [--pool PATH] [--on-duplicate MODE]
 </code></pre></div>
 <p>The reverse of <code>pull</code>, into the pool of the library (or <code>--pool PATH</code>,
-once):</p>
+once). Without KEY, only the entries shared with the pool are pushed: those
+with an origin copy from it (taken from it by <code>add</code> or <code>pull</code>, or pushed to
+it before). <code>push KEY...</code> pushes the entries named, and <code>push --all</code> every
+entry of the library:</p>
 <ul>
 <li>an entry that is not in the pool is added to it, with a key from the
   pool's key template; its files are copied into the pool's files directory
@@ -1502,15 +1598,32 @@ version that was pushed, and the fields that only the pool entry has come
 with the next <code>pull</code> (or <code>papers sync</code>). The pool is created if it does not
 exist yet.</p>
 <h2 id="papers-sync"><code>papers sync</code><a class="headerlink" href="#papers-sync" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>papers sync [KEY...|-] [--pool PATH] [--on-duplicate MODE]
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>papers sync [KEY...|-] [--all] [--pool PATH] [--on-duplicate MODE]
 </code></pre></div>
-<p>runs <code>papers pull</code>, then <code>papers push</code> of the same entries (all without
-KEY). If the pull leaves conflicts undecided (skipped, or the dialogue
-quit), nothing is pushed: decide them with <code>papers pull</code>, then sync again.
-A KEY that only the pool has is added to the library, as with <code>pull</code>;
-<code>sync</code> has no <code>--all</code>.</p>
+<p>runs <code>papers pull</code>, then <code>papers push</code> of the same entries:</p>
+<ul>
+<li>without KEY, the entries shared with the pool (with an origin copy from
+  it). An entry added to the library with <code>--no-pool</code>, or before the pool
+  was used, is not exchanged: name it, or use <code>--all</code>;</li>
+<li>with KEY..., the entries named. A KEY that only the pool has is added to
+  the library, as with <code>pull</code>, and a KEY that only the library has is
+  added to the pool, as with <code>push</code>;</li>
+<li>with <code>--all</code>, <code>pull --all</code> then <code>push --all</code>: each side gets the entries
+  it does not have.</li>
+</ul>
+<p>If the pull leaves conflicts undecided (skipped, or the dialogue quit),
+nothing is pushed: decide them with <code>papers pull</code>, then sync again. When
+nothing changed, <code>sync</code> prints one line:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>$ papers sync
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>nothing to sync with pool ~/Documents/papers (2 entries unchanged)
+</code></pre></div>
 <p>With <code>--pool PATH</code>, <code>sync</code> reads and writes only the library at <code>PATH</code>, not
-the pool of the library. The entries taken from it link to its files in a
+the pool of the library. Without KEY, it exchanges the entries shared with
+that library only, so the first time nothing is exchanged:</p>
+<p><div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>$ papers sync --pool ../shared-with-bob
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>nothing to sync with pool ../shared-with-bob: no entries shared with it (`papers sync --all` adds the entries missing on each side)
+</code></pre></div>
+ The entries taken from it link to its files in a
 library that is not local (in a local library, they are copied as the
 <code>files</code> setting says), and the entries pushed to it get copies of their
 files in its files directory.</p>
@@ -1521,7 +1634,7 @@ that library only: an entry that <code>add</code> also added to the pool stays i
 pool. To undo a change in the pool, run the command in the pool, e.g.
 <code>papers -C ~/Documents/papers undo</code> for the global pool.</p>
 <h2 id="papers-export"><code>papers export</code><a class="headerlink" href="#papers-export" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>papers export DIR [KEY...|-] [--files copy|link|none]
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>papers export DIR [KEY...|-] [--files copy|link|none]
 </code></pre></div>
 <p>writes the entries (all without KEY) as a new library in <code>DIR</code>, which must
 not exist or be empty, to hand over: its bibtex, its files directory, and
@@ -1535,34 +1648,80 @@ its configuration (with the name and key templates that the library sets,
 </ul>
 <p><code>papers add DIR --recursive</code> adds an exported library to another one, and
 <code>papers config pool DIR</code> makes it the pool of the library.</p>
+<h2 id="a-shared-files-folder-without-a-pool">A shared files folder without a pool<a class="headerlink" href="#a-shared-files-folder-without-a-pool" title="Permanent link">&para;</a></h2>
+<p>In papers 2, several libraries could keep their PDFs in one folder: each
+library has its own bibtex, no pool (<code>pool: none</code>), its own files
+(<code>local: true</code>), and a <code>filesdir</code> that points to a common folder outside
+the project, e.g. <code>~/Documents/papers/sealevel</code> used by two projects. This
+setup still works in v3.</p>
+<p>It is less efficient than a pool. Each library has its own bibtex, and
+knows nothing of the others: adding to the second library a paper that the
+first one has (even its PDF, already in the shared folder) reads the PDF
+again, extracts its DOI and fetches the entry from crossref (the request is
+answered from the cache when the same DOI was fetched on this machine).
+Changes to an entry in one library do not reach the other.</p>
+<p>The pool model of v3 avoids this: by default, a library is not local (it
+has no files of its own) and its entries are copies of the entries of the
+pool, whose PDFs are in the pool's files folder. A paper that is in the
+pool already is taken from it, without reading the PDF or fetching anything,
+and <code>papers sync</code> keeps the copies up to date. In both setups, each PDF is
+stored once.</p>
+<p>A shared files folder without a pool is enough when the libraries are
+independent, and you do not want a central bibliography. To set it up:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>papers init --pool none --filesdir ~/Documents/papers/sealevel   # local, since it has no pool
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>papers config pool none                                          # in an existing library
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>papers config filesdir ~/Documents/papers/sealevel               # the shared folder
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>papers config --global pool none   # no pool for the libraries that do not set one, new ones included
+</code></pre></div>
+<p>A library configuration of papers 2 without <code>pool</code> setting is read as a
+local library (its files are its own) that uses the global pool. It looks
+entries up in the global pool if that exists, but writes nothing to it:
+<code>add</code> in a local library adds new entries to the pool only with
+<code>auto-push</code>, and <code>push</code> and <code>sync</code> without KEY exchange only the entries
+shared with the pool. <code>papers config pool none</code> stops the lookups.</p>
+<p>What to watch for, since each library only knows its own entries:</p>
+<ul>
+<li><code>papers file clean</code> in one library lists the PDFs of the other
+  libraries in the shared folder as unlinked, and deletes them once
+  confirmed (or with <code>-y</code>). Use <code>--dry-run</code> to see the list.</li>
+<li><code>papers rm --delete-files</code> and <code>papers file rm</code> keep a PDF that another
+  entry of the same library links to, but not one that another library
+  links to.</li>
+<li><code>papers file rename</code> in one library renames the shared PDF, and the link of the other library breaks. <code>papers file check</code>
+  reports the broken link there, and <code>--fix</code> does not repair it (the repair
+  of broken links only covers the files of a pool): remove the link with
+  <code>papers file detach --broken --key KEY</code>, and attach the renamed file with
+  <code>papers file attach KEY FILE</code>.</li>
+</ul>
 <h2 id="example">Example<a class="headerlink" href="#example" title="Permanent link">&para;</a></h2>
 <p>The global pool in <code>~/Documents/papers</code>, and two projects:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>mkdir -p ~/projects/sealevel ~/projects/tides
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>cd ~/projects/sealevel
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>papers init                               # the global pool, not local
-<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>papers add ~/Downloads/esd-4-11-2013.pdf  # fetched from crossref; the PDF goes to
-<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>                                          # ~/Documents/papers/files, the entry to both
-<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>
-<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>cd ~/projects/tides
-<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>papers init
-<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>papers add --doi 10.5194/esd-4-11-2013    # taken from the pool: no query, the file is linked
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>mkdir -p ~/projects/sealevel ~/projects/tides
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>cd ~/projects/sealevel
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>papers init                               # the global pool, not local
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>papers add ~/Downloads/esd-4-11-2013.pdf  # fetched from crossref; the PDF goes to
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>                                          # ~/Documents/papers/files, the entry to both
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>cd ~/projects/tides
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>papers init
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>papers add --doi 10.5194/esd-4-11-2013    # taken from the pool: no query, the file is linked
 </code></pre></div>
 <p>Later, the entry is completed in the pool (e.g. its pages), and adapted in
 <code>tides</code> (a journal abbreviation):</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>cd ~/projects/tides
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>papers status                  # pool: ~/Documents/papers (global pool, changed since last pull or push)
-<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>papers pull --check            # perrette_landerer2013: changed in pool ~/Documents/papers: pages
-<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>papers pull                    # pages taken; the journal abbreviation is kept
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>cd ~/projects/tides
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>papers status                  # pool: ~/Documents/papers (global pool, changed since last pull or push)
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>papers pull --check            # perrette_landerer2013: changed in pool ~/Documents/papers: pages
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>papers pull                    # pages taken; the journal abbreviation is kept
 </code></pre></div>
 <p>A project shared with a colleague through git keeps its own files:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>cd ~/projects/sealevel
-<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>papers config local true       # copies the pool files into files/ (hard links), after asking
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>cd ~/projects/sealevel
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>papers config local true       # copies the pool files into files/ (hard links), after asking
 </code></pre></div>
 <p>A folder shared with someone as a separate pool, for one project:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>cd ~/projects/tides
-<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>papers export ../shared-with-bob          # a library of its own
-<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>papers config pool ../shared-with-bob     # the pool of tides from now on
-<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>papers sync                               # later changes, both ways
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>cd ~/projects/tides
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>papers export ../shared-with-bob          # a library of its own
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>papers config pool ../shared-with-bob     # the pool of tides from now on
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>papers sync --all                         # the first time: records what is shared
+<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>papers sync                               # later changes, both ways
 </code></pre></div>
 
 

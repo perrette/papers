@@ -1165,22 +1165,25 @@ in the pool: nothing is fetched online, and the PDF is not stored twice.</p>
 <p>The pool is an ordinary library: <code>papers -C ~/Documents/papers list</code> lists
 all your papers.</p>
 <h2 id="keep-libraries-in-sync">Keep libraries in sync<a class="headerlink" href="#keep-libraries-in-sync" title="Permanent link">&para;</a></h2>
-<p>The entries taken from the pool stay linked to it. <code>papers sync</code> sends the
-changes of the library to the pool and brings the changes of the pool into
-the library. A tag added in the first project reaches the second one:</p>
+<p>The entries taken from the pool, or added to it, stay linked to it: they
+are shared with it. <code>papers sync</code> sends the changes of the shared entries
+to the pool and brings the changes of the pool into the library. A tag
+added in the first project reaches the second one:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>$ cd ~/projects/sea-level
 <a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>$ papers tag perrette_yool2011 --add arctic
 <a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>Modified -&gt; perrette_yool2011: Near-ubiquity of ice-edge blooms in the Arctic (doi:10.5194/bg-8-515-2011, arctic)
 <a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>$ papers sync
 <a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>pull from pool ~/Documents/papers: 2 unchanged
 <a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>Modified -&gt; perrette_yool2011: Near-ubiquity of ice-edge blooms in the Arctic (doi:10.5194/bg-8-515-2011, arctic) [in pool ~/Documents/papers]
-<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>push to pool ~/Documents/papers: 1 unchanged, 1 updated
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>push to pool ~/Documents/papers: 1 unchanged, 1 modified
 <a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>
 <a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>$ cd ~/projects/new-paper
 <a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>$ papers sync
 <a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a>Modified -&gt; perrette_yool2011: Near-ubiquity of ice-edge blooms in the Arctic (doi:10.5194/bg-8-515-2011, arctic) [from pool ~/Documents/papers]
-<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a>pull from pool ~/Documents/papers: 1 unchanged, 1 updated
+<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a>pull from pool ~/Documents/papers: 1 unchanged, 1 modified
 <a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a>push to pool ~/Documents/papers: 2 unchanged
+<a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a>$ papers sync
+<a id="__codelineno-8-15" name="__codelineno-8-15" href="#__codelineno-8-15"></a>nothing to sync with pool ~/Documents/papers (2 entries unchanged)
 </code></pre></div>
 <p><code>papers sync --pool PATH</code> syncs with another library instead, such as a
 folder shared with a coauthor. It reads and writes only that library, not
@@ -1191,8 +1194,9 @@ here):</p>
 <a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>Added -&gt; agnew_farrell1978: Self-consistent equilibrium ocean tides (file:1) [from pool ../shared-with-bob]
 <a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>push to pool ../shared-with-bob: 1 unchanged
 </code></pre></div>
-<p>Without KEY, all the entries of the library are synced: the ones the other
-library does not have are added to it, with copies of their PDFs.</p>
+<p>Without KEY, only the entries shared with that library are exchanged;
+<code>papers sync --all</code> exchanges everything: each side gets the entries it
+does not have, with copies of their PDFs.</p>
 <p>Nothing is exchanged without these commands, except that <code>add</code> adds new
 papers to the pool. Each library keeps its own keys. <code>papers pull</code> and
 <code>papers push</code> do each half of <code>sync</code>, and <code>papers status</code> tells whether the
@@ -1206,7 +1210,11 @@ in its <code>files/</code> folder: create it with <code>papers init --local</cod
 <code>papers config local true</code> in an existing library, which copies its PDFs
 from the pool (as hard links when possible). A local library still uses
 the pool for entries. <code>papers init --pool none</code> creates a library without
-pool: its PDFs are in the project, and nothing is shared. See
+pool: its PDFs are in the project, and nothing is shared. A library can
+also have several pools, looked up in order (see
+<a href="../pools/#several-pools">Several pools</a>), and several libraries without a
+pool can share one PDF folder, as in papers 2 (see
+<a href="../pools/#a-shared-files-folder-without-a-pool">A shared files folder without a pool</a>). See
 <a href="../configuration/#pools">Pools</a> in the configuration, and
 <a href="../pools/#local-or-not">Local or not</a> and
 <a href="../pools/#changing-local-and-pool">Changing <code>local</code> and <code>pool</code></a> in the Pools
