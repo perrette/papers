@@ -891,10 +891,14 @@ class NonLocalTest(PoolTest):
 class TestConfigLocal(NonLocalTest):
 
     def test_local_false(self):
-        out = self.out('config local false -y')
-        self.assertIs(self.json('lib')['local'], False)
+        out = self.out('config local false --dry-run')  # the details: each file
         self.assertIn('smith2020climate: link to the same file of the pool', out)
         self.assertIn('mine2022: added to the pool', out)
+        out = self.out('config local false -y')
+        self.assertIs(self.json('lib')['local'], False)
+        self.assertIn('link to the pool\'s copy for 1 file that the pool has already', out)
+        self.assertIn('add 1 entry to the pool', out)
+        self.assertNotIn('mine2022: added to the pool', out)
         # in the pool: relinked, the library's copy deleted
         self.assertEqual(self.files('smith2020climate'), [self.pool_pdf])
         self.assertFalse(os.path.exists(self.lib_smith))
@@ -1043,9 +1047,11 @@ class TestConfigPool(NonLocalTest):
         Path(self.path('other', 'files', 'smith-copy.pdf')).write_text('pdf of smith')
         Path(self.path('other', 'papers.bib')).write_text(
             POOL_BIB.split('@article{Brown')[0].replace('files/smith.pdf', 'files/smith-copy.pdf'))
-        out = self.out('config pool ../other -y')
+        out = self.out('config pool ../other --dry-run')
         self.assertIn('smith2020climate: link to the same file of the pool', out)
         self.assertIn('mine2022: added to the pool', out)
+        out = self.out('config pool ../other -y')
+        self.assertIn('add 1 entry to the pool', out)
         self.assertEqual(self.json('lib')['pool'], '../other')
         self.assertIs(self.json('lib')['local'], False)
         self.assertEqual(self.files('smith2020climate'), [self.path('other', 'files', 'smith-copy.pdf')])

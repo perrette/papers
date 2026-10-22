@@ -260,17 +260,22 @@ def configcmd(parser, o, config):
 # papers config local / pool: the files follow
 # ============================================
 
-def _confirm(o, lines, what):
+def _confirm(o, lines, what, details=()):
     """print what a change does to the files, and ask to continue: -y
-    answers yes, --dry-run stops here, and without a terminal it is an error"""
+    answers yes, --dry-run stops here (and lists `details`, each file), and
+    without a terminal it is an error"""
     print('\n'.join(lines))
     if papers.config.DRYRUN:
+        if details:
+            print('\n'.join(details))
         print('DRYRUN: nothing was changed')
         return False
     if o.yes:
         return True
     if not stdin_is_terminal():
         raise PapersExit(f'{what}: confirm in a terminal, or pass -y to proceed (nothing was changed)')
+    if details:
+        print(f'(`papers config {what} --dry-run` lists each file)')
     if input('Continue? [y/N] ').strip().lower() in ('y', 'yes'):
         return True
     print('nothing was changed')
@@ -284,28 +289,58 @@ def _show(path):
     return short_home(path)
 
 
+def _files(n):
+    return f'{n} file{"s" if n != 1 else ""}'
+
+
 def _local_lines(plan, config):
+    "the summary and the details (each file) of `papers config local true`"
     n = sum(len(files) for _, files in plan)
-    lines = [f'copy {n} file{"s" if n > 1 else ""} of the pool into {_show(config.filesdir)} '
-             '(hard links when possible), and link to the copies (the pool keeps its files):']
-    for e, files in plan:
-        lines.extend(f'  {e.key}: {_show(f)}' for f in files)
-    return lines
+    summary = [f'copy {_files(n)} of the pool into {_show(config.filesdir)} (hard links when possible); '
+               'the library will link to the copies, and the pool keeps its files.']
+    details = [f'  {e.key}: {_show(f)}' for e, files in plan for f in files]
+    return summary, details
 
 
 def _pool_lines(plan, config, pool_path):
-    lines = [f'place the files of the library in the pool {_show(pool_path)}, and link to them there:']
+    "the summary and the details (each file) of placing the files of the library in a pool"
+    counts = {'move': 0, 'copy': 0, 'link': 0}
+    sources = {'move': set(), 'copy': set()}
+    added = 0
+    details = []
     for e, pe, actions in plan:
         if pe is None:
-            lines.append(f'  {e.key}: added to the pool')
+            added += 1
+            details.append(f'  {e.key}: added to the pool')
         for f, action, target in actions:
+            counts[action] += 1
             if action == 'link':
                 delete = config.filesdir and is_inside(f, config.filesdir)
-                lines.append(f'  {e.key}: link to the same file of the pool {_show(target)}'
-                             + (f', delete {_show(f)}' if delete else ''))
+                details.append(f'  {e.key}: link to the same file of the pool {_show(target)}'
+                               + (f', delete {_show(f)}' if delete else ''))
             else:
-                lines.append(f'  {e.key}: {action} {_show(f)} to the pool')
-    return lines
+                sources[action].add(os.path.dirname(f))
+                details.append(f'  {e.key}: {action} {_show(f)} to the pool')
+
+    def where(action):
+        dirs = sorted(sources[action])
+        if action == 'move' and config.filesdir and all(is_inside(d, config.filesdir) for d in dirs):
+            return _show(config.filesdir)
+        return _show(dirs[0]) if len(dirs) == 1 else f'{len(dirs)} folders'
+
+    summary = []
+    if counts['move']:
+        summary.append(f'move {_files(counts["move"])} from {where("move")} to the pool {_show(pool_path)}')
+    if counts['copy']:
+        summary.append(f'copy {_files(counts["copy"])} from {where("copy")} to the pool {_show(pool_path)} '
+                       '(the former pool keeps them)')
+    if counts['link']:
+        summary.append(f'link to the pool\'s copy for {_files(counts["link"])} that the pool has already '
+                       '(same content; the copy of the library is deleted)')
+    if added:
+        summary.append(f'add {added} entr{"ies" if added != 1 else "y"} to the pool')
+    summary.append('(the library will link to the files in the pool)')
+    return summary, details
 
 
 def _save_setting(config, changes):
@@ -367,7 +402,8 @@ def _set_pool_or_local(o, config, name):
         plan = exchange.plan_to_local(dirs=old_dirs)
         intro = [] if name == 'local' else ['pool none: the library cannot link to the files of a pool, '
                                             'so it becomes local (local true)']
-        if plan and not _confirm(o, intro + _local_lines(plan, config), f'{name} {format_value(changes[name])}'):
+        summary, details = _local_lines(plan, config) if plan else ([], [])
+        if plan and not _confirm(o, intro + summary, f'{name} {format_value(changes[name])}', details):
             return
         if not plan and intro:
             print('\n'.join(intro))
@@ -379,8 +415,8 @@ def _set_pool_or_local(o, config, name):
         new_pools = Pools(new)
         pool = new_pools.pool(quiet=True)
         plan = exchange.plan_to_pool(pool, copy_dirs=old_dirs)
-        if plan and not _confirm(o, _pool_lines(plan, config, new.pool_path()),
-                                 f'{name} {format_value(changes.get(name, new.get(name)))}'):
+        summary, details = _pool_lines(plan, config, new.pool_path()) if plan else ([], [])
+        if plan and not _confirm(o, summary, f'{name} {format_value(changes.get(name, new.get(name)))}', details):
             return
         if papers.config.DRYRUN:
             return done()
