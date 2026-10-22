@@ -109,3 +109,10 @@ norecursedirs =
       .tox
       .git
 """
+
+[tool.coverage.run]
+source = ["papers"]
+omit = ["papers/latexenc.py", "papers/_version.py"]
+
+[tool.coverage.report]
+show_missing = true
