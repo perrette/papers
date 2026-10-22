@@ -147,21 +147,24 @@ $ papers sync
 nothing to sync with pool ~/Documents/papers (2 entries unchanged)
 ```
 
-`papers sync --pool PATH` syncs with another library instead, such as a
-folder shared with a coauthor. It reads and writes only that library, not
-the global pool. A KEY that only that library has is added, and the entry
+`papers sync --pool PATH KEY...` exchanges entries once with another
+library, such as a folder shared with a coauthor. It reads and writes only
+that library, not the global pool, and the entries exchanged do not stay
+linked to it. A KEY that only that library has is added, and the entry
 links to the PDF of that library (in a library that is not local, as
-here):
+here); a KEY that only your library has is sent to it:
 
 ```
 $ papers sync --pool ../shared-with-bob agnew_farrell1978
 Added -> agnew_farrell1978: Self-consistent equilibrium ocean tides (file:1) [from pool ../shared-with-bob]
 push to pool ../shared-with-bob: 1 unchanged
+$ papers sync --pool ../shared-with-bob perrette_yool2011
+Added -> perrette_yool2011: Near-ubiquity of ice-edge blooms in the Arctic (doi:10.5194/bg-8-515-2011, arctic) [to pool ../shared-with-bob]
 ```
 
-Without KEY, only the entries shared with that library are exchanged;
-`papers sync --all` exchanges everything: each side gets the entries it
-does not have, with copies of their PDFs.
+Without KEY, nothing is exchanged with that library; `--all` exchanges
+everything once: each side gets the entries it does not have, with copies
+of their PDFs. See [One-time exchanges](pools.md#one-time-exchanges).
 
 Nothing is exchanged without these commands, except that `add` adds new
 papers to the pool. Each library keeps its own keys. `papers pull` and
@@ -179,8 +182,8 @@ in its `files/` folder: create it with `papers init --local`, or run
 from the pool (as hard links when possible). A local library still uses
 the pool for entries. `papers init --pool none` creates a library without
 pool: its PDFs are in the project, and nothing is shared. A library can
-also have several pools, looked up in order (see
-[Several pools](pools.md#several-pools)), and several libraries without a
+also have several pools: the first is synced, the others are only searched
+when adding or pulling (see [Several pools](pools.md#several-pools)), and several libraries without a
 pool can share one PDF folder, as in papers 2 (see
 [A shared files folder without a pool](pools.md#a-shared-files-folder-without-a-pool)). See
 [Pools](configuration.md#pools) in the configuration, and

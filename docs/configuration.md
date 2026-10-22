@@ -119,7 +119,8 @@ papers config --global                         # list it
 
 In the global configuration, `pool` is the path of the global pool (default
 `~/Documents/papers`), several paths (the first is the global pool, the
-others are the next pools of the libraries that do not set theirs), or
+main pool of the libraries that do not set theirs, and the others are the
+pools they search), or
 `none` (no sharing: new libraries get `pool: none`, and so are local), and
 `local` the default of new libraries (default `false`).
 
@@ -135,8 +136,10 @@ A pool is a library that other libraries exchange entries with (see
 of a library is its `pool` setting: by default the global pool (the `pool`
 setting of the global configuration, `~/Documents/papers` without one), a
 path relative to the library (e.g. `../shared-with-bob`), several paths, or
-`none`. With several pools, entries are looked up in each pool in order, and
-written to the first one (see [Several pools](pools.md#several-pools)). The
+`none`. With several pools, the first is the main pool, the one that
+`pull`, `push` and `sync` exchange with and that new entries go to; the
+others are searched when adding or pulling, never written to (see
+[Several pools](pools.md#several-pools)). The
 configuration file stores a single path as a string, several as a list, and
 no pool as `"none"`. A
 library that uses the global pool stores no path, so that the same project

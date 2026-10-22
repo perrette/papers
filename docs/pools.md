@@ -36,7 +36,8 @@ library without pool, with its own files. Outside of any library, commands
 act on the global pool once it is a library. `papers config --global pool
 none` turns sharing off: new libraries get `pool: none`.
 
-What a library does with its pool:
+What a library does with its pool (with several pools, its main pool,
+see [Several pools](#several-pools)):
 
 - `papers add` looks in the pool first;
 - `papers pull` updates the entries shared with the pool, and adds the
@@ -115,11 +116,11 @@ files of a pool are never deleted.
 | `papers config pool PATH...` (or `--unset pool`: the global pool setting) | the files go to the new pool, as with `local false`; the files of the former pool are copied there (hard links when possible), since other projects may use them | the setting changes |
 
 With several pools (see [Several pools](#several-pools)), the files move
-only when the first pool changes, or when the list becomes empty (`pool
-none`). Adding or removing pools further down the list moves nothing.
-When the first pool changes, the files of the library go to the new first
-pool, and the files of the pools that leave the list are copied there;
-files in a pool that stays in the list stay where they are.
+only when the main pool (the first) changes, or when the list becomes
+empty (`pool none`). Adding or removing pools further down the list moves
+nothing. When the main pool changes, the files of the library go to the
+new main pool, and the files of the pools that leave the list are copied
+there; files in a pool that stays in the list stay where they are.
 
 Metadata is not merged by these commands: `papers push` does that.
 
@@ -137,36 +138,43 @@ The configuration file stores one pool as a string and several as a list
 (`"pool": ["~/Documents/papers", "../shared-with-bob"]`); `none` is stored
 as `"none"`. A library that does not set `pool` uses the global setting, and
 stores nothing. The first pool of the global setting is the global pool
-(origin records name it `global`, see [Origin copies](#origin-copies)).
+(its origin file is `global.bib`, see [Origin copies](#origin-copies)).
 
-The pools are used in order:
+The first pool is the main pool; the others are searched when adding or
+pulling, never written to:
 
-- lookups go through the pools in order, and the first match wins: `add`
-  (a PDF, `--doi`, `--key`, a bibtex entry), `pull KEY`, and the files of
-  the pools;
-- `pull` without KEY updates each entry from the pool it came from (its
-  origin copy). `pull --all` adds the entries of each pool that the library
-  does not have, the pools in order: a paper taken from one pool is not
-  taken again from a later one;
-- writing goes to the first pool only: `push`, the push of `sync`, the
-  files of a library that is not local, and the entries that `add` adds to
-  the pool (also an entry that `add` took from a later pool);
-- `sync` pulls from all the pools, then pushes to the first.
+- the main pool is the one that `pull`, `push` and `sync` exchange with,
+  and the only one with origin copies. It holds the files of a library
+  that is not local, and the entries that `add` adds to a pool;
+- lookups go through the main pool, then the other pools in order, and the
+  first match wins: `add` (a PDF, `--doi`, `--key`, a bibtex entry),
+  `pull KEY`, and `pull --all`, which adds the entries of each pool that
+  the library does not have (a paper taken from one pool is not taken
+  again from a later one);
+- an entry taken from a pool searched (not the main pool) is copied into
+  the library, and is not shared with that pool. In a library that is not
+  local, or with `auto-push`, it is also added to the main pool (its files
+  copied, as hard links when possible), and shared with it. In a local
+  library without `auto-push`, it is shared with no pool:
+  `papers push KEY` adds it to the main pool.
 
-`--pool PATH` on `pull`, `push`, `sync` uses only that pool. `papers status`
-and `papers init` list each pool:
+`papers status` and `papers init` give the role of each pool:
 
 ```
-* pools:              ~/Documents/papers (global pool, new entries go here, up to date)
-                      ../shared-with-bob (up to date)
+* pools:              ~/Documents/papers (main: synced, new entries go here; global pool, up to date)
+                      ../shared-with-bob (searched only)
 ```
+
+The roles follow the order of the list: `papers config pool
+../shared-with-bob ~/Documents/papers` makes `../shared-with-bob` the main
+pool. Each pool has its own origin file, so the origin copies of the former
+main pool are kept, unused, until it is first again.
 
 A pool of the list that is missing (e.g. a disk that is not mounted) is a
-warning, and the other pools are still used. An entry that came from the
-missing pool is not looked up in the others. If the first pool is missing,
-`sync` stops with an error before changing anything; `push`, and `add` in a
-library that is not local, create it if its parent directory exists, and
-otherwise stop with an error, as with a single pool.
+warning, and the other pools are still searched. If the main pool is
+missing, `pull` and `sync` stop with an error before changing anything;
+`push`, and `add` in a library that is not local, create it if its parent
+directory exists, and otherwise stop with an error, as with a single pool.
 
 ## Keys and identity
 
@@ -184,18 +192,44 @@ ways on `pull` and `push`.
 
 ## Origin copies
 
-`.papers/origin.bib`, next to the bibtex of the library, records for each
-entry exchanged with a pool (by `add`, `pull` or `push`) its origin copy,
-under the library's key, with the pool (`papers-pool`: `global` for the
-global pool, otherwise the path of the pool relative to the library), the
-key in the pool (`papers-pool-key`) and the time (`papers-time`). It also
-records the modification time of the pool's bibtex at the last exchange
-with the pool: a pull of all entries that skipped no conflict, or a push or
-an add when the pool had not changed since the previous exchange (or when it
-is the first exchange). A push that leaves the pool entry with fields or
-files that the library entry does not have does not count: `papers status`
-then shows the pool as changed until the next pull. The file is part of the
-git backup of the library (see [Git integration](git.md)).
+`.papers/origin/`, next to the bibtex of the library, holds one file per
+pool: `global.bib` for the global pool, and for another pool the name of
+its folder and the start of a hash of its path, e.g.
+`shared-with-bob-d15650.bib`. The first lines of the file name the pool and
+give the modification time of its bibtex at the last exchange. In a
+library whose pool is `../shared-with-bob`, after `papers pull
+agnew_farrell1978` and `papers pull`:
+
+```
+@comment{papers-pool ../shared-with-bob}
+
+@comment{papers-pulled 1792681264781917448}
+
+@article{agnew_farrell1978,
+ author = {Agnew, D. C. and Farrell, W. E.},
+ papers-pool-key = {agnew_farrell1978},
+ papers-time = {2026-10-22T17:01:45+02:00},
+ title = {Self-consistent equilibrium ocean tides},
+ year = {1978}
+}
+```
+
+Only the main pool is exchanged with, so only its file is read and
+written; the files of the other pools are kept as they are (see
+[Several pools](#several-pools)). The file records, for each entry
+exchanged with the pool (by `add`, `pull` or `push`), its origin copy,
+under the library's key, with the key in the pool (`papers-pool-key`) and
+the time (`papers-time`). The modification time is recorded at a pull of
+all entries that skipped no conflict, or a push or an add when the pool
+had not changed since the previous exchange (or when it is the first
+exchange). A push that leaves the pool entry with fields or files that the
+library entry does not have does not count: `papers status` then shows the
+pool as changed until the next pull. The files are part of the git backup
+of the library (see [Git integration](git.md)).
+
+Earlier v3 beta versions kept all the origin copies in one file,
+`.papers/origin.bib`: papers splits it into these files the first time it
+reads it, and removes it.
 
 The origin copy is the third version of a three-way merge: comparing the
 library entry and the pool entry with it tells which side changed a field.
@@ -245,11 +279,11 @@ lookup.
 papers pull [KEY...|-] [--all] [--pool PATH] [--on-duplicate MODE] [--check]
 ```
 
-Without KEY, `pull` updates the entries shared with the pool: those with an
-origin copy, each from the pool it came from. For each of them (or each
-entry named, or every entry with `--all`), papers finds its pool entry (by
-its origin copy, else by the same-paper rule) and merges it into the library
-entry, field by field:
+Without KEY, `pull` updates the entries shared with the main pool: those
+with an origin copy. For each of them (or each entry named, or every entry
+with `--all`), papers finds its entry in the main pool (by its origin copy,
+else by the same-paper rule) and merges it into the library entry, field by
+field:
 
 | Field changed since the origin copy | Result |
 |---|---|
@@ -275,21 +309,23 @@ changed), and the origin copy is recorded afterwards ("linked").
 An entry that the pool does not have is reported (`Not found`) only when it
 is named on the command line. Without KEY, it is left as it is.
 
-A KEY is looked up in the library first, then in the pool (its key, DOI,
-arXiv identifier or ISBN): an entry of the pool that the library does not
-have is added to it, with its origin copy (`added`), under the pool key
+A KEY is looked up in the library first, then in the pools (its key, DOI,
+arXiv identifier or ISBN; the main pool first): an entry of a pool that the
+library does not have is added to it (`added`), with its origin copy if it
+comes from the main pool (see [Several pools](#several-pools)), under the pool key
 (see [Keys and identity](#keys-and-identity)); its files are linked in a
 library that is not local, otherwise copied as the `files` setting says (a
 hard link when possible). An identifier found in neither is an error, and
 nothing is changed. `--all` adds every entry of the pool that the library
-does not have (same-paper rule). Without KEY or `--all`, `pull` only updates
-the entries shared with the pool, like `push` and `sync`. A pool that does not exist or is not a library
+does not have (same-paper rule), in each pool. Without KEY or `--all`,
+`pull` only updates the entries shared with the main pool, like `push` and
+`sync`. A pool that does not exist or is not a library
 is an error of `pull`, `pull --check` and `sync`, and nothing is changed
 (the global pool that was not created yet is not: there is nothing to
 pull).
 
-`--pool PATH` pulls from another pool, once: the origin copies record that
-pool.
+`--pool PATH` pulls from another library once, see
+[One-time exchanges](#one-time-exchanges).
 
 `pull` prints one line per entry added (`Added ->`), modified
 (`Modified ->`), left with a conflict (`Conflict ->`) or, among the entries
@@ -328,10 +364,10 @@ first part too.
 papers push [KEY...|-] [--all] [--pool PATH] [--on-duplicate MODE]
 ```
 
-The reverse of `pull`, into the pool of the library (or `--pool PATH`,
-once). Without KEY, only the entries shared with the pool are pushed: those
-with an origin copy from it (taken from it by `add` or `pull`, or pushed to
-it before). `push KEY...` pushes the entries named, and `push --all` every
+The reverse of `pull`, into the main pool of the library (or `--pool PATH`,
+once, see [One-time exchanges](#one-time-exchanges)). Without KEY, only the
+entries shared with the main pool are pushed: those with an origin copy from
+it (taken from it by `add` or `pull`, or pushed to it before). `push KEY...` pushes the entries named, and `push --all` every
 entry of the library:
 
 - an entry that is not in the pool is added to it, with a key from the
@@ -355,8 +391,8 @@ papers sync [KEY...|-] [--all] [--pool PATH] [--on-duplicate MODE]
 
 runs `papers pull`, then `papers push` of the same entries:
 
-- without KEY, the entries shared with the pool (with an origin copy from
-  it). An entry added to the library with `--no-pool`, or before the pool
+- without KEY, the entries shared with the main pool (with an origin copy
+  from it). An entry added to the library with `--no-pool`, or before the pool
   was used, is not exchanged: name it, or use `--all`;
 - with KEY..., the entries named. A KEY that only the pool has is added to
   the library, as with `pull`, and a KEY that only the library has is
@@ -373,18 +409,35 @@ $ papers sync
 nothing to sync with pool ~/Documents/papers (2 entries unchanged)
 ```
 
-With `--pool PATH`, `sync` reads and writes only the library at `PATH`, not
-the pool of the library. Without KEY, it exchanges the entries shared with
-that library only, so the first time nothing is exchanged:
+## One-time exchanges
+
+`--pool PATH` on `pull`, `push` and `sync` exchanges with the library at
+`PATH` once, e.g. a folder shared with a coauthor. It reads and writes only
+that library, not the pools of the library, and records no origin copy:
+no entry becomes shared with it, and the origin copies of the main pool do
+not change. When `PATH` is the main pool, `--pool PATH` is the usual
+exchange.
+
+- `papers sync --pool PATH KEY...` takes the entries named from `PATH`
+  that the library does not have, sends to `PATH` those that it does not
+  have, and merges the others both ways;
+- `papers pull --pool PATH --all` takes every entry of `PATH`, and
+  `papers push --pool PATH --all` sends every entry of the library;
+- an entry taken from `PATH` is shared with no pool; an entry sent to
+  `PATH` stays shared with the main pool if it was.
+
+Without an origin copy, there is nothing to tell which side changed a
+field: each field that differs is a conflict, decided in the dialogue or
+with `--on-duplicate`. Without KEY or `--all`, nothing is exchanged:
 
 ```
 $ papers sync --pool ../shared-with-bob
-nothing to sync with pool ../shared-with-bob: no entries shared with it (`papers sync --all` adds the entries missing on each side)
+nothing to sync with pool ../shared-with-bob: not the main pool, so no entries are shared with it (`papers sync --pool PATH KEY...` or `--all` exchanges entries with it once)
 ```
- The entries taken from it link to its files in a
-library that is not local (in a local library, they are copied as the
-`files` setting says), and the entries pushed to it get copies of their
-files in its files directory.
+
+The entries taken from it link to its files in a library that is not local
+(in a local library, they are copied as the `files` setting says), and the
+entries sent to it get copies of their files in its files directory.
 
 ## Undo in a pool
 

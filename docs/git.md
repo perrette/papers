@@ -22,8 +22,9 @@ When git fails, it prints its own error message, and papers exits with
 git's exit code.
 
 Under the hood, every save commits a copy of the bibtex file to the backup
-repository, with the files `.papers/origin.bib` (origin copies of the entries
-taken from the pool, see [Pools](pools.md#origin-copies)) and
+repository, with the files of `.papers/origin/` (origin copies of the
+entries exchanged with the pool, one file per pool, see
+[Pools](pools.md#origin-copies)) and
 `.papers/distinct.json` (pairs that are not the same paper) when they exist.
 If `--git-lfs` is passed, the attached files are backed up along
 with the bibtex: they are hard-linked into the backup directory and tracked
@@ -58,7 +59,7 @@ directory instead of mixing the two histories. Directories created by older
 versions keep their name and are adopted as-is.
 
 The libraries of papers 2.2 to 2.4 kept their backup in `.papers/` next to
-the bibtex, the folder of `origin.bib` and `distinct.json` since papers 3:
+the bibtex, the folder of `origin/` and `distinct.json` since papers 3:
 the first backup moves that repository (its history and the files it
 tracks) to a new subfolder of the backup folder, with a warning, and the
 library configuration records it. A backup commit that fails (e.g. refused
