@@ -1,6 +1,5 @@
 """Unit tests of the remaining branches of papers.merge, papers.duplicate and
 papers.identifiers"""
-import json
 import os
 import tempfile
 import unittest

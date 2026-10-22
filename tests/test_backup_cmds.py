@@ -1,6 +1,5 @@
 """papers backup, restore and git: the cases without backup, and the
 questions of backup remove"""
-import os
 from unittest.mock import patch
 
 from papers.utils import PapersExit

@@ -1,7 +1,6 @@
 """Unit tests of papers.backup: run_git, the manifest and the backup
 directories, backup_bib, restore (with git-lfs), undo and redo errors, and
 the undone state of older versions"""
-import json
 import os
 import subprocess as sp
 import tempfile
@@ -12,7 +11,7 @@ from unittest import mock
 import papers.backup
 from papers.backup import (adopt_legacy_undone_state, backup_bib, check_gitdir_ownership, git_redo,
                            git_restore_state, git_undo, list_backup_dirs, read_manifest, resolve_gitdir,
-                           legacy_gitdir, restore_from_backupdir, run_git, write_manifest, _exclude_from_git)
+                           legacy_gitdir, restore_from_backupdir, run_git, _exclude_from_git)
 from papers.bib import Biblio
 from papers.config import Config
 from papers.utils import PapersExit

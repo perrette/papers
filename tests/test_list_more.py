@@ -1,7 +1,6 @@
 """More tests of papers list, tag and edit: the filters, the review check,
 and the errors of the options"""
 import io
-from contextlib import redirect_stdout
 from unittest.mock import patch
 
 from papers.utils import PapersExit

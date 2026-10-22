@@ -3,7 +3,6 @@ without files directory, link repairs, the Pool lookups, pull of pool
 entries and sync"""
 import os
 from pathlib import Path
-from unittest.mock import patch
 
 from papers.bib import Biblio
 from papers.config import Config
@@ -11,7 +10,7 @@ from papers.pools import Exchange, Pools, PoolError, load_biblio, mtime, use_poo
 from papers.merge import Resolver
 from papers.utils import PapersExit
 
-from tests.test_pools import PoolTest, SMITH_BIB, NEW_BIB, no_fetch
+from tests.test_pools import PoolTest, SMITH_BIB, NEW_BIB
 
 
 class TestPullCheck(PoolTest):
