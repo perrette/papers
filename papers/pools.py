@@ -896,6 +896,8 @@ class Exchange:
         pool file, is pushed (added to the pool, as `add` does). Return
         [(entry, pool, what)], what being 'links' (the pool entry's links
         changed), or as Exchange.push says for the entries pushed."""
+        if entries:
+            check_readable(pool)
         report = []
         missing = []
         for e in entries:
