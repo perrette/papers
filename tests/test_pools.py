@@ -755,6 +755,24 @@ class TestConfigLocal(NonLocalTest):
         self.assertEqual(self.json('fifth')['pool'], 'none')
         self.assertIs(self.json('fifth')['local'], True)
 
+    def test_init_not_local_has_no_files_directory(self):
+        # the files go to the pool: the files directory is created when needed
+        self.papers('config --global local false')
+        self.papers('init other --no-git --pool ../pool')
+        self.assertFalse(os.path.exists(self.path('other', 'files')))
+        self.assertIn('* files directory:    files (not created yet)',
+                      self.papers('status', cwd=self.path('other'), sp_cmd='check_output'))
+        self.papers('init third --no-git --pool ../pool --local')
+        self.assertTrue(os.path.isdir(self.path('third', 'files')))
+        self.papers('init fourth --no-git --pool none')
+        self.assertTrue(os.path.isdir(self.path('fourth', 'files')))
+        # the files of the pool are copied into it when the library becomes local
+        Path(self.path('smith.bib')).write_text(SMITH_BIB)
+        with patch('papers.bib.fetch_bibtex_by_doi', no_fetch):
+            self.papers('add ../smith.bib', cwd=self.path('other'))
+        self.papers('config local true -y', cwd=self.path('other'))
+        self.assertEqual(len(os.listdir(self.path('other', 'files'))), 1)
+
     def test_inconsistent_file(self):
         # local false without pool (written by hand): read as local, with a warning
         js = self.json('lib')

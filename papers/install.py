@@ -211,7 +211,10 @@ def resolve_install(config, o, probe=None, asker=None, target=None):
     return InstallPlan(
         config=config,
         create_bibtex=bool(config.bibtex) and not os.path.exists(config.bibtex),
-        create_filesdir=bool(config.filesdir) and not os.path.exists(config.filesdir),
+        # a library that is not local places its files in the pool: its files
+        # directory is created when a file is written there
+        create_filesdir=bool(config.filesdir) and not os.path.exists(config.filesdir)
+                        and (config.local or not config.has_pool()),
         remove_config_files=remove_config_files,
         init_git=config.git,
         snapshot=config.git and bool(config.bibtex),

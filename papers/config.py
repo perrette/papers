@@ -624,7 +624,8 @@ class Config:
         if self.filesdir is None:
             status = bcolors.WARNING+' (unset)'+bcolors.ENDC
         elif not os.path.exists(self.filesdir):
-            status = bcolors.WARNING+' (missing)'+bcolors.ENDC
+            status = ' (not created yet)' if self.file and not self.local and self.has_pool() \
+                else bcolors.WARNING+' (missing)'+bcolors.ENDC
         elif not os.listdir(self.filesdir):
             status = bcolors.WARNING+' (empty)'+bcolors.ENDC
         elif check_files:
