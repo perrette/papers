@@ -9,7 +9,6 @@
 
 import itertools
 import re
-import sys
 import unicodedata
 
 __all__ = ['string_to_latex', 'latex_to_unicode', 'protect_uppercase',

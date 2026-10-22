@@ -7,15 +7,14 @@ import shutil
 import papers.config
 from papers import logger
 from papers.backup import init_backup
-from papers.config import (CONFIG_FILE, CONFIG_FILE_LOCAL, Config, LIBRARY_CONFIG_FILES, LIBRARY_ONLY, NO_POOL,
+from papers.config import (CONFIG_FILE_LOCAL, Config, LIBRARY_CONFIG_FILES, LIBRARY_ONLY, NO_POOL,
                            SETTINGS, format_value, parse_value, pool_setting, short_home)
 from papers.files import delete_files, is_inside
 from papers.install import DefaultAsker, InputAsker, RESET_WORDS, _ask_path, apply_install, resolve_install
-from papers.library import (check_legacy_config, convert_file_links, find_config, get_biblio,
-                            snapshot_backup)
+from papers.library import convert_file_links, find_config, get_biblio, snapshot_backup
 from papers.migrate import migrate_folders, migrate_v2_global
 from papers.pools import Exchange, Pools
-from papers.utils import PapersExit, search_config, set_directory
+from papers.utils import PapersExit, set_directory
 from papers.cli.common import (format_options, init_hint, check_install, _print_biblio_diff, no_library_message,
                                save_exchange, stdin_is_terminal)
 

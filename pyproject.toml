@@ -87,6 +87,7 @@ commands = pytest --cov=papers --cov-append --cov-report=term-missing {posargs} 
 deps =
     pytest
     pytest-cov
+    pyflakes
 depends =
     {py311,py312,py313,py314,py314t,py315,py315t}: clean
     report: py311,py312,py313,py314,py314t,py315,py315t
