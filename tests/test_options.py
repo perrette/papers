@@ -60,6 +60,38 @@ class TestOptions(FileTest):
         warning.assert_not_called()
 
 
+class TestAddAuthor(FileTest):
+    """-a is --author in add (the v2 -a FILE fallback is in test_deprecated.py)"""
+
+    def setUp(self):
+        super().setUp()
+        self.a = self.write('src', 'a.pdf')
+
+    def entry(self, key):
+        from papers.bib import Biblio
+        return next(e for e in Biblio.load(self.path('lib', 'papers.bib'), '').entries if e.key == key)
+
+    def test_a_is_author(self):
+        with self.assertNoLogs('papers', level='WARNING'):
+            self.lib('add --title Three --year 2001 -a "Smith, John"')
+        self.assertEqual(self.entry('smith2001')['author'], 'Smith, John')
+
+    def test_a_then_file(self):
+        # -a NAME FILE: the values after the name are files to add
+        bib = self.write('src', 'one.bib', content=entry('one2000'))
+        self.lib(f'add -a "Doe, Jane" {bib}')
+        self.assertEqual(self.entry('one2000')['author'], 'Doe, Jane')
+
+    def test_file_then_other_values(self):
+        # the first value is a file but the others are not: neither attach nor author
+        with self.assertRaisesRegex(PapersExit, '--attach FILE'):
+            self.lib(f'add --title Three -a {self.a} Smith')
+
+    def test_a_and_author(self):
+        with self.assertRaises(PapersExit):
+            self.lib('add --title Three -a Smith --author Doe')
+
+
 class TestFetchKeepsCase(FileTest):
 
     def test_arxiv_doi_case(self):

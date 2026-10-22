@@ -59,8 +59,15 @@ supplementary material), placed as the `files` setting says. They are named
 after the main file (see
 [Renaming files and keys](renaming.md#entries-with-several-files)). To
 attach files to an entry already in the library, use
-`papers file attach KEY FILE...`. `--attachment` and `-a` are deprecated names of
+`papers file attach KEY FILE...`. `--attachment` is a deprecated name of
 `--attach`.
+
+`-a` is the short form of `--author` (as in `papers list`). In papers v2, `-a
+FILE...` attached files: until v4, when every value given to `-a` is an
+existing file (or a URL), papers attaches them as with `--attach` and warns.
+Otherwise the first value is the author, and the next values are files to
+add (`papers add -a "Smith, John" paper.pdf`); a first value that is an
+existing file, followed by other values, is an error.
 
 ## Add a whole directory of PDFs
 

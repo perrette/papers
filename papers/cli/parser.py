@@ -307,6 +307,10 @@ def get_parser(config=None):
     grp.add_argument('--type', help='entry type (article, book...)')
     grp.add_argument('--title', help='the title')
     grp.add_argument('--author', help='the authors, e.g. "Smith, John and Doe, Jane"')
+    grp.add_argument('-a', nargs='+', dest='author_short', metavar='NAME',
+        help='''same as --author. In papers v2, -a FILE... attached files: when every value
+        of -a is an existing file (or a URL), they are attached as with --attach, with a
+        warning (until v4)''')
     grp.add_argument('--journal', help='the journal')
     grp.add_argument('--year', help='the year')
     grp.add_argument('--metadata', nargs="+", metavar="KEY=VALUE", type=lambda meta: meta.split('=', 1),
@@ -326,9 +330,6 @@ def get_parser(config=None):
     grp.add_argument('--attach', nargs='+', type=file_uri_to_path, dest='attachment', metavar='FILE',
         help='attach these files to the entry (e.g. supplementary material)')
     grp.add_argument('--attachment', nargs='+', type=file_uri_to_path, dest='attachment_deprecated',
-        help='deprecated: use --attach')
-    # -a is --author in list: in v4, -a becomes --author here too
-    grp.add_argument('-a', nargs='+', type=file_uri_to_path, dest='attachment_short', metavar='FILE',
         help='deprecated: use --attach')
     _files_mode_options(grp, add=True)
 
