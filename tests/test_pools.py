@@ -457,6 +457,23 @@ class TestPull(PoolTest):
         self.assertEqual(self.entry('smith2020climate')['journal'], 'Nature')
         self.assertEqual(self.origin().pulled('../pool'), before)  # only a full pull counts as a pull
 
+    def test_missing_pool(self):
+        os.rename(self.path('pool'), self.path('elsewhere'))
+        for cmd in ['pull', 'pull --check', 'sync']:
+            with self.assertRaisesRegex(PapersExit, r'^pool \S+/pool does not exist \(nothing was changed\)$'):
+                self.lib(cmd)
+        os.makedirs(self.path('pool'))
+        with self.assertRaisesRegex(PapersExit, r'pool \S+/pool is not a library'):
+            self.lib('pull')
+
+    def test_entry_not_in_the_pool(self):
+        self.edit_pool('@article{Smith_2020,', '@article{Other_2020,')
+        self.edit_pool('doi = {10.1000/abc123}', 'doi = {10.1000/other}')
+        self.edit_pool('title = {Climate sensitivity revisited}', 'title = {Other}')
+        out = self.out('pull')
+        self.assertIn('not found: smith2020climate', out)
+        self.assertIn('pull: 1 not found', out)
+
     def test_distinct_merged(self):
         pool_distinct = Distinct.for_bibtex(self.path('pool', 'papers.bib'))
         pool_distinct.pairs.append([{'doi': '10.1/a'}, {'doi': '10.1/b'}])

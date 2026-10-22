@@ -214,7 +214,10 @@ library that is not local, otherwise copied as the `files` setting says (a
 hard link when possible). An identifier found in neither is an error, and
 nothing is changed. `--all` adds every entry of the pool that the library
 does not have (same-paper rule). Without KEY or `--all`, `pull` only updates
-the entries of the library.
+the entries of the library. A pool that does not exist or is not a library
+is an error of `pull`, `pull --check` and `sync`, and nothing is changed
+(the global pool that was not created yet is not: there is nothing to
+pull).
 
 `--pool PATH` pulls from another pool, once: the origin copies record that
 pool.

@@ -1,9 +1,10 @@
 """papers pull, push, sync, export"""
 import copy
+import os
 
 from papers.identifiers import read_selection, select_entries, select_some
 from papers.library import get_biblio, savebib
-from papers.pools import Exchange, export, report_lines
+from papers.pools import Exchange, GLOBAL_POOL_ID, PoolError, export, report_lines
 from papers.utils import PapersExit
 from papers.cli.common import _print_biblio_diff, duplicate_resolver, _entries_or_all, save_exchange
 
@@ -13,7 +14,28 @@ def _source(exchange, o, create=False):
     has none, or the global pool does not exist yet)"""
     if getattr(o, 'pool', None):
         return exchange.pools.get(o.pool, create=create)
-    return exchange.pools.target() if create else exchange.pools.pool()
+    if create:
+        return exchange.pools.target()
+    pool = exchange.pools.pool(quiet=True)
+    if pool is None:
+        _check_pool(exchange)
+    return pool
+
+
+def _check_pool(exchange):
+    """the pool of the library is missing or cannot be read: an error (once,
+    rather than `not found` for each entry), unless the library has no
+    pool, or the global pool was not created yet and nothing came from it"""
+    pools = exchange.pools
+    path = exchange.config.pool_path()
+    if path is None or pools._is_self(path):
+        return
+    if pools._is_global(path) and not os.path.exists(path) and not exchange.origin.records(GLOBAL_POOL_ID):
+        return
+    try:
+        pools.resolve(path)
+    except PoolError as error:
+        raise PapersExit(f'{error} (nothing was changed)')
 
 
 def _pull_selection(exchange, pool, args, take_all=False):
@@ -56,6 +78,7 @@ def pullcmd(parser, o, config):
     biblio_init = copy.deepcopy(biblio)
     exchange = Exchange(config, biblio)
     if o.check:
+        _source(exchange, o)
         entries = _entries_or_all(biblio, o.entries)
         print('\n'.join(exchange.check(entries, all_entries=not o.entries)) or 'nothing to pull')
         return
