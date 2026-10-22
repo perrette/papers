@@ -598,6 +598,7 @@ def git_restore_state(config, ref, restore_files=False, kind="restore-backup"):
 
 
 def git_undo(config, restore_files=False, steps=1):
+    "go back `steps` states; return the commit of the state restored (None with --dry-run)"
     if not papers.config.DRYRUN:
         check_gitdir_ownership(config)
     _require_history(config.gitdir)
@@ -608,12 +609,14 @@ def git_undo(config, restore_files=False, steps=1):
     if res.returncode != 0:
         raise PapersExit("nothing to undo")
     if _dryrun_restore(config, res.stdout.strip(), "undo"):
-        return
+        return None
     _append_restore_commit(config, res.stdout.strip(), kind="undo")
     restore_from_backupdir(config, restore_files=restore_files)
+    return res.stdout.strip()
 
 
 def git_redo(config, restore_files=False, steps=1):
+    "go forward `steps` states; return the commit of the state restored (None with --dry-run)"
     if not papers.config.DRYRUN:
         check_gitdir_ownership(config)
     _require_history(config.gitdir)
@@ -633,6 +636,7 @@ def git_redo(config, restore_files=False, steps=1):
     if len(futures) < steps:
         raise PapersExit("nothing to redo")
     if _dryrun_restore(config, futures[steps-1], "redo"):
-        return
+        return None
     _append_restore_commit(config, futures[steps-1], kind="redo")
     restore_from_backupdir(config, restore_files=restore_files)
+    return futures[steps-1]

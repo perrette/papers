@@ -435,3 +435,31 @@ class TestUninstall(GitLFSInitTest):
         self.assertTrue(self._exists(CONFIG_FILE_LOCAL))
         self.papers('uninstall')
         self.assertFalse(self._exists(CONFIG_FILE_LOCAL))
+
+
+class TestUndoMessages(GitInitTest):
+
+    def out(self, cmd):
+        return self.papers(cmd, sp_cmd='check_output')
+
+    def test_undo_and_redo_say_what_they_restore(self):
+        self.papers(f'add {self.anotherbib}')
+        Path(self._path('si.pdf')).write_text('supplement')
+        self.papers('file attach --move 10.5194/bg-8-515-2011 si.pdf')
+        biblio = Biblio.load(self._path(self.mybib), '')
+        files = biblio.get_files(biblio.entries[0])
+        self.assertEqual(len(files), 1)
+        attached = files[0]
+        self.assertTrue(attached.startswith(self._path(self.filesdir)))
+
+        out = self.out('undo')
+        self.assertRegex(out.splitlines()[0], rf'^undo: {self.mybib} restored to [0-9a-f]+ papers add '
+                                              rf'{self.anotherbib} \(\d{{4}}-\d\d-\d\d \d\d:\d\d\)$')
+        self.assertIn('1 file(s) of the files directory are linked by no entry now '
+                      '(`papers file clean` removes them)', out)
+        self.assertIn(attached, out)
+        self.assertTrue(os.path.exists(attached))  # left in place
+
+        out = self.out('redo')
+        self.assertRegex(out, rf'^redo: {self.mybib} restored to [0-9a-f]+ papers file attach')
+        self.assertNotIn('linked by no entry', out)

@@ -6,21 +6,50 @@ import subprocess as sp
 
 import papers.config
 from papers import logger
-from papers.backup import git_redo, git_restore_state, git_undo, list_backup_dirs, restore_from_backupdir
-from papers.bib import backupfile as backupfile_func
+from papers.backup import git_redo, git_restore_state, git_undo, list_backup_dirs, restore_from_backupdir, run_git
+from papers.bib import Biblio, backupfile as backupfile_func
+from papers.files import is_inside
 from papers.utils import PapersExit, bcolors
+
+
+def _linked_files(config):
+    "the real paths of the files that the entries of the bibtex link to"
+    if not config.bibtex or not os.path.exists(config.bibtex):
+        return set()
+    biblio = Biblio.load(config.bibtex, config.filesdir)
+    return {os.path.realpath(f) for e in biblio.entries for f in biblio.get_files(e)}
+
+
+def _time_travel(config, kind, func, o):
+    """undo or redo with the git backup: say which state is restored, and
+    which files of the files directory no entry links to any more"""
+    before = _linked_files(config)
+    target = func(config, restore_files=o.restore_files, steps=o.steps)
+    if target is None:  # --dry-run
+        return
+    info = run_git(config.gitdir, ["log", "-1", "--date=format:%Y-%m-%d %H:%M", "--pretty=%h %s (%ad)",
+                                   target]).stdout.strip()
+    print(f'{kind}: {os.path.basename(config.bibtex)} restored to {info}')
+    after = _linked_files(config)
+    unlinked = sorted(f for f in before - after
+                      if os.path.isfile(f) and config.filesdir and is_inside(f, config.filesdir))
+    if unlinked:
+        print(f'{len(unlinked)} file(s) of the files directory are linked by no entry now '
+              f'(`papers file clean` removes them):')
+        for f in unlinked:
+            print(f'  {f}')
 
 
 def redocmd(parser, o, config):
     if config.git:
-        return git_redo(config, restore_files=o.restore_files, steps=o.steps)
+        return _time_travel(config, 'redo', git_redo, o)
     else:
         undocmd(parser, o, config)
 
 
 def undocmd(parser, o, config):
     if config.git:
-        return git_undo(config, restore_files=o.restore_files, steps=o.steps)
+        return _time_travel(config, 'undo', git_undo, o)
 
     logger.warning("the git backup is off (`papers config git true` enables it): "
                    "undo / redo is limited to 1 step back and forth")
@@ -33,6 +62,7 @@ def undocmd(parser, o, config):
     shutil.copy(config.bibtex, tmp)
     shutil.move(back, config.bibtex)
     shutil.move(tmp, back)
+    print(f'{o.cmd}: {os.path.basename(config.bibtex)} swapped with its previous version ({back})')
 
 
 def restorecmd(parser, o, config):
