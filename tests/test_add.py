@@ -9,7 +9,9 @@ from papers.entries import parse_bibtex_file, parse_string, get_entry_val, libra
 from papers.encoding import latex_to_unicode_library
 
 from papers.bib import Biblio
-from tests.common import PAPERSCMD, paperscmd, prepare_paper, prepare_paper2, BibTest
+from unittest.mock import patch
+
+from tests.common import PAPERSCMD, paperscmd, prepare_paper, prepare_paper2, BibTest, FileTest, entry
 
 
 def unicode_fields(entry):
@@ -675,3 +677,89 @@ class TestAddWithoutDoi(unittest.TestCase):
         self.assertEqual(len(files), 1)
         self.assertTrue(os.path.abspath(files[0]).startswith(self.filesdir))  # --rename moved it
         self.assertFalse(os.path.exists(self.pdf))
+
+
+def no_fetch(*args, **kwargs):
+    raise AssertionError('no network query expected')
+
+
+class TestAddExistingEntry(FileTest):
+    """add FILE with the DOI of a library entry: the file is attached to it,
+    without network query nor duplicate dialogue"""
+
+    def setUp(self):
+        super().setUp()
+        self.a = self.write('lib', 'files', 'a.pdf')
+        self.new = self.write('src', 'new.pdf')
+        self.si = self.write('src', 'si.pdf')
+        self.bib(entry('one2000', 'files/a.pdf', doi='10.1000/one'),
+                 entry('two2000', doi='10.48550/arXiv.2101.01234'))
+        self.lib('config files move')
+
+    def add(self, cmd):
+        with patch("papers.bib.fetch_bibtex_by_doi", no_fetch), \
+                patch('papers.bib.extract_pdf_metadata', no_fetch), \
+                patch('papers.extract.fetch_bibtex_by_doi', no_fetch), \
+                patch('builtins.input', no_fetch):
+            return self.out(cmd)
+
+    def keys(self):
+        return sorted(e.key for e in Biblio.load(self.path('lib', 'papers.bib'), '').entries)
+
+    def test_doi_option(self):
+        out = self.add(f'add {self.new} --doi 10.1000/ONE --title Other')
+        self.assertIn('already in library: one2000 (+1 file)', out)
+        self.assertEqual(self.keys(), ['one2000', 'two2000'])
+        files = self.files('one2000')
+        self.assertEqual(files[0], self.a)  # untouched
+        self.assertEqual(len(files), 2)
+        self.assertTrue(files[1].startswith(self.path('lib', 'files')))
+        self.assertFalse(os.path.exists(self.new))  # files: move
+        self.assertNotIn('Other', open(self.path('lib', 'papers.bib')).read())
+
+    def test_doi_option_and_attach(self):
+        self.add(f'add {self.new} --doi 10.1000/one --attach {self.si}')
+        self.assertEqual(len(self.files('one2000')), 3)
+
+    def test_doi_without_file(self):
+        out = self.add(f'add --doi 10.1000/one --attach {self.si} --link')
+        self.assertIn('already in library: one2000', out)
+        self.assertEqual(self.files('one2000'), [self.a, self.si])
+
+    def test_arxiv_doi(self):
+        Path(self.path('lib', 'papers.bib')).write_text(
+            '@article{arx2021,\n author = {Some One},\n archiveprefix = {arXiv},\n eprint = {2101.01234},\n'
+            ' title = {Title of arx2021},\n year = {2021}\n}\n')
+        self.add(f'add {self.new} --doi 10.48550/arXiv.2101.01234v2 --link')
+        self.assertEqual(self.files('arx2021'), [self.new])
+
+    def test_doi_of_pdf_metadata(self):
+        with patch('papers.bib.parse_doi_from_pdf_metadata', return_value='10.1000/one'):
+            out = self.add(f'add {self.new} --link')
+        self.assertIn('already in library: one2000', out)
+        self.assertEqual(self.files('one2000'), [self.a, self.new])
+
+    def test_doi_of_pdf_text(self):
+        with patch('papers.bib.parse_doi_from_pdf_metadata', return_value=None), \
+                patch('papers.bib.pdfhead', return_value='Title of one2000\n doi:10.1000/one'), \
+                patch('papers.bib.pdftail', return_value=''):
+            self.add(f'add {self.new} --link')
+        self.assertEqual(self.files('one2000'), [self.a, self.new])
+
+    def test_several_pdfs_are_not_prefetched(self):
+        with patch('papers.bib.parse_doi_from_pdf_metadata', return_value='10.1000/one'), \
+                patch('papers.cli.entry_cmds.prefetch_pdf_metadata', no_fetch):
+            self.add(f'add {self.new} {self.si} --link')
+        self.assertEqual(self.files('one2000'), [self.a, self.new, self.si])
+
+    def test_same_file_again(self):
+        out = self.add(f'add {self.a} --doi 10.1000/one')
+        self.assertIn('already in library: one2000\n', out)
+        self.assertEqual(self.files('one2000'), [self.a])
+
+    def test_no_check_duplicate_fetches(self):
+        fetched = '@article{x,\n author = {Some One},\n doi = {10.1000/one},\n title = {Title of one2000},\n year = {2000}\n}\n'
+        with patch('papers.bib.fetch_bibtex_by_doi', return_value=fetched) as fetch:
+            self.lib(f'add {self.new} --doi 10.1000/one --no-check-duplicate --link')
+        fetch.assert_called_once()
+        self.assertEqual(len(self.keys()), 3)

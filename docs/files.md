@@ -53,6 +53,12 @@ standard input, one per line:
 | `papers file check [KEY...]` | report broken links, files linked twice, identical files (same checksum) of an entry, and with `--metadata` a DOI of the PDF that differs from the DOI of the entry (this parses the PDFs) |
 | `papers file clean` | remove the files of the files directory and its subfolders that no entry links to, asking for each one (`-y/--yes` does not ask) |
 
+`papers file attach KEY FILE...` is the low-level form of
+`papers add FILE --doi DOI` for an entry already in the library: when the
+DOI is that of a library entry, `add` attaches the file to it in the same
+way, without fetching anything (see
+[Adding entries](adding-entries.md#entries-already-in-the-library)).
+
 `papers file check` changes nothing unless `--fix` is passed. `--fix` only
 applies the repairs that cannot lose anything: paths saved by Mendeley
 (missing leading `/`, latex symbols such as `{\_}`) are repaired when the

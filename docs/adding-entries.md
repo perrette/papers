@@ -104,6 +104,20 @@ papers add --title "Self-consistent equilibrium ocean tides" --author "Agnew, Du
     --year 1978 --journal "Geophysical Journal International" --attach agnew1978.pdf
 ```
 
+## Entries already in the library
+
+When the DOI of the added paper is already in the library (given with
+`--doi`, or found in the PDF metadata, or printed in the text of the PDF
+with the title of the library entry), `papers add` uses that entry: nothing
+is fetched online and there is no duplicate dialogue. The PDF (and the files
+of `--attach`) are attached to the entry and placed as the `files` setting
+says, as `papers file attach KEY FILE...` does; the key, the fields and the
+other files of the entry are not touched. An arXiv DOI
+(`10.48550/arXiv.<id>`) matches an entry whose `eprint` is that arXiv
+identifier. `--no-check-duplicate` skips this, and adds a new entry.
+
+The order is: the library, then the pools (below), then online.
+
 ## Entries already in a pool
 
 Before querying crossref, `papers add` looks in the pools of the library

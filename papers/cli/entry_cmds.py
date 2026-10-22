@@ -114,6 +114,9 @@ def addcmd(parser, o, config):
                 pdfs.extend(path for kind, path, _ in scan_dir_items(file, quiet=True) if kind == 'file' and path.lower().endswith('.pdf'))
             elif os.path.isfile(file) and file.lower().endswith('.pdf'):
                 pdfs.append(file)
+        # those of the library and the pools are not looked up online
+        if not o.no_check_duplicate and not o.no_query_doi:
+            pdfs = [pdf for pdf in pdfs if biblio.find_pdf(pdf) is None]
         if biblio.pool_lookup:
             pdfs = [pdf for pdf in pdfs if not biblio.pool_lookup.has_file(pdf)]
         if len(pdfs) > 1:

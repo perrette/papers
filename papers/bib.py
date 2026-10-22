@@ -4,6 +4,7 @@ from pathlib import Path
 import shutil
 from unidecode import unidecode as unicode_to_ascii
 from bibtexparser import Library
+from bibtexparser.model import Entry, Field
 from bibtexparser.middlewares import SortBlocksByTypeAndKeyMiddleware
 
 from papers.entries import (
@@ -28,14 +29,15 @@ import papers
 from papers import logger
 
 from papers.extract import parse_doi
-from papers.extract import extract_pdf_metadata
+from papers.extract import (extract_pdf_metadata, parse_doi_from_pdf_metadata, parse_dois, pdfhead, pdftail,
+                            title_in_text)
 from papers.fetch import fetch_bibtex_by_fulltext_crossref, fetch_bibtex_by_doi
 
 from papers.encoding import standard_name, family_names, format_entries
 from papers.latexenc import unicode_to_latex
 
 from papers.filename import NAMEFORMAT, KEYFORMAT
-from papers.files import (download_url, read_entry_dir, attachment_names, remove_entry_dir_if_empty,
+from papers.files import (download_url, read_entry_dir, attachment_names, remove_entry_dir_if_empty, realpath,
                           scan_dir_items)
 from papers.utils import bcolors, move as _move, PapersExit
 import papers.config
@@ -329,9 +331,55 @@ class Biblio:
         return self.add_bibtex(bibtex, relative_to=os.path.dirname(os.path.abspath(file)), **kw)
 
 
+    def find_doi(self, doi):
+        "the library entry that is the same paper as an entry of DOI `doi` (an arXiv DOI matches the eprint), or None"
+        found = find_duplicates(Entry('misc', 'doi', [Field('doi', doi)]), self.entries, self.distinct)
+        return next((e for e, verdict in found if verdict.kind == SAME), None)
+
+    def find_pdf(self, pdf):
+        """the library entry of the DOI of a PDF, or None, without network
+        query: the DOI of the PDF metadata, else a DOI of the text whose
+        library entry has its title in the text"""
+        try:
+            doi = parse_doi_from_pdf_metadata(pdf)
+            if doi:
+                return self.find_doi(doi)
+            txt = pdfhead(pdf)
+            candidates = parse_dois(txt, pdftail(pdf))
+        except Exception as error:
+            logger.debug(f'{pdf}: {error}')
+            return None
+        for candidate in candidates:
+            e = self.find_doi(candidate)
+            if e is not None and title_in_text(get_entry_val(e, 'title', ''), txt):
+                return e
+        return None
+
+    def attach_to_existing(self, e, files, rename=False, copy=False, **kw):
+        """`add` of the files of a paper that the library has (same DOI): the
+        files are added to the entry and placed as `file attach` does, the
+        entry's fields and other files are not touched. Return [e]."""
+        old = self.get_files(e)
+        known = {realpath(f) for f in old}
+        new = [os.path.abspath(f) for f in files if realpath(f) not in known]
+        print(f'already in library: {e.key}' + (f' (+{len(new)} file{"s" if len(new) > 1 else ""})' if new else ''))
+        if not new:
+            return [e]
+        self.set_files(e, old + new)
+        if rename:
+            if callable(copy):
+                policy = lambda f: 'link' if realpath(f) in known else copy(f)
+            else:
+                policy = lambda f: 'link' if realpath(f) in known else ('copy' if copy else 'move')
+            self.rename_entry_files(e, copy=policy)
+        return [e]
+
     def fetch_doi(self, doi, **kw):
         attachments = [os.path.abspath(f) for f in kw.get('attachments') or []]
-        taken = self.pool_lookup.doi(self, doi, attachments) if self.pool_lookup else None
+        existing = self.find_doi(doi) if kw.get('check_duplicate') else None
+        if existing is not None:
+            return self.attach_to_existing(existing, attachments, **kw)
+        taken =self.pool_lookup.doi(self, doi, attachments) if self.pool_lookup else None
         if taken is not None:
             kw.pop('attachments', None)
             kw["update_key"] = True
@@ -346,6 +394,12 @@ class Biblio:
         if str(pdf).startswith("http"):
             pdf = download_url(pdf, expect_pdf=True)
             kw['rename'] = True  # always rename downloaded files
+
+        # the library first (same DOI: the files are attached to its entry), then the pools, then online
+        if kw.get('check_duplicate'):
+            existing = self.find_doi(doi) if doi else (self.find_pdf(pdf) if search_doi else None)
+            if existing is not None:
+                return self.attach_to_existing(existing, [pdf] + list(attachments or []), **kw)
 
         if self.pool_lookup:
             files = [os.path.abspath(f) for f in [pdf] + list(attachments or [])]
