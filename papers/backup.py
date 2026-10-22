@@ -377,6 +377,12 @@ def _restore_from_backupdir(config, restore_files=False):
     message = run_git(config.gitdir, ["log", current, "--pretty=format:%C(auto)%h %s (%ad)", "-1"]).stdout.strip()
     logger.info(f'restore bibliography to {message}')
 
+    # read the snapshot, not the work tree: with git-lfs, the files of the
+    # work tree are hard links of the library files, so a library file
+    # edited in place is edited there too (git replaces the files it
+    # restores, which breaks the link and leaves the library file as it is)
+    run_git(config.gitdir, ["reset", "--hard", "--quiet", "HEAD"])
+
     if os.path.exists(config.bibtex):
         os.remove(config.bibtex)
     shutil.copy(_tracked_backupfile(config), config.bibtex)

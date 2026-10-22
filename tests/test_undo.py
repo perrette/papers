@@ -247,6 +247,22 @@ class TestUndoGitLocal(GitLFSInitTest):
         self.assertTrue(os.path.exists(biblio.get_files(biblio.entries[0])[0]))
 
 
+    def test_restore_file_edited_in_place(self):
+        # the backup copy is a hard link of the library file, so it is
+        # edited too: restore used to bring back the edited version
+        pdf, doi, key, newkey, year, bibtex, file_rename = prepare_paper()
+        self.papers(f'add {pdf} --doi {doi} --copy')
+        biblio = Biblio.load(self._path(self.mybib), '')
+        file_path = biblio.get_files(biblio.entries[0])[0]
+        self.assertNotEqual(os.path.realpath(file_path), os.path.realpath(pdf))
+        original = Path(file_path).read_bytes()
+        with open(file_path, 'ab') as f:  # same inode
+            f.write(b'edited')
+        os.remove(file_path)
+
+        self.papers('restore --restore-files')
+        self.assertEqual(Path(file_path).read_bytes(), original)
+
     def test_undo_files_rename_restore(self):
         biblio = Biblio.load(self._path(self.mybib), '')
         self.assertEqual(len(biblio.entries), 0)

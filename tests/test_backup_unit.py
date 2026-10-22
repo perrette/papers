@@ -206,7 +206,43 @@ class TestRestoreLFS(TmpTest):
         self.assertEqual(self.files(), [self.backup_pdf])
 
     def test_broken_backup_link(self):
-        os.remove(self.backup_pdf)
+        # a file that the snapshot does not have
+        run_git(self.config.gitdir, ['rm', '--quiet', os.path.relpath(self.backup_pdf, self.config.gitdir)])
+        run_git(self.config.gitdir, ['commit', '--quiet', '-m', 'remove the file'])
         with self.assertLogs('papers', level='WARNING'):
             restore_from_backupdir(self.config)
         self.assertEqual(self.files(), [self.pdf])
+
+    def test_file_removed_from_work_tree_is_restored(self):
+        os.remove(self.backup_pdf)
+        restore_from_backupdir(self.config)
+        self.assertEqual(Path(self.backup_pdf).read_text(), 'pdf of a')
+        self.assertEqual(self.files(), [self.pdf])
+
+    # the backup copy is a hard link of the library file: a file edited in
+    # place is edited in the work tree of the backup too, and restores used
+    # to read that, not the snapshot
+
+    def test_edited_in_place_points_to_snapshot(self):
+        Path(self.pdf).write_text('edited')  # same inode
+        with self.assertLogs('papers', level='WARNING'):
+            restore_from_backupdir(self.config)
+        self.assertEqual(self.files(), [self.backup_pdf])
+        self.assertEqual(Path(self.backup_pdf).read_text(), 'pdf of a')
+        self.assertEqual(Path(self.pdf).read_text(), 'edited')  # the library file is left as it is
+
+    def test_edited_in_place_then_removed_is_restored_from_snapshot(self):
+        Path(self.pdf).write_text('edited')
+        os.remove(self.pdf)
+        restore_from_backupdir(self.config, restore_files=True)
+        self.assertEqual(self.files(), [self.pdf])
+        self.assertEqual(Path(self.pdf).read_text(), 'pdf of a')
+
+    def test_undo_after_edit_in_place(self):
+        Path(self.config.bibtex).write_text(ENTRY.replace('One', 'Two'))
+        self.snapshot(self.config, 'second')
+        Path(self.pdf).write_text('edited')
+        os.remove(self.pdf)
+        git_undo(self.config, restore_files=True)
+        self.assertIn('One', Path(self.config.bibtex).read_text())
+        self.assertEqual(Path(self.pdf).read_text(), 'pdf of a')

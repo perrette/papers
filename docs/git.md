@@ -30,6 +30,11 @@ with the bibtex: they are hard-linked into the backup directory and tracked
 with git-lfs, together with a copy of the bibtex whose file paths point into
 the backup (so the backup is self-contained). Background in
 [issue 51](https://github.com/perrette/papers/issues/51).
+Since the copy in the backup directory is a hard link, a file edited in
+place in the library is also edited there until the next save commits it.
+`papers restore`, `undo` and `redo` first reset the backup directory to the
+committed snapshot, so they restore the committed version of the files (git
+writes a new file, and the library file is left as it is).
 
 Backup occurs in a subfolder of `~/.local/share/papers/backups`, whatever the
 location of the library. Type `papers status -v` to find out, or
