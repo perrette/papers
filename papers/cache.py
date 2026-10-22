@@ -97,7 +97,7 @@ def cached(name, hashed_key=False, legacy=None, migrate=None, trim=None, not_fou
                 logger.debug('load from cache: '+repr((name, key)))
                 return data['value']
             if data and not_found and time.time() - data.get('not_found', 0) < NOT_FOUND_TTL:
-                raise not_found(f'{key}: not found (cached until {time.ctime(data["not_found"] + NOT_FOUND_TTL)})')
+                raise not_found(f'{key if hashed_key else arg}: not found (cached until {time.ctime(data["not_found"] + NOT_FOUND_TTL)})')
             try:
                 res = fun(arg)
             except Exception as error:

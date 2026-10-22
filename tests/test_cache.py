@@ -93,6 +93,20 @@ class CacheTest(unittest.TestCase):
             fn("10.1234/a")
         self.assertEqual(len(calls), 2)
 
+    def test_cached_not_found_shows_the_argument_as_given(self):
+        # used to show the lower-cased cache key
+        class NotFound(ValueError):
+            pass
+
+        @cached("doi", not_found=NotFound, normalize=str.lower)
+        def fn(x):
+            raise NotFound(x)
+
+        with self.assertRaises(NotFound):
+            fn("10.1234/ABC")
+        with self.assertRaisesRegex(NotFound, r"^10\.1234/ABC: not found \(cached"):
+            fn("10.1234/ABC")
+
     def test_other_errors_are_not_cached(self):
         calls = []
 
