@@ -2,6 +2,7 @@
 import os
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 from papers.config import Config
@@ -33,17 +34,12 @@ class TestConfigRelpath(unittest.TestCase):
 class TestConfigEditor(unittest.TestCase):
 
     def test_editor_setter(self):
-        old_editor = os.environ.get("EDITOR")
-        try:
+        # the editor setting is handed to utils.edit_text, the environment is left alone
+        with mock.patch.dict(os.environ, {"EDITOR": "nano"}):
             cfg = Config(local=True, bibtex="/tmp/x.bib")
             cfg.editor = "vim"
             self.assertEqual(cfg.editor, "vim")
-            self.assertEqual(os.environ.get("EDITOR"), "vim")
-        finally:
-            if old_editor is not None:
-                os.environ["EDITOR"] = old_editor
-            elif "EDITOR" in os.environ:
-                del os.environ["EDITOR"]
+            self.assertEqual(os.environ.get("EDITOR"), "nano")
 
 
 class TestConfigBackupFiles(unittest.TestCase):
