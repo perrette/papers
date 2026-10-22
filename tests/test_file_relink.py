@@ -271,9 +271,8 @@ class TestSearch(RelinkTest):
         self.assertTrue(new.startswith(self.path('pool', 'files')))
         self.assertIn(f'one2000: relinked to {short_home(new)} (found in {self.path("downloads")})', out)
         self.assertFalse(os.path.exists(found))
-        # auto-push false: the entry, not in the pool, goes there with its file on push
-        self.assertNotIn('one2000', [e.key for e in Biblio.load(self.path('pool', 'papers.bib'), '').entries])
-        self.lib('push one2000')
+        # auto-push false: the entry, not in the pool, goes there with its file (file links are always pushed)
+        self.assertIn('one2000: also added to pool ../pool', out)
         self.assertEqual(self.files('one2000', where='pool'), [new])
 
 

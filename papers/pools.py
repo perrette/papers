@@ -886,6 +886,47 @@ class Exchange:
         if after.additions or after.conflicts or after.new_files:
             self._after[pool.id][1] = True
 
+    def push_links(self, entries, pool, resolver):
+        """a non-local library: the pool entries of `entries` (whose file
+        links changed in the command) link to the files that the library
+        entries link to in the pool's files directory, and no longer to the
+        files that the library entries no longer link to. Only the file
+        links of the pool entry change, nothing is recorded, and no file is
+        deleted. An entry that the pool does not have, and that links to a
+        pool file, is pushed (added to the pool, as `add` does). Return
+        [(entry, pool, what)], what being 'links' (the pool entry's links
+        changed), or as Exchange.push says for the entries pushed."""
+        report = []
+        missing = []
+        for e in entries:
+            before = self.biblio.loaded_files(e) or []
+            after = self.biblio.get_files(e)
+            removed = {realpath(f) for f in before} - {realpath(f) for f in after}
+            added = [f for f in after if pool.filesdir and is_inside(f, pool.filesdir)]
+            pe, _ = self.pool_entry(e, pool)
+            if pe is None:
+                if added:
+                    missing.append(e)
+                continue
+            old = pool.biblio.get_files(pe)
+            files = [f for f in old if realpath(f) not in removed]
+            linked = {realpath(f) for f in files}
+            files += [f for f in added if realpath(f) not in linked]
+            if files == old:
+                continue
+            if self.is_own(pool) and pool.id not in self._after:
+                before_mtime = pool.bibtex_mtime()
+                if before_mtime is not None and self.origin.pulled(pool.id) == before_mtime:
+                    # the pool had not changed since the last exchange: it has not now either
+                    self._after[pool.id] = [True, False]
+            pool.biblio.set_files(pe, files)
+            pool._sizes = None
+            self._changed(pool)
+            report.append((e, pool, 'links'))
+        if missing:
+            report += self.push(missing, pool, resolver)
+        return report
+
     # links to pool files
     # -------------------
 
@@ -1070,7 +1111,8 @@ def report_counts(report):
     '1 added, 2 unchanged', or 'nothing to do'"""
     counts = {}
     for _, _, what in report:
-        what = 'modified' if what == 'updated' else what  # as the lines of the entries say
+        # as the lines of the entries say
+        what = {'updated': 'modified', 'links': 'with file links updated'}.get(what, what)
         counts[what] = counts.get(what, 0) + 1
     return ', '.join(f'{n} {what}' for what, n in counts.items()) or 'nothing to do'
 

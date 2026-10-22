@@ -244,3 +244,117 @@ class TestNonLocalAutoPush(ExchangeTest):
         self.lib('config auto-push true')
         self.lib('tag smith2020climate --add foo')
         self.assertEqual(self.smith('pool')['keywords'], 'foo')
+
+
+LINKS_NOTE = 'file links also updated in pool ../pool'
+
+
+class TestNonLocalFileLinks(ExchangeTest):
+    """a non-local library, auto-push off: the commands that change the file
+    links of an entry update the links of the pool entry right away"""
+
+    def setUp(self):
+        super().setUp()
+        self.lib('config files copy')
+        self.lib('config local false -y')
+        Path(self.path('si.pdf')).write_text('supplement')
+
+    def pool_files(self, key='Smith_2020'):
+        return self.files(key, where='pool')
+
+    def unlinked_in_pool(self):
+        "what `papers file clean` in the pool would remove"
+        out = self.out('file clean --yes --dry-run', cwd='pool')
+        return [line for line in out.splitlines() if line.startswith('DRYRUN: remove ')]
+
+    def attach(self):
+        out = self.out(f'file attach smith2020climate {self.path("si.pdf")}')
+        si, = [f for f in self.files('smith2020climate') if f != self.pool_pdf]
+        self.assertTrue(si.startswith(self.path('pool', 'files')), si)
+        return out, si
+
+    def test_attach(self):
+        out, si = self.attach()
+        self.assertIn(f'[{LINKS_NOTE}]', out)
+        self.assertEqual(self.pool_files(), [self.pool_pdf, si])
+        self.assertEqual(self.unlinked_in_pool(), [])
+        # only the links: the other fields still follow auto-push
+        self.lib('tag smith2020climate --add foo')
+        self.assertFalse(self.has(self.smith('pool'), 'keywords'))
+        self.assertIn('../pool: up to date', self.out('pull --check'))
+        Path(self.path('pool', 'files', 'stray.pdf')).write_text('stray')
+        self.assertEqual(len(self.unlinked_in_pool()), 1)
+
+    def test_rename(self):
+        Path(self.path('lib', 'x.pdf')).write_text('external')
+        self.edit_lib('file = {', 'file = {:x.pdf:pdf;')
+        out = self.out('file rename smith2020climate')
+        self.assertIn(LINKS_NOTE, out)
+        new = [f for f in self.files('smith2020climate') if f != self.pool_pdf]
+        self.assertEqual(len(new), 1)
+        self.assertTrue(new[0].startswith(self.path('pool', 'files')), new)
+        self.assertEqual(sorted(self.pool_files()), sorted([self.pool_pdf] + new))
+        self.assertEqual(self.unlinked_in_pool(), [])
+
+    def test_detach(self):
+        _, si = self.attach()
+        out = self.out(f'file detach {si}')
+        self.assertIn(f'smith2020climate: {LINKS_NOTE}', out)
+        self.assertEqual(self.pool_files(), [self.pool_pdf])
+        self.assertTrue(Path(si).exists())  # detach never deletes
+
+    def test_rm(self):
+        _, si = self.attach()
+        out = self.out(f'file rm {si}')
+        self.assertIn(f'smith2020climate: {LINKS_NOTE}', out)
+        self.assertIn('it is a file of a pool', out)
+        self.assertEqual(self.files('smith2020climate'), [self.pool_pdf])
+        self.assertEqual(self.pool_files(), [self.pool_pdf])
+        self.assertTrue(Path(si).exists())  # file rm never deletes a pool file
+
+    def test_mv(self):
+        _, si = self.attach()
+        dest = self.path('pool', 'files', 'moved.pdf')
+        out = self.out(f'file mv {si} {dest}')
+        self.assertIn(f'smith2020climate: {LINKS_NOTE}', out)
+        self.assertEqual(self.pool_files(), [self.pool_pdf, dest])
+        self.assertEqual(self.unlinked_in_pool(), [])
+
+    def test_check_fix(self):
+        Path(self.path('downloads')).mkdir()
+        Path(self.path('downloads', 'gone.pdf')).write_text('found again')
+        self.edit_lib('file = {', 'file = {:../somewhere/gone.pdf:pdf;')
+        out = self.out('file check --fix --search ../downloads')
+        self.assertIn(f'smith2020climate: {LINKS_NOTE}', out)
+        new = [f for f in self.files('smith2020climate') if f != self.pool_pdf]
+        self.assertTrue(new and new[0].startswith(self.path('pool', 'files')), new)
+        self.assertEqual(sorted(self.pool_files()), sorted([self.pool_pdf] + new))
+        self.assertEqual(self.unlinked_in_pool(), [])
+
+    def test_entry_not_shared_in_the_pool(self):
+        # an entry of the library without origin record, that the pool has: only its links
+        brown = '@article{brown2021,\n author = {Brown, Bob},\n doi = {10.1000/brown},\n title = {Ocean heat}\n}\n'
+        Path(self.path('lib', 'papers.bib')).write_text(Path(self.path('lib', 'papers.bib')).read_text() + brown)
+        out = self.out(f'file attach brown2021 {self.path("si.pdf")}')
+        self.assertIn(LINKS_NOTE, out)
+        self.assertEqual(self.pool_files('Brown_2021'), self.files('brown2021'))
+        self.assertIsNone(self.origin().get(self.entry('brown2021')))
+        self.assertEqual(self.unlinked_in_pool(), [])
+
+    def test_entry_not_in_the_pool(self):
+        # an entry that the pool does not have: added to the pool, as add does
+        Path(self.path('lib', 'papers.bib')).write_text(
+            Path(self.path('lib', 'papers.bib')).read_text() + NEW_BIB.replace(' file = {:mine.pdf:pdf},\n', ''))
+        out = self.out(f'file attach mine2022 {self.path("si.pdf")}')
+        self.assertIn('also added to pool ../pool', out)
+        record = self.origin().get(self.entry('mine2022'))
+        self.assertIsNotNone(record)
+        self.assertEqual(self.pool_files(record.pool_key), self.files('mine2022'))
+        self.assertEqual(self.unlinked_in_pool(), [])
+
+    def test_local_library_is_unaffected(self):
+        self.lib('config local true -y')
+        pool_text = Path(self.path('pool', 'papers.bib')).read_text()
+        out = self.out(f'file attach smith2020climate {self.path("si.pdf")}')
+        self.assertNotIn('pool', out)
+        self.assertEqual(Path(self.path('pool', 'papers.bib')).read_text(), pool_text)

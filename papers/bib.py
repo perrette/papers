@@ -235,6 +235,18 @@ class Biblio:
                 modified.append(e)
         return new, modified
 
+    def loaded_files(self, e):
+        """the files of an entry as loaded (see mark_loaded): [] for an entry
+        new since, None without mark_loaded"""
+        if self.loaded is None:
+            return None
+        state = self.loaded.get(self.key(e))
+        if state is None:
+            former = [k.strip().lower() for k in get_entry_val(e, 'ids', '').split(',')]
+            state = next((self.loaded[k] for k in former if k in self.loaded), None)
+        value = next((v for k, v in state[1] if k == 'file'), '') if state is not None else ''
+        return parse_file(value, relative_to=self.relative_to)
+
 
     def sort(self):
         """Re-order library by block type and entry key (public API: SortBlocksByTypeAndKeyMiddleware)."""

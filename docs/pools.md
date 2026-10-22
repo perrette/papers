@@ -55,7 +55,9 @@ last exchange, see [Origin copies](#origin-copies)).
 
 Nothing is pulled automatically, and nothing is pushed automatically
 unless the `auto-push` setting is on (see [Auto-push](#auto-push)), except
-that `add` in a library that is not local adds the new entries to the pool.
+that in a library that is not local, `add` adds the new entries to the pool
+and the file links of an entry are updated in the pool entry (see
+[Local or not](#local-or-not)).
 An older project does not change because of work in a newer one.
 
 ## Local or not
@@ -81,9 +83,21 @@ In a library that is not local:
   A change that `add` makes to an entry the library has already is pushed
   only with auto-push;
 - `papers file attach`, `file rename` and `file check --fix` place the
-  files they handle in the pool's files directory too. With auto-push
-  off, the pool entry links to them after the next `papers push`; until
-  then, `papers file clean` in the pool lists them as unlinked;
+  files they handle in the pool's files directory too;
+- the file links are always pushed, whatever the `auto-push` setting: a
+  command that changes the files of an entry (`file attach`, `file rename`,
+  `file detach`, `file rm`, `file mv`, `file check --fix`, `edit`...) sets
+  the links of the pool entry to match right away, and its line ends with
+  `[file links also updated in pool ...]`. The pool entry links to the
+  files of the library entry that are in the pool's files directory, and
+  no longer to the files that the library entry no longer links to. Only
+  the links change: the other fields are pushed only with auto-push, and
+  nothing is recorded in the origin copy. No file is deleted: a pool file
+  detached or removed (`file rm`) stays in the pool, and `papers file
+  clean` in the pool lists it if no pool entry links to it any more. An
+  entry not shared with the pool gets the links of the pool entry of the
+  same paper updated; if the pool does not have it, the entry is added to
+  the pool, as `add` does;
 - `pull` links to the pool's files instead of copying them;
 - when the pool renames a file, the link breaks: it is repaired by looking
   the entry up in the pool, when the library is loaded (saved on the next
@@ -146,8 +160,9 @@ Modified -> Smith_2020: Climate sensitivity revisited (doi:10.1000/abc123, foo |
 ```
 
 With `auto-push false` (the default, local or not), nothing is pushed
-automatically, apart from the new entries of `add` in a library that is
-not local: run `papers push` or `papers sync`.
+automatically, apart from the new entries of `add` and the file links in a
+library that is not local (see [Local or not](#local-or-not)): run
+`papers push` or `papers sync`.
 
 ## A finished paper
 

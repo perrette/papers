@@ -250,19 +250,36 @@ def auto_push_entries(exchange):
     return []
 
 
+def links_changed(biblio):
+    "the entries new or modified since loaded whose file links changed (see Biblio.loaded_files)"
+    new, modified = biblio.changed_entries()
+    real = lambda files: {os.path.realpath(f) for f in files}
+    return [e for e in new + modified if real(biblio.loaded_files(e) or []) != real(biblio.get_files(e))]
+
+
 def push_changed(exchange):
     """push the entries of auto_push_entries to the pool (not saved): an
     entry that changed in the pool too is not pushed (`papers sync`
-    decides). Return the report of the push (see Exchange.push)."""
+    decides). In a non-local library, the file links of the entries whose
+    links changed are also updated in the pool, whatever auto-push says
+    (see Exchange.push_links). Return the report of the push (see
+    Exchange.push)."""
     entries = auto_push_entries(exchange)
-    if not entries:
+    config = exchange.config
+    links = links_changed(exchange.biblio) if config.file and config.has_pool() and not config.local else []
+    if not entries and not links:
         return []
     try:
         pool = exchange.pools.target()
     except PoolError as error:
         logger.warning(f'not pushed to the pool: {error}')
         return []
-    return exchange.push(entries, pool, Resolver('skip'))
+    report = exchange.push(entries, pool, Resolver('skip')) if entries else []
+    # the pool entries just added, or not pushed for want of fields, are left as they are
+    done = {id(e) for e, _, what in report if what in ('added', 'empty')}
+    modified = {id(e) for e, _, what in report if what == 'updated'}  # their line says so already
+    linked = exchange.push_links([e for e in links if id(e) not in done], pool, Resolver('skip'))
+    return report + [r for r in linked if not (r[2] == 'links' and id(r[0]) in modified)]
 
 
 def save_entries(config, biblio, exchange=None):
@@ -288,6 +305,7 @@ def print_push_notes(biblio, notes):
 
 # the notes of the entries pushed as a side effect (add, file attach...)
 _PUSH_NOTES = {'added': 'also added to {}', 'updated': 'also modified in {}',
+               'links': 'file links also updated in {}',
                'skipped': 'not pushed: changed in the pool too; papers sync decides',
                'empty': 'not pushed to {}: no fields or no key'}
 
