@@ -21,7 +21,8 @@ from papers.pools import Exchange, PoolLookup, Pools
 from papers.utils import PapersExit, file_uri_to_path, open_with_system
 from papers.cli.common import (view_entry_files, set_format_config_from_cmd, _print_biblio_diff, files_mode,
                                duplicate_resolver, save_exchange, stdin_is_terminal, edit_entries, edit_selected,
-                               print_kept_files, _delete_files_option, library_pools, push_notes)
+                               print_kept_files, _delete_files_option, library_pools, push_notes, push_changed,
+                               save_entries, print_push_notes)
 
 
 def _author_short_option(o):
@@ -222,14 +223,10 @@ def addcmd(parser, o, config):
                 del e[k]
         biblio.entries = others + entries
 
-    # non-local library or auto-push: also in the pool
-    before = {biblio.key(e) for e in biblio_init.entries}
-    added = {get_entry_val(e, 'ID', '').lower() for e in entries}
-    pushed = exchange.push_added([e for e in biblio.entries if biblio.key(e) in added],
-                                 [e for e in biblio.entries if biblio.key(e) not in before], resolver)
+    # auto-push, or the new entries of a non-local library: also in the pool
     lookup = biblio.pool_lookup
     notes = {key: f'from {pool.label}' for key, pool in (lookup.taken_from.items() if lookup else [])}
-    push_notes(pushed, notes)
+    push_notes(push_changed(exchange), notes)
     pool = lookup.pool if lookup else None
     if pool is not None and not any(pool is p for p in exchange.changed_pools):
         exchange.after_take(pool)
@@ -265,7 +262,7 @@ def checkcmd(parser, o, config):
     elif o.on_duplicate or o.mode:
         logger.warning('--on-duplicate and -m/--mode only apply with --duplicates')
 
-    savebib(biblio, config)
+    print_push_notes(biblio, save_entries(config, biblio))
 
 
 def remove_entries(biblio, entries, config, delete_files=None, ask=True):
@@ -369,8 +366,8 @@ def editcmd(parser, o, config):
         except OSError:
             pass
     if edit_selected(biblio, entries):
-        savebib(biblio, config)
-        _print_biblio_diff(biblio_init, biblio, biblio.entries)
+        notes = save_entries(config, biblio)
+        _print_biblio_diff(biblio_init, biblio, biblio.entries, notes=notes)
 
 
 def rmcmd(parser, o, config):
@@ -392,8 +389,9 @@ def tagcmd(parser, o, config):
             parser.error('--rename OLD NEW applies to the whole library: no KEY, --add or --rm')
         old, new = o.rename
         count = rename_tag(biblio.entries, old, new)
-        savebib(biblio, config)
+        notes = save_entries(config, biblio)
         print(f"renamed tag {old} to {new} in {count} entries")
+        print_push_notes(biblio, notes)
         return
 
     if o.add or o.rm:
@@ -402,8 +400,8 @@ def tagcmd(parser, o, config):
         entries = select_entries(biblio, o.entries)
         add_tags(entries, o.add or [])
         remove_tags(entries, o.rm or [])
-        savebib(biblio, config)
-        _print_biblio_diff(biblio_init, biblio, entries)
+        notes = save_entries(config, biblio)
+        _print_biblio_diff(biblio_init, biblio, entries, notes=notes)
         return
 
     entries = select_entries(biblio, o.entries) if o.entries else biblio.entries
@@ -539,9 +537,10 @@ def listcmd(parser, o, config):
         listed = {id(e) for e in entries}
         entries = [e for e in biblio.db.entries if id(e) not in listed]
 
+    notes = {}
     if o.add_keywords:
         add_tags(entries, o.add_keywords)
-        savebib(biblio, config)
+        notes = save_entries(config, biblio)
 
     elif o.add_files:
         if len(entries) != 1:
@@ -549,22 +548,22 @@ def listcmd(parser, o, config):
         e = entries[0]
         attach_files(biblio, e, o.add_files, config,
                      ('copy' if o.copy else 'move') if o.rename else 'link', Pools(config).files_dirs())
-        savebib(biblio, config)
+        notes = save_entries(config, biblio)
 
     elif o.edit:
         if not edit_selected(biblio, entries):
             return
         entries = biblio.entries
-        savebib(biblio, config)
+        notes = save_entries(config, biblio)
 
     elif o.fetch:
         for e in entries:
             biblio.fix_entry(e, fix_doi=True, fix_key=True, fetch_all=True, interactive=True)
-        savebib(biblio, config)
+        notes = save_entries(config, biblio)
 
     elif o.rename:
         rename_files(biblio, entries, config, Pools(config).files_dirs(), keep_source=o.copy)
-        savebib(biblio, config)
+        notes = save_entries(config, biblio)
 
     elif o.delete:
         todelete = remove_entries(biblio, entries, config, delete_files=_delete_files_option(parser, o))
@@ -589,7 +588,7 @@ def listcmd(parser, o, config):
 
     # report any entry mutations (--add-files, --add-keywords, --edit, --fetch,
     # --rename, --delete) using the same Added/Modified/Removed convention as addcmd
-    _print_biblio_diff(biblio_init, biblio, entries)
+    _print_biblio_diff(biblio_init, biblio, entries, notes=notes)
 
 
 def opencmd(parser, o, config):

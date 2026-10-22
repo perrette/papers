@@ -389,7 +389,8 @@ class Config:
         # what `add` does with a file: move or copy it into the files
         # directory, or link it where it is (see papers.files.FilesPolicy)
         self.files = files if files is not None else self.inherited('files')
-        # auto-push: `add` in a local library also adds the new entries to the pool
+        # auto-push: the commands that change entries push them to the pool
+        # (those shared with it, and new ones; see papers.cli.common.save_entries)
         self.auto_push = auto_push if auto_push is not None else self.inherited('auto-push')
 
 
@@ -694,9 +695,14 @@ class Config:
             lines.append('* pool:               ' + status_line(self))
             lines.append('* local:              ' + ('true (the files are in the files directory of the library)'
                          if self.local else "false (the files are in the pool)"))
-            if self.local and self.has_pool():
-                lines.append('* auto-push:          ' + ('true (add also adds the new entries to the pool)'
-                                                         if self.auto_push else 'false'))
+            if self.has_pool():
+                if self.auto_push:
+                    text = 'true (the commands push the entries they change to the pool)'
+                elif not self.local:
+                    text = 'false (add adds the new entries to the pool; push or sync sends the changes)'
+                else:
+                    text = 'false (push or sync sends the changes to the pool)'
+                lines.append('* auto-push:          ' + text)
 
         if verbose:
             lines.append('* settings:')

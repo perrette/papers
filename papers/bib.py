@@ -139,6 +139,8 @@ class Biblio:
         self.relative_to = os.path.sep if relative_to is None else relative_to
         # `add` looks in the pool first (see papers.pools.PoolLookup)
         self.pool_lookup = None
+        # the entries as loaded (see mark_loaded, changed_entries)
+        self.loaded = None
 
     def move(self, file, newfile, copy=False, hardlink=False):
         return _move(file, newfile, copy=copy, dryrun=papers.config.DRYRUN, hardlink=hardlink)
@@ -173,6 +175,35 @@ class Biblio:
 
     def key(self, e):
         return e['ID'].lower()
+
+    @staticmethod
+    def _state(e):
+        return e.entry_type.lower(), sorted((f.key, str(f.value)) for f in e.fields)
+
+    def mark_loaded(self):
+        "remember the entries as they are now (as loaded), for changed_entries"
+        self.loaded = {self.key(e): self._state(e) for e in self.entries}
+
+    def changed_entries(self):
+        """(new, modified): the entries added since mark_loaded (neither their
+        key nor a former key of their ids field was there), and those that
+        changed (an entry whose key changed and that has its former key in
+        ids is modified). Removed entries are in neither. Without
+        mark_loaded, nothing changed."""
+        if self.loaded is None:
+            return [], []
+        new, modified = [], []
+        for e in self.entries:
+            state = self.loaded.get(self.key(e))
+            if state is None:
+                former = [k.strip().lower() for k in get_entry_val(e, 'ids', '').split(',')]
+                state = next((self.loaded[k] for k in former if k in self.loaded), None)
+                if state is None:
+                    new.append(e)
+                    continue
+            if state != self._state(e):
+                modified.append(e)
+        return new, modified
 
 
     def sort(self):

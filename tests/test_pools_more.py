@@ -7,7 +7,6 @@ from pathlib import Path
 from papers.bib import Biblio
 from papers.config import Config
 from papers.pools import Exchange, Pools, PoolError, load_biblio, mtime, use_pool_files
-from papers.merge import Resolver
 from papers.utils import PapersExit
 
 from tests.test_pools import PoolTest, SMITH_BIB, NEW_BIB
@@ -88,9 +87,6 @@ class TestExchange(PoolTest):
         exchange.pools.pool()._index = None
         exchange.origin.entries.clear()
         self.assertEqual(exchange.repair_links(), [])  # no pool entry
-
-    def test_push_added_local_without_auto_push(self):
-        self.assertEqual(self.exchange().push_added([], [], Resolver('error')), [])
 
 
 class TestPoolLookups(PoolTest):

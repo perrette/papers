@@ -1156,8 +1156,22 @@ class TestNonLocal(NonLocalTest):
         self.assertEqual(len(files), 2)
         self.assertTrue(files[1].startswith(self.path('pool', 'files')), files)
         self.assertEqual(os.listdir(self.path('lib', 'files')), [])
-        pool = self.bib('pool')
+        # auto-push false: the pool entry links to the file once pushed
         key = self.origin().get(self.entry('smith2020climate')).pool_key
+        pool = self.bib('pool')
+        self.assertEqual(pool[0].get_files(pool[1][key]), files[:1])
+        self.lib('push')
+        pool = self.bib('pool')
+        self.assertEqual(pool[0].get_files(pool[1][key]), files)
+
+    def test_file_attach_auto_push(self):
+        self.lib('config auto-push true')
+        Path(self.path('si.pdf')).write_text('supplement')
+        out = self.out(f'file attach smith2020climate {self.path("si.pdf")}')
+        self.assertIn('[also modified in pool ../pool]', out)
+        files = self.files('smith2020climate')
+        key = self.origin().get(self.entry('smith2020climate')).pool_key
+        pool = self.bib('pool')
         self.assertEqual(pool[0].get_files(pool[1][key]), files)  # the pool entry has the file too
 
     def test_file_rename_places_files_in_pool(self):

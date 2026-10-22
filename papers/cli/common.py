@@ -15,7 +15,7 @@ from papers.files import hidden_bibtex
 from papers.identifiers import read_selection, select_entries
 from papers.library import config_for_bibtex, savebib
 from papers.merge import Resolver
-from papers.pools import Pools, report_counts, use_pool_files
+from papers.pools import Exchange, PoolError, Pools, report_counts, use_pool_files
 from papers.utils import PapersExit, edit_text, open_with_system
 
 
@@ -225,27 +225,71 @@ def _one_entry(biblio, key):
 def library_pools(config):
     """the pools of the library. In a non-local library, the files that the
     command places go to the pool, as with `add` (see
-    papers.pools.use_pool_files): call push_to_pool after."""
+    papers.pools.use_pool_files)."""
     pools = Pools(config)
     if config.file and not config.local:
         use_pool_files(config, pools)
     return pools
 
 
-def push_to_pool(exchange, entries, on_conflict=None):
-    """save the library; in a non-local library, first push the entries to
-    the pool, which holds their files (as `add` does). on_conflict: the
-    --on-duplicate mode of the push (default: ask in a terminal, else
-    error). Return the notes of the push for _print_biblio_diff."""
-    resolver = Resolver(on_conflict or ('ask' if stdin_is_terminal() else 'error'), color=papers.utils.COLOR)
-    pushed = exchange.push_added(entries, [], resolver) if not exchange.config.local else []
+def auto_push_entries(exchange):
+    """the entries that the command pushes to the pool on its own (see
+    Biblio.changed_entries): with auto-push, the entries it changed that
+    are shared with the pool (origin record) and the entries new to the
+    library; in a non-local library, the entries new to the library in any
+    case (the pool holds their files). Removed entries are never pushed."""
+    config = exchange.config
+    if not config.file or not config.has_pool():
+        return []
+    new, modified = exchange.biblio.changed_entries()
+    if config.auto_push:
+        shared = [e for e in modified if exchange.origin.get(e, exchange.pool_id) is not None]
+        return new + shared
+    if not config.local:
+        return new
+    return []
+
+
+def push_changed(exchange):
+    """push the entries of auto_push_entries to the pool (not saved): an
+    entry that changed in the pool too is not pushed (`papers sync`
+    decides). Return the report of the push (see Exchange.push)."""
+    entries = auto_push_entries(exchange)
+    if not entries:
+        return []
+    try:
+        pool = exchange.pools.target()
+    except PoolError as error:
+        logger.warning(f'not pushed to the pool: {error}')
+        return []
+    return exchange.push(entries, pool, Resolver('skip'))
+
+
+def save_entries(config, biblio, exchange=None):
+    """save the library after a command that changed entries, once
+    push_changed pushed them. Return the notes of the push, {lower-case
+    key: note}, for _print_biblio_diff or print_push_notes."""
+    if exchange is None:
+        if not config.file or not config.has_pool() or (config.local and not config.auto_push):
+            savebib(biblio, config)
+            return {}
+        exchange = Exchange(config, biblio)
+    notes = push_notes(push_changed(exchange))
     save_exchange(exchange)
-    return push_notes(pushed)
+    return notes
+
+
+def print_push_notes(biblio, notes):
+    "the notes of save_entries, for a command that does not list the entries it changed"
+    for e in biblio.entries:
+        if e.key.lower() in notes:
+            print(f'{e.key}: {notes[e.key.lower()]}')
 
 
 # the notes of the entries pushed as a side effect (add, file attach...)
 _PUSH_NOTES = {'added': 'also added to {}', 'updated': 'also modified in {}',
-               'skipped': 'not pushed to {}: conflict skipped', 'empty': 'not pushed to {}: no fields or no key'}
+               'skipped': 'not pushed: changed in the pool too; papers sync decides',
+               'empty': 'not pushed to {}: no fields or no key'}
 
 
 def push_notes(pushed, notes=None):

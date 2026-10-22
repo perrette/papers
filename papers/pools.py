@@ -798,25 +798,6 @@ class Exchange:
         self._changed(pool)
         return report
 
-    def push_added(self, touched, new, resolver):
-        """after `add`: in a non-local library, the entries added to or
-        changed in the library go to its pool (which holds their files); in
-        a local library with auto-push, the entries new to the library.
-        Return the report of the push (see `push`)."""
-        if not self.config.local:
-            targets = touched
-        elif self.config.auto_push and self.config.has_pool():
-            targets = new
-        else:
-            return []
-        unique = []
-        for e in targets:
-            if not any(e is x for x in unique):
-                unique.append(e)
-        if not unique:
-            return []
-        return self.push(unique, self.pools.target(), resolver)
-
     def after_push(self, pool):
         """after the pool was saved: if it had not changed since the last
         exchange (or this is the first), the push does not count as a

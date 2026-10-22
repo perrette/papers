@@ -184,7 +184,7 @@ class UndoInLibrary:
 
 
 class TestUndoPool(UndoPoolTest, UndoInLibrary):
-    "a library that is not local: changes of its entries go to the pool too"
+    "a library that is not local: add adds the new entries to the pool too"
 
     def test_pool_undo_redo(self):
         self.lib('add ../new.bib')

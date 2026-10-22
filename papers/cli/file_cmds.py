@@ -9,12 +9,12 @@ from papers.config import short_home
 from papers.files import (SearchFolders, attach_files, broken_links, check_entry_files, clean_filesdir,
                           delete_files, detach_links, execute_moves, files_to_delete, link_snapshot, linked_files,
                           links_to_paths, moved_links, plan_moves, realpath, remove_empty_folders, rename_files)
-from papers.library import get_biblio, savebib
+from papers.library import get_biblio
 from papers.pools import Exchange, Pools
 from papers.utils import PapersExit
 from papers.cli.common import (set_format_config_from_cmd, _print_biblio_diff, files_mode,
                                _entries_or_all, _one_entry, _key_option_entries, print_kept_files, library_pools,
-                               push_to_pool)
+                               save_entries, print_push_notes)
 
 
 def filecheckcmd(parser, o, config):
@@ -51,7 +51,7 @@ def filecheckcmd(parser, o, config):
         print("Check files directory for unlinked files")
         clean_filesdir(biblio, interactive=not o.force, ignore_files=[config.bibtex])
 
-    savebib(biblio, config)
+    print_push_notes(biblio, save_entries(config, biblio))
 
 
 def file_renamecmd(parser, o, config):
@@ -61,7 +61,7 @@ def file_renamecmd(parser, o, config):
     biblio_init = copy.deepcopy(biblio)
     entries = _entries_or_all(biblio, o.entries)
     rename_files(biblio, entries, config, pools.files_dirs(), keep_source=o.keep_source)
-    notes = push_to_pool(Exchange(config, biblio, pools), entries)
+    notes = save_entries(config, biblio, Exchange(config, biblio, pools))
     _print_biblio_diff(biblio_init, biblio, entries, notes=notes)
 
 
@@ -103,7 +103,7 @@ def file_mvcmd(parser, o, config):
     changes = moved_links(snapshot, done)
     for e, old, new in changes:
         biblio.set_files(e, new)
-    savebib(biblio, config)
+    notes = save_entries(config, biblio)
     filesdir = _filesdir(done)
     if filesdir:
         config.filesdir = filesdir
@@ -111,6 +111,7 @@ def file_mvcmd(parser, o, config):
             config.save()
             print(f"filesdir = {config._relpath(filesdir)} (in {config.file})")
     print(f"moved {len(done)} of {len(moves)} file(s) or folder(s), {len(changes)} entries updated")
+    print_push_notes(biblio, notes)
     if error:
         raise PapersExit(f"{error}: the links of the files moved before were saved")
 
@@ -122,7 +123,7 @@ def file_attachcmd(parser, o, config):
     biblio_init = copy.deepcopy(biblio)
     e = _one_entry(biblio, o.key)
     attach_files(biblio, e, o.files, config, files_mode(o, config), pools.files_dirs())
-    notes = push_to_pool(Exchange(config, biblio, pools), [e])
+    notes = save_entries(config, biblio, Exchange(config, biblio, pools))
     _print_biblio_diff(biblio_init, biblio, [e], notes=notes)
 
 
@@ -151,7 +152,7 @@ def file_detachcmd(parser, o, config):
         parser.error('papers file detach FILE... [--key KEY...], --key KEY... or --broken [--key KEY...]')
     links = [(e, files) for e, files in links if files]
     _detach(biblio, links)
-    savebib(biblio, config)
+    print_push_notes(biblio, save_entries(config, biblio))
     if not links:
         print('no link removed')
 
@@ -165,7 +166,7 @@ def file_rmcmd(parser, o, config):
     _detach(biblio, links)
     inside, outside, kept, in_pool = files_to_delete(biblio, [f for _, files in links for f in files],
                                                      config.filesdir, pool_dirs=Pools(config).files_dirs())
-    savebib(biblio, config)
+    print_push_notes(biblio, save_entries(config, biblio))
     print_kept_files(kept, in_pool)
     deleted = inside + outside
     delete_files(deleted, dryrun=papers.config.DRYRUN)
@@ -308,14 +309,7 @@ def file_checkcmd(parser, o, config):
     else:
         print(f"no issue found in the files of {len(entries)} entries")
     if o.fix and issues:
-        if place:
-            # a non-local library: the files placed in the pool from the --search folders go to the pool
-            # entries (a conflict on the fields is left to `papers push`)
-            pushed = [e for e, _, sources in plans if any(s != 'pool' for s in sources.values())]
-            for note in push_to_pool(exchange, pushed, on_conflict='skip').items():
-                print('{}: {}'.format(*note))
-        else:
-            savebib(biblio, config)
+        print_push_notes(biblio, save_entries(config, biblio, exchange if place else None))
 
 
 def file_cleancmd(parser, o, config):

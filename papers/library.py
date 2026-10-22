@@ -117,6 +117,7 @@ def get_biblio(config):
         biblio = Biblio.newbib(config.bibtex, config.filesdir, relative_to=relative_to, nameformat=config.nameformat, keyformat=config.keyformat)
     if config.file and not config.local:
         _repair_pool_links(biblio, config)
+    biblio.mark_loaded()  # for the auto-push (papers.cli.common.save_entries)
     return biblio
 
 
