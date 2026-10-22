@@ -26,6 +26,9 @@ $> papers list --key perrette2013 --author perrette --year 2013 --title scaling 
 ... (precise list)
 ```
 
+With `--invert`, `papers list` lists the entries that the same command
+without `--invert` does not list.
+
 ## Tags
 
 Tags are the `keywords` field of the entries (comma-separated). `papers tag`

@@ -511,7 +511,8 @@ def get_parser(config=None):
         help=f'threshold for fuzzy matching of title, author, abstract (default: 50), '
              f'and of authors and title with --duplicates --fuzzy (default: {FUZZY_RATIO})')
     listp.add_argument('--similarity', help='deprecated and ignored')
-    listp.add_argument('--invert', action='store_true', help='list the entries that do not match')
+    listp.add_argument('--invert', action='store_true',
+        help='list the entries that the same command without --invert does not list')
     listp.add_argument('--any', action='store_true', help='when several keywords: any of them')
 
     grp = listp.add_argument_group('search')

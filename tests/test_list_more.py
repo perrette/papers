@@ -37,6 +37,27 @@ class TestListFilters(FileTest):
     def test_first_author(self):
         self.assertEqual(self.keys('--first-author one'), ['one2000', 'two2000', 'four2000'])
 
+    def test_invert_is_the_complement(self):
+        # used to invert each word, then require all of them: "no word
+        # matches" instead of "not listed by the same search"
+        self.bib(self.read_bib() + entry('five2001').replace('Title of five2001', 'Ice and ocean')
+                 + entry('six2001').replace('Title of six2001', 'Ocean heat').replace('Some One', 'Other, Person'))
+        every = self.keys('')
+        for search in ['--title ice ocean', '--title ice ocean --any', '--title "of" --year 2001',
+                       '--author one --year 2000', '--author other --title ocean --any',
+                       '--title "Titel of one2000" --fuzzy', 'ice sheets', 'ice sheets --any', '--key "*2000"',
+                       '--strict --title ice', '--has-file', '--review-required --author one',
+                       '--duplicates --by title', '--first-author one --year 2001']:
+            with self.subTest(search):
+                listed = self.keys(search)
+                inverted = self.keys(search + ' --invert')
+                self.assertEqual(sorted(listed + inverted), sorted(every))
+                self.assertFalse(set(listed) & set(inverted))
+
+    def read_bib(self):
+        with open(self.path('lib', 'papers.bib')) as f:
+            return f.read()
+
     def test_fuzzy_title(self):
         self.assertEqual(self.keys('--title "Titel of one2000"'), [])
         self.assertIn('one2000', self.keys('--title "Titel of one2000" --fuzzy'))

@@ -422,7 +422,7 @@ def listcmd(parser, o, config):
         else:
             res = fnmatch.fnmatch(word.lower(), target.lower())
 
-        return res if not o.invert else not res
+        return res
 
 
     def _longmatch(word, target):
@@ -458,10 +458,7 @@ def listcmd(parser, o, config):
     entries = biblio.db.entries
 
     if o.review_required:
-        if o.invert:
-            entries = [e for e in entries if not _requiresreview(e)]
-        else:
-            entries = [e for e in entries if _requiresreview(e)]
+        entries = [e for e in entries if _requiresreview(e)]
     if o.has_file:
         entries = [e for e in entries if get_entry_val(e, 'file', '')]
     if o.no_file:
@@ -499,8 +496,7 @@ def listcmd(parser, o, config):
     if o.by:
         if o.fuzzy:
             parser.error('--by and --fuzzy are mutually exclusive')
-        listed = [e for g in groups_by_field(entries, o.by) for e in g]
-        entries = [e for e in entries if not any(e is x for x in listed)] if o.invert else listed
+        entries = [e for g in groups_by_field(entries, o.by) for e in g]
 
     elif o.duplicates:
         listed = []
@@ -509,10 +505,12 @@ def listcmd(parser, o, config):
         if o.fuzzy:
             for a, b in fuzzy_pairs(entries, o.fuzzy_ratio if o.fuzzy_ratio is not None else FUZZY_RATIO):
                 listed.extend(e for e in (a, b) if not any(e is x for x in listed))
-        if o.invert:
-            entries = [e for e in entries if not any(e is x for x in listed)]
-        else:
-            entries = listed
+        entries = listed
+
+    # the entries that the same search without --invert does not list
+    if o.invert:
+        listed = {id(e) for e in entries}
+        entries = [e for e in biblio.db.entries if id(e) not in listed]
 
     if o.add_keywords:
         add_tags(entries, o.add_keywords)
