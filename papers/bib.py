@@ -83,6 +83,7 @@ def append_abc(key, keys=[]):
     'Author2000c'
     """
     letters = 'abcdefghijklmnopqrstuvwxyz'
+    keys = {k.lower() for k in keys}  # keys are compared ignoring case
 
     # a letter after a digit is a suffix of this function (Author2000b)
     if len(key) > 1 and key[-1] in letters and key[-2].isdigit():
@@ -92,7 +93,7 @@ def append_abc(key, keys=[]):
         letters = letters[1:] # start at b
 
     for l in letters:
-        if key+l not in keys:
+        if (key+l).lower() not in keys:
             return key+l
     raise ValueError(f'{key}: no free key with a letter suffix')
 
@@ -230,12 +231,7 @@ class Biblio:
                 if rename: self.rename_entry_files(existing_same_key, copy=copy)
                 return [ existing_same_key ]
 
-            elif update_key:
-                newkey = self.generate_key(entry)  # unique key from content (e.g. DOI)
-                logger.info('update key: {} => {}'.format(get_entry_val(entry, 'ID', ''), newkey))
-                set_entry_key(entry, newkey)
-
-            else:
+            else:  # (with update_key, the key generated above is not in the library)
                 raise DuplicateKeyError(f'{get_entry_val(entry, "ID", "")}: this key is already in the library, '
                                         'for another paper: pass -u/--update-key to generate a new key, '
                                         'or --key KEY')
@@ -289,7 +285,7 @@ class Biblio:
         " generate a unique key not yet present in the record "
         keys = {self.key(e) for e in self.db.entries}
         key = self.keyformat(entry)
-        if keys and key in keys:
+        if key.lower() in keys:
             key = append_abc(key, keys)
         return key
 

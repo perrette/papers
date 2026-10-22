@@ -49,6 +49,9 @@ class TestAppendAbc(unittest.TestCase):
         result = append_abc('Author2000', ['Author2000', 'Author2000b'])
         self.assertEqual(result, 'Author2000c')
 
+    def test_ignores_case(self):
+        self.assertEqual(append_abc('Author2000', ['author2000', 'author2000b']), 'Author2000c')
+
     def test_key_ending_with_a_letter(self):
         # the last letter is a suffix only after a digit: 'perrette' used to become 'perrettf'
         self.assertEqual(append_abc('perrette', ['perrette']), 'perretteb')

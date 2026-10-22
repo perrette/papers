@@ -9,6 +9,7 @@ from unittest import mock
 from papers.bib import Biblio, DuplicateKeyError, entry_diff
 from papers.duplicate import Distinct
 from papers.entries import parse_string
+from papers.filename import Format, KEYFORMAT
 from papers.merge import DuplicateError
 
 
@@ -288,6 +289,16 @@ class TestBiblio(unittest.TestCase):
             biblio.add_bibtex(ENTRY.replace('One', 'Two').replace('10.1000/a', '10.1000/b'))
         biblio.add_bibtex(ENTRY.replace('One', 'Two').replace('10.1000/a', '10.1000/b'), update_key=True)
         self.assertEqual(sorted(e.key for e in biblio.entries), ['a2000', 'author2000'])
+
+    def test_update_key_ignores_case(self):
+        # keys are compared ignoring case: a key template with capitals used
+        # to give the key of another entry (Author2000 for author2000)
+        biblio = biblio_of(ENTRY.replace('a2000', 'Author2000'),
+                           keyformat=Format(**{**vars(KEYFORMAT), 'template': '{Author}{year}'}))
+        biblio.add_bibtex(ENTRY.replace('One', 'Two').replace('10.1000/a', '10.1000/b'), update_key=True)
+        self.assertEqual(sorted(e.key for e in biblio.entries), ['Author2000', 'Author2000b'])
+        biblio.add_bibtex(ENTRY.replace('One', 'Three').replace('10.1000/a', '10.1000/c'), update_key=True)
+        self.assertEqual(sorted(e.key for e in biblio.entries), ['Author2000', 'Author2000b', 'Author2000c'])
 
     def test_same_key_same_title_merges_files(self):
         biblio = biblio_of(ENTRY)
