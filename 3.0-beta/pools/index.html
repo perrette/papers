@@ -1230,7 +1230,9 @@ be used by several libraries. A library has one pool, its <code>pool</code> sett
 before that a library finds nothing in it, without a warning. A pool given
 by path that does not exist is a warning (a typo, a disk that is not
 mounted); papers creates it when it writes to it only if its parent
-directory exists.</p>
+directory exists. The same holds for a global pool outside the home
+directory (e.g. <code>/media/usb/papers</code> while the disk is not mounted): the
+command stops before changing anything.</p>
 <p><code>papers init</code> in the folder of the global pool creates the pool itself: a
 library without pool, with its own files. Outside of any library, commands
 act on the global pool once it is a library. <code>papers config --global pool
@@ -1340,17 +1342,25 @@ recorded as "not the same paper" (<code>.papers/distinct.json</code>) are merged
 ways on <code>pull</code> and <code>push</code>.</p>
 <h2 id="origin-copies">Origin copies<a class="headerlink" href="#origin-copies" title="Permanent link">&para;</a></h2>
 <p><code>.papers/origin.bib</code>, next to the bibtex of the library, records for each
-entry taken from a pool (by <code>add</code>, <code>pull</code> or <code>push</code>) the pool's version of
-the entry at that time, under the library's key, with the pool it came from
-(<code>papers-pool</code>: <code>global</code> for the global pool, otherwise the path of the
-pool relative to the library), the key in the pool (<code>papers-pool-key</code>) and
-the time (<code>papers-time</code>). It also records the modification time of the
-pool's bibtex at the last exchange with the pool: a pull of all entries, or
-a push or an add when the pool had not changed since the previous exchange
-(or when it is the first exchange). The file is part of the git backup of the
-library (see <a href="../git/">Git integration</a>).</p>
+entry exchanged with a pool (by <code>add</code>, <code>pull</code> or <code>push</code>) its origin copy,
+under the library's key, with the pool (<code>papers-pool</code>: <code>global</code> for the
+global pool, otherwise the path of the pool relative to the library), the
+key in the pool (<code>papers-pool-key</code>) and the time (<code>papers-time</code>). It also
+records the modification time of the pool's bibtex at the last exchange
+with the pool: a pull of all entries that skipped no conflict, or a push or
+an add when the pool had not changed since the previous exchange (or when it
+is the first exchange). A push that leaves the pool entry with fields or
+files that the library entry does not have does not count: <code>papers status</code>
+then shows the pool as changed until the next pull. The file is part of the
+git backup of the library (see <a href="../git/">Git integration</a>).</p>
 <p>The origin copy is the third version of a three-way merge: comparing the
-library entry and the pool entry with it tells which side changed a field.</p>
+library entry and the pool entry with it tells which side changed a field.
+It is the version of the side that sent the entry, as it was sent: the pool
+entry after <code>add</code> and <code>pull</code>, the library entry after <code>push</code>. What the
+receiving side has beyond it is a change of that side, for the next
+exchange the other way: a field that only the pool entry has comes with the
+next <code>pull</code>; a field that only the library entry has goes to the pool with
+the next <code>push</code>.</p>
 <p><code>papers add other.bib</code> copies the entries of <code>other.bib</code> once, and keeps no
 memory of where they came from. The entries taken with <code>papers pull</code> stay
 linked to the pool through their origin copy: later pulls bring the
@@ -1371,7 +1381,11 @@ entry, without querying crossref:</p>
 mode they are copied into the library's files directory (a hard link when
 possible), named with the library's name template; a pool file is never
 moved. In <code>link</code> mode, and in a library that is not local, the entry links
-to the pool's file. The origin copy is recorded. <code>--no-pool</code> skips the
+to the pool's file. A PDF given that has the same content as a file of
+the pool entry is removed in <code>move</code> mode, since it is stored already, and
+kept in <code>copy</code> and <code>link</code> mode; a PDF with other content is attached to
+the entry as another file, placed as the files mode says. The origin copy
+is recorded. <code>--no-pool</code> skips the
 lookup.</p>
 <h2 id="papers-pull"><code>papers pull</code><a class="headerlink" href="#papers-pull" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>papers pull [KEY...|-] [--all] [--pool PATH] [--on-duplicate MODE] [--check]
@@ -1406,7 +1420,8 @@ pool, it stays in the library; removed in the library, it does not come
 back. File links are merged: new files of the pool entry are linked in a
 library that is not local, and otherwise copied into the library's files
 directory as the <code>files</code> setting says. The key of the library entry never
-changes. After the merge, the origin copy is the pool's current version.</p>
+changes. After the merge, the origin copy is the pool's current version.
+A skipped conflict leaves the pool shown as changed in <code>papers status</code>.</p>
 <p>An entry without origin copy (added before the pool was used, or with
 <code>--no-pool</code>) is matched to the pool by the same-paper rule. Its differences
 with the pool entry are conflicts (there is no origin to tell which side
@@ -1419,9 +1434,19 @@ library that is not local, otherwise copied as the <code>files</code> setting sa
 hard link when possible). An identifier found in neither is an error, and
 nothing is changed. <code>--all</code> adds every entry of the pool that the library
 does not have (same-paper rule). Without KEY or <code>--all</code>, <code>pull</code> only updates
-the entries of the library.</p>
+the entries of the library. A pool that does not exist or is not a library
+is an error of <code>pull</code>, <code>pull --check</code> and <code>sync</code>, and nothing is changed
+(the global pool that was not created yet is not: there is nothing to
+pull).</p>
 <p><code>--pool PATH</code> pulls from another pool, once: the origin copies record that
 pool.</p>
+<p><code>pull</code> prints one line per entry added (<code>Added -&gt;</code>), updated
+(<code>Modified -&gt;</code>), left with a conflict (<code>Conflict -&gt;</code>) or not found in the
+pool (<code>Not found -&gt;</code>), with the pool in brackets, then the counts when
+more than one entry was involved. <code>push</code> prints the same lines for the
+pool entries. When <code>add</code> (or <code>file attach</code>) also adds or changes the entry
+in the pool, or takes it from the pool, its line says so in brackets:
+<code>[also added to pool ~/Documents/papers]</code>, <code>[from pool ~/Documents/papers]</code>.</p>
 <p>Conflicts are decided as for duplicates (see
 <a href="../adding-entries/#the-dialogue">The dialogue</a>), with <code>--on-duplicate</code>:</p>
 <table>
@@ -1474,8 +1499,10 @@ once):</p>
   only are kept, conflicts are decided with <code>--on-duplicate</code> (<code>keep</code>: the
   pool values, <code>update</code>: the library values). The pool key does not change.</li>
 </ul>
-<p>The origin copies are updated. The pool is created if it does not exist
-yet.</p>
+<p>Push does not change the library: after it, the origin copy is the library
+version that was pushed, and the fields that only the pool entry has come
+with the next <code>pull</code> (or <code>papers sync</code>). The pool is created if it does not
+exist yet.</p>
 <h2 id="papers-sync"><code>papers sync</code><a class="headerlink" href="#papers-sync" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>papers sync [KEY...|-] [--pool PATH] [--on-duplicate MODE]
 </code></pre></div>

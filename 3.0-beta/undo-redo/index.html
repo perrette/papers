@@ -900,6 +900,13 @@ states that were still redoable remain reachable with further <code>papers undo<
 or with <code>papers restore --ref COMMIT</code> (use <code>papers git log</code> to find
 <code>COMMIT</code>). <code>papers restore</code> without <code>--ref</code> restores the last version of the
 backup. <code>papers restore-backup</code> is the deprecated name of <code>papers restore</code>.</p>
+<p><code>papers undo</code> and <code>papers redo</code> print the state they restore, with the
+command that made it, e.g.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>undo: papers.bib restored to 3f2a1c9 papers add paper.pdf (2026-10-22 14:03)
+</code></pre></div>
+<p>Files that the undone command placed in the files directory stay there.
+When no entry links to them any more (e.g. after undoing <code>papers file
+attach</code>), papers lists them: <code>papers file clean</code> removes them.</p>
 <p>See <a href="../git/">Git integration</a> for how to enable git-tracking.</p>
 
 

@@ -1157,29 +1157,23 @@ bibtex entry from crossref.</p>
 entry is added to the bibtex of the project and to the pool's own bibtex
 (the pool is created the first time):</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>$ papers add ~/Downloads/esd-4-11-2013.pdf
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>added: perrette_landerer2013 (pool ~/Documents/papers)
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>push to pool ~/Documents/papers: 1 added
-<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>Added -&gt; perrette_landerer2013: A scaling approach to project regional sea level rise and it... (doi:10.5194/esd-4-11-2013, file:1)
-<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>$ ls ~/Documents/papers/files
-<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>perrette_et_al_2013_a-scaling-approach-to-project-regional-sea-level-rise-and-its-uncertainties.pdf
-<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>$ grep "file =" papers.bib
-<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a> file = {:../../Documents/papers/files/perrette_et_al_2013_a-scaling-approach-to-project-regional-sea-level-rise-and-its-uncertainties.pdf:pdf},
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>Added -&gt; perrette_landerer2013: A scaling approach to project regional sea level rise and it... (doi:10.5194/esd-4-11-2013, file:1) [also added to pool ~/Documents/papers]
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>$ ls ~/Documents/papers/files
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>perrette_et_al_2013_a-scaling-approach-to-project-regional-sea-level-rise-and-its-uncertainties.pdf
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>$ grep "file =" papers.bib
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a> file = {:../../Documents/papers/files/perrette_et_al_2013_a-scaling-approach-to-project-regional-sea-level-rise-and-its-uncertainties.pdf:pdf},
 </code></pre></div>
 <p>Add an entry from its DOI, without a PDF:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>$ papers add --doi 10.5194/bg-8-515-2011
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>added: perrette_yool2011 (pool ~/Documents/papers)
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>push to pool ~/Documents/papers: 1 added
-<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>Added -&gt; perrette_yool2011: Near-ubiquity of ice-edge blooms in the Arctic (doi:10.5194/bg-8-515-2011)
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>Added -&gt; perrette_yool2011: Near-ubiquity of ice-edge blooms in the Arctic (doi:10.5194/bg-8-515-2011) [also added to pool ~/Documents/papers]
 </code></pre></div>
 <p>Attach another file to an entry, such as a supplement. It is named after
 the entry, with its original name as a label:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>$ papers file attach perrette_landerer2013 ~/Downloads/esd-4-11-2013-supplement.pdf
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>updated: perrette_landerer2013 (pool ~/Documents/papers)
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>push to pool ~/Documents/papers: 1 updated
-<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>Modified -&gt; perrette_landerer2013: A scaling approach to project regional sea level rise and it... (doi:10.5194/esd-4-11-2013, files:2)
-<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>$ ls ~/Documents/papers/files
-<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>perrette_et_al_2013_a-scaling-approach-to-project-regional-sea-level-rise-and-its-uncertainties--esd-4-11-2013-supplement.pdf
-<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>perrette_et_al_2013_a-scaling-approach-to-project-regional-sea-level-rise-and-its-uncertainties.pdf
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>Modified -&gt; perrette_landerer2013: A scaling approach to project regional sea level rise and it... (doi:10.5194/esd-4-11-2013, files:2) [also modified in pool ~/Documents/papers]
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>$ ls ~/Documents/papers/files
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>perrette_et_al_2013_a-scaling-approach-to-project-regional-sea-level-rise-and-its-uncertainties--esd-4-11-2013-supplement.pdf
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>perrette_et_al_2013_a-scaling-approach-to-project-regional-sea-level-rise-and-its-uncertainties.pdf
 </code></pre></div>
 <p><code>add</code> also takes a bibtex file (<code>papers add refs.bib</code>), a folder of PDFs
 (<code>papers add -R ~/Downloads/papers/</code>), or fields given by hand. See
@@ -1206,20 +1200,19 @@ nothing is fetched online, and the PDF is not stored twice.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>$ cd ~/projects/new-paper
 <a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>$ papers init
 <a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>$ papers add --doi 10.5194/esd-4-11-2013
-<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>found in pool ~/Documents/papers: perrette_landerer2013
-<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>push to pool ~/Documents/papers: 1 unchanged
-<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>Added -&gt; perrette_landerer2013: A scaling approach to project regional sea level rise and it... (doi:10.5194/esd-4-11-2013, files:2)
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>Added -&gt; perrette_landerer2013: A scaling approach to project regional sea level rise and it... (doi:10.5194/esd-4-11-2013, files:2) [from pool ~/Documents/papers]
 </code></pre></div>
 <p>Take entries from the pool by key (or DOI) with <code>pull</code>:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>$ papers pull perrette_yool2011
-<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>added: perrette_yool2011 (pool ~/Documents/papers)
-<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>pull: 1 added
-<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>Added -&gt; perrette_yool2011: Near-ubiquity of ice-edge blooms in the Arctic (doi:10.5194/bg-8-515-2011)
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>Added -&gt; perrette_yool2011: Near-ubiquity of ice-edge blooms in the Arctic (doi:10.5194/bg-8-515-2011) [from pool ~/Documents/papers]
 </code></pre></div>
 <p>or all the entries of an earlier project:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>$ cd ~/projects/review
 <a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>$ papers init
 <a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>$ papers pull --pool ../sea-level --all
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>Added -&gt; perrette_landerer2013: A scaling approach to project regional sea level rise and it... (doi:10.5194/esd-4-11-2013, files:2) [from pool ../sea-level]
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>Added -&gt; perrette_yool2011: Near-ubiquity of ice-edge blooms in the Arctic (doi:10.5194/bg-8-515-2011) [from pool ../sea-level]
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>pull from pool ../sea-level: 2 added
 </code></pre></div>
 <p>The pool is an ordinary library: <code>papers -C ~/Documents/papers list</code> lists
 all your papers.</p>
@@ -1231,7 +1224,7 @@ projects with <code>papers pull</code>:</p>
 <a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>$ papers tag perrette_yool2011 --add arctic
 <a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>Modified -&gt; perrette_yool2011: Near-ubiquity of ice-edge blooms in the Arctic (doi:10.5194/bg-8-515-2011, arctic)
 <a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>$ papers push
-<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>updated: perrette_yool2011 (pool ~/Documents/papers)
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>Modified -&gt; perrette_yool2011: Near-ubiquity of ice-edge blooms in the Arctic (doi:10.5194/bg-8-515-2011, arctic) [in pool ~/Documents/papers]
 <a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>push to pool ~/Documents/papers: 1 unchanged, 1 updated
 <a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>
 <a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>$ cd ~/projects/new-paper
@@ -1239,9 +1232,8 @@ projects with <code>papers pull</code>:</p>
 <a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a>[...]
 <a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a>* pool:               ~/Documents/papers (global pool, changed since last pull or push)
 <a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a>$ papers pull
-<a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a>updated: perrette_yool2011 (pool ~/Documents/papers)
-<a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a>pull: 1 unchanged, 1 updated
-<a id="__codelineno-9-15" name="__codelineno-9-15" href="#__codelineno-9-15"></a>Modified -&gt; perrette_yool2011: Near-ubiquity of ice-edge blooms in the Arctic (doi:10.5194/bg-8-515-2011, arctic)
+<a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a>Modified -&gt; perrette_yool2011: Near-ubiquity of ice-edge blooms in the Arctic (doi:10.5194/bg-8-515-2011, arctic) [from pool ~/Documents/papers]
+<a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a>pull from pool ~/Documents/papers: 1 unchanged, 1 updated
 </code></pre></div>
 <p><code>papers sync</code> runs <code>pull</code>, then <code>push</code>. Nothing is exchanged without these
 commands, except that <code>add</code> adds new papers to the pool. Each project keeps
