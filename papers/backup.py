@@ -77,7 +77,8 @@ def run_git(gitdir, cmd, check=True):
     """
     args = shlex.split(cmd) if isinstance(cmd, str) else [str(a) for a in cmd]
     logger.debug(f"git -C {gitdir} {' '.join(args)}")
-    res = sp.run(['git'] + args, cwd=gitdir, capture_output=True, text=True)
+    env = _identity_env(gitdir) if args[:1] in (['commit'], ['commit-tree']) else None
+    res = sp.run(['git'] + args, cwd=gitdir, capture_output=True, text=True, env=env)
     if res.returncode != 0:
         message = f"Command failed: 'git {' '.join(args)}': {res.stderr.strip()}"
         if check:
@@ -85,6 +86,30 @@ def run_git(gitdir, cmd, check=True):
             raise sp.CalledProcessError(res.returncode, ['git'] + args, res.stdout, res.stderr)
         logger.debug(message)
     return res
+
+
+# the author of the backup commits when git has no user name and email
+# (fresh install, CI, containers): the backup repositories are private to papers
+FALLBACK_IDENTITY = ('papers', 'papers@localhost')
+
+
+def _identity_env(gitdir):
+    """the environment of a commit in a backup repository: unchanged (None)
+    if git knows who commits (user.name and user.email, or the GIT_AUTHOR_*
+    and GIT_COMMITTER_* variables), else with the fallback identity for what
+    is missing"""
+    def git(*args):
+        return sp.run(['git'] + list(args), cwd=gitdir, capture_output=True, text=True)
+
+    env = None
+    for role in ('AUTHOR', 'COMMITTER'):
+        if git('var', f'GIT_{role}_IDENT').returncode == 0:
+            continue
+        env = env or dict(os.environ)
+        for var, key, value in zip(('NAME', 'EMAIL'), ('user.name', 'user.email'), FALLBACK_IDENTITY):
+            if not git('config', key).stdout.strip():
+                env.setdefault(f'GIT_{role}_{var}', value)
+    return env
 
 
 def git_init(gitdir):
