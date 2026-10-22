@@ -36,6 +36,19 @@ class CacheTest(unittest.TestCase):
         self.assertEqual(calls, ["10.1234/a/b:c"])
         self.assertTrue(os.path.isfile(os.path.join(self.tmp.name, "doi", "10.1234", "a%2Fb%3Ac.json")))
 
+    def test_normalized_key(self):
+        calls = []
+
+        @cached("doi", normalize=str.lower)
+        def fn(x):
+            calls.append(x)
+            return x
+
+        self.assertEqual(fn("10.1234/ABC"), "10.1234/ABC")
+        self.assertEqual(fn("10.1234/abc"), "10.1234/ABC")  # from the cache
+        self.assertEqual(calls, ["10.1234/ABC"])  # called with the argument as given
+        self.assertTrue(os.path.isfile(os.path.join(self.tmp.name, "doi", "10.1234", "abc.json")))
+
     def test_hashed_key_passes_the_argument(self):
         @cached("query", hashed_key=True)
         def fn(x):

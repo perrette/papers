@@ -484,12 +484,25 @@ class TestDoiRequests(unittest.TestCase):
     def test_crossref_record_without_references_is_cached(self):
         from unittest import mock
         from papers.fetch import fetch_bibtex_by_doi, fetch_doi_metadata
-        get, calls = self._get([('https://api.crossref.org/works/10.1000/x', FakeResponse(json={'message': dict(self.CROSSREF)}))])
+        get, calls = self._get([('https://api.crossref.org/works/10.1000/X', FakeResponse(json={'message': dict(self.CROSSREF)}))])
         with mock.patch('papers.fetch.http_get', get):
             self.assertIn('A Title', fetch_bibtex_by_doi('10.1000/X'))
-            self.assertIn('A Title', fetch_bibtex_by_doi('10.1000/x'))
+            self.assertIn('A Title', fetch_bibtex_by_doi('10.1000/x'))  # same cache entry
             self.assertNotIn('reference', fetch_doi_metadata('10.1000/x'))
         self.assertEqual(len(calls), 1)
+
+    def test_doi_case_is_kept_in_all_queries(self):
+        # crossref, doi.org and the journal website get the DOI as given
+        from unittest import mock
+        from papers.fetch import fetch_bibtex_by_doi
+        get, calls = self._get([('https://api.crossref.org/', FakeResponse(404)),
+                                ('https://doi.org/', FakeResponse(200, content_type='text/html'))])
+        website = mock.Mock(return_value='@article{x, title = {From Website}}')
+        with mock.patch('papers.fetch.http_get', get), \
+             mock.patch('papers.fetch.fetch_bibtex_on_journal_website', website):
+            fetch_bibtex_by_doi('10.1000/NEW')
+        self.assertEqual(calls, ['https://api.crossref.org/works/10.1000/NEW', 'https://doi.org/10.1000/NEW'])
+        self.assertEqual(website.call_args.args[0], '10.1000/NEW')
 
     def test_doi_org_for_dois_unknown_to_crossref(self):
         from unittest import mock
