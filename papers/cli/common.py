@@ -273,42 +273,34 @@ _EXCHANGE_LINES = {
 }
 
 
-def pools_label(pools, conj='and'):
-    "the pools named in a message: 'pool A', 'pool A and pool B', 'pool A, pool B and pool C'"
-    labels = [p.label for p in pools]
-    if len(labels) <= 1:
-        return ''.join(labels)
-    return ', '.join(labels[:-1]) + f' {conj} ' + labels[-1]
-
-
-def exchange_lines(report, kind, biblio, pools):
+def exchange_lines(report, kind, biblio, pool):
     """the report of pull or push (see papers.pools.Exchange.pull, push):
     (one line per entry added, modified, skipped or not found, the line of
     the counts or None). The counts are given when more than one entry was
-    involved, or when there is no entry line. pools: the pools of the
-    exchange."""
-    pools = [p for p in pools if p is not None]
+    involved, or when there is no entry line. pool: the pool of the
+    exchange, or None."""
+    label = pool.label if pool is not None else None
     lines = []
     for e, p, what in report:
         if what in _EXCHANGE_LINES[kind]:
             prefix, note = _EXCHANGE_LINES[kind][what]
-            where = p.label if p is not None else (pools_label(pools, 'or') or 'the pool')
+            where = p.label if p is not None else (label or 'the pool')
             lines.append(format_entry(biblio, e, prefix=prefix) + f' [{note.format(where)}]')
     summary = None
     if len(report) > 1 or not lines:
-        verb = kind if not pools else f'{kind} {"from" if kind == "pull" else "to"} {pools_label(pools)}'
+        verb = kind if label is None else f'{kind} {"from" if kind == "pull" else "to"} {label}'
         summary = f'{verb}: {report_counts(report)}'
     return lines, summary
 
 
-def print_exchange(report, kind, biblio, pools):
+def print_exchange(report, kind, biblio, pool):
     "print the report of pull or push (see exchange_lines)"
-    lines, summary = exchange_lines(report, kind, biblio, pools)
+    lines, summary = exchange_lines(report, kind, biblio, pool)
     print('\n'.join(lines + ([summary] if summary else [])))
 
 
 def save_exchange(exchange):
-    """save what an exchange with the pools changed: the pools pushed to,
+    """save what an exchange with a pool changed: the pools pushed to,
     the pairs that are not the same paper of the pool, the origin
     records, and the library"""
     for pool in exchange.changed_pools:

@@ -125,7 +125,7 @@ class Biblio:
         # pairs of entries that are not the same paper (see papers.duplicate.Distinct)
         self.distinct = distinct if distinct is not None else Distinct()
         self.relative_to = os.path.sep if relative_to is None else relative_to
-        # `add` looks in the pools first (see papers.pools.PoolLookup)
+        # `add` looks in the pool first (see papers.pools.PoolLookup)
         self.pool_lookup = None
 
     def move(self, file, newfile, copy=False, hardlink=False):

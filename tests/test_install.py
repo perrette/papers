@@ -313,7 +313,7 @@ class TestGlobalInstall(TestBaseInstall):
         self.assertEqual(os.path.realpath(MachineConfig.load().pool_path()),
                          os.path.realpath(self.temp_dir.name))
         # the global pool has no pool, and its files are its own
-        self.assertEqual(config.pool, [])
+        self.assertEqual(config.pool, 'none')
         self.assertTrue(config.local)
 
 

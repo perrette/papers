@@ -243,12 +243,12 @@ class TestSync(PoolTest):
     def test_nothing_shared(self):
         self.papers('init other --no-git --pool none')
         out = self.out('sync --pool ../other')
-        self.assertEqual(out, 'nothing to sync with pool ../other: not the main pool, so no entries are shared '
+        self.assertEqual(out, 'nothing to sync with pool ../other: not the pool of the library, so no entries are shared '
                               'with it (`papers sync --pool PATH KEY...` or `--all` exchanges entries with it once)')
         self.assertEqual(self.bib('other')[1], {})
-        self.assertIn('push to pool ../other: not the main pool, so no entries are shared with it',
+        self.assertIn('push to pool ../other: not the pool of the library, so no entries are shared with it',
                       self.out('push --pool ../other'))
-        self.assertIn('pull from pool ../other: not the main pool', self.out('pull --pool ../other'))
+        self.assertIn('pull from pool ../other: not the pool of the library', self.out('pull --pool ../other'))
         self.assertEqual(self.bib('other')[1], {})
 
     def test_not_found_only_for_keys_given(self):

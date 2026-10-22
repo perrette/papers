@@ -46,12 +46,12 @@ def _author_short_option(o):
 
 
 def _nothing_to_add(o, biblio, what):
-    "the error of `add --key KEY` when no pool has KEY"
+    "the error of `add --key KEY` when the pool does not have KEY"
     lookup = biblio.pool_lookup
     if o.no_pool:
         where = 'the library (--no-pool)'
     elif lookup:
-        where = ', '.join(p.label for p in lookup.pools)
+        where = lookup.pool.label
     else:
         where = 'the library (it has no pool)'
     return f'nothing to add: no file, identifier or bibtex given, and {what}{where}'
@@ -230,9 +230,9 @@ def addcmd(parser, o, config):
     lookup = biblio.pool_lookup
     notes = {key: f'from {pool.label}' for key, pool in (lookup.taken_from.items() if lookup else [])}
     push_notes(pushed, notes)
-    for pool in (biblio.pool_lookup.pools if biblio.pool_lookup is not None else []):
-        if not any(pool is p for p in exchange.changed_pools):
-            exchange.after_take(pool)
+    pool = lookup.pool if lookup else None
+    if pool is not None and not any(pool is p for p in exchange.changed_pools):
+        exchange.after_take(pool)
     save_exchange(exchange)
 
     # compare entries to inform user

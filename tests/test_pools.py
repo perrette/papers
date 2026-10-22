@@ -124,7 +124,6 @@ class TestResolution(PoolTest):
         pool = pools.pool()
         self.assertEqual(pool.path, self.path('pool'))
         self.assertEqual(pool.id, '../pool')
-        self.assertIs(pools.all()[0], pool)
         self.assertEqual(len(pool.biblio.entries), 2)
         self.assertIs(pools.target(), pool)
         self.assertIs(pools.get(self.path('pool')), pool)
@@ -133,7 +132,6 @@ class TestResolution(PoolTest):
         os.makedirs(self.path('notalib'))
         pools = Pools(self.config('none'))
         self.assertIsNone(pools.pool())
-        self.assertEqual(pools.all(), [])
         with self.assertRaisesRegex(PoolError, 'no pool'):
             pools.target()
         with self.assertRaisesRegex(PoolError, 'does not exist'):
@@ -149,7 +147,7 @@ class TestResolution(PoolTest):
     def test_missing_pool_is_a_warning(self):
         pools = Pools(self.config('../missing'))
         with self.assertLogs(papers.logger, level='WARNING'):
-            self.assertEqual(pools.all(), [])
+            self.assertIsNone(pools.pool())
         # a pool created when written to, if its parent directory exists
         self.assertEqual(pools.target().path, self.path('missing'))
         with self.assertRaisesRegex(PoolError, 'does not exist'):
@@ -158,7 +156,7 @@ class TestResolution(PoolTest):
     def test_global_pool_not_created_yet(self):
         pools = Pools(self.config())
         with self.assertNoLogs(papers.logger, level='WARNING'):
-            self.assertEqual(pools.all(), [])
+            self.assertIsNone(pools.pool())
         with self.assertNoLogs(papers.logger, level='WARNING'):
             self.lib('config --unset pool')
             self.lib('pull')
@@ -168,7 +166,7 @@ class TestResolution(PoolTest):
         self.assertEqual(pool.path, TEST_GLOBAL_POOL)
         self.assertEqual(pool.id, 'global')
         self.assertEqual(pool.label, f'pool {papers.config.short_home(TEST_GLOBAL_POOL)}')
-        self.assertEqual(pool.config.pool, [])
+        self.assertEqual(pool.config.pool, 'none')
         self.assertTrue(pool.config.local)
 
     def test_global_pool_on_a_disk_not_mounted(self):

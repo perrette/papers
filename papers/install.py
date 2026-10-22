@@ -21,7 +21,7 @@ from pathlib import Path
 
 from papers import logger
 from papers.backup import init_backup, resolve_gitdir
-from papers.config import Config, CONFIG_FILE_LOCAL, NO_POOL, pool_settings
+from papers.config import Config, CONFIG_FILE_LOCAL, NO_POOL, pool_setting
 from papers.library import snapshot_backup
 
 # words that clear a value at a prompt or on the command line
@@ -222,15 +222,15 @@ def resolve_install(config, o, probe=None, asker=None, target=None):
 
 
 def _resolve_pool(config, o, fresh):
-    """the pool and local settings of a library: --pool PATH|none, possibly
-    several times (a relative path is relative to the library), else the global pool
+    """the pool and local settings of a library: --pool PATH|none (a
+    relative path is relative to the library), else the global pool
     (nothing stored); --local, else the default of the global configuration.
     A library without pool is local. In the directory of the global pool,
     the new library is the pool itself: it has no pool, and is local."""
     pool = getattr(o, 'pool', None)
     local = getattr(o, 'local_setting', None)
     if pool is not None:
-        config.set('pool', pool_settings(pool, str(config.configdir)))
+        config.set('pool', pool_setting(pool, str(config.configdir)))
     elif fresh:
         global_pool = config.machine.pool_path()
         if global_pool is None:

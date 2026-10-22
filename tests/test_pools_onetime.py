@@ -1,0 +1,206 @@
+"""The pool setting written as a list by earlier builds, one-time
+exchanges with another library (--pool PATH), the origin file of each
+pool when the pool changes, and small output fixes"""
+import json
+import os
+import shutil
+import tempfile
+import unittest
+from pathlib import Path
+from unittest.mock import patch
+
+import papers.config
+import papers.extract
+from papers.config import Config, MachineConfig, CONFIG_FILE_LOCAL
+from papers.pools import origin_file_name
+from papers.utils import PapersExit
+
+from tests.common import paperscmd
+from tests.test_pools import PoolTest
+
+OTHER_BIB = """@article{Brown_2021,
+ author = {Brown, Bob},
+ doi = {10.1000/brown},
+ journal = {Ocean Sci.},
+ title = {Ocean heat},
+ year = {2021}
+}
+
+@article{Jones_2019,
+ author = {Jones, Ann},
+ doi = {10.1000/jones},
+ title = {Ice sheets},
+ year = {2019}
+}
+"""
+
+
+class TestPoolSettingAsList(unittest.TestCase):
+    "a pool setting written as a list: one path is that path, several are an error"
+
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.file = os.path.join(self.temp_dir.name, CONFIG_FILE_LOCAL)
+        self.machine = MachineConfig(os.path.join(self.temp_dir.name, 'machine.json'), {})
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
+    def load(self, value):
+        json.dump({'bibtex': 'lib.bib', 'version': 3, 'local': True, 'pool': value}, open(self.file, 'w'))
+        return Config.load(self.file, machine=self.machine)
+
+    def test_one_path(self):
+        config = self.load(['../shared'])
+        self.assertEqual(config.pool, '../shared')
+        config.save()
+        self.assertEqual(json.load(open(self.file))['pool'], '../shared')
+
+    def test_several_paths(self):
+        with self.assertRaisesRegex(PapersExit, f'{self.file}: the pool setting lists several pools '
+                                                r'\(../a, /b\); papers takes one pool'):
+            self.load(['../a', '/b'])
+
+    def test_global(self):
+        file = self.machine.file
+        json.dump({'pool': ['~/g']}, open(file, 'w'))
+        self.assertEqual(MachineConfig.load(file).pool, '~/g')
+        json.dump({'pool': ['~/g', '/other']}, open(file, 'w'))
+        with self.assertRaisesRegex(PapersExit, f'{file}: the pool setting lists several pools'):
+            MachineConfig.load(file)
+
+
+class OneTimeTest(PoolTest):
+    """pool/ (Smith_2020 with a file, Brown_2021), the pool of lib/, and
+    other/ (Brown_2021 with a journal, Jones_2019), another library"""
+
+    def setUp(self):
+        super().setUp()
+        self.papers('init other --no-git --pool none')
+        Path(self.path('other', 'papers.bib')).write_text(OTHER_BIB)
+
+    def keys(self, where):
+        return sorted(self.bib(where)[1])
+
+
+class TestSetting(OneTimeTest):
+
+    def test_config_takes_one_path(self):
+        self.lib('config pool ../other')
+        self.assertEqual(self.json('lib')['pool'], '../other')
+        self.assertEqual(self.out('config pool'), '../other')
+        self.lib('config pool none')
+        self.assertEqual(self.json('lib')['pool'], 'none')
+        with self.assertRaisesRegex(PapersExit, 'pool takes one value, got 2'):
+            self.lib('config pool ../pool ../other')
+
+    def test_init(self):
+        out = self.papers('init third --no-git --local --pool ../pool', sp_cmd='check_output')
+        self.assertIn('* pool:    ../pool (shared entries; the PDFs stay in this library)\n', out)
+        self.assertEqual(self.json('third')['pool'], '../pool')
+
+    def test_status(self):
+        self.assertIn('* pool:               ../pool (not pulled from yet)\n', self.out('status'))
+
+
+class TestOneTime(OneTimeTest):
+
+    def test_one_time_exchange(self):
+        # --pool PATH, PATH not the pool of the library: no origin record
+        self.lib('pull Smith_2020')
+        record = self.origin().get(self.entry('Smith_2020'))
+        out = self.out('sync --pool ../other Jones_2019')
+        self.assertIn('Added -> Jones_2019: Ice sheets (doi:10.1000/jones) [from pool ../other]', out)
+        self.assertIsNone(self.origin().get(self.entry('Jones_2019')))
+        self.lib('push --pool ../other Smith_2020')
+        self.assertEqual(len(self.keys('other')), 3)
+        origin = self.origin()
+        self.assertEqual(len(origin), 1)
+        self.assertEqual(origin.get(self.entry('Smith_2020')).time, record.time)  # untouched
+        self.assertEqual(os.listdir(self.path('lib', '.papers', 'origin')), [origin_file_name('../pool')])
+        # without a stored base, a field that differs is a conflict
+        text = Path(self.path('other', 'papers.bib')).read_text()
+        Path(self.path('other', 'papers.bib')).write_text(text.replace('{Ocean heat}', '{Ocean heat content}'))
+        self.lib('pull Brown_2021')  # from the pool, without journal
+        with self.assertRaisesRegex(PapersExit, 'conflict'):
+            self.lib('pull --pool ../other Brown_2021 --on-duplicate error')
+        self.lib('pull --pool ../other Brown_2021 --on-duplicate update')
+        self.assertEqual(self.entry('Brown_2021')['title'], 'Ocean heat content')
+        self.assertEqual(self.origin().get(self.entry('Brown_2021')).entry['title'], 'Ocean heat')
+
+    def test_without_key(self):
+        self.lib('pull Smith_2020')
+        self.assertIn('not the pool of the library, so no entries are shared with it', self.out('sync --pool ../other'))
+        self.assertEqual(self.keys('lib'), ['Smith_2020'])
+
+    def test_pool_option_with_the_pool_of_the_library(self):
+        self.lib('pull --pool ../pool Smith_2020')
+        self.assertEqual(self.origin().get(self.entry('Smith_2020')).pool, '../pool')
+
+    def test_switching_back_finds_the_records(self):
+        # the records of each pool are kept in its own file
+        self.lib('pull Smith_2020')
+        self.lib('config pool ../other')
+        self.assertIn('nothing to sync with pool ../other: no entries shared with it', self.out('sync'))
+        self.assertTrue(os.path.exists(self.path('lib', '.papers', 'origin', origin_file_name('../pool'))))
+        self.lib('pull Brown_2021')
+        self.assertIn('journal', self.entry('Brown_2021'))
+        self.assertEqual(self.origin().get(self.entry('Brown_2021')).pool, '../other')
+        self.lib('config pool ../pool')
+        self.edit_pool('year = {2020}', 'volume = {1},\n year = {2020}')
+        self.lib('pull')
+        self.assertEqual(self.entry('Smith_2020')['volume'], '1')
+        self.assertIsNone(self.origin().get(self.entry('Brown_2021'), '../pool'))
+
+    def test_missing_pool(self):
+        self.lib('pull Smith_2020')
+        os.rename(self.path('pool'), self.path('elsewhere'))
+        for cmd in ['sync', 'push', 'pull']:
+            with self.assertRaisesRegex(PapersExit, r'pool \S+/pool does not exist'):
+                self.lib(cmd)
+
+
+class TestConfigPoolFiles(OneTimeTest):
+    "config pool moves the files of a library that is not local to the new pool"
+
+    def setUp(self):
+        super().setUp()
+        self.lib('config local false -y')
+        self.lib('pull Smith_2020')
+        self.assertEqual(self.files('Smith_2020'), [self.pool_pdf])
+
+    def test_pool_changes(self):
+        out = self.out('config pool ../other -y')
+        self.assertIn('pool = ../other (in ' + self.path('lib', CONFIG_FILE_LOCAL) + ')', out)
+        files = self.files('Smith_2020')
+        self.assertTrue(files[0].startswith(self.path('other', 'files')))
+        self.assertEqual(len(self.bib('other')[1]), 3)  # the entry added to the new pool
+
+    def test_pool_none(self):
+        self.lib('config pool none -y')
+        self.assertTrue(self.files('Smith_2020')[0].startswith(self.path('lib', 'files')))
+
+
+class TestSmallFixes(PoolTest):
+
+    def test_config_local_path_with_home(self):
+        home_lib = os.path.join(os.environ['HOME'], 'homelib')
+        try:
+            paperscmd('init homelib --no-git --pool none', cwd=os.environ['HOME'])
+            out = paperscmd('config local true', cwd=home_lib, sp_cmd='check_output')
+            self.assertEqual(out, 'local = true (in ~/homelib/.papersconfig.json)')
+        finally:
+            shutil.rmtree(home_lib, ignore_errors=True)
+
+    def test_extract_errors(self):
+        with self.assertRaisesRegex(PapersExit, r'^missing.pdf: no such file$'):
+            self.papers('extract --doi-only missing.pdf')
+        Path(self.path('nodoi.pdf')).write_text('not a pdf')
+        with patch('papers.cli.fetch_cmds.extract_pdf_doi',
+                   side_effect=papers.extract.DOIParsingError('no DOI found whose title appears in the text')):
+            with self.assertRaisesRegex(PapersExit, r'nodoi.pdf: no DOI found whose title appears in the text'):
+                self.papers('extract --doi-only nodoi.pdf')
+        with self.assertRaisesRegex(PapersExit, '1 of 2 files failed'):
+            with patch('papers.cli.fetch_cmds.extract_pdf_doi', return_value='10.1/x'):
+                self.papers(f'extract --doi-only nodoi.pdf {self.path("missing.pdf")}')
+

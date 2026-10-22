@@ -1,21 +1,15 @@
-"""Pools: the libraries that a library exchanges entries with.
+"""Pools: the library that a library exchanges entries with.
 
-The `pool` setting of a library is a list of pool paths (relative to the
-library), empty for none; a library that does not set it uses the global
-pool setting of the machine (the `pool` setting of the global
-configuration, by default ~/Documents/papers; its first path is the global
-pool). Any library can be a pool. The pools are looked up in order, the
-first match winning. The first pool is the main pool: the files of a
-library that is not local, the entries that `add` adds to a pool, and the
-entries pushed that are shared with no pool go there. An entry shared with
-pools (with origin records) is pulled from and pushed to those pools.
+The `pool` setting of a library is the path of its pool (relative to the
+library), or none; a library that does not set it uses the global pool of
+the machine (the `pool` setting of the global configuration, by default
+~/Documents/papers). Any library can be a pool.
 
-- `Pools` resolves the pools of a library, and the pools given on the
+- `Pools` resolves the pool of a library, and the pools given on the
   command line (`push --pool PATH`), to libraries, loaded when first used
-  and kept for the run. A library never uses itself as a pool. A pool that
-  cannot be used (e.g. a disk not mounted) is a warning, and left out. The
-  global pool may not exist yet: it is created, without a message, the
-  first time papers writes to it.
+  and kept for the run. A library never uses itself as a pool. The global
+  pool may not exist yet: it is created, without a message, the first time
+  papers writes to it.
 - `Origin` is `.papers/origin/` of a library, one file per pool: for each
   entry exchanged with the pool, the base of the next three-way merge,
   under the library's key, with the pool's key (`papers-pool-key`) and the
@@ -23,9 +17,10 @@ pools (with origin records) is pulled from and pushed to those pools.
   entry, as sent: the pool entry for `add` and `pull`, the library entry
   for `push`. The receiving side has taken all of it into account (taken,
   kept or declined), so that what it has beyond it shows as its own change
-  in the next exchange the other way. Only the pools of the library get
+  in the next exchange the other way. Only the pool of the library gets
   records: `--pool PATH` with another library is a one-time exchange,
-  without records. Each file also holds the
+  without records. The files of earlier pools are kept: setting the pool
+  back to one of them finds its records again. Each file also holds the
   modification time of the pool's bibtex at the last exchange with it (a
   pull of all entries that skipped none; a push or an add when the pool had
   not changed since the previous exchange, or that were the first, and a
@@ -239,17 +234,12 @@ class Pool:
 
 
 class Pools:
-    """the pools of a library (its `pool` setting: a list, in lookup order,
-    the first being the pool it writes to) and the pools named on the
+    """the pool of a library (its `pool` setting) and the pools named on the
     command line, resolved when first used and kept for the run"""
 
     def __init__(self, config):
         self.config = config
         self._cache = {}
-        self._warned = set()
-        # the ids of the pools of the library that could not be used (missing,
-        # not a library, or the global pool not created yet)
-        self.unavailable = set()
 
     @property
     def libdir(self):
@@ -267,9 +257,9 @@ class Pools:
         "how the origin records name the pool in `path`"
         if self._is_global(path):
             return GLOBAL_POOL_ID
-        for p, label in zip(self.config.pool_paths(), self.config.pool_labels()):
-            if realpath(p) == realpath(path):
-                return label  # as the pool setting writes it
+        own = self.path()
+        if own is not None and realpath(own) == realpath(path):
+            return self.config.pool_label()  # as the pool setting writes it
         rel = os.path.relpath(path, self.libdir)
         return rel if rel.startswith('.') else os.path.join('.', rel)
 
@@ -315,44 +305,34 @@ class Pools:
         except OSError as error:
             raise PoolError(f'pool {short_home(path)}: could not be created ({error})')
 
-    def paths(self):
-        "the paths of the pools of the library, in order (never the library itself)"
-        return self.config.pool_paths()
+    def path(self):
+        "the path of the pool of the library, or None (pool none, or the library is its own pool)"
+        path = self.config.pool_path()
+        return None if path is None or self._is_self(path) else path
 
-    def _use(self, path, create=False, quiet=False):
-        """the Pool of a pool of the library, or None: the global pool that
-        does not exist yet is None (or is created, with create); another
-        pool that cannot be read is a warning (once; none with quiet), and
-        None; with create, an error"""
+    def pool(self, create=False, quiet=False):
+        """the pool of the library, or None (pool none, or the library is its
+        own pool). The global pool that does not exist yet is None too (or
+        is created, with create). Another pool that cannot be read is a
+        warning (none with quiet), and None; with create, an error."""
+        path = self.path()
+        if path is None:
+            return None
         if not create and self._is_global(path) and not os.path.exists(path):
             logger.debug(f'the global pool {path} does not exist yet')
-            self.unavailable.add(GLOBAL_POOL_ID)
             return None
         try:
             return self.resolve(path, create=create)
         except PoolError as error:
             if create:
                 raise
-            self.unavailable.add(self._id(path))
-            if not quiet and realpath(path) not in self._warned:
-                self._warned.add(realpath(path))
+            if not quiet:
                 logger.warning(str(error))
             return None
 
-    def pool(self, create=False, quiet=False):
-        """the first pool of the library, the one it writes to, or None (pool
-        none, or it cannot be used: see _use)"""
-        paths = self.paths()
-        return self._use(paths[0], create=create, quiet=quiet) if paths else None
-
-    def all(self, quiet=False):
-        """the pools of the library that can be used, in order: a pool that
-        cannot be used is left out, with a warning (see _use)"""
-        return [p for p in (self._use(path, quiet=quiet) for path in self.paths()) if p is not None]
-
     def target(self):
-        """the pool that push and the non-local libraries write to (the first
-        pool), created if it does not exist yet"""
+        """the pool that push and the non-local libraries write to, created
+        if it does not exist yet"""
         pool = self.pool(create=True)
         if pool is None:
             raise PoolError('the library has no pool (pool none): set one with `papers config pool PATH`, '
@@ -368,8 +348,9 @@ class Pools:
         return list(self._cache.values())
 
     def files_dirs(self):
-        "the files directories of the pools that exist"
-        return [p.filesdir for p in self.all(quiet=True) if p.filesdir]
+        "the files directory of the pool, if it exists, as a list"
+        pool = self.pool(quiet=True)
+        return [pool.filesdir] if pool is not None and pool.filesdir else []
 
 
 # ORIGIN COPIES
@@ -431,7 +412,7 @@ class Origin:
     origin_file_name), with the pool id and the time of the last exchange
     in its first comments, and the records of the entries exchanged with
     the pool (see the module documentation). An entry can have records in
-    several files."""
+    several files, from earlier pools of the library."""
 
     def __init__(self, dir=None):
         self.dir = dir
@@ -511,7 +492,7 @@ class Origin:
 
     def get(self, entry, pool=None):
         """the record of a library entry (by key, or by a former key of its
-        ids field) for `pool`, or for the first pool that has one; or None"""
+        ids field) for `pool` (default: any pool), or None"""
         keys = [get_entry_val(entry, 'ID', '')] + [k.strip() for k in get_entry_val(entry, 'ids', '').split(',')]
         for id, records in self.entries.items():
             if pool is not None and id != pool:
@@ -583,16 +564,15 @@ def _same_fields(a, b):
     return fields(a) == fields(b)
 
 
-# EXCHANGES BETWEEN A LIBRARY AND ITS POOLS
-# =========================================
+# EXCHANGES BETWEEN A LIBRARY AND ITS POOL
+# ========================================
 
 class Exchange:
-    """a library (configuration and bibliography) with its pools and origin
-    records. Only the main pool (the first) is exchanged with: the origin
-    records of the other pools are not used, nor written (an exchange with
-    another library, `--pool PATH`, is one-time). The command saves: the
-    origin first (`origin.save()`), then the library and the pools that
-    changed (`changed_pools`)."""
+    """a library (configuration and bibliography) with its pool and origin
+    records. The origin records are used and written for the pool of the
+    library only: an exchange with another library (`--pool PATH`) is
+    one-time. The command saves: the origin first (`origin.save()`), then
+    the library and the pools that changed (`changed_pools`)."""
 
     def __init__(self, config, biblio, pools=None, origin=None):
         self.config = config
@@ -601,38 +581,30 @@ class Exchange:
         self.origin = origin if origin is not None else Origin.for_bibtex(config.bibtex)
         self.changed_pools = []
         self._after = {}  # pool id -> state of the push for after_push
-        paths = self.pools.paths()
-        self.main_id = self.pools._id(paths[0]) if paths else None
+        path = self.pools.path()
+        self.pool_id = self.pools._id(path) if path is not None else None
 
     def _changed(self, pool):
         if not any(p is pool for p in self.changed_pools):
             self.changed_pools.append(pool)
 
-    def is_main(self, pool):
-        "whether `pool` is the main pool of the library, the only one with origin records"
-        return pool is not None and pool.id == self.main_id
+    def is_own(self, pool):
+        "whether `pool` is the pool of the library, the only one with origin records"
+        return pool is not None and pool.id == self.pool_id
 
     # finding the pool entry of a library entry
 
     def pool_entry(self, e, pool):
         """(pool entry, origin record) of a library entry in `pool`: by its
-        origin record (main pool only), else by the same-paper rule (record
+        origin record (pool of the library only), else by the same-paper rule (record
         None); (None, record) if the pool does not have it"""
-        record = self.origin.get(e, pool.id) if self.is_main(pool) else None
+        record = self.origin.get(e, pool.id) if self.is_own(pool) else None
         d = self.biblio.distinct
         if record is not None:
             pe = pool.find(record.entry, d) or pool.find(e, d) or pool.by_key(record.pool_key, record.entry)
         else:
             pe = pool.find(e, d)
         return pe, record
-
-    def find(self, e, pools):
-        "(pool, pool entry) of the first of `pools` that has the library entry, or (None, None)"
-        for pool in pools:
-            pe, _ = self.pool_entry(e, pool)
-            if pe is not None:
-                return pool, pe
-        return None, None
 
     def merge_distinct(self, pool):
         "union of the pairs that are not the same paper, both ways"
@@ -666,8 +638,8 @@ class Exchange:
 
     def library_entry(self, pe, pool):
         """the library entry of a pool entry: the entry whose origin record
-        has its pool key (main pool), else the same paper; or None"""
-        for record in (self.origin.records(pool.id) if self.is_main(pool) else []):
+        has its pool key (pool of the library), else the same paper; or None"""
+        for record in (self.origin.records(pool.id) if self.is_own(pool) else []):
             if record.pool_key.lower() == pe.key.lower():
                 e = next((x for x in self.biblio.entries if self.biblio.key(x) == record.key.lower()), None)
                 if e is not None:
@@ -679,35 +651,20 @@ class Exchange:
         "the entries of the pool that are not in the library (no library entry, see library_entry)"
         return [pe for pe in pool.biblio.entries if self.library_entry(pe, pool) is None]
 
-    def missing_all(self, pools):
-        """the entries of the pools that are not in the library, as (pool,
-        pool entry), the pools taken in order: a paper found in an earlier
-        pool is not taken again from a later one"""
-        new = []
-        for pool in pools:
-            distinct = Distinct(self.biblio.distinct.pairs + pool.biblio.distinct.pairs)
-            for pe in self.missing(pool):
-                taken = [x for _, x in new]
-                if not any(verdict.kind == SAME for _, verdict in find_duplicates(pe, taken, distinct)):
-                    new.append((pool, pe))
-        return new
-
     def shared(self, entries, pool):
-        "the entries that have an origin record of `pool`, the main pool (the entries shared with it)"
-        if not self.is_main(pool):
+        "the entries that have an origin record of `pool`, the pool of the library (the entries shared with it)"
+        if not self.is_own(pool):
             return []
         return [e for e in entries if self.origin.get(e, pool.id) is not None]
 
     def pull(self, entries, pool, resolver, mode=None, record_pull=True, new=(), named=()):
         """three-way merge of the entries of `pool` into the library entries
-        (see papers.merge), and the pool entries `new` added to the library
-        (a list of (pool, pool entry): from `pool` or from the pools
-        searched). The origin records are used and written for the main
-        pool only: with another pool (`--pool PATH`, or an entry added from
-        a pool searched), the exchange is one-time. An entry that the pool
-        does not have is reported (`not found`) only if it is one of `named`
-        (the entries named on the command line). pool None: nothing to
-        merge. Return the outcome of each entry: list of (entry, pool, what)
+        (see papers.merge), and the pool entries `new` added to the library.
+        The origin records are used and written for the pool of the library
+        only: with another pool (`--pool PATH`), the exchange is one-time.
+        An entry that the pool does not have is reported (`not found`) only
+        if it is one of `named` (the entries named on the command line).
+        pool None: nothing to merge. Return the outcome of each entry: list of (entry, pool, what)
         where what is 'updated', 'linked', 'unchanged', 'skipped', 'not
         found' or 'added'."""
         report = []
@@ -723,25 +680,23 @@ class Exchange:
                     report.append((e, None, 'not found'))
                 continue
             report.append((e, pool, self._pull_one(e, pool, pe, record, resolver, mode)))
-        for p, pe in new:
-            if p is not pool:
-                self.merge_distinct(p)
-            report.append((self._pull_new(pe, p, mode), p, 'added'))
+        for pe in new:
+            report.append((self._pull_new(pe, pool, mode), pool, 'added'))
         # a pull that skipped (or quit) leaves pool changes to take: not a pull of the pool
-        if record_pull and self.is_main(pool) and not resolver.quit \
+        if record_pull and self.is_own(pool) and not resolver.quit \
                 and not any(what == 'skipped' for _, _, what in report):
             self.origin.set_pulled(pool.id, before)
         return report
 
     def _pull_one(self, e, pool, pe, record, resolver, mode):
-        main = self.is_main(pool)
+        own = self.is_own(pool)
         if not self.config.local:
-            self.repair_links([e], pools=[pool])
+            self.repair_links([e], pool=pool)
         incoming = entry_for(pe, pool.biblio, self.biblio)
         merge = Merge([e, incoming], relative_to=self.biblio.relative_to,
                       base=record.entry if record is not None else None)
         if not merge.conflicts and not merge.additions and not merge.new_files:
-            if not main:
+            if not own:
                 return 'unchanged'
             self.origin.set(e.key, pool.id, pe)
             return 'unchanged' if record is not None else 'linked'
@@ -755,7 +710,7 @@ class Exchange:
         old_files = self.biblio.get_files(e)
         apply_entry(e, new)
         self._place_files(e, self.files_policy(mode, keep=old_files, pools=[pool]))
-        if main:
+        if own:
             self.origin.set(e.key, pool.id, pe)
         return 'updated'
 
@@ -770,17 +725,17 @@ class Exchange:
             del e['ids']  # former keys of the pool
         self.biblio.db.add(e)
         self._place_files(e, self.files_policy(mode, pools=[pool]))
-        if self.is_main(pool):
+        if self.is_own(pool):
             self.origin.set(e.key, pool.id, pe)
         return e
 
     def check(self, entries, pool, all_entries=True):
         """the report of `pull --check` with `pool`: a line on the pool if it
-        changed since the last pull (main pool), and on the entries whose
+        changed since the last pull (pool of the library), and on the entries whose
         pool version changed since it was taken (no merge, nothing
         written)"""
-        main = self.is_main(pool)
-        lines = [f'{pool.label}: {pool_state(self.origin, pool)}'] if all_entries and main else []
+        own = self.is_own(pool)
+        lines = [f'{pool.label}: {pool_state(self.origin, pool)}'] if all_entries and own else []
         for e in entries:
             pe, record = self.pool_entry(e, pool)
             if pe is None:
@@ -792,7 +747,7 @@ class Exchange:
                 merge = Merge([e, incoming], relative_to=self.biblio.relative_to)
                 if not merge.is_exact() or merge.new_files:
                     lines.append(f'{e.key}: in {pool.label} as {pe.key}, '
-                                 + ('not pulled yet' if main else 'different'))
+                                 + ('not pulled yet' if own else 'different'))
                 continue
             merge = Merge([e, incoming], relative_to=self.biblio.relative_to, base=record.entry)
             changed = [f.name for f in merge.additions + merge.conflicts]
@@ -810,13 +765,13 @@ class Exchange:
     def push(self, entries, pool, resolver, include_new=True):
         """three-way merge of the library entries into the pool entries;
         entries new to the pool are added to it, with a key from the pool's
-        key template. Records are used and written for the main pool only:
+        key template. Records are used and written for the pool of the library only:
         with another pool (`--pool PATH`), the push is one-time. Return
         [(entry, pool, what)], what being 'added', 'updated', 'linked',
         'unchanged', 'skipped' or 'empty' (an entry without fields or key,
         not pushed)."""
         self.merge_distinct(pool)
-        if self.is_main(pool) and pool.id not in self._after:
+        if self.is_own(pool) and pool.id not in self._after:
             before = pool.bibtex_mtime()
             # [the pool had not changed since the last exchange, a pushed entry left it ahead of the library]
             self._after[pool.id] = [before is None or self.origin.pulled(pool.id) == before, False]
@@ -834,12 +789,10 @@ class Exchange:
         return report
 
     def push_added(self, touched, new, resolver):
-        """after `add` (or a pull that added entries from a pool searched):
-        in a non-local library, the entries added to or changed in the
-        library go to its main pool (which holds their files); in a local
-        library with auto-push, the entries new to the library. They go to
-        the main pool, also those taken from another pool. Return the
-        report of the push (see `push`)."""
+        """after `add`: in a non-local library, the entries added to or
+        changed in the library go to its pool (which holds their files); in
+        a local library with auto-push, the entries new to the library.
+        Return the report of the push (see `push`)."""
         if not self.config.local:
             targets = touched
         elif self.config.auto_push and self.config.has_pool():
@@ -860,15 +813,15 @@ class Exchange:
         change of the pool, unless a pushed entry left the pool with
         something that the library does not have (a pull would bring it)"""
         state = self._after.get(pool.id)
-        if state is None or state[1]:  # not the main pool, or left ahead of the library
+        if state is None or state[1]:  # not the pool of the library, or left ahead of the library
             return
         if state[0] or self.origin.first_exchange(pool.id):
             self.origin.set_pulled(pool.id, pool.bibtex_mtime())
 
     def after_take(self, pool):
-        """after `add` took entries from the main pool (not saved): the first
+        """after `add` took entries from the pool (not saved): the first
         exchange with the pool records its modification time, as a pull"""
-        if self.is_main(pool) and self.origin.first_exchange(pool.id) and self.origin.records(pool.id):
+        if self.is_own(pool) and self.origin.first_exchange(pool.id) and self.origin.records(pool.id):
             self.origin.set_pulled(pool.id, pool.bibtex_mtime())
 
     def _pool_policy(self, pool, keep=()):
@@ -894,17 +847,17 @@ class Exchange:
                 set_entry_key(out, pool.biblio.append_abc_to_key(out))
         new = pool.biblio.insert_entry(out, update_key=update_key, rename=pool.filesdir is not None, copy=policy)[0]
         pool.add_entry(new)
-        if self.is_main(pool):
+        if self.is_own(pool):
             self.origin.set(e.key, pool.id, new)
         return 'added'
 
     def _push_one(self, e, pool, pe, record, resolver):
-        main = self.is_main(pool)
+        own = self.is_own(pool)
         outgoing = entry_for(e, self.biblio, pool.biblio, key=pe.key)
         merge = Merge([pe, outgoing], relative_to=pool.biblio.relative_to,
                       base=_rekey(record.entry, pe.key) if record is not None else None)
         if not merge.conflicts and not merge.additions and not merge.new_files:
-            if not main:
+            if not own:
                 return 'unchanged'
             self._pushed(e, pool, pe, outgoing)
             return 'unchanged' if record is not None else 'linked'
@@ -919,7 +872,7 @@ class Exchange:
         pool.update_entry(pe, new)
         if pool.filesdir is not None:
             pool.biblio.rename_entry_files(pe, copy=self._pool_policy(pool, keep=old_files))
-        if main:
+        if own:
             self._pushed(e, pool, pe, outgoing)
         return 'updated'
 
@@ -936,19 +889,21 @@ class Exchange:
     # links to pool files
     # -------------------
 
-    def repair_links(self, entries=None, pools=None):
-        """replace the broken links to the files of a pool (the pool renamed
-        or moved them) by the files of the pool entry. Return [(entry, old
-        links, new links)] of the entries repaired."""
-        pools = list(pools) if pools is not None else self.pools.all(quiet=True)
-        dirs = [p.filesdir for p in pools if p.filesdir]
+    def repair_links(self, entries=None, pool=None):
+        """replace the broken links to the files of a pool (default: the pool
+        of the library; the pool renamed or moved them) by the files of the
+        pool entry. Return [(entry, old links, new links)] of the entries
+        repaired."""
+        pool = pool if pool is not None else self.pools.pool(quiet=True)
+        if pool is None or not pool.filesdir:
+            return []
         repaired = []
         for e in (self.biblio.entries if entries is None else entries):
             files = self.biblio.get_files(e)
-            broken = [f for f in files if not os.path.exists(f) and any(is_inside(f, d) for d in dirs)]
+            broken = [f for f in files if not os.path.exists(f) and is_inside(f, pool.filesdir)]
             if not broken:
                 continue
-            pool, pe = self.find(e, pools)
+            pe, _ = self.pool_entry(e, pool)
             if pe is None:
                 continue
             linked = {realpath(f) for f in files if os.path.exists(f)}
@@ -1094,8 +1049,8 @@ def pool_state(origin, pool):
     return 'up to date'
 
 
-# ADD: LOOK IN THE POOLS FIRST
-# ============================
+# ADD: LOOK IN THE POOL FIRST
+# ===========================
 
 class PoolLookup:
     """the pool lookup of `add` (Biblio.pool_lookup): an added PDF, DOI or
@@ -1105,13 +1060,13 @@ class PoolLookup:
 
     def __init__(self, exchange):
         self.exchange = exchange
-        self.pools = exchange.pools.all()
+        self.pool = exchange.pools.pool()
         self._taken = {}
         self._same = {}  # the files given that have the content of a file of the pool entry
         self.taken_from = {}  # lower-case library key -> the pool of the entry taken
 
     def __bool__(self):
-        return bool(self.pools)
+        return self.pool is not None
 
     def _take(self, biblio, pool, pe, key, entry=None, files=()):
         """the entry to insert for pool entry pe: the pool's fields and files,
@@ -1133,15 +1088,15 @@ class PoolLookup:
         return new
 
     def has_file(self, file):
-        return any(pool.find_file(file)[0] is not None for pool in self.pools)
+        return self.pool.find_file(file)[0] is not None
 
     def pdf(self, biblio, pdf, files=(), doi=None):
-        """the entry for an added PDF found in a pool (same file content, or
-        a DOI of the PDF that is in a pool, its title in the text), or None"""
-        for pool in self.pools:
-            pe, _ = pool.find_file(pdf)
-            if pe is not None:
-                return self._take(biblio, pool, pe, biblio.keyformat(pe), files=files)
+        """the entry for an added PDF found in the pool (same file content, or
+        a DOI of the PDF that is in the pool, its title in the text), or None"""
+        pool = self.pool
+        pe, _ = pool.find_file(pdf)
+        if pe is not None:
+            return self._take(biblio, pool, pe, biblio.keyformat(pe), files=files)
         if doi:
             return self.doi(biblio, doi, files)
         try:
@@ -1154,42 +1109,33 @@ class PoolLookup:
             logger.debug(f'{pdf}: {error}')
             return None
         for candidate in candidates:
-            for pool in self.pools:
-                pe = pool.find_doi(candidate)
-                if pe is not None and title_in_text(get_entry_val(pe, 'title', ''), txt):
-                    return self._take(biblio, pool, pe, biblio.keyformat(pe), files=files)
-        return None
-
-    def doi(self, biblio, doi, files=()):
-        "the entry for an added DOI found in a pool, or None"
-        for pool in self.pools:
-            pe = pool.find_doi(doi)
-            if pe is not None:
+            pe = pool.find_doi(candidate)
+            if pe is not None and title_in_text(get_entry_val(pe, 'title', ''), txt):
                 return self._take(biblio, pool, pe, biblio.keyformat(pe), files=files)
         return None
 
+    def doi(self, biblio, doi, files=()):
+        "the entry for an added DOI found in the pool, or None"
+        pe = self.pool.find_doi(doi)
+        return self._take(biblio, self.pool, pe, biblio.keyformat(pe), files=files) if pe is not None else None
+
     def key(self, biblio, key, files=()):
         "the entry for `add --key KEY` of the pool entry of key KEY (ignoring case), or None"
-        for pool in self.pools:
-            pe = next((x for x in pool.biblio.entries if x.key.lower() == key.lower()), None)
-            if pe is not None:
-                return self._take(biblio, pool, pe, pe.key, files=files)
-        return None
+        pe = next((x for x in self.pool.biblio.entries if x.key.lower() == key.lower()), None)
+        return self._take(biblio, self.pool, pe, pe.key, files=files) if pe is not None else None
 
     def entry(self, biblio, e):
-        "the entry for an added bibtex entry found in a pool (it keeps its key), or None"
-        for pool in self.pools:
-            pe = pool.find(e, biblio.distinct)
-            if pe is not None:
-                files = biblio.get_files(e)
-                e = _strip(e, ('file',))
-                return self._take(biblio, pool, pe, e.key, entry=e, files=files)
-        return None
+        "the entry for an added bibtex entry found in the pool (it keeps its key), or None"
+        pe = self.pool.find(e, biblio.distinct)
+        if pe is None:
+            return None
+        files = biblio.get_files(e)
+        e = _strip(e, ('file',))
+        return self._take(biblio, self.pool, pe, e.key, entry=e, files=files)
 
     def inserted(self, entry, result, biblio=None, rename=False, copy=False):
         """record the origin of the library entries that an entry taken from
-        the main pool ended in (an entry taken from another pool is not
-        shared with it). In `move` mode (rename, and `copy` a FilesPolicy
+        the pool ended in. In `move` mode (rename, and `copy` a FilesPolicy
         that moves the file), a file given that has the same content as a
         file that the entry links to now is removed: it is stored already"""
         pool, pe = self._taken.pop(id(entry), (None, None))
@@ -1198,7 +1144,7 @@ class PoolLookup:
             return
         for e in result:
             self.taken_from[e.key.lower()] = pool
-            if self.exchange.is_main(pool) and self.exchange.origin.get(e, pool.id) is None:
+            if self.exchange.origin.get(e, pool.id) is None:
                 self.exchange.origin.set(e.key, pool.id, pe)
         if biblio is not None and rename and callable(copy):
             self._remove_moved(biblio, result, [f for f in same if copy(f) == 'move'])
@@ -1210,9 +1156,9 @@ class PoolLookup:
             for f in biblio.get_files(e):
                 if os.path.isfile(f):
                     stored.setdefault(checksum(f), f)
-        dirs = [p.filesdir for p in self.pools if p.filesdir]
+        pool_dir = self.pool.filesdir
         for f in files:
-            if not os.path.isfile(f) or realpath(f) in linked or any(is_inside(f, d) for d in dirs):
+            if not os.path.isfile(f) or realpath(f) in linked or (pool_dir and is_inside(f, pool_dir)):
                 continue
             target = stored.get(checksum(f))
             if target is None or os.path.samefile(target, f):
@@ -1275,34 +1221,23 @@ def export(biblio, config, entries, dest, files='copy', git=None):
 # STATUS
 # ======
 
-def status_lines(config):
-    """the pools of a library in `papers status`, one per line: its path,
-    with several pools its role (the main pool is synced, the others are
-    searched only), whether it is the global pool, exists, and (main pool)
-    changed since the last exchange; ['none'] without pool"""
-    if config.has_pool():
-        pairs = list(zip(config.pool_paths(), config.pool_labels()))
-    elif config.is_pool_library():
-        return [f'{short_home(str(config.configdir))} (global pool, this library: it has no pool)'] \
-            if config.uses_global_pool else ['none']
-    else:
-        return ['none']
+def status_line(config):
+    """the pool of a library in `papers status`: its path (or none), whether
+    it is the global pool, exists, and changed since the last exchange"""
+    path = config.pool_path()
+    if path is None:
+        return 'none'
     pools = Pools(config)
-    origin = Origin.for_bibtex(config.bibtex) if config.bibtex else Origin()
-    lines = []
-    for i, (path, label) in enumerate(pairs):
-        notes = ['global pool'] if pools._is_global(path) else []
-        if not os.path.exists(path):
-            notes.append('not created yet' if pools._is_global(path) else bcolors.WARNING + 'missing' + bcolors.ENDC)
-        else:
-            try:
-                pool = pools.resolve(path)
-                if i == 0:
-                    notes.append(pool_state(origin, pool))
-            except PoolError:
-                notes.append(bcolors.WARNING + 'not a library' + bcolors.ENDC)
-        notes = [', '.join(notes)] if notes else []
-        if len(pairs) > 1:
-            notes.insert(0, 'main: synced, new entries go here' if i == 0 else 'searched only')
-        lines.append(label + (f' ({"; ".join(notes)})' if notes else ''))
-    return lines
+    text = config.pool_label()
+    notes = ['global pool'] if pools._is_global(path) else []
+    if pools._is_self(path):
+        notes.append('this library: it has no pool')
+    elif not os.path.exists(path):
+        notes.append('not created yet' if pools._is_global(path) else bcolors.WARNING + 'missing' + bcolors.ENDC)
+    else:
+        try:
+            origin = Origin.for_bibtex(config.bibtex) if config.bibtex else Origin()
+            notes.append(pool_state(origin, pools.resolve(path)))
+        except PoolError:
+            notes.append(bcolors.WARNING + 'not a library' + bcolors.ENDC)
+    return text + (f' ({", ".join(notes)})' if notes else '')
