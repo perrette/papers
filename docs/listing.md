@@ -47,9 +47,17 @@ Perrette2013: A scaling approach to project regional sea level rise and it... (d
 ## Output formats
 
 `papers list` supports a number of special flags such as `--duplicates`,
-`--review-required`, `--broken-file`. You can then output the result in a
-number of formats: one-liner (`-l`), raw bibtex (`--plain`), keys only
-(`-K/--key-only`), selected fields (`-f/--field`).
+`--review-required`, `--broken-file`. `--format` chooses the output:
+
+- `--format line` (the default): one line per entry (also `-l`, `-1`,
+  `--one-liner`);
+- `--format bibtex`: the entries as bibtex (also `--plain`);
+- `--format key`: the keys only, one per line (also `-K`, `--key-only`),
+  to pipe into other commands (below).
+
+`--field FIELD...` prints the key and the given fields of each entry
+(`--no-key` leaves the key out). `-f` is a deprecated alias of `--field`: in
+v4, `-f` is no longer `--field` (it means `--force` in other commands).
 
 ## Duplicates
 
@@ -63,9 +71,14 @@ With `--fuzzy`, it also lists the entries whose authors and title are
 similar (rapidfuzz token set ratio of at least `--fuzzy-ratio`, default 80).
 This is for looking only: papers never merges entries on this score.
 
+With `--by key`, `--by doi` or `--by title`, it lists instead the entries
+that share that field: the same key (ignoring case), the same DOI, or the
+same title (ignoring case and punctuation), whether or not they are the same
+paper by the rule above (`--by` implies `--duplicates`).
+
 `--duplicates-key`, `--duplicates-doi` and `--duplicates-tit` are deprecated
-and do the same as `--duplicates`; `--similarity` is deprecated and has no
-effect.
+forms of `--duplicates --by key`, `--by doi` and `--by title`;
+`--similarity` is deprecated and has no effect.
 
 ## Naming entries
 
@@ -127,7 +140,7 @@ shows the new form; they will be removed in v4:
 
 | Deprecated | New form |
 |---|---|
-| `papers list ... --rename` (`--copy`) | `papers list ... -K | papers file rename -` (`--keep-source`) |
+| `papers list ... --rename` (`--copy`) | `papers list ... -K \| papers file rename -` (`--keep-source`) |
 | `papers list ... --add-files FILE...` | `papers file attach KEY FILE...` |
-| `papers list ... -o/--open` | `papers list ... -K | papers open -` |
-| `papers list ... --fetch` | `papers list ... -K | papers check --fetch -` |
+| `papers list ... -o/--open` | `papers list ... -K \| papers open -` |
+| `papers list ... --fetch` | `papers list ... -K \| papers check --fetch --fetch-all --fix-doi --fix-key --format-name -` |

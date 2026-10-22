@@ -16,7 +16,8 @@ History is append-only: undo and redo record *restore commits* in the backup
 repository instead of rewriting it, so no state is ever lost. In particular,
 making a new change while undone starts a new line of history on top, and the
 states that were still redoable remain reachable with further `papers undo`
-or with `papers restore-backup --ref COMMIT` (use `papers git log` to find
-`COMMIT`).
+or with `papers restore --ref COMMIT` (use `papers git log` to find
+`COMMIT`). `papers restore` without `--ref` restores the last version of the
+backup. `papers restore-backup` is the deprecated name of `papers restore`.
 
 See [Git integration](git.md) for how to enable git-tracking.

@@ -62,8 +62,8 @@ def installcmd(parser, o, config):
         parser.error('--edit and --reset are mutually exclusive')
     if o.edit:
         # historical behavior: --edit means "apply my flags, ask nothing"
-        o.prompt = False
-    asker = InputAsker() if o.prompt else DefaultAsker()
+        o.yes = True
+    asker = DefaultAsker() if o.yes else InputAsker()
 
     if o.local is True:
         logger.warning("--local is ignored: a library configuration is always local (see `papers init`)")
@@ -125,7 +125,8 @@ def uninstallcmd(parser, o, config):
     if config.file is None:
         parser.error('no library configuration was found')
     if o.recursive:
-        logger.warning("uninstall --recursive is deprecated: remove the configuration of each library instead")
+        logger.warning("uninstall --recursive is deprecated and ignored: there is no global configuration to "
+                       "remove in v3, only the configuration of this library is removed")
     _uninstall(parser, o, config)
     print(config.status(verbose=True))
 
@@ -154,16 +155,6 @@ def _uninstall(parser, o, config):
         else:
             print(f"the backup directory remains: {config.gitdir}")
             print(f"  remove it with `papers backup remove {os.path.basename(config.gitdir)}`")
-
-    if o.recursive:
-        # library configurations above, then the global configuration of v2
-        # (never the per-machine configuration)
-        configfile = search_config(LIBRARY_CONFIG_FILES, start_dir=".", default=CONFIG_FILE)
-        configfile = check_legacy_config(configfile)
-        if os.path.exists(configfile):
-            other = Config.load(configfile, machine=config.machine)
-            other.origin = 'library'
-            _uninstall(parser, o, other)
 
 
 def _check_setting_name(name, machine):

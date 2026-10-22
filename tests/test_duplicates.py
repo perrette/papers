@@ -739,6 +739,14 @@ class TestListDuplicates(LibraryTest):
     def test_fuzzy(self):
         self.assertIn('smith2019preprint', self.keys('list --duplicates --fuzzy'))
 
+    def test_by(self):
+        self.assertEqual(self.keys('list --duplicates --by doi'), ['handbook', 'chapter'])
+        self.assertEqual(sorted(self.keys('list --duplicates --by title')),
+                         ['Smith_2020', 'smith2019preprint', 'smith2020climate'])
+        self.assertEqual(self.keys('list --duplicates --by key'), [])
+        self.assertEqual(self.keys('list --by doi'), ['handbook', 'chapter'])  # implies --duplicates
+        self.assertNotIn('handbook', self.keys('list --by doi --invert'))
+
 
 
 class TestEditEntries(unittest.TestCase):

@@ -1,4 +1,4 @@
-"""papers undo, redo, restore-backup, backup, git"""
+"""papers undo, redo, restore (restore-backup: deprecated), backup, git"""
 import fnmatch
 import os
 import shutil
@@ -21,7 +21,8 @@ def undocmd(parser, o, config):
     if config.git:
         return git_undo(config, restore_files=o.restore_files, steps=o.steps)
 
-    logger.warning("git-tracking is not installed: undo / redo is limited to 1 step back and forth")
+    logger.warning("the git backup is off (`papers config git true` enables it): "
+                   "undo / redo is limited to 1 step back and forth")
     back = backupfile_func(config.bibtex)
     tmp = config.bibtex + '.tmp'
     logger.info(config.bibtex+' <==> '+back)
@@ -31,8 +32,10 @@ def undocmd(parser, o, config):
 
 
 def restorecmd(parser, o, config):
+    if o.cmd == 'restore-backup':
+        logger.warning('`papers restore-backup` is deprecated: use `papers restore`')
     if not config.git:
-        raise PapersExit('only valid with --git enabled')
+        raise PapersExit('restore needs the git backup: enable it with `papers config git true`')
     if o.ref:
         git_restore_state(config, o.ref, restore_files=o.restore_files)
     else:
@@ -69,7 +72,7 @@ def backupcmd(parser, o, config):
             if info['current']:
                 logger.warning("this is the current library's backup directory; "
                                "removing it discards its history (a fresh one is created on the next save)")
-            if not o.force:
+            if not o.yes:
                 ans = input(f"remove {info['gitdir']} ? [y/N] ")
                 if ans.lower() != 'y':
                     continue

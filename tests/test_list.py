@@ -38,8 +38,21 @@ class FormattingTest(ListTest):
         out = self.papers('list --key-only', sp_cmd='check_output')
         self.assertEqual(out, "Perrette_2011")
 
-        out = self.papers('list -f month doi', sp_cmd='check_output')
+        out = self.papers('list --field month doi', sp_cmd='check_output')
         self.assertEqual(strip_all(out), "Perrette_2011: feb 10.5194/bg-8-515-2011")
+
+    def test_format_option(self):
+        line = self.papers('list -l', sp_cmd='check_output')
+        self.assertEqual(self.papers('list', sp_cmd='check_output'), line)
+        self.assertEqual(self.papers('list --format line', sp_cmd='check_output'), line)
+        self.assertEqual(self.papers('list --format key', sp_cmd='check_output'), 'Perrette_2011')
+        self.assertMultiLineEqual(self.papers('list --format bibtex', sp_cmd='check_output'),
+                                  self.papers('list --plain', sp_cmd='check_output'))
+        self.assertIn('@article{Perrette_2011', self.papers('list --format bibtex', sp_cmd='check_output'))
+
+    def test_format_exclusive(self):
+        with self.assertRaises(SystemExit):
+            self.papers('list --format key --plain', sp_cmd='check_output')
 
 
 class SearchTest(ListTest):

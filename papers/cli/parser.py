@@ -1,6 +1,7 @@
 """The command-line parser of papers"""
 import argparse
 import logging
+from papers import logger
 
 import papers.config
 from papers.config import SETTINGS
@@ -29,6 +30,21 @@ _FORMAT_HELP = {
     'unknown-template': 'template of the {what} of an entry without author, year or title',
     'unknown-strict': 'use the unknown template only when author, year and title are all missing',
 }
+
+
+class _Deprecated(argparse.Action):
+    """a deprecated form of an option (removed in v4): warns with the new
+    form, and sets the option's destination (the values given, or `const`
+    for a flag)"""
+
+    def __init__(self, option_strings, dest, new, nargs=0, const=True, help=None, **kw):
+        super().__init__(option_strings, dest, nargs=nargs, const=const,
+                         help=help or f'deprecated: use {new}', **kw)
+        self.new = new
+
+    def __call__(self, parser, namespace, values, option_string=None):
+        logger.warning(f'{option_string} is deprecated: use {self.new}')
+        setattr(namespace, self.dest, self.const if self.nargs == 0 else values)
 
 
 def _default(value):
@@ -204,8 +220,8 @@ def get_parser(config=None):
         help=f'update existing install non-interactively (updating is the default; --edit also suppresses prompts) (found: {config.file})')
     installp.add_argument('--reset', action='store_true',
         help='discard the pre-existing configuration and start over from defaults (default: update it)')
-    installp.add_argument('--no-prompt', '--force', action='store_false', dest="prompt",
-        help='non-interactive: accept defaults without asking')
+    installp.add_argument('-y', '--yes', action='store_true', help='do not ask: accept the defaults')
+    installp.add_argument('--no-prompt', '--force', action=_Deprecated, dest='yes', new='-y/--yes')
 
     installp.add_argument('--local', action="store_true", default=None,
         help="""ignored (a library configuration is always local)""")
@@ -213,8 +229,11 @@ def get_parser(config=None):
         help="deprecated: create or update the library configuration next to the bibtex, and register "
              "its directory as the default pool (used outside of any library)")
 
-    installp.add_argument('--git', '--backup', action='store_true', default=None, help="""Track bibtex files with git.""")
-    installp.add_argument('--git-lfs', '--backup-files', action='store_true', default=None, help="""Backup files with git-lfs (implies --git)""")
+    installp.add_argument('--git', action='store_true', default=None, help='back up the bibtex with git')
+    installp.add_argument('--backup', action=_Deprecated, dest='git', new='--git (or `papers config git true`)')
+    installp.add_argument('--git-lfs', action='store_true', default=None, help='also back up the files with git-lfs (implies --git)')
+    installp.add_argument('--backup-files', action=_Deprecated, dest='git_lfs',
+                          new='--git-lfs (or `papers config git-lfs true`)')
     installp.add_argument('--gitdir', default=None, help=argparse.SUPPRESS)
     installp.add_argument('--editor', help="""Set command to open text editor. Need to wait until closing ! E.g. vim or subl -w""")
     installp.add_argument('--pool', nargs='+', action='extend', metavar='NAME|PATH', help=argparse.SUPPRESS)
@@ -228,7 +247,7 @@ def get_parser(config=None):
     # =======
     uninstallp = subparsers.add_parser('uninstall', description='remove the library configuration',
         parents=[loggingp])
-    uninstallp.add_argument("--recursive", action="store_true", help="deprecated: also remove the library configurations found in the parent directories, and the global configuration of papers v2 (config files only)")
+    uninstallp.add_argument("--recursive", action="store_true", help="deprecated and ignored: only the configuration of the library is removed")
     uninstallp.add_argument("--remove-backup", action="store_true", help="also remove the backup directory of the uninstalled configuration(s)")
     _command(uninstallp, uninstallcmd)
 
@@ -265,7 +284,7 @@ def get_parser(config=None):
         r: error, a: --no-check-duplicate)''')
 
     grp = addp.add_argument_group('directory scan')
-    grp.add_argument('--recursive', action='store_true',
+    grp.add_argument('-R', '--recursive', action='store_true',
         help='accept directory as argument, for recursive scan \
         of .pdf and .bib files; files named <name>--<label>.<ext> next to <name>.pdf \
         are added as attachments of its entry')
@@ -297,6 +316,9 @@ def get_parser(config=None):
         help='attach these files to the entry (e.g. supplementary material)')
     grp.add_argument('--attachment', nargs='+', type=file_uri_to_path, dest='attachment_deprecated',
         help='deprecated: use --attach')
+    # -a is --author in list: in v4, -a becomes --author here too
+    grp.add_argument('-a', nargs='+', type=file_uri_to_path, dest='attachment_short', metavar='FILE',
+        help='deprecated: use --attach')
     _files_mode_options(grp, add=True)
 
     grp = addp.add_argument_group('actions')
@@ -311,7 +333,9 @@ def get_parser(config=None):
     checkp.add_argument('entries', nargs='*', metavar='KEY',
         help='check these entries only (default: all): ' + _selection_help)
     checkp.add_argument('-k', '--keys', nargs='+', help='apply check on this key subset (same as the KEY arguments)')
-    checkp.add_argument('-f','--force', action='store_true', help='do not ask')
+    checkp.add_argument('-y', '--yes', action='store_true',
+        help='do not ask: apply the changes of the fixes and fetches (and --on-duplicate skip by default)')
+    checkp.add_argument('-f', '--force', action=_Deprecated, dest='yes', new='-y/--yes')
 
     grp = checkp.add_argument_group('entry key')
     grp.add_argument('--fix-key', action='store_true', help='fix key based on author name and date (in case missing or digit)')
@@ -336,7 +360,7 @@ def get_parser(config=None):
         help='''what to do with each group: ask (dialogue; the default in a terminal),
         keep (merge, conflicts keep the value of entry 1), skip (leave the group),
         error (exit with status 1 if there is any group; the default without a terminal,
-        and skip with --force)''')
+        and skip with -y/--yes)''')
     grp.add_argument('-m', '--mode', choices=list('ims'), help='deprecated: use --on-duplicate (i: ask, m: keep, s: skip)')
     _command(checkp, checkcmd, library=True)
 
@@ -482,9 +506,12 @@ def get_parser(config=None):
 
 
     grp = listp.add_argument_group('check')
-    grp.add_argument('--duplicates-key', action='store_true', help='deprecated: --duplicates')
-    grp.add_argument('--duplicates-doi', action='store_true', help='deprecated: --duplicates')
-    grp.add_argument('--duplicates-tit', action='store_true', help='deprecated: --duplicates')
+    for field, word in [('key', 'key'), ('doi', 'doi'), ('tit', 'title')]:
+        grp.add_argument(f'--duplicates-{field}', action=_Deprecated, dest='by', const=word,
+                         new=f'--duplicates --by {word}')
+    grp.add_argument('--by', choices=['key', 'doi', 'title'],
+        help='with --duplicates (implied): the entries that share this field instead (the same key, DOI, or '
+             'title ignoring case and punctuation), whether or not they are the same paper')
     grp.add_argument('--duplicates', action='store_true',
         help='''entries that are the same paper, as `papers check --duplicates` finds them, and
         the entries it would ask about; with --fuzzy, also the entries with similar
@@ -496,11 +523,17 @@ def get_parser(config=None):
 
     grp = listp.add_argument_group('formatting')
     mgrp = grp.add_mutually_exclusive_group()
-    mgrp.add_argument('--plain', action='store_false', dest="one_liner", help='print in bibtex format')
-    mgrp.add_argument('-l', '-1', '--one-liner', action='store_true', help='one liner')
-    mgrp.add_argument('-K', '--key-only', action='store_true',
-        help='print the keys only, one per line (to pipe into commands that take -, e.g. `papers file rename -`)')
-    mgrp.add_argument('-f', '--field', nargs='+', help='specific field(s) only')
+    mgrp.add_argument('--format', choices=['line', 'bibtex', 'key'],
+        help='line: one line per entry (the default); bibtex: the entries as bibtex; key: the keys only, '
+             'one per line (to pipe into the commands that take -, e.g. `papers file rename -`)')
+    mgrp.add_argument('--plain', action='store_const', dest='format', const='bibtex', help='same as --format bibtex')
+    mgrp.add_argument('-l', '-1', '--one-liner', action='store_const', dest='format', const='line',
+        help='same as --format line')
+    mgrp.add_argument('-K', '--key-only', action='store_const', dest='format', const='key',
+        help='same as --format key')
+    mgrp.add_argument('--field', nargs='+', help='print these fields only (after the key)')
+    # -f is --force elsewhere: in v4, -f is no longer --field
+    mgrp.add_argument('-f', action=_Deprecated, dest='field', nargs='+', new='--field', metavar='FIELD')
     grp.add_argument('--no-key', action='store_true', help='do not print the keys')
 
     grp = listp.add_argument_group('action on listed results',
@@ -511,7 +544,7 @@ def get_parser(config=None):
     grp.add_argument('--delete-files', action='store_true', help='with --delete: also delete their files, as `papers rm --delete-files`')
     grp.add_argument('--keep-files', action='store_true', help='with --delete: keep their files, without asking')
     grp.add_argument('-e', '--edit', action='store_true', help='edit the listed entries in a text editor, as `papers edit`')
-    grp.add_argument('--fetch', action='store_true', help='deprecated: `papers check --fetch -`')
+    grp.add_argument('--fetch', action='store_true', help='deprecated: `papers check --fetch --fetch-all --fix-doi --fix-key --format-name -`')
     grp.add_argument('--add-keywords', '--add-tag', nargs='+', help='add keywords (tags) to the listed entries, as `papers tag --add`')
     grp.add_argument('--add-files', nargs='+', type=file_uri_to_path, help='deprecated: `papers file attach KEY FILE...`')
     grp.add_argument('--rename', action='store_true', help='deprecated: `papers file rename -`')
@@ -568,7 +601,7 @@ def get_parser(config=None):
         help=_exchange_help.format(receiving='library', incoming='pool'))
     pullp.add_argument('--check', action='store_true',
         help='only report: the pools that changed since the last pull, and the entries changed in the pools')
-    pullp.set_defaults(mode=None, force=False)
+    pullp.set_defaults(mode=None, yes=False)
     _command(pullp, pullcmd, library=True)
 
     pushp = subparsers.add_parser('push', parents=[cfg],
@@ -581,7 +614,7 @@ def get_parser(config=None):
     pushp.add_argument('--pool', metavar='NAME|PATH', help='push to this pool (default: the first pool of the library)')
     pushp.add_argument('--on-duplicate', choices=ON_DUPLICATE,
         help=_exchange_help.format(receiving='pool', incoming='library'))
-    pushp.set_defaults(mode=None, force=False)
+    pushp.set_defaults(mode=None, yes=False)
     _command(pushp, pushcmd, library=True)
 
     exportp = subparsers.add_parser('export', parents=[cfg],
@@ -617,7 +650,7 @@ def get_parser(config=None):
 
     # doi
     # ===
-    doip = subparsers.add_parser('doi', description='parse DOI from PDF', parents=[loggingp])
+    doip = subparsers.add_parser('doi', description='deprecated: use `papers extract --doi-only`', parents=[loggingp])
     doip.add_argument('pdf', type=file_uri_to_path)
     doip.add_argument('--image', action='store_true', help='convert to image and use tesseract instead of pdftotext')
     _command(doip, doicmd)
@@ -631,9 +664,13 @@ def get_parser(config=None):
 
     # extract
     # ========
-    extractp = subparsers.add_parser('extract', description='extract pdf metadata', parents=[loggingp])
+    extractp = subparsers.add_parser('extract', description='print the bibtex of PDFs, from the DOI found in the '
+        'PDF (metadata or text) or a full-text search; with --doi-only, the DOI only', parents=[loggingp])
     extractp.add_argument('pdf', nargs='+', type=file_uri_to_path, help='one or several PDF files')
-    extractp.add_argument('--recursive', action='store_true', help='accept directories and scan them for PDF files')
+    extractp.add_argument('--doi-only', action='store_true',
+        help='print the DOI of the PDFs: the DOI of the PDF metadata, otherwise the first DOI of the text whose '
+             'title (from crossref) appears in the text')
+    extractp.add_argument('-R', '--recursive', action='store_true', help='accept directories and scan them for PDF files')
     extractp.add_argument('-n', '--word-count', type=int, default=200)
     extractp.add_argument('--fulltext', action='store_true', help='fulltext only (otherwise DOI-based)')
     extractp.add_argument('--scholar', action='store_true', help='use google scholar instead of default crossref for fulltext search')
@@ -643,18 +680,32 @@ def get_parser(config=None):
     # undo
     # ====
     _restorep = argparse.ArgumentParser(add_help=False)
-    _restorep.add_argument('--restore-files', action='store_true', help='Use this option to restore files that have been renamed. By default the file link points to the back-up repository. This command has no effect without --git-lfs, and will result in broken file links.')
+    _restorep.add_argument('--restore-files', action='store_true',
+        help='with the git-lfs setting: copy back from the backup the files that no longer exist where the '
+             'restored bibtex links to them (by default, these links point to the copy in the backup '
+             'directory). No effect without git-lfs.')
 
     _stepsp = argparse.ArgumentParser(add_help=False)
-    _stepsp.add_argument('-n', '--steps', type=int, default=1, help='number of times undo/redo should be performed')
+    _stepsp.add_argument('-n', '--steps', type=int, default=1, help='number of steps to undo or redo')
 
-    undop = subparsers.add_parser('undo', parents=[cfg, _restorep, _stepsp], help='Undo changes on bibtex (if --git is not enabled, only back and forth with last modification). If --git-lfs is enabled, the file entry may differ if it does not exist on disk any more, unless --restore-files was passed.')
+    _undo_help = ('undo the last change of the bibtex. With the git setting (`papers config git true`), '
+                  'each change is a step of the backup history; without it, undo swaps the bibtex with its '
+                  'previous version (one step back and forth). With git-lfs, a link to a file that no '
+                  'longer exists points to its copy in the backup, unless --restore-files.')
+    undop = subparsers.add_parser('undo', parents=[cfg, _restorep, _stepsp], help=_undo_help, description=_undo_help)
     _command(undop, undocmd, library=True)
-    redop = subparsers.add_parser('redo', parents=[cfg, _restorep, _stepsp], help='Redo changes on bibtex (if --git is not enabled, this has the same effect as papers undo)')
+    _redo_help = ('redo a change undone by `papers undo` (without the git setting, the same as papers undo: '
+                  'it swaps the bibtex with its previous version)')
+    redop = subparsers.add_parser('redo', parents=[cfg, _restorep, _stepsp], help=_redo_help, description=_redo_help)
     _command(redop, redocmd, library=True)
-    restorep = subparsers.add_parser('restore-backup', parents=[cfg, _restorep], help='Restore bibtex from backup. Also restore files if --restore-files if passed (--git-lfs only).')
-    restorep.add_argument('--ref', help='Optional: restore specific commit (execute `papers git whatchanged` to obtain appropriate reference)')
-    _command(restorep, restorecmd, library=True, bibtex_must_exist=False)
+    _restore_help = ('restore the bibtex from the git backup (the git setting: `papers config git true`): its '
+                     'last version, or the version of --ref (see --restore-files for the files)')
+    for name in ('restore', 'restore-backup'):
+        restorep = subparsers.add_parser(name, parents=[cfg, _restorep],
+            help=_restore_help if name == 'restore' else 'deprecated: use `papers restore`',
+            description=_restore_help if name == 'restore' else 'deprecated: use `papers restore`')
+        restorep.add_argument('--ref', help='restore this commit of the backup (see `papers git log`)')
+        _command(restorep, restorecmd, library=True, bibtex_must_exist=False)
 
     # git
     # ===
@@ -669,7 +720,8 @@ def get_parser(config=None):
         help='list (default) known backup directories and the library each belongs to, or remove them')
     backupp.add_argument('patterns', nargs='*', metavar='name',
         help='directory name(s), glob patterns allowed (filter for list, required for remove)')
-    backupp.add_argument('-f', '--force', action='store_true', help='remove without confirmation')
+    backupp.add_argument('-y', '--yes', action='store_true', help='remove without confirmation')
+    backupp.add_argument('-f', '--force', action=_Deprecated, dest='yes', new='-y/--yes')
     _command(backupp, backupcmd)
 
     return parser, subparsers

@@ -488,8 +488,8 @@ class TestStatus(InitTest):
 
 
 class TestUninstall2(InitTest):
-    """uninstall --recursive (deprecated) removes the library configurations
-    found upwards and the global configuration of v2, never the per-machine one"""
+    """uninstall --recursive (deprecated) is ignored: only the configuration
+    of the library is removed, not those found upwards nor the v2 global one"""
     def test_uninstall(self):
         import papers.config
         os.makedirs(self._path('sub'))
@@ -504,10 +504,12 @@ class TestUninstall2(InitTest):
         self.assertTrue(os.path.exists(CONFIG_FILE))
 
         paperscmd('init --no-git', cwd=self._path('sub'))
-        paperscmd('uninstall --recursive', cwd=self._path('sub'))
+        with self.assertLogs("papers", level="WARNING") as logs:
+            paperscmd("uninstall --recursive", cwd=self._path("sub"))
+        self.assertIn("deprecated and ignored", "\n".join(logs.output))
         self.assertFalse(self._exists(os.path.join('sub', CONFIG_FILE_LOCAL)))
-        self.assertFalse(self._exists(CONFIG_FILE_LOCAL))
-        self.assertFalse(os.path.exists(CONFIG_FILE))
+        self.assertTrue(self._exists(CONFIG_FILE_LOCAL))
+        self.assertTrue(os.path.exists(CONFIG_FILE))
         self.assertEqual(open(papers.config.MACHINE_CONFIG_FILE).read(), machine)
 
 

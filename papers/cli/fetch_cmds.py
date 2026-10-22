@@ -1,4 +1,4 @@
-"""papers doi, fetch, extract (no library needed)"""
+"""papers fetch, extract, and doi (deprecated) (no library needed)"""
 import os
 from pathlib import Path
 
@@ -9,6 +9,7 @@ from papers.identifiers import normalize_doi
 
 
 def doicmd(parser, o, config):
+    logger.warning('`papers doi` is deprecated: use `papers extract --doi-only`')
     print(extract_pdf_doi(o.pdf, image=o.image))
 
 
@@ -40,7 +41,7 @@ def _collect_pdf_files(paths, recursive=False):
     for path in paths:
         if os.path.isdir(path):
             if not recursive:
-                raise ValueError(f'{path} is a directory, requires --recursive to scan')
+                raise ValueError(f'{path} is a directory, requires -R/--recursive to scan')
             files.extend(sorted(str(p) for p in Path(path).rglob('*')
                                 if p.is_file() and p.suffix.lower() == '.pdf'))
         else:
@@ -60,6 +61,9 @@ def extractcmd(parser, o, config):
         if len(files) > 1:
             print(f'% {file}')
         try:
+            if o.doi_only:
+                print(extract_pdf_doi(file, image=o.image))
+                continue
             print(extract_pdf_metadata(file, search_doi=not o.fulltext, search_fulltext=True, scholar=o.scholar, minwords=o.word_count, max_query_words=o.word_count, image=o.image))
         except Exception as error:
             if len(files) == 1:

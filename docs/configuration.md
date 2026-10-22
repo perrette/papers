@@ -186,7 +186,7 @@ with an error.
 ### `papers install`
 
 `papers install` is a deprecated alias of `papers init` that asks for the
-bibtex, the files directory and git (`--no-prompt` accepts the defaults). On
+bibtex, the files directory and git (`-y/--yes` accepts the defaults; `--no-prompt` and `--force` are its deprecated forms). On
 an existing library it updates the library configuration, as in version 2,
 with a deprecation warning: use `papers config` instead (`--edit` and
 `--reset` keep working). `papers install --global` writes the library
@@ -206,9 +206,9 @@ bibtex file, the files directory, and the backup directory if any). Pass
 per-machine configuration. From outside of any library it does not remove
 the default pool's configuration: run `papers -C DIR uninstall` for that.
 
-`papers uninstall --recursive` (deprecated) also removes the library
-configurations of the parent directories, and the global configuration of
-version 2 if there is one.
+`papers uninstall --recursive` is deprecated and ignored (there is no global
+library configuration to walk up to in v3): only the configuration of the
+library is removed.
 
 ## Cache
 

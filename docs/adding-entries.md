@@ -59,15 +59,16 @@ supplementary material), placed as the `files` setting says. They are named
 after the main file (see
 [Renaming files and keys](renaming.md#entries-with-several-files)). To
 attach files to an entry already in the library, use
-`papers file attach KEY FILE...`. `--attachment` is the deprecated name of
+`papers file attach KEY FILE...`. `--attachment` and `-a` are deprecated names of
 `--attach`.
 
 ## Add a whole directory of PDFs
 
-It is possible to do this on a full directory of files, recursively:
+It is possible to do this on a full directory of files, recursively, with
+`-R/--recursive`:
 
 ```
-papers add --recursive /home/perette/playground/papers/papers_test
+papers add -R /home/perette/playground/papers/papers_test
 ```
 
 where, above, the `papers_test` directory contains a few PDF files. For each

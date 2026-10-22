@@ -159,7 +159,7 @@ CHECK_MODES = {'i': 'ask', 'm': 'keep', 's': 'skip'}
 def on_duplicate_mode(o, cmd):
     """the --on-duplicate word of the command line: the option, else the
     deprecated -m/--mode letter, else ask in a terminal and error otherwise
-    (check --force: skip)"""
+    (check --yes: skip)"""
     mode = o.on_duplicate
     if o.mode is not None:
         if cmd == 'add' and o.mode == 'a':
@@ -174,7 +174,7 @@ def on_duplicate_mode(o, cmd):
             if mode is None:
                 mode = new
     if mode is None:
-        if cmd == 'check' and o.force:
+        if cmd == 'check' and o.yes:
             mode = 'skip'
         else:
             mode = 'ask' if stdin_is_terminal() else 'error'

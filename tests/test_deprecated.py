@@ -1,7 +1,9 @@
 """The deprecated features of v3 that still work, with a deprecation
 warning: the file actions of list, papers filecheck, the -m/--mode option
-of add, and the list options replaced by --duplicates. To remove with them
-in v4 (the tests of papers install are in test_install.py)."""
+of add, the list options replaced by --duplicates --by, and the options and
+commands renamed in v3 (-a of add, -f of list, -f/--force of check and
+backup, --no-prompt/--force of install, restore-backup, doi). To remove with
+them in v4 (the tests of papers install are in test_install.py)."""
 import os
 import shutil
 import tempfile
@@ -57,8 +59,16 @@ class TestListDeprecated(FileTest):
 
     def test_fetch(self):
         with patch('papers.bib.Biblio.fix_entry') as fix:
-            self.warns('list --key one2000 --fetch', 'papers check --fetch -')
+            self.warns('list --key one2000 --fetch',
+                       'papers check --fetch --fetch-all --fix-doi --fix-key --format-name -')
         fix.assert_called_once()
+        self.assertEqual(fix.call_args.kwargs, dict(fix_doi=True, fix_key=True, fetch_all=True, interactive=True))
+        # the same as check with these options (format_name is True by default in fix_entry)
+        with patch('papers.bib.Biblio.fix_entry') as fix2:
+            self.lib('check one2000 --fetch --fetch-all --fix-doi --fix-key --format-name')
+        kw = fix2.call_args.kwargs
+        self.assertTrue(kw['fix_doi'] and kw['fix_key'] and kw['fetch_all'] and kw['format_name'] and kw['interactive'])
+        self.assertFalse(kw['auto_key'] or kw['key_ascii'] or kw['encoding'])
 
 
 class TestFilecheckAlias(FileTest):
@@ -222,11 +232,77 @@ class TestListDuplicatesDeprecated(LibraryTest):
         return self.papers(cmd + ' -K').split()
 
     def test_deprecated(self):
-        for option in ('--duplicates-doi', '--duplicates-tit', '--duplicates-key'):
+        for option, by in (('--duplicates-doi', 'doi'), ('--duplicates-tit', 'title'), ('--duplicates-key', 'key')):
             with self.assertLogs('papers', level='WARNING') as logs:
                 keys = self.keys(f'list {option}')
-            self.assertIn('deprecated: use --duplicates', '\n'.join(logs.output))
-            self.assertEqual(len(keys), 4)
+            self.assertIn(f'{option} is deprecated: use --duplicates --by {by}', '\n'.join(logs.output))
+            self.assertEqual(keys, self.keys(f'list --duplicates --by {by}'))
         with self.assertLogs('papers', level='WARNING') as logs:
             self.assertEqual(len(self.keys('list --duplicates --similarity FAIR')), 4)
         self.assertIn('--similarity is deprecated and ignored', '\n'.join(logs.output))
+
+
+class TestRenamedOptions(FileTest):
+    """options and commands of v2 renamed in v3 (removed in v4): they warn
+    with the new form and do the same"""
+
+    def setUp(self):
+        super().setUp()
+        self.a = self.write('src', 'a.pdf')
+        self.bib(entry('one2000', doi='10.1000/one'), entry('two2000'))
+
+    def warns(self, cmd, new, **kw):
+        with self.assertLogs('papers', level='WARNING') as logs:
+            out = self.out(cmd, **kw)
+        self.assertIn(new, '\n'.join(logs.output))
+        return out
+
+    def out(self, cmd, answers=()):
+        with patch('builtins.input', side_effect=list(answers)):
+            return super().out(cmd)
+
+    def test_add_a(self):
+        # -a is --attach in v3 (v2 meaning), --author in v4
+        self.warns(f'add --key three2000 --title Three -a {self.a}', '-a is deprecated: use --attach')
+        self.assertEqual(self.files('three2000'), [self.a])
+
+    def test_list_f(self):
+        out = self.warns('list --key one2000 -f doi --no-key', '-f is deprecated: use --field')
+        self.assertEqual(out.split(), ['10.1000/one'])
+
+    def test_check_force(self):
+        for option in ('-f', '--force'):
+            with patch('papers.bib.Biblio.fix_entry') as fix:
+                self.warns(f'check one2000 {option}', f'{option} is deprecated: use -y/--yes')
+            self.assertFalse(fix.call_args.kwargs['interactive'])
+
+    def test_backup_force(self):
+        with patch('papers.cli.backup_cmds.list_backup_dirs', return_value=[]):
+            self.warns('backup remove x -f', '-f is deprecated: use -y/--yes')
+
+    def test_install_no_prompt(self):
+        for option in ('--no-prompt', '--force'):
+            with patch('papers.cli.library_cmds.InputAsker', side_effect=AssertionError('no question expected')):
+                self.warns(f'install {option} --no-git', f'{option} is deprecated: use -y/--yes')
+
+    def test_restore_backup(self):
+        with patch('papers.cli.backup_cmds.restore_from_backupdir') as restore:
+            self.lib('config git true')
+            self.warns('restore-backup', '`papers restore-backup` is deprecated: use `papers restore`')
+        restore.assert_called_once()
+
+    def test_doi(self):
+        with patch('papers.cli.fetch_cmds.extract_pdf_doi', return_value='10.1000/x'):
+            out = self.warns(f'doi {self.a}', '`papers doi` is deprecated: use `papers extract --doi-only`')
+        self.assertEqual(out.strip(), '10.1000/x')
+
+    def test_install_backup_files(self):
+        os.makedirs(self.path('other'))
+        with self.assertLogs('papers', level='WARNING') as logs:
+            self.papers('install --backup-files -y', cwd=self.path('other'))
+        self.assertIn('--backup-files is deprecated: use --git-lfs', '\n'.join(logs.output))
+        self.assertTrue(self.json('other')['gitlfs'])
+
+    def test_paths_options(self):
+        self.warns('list --relative-paths', '--relative-paths is deprecated')
+        self.warns('list --absolute-paths', '`papers config paths absolute`')

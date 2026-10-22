@@ -103,7 +103,7 @@ only by key and file links is merged without a question.
 |---|---|
 | `ask` | the dialogue (default when the standard input is a terminal) |
 | `keep` | merge; conflicts keep the value of entry 1 |
-| `skip` | leave the groups as they are (also with `--force`) |
+| `skip` | leave the groups as they are (the default with `-y/--yes`) |
 | `error` | exit with status 1 if there is any group, and list them (default without a terminal) |
 
 Groups that the title guard asks about (same DOI, but different entry types

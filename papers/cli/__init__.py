@@ -140,5 +140,5 @@ def main_clean_exit(args=None):
             raise
         logger.error('papers asked a question, but there is no input to answer it: '
                      'run the command in a terminal, or answer with its options '
-                     '(e.g. --on-duplicate for duplicates, --force)')
+                     '(e.g. --on-duplicate for duplicates, -y/--yes)')
         sys.exit(1)

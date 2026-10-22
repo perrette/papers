@@ -16,14 +16,14 @@ names, and restore still understands them when materializing old snapshots.)
 
 Each save is committed on a single ``main`` branch, and history is
 append-only: nothing is ever reset away. Undo, redo and
-``restore-backup --ref`` append a *restore commit* whose tree is the older
+``restore --ref`` append a *restore commit* whose tree is the older
 state, marked with a ``Papers-Restores: <commit>`` trailer naming the state
 it represents. That trailer doubles as the cursor: a consecutive undo walks
 back from the restored state rather than from the tip, and redo walks the
 first-parent chain forward again, skipping restore commits. Making a new
 change while undone simply appends on top; the states that were still
 redoable remain in history and can be recovered with further undos or
-``restore-backup --ref``.
+``restore --ref``.
 
 Repositories last written by the pre-append-only model (which moved a
 ``history`` branch around with ``git reset --hard``) are adopted on first

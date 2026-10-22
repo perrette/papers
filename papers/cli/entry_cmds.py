@@ -2,6 +2,7 @@
 import copy
 import fnmatch
 import os
+import re
 
 import papers.config
 import papers.files
@@ -13,7 +14,7 @@ from papers.entries import entry_from_dict, get_entry_val, format_file, parse_fi
 from papers.extract import isvaliddoi, prefetch_pdf_metadata
 from papers.files import (attach_files, delete_files, describe_file, download_url, files_policy, rename_files,
                           scan_dir_items)
-from papers.identifiers import read_selection, select_entries
+from papers.identifiers import normalize_doi, read_selection, select_entries
 from papers.library import get_biblio, savebib
 from papers.merge import DuplicateError
 from papers.pools import Exchange, PoolLookup, Pools, report_lines, use_pool_files
@@ -46,6 +47,9 @@ def addcmd(parser, o, config):
     if o.attachment_deprecated:
         logger.warning("--attachment is deprecated: use --attach")
         o.attachment = (o.attachment or []) + o.attachment_deprecated
+    if o.attachment_short:
+        logger.warning("-a is deprecated: use --attach (in v4, -a will be --author, as in papers list)")
+        o.attachment = (o.attachment or []) + o.attachment_short
 
     # what to do with the files: see papers.files.FilesPolicy
     mode = files_mode(o, config)
@@ -131,7 +135,7 @@ def addcmd(parser, o, config):
                                 search_fulltext=not o.no_query_fulltext,
                                 **kw) )
                 else:
-                    raise ValueError(file+' is a directory, requires --recursive to explore')
+                    raise ValueError(file+' is a directory, requires -R/--recursive to explore')
 
             elif file.lower().endswith('.pdf'):
                 entries.extend( biblio.add_pdf(file, attachments=o.attachment, rename=rename, copy=policy,
@@ -203,7 +207,7 @@ def checkcmd(parser, o, config):
     for e in entries:
         biblio.fix_entry(e, fix_doi=o.fix_doi, fetch=o.fetch, fetch_all=o.fetch_all, fix_key=o.fix_key,
                      auto_key=o.auto_key, format_name=o.format_name, encoding=o.encoding,
-                     key_ascii=o.key_ascii, interactive=not o.force)
+                     key_ascii=o.key_ascii, interactive=not o.yes)
 
 
     if o.duplicates:
@@ -358,6 +362,24 @@ def tagcmd(parser, o, config):
         print(f"{tag} ({count})")
 
 
+def groups_by_field(entries, field):
+    """`list --duplicates --by key|doi|title`: the groups of entries that share
+    the key (ignoring case), the DOI, or the title (ignoring case and
+    punctuation), in the order of the entries"""
+    def value(e):
+        if field == 'key':
+            return get_entry_val(e, 'ID', '').lower()
+        if field == 'doi':
+            return normalize_doi(get_entry_val(e, 'doi', ''))
+        return re.sub(r'[\W_]', '', get_entry_val(e, 'title', '').lower())
+    groups = {}
+    for e in entries:
+        v = value(e)
+        if v:
+            groups.setdefault(v, []).append(e)
+    return [g for g in groups.values() if len(g) > 1]
+
+
 def _fullsearch_string(e):
     return " ".join([v for k,v in sorted(e.items(), key=lambda kv:kv[0]) if v is not None])
 
@@ -405,7 +427,8 @@ def listcmd(parser, o, config):
     if o.open:
         logger.warning("`papers list --open` is deprecated: use `papers list ... -K | papers open -`")
     if o.fetch:
-        logger.warning("`papers list --fetch` is deprecated: use `papers list ... -K | papers check --fetch -`")
+        logger.warning("`papers list --fetch` is deprecated: use `papers list ... -K | "
+                       "papers check --fetch --fetch-all --fix-doi --fix-key --format-name -`")
 
     biblio = get_biblio(config)
     biblio_init = copy.deepcopy(biblio)
@@ -446,15 +469,17 @@ def listcmd(parser, o, config):
         o.strict = False
         entries = [e for e in entries if _longmatch(_fullsearch_string(e), o.fullsearch)]
 
-    for name in ('duplicates_key', 'duplicates_doi', 'duplicates_tit'):
-        if getattr(o, name):
-            logger.warning(f'--{name.replace("_", "-")} is deprecated: use --duplicates (--fuzzy for near matches)')
-            o.duplicates = True
     if o.similarity is not None:
         logger.warning('--similarity is deprecated and ignored: entries are the same paper by identifier, '
                        'or by authors and title (see the documentation of papers add)')
 
-    if o.duplicates:
+    if o.by:
+        if o.fuzzy:
+            parser.error('--by and --fuzzy are mutually exclusive')
+        listed = [e for g in groups_by_field(entries, o.by) for e in g]
+        entries = [e for e in entries if not any(e is x for x in listed)] if o.invert else listed
+
+    elif o.duplicates:
         listed = []
         for g in duplicate_groups(entries, biblio.distinct):
             listed.extend(e for e in g.entries if not any(e is x for x in listed))
@@ -505,15 +530,14 @@ def listcmd(parser, o, config):
     elif o.field:
         for e in entries:
             print(format_key(e, no_key=o.no_key),*[get_entry_val(e, k, "") for k in o.field])
-    elif o.key_only:
+    elif o.format == 'key':
         for e in entries:
             print(get_entry_val(e, 'ID', ''))
-    elif o.one_liner:
+    elif o.format == 'bibtex':
+        print(format_entries(entries))
+    else:
         for e in entries:
             print(format_entry(biblio, e, no_key=o.no_key))
-
-    else:
-        print(format_entries(entries))
 
     # report any entry mutations (--add-files, --add-keywords, --edit, --fetch,
     # --rename, --delete) using the same Added/Modified/Removed convention as addcmd

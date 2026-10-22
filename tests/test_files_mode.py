@@ -164,10 +164,6 @@ class TestAttach(FilesModeTest):
         self.lib(f'add --key two2000 --title Two --attachment {self.pdf}')
         self.assertEqual(self.files('two2000'), [self.pdf])
 
-    def test_a_is_free(self):
-        with self.assertRaises(SystemExit):
-            self.lib(f'add --key two2000 --title Two -a {self.pdf}')
-
 
 class TestOtherLibrary(FilesModeTest):
     """a file inside the files directory of another library is never moved"""
