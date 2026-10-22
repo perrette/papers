@@ -1,83 +1,197 @@
 # Quickstart
 
-This tool's interface is built like `git`, with a main command `papers` and a
-range of subcommands. This page walks through the most common first steps.
+`papers` works like `git`: a main command with subcommands, run inside a
+folder that holds a library. A library is a bibtex file, its PDFs, and a
+small configuration file `.papersconfig.json`.
 
-## Extract PDF metadata and add to library
+This page shows three ways to use it:
 
-Start with a PDF of your choice (modern enough to have a DOI, e.g. anything
-from the Copernicus publications). For the sake of the example, one of mine:
-<https://www.earth-syst-dynam.net/4/11/2013/esd-4-11-2013.pdf>
+- [A. One library](#a-one-library): a bibtex file and its PDFs in one folder.
+- [B. Projects that share one PDF folder](#b-projects-that-share-one-pdf-folder):
+  each project has its own bibtex, and all PDFs are kept in
+  `~/Documents/papers` (the default).
+- [C. A new project from earlier work](#c-a-new-project-from-earlier-work):
+  take entries from the shared folder or from another project.
 
-Extract the PDF metadata (DOI-based if available, otherwise crossref, or google
-scholar if so specified):
+The examples use two papers of the Copernicus journals, whose PDFs contain
+their DOI. `papers` reads the DOI from the PDF and fetches the bibtex entry
+from crossref.
 
-```
-$> papers extract esd-4-11-2013.pdf
-@article{Perrette_2013,
-doi = {10.5194/esd-4-11-2013},
-url = {https://doi.org/10.5194%2Fesd-4-11-2013},
-year = 2013,
-month = {jan},
-publisher = {Copernicus {GmbH}},
-volume = {4},
-number = {1},
-pages = {11--29},
-author = {M. Perrette and F. Landerer and R. Riva and K. Frieler and M. Meinshausen},
-title = {A scaling approach to project regional sea level rise and its uncertainties},
-journal = {Earth System Dynamics}
-}
-```
-
-Add the PDF to your `papers.bib` library, and rename a copy of it in a files
-directory `files`:
+## Install
 
 ```
-$> papers add esd-4-11-2013.pdf --copy --bibtex papers.bib --filesdir files --info
-INFO:papers:found doi:10.5194/esd-4-11-2013
-INFO:papers:new entry: perrette_landerer2013
-INFO:papers:ln /home/perrette/playground/papers/esd-4-11-2013.pdf files/perrette_et_al_2013_a-scaling-approach-to-project-regional-sea-level-rise-and-its-uncertainties.pdf
-INFO:papers:renamed file(s): 1
+pip install --pre papers-cli
 ```
 
-(the `--info` argument asks for the above output information to be printed out
-to the terminal)
+`--pre` installs the 3.0 beta. Python 3.11 or later is needed. See
+[Installation](installation.md) for other ways to install.
 
-`--copy` keeps the original PDF where it is (a hard link when possible);
-without it the PDF is moved into the files directory, and with `--link` it is
-left where it is and the entry links to it there. The `files` setting of a
-library sets the default (see [Files](files.md)).
+## A. One library
 
-See [Adding entries](adding-entries.md) for the full range of ways to add
-entries, and [Renaming files and keys](renaming.md) for how to specify file
-naming patterns.
-
-## List entries
-
-Pretty listing by default (otherwise pass `--plain` for plain bibtex):
+Create a library whose PDFs stay in the folder itself:
 
 ```
-$> papers list
-Perrette2013: A scaling approach to project regional sea level rise and it... (doi:10.5194/esd-4-11-2013, file:1)
+$ cd ~/thesis
+$ papers init --local
+created the library ~/thesis
+* bibtex:  papers.bib
+* files:   files (the files directory of the library)
+* backup:  git
+`papers status -v` shows all settings
 ```
 
-See [Listing and searching](listing.md) for the full power of `papers list`.
-
-## Make settings persistent
-
-In the common case where the bibtex, files directory and naming formats do not
-change, create a library so that you don't need to pass them every time:
+Add a PDF. It is moved into `files/` and renamed after the entry:
 
 ```
-papers init --bibtex papers.bib --filesdir files --local
+$ papers add ~/Downloads/esd-4-11-2013.pdf
+Added -> perrette_landerer2013: A scaling approach to project regional sea level rise and it... (doi:10.5194/esd-4-11-2013, file:1)
+$ ls files
+perrette_et_al_2013_a-scaling-approach-to-project-regional-sea-level-rise-and-its-uncertainties.pdf
 ```
 
-Commands run in that directory (or below) then act on this library. With
-`--local`, the files added later go to `files` too; without it, they go to
-the files directory of the global pool (`~/Documents/papers`), and the
-library links to them there (see [Pools](pools.md)). See
-[Configuration](configuration.md) for details.
+Add an entry from its DOI, without a PDF:
 
-!!! tip
-    Consult the inline help (`papers --help`, `papers <command> --help`) for
-    more detailed documentation of every option.
+```
+$ papers add --doi 10.5194/bg-8-515-2011
+Added -> perrette_yool2011: Near-ubiquity of ice-edge blooms in the Arctic (doi:10.5194/bg-8-515-2011)
+```
+
+Attach another file to an entry, such as a supplement:
+
+```
+$ papers file attach perrette_landerer2013 ~/Downloads/esd-4-11-2013-supplement.pdf
+Modified -> perrette_landerer2013: A scaling approach to project regional sea level rise and it... (doi:10.5194/esd-4-11-2013, files:2)
+$ ls files
+perrette_et_al_2013_a-scaling-approach-to-project-regional-sea-level-rise-and-its-uncertainties--esd-4-11-2013-supplement.pdf
+perrette_et_al_2013_a-scaling-approach-to-project-regional-sea-level-rise-and-its-uncertainties.pdf
+```
+
+List and search:
+
+```
+$ papers list
+perrette_landerer2013: A scaling approach to project regional sea level rise and it... (doi:10.5194/esd-4-11-2013, files:2)
+perrette_yool2011: Near-ubiquity of ice-edge blooms in the Arctic (doi:10.5194/bg-8-515-2011)
+$ papers list -a yool
+perrette_yool2011: Near-ubiquity of ice-edge blooms in the Arctic (doi:10.5194/bg-8-515-2011)
+```
+
+Every change to the bibtex is recorded in a git repository of its own (when
+git is installed), so `papers undo` takes back the last change.
+
+`--move` is the default for the PDFs given to `add`; `--copy` keeps the
+original too (a hard link when possible), and `--link` leaves the file where
+it is. See [Adding entries](adding-entries.md), [Files](files.md) and
+[Listing and searching](listing.md).
+
+## B. Projects that share one PDF folder
+
+Without `--local`, the PDFs of a library go to one shared folder, the global
+pool, `~/Documents/papers`. Each project keeps its own bibtex, with only the
+papers it cites, and links to the PDFs in the pool:
+
+```
+$ cd ~/projects/sea-level
+$ papers init
+created the library ~/projects/sea-level
+* bibtex:  papers.bib
+* files:   in the pool ~/Documents/papers
+* backup:  git
+`papers status -v` shows all settings
+```
+
+The pool is created the first time a file goes there. `add` puts the PDF in
+the pool and the entry in both bibtex files:
+
+```
+$ papers add ~/Downloads/esd-4-11-2013.pdf
+added: perrette_landerer2013 (pool ~/Documents/papers)
+push to pool ~/Documents/papers: 1 added
+Added -> perrette_landerer2013: A scaling approach to project regional sea level rise and it... (doi:10.5194/esd-4-11-2013, file:1)
+$ ls ~/Documents/papers/files
+perrette_et_al_2013_a-scaling-approach-to-project-regional-sea-level-rise-and-its-uncertainties.pdf
+$ grep "file =" papers.bib
+ file = {:../../Documents/papers/files/perrette_et_al_2013_a-scaling-approach-to-project-regional-sea-level-rise-and-its-uncertainties.pdf:pdf},
+```
+
+When another project adds the same paper, it is found in the pool: nothing
+is fetched online, and the PDF is not copied again.
+
+```
+$ cd ~/projects/new-paper
+$ papers init
+$ papers add --doi 10.5194/esd-4-11-2013
+found in pool ~/Documents/papers: perrette_landerer2013
+push to pool ~/Documents/papers: 1 unchanged
+Added -> perrette_landerer2013: A scaling approach to project regional sea level rise and it... (doi:10.5194/esd-4-11-2013, file:1)
+```
+
+The pool is an ordinary library: `papers -C ~/Documents/papers list` lists
+all your papers.
+
+To keep the PDFs in the project instead, for example when the project
+folder is shared with coauthors (git, Dropbox), use `papers init --local`,
+or later `papers config local true`, which copies the project's PDFs from
+the pool. See [Pools](pools.md).
+
+## C. A new project from earlier work
+
+Take entries from the pool by key (or DOI):
+
+```
+$ cd ~/projects/new-paper
+$ papers pull perrette_yool2011
+added: perrette_yool2011 (pool ~/Documents/papers)
+pull: 1 added
+Added -> perrette_yool2011: Near-ubiquity of ice-edge blooms in the Arctic (doi:10.5194/bg-8-515-2011)
+```
+
+Or take all the entries of another project:
+
+```
+$ cd ~/projects/review
+$ papers init
+$ papers pull --pool ../sea-level --all
+```
+
+The entries taken with `pull` stay linked to their source. A correction
+made in one project and sent to the pool with `papers push` reaches the
+other projects with `papers pull`:
+
+```
+$ cd ~/projects/sea-level
+$ papers tag perrette_yool2011 --add arctic
+$ papers push
+updated: perrette_yool2011 (pool ~/Documents/papers)
+push to pool ~/Documents/papers: 1 unchanged, 1 updated
+
+$ cd ~/projects/new-paper
+$ papers status
+[...]
+* pool:               ~/Documents/papers (global pool, changed since last pull or push)
+$ papers pull
+updated: perrette_yool2011 (pool ~/Documents/papers)
+pull: 1 unchanged, 1 updated
+```
+
+`papers sync` runs `pull`, then `push`. Each project keeps its own keys:
+`pull` and `push` never rename the entries of the library they write to.
+
+## Settings
+
+`papers config` shows and changes the settings of the library, and
+`papers config --global` the defaults for all libraries of your user
+account. For example, to keep the shared folder elsewhere:
+
+```
+$ papers config --global pool /data/papers
+```
+
+or to never use a shared folder:
+
+```
+$ papers config --global pool none
+```
+
+See [Configuration](configuration.md). Users of papers 2.x: see
+[Upgrading from v2](upgrading.md).
