@@ -312,7 +312,8 @@ def get_parser(config=None):
         or read from the added bibtex (one entry only). They do not change an entry already in
         the library (same DOI): use `papers edit`.''')
     grp.add_argument('--doi', help='provide DOI -- skip parsing PDF')
-    grp.add_argument('--key', help='the key of the entry (instead of a key made from the key template)')
+    grp.add_argument('--key', help='the key of the entry (instead of a key made from the key template); '
+                     'alone, the entry of that key is taken from the pool')
     grp.add_argument('--type', help='entry type (article, book...)')
     grp.add_argument('--title', help='the title')
     grp.add_argument('--author', help='the authors, e.g. "Smith, John and Doe, Jane"')

@@ -45,6 +45,18 @@ def _author_short_option(o):
     o.file = o.file + files
 
 
+def _nothing_to_add(o, biblio, what):
+    "the error of `add --key KEY` when no pool has KEY"
+    lookup = biblio.pool_lookup
+    if o.no_pool:
+        where = 'the library (--no-pool)'
+    elif lookup:
+        where = ', '.join(p.label for p in lookup.pools)
+    else:
+        where = 'the library (it has no pool)'
+    return f'nothing to add: no file, identifier or bibtex given, and {what}{where}'
+
+
 def addcmd(parser, o, config):
     """
     Given an options set and a config, sets up the function call to add the file or all files in the directory to the bibtex, and executes it.
@@ -113,6 +125,14 @@ def addcmd(parser, o, config):
     if len(o.file) == 0 and o.doi and not o.no_query_doi:
         entries.extend( biblio.fetch_doi(o.doi, attachments=o.attachment, rename=rename, copy=policy, **kw) )
 
+    elif len(o.file) == 0 and o.key and not (o.edit or o.metadata or o.doi or o.title or o.author
+                                             or o.journal or o.year):
+        # --key alone: the entry of that key in the library or a pool
+        added = biblio.add_key(o.key, attachments=o.attachment, rename=rename, copy=policy, **kw)
+        if added is None:
+            raise PapersExit(_nothing_to_add(o, biblio, f'no entry {o.key} in '))
+        entries.extend(added)
+
     elif len(o.file) == 0:
         if not o.edit and not o.metadata and not o.key and not o.doi and not o.attachment and not o.title and not o.author and not o.journal and not o.year:
             raise PapersExit("No entry added: use --doi, --metadata, --key, --attachment, --title, --author, "
@@ -127,6 +147,9 @@ def addcmd(parser, o, config):
                 raise PapersExit(f'the edited text has {len(edited)} entries: add one entry at a time')
             entry = edited[0]
             o.edit = False
+        if not any(k != 'file' for k in entry.fields_dict) or not entry.key:
+            raise PapersExit('nothing to add: the entry has no fields or no key' + (
+                '' if o.key else ' (use --title, --author... or --edit)'))
 
         # the entry is made of the metadata (and edited): not applied again
         entries.extend( biblio.insert_entry(entry, rename=rename, copy=policy, **{**kw, 'metadata': {}}) )

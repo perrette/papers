@@ -417,6 +417,22 @@ class Biblio:
         return self.add_bibtex(bibtex, **kw)
 
 
+    def add_key(self, key, **kw):
+        """`add --key KEY` alone: the library entry of key KEY (ignoring
+        case) gets the attachments, else the pool entry of key KEY is
+        taken. Return the entries, or None if no pool has the key."""
+        attachments = [os.path.abspath(f) for f in kw.pop('attachments', None) or []]
+        # the key of the library or pool entry is kept as it is written there
+        kw['metadata'] = {k: v for k, v in (kw.get('metadata') or {}).items() if k != 'ID'}
+        existing = next((e for e in self.entries if self.key(e) == key.lower()), None)
+        if existing is not None:
+            return self.attach_to_existing(existing, attachments, **kw)
+        taken = self.pool_lookup.key(self, key, attachments) if self.pool_lookup else None
+        if taken is None:
+            return None
+        return self._insert_taken(taken, **kw)
+
+
     def add_pdf(self, pdf, attachments=None, search_doi=True, search_fulltext=True, scholar=False, doi=None, **kw):
 
         if str(pdf).startswith("http"):

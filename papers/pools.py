@@ -691,7 +691,7 @@ class Exchange:
         """three-way merge of the library entries into the pool entries;
         entries new to the pool are added to it, with a key from the pool's
         key template. Return [(entry, pool, what)], what being 'added', 'updated',
-        'linked', 'unchanged' or 'skipped'."""
+        'linked', 'unchanged', 'skipped' or 'empty' (an entry without fields or key, not pushed)."""
         self.merge_distinct(pool)
         before = pool.bibtex_mtime()
         unchanged_since_pull = before is None or self.origin.pulled(pool.id) == before
@@ -755,7 +755,18 @@ class Exchange:
         policy = self._pool_policy(pool)
         if 'ids' in out.fields_dict:
             del out['ids']  # former keys of the library
-        new = pool.biblio.insert_entry(out, update_key=True, rename=pool.filesdir is not None, copy=policy)[0]
+        # an entry without fields, or without a key, is not written to the pool
+        if not any(k not in ('file', 'ids') for k in out.fields_dict):
+            logger.info(f'{e.key or "an entry without key"}: not pushed to {pool.label}: the entry has no fields')
+            return 'empty'
+        update_key = bool(pool.biblio.keyformat(out))
+        if not update_key:  # the key template gives no key: the library key
+            if not e.key:
+                logger.info(f'an entry without key: not pushed to {pool.label}')
+                return 'empty'
+            if pool.biblio.key(out) in {pool.biblio.key(x) for x in pool.biblio.entries}:
+                set_entry_key(out, pool.biblio.append_abc_to_key(out))
+        new = pool.biblio.insert_entry(out, update_key=update_key, rename=pool.filesdir is not None, copy=policy)[0]
         pool.add_entry(new)
         self.origin.set(e.key, pool.id, new)
         return 'added'
@@ -1023,6 +1034,14 @@ class PoolLookup:
             pe = pool.find_doi(doi)
             if pe is not None:
                 return self._take(biblio, pool, pe, biblio.keyformat(pe), files=files)
+        return None
+
+    def key(self, biblio, key, files=()):
+        "the entry for `add --key KEY` of the pool entry of key KEY (ignoring case), or None"
+        for pool in self.pools:
+            pe = next((x for x in pool.biblio.entries if x.key.lower() == key.lower()), None)
+            if pe is not None:
+                return self._take(biblio, pool, pe, pe.key, files=files)
         return None
 
     def entry(self, biblio, e):

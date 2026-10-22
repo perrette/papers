@@ -137,6 +137,15 @@ content as a pool file, or whose DOI is in the pool, a DOI that a pool entry
 has, or a bibtex entry that is the same paper as a pool entry, is taken from
 the pool, with its files. `--no-pool` skips this.
 
+`papers add --key KEY`, with no file, DOI or other field, takes the pool
+entry of key `KEY` (ignoring case). When the library already has an entry of
+that key, the files of `--attach` are attached to it. When neither has it,
+papers stops with an error and changes nothing:
+
+```
+papers add --key yool2011
+```
+
 In a library that is not local (the default), the files of the added
 entries go to the files directory of the pool, and the entries to the pool
 too (see [Local or not](pools.md#local-or-not)).

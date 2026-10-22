@@ -244,7 +244,7 @@ def push_to_pool(exchange, entries):
 
 # the notes of the entries pushed as a side effect (add, file attach...)
 _PUSH_NOTES = {'added': 'also added to {}', 'updated': 'also modified in {}',
-               'skipped': 'not pushed to {}: conflict skipped'}
+               'skipped': 'not pushed to {}: conflict skipped', 'empty': 'not pushed to {}: no fields or no key'}
 
 
 def push_notes(pushed, notes=None):
@@ -268,7 +268,8 @@ _EXCHANGE_LINES = {
     'pull': {'added': ('Added', 'from {}'), 'updated': ('Modified', 'from {}'),
              'skipped': ('Conflict', 'skipped, not taken from {}'), 'not found': ('Not found', 'not in {}')},
     'push': {'added': ('Added', 'to {}'), 'updated': ('Modified', 'in {}'),
-             'skipped': ('Conflict', 'skipped, not pushed to {}')},
+             'skipped': ('Conflict', 'skipped, not pushed to {}'),
+             'empty': ('Not pushed', 'no fields or no key, not pushed to {}')},
 }
 
 

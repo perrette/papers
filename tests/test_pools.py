@@ -282,6 +282,37 @@ class TestAdd(PoolTest):
         self.assertEqual(self.origin().get(e).pool_key, 'Brown_2021')
         self.assertIn('{Ocean heat}', Path(self.path('pool', 'papers.bib')).read_text())  # the pool is unchanged
 
+    def test_key(self):
+        # --key alone: the pool entry of that key (ignoring case), as --doi does
+        with patch('papers.bib.fetch_bibtex_by_doi', no_fetch):
+            out = self.out('add --key smith_2020')
+        self.assertRegex(out, r'^Added -> Smith_2020: .* \[from pool ../pool\]$')
+        e = self.entry('Smith_2020')
+        self.assertEqual(e['journal'], 'Nat.')
+        self.assertEqual(self.files('Smith_2020'), [self.pool_pdf])
+        self.assertEqual(self.origin().get(e).pool_key, 'Smith_2020')
+        # already in the library
+        out = self.out('add --key Smith_2020')
+        self.assertIn('already in library: Smith_2020', out)
+        self.assertEqual(len(self.bib()[1]), 1)
+
+    def test_key_not_found(self):
+        before = Path(self.path('lib', 'papers.bib')).read_text()
+        pool_before = Path(self.path('pool', 'papers.bib')).read_text()
+        with self.assertRaisesRegex(PapersExit, r'nothing to add: no file, identifier or bibtex given, '
+                                    r'and no entry nope2020 in pool ../pool'):
+            self.lib('add --key nope2020')
+        with self.assertRaisesRegex(PapersExit, r'no entry Smith_2020 in the library \(--no-pool\)'):
+            self.lib('add --key Smith_2020 --no-pool')
+        self.assertEqual(Path(self.path('lib', 'papers.bib')).read_text(), before)
+        self.assertEqual(Path(self.path('pool', 'papers.bib')).read_text(), pool_before)
+
+    def test_no_empty_entry(self):
+        Path(self.path('a.pdf')).write_text('a')
+        with self.assertRaisesRegex(PapersExit, 'nothing to add: the entry has no fields or no key'):
+            self.lib('add --attach ../a.pdf')
+        self.assertEqual(len(self.bib()[1]), 0)
+
     def test_pdf_same_content(self):
         Path(self.path('copy.pdf')).write_text('pdf of smith')
         with patch('papers.bib.fetch_bibtex_by_doi', no_fetch), \
@@ -1002,6 +1033,29 @@ class TestNonLocal(NonLocalTest):
         super().setUp()
         self.lib('push')
         self.lib('config local false -y')
+
+    def test_add_key(self):
+        # a non-local library: the pool entry is taken, and nothing empty is pushed
+        self.lib('rm smith2020climate --keep-files')
+        pool_entries = len(self.bib('pool')[1])
+        with patch('papers.bib.fetch_bibtex_by_doi', no_fetch):
+            out = self.out('add --key SMITH_2020')
+        self.assertIn('[from pool ../pool]', out)
+        self.assertEqual(self.files('Smith_2020'), [self.pool_pdf])
+        with self.assertRaisesRegex(PapersExit, 'no entry yool2011 in pool ../pool'):
+            self.lib('add --key yool2011')
+        self.assertNotIn('yool2011', self.bib()[1])
+        self.assertEqual(len(self.bib('pool')[1]), pool_entries)
+
+    def test_push_never_writes_empty_entry(self):
+        # the push guard: an entry without fields, or without key, stays out of the pool
+        pool_entries = len(self.bib('pool')[1])
+        for bib in ['@article{empty2020,\n}\n', '@article{,\n title = {No key}\n}\n']:
+            with self.subTest(bib=bib):
+                Path(self.path('lib', 'papers.bib')).write_text(bib)
+                out = self.out('push')
+                self.assertIn('not pushed to pool ../pool', out)
+                self.assertEqual(len(self.bib('pool')[1]), pool_entries)
 
     def test_rm_never_deletes_pool_files(self):
         out = self.out('rm smith2020climate --delete-files')
