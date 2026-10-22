@@ -1206,7 +1206,7 @@ from the global configuration, otherwise from its built-in default.
 </tr>
 <tr>
 <td><code>auto-push</code></td>
-<td><code>false</code> (default) or <code>true</code>: in a local library, <code>papers add</code> also adds the new entries to the pool (see <a href="../pools/#local-or-not">Pools</a>)</td>
+<td><code>false</code> (default) or <code>true</code>: the commands that change entries push them to the pool (the entries shared with it, and new ones), see <a href="../pools/#auto-push">Pools</a></td>
 </tr>
 <tr>
 <td><code>git</code></td>
@@ -1293,7 +1293,7 @@ local: the links of a library that is not local point into your own pool.</p>
 <p><code>papers status</code> shows the pool of the library (its path, or none), whether
 it is the global pool, is missing or is not a library, and whether it
 changed since the last exchange with it. It also shows <code>local</code>, and the
-<code>auto-push</code> setting of a local library.</p>
+<code>auto-push</code> setting of a library that has a pool.</p>
 <h2 id="relative-versus-absolute-paths">Relative versus absolute paths<a class="headerlink" href="#relative-versus-absolute-paths" title="Permanent link">&para;</a></h2>
 <p>The file links in the bibtex are relative to the bibtex directory by default,
 so that a library folder can be moved or shared with its files. Set

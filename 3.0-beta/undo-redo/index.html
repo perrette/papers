@@ -948,8 +948,8 @@ When no entry links to them any more (e.g. after undoing <code>papers file
 attach</code>), papers lists them: <code>papers file clean</code> removes them.</p>
 <h2 id="undo-in-a-library-that-has-a-pool">Undo in a library that has a pool<a class="headerlink" href="#undo-in-a-library-that-has-a-pool" title="Permanent link">&para;</a></h2>
 <p>A pool is a library with its own backup and its own history. A command that
-exchanges entries with the pool (<code>add</code> in a library that is not local, or
-with auto-push; <code>push</code>, <code>pull</code>, <code>sync</code>) writes both, and each records a
+exchanges entries with the pool (<code>add</code> in a library that is not local, a
+command that changes entries with auto-push; <code>push</code>, <code>pull</code>, <code>sync</code>) writes both, and each records a
 step in its own history.</p>
 <ul>
 <li><code>papers undo</code> and <code>papers redo</code> in the library change the library only.
@@ -970,9 +970,9 @@ copies of that step:</p>
 <li>After an undo in the pool, the origin copies of the library still have the
   newer version, so the pool shows as changed, and a <code>pull</code> takes the pool's
   older values for the fields the library did not change since. A field
-  that the pool undo removes is the exception: a field removed on one side
-  keeps the other side's state (see <a href="../pools/#papers-pull"><code>papers pull</code></a>), so the library
-  keeps it, and the next <code>push</code> adds it to the pool again.</li>
+  that the pool undo removes is a removal in the pool: the <code>pull</code> removes it
+  from the library too, unless the library changed it since (a conflict, see
+  <a href="../pools/#papers-pull"><code>papers pull</code></a>).</li>
 </ul>
 <p>Without git-tracking, undo swaps the bibtex only: the origin copies stay as
 the last exchange left them. The undone change then counts as a change of
