@@ -310,7 +310,8 @@ def get_parser(config=None):
     grp.add_argument('--title', help='the title')
     grp.add_argument('--author', help='the authors, e.g. "Smith, John and Doe, Jane"')
     grp.add_argument('-a', nargs='+', dest='author_short', metavar='NAME',
-        help='''same as --author. In papers v2, -a FILE... attached files: when every value
+        help='''same as --author (the values after the name are files to add, as the FILE
+        arguments). In papers v2, -a FILE... attached files: when every value
         of -a is an existing file (or a URL), they are attached as with --attach, with a
         warning (until v4)''')
     grp.add_argument('--journal', help='the journal')
