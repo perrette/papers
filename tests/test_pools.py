@@ -602,6 +602,9 @@ class TestPoolCommand(PoolTest):
         self.assertIn(self.path('pool'), out)
         self.assertIn('* light:              no', out)
         self.assertIn('* sync:               none', out)
+        self.assertIn('* files mode:         link', out)  # the global configuration of the tests
+        self.lib('config files copy')
+        self.assertIn('* files mode:         copy', self.out('status'))
         self.lib('config sync push')
         self.assertIn('* sync:               push', self.out('status'))
 
@@ -708,6 +711,28 @@ class TestLight(LightTest):
         pool = self.bib('pool')[1]
         key = self.origin().get(self.entry('other2023')).pool_key
         self.assertEqual(self.bib('pool')[0].get_files(pool[key]), files)
+
+    def test_file_attach_places_files_in_pool(self):
+        Path(self.path('si.pdf')).write_text('supplement')
+        self.lib(f'file attach smith2020climate {self.path("si.pdf")}')
+        files = self.files('smith2020climate')
+        self.assertEqual(files[0], self.pool_pdf)
+        self.assertEqual(len(files), 2)
+        self.assertTrue(files[1].startswith(self.path('pool', 'files')), files)
+        self.assertEqual(os.listdir(self.path('lib', 'files')), [])
+        pool = self.bib('pool')
+        key = self.origin().get(self.entry('smith2020climate')).pool_key
+        self.assertEqual(pool[0].get_files(pool[1][key]), files)  # the pool entry has the file too
+
+    def test_file_rename_places_files_in_pool(self):
+        Path(self.path('loose.pdf')).write_text('loose')
+        biblio, entries = self.bib()
+        biblio.set_files(entries['mine2022'], biblio.get_files(entries['mine2022']) + [self.path('loose.pdf')])
+        biblio.save(self.path('lib', 'papers.bib'))
+        self.lib('file rename mine2022')
+        files = self.files('mine2022')
+        self.assertTrue(all(f.startswith(self.path('pool', 'files')) for f in files), files)
+        self.assertEqual(os.listdir(self.path('lib', 'files')), [])
 
     def test_add_from_pool_links_to_pool_file(self):
         self.lib('rm smith2020climate --keep-files')

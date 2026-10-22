@@ -131,6 +131,17 @@ class TestMv(FileTest):
         self.assertEqual(Path(self.unlinked).read_text(), 'a.pdf')
         self.assertEqual(self.files('one2000'), [self.unlinked])
 
+    def test_rule4_force_linked_destination_warns(self):
+        with self.assertLogs('papers', level='WARNING') as logs:
+            self.lib('file mv -f files/a.pdf files/sub/b.pdf')
+        self.assertIn('-f replaces ' + self.b + ', which two2000 links to', '\n'.join(logs.output))
+        self.assertEqual(Path(self.b).read_text(), 'a.pdf')
+
+    def test_rule4_force_unlinked_destination_does_not_warn(self):
+        with patch('papers.cli.file_cmds.logger.warning') as warning:
+            self.lib('file mv -f files/a.pdf files/sub/notes.txt')
+        warning.assert_not_called()
+
     def test_rule4_folder_onto_file(self):
         with self.assertRaisesRegex(PapersExit, 'exists as a file'):
             self.lib('file mv -f files/sub files/a.pdf')

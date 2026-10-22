@@ -17,11 +17,11 @@ from papers.files import (attach_files, delete_files, describe_file, download_ur
 from papers.identifiers import normalize_doi, read_selection, select_entries
 from papers.library import get_biblio, savebib
 from papers.merge import DuplicateError
-from papers.pools import Exchange, PoolLookup, Pools, report_lines, use_pool_files
+from papers.pools import Exchange, PoolLookup, Pools, report_lines
 from papers.utils import PapersExit, open_with_system
 from papers.cli.common import (view_entry_files, set_format_config_from_cmd, _print_biblio_diff, files_mode,
                                duplicate_resolver, save_exchange, stdin_is_terminal, edit_entries, edit_selected,
-                               print_kept_files, _delete_files_option)
+                               print_kept_files, _delete_files_option, library_pools)
 
 
 def addcmd(parser, o, config):
@@ -32,9 +32,7 @@ def addcmd(parser, o, config):
     set_format_config_from_cmd(o, config, 'name')
     set_format_config_from_cmd(o, config, 'key')
 
-    pools = Pools(config)
-    if config.light:
-        use_pool_files(config, pools)  # files go to the first pool
+    pools = library_pools(config)  # in a light library, files go to the first pool
     biblio = get_biblio(config)
     biblio_init = copy.deepcopy(biblio)
     exchange = Exchange(config, biblio, pools)

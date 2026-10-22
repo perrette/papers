@@ -14,6 +14,7 @@ from papers.files import hidden_bibtex
 from papers.identifiers import read_selection, select_entries
 from papers.library import config_for_bibtex, savebib
 from papers.merge import Resolver
+from papers.pools import Pools, report_lines, use_pool_files
 from papers.utils import PapersExit, edit_text, open_with_system
 
 
@@ -216,6 +217,26 @@ def _one_entry(biblio, key):
     if len(entries) != 1:
         raise PapersExit(f"{key}: give one entry ({len(entries)} given)")
     return entries[0]
+
+
+def library_pools(config):
+    """the pools of the library. In a light library, the files that the
+    command places go to the first pool, as with `add` (see
+    papers.pools.use_pool_files): call push_to_light_pool after."""
+    pools = Pools(config)
+    if config.light:
+        use_pool_files(config, pools)
+    return pools
+
+
+def push_to_light_pool(exchange, entries):
+    """save the library; in a light library, first push the entries to the
+    first pool, which holds their files (as `add` does)"""
+    resolver = Resolver('ask' if stdin_is_terminal() else 'error', color=sys.stdout.isatty())
+    pushed = exchange.push_added(entries, [], resolver) if exchange.config.light else []
+    if pushed:
+        print('\n'.join(report_lines(pushed, f'push to {pushed[0][1].label}')))
+    save_exchange(exchange)
 
 
 def save_exchange(exchange):

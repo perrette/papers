@@ -82,7 +82,9 @@ path, so a link through a symbolic link is found too):
 2. a source folder must contain at least one linked file; the whole folder
    moves, files that no entry links to included;
 3. with several sources, the destination must be an existing folder;
-4. a destination that exists as a file is an error, unless `-f/--force`;
+4. a destination that exists as a file is an error, unless `-f/--force`
+   (papers warns when entries link to the replaced file: their links then
+   lead to the moved file);
 5. `-n/--dry-run` shows the moves and the links that change, and does
    nothing;
 6. moving the files directory of the library (or a folder that contains it)

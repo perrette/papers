@@ -573,6 +573,8 @@ class Config:
             status = ''
 
         lines.append(f'* files directory:    {_fmt_path(self.filesdir) if self.filesdir else self.filesdir}'+status)
+        lines.append(f'* files mode:         {self.files or "move"}' + (
+            ' (no files directory: the files are linked where they are)' if self.filesdir is None else ''))
 
         if self.bibtex is None:
             status = bcolors.WARNING+' (unset)'+bcolors.ENDC

@@ -6,13 +6,14 @@ import papers.config
 from papers import logger
 from papers.entries import get_entry_val
 from papers.files import (attach_files, check_entry_files, clean_filesdir, delete_files, detach_links,
-                          execute_moves, files_to_delete, link_snapshot, links_to_paths, moved_links, plan_moves,
-                          realpath, remove_empty_folders, rename_files)
+                          execute_moves, files_to_delete, link_snapshot, linked_files, links_to_paths, moved_links,
+                          plan_moves, realpath, remove_empty_folders, rename_files)
 from papers.library import get_biblio, savebib
 from papers.pools import Exchange, Pools
 from papers.utils import PapersExit
 from papers.cli.common import (set_format_config_from_cmd, _print_biblio_diff, files_mode,
-                               _entries_or_all, _one_entry, _key_option_entries, print_kept_files)
+                               _entries_or_all, _one_entry, _key_option_entries, print_kept_files, library_pools,
+                               push_to_light_pool)
 
 
 def filecheckcmd(parser, o, config):
@@ -54,11 +55,12 @@ def filecheckcmd(parser, o, config):
 
 def file_renamecmd(parser, o, config):
     set_format_config_from_cmd(o, config, 'name')
+    pools = library_pools(config)
     biblio = get_biblio(config)
     biblio_init = copy.deepcopy(biblio)
     entries = _entries_or_all(biblio, o.entries)
-    rename_files(biblio, entries, config, Pools(config).files_dirs(), keep_source=o.keep_source)
-    savebib(biblio, config)
+    rename_files(biblio, entries, config, pools.files_dirs(), keep_source=o.keep_source)
+    push_to_light_pool(Exchange(config, biblio, pools), entries)
     _print_biblio_diff(biblio_init, biblio, entries)
 
 
@@ -69,6 +71,15 @@ def file_mvcmd(parser, o, config):
     biblio = get_biblio(config)
     moves = plan_moves(biblio, sources, dest, force=o.force, protected=[config.bibtex, config.file])
     snapshot = link_snapshot(biblio)
+
+    # -f: a replaced destination that entries link to
+    links = linked_files(biblio)
+    for m in moves:
+        replaced = links.get(realpath(m.target)) if not m.isdir and os.path.isfile(m.target) else None
+        if replaced:
+            logger.warning(f"-f replaces {m.target}, which {', '.join(e.key for e in replaced)} "
+                           f"link{'s' if len(replaced) == 1 else ''} to: "
+                           f"{'that link leads' if len(replaced) == 1 else 'these links lead'} to the moved file")
 
     def _filesdir(moves):
         "the new files directory, if it moves"
@@ -105,11 +116,12 @@ def file_mvcmd(parser, o, config):
 
 def file_attachcmd(parser, o, config):
     set_format_config_from_cmd(o, config, 'name')
+    pools = library_pools(config)
     biblio = get_biblio(config)
     biblio_init = copy.deepcopy(biblio)
     e = _one_entry(biblio, o.key)
-    attach_files(biblio, e, o.files, config, files_mode(o, config), Pools(config).files_dirs())
-    savebib(biblio, config)
+    attach_files(biblio, e, o.files, config, files_mode(o, config), pools.files_dirs())
+    push_to_light_pool(Exchange(config, biblio, pools), [e])
     _print_biblio_diff(biblio_init, biblio, [e])
 
 

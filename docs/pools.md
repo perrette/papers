@@ -198,7 +198,8 @@ light changes what papers does with files:
 
 - `add` places new files in the first pool, named with the pool's name
   template (a name template set on the light library is not used), and so
-  adds the entry to the pool too;
+  adds the entry to the pool too; `papers file attach` and
+  `papers file rename` do the same with the files they place;
 - `pull` links to the pool's files instead of copying them;
 - `rm --delete-files` and `file rm` never delete a file
   of a pool (this holds in any library);
