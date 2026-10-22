@@ -944,6 +944,8 @@ repository, with the files of <code>.papers/origin/</code> (origin copies of the
 entries exchanged with the pool, one file per pool, see
 <a href="../pools/#origin-copies">Pools</a>) and
 <code>.papers/distinct.json</code> (pairs that are not the same paper) when they exist.
+<code>papers restore</code>, <code>undo</code> and <code>redo</code> restore the bibtex and these files
+together (a file that the restored snapshot does not have is removed).
 If <code>--git-lfs</code> is passed, the attached files are backed up along
 with the bibtex: they are hard-linked into the backup directory and tracked
 with git-lfs, together with a copy of the bibtex whose file paths point into

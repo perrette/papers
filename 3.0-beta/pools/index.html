@@ -1632,7 +1632,9 @@ entries sent to it get copies of their files in its files directory.</p>
 <a href="../git/">Git integration</a>). <code>papers undo</code> in a library undoes a change of
 that library only: an entry that <code>add</code> also added to the pool stays in the
 pool. To undo a change in the pool, run the command in the pool, e.g.
-<code>papers -C ~/Documents/papers undo</code> for the global pool.</p>
+<code>papers -C ~/Documents/papers undo</code> for the global pool. The origin copies
+of the library are restored with its bibtex: see
+<a href="../undo-redo/#undo-in-a-library-that-has-a-pool">Undo in a library that has a pool</a>.</p>
 <h2 id="papers-export"><code>papers export</code><a class="headerlink" href="#papers-export" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>papers export DIR [KEY...|-] [--files copy|link|none]
 </code></pre></div>
