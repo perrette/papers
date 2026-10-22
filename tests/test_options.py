@@ -1,6 +1,9 @@
 """The options harmonized in v3: -y/--yes, -R/--recursive, extract
 --doi-only, restore (the deprecated forms are in test_deprecated.py); the
-case of DOIs in fetch, and the exit code of papers git"""
+case of DOIs in fetch, the exit code of papers git, and the error of an
+unknown option"""
+import io
+from contextlib import redirect_stderr
 from unittest.mock import patch
 
 from papers.utils import PapersExit
@@ -118,3 +121,29 @@ class TestGitCommand(FileTest):
     def test_no_backup(self):
         with self.assertRaisesRegex(PapersExit, 'papers config git true'):
             self.lib('git status')
+
+
+class TestUnknownOptions(FileTest):
+
+    def setUp(self):
+        super().setUp()
+        self.bib(entry('one2000', doi='10.1000/one'))
+
+    def error(self, cmd):
+        err = io.StringIO()
+        with redirect_stderr(err), self.assertRaises(SystemExit) as exit:
+            self.lib(cmd)
+        self.assertEqual(exit.exception.code, 2)
+        return err.getvalue().strip().splitlines()[-1]
+
+    def test_command_does_not_run(self):
+        with patch('papers.cli.parser.rmcmd') as remove:
+            self.assertEqual(self.error('rm -y one2000'), 'papers rm: error: unrecognized arguments: -y')
+            self.assertEqual(self.error('rm one2000 -y'), 'papers rm: error: unrecognized arguments: -y')
+        remove.assert_not_called()
+        self.assertEqual(self.error('check --all'), 'papers check: error: unrecognized arguments: --all')
+
+    def test_subcommand(self):
+        self.assertEqual(self.error('file attach --bogus one2000 a.pdf'),
+                         'papers file attach: error: unrecognized arguments: --bogus')
+        self.assertEqual(self.error('file --bogus'), 'papers file: error: unrecognized arguments: --bogus')

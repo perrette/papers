@@ -92,6 +92,9 @@ def _main(argv):
         return
 
     o, args = parser.parse_known_args(argv)
+    if args:
+        # the error of the command given (`papers rm: error: ...`), before anything runs
+        (getattr(o, 'command_parser', None) or subparsers.choices.get(o.cmd) or parser).error(f'unrecognized arguments: {" ".join(args)}')
 
     if o.version:
         print(__version__)
@@ -113,11 +116,6 @@ def _main(argv):
     except KeyError:
         parser.print_help()
         raise PapersExit()
-
-    # arguments are already parsed, but we can now process error message
-    # with subparser:
-    if args:
-        subp.parse_args(args)
 
     if o.func is None:  # papers file without subcommand
         subp.print_help()
