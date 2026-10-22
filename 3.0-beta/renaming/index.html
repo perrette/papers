@@ -1104,7 +1104,9 @@ name-template should be
 <p>The modifiers are:</p>
 <ul>
 <li><code>--name-title-sep</code>: separator for title words</li>
-<li><code>--name-title-length</code>: max title length</li>
+<li><code>--name-title-length</code>: max title length, with its separators: the last
+  words are dropped until the title fits, and a first word longer than that
+  is cut</li>
 <li><code>--name-title-word-size</code>: min size to be considered a word</li>
 <li><code>--name-title-word-num</code>: max number of title words</li>
 </ul>
@@ -1118,7 +1120,8 @@ name-template should be
 <li><code>--name-unknown-template</code>: the template used instead (default:
   <code>unknown_{doi_or_id}</code> for file names, <code>{doi_}</code> for keys)</li>
 <li><code>--name-unknown-strict</code>: use it only when author, year and title are all
-  missing</li>
+  missing (by default, when any of them is missing); <code>--no-name-unknown-strict</code>
+  turns off the <code>name.unknown-strict</code> setting for one command</li>
 </ul>
 <p>The same template and modifiers system applies to the bibtex key generation by
 replacing the prefix <code>--name-</code> with <code>--key-</code>, e.g. <code>--key-template</code>.</p>

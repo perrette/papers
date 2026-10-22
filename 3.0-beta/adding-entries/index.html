@@ -610,6 +610,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#set-fields-on-the-command-line" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Set fields on the command line
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#duplicates" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1162,6 +1173,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#set-fields-on-the-command-line" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Set fields on the command line
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#duplicates" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1314,8 +1336,14 @@ supplementary material), placed as the <code>files</code> setting says. They are
 after the main file (see
 <a href="../renaming/#entries-with-several-files">Renaming files and keys</a>). To
 attach files to an entry already in the library, use
-<code>papers file attach KEY FILE...</code>. <code>--attachment</code> and <code>-a</code> are deprecated names of
+<code>papers file attach KEY FILE...</code>. <code>--attachment</code> is a deprecated name of
 <code>--attach</code>.</p>
+<p><code>-a</code> is the short form of <code>--author</code> (as in <code>papers list</code>). In papers v2, <code>-a
+FILE...</code> attached files: until v4, when every value given to <code>-a</code> is an
+existing file (or a URL), papers attaches them as with <code>--attach</code> and warns.
+Otherwise the first value is the author, and the next values are files to
+add (<code>papers add -a "Smith, John" paper.pdf</code>); a first value that is an
+existing file, followed by other values, is an error.</p>
 <h2 id="add-a-whole-directory-of-pdfs">Add a whole directory of PDFs<a class="headerlink" href="#add-a-whole-directory-of-pdfs" title="Permanent link">&para;</a></h2>
 <p>It is possible to do this on a full directory of files, recursively, with
 <code>-R/--recursive</code>:</p>
@@ -1381,6 +1409,31 @@ without file attachment):</p>
 bibtex:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>papers add entry.bib --attach esd-4-11-2013.pdf --bibtex papers.bib --filesdir files
 </code></pre></div>
+<h2 id="set-fields-on-the-command-line">Set fields on the command line<a class="headerlink" href="#set-fields-on-the-command-line" title="Permanent link">&para;</a></h2>
+<p><code>--title</code>, <code>--author</code>, <code>--year</code>, <code>--journal</code>, <code>--type</code> (the entry type, e.g.
+<code>book</code>), <code>--key</code> and <code>--metadata KEY=VALUE...</code> (any field) set these fields of
+the added entry. They replace the values found in the PDF, fetched from the
+DOI or read from the added bibtex; the other fields are kept:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>papers add paper.pdf --year 1999 --journal "Journal of Glaciology"
+</code></pre></div>
+<ul>
+<li><code>--key KEY</code> sets the key, which is then not generated from the key
+  template; without <code>--key</code>, the generated key uses the fields given (here
+  the year 1999);</li>
+<li>the files of <code>--attach</code> (and of a <code>file</code> field given with <code>--metadata</code>)
+  are added to the files of the entry;</li>
+<li>these options apply to one entry: they are an error with several files, a
+  directory (<code>-R</code>), or a bibtex file of several entries;</li>
+<li>an entry taken from a pool gets the fields given too (in the library; the
+  pool entry changes only if you push);</li>
+<li>when the added paper is already in the library (same DOI, see below), the
+  fields of the library entry are not changed: papers warns that the options
+  are ignored; use <code>papers edit KEY</code> to change them;</li>
+<li>when the added entry is merged into a library entry by the duplicate check
+  (below), the fields given are those of the added entry: a value that
+  differs from the library's is a conflict, resolved as <code>--on-duplicate</code>
+  says, and the library key is kept.</li>
+</ul>
 <h2 id="duplicates">Duplicates<a class="headerlink" href="#duplicates" title="Permanent link">&para;</a></h2>
 <p>Before inserting an entry, <code>papers add</code> looks for the same paper in the
 library. <code>papers check --duplicates</code> and <code>papers list --duplicates</code> use the
@@ -1467,26 +1520,26 @@ fields to add:</p>
 </table>
 <p><code>--no-check-duplicate</code> adds the entries without looking for duplicates.</p>
 <h3 id="the-dialogue">The dialogue<a class="headerlink" href="#the-dialogue" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>$&gt; papers add new.bib
-<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>Already in library: smith2020climate (same DOI 10.1000/abc123)
-<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>  1  library  smith2020climate  article  doi 10.1000/abc123  files/smith.pdf
-<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>  2  new      Smith_2020        article  doi 10.1000/ABC123  other/smith-preprint.pdf
-<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>
-<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>@article{smith2020climate,
-<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>   author   = {Smith, John and Doe, Jane}
-<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>   doi      = {10.1000/abc123}
-<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>+  file     = {files/smith.pdf;other/smith-preprint.pdf}
-<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>!  journal  = {Nature}
-<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a>!             2: {Nature Climate Change}
-<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a>   keywords = {climate, mine}
-<a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a>   title    = {Climate sensitivity revisited}
-<a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a>+  volume   = {10}
-<a id="__codelineno-8-15" name="__codelineno-8-15" href="#__codelineno-8-15"></a>   year     = {2020}
-<a id="__codelineno-8-16" name="__codelineno-8-16" href="#__codelineno-8-16"></a>}
-<a id="__codelineno-8-17" name="__codelineno-8-17" href="#__codelineno-8-17"></a>1 conflict. The key smith2020climate is kept; + lines are added.
-<a id="__codelineno-8-18" name="__codelineno-8-18" href="#__codelineno-8-18"></a>  1 keep library values   2 take new values   f field by field   e edit
-<a id="__codelineno-8-19" name="__codelineno-8-19" href="#__codelineno-8-19"></a>  n not the same paper (add Smith_2020 separately)   s skip   q quit   ? help
-<a id="__codelineno-8-20" name="__codelineno-8-20" href="#__codelineno-8-20"></a>&gt;&gt;&gt;
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>$&gt; papers add new.bib
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>Already in library: smith2020climate (same DOI 10.1000/abc123)
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>  1  library  smith2020climate  article  doi 10.1000/abc123  files/smith.pdf
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>  2  new      Smith_2020        article  doi 10.1000/ABC123  other/smith-preprint.pdf
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>@article{smith2020climate,
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>   author   = {Smith, John and Doe, Jane}
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>   doi      = {10.1000/abc123}
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>+  file     = {files/smith.pdf;other/smith-preprint.pdf}
+<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a>!  journal  = {Nature}
+<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a>!             2: {Nature Climate Change}
+<a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a>   keywords = {climate, mine}
+<a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a>   title    = {Climate sensitivity revisited}
+<a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a>+  volume   = {10}
+<a id="__codelineno-9-15" name="__codelineno-9-15" href="#__codelineno-9-15"></a>   year     = {2020}
+<a id="__codelineno-9-16" name="__codelineno-9-16" href="#__codelineno-9-16"></a>}
+<a id="__codelineno-9-17" name="__codelineno-9-17" href="#__codelineno-9-17"></a>1 conflict. The key smith2020climate is kept; + lines are added.
+<a id="__codelineno-9-18" name="__codelineno-9-18" href="#__codelineno-9-18"></a>  1 keep library values   2 take new values   f field by field   e edit
+<a id="__codelineno-9-19" name="__codelineno-9-19" href="#__codelineno-9-19"></a>  n not the same paper (add Smith_2020 separately)   s skip   q quit   ? help
+<a id="__codelineno-9-20" name="__codelineno-9-20" href="#__codelineno-9-20"></a>&gt;&gt;&gt;
 </code></pre></div>
 <p>Unmarked lines are the same in both entries (here the title and the author
 names, which differ only by case and initials), <code>+</code> lines are added from the
@@ -1531,17 +1584,18 @@ the other values, numbered by entry.</p>
 </tbody>
 </table>
 <p><code>f</code> asks for each conflict:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>journal:
-<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>  1  Nature                 library
-<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>  2  Nature Climate Change  new
-<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>  [1/2/e] &gt;&gt;&gt;
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>journal:
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>  1  Nature                 library
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>  2  Nature Climate Change  new
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>  [1/2/e] &gt;&gt;&gt;
 </code></pre></div>
 <p>To stop without saving anything, use Ctrl-C.</p>
 <h3 id="keys">Keys<a class="headerlink" href="#keys" title="Permanent link">&para;</a></h3>
 <p>Entries added from a bibtex file keep their own key, unless <code>-u/--update-key</code>
 is passed, in which case the key is regenerated from the key template (see
 <a href="../renaming/">Renaming files and keys</a>). Entries extracted from a PDF or
-fetched from a DOI always get a generated key. Either way, this only
+fetched from a DOI always get a generated key. <code>--key KEY</code> sets the key
+instead, in both cases. Either way, this only
 concerns entries new to the library: an entry merged into a duplicate takes
 the key of the library entry.</p>
 <h3 id="options-of-earlier-versions">Options of earlier versions<a class="headerlink" href="#options-of-earlier-versions" title="Permanent link">&para;</a></h3>
