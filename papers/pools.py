@@ -67,16 +67,21 @@ def library_config_file(path):
 def create_library(path, machine, bibtex='papers.bib', git=None, quiet=False):
     """create a library without pool, with its own files (local), in
     directory `path` (as `papers init --pool none` does, without
-    questions), and return its configuration file"""
-    os.makedirs(path, exist_ok=True)
+    questions), and return its configuration. With --dry-run, nothing is
+    written: the configuration is that of the library to be created."""
     o = SimpleNamespace(bibtex=os.path.join(path, bibtex), filesdir=os.path.join(path, 'files'),
                         reset=False, paths=None, absolute_paths=None, pool=NO_POOL, local_setting=True, gitdir=None,
                         editor=None, git=git, git_lfs=None)
     plan = resolve_install(Config(machine=machine), o, asker=DefaultAsker(),
                            target=os.path.join(path, CONFIG_FILE_LOCAL))
+    if papers.config.DRYRUN:
+        if not quiet:
+            print(f'DRYRUN: create the library {path}')
+        return plan.config
+    os.makedirs(path, exist_ok=True)
     if not quiet:
         print(f'create the library {path}')
-    return apply_install(plan).file
+    return Config.load(apply_install(plan).file, machine=machine)
 
 
 def load_biblio(config):
@@ -256,17 +261,20 @@ class Pools:
         if self._is_self(path):
             raise PoolError(f'pool {short_home(path)}: this is the library itself')
         configfile = library_config_file(path)
+        config = None
         if configfile is None:
             if os.path.exists(path) and not os.path.isdir(path):
                 raise PoolError(f'pool {short_home(path)}: not a directory')
             if create and (self._is_global(path) or os.path.isdir(os.path.dirname(path))):
-                configfile = create_library(path, self.config.machine, quiet=self._is_global(path))
+                config = create_library(path, self.config.machine, quiet=self._is_global(path))
             elif not os.path.exists(path):
                 raise PoolError(f'pool {short_home(path)} does not exist')
             else:
                 raise PoolError(f'pool {short_home(path)} is not a library (no {CONFIG_FILE_LOCAL}): '
                                 f'create it with `papers init {short_home(path)}`')
-        pool_ = Pool(self._id(path), path, Config.load(configfile, machine=self.config.machine))
+        if config is None:
+            config = Config.load(configfile, machine=self.config.machine)
+        pool_ = Pool(self._id(path), path, config)
         self._cache[key] = pool_
         return pool_
 
@@ -1017,8 +1025,7 @@ def export(biblio, config, entries, dest, files='copy', git=None):
     if papers.config.DRYRUN:
         raise PapersExit('export does not support --dry-run')
     name = os.path.basename(config.bibtex) if config.bibtex else 'papers.bib'
-    new = Config.load(create_library(os.path.abspath(dest), config.machine, bibtex=name, git=git),
-                      machine=config.machine)
+    new = create_library(os.path.abspath(dest), config.machine, bibtex=name, git=git)
     for setting in papers.config.SETTINGS:
         if setting.startswith(('name.', 'key.')) and config.source(setting) == 'library':
             new.set(setting, config.get(setting))

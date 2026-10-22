@@ -25,6 +25,9 @@ def _install(o, config, asker, target=None):
     plan = resolve_install(config, o, asker=asker, target=target)
     for name, value in format_options(o).items():
         plan.config.set(name, value)
+    if papers.config.DRYRUN:
+        print(f"DRYRUN: {plan.config.file} not saved")
+        return plan.config
     return apply_install(plan)
 
 
@@ -111,13 +114,18 @@ def install_global(parser, o, config, asker):
     o.local_setting = True
     if o.filesdir and o.filesdir.lower() not in RESET_WORDS:
         o.filesdir = os.path.abspath(o.filesdir)
+    if papers.config.DRYRUN and not os.path.isdir(libdir):
+        print(f"DRYRUN: {libdir} not created, {target} not saved")
+        return
     os.makedirs(libdir, exist_ok=True)
     with set_directory(libdir):
         config = _install(o, existing, asker, target=target)
 
-    if not papers.config.DRYRUN:
-        machine.set('pool', short_home(libdir))
-        machine.save()
+    if papers.config.DRYRUN:
+        print(f"DRYRUN: {libdir} not registered as the global pool in {machine.file}")
+        return
+    machine.set('pool', short_home(libdir))
+    machine.save()
     print(f"registered {libdir} as the global pool in {machine.file}")
     print(config.status(check_files=not o.no_check_files, verbose=True))
 

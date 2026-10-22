@@ -52,6 +52,7 @@ from pathlib import Path
 
 from slugify import slugify
 
+import papers.config
 from papers import logger, __version__
 from papers.bib import Biblio
 from papers.config import BACKUP_DIR, BACKUP_DIR_LEGACY
@@ -400,7 +401,18 @@ def _tracked_backupfile(config):
     return config.backupfile
 
 
+def _dryrun_restore(config, target, kind):
+    "with --dry-run: print the state that undo, redo or restore would bring back, and return True"
+    if not papers.config.DRYRUN:
+        return False
+    info = run_git(config.gitdir, ["log", "-1", "--pretty=%h %s", target]).stdout.strip()
+    print(f"DRYRUN: {kind}: {config.bibtex} not restored to {info}")
+    return True
+
+
 def restore_from_backupdir(config, restore_files=False):
+    if _dryrun_restore(config, "HEAD", "restore"):
+        return
     check_gitdir_ownership(config)
     restore_cmd = f"papers add {config.backupfile_clean} --rename --copy" if config.gitlfs else f"cp {_tracked_backupfile(config)} {config.bibtex}"
     repair_message = f"papers backup broken :: cannot repair file links :: try to recover manually with `{restore_cmd}`"
@@ -547,32 +559,41 @@ def _require_history(gitdir):
 
 def git_restore_state(config, ref, restore_files=False, kind="restore-backup"):
     """Append a restore commit for `ref` and restore the bibtex from it."""
-    check_gitdir_ownership(config)
+    if not papers.config.DRYRUN:
+        check_gitdir_ownership(config)
     _require_history(config.gitdir)
     res = run_git(config.gitdir, ["rev-parse", "--verify", "--quiet", f"{ref}^{{commit}}"], check=False)
     if res.returncode != 0:
         raise PapersExit(f"unknown git reference: {ref}")
     target = res.stdout.strip()
+    if _dryrun_restore(config, target, "restore"):
+        return
     _append_restore_commit(config, target, kind=kind)
     restore_from_backupdir(config, restore_files=restore_files)
 
 
 def git_undo(config, restore_files=False, steps=1):
-    check_gitdir_ownership(config)
+    if not papers.config.DRYRUN:
+        check_gitdir_ownership(config)
     _require_history(config.gitdir)
-    adopt_legacy_undone_state(config.gitdir)
+    if not papers.config.DRYRUN:
+        adopt_legacy_undone_state(config.gitdir)
     cur = cursor_commit(config.gitdir)
     res = run_git(config.gitdir, ["rev-parse", "--verify", "--quiet", f"{cur}~{steps}"], check=False)
     if res.returncode != 0:
         raise PapersExit("nothing to undo")
+    if _dryrun_restore(config, res.stdout.strip(), "undo"):
+        return
     _append_restore_commit(config, res.stdout.strip(), kind="undo")
     restore_from_backupdir(config, restore_files=restore_files)
 
 
 def git_redo(config, restore_files=False, steps=1):
-    check_gitdir_ownership(config)
+    if not papers.config.DRYRUN:
+        check_gitdir_ownership(config)
     _require_history(config.gitdir)
-    adopt_legacy_undone_state(config.gitdir)
+    if not papers.config.DRYRUN:
+        adopt_legacy_undone_state(config.gitdir)
     cur = cursor_commit(config.gitdir)
     out = run_git(config.gitdir, ["log", "--first-parent", "--reverse", "-z",
                                   "--pretty=format:%H %B", f"{cur}..HEAD"]).stdout
@@ -586,5 +607,7 @@ def git_redo(config, restore_files=False, steps=1):
             futures.append(sha)
     if len(futures) < steps:
         raise PapersExit("nothing to redo")
+    if _dryrun_restore(config, futures[steps-1], "redo"):
+        return
     _append_restore_commit(config, futures[steps-1], kind="redo")
     restore_from_backupdir(config, restore_files=restore_files)

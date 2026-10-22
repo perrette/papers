@@ -4,6 +4,7 @@ import os
 import shutil
 import subprocess as sp
 
+import papers.config
 from papers import logger
 from papers.backup import git_redo, git_restore_state, git_undo, list_backup_dirs, restore_from_backupdir
 from papers.bib import backupfile as backupfile_func
@@ -24,6 +25,9 @@ def undocmd(parser, o, config):
     logger.warning("the git backup is off (`papers config git true` enables it): "
                    "undo / redo is limited to 1 step back and forth")
     back = backupfile_func(config.bibtex)
+    if papers.config.DRYRUN:
+        print(f'DRYRUN: {config.bibtex} not swapped with {back}')
+        return
     tmp = config.bibtex + '.tmp'
     logger.info(config.bibtex+' <==> '+back)
     shutil.copy(config.bibtex, tmp)
