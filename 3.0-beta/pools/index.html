@@ -1279,8 +1279,8 @@ none</code> turns sharing off: new libraries get <code>pool: none</code>.</p>
 <p>What a library does with its pool:</p>
 <ul>
 <li><code>papers add</code> looks in the pool first;</li>
-<li><code>papers pull</code> updates the entries of the library from the pool, and adds
-  entries of the pool to the library;</li>
+<li><code>papers pull</code> updates the entries shared with the pool, and adds the
+  entries of the pool named, or all of them with <code>--all</code>;</li>
 <li><code>papers push</code> updates the entries shared with the pool (those taken from
   it, or added to it before), and adds the entries named, or all of them
   with <code>--all</code>;</li>
@@ -1476,9 +1476,11 @@ lookup.</p>
 <h2 id="papers-pull"><code>papers pull</code><a class="headerlink" href="#papers-pull" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>papers pull [KEY...|-] [--all] [--pool PATH] [--on-duplicate MODE] [--check]
 </code></pre></div>
-<p>For each entry of the library (or the entries named), papers finds its pool
-entry (by its origin copy, else by the same-paper rule) and merges it into
-the library entry, field by field:</p>
+<p>Without KEY, <code>pull</code> updates the entries shared with the pool: those with an
+origin copy, each from the pool it came from. For each of them (or each
+entry named, or every entry with <code>--all</code>), papers finds its pool entry (by
+its origin copy, else by the same-paper rule) and merges it into the library
+entry, field by field:</p>
 <table>
 <thead>
 <tr>
@@ -1509,7 +1511,9 @@ directory as the <code>files</code> setting says. The key of the library entry n
 changes. After the merge, the origin copy is the pool's current version.
 A skipped conflict leaves the pool shown as changed in <code>papers status</code>.</p>
 <p>An entry without origin copy (added before the pool was used, or with
-<code>--no-pool</code>) is matched to the pool by the same-paper rule. Its differences
+<code>--no-pool</code>) is not shared: <code>pull</code> without KEY leaves it alone. Named on the
+command line, or with <code>--all</code>, it is matched to the pool by the same-paper
+rule. Its differences
 with the pool entry are conflicts (there is no origin to tell which side
 changed), and the origin copy is recorded afterwards ("linked").</p>
 <p>An entry that the pool does not have is reported (<code>Not found</code>) only when it
@@ -1522,7 +1526,7 @@ library that is not local, otherwise copied as the <code>files</code> setting sa
 hard link when possible). An identifier found in neither is an error, and
 nothing is changed. <code>--all</code> adds every entry of the pool that the library
 does not have (same-paper rule). Without KEY or <code>--all</code>, <code>pull</code> only updates
-the entries of the library. A pool that does not exist or is not a library
+the entries shared with the pool, like <code>push</code> and <code>sync</code>. A pool that does not exist or is not a library
 is an error of <code>pull</code>, <code>pull --check</code> and <code>sync</code>, and nothing is changed
 (the global pool that was not created yet is not: there is nothing to
 pull).</p>
@@ -1574,7 +1578,8 @@ in the pool, or takes it from the pool, its line says so in brackets:
 mode.</p>
 <p><code>papers pull --check</code> only reports: whether the pool changed since the last
 pull (a modification time check), and the entries whose pool version
-changed since their origin copy, with the fields. <code>papers status</code> shows the
+changed since their origin copy, with the fields (without KEY, the entries
+shared with the pool). <code>papers status</code> shows the
 first part too.</p>
 <h2 id="papers-push"><code>papers push</code><a class="headerlink" href="#papers-push" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>papers push [KEY...|-] [--all] [--pool PATH] [--on-duplicate MODE]
