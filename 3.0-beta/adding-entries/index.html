@@ -532,6 +532,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Add a PDF (extract metadata automatically)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#how-the-doi-is-found" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How the DOI is found
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1025,34 +1042,6 @@
 
               
             
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../comparison/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Comparison with other tools
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
           </ul>
         </nav>
       
@@ -1094,6 +1083,23 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Add a PDF (extract metadata automatically)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#how-the-doi-is-found" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How the DOI is found
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -1307,6 +1313,43 @@ attachment.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>papers extract esd-4-11-2013.pdf &gt; entry.bib
 <a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>papers add entry.bib --attach esd-4-11-2013.pdf --bibtex papers.bib --filesdir files
 </code></pre></div>
+<h3 id="how-the-doi-is-found">How the DOI is found<a class="headerlink" href="#how-the-doi-is-found" title="Permanent link">&para;</a></h3>
+<p><code>papers add</code> looks for the DOI of a PDF in this order:</p>
+<ol>
+<li>The PDF metadata: the <code>subject</code>, <code>keywords</code> and <code>title</code> fields of the
+   document information, then the XMP tags <code>prism:doi</code>, <code>dc:identifier</code>
+   (<code>doi:...</code>), <code>pdfx:doi</code> and <code>crossmark:DOI</code>. A DOI found there is used
+   as is.</li>
+<li>The text of the first pages: pages are read one at a time until there
+   are 200 words (at most 10 pages). A DOI is <code>10.</code>, 4 to 9 digits, <code>/</code>,
+   then letters, digits and <code>-._;()/:</code>, not glued to a preceding word
+   (case is ignored). A DOI broken over two lines after <code>10.</code> or after a
+   dash is joined, and trailing text such as <code>.pdf</code>, <code>supplement</code> or an
+   unbalanced <code>)</code> is cut. If the PDF has more than one page, the DOIs of
+   the last page that follow <code>doi:</code> or <code>doi.org/</code> are added after those of
+   the first pages (some publishers append a cover page).</li>
+<li>The candidates are ordered: a DOI written in a <code>doi.org</code> URL first, then
+   the others in order of appearance; the DOIs of data repositories
+   (Zenodo, Dryad, figshare, PANGAEA...) come last, and a supplement DOI
+   (ending in <code>.s1</code>) after the DOI of the article. Each candidate is
+   fetched (from crossref), and the first one whose title appears in the
+   first pages (ignoring case, accents and punctuation) is used. This skips
+   the DOIs of cited papers.</li>
+<li>If the text has no DOI, an arXiv identifier written <code>arXiv:2101.01234</code>
+   gives the DOI <code>10.48550/arXiv.2101.01234</code>, whose metadata come from
+   arXiv and are checked as in step 3.</li>
+</ol>
+<p>When no DOI is accepted, papers searches crossref with the first 200 words
+of the text (<code>--scholar</code>: Google Scholar), and accepts the result only if
+its title appears in the text. Otherwise the PDF is not added, and papers
+stops with an error: pass the DOI with <code>--doi</code>, or describe the entry (see
+<a href="#add-a-whole-directory-of-pdfs">below</a>). <code>--no-query-doi</code> skips the DOI
+search, and <code>--no-query-fulltext</code> the text search.</p>
+<p><code>papers extract --doi-only FILE</code> prints the DOI that steps 1 to 4 find,
+without adding anything:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>$ papers extract --doi-only bg-8-515-2011.pdf
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>10.5194/bg-8-515-2011
+</code></pre></div>
 <h2 id="what-happens-to-the-files">What happens to the files<a class="headerlink" href="#what-happens-to-the-files" title="Permanent link">&para;</a></h2>
 <p>By default, <code>papers add</code> moves the PDF into the files directory of the
 library, under a name made from the name template: in a library that is not
@@ -1323,8 +1366,8 @@ template of its pool (see <a href="../pools/#local-or-not">Local or not</a>). Th
 </ul>
 <p><code>--move</code>, <code>--copy</code> and <code>--link</code> override the setting for one command
 (<code>-r/--rename</code> is the same as <code>--move</code>, <code>-c</code> as <code>--copy</code>):</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>papers config files copy           # this library keeps the originals
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>papers add esd-4-11-2013.pdf --link
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>papers config files copy           # this library keeps the originals
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>papers add esd-4-11-2013.pdf --link
 </code></pre></div>
 <p>A file that belongs to another library (inside its files directory) is
 never moved: it is copied instead, so that the other library keeps its link.</p>
@@ -1352,7 +1395,7 @@ existing file, followed by other values, is an error.</p>
 <h2 id="add-a-whole-directory-of-pdfs">Add a whole directory of PDFs<a class="headerlink" href="#add-a-whole-directory-of-pdfs" title="Permanent link">&para;</a></h2>
 <p>It is possible to do this on a full directory of files, recursively, with
 <code>-R/--recursive</code>:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>papers add -R /home/perette/playground/papers/papers_test
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>papers add -R /home/perette/playground/papers/papers_test
 </code></pre></div>
 <p>where, above, the <code>papers_test</code> directory contains a few PDF files. For each
 PDF, <code>papers</code> will attempt to extract the metadata and add the relevant file to
@@ -1367,21 +1410,13 @@ too, before the PDFs, and the files they link to are not scanned: their entry
 comes from the bibtex, so a folder that holds a bibtex and its files is added
 without looking anything up online. Folders of the pre-2.19 layout (with a
 hidden <code>.&lt;name&gt;.bib</code>) are read from their hidden bibtex.</p>
-<p>The metadata of a PDF are found as follows:</p>
-<ol>
-<li>a DOI in the PDF metadata is used as is;</li>
-<li>otherwise, the DOIs printed in the text (first pages, and the last page,
-   where some publishers add a cover page) are looked up in turn, and the
-   first one whose title appears in the first pages is used: this skips the
-   DOIs of cited papers;</li>
-<li>otherwise, a crossref search on the text of the first pages, whose result
-   is also accepted only if its title appears in the text.</li>
-</ol>
-<p>If none matches, the PDF is not added: pass its DOI with <code>--doi</code> (see below),
+<p>The metadata of each PDF are found as for a single PDF (see
+<a href="#how-the-doi-is-found">How the DOI is found</a>). If none matches, the PDF is
+not added: pass its DOI with <code>--doi</code> (see below),
 or, for a reference without DOI (older papers, books, reports...), describe it
 and attach the PDF:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>papers add --title "Self-consistent equilibrium ocean tides" --author "Agnew, Duncan C. and Farrell, W. E." \
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>    --year 1978 --journal "Geophysical Journal International" --attach agnew1978.pdf
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>papers add --title "Self-consistent equilibrium ocean tides" --author "Agnew, Duncan C. and Farrell, W. E." \
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>    --year 1978 --journal "Geophysical Journal International" --attach agnew1978.pdf
 </code></pre></div>
 <h2 id="entries-already-in-the-library">Entries already in the library<a class="headerlink" href="#entries-already-in-the-library" title="Permanent link">&para;</a></h2>
 <p>When the DOI of the added paper is already in the library (given with
@@ -1400,6 +1435,12 @@ identifier. <code>--no-check-duplicate</code> skips this, and adds a new entry.<
 content as a pool file, or whose DOI is in the pool, a DOI that a pool entry
 has, or a bibtex entry that is the same paper as a pool entry, is taken from
 the pool, with its files. <code>--no-pool</code> skips this.</p>
+<p><code>papers add --key KEY</code>, with no file, DOI or other field, takes the pool
+entry of key <code>KEY</code> (ignoring case). When the library already has an entry of
+that key, the files of <code>--attach</code> are attached to it. When neither has it,
+papers stops with an error and changes nothing:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>papers add --key yool2011
+</code></pre></div>
 <p>In a library that is not local (the default), the files of the added
 entries go to the files directory of the pool, and the entries to the pool
 too (see <a href="../pools/#local-or-not">Local or not</a>).</p>
@@ -1410,23 +1451,23 @@ linked to it (later pulls bring the corrections made there), use
 <h2 id="add-an-entry-from-its-doi">Add an entry from its DOI<a class="headerlink" href="#add-an-entry-from-its-doi" title="Permanent link">&para;</a></h2>
 <p>If you already know the DOI of a PDF, and don't want to gamble the fulltext
 search and match, you can indicate it via <code>--doi</code>:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>papers add esd-4-11-2013.pdf --doi 10.5194/esd-4-11-2013 --bibtex papers.bib
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>papers add esd-4-11-2013.pdf --doi 10.5194/esd-4-11-2013 --bibtex papers.bib
 </code></pre></div>
 <p>The <code>add</code> command above also works without any PDF (create a bibtex entry
 without file attachment):</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>papers add --doi 10.5194/esd-4-11-2013 --bibtex papers.bib
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>papers add --doi 10.5194/esd-4-11-2013 --bibtex papers.bib
 </code></pre></div>
 <h2 id="add-an-entry-without-doi-from-bibtex-pdf">Add an entry without DOI from bibtex + PDF<a class="headerlink" href="#add-an-entry-without-doi-from-bibtex-pdf" title="Permanent link">&para;</a></h2>
 <p>Some old files don't have a DOI. The best approach is to add the entry from its
 bibtex:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>papers add entry.bib --attach esd-4-11-2013.pdf --bibtex papers.bib --filesdir files
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>papers add entry.bib --attach esd-4-11-2013.pdf --bibtex papers.bib --filesdir files
 </code></pre></div>
 <h2 id="set-fields-on-the-command-line">Set fields on the command line<a class="headerlink" href="#set-fields-on-the-command-line" title="Permanent link">&para;</a></h2>
 <p><code>--title</code>, <code>--author</code>, <code>--year</code>, <code>--journal</code>, <code>--type</code> (the entry type, e.g.
 <code>book</code>), <code>--key</code> and <code>--metadata KEY=VALUE...</code> (any field) set these fields of
 the added entry. They replace the values found in the PDF, fetched from the
 DOI or read from the added bibtex; the other fields are kept:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>papers add paper.pdf --year 1999 --journal "Journal of Glaciology"
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>papers add paper.pdf --year 1999 --journal "Journal of Glaciology"
 </code></pre></div>
 <ul>
 <li><code>--key KEY</code> sets the key, which is then not generated from the key
@@ -1532,26 +1573,26 @@ fields to add:</p>
 </table>
 <p><code>--no-check-duplicate</code> adds the entries without looking for duplicates.</p>
 <h3 id="the-dialogue">The dialogue<a class="headerlink" href="#the-dialogue" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>$&gt; papers add new.bib
-<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>Already in library: smith2020climate (same DOI 10.1000/abc123)
-<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>  1  library  smith2020climate  article  doi 10.1000/abc123  files/smith.pdf
-<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>  2  new      Smith_2020        article  doi 10.1000/ABC123  other/smith-preprint.pdf
-<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>
-<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>@article{smith2020climate,
-<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>   author   = {Smith, John and Doe, Jane}
-<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>   doi      = {10.1000/abc123}
-<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>+  file     = {files/smith.pdf;other/smith-preprint.pdf}
-<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a>!  journal  = {Nature}
-<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a>!             2: {Nature Climate Change}
-<a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a>   keywords = {climate, mine}
-<a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a>   title    = {Climate sensitivity revisited}
-<a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a>+  volume   = {10}
-<a id="__codelineno-9-15" name="__codelineno-9-15" href="#__codelineno-9-15"></a>   year     = {2020}
-<a id="__codelineno-9-16" name="__codelineno-9-16" href="#__codelineno-9-16"></a>}
-<a id="__codelineno-9-17" name="__codelineno-9-17" href="#__codelineno-9-17"></a>1 conflict. The key smith2020climate is kept; + lines are added.
-<a id="__codelineno-9-18" name="__codelineno-9-18" href="#__codelineno-9-18"></a>  1 keep library values   2 take new values   f field by field   e edit
-<a id="__codelineno-9-19" name="__codelineno-9-19" href="#__codelineno-9-19"></a>  n not the same paper (add Smith_2020 separately)   s skip   q quit   ? help
-<a id="__codelineno-9-20" name="__codelineno-9-20" href="#__codelineno-9-20"></a>&gt;&gt;&gt;
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>$&gt; papers add new.bib
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>Already in library: smith2020climate (same DOI 10.1000/abc123)
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>  1  library  smith2020climate  article  doi 10.1000/abc123  files/smith.pdf
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>  2  new      Smith_2020        article  doi 10.1000/ABC123  other/smith-preprint.pdf
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>
+<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>@article{smith2020climate,
+<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a>   author   = {Smith, John and Doe, Jane}
+<a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a>   doi      = {10.1000/abc123}
+<a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a>+  file     = {files/smith.pdf;other/smith-preprint.pdf}
+<a id="__codelineno-11-10" name="__codelineno-11-10" href="#__codelineno-11-10"></a>!  journal  = {Nature}
+<a id="__codelineno-11-11" name="__codelineno-11-11" href="#__codelineno-11-11"></a>!             2: {Nature Climate Change}
+<a id="__codelineno-11-12" name="__codelineno-11-12" href="#__codelineno-11-12"></a>   keywords = {climate, mine}
+<a id="__codelineno-11-13" name="__codelineno-11-13" href="#__codelineno-11-13"></a>   title    = {Climate sensitivity revisited}
+<a id="__codelineno-11-14" name="__codelineno-11-14" href="#__codelineno-11-14"></a>+  volume   = {10}
+<a id="__codelineno-11-15" name="__codelineno-11-15" href="#__codelineno-11-15"></a>   year     = {2020}
+<a id="__codelineno-11-16" name="__codelineno-11-16" href="#__codelineno-11-16"></a>}
+<a id="__codelineno-11-17" name="__codelineno-11-17" href="#__codelineno-11-17"></a>1 conflict. The key smith2020climate is kept; + lines are added.
+<a id="__codelineno-11-18" name="__codelineno-11-18" href="#__codelineno-11-18"></a>  1 keep library values   2 take new values   f field by field   e edit
+<a id="__codelineno-11-19" name="__codelineno-11-19" href="#__codelineno-11-19"></a>  n not the same paper (add Smith_2020 separately)   s skip   q quit   ? help
+<a id="__codelineno-11-20" name="__codelineno-11-20" href="#__codelineno-11-20"></a>&gt;&gt;&gt;
 </code></pre></div>
 <p>Unmarked lines are the same in both entries (here the title and the author
 names, which differ only by case and initials), <code>+</code> lines are added from the
@@ -1596,10 +1637,10 @@ the other values, numbered by entry.</p>
 </tbody>
 </table>
 <p><code>f</code> asks for each conflict:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>journal:
-<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>  1  Nature                 library
-<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>  2  Nature Climate Change  new
-<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>  [1/2/e] &gt;&gt;&gt;
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>journal:
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>  1  Nature                 library
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>  2  Nature Climate Change  new
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>  [1/2/e] &gt;&gt;&gt;
 </code></pre></div>
 <p>To stop without saving anything, use Ctrl-C.</p>
 <h3 id="keys">Keys<a class="headerlink" href="#keys" title="Permanent link">&para;</a></h3>

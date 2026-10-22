@@ -780,6 +780,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#undo-in-a-pool" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Undo in a pool
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#papers-export" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -981,34 +992,6 @@
 
               
             
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../comparison/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Comparison with other tools
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
           </ul>
         </nav>
       
@@ -1152,6 +1135,17 @@
     <span class="md-ellipsis">
       
         papers sync
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#undo-in-a-pool" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Undo in a pool
       
     </span>
   </a>
@@ -1373,6 +1367,10 @@ entry, without querying crossref:</p>
   the PDF metadata, or a DOI of its text whose title in the pool appears in
   the text) is in the pool;</li>
 <li>a DOI (<code>papers add --doi DOI</code>) that a pool entry has;</li>
+<li>a key (<code>papers add --key KEY</code>, with no file, DOI or other field) that a
+  pool entry has, ignoring case: the entry keeps the pool key. Without such
+  an entry (and without a library entry of that key), <code>add</code> stops with an
+  error;</li>
 <li>an entry of an added bibtex that is the same paper as a pool entry: the
   pool's fields are taken, the entry keeps its key, and its fields that the
   pool entry does not have are kept.</li>
@@ -1508,7 +1506,20 @@ exist yet.</p>
 </code></pre></div>
 <p>runs <code>papers pull</code>, then <code>papers push</code> of the same entries (all without
 KEY). If the pull leaves conflicts undecided (skipped, or the dialogue
-quit), nothing is pushed: decide them with <code>papers pull</code>, then sync again.</p>
+quit), nothing is pushed: decide them with <code>papers pull</code>, then sync again.
+A KEY that only the pool has is added to the library, as with <code>pull</code>;
+<code>sync</code> has no <code>--all</code>.</p>
+<p>With <code>--pool PATH</code>, <code>sync</code> reads and writes only the library at <code>PATH</code>, not
+the pool of the library. The entries taken from it link to its files in a
+library that is not local (in a local library, they are copied as the
+<code>files</code> setting says), and the entries pushed to it get copies of their
+files in its files directory.</p>
+<h2 id="undo-in-a-pool">Undo in a pool<a class="headerlink" href="#undo-in-a-pool" title="Permanent link">&para;</a></h2>
+<p>A pool is a library with its own backup history (see
+<a href="../git/">Git integration</a>). <code>papers undo</code> in a library undoes a change of
+that library only: an entry that <code>add</code> also added to the pool stays in the
+pool. To undo a change in the pool, run the command in the pool, e.g.
+<code>papers -C ~/Documents/papers undo</code> for the global pool.</p>
 <h2 id="papers-export"><code>papers export</code><a class="headerlink" href="#papers-export" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>papers export DIR [KEY...|-] [--files copy|link|none]
 </code></pre></div>
