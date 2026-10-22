@@ -47,6 +47,9 @@ extra:
     provider: mike
     default: stable
 
+extra_css:
+  - stylesheets/extra.css
+
 plugins:
   - search
   - include-markdown
