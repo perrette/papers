@@ -1,7 +1,10 @@
 """papers fetch and extract, with the network functions mocked"""
+import io
 import os
+from contextlib import redirect_stdout
 from unittest.mock import patch
 
+from papers.utils import PapersExit
 from tests.common import FileTest
 
 
@@ -49,14 +52,16 @@ class TestExtract(FileTest):
             if file == self.b:
                 raise ValueError('no metadata')
             return '@misc{a}'
+        out = io.StringIO()
         with patch('papers.cli.fetch_cmds.extract_pdf_metadata', side_effect=metadata) as extract, \
-                self.assertLogs('papers', level='ERROR') as logs:
-            out = self.out(f'extract -R {self.path("src")} --fulltext')
-        self.assertEqual(out.splitlines(), [f'% {self.a}', '@misc{a}', f'% {self.b}'])
+                self.assertLogs('papers', level='ERROR') as logs, redirect_stdout(out), \
+                self.assertRaisesRegex(PapersExit, '^1 of 2 files failed$'):
+            self.lib(f'extract -R {self.path("src")} --fulltext')
+        self.assertEqual(out.getvalue().splitlines(), [f'% {self.a}', '@misc{a}', f'% {self.b}'])
         self.assertIn('no metadata', logs.output[0])
         self.assertFalse(extract.call_args.kwargs['search_doi'])
 
     def test_one_file_error_is_raised(self):
         with patch('papers.cli.fetch_cmds.extract_pdf_metadata', side_effect=ValueError('no metadata')):
-            with self.assertRaises(ValueError):
+            with self.assertRaisesRegex(PapersExit, f'^{self.a}: no metadata$'):
                 self.lib(f'extract {self.a}')

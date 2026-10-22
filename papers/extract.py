@@ -334,7 +334,7 @@ def _parse_dois(txt):
         if match:
             return [f"10.48550/arXiv.{match.group(1)}"]
 
-        raise DOIParsingError('parse_doi::no matches')
+        raise DOIParsingError('no DOI found in the text')
 
     matches = list(dict.fromkeys(matches))  # unique, in order of appearance
     articles = [m for m in matches if not is_data_repository_doi(m)] or matches
