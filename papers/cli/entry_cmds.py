@@ -186,8 +186,7 @@ def addcmd(parser, o, config):
         entries = [e for e in biblio.entries if biblio.key(e) in unique_keys]
 
     if o.edit:
-        entry_keys = [biblio.key(e) for e in entries]
-        otherentries = [e for e in biblio.entries if biblio.key(e) not in entry_keys]
+        others = [e for e in biblio.entries if not any(e is x for x in entries)]
 
         try:
             entries = edit_entries(entries)
@@ -195,8 +194,10 @@ def addcmd(parser, o, config):
             logger.error(str(error))
             return
 
-        entries = [{k:v for k,v in e.items() if v != ""} for e in entries]
-        biblio.db.entries = sorted(otherentries + entries, key=lambda e: biblio.key(e))
+        for e in entries:  # fields emptied in the editor are removed
+            for k in [k for k, v in e.items() if v == "" and k not in ('ID', 'ENTRYTYPE')]:
+                del e[k]
+        biblio.entries = others + entries
 
     # light library or sync push: also in the first pool
     before = {biblio.key(e) for e in biblio_init.entries}

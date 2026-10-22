@@ -193,6 +193,32 @@ class TestEdit(EntryTest):
             self.lib('add -e --title Original --author "Smith, John" --year 2001 --key three2001')
         self.assertEqual(self.entry('three2001')['title'], 'Edited')
 
+    def test_add_file_edit(self):
+        # used to fail: the edited entries were set as dicts on a read-only property
+        bib = self.write('src', 'three.bib', content=entry('three2000'))
+        def edit(entries):
+            self.assertEqual([e.key for e in entries], ['three2000'])
+            entries[0]['title'] = 'Edited'
+            entries[0]['note'] = ''  # emptied in the editor: removed
+            return entries
+        with patch('papers.cli.entry_cmds.edit_entries', side_effect=edit):
+            self.lib(f'add {bib} -e')
+        self.assertEqual(self.keys(), ['one2000', 'three2000', 'two2000'])
+        self.assertEqual(self.entry('three2000')['title'], 'Edited')
+        self.assertNotIn('note', self.entry('three2000'))
+
+    def test_add_file_edit_error(self):
+        bib = self.write('src', 'three.bib', content=entry('three2000'))
+        with patch('papers.cli.entry_cmds.edit_entries', side_effect=OSError('no editor')), \
+                self.assertLogs('papers', level='ERROR'):
+            self.lib(f'add {bib} -e')
+        self.assertEqual(self.keys(), ['one2000', 'two2000'])  # the add is abandoned
+
+    def test_add_edit_without_file_several_entries(self):
+        with patch('papers.cli.entry_cmds.edit_entries', side_effect=lambda entries: entries * 2):
+            with self.assertRaisesRegex(PapersExit, 'one entry at a time'):
+                self.lib('add -e --title T --key three2001')
+
     def test_editor_setting_wins_over_visual(self):
         self.lib(f'config editor {self.editor_script()}')
         self.bib(entry('one2000').replace('Title of one2000', 'Original'))
