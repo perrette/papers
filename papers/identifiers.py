@@ -20,10 +20,18 @@ _ARXIV_OLD = re.compile(r'^([a-z][a-z\-]*(\.[a-z]{2})?/\d{7})(v\d+)?$', re.IGNOR
 _ARXIV_DOI = re.compile(r'^10\.48550/arxiv\.(.+)$', re.IGNORECASE)
 
 
-def normalize_doi(text):
-    "a DOI in lower case, without doi.org/ or doi: prefix; None if it is not a DOI"
+def strip_doi(text):
+    """a DOI without doi.org/ or doi: prefix, in its original case (the case
+    matters in the arXiv identifier of an arXiv DOI, e.g. math.AG/0601001);
+    None if it is not a DOI"""
     doi = _DOI_PREFIX.sub('', text.strip()).strip()
-    return doi.lower() if doi.startswith('10.') and '/' in doi else None
+    return doi if doi.startswith('10.') and '/' in doi else None
+
+
+def normalize_doi(text):
+    "a DOI in lower case, without doi.org/ or doi: prefix (for comparison); None if it is not a DOI"
+    doi = strip_doi(text)
+    return doi.lower() if doi else None
 
 
 def normalize_arxiv(text):

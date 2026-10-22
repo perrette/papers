@@ -249,14 +249,16 @@ class TestAddDir(BibTest):
     def setUp(self):
         self.pdf1, self.doi, self.key1, self.newkey1, self.year, self.bibtex1, self.file_rename1 = prepare_paper()
         self.pdf2, self.si, self.doi, self.key2, self.newkey2, self.year, self.bibtex2, self.file_rename2 = prepare_paper2()
-        self.somedir = tempfile.mktemp(prefix='papers.somedir')
+        # the library and the scanned folder in a temporary directory, not in the current directory
+        self.tmp = tempfile.TemporaryDirectory()
+        self.libdir = self.tmp.name
+        self.somedir = os.path.join(self.libdir, 'somedir')
         self.subdir = os.path.join(self.somedir, 'subdir')
-        os.makedirs(self.somedir)
         os.makedirs(self.subdir)
         shutil.copy(self.pdf1, self.somedir)
         shutil.copy(self.pdf2, self.subdir)
-        self.mybib = tempfile.mktemp(prefix='papers.bib')
-        paperscmd(f'init --bibtex {self.mybib}')
+        self.mybib = os.path.join(self.libdir, 'papers.bib')
+        paperscmd(f'init --bibtex {self.mybib}', cwd=self.libdir)
 
     def test_adddir_pdf(self):
         self.my = Biblio.load(self.mybib, '')
@@ -266,16 +268,14 @@ class TestAddDir(BibTest):
         self.assertEqual(sorted(keys), sorted([self.newkey1, self.newkey2]))  # PDF: update key
 
     def test_adddir_pdf_cmd(self):
-        paperscmd(f'add --recursive --bibtex {self.mybib} {self.somedir}')
+        paperscmd(f'add --recursive --bibtex {self.mybib} {self.somedir}', cwd=self.libdir)
         self.my = Biblio.load(self.mybib, '')
         self.assertEqual(len(self.my.db.entries), 2)
         keys = [self.my.db.entries[0]['ID'], self.my.db.entries[1]['ID']]
         self.assertEqual(sorted(keys), sorted([self.newkey1, self.newkey2])) # PDF: update key
 
     def tearDown(self):
-        os.remove(self.mybib)
-        shutil.rmtree(self.somedir)
-        paperscmd('uninstall')
+        self.tmp.cleanup()
 
 
 

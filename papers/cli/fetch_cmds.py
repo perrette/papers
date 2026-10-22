@@ -5,7 +5,7 @@ from pathlib import Path
 from papers import logger
 from papers.extract import extract_pdf_doi, extract_pdf_metadata
 from papers.fetch import fetch_bibtex_by_doi, fetch_bibtex_by_fulltext_crossref, fetch_bibtex_by_fulltext_scholar
-from papers.identifiers import normalize_doi
+from papers.identifiers import strip_doi
 
 
 def doicmd(parser, o, config):
@@ -15,7 +15,7 @@ def doicmd(parser, o, config):
 
 def fetchcmd(parser, o, config):
     # either one or several DOIs
-    dois = [normalize_doi(field) for field in o.doi_or_text]
+    dois = [strip_doi(field) for field in o.doi_or_text]  # the case of arXiv ids matters
     if all(dois):
         if o.scholar:
             parser.error("Fetching from DOI does not support Google Scholar option")

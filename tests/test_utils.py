@@ -126,3 +126,31 @@ class TestCheckFilesdirCase(unittest.TestCase):
             open(os.path.join(d, "b.pdf"), "w").write("dummy")
             count, size = check_filesdir(d)
             self.assertEqual(count, 2)
+
+
+class TestSpecificExceptions(unittest.TestCase):
+    "the exceptions that used to be caught by bare except clauses"
+
+    def test_hardlink_falls_back_to_copy(self):
+        from unittest.mock import patch
+        from papers.utils import move
+        with tempfile.TemporaryDirectory() as d:
+            src, dst = os.path.join(d, 'a.pdf'), os.path.join(d, 'b.pdf')
+            open(src, 'w').write('a')
+            with patch('os.link', side_effect=OSError('cross-device link')):
+                move(src, dst, copy=True, hardlink=True)
+            self.assertEqual(open(dst).read(), 'a')
+            self.assertNotEqual(os.stat(src).st_ino, os.stat(dst).st_ino)
+
+    def test_isvaliddoi(self):
+        from papers.extract import isvaliddoi
+        self.assertTrue(isvaliddoi('10.1000/abc123'))
+        self.assertFalse(isvaliddoi('not a doi'))
+
+    def test_status_corrupted_bibtex(self):
+        from papers.config import Config
+        with tempfile.TemporaryDirectory() as d:
+            bibtex = os.path.join(d, 'papers.bib')
+            open(bibtex, 'wb').write(b'\xff\xfe\x00not utf-8')
+            config = Config(bibtex=bibtex, filesdir=d)
+            self.assertIn('(corrupted)', config.status(check_files=True))

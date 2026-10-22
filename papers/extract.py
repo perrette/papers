@@ -364,7 +364,7 @@ def parse_doi(txt):
 def isvaliddoi(doi):
     try:
         doi2 = parse_doi('doi:'+doi)
-    except:
+    except DOIParsingError:
         return False
     return doi.lower() == doi2.lower()
 

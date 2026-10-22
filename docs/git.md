@@ -18,6 +18,8 @@ From now on, every change to the library will result in an automatic git
 commit. And the `papers git ...` command will work just as `git ...` executed
 from the backup directory. E.g. `papers git remote add origin *REMOTE URL*`;
 `papers git lfs track files`; `papers git add files`; `papers git push`.
+When git fails, it prints its own error message, and papers exits with
+git's exit code.
 
 Under the hood, every save commits a copy of the bibtex file to the backup
 repository, with the files `.papers/origin.bib` (origin copies of the entries

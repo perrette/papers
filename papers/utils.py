@@ -173,7 +173,7 @@ def move(f1, f2, copy=False, interactive=True, dryrun=False, hardlink=False):
         if hardlink:
             try:
                 _hardlink(f1, f2)
-            except:
+            except OSError:  # e.g. another file system, or no hard links there
                 _copy(f1, f2)
         else:
             _copy(f1, f2)
@@ -252,11 +252,16 @@ def find_masked_viewer(name='papers'):
     return None
 
 
+# the `editor` setting of the library of the command (set by papers.cli.main)
+EDITOR = None
+
+
 def edit_text(text, editor=None):
-    """edit a text in a text editor ($VISUAL, else $EDITOR, else vi): the
-    edited text, or None if the editor failed. The editor is a command that
-    may have arguments (e.g. "subl -w"); it must wait until the file is closed."""
-    editor = editor or os.environ.get('VISUAL') or os.environ.get('EDITOR') or 'vi'
+    """edit a text in a text editor (the `editor` setting, else $VISUAL, else
+    $EDITOR, else vi): the edited text, or None if the editor failed. The
+    editor is a command that may have arguments (e.g. "subl -w"); it must
+    wait until the file is closed."""
+    editor = editor or EDITOR or os.environ.get('VISUAL') or os.environ.get('EDITOR') or 'vi'
     fd, filename = tempfile.mkstemp(suffix='.bib')
     try:
         with os.fdopen(fd, 'w') as f:

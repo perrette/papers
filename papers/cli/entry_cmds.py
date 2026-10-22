@@ -101,11 +101,15 @@ def addcmd(parser, o, config):
 
         metadata.setdefault('ID', biblio.keyformat(metadata))
         metadata.setdefault('ENTRYTYPE', 'article')
+        entry = entry_from_dict(metadata)
         if o.edit:
-            metadata = edit_entries(metadata)
+            edited = edit_entries([entry])
+            if len(edited) != 1:
+                raise PapersExit(f'the edited text has {len(edited)} entries: add one entry at a time')
+            entry = edited[0]
             o.edit = False
 
-        entries.extend( biblio.insert_entry(entry_from_dict(metadata), rename=rename, copy=policy, **kw) )
+        entries.extend( biblio.insert_entry(entry, rename=rename, copy=policy, **kw) )
 
 
     # several PDFs: fetch their metadata concurrently first

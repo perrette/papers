@@ -182,6 +182,30 @@ class TestEdit(EntryTest):
         self.assertEqual(self.entry('two2000')['title'], 'Edited')
         self.assertEqual(self.keys(), ['one2000', 'two2000'])
 
+    def editor_script(self):
+        script = self.write('bin', 'editor.sh', content="#!/bin/sh\nsed -i 's/Original/Edited/' \"$1\"\n")
+        os.chmod(script, 0o755)
+        return script
+
+    def test_add_edit_without_file(self):
+        self.lib(f'config editor {self.editor_script()}')
+        with patch.dict(os.environ, {'VISUAL': 'false', 'EDITOR': 'false'}):
+            self.lib('add -e --title Original --author "Smith, John" --year 2001 --key three2001')
+        self.assertEqual(self.entry('three2001')['title'], 'Edited')
+
+    def test_editor_setting_wins_over_visual(self):
+        self.lib(f'config editor {self.editor_script()}')
+        self.bib(entry('one2000').replace('Title of one2000', 'Original'))
+        with patch.dict(os.environ, {'VISUAL': 'false', 'EDITOR': 'false'}):
+            self.lib('edit one2000')
+        self.assertEqual(self.entry('one2000')['title'], 'Edited')
+
+    def test_visual_without_editor_setting(self):
+        self.bib(entry('one2000').replace('Title of one2000', 'Original'))
+        with patch.dict(os.environ, {'VISUAL': self.editor_script(), 'EDITOR': 'false'}):
+            self.lib('edit one2000')
+        self.assertEqual(self.entry('one2000')['title'], 'Edited')
+
     def test_unknown_key(self):
         with patch('papers.cli.common.edit_entries') as edit:
             with self.assertRaises(PapersExit):

@@ -4,6 +4,7 @@ import os
 import sys
 
 import papers.config
+import papers.utils
 from papers import __version__, logger
 from papers.config import CONFIG_FILE
 from papers.library import check_legacy_global_config, find_config
@@ -121,6 +122,8 @@ def _main(argv):
         raise PapersExit()
     if o.library:
         config = check_install(o.command_parser, o, config, bibtex_must_exist=o.bibtex_must_exist)
+    # the editor setting wins over $VISUAL and $EDITOR
+    papers.utils.EDITOR = config.editor
     o.func(o.command_parser, o, config)
 
 

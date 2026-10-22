@@ -83,7 +83,7 @@ from the global configuration, otherwise from its built-in default.
 | `sync` | `none` (default) or `push`: `papers add` also adds the new entries to the first pool (see [Pools](pools.md)) |
 | `git` | `true` or `false`: back up the bibtex with git (see [Git integration](git.md)) |
 | `git-lfs` | `true` or `false`: also back up the files with git-lfs |
-| `editor` | command that opens a text editor, e.g. `vim` or `subl -w` |
+| `editor` | command that opens a text editor, e.g. `vim` or `subl -w` (it wins over `$VISUAL` and `$EDITOR`, which are used without it) |
 | `name.template`, `name.author-num`, `name.author-sep`, `name.title-word-num`, `name.title-word-size`, `name.title-length`, `name.title-sep`, `name.unknown-template`, `name.unknown-strict` | file name format |
 | `key.template`, `key.author-num`, `key.author-sep`, `key.title-word-num`, `key.title-word-size`, `key.title-length`, `key.title-sep`, `key.unknown-template`, `key.unknown-strict` | bibtex key format |
 

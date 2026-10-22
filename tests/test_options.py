@@ -1,7 +1,9 @@
 """The options harmonized in v3: -y/--yes, -R/--recursive, extract
---doi-only, restore (the deprecated forms are in test_deprecated.py)"""
+--doi-only, restore (the deprecated forms are in test_deprecated.py); the
+case of DOIs in fetch, and the exit code of papers git"""
 from unittest.mock import patch
 
+from papers.utils import PapersExit
 from tests.common import FileTest, entry
 
 
@@ -56,3 +58,31 @@ class TestOptions(FileTest):
             self.lib('restore')
         restore.assert_called_once()
         warning.assert_not_called()
+
+
+class TestFetchKeepsCase(FileTest):
+
+    def test_arxiv_doi_case(self):
+        with patch('papers.cli.fetch_cmds.fetch_bibtex_by_doi', return_value='@misc{x}') as fetch:
+            self.lib('fetch https://doi.org/10.48550/arXiv.math.AG/0601001')
+        fetch.assert_called_once_with('10.48550/arXiv.math.AG/0601001')
+        with patch('papers.fetch.fetch_bibtex_by_arxiv', return_value='@misc{x}') as arxiv:
+            self.lib('fetch 10.48550/arXiv.math.AG/0601001')
+        arxiv.assert_called_once_with('math.AG/0601001')
+
+
+class TestGitCommand(FileTest):
+
+    def test_git_error_exit_code(self):
+        self.lib('config git true')
+        with self.assertRaises(SystemExit) as cm:
+            self.lib('git log no-such-ref')
+        self.assertEqual(cm.exception.code, 128)  # git's own exit code
+
+    def test_git_output(self):
+        self.lib('config git true')
+        self.assertEqual(self.out('git rev-list --all --count').strip(), '1')
+
+    def test_no_backup(self):
+        with self.assertRaisesRegex(PapersExit, 'papers config git true'):
+            self.lib('git status')

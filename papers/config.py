@@ -333,16 +333,6 @@ class Config:
         self.light = bool(light)
 
 
-    @property
-    def editor(self):
-        return self._editor
-
-    @editor.setter
-    def editor(self, value):
-        if value is not None:
-            os.environ['EDITOR'] = value
-        self._editor = value
-
     # settings by name (see SETTINGS)
     # -------------------------------
     def inherited(self, name):
@@ -589,7 +579,7 @@ class Config:
                     status = bcolors.OKBLUE+' ({} entries, {} file links)'.format(len(db.entries), nfiles)+bcolors.ENDC
                 else:
                     status = bcolors.WARNING+' (empty)'+bcolors.ENDC
-            except:
+            except (OSError, ValueError):  # unreadable, or not text
                 status = bcolors.FAIL+' (corrupted)'+bcolors.ENDC
         elif os.path.getsize(self.bibtex) == 0:
             status = bcolors.WARNING+' (empty)'+bcolors.ENDC

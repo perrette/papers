@@ -95,11 +95,16 @@ def backupcmd(parser, o, config):
 
 
 def gitcmd(parser, o, config):
+    """run git in the backup directory. git prints its own errors (on the
+    standard error), and papers exits with git's exit code"""
     if config.file is None:
-        parser.error('papers must be installed to use git command')
+        raise PapersExit('papers git runs git in the backup directory of a library, and no library was found')
+    if not config.gitdir or not os.path.isdir(config.gitdir):
+        raise PapersExit('the library has no git backup: enable it with `papers config git true`')
     try:
-        out = sp.check_output(['git']+o.gitargs, cwd=config.gitdir)
-        print(out.decode())
-    except Exception as error:
-        print(f"Error message: {error}")
-        parser.error('papers failed to execute git command -- you should check your system git install.')
+        result = sp.run(['git']+o.gitargs, cwd=config.gitdir, stdout=sp.PIPE)
+    except OSError as error:
+        raise PapersExit(f'failed to run git: {error}')
+    print(result.stdout.decode(), end='')
+    if result.returncode != 0:
+        raise SystemExit(result.returncode)

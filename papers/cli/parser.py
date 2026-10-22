@@ -558,7 +558,7 @@ def get_parser(config=None):
     # edit, rm, tag
     # =============
     editp = subparsers.add_parser('edit', parents=[cfg],
-        description='edit entries in a text editor (the editor setting, or $EDITOR)')
+        description='edit entries in a text editor (the editor setting, else $VISUAL, else $EDITOR)')
     editp.add_argument('entries', nargs='+', metavar='KEY',
         help=_selection_help)
     _command(editp, editcmd, library=True)
