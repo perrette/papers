@@ -124,9 +124,10 @@ all your papers.
 
 ## Keep libraries in sync
 
-The entries taken from the pool stay linked to it. `papers sync` sends the
-changes of the library to the pool and brings the changes of the pool into
-the library. A tag added in the first project reaches the second one:
+The entries taken from the pool, or added to it, stay linked to it: they
+are shared with it. `papers sync` sends the changes of the shared entries
+to the pool and brings the changes of the pool into the library. A tag
+added in the first project reaches the second one:
 
 ```
 $ cd ~/projects/sea-level
@@ -135,13 +136,15 @@ Modified -> perrette_yool2011: Near-ubiquity of ice-edge blooms in the Arctic (d
 $ papers sync
 pull from pool ~/Documents/papers: 2 unchanged
 Modified -> perrette_yool2011: Near-ubiquity of ice-edge blooms in the Arctic (doi:10.5194/bg-8-515-2011, arctic) [in pool ~/Documents/papers]
-push to pool ~/Documents/papers: 1 unchanged, 1 updated
+push to pool ~/Documents/papers: 1 unchanged, 1 modified
 
 $ cd ~/projects/new-paper
 $ papers sync
 Modified -> perrette_yool2011: Near-ubiquity of ice-edge blooms in the Arctic (doi:10.5194/bg-8-515-2011, arctic) [from pool ~/Documents/papers]
-pull from pool ~/Documents/papers: 1 unchanged, 1 updated
+pull from pool ~/Documents/papers: 1 unchanged, 1 modified
 push to pool ~/Documents/papers: 2 unchanged
+$ papers sync
+nothing to sync with pool ~/Documents/papers (2 entries unchanged)
 ```
 
 `papers sync --pool PATH` syncs with another library instead, such as a
@@ -156,8 +159,9 @@ Added -> agnew_farrell1978: Self-consistent equilibrium ocean tides (file:1) [fr
 push to pool ../shared-with-bob: 1 unchanged
 ```
 
-Without KEY, all the entries of the library are synced: the ones the other
-library does not have are added to it, with copies of their PDFs.
+Without KEY, only the entries shared with that library are exchanged;
+`papers sync --all` exchanges everything: each side gets the entries it
+does not have, with copies of their PDFs.
 
 Nothing is exchanged without these commands, except that `add` adds new
 papers to the pool. Each library keeps its own keys. `papers pull` and
@@ -174,7 +178,11 @@ in its `files/` folder: create it with `papers init --local`, or run
 `papers config local true` in an existing library, which copies its PDFs
 from the pool (as hard links when possible). A local library still uses
 the pool for entries. `papers init --pool none` creates a library without
-pool: its PDFs are in the project, and nothing is shared. See
+pool: its PDFs are in the project, and nothing is shared. A library can
+also have several pools, looked up in order (see
+[Several pools](pools.md#several-pools)), and several libraries without a
+pool can share one PDF folder, as in papers 2 (see
+[A shared files folder without a pool](pools.md#a-shared-files-folder-without-a-pool)). See
 [Pools](configuration.md#pools) in the configuration, and
 [Local or not](pools.md#local-or-not) and
 [Changing `local` and `pool`](pools.md#changing-local-and-pool) in the Pools
