@@ -1,0 +1,1464 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Command-line tool to manage your bibliography (PDFs + BibTeX)">
+      
+      
+      
+        <link rel="canonical" href="https://perrette.github.io/papers/3.0-beta/pools/">
+      
+      
+        <link rel="prev" href="../configuration/">
+      
+      
+        <link rel="next" href="../library-management/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Pools - papers</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#pools" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="papers" class="md-header__button md-logo" aria-label="papers" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            papers
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Pools
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/perrette/papers" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    perrette/papers
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="papers" class="md-nav__button md-logo" aria-label="papers" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    papers
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/perrette/papers" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    perrette/papers
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quickstart
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guides
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Guides
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../adding-entries/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Adding entries
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../listing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Listing and searching
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../renaming/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Renaming files and keys
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../files/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Files
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pools
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pools
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#libraries-and-pools" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Libraries and pools
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#keys-and-identity" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Keys and identity
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#origin-copies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Origin copies
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#add-looks-in-the-pools-first" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        add looks in the pools first
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#papers-pull" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        papers pull
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#papers-push" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        papers push
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#papers-export" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        papers export
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#papers-pool" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        papers pool
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#light-libraries" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Light libraries
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#example" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../library-management/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Managing your library
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../git/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Git integration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../undo-redo/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Undo and redo
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    About
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    About
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../features/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Features
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../comparison/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Comparison with other tools
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#libraries-and-pools" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Libraries and pools
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#keys-and-identity" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Keys and identity
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#origin-copies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Origin copies
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#add-looks-in-the-pools-first" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        add looks in the pools first
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#papers-pull" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        papers pull
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#papers-push" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        papers push
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#papers-export" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        papers export
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#papers-pool" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        papers pool
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#light-libraries" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Light libraries
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#example" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/perrette/papers/edit/v3/pools.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="pools">Pools<a class="headerlink" href="#pools" title="Permanent link">&para;</a></h1>
+<h2 id="libraries-and-pools">Libraries and pools<a class="headerlink" href="#libraries-and-pools" title="Permanent link">&para;</a></h2>
+<p>A <strong>library</strong> is a bibtex file, a files directory and a configuration file
+(<code>.papersconfig.json</code>), as created by <code>papers init</code> (see
+<a href="../configuration/#libraries">Configuration</a>). Each project usually has its
+own library.</p>
+<p>A <strong>pool</strong> is a library that other libraries exchange entries with. Nothing
+in the pool marks it as a pool: a library acts as a pool when another
+library lists it in its <code>pools</code> setting. Any library can serve as a pool,
+and a pool can be used by several libraries. Separate pools (e.g. one per
+research field) are separate folders.</p>
+<p>A library lists its pools as names or paths:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>papers config pools default ../shared-with-bob
+</code></pre></div>
+<p>A name is looked up in the global configuration (<code>papers pool add</code>,
+below), so that the same project works on machines where the pool is in a
+different place. A path (it contains a <code>/</code>, or starts with <code>.</code> or <code>~</code>) is
+relative to the library. Without global configuration, the name
+<code>default</code> is <code>~/Documents/papers</code>, and a library created without <code>--pool</code>
+has <code>"pools": ["default"]</code>. A library never uses itself as a pool.</p>
+<p>What a library does with its pools:</p>
+<ul>
+<li><code>papers add</code> looks in the pools first;</li>
+<li><code>papers pull</code> updates the entries of the library from the pools;</li>
+<li><code>papers push</code> adds entries of the library to its first pool, or updates
+  them there;</li>
+<li><code>papers status</code> and <code>papers pull --check</code> tell whether a pool changed
+  since the last pull.</li>
+</ul>
+<p>Nothing is pulled or pushed automatically, except with the <code>sync</code> setting
+and in light libraries (below): an older project does not change because of
+work in a newer one.</p>
+<p>A <strong>light library</strong> has no files of its own: its file links point to the
+files of its first pool (see <a href="#light-libraries">Light libraries</a>).</p>
+<h2 id="keys-and-identity">Keys and identity<a class="headerlink" href="#keys-and-identity" title="Permanent link">&para;</a></h2>
+<p>The key of an entry belongs to each library: it is what LaTeX documents
+cite. <code>pull</code> and <code>push</code> never change the key of the library they write to.
+A pool may name the same paper differently, and an entry new to a pool gets
+a key from the pool's key template.</p>
+<p>A library entry and a pool entry are matched by the same rule as duplicates
+(see <a href="../adding-entries/#same-paper">Same paper</a>): same DOI, arXiv
+identifier, ISBN (two books), or else the same authors and title. The pairs
+recorded as "not the same paper" (<code>.papers/distinct.json</code>) are merged both
+ways on <code>pull</code> and <code>push</code>.</p>
+<h2 id="origin-copies">Origin copies<a class="headerlink" href="#origin-copies" title="Permanent link">&para;</a></h2>
+<p><code>.papers/origin.bib</code>, next to the bibtex of the library, records for each
+entry taken from a pool (by <code>add</code>, <code>pull</code> or <code>push</code>) the pool's version of
+the entry at that time, under the library's key, with the pool it came from
+(<code>papers-pool</code>), the key in the pool (<code>papers-pool-key</code>) and the time
+(<code>papers-time</code>). It also records the modification time of each pool's
+bibtex at the last pull. The file is part of the git backup of the library
+(see <a href="../git/">Git integration</a>).</p>
+<p>The origin copy is the third version of a three-way merge: comparing the
+library entry and the pool entry with it tells which side changed a field.</p>
+<h2 id="add-looks-in-the-pools-first"><code>add</code> looks in the pools first<a class="headerlink" href="#add-looks-in-the-pools-first" title="Permanent link">&para;</a></h2>
+<p>When the paper added is already in a pool, <code>papers add</code> takes the pool's
+entry, without querying crossref:</p>
+<ul>
+<li>a PDF with the same content as a file of a pool entry, or whose DOI (from
+  the PDF metadata, or a DOI of its text whose title in the pool appears in
+  the text) is in a pool;</li>
+<li>a DOI (<code>papers add --doi DOI</code>) that a pool entry has;</li>
+<li>an entry of an added bibtex that is the same paper as a pool entry: the
+  pool's fields are taken, the entry keeps its key, and its fields that the
+  pool entry does not have are kept.</li>
+</ul>
+<p>The entry gets the pool's files: in <code>copy</code> and <code>move</code> mode they are copied
+into the library's files directory (a hard link when possible), named with
+the library's name template; a pool file is never moved. In <code>link</code> mode,
+and in a light library, the entry links to the pool's file. The origin copy
+is recorded. <code>--no-pool</code> skips the lookup.</p>
+<p>With <code>papers config sync push</code> (default <code>none</code>), <code>add</code> also adds the entries
+new to the library to the first pool, as <code>papers push</code> would. Changes to
+existing entries are never pushed automatically.</p>
+<h2 id="papers-pull"><code>papers pull</code><a class="headerlink" href="#papers-pull" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>papers pull [KEY...|-] [--on-duplicate MODE] [--check]
+</code></pre></div>
+<p>For each entry of the library (or the entries named), papers finds its pool
+entry (the pool of the origin copy first, then the pools in order) and
+merges it into the library entry, field by field:</p>
+<table>
+<thead>
+<tr>
+<th>Field changed since the origin copy</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>in the pool only</td>
+<td>taken from the pool (<code>+</code> in the dialogue)</td>
+</tr>
+<tr>
+<td>in the library only (e.g. a field adapted to a journal style)</td>
+<td>kept, without asking</td>
+</tr>
+<tr>
+<td>on both sides, to different values</td>
+<td>a conflict (<code>!</code>)</td>
+</tr>
+</tbody>
+</table>
+<p>A field removed on one side keeps the other side's state: removed in the
+pool, it stays in the library; removed in the library, it does not come
+back. File links are merged: new files of the pool entry are copied into
+the library's files directory as the <code>files</code> setting says (linked in <code>link</code>
+mode and in light libraries). The key of the library entry never changes.
+After the merge, the origin copy is the pool's current version.</p>
+<p>An entry without origin copy (added before the pool was used, or with
+<code>--no-pool</code>) is matched to the pools by the same-paper rule. Its differences
+with the pool entry are conflicts (there is no origin to tell which side
+changed), and the origin copy is recorded afterwards ("linked").</p>
+<p>Conflicts are decided as for duplicates (see
+<a href="../adding-entries/#the-dialogue">The dialogue</a>), with <code>--on-duplicate</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Mode</th>
+<th>Conflicts</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ask</code> (default in a terminal)</td>
+<td>the dialogue: <code>1</code> keeps the library values, <code>2</code> takes the pool values, <code>f</code> goes field by field (also through the changes from the pool), <code>e</code> edits, <code>s</code> skips, <code>q</code> quits</td>
+</tr>
+<tr>
+<td><code>keep</code></td>
+<td>the library values are kept</td>
+</tr>
+<tr>
+<td><code>update</code></td>
+<td>the pool values are taken</td>
+</tr>
+<tr>
+<td><code>skip</code></td>
+<td>the entry is not changed, and its origin copy is not updated: it comes again next time</td>
+</tr>
+<tr>
+<td><code>error</code> (default without a terminal)</td>
+<td>stop before saving anything</td>
+</tr>
+</tbody>
+</table>
+<p>Fields changed in the pool only need no decision: they are taken in every
+mode.</p>
+<p><code>papers pull --check</code> only reports: whether each pool changed since the last
+pull (a modification time check), and the entries whose pool version
+changed since their origin copy, with the fields. <code>papers status</code> shows the
+first part too.</p>
+<h2 id="papers-push"><code>papers push</code><a class="headerlink" href="#papers-push" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>papers push [KEY...|-] [--pool NAME|PATH] [--on-duplicate MODE]
+</code></pre></div>
+<p>The reverse of <code>pull</code>, into the first pool (or <code>--pool</code>):</p>
+<ul>
+<li>an entry that is not in the pool is added to it, with a key from the
+  pool's key template; its files are copied into the pool's files directory
+  (a hard link when possible), named with the pool's name template;</li>
+<li>an entry that is in the pool is merged three-way into the pool entry:
+  fields changed in the library only are taken, fields changed in the pool
+  only are kept, conflicts are decided with <code>--on-duplicate</code> (<code>keep</code>: the
+  pool values, <code>update</code>: the library values). The pool key does not change.</li>
+</ul>
+<p>The origin copies are updated. The default pool is created the first time
+something is pushed to it.</p>
+<h2 id="papers-export"><code>papers export</code><a class="headerlink" href="#papers-export" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>papers export DIR [KEY...|-] [--files copy|link|none] [--pool]
+</code></pre></div>
+<p>writes the entries (all without KEY) as a new library in <code>DIR</code>, which must
+not exist or be empty: its bibtex, its files directory, and its
+configuration (with the name and key templates that the library sets). File
+links are relative to the new bibtex.</p>
+<ul>
+<li><code>--files copy</code> (default) copies the files into <code>DIR/files</code> (hard links
+  when possible), named with the name template;</li>
+<li><code>--files link</code> links to the files where they are;</li>
+<li><code>--files none</code> leaves the file links out.</li>
+</ul>
+<p><code>--pool</code> also adds <code>DIR</code> to the pools of the library, and records the
+exported entries as origin copies: this turns a library into a pool.
+<code>papers add DIR --recursive</code> adds an exported library to another one.</p>
+<h2 id="papers-pool"><code>papers pool</code><a class="headerlink" href="#papers-pool" title="Permanent link">&para;</a></h2>
+<p>The pool names of the global configuration:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>papers pool add NAME PATH      # same as: papers config --global pools.NAME PATH
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>papers pool remove NAME
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>papers pool list               # or: papers pool
+</code></pre></div>
+<p><code>papers pool list</code> shows the pools of the global configuration and those of the current
+library, with their paths and whether each changed since the last pull.</p>
+<h2 id="light-libraries">Light libraries<a class="headerlink" href="#light-libraries" title="Permanent link">&para;</a></h2>
+<p>A light library links to the files of its first pool instead of keeping its
+own. This saves the copies when many projects use the same papers. Being
+light changes what papers does with files:</p>
+<ul>
+<li><code>add</code> places new files in the first pool, named with the pool's name
+  template (a name template set on the light library is not used), and so
+  adds the entry to the pool too; <code>papers file attach</code> and
+  <code>papers file rename</code> do the same with the files they place;</li>
+<li><code>pull</code> links to the pool's files instead of copying them;</li>
+<li><code>rm --delete-files</code> and <code>file rm</code> never delete a file
+  of a pool (this holds in any library);</li>
+<li>when a pool renames a file, the link breaks: it is repaired by looking the
+  entry up in the pools, when the library is loaded (saved on the next
+  write) and by <code>papers file check --fix</code>.</li>
+</ul>
+<p><code>light</code> is not a setting of <code>papers config</code>, because changing it changes
+the links and the files:</p>
+<ul>
+<li><code>papers migrate --light</code> replaces each file that the first pool has for
+  the same paper, with the same content (checksum), by a link to the pool's
+  file, and deletes the library's copy in its files directory. A file that
+  is not in the pool is never deleted: the command lists those entries and
+  asks to <code>papers push</code> them first. Then the library is light.</li>
+<li><code>papers migrate --full</code> copies (hard links when possible) the pool files
+  that the library links to into its files directory, named with its name
+  template, and relinks them. Then the library is not light any more.</li>
+</ul>
+<p><code>papers init --light</code> creates a light library.</p>
+<p>Deleting a file in a pool breaks the links of the light libraries that use
+it: it shows up as a broken link there (<code>papers file check</code>). The pool
+keeps no list of the libraries that depend on it.</p>
+<h2 id="example">Example<a class="headerlink" href="#example" title="Permanent link">&para;</a></h2>
+<p>A shared pool in <code>~/Documents/papers</code>, and two projects:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>papers init ~/Documents/papers            # the default pool
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>mkdir -p ~/projects/sealevel ~/projects/tides
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>cd ~/projects/sealevel
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>papers init                               # pools: default
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>papers add ~/Downloads/esd-4-11-2013.pdf  # fetched from crossref, files/...
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>papers push                               # now also in ~/Documents/papers
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>cd ~/projects/tides
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>papers init
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>papers add --doi 10.5194/esd-4-11-2013    # taken from the pool: no query, the file is copied
+</code></pre></div>
+<p>Later, the entry is completed in the pool (e.g. its pages), and adapted in
+<code>tides</code> (a journal abbreviation):</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>cd ~/projects/tides
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>papers status                  # pools: ... (changed since last pull)
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>papers pull --check            # perrette_landerer2013: changed in pool default: pages
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>papers pull                    # pages taken; the journal abbreviation is kept
+</code></pre></div>
+<p>A project shared with a colleague: export it as its own library, used as a
+second pool by both:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>cd ~/projects/sealevel
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>papers export ../shared-with-bob --pool   # pools: default ../shared-with-bob
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>papers push --pool ../shared-with-bob     # later changes
+</code></pre></div>
+<p>To save disk space in <code>tides</code>, make it light once its files are in the
+pool:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>papers push
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>papers migrate --light
+</code></pre></div>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.instant", "navigation.tracking", "navigation.sections", "navigation.top", "toc.follow", "search.suggest", "search.highlight", "content.code.copy", "content.action.edit"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"default": "stable", "provider": "mike"}}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>

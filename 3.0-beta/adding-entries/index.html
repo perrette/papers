@@ -1,0 +1,1653 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Command-line tool to manage your bibliography (PDFs + BibTeX)">
+      
+      
+      
+        <link rel="canonical" href="https://perrette.github.io/papers/3.0-beta/adding-entries/">
+      
+      
+        <link rel="prev" href="../quickstart/">
+      
+      
+        <link rel="next" href="../listing/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Adding entries - papers</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#adding-entries" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="papers" class="md-header__button md-logo" aria-label="papers" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            papers
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Adding entries
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/perrette/papers" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    perrette/papers
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="papers" class="md-nav__button md-logo" aria-label="papers" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    papers
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/perrette/papers" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    perrette/papers
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quickstart
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guides
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Guides
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Adding entries
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Adding entries
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#add-a-pdf-extract-metadata-automatically" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Add a PDF (extract metadata automatically)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-happens-to-the-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What happens to the files
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#attach-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Attach files
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#add-a-whole-directory-of-pdfs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Add a whole directory of PDFs
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#entries-already-in-the-library" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Entries already in the library
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#entries-already-in-a-pool" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Entries already in a pool
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#add-an-entry-from-its-doi" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Add an entry from its DOI
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#add-an-entry-without-doi-from-bibtex-pdf" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Add an entry without DOI from bibtex + PDF
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#duplicates" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Duplicates
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Duplicates">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#same-paper" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Same paper
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-a-merge-does" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What a merge does
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#-on-duplicate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        --on-duplicate
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-dialogue" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The dialogue
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#keys" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Keys
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#options-of-earlier-versions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Options of earlier versions
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../listing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Listing and searching
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../renaming/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Renaming files and keys
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../files/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Files
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../pools/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pools
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../library-management/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Managing your library
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../git/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Git integration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../undo-redo/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Undo and redo
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    About
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    About
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../features/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Features
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../comparison/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Comparison with other tools
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#add-a-pdf-extract-metadata-automatically" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Add a PDF (extract metadata automatically)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-happens-to-the-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What happens to the files
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#attach-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Attach files
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#add-a-whole-directory-of-pdfs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Add a whole directory of PDFs
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#entries-already-in-the-library" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Entries already in the library
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#entries-already-in-a-pool" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Entries already in a pool
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#add-an-entry-from-its-doi" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Add an entry from its DOI
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#add-an-entry-without-doi-from-bibtex-pdf" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Add an entry without DOI from bibtex + PDF
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#duplicates" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Duplicates
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Duplicates">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#same-paper" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Same paper
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-a-merge-does" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What a merge does
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#-on-duplicate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        --on-duplicate
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-dialogue" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The dialogue
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#keys" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Keys
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#options-of-earlier-versions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Options of earlier versions
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/perrette/papers/edit/v3/adding-entries.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="adding-entries">Adding entries<a class="headerlink" href="#adding-entries" title="Permanent link">&para;</a></h1>
+<p>The <code>papers add</code> command adds entries to your library, with or without a PDF
+attachment.</p>
+<h2 id="add-a-pdf-extract-metadata-automatically">Add a PDF (extract metadata automatically)<a class="headerlink" href="#add-a-pdf-extract-metadata-automatically" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>$&gt; papers add esd-4-11-2013.pdf --bibtex papers.bib --filesdir files --info
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>INFO:papers:found doi:10.5194/esd-4-11-2013
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>INFO:papers:new entry: perrette_landerer2013
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>INFO:papers:mv /home/perrette/playground/papers/esd-4-11-2013.pdf files/perrette_et_al_2013_a-scaling-approach-to-project-regional-sea-level-rise-and-its-uncertainties.pdf
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>INFO:papers:renamed file(s): 1
+</code></pre></div>
+<p>That is equivalent to doing:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>papers extract esd-4-11-2013.pdf &gt; entry.bib
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>papers add entry.bib --attach esd-4-11-2013.pdf --bibtex papers.bib --filesdir files
+</code></pre></div>
+<h2 id="what-happens-to-the-files">What happens to the files<a class="headerlink" href="#what-happens-to-the-files" title="Permanent link">&para;</a></h2>
+<p>By default, <code>papers add</code> moves the PDF into the files directory of the
+library, under a name made from the name template. The <code>files</code> setting of
+the library changes that (see <a href="../files/#what-add-does-with-a-file">Files</a>):</p>
+<ul>
+<li><code>move</code> (default): place the file in the files directory and remove the
+  original;</li>
+<li><code>copy</code>: place it in the files directory and keep the original (a hard link
+  when possible, otherwise a copy);</li>
+<li><code>link</code>: leave it where it is; the entry links to it there.</li>
+</ul>
+<p><code>--move</code>, <code>--copy</code> and <code>--link</code> override the setting for one command
+(<code>-r/--rename</code> is the same as <code>--move</code>, <code>-c</code> as <code>--copy</code>):</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>papers config files copy           # this library keeps the originals
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>papers add esd-4-11-2013.pdf --link
+</code></pre></div>
+<p>A file that belongs to another library (inside its files directory) is
+never moved: it is copied instead, so that the other library keeps its link.</p>
+<p>The same applies to the files linked from the entries of a bibtex file added
+with <code>papers add other.bib</code>: their paths are read relative to that bibtex,
+and when they are linked where they are (<code>link</code>), they are stored so that
+they remain valid from your own bibtex (relative to it, or absolute,
+according to the <code>paths</code> setting of the library).</p>
+<p>See <a href="../renaming/">Renaming files and keys</a> for how to specify file naming
+patterns, and how the files of an entry with attachments are named.</p>
+<h2 id="attach-files">Attach files<a class="headerlink" href="#attach-files" title="Permanent link">&para;</a></h2>
+<p><code>--attach FILE...</code> attaches other files to the added entry (e.g.
+supplementary material), placed as the <code>files</code> setting says. They are named
+after the main file (see
+<a href="../renaming/#entries-with-several-files">Renaming files and keys</a>). To
+attach files to an entry already in the library, use
+<code>papers file attach KEY FILE...</code>. <code>--attachment</code> and <code>-a</code> are deprecated names of
+<code>--attach</code>.</p>
+<h2 id="add-a-whole-directory-of-pdfs">Add a whole directory of PDFs<a class="headerlink" href="#add-a-whole-directory-of-pdfs" title="Permanent link">&para;</a></h2>
+<p>It is possible to do this on a full directory of files, recursively, with
+<code>-R/--recursive</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>papers add -R /home/perette/playground/papers/papers_test
+</code></pre></div>
+<p>where, above, the <code>papers_test</code> directory contains a few PDF files. For each
+PDF, <code>papers</code> will attempt to extract the metadata and add the relevant file to
+the bibliography, and place the files as the <code>files</code> setting says (by
+default, moved into the files directory).</p>
+<p>Files named after a PDF of the same directory, as papers names
+attachments (<code>&lt;name&gt;--&lt;label&gt;.&lt;ext&gt;</code> next to <code>&lt;name&gt;.pdf</code>, see
+<a href="../renaming/#entries-with-several-files">Renaming files and keys</a>), are added
+as attachments of that PDF's entry, whatever their type, instead of being
+scanned as papers of their own. Bibtex files found in the directory are added
+too, before the PDFs, and the files they link to are not scanned: their entry
+comes from the bibtex, so a folder that holds a bibtex and its files is added
+without looking anything up online. Folders of the pre-2.19 layout (with a
+hidden <code>.&lt;name&gt;.bib</code>) are read from their hidden bibtex.</p>
+<p>The metadata of a PDF are found as follows:</p>
+<ol>
+<li>a DOI in the PDF metadata is used as is;</li>
+<li>otherwise, the DOIs printed in the text (first pages, and the last page,
+   where some publishers add a cover page) are looked up in turn, and the
+   first one whose title appears in the first pages is used: this skips the
+   DOIs of cited papers;</li>
+<li>otherwise, a crossref search on the text of the first pages, whose result
+   is also accepted only if its title appears in the text.</li>
+</ol>
+<p>If none matches, the PDF is not added: pass its DOI with <code>--doi</code> (see below),
+or, for a reference without DOI (older papers, books, reports...), describe it
+and attach the PDF:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>papers add --title "Self-consistent equilibrium ocean tides" --author "Agnew, Duncan C. and Farrell, W. E." \
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>    --year 1978 --journal "Geophysical Journal International" --attach agnew1978.pdf
+</code></pre></div>
+<h2 id="entries-already-in-the-library">Entries already in the library<a class="headerlink" href="#entries-already-in-the-library" title="Permanent link">&para;</a></h2>
+<p>When the DOI of the added paper is already in the library (given with
+<code>--doi</code>, or found in the PDF metadata, or printed in the text of the PDF
+with the title of the library entry), <code>papers add</code> uses that entry: nothing
+is fetched online and there is no duplicate dialogue. The PDF (and the files
+of <code>--attach</code>) are attached to the entry and placed as the <code>files</code> setting
+says, as <code>papers file attach KEY FILE...</code> does; the key, the fields and the
+other files of the entry are not touched. An arXiv DOI
+(<code>10.48550/arXiv.&lt;id&gt;</code>) matches an entry whose <code>eprint</code> is that arXiv
+identifier. <code>--no-check-duplicate</code> skips this, and adds a new entry.</p>
+<p>The order is: the library, then the pools (below), then online.</p>
+<h2 id="entries-already-in-a-pool">Entries already in a pool<a class="headerlink" href="#entries-already-in-a-pool" title="Permanent link">&para;</a></h2>
+<p>Before querying crossref, <code>papers add</code> looks in the pools of the library
+(see <a href="../pools/#add-looks-in-the-pools-first">Pools</a>): a PDF with the same
+content as a pool file, or whose DOI is in a pool, a DOI that a pool entry
+has, or a bibtex entry that is the same paper as a pool entry, is taken from
+the pool, with its files. <code>--no-pool</code> skips this.</p>
+<h2 id="add-an-entry-from-its-doi">Add an entry from its DOI<a class="headerlink" href="#add-an-entry-from-its-doi" title="Permanent link">&para;</a></h2>
+<p>If you already know the DOI of a PDF, and don't want to gamble the fulltext
+search and match, you can indicate it via <code>--doi</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>papers add esd-4-11-2013.pdf --doi 10.5194/esd-4-11-2013 --bibtex papers.bib
+</code></pre></div>
+<p>The <code>add</code> command above also works without any PDF (create a bibtex entry
+without file attachment):</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>papers add --doi 10.5194/esd-4-11-2013 --bibtex papers.bib
+</code></pre></div>
+<h2 id="add-an-entry-without-doi-from-bibtex-pdf">Add an entry without DOI from bibtex + PDF<a class="headerlink" href="#add-an-entry-without-doi-from-bibtex-pdf" title="Permanent link">&para;</a></h2>
+<p>Some old files don't have a DOI. The best approach is to add the entry from its
+bibtex:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>papers add entry.bib --attach esd-4-11-2013.pdf --bibtex papers.bib --filesdir files
+</code></pre></div>
+<h2 id="duplicates">Duplicates<a class="headerlink" href="#duplicates" title="Permanent link">&para;</a></h2>
+<p>Before inserting an entry, <code>papers add</code> looks for the same paper in the
+library. <code>papers check --duplicates</code> and <code>papers list --duplicates</code> use the
+same rule (see <a href="../library-management/#duplicates">Managing your library</a>).</p>
+<h3 id="same-paper">Same paper<a class="headerlink" href="#same-paper" title="Permanent link">&para;</a></h3>
+<p>Two entries are the same paper when they have the same identifier, checked
+in this order:</p>
+<ol>
+<li>the DOI (case-insensitive; <code>doi:</code> and <code>https://doi.org/</code> prefixes are
+   ignored);</li>
+<li>the arXiv identifier: the <code>eprint</code> field when <code>archivePrefix</code> is arXiv
+   or absent, and arXiv DOIs (<code>10.48550/arXiv.&lt;id&gt;</code>), whatever the version;</li>
+<li>the ISBN, for two <code>@book</code> entries only (a chapter carries the ISBN of its
+   book, and each edition has its own ISBN);</li>
+<li>otherwise the family names of the authors and the title, compared without
+   case, braces, accents and extra spaces. Both entries need authors and a
+   title: two entries titled "Editorial" without authors are not the same
+   paper.</li>
+</ol>
+<p>The first identifier that both entries have decides: equal values make the
+same paper, different values two papers. A preprint and the published
+article with different DOIs are two entries, even with the same authors and
+title.</p>
+<p>Equal identifiers make the same paper, except in one case: when the entry
+types differ (e.g. <code>@book</code> and <code>@incollection</code>) and the titles differ
+(after ignoring case, braces, accents and spacing), papers asks instead of
+merging. This happens with a chapter exported with the DOI of its book, or a
+dataset "Data for: X" deposited under the DOI of the article "X". Without a
+terminal, such a pair is never merged.</p>
+<p>When you answer that two entries are not the same paper (<code>n</code>, below), papers
+records it in <code>.papers/distinct.json</code>, next to the bibtex, and does not ask
+about them again. The file records the identifiers of both entries (DOI,
+arXiv id, ISBN, authors and title), not their keys.</p>
+<h3 id="what-a-merge-does">What a merge does<a class="headerlink" href="#what-a-merge-does" title="Permanent link">&para;</a></h3>
+<p>The entry already in the library (entry 1) is the target:</p>
+<ul>
+<li>it keeps its key;</li>
+<li>fields that only the added entry has are added;</li>
+<li>the file links of both entries are kept (a file linked twice, or two
+  copies with the same content, once);</li>
+<li>values that differ only by case, braces, spaces, or the case of a DOI are
+  not conflicts, and the library's spelling is kept. Author names with
+  initials and with full first names (<code>Smith, J.</code> and <code>Smith, John</code>) are not
+  a conflict either: the fuller form is kept, whichever entry it comes
+  from. Different first names (<code>Smith, John</code> and <code>Smith, Jane</code>) are a
+  conflict;</li>
+<li>the remaining differences are conflicts.</li>
+</ul>
+<p>An added entry that brings nothing new (no conflict, no field to add) is
+merged without a question: its files are added, and papers prints
+<code>already in library: smith2020climate (+1 file)</code>.</p>
+<h3 id="-on-duplicate">--on-duplicate<a class="headerlink" href="#-on-duplicate" title="Permanent link">&para;</a></h3>
+<p><code>--on-duplicate</code> says what to do when the added entry has conflicts or
+fields to add:</p>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>What happens</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ask</code></td>
+<td>the dialogue below (default when the standard input is a terminal)</td>
+</tr>
+<tr>
+<td><code>keep</code></td>
+<td>merge; conflicts keep the library value</td>
+</tr>
+<tr>
+<td><code>update</code></td>
+<td>merge; conflicts take the value of the added entry</td>
+</tr>
+<tr>
+<td><code>skip</code></td>
+<td>the entry is not added; the library entry, its files and the added file are left as they are</td>
+</tr>
+<tr>
+<td><code>error</code></td>
+<td>stop before saving, and exit with status 1 (default without a terminal, e.g. in a script)</td>
+</tr>
+</tbody>
+</table>
+<p><code>--no-check-duplicate</code> adds the entries without looking for duplicates.</p>
+<h3 id="the-dialogue">The dialogue<a class="headerlink" href="#the-dialogue" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>$&gt; papers add new.bib
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>Already in library: smith2020climate (same DOI 10.1000/abc123)
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>  1  library  smith2020climate  article  doi 10.1000/abc123  files/smith.pdf
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>  2  new      Smith_2020        article  doi 10.1000/ABC123  other/smith-preprint.pdf
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>@article{smith2020climate,
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>   author   = {Smith, John and Doe, Jane}
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>   doi      = {10.1000/abc123}
+<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>+  file     = {files/smith.pdf;other/smith-preprint.pdf}
+<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>!  journal  = {Nature}
+<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a>!             2: {Nature Climate Change}
+<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a>   keywords = {climate, mine}
+<a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a>   title    = {Climate sensitivity revisited}
+<a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a>+  volume   = {10}
+<a id="__codelineno-8-15" name="__codelineno-8-15" href="#__codelineno-8-15"></a>   year     = {2020}
+<a id="__codelineno-8-16" name="__codelineno-8-16" href="#__codelineno-8-16"></a>}
+<a id="__codelineno-8-17" name="__codelineno-8-17" href="#__codelineno-8-17"></a>1 conflict. The key smith2020climate is kept; + lines are added.
+<a id="__codelineno-8-18" name="__codelineno-8-18" href="#__codelineno-8-18"></a>  1 keep library values   2 take new values   f field by field   e edit
+<a id="__codelineno-8-19" name="__codelineno-8-19" href="#__codelineno-8-19"></a>  n not the same paper (add Smith_2020 separately)   s skip   q quit   ? help
+<a id="__codelineno-8-20" name="__codelineno-8-20" href="#__codelineno-8-20"></a>&gt;&gt;&gt;
+</code></pre></div>
+<p>Unmarked lines are the same in both entries (here the title and the author
+names, which differ only by case and initials), <code>+</code> lines are added from the
+other entry, and <code>!</code> lines are conflicts: the value that will be used, then
+the other values, numbered by entry.</p>
+<table>
+<thead>
+<tr>
+<th>Answer</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>1</code>, <code>2</code></td>
+<td>resolve all conflicts with the values of that entry, and merge</td>
+</tr>
+<tr>
+<td><code>f</code></td>
+<td>go through the conflicts one at a time</td>
+</tr>
+<tr>
+<td><code>e</code></td>
+<td>edit the merged entry in the editor, as plain bibtex; the values of the other entry are <code>%</code> comment lines below it. If the editor fails or the text is not one bibtex entry, papers comes back to this menu</td>
+</tr>
+<tr>
+<td><code>n</code></td>
+<td>not the same paper: add the entry separately (with a free key if its key is taken), and remember it</td>
+</tr>
+<tr>
+<td><code>s</code></td>
+<td>skip: change nothing for this entry; it is asked again next time</td>
+</tr>
+<tr>
+<td><code>q</code></td>
+<td>quit: skip this entry and all the remaining duplicates of this command; the other entries are added</td>
+</tr>
+<tr>
+<td><code>?</code></td>
+<td>help</td>
+</tr>
+</tbody>
+</table>
+<p><code>f</code> asks for each conflict:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>journal:
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>  1  Nature                 library
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>  2  Nature Climate Change  new
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>  [1/2/e] &gt;&gt;&gt;
+</code></pre></div>
+<p>To stop without saving anything, use Ctrl-C.</p>
+<h3 id="keys">Keys<a class="headerlink" href="#keys" title="Permanent link">&para;</a></h3>
+<p>Entries added from a bibtex file keep their own key, unless <code>-u/--update-key</code>
+is passed, in which case the key is regenerated from the key template (see
+<a href="../renaming/">Renaming files and keys</a>). Entries extracted from a PDF or
+fetched from a DOI always get a generated key. Either way, this only
+concerns entries new to the library: an entry merged into a duplicate takes
+the key of the library entry.</p>
+<h3 id="options-of-earlier-versions">Options of earlier versions<a class="headerlink" href="#options-of-earlier-versions" title="Permanent link">&para;</a></h3>
+<p>These options still work, with a warning, and will be removed:</p>
+<table>
+<thead>
+<tr>
+<th>Old</th>
+<th>New</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>-m i</code></td>
+<td><code>--on-duplicate ask</code></td>
+</tr>
+<tr>
+<td><code>-m u</code></td>
+<td><code>--on-duplicate keep</code></td>
+</tr>
+<tr>
+<td><code>-m U</code></td>
+<td><code>--on-duplicate update</code> (the library key is kept)</td>
+</tr>
+<tr>
+<td><code>-m o</code></td>
+<td><code>--on-duplicate update</code> (the library key and the fields only in the library are kept)</td>
+</tr>
+<tr>
+<td><code>-m s</code></td>
+<td><code>--on-duplicate skip</code> (the file of the added entry is not attached; <code>keep</code> does that)</td>
+</tr>
+<tr>
+<td><code>-m r</code></td>
+<td><code>--on-duplicate error</code></td>
+</tr>
+<tr>
+<td><code>-m a</code></td>
+<td><code>--no-check-duplicate</code></td>
+</tr>
+<tr>
+<td><code>--no-merge-files</code></td>
+<td>ignored: file links are always merged</td>
+</tr>
+</tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.instant", "navigation.tracking", "navigation.sections", "navigation.top", "toc.follow", "search.suggest", "search.highlight", "content.code.copy", "content.action.edit"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"default": "stable", "provider": "mike"}}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>

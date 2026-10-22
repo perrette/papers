@@ -1,0 +1,1433 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Command-line tool to manage your bibliography (PDFs + BibTeX)">
+      
+      
+      
+        <link rel="canonical" href="https://perrette.github.io/papers/3.0-beta/configuration/">
+      
+      
+        <link rel="prev" href="../files/">
+      
+      
+        <link rel="next" href="../pools/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Configuration - papers</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#configuration" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="papers" class="md-header__button md-logo" aria-label="papers" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            papers
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Configuration
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/perrette/papers" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    perrette/papers
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="papers" class="md-nav__button md-logo" aria-label="papers" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    papers
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/perrette/papers" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    perrette/papers
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quickstart
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guides
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Guides
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../adding-entries/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Adding entries
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../listing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Listing and searching
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../renaming/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Renaming files and keys
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../files/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Files
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#libraries" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Libraries
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Settings
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Settings">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#global-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Global configuration
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#pools" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pools
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#relative-versus-absolute-paths" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Relative versus absolute paths
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#migrating-from-papers-2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Migrating from papers 2
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Migrating from papers 2">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#papers-install" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        papers install
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#uninstall" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Uninstall
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cache" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cache
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../pools/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pools
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../library-management/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Managing your library
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../git/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Git integration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../undo-redo/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Undo and redo
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    About
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    About
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../features/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Features
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../comparison/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Comparison with other tools
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#libraries" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Libraries
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Settings
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Settings">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#global-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Global configuration
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#pools" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pools
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#relative-versus-absolute-paths" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Relative versus absolute paths
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#migrating-from-papers-2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Migrating from papers 2
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Migrating from papers 2">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#papers-install" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        papers install
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#uninstall" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Uninstall
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cache" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cache
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/perrette/papers/edit/v3/configuration.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">&para;</a></h1>
+<h2 id="libraries">Libraries<a class="headerlink" href="#libraries" title="Permanent link">&para;</a></h2>
+<p>A library is a bibtex file, a files directory, and a configuration file
+next to them (<code>.papersconfig.json</code>). <code>papers init</code> creates one in the
+current directory, and <code>papers init DIR</code> in the directory <code>DIR</code> (created if
+missing, with its parents):</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>$&gt; papers init
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>papers library: /home/perrette/projects/sealevel
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>version 3.0.0
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>* configuration file: .papersconfig.json
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>* global config:      /home/perrette/.config/papers/config.json (none)
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>* cache directory:    /home/perrette/.cache/papers
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>* backup (git):       True
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>* backup files (git-lfs): False
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>* backup directory:   /home/perrette/.local/share/papers/backups/sealevel-papers-3f9a1c2b
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>* files directory:    files (empty)
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>* bibtex:             papers.bib (empty)
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>* pools:
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>    default: /home/perrette/Documents/papers (missing)
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>...
+</code></pre></div>
+<p>By default the bibtex is <code>papers.bib</code> (or the first <code>.bib</code> file present in
+the directory) and the files directory is <code>files</code> (or an existing <code>pdfs</code>,
+<code>pdf</code>, <code>papers</code> or <code>bibliography</code> folder). The options of <code>papers init</code> are
+<code>--bibtex</code>, <code>--filesdir</code>, <code>--pool NAME|PATH...</code> (see <a href="#pools">Pools</a>),
+<code>--paths relative|absolute</code>, <code>--git</code>/<code>--no-git</code>, <code>--git-lfs</code>, <code>--editor</code>, <code>--light</code>
+(see <a href="../pools/#light-libraries">Light libraries</a>) and
+the name and key format options (see <a href="../renaming/">Renaming files and keys</a>).
+With <code>DIR</code>, the paths given to <code>--bibtex</code> and <code>--filesdir</code> are relative to
+<code>DIR</code>.
+<code>papers init</code> does not prompt, and fails if the directory already has a
+library configuration: change the settings of an existing library with
+<code>papers config</code>.</p>
+<p>Every command run in the library directory or in one of its subdirectories
+acts on that library. <code>-C DIR</code>, before the command name, runs papers as if it
+was started in <code>DIR</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>papers -C ~/projects/sealevel list smith
+</code></pre></div>
+<p><code>--bibtex</code> and <code>--filesdir</code> still override the library for one command. If
+the bibtex given with <code>--bibtex</code> belongs to another library (a configuration
+file in its directory or above), the settings of that library apply.</p>
+<p>Outside of any library, commands act on the default pool if it is a library
+(see <a href="#pools">Pools</a>), and otherwise fail with a message that explains how to
+create one.</p>
+<p>Type <code>papers status</code> to see which library a command acts on, and
+<code>papers status -v</code> to also see its settings and where each one comes from.</p>
+<h2 id="settings">Settings<a class="headerlink" href="#settings" title="Permanent link">&para;</a></h2>
+<p><code>papers config</code> gets and sets the settings, in the style of <code>git config</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>papers config                          # list the settings and where each comes from
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>papers config name.template            # print one setting
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>papers config name.template '{author}_{year}_{title}'   # set it in the library
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>papers config --unset name.template    # remove it from the library
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>papers config pools default ../shared  # settings with several values
+</code></pre></div>
+<p>Each setting comes from the library configuration if it sets it, otherwise
+from the global configuration, otherwise from its built-in default.
+<code>papers config</code> without argument shows the source of each setting as
+<code>(library)</code>, <code>(global)</code> or <code>(default)</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>Values</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>bibtex</code></td>
+<td>path of the bibtex file</td>
+</tr>
+<tr>
+<td><code>filesdir</code></td>
+<td>path of the files directory</td>
+</tr>
+<tr>
+<td><code>pools</code></td>
+<td>names or paths of the library's pools (default: <code>default</code>)</td>
+</tr>
+<tr>
+<td><code>paths</code></td>
+<td><code>relative</code> (default) or <code>absolute</code>: how file links are written in the bibtex</td>
+</tr>
+<tr>
+<td><code>files</code></td>
+<td><code>move</code> (default), <code>copy</code> or <code>link</code>: what <code>papers add</code> does with a file (see <a href="../files/#what-add-does-with-a-file">Files</a>)</td>
+</tr>
+<tr>
+<td><code>sync</code></td>
+<td><code>none</code> (default) or <code>push</code>: <code>papers add</code> also adds the new entries to the first pool (see <a href="../pools/">Pools</a>)</td>
+</tr>
+<tr>
+<td><code>git</code></td>
+<td><code>true</code> or <code>false</code>: back up the bibtex with git (see <a href="../git/">Git integration</a>)</td>
+</tr>
+<tr>
+<td><code>git-lfs</code></td>
+<td><code>true</code> or <code>false</code>: also back up the files with git-lfs</td>
+</tr>
+<tr>
+<td><code>editor</code></td>
+<td>command that opens a text editor, e.g. <code>vim</code> or <code>subl -w</code> (it wins over <code>$VISUAL</code> and <code>$EDITOR</code>, which are used without it)</td>
+</tr>
+<tr>
+<td><code>name.template</code>, <code>name.author-num</code>, <code>name.author-sep</code>, <code>name.title-word-num</code>, <code>name.title-word-size</code>, <code>name.title-length</code>, <code>name.title-sep</code>, <code>name.unknown-template</code>, <code>name.unknown-strict</code></td>
+<td>file name format</td>
+</tr>
+<tr>
+<td><code>key.template</code>, <code>key.author-num</code>, <code>key.author-sep</code>, <code>key.title-word-num</code>, <code>key.title-word-size</code>, <code>key.title-length</code>, <code>key.title-sep</code>, <code>key.unknown-template</code>, <code>key.unknown-strict</code></td>
+<td>bibtex key format</td>
+</tr>
+</tbody>
+</table>
+<p>The name and key settings correspond to the <code>--name-*</code> and <code>--key-*</code> options
+of the commands (see <a href="../renaming/">Renaming files and keys</a>), which override
+them for one command.</p>
+<p>Paths in the library configuration are stored relative to its directory, so
+that the library can be moved or shared as a whole. <code>papers config bibtex</code>,
+<code>papers config filesdir</code> and the list of <code>papers config</code> show them as
+absolute paths. A relative path given to set them is relative to the current
+directory.</p>
+<p>Setting <code>git</code> to <code>true</code> initializes the backup directory and records the
+current bibtex. Setting <code>paths</code> rewrites the file links of the bibtex. <code>light</code>
+is not a setting of <code>papers config</code>: it is changed with
+<code>papers migrate --light</code> and <code>papers migrate --full</code>, because it also
+changes the file links and the files (see
+<a href="../pools/#light-libraries">Light libraries</a>).</p>
+<h3 id="global-configuration">Global configuration<a class="headerlink" href="#global-configuration" title="Permanent link">&para;</a></h3>
+<p><code>papers config --global</code> reads and writes the global configuration (per
+user, as in <code>git config --global</code>) instead of the library's:
+<code>~/.config/papers/config.json</code> on Linux (the platform's user configuration
+directory elsewhere). It holds the pool names and the default settings of
+the libraries that do not set them (everything except <code>bibtex</code>, <code>filesdir</code>
+and <code>pools</code>). It defines no library: the global library of papers v2 is now
+the default pool (see <a href="../pools/">Pools</a>).</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>papers config --global editor vim
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>papers config --global name.template '{author}_{year}'
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>papers config --global pools.teaching /mnt/shared/teaching
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>papers config --global                # list it
+</code></pre></div>
+<p><code>papers init</code> stores <code>paths</code>, <code>git</code> and <code>git-lfs</code> in the new library, taking
+their values from the global configuration when it sets them. The other
+settings are only stored in the library when you set them.</p>
+<h2 id="pools">Pools<a class="headerlink" href="#pools" title="Permanent link">&para;</a></h2>
+<p>A pool is a library that other libraries exchange entries with (see
+<a href="../pools/">Pools</a> for <code>add</code>, <code>pull</code>, <code>push</code>, <code>export</code> and light
+libraries). Each library
+lists its pools in the <code>pools</code> setting, as names or paths. A name is looked
+up in the global configuration (<code>pools.NAME</code>, or <code>papers pool add NAME
+PATH</code>), so that the same library
+works on machines where the pool is in a different place. An entry that
+contains a <code>/</code> or starts with <code>.</code> or <code>~</code> is a path, relative to the library
+(e.g. <code>../shared-with-bob</code>).</p>
+<p>Without global configuration, the pool <code>default</code> is
+<code>~/Documents/papers</code>. It is also the library that commands act on outside of
+any library, once it is one:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>papers init ~/Documents/papers
+</code></pre></div>
+<p><code>papers status</code> lists the pools of the library with their paths, says when
+a pool is missing or is not a library, and whether it changed since the last
+<code>papers pull</code>. It also shows whether the library is light, and the <code>sync</code>
+setting.</p>
+<h2 id="relative-versus-absolute-paths">Relative versus absolute paths<a class="headerlink" href="#relative-versus-absolute-paths" title="Permanent link">&para;</a></h2>
+<p>The file links in the bibtex are relative to the bibtex directory by default,
+so that a library folder can be moved or shared with its files. Set
+<code>papers config paths absolute</code> to store absolute paths instead, e.g. for a
+bibtex that links to files in a central folder.</p>
+<p>The options <code>--relative-paths</code> and <code>--absolute-paths</code> of the commands still
+override the setting for one command, with a deprecation warning.</p>
+<h2 id="migrating-from-papers-2">Migrating from papers 2<a class="headerlink" href="#migrating-from-papers-2" title="Permanent link">&para;</a></h2>
+<p><code>papers migrate</code> performs the one-time upgrades from version 2:</p>
+<ul>
+<li>The global configuration of version 2 (<code>~/.config/papersconfig.json</code> on
+  Linux) defined a library for the whole user account. <code>papers migrate</code>
+  writes its settings to a library configuration next to its bibtex (if
+  there is none yet), registers the directory of that bibtex as the
+  <code>default</code> pool in the global configuration (unless another default
+  pool is set there), and renames the old file to <code>papersconfig.json.v2.bak</code>.
+  The bibtex, files and backup stay where they are. File links stay
+  absolute, as they were, unless <code>--relative</code> is passed. Running
+  <code>papers migrate</code> again does nothing. Until then, papers prints a warning
+  and keeps using the global configuration outside of libraries.</li>
+<li><code>papers migrate --folders</code> moves the files of entries that are still kept
+  in folders of papers before 2.19 (<code>&lt;name&gt;/</code> with a hidden <code>.&lt;name&gt;.bib</code>)
+  into the files directory, named after the name template (as
+  <code>papers file rename</code> names them).</li>
+</ul>
+<p>Library configurations (<code>.papersconfig.json</code>) of version 2 keep working
+without migration. The configuration files written by version 3 carry
+<code>"version": 3</code>; a file without <code>version</code> is read as a file of version 2. A
+file with a higher version was written by a newer papers, and papers stops
+with an error.</p>
+<h3 id="papers-install"><code>papers install</code><a class="headerlink" href="#papers-install" title="Permanent link">&para;</a></h3>
+<p><code>papers install</code> is a deprecated alias of <code>papers init</code> that asks for the
+bibtex, the files directory and git (<code>-y/--yes</code> accepts the defaults;
+<code>--no-prompt</code> and <code>--force</code> are its deprecated forms). On
+an existing library it updates the library configuration, as in version 2,
+with a deprecation warning: use <code>papers config</code> instead (<code>--edit</code> and
+<code>--reset</code> keep working). <code>papers install --global</code> writes the library
+configuration next to the bibtex and registers its directory as the <code>default</code>
+pool; if a global configuration of version 2 exists, it first migrates it as
+<code>papers migrate</code> does. <code>--local</code> is ignored.</p>
+<h2 id="uninstall">Uninstall<a class="headerlink" href="#uninstall" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>papers uninstall
+</code></pre></div>
+<p>removes the library configuration and reports what it leaves behind (the
+bibtex file, the files directory, and the backup directory if any). Pass
+<code>--remove-backup</code> to also remove the backup directory. It never removes the
+global configuration. From outside of any library it does not remove
+the default pool's configuration: run <code>papers -C DIR uninstall</code> for that.</p>
+<p><code>papers uninstall --recursive</code> is deprecated and ignored (there is no global
+library configuration to walk up to in v3): only the configuration of the
+library is removed.</p>
+<h2 id="cache">Cache<a class="headerlink" href="#cache" title="Permanent link">&para;</a></h2>
+<p>All internet requests, such as crossref requests, are saved in the cache
+directory (shown by <code>papers status -v</code>), whether or not a library is
+configured. The metadata of each DOI is a json file under <code>doi/</code>, e.g.
+<code>doi/10.1126/science.1166510.json</code> (DOIs that do not exist are remembered for
+a day). Deleting the directory, or any file in it, is safe: the requests are
+made again when needed.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.instant", "navigation.tracking", "navigation.sections", "navigation.top", "toc.follow", "search.suggest", "search.highlight", "content.code.copy", "content.action.edit"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"default": "stable", "provider": "mike"}}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>
