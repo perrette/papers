@@ -86,6 +86,11 @@ def run_git(gitdir, cmd, check=True):
     return res
 
 
+def git_init(gitdir):
+    "create a backup repository whose branch is main, whatever git's init.defaultBranch"
+    run_git(gitdir, ["init"])
+    run_git(gitdir, ["symbolic-ref", "HEAD", "refs/heads/main"])
+
 def default_gitdir(bibtex):
     """Allocate a backup directory name for a bibtex file.
 
@@ -174,7 +179,7 @@ def init_backup(config):
         logger.warning(f'{config.gitdir} is already initialized')
     else:
         os.makedirs(config.gitdir, exist_ok=True)
-        run_git(config.gitdir, 'init')
+        git_init(config.gitdir)
 
     # an explicit install takes ownership of the backup directory
     claim_gitdir(config)
@@ -218,7 +223,7 @@ def check_gitdir_ownership(config):
     config.gitdir = newdir
     os.makedirs(newdir, exist_ok=True)
     if not (Path(newdir) / ".git").exists():
-        run_git(newdir, ["init"])
+        git_init(newdir)
     write_manifest(newdir, bibtex)
     if config.file:
         config.save()
@@ -277,7 +282,7 @@ def backup_bib(biblio, config, message=None):
     # a backup directory that was never initialized (or removed since the install)
     if not (backupdir / ".git").exists():
         logger.info(f"initialize backup repository: {backupdir}")
-        run_git(config.gitdir, ["init"])
+        git_init(config.gitdir)
         write_manifest(config.gitdir, config.bibtex)
 
     # a snapshot made while undone must append to the full history
