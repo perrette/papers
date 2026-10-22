@@ -1263,7 +1263,8 @@ the global pool (see <a href="../pools/">Pools</a>).</p>
 </code></pre></div>
 <p>In the global configuration, <code>pool</code> is the path of the global pool (default
 <code>~/Documents/papers</code>), several paths (the first is the global pool, the
-others are the next pools of the libraries that do not set theirs), or
+main pool of the libraries that do not set theirs, and the others are the
+pools they search), or
 <code>none</code> (no sharing: new libraries get <code>pool: none</code>, and so are local), and
 <code>local</code> the default of new libraries (default <code>false</code>).</p>
 <p><code>papers init</code> stores <code>paths</code>, <code>git</code>, <code>git-lfs</code> and <code>local</code> in the new
@@ -1276,8 +1277,10 @@ only stored in the library when you set them.</p>
 of a library is its <code>pool</code> setting: by default the global pool (the <code>pool</code>
 setting of the global configuration, <code>~/Documents/papers</code> without one), a
 path relative to the library (e.g. <code>../shared-with-bob</code>), several paths, or
-<code>none</code>. With several pools, entries are looked up in each pool in order, and
-written to the first one (see <a href="../pools/#several-pools">Several pools</a>). The
+<code>none</code>. With several pools, the first is the main pool, the one that
+<code>pull</code>, <code>push</code> and <code>sync</code> exchange with and that new entries go to; the
+others are searched when adding or pulling, never written to (see
+<a href="../pools/#several-pools">Several pools</a>). The
 configuration file stores a single path as a string, several as a list, and
 no pool as <code>"none"</code>. A
 library that uses the global pool stores no path, so that the same project
