@@ -788,6 +788,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="papers push">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#a-pool-with-entries-papers-cannot-read" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A pool with entries papers cannot read
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1193,6 +1210,23 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="papers push">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#a-pool-with-entries-papers-cannot-read" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A pool with entries papers cannot read
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -1675,6 +1709,15 @@ pushes the entries named, and <code>push --all</code> every entry of the library
 version that was pushed, and the fields that only the pool entry has come
 with the next <code>pull</code> (or <code>papers sync</code>). The pool is created if it does not
 exist yet.</p>
+<h3 id="a-pool-with-entries-papers-cannot-read">A pool with entries papers cannot read<a class="headerlink" href="#a-pool-with-entries-papers-cannot-read" title="Permanent link">&para;</a></h3>
+<p>An entry that the bibtex parser cannot read, such as one with a field
+given twice or a missing brace, is kept in the file as it is, but papers
+does not see it. Every command that loads that bibtex warns about it, with
+its line. Papers does not write to a pool that has such an entry: it would
+not find that paper there, and would add it again. <code>push</code>, <code>sync</code> and the
+commands that add to the pool stop with an error, and nothing is changed,
+until the entry is fixed in the pool's bibtex. Reading from the pool
+(<code>pull</code>, <code>add</code> looking in the pool) still works.</p>
 <h2 id="papers-sync"><code>papers sync</code><a class="headerlink" href="#papers-sync" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>papers sync [KEY...|-] [--all] [--pool PATH] [--on-duplicate MODE]
 </code></pre></div>
