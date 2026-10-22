@@ -42,7 +42,8 @@ What a library does with its pool:
   there;
 - `papers sync` does both;
 - `papers status` and `papers pull --check` tell whether the pool changed
-  since the last pull.
+  since the last exchange with it: `up to date`, or `changed since last
+  pull or push`.
 
 Nothing is pulled or pushed automatically, except in libraries that are not
 local and with the `auto-push` setting (below): an older project does not
@@ -133,7 +134,9 @@ the entry at that time, under the library's key, with the pool it came from
 (`papers-pool`: `global` for the global pool, otherwise the path of the
 pool relative to the library), the key in the pool (`papers-pool-key`) and
 the time (`papers-time`). It also records the modification time of the
-pool's bibtex at the last pull. The file is part of the git backup of the
+pool's bibtex at the last exchange with the pool: a pull of all entries, or
+a push or an add when the pool had not changed since the previous exchange
+(or when it is the first exchange). The file is part of the git backup of the
 library (see [Git integration](git.md)).
 
 The origin copy is the third version of a three-way merge: comparing the
@@ -294,7 +297,7 @@ Later, the entry is completed in the pool (e.g. its pages), and adapted in
 
 ```
 cd ~/projects/tides
-papers status                  # pool: ~/Documents/papers (global pool, changed since last pull)
+papers status                  # pool: ~/Documents/papers (global pool, changed since last pull or push)
 papers pull --check            # perrette_landerer2013: changed in pool ~/Documents/papers: pages
 papers pull                    # pages taken; the journal abbreviation is kept
 ```

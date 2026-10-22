@@ -427,10 +427,11 @@ class TestPull(PoolTest):
         self.assertIsNotNone(self.origin().get(self.entry('smith2020climate')))
 
     def test_select(self):
+        before = self.origin().pulled('../pool')  # the add from the pool (setUp)
         self.edit_pool('journal = {Nat.}', 'journal = {Nature}')
         self.lib('pull 10.1000/abc123')
         self.assertEqual(self.entry('smith2020climate')['journal'], 'Nature')
-        self.assertIsNone(self.origin().pulled('../pool'))  # only a full pull counts as a pull
+        self.assertEqual(self.origin().pulled('../pool'), before)  # only a full pull counts as a pull
 
     def test_distinct_merged(self):
         pool_distinct = Distinct.for_bibtex(self.path('pool', 'papers.bib'))
@@ -443,16 +444,16 @@ class TestPull(PoolTest):
 
     def test_check_and_status(self):
         self.lib('pull')
-        self.assertIn('unchanged since last pull', self.out('status'))
+        self.assertIn('up to date', self.out('status'))
         self.edit_pool('journal = {Nat.}', 'journal = {Nature}')
         os.utime(self.path('pool', 'papers.bib'), ns=(1, 1))
-        self.assertIn('changed since last pull', self.out('status'))
+        self.assertIn('changed since last pull or push', self.out('status'))
         out = self.out('pull --check')
-        self.assertIn('pool ../pool: changed since last pull', out)
+        self.assertIn('pool ../pool: changed since last pull or push', out)
         self.assertIn('smith2020climate: changed in pool ../pool: journal', out)
         self.assertEqual(self.entry('smith2020climate')['journal'], 'Nat.')  # nothing pulled
         self.lib('pull')
-        self.assertIn('unchanged since last pull', self.out('status'))
+        self.assertIn('up to date', self.out('status'))
 
 
 # PUSH
@@ -540,7 +541,7 @@ class TestPush(PoolTest):
     def test_status_after_push(self):
         self.lib('pull')
         self.lib('push')
-        self.assertIn('unchanged since last pull', self.out('status'))
+        self.assertIn('up to date', self.out('status'))
 
     def test_global_pool_created(self):
         self.lib('config --unset pool')
@@ -633,6 +634,37 @@ class TestStatus(PoolTest):
         out = self.out('status')
         self.assertIn('* pool:               none', out)
         self.assertNotIn('auto-push', out)
+
+    def test_after_add_from_pool(self):
+        # the first exchange with the pool counts as a pull
+        self.take_smith()
+        self.assertIn('* pool:               ../pool (up to date)', self.out('status'))
+        self.edit_pool('journal = {Nat.}', 'journal = {Nature}')
+        os.utime(self.path('pool', 'papers.bib'), ns=(1, 1))
+        self.assertIn('(changed since last pull or push)', self.out('status'))
+        # a later push does not hide the change of the pool
+        self.lib('push')
+        self.assertIn('(changed since last pull or push)', self.out('status'))
+        self.lib('pull')
+        self.assertIn('(up to date)', self.out('status'))
+
+    def test_partial_pull_is_not_an_exchange(self):
+        self.take_smith()
+        self.edit_pool('journal = {Nat.}', 'journal = {Nature}')
+        os.utime(self.path('pool', 'papers.bib'), ns=(1, 1))
+        self.lib('pull smith2020climate')
+        self.assertIn('(changed since last pull or push)', self.out('status'))
+
+    def test_after_add_to_the_global_pool(self):
+        # a library that is not local: add places the entry in the global pool, created
+        self.papers('config --global local false')
+        self.papers('init other --no-git')
+        Path(self.path('new.bib')).write_text(NEW_BIB)
+        Path(self.path('mine.pdf')).write_text('mine')
+        self.papers('add ../new.bib', cwd=self.path('other'))
+        out = self.papers('status', cwd=self.path('other'), sp_cmd='check_output')
+        self.assertIn(f'* pool:               {papers.config.short_home(TEST_GLOBAL_POOL)} (global pool, up to date)',
+                      out)
 
     def test_missing_pool(self):
         self.lib('config pool ../missing')

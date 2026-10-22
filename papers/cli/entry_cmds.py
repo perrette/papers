@@ -206,6 +206,9 @@ def addcmd(parser, o, config):
                                  [e for e in biblio.entries if biblio.key(e) not in before], resolver)
     if pushed:
         print('\n'.join(report_lines(pushed, f'push to {pushed[0][1].label}')))
+    for pool in (biblio.pool_lookup.pools if biblio.pool_lookup is not None else []):
+        if not any(pool is p for p in exchange.changed_pools):
+            exchange.after_take(pool)
     save_exchange(exchange)
 
     # compare entries to inform user

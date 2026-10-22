@@ -14,8 +14,10 @@ the machine (the `pool` setting of the global configuration, by default
   pool (or pulled, or pushed), the pool's version of the entry at that time,
   under the library's key, with the pool it came from (`papers-pool`), the
   pool's key (`papers-pool-key`) and the time (`papers-time`). It also holds
-  the modification time of each pool's bibtex at the last pull, so that
-  `status` and `pull --check` can tell that a pool changed since.
+  the modification time of each pool's bibtex at the last exchange with it
+  (pull, or push and add when the pool had not changed since the previous
+  exchange, or that were the first), so that `status` and `pull --check`
+  can tell that a pool changed since.
 - `Exchange` does what involves a library and its pool: `add` looking in
   the pool first (`PoolLookup`), `pull`, `push`, the conversions of the
   files of `papers config local` and `papers config pool`, and the repair of
@@ -378,8 +380,9 @@ class Origin:
     def __init__(self, path=None):
         self.path = path
         self.entries = {}  # lower-case library key -> entry with the papers-* fields
-        self.pulls = {}    # pool id -> mtime (ns) of the pool bibtex at the last pull
+        self.pulls = {}    # pool id -> mtime (ns) of the pool bibtex at the last exchange
         self.changed = False
+        self.known = set()  # the pools that the records name when loaded
 
     @classmethod
     def for_bibtex(cls, bibtex):
@@ -403,6 +406,7 @@ class Origin:
             if get_entry_val(e, POOL_FIELD, '') == _EARLIER_GLOBAL_ID:
                 e[POOL_FIELD] = GLOBAL_POOL_ID
             origin.entries[e.key.lower()] = e
+        origin.known = {get_entry_val(e, POOL_FIELD, '') for e in origin.entries.values()}
         return origin
 
     def __len__(self):
@@ -442,8 +446,12 @@ class Origin:
             self.changed = True
 
     def pulled(self, pool):
-        "mtime (ns) of the pool's bibtex at the last pull, or None"
+        "mtime (ns) of the pool's bibtex at the last exchange (see set_pulled), or None"
         return self.pulls.get(pool)
+
+    def first_exchange(self, pool):
+        "no exchange with the pool before this command: no exchange time, and no record when loaded"
+        return self.pulled(pool) is None and pool not in self.known
 
     def set_pulled(self, pool, mtime_ns):
         if mtime_ns is not None and self.pulls.get(pool) != mtime_ns:
@@ -699,8 +707,15 @@ class Exchange:
 
     def after_push(self, pool):
         """after the pool was saved: if it had not changed since the last
-        pull, the push does not count as a change of the pool"""
-        if getattr(self, '_unchanged_since_pull', False):
+        exchange (or this is the first), the push does not count as a
+        change of the pool"""
+        if getattr(self, '_unchanged_since_pull', False) or self.origin.first_exchange(pool.id):
+            self.origin.set_pulled(pool.id, pool.bibtex_mtime())
+
+    def after_take(self, pool):
+        """after `add` took entries from a pool (not saved): the first
+        exchange with the pool records its modification time, as a pull"""
+        if self.origin.first_exchange(pool.id) and self.origin.records(pool.id):
             self.origin.set_pulled(pool.id, pool.bibtex_mtime())
 
     def _pool_policy(self, pool, keep=()):
@@ -895,14 +910,15 @@ def report_lines(report, verb):
 
 
 def pool_state(origin, pool):
-    "whether a pool changed since the last pull (a modification time check)"
+    """whether a pool changed since the last exchange with it (pull, push
+    or add: a modification time check)"""
     pulled = origin.pulled(pool.id)
     current = pool.bibtex_mtime()
     if pulled is None:
         return 'never pulled' if origin.records(pool.id) else 'not pulled from yet'
     if current != pulled:
-        return 'changed since last pull'
-    return 'unchanged since last pull'
+        return 'changed since last pull or push'
+    return 'up to date'
 
 
 # ADD: LOOK IN THE POOLS FIRST
