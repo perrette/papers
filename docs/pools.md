@@ -222,6 +222,14 @@ pull).
 `--pool PATH` pulls from another pool, once: the origin copies record that
 pool.
 
+`pull` prints one line per entry added (`Added ->`), updated
+(`Modified ->`), left with a conflict (`Conflict ->`) or not found in the
+pool (`Not found ->`), with the pool in brackets, then the counts when
+more than one entry was involved. `push` prints the same lines for the
+pool entries. When `add` (or `file attach`) also adds or changes the entry
+in the pool, or takes it from the pool, its line says so in brackets:
+`[also added to pool ~/Documents/papers]`, `[from pool ~/Documents/papers]`.
+
 Conflicts are decided as for duplicates (see
 [The dialogue](adding-entries.md#the-dialogue)), with `--on-duplicate`:
 

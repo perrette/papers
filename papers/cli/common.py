@@ -15,7 +15,7 @@ from papers.files import hidden_bibtex
 from papers.identifiers import read_selection, select_entries
 from papers.library import config_for_bibtex, savebib
 from papers.merge import Resolver
-from papers.pools import Pools, report_lines, use_pool_files
+from papers.pools import Pools, report_counts, use_pool_files
 from papers.utils import PapersExit, edit_text, open_with_system
 
 
@@ -97,14 +97,18 @@ def check_install(parser, o, config, bibtex_must_exist=True):
     return config
 
 
-def _print_biblio_diff(biblio_init, biblio, touched_entries, show_existing=False):
+def _print_biblio_diff(biblio_init, biblio, touched_entries, show_existing=False, notes=None):
     """Emit Added/Modified/Removed (and optionally Existing) lines for
     entries that differ between the pre-command snapshot and the
     post-command state.
 
     `touched_entries` scopes the Modified/Existing check to entries the
     command actually considered (matches addcmd's original semantics).
+    `notes`: {lower-case key: text} added to the line of an entry, in
+    brackets (where else it went, or where it came from).
     """
+    notes = notes or {}
+    note = lambda ID: f' [{notes[ID.lower()]}]' if ID.lower() in notes else ''
     old_set = set(get_entry_val(e, 'ID', '') for e in biblio_init.entries)
     old_entries_by_key = {get_entry_val(e, 'ID', ''): e for e in biblio_init.db.entries}
     new_set = set(get_entry_val(e, 'ID', '') for e in biblio.entries)
@@ -115,15 +119,15 @@ def _print_biblio_diff(biblio_init, biblio, touched_entries, show_existing=False
         print(format_entry(biblio_init, old_entries_by_key[ID], prefix="Removed"))
 
     for ID in sorted(new_set - old_set):
-        print(format_entry(biblio, new_entries_by_key[ID], prefix="Added"))
+        print(format_entry(biblio, new_entries_by_key[ID], prefix="Added") + note(ID))
 
     for ID in sorted(modified_set):
         before = old_entries_by_key[ID]
         after = new_entries_by_key[ID]
         if not entry_content_equal(before, after):
-            print(format_entry(biblio, after, prefix="Modified"))
+            print(format_entry(biblio, after, prefix="Modified") + note(ID))
         elif show_existing:
-            print(format_entry(biblio, after, prefix="Existing"))
+            print(format_entry(biblio, after, prefix="Existing") + note(ID))
 
 
 def files_mode(o, config):
@@ -230,12 +234,60 @@ def library_pools(config):
 
 def push_to_pool(exchange, entries):
     """save the library; in a non-local library, first push the entries to
-    the pool, which holds their files (as `add` does)"""
+    the pool, which holds their files (as `add` does). Return the notes of
+    the push for _print_biblio_diff."""
     resolver = Resolver('ask' if stdin_is_terminal() else 'error', color=papers.utils.COLOR)
     pushed = exchange.push_added(entries, [], resolver) if not exchange.config.local else []
-    if pushed:
-        print('\n'.join(report_lines(pushed, f'push to {pushed[0][1].label}')))
     save_exchange(exchange)
+    return push_notes(pushed)
+
+
+# the notes of the entries pushed as a side effect (add, file attach...)
+_PUSH_NOTES = {'added': 'also added to {}', 'updated': 'also modified in {}',
+               'skipped': 'not pushed to {}: conflict skipped'}
+
+
+def push_notes(pushed, notes=None):
+    """{lower-case key: note} of the entries that a push following another
+    command changed in the pool (see _print_biblio_diff); the push itself
+    is reported at --info level"""
+    notes = {} if notes is None else notes
+    if not pushed:
+        return notes
+    logger.info(f'push to {pushed[0][1].label}: {report_counts(pushed)}')
+    for e, pool, what in pushed:
+        if what in _PUSH_NOTES:
+            text = _PUSH_NOTES[what].format(pool.label)
+            key = e.key.lower()
+            notes[key] = f'{notes[key]}; {text}' if key in notes else text
+    return notes
+
+
+# pull and push: one line per entry that changed, or that was not exchanged
+_EXCHANGE_LINES = {
+    'pull': {'added': ('Added', 'from {}'), 'updated': ('Modified', 'from {}'),
+             'skipped': ('Conflict', 'skipped, not taken from {}'), 'not found': ('Not found', 'not in {}')},
+    'push': {'added': ('Added', 'to {}'), 'updated': ('Modified', 'in {}'),
+             'skipped': ('Conflict', 'skipped, not pushed to {}')},
+}
+
+
+def print_exchange(report, kind, biblio, pool):
+    """the report of pull or push (see papers.pools.Exchange.pull, push):
+    one line per entry added, modified, skipped or not found, then the
+    counts when more than one entry was involved (or when no line was
+    printed)"""
+    label = pool.label if pool is not None else None
+    lines = []
+    for e, p, what in report:
+        if what in _EXCHANGE_LINES[kind]:
+            prefix, note = _EXCHANGE_LINES[kind][what]
+            where = p.label if p is not None else (label or 'the pool')
+            lines.append(format_entry(biblio, e, prefix=prefix) + f' [{note.format(where)}]')
+    if len(report) > 1 or not lines:
+        verb = kind if label is None else f'{kind} {"from" if kind == "pull" else "to"} {label}'
+        lines.append(f'{verb}: {report_counts(report)}')
+    print('\n'.join(lines))
 
 
 def save_exchange(exchange):

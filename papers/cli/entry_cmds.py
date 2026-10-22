@@ -17,11 +17,11 @@ from papers.files import (attach_files, delete_files, describe_file, download_ur
 from papers.identifiers import normalize_doi, read_selection, select_entries
 from papers.library import get_biblio, savebib
 from papers.merge import DuplicateError
-from papers.pools import Exchange, PoolLookup, Pools, report_lines
+from papers.pools import Exchange, PoolLookup, Pools
 from papers.utils import PapersExit, file_uri_to_path, open_with_system
 from papers.cli.common import (view_entry_files, set_format_config_from_cmd, _print_biblio_diff, files_mode,
                                duplicate_resolver, save_exchange, stdin_is_terminal, edit_entries, edit_selected,
-                               print_kept_files, _delete_files_option, library_pools)
+                               print_kept_files, _delete_files_option, library_pools, push_notes)
 
 
 def _author_short_option(o):
@@ -204,8 +204,9 @@ def addcmd(parser, o, config):
     added = {get_entry_val(e, 'ID', '').lower() for e in entries}
     pushed = exchange.push_added([e for e in biblio.entries if biblio.key(e) in added],
                                  [e for e in biblio.entries if biblio.key(e) not in before], resolver)
-    if pushed:
-        print('\n'.join(report_lines(pushed, f'push to {pushed[0][1].label}')))
+    lookup = biblio.pool_lookup
+    notes = {key: f'from {pool.label}' for key, pool in (lookup.taken_from.items() if lookup else [])}
+    push_notes(pushed, notes)
     for pool in (biblio.pool_lookup.pools if biblio.pool_lookup is not None else []):
         if not any(pool is p for p in exchange.changed_pools):
             exchange.after_take(pool)
@@ -213,7 +214,7 @@ def addcmd(parser, o, config):
 
     # compare entries to inform user
     # this is not very efficient but I have yet to hear a complaint about speed
-    _print_biblio_diff(biblio_init, biblio, entries, show_existing=True)
+    _print_biblio_diff(biblio_init, biblio, entries, show_existing=True, notes=notes)
 
     if o.open:
         for e in entries:

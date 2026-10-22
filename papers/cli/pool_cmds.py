@@ -1,12 +1,11 @@
 """papers pull, push, sync, export"""
-import copy
 import os
 
 from papers.identifiers import read_selection, select_entries, select_some
 from papers.library import get_biblio, savebib
-from papers.pools import Exchange, GLOBAL_POOL_ID, PoolError, export, report_lines
+from papers.pools import Exchange, GLOBAL_POOL_ID, PoolError, export
 from papers.utils import PapersExit
-from papers.cli.common import _print_biblio_diff, duplicate_resolver, _entries_or_all, save_exchange
+from papers.cli.common import duplicate_resolver, _entries_or_all, print_exchange, save_exchange
 
 
 def _source(exchange, o, create=False):
@@ -67,32 +66,31 @@ def _pull_selection(exchange, pool, args, take_all=False):
 
 
 def _pull(o, exchange, resolver):
-    "the pull of `pull` and `sync`: return its report"
+    "the pull of `pull` and `sync`: print and return its report"
     pool = _source(exchange, o)
     entries, new = _pull_selection(exchange, pool, o.entries, take_all=o.all)
-    return exchange.pull(entries, resolver, pool=pool, new=new, record_pull=not o.entries)
+    report = exchange.pull(entries, resolver, pool=pool, new=new, record_pull=not o.entries)
+    save_exchange(exchange)
+    print_exchange(report, 'pull', exchange.biblio, pool)
+    return report
 
 
 def pullcmd(parser, o, config):
     biblio = get_biblio(config)
-    biblio_init = copy.deepcopy(biblio)
     exchange = Exchange(config, biblio)
     if o.check:
         _source(exchange, o)
         entries = _entries_or_all(biblio, o.entries)
         print('\n'.join(exchange.check(entries, all_entries=not o.entries)) or 'nothing to pull')
         return
-    report = _pull(o, exchange, duplicate_resolver(o, 'pull'))
-    print('\n'.join(report_lines(report, 'pull')))
-    save_exchange(exchange)
-    _print_biblio_diff(biblio_init, biblio, [e for e, _, _ in report])
+    _pull(o, exchange, duplicate_resolver(o, 'pull'))
 
 
 def _push(o, exchange, resolver, entries):
     pool = _source(exchange, o, create=True)
     report = exchange.push(entries, pool, resolver)
-    print('\n'.join(report_lines(report, f'push to {pool.label}')))
     save_exchange(exchange)
+    print_exchange(report, 'push', exchange.biblio, pool)
 
 
 def pushcmd(parser, o, config):
@@ -105,15 +103,11 @@ def synccmd(parser, o, config):
     """pull, then push the same entries; stop before pushing if the pull
     left conflicts undecided"""
     biblio = get_biblio(config)
-    biblio_init = copy.deepcopy(biblio)
     exchange = Exchange(config, biblio)
     o.all = False
     o.entries = read_selection(o.entries)  # read once, for the pull and the push
     resolver = duplicate_resolver(o, 'pull')
     report = _pull(o, exchange, resolver)
-    print('\n'.join(report_lines(report, 'pull')))
-    save_exchange(exchange)
-    _print_biblio_diff(biblio_init, biblio, [e for e, _, _ in report])
     skipped = [e.key for e, _, what in report if what == 'skipped']
     if skipped or resolver.quit:
         raise PapersExit(f'not pushed: the pull left conflicts undecided ({", ".join(skipped) or "quit"}). '

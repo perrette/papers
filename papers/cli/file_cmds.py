@@ -60,8 +60,8 @@ def file_renamecmd(parser, o, config):
     biblio_init = copy.deepcopy(biblio)
     entries = _entries_or_all(biblio, o.entries)
     rename_files(biblio, entries, config, pools.files_dirs(), keep_source=o.keep_source)
-    push_to_pool(Exchange(config, biblio, pools), entries)
-    _print_biblio_diff(biblio_init, biblio, entries)
+    notes = push_to_pool(Exchange(config, biblio, pools), entries)
+    _print_biblio_diff(biblio_init, biblio, entries, notes=notes)
 
 
 def file_mvcmd(parser, o, config):
@@ -121,8 +121,8 @@ def file_attachcmd(parser, o, config):
     biblio_init = copy.deepcopy(biblio)
     e = _one_entry(biblio, o.key)
     attach_files(biblio, e, o.files, config, files_mode(o, config), pools.files_dirs())
-    push_to_pool(Exchange(config, biblio, pools), [e])
-    _print_biblio_diff(biblio_init, biblio, [e])
+    notes = push_to_pool(Exchange(config, biblio, pools), [e])
+    _print_biblio_diff(biblio_init, biblio, [e], notes=notes)
 
 
 def _detach(biblio, links):

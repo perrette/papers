@@ -373,7 +373,7 @@ class TestPull(PoolTest):
 
     def test_nothing_changed(self):
         out = self.out('pull')
-        self.assertIn('pull: 1 unchanged', out)
+        self.assertIn('pull from pool ../pool: 1 unchanged', out)
 
     def test_pool_change_taken_library_change_kept(self):
         self.edit_pool('journal = {Nat.}', 'journal = {Nature},\n volume = {10}')
@@ -402,7 +402,7 @@ class TestPull(PoolTest):
         self.assertEqual((e['journal'], e['volume']), ('Nature', '10'))
         self.assertEqual(self.origin().get(e).entry['journal'], 'Nature Climate Change')
         # next time: no conflict (the origin is the pool version)
-        self.assertIn('pull: 1 unchanged', self.out('pull'))
+        self.assertIn('pull from pool ../pool: 1 unchanged', self.out('pull'))
 
     def test_conflict_update(self):
         self.conflict()
@@ -447,7 +447,7 @@ class TestPull(PoolTest):
     def test_entry_without_origin_is_linked(self):
         Path(self.path('lib', ORIGIN_FILE)).unlink()
         out = self.out('pull')
-        self.assertIn('linked: smith2020climate', out)
+        self.assertIn('pull from pool ../pool: 1 linked', out)
         self.assertIsNotNone(self.origin().get(self.entry('smith2020climate')))
 
     def test_select(self):
@@ -471,8 +471,7 @@ class TestPull(PoolTest):
         self.edit_pool('doi = {10.1000/abc123}', 'doi = {10.1000/other}')
         self.edit_pool('title = {Climate sensitivity revisited}', 'title = {Other}')
         out = self.out('pull')
-        self.assertIn('not found: smith2020climate', out)
-        self.assertIn('pull: 1 not found', out)
+        self.assertRegex(out, r'^Not found -> smith2020climate: .* \[not in pool ../pool\]$')
 
     def test_distinct_merged(self):
         pool_distinct = Distinct.for_bibtex(self.path('pool', 'papers.bib'))
@@ -589,7 +588,7 @@ class TestPush(PoolTest):
         e = self.entry('smith2020climate')
         self.assertEqual((e['abstract'], e['journal'], e['keywords']), ('From the pool.', 'Nat.', 'mine'))
         self.assertIn('up to date', self.out('status'))
-        self.assertIn('pull: 1 unchanged', self.out('pull'))
+        self.assertIn('pull from pool ../pool: 1 unchanged', self.out('pull'))
         self.assertIn('push to pool ../pool: 1 unchanged', self.out('push smith2020climate'))
         self.assertIn('up to date', self.out('status'))
 
@@ -1028,6 +1027,19 @@ class TestNonLocal(NonLocalTest):
         self.lib('add ../other.bib')
         files = self.files('other2023')
         self.assertTrue(files[0].startswith(os.path.join(TEST_GLOBAL_POOL, 'files')), files)
+
+    def test_add_output(self):
+        # one line per entry, with where else it went or where it came from
+        Path(self.path('other.bib')).write_text(NEW_BIB.replace('mine2022', 'other2023').replace(
+            'My own paper', 'Another paper').replace('mine.pdf', 'other.pdf').replace('2022', '2023'))
+        Path(self.path('other.pdf')).write_text('other')
+        out = self.out('add ../other.bib')
+        self.assertRegex(out, r'^Added -> other2023: Another paper \(file:1\) \[also added to pool ../pool\]$')
+        self.lib('rm smith2020climate --keep-files')
+        Path(self.path('smith.bib')).write_text(SMITH_BIB)
+        with patch('papers.bib.fetch_bibtex_by_doi', no_fetch):
+            out = self.out('add ../smith.bib')
+        self.assertRegex(out, r'^Added -> smith2020climate: .* \[from pool ../pool\]$')
 
     def test_add_from_pool_links_to_pool_file(self):
         self.lib('rm smith2020climate --keep-files')

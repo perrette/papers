@@ -43,9 +43,7 @@ entry is added to the bibtex of the project and to the pool's own bibtex
 
 ```
 $ papers add ~/Downloads/esd-4-11-2013.pdf
-added: perrette_landerer2013 (pool ~/Documents/papers)
-push to pool ~/Documents/papers: 1 added
-Added -> perrette_landerer2013: A scaling approach to project regional sea level rise and it... (doi:10.5194/esd-4-11-2013, file:1)
+Added -> perrette_landerer2013: A scaling approach to project regional sea level rise and it... (doi:10.5194/esd-4-11-2013, file:1) [also added to pool ~/Documents/papers]
 $ ls ~/Documents/papers/files
 perrette_et_al_2013_a-scaling-approach-to-project-regional-sea-level-rise-and-its-uncertainties.pdf
 $ grep "file =" papers.bib
@@ -56,9 +54,7 @@ Add an entry from its DOI, without a PDF:
 
 ```
 $ papers add --doi 10.5194/bg-8-515-2011
-added: perrette_yool2011 (pool ~/Documents/papers)
-push to pool ~/Documents/papers: 1 added
-Added -> perrette_yool2011: Near-ubiquity of ice-edge blooms in the Arctic (doi:10.5194/bg-8-515-2011)
+Added -> perrette_yool2011: Near-ubiquity of ice-edge blooms in the Arctic (doi:10.5194/bg-8-515-2011) [also added to pool ~/Documents/papers]
 ```
 
 Attach another file to an entry, such as a supplement. It is named after
@@ -66,9 +62,7 @@ the entry, with its original name as a label:
 
 ```
 $ papers file attach perrette_landerer2013 ~/Downloads/esd-4-11-2013-supplement.pdf
-updated: perrette_landerer2013 (pool ~/Documents/papers)
-push to pool ~/Documents/papers: 1 updated
-Modified -> perrette_landerer2013: A scaling approach to project regional sea level rise and it... (doi:10.5194/esd-4-11-2013, files:2)
+Modified -> perrette_landerer2013: A scaling approach to project regional sea level rise and it... (doi:10.5194/esd-4-11-2013, files:2) [also modified in pool ~/Documents/papers]
 $ ls ~/Documents/papers/files
 perrette_et_al_2013_a-scaling-approach-to-project-regional-sea-level-rise-and-its-uncertainties--esd-4-11-2013-supplement.pdf
 perrette_et_al_2013_a-scaling-approach-to-project-regional-sea-level-rise-and-its-uncertainties.pdf
@@ -109,18 +103,14 @@ nothing is fetched online, and the PDF is not stored twice.
 $ cd ~/projects/new-paper
 $ papers init
 $ papers add --doi 10.5194/esd-4-11-2013
-found in pool ~/Documents/papers: perrette_landerer2013
-push to pool ~/Documents/papers: 1 unchanged
-Added -> perrette_landerer2013: A scaling approach to project regional sea level rise and it... (doi:10.5194/esd-4-11-2013, files:2)
+Added -> perrette_landerer2013: A scaling approach to project regional sea level rise and it... (doi:10.5194/esd-4-11-2013, files:2) [from pool ~/Documents/papers]
 ```
 
 Take entries from the pool by key (or DOI) with `pull`:
 
 ```
 $ papers pull perrette_yool2011
-added: perrette_yool2011 (pool ~/Documents/papers)
-pull: 1 added
-Added -> perrette_yool2011: Near-ubiquity of ice-edge blooms in the Arctic (doi:10.5194/bg-8-515-2011)
+Added -> perrette_yool2011: Near-ubiquity of ice-edge blooms in the Arctic (doi:10.5194/bg-8-515-2011) [from pool ~/Documents/papers]
 ```
 
 or all the entries of an earlier project:
@@ -129,6 +119,9 @@ or all the entries of an earlier project:
 $ cd ~/projects/review
 $ papers init
 $ papers pull --pool ../sea-level --all
+Added -> perrette_landerer2013: A scaling approach to project regional sea level rise and it... (doi:10.5194/esd-4-11-2013, files:2) [from pool ../sea-level]
+Added -> perrette_yool2011: Near-ubiquity of ice-edge blooms in the Arctic (doi:10.5194/bg-8-515-2011) [from pool ../sea-level]
+pull from pool ../sea-level: 2 added
 ```
 
 The pool is an ordinary library: `papers -C ~/Documents/papers list` lists
@@ -145,7 +138,7 @@ $ cd ~/projects/sea-level
 $ papers tag perrette_yool2011 --add arctic
 Modified -> perrette_yool2011: Near-ubiquity of ice-edge blooms in the Arctic (doi:10.5194/bg-8-515-2011, arctic)
 $ papers push
-updated: perrette_yool2011 (pool ~/Documents/papers)
+Modified -> perrette_yool2011: Near-ubiquity of ice-edge blooms in the Arctic (doi:10.5194/bg-8-515-2011, arctic) [in pool ~/Documents/papers]
 push to pool ~/Documents/papers: 1 unchanged, 1 updated
 
 $ cd ~/projects/new-paper
@@ -153,9 +146,8 @@ $ papers status
 [...]
 * pool:               ~/Documents/papers (global pool, changed since last pull or push)
 $ papers pull
-updated: perrette_yool2011 (pool ~/Documents/papers)
-pull: 1 unchanged, 1 updated
-Modified -> perrette_yool2011: Near-ubiquity of ice-edge blooms in the Arctic (doi:10.5194/bg-8-515-2011, arctic)
+Modified -> perrette_yool2011: Near-ubiquity of ice-edge blooms in the Arctic (doi:10.5194/bg-8-515-2011, arctic) [from pool ~/Documents/papers]
+pull from pool ~/Documents/papers: 1 unchanged, 1 updated
 ```
 
 `papers sync` runs `pull`, then `push`. Nothing is exchanged without these

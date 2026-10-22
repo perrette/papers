@@ -930,20 +930,13 @@ def _rekey(e, key):
     return e
 
 
-def report_lines(report, verb):
-    """lines on the outcome of pull or push (see Exchange.pull, push): one
-    per entry that changed, was skipped or is not found, then the counts"""
+def report_counts(report):
+    """the counts of the outcomes of pull or push (see Exchange.pull, push):
+    '1 added, 2 unchanged', or 'nothing to do'"""
     counts = {}
-    lines = []
-    for e, pool, what in report:
+    for _, _, what in report:
         counts[what] = counts.get(what, 0) + 1
-        if what != 'unchanged':
-            lines.append(f'{what}: {e.key}' + (f' ({pool.label})' if pool is not None else ''))
-    if counts:
-        lines.append(f'{verb}: ' + ', '.join(f'{n} {what}' for what, n in counts.items()))
-    else:
-        lines.append(f'{verb}: nothing to do')
-    return lines
+    return ', '.join(f'{n} {what}' for what, n in counts.items()) or 'nothing to do'
 
 
 def pool_state(origin, pool):
@@ -971,6 +964,7 @@ class PoolLookup:
         self.exchange = exchange
         self.pools = exchange.pools.all()
         self._taken = {}
+        self.taken_from = {}  # lower-case library key -> the pool of the entry taken
 
     def __bool__(self):
         return bool(self.pools)
@@ -990,7 +984,7 @@ class PoolLookup:
         if extra:
             biblio.set_files(new, have + extra)
         self._taken[id(new)] = (pool, pe)
-        print(f'found in {pool.label}: {pe.key}')
+        logger.info(f'found in {pool.label}: {pe.key}')
         return new
 
     def has_file(self, file):
@@ -1045,6 +1039,7 @@ class PoolLookup:
         if pool is None:
             return
         for e in result:
+            self.taken_from[e.key.lower()] = pool
             if self.exchange.origin.get(e) is None:
                 self.exchange.origin.set(e.key, pool.id, pe)
 

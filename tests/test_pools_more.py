@@ -140,7 +140,7 @@ class TestPullEntries(PoolTest):
 
     def test_pull_pool_key(self):
         out = self.out('pull Smith_2020')
-        self.assertIn('added: Smith_2020', out)
+        self.assertRegex(out, r'^Added -> Smith_2020: .* \[from pool ../pool\]$')
         e = self.entry('Smith_2020')
         self.assertEqual(e['journal'], 'Nat.')
         record = self.origin().get(e)
@@ -192,7 +192,8 @@ class TestPullEntries(PoolTest):
     def test_all(self):
         Path(self.path('lib', 'papers.bib')).write_text(SMITH_BIB)
         out = self.out('pull --all --on-duplicate keep')
-        self.assertIn('added: Brown_2021', out)
+        self.assertRegex(out, r'Added -> Brown_2021: .* \[from pool ../pool\]\n')
+        self.assertIn('pull from pool ../pool: 1 updated, 1 added', out)
         self.assertEqual(sorted(self.bib()[1]), ['Brown_2021', 'smith2020climate'])
 
     def test_other_pool(self):
@@ -222,8 +223,11 @@ class TestSync(PoolTest):
     def test_pull_then_push(self):
         self.edit_pool('journal = {Nat.}', 'journal = {Nature}')
         out = self.out('sync')
-        self.assertIn('pull:', out)
-        self.assertIn('push to pool ../pool:', out)
+        lines = out.splitlines()
+        self.assertRegex(lines[0], r'^Modified -> smith2020climate: .* \[from pool ../pool\]$')
+        self.assertRegex(lines[1], r'^Added -> mine2022: .* \[to pool ../pool\]$')
+        self.assertEqual(lines[2], 'push to pool ../pool: 1 added, 1 unchanged')
+        self.assertEqual(len(lines), 3)
         self.assertEqual(self.entry('smith2020climate')['journal'], 'Nature')
         self.assertEqual(len(self.bib('pool')[1]), 3)  # mine2022 pushed
 
