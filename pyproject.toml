@@ -42,6 +42,8 @@ docs = [
     "mkdocs>=1.5,<2",
     "mkdocs-material>=9.5",
     "mkdocs-include-markdown-plugin>=6.0",
+    # one folder per version on gh-pages, and the version selector of Material
+    "mike>=2.1",
 ]
 
 [project.urls]

@@ -1,8 +1,12 @@
 name: docs
 
+# Each branch deploys its own version of the site with mike: one folder per
+# version on the gh-pages branch, and a version selector on every page.
+#   master -> 2.x, aliased "stable" (the default version: /papers/ redirects there)
+#   v3     -> 3.0-beta
 on:
   push:
-    branches: [master]
+    branches: [master, v3]
     paths:
       - "docs/**"
       - "mkdocs.yml"
@@ -12,6 +16,11 @@ on:
 
 permissions:
   contents: write
+
+# deployments commit to gh-pages: one at a time
+concurrency:
+  group: gh-pages
+  cancel-in-progress: false
 
 jobs:
   deploy:
@@ -31,4 +40,16 @@ jobs:
           restore-keys: |
             mkdocs-material-
       - run: pip install .[docs]
-      - run: mkdocs gh-deploy --force
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin gh-pages:gh-pages || true
+      - name: Deploy 2.x (master)
+        if: github.ref_name == 'master'
+        run: |
+          mike deploy --push --update-aliases --title "2.x (stable)" 2.x stable
+          mike set-default --push stable
+      - name: Deploy 3.0-beta (v3)
+        if: github.ref_name == 'v3'
+        run: mike deploy --push --title "3.0 (beta)" 3.0-beta
