@@ -12,7 +12,7 @@ from unittest.mock import patch
 import papers.config
 import papers.extract
 from papers.config import Config, MachineConfig, CONFIG_FILE_LOCAL, pool_list, pool_to_json
-from papers.pools import Pools, GLOBAL_POOL_ID
+from papers.pools import Pools, GLOBAL_POOL_ID, origin_file_name
 from papers.utils import PapersExit
 
 from tests.common import paperscmd
@@ -139,19 +139,24 @@ class TestCommands(MultiPoolTest):
     def test_init(self):
         out = self.papers('init other --no-git --local --pool ../pool --pool ../pool2', sp_cmd='check_output')
         self.assertEqual(self.json('other')['pool'], ['../pool', '../pool2'])
-        self.assertIn('* pools:   ../pool, ../pool2 (looked up in this order; new entries go to the first; '
-                      'the PDFs stay in this library)', out)
+        self.assertIn('* pools:   ../pool (main: synced, new entries go here; the PDFs stay in this library)\n'
+                      '           ../pool2 (searched only)\n', out)
         self.papers('config --global local false')
         out = self.papers('init third --no-git --pool ../pool --pool ../pool2', sp_cmd='check_output')
         self.assertIn('* files:   in the pool ../pool\n', out)
-        self.assertIn('* pools:   ../pool, ../pool2 (looked up in this order; new entries go to the first)', out)
+        self.assertIn('* pools:   ../pool (main: synced, new entries go here)\n'
+                      '           ../pool2 (searched only)\n', out)
+        out = self.papers('init fifth --no-git --pool ../pool', sp_cmd='check_output')
+        self.assertNotIn('main', out)
         self.papers('init fourth --no-git --pool none')
         self.assertEqual(self.json('fourth')['pool'], 'none')
 
     def test_status(self):
         out = self.out('status')
-        self.assertIn('* pools:              ../pool (new entries go here, not pulled from yet)\n'
-                      '                      ../pool2 (not pulled from yet)', out)
+        self.assertIn('* pools:              ../pool (main: synced, new entries go here; not pulled from yet)\n'
+                      '                      ../pool2 (searched only)\n', out)
+        self.lib('config pool ../pool')
+        self.assertIn('* pool:               ../pool (not pulled from yet)\n', self.out('status'))
 
 
 class TestLookup(MultiPoolTest):
@@ -167,9 +172,12 @@ class TestLookup(MultiPoolTest):
         self.assertEqual(self.origin().get(self.entry('brown2021')).pool, '../pool')
 
     def test_found_in_a_later_pool(self):
+        # a local library without auto-push: copied, shared with no pool
         out = self.add('add --doi 10.1000/jones')
         self.assertIn('[from pool ../pool2]', out)
-        self.assertEqual(self.origin().get(self.entry('jones2019')).pool, '../pool2')
+        self.assertIsNone(self.origin().get(self.entry('jones2019')))
+        self.assertEqual(self.keys('pool'), ['Brown_2021', 'Smith_2020'])
+        self.assertFalse(os.path.exists(self.path('lib', '.papers', 'origin')))
 
     def test_key(self):
         self.add('add --key Jones_2019')
@@ -178,7 +186,8 @@ class TestLookup(MultiPoolTest):
     def test_pull_key(self):
         self.lib('pull Jones_2019 Smith_2020')
         self.assertEqual(self.keys('lib'), ['Jones_2019', 'Smith_2020'])
-        self.assertEqual(self.origin().get(self.entry('Jones_2019')).pool, '../pool2')
+        self.assertIsNone(self.origin().get(self.entry('Jones_2019')))
+        self.assertEqual(self.origin().get(self.entry('Smith_2020')).pool, '../pool')
         with self.assertRaisesRegex(PapersExit, 'nope: no entry found'):
             self.lib('pull nope')
 
@@ -186,6 +195,17 @@ class TestLookup(MultiPoolTest):
         self.lib('config auto-push true')
         self.add('add --doi 10.1000/jones')
         self.assertEqual(self.keys('pool'), ['Brown_2021', 'Smith_2020', 'jones2019'])  # the pool's key template
+        self.assertEqual(self.keys('pool2'), ['Brown_2021', 'Jones_2019'])
+        self.assertEqual(self.origin().get(self.entry('jones2019')).pool, '../pool')
+
+    def test_not_local(self):
+        # found in a later pool: also added to the main pool, and shared with it
+        self.lib('config local false -y')
+        out = self.out('pull Jones_2019')
+        self.assertIn('Added -> Jones_2019: Ice sheets (doi:10.1000/jones) [from pool ../pool2]', out)
+        self.assertIn('Added -> Jones_2019: Ice sheets (doi:10.1000/jones) [to pool ../pool]', out)
+        self.assertIn('jones2019', self.keys('pool'))
+        self.assertEqual(self.origin().get(self.entry('Jones_2019')).pool, '../pool')
         self.assertEqual(self.keys('pool2'), ['Brown_2021', 'Jones_2019'])
 
 
@@ -198,43 +218,88 @@ class TestPullSync(MultiPoolTest):
         # Brown_2021 is in both: taken from the first pool, once
         self.assertNotIn('journal', self.entry('Brown_2021'))
         origin = self.origin()
-        self.assertEqual([origin.get(self.entry(k)).pool for k in ['Brown_2021', 'Jones_2019', 'Smith_2020']],
-                         ['../pool', '../pool2', '../pool'])
-        self.assertIn('pull from pool ../pool and pool ../pool2: 3 unchanged', self.out('pull'))
+        self.assertEqual([getattr(origin.get(self.entry(k)), 'pool', None) for k in ['Brown_2021', 'Jones_2019', 'Smith_2020']],
+                         ['../pool', None, '../pool'])
+        self.assertIn('pull from pool ../pool: 2 unchanged', self.out('pull'))
 
-    def test_each_entry_from_its_pool(self):
+    def test_later_pools_are_not_synced(self):
         self.lib('pull Jones_2019 Smith_2020')
         self.edit_pool('year = {2020}', 'volume = {1},\n year = {2020}')
         text = Path(self.path('pool2', 'papers.bib')).read_text()
         Path(self.path('pool2', 'papers.bib')).write_text(text.replace('year = {2019}', 'volume = {2},\n year = {2019}'))
-        self.lib('pull')
-        self.assertEqual((self.entry('Smith_2020')['volume'], self.entry('Jones_2019')['volume']), ('1', '2'))
-
-    def test_sync_pushes_to_the_first(self):
-        self.lib('pull Jones_2019')
-        text = Path(self.path('lib', 'papers.bib')).read_text()
-        Path(self.path('lib', 'papers.bib')).write_text(text.replace('year = {2019}', 'note = {mine},\n year = {2019}'))
-        out = self.out('sync')
-        # shared with pool2 only: pulled from it, and nothing to push to pool
-        self.assertIn('nothing to sync with pool ../pool and pool ../pool2 (1 entry unchanged)', out)
+        self.lib('sync')
+        self.assertEqual(self.entry('Smith_2020')['volume'], '1')
+        self.assertNotIn('volume', self.entry('Jones_2019'))
         self.assertEqual(self.keys('pool'), ['Brown_2021', 'Smith_2020'])
-        self.assertNotIn('note', self.entry('Jones_2019', 'pool2'))
+
+    def test_push_key_creates_it_in_the_main_pool(self):
+        self.lib('pull Jones_2019')
+        self.edit_lib('year = {2019}', 'note = {mine},\n year = {2019}')
+        out = self.out('sync')
+        self.assertIn('nothing to sync with pool ../pool: no entries shared with it', out)
         self.lib('push Jones_2019')
         self.assertIn('jones2019', self.keys('pool'))
+        self.assertEqual(self.origin().get(self.entry('Jones_2019')).pool, '../pool')
         self.assertNotIn('note', self.entry('Jones_2019', 'pool2'))  # never written to
+
+    def test_push_all_writes_to_the_main_pool_only(self):
+        self.lib('pull Jones_2019')
+        self.edit_lib('@article{Jones_2019,', '@article{mine2022,\n author = {Mine, Me},\n title = {Mine},\n'
+                      ' year = {2022}\n}\n\n@article{Jones_2019,')
+        out = self.out('push --all')
+        self.assertIn('push to pool ../pool: 2 added', out)
+        self.assertEqual(len(self.bib('pool')[1]), 4)
+        self.assertEqual(self.keys('pool2'), ['Brown_2021', 'Jones_2019'])
 
     def test_sync_all(self):
         Path(self.path('lib', 'papers.bib')).write_text(
             '@article{mine2022,\n author = {Mine, Me},\n title = {My own paper},\n year = {2022}\n}\n')
         self.lib('sync --all')
         self.assertEqual(self.keys('lib'), ['Brown_2021', 'Jones_2019', 'Smith_2020', 'mine2022'])
-        self.assertEqual(len(self.bib('pool')[1]), 4)  # Jones_2019 and mine2022 pushed to the first
+        self.assertEqual(len(self.bib('pool')[1]), 4)  # Jones_2019 and mine2022 pushed to the main pool
         self.assertEqual(self.keys('pool2'), ['Brown_2021', 'Jones_2019'])
 
-    def test_one_pool_on_the_command_line(self):
-        out = self.out('pull --all --pool ../pool2')
-        self.assertIn('pull from pool ../pool2: 2 added', out)
+    def test_one_time_exchange(self):
+        # --pool PATH, PATH not the main pool: no origin record
+        self.lib('pull Smith_2020')
+        record = self.origin().get(self.entry('Smith_2020'))
+        out = self.out('sync --pool ../pool2 Jones_2019')
+        self.assertIn('Added -> Jones_2019: Ice sheets (doi:10.1000/jones) [from pool ../pool2]', out)
+        self.assertIsNone(self.origin().get(self.entry('Jones_2019')))
+        self.lib('push --pool ../pool2 Smith_2020')
+        self.assertEqual(len(self.keys('pool2')), 3)
+        origin = self.origin()
+        self.assertEqual(len(origin), 1)
+        self.assertEqual(origin.get(self.entry('Smith_2020')).time, record.time)  # untouched
+        self.assertEqual(os.listdir(self.path('lib', '.papers', 'origin')), [origin_file_name('../pool')])
+        # without a stored base, a field that differs is a conflict
+        text = Path(self.path('pool2', 'papers.bib')).read_text()
+        Path(self.path('pool2', 'papers.bib')).write_text(text.replace('{Ocean heat}', '{Ocean heat content}'))
+        self.lib('pull Brown_2021')  # from the main pool, without journal
+        with self.assertRaisesRegex(PapersExit, 'conflict'):
+            self.lib('pull --pool ../pool2 Brown_2021 --on-duplicate error')
+        self.lib('pull --pool ../pool2 Brown_2021 --on-duplicate update')
+        self.assertEqual(self.entry('Brown_2021')['title'], 'Ocean heat content')
+        self.assertEqual(self.origin().get(self.entry('Brown_2021')).entry['title'], 'Ocean heat')
+
+    def test_pool_option_with_the_main_pool(self):
+        self.lib('pull --pool ../pool Smith_2020')
+        self.assertEqual(self.origin().get(self.entry('Smith_2020')).pool, '../pool')
+
+    def test_reorder(self):
+        # the records of each pool are kept in its own file
+        self.lib('pull Smith_2020')
+        self.lib('config pool ../pool2 ../pool')
+        self.assertIn('nothing to sync with pool ../pool2: no entries shared with it', self.out('sync'))
+        self.assertTrue(os.path.exists(self.path('lib', '.papers', 'origin', origin_file_name('../pool'))))
+        self.lib('pull Brown_2021')
         self.assertIn('journal', self.entry('Brown_2021'))
+        self.assertEqual(self.origin().get(self.entry('Brown_2021')).pool, '../pool2')
+        self.lib('config pool ../pool ../pool2')
+        self.edit_pool('year = {2020}', 'volume = {1},\n year = {2020}')
+        self.lib('pull')
+        self.assertEqual(self.entry('Smith_2020')['volume'], '1')
+        self.assertIsNone(self.origin().get(self.entry('Brown_2021'), '../pool'))
 
     def test_missing_pool_is_a_warning(self):
         os.rename(self.path('pool2'), self.path('elsewhere'))
@@ -249,17 +314,9 @@ class TestPullSync(MultiPoolTest):
     def test_missing_first_pool(self):
         self.lib('pull Jones_2019')
         os.rename(self.path('pool'), self.path('elsewhere'))
-        with self.assertRaisesRegex(PapersExit, r'pool \S+/pool does not exist \(nothing was changed\)'):
-            self.lib('sync')
-        with self.assertRaisesRegex(PapersExit, r'pool \S+/pool does not exist'):
-            self.lib('push')
-        self.assertIn('pull from pool ../pool2: 1 unchanged', self.out('pull'))
-
-    def test_entry_of_a_missing_pool_is_not_looked_up_elsewhere(self):
-        self.lib('pull Brown_2021')  # from the first pool, without journal
-        os.rename(self.path('pool'), self.path('elsewhere'))
-        self.lib('pull --on-duplicate error')  # no conflict with the Brown_2021 of pool2
-        self.assertNotIn('journal', self.entry('Brown_2021'))
+        for cmd in ['sync', 'push', 'pull']:
+            with self.assertRaisesRegex(PapersExit, r'pool \S+/pool does not exist'):
+                self.lib(cmd)
 
 
 class TestConfigPoolFiles(PoolTest):

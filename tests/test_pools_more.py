@@ -200,7 +200,7 @@ class TestPullEntries(PoolTest):
         self.papers('init other --no-git --pool none')
         Path(self.path('other', 'papers.bib')).write_text(NEW_BIB.replace(' file = {:mine.pdf:pdf},\n', ''))
         self.lib('pull --pool ../other mine2022')
-        self.assertEqual(self.origin().get(self.entry('mine2022')).pool, '../other')
+        self.assertIsNone(self.origin().get(self.entry('mine2022')))  # one-time: shared with no pool
         self.lib('pull --pool ../other --all')
         self.assertEqual(list(self.bib()[1]), ['mine2022'])
 
@@ -243,10 +243,12 @@ class TestSync(PoolTest):
     def test_nothing_shared(self):
         self.papers('init other --no-git --pool none')
         out = self.out('sync --pool ../other')
-        self.assertEqual(out, 'nothing to sync with pool ../other: no entries shared with it '
-                              '(`papers sync --all` adds the entries missing on each side)')
+        self.assertEqual(out, 'nothing to sync with pool ../other: not the main pool, so no entries are shared '
+                              'with it (`papers sync --pool PATH KEY...` or `--all` exchanges entries with it once)')
         self.assertEqual(self.bib('other')[1], {})
-        self.assertIn('push to pool ../other: no entries shared with it', self.out('push --pool ../other'))
+        self.assertIn('push to pool ../other: not the main pool, so no entries are shared with it',
+                      self.out('push --pool ../other'))
+        self.assertIn('pull from pool ../other: not the main pool', self.out('pull --pool ../other'))
         self.assertEqual(self.bib('other')[1], {})
 
     def test_not_found_only_for_keys_given(self):

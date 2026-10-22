@@ -3,6 +3,7 @@ export, status, libraries that are not local, and the conversions of
 `papers config local` and `papers config pool`"""
 import json
 import os
+import shutil
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -12,7 +13,7 @@ from papers.bib import Biblio
 from papers.config import Config
 from papers.duplicate import Distinct
 from papers.entries import entry_from_dict, parse_string
-from papers.pools import Pools, PoolError, Origin, ORIGIN_FILE, POOL_FIELD
+from papers.pools import Pools, PoolError, Origin, ORIGIN_DIR, LEGACY_ORIGIN_FILE, POOL_FIELD, origin_file_name
 from papers.utils import PapersExit
 
 from tests import TEST_GLOBAL_POOL
@@ -87,7 +88,7 @@ class PoolTest(ConfigTest):
         return biblio.get_files(entries[key])
 
     def origin(self):
-        return Origin.load(self.path('lib', ORIGIN_FILE))
+        return Origin.load(self.path('lib', ORIGIN_DIR))
 
     def edit_pool(self, old, new):
         text = Path(self.path('pool', 'papers.bib')).read_text()
@@ -203,7 +204,7 @@ class TestResolution(PoolTest):
 class TestOrigin(PoolTest):
 
     def test_roundtrip(self):
-        path = self.path('lib', ORIGIN_FILE)
+        path = self.path('lib', ORIGIN_DIR)
         origin = Origin(path)
         pe = parse_string(POOL_BIB).entries[0]
         origin.set('smith2020climate', '../pool', pe)
@@ -228,26 +229,69 @@ class TestOrigin(PoolTest):
         origin.set('smith2020climate', '../pool', pe)
         self.assertFalse(origin.changed)
 
-    def test_global_pool_of_earlier_builds(self):
-        # earlier v3 builds named the global pool `default`
-        path = self.path('lib', ORIGIN_FILE)
+    def test_file_names(self):
+        self.assertEqual(origin_file_name('global'), 'global.bib')
+        name = origin_file_name('../shared-with-bob')
+        self.assertRegex(name, r'^shared-with-bob-[0-9a-f]{6}\.bib$')
+        self.assertNotEqual(name, origin_file_name('/data/shared-with-bob'))
+        self.assertRegex(origin_file_name('/data/Lab Papers/'), r'^lab-papers-[0-9a-f]{6}\.bib$')
+
+    def test_one_file_per_pool(self):
+        path = self.path('lib', ORIGIN_DIR)
         origin = Origin(path)
-        origin.set('smith2020climate', 'default', parse_string(POOL_BIB).entries[0])
-        origin.set_pulled('default', 12345)
+        pe = parse_string(POOL_BIB).entries[0]
+        origin.set('smith2020climate', '../pool', pe)
+        origin.set('smith2020climate', 'global', pe)
+        origin.set_pulled('global', 12345)
         origin.save()
+        self.assertEqual(sorted(os.listdir(path)), sorted(['global.bib', origin_file_name('../pool')]))
+        text = Path(path, 'global.bib').read_text()
+        self.assertTrue(text.startswith('@comment{papers-pool global}\n'), text)
+        self.assertIn('@comment{papers-pulled 12345}', text)
+        self.assertNotIn(POOL_FIELD + ' =', text)
         origin = Origin.load(path)
-        self.assertEqual(origin.records()[0].pool, 'global')
-        self.assertEqual(origin.pulled('global'), 12345)
+        lib = entry_from_dict({'ID': 'smith2020climate', 'ENTRYTYPE': 'article'})
+        self.assertEqual((origin.get(lib, 'global').pool, origin.get(lib, '../pool').pool), ('global', '../pool'))
+        self.assertIsNone(origin.get(lib, '../other'))
+        self.assertEqual((origin.pulled('global'), origin.pulled('../pool')), (12345, None))
+        self.assertEqual(len(origin), 2)
+
+    def test_migration(self):
+        # earlier v3 builds: one file, .papers/origin.bib, with a papers-pool
+        # field and papers-pull comments (`default` was the global pool)
+        legacy = self.path('lib', LEGACY_ORIGIN_FILE)
+        os.makedirs(os.path.dirname(legacy), exist_ok=True)
+        Path(legacy).write_text(
+            '@comment{papers-pull 12345 default}\n\n@comment{papers-pull 678 ../pool}\n\n'
+            '@article{a2020,\n papers-pool = {default},\n papers-pool-key = {A_2020},\n title = {A}\n}\n\n'
+            '@article{b2020,\n papers-pool = {../pool},\n papers-pool-key = {B_2020},\n title = {B}\n}\n')
+        origin = Origin.load(self.path('lib', ORIGIN_DIR))
+        self.assertFalse(os.path.exists(legacy))
+        self.assertEqual(sorted(os.listdir(self.path('lib', ORIGIN_DIR))),
+                         sorted(['global.bib', origin_file_name('../pool')]))
+        self.assertEqual([(r.key, r.pool, r.pool_key) for r in origin.records()],
+                         [('a2020', 'global', 'A_2020'), ('b2020', '../pool', 'B_2020')])
+        self.assertEqual((origin.pulled('global'), origin.pulled('../pool')), (12345, 678))
+        self.assertNotIn(POOL_FIELD, origin.records()[0].entry.fields_dict)
+        again = Origin.load(self.path('lib', ORIGIN_DIR))
+        self.assertEqual(len(again), 2)
+        self.assertEqual(again.pulled('../pool'), 678)
 
     def test_backup(self):
         self.lib('config git true')
         self.take_smith('add ../smith.bib')
         config = Config.load(self.path('lib', '.papersconfig.json'))
-        backup = os.path.join(config.gitdir, ORIGIN_FILE)
+        name = os.path.join(ORIGIN_DIR, origin_file_name('../pool'))
+        backup = os.path.join(config.gitdir, name)
         self.assertTrue(os.path.exists(backup))
         self.assertIn('smith2020climate', Path(backup).read_text())
-        tracked = papers.backup.run_git(config.gitdir, ['ls-files'])
-        self.assertIn(ORIGIN_FILE, str(tracked))
+        tracked = papers.backup.run_git(config.gitdir, ['ls-files']).stdout
+        self.assertIn(name, tracked)
+        # a file removed from the library leaves the backup
+        os.remove(self.path('lib', name))
+        self.lib('tag smith2020climate --add x')
+        self.assertFalse(os.path.exists(backup))
+        self.assertNotIn(name, papers.backup.run_git(config.gitdir, ['ls-files']).stdout)
 
 
 # ADD FROM A POOL
@@ -504,14 +548,14 @@ class TestPull(PoolTest):
 
     def test_entry_without_origin_is_not_shared(self):
         # without KEY or --all, pull only updates the entries shared with the pool
-        Path(self.path('lib', ORIGIN_FILE)).unlink()
+        shutil.rmtree(self.path('lib', ORIGIN_DIR))
         self.out('pull')
         self.assertIsNone(self.origin().get(self.entry('smith2020climate')))
 
     def test_entry_without_origin_is_linked(self):
         for cmd in ['pull smith2020climate', 'pull --all']:
             with self.subTest(cmd=cmd):
-                Path(self.path('lib', ORIGIN_FILE)).unlink(missing_ok=True)
+                shutil.rmtree(self.path('lib', ORIGIN_DIR), ignore_errors=True)
                 self.out(cmd)
                 self.assertIsNotNone(self.origin().get(self.entry('smith2020climate')))
 

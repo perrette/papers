@@ -64,8 +64,9 @@ def init_summary(config):
              f'* files:   {files}']
     labels = config.pool_labels()
     if len(labels) > 1:
-        lines.append(f'* pools:   {", ".join(labels)} (looked up in this order; new entries go to the first'
+        lines.append(f'* pools:   {labels[0]} (main: synced, new entries go here'
                      + ('; the PDFs stay in this library)' if config.local else ')'))
+        lines.extend(' ' * 11 + label + ' (searched only)' for label in labels[1:])
     elif config.local and labels:
         lines.append(f'* pool:    {labels[0]} (shared entries; the PDFs stay in this library)')
     return lines + ['* backup:  ' + ('git' + (' and git-lfs' if config.gitlfs else '') if config.git else 'off'),

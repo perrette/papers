@@ -171,7 +171,8 @@ def get_parser(config=None):
         help='files directory (default: files, or an existing pdfs/, papers/... folder)')
     initp.add_argument('--pool', metavar='PATH|none', action='append',
         help='pool of the library: a path (relative to the library), or none. Repeat it for several '
-             'pools: the entries are looked up in each, in order, and written to the first (default: the '
+             'pools: the first is the main pool, synced and written to; the others are searched when adding '
+             'or pulling, never written to (default: the '
              f'global pool setting, {_default(papers.config.format_value(config.machine.pool))}, set with '
              '`papers config --global pool`)')
     initp.add_argument('--local', action='store_true', default=None, dest='local_setting',
@@ -197,8 +198,8 @@ def get_parser(config=None):
                     'print its value; with KEY VALUE..., set it in the library configuration',
         epilog='settings: ' + ', '.join(SETTINGS) + '. Changing local or pool moves the files of the library '
                '(local true: the pool files it links to are copied into its files directory; local false: its '
-               'files go to the pool; pool PATH...: one or more pools, looked up in order, and the files go to the '
-               'first one when it changes; pool none: local true); papers lists '
+               'files go to the pool; pool PATH...: one or more pools, searched in order, and the files go to the '
+               'first one, the main pool, when it changes; pool none: local true); papers lists '
                'what it will do and asks to continue.')
     configp.add_argument('key', nargs='?', metavar='KEY')
     configp.add_argument('values', nargs='*', metavar='VALUE')
@@ -621,38 +622,42 @@ def get_parser(config=None):
         {receiving} values are kept), update (the {incoming} values are taken), skip (the entry is
         left as it is, and comes again next time), error (stop before saving; the default
         without a terminal). Fields changed on one side only need no decision.'''
-    _pool_help = 'only this pool, to {what} (default: the pools of the library), e.g. a folder shared with someone'
+    _pool_help = ('another library, to {what}, without origin copies (a one-time exchange: no entry becomes '
+                  'shared with it), e.g. a folder shared with someone; the main pool of the library is the usual '
+                  'exchange (default: the main pool)')
     pullp = subparsers.add_parser('pull', parents=[cfg],
-        description='''update the entries of the library from their pool entries (three-way merge
-        with the origin copy of the entry, .papers/origin.bib): a field changed in the pool only is
-        taken, a field changed in the library only is kept, a field changed on both sides is a
-        conflict. Without KEY, only the entries shared with the pools (with an origin copy) are
-        updated, each from the pool it came from; an entry named, or all entries with --all, is
-        matched by the same-paper rule when it has no origin copy, in the pools in order (the
-        first match wins). The keys of the library never change. KEY may also be an entry of a pool only
-        (its key, DOI, arXiv id or ISBN; the pools are searched in order): it is added to the
-        library, under the pool key (with a letter suffix if the library has that key already). New pool files are linked in a library that
+        description='''update the entries of the library from their entries in the main pool (the
+        first pool; three-way merge with the origin copy of the entry, in .papers/origin/): a field
+        changed in the pool only is taken, a field changed in the library only is kept, a field
+        changed on both sides is a conflict. Without KEY, only the entries shared with the main pool
+        (with an origin copy) are updated; an entry named, or all entries with --all, is matched by
+        the same-paper rule when it has no origin copy. The keys of the library never change. KEY
+        may also be an entry of a pool only (its key, DOI, arXiv id or ISBN; the main pool is
+        searched first, then the other pools in order): it is added to the library, under the pool
+        key (with a letter suffix if the library has that key already). An entry added from another
+        pool than the main one is shared with no pool, except in a library that is not local, or
+        with auto-push, where it is also added to the main pool. New pool files are linked in a library that
         is not local, and otherwise copied (a hard link when possible) as the files setting says.
         Unlike `papers add other.bib`, which copies entries once, the entries pulled keep their
         link to the pool (origin copy): later pulls bring the corrections made in the pool.''')
-    pullp.add_argument('entries', nargs='*', metavar='KEY', help=_selection_help + ' (default: the entries shared with the pools)')
+    pullp.add_argument('entries', nargs='*', metavar='KEY', help=_selection_help + ' (default: the entries shared with the main pool)')
     pullp.add_argument('--pool', metavar='PATH', help=_pool_help.format(what='pull from, once'))
     pullp.add_argument('--all', action='store_true',
-        help='all entries: the entries of the library not shared yet are matched by the same-paper rule, '
-             'and every entry of the pools that the library does not have is added (the pools in order, '
-             'a paper taken from one pool is not taken again from another)')
+        help='all entries: the entries of the library not shared yet are matched by the same-paper rule in '
+             'the main pool, and every entry of the pools that the library does not have is added (the pools '
+             'in order, a paper taken from one pool is not taken again from another)')
     pullp.add_argument('--on-duplicate', choices=ON_DUPLICATE,
         help=_exchange_help.format(receiving='library', incoming='pool'))
     pullp.add_argument('--check', action='store_true',
-        help='only report: whether each pool changed since the last pull, and the entries changed in the pools')
+        help='only report: whether the main pool changed since the last pull, and the entries changed in it')
     pullp.set_defaults(mode=None, yes=False)
     _command(pullp, pullcmd, library=True)
 
     pushp = subparsers.add_parser('push', parents=[cfg],
         description='''merge the changes of the entries of the library into their pool entries
-        (three-way merge with the origin copy, as pull does in the other direction), in the first
-        pool of the library. Without KEY, only the entries shared with the pool (those with an
-        origin copy from it) are pushed; KEY... pushes those entries, and adds them to the pool if
+        (three-way merge with the origin copy, as pull does in the other direction), in the main
+        pool of the library (the first). Without KEY, only the entries shared with the pool (those
+        with an origin copy from it) are pushed; KEY... pushes those entries, and adds them to the pool if
         it does not have them; --all pushes every entry. Entries new to the pool get a key from
         the pool's key template; their files are copied (a hard link when possible) into the
         pool's files directory, named with the pool's name template. The pool is created if it
@@ -668,13 +673,13 @@ def get_parser(config=None):
     _command(pushp, pushcmd, library=True)
 
     syncp = subparsers.add_parser('sync', parents=[cfg],
-        description='''`papers pull` from the pools of the library, then `papers push` of the
-        same entries to the first pool. Without KEY, only the entries shared with the pools (those
-        with an origin copy) are exchanged; KEY... exchanges those entries; --all is `pull --all`
+        description='''`papers pull`, then `papers push` of the same entries, with the main pool of
+        the library (the first). Without KEY, only the entries shared with it (those with an origin
+        copy) are exchanged; KEY... exchanges those entries; --all is `pull --all`
         and `push --all`: each side gets the entries it does not have. If the pull leaves
         conflicts undecided (skipped, or the dialogue quit), nothing is pushed.''')
     syncp.add_argument('entries', nargs='*', metavar='KEY',
-        help=_selection_help + ' (default: the entries shared with the pools)')
+        help=_selection_help + ' (default: the entries shared with the main pool)')
     syncp.add_argument('--all', action='store_true',
         help='also add to each side the entries it does not have (pull --all, push --all)')
     syncp.add_argument('--pool', metavar='PATH', help=_pool_help.format(what='sync with, once'))

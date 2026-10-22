@@ -197,7 +197,7 @@ def claim_gitdir(config):
 def move_gitdir_out_of_library(config):
     """The backup directory of the libraries of papers v2.2 to v2.4 is
     <library>/.papers, the folder where papers 3 keeps the files of the
-    library (origin.bib, distinct.json): the backup would copy them into
+    library (origin/, distinct.json): the backup would copy them into
     itself, and `git clean` would remove them. Move the repository (its
     .git and the files it tracks) to a new directory of the backup folder,
     and record it in the library configuration."""
@@ -220,7 +220,7 @@ def move_gitdir_out_of_library(config):
                 os.makedirs(os.path.dirname(os.path.join(new, name)), exist_ok=True)
                 shutil.move(str(gitdir / name), os.path.join(new, name))
     logger.warning(f"the backup directory {gitdir} is the folder of the library's own files since papers 3 "
-                   f"(origin.bib, distinct.json): the backup moved to {new}")
+                   f"(origin/, distinct.json): the backup moved to {new}")
     config.gitdir = new
     if config.file and config.is_library and os.path.exists(config.file):
         config.save()
@@ -363,15 +363,24 @@ def backup_bib(biblio, config, message=None):
     shutil.copy(config.bibtex, config.backupfile)
     run_git(config.gitdir, ["add", config.backupfile.name])
 
-    # the files of the library next to its bibtex: origin copies of the
-    # entries taken from pools, and the pairs that are not the same paper
-    from papers.pools import ORIGIN_FILE  # papers.pools imports this module (through papers.library)
-    for name in (ORIGIN_FILE, DISTINCT_FILE):
-        source = Path(config.bibtex).parent / name
+    # the files of the library next to its bibtex: the origin copies of the
+    # entries exchanged with pools (one file per pool), and the pairs that
+    # are not the same paper; a file removed from the library leaves the backup
+    from papers.pools import ORIGIN_DIR, LEGACY_ORIGIN_FILE  # papers.pools imports this module
+    libdir = Path(config.bibtex).parent
+    names = {DISTINCT_FILE, LEGACY_ORIGIN_FILE}
+    for d in (libdir / ORIGIN_DIR, backupdir / ORIGIN_DIR):
+        if d.is_dir():
+            names.update(os.path.join(ORIGIN_DIR, f.name) for f in d.iterdir() if f.suffix == '.bib')
+    for name in sorted(names):
+        source = libdir / name
         if source.exists():
             (backupdir / name).parent.mkdir(parents=True, exist_ok=True)
             shutil.copy(source, backupdir / name)
             run_git(config.gitdir, ["add", name])
+        elif (backupdir / name).exists():
+            (backupdir / name).unlink()
+            run_git(config.gitdir, ["rm", "--cached", "--ignore-unmatch", "--quiet", name], check=False)
 
     if config.gitlfs:
         logger.info('backup bibliography with files')
