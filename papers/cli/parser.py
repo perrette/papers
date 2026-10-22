@@ -197,7 +197,8 @@ def get_parser(config=None):
                     'print its value; with KEY VALUE..., set it in the library configuration',
         epilog='settings: ' + ', '.join(SETTINGS) + '. Changing local or pool moves the files of the library '
                '(local true: the pool files it links to are copied into its files directory; local false: its '
-               'files go to the pool; pool PATH: they go to the new pool, pool none: local true); papers lists '
+               'files go to the pool; pool PATH...: one or more pools, looked up in order, and the files go to the '
+               'first one when it changes; pool none: local true); papers lists '
                'what it will do and asks to continue.')
     configp.add_argument('key', nargs='?', metavar='KEY')
     configp.add_argument('values', nargs='*', metavar='VALUE')
