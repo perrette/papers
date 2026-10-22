@@ -1242,7 +1242,8 @@ none</code> turns sharing off: new libraries get <code>pool: none</code>.</p>
   there;</li>
 <li><code>papers sync</code> does both;</li>
 <li><code>papers status</code> and <code>papers pull --check</code> tell whether the pool changed
-  since the last pull.</li>
+  since the last exchange with it: <code>up to date</code>, or <code>changed since last
+  pull or push</code>.</li>
 </ul>
 <p>Nothing is pulled or pushed automatically, except in libraries that are not
 local and with the <code>auto-push</code> setting (below): an older project does not
@@ -1342,7 +1343,9 @@ the entry at that time, under the library's key, with the pool it came from
 (<code>papers-pool</code>: <code>global</code> for the global pool, otherwise the path of the
 pool relative to the library), the key in the pool (<code>papers-pool-key</code>) and
 the time (<code>papers-time</code>). It also records the modification time of the
-pool's bibtex at the last pull. The file is part of the git backup of the
+pool's bibtex at the last exchange with the pool: a pull of all entries, or
+a push or an add when the pool had not changed since the previous exchange
+(or when it is the first exchange). The file is part of the git backup of the
 library (see <a href="../git/">Git integration</a>).</p>
 <p>The origin copy is the third version of a three-way merge: comparing the
 library entry and the pool entry with it tells which side changed a field.</p>
@@ -1507,7 +1510,7 @@ its configuration (with the name and key templates that the library sets,
 <p>Later, the entry is completed in the pool (e.g. its pages), and adapted in
 <code>tides</code> (a journal abbreviation):</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>cd ~/projects/tides
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>papers status                  # pool: ~/Documents/papers (global pool, changed since last pull)
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>papers status                  # pool: ~/Documents/papers (global pool, changed since last pull or push)
 <a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>papers pull --check            # perrette_landerer2013: changed in pool ~/Documents/papers: pages
 <a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>papers pull                    # pages taken; the journal abbreviation is kept
 </code></pre></div>

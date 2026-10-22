@@ -1156,19 +1156,11 @@ next to them (<code>.papersconfig.json</code>). <code>papers init</code> creates
 current directory, and <code>papers init DIR</code> in the directory <code>DIR</code> (created if
 missing, with its parents):</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>$&gt; papers init
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>papers library: /home/perrette/projects/sealevel
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>version 3.0.0
-<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>* configuration file: .papersconfig.json
-<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>* global config:      /home/perrette/.config/papers/config.json (none)
-<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>* cache directory:    /home/perrette/.cache/papers
-<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>* backup (git):       True
-<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>* backup files (git-lfs): False
-<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>* backup directory:   /home/perrette/.local/share/papers/backups/sealevel-papers-3f9a1c2b
-<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>* files directory:    files (empty)
-<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>* bibtex:             papers.bib (empty)
-<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>* pool:               ~/Documents/papers (global pool, not created yet)
-<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>* local:              false (the files are in the files directory of the pool)
-<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>...
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>created the library ~/projects/sealevel
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>* bibtex:  papers.bib
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>* files:   in the pool ~/Documents/papers
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>* backup:  git
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>`papers status -v` shows all settings
 </code></pre></div>
 <p>By default the bibtex is <code>papers.bib</code> (or the first <code>.bib</code> file present in
 the directory) and the files directory is <code>files</code> (or an existing <code>pdfs</code>,
