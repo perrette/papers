@@ -34,7 +34,7 @@ from papers.extract import (extract_pdf_metadata, parse_doi_from_pdf_metadata, p
 from papers.fetch import fetch_bibtex_by_fulltext_crossref, fetch_bibtex_by_doi
 
 from papers.encoding import standard_name, family_names, format_entries
-from papers.latexenc import unicode_to_latex
+from papers.latexenc import string_to_latex
 
 from papers.filename import NAMEFORMAT, KEYFORMAT
 from papers.files import (download_url, read_entry_dir, attachment_names, remove_entry_dir_if_empty, realpath,
@@ -54,6 +54,9 @@ from papers.merge import Merge, Resolver, Decision, DuplicateError, apply_entry,
 
 # the fields of `add --key` and `--type` in the metadata of insert_entry
 METADATA_NAMES = {'ID': 'key', 'ENTRYTYPE': 'type'}
+
+# the fields that check --encoding latex leaves as they are
+LATEX_SKIP = {'abstract', 'file', 'doi', 'url', 'eprint', 'isbn', 'issn', 'ids'}
 
 
 def entry_diff(e_old, e, color=True):
@@ -78,22 +81,19 @@ def append_abc(key, keys=[]):
     >>> append_abc('Author2000', ['Author2000', 'Author2000b'])
     'Author2000c'
     """
-    letters = list('abcdefghijklmnopqrstuvwxyz')
+    letters = 'abcdefghijklmnopqrstuvwxyz'
 
-    if key[-1] in letters:
-        i = letters.index(key[-1])
-        letters = letters[i+1:]
+    # a letter after a digit is a suffix of this function (Author2000b)
+    if len(key) > 1 and key[-1] in letters and key[-2].isdigit():
+        letters = letters[letters.index(key[-1])+1:]
         key = key[:-1]
     else:
         letters = letters[1:] # start at b
 
     for l in letters:
-        Key = (key+l)
-        if Key not in keys:
-            key = Key
-            break
-    assert Key not in keys, 'not enough letters in the alphabets to solve key conflict? or maybe something went wrong...'
-    return Key
+        if key+l not in keys:
+            return key+l
+    raise ValueError(f'{key}: no free key with a letter suffix')
 
 
 def backupfile(bibtex):
@@ -665,10 +665,12 @@ class Biblio:
             if encoding == "unicode":
                 convert_entry_to_unicode(e)
             else:
-                for k in e:
-                    if k == k.lower() and k != 'abstract': # all but ENTRYTYPE, ID, abstract
+                # all fields but the abstract, and the paths and identifiers
+                # (string_to_latex escapes _ and ~)
+                for k in [k for k, _ in e.items() if k not in LATEX_SKIP]:
+                    if k == k.lower():  # not ENTRYTYPE, ID
                         try:
-                            e[k] = unicode_to_latex(e[k])
+                            e[k] = string_to_latex(e[k])
                         except (KeyError, ValueError) as error:
                             logger.warning(get_entry_val(e, 'ID', '')+': '+k+': failed to encode: '+str(error))
 
