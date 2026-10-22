@@ -157,7 +157,8 @@ with the title of the library entry), `papers add` uses that entry: nothing
 is fetched online and there is no duplicate dialogue. The PDF (and the files
 of `--attach`) are attached to the entry and placed as the `files` setting
 says, as `papers file attach KEY FILE...` does; the key, the fields and the
-other files of the entry are not touched. An arXiv DOI
+other files of the entry are not touched. A file with the content of a file
+of the entry is not attached again, and stays where it is. An arXiv DOI
 (`10.48550/arXiv.<id>`) matches an entry whose `eprint` is that arXiv
 identifier. `--no-check-duplicate` skips this, and adds a new entry.
 

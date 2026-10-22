@@ -39,7 +39,7 @@ from papers.latexenc import string_to_latex
 from papers.filename import NAMEFORMAT, KEYFORMAT
 from papers.files import (download_url, read_entry_dir, attachment_names, remove_entry_dir_if_empty, realpath,
                           scan_dir_items)
-from papers.utils import bcolors, move as _move, PapersExit
+from papers.utils import bcolors, checksum, move as _move, PapersExit
 import papers.config
 
 from papers.duplicate import (
@@ -97,6 +97,18 @@ def append_abc(key, keys=[]):
         if (key+l).lower() not in keys:
             return key+l
     raise ValueError(f'{key}: no free key with a letter suffix')
+
+
+def _same_content(file, files):
+    "the first of `files` with the content of `file` (same size, then same checksum), or None"
+    try:
+        size = os.path.getsize(file)
+    except OSError:
+        return None
+    for f in files:
+        if os.path.isfile(f) and os.path.getsize(f) == size and checksum(f) == checksum(file):
+            return f
+    return None
 
 
 def backupfile(bibtex):
@@ -390,7 +402,13 @@ class Biblio:
         old = self.get_files(e)
         known = {realpath(f) for f in old}
         new = [os.path.abspath(f) for f in files if realpath(f) not in known]
+        # a file with the content of a file of the entry is not attached again
+        same = {f: _same_content(f, old) for f in new}
+        new = [f for f in new if same[f] is None]
         print(f'already in library: {e.key}' + (f' (+{len(new)} file{"s" if len(new) > 1 else ""})' if new else ''))
+        for f, other in same.items():
+            if other is not None:
+                print(f'{f}: not attached, the entry has the same file: {other}')
         if not new:
             return [e]
         self.set_files(e, old + new)

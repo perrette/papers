@@ -758,6 +758,29 @@ class TestAddExistingEntry(FileTest):
         self.assertIn('already in library: one2000\n', out)
         self.assertEqual(self.files('one2000'), [self.a])
 
+    def test_identical_file_not_attached(self):
+        copy = self.write('src', 'copy.pdf', content='a.pdf')  # the content of files/a.pdf
+        out = self.add(f'add {copy} --doi 10.1000/one')
+        self.assertIn('already in library: one2000\n', out)
+        self.assertIn(f'{copy}: not attached, the entry has the same file: {self.a}', out)
+        self.assertEqual(self.files('one2000'), [self.a])
+        self.assertTrue(os.path.exists(copy))  # left where it is
+
+    def test_recursive(self):
+        # add -R: a PDF of the DOI of a library entry is attached to it; one with its content is not
+        self.write('src', 'sub', 'copy.pdf', content='a.pdf')
+        with patch('papers.bib.parse_doi_from_pdf_metadata', return_value='10.1000/one'):
+            out = self.add(f'add -R {self.path("src")}')
+        self.assertEqual(self.keys(), ['one2000', 'two2000'])
+        self.assertEqual(out.count('already in library: one2000 (+1 file)\n'), 2)  # new.pdf, si.pdf
+        self.assertIn('already in library: one2000\n', out)  # sub/copy.pdf
+        files = self.files('one2000')
+        self.assertEqual(len(files), 3)
+        self.assertEqual(files[0], self.a)
+        self.assertEqual(sorted(Path(f).read_text() for f in files), ['a.pdf', 'new.pdf', 'si.pdf'])
+        self.assertTrue(all(f.startswith(self.path('lib', 'files')) for f in files))
+        self.assertTrue(os.path.exists(self.path('src', 'sub', 'copy.pdf')))
+
     def test_no_check_duplicate_fetches(self):
         fetched = '@article{x,\n author = {Some One},\n doi = {10.1000/one},\n title = {Title of one2000},\n year = {2000}\n}\n'
         with patch('papers.bib.fetch_bibtex_by_doi', return_value=fetched) as fetch:
