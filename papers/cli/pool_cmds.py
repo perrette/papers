@@ -215,6 +215,7 @@ def synccmd(parser, o, config):
         return
     resolver = duplicate_resolver(o, 'pull')
     pull_report, pushed = _pull(o, exchange, resolver, pool, searched)
+    pull_report = [r for r in pull_report if r[2] != 'not found']  # the push adds them
     pools = _pulled_from(pull_report, pool, searched)
     pull_lines, pull_summary = exchange_lines(pull_report, 'pull', biblio, pools)
     pull_lines += exchange_lines(pushed, 'push', biblio, [])[0]
