@@ -216,17 +216,16 @@ class TestUndoPool(UndoPoolTest, UndoInLibrary):
 
     def test_pull_after_pool_undo_of_a_new_field(self):
         # a field that the pool undo removes is a removal for the
-        # three-way merge, and a field removed on one side is kept from
-        # the other (papers.merge): the library keeps it, and the push
-        # sends it back to the pool (and says so)
+        # three-way merge (papers.merge): the pull removes it from the
+        # library too, and the push does not bring it back
         self.lib('add ../other.bib')
         self.tag('other2023', 'foo')
         self.lib('-C ../pool undo')
         self.assertIsNone(self.keywords('other2023', 'pool'))
         self.lib('pull')
-        self.assertEqual(self.keywords('other2023'), 'foo')
-        self.assertIn('Modified -> other2023', self.out('push'))
-        self.assertEqual(self.keywords('other2023', 'pool'), 'foo')
+        self.assertIsNone(self.keywords('other2023'))
+        self.assertNotIn('Modified', self.out('push'))
+        self.assertIsNone(self.keywords('other2023', 'pool'))
 
 
     def test_undo_restores_distinct(self):

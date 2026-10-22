@@ -18,11 +18,16 @@ entries:
 The model (Merge), the screen and the reading of an answer (Dialogue) do no
 input or output; `ask` runs the dialogue in a terminal.
 
-Three-way mode (`pull`, `push`: Merge with a `base`, the origin copy of the
-entry): a field changed in the other entry only (since the base) is an
-addition (`+`), a field changed in the target only is kept without asking,
-a field changed on both sides is a conflict. A field removed on one side is
-kept from the other side. The `ids` field is the target's.
+Exchange mode (`pull`, `push`: Merge with exchange=True): the fields of
+EXCHANGE_OWN are not merged, each side keeps its own (see there). With a
+`base` (the origin copy of the entry, the entry as last exchanged), the
+merge is three-way: whatever one side changed since the base wins, and a
+field changed on both sides is a conflict. A removal is a change: a field
+removed in the other entry, that the target has as in the base, is removed
+(`+`, shown as `(removed)`); removed on one side and changed on the other
+is a conflict; removed on both sides, it is removed. Without a base (first
+exchange, or a one-time exchange), a field present on one side only is an
+addition.
 """
 import builtins
 import os
@@ -44,6 +49,16 @@ CONFLICT = '!'
 
 # fields with their own merge rule
 SPECIAL_FIELDS = ('ID', 'file', 'ids')
+
+# the fields that an exchange (pull, push) does not merge: each side keeps
+# its own. The key: each library names its entries (the pool key comes from
+# the pool's key template when the entry first reaches the pool). ids: the
+# former keys of each side. file: the links of each side; the files have
+# their own handling (a file new on the other side is linked or copied).
+EXCHANGE_OWN = ('ID', 'ids', 'file')
+
+# how the dialogue shows a field that a side removed (three-way mode)
+REMOVED = '(removed)'
 
 
 # EQUIVALENT VALUES
@@ -130,6 +145,7 @@ class FieldMerge:
         values = [_no_empty(v) for v in values]
         self.values = values
         self.base = _no_empty(base)
+        self.three_way = three_way
         self.changed = None
         present = [v for v in values if v is not None]
         target = values[0]
@@ -140,7 +156,7 @@ class FieldMerge:
             self.status = SAME
             return
         self.choice = 0 if target is not None else next(i for i, v in enumerate(values) if v is not None)
-        if all(equivalent(name, present[0], v) for v in present[1:]) and not (three_way and target is None):
+        if all(equivalent(name, present[0], v) for v in present[1:]) and not (three_way and None in values):
             self._value = preferred(name, present)
             self.status = SAME if target is not None else ADDED
         elif three_way:
@@ -149,26 +165,38 @@ class FieldMerge:
             self.status = CONFLICT
 
     def _three_way(self, name, target, other):
-        "target and other differ (one of them may be absent)"
+        "target and other differ (one of them may be absent: added, or removed since the base)"
         base = self.base
         same = lambda a, b: a is not None and b is not None and equivalent(name, a, b)
-        if other is None or same(other, base):
-            # changed (or added) in the target only, or removed in the other: kept
+        self.choice = 0
+        if base is None and other is None:
+            # added in the target: kept
             self.status = SAME
-            self.choice = 0
-            self.changed = CHANGED_TARGET if other is not None or base is None else None
-        elif target is None and base is None:
+            self.changed = CHANGED_TARGET
+        elif base is None and target is None:
+            # added in the other entry: offered
             self.status = ADDED
+            self.choice = 1
             self.changed = CHANGED_OTHER
+        elif same(other, base):
+            # changed or removed in the target only: kept
+            self.status = SAME
+            self.changed = CHANGED_TARGET
         elif same(target, base):
-            # changed in the other entry only: offered
+            # changed or removed in the other entry only: offered
             self.status = ADDED
             self._value = other
             self.choice = 1
             self.changed = CHANGED_OTHER
         else:
+            # changed on both sides, or removed on one side and changed on the other
             self.status = CONFLICT
             self.changed = CHANGED_BOTH
+
+    @property
+    def removal(self):
+        "the change offered is the removal of the field (three-way mode)"
+        return self.status == ADDED and self.values[self.choice] is None
 
     def decline(self):
         "do not take an addition: keep the value of the target (none if it has none)"
@@ -184,18 +212,25 @@ class FieldMerge:
         return self.values[self.choice]
 
     def choose(self, i):
-        "use the value of entry i (ignored when entry i does not have the field)"
-        if self.status == CONFLICT and 0 <= i < len(self.values) and self.values[i] is not None:
+        """use the value of entry i (ignored when entry i does not have the
+        field, except in three-way mode, where entry i removed it)"""
+        if self.status == CONFLICT and 0 <= i < len(self.values) and (self.values[i] is not None or self.three_way):
             self.choice = i
 
     def alternatives(self):
-        """[(entries, value)] of the values not used, grouped by value, in entry order"""
+        """[(entries, value)] of the values not used, grouped by value, in
+        entry order (value None: the field removed, in three-way mode)"""
         groups = []
         for i, v in enumerate(self.values):
-            if v is None or i == self.choice or equivalent(self.name, v, self.value):
+            if i == self.choice:
+                continue
+            if v is None:
+                if not self.three_way or self.value is None:
+                    continue
+            elif self.value is not None and equivalent(self.name, v, self.value):
                 continue
             for g in groups:
-                if equivalent(self.name, g[1], v):
+                if (g[1] is None) == (v is None) and (v is None or equivalent(self.name, g[1], v)):
                     g[0].append(i)
                     break
             else:
@@ -208,14 +243,18 @@ class Merge:
     module documentation). `relative_to` is the directory the file links of
     the entries are relative to.
 
+    exchange: a merge of a library entry and a pool entry (pull, push):
+    the fields of EXCHANGE_OWN are the target's (the file links are the
+    union, see Merge.new_files).
     base: the origin copy of the entry, for a three-way merge of two
-    entries (pull, push); its key and file links are not used."""
+    entries (pull, push: an exchange); its key and file links are not used."""
 
-    def __init__(self, entries, relative_to=None, keys_to_ids=False, base=None):
+    def __init__(self, entries, relative_to=None, keys_to_ids=False, base=None, exchange=False):
         self.entries = list(entries)
         self.relative_to = relative_to
         self.keys_to_ids = keys_to_ids
         self.base = base
+        self.exchange = exchange or base is not None
         if base is not None and len(self.entries) != 2:
             raise ValueError('a three-way merge combines two entries')
         self.fields = []
@@ -270,8 +309,8 @@ class Merge:
     def _merge_ids(self):
         key = self.key.lower()
         ids = []
-        # the key aliases of a pool mean nothing in a library, and conversely
-        sources = [get_entry_val(e, 'ids', '') for e in (self.entries[:1] if self.three_way else self.entries)]
+        # the key aliases of a pool mean nothing in a library, and conversely (EXCHANGE_OWN)
+        sources = [get_entry_val(e, 'ids', '') for e in (self.entries[:1] if self.exchange else self.entries)]
         if self.keys_to_ids:
             sources += [get_entry_val(e, 'ID', '') for e in self.others]
         for source in sources:
@@ -303,7 +342,8 @@ class Merge:
     def with_target(self, i):
         "the same merge with entry i as target"
         entries = [self.entries[i]] + [e for j, e in enumerate(self.entries) if j != i]
-        return Merge(entries, relative_to=self.relative_to, keys_to_ids=self.keys_to_ids, base=self.base)
+        return Merge(entries, relative_to=self.relative_to, keys_to_ids=self.keys_to_ids, base=self.base,
+                     exchange=self.exchange)
 
     def result(self):
         "the merged entry, with the key of the target"
@@ -321,7 +361,8 @@ class Merge:
         lines = []
         for f in self.conflicts:
             for idx, v in f.alternatives():
-                lines.append(f'% {f.name} = {{{_oneline(v)}}}   ({", ".join(str(i+1) for i in idx)})')
+                value = f'{{{_oneline(v)}}}' if v is not None else REMOVED
+                lines.append(f'% {f.name} = {value}   ({", ".join(str(i+1) for i in idx)})')
         if lines:
             text = text.rstrip('\n') + '\n\n% values of the other entries (lines starting with % are ignored):\n' + '\n'.join(lines) + '\n'
         return text
@@ -425,8 +466,13 @@ class Dialogue:
         if f.changed == CHANGED_TARGET:
             return f'changed in {self.label(0)}, kept'
         if f.changed == CHANGED_OTHER:
+            if f.values[1] is None:
+                return f'removed in {self.label(1)}'
             return f'{"added" if f.values[0] is None else "changed"} in {self.label(1)}'
         if f.changed == CHANGED_BOTH:
+            for i in (0, 1):
+                if f.values[i] is None:
+                    return f'removed in {self.label(i)}, changed in {self.label(1 - i)}'
             return 'changed on both sides'
         return ''
 
@@ -487,16 +533,19 @@ class Dialogue:
         if self.context == 'check' and any(k != m.key for k in others):
             alts = [([i+1], f'{k} (kept in ids)') for i, k in enumerate(others) if k != m.key]
             line(CONFLICT, 'key', m.key, alts)
+        def shown(v, width=None):
+            return REMOVED if v is None else '{' + _oneline(v, width) + '}'
+
         rows = []
         for f in m.fields:
-            if f.name == 'ENTRYTYPE' or f.value is None:
+            if f.name == 'ENTRYTYPE' or f.value is None and f.status == SAME:
                 continue
             if f.status == CONFLICT:
-                rows.append((CONFLICT, f.name, '{' + _oneline(f.value) + '}',
-                             [(idx, '{' + _oneline(v) + '}') for idx, v in f.alternatives()] + origin(f),
+                rows.append((CONFLICT, f.name, shown(f.value),
+                             [(idx, shown(v)) for idx, v in f.alternatives()] + origin(f),
                              self.change_note(f)))
             else:
-                rows.append((f.status, f.name, '{' + _oneline(f.value, None if f.status == ADDED else 70) + '}', (),
+                rows.append((f.status, f.name, shown(f.value, None if f.status == ADDED else 70), (),
                              self.change_note(f)))
         if m.files:
             files = ';'.join(os.path.relpath(f) if os.path.isabs(f) else f for f in m.files)
@@ -576,8 +625,9 @@ class Dialogue:
     def field_question(self, f):
         """the question for one conflicting field, or in three-way mode an
         addition (answer with parse_field)"""
-        rows = [(str(i+1), _oneline(v) if v is not None else '(none)', self.label(i))
-                for i, v in enumerate(f.values) if v is not None or f.status == ADDED]
+        absent = REMOVED if f.base is not None else '(none)'
+        rows = [(str(i+1), _oneline(v) if v is not None else absent, self.label(i))
+                for i, v in enumerate(f.values) if v is not None or f.status == ADDED or f.three_way]
         width = max(len(r[1]) for r in rows)
         lines = [f'{f.name if f.name != "ENTRYTYPE" else "type"}:']
         lines += [f'  {n}  {v.ljust(width)}  {label}' for n, v, label in rows]
@@ -613,7 +663,8 @@ class Dialogue:
         s = text.strip()
         if s == 'e':
             return Answer('edit', text=s)
-        if s.isdigit() and 1 <= int(s) <= len(f.values) and (f.values[int(s)-1] is not None or f.status == ADDED):
+        if s.isdigit() and 1 <= int(s) <= len(f.values) and (f.values[int(s)-1] is not None or f.status == ADDED
+                                                              or f.three_way):
             return Answer('take', int(s) - 1, s)
         return Answer('invalid', text=s)
 

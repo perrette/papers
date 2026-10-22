@@ -61,11 +61,64 @@ class TestThreeWay(unittest.TestCase):
         m = three(lib={'journal': 'Nature'}, pool={'journal': 'nature'})
         self.assertTrue(m.is_exact())
 
-    def test_removed_in_pool_is_kept(self):
+    def test_removed_in_pool_is_offered(self):
         m = Merge([entry('a', **BASE), entry('b', **{k: v for k, v in BASE.items() if k != 'keywords'})],
                   base=entry('a', **BASE))
+        self.assertEqual(self.status(m)['keywords'], (ADDED, CHANGED_OTHER))
+        self.assertTrue(m.additions[0].removal)
+        self.assertEqual(m.conflicts, [])
+        self.assertNotIn('keywords', m.result())
+        m.additions[0].decline()
+        self.assertEqual(m.result()['keywords'], 'climate')
+
+    def test_removed_in_pool_changed_in_library_is_a_conflict(self):
+        m = Merge([entry('a', **{**BASE, 'keywords': 'climate, mine'}),
+                   entry('b', **{k: v for k, v in BASE.items() if k != 'keywords'})],
+                  base=entry('a', **BASE))
+        self.assertEqual(self.status(m)['keywords'], (CONFLICT, CHANGED_BOTH))
+        self.assertEqual(m.result()['keywords'], 'climate, mine')
+        m.choose_all(1)
+        self.assertNotIn('keywords', m.result())
+
+    def test_removed_in_library_changed_in_pool_is_a_conflict(self):
+        m = Merge([entry('a', **{k: v for k, v in BASE.items() if k != 'keywords'}),
+                   entry('b', **{**BASE, 'keywords': 'climate, pool'})],
+                  base=entry('a', **BASE))
+        self.assertEqual(self.status(m)['keywords'], (CONFLICT, CHANGED_BOTH))
+        self.assertNotIn('keywords', m.result())  # the library's removal, until decided
+        m.choose_all(1)
+        self.assertEqual(m.result()['keywords'], 'climate, pool')
+
+    def test_removed_on_both_sides(self):
+        no_keywords = {k: v for k, v in BASE.items() if k != 'keywords'}
+        m = Merge([entry('a', **no_keywords), entry('b', **no_keywords)], base=entry('a', **BASE))
+        self.assertTrue(m.is_exact())
+        self.assertNotIn('keywords', m.result())
+
+    def test_no_base_one_side_only_is_an_addition(self):
+        # first exchange, one-time --pool: no removal information
+        no_keywords = {k: v for k, v in BASE.items() if k != 'keywords'}
+        m = Merge([entry('a', **no_keywords), entry('b', **BASE)], exchange=True)
+        self.assertEqual([f.name for f in m.additions], ['keywords'])
+        self.assertEqual(m.result()['keywords'], 'climate')
+        m = Merge([entry('a', **BASE), entry('b', **no_keywords)], exchange=True)
         self.assertTrue(m.is_exact())
         self.assertEqual(m.result()['keywords'], 'climate')
+
+    def test_duplicate_merge_without_base_unaffected(self):
+        # add, check: a field missing in one entry is taken from the other
+        no_keywords = {k: v for k, v in BASE.items() if k != 'keywords'}
+        m = Merge([entry('a', **BASE), entry('b', **no_keywords)])
+        self.assertTrue(m.is_exact())
+        self.assertEqual(m.result()['keywords'], 'climate')
+        m = Merge([entry('a', ids='x', **no_keywords), entry('b', ids='y', **BASE)], keys_to_ids=True)
+        self.assertEqual(m.result()['keywords'], 'climate')
+        self.assertEqual(m.result()['ids'], 'x, y, b')
+
+    def test_exchange_ids_of_the_target_only_without_base(self):
+        m = Merge([entry('a', ids='old', **BASE), entry('b', ids='poolold', **BASE)], exchange=True)
+        self.assertEqual(m.result()['ids'], 'old')
+        self.assertEqual(m.result().key, 'a')
 
     def test_removed_in_library_stays_removed(self):
         m = Merge([entry('a', **{k: v for k, v in BASE.items() if k != 'keywords'}), entry('b', **BASE)],
@@ -132,6 +185,38 @@ class TestThreeWayDialogue(unittest.TestCase):
         self.assertEqual(decision.entry['journal'], 'Nature')
         self.assertNotIn('volume', decision.entry)
         self.assertEqual(decision.entry['keywords'], 'climate, mine')
+
+    def removal(self):
+        "keywords changed in the library, removed in the pool; year removed in the pool"
+        pool = {k: v for k, v in BASE.items() if k not in ('keywords', 'year')}
+        return Merge([entry('smith2020climate', **{**BASE, 'keywords': 'climate, mine'}), entry('Smith_2020', **pool)],
+                     base=entry('smith2020climate', **BASE))
+
+    def test_screen_shows_removals(self):
+        text = Dialogue(self.removal(), 'pull', 'pool default').screen()
+        lines = text.splitlines()
+        year = next(line for line in lines if 'year' in line)
+        self.assertRegex(year, r'^\+  year +   = \(removed\) +removed in pool$')
+        keywords = [line for line in lines if 'keywords' in line or line.startswith('!  ' + ' ' * 8)]
+        self.assertIn('removed in pool, changed in library', keywords[0])
+        self.assertIn('{climate, mine}', keywords[0])
+        self.assertTrue(any('2: (removed)' in line for line in lines))
+        self.assertTrue(any('origin: {climate}' in line for line in lines))
+
+    def test_field_question_removal(self):
+        d = Dialogue(self.removal(), 'pull')
+        keywords = next(f for f in d.merge.conflicts if f.name == 'keywords')
+        question = d.field_question(keywords)
+        self.assertIn('2  (removed)', question)
+        self.assertEqual(d.parse_field(keywords, '2').kind, 'take')
+        answers = iter(['f', '2', '2'])  # keywords: the pool's removal; year: removed
+        decision = ask(self.removal(), 'pull', input=lambda prompt: next(answers), output=lambda text: None,
+                       color=False)
+        self.assertNotIn('keywords', decision.entry)
+        self.assertNotIn('year', decision.entry)
+
+    def test_edit_text_removal(self):
+        self.assertIn('% keywords = (removed)   (2)', self.removal().edit_text())
 
     def test_resolver(self):
         verdict = Verdict(SAME, 'pool default')

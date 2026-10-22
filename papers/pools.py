@@ -120,6 +120,18 @@ def entry_for(entry, source, target, key=None):
     return e
 
 
+def exchange_copy(entry, source, target, key=None):
+    """the copy of an entry that an exchange sends to the other side (see
+    entry_for), without the fields that each side keeps for itself
+    (papers.merge.EXCHANGE_OWN): its key is given by the receiving side,
+    its former keys (ids) are dropped, its file links are written for
+    `target` (the receiving side handles the files)"""
+    e = entry_for(entry, source, target, key=key)
+    if 'ids' in e.fields_dict:
+        del e['ids']
+    return e
+
+
 def mtime(file):
     "modification time of a file in nanoseconds, or None"
     try:
@@ -692,8 +704,8 @@ class Exchange:
         own = self.is_own(pool)
         if not self.config.local:
             self.repair_links([e], pool=pool)
-        incoming = entry_for(pe, pool.biblio, self.biblio)
-        merge = Merge([e, incoming], relative_to=self.biblio.relative_to,
+        incoming = exchange_copy(pe, pool.biblio, self.biblio)
+        merge = Merge([e, incoming], relative_to=self.biblio.relative_to, exchange=True,
                       base=record.entry if record is not None else None)
         if not merge.conflicts and not merge.additions and not merge.new_files:
             if not own:
@@ -720,9 +732,7 @@ class Exchange:
         in a non-local library, else placed as the files mode says"""
         keys = {self.biblio.key(x) for x in self.biblio.entries}
         key = pe.key if pe.key.lower() not in keys else append_abc(pe.key, keys)
-        e = entry_for(pe, pool.biblio, self.biblio, key=key)
-        if 'ids' in e.fields_dict:
-            del e['ids']  # former keys of the pool
+        e = exchange_copy(pe, pool.biblio, self.biblio, key=key)
         self.biblio.db.add(e)
         self._place_files(e, self.files_policy(mode, pools=[pool]))
         if self.is_own(pool):
@@ -742,9 +752,9 @@ class Exchange:
                 if record is not None:
                     lines.append(f'{e.key}: not found in {pool.label}')
                 continue
-            incoming = entry_for(pe, pool.biblio, self.biblio)
+            incoming = exchange_copy(pe, pool.biblio, self.biblio)
             if record is None:
-                merge = Merge([e, incoming], relative_to=self.biblio.relative_to)
+                merge = Merge([e, incoming], relative_to=self.biblio.relative_to, exchange=True)
                 if not merge.is_exact() or merge.new_files:
                     lines.append(f'{e.key}: in {pool.label} as {pe.key}, '
                                  + ('not pulled yet' if own else 'different'))
@@ -830,10 +840,8 @@ class Exchange:
                            machine=self.config.machine, keep=keep, in_pool=True)
 
     def _push_new(self, e, pool):
-        out = entry_for(e, self.biblio, pool.biblio)
+        out = exchange_copy(e, self.biblio, pool.biblio)
         policy = self._pool_policy(pool)
-        if 'ids' in out.fields_dict:
-            del out['ids']  # former keys of the library
         # an entry without fields, or without a key, is not written to the pool
         if not any(k not in ('file', 'ids') for k in out.fields_dict):
             logger.info(f'{e.key or "an entry without key"}: not pushed to {pool.label}: the entry has no fields')
@@ -853,8 +861,8 @@ class Exchange:
 
     def _push_one(self, e, pool, pe, record, resolver):
         own = self.is_own(pool)
-        outgoing = entry_for(e, self.biblio, pool.biblio, key=pe.key)
-        merge = Merge([pe, outgoing], relative_to=pool.biblio.relative_to,
+        outgoing = exchange_copy(e, self.biblio, pool.biblio, key=pe.key)
+        merge = Merge([pe, outgoing], relative_to=pool.biblio.relative_to, exchange=True,
                       base=_rekey(record.entry, pe.key) if record is not None else None)
         if not merge.conflicts and not merge.additions and not merge.new_files:
             if not own:
@@ -880,8 +888,8 @@ class Exchange:
         """record the origin of a pushed entry: the library's version, as
         sent (see the module documentation), so that what the pool entry
         has beyond it comes with the next pull"""
-        self.origin.set(e.key, pool.id, _strip(outgoing, ('ids',)))
-        incoming = entry_for(pe, pool.biblio, self.biblio)
+        self.origin.set(e.key, pool.id, outgoing)
+        incoming = exchange_copy(pe, pool.biblio, self.biblio)
         after = Merge([e, incoming], relative_to=self.biblio.relative_to, base=outgoing)
         if after.additions or after.conflicts or after.new_files:
             self._after[pool.id][1] = True
@@ -1038,9 +1046,7 @@ class Exchange:
                                      machine=self.config.machine, pool_dirs=copy_dirs, in_pool=True,
                                      keep=pool.biblio.get_files(pe) if pe is not None else ())
                 if pe is None:
-                    out = entry_for(e, self.biblio, pool.biblio)
-                    if 'ids' in out.fields_dict:
-                        del out['ids']  # former keys of the library
+                    out = exchange_copy(e, self.biblio, pool.biblio)
                     pool.biblio.set_files(out, placed)
                     pe = pool.biblio.insert_entry(out, update_key=True, rename=True, copy=policy)[0]
                     pool.add_entry(pe)
@@ -1112,7 +1118,7 @@ class PoolLookup:
         """the entry to insert for pool entry pe: the pool's fields and files,
         and the fields only in `entry` (an added bibtex entry), and the
         `files` the pool does not have (same content)"""
-        new = entry_for(pe, pool.biblio, biblio, key=key)
+        new = exchange_copy(pe, pool.biblio, biblio, key=key)
         if entry is not None:
             merge = Merge([new, entry], relative_to=biblio.relative_to)
             merge.choose_all(0)
