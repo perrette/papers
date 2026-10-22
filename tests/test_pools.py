@@ -223,6 +223,15 @@ class TestAdd(PoolTest):
         self.assertEqual(e['title'], 'Ocean heat')
         self.assertEqual(self.origin().get(e).pool_key, 'Brown_2021')
 
+    def test_doi_with_fields(self):
+        # the fields given on the command line apply to the library entry
+        with patch('papers.bib.fetch_bibtex_by_doi', no_fetch):
+            self.lib('add --doi 10.1000/brown --title "Ocean heat, revised" --key brown')
+        e = self.entry('brown')
+        self.assertEqual(e['title'], 'Ocean heat, revised')
+        self.assertEqual(self.origin().get(e).pool_key, 'Brown_2021')
+        self.assertIn('{Ocean heat}', Path(self.path('pool', 'papers.bib')).read_text())  # the pool is unchanged
+
     def test_pdf_same_content(self):
         Path(self.path('copy.pdf')).write_text('pdf of smith')
         with patch('papers.bib.fetch_bibtex_by_doi', no_fetch), \

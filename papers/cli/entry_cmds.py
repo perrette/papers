@@ -80,10 +80,9 @@ def addcmd(parser, o, config):
             rename = True
         metadata['file'] = format_file(biblio.get_files(metadata) + o.attachment, relative_to=biblio.relative_to)
 
-    if len(o.file) > 1:
-        if metadata:
-            raise PapersExit('--doi, --metadata, --key, --attachment and other metadata keys are only valid '
-                             'for one PDF / BIBTEX entry')
+    if metadata and (len(o.file) > 1 or any(os.path.isdir(f) for f in o.file)):
+        raise PapersExit('--doi, --metadata, --key, --attach and the other metadata options are only valid '
+                         'for one PDF / BIBTEX entry')
 
     if o.no_merge_files:
         logger.warning('--no-merge-files is deprecated and ignored: the file links of duplicates are always merged')
@@ -109,7 +108,8 @@ def addcmd(parser, o, config):
             entry = edited[0]
             o.edit = False
 
-        entries.extend( biblio.insert_entry(entry, rename=rename, copy=policy, **kw) )
+        # the entry is made of the metadata (and edited): not applied again
+        entries.extend( biblio.insert_entry(entry, rename=rename, copy=policy, **{**kw, 'metadata': {}}) )
 
 
     # several PDFs: fetch their metadata concurrently first

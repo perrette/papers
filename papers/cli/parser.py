@@ -294,15 +294,19 @@ def get_parser(config=None):
     grp.add_argument('--ignore-errors', action='store_true',
         help='ignore errors when adding multiple files')
 
-    grp = addp.add_argument_group('metadata')
+    grp = addp.add_argument_group('metadata',
+        description='''The fields given here replace those found in the PDF, fetched from the DOI,
+        or read from the added bibtex (one entry only). They do not change an entry already in
+        the library (same DOI): use `papers edit`.''')
     grp.add_argument('--doi', help='provide DOI -- skip parsing PDF')
-    grp.add_argument('--key', help='manually set the key')
-    grp.add_argument('--type', help='document type')
-    grp.add_argument('--title', help='manually set the title')
-    grp.add_argument('--author', help='manually set the author')
-    grp.add_argument('--journal', help='manually set the journal')
-    grp.add_argument('--year', help='manually set the year')
-    grp.add_argument('--metadata', nargs="+", metavar="KEY=VALUE", type=lambda meta: meta.split('=', 1), help='the metadata fields manually')
+    grp.add_argument('--key', help='the key of the entry (instead of a key made from the key template)')
+    grp.add_argument('--type', help='entry type (article, book...)')
+    grp.add_argument('--title', help='the title')
+    grp.add_argument('--author', help='the authors, e.g. "Smith, John and Doe, Jane"')
+    grp.add_argument('--journal', help='the journal')
+    grp.add_argument('--year', help='the year')
+    grp.add_argument('--metadata', nargs="+", metavar="KEY=VALUE", type=lambda meta: meta.split('=', 1),
+        help='any fields')
     grp.add_argument('--no-query-doi', action='store_true', help='do not attempt to parse and query doi')
     grp.add_argument('--no-query-fulltext', action='store_true', help='do not attempt to query fulltext in case doi query fails')
     grp.add_argument('--scholar', action='store_true', help='use google scholar instead of crossref')

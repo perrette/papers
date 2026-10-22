@@ -52,6 +52,10 @@ from papers.duplicate import (
 from papers.merge import Merge, Resolver, Decision, DuplicateError, apply_entry, option_hint
 
 
+# the fields of `add --key` and `--type` in the metadata of insert_entry
+METADATA_NAMES = {'ID': 'key', 'ENTRYTYPE': 'type'}
+
+
 def entry_diff(e_old, e, color=True):
     "line diff of two entries, as bibtex"
     lines = difflib.ndiff(format_entries([e_old]).splitlines(1), format_entries([e]).splitlines(1))
@@ -171,10 +175,15 @@ class Biblio:
             papers.duplicate.same_paper), and merge or not as `on_duplicate`
             says: one of ask, keep, update, skip, error, or a Resolver
         duplicate_index: an IdentityIndex of the library, kept up to date
+        metadata: fields given on the command line (`add --title...`), as a
+            dict: they replace the fields of the entry, the files of its
+            `file` field are added to the entry's, and an `ID` sets the key
+            (which update_key then leaves as it is)
         """
         if metadata:
-            files = self.get_files(entry) + self.get_files(metadata)
-            self.set_files(metadata, files)
+            self.apply_metadata(entry, metadata)
+            if 'ID' in metadata:
+                update_key = False
 
         if check_duplicate:
             resolver = on_duplicate if isinstance(on_duplicate, Resolver) else Resolver(on_duplicate)
@@ -182,6 +191,15 @@ class Biblio:
                                             index=duplicate_index)
 
         return self._insert_new(entry, update_key=update_key, rename=rename, copy=copy, index=duplicate_index)
+
+    def apply_metadata(self, entry, metadata):
+        """set the fields of `metadata` (a dict, see insert_entry) in the
+        entry; the files of its `file` field are added to the entry's"""
+        fields = {k: v for k, v in metadata.items() if k != 'file'}
+        update_entry(entry, fields)
+        files = self.get_files(entry) + self.get_files(metadata)
+        if files:
+            self.set_files(entry, files)
 
     def _insert_new(self, entry, update_key=False, rename=False, copy=False, index=None, free_key=False):
         "insert an entry new to the library"
@@ -295,6 +313,10 @@ class Biblio:
         bib = parse_string(bibtex)
         if convert_to_unicode:
             bib = latex_to_unicode_library(bib)
+        fields = [k for k in kw.get('metadata') or {} if k != 'file']
+        if fields and len(bib.entries) > 1:
+            raise ValueError(f'the bibtex has {len(bib.entries)} entries: the fields given on the command line '
+                             '(--title, --key, --metadata...) apply to one entry only')
         entries = []
         # one index for all entries, so that the duplicate search compares an
         # entry with the entries that share an identifier only
@@ -358,7 +380,14 @@ class Biblio:
     def attach_to_existing(self, e, files, rename=False, copy=False, **kw):
         """`add` of the files of a paper that the library has (same DOI): the
         files are added to the entry and placed as `file attach` does, the
-        entry's fields and other files are not touched. Return [e]."""
+        entry's fields and other files are not touched (nor by the fields of
+        `metadata`, given on the command line: `papers edit` changes them).
+        Return [e]."""
+        ignored = [k for k in kw.get('metadata') or {} if k not in ('file', 'doi')]
+        if ignored:
+            names = ', '.join(METADATA_NAMES.get(k, k) for k in ignored)
+            logger.warning(f'{e.key} is already in the library: its fields are not changed '
+                           f'(ignored: {names}; use `papers edit {e.key}`)')
         old = self.get_files(e)
         known = {realpath(f) for f in old}
         new = [os.path.abspath(f) for f in files if realpath(f) not in known]

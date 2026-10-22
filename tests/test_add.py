@@ -9,6 +9,7 @@ from papers.entries import parse_bibtex_file, parse_string, get_entry_val, libra
 from papers.encoding import latex_to_unicode_library
 
 from papers.bib import Biblio
+from papers.utils import PapersExit
 from unittest.mock import patch
 
 from tests.common import PAPERSCMD, paperscmd, prepare_paper, prepare_paper2, BibTest, FileTest, entry
@@ -763,3 +764,98 @@ class TestAddExistingEntry(FileTest):
             self.lib(f'add {self.new} --doi 10.1000/one --no-check-duplicate --link')
         fetch.assert_called_once()
         self.assertEqual(len(self.keys()), 3)
+
+    def test_doi_option_ignores_other_fields(self):
+        # the entry is in the library: --title is not applied, with a warning
+        with self.assertLogs('papers', level='WARNING') as logs:
+            self.add(f'add {self.new} --doi 10.1000/one --title Other --key other --link')
+        self.assertIn('ignored: key, title', '\n'.join(logs.output))
+        self.assertEqual(self.keys(), ['one2000', 'two2000'])
+
+
+FETCHED = ('@article{fetched2000,\n author = {Fetched, Author},\n doi = {10.1000/fetched},\n'
+           ' journal = {Fetched Journal},\n title = {Fetched title},\n year = {2000}\n}\n')
+
+
+class TestAddMetadataOptions(FileTest):
+    """the fields given on the command line (--title, --year, --key...)
+    replace those of the fetched or extracted entry"""
+
+    def setUp(self):
+        super().setUp()
+        self.pdf = self.write('src', 'paper.pdf')
+        self.si = self.write('src', 'si.pdf')
+
+    def add(self, cmd):
+        with patch('papers.bib.fetch_bibtex_by_doi', return_value=FETCHED), \
+                patch('papers.bib.extract_pdf_metadata', return_value=FETCHED), \
+                patch('papers.cli.entry_cmds.prefetch_pdf_metadata', no_fetch), \
+                patch('builtins.input', no_fetch):
+            self.lib(cmd)
+        biblio = Biblio.load(self.path('lib', 'papers.bib'), '')
+        self.assertEqual(len(biblio.entries), 1)
+        return biblio, biblio.entries[0]
+
+    def test_title(self):
+        _, e = self.add(f'add {self.pdf} --title "My Title" --link')
+        self.assertEqual(e['title'], 'My Title')
+        self.assertEqual(e['journal'], 'Fetched Journal')  # the other fields are fetched
+
+    def test_year_and_generated_key(self):
+        _, e = self.add(f'add {self.pdf} --year 1999 --link')
+        self.assertEqual(e['year'], '1999')
+        self.assertEqual(e.key, 'fetched1999')  # the key template sees the year given
+
+    def test_key(self):
+        _, e = self.add(f'add {self.pdf} --key mykey --year 1999 --link')
+        self.assertEqual(e.key, 'mykey')
+
+    def test_author(self):
+        _, e = self.add(f'add {self.pdf} --author "Given, Name" --link')
+        self.assertEqual(e['author'], 'Given, Name')
+        self.assertEqual(e.key, 'given2000')
+
+    def test_journal(self):
+        _, e = self.add(f'add {self.pdf} --journal "Other Journal" --link')
+        self.assertEqual(e['journal'], 'Other Journal')
+
+    def test_type(self):
+        _, e = self.add(f'add {self.pdf} --type book --link')
+        self.assertEqual(e.entry_type, 'book')
+
+    def test_metadata(self):
+        _, e = self.add(f'add {self.pdf} --metadata volume=12 title=Other --link')
+        self.assertEqual((e['volume'], e['title']), ('12', 'Other'))
+
+    def test_files_are_merged(self):
+        biblio, e = self.add(f'add {self.pdf} --attach {self.si} --title T --link')
+        self.assertEqual(biblio.get_files(e), [self.pdf, self.si])
+
+    def test_doi_without_file(self):
+        _, e = self.add('add --doi 10.1000/fetched --title "My Title" --key mykey')
+        self.assertEqual((e.key, e['title'], e['journal']), ('mykey', 'My Title', 'Fetched Journal'))
+
+    def test_bibtex_file(self):
+        bib = self.write('src', 'one.bib', content=FETCHED)
+        _, e = self.add(f'add {bib} --title "My Title" --key mykey')
+        self.assertEqual((e.key, e['title']), ('mykey', 'My Title'))
+
+    def test_bibtex_file_with_several_entries(self):
+        bib = self.write('src', 'two.bib', content=FETCHED + '\n' + entry('other2000'))
+        with self.assertRaises(PapersExit) as cm:
+            self.lib(f'add {bib} --title "My Title"')
+        self.assertIn('2 entries', str(cm.exception))
+        self.assertEqual(Biblio.load(self.path('lib', 'papers.bib'), '').entries, [])
+
+    def test_directory(self):
+        with self.assertRaises(PapersExit):
+            self.lib(f'add -R {self.path("src")} --title "My Title"')
+
+    def test_duplicate_with_other_title(self):
+        # the title given conflicts with the library entry: --on-duplicate decides
+        self.bib(FETCHED)
+        with patch('papers.bib.extract_pdf_metadata', return_value=FETCHED), \
+                patch('papers.bib.parse_doi_from_pdf_metadata', return_value=None):
+            self.lib(f'add {self.pdf} --title "My Title" --on-duplicate update --link --no-query-doi')
+        e = Biblio.load(self.path('lib', 'papers.bib'), '').entries[0]
+        self.assertEqual((e.key, e['title']), ('fetched2000', 'My Title'))
