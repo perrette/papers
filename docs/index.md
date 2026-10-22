@@ -16,12 +16,15 @@ Command-line tool to manage your bibliography (PDFs + BibTeX).
 ## Get started
 
 ```bash
-pip install papers-cli
-papers add mypaper.pdf --copy --bibtex papers.bib --filesdir files
+pip install --pre papers-cli    # the 3.0 beta
+cd ~/projects/my-paper
+papers init                     # a library: papers.bib here, PDFs in ~/Documents/papers
+papers add ~/Downloads/paper.pdf
+papers list
 ```
 
 - **[Installation](installation.md)** — pip install and external dependencies.
-- **[Quickstart](quickstart.md)** — extract metadata, add a PDF, list entries.
+- **[Quickstart](quickstart.md)** — create a library, add and list papers, share the PDFs between projects.
 - **[Adding entries](adding-entries.md)** — from PDFs, DOIs, bibtex, or whole directories.
 - **[Configuration](configuration.md)** — libraries, settings and pools.
 
@@ -30,6 +33,7 @@ papers add mypaper.pdf --copy --bibtex papers.bib --filesdir files
 - [Adding entries](adding-entries.md)
 - [Listing and searching](listing.md)
 - [Renaming files and keys](renaming.md)
+- [Files](files.md)
 - [Configuration](configuration.md)
 - [Pools](pools.md)
 - [Managing your library](library-management.md)
