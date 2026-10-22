@@ -168,11 +168,44 @@ def claim_gitdir(config):
     write_manifest(config.gitdir, config.bibtex, created=manifest.get("created") if manifest else None)
 
 
+def move_gitdir_out_of_library(config):
+    """The backup directory of the libraries of papers v2.2 to v2.4 is
+    <library>/.papers, the folder where papers 3 keeps the files of the
+    library (origin.bib, distinct.json): the backup would copy them into
+    itself, and `git clean` would remove them. Move the repository (its
+    .git and the files it tracks) to a new directory of the backup folder,
+    and record it in the library configuration."""
+    if not config.gitdir or not config.bibtex:
+        return
+    gitdir = Path(config.gitdir)
+    if os.path.realpath(gitdir) != os.path.realpath(Path(config.bibtex).resolve().parent / '.papers'):
+        return
+    new = default_gitdir(config.bibtex)
+    n = 2
+    while os.path.exists(new):
+        new = default_gitdir(config.bibtex) + f"-{n}"
+        n += 1
+    os.makedirs(new)
+    if (gitdir / ".git").exists():
+        tracked = [f for f in run_git(gitdir, ["ls-files", "-z"]).stdout.split("\0") if f]
+        shutil.move(str(gitdir / ".git"), os.path.join(new, ".git"))
+        for name in tracked + [MANIFEST_NAME]:
+            if (gitdir / name).is_file():
+                os.makedirs(os.path.dirname(os.path.join(new, name)), exist_ok=True)
+                shutil.move(str(gitdir / name), os.path.join(new, name))
+    logger.warning(f"the backup directory {gitdir} is the folder of the library's own files since papers 3 "
+                   f"(origin.bib, distinct.json): the backup moved to {new}")
+    config.gitdir = new
+    if config.file and config.is_library and os.path.exists(config.file):
+        config.save()
+
+
 def init_backup(config):
     """Set up the git backup of a library: initialize its backup directory
     (an existing one is kept, otherwise one is allocated) and take ownership
     of it. Used by install and by `papers config git true`, followed by a
     first snapshot (papers.library.snapshot_backup)."""
+    move_gitdir_out_of_library(config)
     if not (config.gitdir and os.path.exists(config.gitdir)) and config.bibtex:
         config.gitdir = resolve_gitdir(config.bibtex)
     if (Path(config.gitdir)/'.git').exists():
@@ -272,6 +305,7 @@ def backup_bib(biblio, config, message=None):
         raise PapersExit('cannot backup without --git enabled')
     if not config.gitdir:
         config.gitdir = resolve_gitdir(config.bibtex)
+    move_gitdir_out_of_library(config)
     backupdir = Path(config.gitdir)
     backupdir.mkdir(parents=True, exist_ok=True)
 
@@ -332,7 +366,11 @@ def backup_bib(biblio, config, message=None):
         logger.info('backup bibliography only (without files)')
 
     message = message or 'papers ' + ' '.join(sys.argv[1:])
-    run_git(config.gitdir, ["commit", "-m", message], check=False)
+    res = run_git(config.gitdir, ["commit", "-m", message], check=False)
+    if res.returncode != 0 and 'nothing to commit' not in res.stdout + res.stderr \
+            and 'nothing added to commit' not in res.stdout + res.stderr:
+        logger.warning(f"the git backup could not commit in {config.gitdir}: "
+                       f"{(res.stderr or res.stdout).strip()}")
     # work on "main" branch for comitting (out of history branch)
     run_git(config.gitdir, ["checkout", "-B", "main"])
     run_git(config.gitdir, ["clean", "-f"])
