@@ -85,7 +85,9 @@ Entries are case-sensitive, and a few more fields are added, so that:
 The modifiers are:
 
 - `--name-title-sep`: separator for title words
-- `--name-title-length`: max title length
+- `--name-title-length`: max title length, with its separators: the last
+  words are dropped until the title fits, and a first word longer than that
+  is cut
 - `--name-title-word-size`: min size to be considered a word
 - `--name-title-word-num`: max number of title words
 

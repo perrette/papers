@@ -25,7 +25,7 @@ _FORMAT_HELP = {
     'author-sep': 'separator of the authors in the {what}',
     'title-word-num': 'maximum number of title words in the {what}',
     'title-word-size': 'minimum length of a title word: shorter words are left out of the {what}',
-    'title-length': 'maximum length of the title in the {what} (title words are dropped until it fits)',
+    'title-length': 'maximum length of the title in the {what} (the last words are dropped until it fits; a longer first word is cut)',
     'title-sep': 'separator of the title words in the {what}',
     'unknown-template': 'template of the {what} of an entry without author, year or title',
     'unknown-strict': 'use the unknown template only when author, year and title are all missing',

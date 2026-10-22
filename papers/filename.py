@@ -5,15 +5,20 @@ from slugify import slugify
 from papers.encoding import family_names
 from papers.entries import get_entry_val
 
+def title_words(words, maxlength=30, minwordlen=3, n=100, sep='-'):
+    """the first `n` words of at least `minwordlen` characters, without the
+    last words that make them longer than `maxlength` once joined with `sep`:
+    a hard limit. At least one word is kept, cut to `maxlength` if needed."""
+    words = [word for word in words if len(word) >= minwordlen][:n]
+    while len(words) > 1 and len(sep.join(words)) > maxlength:
+        words.pop()
+    if words and len(words[0]) > maxlength:
+        words[0] = words[0][:maxlength]
+    return words
+
 def listtag(words, maxlength=30, minwordlen=3, n=100, sep='-'):
-    # preformat & filter words
-    words = [word for word in words if len(word) >= minwordlen]
-    while True:
-        tag = sep.join(words[:n])
-        n -= 1
-        if len(tag) <= maxlength or n < 2:
-            break
-    return tag
+    "the words of title_words joined with `sep`"
+    return sep.join(title_words(words, maxlength, minwordlen, n, sep))
 
 def _cite_author(names):
     if len(names) >= 3:
@@ -70,13 +75,13 @@ def make_template_fields(
         Title = UNKNOWN_TITLE
     else:
         titlewords = slugify(entry["title"]).split('-')
-        _titles = listtag(
+        _titles = title_words(
             titlewords,
             n=title_word_num,
             minwordlen=title_word_size,
             maxlength=title_length,
-            sep="*",
-        ).split("*")
+            sep=title_sep,
+        )
         title = title_sep.join(_titles)
         Title = title_sep.join(w.capitalize() for w in _titles)
 
