@@ -106,10 +106,10 @@ class TestGetBiblio(TmpTest):
         self.assertEqual(biblio.entries, [])
         self.assertTrue(os.path.exists(self.path('sub', 'papers.bib')))
 
-    def test_light_library_repair_failure_is_a_warning(self):
+    def test_pool_link_repair_failure_is_a_warning(self):
         Path(self.path('papers.bib')).write_text('')
-        config = Config(bibtex=self.path('papers.bib'), filesdir=self.path('files'))
-        config.light = True
+        config = Config(file=self.path('.papersconfig.json'), bibtex=self.path('papers.bib'),
+                        filesdir=self.path('files'), local=False)
         with mock.patch('papers.pools.Exchange', side_effect=RuntimeError('broken pool')), \
                 self.assertLogs('papers', level='WARNING') as logs:
             get_biblio(config)

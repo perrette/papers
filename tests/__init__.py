@@ -30,17 +30,19 @@ os.makedirs(os.environ['HOME'])
 os.environ['XDG_CONFIG_HOME'] = os.path.join(_TEST_HOME, 'config')
 os.environ['XDG_DATA_HOME'] = os.path.join(_TEST_HOME, 'data')
 
-# The default pool (~/Documents/papers without global configuration) is
+# The global pool (~/Documents/papers without global configuration) is
 # used outside of any library: it is under the temporary HOME, and the
 # global configuration names it too.
 import json
 import papers.config
-TEST_DEFAULT_POOL = os.path.join(os.environ['HOME'], 'Documents', 'papers')
-assert os.path.expanduser(papers.config.DEFAULT_POOLS['default']) == TEST_DEFAULT_POOL
+TEST_GLOBAL_POOL = os.path.join(os.environ['HOME'], 'Documents', 'papers')
+assert os.path.expanduser(papers.config.DEFAULT_POOL) == TEST_GLOBAL_POOL
 # The files mode is `link` (the default is `move`): `papers add` then leaves
 # the PDFs where they are, as in v2, so that the cached PDFs of
 # tests/downloadedpapers are never moved. The tests of the files modes set
-# the mode they test.
+# the mode they test. New libraries are local (the default is not): their
+# files are in their own files directory, as the tests of the files expect.
+# The tests of the libraries that are not local set it.
 os.makedirs(os.path.dirname(papers.config.MACHINE_CONFIG_FILE))
 with open(papers.config.MACHINE_CONFIG_FILE, 'w') as f:
-    json.dump({'pools': {'default': TEST_DEFAULT_POOL}, 'files': 'link'}, f)
+    json.dump({'pool': TEST_GLOBAL_POOL, 'files': 'link', 'local': True}, f)

@@ -7,7 +7,7 @@ import sys
 
 import papers.config
 from papers import logger
-from papers.config import SETTINGS, is_pool_path, short_home
+from papers.config import SETTINGS, short_home
 from papers.encoding import format_entry
 from papers.entries import entry_content_equal, get_entry_val, parse_string, format_library, library_from_entries
 from papers.files import hidden_bibtex
@@ -54,18 +54,18 @@ def set_format_config_from_cmd(o, config, kind):
         setattr(fmt, name.split('.')[1].replace('-', '_'), value)
 
 
-def check_pools(config, pools):
-    "warn about pool names that the global configuration does not define"
-    for pool in pools:
-        if not is_pool_path(pool) and config.machine.pool_path(pool) is None:
-            logger.warning(f"unknown pool name: {pool} (define it with `papers config --global pools.{pool} PATH`, "
-                           "or write a path with a / to use a folder)")
-
-
 def init_hint(config):
-    "how to create a library, here or for the default pool"
-    pool = short_home(config.machine.pool_path('default'))
-    return f"Create a library with `papers init` (here) or `papers init {pool}` (the default pool)"
+    "how to create a library, here or for the global pool"
+    pool = config.machine.pool_path()
+    if pool is None:
+        return "Create a library with `papers init`"
+    return f"Create a library with `papers init` (here) or `papers init {short_home(pool)}` (the global pool)"
+
+
+def no_library_message(config):
+    pool = config.machine.pool_path()
+    where = f", and the global pool ({pool}) is not a library" if pool else ""
+    return f"no library found in this directory or above{where}. {init_hint(config)}"
 
 
 def check_install(parser, o, config, bibtex_must_exist=True):
@@ -87,9 +87,7 @@ def check_install(parser, o, config, bibtex_must_exist=True):
         config.git = o.git
 
     if not config.bibtex:
-        raise PapersExit(f"no library found in this directory or above, and the default pool "
-                         f"({config.machine.pool_path('default')}) is not a library. {init_hint(config)}, "
-                         "or pass --bibtex")
+        raise PapersExit(f"{no_library_message(config)}, or pass --bibtex")
 
     if bibtex_must_exist and not os.path.exists(config.bibtex):
         raise PapersExit(f'no bibtex file found, do `touch {config.bibtex}` or `papers init --bibtex {config.bibtex}`')
@@ -220,20 +218,20 @@ def _one_entry(biblio, key):
 
 
 def library_pools(config):
-    """the pools of the library. In a light library, the files that the
-    command places go to the first pool, as with `add` (see
-    papers.pools.use_pool_files): call push_to_light_pool after."""
+    """the pools of the library. In a non-local library, the files that the
+    command places go to the pool, as with `add` (see
+    papers.pools.use_pool_files): call push_to_pool after."""
     pools = Pools(config)
-    if config.light:
+    if config.file and not config.local:
         use_pool_files(config, pools)
     return pools
 
 
-def push_to_light_pool(exchange, entries):
-    """save the library; in a light library, first push the entries to the
-    first pool, which holds their files (as `add` does)"""
+def push_to_pool(exchange, entries):
+    """save the library; in a non-local library, first push the entries to
+    the pool, which holds their files (as `add` does)"""
     resolver = Resolver('ask' if stdin_is_terminal() else 'error', color=sys.stdout.isatty())
-    pushed = exchange.push_added(entries, [], resolver) if exchange.config.light else []
+    pushed = exchange.push_added(entries, [], resolver) if not exchange.config.local else []
     if pushed:
         print('\n'.join(report_lines(pushed, f'push to {pushed[0][1].label}')))
     save_exchange(exchange)
@@ -241,13 +239,13 @@ def push_to_light_pool(exchange, entries):
 
 def save_exchange(exchange):
     """save what an exchange with the pools changed: the pools pushed to,
-    the pairs that are not the same paper of the other pools, the origin
+    the pairs that are not the same paper of the pool, the origin
     records, and the library"""
     for pool in exchange.changed_pools:
         savebib(pool.biblio, pool.config)
         exchange.after_push(pool)
     if not papers.config.DRYRUN:
-        for pool in exchange.pools.all(quiet=True):
+        for pool in exchange.pools.loaded():
             if pool._biblio is not None and not any(pool is p for p in exchange.changed_pools):
                 pool.biblio.distinct.save()
     exchange.origin.save()

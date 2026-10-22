@@ -181,13 +181,13 @@ class FilesPolicy:
       files an entry already had before `file attach`);
     - a file in the files directory of a pool (`pool_dirs`) is never moved:
       it is copied (a hard link when possible), or linked in link mode;
-    - with `light`, `filesdir` is the files directory of the pool of a light
+    - with `in_pool`, `filesdir` is the files directory of the pool of a non-local
       library (papers.pools.use_pool_files): the files already there are
       linked where they are, never renamed, since other libraries may link
       to them.
     """
 
-    def __init__(self, mode, filesdir=None, current_config=None, machine=None, keep=(), pool_dirs=(), light=False):
+    def __init__(self, mode, filesdir=None, current_config=None, machine=None, keep=(), pool_dirs=(), in_pool=False):
         if mode not in FILES_MODES:
             raise ValueError(f'files mode must be one of {", ".join(FILES_MODES)}, got {mode!r}')
         self.mode = mode
@@ -195,7 +195,7 @@ class FilesPolicy:
         self.others = OtherLibraries(current_config, machine=machine)
         self.keep = {realpath(f) for f in keep}
         self.pool_dirs = [d for d in pool_dirs if d]
-        self.light = light
+        self.in_pool = in_pool
         self._said = set()
 
     def __call__(self, file):
@@ -206,7 +206,7 @@ class FilesPolicy:
         if self.mode == 'link':
             return 'link'
         if is_inside(file, self.filesdir):
-            return 'link' if self.light else 'move'
+            return 'link' if self.in_pool else 'move'
         if any(is_inside(file, d) for d in self.pool_dirs):
             return 'copy'
         if self.mode == 'move':
@@ -222,10 +222,10 @@ class FilesPolicy:
 def files_policy(config, mode, pool_dirs=(), keep=()):
     """the FilesPolicy of a library (its configuration) for a files mode;
     pool_dirs: the files directories of its pools"""
-    # files placed in the pool by a light library (see papers.pools.use_pool_files)
-    light = config.light and any(realpath(config.filesdir or '') == realpath(d) for d in pool_dirs)
+    # files placed in the pool by a non-local library (see papers.pools.use_pool_files)
+    in_pool = not config.local and any(realpath(config.filesdir or '') == realpath(d) for d in pool_dirs)
     return FilesPolicy(mode, config.filesdir, current_config=config.file, machine=config.machine, keep=keep,
-                       pool_dirs=pool_dirs, light=light)
+                       pool_dirs=pool_dirs, in_pool=in_pool)
 
 
 # names of the files of an entry, directory scan

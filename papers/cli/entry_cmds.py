@@ -53,7 +53,7 @@ def addcmd(parser, o, config):
     set_format_config_from_cmd(o, config, 'name')
     set_format_config_from_cmd(o, config, 'key')
 
-    pools = library_pools(config)  # in a light library, files go to the first pool
+    pools = library_pools(config)  # in a non-local library, files go to the pool
     biblio = get_biblio(config)
     biblio_init = copy.deepcopy(biblio)
     exchange = Exchange(config, biblio, pools)
@@ -199,7 +199,7 @@ def addcmd(parser, o, config):
                 del e[k]
         biblio.entries = others + entries
 
-    # light library or sync push: also in the first pool
+    # non-local library or auto-push: also in the pool
     before = {biblio.key(e) for e in biblio_init.entries}
     added = {get_entry_val(e, 'ID', '').lower() for e in entries}
     pushed = exchange.push_added([e for e in biblio.entries if biblio.key(e) in added],

@@ -1,39 +1,103 @@
-"""papers pull, push, export, pool"""
+"""papers pull, push, sync, export"""
 import copy
-import os
 
-import papers.config
-from papers import logger
-from papers.config import short_home
+from papers.identifiers import read_selection, select_entries, select_some
 from papers.library import get_biblio, savebib
-from papers.pools import (Exchange, export, library_config_file, machine_pool_lines, pool_path_setting,
-                          report_lines, status_lines)
+from papers.pools import Exchange, export, report_lines
 from papers.utils import PapersExit
 from papers.cli.common import _print_biblio_diff, duplicate_resolver, _entries_or_all, save_exchange
+
+
+def _source(exchange, o, create=False):
+    """the pool of the command: --pool PATH, else the library's (None if it
+    has none, or the global pool does not exist yet)"""
+    if getattr(o, 'pool', None):
+        return exchange.pools.get(o.pool, create=create)
+    return exchange.pools.target() if create else exchange.pools.pool()
+
+
+def _pull_selection(exchange, pool, args, take_all=False):
+    """the library entries to update and the pool entries to add for
+    `pull KEY... [--all]`: each identifier is looked up in the library
+    first, then in the pool; one found in neither is an error (raised
+    before anything changes). A pool entry that is in the library (see
+    Exchange.library_entry) is an update of that entry."""
+    biblio = exchange.biblio
+    selection = read_selection(args)
+    entries, missing = select_some(biblio, selection) if selection else (list(biblio.entries), [])
+    new = []
+    if missing:
+        if pool is None:
+            raise PapersExit('\n'.join(f'{arg}: no entry found' for arg in missing)
+                             + '\n(the library has no pool to look in; nothing was changed)')
+        for pe in select_entries(pool.biblio, missing):
+            e = exchange.library_entry(pe, pool)
+            if e is not None:
+                if not any(e is x for x in entries):
+                    entries.append(e)
+            elif not any(pe is x for x in new):
+                new.append(pe)
+    if take_all:
+        if pool is None:
+            raise PapersExit('--all: the library has no pool')
+        new.extend(pe for pe in exchange.missing(pool) if not any(pe is x for x in new))
+    return entries, new
+
+
+def _pull(o, exchange, resolver):
+    "the pull of `pull` and `sync`: return its report"
+    pool = _source(exchange, o)
+    entries, new = _pull_selection(exchange, pool, o.entries, take_all=o.all)
+    return exchange.pull(entries, resolver, pool=pool, new=new, record_pull=not o.entries)
 
 
 def pullcmd(parser, o, config):
     biblio = get_biblio(config)
     biblio_init = copy.deepcopy(biblio)
     exchange = Exchange(config, biblio)
-    entries = _entries_or_all(biblio, o.entries)
     if o.check:
+        entries = _entries_or_all(biblio, o.entries)
         print('\n'.join(exchange.check(entries, all_entries=not o.entries)) or 'nothing to pull')
         return
-    report = exchange.pull(entries, duplicate_resolver(o, 'pull'), record_pull=not o.entries)
+    report = _pull(o, exchange, duplicate_resolver(o, 'pull'))
     print('\n'.join(report_lines(report, 'pull')))
     save_exchange(exchange)
-    _print_biblio_diff(biblio_init, biblio, entries)
+    _print_biblio_diff(biblio_init, biblio, [e for e, _, _ in report])
+
+
+def _push(o, exchange, resolver, entries):
+    pool = _source(exchange, o, create=True)
+    report = exchange.push(entries, pool, resolver)
+    print('\n'.join(report_lines(report, f'push to {pool.label}')))
+    save_exchange(exchange)
 
 
 def pushcmd(parser, o, config):
     biblio = get_biblio(config)
     exchange = Exchange(config, biblio)
-    pool = exchange.pools.get(o.pool, create=True) if o.pool else exchange.pools.first(create=True)
-    entries = _entries_or_all(biblio, o.entries)
-    report = exchange.push(entries, pool, duplicate_resolver(o, 'push'))
-    print('\n'.join(report_lines(report, f'push to {pool.label}')))
+    _push(o, exchange, duplicate_resolver(o, 'push'), _entries_or_all(biblio, o.entries))
+
+
+def synccmd(parser, o, config):
+    """pull, then push the same entries; stop before pushing if the pull
+    left conflicts undecided"""
+    biblio = get_biblio(config)
+    biblio_init = copy.deepcopy(biblio)
+    exchange = Exchange(config, biblio)
+    o.all = False
+    o.entries = read_selection(o.entries)  # read once, for the pull and the push
+    resolver = duplicate_resolver(o, 'pull')
+    report = _pull(o, exchange, resolver)
+    print('\n'.join(report_lines(report, 'pull')))
     save_exchange(exchange)
+    _print_biblio_diff(biblio_init, biblio, [e for e, _, _ in report])
+    skipped = [e.key for e, _, what in report if what == 'skipped']
+    if skipped or resolver.quit:
+        raise PapersExit(f'not pushed: the pull left conflicts undecided ({", ".join(skipped) or "quit"}). '
+                         'Decide them with `papers pull`, then run `papers sync` again')
+    entries = _entries_or_all(biblio, o.entries)  # the entries pulled from the pool are in the library now
+    exchange = Exchange(config, biblio, exchange.pools, exchange.origin)
+    _push(o, exchange, duplicate_resolver(o, 'push'), entries)
 
 
 def exportcmd(parser, o, config):
@@ -42,42 +106,3 @@ def exportcmd(parser, o, config):
     new, target = export(biblio, config, entries, o.dir, files=o.files, git=o.git)
     savebib(target, new)
     print(f'exported {len(entries)} entries to {new.configdir} (files: {o.files})')
-    if o.pool:
-        if config.file is None:
-            raise PapersExit('--pool: no library to add the pool to')
-        name = pool_path_setting(config, o.dir)
-        config.set('pools', config.pools + [name])
-        config.save()
-        exchange = Exchange(config, biblio)
-        pool = exchange.pools.resolve(name)
-        for e in target.entries:
-            exchange.origin.set(e.key, pool.id, e)
-        exchange.origin.set_pulled(pool.id, pool.bibtex_mtime())
-        exchange.origin.save()
-        print(f'pools = {" ".join(config.pools)} (in {config.file})')
-
-
-def poolcmd(parser, o, config):
-    """the pools of the global configuration (as `papers config
-    --global pools.NAME`), and the pools of the library"""
-    machine = config.machine
-    if o.pool_cmd in (None, 'list'):
-        print(f'pools of the global configuration ({machine.file}):')
-        print('\n'.join(machine_pool_lines(machine)))
-        if config.file:
-            print(f'pools of the library ({config.file}):' + ('' if config.pools else ' none'))
-            print('\n'.join(status_lines(config)))
-        return
-    if o.pool_cmd == 'add':
-        path = os.path.abspath(os.path.expanduser(o.path))
-        if library_config_file(path) is None:
-            logger.warning(f'{path} is not a library yet: create it with `papers init {short_home(path)}`')
-        machine.set_pool(o.name, short_home(path))
-    elif o.pool_cmd == 'remove':
-        if o.name not in machine.data.get('pools', {}):
-            raise PapersExit(f'{o.name} is not a pool of {machine.file}')
-        machine.set_pool(o.name, None)
-    if papers.config.DRYRUN:
-        print(f'DRYRUN: {machine.file} not saved')
-        return
-    machine.save()

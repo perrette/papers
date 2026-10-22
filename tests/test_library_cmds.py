@@ -43,14 +43,14 @@ class TestConfigCmd(FileTest):
             self.lib('config key.author-num many')
 
     def test_global_pool_takes_one_path(self):
-        with self.assertRaisesRegex(PapersExit, 'takes one path'):
-            self.lib('config --global pools.x a b')
+        with self.assertRaisesRegex(PapersExit, 'takes one value'):
+            self.lib('config --global pool a b')
 
     def test_global_dry_run(self):
-        out = self.out('config --global pools.x /a/b --dry-run')
+        out = self.out('config --global pool /a/b --dry-run')
         papers.config.DRYRUN = False
         self.assertIn('not saved', out)
-        self.assertEqual(self.out('config --global pools.x'), '')
+        self.assertNotEqual(self.out('config --global pool').strip(), '/a/b')
 
     def test_global_get(self):
         self.lib('config --global files copy')
@@ -69,9 +69,10 @@ class TestOtherCommands(ConfigTest):
                 patch('papers.cli.library_cmds.logger'):
             self.papers('uninstall')
 
-    def test_migrate_light_and_full(self):
+    def test_migrate_light_is_gone(self):
+        # replaced by `papers config local false|true`
         with self.assertRaises(SystemExit):
-            self.papers('migrate --light --full')
+            self.papers('migrate --light')
 
     def test_migrate_nothing(self):
         out = self.papers('migrate', sp_cmd='check_output')

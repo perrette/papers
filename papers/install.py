@@ -21,7 +21,7 @@ from pathlib import Path
 
 from papers import logger
 from papers.backup import init_backup, resolve_gitdir
-from papers.config import Config, CONFIG_FILE_LOCAL
+from papers.config import Config, CONFIG_FILE_LOCAL, NO_POOL, pool_setting
 from papers.library import snapshot_backup
 
 # words that clear a value at a prompt or on the command line
@@ -165,7 +165,7 @@ def resolve_install(config, o, probe=None, asker=None, target=None):
     config.bibtex = str(bibtex) if bibtex else None
     config.filesdir = str(filesdir) if filesdir else None
     config.file = papersconfig
-    config.local = True
+    config.is_library = True
 
     # a new library stores these settings rather than inheriting them later:
     # they determine its content (the file links) and where it looks for entries
@@ -176,10 +176,7 @@ def resolve_install(config, o, probe=None, asker=None, target=None):
     elif fresh:
         config.set('paths', config.get('paths'))
 
-    if getattr(o, 'pool', None):
-        config.set('pools', list(o.pool))
-    elif fresh:
-        config.set('pools', config.get('pools'))
+    _resolve_pool(config, o, fresh)
 
     # Unless otherwise specified (option not advertized -- help suppressed)
     # the git directory is centralized in the backup dir.
@@ -219,6 +216,33 @@ def resolve_install(config, o, probe=None, asker=None, target=None):
         init_git=config.git,
         snapshot=config.git and bool(config.bibtex),
     )
+
+
+def _resolve_pool(config, o, fresh):
+    """the pool and local settings of a library: --pool PATH|none (a
+    relative path is relative to the library), else the global pool
+    (nothing stored); --local, else the default of the global configuration.
+    A library without pool is local. In the directory of the global pool,
+    the new library is the pool itself: it has no pool, and is local."""
+    pool = getattr(o, 'pool', None)
+    local = getattr(o, 'local_setting', None)
+    if pool is not None:
+        config.set('pool', pool_setting(pool, str(config.configdir)))
+    elif fresh:
+        global_pool = config.machine.pool_path()
+        if global_pool is None:
+            config.set('pool', NO_POOL)
+        elif os.path.realpath(global_pool) == os.path.realpath(config.configdir):
+            config.set('pool', NO_POOL)
+            print('this is the global pool: the library has no pool, and its files are its own (local)')
+            local = True
+    if local is None and fresh:
+        local = config.inherited('local')
+    if local is not None:
+        config.set('local', bool(local))
+    if not config.local and config.pool_path() is None:
+        print('pool none: the library is local (its files are in its own files directory)')
+        config.set('local', True)
 
 
 def apply_install(plan):

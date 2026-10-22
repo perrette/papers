@@ -52,7 +52,7 @@ def find_config(start_dir='.', machine=None):
     was found:
     - 'library': a library configuration in start_dir or above;
     - 'v2-global': the global configuration of papers v2, until `papers migrate`;
-    - 'default-pool': the library of the default pool;
+    - 'global-pool': the library of the global pool;
     - None: no library (a Config with the inherited settings only).
     """
     machine = machine or MachineConfig.load()
@@ -61,13 +61,13 @@ def find_config(start_dir='.', machine=None):
     if configfile is None and os.path.exists(CONFIG_FILE):
         configfile, origin = CONFIG_FILE, 'v2-global'
     if configfile is None:
-        pool = machine.pool_path('default')
+        pool = machine.pool_path()
         if pool and os.path.exists(os.path.join(pool, CONFIG_FILE_LOCAL)):
-            configfile, origin = os.path.join(pool, CONFIG_FILE_LOCAL), 'default-pool'
+            configfile, origin = os.path.join(pool, CONFIG_FILE_LOCAL), 'global-pool'
     if configfile is None:
         return Config(machine=machine)
     config = Config.load(check_legacy_config(configfile), machine=machine,
-                         local=False if origin == 'v2-global' else None)
+                         is_library=False if origin == 'v2-global' else None)
     config.origin = origin
     return config
 
@@ -115,7 +115,7 @@ def get_biblio(config):
             biblio.update_file_path(relative_to)
     else:
         biblio = Biblio.newbib(config.bibtex, config.filesdir, relative_to=relative_to, nameformat=config.nameformat, keyformat=config.keyformat)
-    if getattr(config, 'light', False):
+    if config.file and not config.local:
         _repair_pool_links(biblio, config)
     return biblio
 
@@ -124,12 +124,12 @@ _REPAIRING = set()
 
 
 def _repair_pool_links(biblio, config):
-    """a light library links to the files of its pool: links broken because
+    """a non-local library links to the files of its pool: links broken because
     the pool renamed a file are repaired by looking the entry up in the pools
     (saved on the next write)"""
     from papers.pools import Exchange  # papers.pools imports this module
     key = os.path.realpath(config.bibtex)
-    if key in _REPAIRING:  # two light libraries that are each other's pool
+    if key in _REPAIRING:  # two non-local libraries that are each other's pool
         return
     _REPAIRING.add(key)
     try:

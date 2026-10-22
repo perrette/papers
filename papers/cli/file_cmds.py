@@ -13,7 +13,7 @@ from papers.pools import Exchange, Pools
 from papers.utils import PapersExit
 from papers.cli.common import (set_format_config_from_cmd, _print_biblio_diff, files_mode,
                                _entries_or_all, _one_entry, _key_option_entries, print_kept_files, library_pools,
-                               push_to_light_pool)
+                               push_to_pool)
 
 
 def filecheckcmd(parser, o, config):
@@ -60,7 +60,7 @@ def file_renamecmd(parser, o, config):
     biblio_init = copy.deepcopy(biblio)
     entries = _entries_or_all(biblio, o.entries)
     rename_files(biblio, entries, config, pools.files_dirs(), keep_source=o.keep_source)
-    push_to_light_pool(Exchange(config, biblio, pools), entries)
+    push_to_pool(Exchange(config, biblio, pools), entries)
     _print_biblio_diff(biblio_init, biblio, entries)
 
 
@@ -121,7 +121,7 @@ def file_attachcmd(parser, o, config):
     biblio_init = copy.deepcopy(biblio)
     e = _one_entry(biblio, o.key)
     attach_files(biblio, e, o.files, config, files_mode(o, config), pools.files_dirs())
-    push_to_light_pool(Exchange(config, biblio, pools), [e])
+    push_to_pool(Exchange(config, biblio, pools), [e])
     _print_biblio_diff(biblio_init, biblio, [e])
 
 
@@ -177,7 +177,7 @@ def file_checkcmd(parser, o, config):
     biblio = get_biblio(config)
     entries = _entries_or_all(biblio, o.entries)
     issues = []
-    # broken links to pool files (repaired on load in a light library)
+    # broken links to pool files (repaired on load in a non-local library)
     selected = {id(e) for e in entries}
     repaired = [r for r in getattr(biblio, 'repaired_links', []) + Exchange(config, biblio).repair_links(entries)
                 if id(r[0]) in selected]

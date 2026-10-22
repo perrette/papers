@@ -115,7 +115,7 @@ class TestLocalConfigSubfolder(BibTest):
 
     def test_save_from_another_directory(self):
         configfile = os.path.join(self.dir, CONFIG_FILE_LOCAL)
-        config = Config(file=configfile, local=True,
+        config = Config(file=configfile, is_library=True,
                         bibtex=os.path.join(self.dir, 'refs', 'papers.bib'),
                         filesdir=os.path.join(self.dir, 'files'))
         config.save()

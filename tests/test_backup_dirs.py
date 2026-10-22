@@ -240,7 +240,7 @@ class TestGitdirByName(unittest.TestCase):
         return json.load(open(self.path(*p, CONFIG_FILE_LOCAL)))
 
     def config(self, gitdir):
-        config = Config(file=self.path(CONFIG_FILE_LOCAL), local=True,
+        config = Config(file=self.path(CONFIG_FILE_LOCAL), is_library=True,
                         bibtex=self.path('lib.bib'), gitdir=gitdir)
         config.save()
         return Config.load(config.file)

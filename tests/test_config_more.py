@@ -52,11 +52,13 @@ class TestMachineConfig(unittest.TestCase):
         with self.assertLogs('papers', level='WARNING'):
             self.assertEqual(MachineConfig.load(self.file).data, {})
 
-    def test_remove_last_pool(self):
-        machine = MachineConfig(self.file)
-        machine.set_pool('x', '/a')
-        machine.set_pool('x', None)
+    def test_pool_names_of_earlier_v3(self):
+        # the pool names of earlier v3 builds: `default` is the global pool
+        machine = MachineConfig(self.file, {'pools': {'default': '/a', 'x': '/b'}})
+        self.assertEqual(machine.pool_path(), '/a')
+        self.assertEqual(machine.pool_names['x'], '/b')
         self.assertNotIn('pools', machine.data)
+        self.assertIsNone(MachineConfig(self.file, {'pool': 'none'}).pool_path())
 
 
 class TestConfig(unittest.TestCase):
@@ -69,17 +71,17 @@ class TestConfig(unittest.TestCase):
         self.tmp.cleanup()
 
     def test_relpath_failure_keeps_the_path(self):
-        config = Config(file=os.path.join(self.dir, '.papersconfig.json'), local=True)
+        config = Config(file=os.path.join(self.dir, '.papersconfig.json'), is_library=True)
         with mock.patch('papers.config.os.path.relpath', side_effect=ValueError('other drive')), \
                 self.assertLogs('papers', level='WARNING'):
             self.assertEqual(config._relpath('/x/papers.bib'), '/x/papers.bib')
 
     def test_v2_global_configuration(self):
-        # local=False: the file format of v2, with absolute paths by default
+        # is_library=False: the file format of v2, with absolute paths by default
         file = os.path.join(self.dir, 'papersconfig.json')
         with open(file, 'w') as f:
             json.dump({'bibtex': os.path.join(self.dir, 'papers.bib')}, f)
-        config = Config.load(file, local=False)
+        config = Config.load(file, is_library=False)
         self.assertTrue(config.absolute_paths)
         self.assertIs(config.tojson()['local'], False)
 

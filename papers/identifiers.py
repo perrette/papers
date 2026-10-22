@@ -152,6 +152,15 @@ def select_entries(biblio, args, stdin=None):
     An identifier that matches no entry, or several entries (e.g. an ISBN
     shared by the chapters of a book), is an error, raised before the command
     changes anything."""
+    entries, missing = select_some(biblio, args, stdin=stdin)
+    if missing:
+        raise PapersExit('\n'.join(f'{arg}: no entry found' for arg in missing) + '\n(nothing was changed)')
+    return entries
+
+
+def select_some(biblio, args, stdin=None):
+    """as select_entries, but the identifiers that match no entry are
+    returned instead of raising: (entries, identifiers not found)"""
     selection = read_selection(args, stdin=stdin)
     index = {}
     for e in biblio.entries:
@@ -161,6 +170,7 @@ def select_entries(biblio, args, stdin=None):
                 matches.append(e)
     entries = []
     errors = []
+    missing = []
     for arg in selection:
         try:
             ident = parse_identifier(arg)
@@ -172,7 +182,8 @@ def select_entries(biblio, args, stdin=None):
             # a key that is a DOI (entries fetched with the DOI as key)
             found = index.get(('key', ident[1]), [])
         if not found:
-            errors.append(f'{arg}: no entry found')
+            if arg not in missing:
+                missing.append(arg)
         elif len(found) > 1:
             errors.append(f'{arg}: several entries match: '
                           + ', '.join(get_entry_val(e, 'ID', '') for e in found))
@@ -180,4 +191,4 @@ def select_entries(biblio, args, stdin=None):
             entries.append(found[0])
     if errors:
         raise PapersExit('\n'.join(errors) + '\n(nothing was changed)')
-    return entries
+    return entries, missing

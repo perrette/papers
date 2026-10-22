@@ -7,16 +7,17 @@ import shutil
 import papers.config
 from papers import logger
 from papers.backup import init_backup
-from papers.config import (CONFIG_FILE, CONFIG_FILE_LOCAL, Config, LIBRARY_CONFIG_FILES, LIBRARY_ONLY,
-                           SETTINGS, format_value, parse_value, short_home)
-from papers.files import delete_files
+from papers.config import (CONFIG_FILE, CONFIG_FILE_LOCAL, Config, LIBRARY_CONFIG_FILES, LIBRARY_ONLY, NO_POOL,
+                           SETTINGS, format_value, parse_value, pool_setting, short_home)
+from papers.files import delete_files, is_inside
 from papers.install import DefaultAsker, InputAsker, RESET_WORDS, _ask_path, apply_install, resolve_install
-from papers.library import (check_legacy_config, convert_file_links, find_config, get_biblio, savebib,
+from papers.library import (check_legacy_config, convert_file_links, find_config, get_biblio,
                             snapshot_backup)
 from papers.migrate import migrate_folders, migrate_v2_global
-from papers.pools import Exchange
+from papers.pools import Exchange, Pools
 from papers.utils import PapersExit, search_config, set_directory
-from papers.cli.common import format_options, check_pools, init_hint, check_install, _print_biblio_diff
+from papers.cli.common import (format_options, init_hint, check_install, _print_biblio_diff, no_library_message,
+                               save_exchange, stdin_is_terminal)
 
 
 def _install(o, config, asker, target=None):
@@ -24,9 +25,6 @@ def _install(o, config, asker, target=None):
     plan = resolve_install(config, o, asker=asker, target=target)
     for name, value in format_options(o).items():
         plan.config.set(name, value)
-    if getattr(o, 'light', False):
-        plan.config.light = True  # a new library: no files to convert
-    check_pools(plan.config, plan.config.pools)
     return apply_install(plan)
 
 
@@ -88,19 +86,19 @@ def install_global(parser, o, config, asker):
     configuration next to the bibtex, and register the library's directory
     as the `default` pool of the global configuration"""
     logger.warning("`papers install --global` is deprecated: the global library of papers v2 is now the "
-                   "default pool, used outside of any library. Use `papers init DIR` (DIR: the library) and "
-                   "`papers pool add default DIR`. This command does both: the library configuration is "
-                   "written next to the bibtex, and its directory becomes the `default` pool.")
+                   "global pool, used outside of any library. Use `papers config --global pool DIR` and "
+                   "`papers init DIR` (DIR: the library). This command does both: the library configuration is "
+                   "written next to the bibtex, and its directory becomes the global pool.")
     machine = config.machine
     bibtex = o.bibtex
     if not bibtex:
-        default = config.bibtex if config.origin in ('v2-global', 'default-pool') and config.bibtex else 'papers.bib'
+        default = config.bibtex if config.origin in ('v2-global', 'global-pool') and config.bibtex else 'papers.bib'
         bibtex = _ask_path(asker, "Bibtex file name", default)
     if not bibtex:
         raise PapersExit("install --global needs a bibtex file")
     bibtex = os.path.abspath(bibtex)
 
-    # the global configuration of v2 becomes a library and the default pool,
+    # the global configuration of v2 becomes a library and the global pool,
     # as with `papers migrate` (the library below then updates or replaces it)
     migrate_v2_global(machine, dryrun=papers.config.DRYRUN)
 
@@ -109,6 +107,8 @@ def install_global(parser, o, config, asker):
     existing = Config.load(target, machine=machine) if os.path.exists(target) else Config(machine=machine)
 
     o.bibtex = bibtex
+    o.pool = NO_POOL  # the global pool itself
+    o.local_setting = True
     if o.filesdir and o.filesdir.lower() not in RESET_WORDS:
         o.filesdir = os.path.abspath(o.filesdir)
     os.makedirs(libdir, exist_ok=True)
@@ -116,9 +116,9 @@ def install_global(parser, o, config, asker):
         config = _install(o, existing, asker, target=target)
 
     if not papers.config.DRYRUN:
-        machine.set_pool('default', short_home(libdir))
+        machine.set('pool', short_home(libdir))
         machine.save()
-    print(f"registered {libdir} as the default pool in {machine.file}")
+    print(f"registered {libdir} as the global pool in {machine.file}")
     print(config.status(check_files=not o.no_check_files, verbose=True))
 
 
@@ -133,8 +133,8 @@ def uninstallcmd(parser, o, config):
 
 
 def _uninstall(parser, o, config):
-    if config.origin == 'default-pool':
-        raise PapersExit(f"no library in this directory or above. The default pool ({config.configdir}) "
+    if config.origin == 'global-pool':
+        raise PapersExit(f"no library in this directory or above. The global pool ({config.configdir}) "
                          f"is used outside of libraries: remove its configuration with "
                          f"`papers -C {config.configdir} uninstall`")
     if Path(config.file).exists():
@@ -159,19 +159,12 @@ def _uninstall(parser, o, config):
 
 
 def _check_setting_name(name, is_global):
-    if name == 'light':
-        raise PapersExit("light is not changed with `papers config`, because it changes the file "
-                         "links and the files too: use `papers migrate --light` or `papers migrate --full`")
-    if is_global and name.startswith('pools.') and len(name) > len('pools.'):
-        return
     if name not in SETTINGS:
-        raise PapersExit(f"unknown setting: {name}. Settings: {', '.join(SETTINGS)}"
-                         + (", pools.NAME (with --global)" if not is_global else ", pools.NAME"))
+        raise PapersExit(f"unknown setting: {name}. Settings: {', '.join(SETTINGS)}")
     if is_global and name in LIBRARY_ONLY:
-        raise PapersExit(f"{name} is a setting of a library: the global configuration holds the default "
-                         "settings of the libraries, and defines no library (the global library of papers v2 "
-                         "is now the default pool, see `papers pool list`)"
-                         + ("; it names the pools with pools.NAME PATH" if name == 'pools' else ''))
+        raise PapersExit(f"{name} is a setting of a library: the global configuration holds the global pool and "
+                         "the default settings of the libraries, and defines no library (the global library of "
+                         "papers v2 is now the global pool, see `papers config --global pool`)")
 
 
 def _parse_setting(name, values):
@@ -193,8 +186,7 @@ def configcmd(parser, o, config):
         return machine_configcmd(parser, o, config.machine, name)
 
     if config.file is None:
-        raise PapersExit(f"no library found in this directory or above, and the default pool is not a library. "
-                         f"{init_hint(config)}, or use `papers config --global`")
+        raise PapersExit(f"{no_library_message(config)}, or use `papers config --global`")
 
     if not name:
         print(f"# {config.file}")
@@ -209,6 +201,9 @@ def configcmd(parser, o, config):
         raise PapersExit(f"{config.file} is the global configuration of papers v2: "
                          "run `papers migrate` first, to turn it into a library")
 
+    if name in ('pool', 'local'):
+        return _set_pool_or_local(o, config, name)
+
     if o.unset:
         config.unset(name)
         if name == 'git' and not config.git:
@@ -219,8 +214,6 @@ def configcmd(parser, o, config):
             if not os.path.exists(value):
                 logger.warning(f"{value} does not exist")
             value = os.path.abspath(value)
-        if name == 'pools':
-            check_pools(config, value)
         config.set(name, value)
         if name == 'git-lfs' and value:
             config.set('git', True)
@@ -240,40 +233,170 @@ def configcmd(parser, o, config):
         convert_file_links(config)
 
 
+# papers config local / pool: the files follow
+# ============================================
+
+def _confirm(o, lines, what):
+    """print what a change does to the files, and ask to continue: -y
+    answers yes, --dry-run stops here, and without a terminal it is an error"""
+    print('\n'.join(lines))
+    if papers.config.DRYRUN:
+        print('DRYRUN: nothing was changed')
+        return False
+    if o.yes:
+        return True
+    if not stdin_is_terminal():
+        raise PapersExit(f'{what}: confirm in a terminal, or pass -y to proceed (nothing was changed)')
+    if input('Continue? [y/N] ').strip().lower() in ('y', 'yes'):
+        return True
+    print('nothing was changed')
+    return False
+
+
+def _show(path):
+    "a path in the plan of a change: relative to the current directory if under it, else with ~"
+    if is_inside(path, os.getcwd()):
+        return os.path.relpath(path)
+    return short_home(path)
+
+
+def _local_lines(plan, config):
+    n = sum(len(files) for _, files in plan)
+    lines = [f'copy {n} file{"s" if n > 1 else ""} of the pool into {_show(config.filesdir)} '
+             '(hard links when possible), and link to the copies (the pool keeps its files):']
+    for e, files in plan:
+        lines.extend(f'  {e.key}: {_show(f)}' for f in files)
+    return lines
+
+
+def _pool_lines(plan, config, pool_path):
+    lines = [f'place the files of the library in the pool {_show(pool_path)}, and link to them there:']
+    for e, pe, actions in plan:
+        if pe is None:
+            lines.append(f'  {e.key}: added to the pool')
+        for f, action, target in actions:
+            if action == 'link':
+                delete = config.filesdir and is_inside(f, config.filesdir)
+                lines.append(f'  {e.key}: link to the same file of the pool {_show(target)}'
+                             + (f', delete {_show(f)}' if delete else ''))
+            else:
+                lines.append(f'  {e.key}: {action} {_show(f)} to the pool')
+    return lines
+
+
+def _save_setting(config, changes):
+    for name, value in changes.items():
+        if value is None:
+            config.unset(name)
+        else:
+            config.set(name, value)
+    config.save()
+    print(', '.join(f'{name} = {format_value(config.get(name))}' for name in changes) + f' (in {config.file})')
+
+
+def _set_pool_or_local(o, config, name):
+    """`papers config local true|false`, `papers config pool PATH|none` and
+    `--unset pool`: the files move with the change, after confirmation"""
+    if name == 'local' and o.unset:
+        raise PapersExit('local is set in each library: `papers config local true` or `false`')
+    new = copy.copy(config)
+    new.explicit = set(config.explicit)
+    if name == 'local':
+        changes = {'local': _parse_setting('local', o.values)}
+    elif o.unset:
+        changes = {'pool': None}
+    else:
+        value = _parse_setting('pool', o.values)
+        changes = {'pool': pool_setting(value, str(config.configdir), base=os.getcwd())}
+    for key, value in changes.items():
+        new.unset(key) if value is None else new.set(key, value)
+    has_pool = new.pool_path() is not None and not new.is_pool_library()
+    if new.local is False and not has_pool:
+        if name == 'local':
+            raise PapersExit('local false needs a pool, and the library has none (pool none): '
+                             'set one with `papers config pool PATH` first')
+        changes['local'] = True  # pool none: the files are the library's own
+        new.set('local', True)
+
+    def done():
+        if papers.config.DRYRUN:
+            print('DRYRUN: ' + ', '.join(f'{k} = {format_value(v)}' for k, v in changes.items())
+                  + f' not saved to {config.file}')
+            return
+        _save_setting(config, changes)
+
+    old_pools = Pools(config)
+    old_pool = old_pools.pool(quiet=True) if not config.local else None
+    old_dirs = [old_pool.filesdir] if old_pool is not None and old_pool.filesdir else []
+    to_local = not config.local and changes.get('local', new.local)
+    to_pool = (not new.local) and (config.local or old_pool is None
+                                   or os.path.realpath(old_pool.path) != os.path.realpath(new.pool_path()))
+    if not to_local and not to_pool:
+        return done()
+
+    biblio = get_biblio(config)
+    biblio_init = copy.deepcopy(biblio)
+    exchange = Exchange(config, biblio, old_pools)
+    if to_local:
+        if config.filesdir is None:
+            raise PapersExit('the library has no files directory: set it with `papers config filesdir DIR` first')
+        plan = exchange.plan_to_local(dirs=old_dirs)
+        intro = [] if name == 'local' else ['pool none: the library cannot link to the files of a pool, '
+                                            'so it becomes local (local true)']
+        if plan and not _confirm(o, intro + _local_lines(plan, config), f'{name} {format_value(changes[name])}'):
+            return
+        if not plan and intro:
+            print('\n'.join(intro))
+        if papers.config.DRYRUN:
+            return done()
+        exchange.to_local(plan, old_dirs)
+        delete = []
+    else:
+        new_pools = Pools(new)
+        pool = new_pools.pool(quiet=True)
+        plan = exchange.plan_to_pool(pool, copy_dirs=old_dirs)
+        if plan and not _confirm(o, _pool_lines(plan, config, new.pool_path()),
+                                 f'{name} {format_value(changes.get(name, new.get(name)))}'):
+            return
+        if papers.config.DRYRUN:
+            return done()
+        if not plan:
+            return done()
+        pool = new_pools.target()
+        delete = exchange.to_pool(pool, plan, copy_dirs=old_dirs)
+        exchange.pools = new_pools
+    save_exchange(exchange)
+    _print_biblio_diff(biblio_init, biblio, biblio.entries)
+    done()
+    delete_files(delete)
+
+
 def machine_configcmd(parser, o, machine, name):
     if not name:
         print(f"# {machine.file}" + ("" if machine.exists() else " (does not exist)"))
-        for pool, path in machine.pools.items():
-            source = "global" if pool in machine.data.get("pools", {}) else "default"
-            print(f"pools.{pool} = {path}  ({source})")
+        if machine.get('pool') is None:
+            print(f"pool = {machine.pool}  (default)")
         for setting in SETTINGS:
             value = machine.get(setting)
             if value is not None:
                 print(f"{setting} = {format_value(value)}")
         return
 
-    is_pool = name.startswith('pools.')
     if not o.unset and not o.values:
-        value = machine.pools.get(name[len('pools.'):]) if is_pool else machine.get(name)
+        value = machine.get(name)
+        if value is None and name == 'pool':
+            value = machine.pool
         if value is not None:
             print(format_value(value))
         return
 
     if o.unset:
         value = None
-    elif is_pool:
-        if len(o.values) != 1:
-            raise PapersExit(f"{name} takes one path")
-        value = o.values[0]
-        if not value.startswith('~'):
-            value = short_home(value)
     else:
         value = _parse_setting(name, o.values)
-
-    if is_pool:
-        machine.set_pool(name[len('pools.'):], value)
-    else:
-        machine.set(name, value)
+        if name == 'pool' and value != NO_POOL:
+            value = short_home(os.path.abspath(os.path.expanduser(value)))
+    machine.set(name, value)
     if papers.config.DRYRUN:
         print(f"DRYRUN: {machine.file} not saved")
         return
@@ -282,52 +405,15 @@ def machine_configcmd(parser, o, machine, name):
 
 def migratecmd(parser, o, config):
     """one-time upgrades from papers v2"""
-    if o.light and o.full:
-        parser.error('--light and --full are mutually exclusive')
-    if o.light or o.full:
-        config = check_install(parser, o, config)
-        if config.file is None:
-            raise PapersExit('migrate --light / --full: the library has no configuration file')
-        return migrate_light(config, light=o.light)
     if o.folders:
         return migrate_folders(check_install(parser, o, config))
     if not migrate_v2_global(config.machine, relative=o.relative, dryrun=papers.config.DRYRUN):
         print("nothing to migrate: no global configuration of papers v2 was found")
 
 
-def migrate_light(config, light):
-    """papers migrate --light: link to the files of the first pool and
-    delete the library's copies; --full: copy the pool files linked into
-    the library's files directory"""
-    biblio = get_biblio(config)
-    biblio_init = copy.deepcopy(biblio)
-    exchange = Exchange(config, biblio)
-    if light:
-        relinked, missing, delete, kept = exchange.to_light()
-        for e in missing:
-            print(f'{e.key}: some of its files are not in the pool: kept as they are')
-        if missing:
-            print(f'{len(missing)} entries have files that are not in the pool: run `papers push` first, '
-                  'then `papers migrate --light` again')
-        for f in kept:
-            print(f'kept {f}: the entry links to the pool file now, but this file is outside the files directory')
-    else:
-        relinked = exchange.to_full()
-        delete = []
-    config.light = light
-    if papers.config.DRYRUN:
-        print(f'DRYRUN: light = {"true" if light else "false"} not saved to {config.file}')
-    else:
-        config.save()
-    exchange.origin.save()
-    savebib(biblio, config)
-    _print_biblio_diff(biblio_init, biblio, relinked)
-    delete_files(delete, dryrun=papers.config.DRYRUN)
-    print(f'{len(relinked)} entries relinked; the library is {"light" if light else "full"}')
-
-
 def statuscmd(parser, o, config):
     print(config.status(check_files=not o.no_check_files, verbose=o.verbose))
     if config.file is None:
-        print(f"* default pool:       {config.machine.pool_path('default')} (not a library)")
+        pool = config.machine.pool_path()
+        print(f"* global pool:        {short_home(pool) + ' (not a library)' if pool else 'none'}")
         print(init_hint(config))

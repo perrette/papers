@@ -5,7 +5,7 @@ import shutil
 import json
 import unittest
 import difflib
-from tests import TEST_DEFAULT_POOL
+from tests import TEST_GLOBAL_POOL
 from tests.download import downloadpdf
 from pathlib import Path
 import io
@@ -287,7 +287,7 @@ class ConfigTest(BibTest):
 
     def tearDown(self):
         self.temp_dir.cleanup()
-        shutil.rmtree(TEST_DEFAULT_POOL, ignore_errors=True)
+        shutil.rmtree(TEST_GLOBAL_POOL, ignore_errors=True)
         open(papers.config.MACHINE_CONFIG_FILE, 'w').write(self.machine_config)
 
     def papers(self, cmd, cwd=None, **kw):

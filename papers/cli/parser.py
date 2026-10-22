@@ -15,7 +15,7 @@ from papers.cli.fetch_cmds import doicmd, fetchcmd, extractcmd
 from papers.cli.file_cmds import (filecheckcmd, file_renamecmd, file_mvcmd, file_attachcmd, file_detachcmd, file_rmcmd,
                                   file_checkcmd, file_cleancmd)
 from papers.cli.library_cmds import statuscmd, initcmd, configcmd, migratecmd, installcmd, uninstallcmd
-from papers.cli.pool_cmds import pullcmd, pushcmd, exportcmd, poolcmd
+from papers.cli.pool_cmds import pullcmd, pushcmd, synccmd, exportcmd
 
 
 # help of the name.* and key.* settings on the command line (`what` is key or
@@ -146,7 +146,7 @@ def get_parser(config=None):
     # status
     # ======
     statusp = subparsers.add_parser('status',
-        description='show the library, its pools and its settings',
+        description='show the library, its pool and its settings',
         parents=[cfg])
     statusp.add_argument('--no-check-files', action='store_true', help='faster, less info')
     statusp.add_argument('-v','--verbose', action='store_true', help='also show where each setting comes from')
@@ -166,9 +166,14 @@ def get_parser(config=None):
         help='bibtex file (default: papers.bib, or the first .bib file of the directory)')
     initp.add_argument('--filesdir', type=file_uri_to_path,
         help='files directory (default: files, or an existing pdfs/, papers/... folder)')
-    initp.add_argument('--pool', nargs='+', action='extend', metavar='NAME|PATH',
-        help='pools of the library: names of the global configuration, or paths '
-             '(containing a /, relative to the library) (default: default)')
+    initp.add_argument('--pool', metavar='PATH|none',
+        help='pool of the library: a path (relative to the library), or none (default: the global pool, '
+             f'{_default(config.machine.pool)}, set with `papers config --global pool`)')
+    initp.add_argument('--local', action='store_true', default=None, dest='local_setting',
+        help='the files of the library are in its own files directory (default: in the files directory '
+             'of the pool, the library links to them; a library without pool is local). '
+             'Use it for a project folder shared with others (git, Dropbox): the links of a library '
+             'that is not local point into your own pool.')
     initp.add_argument('--paths', choices=['relative', 'absolute'],
         help='file links in the bibtex relative to the bibtex directory, or absolute '
              f'(default: {config.inherited("paths")})')
@@ -177,8 +182,6 @@ def get_parser(config=None):
     initp.add_argument('--no-git', action='store_false', dest='git', default=None, help='no git backup')
     initp.add_argument('--git-lfs', action='store_true', default=None, help='also back up the files with git-lfs (implies --git)')
     initp.add_argument('--editor', help='command to open a text editor; it must wait until the editor is closed, e.g. vim or "subl -w"')
-    initp.add_argument('--light', action='store_true',
-        help='a light library: its file links point to the files of its first pool (see `papers migrate --light`)')
     initp.add_argument('--no-check-files', action='store_true', help=argparse.SUPPRESS)
     _command(initp, initcmd)
 
@@ -188,35 +191,33 @@ def get_parser(config=None):
         description='get or set the settings of the library (git style): without KEY, list the '
                     'settings and where each comes from (library, global or default); with KEY, '
                     'print its value; with KEY VALUE..., set it in the library configuration',
-        epilog='settings: ' + ', '.join(SETTINGS) + '; with --global, also pools.NAME (path of a pool)')
+        epilog='settings: ' + ', '.join(SETTINGS) + '. Changing local or pool moves the files of the library '
+               '(local true: the pool files it links to are copied into its files directory; local false: its '
+               'files go to the pool; pool PATH: they go to the new pool, pool none: local true); papers lists '
+               'what it will do and asks to continue.')
     configp.add_argument('key', nargs='?', metavar='KEY')
-    configp.add_argument('values', nargs='*', metavar='VALUE', help='several values for pools')
+    configp.add_argument('values', nargs='*', metavar='VALUE')
     configp.add_argument('--unset', metavar='KEY', help='remove the setting: the global or default value applies again')
     configp.add_argument('--global', action='store_true', dest='is_global',
         help=f'the global configuration, per user ({_default(papers.config.MACHINE_CONFIG_FILE)}), instead of '
-             'the library\'s: the default settings of the libraries, and the pool names')
-    configp.add_argument('--dry-run', action='store_true', help='do not save')
+             'the library\'s: the global pool, and the default settings of the libraries')
+    configp.add_argument('-y', '--yes', action='store_true', help='do not ask before moving the files (local, pool)')
+    configp.add_argument('--dry-run', action='store_true', help='do not save (local, pool: only show what would be done)')
     _command(configp, configcmd)
 
     # migrate
     # =======
     migratep = subparsers.add_parser('migrate', parents=[cfg],
         description='one-time upgrades from papers v2. Without option: turn the global configuration '
-                    'of v2 into a library configuration next to its bibtex, and register its directory '
-                    'as the default pool.')
+                    'of v2 into a library configuration next to its bibtex (local, without pool), and '
+                    'register its directory as the global pool. The library configurations of v2 need '
+                    'no migration: they are read as local libraries that use the global pool.')
     migratep.add_argument('--relative', action='store_true',
         help='store the file links of the migrated library relative to its bibtex '
              '(default: keep the previous setting)')
     migratep.add_argument('--folders', action='store_true',
         help='move the files of entries kept in folders of papers < 2.19 (<name>/ with a hidden '
              '.<name>.bib) to the flat layout of the files directory')
-    migratep.add_argument('--light', action='store_true',
-        help='make the library light: each file that the first pool has for the same paper (same content) '
-             'is replaced by a link to the pool\'s file, and the library\'s copy in its files directory is '
-             'deleted. Files that are not in the pool are kept and listed (push them first).')
-    migratep.add_argument('--full', action='store_true',
-        help='make the library full again: copy (a hard link when possible) the pool files it links to '
-             'into its files directory, named with its name template')
     _command(migratep, migratecmd)
 
     # install
@@ -236,7 +237,7 @@ def get_parser(config=None):
         help="""ignored (a library configuration is always local)""")
     installp.add_argument('--global', action="store_false", dest='local', default=None,
         help="deprecated: create or update the library configuration next to the bibtex, and register "
-             "its directory as the default pool (used outside of any library)")
+             "its directory as the global pool (used outside of any library)")
 
     installp.add_argument('--git', action='store_true', default=None, help='back up the bibtex with git')
     installp.add_argument('--backup', action=_Deprecated, dest='git', new='--git (or `papers config git true`)')
@@ -245,7 +246,7 @@ def get_parser(config=None):
                           new='--git-lfs (or `papers config git-lfs true`)')
     installp.add_argument('--gitdir', default=None, help=argparse.SUPPRESS)
     installp.add_argument('--editor', help="""Set command to open text editor. Need to wait until closing ! E.g. vim or subl -w""")
-    installp.add_argument('--pool', nargs='+', action='extend', metavar='NAME|PATH', help=argparse.SUPPRESS)
+    installp.add_argument('--pool', metavar='PATH|none', help=argparse.SUPPRESS)
 
     grp = installp.add_argument_group('status')
     grp.add_argument('--no-check-files', action='store_true', help='faster, less info')
@@ -263,7 +264,11 @@ def get_parser(config=None):
 
     # add
     # ===
-    addp = subparsers.add_parser('add', description='add PDF(s) or bibtex(s) to library',
+    addp = subparsers.add_parser('add', description='''add PDF(s) or bibtex(s) to library. In a
+        library that is not local, the files go to the files directory of the pool, and the entries
+        to the pool too. Adding a bibtex file (`papers add other.bib`) copies its entries once, with no
+        memory of where they came from; `papers pull` instead keeps the entries linked to the pool,
+        and later pulls bring its corrections.''',
         parents=[cfg, namefmt, keyfmt])
     addp.add_argument('file', nargs='*', default=[], type=file_uri_to_path)
 
@@ -281,7 +286,7 @@ def get_parser(config=None):
     grp.add_argument('--no-check-duplicate', action='store_true',
         help='disable duplicate check (faster, create duplicates)')
     grp.add_argument('--no-pool', action='store_true',
-        help='''do not look in the pools first (by default, a PDF, DOI or bibtex entry that is
+        help='''do not look in the pool first (by default, a PDF, DOI or bibtex entry that is
         the same paper as a pool entry is taken from the pool, with its files, without fetching)''')
     grp.add_argument('--no-merge-files', action='store_true',
         help='deprecated and ignored: file links are always merged')
@@ -603,65 +608,70 @@ def get_parser(config=None):
     tagp.add_argument('--rename', nargs=2, metavar=('OLD', 'NEW'), help='rename a tag in the whole library')
     _command(tagp, tagcmd, library=True)
 
-    # pull, push, export, pool
+    # pull, push, sync, export
     # ========================
     _exchange_help = '''what to do with an entry changed on both
         sides since the last pull or push: ask (dialogue; the default in a terminal), keep (the
         {receiving} values are kept), update (the {incoming} values are taken), skip (the entry is
         left as it is, and comes again next time), error (stop before saving; the default
         without a terminal). Fields changed on one side only need no decision.'''
+    _pool_help = 'the pool to {what} (default: the pool of the library), e.g. a folder shared with someone'
     pullp = subparsers.add_parser('pull', parents=[cfg],
         description='''update the entries of the library from their pool entries (three-way merge
         with the origin copy of the entry, .papers/origin.bib): a field changed in the pool only is
         taken, a field changed in the library only is kept, a field changed on both sides is a
-        conflict. Entries without origin copy are matched to the pools by the same-paper rule.
-        The keys of the library never change. New pool files are copied (or linked) as the files
-        setting says; a light library links to them.''')
+        conflict. Entries without origin copy are matched to the pool by the same-paper rule.
+        The keys of the library never change. KEY may also be an entry of the pool only (its key,
+        DOI, arXiv id or ISBN): it is added to the library, under the pool key (with a letter
+        suffix if the library has that key already). New pool files are linked in a library that
+        is not local, and otherwise copied (a hard link when possible) as the files setting says.
+        Unlike `papers add other.bib`, which copies entries once, the entries pulled keep their
+        link to the pool (origin copy): later pulls bring the corrections made in the pool.''')
     pullp.add_argument('entries', nargs='*', metavar='KEY', help=_selection_help + ' (default: all entries)')
+    pullp.add_argument('--pool', metavar='PATH', help=_pool_help.format(what='pull from, once'))
+    pullp.add_argument('--all', action='store_true',
+        help='also add to the library every entry of the pool that it does not have (same-paper rule)')
     pullp.add_argument('--on-duplicate', choices=ON_DUPLICATE,
         help=_exchange_help.format(receiving='library', incoming='pool'))
     pullp.add_argument('--check', action='store_true',
-        help='only report: the pools that changed since the last pull, and the entries changed in the pools')
+        help='only report: whether the pool changed since the last pull, and the entries changed in the pool')
     pullp.set_defaults(mode=None, yes=False)
     _command(pullp, pullcmd, library=True)
 
     pushp = subparsers.add_parser('push', parents=[cfg],
-        description='''add the entries of the library to the first pool, or merge their changes
+        description='''add the entries of the library to the pool, or merge their changes
         into the pool entries (three-way merge with the origin copy, as pull does in the other
         direction). Entries new to the pool get a key from the pool's key template; their files
         are copied (a hard link when possible) into the pool's files directory, named with the
-        pool's name template. The default pool is created if it does not exist.''')
+        pool's name template. The pool is created if it does not exist yet.''')
     pushp.add_argument('entries', nargs='*', metavar='KEY', help=_selection_help + ' (default: all entries)')
-    pushp.add_argument('--pool', metavar='NAME|PATH', help='push to this pool (default: the first pool of the library)')
+    pushp.add_argument('--pool', metavar='PATH', help=_pool_help.format(what='push to, once'))
     pushp.add_argument('--on-duplicate', choices=ON_DUPLICATE,
         help=_exchange_help.format(receiving='pool', incoming='library'))
     pushp.set_defaults(mode=None, yes=False)
     _command(pushp, pushcmd, library=True)
 
+    syncp = subparsers.add_parser('sync', parents=[cfg],
+        description='''`papers pull`, then `papers push` of the same entries. If the pull leaves
+        conflicts undecided (skipped, or the dialogue quit), nothing is pushed.''')
+    syncp.add_argument('entries', nargs='*', metavar='KEY', help=_selection_help + ' (default: all entries)')
+    syncp.add_argument('--pool', metavar='PATH', help=_pool_help.format(what='sync with, once'))
+    syncp.add_argument('--on-duplicate', choices=ON_DUPLICATE,
+        help=_exchange_help.format(receiving='receiving side', incoming='other side'))
+    syncp.set_defaults(mode=None, yes=False)
+    _command(syncp, synccmd, library=True)
+
     exportp = subparsers.add_parser('export', parents=[cfg],
-        description='''write entries as a new library in DIR: bibtex, files, configuration, with
-        file links relative to the bibtex. `papers add DIR --recursive` adds it back.''')
+        description='''write entries as a new library in DIR, to hand over: bibtex, files,
+        configuration (its own files, no pool: local true, pool none), with file links relative to
+        the bibtex. `papers add DIR --recursive` adds it back; `papers config pool DIR` makes it the
+        pool of the library.''')
     exportp.add_argument('dir', metavar='DIR', help='directory of the new library (must not exist, or be empty)')
     exportp.add_argument('entries', nargs='*', metavar='KEY', help=_selection_help + ' (default: all entries)')
     exportp.add_argument('--files', choices=['copy', 'link', 'none'], default='copy',
         help='copy the files into DIR/files (a hard link when possible; default), link to them where '
              'they are, or leave the file links out')
-    exportp.add_argument('--pool', action='store_true', help='also add DIR to the pools of the library')
     _command(exportp, exportcmd, library=True)
-
-    poolp = subparsers.add_parser('pool', parents=[loggingp],
-        description='the pools of the global configuration (the same as `papers config --global '
-                    'pools.NAME PATH`). Without subcommand: list them, and the pools of the library.')
-    _command(poolp, poolcmd)
-    poolsub = poolp.add_subparsers(dest='pool_cmd')
-    poolsub.add_parser('list', parents=[loggingp], help='list the pools of the global configuration and of the library')
-    p = poolsub.add_parser('add', parents=[loggingp], help='name a pool in the global configuration')
-    p.add_argument('name', metavar='NAME')
-    p.add_argument('path', metavar='PATH')
-    p.add_argument('--dry-run', action='store_true', help='do not save')
-    p = poolsub.add_parser('remove', parents=[loggingp], help='remove a pool name from the global configuration (not from the library)')
-    p.add_argument('name', metavar='NAME')
-    p.add_argument('--dry-run', action='store_true', help='do not save')
 
     # open
     # ====

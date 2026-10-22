@@ -305,13 +305,16 @@ class TestGlobalInstall(TestBaseInstall):
         self.papers(f'install --no-prompt --global --bibtex {self.mybib} --files {self.filesdir}')
         self.assertTrue(self._exists(self.mybib))
         self.assertTrue(self._exists(self.filesdir))
-        # v3: a library configuration next to the bibtex, registered as the default pool
+        # v3: a library configuration next to the bibtex, registered as the global pool
         self.assertFalse(os.path.exists(CONFIG_FILE))
         config = Config.load(self._path(CONFIG_FILE_LOCAL))
         self.assertEqual(config.bibtex, os.path.abspath(self._path(self.mybib)))
         self.assertEqual(config.filesdir, os.path.abspath(self._path(self.filesdir)))
-        self.assertEqual(os.path.realpath(MachineConfig.load().pool_path('default')),
+        self.assertEqual(os.path.realpath(MachineConfig.load().pool_path()),
                          os.path.realpath(self.temp_dir.name))
+        # the global pool has no pool, and its files are its own
+        self.assertEqual(config.pool, 'none')
+        self.assertTrue(config.local)
 
 
 class TestGitInstall(TestBaseInstall):
@@ -530,7 +533,8 @@ class TestInstallIsInit(ConfigTest):
 
     def test_install_is_init(self):
         self.papers('install --no-prompt --no-git')
-        self.assertEqual(self.json()['pools'], ['default'])
+        self.assertNotIn('pool', self.json())  # the global pool
+        self.assertIn('local', self.json())
 
 
 class TestReinstallSubfolder(BibTest):
