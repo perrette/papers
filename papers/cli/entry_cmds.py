@@ -191,8 +191,8 @@ def addcmd(parser, o, config):
         try:
             entries = edit_entries(entries)
         except Exception as error:
-            logger.error(str(error))
-            return
+            # the entries (and their files) are added already: save them unedited
+            logger.error(f'failed to edit the added entries, saved without the edits: {error}')
 
         for e in entries:  # fields emptied in the editor are removed
             for k in [k for k, v in e.items() if v == "" and k not in ('ID', 'ENTRYTYPE')]:

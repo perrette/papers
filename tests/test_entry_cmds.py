@@ -208,11 +208,14 @@ class TestEdit(EntryTest):
         self.assertNotIn('note', self.entry('three2000'))
 
     def test_add_file_edit_error(self):
+        # used to return before saving: the added entry was lost
         bib = self.write('src', 'three.bib', content=entry('three2000'))
         with patch('papers.cli.entry_cmds.edit_entries', side_effect=OSError('no editor')), \
-                self.assertLogs('papers', level='ERROR'):
+                self.assertLogs('papers', level='ERROR') as logs:
             self.lib(f'add {bib} -e')
-        self.assertEqual(self.keys(), ['one2000', 'two2000'])  # the add is abandoned
+        self.assertEqual(self.keys(), ['one2000', 'three2000', 'two2000'])  # added, unedited
+        self.assertEqual(self.entry('three2000')['title'], 'Title of three2000')
+        self.assertIn('no editor', '\n'.join(logs.output))
 
     def test_add_edit_without_file_several_entries(self):
         with patch('papers.cli.entry_cmds.edit_entries', side_effect=lambda entries: entries * 2):
