@@ -216,6 +216,17 @@ def gitdir_from_json(value, root):
     return str(Path(root).resolve() / value)
 
 
+def config_root(file):
+    """the directory that the relative paths of a library configuration file
+    refer to: the directory of the file, or the library directory for the
+    .papers/config.json of papers v2.2 to v2.4 (which read and wrote them
+    relative to the parent of .papers)"""
+    p = Path(file)
+    if p.name == 'config.json' and p.parent.name == '.papers':
+        return p.parent.parent
+    return p.parent
+
+
 def is_backup_name(value):
     "a name, not a path, of a backup directory"
     return (value not in ('.', '..') and os.path.sep not in value
@@ -422,7 +433,7 @@ class Config:
     @property
     def configdir(self):
         "directory that relative paths of a local configuration file refer to"
-        return Path(self.file).parent.resolve() if self.file else Path.cwd()
+        return config_root(self.file).resolve() if self.file else Path.cwd()
 
     def _relpath(self, p):
         if p is None: return p
@@ -487,7 +498,11 @@ class Config:
             local = os.path.basename(the_file) != os.path.basename(CONFIG_FILE)
         gitdir = js.get('gitdir')
         if gitdir is not None and local:
-            gitdir = gitdir_from_json(gitdir, Path(the_file).parent)
+            if version < 3:
+                # a path in v2 (".papers" in v2.2 to v2.4), never a name
+                gitdir = str(config_root(the_file).resolve() / gitdir)
+            else:
+                gitdir = gitdir_from_json(gitdir, config_root(the_file))
         cfg = cls(file=the_file, local=local, machine=machine,
                   bibtex=js.get('bibtex'), filesdir=js.get('filesdir'), gitdir=gitdir,
                   light=bool(js.get('light', False)))
@@ -505,7 +520,7 @@ class Config:
         if self.file is None:
             logger.warning("_update_paths_to_absolute: only works if Config.file is defined")
             return
-        root = Path(self.file).parent
+        root = config_root(self.file)
         for field in ['bibtex', 'filesdir', 'gitdir']:
             setattr(self, field, self._abspath(getattr(self, field), root))
 

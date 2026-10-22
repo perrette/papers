@@ -87,7 +87,7 @@ class TestPolicy(TmpTest):
         self.assertEqual(FilesPolicy('move')(pdf), 'move')
 
     def test_configuration_in_dot_papers(self):
-        self.write('other', '.papers', 'config.json', content='{"filesdir": "../files", "bibtex": "../papers.bib"}')
+        self.write('other', '.papers', 'config.json', content='{"filesdir": "files", "bibtex": "papers.bib"}')
         pdf = self.write('other', 'files', 'a.pdf')
         owner = OtherLibraries().owner(pdf)
         self.assertIsNotNone(owner)
