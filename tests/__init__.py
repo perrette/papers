@@ -3,33 +3,40 @@ import os
 import shutil
 import tempfile
 import subprocess as sp
-# git commits of the backups need a user name and email: when git has none,
-# give them through the environment (inherited by every git call), instead of
-# writing to the developer's ~/.gitconfig
+
+# Keep the tests away from the user's configuration, backups and default
+# pool: papers.config derives its locations from platformdirs, which honors
+# the XDG variables on Linux, and the built-in default pool is
+# ~/Documents/papers. HOME and the XDG variables are set before papers is
+# imported, and are inherited by the `python3 -m papers` subprocesses of
+# some tests. The cache is shared on purpose (it spares network queries): it
+# stays where it was before HOME changes.
+_TEST_HOME = tempfile.mkdtemp(prefix='papers-tests-')
+atexit.register(shutil.rmtree, _TEST_HOME, ignore_errors=True)
+os.environ.setdefault('XDG_CACHE_HOME', os.path.join(os.path.expanduser('~'), '.cache'))
+
+# git commits of the backups need a user name and email: take those of the
+# developer's git configuration (not found once HOME changes), or test
+# values, and give them through the environment (inherited by every git call)
 for _key, _var, _value in [('user.name', 'NAME', 'Papers Tests'), ('user.email', 'EMAIL', 'papers.tests@github.com')]:
-    if sp.run(['git', 'config', _key], capture_output=True).returncode != 0:
-        os.environ.setdefault(f'GIT_AUTHOR_{_var}', _value)
-        os.environ.setdefault(f'GIT_COMMITTER_{_var}', _value)
+    _run = sp.run(['git', 'config', _key], capture_output=True, text=True)
+    _value = _run.stdout.strip() if _run.returncode == 0 and _run.stdout.strip() else _value
+    os.environ.setdefault(f'GIT_AUTHOR_{_var}', _value)
+    os.environ.setdefault(f'GIT_COMMITTER_{_var}', _value)
 del sp
 
-# Keep the tests away from the user's configuration and backups: papers.config
-# derives its locations from platformdirs, which honors the XDG variables on
-# Linux. They are set before papers is imported, and are inherited by the
-# `python3 -m papers` subprocesses of some tests. The cache is shared on
-# purpose (it spares network queries).
-_TEST_HOME = tempfile.mkdtemp(prefix='papers-tests-')
+os.environ['HOME'] = os.path.join(_TEST_HOME, 'home')
+os.makedirs(os.environ['HOME'])
 os.environ['XDG_CONFIG_HOME'] = os.path.join(_TEST_HOME, 'config')
 os.environ['XDG_DATA_HOME'] = os.path.join(_TEST_HOME, 'data')
-atexit.register(shutil.rmtree, _TEST_HOME, ignore_errors=True)
 
 # The default pool (~/Documents/papers without global configuration) is
-# used outside of any library: point it to the temporary directory too, both
-# as built-in default (in this process) and in the global configuration
-# (also read by the subprocesses).
+# used outside of any library: it is under the temporary HOME, and the
+# global configuration names it too.
 import json
 import papers.config
-TEST_DEFAULT_POOL = os.path.join(_TEST_HOME, 'Documents', 'papers')
-papers.config.DEFAULT_POOLS['default'] = TEST_DEFAULT_POOL
+TEST_DEFAULT_POOL = os.path.join(os.environ['HOME'], 'Documents', 'papers')
+assert os.path.expanduser(papers.config.DEFAULT_POOLS['default']) == TEST_DEFAULT_POOL
 # The files mode is `link` (the default is `move`): `papers add` then leaves
 # the PDFs where they are, as in v2, so that the cached PDFs of
 # tests/downloadedpapers are never moved. The tests of the files modes set
