@@ -1043,9 +1043,12 @@ naming patterns.</p>
 <h2 id="make-settings-persistent">Make settings persistent<a class="headerlink" href="#make-settings-persistent" title="Permanent link">&para;</a></h2>
 <p>In the common case where the bibtex, files directory and naming formats do not
 change, create a library so that you don't need to pass them every time:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>papers init --bibtex papers.bib --filesdir files
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>papers init --bibtex papers.bib --filesdir files --local
 </code></pre></div>
-<p>Commands run in that directory (or below) then act on this library. See
+<p>Commands run in that directory (or below) then act on this library. With
+<code>--local</code>, the files added later go to <code>files</code> too; without it, they go to
+the files directory of the global pool (<code>~/Documents/papers</code>), and the
+library links to them there (see <a href="../pools/">Pools</a>). See
 <a href="../configuration/">Configuration</a> for details.</p>
 <div class="admonition tip">
 <p class="admonition-title">Tip</p>

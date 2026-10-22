@@ -577,10 +577,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#entries-already-in-a-pool" class="md-nav__link">
+  <a href="#entries-already-in-the-pool" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Entries already in a pool
+        Entries already in the pool
       
     </span>
   </a>
@@ -1140,10 +1140,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#entries-already-in-a-pool" class="md-nav__link">
+  <a href="#entries-already-in-the-pool" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Entries already in a pool
+        Entries already in the pool
       
     </span>
   </a>
@@ -1307,8 +1307,11 @@ attachment.</p>
 </code></pre></div>
 <h2 id="what-happens-to-the-files">What happens to the files<a class="headerlink" href="#what-happens-to-the-files" title="Permanent link">&para;</a></h2>
 <p>By default, <code>papers add</code> moves the PDF into the files directory of the
-library, under a name made from the name template. The <code>files</code> setting of
-the library changes that (see <a href="../files/#what-add-does-with-a-file">Files</a>):</p>
+library, under a name made from the name template: in a library that is not
+local (the default for new libraries), the files directory and the name
+template of its pool (see <a href="../pools/#local-or-not">Local or not</a>). The
+<code>files</code> setting of the library changes what happens to the original (see
+<a href="../files/#what-add-does-with-a-file">Files</a>):</p>
 <ul>
 <li><code>move</code> (default): place the file in the files directory and remove the
   original;</li>
@@ -1388,13 +1391,20 @@ says, as <code>papers file attach KEY FILE...</code> does; the key, the fields a
 other files of the entry are not touched. An arXiv DOI
 (<code>10.48550/arXiv.&lt;id&gt;</code>) matches an entry whose <code>eprint</code> is that arXiv
 identifier. <code>--no-check-duplicate</code> skips this, and adds a new entry.</p>
-<p>The order is: the library, then the pools (below), then online.</p>
-<h2 id="entries-already-in-a-pool">Entries already in a pool<a class="headerlink" href="#entries-already-in-a-pool" title="Permanent link">&para;</a></h2>
-<p>Before querying crossref, <code>papers add</code> looks in the pools of the library
-(see <a href="../pools/#add-looks-in-the-pools-first">Pools</a>): a PDF with the same
-content as a pool file, or whose DOI is in a pool, a DOI that a pool entry
+<p>The order is: the library, then the pool (below), then online.</p>
+<h2 id="entries-already-in-the-pool">Entries already in the pool<a class="headerlink" href="#entries-already-in-the-pool" title="Permanent link">&para;</a></h2>
+<p>Before querying crossref, <code>papers add</code> looks in the pool of the library
+(see <a href="../pools/#add-looks-in-the-pool-first">Pools</a>): a PDF with the same
+content as a pool file, or whose DOI is in the pool, a DOI that a pool entry
 has, or a bibtex entry that is the same paper as a pool entry, is taken from
 the pool, with its files. <code>--no-pool</code> skips this.</p>
+<p>In a library that is not local (the default), the files of the added
+entries go to the files directory of the pool, and the entries to the pool
+too (see <a href="../pools/#local-or-not">Local or not</a>).</p>
+<p><code>papers add other.bib</code> copies the entries of <code>other.bib</code> once, with no
+memory of the source. To take entries from the pool so that they stay
+linked to it (later pulls bring the corrections made there), use
+<code>papers pull KEY</code> (see <a href="../pools/#papers-pull"><code>papers pull</code></a>).</p>
 <h2 id="add-an-entry-from-its-doi">Add an entry from its DOI<a class="headerlink" href="#add-an-entry-from-its-doi" title="Permanent link">&para;</a></h2>
 <p>If you already know the DOI of a PDF, and don't want to gamble the fulltext
 search and match, you can indicate it via <code>--doi</code>:</p>

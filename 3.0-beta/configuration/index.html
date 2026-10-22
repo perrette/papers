@@ -1166,17 +1166,17 @@ missing, with its parents):</p>
 <a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>* backup directory:   /home/perrette/.local/share/papers/backups/sealevel-papers-3f9a1c2b
 <a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>* files directory:    files (empty)
 <a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>* bibtex:             papers.bib (empty)
-<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>* pools:
-<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>    default: /home/perrette/Documents/papers (missing)
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>* pool:               ~/Documents/papers (global pool, not created yet)
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>* local:              false (the files are in the files directory of the pool)
 <a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>...
 </code></pre></div>
 <p>By default the bibtex is <code>papers.bib</code> (or the first <code>.bib</code> file present in
 the directory) and the files directory is <code>files</code> (or an existing <code>pdfs</code>,
 <code>pdf</code>, <code>papers</code> or <code>bibliography</code> folder). The options of <code>papers init</code> are
-<code>--bibtex</code>, <code>--filesdir</code>, <code>--pool NAME|PATH...</code> (see <a href="#pools">Pools</a>),
-<code>--paths relative|absolute</code>, <code>--git</code>/<code>--no-git</code>, <code>--git-lfs</code>, <code>--editor</code>, <code>--light</code>
-(see <a href="../pools/#light-libraries">Light libraries</a>) and
-the name and key format options (see <a href="../renaming/">Renaming files and keys</a>).
+<code>--bibtex</code>, <code>--filesdir</code>, <code>--pool PATH|none</code> and <code>--local</code> (see
+<a href="#pools">Pools</a>), <code>--paths relative|absolute</code>, <code>--git</code>/<code>--no-git</code>,
+<code>--git-lfs</code>, <code>--editor</code> and the name and key format options (see
+<a href="../renaming/">Renaming files and keys</a>).
 With <code>DIR</code>, the paths given to <code>--bibtex</code> and <code>--filesdir</code> are relative to
 <code>DIR</code>.
 <code>papers init</code> does not prompt, and fails if the directory already has a
@@ -1190,7 +1190,7 @@ was started in <code>DIR</code>:</p>
 <p><code>--bibtex</code> and <code>--filesdir</code> still override the library for one command. If
 the bibtex given with <code>--bibtex</code> belongs to another library (a configuration
 file in its directory or above), the settings of that library apply.</p>
-<p>Outside of any library, commands act on the default pool if it is a library
+<p>Outside of any library, commands act on the global pool if it is a library
 (see <a href="#pools">Pools</a>), and otherwise fail with a message that explains how to
 create one.</p>
 <p>Type <code>papers status</code> to see which library a command acts on, and
@@ -1201,7 +1201,6 @@ create one.</p>
 <a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>papers config name.template            # print one setting
 <a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>papers config name.template '{author}_{year}_{title}'   # set it in the library
 <a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>papers config --unset name.template    # remove it from the library
-<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>papers config pools default ../shared  # settings with several values
 </code></pre></div>
 <p>Each setting comes from the library configuration if it sets it, otherwise
 from the global configuration, otherwise from its built-in default.
@@ -1224,8 +1223,12 @@ from the global configuration, otherwise from its built-in default.
 <td>path of the files directory</td>
 </tr>
 <tr>
-<td><code>pools</code></td>
-<td>names or paths of the library's pools (default: <code>default</code>)</td>
+<td><code>pool</code></td>
+<td>path of the library's pool (relative to the library), or <code>none</code> (default: the global pool)</td>
+</tr>
+<tr>
+<td><code>local</code></td>
+<td><code>true</code>: the files are in the files directory of the library; <code>false</code>: in the files directory of the pool (see <a href="../pools/#local-or-not">Pools</a>)</td>
 </tr>
 <tr>
 <td><code>paths</code></td>
@@ -1236,8 +1239,8 @@ from the global configuration, otherwise from its built-in default.
 <td><code>move</code> (default), <code>copy</code> or <code>link</code>: what <code>papers add</code> does with a file (see <a href="../files/#what-add-does-with-a-file">Files</a>)</td>
 </tr>
 <tr>
-<td><code>sync</code></td>
-<td><code>none</code> (default) or <code>push</code>: <code>papers add</code> also adds the new entries to the first pool (see <a href="../pools/">Pools</a>)</td>
+<td><code>auto-push</code></td>
+<td><code>false</code> (default) or <code>true</code>: in a local library, <code>papers add</code> also adds the new entries to the pool (see <a href="../pools/#local-or-not">Pools</a>)</td>
 </tr>
 <tr>
 <td><code>git</code></td>
@@ -1270,46 +1273,57 @@ that the library can be moved or shared as a whole. <code>papers config bibtex</
 absolute paths. A relative path given to set them is relative to the current
 directory.</p>
 <p>Setting <code>git</code> to <code>true</code> initializes the backup directory and records the
-current bibtex. Setting <code>paths</code> rewrites the file links of the bibtex. <code>light</code>
-is not a setting of <code>papers config</code>: it is changed with
-<code>papers migrate --light</code> and <code>papers migrate --full</code>, because it also
-changes the file links and the files (see
-<a href="../pools/#light-libraries">Light libraries</a>).</p>
+current bibtex. Setting <code>paths</code> rewrites the file links of the bibtex.
+Setting <code>local</code> or <code>pool</code> moves the files of the library, after listing what
+it will do and asking to continue (<code>-y</code> does not ask, <code>--dry-run</code> only
+lists; see <a href="../pools/#changing-local-and-pool">Changing local and pool</a>).
+<code>local</code> is always set in a library (<code>papers init</code> stores it), so it has no
+<code>--unset</code>.</p>
 <h3 id="global-configuration">Global configuration<a class="headerlink" href="#global-configuration" title="Permanent link">&para;</a></h3>
 <p><code>papers config --global</code> reads and writes the global configuration (per
 user, as in <code>git config --global</code>) instead of the library's:
 <code>~/.config/papers/config.json</code> on Linux (the platform's user configuration
-directory elsewhere). It holds the pool names and the default settings of
-the libraries that do not set them (everything except <code>bibtex</code>, <code>filesdir</code>
-and <code>pools</code>). It defines no library: the global library of papers v2 is now
-the default pool (see <a href="../pools/">Pools</a>).</p>
+directory elsewhere). It holds the global pool and the default settings of
+the libraries that do not set them (everything except <code>bibtex</code> and
+<code>filesdir</code>). It defines no library: the global library of papers v2 is now
+the global pool (see <a href="../pools/">Pools</a>).</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>papers config --global editor vim
 <a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>papers config --global name.template '{author}_{year}'
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>papers config --global pools.teaching /mnt/shared/teaching
-<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>papers config --global                # list it
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>papers config --global pool ~/Dropbox/papers   # the global pool
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>papers config --global local true              # new libraries keep their own files
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>papers config --global                         # list it
 </code></pre></div>
-<p><code>papers init</code> stores <code>paths</code>, <code>git</code> and <code>git-lfs</code> in the new library, taking
-their values from the global configuration when it sets them. The other
-settings are only stored in the library when you set them.</p>
+<p>In the global configuration, <code>pool</code> is the path of the global pool (default
+<code>~/Documents/papers</code>), or <code>none</code> (no sharing: new libraries get
+<code>pool: none</code>, and so are local), and <code>local</code> the default of new libraries
+(default <code>false</code>).</p>
+<p><code>papers init</code> stores <code>paths</code>, <code>git</code>, <code>git-lfs</code> and <code>local</code> in the new
+library, taking their values from the global configuration when it sets
+them, and <code>pool</code> when it is not the global pool. The other settings are
+only stored in the library when you set them.</p>
 <h2 id="pools">Pools<a class="headerlink" href="#pools" title="Permanent link">&para;</a></h2>
 <p>A pool is a library that other libraries exchange entries with (see
-<a href="../pools/">Pools</a> for <code>add</code>, <code>pull</code>, <code>push</code>, <code>export</code> and light
-libraries). Each library
-lists its pools in the <code>pools</code> setting, as names or paths. A name is looked
-up in the global configuration (<code>pools.NAME</code>, or <code>papers pool add NAME
-PATH</code>), so that the same library
-works on machines where the pool is in a different place. An entry that
-contains a <code>/</code> or starts with <code>.</code> or <code>~</code> is a path, relative to the library
-(e.g. <code>../shared-with-bob</code>).</p>
-<p>Without global configuration, the pool <code>default</code> is
-<code>~/Documents/papers</code>. It is also the library that commands act on outside of
-any library, once it is one:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>papers init ~/Documents/papers
+<a href="../pools/">Pools</a> for <code>add</code>, <code>pull</code>, <code>push</code>, <code>sync</code> and <code>export</code>). A library
+has one pool, its <code>pool</code> setting: by default the global pool (the <code>pool</code>
+setting of the global configuration, <code>~/Documents/papers</code> without one), a
+path relative to the library (e.g. <code>../shared-with-bob</code>), or <code>none</code>. A
+library that uses the global pool stores no path, so that the same project
+uses the global pool of each machine. The global pool is created the first
+time papers writes to it; it is also the library that commands act on
+outside of any library, once it is one.</p>
+<p><code>local</code> says where the files of the library are: in the files directory of
+the pool (<code>false</code>, the default: the library links to them) or in its own
+(<code>true</code>). A project folder shared with others (git, Dropbox) should be
+local: the links of a library that is not local point into your own pool.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>papers init                    # the global pool, not local
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>papers init --local            # its own files
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>papers init --pool ../shared   # another pool
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>papers init --pool none        # no pool, hence local
 </code></pre></div>
-<p><code>papers status</code> lists the pools of the library with their paths, says when
-a pool is missing or is not a library, and whether it changed since the last
-<code>papers pull</code>. It also shows whether the library is light, and the <code>sync</code>
-setting.</p>
+<p><code>papers status</code> shows the pool of the library (its path, or none), whether
+it is the global pool, is missing or is not a library, and whether it
+changed since the last <code>papers pull</code>. It also shows <code>local</code>, and the
+<code>auto-push</code> setting of a local library.</p>
 <h2 id="relative-versus-absolute-paths">Relative versus absolute paths<a class="headerlink" href="#relative-versus-absolute-paths" title="Permanent link">&para;</a></h2>
 <p>The file links in the bibtex are relative to the bibtex directory by default,
 so that a library folder can be moved or shared with its files. Set
@@ -1323,9 +1337,10 @@ override the setting for one command, with a deprecation warning.</p>
 <li>The global configuration of version 2 (<code>~/.config/papersconfig.json</code> on
   Linux) defined a library for the whole user account. <code>papers migrate</code>
   writes its settings to a library configuration next to its bibtex (if
-  there is none yet), registers the directory of that bibtex as the
-  <code>default</code> pool in the global configuration (unless another default
-  pool is set there), and renames the old file to <code>papersconfig.json.v2.bak</code>.
+  there is none yet; the library keeps its files and has no pool), makes the
+  directory of that bibtex the global pool in the global configuration
+  (unless another global pool is set there), and renames the old file to
+  <code>papersconfig.json.v2.bak</code>.
   The bibtex, files and backup stay where they are. File links stay
   absolute, as they were, unless <code>--relative</code> is passed. Running
   <code>papers migrate</code> again does nothing. Until then, papers prints a warning
@@ -1336,7 +1351,8 @@ override the setting for one command, with a deprecation warning.</p>
   <code>papers file rename</code> names them).</li>
 </ul>
 <p>Library configurations (<code>.papersconfig.json</code>) of version 2 keep working
-without migration. The configuration files written by version 3 carry
+without migration: they are read as local libraries (their files are their
+own) that use the global pool. The configuration files written by version 3 carry
 <code>"version": 3</code>; a file without <code>version</code> is read as a file of version 2. A
 file with a higher version was written by a newer papers, and papers stops
 with an error.</p>
@@ -1347,8 +1363,8 @@ bibtex, the files directory and git (<code>-y/--yes</code> accepts the defaults;
 an existing library it updates the library configuration, as in version 2,
 with a deprecation warning: use <code>papers config</code> instead (<code>--edit</code> and
 <code>--reset</code> keep working). <code>papers install --global</code> writes the library
-configuration next to the bibtex and registers its directory as the <code>default</code>
-pool; if a global configuration of version 2 exists, it first migrates it as
+configuration next to the bibtex and makes its directory the global pool;
+if a global configuration of version 2 exists, it first migrates it as
 <code>papers migrate</code> does. <code>--local</code> is ignored.</p>
 <h2 id="uninstall">Uninstall<a class="headerlink" href="#uninstall" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>papers uninstall
@@ -1357,7 +1373,7 @@ pool; if a global configuration of version 2 exists, it first migrates it as
 bibtex file, the files directory, and the backup directory if any). Pass
 <code>--remove-backup</code> to also remove the backup directory. It never removes the
 global configuration. From outside of any library it does not remove
-the default pool's configuration: run <code>papers -C DIR uninstall</code> for that.</p>
+the global pool's configuration: run <code>papers -C DIR uninstall</code> for that.</p>
 <p><code>papers uninstall --recursive</code> is deprecated and ignored (there is no global
 library configuration to walk up to in v3): only the configuration of the
 library is removed.</p>
