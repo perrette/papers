@@ -397,6 +397,8 @@ class TestPull(PoolTest):
         self.assertEqual(e['journal'], 'Nature')
         self.assertNotIn('volume', e)
         self.assertEqual(self.origin().get(e).entry['journal'], 'Nat.')  # not updated
+        os.utime(self.path('pool', 'papers.bib'), ns=(1, 1))
+        self.assertIn('changed since last pull or push', self.out('status'))  # the skip is not a pull
 
     def test_conflict_ask(self):
         self.conflict()
@@ -528,6 +530,42 @@ class TestPush(PoolTest):
         self.assertEqual(len(pool), 2)
         self.assertEqual(pool['Smith_2020']['volume'], '10')
         self.assertEqual(pool['Smith_2020']['doi'], '10.1000/abc123')
+
+    def test_pool_only_fields_come_with_the_next_pull(self):
+        # the same paper on both sides, without origin record: each has a field of its own
+        self.edit_pool('journal = {Nat.},', 'abstract = {From the pool.},\n journal = {Nat.},')
+        self.lib('pull')  # an exchange with the pool before
+        self.assertIn('up to date', self.out('status'))
+        Path(self.path('smith.bib')).write_text(SMITH_BIB.replace('year = {2020}', 'keywords = {mine},\n year = {2020}'))
+        self.lib('add ../smith.bib --no-pool')
+        self.lib('push smith2020climate')
+        self.assertEqual(self.entry('Smith_2020', 'pool')['keywords'], 'mine')
+        self.assertNotIn('abstract', self.entry('smith2020climate'))  # push does not change the library
+        # the origin is the library's version, sent: what the pool has beyond it is to pull
+        self.assertNotIn('abstract', self.origin().get(self.entry('smith2020climate')).entry)
+        self.assertIn('changed since last pull or push', self.out('status'))
+        out = self.out('pull --check')
+        self.assertIn('smith2020climate: changed in pool ../pool: abstract, file, journal', out)
+        self.lib('pull')
+        e = self.entry('smith2020climate')
+        self.assertEqual((e['abstract'], e['journal'], e['keywords']), ('From the pool.', 'Nat.', 'mine'))
+        self.assertIn('up to date', self.out('status'))
+        self.assertIn('pull: 1 unchanged', self.out('pull'))
+        self.assertIn('push to pool ../pool: 1 unchanged', self.out('push smith2020climate'))
+        self.assertIn('up to date', self.out('status'))
+
+    def test_push_keeps_a_pool_change(self):
+        # a field changed in the pool only, during a push: kept in the pool, and pulled after
+        self.lib('push')
+        key = self.origin().get(self.entry('mine2022')).pool_key
+        self.edit_pool('title = {My own paper}', 'title = {My own paper (pool)}')
+        self.edit_lib('year = {2022}', 'journal = {J. Mine},\n year = {2022}')
+        self.lib('push')
+        self.assertEqual(self.entry(key, 'pool')['title'], 'My own paper (pool)')
+        self.lib('push')  # the pool's title is not taken back by a second push
+        self.assertEqual(self.entry(key, 'pool')['title'], 'My own paper (pool)')
+        self.lib('pull')
+        self.assertEqual(self.entry('mine2022')['title'], 'My own paper (pool)')
 
     def test_distinct_merged(self):
         lib = Distinct.for_bibtex(self.path('lib', 'papers.bib'))

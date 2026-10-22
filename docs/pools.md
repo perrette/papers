@@ -129,18 +129,26 @@ ways on `pull` and `push`.
 ## Origin copies
 
 `.papers/origin.bib`, next to the bibtex of the library, records for each
-entry taken from a pool (by `add`, `pull` or `push`) the pool's version of
-the entry at that time, under the library's key, with the pool it came from
-(`papers-pool`: `global` for the global pool, otherwise the path of the
-pool relative to the library), the key in the pool (`papers-pool-key`) and
-the time (`papers-time`). It also records the modification time of the
-pool's bibtex at the last exchange with the pool: a pull of all entries, or
-a push or an add when the pool had not changed since the previous exchange
-(or when it is the first exchange). The file is part of the git backup of the
-library (see [Git integration](git.md)).
+entry exchanged with a pool (by `add`, `pull` or `push`) its origin copy,
+under the library's key, with the pool (`papers-pool`: `global` for the
+global pool, otherwise the path of the pool relative to the library), the
+key in the pool (`papers-pool-key`) and the time (`papers-time`). It also
+records the modification time of the pool's bibtex at the last exchange
+with the pool: a pull of all entries that skipped no conflict, or a push or
+an add when the pool had not changed since the previous exchange (or when it
+is the first exchange). A push that leaves the pool entry with fields or
+files that the library entry does not have does not count: `papers status`
+then shows the pool as changed until the next pull. The file is part of the
+git backup of the library (see [Git integration](git.md)).
 
 The origin copy is the third version of a three-way merge: comparing the
 library entry and the pool entry with it tells which side changed a field.
+It is the version of the side that sent the entry, as it was sent: the pool
+entry after `add` and `pull`, the library entry after `push`. What the
+receiving side has beyond it is a change of that side, for the next
+exchange the other way: a field that only the pool entry has comes with the
+next `pull`; a field that only the library entry has goes to the pool with
+the next `push`.
 
 `papers add other.bib` copies the entries of `other.bib` once, and keeps no
 memory of where they came from. The entries taken with `papers pull` stay
@@ -189,6 +197,7 @@ back. File links are merged: new files of the pool entry are linked in a
 library that is not local, and otherwise copied into the library's files
 directory as the `files` setting says. The key of the library entry never
 changes. After the merge, the origin copy is the pool's current version.
+A skipped conflict leaves the pool shown as changed in `papers status`.
 
 An entry without origin copy (added before the pool was used, or with
 `--no-pool`) is matched to the pool by the same-paper rule. Its differences
@@ -244,8 +253,10 @@ once):
   only are kept, conflicts are decided with `--on-duplicate` (`keep`: the
   pool values, `update`: the library values). The pool key does not change.
 
-The origin copies are updated. The pool is created if it does not exist
-yet.
+Push does not change the library: after it, the origin copy is the library
+version that was pushed, and the fields that only the pool entry has come
+with the next `pull` (or `papers sync`). The pool is created if it does not
+exist yet.
 
 ## `papers sync`
 

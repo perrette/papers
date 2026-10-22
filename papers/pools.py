@@ -10,14 +10,20 @@ the machine (the `pool` setting of the global configuration, by default
   and kept for the run. A library never uses itself as a pool. The global
   pool may not exist yet: it is created, without a message, the first time
   papers writes to it.
-- `Origin` is `.papers/origin.bib` of a library: for each entry taken from a
-  pool (or pulled, or pushed), the pool's version of the entry at that time,
-  under the library's key, with the pool it came from (`papers-pool`), the
-  pool's key (`papers-pool-key`) and the time (`papers-time`). It also holds
-  the modification time of each pool's bibtex at the last exchange with it
-  (pull, or push and add when the pool had not changed since the previous
-  exchange, or that were the first), so that `status` and `pull --check`
-  can tell that a pool changed since.
+- `Origin` is `.papers/origin.bib` of a library: for each entry exchanged
+  with a pool, the base of the next three-way merge, under the library's
+  key, with the pool (`papers-pool`), the pool's key (`papers-pool-key`)
+  and the time (`papers-time`). The base is the version of the side that
+  sent the entry, as sent: the pool entry for `add` and `pull`, the library
+  entry for `push`. The receiving side has taken all of it into account
+  (taken, kept or declined), so that what it has beyond it shows as its
+  own change in the next exchange the other way. It also holds the
+  modification time of each pool's bibtex at the last exchange with it (a
+  pull of all entries that skipped none; a push or an add when the pool had
+  not changed since the previous exchange, or that were the first, and a
+  push only if it left the pool with nothing that the library does not
+  have), so that `status` and `pull --check` can tell that a pool changed
+  since.
 - `Exchange` does what involves a library and its pool: `add` looking in
   the pool first (`PoolLookup`), `pull`, `push`, the conversions of the
   files of `papers config local` and `papers config pool`, and the repair of
@@ -348,8 +354,9 @@ def _pool_id(id):
 
 
 class Record:
-    """the origin record of a library entry: `entry` is the pool's version
-    (under the library key, without the papers-* fields and file links)"""
+    """the origin record of a library entry: `entry` is the base version
+    (see the module documentation; under the library key, without the
+    papers-* fields and file links)"""
 
     def __init__(self, key, pool, pool_key, time, entry):
         self.key = key
@@ -428,8 +435,9 @@ class Origin:
         return [self._record(e) for e in self.entries.values() if pool is None or get_entry_val(e, POOL_FIELD, '') == pool]
 
     def set(self, key, pool, pool_entry):
-        """record the pool's version of an entry (the record does not change
-        if it is the same as before, its time included)"""
+        """record the base version of an entry, under the key of the pool
+        entry (the record does not change if it is the same as before, its
+        time included)"""
         new = _strip(pool_entry, ('file',) + _ORIGIN_FIELDS)
         old = self.entries.get(key.lower())
         if old is not None and get_entry_val(old, POOL_FIELD, '') == pool \
@@ -589,7 +597,8 @@ class Exchange:
             report.append((e, p, self._pull_one(e, p, pe, record, resolver, mode)))
         for pe in new:
             report.append((self._pull_new(pe, pools[0], mode), pools[0], 'added'))
-        if record_pull:
+        # a pull that skipped (or quit) leaves pool changes to take: not a pull of the pool
+        if record_pull and not resolver.quit and not any(what == 'skipped' for _, _, what in report):
             for p in pools:
                 self.origin.set_pulled(p.id, mtimes[p.id])
         return report
@@ -672,6 +681,7 @@ class Exchange:
         self.merge_distinct(pool)
         before = pool.bibtex_mtime()
         unchanged_since_pull = before is None or self.origin.pulled(pool.id) == before
+        self._pool_ahead = False
         report = []
         for e in entries:
             if resolver.quit:
@@ -708,7 +718,10 @@ class Exchange:
     def after_push(self, pool):
         """after the pool was saved: if it had not changed since the last
         exchange (or this is the first), the push does not count as a
-        change of the pool"""
+        change of the pool, unless a pushed entry left the pool with
+        something that the library does not have (a pull would bring it)"""
+        if getattr(self, '_pool_ahead', False):
+            return
         if getattr(self, '_unchanged_since_pull', False) or self.origin.first_exchange(pool.id):
             self.origin.set_pulled(pool.id, pool.bibtex_mtime())
 
@@ -738,7 +751,7 @@ class Exchange:
         merge = Merge([pe, outgoing], relative_to=pool.biblio.relative_to,
                       base=_rekey(record.entry, pe.key) if record is not None else None)
         if not merge.conflicts and not merge.additions and not merge.new_files:
-            self.origin.set(e.key, pool.id, pe)
+            self._pushed(e, pool, pe, outgoing)
             return 'unchanged' if record is not None else 'linked'
         if merge.conflicts:
             decision = resolver.decide(merge, 'push', Verdict(SAME, pool.label))
@@ -751,8 +764,18 @@ class Exchange:
         pool.update_entry(pe, new)
         if pool.filesdir is not None:
             pool.biblio.rename_entry_files(pe, copy=self._pool_policy(pool, keep=old_files))
-        self.origin.set(e.key, pool.id, pe)
+        self._pushed(e, pool, pe, outgoing)
         return 'updated'
+
+    def _pushed(self, e, pool, pe, outgoing):
+        """record the origin of a pushed entry: the library's version, as
+        sent (see the module documentation), so that what the pool entry
+        has beyond it comes with the next pull"""
+        self.origin.set(e.key, pool.id, _strip(outgoing, ('ids',)))
+        incoming = entry_for(pe, pool.biblio, self.biblio)
+        after = Merge([e, incoming], relative_to=self.biblio.relative_to, base=outgoing)
+        if after.additions or after.conflicts or after.new_files:
+            self._pool_ahead = True
 
     # links to pool files
     # -------------------
