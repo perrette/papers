@@ -20,6 +20,48 @@ papers extract esd-4-11-2013.pdf > entry.bib
 papers add entry.bib --attach esd-4-11-2013.pdf --bibtex papers.bib --filesdir files
 ```
 
+### How the DOI is found
+
+`papers add` looks for the DOI of a PDF in this order:
+
+1. The PDF metadata: the `subject`, `keywords` and `title` fields of the
+   document information, then the XMP tags `prism:doi`, `dc:identifier`
+   (`doi:...`), `pdfx:doi` and `crossmark:DOI`. A DOI found there is used
+   as is.
+2. The text of the first pages: pages are read one at a time until there
+   are 200 words (at most 10 pages). A DOI is `10.`, 4 to 9 digits, `/`,
+   then letters, digits and `-._;()/:`, not glued to a preceding word
+   (case is ignored). A DOI broken over two lines after `10.` or after a
+   dash is joined, and trailing text such as `.pdf`, `supplement` or an
+   unbalanced `)` is cut. If the PDF has more than one page, the DOIs of
+   the last page that follow `doi:` or `doi.org/` are added after those of
+   the first pages (some publishers append a cover page).
+3. The candidates are ordered: a DOI written in a `doi.org` URL first, then
+   the others in order of appearance; the DOIs of data repositories
+   (Zenodo, Dryad, figshare, PANGAEA...) come last, and a supplement DOI
+   (ending in `.s1`) after the DOI of the article. Each candidate is
+   fetched (from crossref), and the first one whose title appears in the
+   first pages (ignoring case, accents and punctuation) is used. This skips
+   the DOIs of cited papers.
+4. If the text has no DOI, an arXiv identifier written `arXiv:2101.01234`
+   gives the DOI `10.48550/arXiv.2101.01234`, whose metadata come from
+   arXiv and are checked as in step 3.
+
+When no DOI is accepted, papers searches crossref with the first 200 words
+of the text (`--scholar`: Google Scholar), and accepts the result only if
+its title appears in the text. Otherwise the PDF is not added, and papers
+stops with an error: pass the DOI with `--doi`, or describe the entry (see
+[below](#add-a-whole-directory-of-pdfs)). `--no-query-doi` skips the DOI
+search, and `--no-query-fulltext` the text search.
+
+`papers extract --doi-only FILE` prints the DOI that steps 1 to 4 find,
+without adding anything:
+
+```
+$ papers extract --doi-only bg-8-515-2011.pdf
+10.5194/bg-8-515-2011
+```
+
 ## What happens to the files
 
 By default, `papers add` moves the PDF into the files directory of the
@@ -96,17 +138,9 @@ comes from the bibtex, so a folder that holds a bibtex and its files is added
 without looking anything up online. Folders of the pre-2.19 layout (with a
 hidden `.<name>.bib`) are read from their hidden bibtex.
 
-The metadata of a PDF are found as follows:
-
-1. a DOI in the PDF metadata is used as is;
-2. otherwise, the DOIs printed in the text (first pages, and the last page,
-   where some publishers add a cover page) are looked up in turn, and the
-   first one whose title appears in the first pages is used: this skips the
-   DOIs of cited papers;
-3. otherwise, a crossref search on the text of the first pages, whose result
-   is also accepted only if its title appears in the text.
-
-If none matches, the PDF is not added: pass its DOI with `--doi` (see below),
+The metadata of each PDF are found as for a single PDF (see
+[How the DOI is found](#how-the-doi-is-found)). If none matches, the PDF is
+not added: pass its DOI with `--doi` (see below),
 or, for a reference without DOI (older papers, books, reports...), describe it
 and attach the PDF:
 

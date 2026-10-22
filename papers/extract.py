@@ -528,7 +528,7 @@ def extract_txt_metadata(txt, search_doi=True, search_fulltext=False, max_query_
                 return bibtex
             logger.warning(f'fulltext query: title not found in the text: {title[:100]}')
 
-    raise ValueError('failed to extract metadata: pass the DOI with --doi, or, without DOI, add the entry with --title, --author, --year... and the PDF with --attachment')
+    raise ValueError('failed to extract metadata: pass the DOI with --doi, or, without DOI, add the entry with --title, --author, --year... and the PDF with --attach')
 
 
 def _metadata_from_pdf_contents(metadata_doi, read_text, search_doi=True, search_fulltext=True, **kw):
