@@ -18,15 +18,16 @@ from papers.cli.pool_cmds import pullcmd, pushcmd, exportcmd, poolcmd
 
 
 # help of the name.* and key.* settings on the command line (`what` is key or
-# filename; the template has its own help). A field without help (e.g.
-# unknown-template) has no command-line option.
+# filename; the template has its own help)
 _FORMAT_HELP = {
-    'author-num': 'number of authors to include in {what}',
-    'author-sep': 'separator for authors in {what}',
-    'title-word-num': 'number of title words to include in {what}',
-    'title-word-size': 'min size of title words to include in {what}',
-    'title-length': 'title length to include in {what}',
-    'title-sep': 'separator for title words in {what}',
+    'author-num': 'number of authors in the {what} (not for {{authorX}})',
+    'author-sep': 'separator of the authors in the {what}',
+    'title-word-num': 'maximum number of title words in the {what}',
+    'title-word-size': 'minimum length of a title word: shorter words are left out of the {what}',
+    'title-length': 'maximum length of the title in the {what} (title words are dropped until it fits)',
+    'title-sep': 'separator of the title words in the {what}',
+    'unknown-template': 'template of the {what} of an entry without author, year or title',
+    'unknown-strict': 'use the unknown template only when author, year and title are all missing',
 }
 
 
@@ -42,15 +43,18 @@ def _format_parser(kind, title, what, fmt, template_help):
     parser = argparse.ArgumentParser(add_help=False)
     grp = parser.add_argument_group(title)
     for name, type_ in SETTINGS.items():
-        field = name[len(kind) + 1:]
-        if not name.startswith(kind + '.') or (field != 'template' and field not in _FORMAT_HELP):
+        if not name.startswith(kind + '.'):
             continue
+        field = name[len(kind) + 1:]
         default = _default(getattr(fmt, field.replace('-', '_')))
         if field == 'template':
             help = template_help.format(default=default)
         else:
             help = _FORMAT_HELP[field].format(what=what) + f' (default: {default})'
-        grp.add_argument(f'--{kind}-{field}', type=int if type_ == 'int' else None, help=help)
+        if type_ == 'bool':
+            grp.add_argument(f'--{kind}-{field}', action='store_true', default=None, help=help)
+        else:
+            grp.add_argument(f'--{kind}-{field}', type=int if type_ == 'int' else None, help=help)
     return parser
 
 

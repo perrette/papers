@@ -65,9 +65,8 @@ DEFAULT_POOLS = {'default': os.path.join('~', 'Documents', 'papers')}
 
 # Settings of `papers config`, by name. The name and key format fields map to
 # the attributes of papers.filename.Format (name.author-num -> author_num).
-_FORMAT_FIELDS = ['template', 'author-num', 'author-sep', 'title-word-num',
-                  'title-word-size', 'title-sep', 'unknown-template', 'unknown-strict']
-_NAME_FIELDS = _FORMAT_FIELDS[:5] + ['title-length'] + _FORMAT_FIELDS[5:]
+_FORMAT_FIELDS = ['template', 'author-num', 'author-sep', 'title-word-num', 'title-word-size', 'title-length',
+                  'title-sep', 'unknown-template', 'unknown-strict']
 _INT_FIELDS = ['author-num', 'title-word-num', 'title-word-size', 'title-length']
 
 # type of each setting: 'path', 'list', 'bool', 'int', 'str', or a tuple of choices
@@ -82,10 +81,10 @@ SETTINGS = {
     'git-lfs': 'bool',
     'editor': 'str',
 }
-for _field in _NAME_FIELDS:
-    SETTINGS['name.' + _field] = 'int' if _field in _INT_FIELDS else ('bool' if _field == 'unknown-strict' else 'str')
-for _field in _FORMAT_FIELDS:
-    SETTINGS['key.' + _field] = 'int' if _field in _INT_FIELDS else ('bool' if _field == 'unknown-strict' else 'str')
+for _kind in ('name', 'key'):
+    for _field in _FORMAT_FIELDS:
+        SETTINGS[_kind + '.' + _field] = 'int' if _field in _INT_FIELDS else (
+            'bool' if _field == 'unknown-strict' else 'str')
 
 # settings that only make sense for a library (the per-machine configuration
 # names its pools with pools.NAME instead)

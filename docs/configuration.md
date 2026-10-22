@@ -85,7 +85,7 @@ from the per-machine configuration, otherwise from its built-in default.
 | `git-lfs` | `true` or `false`: also back up the files with git-lfs |
 | `editor` | command that opens a text editor, e.g. `vim` or `subl -w` |
 | `name.template`, `name.author-num`, `name.author-sep`, `name.title-word-num`, `name.title-word-size`, `name.title-length`, `name.title-sep`, `name.unknown-template`, `name.unknown-strict` | file name format |
-| `key.template`, `key.author-num`, `key.author-sep`, `key.title-word-num`, `key.title-word-size`, `key.title-sep`, `key.unknown-template`, `key.unknown-strict` | bibtex key format |
+| `key.template`, `key.author-num`, `key.author-sep`, `key.title-word-num`, `key.title-word-size`, `key.title-length`, `key.title-sep`, `key.unknown-template`, `key.unknown-strict` | bibtex key format |
 
 The name and key settings correspond to the `--name-*` and `--key-*` options
 of the commands (see [Renaming files and keys](renaming.md)), which override

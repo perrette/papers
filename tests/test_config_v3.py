@@ -6,6 +6,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import papers.cli.parser
 import papers.config
 from papers.config import Config, MachineConfig, CONFIG_FILE, CONFIG_FILE_LOCAL
 from papers.bib import Biblio
@@ -480,3 +481,43 @@ class TestMigrateFolders(ConfigTest):
     def _entry_bib(self):
         Path(self.path('entry.bib')).write_text(ENTRY)
         return self.path('entry.bib')
+
+
+class TestFormatOptions(ConfigTest):
+    "every name.* and key.* setting has its command-line option"
+
+    def setUp(self):
+        super().setUp()
+        self.papers('init --no-git')
+
+    def keys(self):
+        return [e.key for e in Biblio.load(self.path('papers.bib'), '').entries]
+
+    def add(self, options):
+        self.papers(f'add --title "Climate sensitivity revisited" --author "Smith, John" --year 2020 {options}')
+
+    def test_key_title_length(self):
+        self.add('--key-template "{title}" --key-title-length 20')
+        self.assertEqual(self.keys(), ['climate-sensitivity'])
+
+    def test_key_title_length_setting(self):
+        self.papers('config key.title-length 20')
+        self.assertEqual(self.json()['keyformat'], {'title_length': 20})
+        self.add('--key-template "{title}"')
+        self.assertEqual(self.keys(), ['climate-sensitivity'])
+
+    def test_key_unknown_template(self):
+        self.papers('add --title "No author" --key-unknown-template "unknown{year}" --year 1999')
+        self.assertEqual(self.keys(), ['unknown1999'])
+
+    def test_key_unknown_strict(self):
+        # not all of author, year and title are missing: the key template applies
+        self.papers('add --title "No author" --key-template "k{year}" --key-unknown-template "unknown{year}" '
+                    '--key-unknown-strict --year 1999')
+        self.assertEqual(self.keys(), ['k1999'])
+
+    def test_name_options(self):
+        parser, _ = papers.cli.parser.get_parser()
+        o = parser.parse_args(['add', '--name-unknown-template', 'x', '--name-unknown-strict',
+                               '--name-title-length', '5'])
+        self.assertEqual((o.name_unknown_template, o.name_unknown_strict, o.name_title_length), ('x', True, 5))

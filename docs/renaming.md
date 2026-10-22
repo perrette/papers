@@ -94,6 +94,13 @@ and similarly:
 - `--name-author-sep`: separator for authors
 - `--name-author-num`: number of authors (not relevant for `{authorX}`)
 
+and for entries without author, year or title:
+
+- `--name-unknown-template`: the template used instead (default:
+  `unknown_{doi_or_id}` for file names, `{doi_}` for keys)
+- `--name-unknown-strict`: use it only when author, year and title are all
+  missing
+
 The same template and modifiers system applies to the bibtex key generation by
 replacing the prefix `--name-` with `--key-`, e.g. `--key-template`.
 
