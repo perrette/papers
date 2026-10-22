@@ -658,6 +658,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#reconnecting-pdfs-and-a-bibtex" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reconnecting PDFs and a bibtex
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#removing-entries-and-their-files" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -999,6 +1010,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#reconnecting-pdfs-and-a-bibtex" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reconnecting PDFs and a bibtex
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#removing-entries-and-their-files" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1142,7 +1164,7 @@ standard input, one per line:</p>
 </tr>
 <tr>
 <td><code>papers file check [KEY...]</code></td>
-<td>report broken links, files linked twice, identical files (same checksum) of an entry, and with <code>--metadata</code> a DOI of the PDF that differs from the DOI of the entry (this parses the PDFs)</td>
+<td>report broken links and the files found for them (in the pool, and in the folders of <code>--search DIR</code>), files linked twice, identical files (same checksum) of an entry, and with <code>--metadata</code> a DOI of the PDF that differs from the DOI of the entry (this parses the PDFs)</td>
 </tr>
 <tr>
 <td><code>papers file clean</code></td>
@@ -1158,11 +1180,12 @@ way, without fetching anything (see
 <p><code>papers file check</code> changes nothing unless <code>--fix</code> is passed. <code>--fix</code> only
 applies the repairs that cannot lose anything: paths saved by Mendeley
 (missing leading <code>/</code>, latex symbols such as <code>{\_}</code>) are repaired when the
-repaired path exists, and the second link to the same file, or to an
+repaired path exists, the second link to the same file, or to an
 identical file, is removed from the entry (the file itself stays on disk;
-<code>papers file clean</code> removes it). A broken link to a file of a pool (the pool
-renamed the file) is replaced by the pool entry's current file. Other
-broken links are reported, and removed with <code>papers file detach --broken</code>.</p>
+<code>papers file clean</code> removes it), and broken links are relinked to the files
+found for them (see <a href="#reconnecting-pdfs-and-a-bibtex">Reconnecting PDFs and a bibtex</a>).
+The other broken links are reported, and removed with
+<code>papers file detach --broken</code>.</p>
 <p><code>papers file clean</code> skips hidden files and folders (such as <code>.git</code>) and
 <code>.bib</code> files. A folder of the layout of versions before 2.19 (with a hidden
 <code>.&lt;name&gt;.bib</code>) is removed as a whole when no entry links to its files.</p>
@@ -1232,6 +1255,59 @@ entry: put the files before --key</code>.</p>
 <a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>papers file rm -r files/2013 --dry-run
 <a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>papers list --tag draft -K | papers file detach --broken --key -
 </code></pre></div>
+<h2 id="reconnecting-pdfs-and-a-bibtex">Reconnecting PDFs and a bibtex<a class="headerlink" href="#reconnecting-pdfs-and-a-bibtex" title="Permanent link">&para;</a></h2>
+<p>When the links of a library are broken because the PDFs moved (another
+library that shared the files directory moved them into a pool, a folder
+was renamed, a backup was restored elsewhere...), <code>papers file check --fix</code>
+looks for each missing file, without parsing any PDF:</p>
+<ol>
+<li>in the pool of the library, among the files of the pool entry of the
+   same paper (same DOI, arXiv identifier, ISBN, or same title and
+   authors): the file with the same file name as the broken link; else
+   the one file named <code>&lt;name&gt;--&lt;file name of the link&gt;</code> (the pool renamed
+   it as an attachment, see
+   <a href="../renaming/#entries-with-several-files">Renaming files and keys</a>);
+   then, if one broken link of the entry and one file of the pool entry
+   are left, that file. When more are left, nothing is guessed;</li>
+<li>in the folders given with <code>--search DIR</code> (searched recursively; the
+   option can be repeated): a file with the same file name as the broken
+   link, else a file named as the library's name template names the entry
+   (with the extension of the link). When several files match, none is
+   taken, and papers says which.</li>
+</ol>
+<p>The file found replaces the broken link, and is placed as
+<code>papers file attach KEY FILE</code> places it: in a library that is not local, a
+file of the pool is linked where it is, and a file of a <code>--search</code> folder
+goes to the pool (as the <code>files</code> setting says: moved, copied or linked); in
+a local library, the file goes to the files directory as the <code>files</code>
+setting says, and a file of the pool is copied (a hard link when possible),
+never moved.</p>
+<p><code>papers config local false</code> and <code>papers config pool</code> move the files that
+exist into the pool, and say how many links were already broken:
+<code>papers file check --fix</code> relinks them afterwards.</p>
+<p>Without <code>--fix</code>, <code>papers file check</code> reports the files it would relink, and
+where they come from. <code>--fix --dry-run</code> shows the links that <code>--fix</code> would
+change, and changes nothing.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>$ papers file check
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>alpha2000: broken link: ~/shared/a.pdf -&gt; ~/P/files/alpha_2000_paper-a.pdf (from the pool; relink with --fix)
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>b2000: broken link: ~/shared/b.pdf -&gt; ~/P/files/beta_2000_paper-b.pdf (from the pool; relink with --fix)
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>2 links can be relinked (papers file check --fix), 0 without a file found
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>2 issue(s) in the files of 3 entries
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>$ papers file check --fix
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>alpha2000: relinked to ~/P/files/alpha_2000_paper-a.pdf (from the pool)
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>b2000: relinked to ~/P/files/beta_2000_paper-b.pdf (from the pool)
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>2 links relinked, 0 still broken
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>2 issue(s) in the files of 3 entries
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>$ papers file check --fix --search ~/Downloads --search /media/backup/papers
+</code></pre></div>
+<p>For PDFs whose names say nothing about the paper, <code>papers add -R DIR</code> is
+the fallback: it parses each PDF, and a PDF with the DOI of a library
+entry is attached to that entry, without new entry and without duplicate
+dialogue (a PDF with the content of a file of the entry is not attached
+again; see
+<a href="../adding-entries/#entries-already-in-the-library">Adding entries</a>). The
+broken links stay next to the new ones: remove them with
+<code>papers file detach --broken</code>.</p>
 <h2 id="removing-entries-and-their-files">Removing entries and their files<a class="headerlink" href="#removing-entries-and-their-files" title="Permanent link">&para;</a></h2>
 <p><code>papers rm KEY...</code> (or <code>papers list ... --delete</code>) removes entries. Their
 files that no remaining entry links to may be deleted too:</p>

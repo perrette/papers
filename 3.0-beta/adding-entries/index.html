@@ -1425,7 +1425,8 @@ with the title of the library entry), <code>papers add</code> uses that entry: n
 is fetched online and there is no duplicate dialogue. The PDF (and the files
 of <code>--attach</code>) are attached to the entry and placed as the <code>files</code> setting
 says, as <code>papers file attach KEY FILE...</code> does; the key, the fields and the
-other files of the entry are not touched. An arXiv DOI
+other files of the entry are not touched. A file with the content of a file
+of the entry is not attached again, and stays where it is. An arXiv DOI
 (<code>10.48550/arXiv.&lt;id&gt;</code>) matches an entry whose <code>eprint</code> is that arXiv
 identifier. <code>--no-check-duplicate</code> skips this, and adds a new entry.</p>
 <p>The order is: the library, then the pool (below), then online.</p>

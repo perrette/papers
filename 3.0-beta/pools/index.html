@@ -1313,7 +1313,9 @@ is the <code>local</code> setting of the global configuration
 <li><code>pull</code> links to the pool's files instead of copying them;</li>
 <li>when the pool renames a file, the link breaks: it is repaired by looking
   the entry up in the pool, when the library is loaded (saved on the next
-  write) and by <code>papers file check --fix</code>.</li>
+  write) and by <code>papers file check --fix</code>. A broken link to a file outside
+  the pool is relinked to the pool's file by <code>papers file check --fix</code>
+  only (see <a href="../files/#reconnecting-pdfs-and-a-bibtex">Reconnecting PDFs and a bibtex</a>).</li>
 </ul>
 <p>In any library, <code>rm --delete-files</code> and <code>file rm</code> never delete a file of the
 pool. Deleting a file in a pool breaks the links of the libraries that use
@@ -1689,11 +1691,18 @@ shared with the pool. <code>papers config pool none</code> stops the lookups.</p
 <li><code>papers rm --delete-files</code> and <code>papers file rm</code> keep a PDF that another
   entry of the same library links to, but not one that another library
   links to.</li>
-<li><code>papers file rename</code> in one library renames the shared PDF, and the link of the other library breaks. <code>papers file check</code>
-  reports the broken link there, and <code>--fix</code> does not repair it (the repair
-  of broken links only covers the files of a pool): remove the link with
-  <code>papers file detach --broken --key KEY</code>, and attach the renamed file with
-  <code>papers file attach KEY FILE</code>.</li>
+<li><code>papers file rename</code> in one library renames the shared PDF, and the
+  link of the other library breaks. <code>papers file check</code> reports the broken
+  link there. <code>papers file check --fix --search FOLDER</code> relinks it if the
+  new name is the one that the library's name template gives the entry
+  (the two libraries use the same template); otherwise attach the renamed
+  file with <code>papers file attach KEY FILE</code>, and remove the link with
+  <code>papers file detach --broken --key KEY</code>.</li>
+<li><code>papers config local false</code> in one library moves the shared PDFs into
+  its pool, and the links of the other library break. Once the other
+  library uses the same pool, <code>papers file check --fix</code> relinks them to the
+  pool's files (see
+  <a href="../files/#reconnecting-pdfs-and-a-bibtex">Reconnecting PDFs and a bibtex</a>).</li>
 </ul>
 <h2 id="example">Example<a class="headerlink" href="#example" title="Permanent link">&para;</a></h2>
 <p>The global pool in <code>~/Documents/papers</code>, and two projects:</p>
