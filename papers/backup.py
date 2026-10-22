@@ -444,19 +444,54 @@ def _dryrun_restore(config, target, kind):
     return True
 
 
-def restore_from_backupdir(config, restore_files=False):
+def restore_from_backupdir(config, restore_files=False, previous=None):
+    """Restore the library from the backup worktree (HEAD): the bibtex and
+    the library files of .papers/ (origin records, distinct.json). previous:
+    the commit of the state left (undo, redo, restore --ref); the library
+    files it tracked that HEAD does not are removed."""
     if _dryrun_restore(config, "HEAD", "restore"):
         return
     check_gitdir_ownership(config)
     restore_cmd = f"papers add {config.backupfile_clean} --rename --copy" if config.gitlfs else f"cp {_tracked_backupfile(config)} {config.bibtex}"
     repair_message = f"papers backup broken :: cannot repair file links :: try to recover manually with `{restore_cmd}`"
     try:
-        return _restore_from_backupdir(config, restore_files=restore_files)
+        return _restore_from_backupdir(config, restore_files=restore_files, previous=previous)
     except Exception as error:
         raise PapersExit(f'{error}\n{repair_message}') from error
 
 
-def _restore_from_backupdir(config, restore_files=False):
+def _library_files(gitdir, rev):
+    """the library files of .papers/ that the backup commit `rev` tracks
+    (see backup_bib): the origin records and distinct.json"""
+    from papers.pools import ORIGIN_DIR, LEGACY_ORIGIN_FILE  # papers.pools imports this module
+    out = run_git(gitdir, ["ls-tree", "-r", "-z", "--name-only", rev, "--", ".papers"]).stdout
+    names = set()
+    for name in out.split("\0"):
+        name = os.path.normpath(name) if name else ""
+        if name in (DISTINCT_FILE, LEGACY_ORIGIN_FILE) or (
+                os.path.dirname(name) == ORIGIN_DIR and name.endswith(".bib")):
+            names.add(name)
+    return names
+
+
+def _restore_library_files(config, previous=None):
+    """copy the library files of .papers/ of the backup worktree (HEAD) to
+    the library, and remove those that `previous` tracked and HEAD does not
+    (a file the backup never had is left alone)"""
+    libdir = Path(config.bibtex).parent
+    backupdir = Path(config.gitdir)
+    names = _library_files(config.gitdir, "HEAD")
+    for name in sorted(names):
+        (libdir / name).parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy(backupdir / name, libdir / name)
+    if previous is not None:
+        for name in sorted(_library_files(config.gitdir, previous) - names):
+            if (libdir / name).exists():
+                logger.info(f"remove {libdir / name}: not in the restored state")
+                (libdir / name).unlink()
+
+
+def _restore_from_backupdir(config, restore_files=False, previous=None):
     current = run_git(config.gitdir, ["rev-parse", "HEAD"]).stdout.strip()
     message = run_git(config.gitdir, ["log", current, "--pretty=format:%C(auto)%h %s (%ad)", "-1"]).stdout.strip()
     logger.info(f'restore bibliography to {message}')
@@ -470,6 +505,7 @@ def _restore_from_backupdir(config, restore_files=False):
     if os.path.exists(config.bibtex):
         os.remove(config.bibtex)
     shutil.copy(_tracked_backupfile(config), config.bibtex)
+    _restore_library_files(config, previous=previous)
 
     # Re-name the file according to back-up bibtex
     if not config.gitlfs:
@@ -553,8 +589,10 @@ def cursor_commit(gitdir):
 
 
 def _append_restore_commit(config, target, kind):
-    """Append a commit on HEAD with `target`'s tree and move branch + worktree to it."""
+    """Append a commit on HEAD with `target`'s tree and move branch + worktree
+    to it; return the former HEAD"""
     gitdir = config.gitdir
+    previous = run_git(gitdir, ["rev-parse", "HEAD"]).stdout.strip()
     target_info = run_git(gitdir, ["log", "-1", "--pretty=%h %s", target]).stdout.strip()
     message = f"papers {kind}: back to {target_info}\n\n{RESTORES_TRAILER}: {target}"
     tree = run_git(gitdir, ["rev-parse", f"{target}^{{tree}}"]).stdout.strip()
@@ -562,6 +600,7 @@ def _append_restore_commit(config, target, kind):
     # the new commit has HEAD as parent, so this discards nothing;
     # it moves the branch forward and updates the working tree
     run_git(gitdir, ["reset", "--hard", new])
+    return previous
 
 
 def adopt_legacy_undone_state(gitdir):
@@ -602,8 +641,8 @@ def git_restore_state(config, ref, restore_files=False, kind="restore-backup"):
     target = res.stdout.strip()
     if _dryrun_restore(config, target, "restore"):
         return
-    _append_restore_commit(config, target, kind=kind)
-    restore_from_backupdir(config, restore_files=restore_files)
+    previous = _append_restore_commit(config, target, kind=kind)
+    restore_from_backupdir(config, restore_files=restore_files, previous=previous)
 
 
 def git_undo(config, restore_files=False, steps=1):
@@ -619,8 +658,8 @@ def git_undo(config, restore_files=False, steps=1):
         raise PapersExit("nothing to undo")
     if _dryrun_restore(config, res.stdout.strip(), "undo"):
         return None
-    _append_restore_commit(config, res.stdout.strip(), kind="undo")
-    restore_from_backupdir(config, restore_files=restore_files)
+    previous = _append_restore_commit(config, res.stdout.strip(), kind="undo")
+    restore_from_backupdir(config, restore_files=restore_files, previous=previous)
     return res.stdout.strip()
 
 
@@ -646,6 +685,6 @@ def git_redo(config, restore_files=False, steps=1):
         raise PapersExit("nothing to redo")
     if _dryrun_restore(config, futures[steps-1], "redo"):
         return None
-    _append_restore_commit(config, futures[steps-1], kind="redo")
-    restore_from_backupdir(config, restore_files=restore_files)
+    previous = _append_restore_commit(config, futures[steps-1], kind="redo")
+    restore_from_backupdir(config, restore_files=restore_files, previous=previous)
     return futures[steps-1]
