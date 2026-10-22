@@ -49,7 +49,21 @@ def _initcmd(parser, o, config):
         logger.info(f"the new library is inside the library of {config.file}")
     o.reset = False
     config = _install(o, Config(machine=config.machine), DefaultAsker(), target=CONFIG_FILE_LOCAL)
-    print(config.status(check_files=not o.no_check_files, verbose=True))
+    print('\n'.join(init_summary(config)))
+
+
+def init_summary(config):
+    "what `papers init` prints: the library created, its bibtex, where its files go and its backup"
+    if config.local or not config.has_pool():
+        files = f'{_show(config.filesdir)} (the files directory of the library)' if config.filesdir \
+            else 'linked where they are (no files directory)'
+    else:
+        files = f'in the pool {_show(config.pool_path())}'
+    return [f'created the library {short_home(str(config.configdir))}',
+            f'* bibtex:  {_show(config.bibtex) if config.bibtex else "none"}',
+            f'* files:   {files}',
+            '* backup:  ' + ('git' + (' and git-lfs' if config.gitlfs else '') if config.git else 'off'),
+            '`papers status -v` shows all settings']
 
 
 def installcmd(parser, o, config):

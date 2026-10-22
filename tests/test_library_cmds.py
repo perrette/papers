@@ -5,6 +5,7 @@ from unittest.mock import patch
 
 import papers.config
 from papers.utils import PapersExit
+from tests import TEST_GLOBAL_POOL
 from tests.common import ConfigTest, FileTest
 
 
@@ -56,6 +57,25 @@ class TestConfigCmd(FileTest):
         self.lib('config --global files copy')
         self.assertEqual(self.out('config --global files').strip(), 'copy')
         self.assertIn('files = copy', self.out('config --global'))
+
+
+class TestInitSummary(ConfigTest):
+
+    def test_local(self):
+        out = self.papers('init lib --local --no-git', sp_cmd='check_output')
+        self.assertEqual(out.splitlines(), [
+            f'created the library {papers.config.short_home(self.path("lib"))}',
+            '* bibtex:  papers.bib',
+            '* files:   files (the files directory of the library)',
+            '* backup:  off',
+            '`papers status -v` shows all settings'])
+
+    def test_not_local(self):
+        self.papers('config --global local false')
+        out = self.papers('init lib --git', sp_cmd='check_output')
+        self.assertIn(f'* files:   in the pool {papers.config.short_home(TEST_GLOBAL_POOL)}', out)
+        self.assertIn('* backup:  git', out)
+        self.assertNotIn('settings:', out)
 
 
 class TestOtherCommands(ConfigTest):

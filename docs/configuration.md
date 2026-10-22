@@ -9,19 +9,11 @@ missing, with its parents):
 
 ```
 $> papers init
-papers library: /home/perrette/projects/sealevel
-version 3.0.0
-* configuration file: .papersconfig.json
-* global config:      /home/perrette/.config/papers/config.json (none)
-* cache directory:    /home/perrette/.cache/papers
-* backup (git):       True
-* backup files (git-lfs): False
-* backup directory:   /home/perrette/.local/share/papers/backups/sealevel-papers-3f9a1c2b
-* files directory:    files (empty)
-* bibtex:             papers.bib (empty)
-* pool:               ~/Documents/papers (global pool, not created yet)
-* local:              false (the files are in the files directory of the pool)
-...
+created the library ~/projects/sealevel
+* bibtex:  papers.bib
+* files:   in the pool ~/Documents/papers
+* backup:  git
+`papers status -v` shows all settings
 ```
 
 By default the bibtex is `papers.bib` (or the first `.bib` file present in
