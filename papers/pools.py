@@ -273,8 +273,8 @@ class Pools:
         if configfile is None:
             if os.path.exists(path) and not os.path.isdir(path):
                 raise PoolError(f'pool {short_home(path)}: not a directory')
-            if create and (self._is_global(path) or os.path.isdir(os.path.dirname(path))):
-                config = create_library(path, self.config.machine, quiet=self._is_global(path))
+            if create:
+                config = self._create(path)
             elif not os.path.exists(path):
                 raise PoolError(f'pool {short_home(path)} does not exist')
             else:
@@ -285,6 +285,20 @@ class Pools:
         pool_ = Pool(self._id(path), path, config)
         self._cache[key] = pool_
         return pool_
+
+    def _create(self, path):
+        """create the library of a pool in `path`: its parent directory must
+        exist (a disk that is not mounted is not created), except for the
+        global pool under the home directory (e.g. ~/Documents/papers on a
+        system without ~/Documents), created quietly"""
+        parent = os.path.dirname(path)
+        is_global = self._is_global(path)
+        if not os.path.isdir(parent) and not (is_global and is_inside(path, os.path.expanduser('~'))):
+            raise PoolError(f'pool {short_home(path)}: {short_home(parent)} does not exist (disk not mounted?)')
+        try:
+            return create_library(path, self.config.machine, quiet=is_global)
+        except OSError as error:
+            raise PoolError(f'pool {short_home(path)}: could not be created ({error})')
 
     def pool(self, create=False, quiet=False):
         """the pool of the library, or None (pool none, or the library is its

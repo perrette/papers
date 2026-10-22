@@ -170,6 +170,28 @@ class TestResolution(PoolTest):
         self.assertEqual(pool.config.pool, 'none')
         self.assertTrue(pool.config.local)
 
+    def test_global_pool_on_a_disk_not_mounted(self):
+        # outside the home directory, the global pool needs its parent directory
+        pool = os.path.join(self.temp_dir.name, 'media', 'usb', 'papers')
+        self.papers(f'config --global pool {pool}')
+        self.papers('config --global local false')
+        self.papers('init other --no-git')
+        Path(self.path('new.bib')).write_text(NEW_BIB)
+        with self.assertRaisesRegex(PapersExit, r'media/usb does not exist \(disk not mounted\?\)'):
+            self.papers('add ../new.bib', cwd=self.path('other'))
+        self.assertFalse(os.path.exists(self.path('media')))
+        self.assertEqual(len(Biblio.load(self.path('other', 'papers.bib'), '').entries), 0)
+
+    @unittest.skipIf(hasattr(os, 'geteuid') and os.geteuid() == 0, 'root can write anywhere')
+    def test_pool_that_cannot_be_created(self):
+        os.makedirs(self.path('readonly'))
+        os.chmod(self.path('readonly'), 0o500)
+        try:
+            with self.assertRaisesRegex(PapersExit, 'readonly/pool: could not be created'):
+                self.lib('push --pool ../readonly/pool')
+        finally:
+            os.chmod(self.path('readonly'), 0o700)
+
     def test_push_to_missing_pool(self):
         with self.assertRaisesRegex(PapersExit, 'does not exist'):
             self.lib('push --pool ../no/such/pool')

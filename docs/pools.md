@@ -26,7 +26,9 @@ The global pool does not have to exist: papers creates it (as
 before that a library finds nothing in it, without a warning. A pool given
 by path that does not exist is a warning (a typo, a disk that is not
 mounted); papers creates it when it writes to it only if its parent
-directory exists.
+directory exists. The same holds for a global pool outside the home
+directory (e.g. `/media/usb/papers` while the disk is not mounted): the
+command stops before changing anything.
 
 `papers init` in the folder of the global pool creates the pool itself: a
 library without pool, with its own files. Outside of any library, commands
