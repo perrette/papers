@@ -91,121 +91,91 @@ perrette_yool2011: Near-ubiquity of ice-edge blooms in the Arctic (doi:10.5194/b
 
 Every change to the bibtex is recorded in a git repository of its own, so
 `papers undo` takes back the last change of the library (when git is
-installed). It acts on this library only: the pool keeps what was added to
-it. See [Git integration](git.md).
+installed), and `papers redo` restores it:
+
+```
+$ papers undo
+undo: papers.bib restored to 7f9ad3e papers add --doi 10.5194/bg-8-515-2011 (2026-10-22 15:37)
+$ papers redo
+redo: papers.bib restored to 55b0a37 papers file attach perrette_landerer2013 /home/you/Downloads/esd-4-11-2013-supplement.pdf (2026-10-22 15:37)
+```
+
+The pool is a library with its own git history: `papers undo` in a project
+undoes only the project, and `papers -C ~/Documents/papers undo` undoes a
+change in the pool. See [Undo and redo](undo-redo.md) and
+[Undo in a pool](pools.md#undo-in-a-pool).
 
 ## A second project
 
-In another project, a paper that is already in the pool is taken from it:
-nothing is fetched online, and the PDF is not stored twice.
+In another project, `add --doi` or `add --key` finds a paper that is already
+in the pool: nothing is fetched online, and the PDF is not stored twice.
 
 ```
 $ cd ~/projects/new-paper
 $ papers init
 $ papers add --doi 10.5194/esd-4-11-2013
 Added -> perrette_landerer2013: A scaling approach to project regional sea level rise and it... (doi:10.5194/esd-4-11-2013, files:2) [from pool ~/Documents/papers]
-```
-
-Take entries from the pool by key (or DOI) with `pull`:
-
-```
-$ papers pull perrette_yool2011
+$ papers add --key perrette_yool2011
 Added -> perrette_yool2011: Near-ubiquity of ice-edge blooms in the Arctic (doi:10.5194/bg-8-515-2011) [from pool ~/Documents/papers]
-```
-
-or all the entries of an earlier project:
-
-```
-$ cd ~/projects/review
-$ papers init
-$ papers pull --pool ../sea-level --all
-Added -> perrette_landerer2013: A scaling approach to project regional sea level rise and it... (doi:10.5194/esd-4-11-2013, files:2) [from pool ../sea-level]
-Added -> perrette_yool2011: Near-ubiquity of ice-edge blooms in the Arctic (doi:10.5194/bg-8-515-2011) [from pool ../sea-level]
-pull from pool ../sea-level: 2 added
 ```
 
 The pool is an ordinary library: `papers -C ~/Documents/papers list` lists
 all your papers.
 
-## Keep projects up to date
+## Keep libraries in sync
 
-The entries taken from the pool stay linked to it. A correction made in one
-project is sent to the pool with `papers push`, and reaches the other
-projects with `papers pull`:
+The entries taken from the pool stay linked to it. `papers sync` sends the
+changes of the library to the pool and brings the changes of the pool into
+the library. A tag added in the first project reaches the second one:
 
 ```
 $ cd ~/projects/sea-level
 $ papers tag perrette_yool2011 --add arctic
 Modified -> perrette_yool2011: Near-ubiquity of ice-edge blooms in the Arctic (doi:10.5194/bg-8-515-2011, arctic)
-$ papers push
+$ papers sync
+pull from pool ~/Documents/papers: 2 unchanged
 Modified -> perrette_yool2011: Near-ubiquity of ice-edge blooms in the Arctic (doi:10.5194/bg-8-515-2011, arctic) [in pool ~/Documents/papers]
 push to pool ~/Documents/papers: 1 unchanged, 1 updated
 
 $ cd ~/projects/new-paper
-$ papers status
-[...]
-* pool:               ~/Documents/papers (global pool, changed since last pull or push)
-$ papers pull
+$ papers sync
 Modified -> perrette_yool2011: Near-ubiquity of ice-edge blooms in the Arctic (doi:10.5194/bg-8-515-2011, arctic) [from pool ~/Documents/papers]
 pull from pool ~/Documents/papers: 1 unchanged, 1 updated
+push to pool ~/Documents/papers: 2 unchanged
 ```
 
-`papers sync` runs `pull`, then `push`. Nothing is exchanged without these
-commands, except that `add` adds new papers to the pool. Each project keeps
-its own keys: `pull` and `push` never rename the entries of the library
-they write to. See [Pools](pools.md).
-
-## Keep the PDFs in the project
-
-With `--local`, a library keeps its PDFs in its own `files/` folder, for
-example when the project folder is shared with coauthors (git, Dropbox):
-the links of a library that uses the pool point to your own
-`~/Documents/papers`, which they do not have.
+`papers sync --pool PATH` syncs with another library instead, such as a
+folder shared with a coauthor. It reads and writes only that library, not
+the global pool. A KEY that only that library has is added, and the entry
+links to the PDF of that library (in a library that is not local, as
+here):
 
 ```
-$ cd ~/thesis
-$ papers init --local
-created the library ~/thesis
-* bibtex:  papers.bib
-* files:   files (the files directory of the library)
-* backup:  git
-`papers status -v` shows all settings
+$ papers sync --pool ../shared-with-bob agnew_farrell1978
+Added -> agnew_farrell1978: Self-consistent equilibrium ocean tides (file:1) [from pool ../shared-with-bob]
+push to pool ../shared-with-bob: 1 unchanged
 ```
 
-A local library still uses the pool for entries: `add` looks there first,
-and `pull` and `push` work as above; only the PDFs are copied into the
-project (as hard links when they are on the same disk, which takes no
-space). `papers config local true` turns an existing library into a local
-one, and copies its PDFs:
+Without KEY, all the entries of the library are synced: the ones the other
+library does not have are added to it, with copies of their PDFs.
 
-```
-$ cd ~/projects/new-paper
-$ papers config local true
-copy 2 files of the pool into files (hard links when possible), and link to the copies (the pool keeps its files):
-  perrette_landerer2013: ~/Documents/papers/files/perrette_et_al_2013_a-scaling-approach-to-project-regional-sea-level-rise-and-its-uncertainties.pdf
-  perrette_landerer2013: ~/Documents/papers/files/perrette_et_al_2013_a-scaling-approach-to-project-regional-sea-level-rise-and-its-uncertainties--esd-4-11-2013-supplement.pdf
-Continue? [y/N] y
-Modified -> perrette_landerer2013: A scaling approach to project regional sea level rise and it... (doi:10.5194/esd-4-11-2013, files:2)
-local = true (in ~/projects/new-paper/.papersconfig.json)
-```
+Nothing is exchanged without these commands, except that `add` adds new
+papers to the pool. Each library keeps its own keys. `papers pull` and
+`papers push` do each half of `sync`, and `papers status` tells whether the
+pool changed since the last exchange: see [Pools](pools.md).
 
-`papers init --pool none` creates a library without any pool: its PDFs are
-in the project, and nothing is shared.
+## Where the PDFs are
 
-## Settings
-
-`papers config` shows and changes the settings of the library, and
-`papers config --global` the defaults of your user account. For example,
-to keep the pool elsewhere:
-
-```
-$ papers config --global pool /data/papers
-```
-
-or to use no pool at all:
-
-```
-$ papers config --global pool none
-```
-
-See [Configuration](configuration.md).
+By default the PDFs of all your libraries are in the pool,
+`~/Documents/papers`, and the bibtex of each library links to them there
+(`papers config --global pool PATH` moves the default pool elsewhere). A
+project folder shared with others (git, Dropbox) should keep its own PDFs,
+in its `files/` folder: create it with `papers init --local`, or run
+`papers config local true` in an existing library, which copies its PDFs
+from the pool (as hard links when possible). A local library still uses
+the pool for entries. `papers init --pool none` creates a library without
+pool: its PDFs are in the project, and nothing is shared. See
+[Pools](configuration.md#pools) in the configuration, and
+[Local or not](pools.md#local-or-not) and
+[Changing `local` and `pool`](pools.md#changing-local-and-pool) in the Pools
+guide.

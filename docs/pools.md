@@ -166,6 +166,10 @@ entry, without querying crossref:
   the PDF metadata, or a DOI of its text whose title in the pool appears in
   the text) is in the pool;
 - a DOI (`papers add --doi DOI`) that a pool entry has;
+- a key (`papers add --key KEY`, with no file, DOI or other field) that a
+  pool entry has, ignoring case: the entry keeps the pool key. Without such
+  an entry (and without a library entry of that key), `add` stops with an
+  error;
 - an entry of an added bibtex that is the same paper as a pool entry: the
   pool's fields are taken, the entry keeps its key, and its fields that the
   pool entry does not have are kept.
@@ -284,6 +288,22 @@ papers sync [KEY...|-] [--pool PATH] [--on-duplicate MODE]
 runs `papers pull`, then `papers push` of the same entries (all without
 KEY). If the pull leaves conflicts undecided (skipped, or the dialogue
 quit), nothing is pushed: decide them with `papers pull`, then sync again.
+A KEY that only the pool has is added to the library, as with `pull`;
+`sync` has no `--all`.
+
+With `--pool PATH`, `sync` reads and writes only the library at `PATH`, not
+the pool of the library. The entries taken from it link to its files in a
+library that is not local (in a local library, they are copied as the
+`files` setting says), and the entries pushed to it get copies of their
+files in its files directory.
+
+## Undo in a pool
+
+A pool is a library with its own backup history (see
+[Git integration](git.md)). `papers undo` in a library undoes a change of
+that library only: an entry that `add` also added to the pool stays in the
+pool. To undo a change in the pool, run the command in the pool, e.g.
+`papers -C ~/Documents/papers undo` for the global pool.
 
 ## `papers export`
 
