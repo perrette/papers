@@ -28,7 +28,8 @@ _FORMAT_HELP = {
     'title-length': 'maximum length of the title in the {what} (the last words are dropped until it fits; a longer first word is cut)',
     'title-sep': 'separator of the title words in the {what}',
     'unknown-template': 'template of the {what} of an entry without author, year or title',
-    'unknown-strict': 'use the unknown template only when author, year and title are all missing',
+    'unknown-strict': 'the unknown template applies when the author, the year or the title is missing; '
+                      'with this option, only when all three are missing',
 }
 
 
@@ -72,7 +73,8 @@ def _format_parser(kind, title, what, fmt, template_help):
         else:
             help = _FORMAT_HELP[field].format(what=what) + f' (default: {default})'
         if type_ == 'bool':
-            grp.add_argument(f'--{kind}-{field}', action='store_true', default=None, help=help)
+            # --no-...: the configured value can be turned off too
+            grp.add_argument(f'--{kind}-{field}', action=argparse.BooleanOptionalAction, default=None, help=help)
         else:
             grp.add_argument(f'--{kind}-{field}', type=int if type_ == 'int' else None, help=help)
     return parser

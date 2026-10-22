@@ -525,6 +525,22 @@ class TestFormatOptions(ConfigTest):
                     '--key-unknown-strict --year 1999')
         self.assertEqual(self.keys(), ['k1999'])
 
+    def test_no_key_unknown_strict(self):
+        # turns off the setting of the library for one command
+        self.papers('config key.unknown-strict true')
+        self.papers('add --title "No author" --key-template "k{year}" --key-unknown-template "unknown{year}" '
+                    '--no-key-unknown-strict --year 1999')
+        self.assertEqual(self.keys(), ['unknown1999'])
+
+    def test_unknown_strict_default_is_the_setting(self):
+        self.papers('config key.unknown-strict true')
+        self.papers('add --title "No author" --key-template "k{year}" --key-unknown-template "unknown{year}" '
+                    '--year 1999')
+        self.assertEqual(self.keys(), ['k1999'])
+        parser, _ = papers.cli.parser.get_parser()
+        self.assertIsNone(parser.parse_args(['add']).key_unknown_strict)
+        self.assertIs(parser.parse_args(['add', '--no-name-unknown-strict']).name_unknown_strict, False)
+
     def test_name_options(self):
         parser, _ = papers.cli.parser.get_parser()
         o = parser.parse_args(['add', '--name-unknown-template', 'x', '--name-unknown-strict',

@@ -101,7 +101,8 @@ and for entries without author, year or title:
 - `--name-unknown-template`: the template used instead (default:
   `unknown_{doi_or_id}` for file names, `{doi_}` for keys)
 - `--name-unknown-strict`: use it only when author, year and title are all
-  missing
+  missing (by default, when any of them is missing); `--no-name-unknown-strict`
+  turns off the `name.unknown-strict` setting for one command
 
 The same template and modifiers system applies to the bibtex key generation by
 replacing the prefix `--name-` with `--key-`, e.g. `--key-template`.
