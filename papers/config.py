@@ -456,6 +456,14 @@ class Config:
             return None
         return os.path.abspath(os.path.join(self.configdir, os.path.expanduser(self.pool)))
 
+    def pool_label(self):
+        """the pool as `init`, `status` and the messages name it: the global
+        pool with ~, otherwise the pool setting (relative to the library)"""
+        path = self.pool_path()
+        if path is None:
+            return None
+        return short_home(path) if self.uses_global_pool else self.pool
+
     def is_pool_library(self):
         "the library is its own pool (the global pool), so it has none"
         path = self.pool_path()
@@ -621,22 +629,29 @@ class Config:
         if self.file is None and self.bibtex is None:
             return '\n'.join(lines)  # no library
 
-        if self.filesdir is None:
-            status = bcolors.WARNING+' (unset)'+bcolors.ENDC
-        elif not os.path.exists(self.filesdir):
-            status = ' (not created yet)' if self.file and not self.local and self.has_pool() \
-                else bcolors.WARNING+' (missing)'+bcolors.ENDC
-        elif not os.listdir(self.filesdir):
-            status = bcolors.WARNING+' (empty)'+bcolors.ENDC
-        elif check_files:
-            file_count, folder_size = check_filesdir(self.filesdir)
-            status = bcolors.OKBLUE+" ({} files, {:.1f} MB)".format(file_count, folder_size/(1024*1024.0))+bcolors.ENDC
+        in_pool = self.file and not self.local and self.has_pool()
+        if in_pool:
+            # the files of a library that is not local are in its pool (see papers.pools.use_pool_files)
+            lines.append(f'* files:              in the pool {self.pool_label()}')
         else:
-            status = ''
-
-        lines.append(f'* files directory:    {_fmt_path(self.filesdir) if self.filesdir else self.filesdir}'+status)
-        lines.append(f'* files mode:         {self.files or "move"}' + (
-            ' (no files directory: the files are linked where they are)' if self.filesdir is None else ''))
+            if self.filesdir is None:
+                status = bcolors.WARNING+' (unset)'+bcolors.ENDC
+            elif not os.path.exists(self.filesdir):
+                status = bcolors.WARNING+' (missing)'+bcolors.ENDC
+            elif not os.listdir(self.filesdir):
+                status = bcolors.WARNING+' (empty)'+bcolors.ENDC
+            elif check_files:
+                file_count, folder_size = check_filesdir(self.filesdir)
+                status = bcolors.OKBLUE+" ({} files, {:.1f} MB)".format(file_count, folder_size/(1024*1024.0))+bcolors.ENDC
+            else:
+                status = ''
+            lines.append(f'* files directory:    {_fmt_path(self.filesdir) if self.filesdir else self.filesdir}'+status)
+        if in_pool:
+            note = ' (the files added are moved into the pool)' if (self.files or 'move') == 'move' else \
+                ' (the files added are copied into the pool)' if self.files == 'copy' else ''
+        else:
+            note = ' (no files directory: the files are linked where they are)' if self.filesdir is None else ''
+        lines.append(f'* files mode:         {self.files or "move"}' + note)
 
         if self.bibtex is None:
             status = bcolors.WARNING+' (unset)'+bcolors.ENDC
@@ -663,7 +678,7 @@ class Config:
             from papers.pools import status_line  # papers.pools imports this module
             lines.append('* pool:               ' + status_line(self))
             lines.append('* local:              ' + ('true (the files are in the files directory of the library)'
-                         if self.local else "false (the files are in the files directory of the pool)"))
+                         if self.local else "false (the files are in the pool)"))
             if self.local and self.has_pool():
                 lines.append('* auto-push:          ' + ('true (add also adds the new entries to the pool)'
                                                          if self.auto_push else 'false'))

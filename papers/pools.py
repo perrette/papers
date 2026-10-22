@@ -1130,7 +1130,7 @@ def status_line(config):
     if path is None:
         return 'none'
     pools = Pools(config)
-    text = short_home(path) if config.uses_global_pool else config.pool
+    text = config.pool_label()
     notes = ['global pool'] if pools._is_global(path) else []
     if pools._is_self(path):
         notes.append('this library: it has no pool')

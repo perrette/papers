@@ -57,7 +57,7 @@ def init_summary(config):
         files = f'{_show(config.filesdir)} (the files directory of the library)' if config.filesdir \
             else 'linked where they are (no files directory)'
     else:
-        files = f'in the pool {_show(config.pool_path())}'
+        files = f'in the pool {config.pool_label()}'
     return [f'created the library {short_home(str(config.configdir))}',
             f'* bibtex:  {_show(config.bibtex) if config.bibtex else "none"}',
             f'* files:   {files}',

@@ -895,10 +895,17 @@ class TestConfigLocal(NonLocalTest):
         self.papers('config --global local false')
         self.papers('init other --no-git --pool ../pool')
         self.assertFalse(os.path.exists(self.path('other', 'files')))
-        self.assertIn('* files directory:    files (not created yet)',
+        out = self.papers('status', cwd=self.path('other'), sp_cmd='check_output')
+        self.assertIn('* files:              in the pool ../pool\n', out)  # as init says
+        self.assertNotIn('files directory', out)
+        self.assertIn('* local:              false (the files are in the pool)', out)
+        self.papers('config files move', cwd=self.path('other'))
+        self.assertIn('* files mode:         move (the files added are moved into the pool)',
                       self.papers('status', cwd=self.path('other'), sp_cmd='check_output'))
         self.papers('init third --no-git --pool ../pool --local')
         self.assertTrue(os.path.isdir(self.path('third', 'files')))
+        self.assertIn('* files directory:    files (empty)',
+                      self.papers('status', cwd=self.path('third'), sp_cmd='check_output'))
         self.papers('init fourth --no-git --pool none')
         self.assertTrue(os.path.isdir(self.path('fourth', 'files')))
         # the files of the pool are copied into it when the library becomes local
