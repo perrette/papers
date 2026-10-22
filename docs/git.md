@@ -26,6 +26,8 @@ repository, with the files of `.papers/origin/` (origin copies of the
 entries exchanged with the pool, one file per pool, see
 [Pools](pools.md#origin-copies)) and
 `.papers/distinct.json` (pairs that are not the same paper) when they exist.
+`papers restore`, `undo` and `redo` restore the bibtex and these files
+together (a file that the restored snapshot does not have is removed).
 If `--git-lfs` is passed, the attached files are backed up along
 with the bibtex: they are hard-linked into the backup directory and tracked
 with git-lfs, together with a copy of the bibtex whose file paths point into

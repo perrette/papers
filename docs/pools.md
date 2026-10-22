@@ -383,7 +383,9 @@ A pool is a library with its own backup history (see
 [Git integration](git.md)). `papers undo` in a library undoes a change of
 that library only: an entry that `add` also added to the pool stays in the
 pool. To undo a change in the pool, run the command in the pool, e.g.
-`papers -C ~/Documents/papers undo` for the global pool.
+`papers -C ~/Documents/papers undo` for the global pool. The origin copies
+of the library are restored with its bibtex: see
+[Undo in a library that has a pool](undo-redo.md#undo-in-a-library-that-has-a-pool).
 
 ## `papers export`
 

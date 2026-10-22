@@ -31,4 +31,38 @@ Files that the undone command placed in the files directory stay there.
 When no entry links to them any more (e.g. after undoing `papers file
 attach`), papers lists them: `papers file clean` removes them.
 
+## Undo in a library that has a pool
+
+A pool is a library with its own backup and its own history. A command that
+exchanges entries with the pool (`add` in a library that is not local, or
+with auto-push; `push`, `pull`, `sync`) writes both, and each records a
+step in its own history.
+
+- `papers undo` and `papers redo` in the library change the library only.
+  The pool keeps what the undone command wrote to it.
+- `papers -C POOL undo` and `papers -C POOL redo` change the pool only.
+
+The library also restores its origin copies (`.papers/origin/`, see
+[Pools](pools.md#origin-copies)) and `.papers/distinct.json` to the state of
+the step it goes back to, and removes those that did not exist at that step.
+The next exchange then compares the library and the pool to the origin
+copies of that step:
+
+- After undoing a `push` or a `pull` in the library, the pool shows as
+  changed in `papers status`: what the pool has beyond the restored state
+  comes again with the next `pull`, and the next `push` does not send the
+  undone state back to the pool. To undo the change in the pool too, undo
+  there as well (`papers -C POOL undo`).
+- After an undo in the pool, the origin copies of the library still have the
+  newer version, so the pool shows as changed, and a `pull` takes the pool's
+  older values for the fields the library did not change since. A field
+  that the pool undo removes is the exception: a field removed on one side
+  keeps the other side's state (see [`papers pull`](pools.md#papers-pull)), so the library
+  keeps it, and the next `push` adds it to the pool again.
+
+Without git-tracking, undo swaps the bibtex only: the origin copies stay as
+the last exchange left them. The undone change then counts as a change of
+the library: after undoing a `pull`, the next `push` sends the library's
+older values to the pool (it lists the entries it modifies).
+
 See [Git integration](git.md) for how to enable git-tracking.
