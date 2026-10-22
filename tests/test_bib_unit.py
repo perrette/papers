@@ -49,6 +49,15 @@ class TestAppendAbc(unittest.TestCase):
         result = append_abc('Author2000', ['Author2000', 'Author2000b'])
         self.assertEqual(result, 'Author2000c')
 
+    def test_key_ending_with_a_letter(self):
+        # the last letter is a suffix only after a digit: 'perrette' used to become 'perrettf'
+        self.assertEqual(append_abc('perrette', ['perrette']), 'perretteb')
+        self.assertEqual(append_abc('10-1000-abc', ['10-1000-abc']), '10-1000-abcb')
+
+    def test_no_letter_left(self):
+        with self.assertRaises(ValueError):
+            append_abc('Author2000z', ['Author2000z'])
+
 
 class TestIsvalidkey(unittest.TestCase):
 

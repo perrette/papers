@@ -87,12 +87,14 @@ def fetch_csl_by_doi(doi):
     return message
 
 
-@cached('doi', legacy='crossref.json', migrate=_migrate_crossref_cache, trim=_drop_references, not_found=DOINotFoundError)
+@cached('doi', legacy='crossref.json', migrate=_migrate_crossref_cache, trim=_drop_references, not_found=DOINotFoundError,
+        normalize=str.lower)
 def fetch_doi_metadata(doi):
     """crossref-like record of a DOI: from the crossref API, or from doi.org
     for DOIs registered elsewhere (DataCite, mEDRA...). A DOI unknown to
     doi.org raises DOINotFoundError (remembered for a day: a new paper's
-    DOI may be printed before it is registered)."""
+    DOI may be printed before it is registered). DOIs are case-insensitive:
+    the queries use the DOI as given, the cache its lower case."""
     try:
         return fetch_crossref_by_doi(doi)
     except DOIRequestError as error:
@@ -113,7 +115,7 @@ def fetch_bibtex_by_doi(doi):
     if arxiv:
         return fetch_bibtex_by_arxiv(arxiv)
     try:
-        return crossref_to_bibtex(fetch_doi_metadata(doi.lower()))
+        return crossref_to_bibtex(fetch_doi_metadata(doi))
     except DOINotFoundError:
         raise
     except DOIRequestError as error:

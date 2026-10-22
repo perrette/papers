@@ -85,7 +85,9 @@ Entries are case-sensitive, and a few more fields are added, so that:
 The modifiers are:
 
 - `--name-title-sep`: separator for title words
-- `--name-title-length`: max title length
+- `--name-title-length`: max title length, with its separators: the last
+  words are dropped until the title fits, and a first word longer than that
+  is cut
 - `--name-title-word-size`: min size to be considered a word
 - `--name-title-word-num`: max number of title words
 
@@ -99,7 +101,8 @@ and for entries without author, year or title:
 - `--name-unknown-template`: the template used instead (default:
   `unknown_{doi_or_id}` for file names, `{doi_}` for keys)
 - `--name-unknown-strict`: use it only when author, year and title are all
-  missing
+  missing (by default, when any of them is missing); `--no-name-unknown-strict`
+  turns off the `name.unknown-strict` setting for one command
 
 The same template and modifiers system applies to the bibtex key generation by
 replacing the prefix `--name-` with `--key-`, e.g. `--key-template`.

@@ -176,4 +176,5 @@ corresponding commands: `--rename` (`-c`) is `papers file rename`
 `--metadata-check` is `papers file check --metadata`, and `--clean-filesdir`
 (`--force`) is `papers file clean` (`--yes`). The file actions of
 `papers list` are deprecated too (see [Listing and searching](listing.md)),
-and so is `papers add --attachment` (now `--attach`).
+and so is `papers add --attachment` (now `--attach`; `-a FILE` attaches the file
+until v4, with a warning: `-a` is `--author`, see [Adding entries](adding-entries.md#attach-files)).

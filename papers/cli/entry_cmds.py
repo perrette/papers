@@ -18,10 +18,31 @@ from papers.identifiers import normalize_doi, read_selection, select_entries
 from papers.library import get_biblio, savebib
 from papers.merge import DuplicateError
 from papers.pools import Exchange, PoolLookup, Pools, report_lines
-from papers.utils import PapersExit, open_with_system
+from papers.utils import PapersExit, file_uri_to_path, open_with_system
 from papers.cli.common import (view_entry_files, set_format_config_from_cmd, _print_biblio_diff, files_mode,
                                duplicate_resolver, save_exchange, stdin_is_terminal, edit_entries, edit_selected,
                                print_kept_files, _delete_files_option, library_pools)
+
+
+def _author_short_option(o):
+    """-a NAME is --author NAME; the other values of -a are files to add
+    (`-a NAME FILE`). The v2 form -a FILE... (attach): when every value is an
+    existing file or a URL, they are attached as with --attach, with a warning."""
+    values = [file_uri_to_path(v) for v in o.author_short]
+    if all(os.path.isfile(v) or v.startswith(('http://', 'https://')) for v in values):
+        one = len(values) == 1
+        logger.warning(f"-a now means --author; {' '.join(values)} {'exists' if one else 'exist'}, so "
+                       f"{'it is' if one else 'they are'} attached as with --attach (this fallback is removed in v4)")
+        o.attachment = (o.attachment or []) + values
+        return
+    name, files = o.author_short[0], values[1:]
+    if values[0] != name or os.path.exists(name):
+        raise PapersExit(f'-a {name}: a file, but -a now means --author: use --attach FILE to attach it, '
+                         'or --author NAME')
+    if o.author:
+        raise PapersExit('-a is the same as --author: give one of them')
+    o.author = name
+    o.file = o.file + files
 
 
 def addcmd(parser, o, config):
@@ -45,9 +66,8 @@ def addcmd(parser, o, config):
     if o.attachment_deprecated:
         logger.warning("--attachment is deprecated: use --attach")
         o.attachment = (o.attachment or []) + o.attachment_deprecated
-    if o.attachment_short:
-        logger.warning("-a is deprecated: use --attach (in v4, -a will be --author, as in papers list)")
-        o.attachment = (o.attachment or []) + o.attachment_short
+    if o.author_short:
+        _author_short_option(o)
 
     # what to do with the files: see papers.files.FilesPolicy
     mode = files_mode(o, config)
@@ -80,10 +100,9 @@ def addcmd(parser, o, config):
             rename = True
         metadata['file'] = format_file(biblio.get_files(metadata) + o.attachment, relative_to=biblio.relative_to)
 
-    if len(o.file) > 1:
-        if metadata:
-            raise PapersExit('--doi, --metadata, --key, --attachment and other metadata keys are only valid '
-                             'for one PDF / BIBTEX entry')
+    if metadata and (len(o.file) > 1 or any(os.path.isdir(f) for f in o.file)):
+        raise PapersExit('--doi, --metadata, --key, --attach and the other metadata options are only valid '
+                         'for one PDF / BIBTEX entry')
 
     if o.no_merge_files:
         logger.warning('--no-merge-files is deprecated and ignored: the file links of duplicates are always merged')
@@ -109,7 +128,8 @@ def addcmd(parser, o, config):
             entry = edited[0]
             o.edit = False
 
-        entries.extend( biblio.insert_entry(entry, rename=rename, copy=policy, **kw) )
+        # the entry is made of the metadata (and edited): not applied again
+        entries.extend( biblio.insert_entry(entry, rename=rename, copy=policy, **{**kw, 'metadata': {}}) )
 
 
     # several PDFs: fetch their metadata concurrently first
@@ -166,8 +186,7 @@ def addcmd(parser, o, config):
         entries = [e for e in biblio.entries if biblio.key(e) in unique_keys]
 
     if o.edit:
-        entry_keys = [biblio.key(e) for e in entries]
-        otherentries = [e for e in biblio.entries if biblio.key(e) not in entry_keys]
+        others = [e for e in biblio.entries if not any(e is x for x in entries)]
 
         try:
             entries = edit_entries(entries)
@@ -175,8 +194,10 @@ def addcmd(parser, o, config):
             logger.error(str(error))
             return
 
-        entries = [{k:v for k,v in e.items() if v != ""} for e in entries]
-        biblio.db.entries = sorted(otherentries + entries, key=lambda e: biblio.key(e))
+        for e in entries:  # fields emptied in the editor are removed
+            for k in [k for k, v in e.items() if v == "" and k not in ('ID', 'ENTRYTYPE')]:
+                del e[k]
+        biblio.entries = others + entries
 
     # light library or sync push: also in the first pool
     before = {biblio.key(e) for e in biblio_init.entries}

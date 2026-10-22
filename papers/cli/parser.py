@@ -25,17 +25,19 @@ _FORMAT_HELP = {
     'author-sep': 'separator of the authors in the {what}',
     'title-word-num': 'maximum number of title words in the {what}',
     'title-word-size': 'minimum length of a title word: shorter words are left out of the {what}',
-    'title-length': 'maximum length of the title in the {what} (title words are dropped until it fits)',
+    'title-length': 'maximum length of the title in the {what} (the last words are dropped until it fits; a longer first word is cut)',
     'title-sep': 'separator of the title words in the {what}',
     'unknown-template': 'template of the {what} of an entry without author, year or title',
-    'unknown-strict': 'use the unknown template only when author, year and title are all missing',
+    'unknown-strict': 'the unknown template applies when the author, the year or the title is missing; '
+                      'with this option, only when all three are missing',
 }
 
 
 class _Deprecated(argparse.Action):
     """a deprecated form of an option (removed in v4): warns with the new
     form, and sets the option's destination (the values given, or `const`
-    for a flag)"""
+    for a flag). The warning is printed once per parser, though the option
+    is repeated or the arguments parsed again (papers.cli._main does)"""
 
     def __init__(self, option_strings, dest, new, nargs=0, const=True, help=None, **kw):
         super().__init__(option_strings, dest, nargs=nargs, const=const,
@@ -43,7 +45,10 @@ class _Deprecated(argparse.Action):
         self.new = new
 
     def __call__(self, parser, namespace, values, option_string=None):
-        logger.warning(f'{option_string} is deprecated: use {self.new}')
+        warned = parser.__dict__.setdefault('_deprecated_warned', set())
+        if option_string not in warned:
+            warned.add(option_string)
+            logger.warning(f'{option_string} is deprecated: use {self.new}')
         setattr(namespace, self.dest, self.const if self.nargs == 0 else values)
 
 
@@ -68,7 +73,8 @@ def _format_parser(kind, title, what, fmt, template_help):
         else:
             help = _FORMAT_HELP[field].format(what=what) + f' (default: {default})'
         if type_ == 'bool':
-            grp.add_argument(f'--{kind}-{field}', action='store_true', default=None, help=help)
+            # --no-...: the configured value can be turned off too
+            grp.add_argument(f'--{kind}-{field}', action=argparse.BooleanOptionalAction, default=None, help=help)
         else:
             grp.add_argument(f'--{kind}-{field}', type=int if type_ == 'int' else None, help=help)
     return parser
@@ -294,15 +300,24 @@ def get_parser(config=None):
     grp.add_argument('--ignore-errors', action='store_true',
         help='ignore errors when adding multiple files')
 
-    grp = addp.add_argument_group('metadata')
+    grp = addp.add_argument_group('metadata',
+        description='''The fields given here replace those found in the PDF, fetched from the DOI,
+        or read from the added bibtex (one entry only). They do not change an entry already in
+        the library (same DOI): use `papers edit`.''')
     grp.add_argument('--doi', help='provide DOI -- skip parsing PDF')
-    grp.add_argument('--key', help='manually set the key')
-    grp.add_argument('--type', help='document type')
-    grp.add_argument('--title', help='manually set the title')
-    grp.add_argument('--author', help='manually set the author')
-    grp.add_argument('--journal', help='manually set the journal')
-    grp.add_argument('--year', help='manually set the year')
-    grp.add_argument('--metadata', nargs="+", metavar="KEY=VALUE", type=lambda meta: meta.split('=', 1), help='the metadata fields manually')
+    grp.add_argument('--key', help='the key of the entry (instead of a key made from the key template)')
+    grp.add_argument('--type', help='entry type (article, book...)')
+    grp.add_argument('--title', help='the title')
+    grp.add_argument('--author', help='the authors, e.g. "Smith, John and Doe, Jane"')
+    grp.add_argument('-a', nargs='+', dest='author_short', metavar='NAME',
+        help='''same as --author (the values after the name are files to add, as the FILE
+        arguments). In papers v2, -a FILE... attached files: when every value
+        of -a is an existing file (or a URL), they are attached as with --attach, with a
+        warning (until v4)''')
+    grp.add_argument('--journal', help='the journal')
+    grp.add_argument('--year', help='the year')
+    grp.add_argument('--metadata', nargs="+", metavar="KEY=VALUE", type=lambda meta: meta.split('=', 1),
+        help='any fields')
     grp.add_argument('--no-query-doi', action='store_true', help='do not attempt to parse and query doi')
     grp.add_argument('--no-query-fulltext', action='store_true', help='do not attempt to query fulltext in case doi query fails')
     grp.add_argument('--scholar', action='store_true', help='use google scholar instead of crossref')
@@ -318,9 +333,6 @@ def get_parser(config=None):
     grp.add_argument('--attach', nargs='+', type=file_uri_to_path, dest='attachment', metavar='FILE',
         help='attach these files to the entry (e.g. supplementary material)')
     grp.add_argument('--attachment', nargs='+', type=file_uri_to_path, dest='attachment_deprecated',
-        help='deprecated: use --attach')
-    # -a is --author in list: in v4, -a becomes --author here too
-    grp.add_argument('-a', nargs='+', type=file_uri_to_path, dest='attachment_short', metavar='FILE',
         help='deprecated: use --attach')
     _files_mode_options(grp, add=True)
 

@@ -59,8 +59,15 @@ supplementary material), placed as the `files` setting says. They are named
 after the main file (see
 [Renaming files and keys](renaming.md#entries-with-several-files)). To
 attach files to an entry already in the library, use
-`papers file attach KEY FILE...`. `--attachment` and `-a` are deprecated names of
+`papers file attach KEY FILE...`. `--attachment` is a deprecated name of
 `--attach`.
+
+`-a` is the short form of `--author` (as in `papers list`). In papers v2, `-a
+FILE...` attached files: until v4, when every value given to `-a` is an
+existing file (or a URL), papers attaches them as with `--attach` and warns.
+Otherwise the first value is the author, and the next values are files to
+add (`papers add -a "Smith, John" paper.pdf`); a first value that is an
+existing file, followed by other values, is an error.
 
 ## Add a whole directory of PDFs
 
@@ -151,6 +158,34 @@ bibtex:
 ```
 papers add entry.bib --attach esd-4-11-2013.pdf --bibtex papers.bib --filesdir files
 ```
+
+## Set fields on the command line
+
+`--title`, `--author`, `--year`, `--journal`, `--type` (the entry type, e.g.
+`book`), `--key` and `--metadata KEY=VALUE...` (any field) set these fields of
+the added entry. They replace the values found in the PDF, fetched from the
+DOI or read from the added bibtex; the other fields are kept:
+
+```
+papers add paper.pdf --year 1999 --journal "Journal of Glaciology"
+```
+
+- `--key KEY` sets the key, which is then not generated from the key
+  template; without `--key`, the generated key uses the fields given (here
+  the year 1999);
+- the files of `--attach` (and of a `file` field given with `--metadata`)
+  are added to the files of the entry;
+- these options apply to one entry: they are an error with several files, a
+  directory (`-R`), or a bibtex file of several entries;
+- an entry taken from a pool gets the fields given too (in the library; the
+  pool entry changes only if you push);
+- when the added paper is already in the library (same DOI, see below), the
+  fields of the library entry are not changed: papers warns that the options
+  are ignored; use `papers edit KEY` to change them;
+- when the added entry is merged into a library entry by the duplicate check
+  (below), the fields given are those of the added entry: a value that
+  differs from the library's is a conflict, resolved as `--on-duplicate`
+  says, and the library key is kept.
 
 ## Duplicates
 
@@ -282,7 +317,8 @@ To stop without saving anything, use Ctrl-C.
 Entries added from a bibtex file keep their own key, unless `-u/--update-key`
 is passed, in which case the key is regenerated from the key template (see
 [Renaming files and keys](renaming.md)). Entries extracted from a PDF or
-fetched from a DOI always get a generated key. Either way, this only
+fetched from a DOI always get a generated key. `--key KEY` sets the key
+instead, in both cases. Either way, this only
 concerns entries new to the library: an entry merged into a duplicate takes
 the key of the library entry.
 

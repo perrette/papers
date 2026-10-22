@@ -262,9 +262,17 @@ class TestRenamedOptions(FileTest):
             return super().out(cmd)
 
     def test_add_a(self):
-        # -a is --attach in v3 (v2 meaning), --author in v4
-        self.warns(f'add --key three2000 --title Three -a {self.a}', '-a is deprecated: use --attach')
+        # -a is --author, but -a FILE... with existing files attaches them (v2 meaning, until v4)
+        self.warns(f'add --key three2000 --title Three -a {self.a} --link',
+                   f'-a now means --author; {self.a} exists, so it is attached as with --attach')
         self.assertEqual(self.files('three2000'), [self.a])
+        e = next(e for e in Biblio.load(self.path('lib', 'papers.bib'), '').entries if e.key == 'three2000')
+        self.assertNotIn('author', e)
+
+    def test_add_a_several_files(self):
+        si = self.write('src', 'si.pdf')
+        self.warns(f'add --key three2000 --title Three -a {self.a} {si} --link', 'they are attached')
+        self.assertEqual(self.files('three2000'), [self.a, si])
 
     def test_list_f(self):
         out = self.warns('list --key one2000 -f doi --no-key', '-f is deprecated: use --field')
@@ -306,3 +314,13 @@ class TestRenamedOptions(FileTest):
     def test_paths_options(self):
         self.warns('list --relative-paths', '--relative-paths is deprecated')
         self.warns('list --absolute-paths', '`papers config paths absolute`')
+
+    def test_warns_once(self):
+        # the subparser parses its arguments again for the error messages
+        # (papers.cli._main), and an option can be repeated
+        from papers.cli.parser import get_parser
+        parser, subparsers = get_parser()
+        with self.assertLogs('papers', level='WARNING') as logs:
+            parser.parse_known_args(['check', '-f', '-f'])
+            subparsers.choices['check'].parse_args(['-f'])
+        self.assertEqual(len(logs.output), 1)

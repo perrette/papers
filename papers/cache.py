@@ -70,7 +70,7 @@ def _migrate_legacy_cache(legacy, folder, migrate):
 NOT_FOUND_TTL = 24 * 3600  # seconds
 
 
-def cached(name, hashed_key=False, legacy=None, migrate=None, trim=None, not_found=None):
+def cached(name, hashed_key=False, legacy=None, migrate=None, trim=None, not_found=None, normalize=None):
     """cache the results of fun(key) as json files under papers.config.CACHE_DIR/name/
 
     legacy: cache file of previous versions, migrated on first use (with
@@ -78,10 +78,12 @@ def cached(name, hashed_key=False, legacy=None, migrate=None, trim=None, not_fou
     trim: applied to results before they are stored
     not_found: exception class raised by fun when the key does not exist:
         it is remembered (and raised again) for NOT_FOUND_TTL seconds
+    normalize: the cache key of an argument (e.g. str.lower for DOIs); fun
+        is called with the argument as given
     """
     def decorator(fun):
         def decorated(arg):
-            key = arg
+            key = normalize(arg) if normalize else arg
             # read at each call: the tests and --dry-run change them
             cache_dir = papers.config.CACHE_DIR
             folder = os.path.join(cache_dir, name)
