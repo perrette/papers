@@ -54,7 +54,7 @@ from papers.duplicate import Distinct, IdentityIndex, find_duplicates, same_pape
 from papers.entries import get_entry_val, set_entry_key, entry_copy, parse_string, format_library
 from papers.bib import Biblio, append_abc
 from papers.extract import parse_doi_from_pdf_metadata, parse_dois, pdfhead, pdftail, title_in_text
-from papers.files import FilesPolicy, realpath, is_inside
+from papers.files import ATTACHMENT_SEP, FilesPolicy, realpath, is_inside
 from papers.install import resolve_install, apply_install, DefaultAsker
 from papers.library import get_biblio
 from papers.merge import Merge, apply_entry
@@ -896,8 +896,10 @@ class Exchange:
         not link to already:
 
         - the pool file of the same file name as the link;
-        - otherwise, if the entry has one broken link and the pool entry
-          one file, that file;
+        - otherwise, the pool file named `<name>--<link name>` (the pool
+          renamed the file as an attachment, labelled with its former name),
+          if only one is;
+        - then, if one broken link and one pool file are left, that file;
         - otherwise, the first link into the files directory of the pool
           (the pool renamed its files) gets the pool entry's files left,
           and the other links into it are dropped ([]).
@@ -908,19 +910,24 @@ class Exchange:
         pe, _ = self.pool_entry(e, pool)
         if pe is None:
             return {}
-        pool_files = pool.biblio.get_files(pe)
         linked = {realpath(f) for f in self.biblio.get_files(e) if os.path.exists(f)}
-        left = [f for f in pool_files if os.path.exists(f) and realpath(f) not in linked]
+        left = [f for f in pool.biblio.get_files(pe) if os.path.exists(f) and realpath(f) not in linked]
         found = {}
         for link in broken:
             same = next((f for f in left if os.path.basename(f) == os.path.basename(link)), None)
             if same is not None:
                 found[link] = [same]
                 left.remove(same)
+        for link in [link for link in broken if link not in found]:
+            label = ATTACHMENT_SEP + os.path.basename(link)
+            labelled = [f for f in left if os.path.basename(f).endswith(label)]
+            if len(labelled) == 1:
+                found[link] = labelled
+                left.remove(labelled[0])
         rest = [link for link in broken if link not in found]
         if not rest or not left:
             return found
-        if len(broken) == 1 and len(pool_files) == 1:
+        if len(rest) == 1 and len(left) == 1:
             found[rest[0]] = left
         elif pool.filesdir:
             inside = [link for link in rest if is_inside(link, pool.filesdir)]

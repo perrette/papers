@@ -9,7 +9,7 @@ from papers import logger
 from papers.backup import init_backup
 from papers.config import (CONFIG_FILE_LOCAL, Config, LIBRARY_CONFIG_FILES, LIBRARY_ONLY, NO_POOL,
                            SETTINGS, format_value, parse_value, pool_setting, short_home)
-from papers.files import delete_files, is_inside
+from papers.files import broken_links, delete_files, is_inside
 from papers.install import DefaultAsker, InputAsker, RESET_WORDS, _ask_path, apply_install, resolve_install
 from papers.library import convert_file_links, find_config, get_biblio, snapshot_backup
 from papers.migrate import migrate_folders, migrate_v2_global
@@ -396,6 +396,7 @@ def _set_pool_or_local(o, config, name):
     biblio = get_biblio(config)
     biblio_init = copy.deepcopy(biblio)
     exchange = Exchange(config, biblio, old_pools)
+    hint = None
     if to_local:
         if config.filesdir is None:
             raise PapersExit('the library has no files directory: set it with `papers config filesdir DIR` first')
@@ -420,8 +421,15 @@ def _set_pool_or_local(o, config, name):
             return
         if papers.config.DRYRUN:
             return done()
+        # the broken links are not moved: file check --fix relinks them
+        broken = sum(len(broken_links(biblio, e)) for e in biblio.entries)
+        hint = (f'{broken} link{"s were" if broken > 1 else " was"} already broken: '
+                '`papers file check --fix` relinks those that the pool has') if broken else None
         if not plan:
-            return done()
+            done()
+            if hint:
+                print(hint)
+            return
         pool = new_pools.target()
         delete = exchange.to_pool(pool, plan, copy_dirs=old_dirs)
         exchange.pools = new_pools
@@ -429,6 +437,8 @@ def _set_pool_or_local(o, config, name):
     _print_biblio_diff(biblio_init, biblio, biblio.entries)
     done()
     delete_files(delete)
+    if hint:
+        print(hint)
 
 
 def machine_configcmd(parser, o, machine, name):

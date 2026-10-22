@@ -107,15 +107,51 @@ class TestPoolLocal(RelinkTest):
         self.assertEqual(self.files('smith2000a'), [self.pool_pdf])
 
     def test_same_name(self):
-        # two broken links: the one of the same name as a pool file is relinked to it
+        # three broken links: the one of the same name as a pool file is relinked to it, the
+        # others (two links, one pool file left) are not paired
         si = self.write('pool', 'files', 'smith-si.pdf')
         self.bib(entry('smith2000', 'files/smith.pdf', 'files/smith-si.pdf', doi='10.1000/smith'), where='pool')
-        other = self.path('gone', 'other.pdf')
-        self.bib(entry('smith2000a', self.path('gone', 'smith-si.pdf'), other, doi='10.1000/smith'))
+        others = [self.path('gone', 'other.pdf'), self.path('gone', 'more.pdf')]
+        self.bib(entry('smith2000a', self.path('gone', 'smith-si.pdf'), *others, doi='10.1000/smith'))
         self.lib('config files link')
         out = self.out('file check --fix')
-        self.assertEqual(self.files('smith2000a'), [si, other])
-        self.assertIn('1 link relinked, 1 still broken (papers file detach --broken removes them)', out)
+        self.assertEqual(self.files('smith2000a'), [si] + others)
+        self.assertIn('1 link relinked, 2 still broken (papers file detach --broken removes them)', out)
+
+    def test_label_then_pair(self):
+        # the pool renamed both files: the supplement by its label, then the one link and the one file left
+        main = self.write('pool', 'files', 'smith_2000.pdf')
+        si = self.write('pool', 'files', 'smith_2000--supp.pdf')
+        self.bib(entry('smith2000', 'files/smith_2000.pdf', 'files/smith_2000--supp.pdf', doi='10.1000/smith'),
+                 where='pool')
+        self.bib(entry('smith2000a', self.path('gone', 'paper.pdf'), self.path('gone', 'supp.pdf'),
+                       doi='10.1000/smith'))
+        self.lib('config files link')
+        out = self.out('file check --fix')
+        self.assertEqual(self.files('smith2000a'), [main, si])
+        self.assertIn('2 links relinked, 0 still broken', out)
+
+    def test_pairing_ambiguous(self):
+        # two links and two pool files, no name in common: nothing is guessed
+        self.write('pool', 'files', 'x.pdf')
+        self.write('pool', 'files', 'y.pdf')
+        self.bib(entry('smith2000', 'files/x.pdf', 'files/y.pdf', doi='10.1000/smith'), where='pool')
+        links = [self.path('gone', 'a.pdf'), self.path('gone', 'b.pdf')]
+        self.bib(entry('smith2000a', *links, doi='10.1000/smith'))
+        out = self.out('file check --fix')
+        self.assertEqual(self.files('smith2000a'), links)
+        self.assertIn('0 links relinked, 2 still broken', out)
+
+    def test_label_ambiguous(self):
+        # two pool files with the label of the link: neither is taken by the label; and
+        # with two links and two files left, nothing is paired
+        self.write('pool', 'files', 'x--supp.pdf')
+        self.write('pool', 'files', 'y--supp.pdf')
+        self.bib(entry('smith2000', 'files/x--supp.pdf', 'files/y--supp.pdf', doi='10.1000/smith'), where='pool')
+        links = [self.path('gone', 'supp.pdf'), self.path('gone', 'b.pdf')]
+        self.bib(entry('smith2000a', *links, doi='10.1000/smith'))
+        self.out('file check --fix')
+        self.assertEqual(self.files('smith2000a'), links)
 
     def test_no_guess(self):
         # two broken links of other names, one pool file: nothing is relinked
@@ -269,7 +305,11 @@ class TestSharedFilesDir(ConfigTest):
         self.run_in('lib1', 'config local false -y')
         self.assertEqual(sorted(os.listdir(self.path('shared'))), ['c.pdf'])  # lib1 moved its files to the pool
         self.run_in('lib2', 'config pool ../P')
-        self.run_in('lib2', 'config local false -y')
+        out = io.StringIO()
+        with redirect_stdout(out):
+            self.run_in('lib2', 'config local false -y')
+        self.assertIn('2 links were already broken: `papers file check --fix` relinks those that the pool has',
+                      out.getvalue())
         out = io.StringIO()
         with redirect_stdout(out):
             self.run_in('lib2', 'file check --fix')
@@ -295,8 +335,8 @@ class TestSharedFilesDir(ConfigTest):
         self.assertEqual(out.getvalue().count('no issue found'), 2)
 
     def test_entry_with_two_files(self):
-        # the pool renamed both files of the entry: neither has the name of a link, and the
-        # pool entry has two files: the links are not relinked (`papers add -R` is the fallback)
+        # the pool renamed both files of the entry (template name, and name--label for the
+        # supplement): the supplement is found by its label, the PDF as the one file left
         Path(self.path('shared', 'b-si.pdf')).write_text('b-si')
         for name in ('lib1', 'lib2'):
             bibtex = Path(self.path(name, 'papers.bib'))
@@ -308,4 +348,15 @@ class TestSharedFilesDir(ConfigTest):
         out = io.StringIO()
         with redirect_stdout(out):
             self.run_in('lib2', 'file check --fix')
-        self.assertIn('1 link relinked, 2 still broken', out.getvalue())
+        self.assertIn('3 links relinked, 0 still broken', out.getvalue())
+        biblio = Biblio.load(self.path('lib2', 'papers.bib'), '')
+        beta = next(e for e in biblio.entries if e.key == 'beta2000')
+        self.assertEqual([Path(f).read_text() for f in biblio.get_files(beta)], ['b', 'b-si'])
+        self.assertEqual(len(os.listdir(self.path('P', 'files'))), 5)
+
+    def test_no_broken_link_no_hint(self):
+        out = io.StringIO()
+        with redirect_stdout(out):
+            self.run_in('lib1', 'config pool ../P')
+            self.run_in('lib1', 'config local false -y')
+        self.assertNotIn('already broken', out.getvalue())

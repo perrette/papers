@@ -161,10 +161,14 @@ library that shared the files directory moved them into a pool, a folder
 was renamed, a backup was restored elsewhere...), `papers file check --fix`
 looks for each missing file, without parsing any PDF:
 
-1. in the pool of the library: the pool entry of the same paper (same DOI,
-   arXiv identifier, ISBN, or same title and authors) has a file with the
-   same file name as the broken link; or, if the entry has one broken link
-   and the pool entry one file, that file;
+1. in the pool of the library, among the files of the pool entry of the
+   same paper (same DOI, arXiv identifier, ISBN, or same title and
+   authors): the file with the same file name as the broken link; else
+   the one file named `<name>--<file name of the link>` (the pool renamed
+   it as an attachment, see
+   [Renaming files and keys](renaming.md#entries-with-several-files));
+   then, if one broken link of the entry and one file of the pool entry
+   are left, that file. When more are left, nothing is guessed;
 2. in the folders given with `--search DIR` (searched recursively; the
    option can be repeated): a file with the same file name as the broken
    link, else a file named as the library's name template names the entry
@@ -178,6 +182,10 @@ goes to the pool (as the `files` setting says: moved, copied or linked); in
 a local library, the file goes to the files directory as the `files`
 setting says, and a file of the pool is copied (a hard link when possible),
 never moved.
+
+`papers config local false` and `papers config pool` move the files that
+exist into the pool, and say how many links were already broken:
+`papers file check --fix` relinks them afterwards.
 
 Without `--fix`, `papers file check` reports the files it would relink, and
 where they come from. `--fix --dry-run` shows the links that `--fix` would
