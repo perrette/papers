@@ -253,8 +253,7 @@ def read_entry_dir(direc, update_files=True, relative_to=None):
         for root, direcs, files in os.walk(direc):
             break # do not look further in subdirectories, cause any rename would flatten the tree
         files = [os.path.join(direc, file) for file in files if not file.startswith('.')]
-
-    entry['file'] = format_file(files, relative_to=relative_to)
+        entry['file'] = format_file(files, relative_to=relative_to)
     return entry
 
 
@@ -729,9 +728,16 @@ def check_entry_files(biblio, e, metadata=False, fix=False):
     seen = {}
     hashes = {}
     done = 'fixed' if fix else 'fix with --fix'
-    for file in files:
+    # the links as written: get_files makes a link without its leading /
+    # (saved by Mendeley) relative to the bibtex directory
+    written = parse_file(get_entry_val(e, 'file', ''))
+    for file, link in zip(files, written):
         if not os.path.exists(file):
             repaired = fix_mendeley_path(file, key=key)
+            if not os.path.exists(repaired) and not os.path.isabs(link):
+                candidate = fix_mendeley_path(link, key=key)
+                if os.path.isabs(candidate):
+                    repaired = candidate
             if repaired != file and os.path.exists(repaired):
                 issues.append(f'{key}: path can be repaired: {file} -> {repaired} ({done})')
                 if fix:
