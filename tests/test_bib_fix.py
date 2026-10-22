@@ -6,6 +6,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
+import papers.utils
 from papers.bib import Biblio, DuplicateKeyError, entry_diff
 from papers.duplicate import Distinct
 from papers.entries import parse_string
@@ -181,7 +182,12 @@ class TestFixEntry(unittest.TestCase):
         diff = entry_diff(old, new, color=False)
         self.assertIn('- ', diff)
         self.assertIn('Two', diff)
-        self.assertIn('\033[', entry_diff(old, new))
+        self.assertNotIn('\033[', entry_diff(old, new))  # the tests have no terminal: no colours
+        papers.utils.use_color(True)
+        try:
+            self.assertIn('\033[', entry_diff(old, new))
+        finally:
+            papers.utils.use_color(False)
 
 
 class TestCheckDuplicates(unittest.TestCase):

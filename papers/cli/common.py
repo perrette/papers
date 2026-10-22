@@ -6,6 +6,7 @@ import re
 import sys
 
 import papers.config
+import papers.utils
 from papers import logger
 from papers.config import SETTINGS, short_home
 from papers.encoding import format_entry
@@ -181,7 +182,7 @@ def on_duplicate_mode(o, cmd):
 
 
 def duplicate_resolver(o, cmd):
-    return Resolver(on_duplicate_mode(o, cmd), color=sys.stdout.isatty())
+    return Resolver(on_duplicate_mode(o, cmd), color=papers.utils.COLOR)
 
 
 def _entries_or_all(biblio, args):
@@ -230,7 +231,7 @@ def library_pools(config):
 def push_to_pool(exchange, entries):
     """save the library; in a non-local library, first push the entries to
     the pool, which holds their files (as `add` does)"""
-    resolver = Resolver('ask' if stdin_is_terminal() else 'error', color=sys.stdout.isatty())
+    resolver = Resolver('ask' if stdin_is_terminal() else 'error', color=papers.utils.COLOR)
     pushed = exchange.push_added(entries, [], resolver) if not exchange.config.local else []
     if pushed:
         print('\n'.join(report_lines(pushed, f'push to {pushed[0][1].label}')))

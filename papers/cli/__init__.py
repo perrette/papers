@@ -41,6 +41,7 @@ def _pop_directory_options(argv):
 
 def main(args=None):
     papers.config.DRYRUN = False  # reset in case main() if called directly
+    papers.utils.use_color(papers.utils.color_enabled())
     if args is not None:
         # used in the commit message
         sys.argv = sys.argv[:1] + args
@@ -97,6 +98,7 @@ def _main(argv):
         return
 
     handle_logging(o)
+    papers.utils.use_color(papers.utils.color_enabled(getattr(o, 'color', 'auto')))
 
     if os.path.exists(CONFIG_FILE) and o.cmd != 'migrate' and not (o.cmd == 'install' and o.local is False):
         logger.warning(f"found the global configuration of papers v2 ({CONFIG_FILE}): it still applies "

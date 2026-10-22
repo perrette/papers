@@ -13,10 +13,24 @@ from papers.utils import (
     hash_bytestr_iter,
     ansi_link,
     bcolors,
+    color_enabled,
+    use_color,
 )
+import papers.utils
 
 
-class TestAnsiLink(unittest.TestCase):
+class ColorTest(unittest.TestCase):
+    "the colours of the output on (the tests run without terminal: off)"
+
+    def setUp(self):
+        self._color = papers.utils.COLOR
+        use_color(True)
+
+    def tearDown(self):
+        use_color(self._color)
+
+
+class TestAnsiLink(ColorTest):
 
     def test_ansi_link_with_label(self):
         result = ansi_link("https://example.com", "click here")
@@ -28,7 +42,12 @@ class TestAnsiLink(unittest.TestCase):
         self.assertIn("example.com", result)
 
 
-class TestStripColors(unittest.TestCase):
+    def test_no_link_without_colors(self):
+        use_color(False)
+        self.assertEqual(ansi_link("https://example.com", "click here"), "click here")
+
+
+class TestStripColors(ColorTest):
 
     def test_strip_okgreen(self):
         s = f"{bcolors.OKGREEN}green{bcolors.ENDC}"
@@ -49,12 +68,51 @@ class TestStripAnsiLink(unittest.TestCase):
         self.assertNotIn("example.com", result)
 
 
-class TestStripAll(unittest.TestCase):
+class TestStripAll(ColorTest):
 
     def test_strips_both_colors_and_links(self):
         s = f"{bcolors.OKBLUE}\033]8;;url\033\\link\033]8;;\033\\{bcolors.ENDC}"
         result = strip_all(s)
         self.assertEqual(result, "link")
+
+
+class FakeTerminal:
+    def isatty(self):
+        return True
+
+
+class TestColorEnabled(unittest.TestCase):
+
+    def setUp(self):
+        self._no_color = os.environ.pop('NO_COLOR', None)
+
+    def tearDown(self):
+        os.environ.pop('NO_COLOR', None)
+        if self._no_color is not None:
+            os.environ['NO_COLOR'] = self._no_color
+
+    def test_auto(self):
+        self.assertTrue(color_enabled('auto', FakeTerminal()))
+        self.assertFalse(color_enabled('auto', open(os.devnull, 'w')))
+        os.environ['NO_COLOR'] = '1'
+        self.assertFalse(color_enabled('auto', FakeTerminal()))
+        os.environ['NO_COLOR'] = ''  # empty: not set (https://no-color.org)
+        self.assertTrue(color_enabled('auto', FakeTerminal()))
+
+    def test_always_never(self):
+        os.environ['NO_COLOR'] = '1'
+        self.assertTrue(color_enabled('always', open(os.devnull, 'w')))
+        self.assertFalse(color_enabled('never', FakeTerminal()))
+
+    def test_use_color(self):
+        color = papers.utils.COLOR
+        try:
+            use_color(False)
+            self.assertEqual(bcolors.OKGREEN + 'x' + bcolors.ENDC, 'x')
+            use_color(True)
+            self.assertEqual(bcolors.OKGREEN, '\033[92m')
+        finally:
+            use_color(color)
 
 
 class TestSearchConfig(unittest.TestCase):

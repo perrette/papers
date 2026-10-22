@@ -1,7 +1,10 @@
 import os
+import subprocess as sp
+import sys
 import unittest
 from unittest.mock import patch
 from urllib.parse import quote
+import papers
 from tests.common import InitTest, BaseTest, BibTest, tempfile, paperscmd
 from papers.cli import VIEWER_PASSTHROUGH_ENV
 from papers.utils import PapersExit, find_masked_viewer, file_uri_to_path
@@ -40,6 +43,33 @@ class FormattingTest(ListTest):
 
         out = self.papers('list --field month doi', sp_cmd='check_output')
         self.assertEqual(strip_all(out), "Perrette_2011: feb 10.5194/bg-8-515-2011")
+
+    def test_color(self):
+        line = "Perrette_2011: Near-ubiquity of ice-edge blooms in the Arctic (doi:10.5194/bg-8-515-2011, files:2, kiwi | ocean)"
+        # the standard output of the tests is not a terminal: no colours, no hyperlinks
+        self.assertEqual(self.papers('list -l', sp_cmd='check_output'), line)
+        self.assertEqual(self.papers('list -l --color never', sp_cmd='check_output'), line)
+        out = self.papers('list -l --color always', sp_cmd='check_output')
+        self.assertIn('\033[', out)
+        self.assertIn('\033]8;;https://doi.org/10.5194/bg-8-515-2011', out)
+        self.assertEqual(strip_all(out), line)
+        self.assertNotIn('\033', self.papers('status', sp_cmd='check_output'))
+
+    @unittest.skipUnless(hasattr(os, 'openpty'), 'needs a pseudo-terminal')
+    def test_color_in_terminal(self):
+        def run(**env):
+            master, slave = os.openpty()
+            environ = {k: v for k, v in os.environ.items() if k != 'NO_COLOR'}
+            environ['PYTHONPATH'] = os.path.dirname(os.path.dirname(papers.__file__))
+            sp.run([sys.executable, '-m', 'papers', 'list', '-l'], cwd=self.temp_dir.name, stdout=slave,
+                   env={**environ, **env}, check=True)
+            os.close(slave)
+            out = os.read(master, 100000).decode()
+            os.close(master)
+            return out
+        self.assertIn('\033[', run())
+        self.assertNotIn('\033', run(NO_COLOR='1'))
+        self.assertIn('\033', run(NO_COLOR=''))
 
     def test_format_option(self):
         line = self.papers('list -l', sp_cmd='check_output')

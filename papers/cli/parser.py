@@ -119,6 +119,9 @@ def get_parser(config=None):
     egrp.add_argument('--info', action='store_const', dest='logging_level', const=logging.INFO)
     egrp.add_argument('--warn', action='store_const', dest='logging_level', const=logging.WARN)
     egrp.add_argument('--error', action='store_const', dest='logging_level', const=logging.ERROR)
+    loggingp.add_argument('--color', choices=['auto', 'always', 'never'], default='auto',
+        help='colours and hyperlinks in the output: auto (default) when the output is a terminal and the '
+             'NO_COLOR environment variable is not set')
 
     cfg = argparse.ArgumentParser(add_help=False, parents=[loggingp])
     grp = cfg.add_argument_group('config')
