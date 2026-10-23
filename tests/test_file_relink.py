@@ -265,6 +265,7 @@ class TestSharedFilesDir(ConfigTest):
             self.papers(f'init {name} --no-git', cwd=self.dir)
             self.papers('config filesdir ../shared', cwd=self.path(name))
             self.papers('config files move', cwd=self.path(name))
+        self.papers('init P --no-git', cwd=self.dir)  # the library that lib1 moves to
         os.makedirs(self.path('shared'))
         for name in ('a', 'b', 'c', 'd'):
             Path(self.path('shared', f'{name}.pdf')).write_text(name)
@@ -282,7 +283,7 @@ class TestSharedFilesDir(ConfigTest):
         return self.papers(cmd, cwd=self.path(name))
 
     def test_relink(self):
-        self.run_in('lib1', 'push --pool ../P --all')  # creates P
+        self.run_in('lib1', 'push --pool ../P --all')
         self.run_in('lib1', 'config pool ../P -y')
         # lib1 linked the pool's copies, and deleted its own
         self.assertEqual(sorted(os.listdir(self.path('shared'))), ['c.pdf'])

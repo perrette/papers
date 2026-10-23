@@ -26,15 +26,13 @@ def _exchange(config, o):
     return biblio, exchange
 
 
-def _source(exchange, o, create=False):
-    """the pool of the command: --pool PATH, else the library's (create:
-    created if it does not exist yet)"""
-    if getattr(o, 'pool', None):
-        return exchange.pools.get(o.pool, create=create)
-    if create:
-        return exchange.pools.target()
+def _source(exchange, o):
+    """the pool of the command: --pool PATH, else the library's; an error
+    if it is not a library"""
     try:
-        return exchange.pools.resolve(exchange.pools.path())
+        if getattr(o, 'pool', None):
+            return exchange.pools.get(o.pool)
+        return exchange.pools.target()
     except PoolError as error:
         raise PapersExit(f'{error} (nothing was changed)')
 
@@ -119,10 +117,10 @@ def _push_entries(exchange, o, pool):
 
 def _push(o, exchange, resolver):
     """the push of `push` and `sync`: (report, pool). Without KEY or --all,
-    only the entries shared with the pool are pushed: nothing is created or
-    written when there are none."""
+    only the entries shared with the pool are pushed: nothing is written
+    when there are none."""
     nothing_shared = _nothing_shared(o)
-    pool = _source(exchange, o, create=not nothing_shared)
+    pool = _source(exchange, o)
     entries = _push_entries(exchange, o, pool)
     if not entries and nothing_shared:
         return [], pool

@@ -166,15 +166,28 @@ def check_readable(pool):
                          + f'. Fix {short_home(pool.config.bibtex)} before writing to the pool (nothing was changed)')
 
 
+def not_a_library(what, path):
+    """the error for a pool, or a library given on the command line, that is
+    not a library: `papers init PATH` creates it (a command given a pool
+    never creates it). A missing parent directory may be a disk not mounted."""
+    shown = short_home(path)
+    parent = os.path.dirname(os.path.abspath(path))
+    if os.path.exists(path):
+        reason = f'{shown} is not a library (no {CONFIG_FILE_LOCAL})'
+    elif not os.path.isdir(parent):
+        reason = f'{shown}: {short_home(parent)} does not exist (disk not mounted?)'
+    else:
+        reason = f'{shown} does not exist'
+    return f'{what} {reason}: create it first with `papers init {shown}`'
+
+
 def library_without_pool(path, machine, what):
     """the configuration of the library in directory `path`, which must
     exist and have no pool: the pool of a shallow library, or the default
     library (`what` names it in the errors)"""
     configfile = library_config_file(path)
     if configfile is None:
-        reason = 'does not exist' if not os.path.exists(path) else f'is not a library (no {CONFIG_FILE_LOCAL})'
-        raise PoolError(f'{what} {short_home(path)} {reason}: create it first with `papers init '
-                        f'{short_home(path)}` (nothing was changed)')
+        raise PoolError(not_a_library(what, path) + ' (nothing was changed)')
     config = Config.load(configfile, machine=machine)
     if config.has_pool():
         raise PoolError(f'{what} {short_home(path)} has a pool itself ({config.pool_label()}): '
@@ -324,10 +337,9 @@ class Pools:
         rel = os.path.relpath(path, self.libdir)
         return rel if rel.startswith('.') else os.path.join('.', rel)
 
-    def resolve(self, path, create=False):
-        """the Pool of the library in directory `path`. create: create the
-        library if it does not exist (its parent directory must exist, e.g.
-        a mounted disk)."""
+    def resolve(self, path):
+        """the Pool of the library in directory `path`, which must be a
+        library (see not_a_library)"""
         path = os.path.abspath(path)
         key = realpath(path)
         if key in self._cache:
@@ -335,69 +347,46 @@ class Pools:
         if self._is_self(path):
             raise PoolError(f'pool {short_home(path)}: this is the library itself')
         configfile = library_config_file(path)
-        config = None
         if configfile is None:
             if os.path.exists(path) and not os.path.isdir(path):
                 raise PoolError(f'pool {short_home(path)}: not a directory')
-            if create:
-                config = self._create(path)
-            elif not os.path.exists(path):
-                raise PoolError(f'pool {short_home(path)} does not exist')
-            else:
-                raise PoolError(f'pool {short_home(path)} is not a library (no {CONFIG_FILE_LOCAL}): '
-                                f'create it with `papers init {short_home(path)}`')
-        if config is None:
-            config = Config.load(configfile, machine=self.config.machine)
+            raise PoolError(not_a_library('pool', path))
+        config = Config.load(configfile, machine=self.config.machine)
         pool_ = Pool(self._id(path), path, config)
         self._cache[key] = pool_
         return pool_
-
-    def _create(self, path):
-        """create the library of a pool in `path` (self-contained): its
-        parent directory must exist (a disk that is not mounted is not
-        created)"""
-        parent = os.path.dirname(path)
-        if not os.path.isdir(parent):
-            raise PoolError(f'pool {short_home(path)}: {short_home(parent)} does not exist (disk not mounted?)')
-        try:
-            return create_library(path, self.config.machine)
-        except OSError as error:
-            raise PoolError(f'pool {short_home(path)}: could not be created ({error})')
 
     def path(self):
         "the path of the pool of the library, or None (pool none, or the library is its own pool)"
         path = self.config.pool_path()
         return None if path is None or self._is_self(path) else path
 
-    def pool(self, create=False, quiet=False):
+    def pool(self, quiet=False):
         """the pool of the library, or None (pool none, or the library is its
         own pool). A pool that cannot be read is a warning (none with
-        quiet), and None; with create, an error (a pool that does not exist
-        is created if its parent directory exists)."""
+        quiet), and None."""
         path = self.path()
         if path is None:
             return None
         try:
-            return self.resolve(path, create=create)
+            return self.resolve(path)
         except PoolError as error:
-            if create:
-                raise
             if not quiet:
                 logger.warning(str(error))
             return None
 
     def target(self):
-        """the pool that push and the shallow libraries write to, created
-        if it does not exist yet"""
-        pool = self.pool(create=True)
-        if pool is None:
+        """the pool that push and the shallow libraries write to: an error
+        if it is not a library"""
+        path = self.path()
+        if path is None:
             raise PoolError(NO_POOL_MESSAGE)
-        return pool
+        return self.resolve(path)
 
-    def get(self, path, create=False):
+    def get(self, path):
         """a library given on the command line (--pool PATH): a path relative
         to the current directory, of a library without pool"""
-        pool_ = self.resolve(os.path.abspath(os.path.expanduser(path)), create=create)
+        pool_ = self.resolve(os.path.abspath(os.path.expanduser(path)))
         check_poolless(pool_)
         return pool_
 
@@ -1345,8 +1334,7 @@ class PoolLookup:
 
 def use_pool_files(config, pools):
     """in a shallow library, `add` places the files in the pool, under
-    the pool's name template: set them in the configuration of the run
-    (the pool is created if it does not exist yet)"""
+    the pool's name template: set them in the configuration of the run"""
     pool = pools.target()
     if pool.filesdir is None:
         raise PoolError(f'{pool.label} has no files directory, and this library is shallow (its files are '

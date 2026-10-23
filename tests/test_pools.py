@@ -169,9 +169,11 @@ class TestResolution(PoolTest):
         pools = Pools(self.config('../missing'))
         with self.assertLogs(papers.logger, level='WARNING'):
             self.assertIsNone(pools.pool())
-        # a pool created when written to, if its parent directory exists
-        self.assertEqual(pools.target().path, self.path('missing'))
-        with self.assertRaisesRegex(PoolError, 'does not exist'):
+        # writing to it is an error too: no pool is created
+        with self.assertRaisesRegex(PoolError, r'does not exist: create it first with `papers init .*missing`'):
+            pools.target()
+        self.assertFalse(os.path.exists(self.path('missing')))
+        with self.assertRaisesRegex(PoolError, r'does not exist \(disk not mounted\?\): create it first'):
             Pools(self.config('../no/such/pool')).target()
 
     def test_no_pool_setting(self):
@@ -215,19 +217,32 @@ class TestResolution(PoolTest):
         self.assertNotIn('journal', self.entry('smith2020climate'))  # not taken from the default library
         self.assertEqual(len(Biblio.load(os.path.join(TEST_DEFAULT_LIBRARY, 'papers.bib'), '').entries), 2)
 
-    @unittest.skipIf(hasattr(os, 'geteuid') and os.geteuid() == 0, 'root can write anywhere')
-    def test_pool_that_cannot_be_created(self):
-        os.makedirs(self.path('readonly'))
-        os.chmod(self.path('readonly'), 0o500)
-        try:
-            with self.assertRaisesRegex(PapersExit, 'readonly/pool: could not be created'):
-                self.lib('push --all --pool ../readonly/pool')
-        finally:
-            os.chmod(self.path('readonly'), 0o700)
+    def test_missing_library_is_never_created(self):
+        # every command that takes a library as pool: an error, nothing created
+        missing = r'\S+/no/such does not exist \(disk not mounted\?\): create it first with `papers init \S+/no/such/pool`'
+        lib_json = self.json('lib')
+        for cmd in ['config pool ../no/such/pool -y', 'add --pool ../no/such/pool --doi 10.1000/abc123',
+                    'pull --pool ../no/such/pool', 'sync --all --pool ../no/such/pool']:
+            with self.assertRaisesRegex(PapersExit, missing):
+                self.lib(cmd)
+        with self.assertRaisesRegex(PapersExit, missing):
+            self.papers('init other --no-git --pool ../no/such/pool')
+        self.assertFalse(os.path.exists(self.path('no')))
+        self.assertFalse(os.path.exists(self.path('other')))
+        self.assertEqual(self.json('lib'), lib_json)
 
     def test_push_to_missing_pool(self):
-        with self.assertRaisesRegex(PapersExit, 'does not exist'):
-            self.lib('push --pool ../no/such/pool')
+        # nothing is created: neither the pool nor its parent folder (a disk not mounted?)
+        for cmd in ['push --pool ../no/such/pool', 'push --all --pool ../no/such/pool']:
+            with self.assertRaisesRegex(PapersExit, r'no/such/pool: \S+/no/such does not exist \(disk not mounted\?\): '
+                                                    r'create it first with `papers init .*no/such/pool`'):
+                self.lib(cmd)
+        self.assertFalse(os.path.exists(self.path('no')))
+        # a missing pool whose parent folder exists is not created either
+        with self.assertRaisesRegex(PapersExit, r'pool .*newpool does not exist: create it first with '
+                                                r'`papers init .*newpool` \(nothing was changed\)'):
+            self.lib('push --all --pool ../newpool')
+        self.assertFalse(os.path.exists(self.path('newpool')))
 
 
 # ORIGIN
@@ -603,11 +618,18 @@ class TestPull(PoolTest):
         self.lib('config pool ../pool -y')  # a shallow library
         os.rename(self.path('pool'), self.path('elsewhere'))
         for cmd in ['pull', 'pull --check', 'sync']:
-            with self.assertRaisesRegex(PapersExit, r'^pool \S+/pool does not exist \(nothing was changed\)$'):
+            with self.assertRaisesRegex(PapersExit, r'^pool \S+/pool does not exist: create it first with '
+                                                    r'`papers init \S+/pool` \(nothing was changed\)$'):
                 self.lib(cmd)
         os.makedirs(self.path('pool'))
         with self.assertRaisesRegex(PapersExit, r'pool \S+/pool is not a library'):
             self.lib('pull')
+        # with --pool PATH too, the pool of a shallow library, where its files go, is not created
+        with self.assertRaisesRegex(PapersExit, r'pool \S+/pool is not a library .*`papers init \S+/pool`'):
+            self.lib('pull --pool ../elsewhere')
+        self.assertEqual(os.listdir(self.path('pool')), [])
+        os.rmdir(self.path('pool'))
+        os.rename(self.path('elsewhere'), self.path('pool'))
         # --pool PATH
         for cmd in ['pull', 'pull --check', 'sync']:
             with self.assertRaisesRegex(PapersExit, r'pool \S+/missing does not exist'):
@@ -778,9 +800,14 @@ class TestPush(PoolTest):
         self.lib('push --all')
         self.assertIn('up to date', self.state())
 
-    def test_pool_created(self):
-        out = self.out('push --all --pool ../new')
-        self.assertIn('create the library', out)
+    def test_pool_not_created(self):
+        # a pool that does not exist is an error: `papers init PATH` creates it
+        with self.assertRaisesRegex(PapersExit, r'pool \S+/new does not exist: create it first with '
+                                                r'`papers init \S+/new` \(nothing was changed\)'):
+            self.lib('push --all --pool ../new')
+        self.assertFalse(os.path.exists(self.path('new')))
+        self.papers('init new --no-git')
+        self.lib('push --all --pool ../new')
         self.assertEqual(json.load(open(self.path('new', '.papersconfig.json')))['pool'], 'none')
         self.assertEqual(len(self.bib('new')[1]), 1)
 
@@ -1296,7 +1323,8 @@ class TestConfigPool(OwnFilesTest):
         with self.assertRaisesRegex(PapersExit, 'pool ../new: .* does not exist'):
             self.lib('config pool ../new -y')
         self.assertFalse(os.path.exists(self.path('new')))
-        self.lib('push --pool ../new --all')  # creates it
+        self.papers('init new --no-git')
+        self.lib('push --pool ../new --all')
         self.lib('config pool ../new -y')
         self.assertEqual(len(self.bib('new')[1]), 2)
         self.assertTrue(self.files('mine2022')[0].startswith(self.path('new', 'files')))

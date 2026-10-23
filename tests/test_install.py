@@ -6,7 +6,7 @@ from pathlib import Path
 import json
 import tempfile
 import subprocess as sp
-from papers.config import Config, MachineConfig
+from papers.config import Config
 from papers.config import CONFIG_FILE, CONFIG_FILE_LOCAL
 
 import papers.config

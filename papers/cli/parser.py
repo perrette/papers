@@ -677,8 +677,8 @@ def get_parser(config=None):
         with an origin copy from it) are pushed; KEY... pushes those entries, and adds them to the pool if
         it does not have them; --all pushes every entry. Entries new to the pool get a key from
         the pool's key template; their files are copied (a hard link when possible) into the
-        pool's files directory, named with the pool's name template. The pool is created if it
-        does not exist yet.''')
+        pool's files directory, named with the pool's name template. The pool must be a library
+        (`papers init PATH` creates one).''')
     pushp.add_argument('entries', nargs='*', metavar='KEY',
         help=_selection_help + ' (default: the entries shared with the pool)')
     pushp.add_argument('--all', action='store_true',

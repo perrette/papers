@@ -106,12 +106,13 @@ make the project shallow:
 
 ```
 cd ~/projects/sealevel
+papers init ~/Documents/papers/sealevel                # a new self-contained library
 papers push --pool ~/Documents/papers/sealevel --all   # copies the entries and their PDFs there
 papers config pool ~/Documents/papers/sealevel         # link to its PDFs, delete the project's copies
 ```
 
-`papers push --pool PATH --all` creates the library PATH if it does not
-exist yet (its parent folder must exist). It copies the PDFs as hard links
+`papers push --pool PATH` requires PATH to be a library already
+(`papers init PATH` creates it). It copies the PDFs as hard links
 when possible, so the PDFs are not read again and nothing is fetched.
 `papers config pool PATH` refuses until PATH has every PDF of the library,
 and then names the entries to push.

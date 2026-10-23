@@ -173,7 +173,8 @@ already: their origin copies are those of the new pool.
 To move the PDFs of a self-contained library into another library:
 
 ```
-papers push --pool PATH --all   # copies the entries and their PDFs to PATH (created if missing)
+papers init PATH                # if PATH is not a library yet
+papers push --pool PATH --all   # copies the entries and their PDFs to PATH
 papers config pool PATH         # links to the copies in PATH, deletes the library's own
 ```
 
@@ -181,8 +182,8 @@ papers config pool PATH         # links to the copies in PATH, deletes the libra
 
 `--pool PATH` on `pull`, `push` and `sync` exchanges with the library at
 `PATH`, from any library: self-contained or shallow. PATH must be a
-library without pool (`push` creates it, as a self-contained library, if
-it does not exist and its parent folder does). The exchange works as with
+library without pool: no command creates it, `papers init PATH` does. The
+exchange works as with
 the pool of a library:
 
 - the origin copies are recorded for PATH, in its own file of
@@ -418,7 +419,8 @@ shallow library, otherwise copied as the `files` setting says (a hard link
 when possible). An identifier found in neither is an error, and nothing is
 changed. `--all` adds every entry of the pool that the library does not
 have (same-paper rule). A pool that does not exist or is not a library is
-an error of `pull`, `pull --check` and `sync`, and nothing is changed.
+an error of `pull`, `pull --check` and `sync`, and nothing is changed
+(`papers init PATH` creates it).
 Without `--pool PATH`, a self-contained library has no pool to pull from:
 `this library has no pool: give one with --pool PATH`.
 
@@ -478,8 +480,10 @@ and `push --all` every entry of the library:
 
 Push does not change the library: after it, the origin copy is the library
 version that was pushed, and the fields that only the pool entry has come
-with the next `pull` (or `papers sync`). The library of `--pool PATH` is
-created if it does not exist yet (its parent folder must exist).
+with the next `pull` (or `papers sync`). A pool that does not exist or is
+not a library is an error of `push`, and nothing is changed: the message
+suggests `papers init PATH` (and, when the parent folder of PATH is missing
+too, that a disk may not be mounted).
 
 ### A pool with entries papers cannot read
 
