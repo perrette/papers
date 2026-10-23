@@ -35,14 +35,13 @@ template or fixing an entry's title:
 ```
 papers file rename                      # all entries
 papers file rename perrette2013         # some entries
-papers list --year 2013 -K | papers file rename -
+papers list --year 2013 --rename       # the listed entries
 ```
 
 Each file is moved into the files directory under its new name;
 `--keep-source` keeps the original too (a hard link when possible). A file
-that belongs to another library is copied, not moved. The deprecated
-`papers filecheck --rename` and `papers list ... --rename` run this
-command.
+that belongs to another library is copied, not moved. `papers list ... --rename`
+and the deprecated `papers filecheck --rename` run this command.
 
 ## Control fields when renaming files
 

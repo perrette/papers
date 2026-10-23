@@ -626,19 +626,29 @@ def get_parser(config=None):
     grp.add_argument('--no-key', action='store_true', help='do not print the keys')
 
     grp = listp.add_argument_group('action on listed results',
-        description='shortcuts of `papers edit`, `papers rm` and `papers tag`; the other commands that act '
-                    'on entries read the keys of `papers list -K` with -, e.g. `papers list smith -K | papers file rename -`')
+        description='run a command on the listed entries, in the same process (questions and the editor work, '
+                    'the library is saved once); one action at a time. The other commands that act on entries '
+                    'read the keys of `papers list -K` with -, e.g. `papers list smith -K | papers check -`')
     grp.add_argument('--delete', action='store_true',
         help='remove the listed entries, as `papers rm` (asks whether to delete their files, in a terminal)')
     grp.add_argument('--delete-files', action='store_true', help='with --delete: also delete their files, as `papers rm --delete-files` (an error in a shallow library)')
     grp.add_argument('--keep-files', action='store_true', help='with --delete: keep their files, without asking')
     grp.add_argument('-e', '--edit', action='store_true', help='edit the listed entries in a text editor, as `papers edit`')
-    grp.add_argument('--fetch', action='store_true', help='deprecated: `papers check --fetch --fetch-all --fix-doi --fix-key --format-name -`')
     grp.add_argument('--add-keywords', '--add-tag', nargs='+', help='add keywords (tags) to the listed entries, as `papers tag --add`')
-    grp.add_argument('--add-files', nargs='+', type=file_uri_to_path, help='deprecated: `papers file attach KEY FILE...`')
-    grp.add_argument('--rename', action='store_true', help='deprecated: `papers file rename -`')
-    grp.add_argument('--copy', action='store_true', help='deprecated: `papers file rename --keep-source -`')
-    grp.add_argument('-o', '--open', action='store_true', help='deprecated: `papers open -`')
+    grp.add_argument('--rename', action='store_true',
+        help='place the files of the listed entries under their template name, as `papers file rename`')
+    grp.add_argument('--keep-source', action='store_true',
+        help='with --rename: keep the files where they are too, as `papers file rename --keep-source`')
+    grp.add_argument('-o', '--open', action='store_true',
+        help='open the files of the listed entries, as `papers open`')
+    grp.add_argument('--attach', nargs='+', type=file_uri_to_path, metavar='FILE',
+        help='attach files to the listed entry, as `papers file attach KEY FILE...` (the files setting '
+             'applies); an error unless the listing gives exactly one entry')
+    grp.add_argument('--fetch', action='store_true', help='deprecated: `papers check --fetch --fetch-all --fix-doi --fix-key --format-name -`')
+    grp.add_argument('--add-files', nargs='+', type=file_uri_to_path, metavar='FILE',
+        help='deprecated: use --attach (--add-files links the files where they are, or moves them with '
+             '--rename, or copies them with --copy)')
+    grp.add_argument('--copy', action='store_true', help='deprecated: use --rename --keep-source')
     _command(listp, listcmd, library=True)
 
     # edit, rm, tag

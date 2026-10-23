@@ -1,5 +1,5 @@
 """The deprecated features of v3 that still work, with a deprecation
-warning: the file actions of list, papers filecheck, the -m/--mode option
+warning: the deprecated actions of list (--copy, --add-files, --fetch), papers filecheck, the -m/--mode option
 of add, the list options replaced by --duplicates --by, and the options and
 commands renamed in v3 (-a of add, -f of list, -f/--force of check and
 backup, --no-prompt/--force of install, restore-backup, doi). To remove with
@@ -30,32 +30,31 @@ class TestListDeprecated(FileTest):
             self.lib(cmd)
         self.assertIn(new, '\n'.join(logs.output))
 
-    def test_rename(self):
-        self.warns('list --key one2000 --rename', 'papers file rename -')
-        self.assertFalse(os.path.exists(self.a))
-        self.assertEqual(len(self.libfiles()), 1)
-
     def test_rename_copy(self):
-        self.warns('list --key one2000 --rename --copy', 'papers file rename --keep-source -')
+        self.warns('list --key one2000 --rename --copy', 'papers list --rename --keep-source')
         self.assertTrue(os.path.exists(self.a))
         self.assertEqual(len(self.libfiles()), 1)
 
     def test_copy(self):
-        self.warns('list --key one2000 --copy', 'papers file rename --keep-source -')
+        "--copy: --rename --keep-source"
+        self.warns('list --key one2000 --copy', 'papers list --rename --keep-source')
+        self.assertTrue(os.path.exists(self.a))
+        self.assertEqual(len(self.libfiles()), 1)
 
     def test_add_files(self):
-        self.warns(f'list --key two2000 --add-files {self.si}', 'papers file attach')
+        "--add-files links the files, as in v2"
+        self.warns(f'list --key two2000 --add-files {self.si}', 'papers list --attach')
         self.assertEqual(self.files('two2000'), [self.si])
 
     def test_add_files_rename(self):
-        self.warns(f'list --key two2000 --add-files {self.si} --rename', 'papers file attach')
+        self.warns(f'list --key two2000 --add-files {self.si} --rename', 'papers list --attach')
         self.assertFalse(os.path.exists(self.si))
         self.assertEqual(len(self.libfiles()), 1)
 
-    def test_open(self):
-        with patch('papers.cli.entry_cmds.view_entry_files') as view:
-            self.warns('list --key one2000 -o', 'papers open -')
-        view.assert_called_once()
+    def test_add_files_copy(self):
+        self.warns(f'list --key two2000 --add-files {self.si} --copy', 'papers list --attach')
+        self.assertTrue(os.path.exists(self.si))
+        self.assertEqual(len(self.libfiles()), 1)
 
     def test_fetch(self):
         with patch('papers.bib.Biblio.fix_entry') as fix:

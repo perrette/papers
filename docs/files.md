@@ -280,7 +280,8 @@ corresponding commands: `--rename` (`-c`) is `papers file rename`
 (`--keep-source`), `--delete-broken` is `papers file detach --broken`,
 `--hash-check` and `--fix-mendeley` are `papers file fix`,
 `--metadata-check` is `papers file check --metadata`, and `--clean-filesdir`
-(`--force`) is `papers file clean` (`--yes`). The file actions of
-`papers list` are deprecated too (see [Listing and searching](listing.md)),
+(`--force`) is `papers file clean` (`--yes`). `papers list --copy`
+and `--add-files` are deprecated too (now `--rename --keep-source` and
+`--attach`, see [Listing and searching](listing.md#actions-on-the-listed-entries)),
 and so is `papers add --attachment` (now `--attach`; `-a FILE` attaches the file
 until v4, with a warning: `-a` is `--author`, see [Adding entries](adding-entries.md#attach-files)).

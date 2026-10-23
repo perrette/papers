@@ -126,28 +126,53 @@ These commands take `-`: `edit`, `rm`, `tag`, `open`, `check`, and the
 
 ## Actions on the listed entries
 
-`papers list` can also act on the entries it lists, as shortcuts of other
-commands:
+`papers list` can run a command on the entries it lists. Each action calls
+the same code as the command it stands for:
 
-- `-e/--edit`: edit them in a text editor, as `papers edit`;
-- `--delete`: remove them, as `papers rm` (in a terminal, papers asks
-  whether to delete their files too; `--delete-files` and `--keep-files`
-  answer without asking, see [Files](files.md#removing-entries-and-their-files));
-- `--add-tag TAG...`: add tags, as `papers tag --add`.
+| action | command |
+|---|---|
+| `-e/--edit` | `papers edit KEY...` |
+| `--delete` (`--delete-files`, `--keep-files`) | `papers rm KEY...` (`--delete-files`, `--keep-files`) |
+| `--add-tag TAG...` | `papers tag --add TAG... KEY...` |
+| `--rename` (`--keep-source`) | `papers file rename KEY...` (`--keep-source`) |
+| `-o/--open` | `papers open KEY...` |
+| `--attach FILE...` | `papers file attach KEY FILE...` |
 
-For instance, the duplicates can be edited by hand with (`papers check
---duplicates` merges them, see [Managing your library](library-management.md#duplicates)):
+`--delete` asks, in a terminal, whether to delete the files of the entries
+too; `--delete-files` and `--keep-files` answer without asking (see
+[Files](files.md#removing-entries-and-their-files)). `--attach` needs
+exactly one listed entry: with none or several, it is an error and nothing
+changes. The files given to `--attach` are moved, copied or linked as the
+`files` setting says.
+
+The action runs in the same process as the listing: papers can ask
+questions and open the editor, and the library is saved once (one backup
+snapshot, undone by one `papers undo`). One action at a time: two actions
+in the same command are an error.
+
+Examples:
 
 ```
 $> papers list --duplicates --edit
+$> papers list smith 2020 --rename
+$> papers list --tag to-read --open
+$> papers list --title "ice-edge blooms" --attach supplement.pdf
+$> papers list --tag draft --delete --keep-files
 ```
 
-The file actions of `papers list` are deprecated, and print a warning that
-shows the new form; they will be removed in v4:
+(`papers check --duplicates` merges duplicates, see [Managing your
+library](library-management.md#duplicates).) The other commands that act on
+entries read the keys of `papers list -K` with `-` (see [Piping](#piping)).
+
+These forms are deprecated, print a warning that shows the new form, and
+will be removed in v4:
 
 | Deprecated | New form |
 |---|---|
-| `papers list ... --rename` (`--copy`) | `papers list ... -K \| papers file rename -` (`--keep-source`) |
-| `papers list ... --add-files FILE...` | `papers file attach KEY FILE...` |
-| `papers list ... -o/--open` | `papers list ... -K \| papers open -` |
+| `papers list ... --copy` | `papers list ... --rename --keep-source` |
+| `papers list ... --add-files FILE...` | `papers list ... --attach FILE...` |
 | `papers list ... --fetch` | `papers list ... -K \| papers check --fetch --fetch-all --fix-doi --fix-key --format-name -` |
+
+`--add-files` keeps its papers 2 behaviour: it links the files where they
+are, or moves them with `--rename`, or copies them with `--copy`.
+`--attach` follows the `files` setting.

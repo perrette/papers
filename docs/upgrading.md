@@ -41,8 +41,9 @@ by other tools. What changes:
     |---|---|
     | `papers install` | `papers init` to create a library, `papers config` to change it |
     | `papers filecheck` | `papers file check`, `papers file fix` and the other `papers file` commands |
-    | `papers list ... --rename` / `--copy` / `--open` / `--fetch` | `papers list ... -K` piped to `papers file rename -`, `papers open -`, `papers check --fetch -` (examples below) |
-    | `papers list KEY --add-files FILE` | `papers file attach KEY FILE` |
+    | `papers list ... --copy` | `papers list ... --rename --keep-source` |
+    | `papers list ... --add-files FILE...` | `papers list ... --attach FILE...` |
+    | `papers list ... --fetch` | `papers check --fetch --fetch-all --fix-doi --fix-key --format-name KEY...`, or `papers list ... -K \| papers check --fetch ... -` |
     | `papers doi` | `papers extract --doi-only` |
     | `papers restore-backup` | `papers restore` |
     | `--attachment` | `--attach` |
@@ -54,22 +55,14 @@ by other tools. What changes:
     library, and `papers config --global default PATH` registers an
     existing one.
 
-- `papers list` keeps its search options and its actions `--edit`,
-  `--delete` and `--add-tag`. The other actions are done by the command
-  that does them elsewhere, which reads the keys listed by `papers list -K`
-  with `-`:
-
-    ```
-    # papers 2                              # papers 3
-    papers list smith 2020 --rename         papers list smith 2020 -K | papers file rename -
-    papers list smith 2020 --copy           papers list smith 2020 -K | papers file rename --keep-source -
-    papers list --tag to-read --open        papers list --tag to-read -K | papers open -
-    papers list --no-file --fetch           papers list --no-file -K | papers check --fetch --fetch-all --fix-doi --fix-key --format-name -y -
-    ```
-
-    A command that reads the keys from a pipe cannot ask questions: answer
-    them with its options, as `-y` above (see
-    [Piping](listing.md#piping)).
+- `papers list` keeps its search options and its actions: `--edit`,
+  `--delete`, `--add-tag`, `--rename` (with `--keep-source`), `--open`,
+  and `--attach` (new). Each runs the command it stands for on the listed
+  entries (see [Actions on the listed entries](listing.md#actions-on-the-listed-entries)).
+  The other commands read the keys listed by `papers list -K` with `-`,
+  e.g. `papers list --no-file -K | papers check --fetch -y -`. A command
+  that reads the keys from a pipe cannot ask questions: answer them with
+  its options, as `-y` here (see [Piping](listing.md#piping)).
 - The output of `papers status`, `papers init` and of the exchanges
   changed: scripts that parse it need updating.
 

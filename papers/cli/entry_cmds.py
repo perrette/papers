@@ -1,4 +1,5 @@
 """papers add, check, list, edit, rm, tag, open"""
+import argparse
 import fnmatch
 import os
 import re
@@ -13,13 +14,13 @@ from papers.encoding import family_names, format_entries, format_entry, format_k
 from papers.formats import dumps, file_format, load_rispy
 from papers.entries import entry_from_dict, get_entry_val, format_file, parse_file
 from papers.extract import isvaliddoi, prefetch_pdf_metadata
-from papers.files import (attach_files, delete_files, describe_file, download_url, files_policy, rename_files,
-                          scan_dir_items)
+from papers.files import delete_files, describe_file, download_url, files_policy, scan_dir_items
 from papers.identifiers import normalize_doi, read_selection, select_entries
 from papers.library import get_biblio, savebib
 from papers.merge import DuplicateError
 from papers.pools import Exchange, PoolLookup, Pools
 from papers.utils import PapersExit, file_uri_to_path, open_with_system
+from papers.cli.file_cmds import attach_entry_files, rename_entries
 from papers.cli.common import (view_entry_files, set_format_config_from_cmd, _print_biblio_diff, files_mode,
                                duplicate_resolver, save_exchange, stdin_is_terminal, edit_entries, edit_selected,
                                print_kept_files, _delete_files_option, library_pools, push_notes, push_changed,
@@ -487,22 +488,33 @@ def listcmd(parser, o, config):
         return False
 
 
-    # file actions moved to other commands (removed in v4)
+    # the deprecated forms (removed in v4): --add-files [--rename|--copy], --copy, --fetch
+    attach, attach_mode = o.attach, argparse.Namespace()
     if o.add_files:
-        logger.warning("`papers list --add-files` is deprecated: use `papers file attach KEY FILE...`"
-                       + (" (--copy or --move)" if o.rename else ""))
-    elif o.rename:
-        logger.warning("`papers list --rename` is deprecated: use `papers list ... -K | papers file rename "
-                       + ("--keep-source " if o.copy else "") + "-`")
-    elif o.copy:
-        logger.warning("`papers list --copy` is deprecated (and has no effect without --rename): "
-                       "use `papers list ... -K | papers file rename --keep-source -`")
-    if o.open:
-        logger.warning("`papers list --open` is deprecated: use `papers list ... -K | papers open -`")
+        mode = '--copy' if o.copy else ('--move' if o.rename else '--link')
+        logger.warning(f"`papers list --add-files` is deprecated: use `papers list --attach` "
+                       f"(`papers file attach KEY FILE... {mode}`)")
+        attach = (attach or []) + o.add_files
+        attach_mode = argparse.Namespace(copy=o.copy, move=o.rename and not o.copy,
+                                         link=not (o.rename or o.copy))
+        rename = keep_source = False
+    else:
+        if o.copy:
+            logger.warning("`papers list --copy` is deprecated: use `papers list --rename --keep-source`")
+        rename, keep_source = o.rename or o.copy, o.keep_source or o.copy
     if o.fetch:
         logger.warning("`papers list --fetch` is deprecated: use `papers list ... -K | "
                        "papers check --fetch --fetch-all --fix-doi --fix-key --format-name -`")
+    if o.keep_source and not rename:
+        parser.error('--keep-source goes with --rename')
+    actions = [name for name, given in [('--delete', o.delete), ('--edit', o.edit), ('--fetch', o.fetch),
+                                        ('--add-tag', o.add_keywords), ('--attach', attach),
+                                        ('--rename', rename), ('--open', o.open)] if given]
+    if len(actions) > 1:
+        parser.error(f"one action at a time: {' and '.join(actions)}")
 
+    # rename, attach: the pools of the library, before it is loaded (see papers.cli.file_cmds.rename_entries)
+    pools = library_pools(config) if rename or attach else None
     biblio = get_biblio(config)
     entries = biblio.db.entries
 
@@ -566,13 +578,10 @@ def listcmd(parser, o, config):
         add_tags(entries, o.add_keywords)
         notes = save_entries(config, biblio)
 
-    elif o.add_files:
+    elif attach:
         if len(entries) != 1:
-            raise PapersExit("list only one entry to use --add-files")
-        e = entries[0]
-        attach_files(biblio, e, o.add_files, config,
-                     ('copy' if o.copy else 'move') if o.rename else 'link', Pools(config).files_dirs())
-        notes = save_entries(config, biblio)
+            raise PapersExit(f"list only one entry to use --attach ({len(entries)} listed): nothing was changed")
+        notes = attach_entry_files(biblio, config, pools, entries[0], attach, attach_mode)
 
     elif o.edit:
         if not edit_selected(biblio, entries):
@@ -585,9 +594,8 @@ def listcmd(parser, o, config):
             biblio.fix_entry(e, fix_doi=True, fix_key=True, fetch_all=True, interactive=True)
         notes = save_entries(config, biblio)
 
-    elif o.rename:
-        rename_files(biblio, entries, config, Pools(config).files_dirs(), keep_source=o.copy)
-        notes = save_entries(config, biblio)
+    elif rename:
+        notes = rename_entries(biblio, config, pools, entries, keep_source=keep_source)
 
     elif o.delete:
         todelete = remove_entries(biblio, entries, config, delete_files=_delete_files_option(parser, o, config))
@@ -595,8 +603,7 @@ def listcmd(parser, o, config):
         delete_files(todelete, dryrun=papers.config.DRYRUN)
 
     elif o.open:
-        for e in entries:
-            view_entry_files(biblio, e)
+        open_entries(biblio, entries)
 
     elif o.field:
         for e in entries:
@@ -638,6 +645,12 @@ def opencmd(parser, o, config):
         except PapersExit as error:
             logger.error(str(error))
             continue
+        open_entries(biblio, [e])
+
+
+def open_entries(biblio, entries):
+    "`papers open` (also `papers list --open`): open the files of the entries with the system viewer"
+    for e in entries:
         if not biblio.get_files(e):
             logger.warning(f'{get_entry_val(e, "ID", "")}: no attached file')
             continue

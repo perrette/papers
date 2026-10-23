@@ -55,13 +55,22 @@ def filecheckcmd(parser, o, config):
     print_push_notes(biblio, save_entries(config, biblio))
 
 
+def rename_entries(biblio, config, pools, entries, keep_source=False):
+    """`papers file rename` (also `papers list --rename`): place the files of
+    the entries under their template name, and save the library. pools: the
+    library_pools of the configuration, made before the library is loaded
+    (in a shallow library, they set the files directory and name template
+    of the run). Return the notes of save_entries."""
+    rename_files(biblio, entries, config, pools.files_dirs(), keep_source=keep_source)
+    return save_entries(config, biblio, Exchange(config, biblio, pools))
+
+
 def file_renamecmd(parser, o, config):
     set_format_config_from_cmd(o, config, 'name')
     pools = library_pools(config)
     biblio = get_biblio(config)
     entries = _entries_or_all(biblio, o.entries)
-    rename_files(biblio, entries, config, pools.files_dirs(), keep_source=o.keep_source)
-    notes = save_entries(config, biblio, Exchange(config, biblio, pools))
+    notes = rename_entries(biblio, config, pools, entries, keep_source=o.keep_source)
     _print_biblio_diff(biblio, entries, notes=notes)
 
 
@@ -116,13 +125,21 @@ def file_mvcmd(parser, o, config):
         raise PapersExit(f"{error}: the links of the files moved before were saved")
 
 
+def attach_entry_files(biblio, config, pools, e, files, o):
+    """`papers file attach` (also `papers list --attach`): attach the files to
+    the entry e, as the files mode options of o (--move, --copy, --link, see
+    files_mode) or else the files setting say, and save the library. pools:
+    as for rename_entries. Return the notes of save_entries."""
+    attach_files(biblio, e, files, config, files_mode(o, config), pools.files_dirs())
+    return save_entries(config, biblio, Exchange(config, biblio, pools))
+
+
 def file_attachcmd(parser, o, config):
     set_format_config_from_cmd(o, config, 'name')
     pools = library_pools(config)
     biblio = get_biblio(config)
     e = _one_entry(biblio, o.key)
-    attach_files(biblio, e, o.files, config, files_mode(o, config), pools.files_dirs())
-    notes = save_entries(config, biblio, Exchange(config, biblio, pools))
+    notes = attach_entry_files(biblio, config, pools, e, o.files, o)
     _print_biblio_diff(biblio, [e], notes=notes)
 
 
