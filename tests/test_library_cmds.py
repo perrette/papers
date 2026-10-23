@@ -62,19 +62,27 @@ class TestConfigCmd(FileTest):
 class TestInitSummary(ConfigTest):
 
     def test_local(self):
+        # --local without --pool: no pool
         out = self.papers('init lib --local --no-git', sp_cmd='check_output')
         self.assertEqual(out.splitlines(), [
             f'created the library {papers.config.short_home(self.path("lib"))}',
             '* bibtex:  papers.bib',
             '* files:   files (the files directory of the library)',
-            f'* pool:    {papers.config.short_home(TEST_GLOBAL_POOL)} (shared entries; the PDFs stay in this library)',
             '* backup:  off',
             '`papers status -v` shows all settings'])
+        self.assertEqual(self.json('lib')['pool'], 'none')
+        self.assertIs(self.json('lib')['local'], True)
 
     def test_local_pool_path(self):
         self.papers('init pool --no-git --pool none')
         out = self.papers('init lib --local --no-git --pool ../pool', sp_cmd='check_output')
         self.assertIn('* pool:    ../pool (shared entries; the PDFs stay in this library)\n', out)
+        self.assertEqual(self.json('lib')['pool'], '../pool')
+        self.assertIs(self.json('lib')['local'], True)
+
+    def test_not_local_keeps_global_pool(self):
+        self.papers('init lib --no-git')
+        self.assertNotIn('pool', self.json('lib'))  # the global pool
 
     def test_local_no_pool(self):
         out = self.papers('init lib --local --no-git --pool none', sp_cmd='check_output')

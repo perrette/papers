@@ -304,18 +304,20 @@ class TestSharedFilesDir(ConfigTest):
 
     def test_relink(self):
         self.run_in('lib1', 'config pool ../P')
+        self.run_in('lib1', 'push --all')
         self.run_in('lib1', 'config local false -y')
-        self.assertEqual(sorted(os.listdir(self.path('shared'))), ['c.pdf'])  # lib1 moved its files to the pool
+        # lib1 linked the pool's copies, and deleted its own
+        self.assertEqual(sorted(os.listdir(self.path('shared'))), ['c.pdf'])
         self.run_in('lib2', 'config pool ../P')
-        out = io.StringIO()
-        with redirect_stdout(out):
-            self.run_in('lib2', 'config local false -y')
-        self.assertIn('2 links were already broken: `papers file check --fix` relinks those that the pool has',
-                      out.getvalue())
         out = io.StringIO()
         with redirect_stdout(out):
             self.run_in('lib2', 'file check --fix')
         self.assertIn('2 links relinked, 0 still broken', out.getvalue())
+        self.run_in('lib2', 'push c2000')  # the others link to the pool's files already
+        out = io.StringIO()
+        with redirect_stdout(out):
+            self.run_in('lib2', 'config local false -y')
+        self.assertNotIn('already broken', out.getvalue())
 
         biblio = Biblio.load(self.path('lib2', 'papers.bib'), '')
         links = [f for e in biblio.entries for f in biblio.get_files(e)]
@@ -344,13 +346,16 @@ class TestSharedFilesDir(ConfigTest):
             bibtex = Path(self.path(name, 'papers.bib'))
             bibtex.write_text(bibtex.read_text().replace(
                 'file = {:../shared/b.pdf:pdf}', 'file = {:../shared/b.pdf:pdf;:../shared/b-si.pdf:pdf}'))
-        for name in ('lib1', 'lib2'):
-            self.run_in(name, 'config pool ../P')
-            self.run_in(name, 'config local false -y')
+        self.run_in('lib1', 'config pool ../P')
+        self.run_in('lib1', 'push --all')
+        self.run_in('lib1', 'config local false -y')
+        self.run_in('lib2', 'config pool ../P')
         out = io.StringIO()
         with redirect_stdout(out):
             self.run_in('lib2', 'file check --fix')
         self.assertIn('3 links relinked, 0 still broken', out.getvalue())
+        self.run_in('lib2', 'push c2000')  # the others link to the pool's files already
+        self.run_in('lib2', 'config local false -y')
         biblio = Biblio.load(self.path('lib2', 'papers.bib'), '')
         beta = next(e for e in biblio.entries if e.key == 'beta2000')
         self.assertEqual([Path(f).read_text() for f in biblio.get_files(beta)], ['b', 'b-si'])
@@ -360,5 +365,6 @@ class TestSharedFilesDir(ConfigTest):
         out = io.StringIO()
         with redirect_stdout(out):
             self.run_in('lib1', 'config pool ../P')
+            self.run_in('lib1', 'push --all')
             self.run_in('lib1', 'config local false -y')
         self.assertNotIn('already broken', out.getvalue())

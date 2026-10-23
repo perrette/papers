@@ -161,7 +161,8 @@ class TestOneTime(OneTimeTest):
 
 
 class TestConfigPoolFiles(OneTimeTest):
-    "config pool moves the files of a library that is not local to the new pool"
+    """config pool of a library that is not local: the new pool must have
+    its PDFs; `push --pool NEW` (one-time) copies them there"""
 
     def setUp(self):
         super().setUp()
@@ -170,11 +171,35 @@ class TestConfigPoolFiles(OneTimeTest):
         self.assertEqual(self.files('Smith_2020'), [self.pool_pdf])
 
     def test_pool_changes(self):
+        with self.assertRaisesRegex(PapersExit, r'\(nothing was changed\): Smith_2020\n'
+                                                r'Copy them to the new pool first: `papers push --pool ../other Smith_2020`'):
+            self.lib('config pool ../other -y')
+        self.assertEqual(self.json('lib')['pool'], '../pool')
+        self.lib('push --pool ../other Smith_2020')
+        # a one-time push: the PDF is copied into the new pool, and no origin record is written for it
+        other_files = os.listdir(self.path('other', 'files'))
+        self.assertEqual(len(other_files), 1)
+        self.assertEqual(os.listdir(self.path('lib', '.papers', 'origin')), [origin_file_name('../pool')])
+        self.assertEqual(self.files('Smith_2020'), [self.pool_pdf])  # the library is not changed
         out = self.out('config pool ../other -y')
         self.assertIn('pool = ../other (in ' + self.path('lib', CONFIG_FILE_LOCAL) + ')', out)
-        files = self.files('Smith_2020')
-        self.assertTrue(files[0].startswith(self.path('other', 'files')))
-        self.assertEqual(len(self.bib('other')[1]), 3)  # the entry added to the new pool
+        self.assertEqual(self.files('Smith_2020'), [self.path('other', 'files', other_files[0])])
+        self.assertEqual(len(self.bib('other')[1]), 3)
+        self.assertTrue(os.path.exists(self.pool_pdf))  # the former pool keeps its file
+
+    def test_push_all(self):
+        self.lib('push --pool ../other --all')
+        self.assertEqual(len(os.listdir(self.path('other', 'files'))), 1)
+        self.lib('config pool ../other -y')
+        self.assertTrue(self.files('Smith_2020')[0].startswith(self.path('other', 'files')))
+
+    def test_no_pdf(self):
+        # entries without PDF: the pool changes, nothing is copied or added
+        self.lib('rm Smith_2020 --keep-files')
+        Path(self.path('lib', 'papers.bib')).write_text(OTHER_BIB.split('@article{Jones')[0])
+        self.lib('config pool ../other -y')
+        self.assertEqual(self.json('lib')['pool'], '../other')
+        self.assertEqual(len(self.bib('other')[1]), 2)
 
     def test_pool_none(self):
         self.lib('config pool none -y')

@@ -890,43 +890,95 @@ class NonLocalTest(PoolTest):
 
 class TestConfigLocal(NonLocalTest):
 
+    def test_local_false_refused(self):
+        # mine2022 links to a PDF that the pool does not have: nothing changes
+        pool_text = Path(self.path('pool', 'papers.bib')).read_text()
+        lib_text = Path(self.path('lib', 'papers.bib')).read_text()
+        with self.assertRaises(PapersExit) as cm:
+            self.lib('config local false -y')
+        message = str(cm.exception)
+        self.assertIn('1 entry links to PDFs that the pool ../pool does not have (nothing was changed): mine2022',
+                      message)
+        self.assertIn('Share them with the pool first: `papers push mine2022`', message)
+        self.assertIn('Then run `papers config local false` again.', message)
+        self.assertNotIn('smith2020climate', message)  # the pool has its PDF
+        self.assertNotIn('--dry-run', message)
+        self.assertIs(self.json('lib')['local'], True)
+        self.assertEqual(Path(self.path('pool', 'papers.bib')).read_text(), pool_text)
+        self.assertEqual(Path(self.path('lib', 'papers.bib')).read_text(), lib_text)
+        self.assertTrue(os.path.exists(self.lib_smith))
+        self.assertTrue(os.path.exists(self.lib_mine))
+        self.assertEqual(sorted(os.listdir(self.path('pool', 'files'))), ['smith.pdf'])
+
     def test_local_false(self):
+        self.lib('push mine2022')
+        pool_text = Path(self.path('pool', 'papers.bib')).read_text()
+        pool_mine = self.files(self.origin().get(self.entry('mine2022')).pool_key, 'pool')
         out = self.out('config local false --dry-run')  # the details: each file
-        self.assertIn('smith2020climate: link to the same file of the pool', out)
-        self.assertIn('mine2022: added to the pool', out)
+        self.assertIn('smith2020climate: files/', out)
+        self.assertIn(f'-> {self.pool_pdf} (deleted)', out)
+        self.assertIs(self.json('lib')['local'], True)
         out = self.out('config local false -y')
         self.assertIs(self.json('lib')['local'], False)
-        self.assertIn('link to the pool\'s copy for 1 file that the pool has already', out)
-        self.assertIn('add 1 entry to the pool', out)
-        self.assertNotIn('mine2022: added to the pool', out)
-        # in the pool: relinked, the library's copy deleted
+        self.assertIn('link to the copies in the pool ../pool for 2 files (same content); '
+                      'the library\'s copies in files (2 files) are deleted', out)
+        # relinked, the library's copies deleted; the pool is not changed
         self.assertEqual(self.files('smith2020climate'), [self.pool_pdf])
+        self.assertEqual(self.files('mine2022'), pool_mine)
         self.assertFalse(os.path.exists(self.lib_smith))
-        self.assertTrue(os.path.exists(self.pool_pdf))
-        # not in the pool: moved there, with the pool's name template, and the entry added
         self.assertFalse(os.path.exists(self.lib_mine))
-        mine = self.files('mine2022')
-        self.assertTrue(mine[0].startswith(self.path('pool', 'files')), mine)
-        key = self.origin().get(self.entry('mine2022')).pool_key
-        pool_biblio, pool = self.bib('pool')
-        self.assertEqual(pool_biblio.get_files(pool[key]), mine)
+        self.assertTrue(os.path.exists(self.pool_pdf))
+        self.assertTrue(os.path.exists(pool_mine[0]))
         self.assertEqual(os.listdir(self.path('lib', 'files')), [])
+        self.assertEqual(Path(self.path('pool', 'papers.bib')).read_text(), pool_text)
         self.assertIn('local:              false', self.out('status'))
 
+    def test_entries_without_pdf_do_not_block(self):
+        self.lib('rm mine2022 --delete-files')
+        Path(self.path('nopdf.bib')).write_text(NEW_BIB.replace('mine2022', 'nopdf2023').replace(
+            ' file = {:mine.pdf:pdf},\n', '').replace('My own paper', 'No PDF'))
+        self.lib('add ../nopdf.bib')
+        self.lib('config local false -y')
+        self.assertIs(self.json('lib')['local'], False)
+        self.assertEqual(self.files('smith2020climate'), [self.pool_pdf])
+        self.assertIn('nopdf2023', self.bib()[1])
+        self.assertEqual(len(self.bib('pool')[1]), 2)  # not pushed
+
+    def test_broken_links_do_not_block(self):
+        self.lib('push mine2022')
+        os.remove(self.lib_mine)
+        out = self.out('config local false -y')
+        self.assertIs(self.json('lib')['local'], False)
+        self.assertIn('1 link was already broken', out)
+        self.assertEqual(self.files('mine2022'), [self.lib_mine])  # unchanged
+
     def test_same_paper_different_content(self):
-        # moved to the pool, and attached to the pool entry
+        # the pool entry has another version of the PDF: refused
         Path(self.lib_smith).unlink()
         Path(self.lib_smith).write_text('another version')
-        self.lib('config local false -y')
-        files = self.files('smith2020climate')
-        self.assertEqual(len(files), 1)
-        self.assertTrue(files[0].startswith(self.path('pool', 'files')))
-        self.assertEqual(Path(files[0]).read_text(), 'another version')
-        self.assertEqual(Path(self.pool_pdf).read_text(), 'pdf of smith')
-        pool_biblio, pool = self.bib('pool')
-        self.assertEqual(pool_biblio.get_files(pool['Smith_2020']), [self.pool_pdf, files[0]])
+        self.lib('push mine2022')
+        with self.assertRaisesRegex(PapersExit, r'\(nothing was changed\): smith2020climate\n'):
+            self.lib('config local false -y')
+        self.assertTrue(os.path.exists(self.lib_smith))
+        self.assertIs(self.json('lib')['local'], True)
+
+    def test_many_entries(self):
+        text = Path(self.path('lib', 'papers.bib')).read_text()
+        for i in range(12):
+            Path(self.path('lib', 'files', f'p{i}.pdf')).write_text(f'paper {i}')
+            text += (f'\n@article{{paper{i:02d},\n author = {{Author{i}, A.}},\n file = {{:files/p{i}.pdf:pdf}},\n'
+                     f' title = {{Paper number {i}}},\n year = {{2000}}\n}}\n')
+        Path(self.path('lib', 'papers.bib')).write_text(text)
+        with self.assertRaises(PapersExit) as cm:
+            self.lib('config local false -y')
+        message = str(cm.exception)
+        self.assertIn('13 entries link to PDFs', message)
+        self.assertIn('mine2022, paper00, paper01, paper02, paper03, paper04, paper05, paper06, paper07, paper08 '
+                      'and 3 more', message)
+        self.assertIn('Share them with the pool first: `papers push --all`', message)
 
     def test_dry_run(self):
+        self.lib('push --all')
         out = self.out('config local false --dry-run')
         self.assertIn('nothing was changed', out)
         self.assertIs(self.json('lib')['local'], True)
@@ -934,12 +986,14 @@ class TestConfigLocal(NonLocalTest):
         self.assertTrue(os.path.exists(self.lib_mine))
 
     def test_no_terminal(self):
+        self.lib('push --all')
         with self.assertRaisesRegex(PapersExit, 'pass -y'):
             self.lib('config local false')
         self.assertIs(self.json('lib')['local'], True)
         self.assertTrue(os.path.exists(self.lib_smith))
 
     def test_prompt(self):
+        self.lib('push --all')
         with patch('papers.cli.library_cmds.stdin_is_terminal', lambda: True), \
                 patch('builtins.input', lambda prompt: 'n'):
             self.lib('config local false')
@@ -952,6 +1006,7 @@ class TestConfigLocal(NonLocalTest):
         self.assertFalse(os.path.exists(self.lib_smith))
 
     def test_local_true(self):
+        self.lib('push --all')
         self.lib('config local false -y')
         out = self.out('config local true -y')
         self.assertIn('copy 2 files of the pool', out)
@@ -1020,10 +1075,43 @@ class TestConfigLocal(NonLocalTest):
         self.assertTrue(config.local)
 
 
+class TestMigrationPath(PoolTest):
+    "a library of its own moves its PDFs to a pool: config pool, push --all, config local false"
+
+    def test_sequence(self):
+        self.papers('init mylib --no-git --local')
+        self.assertEqual(self.json('mylib')['pool'], 'none')
+        run = lambda cmd: self.papers(cmd, cwd=self.path('mylib'))
+        run('config files copy')
+        Path(self.path('new.bib')).write_text(NEW_BIB)
+        Path(self.path('mine.pdf')).write_text('mine')
+        run('add ../new.bib')
+        Path(self.path('smith.bib')).write_text(SMITH_BIB.replace('}\n}', '},\n file = {:smith.pdf:pdf}\n}'))
+        Path(self.path('smith.pdf')).write_text('pdf of smith')
+        with patch('papers.bib.fetch_bibtex_by_doi', no_fetch):
+            run('add ../smith.bib')
+        self.assertEqual(len(os.listdir(self.path('mylib', 'files'))), 2)
+        run('config pool ../pool')
+        run('push --all')  # copies mine.pdf into the pool; the pool has smith's PDF already
+        pool_biblio, pool = self.bib('pool')
+        self.assertEqual(len(pool), 3)
+        run('config local false -y')
+        self.assertIs(self.json('mylib')['local'], False)
+        self.assertEqual(os.listdir(self.path('mylib', 'files')), [])
+        biblio = Biblio.load(self.path('mylib', 'papers.bib'), '')
+        for e in biblio.entries:
+            files = biblio.get_files(e)
+            self.assertEqual(len(files), 1)
+            self.assertTrue(files[0].startswith(self.path('pool', 'files')), files)
+            self.assertTrue(os.path.exists(files[0]))
+        self.assertEqual(len(os.listdir(self.path('pool', 'files'))), 2)
+
+
 class TestConfigPool(NonLocalTest):
 
     def setUp(self):
         super().setUp()
+        self.lib('push --all')
         self.lib('config local false -y')
         self.mine = self.files('mine2022')[0]
         self.papers('init other --no-git --pool none')
@@ -1042,34 +1130,67 @@ class TestConfigPool(NonLocalTest):
             self.lib('config pool none')
         self.assertEqual(self.json('lib')['pool'], '../pool')
 
-    def test_other_pool(self):
-        # the other pool has smith already, with the same file
+    def other_has_smith(self):
+        "the other pool has smith already, with the same file"
         Path(self.path('other', 'files', 'smith-copy.pdf')).write_text('pdf of smith')
         Path(self.path('other', 'papers.bib')).write_text(
             POOL_BIB.split('@article{Brown')[0].replace('files/smith.pdf', 'files/smith-copy.pdf'))
+
+    def test_other_pool_refused(self):
+        self.other_has_smith()
+        other_text = Path(self.path('other', 'papers.bib')).read_text()
+        lib_text = Path(self.path('lib', 'papers.bib')).read_text()
+        with self.assertRaises(PapersExit) as cm:
+            self.lib('config pool ../other -y')
+        message = str(cm.exception)
+        self.assertIn('pool ../other: 1 entry links to PDFs that the pool ../other does not have '
+                      '(nothing was changed): mine2022', message)
+        self.assertIn('`papers push --pool ../other mine2022`', message)
+        self.assertNotIn('pull', message)
+        self.assertEqual(self.json('lib')['pool'], '../pool')
+        self.assertEqual(Path(self.path('other', 'papers.bib')).read_text(), other_text)
+        self.assertEqual(Path(self.path('lib', 'papers.bib')).read_text(), lib_text)
+        self.assertEqual(os.listdir(self.path('other', 'files')), ['smith-copy.pdf'])
+
+    def test_other_pool(self):
+        self.other_has_smith()
+        self.lib('push --pool ../other mine2022')  # one-time push: copies the PDF into the other pool
+        other_mine = [f for f in os.listdir(self.path('other', 'files')) if f != 'smith-copy.pdf']
+        self.assertEqual(len(other_mine), 1)
         out = self.out('config pool ../other --dry-run')
-        self.assertIn('smith2020climate: link to the same file of the pool', out)
-        self.assertIn('mine2022: added to the pool', out)
+        self.assertIn(f'smith2020climate: {self.pool_pdf} -> {self.path("other", "files", "smith-copy.pdf")}', out)
         out = self.out('config pool ../other -y')
-        self.assertIn('add 1 entry to the pool', out)
+        self.assertIn('link to the copies in the pool ../other for 2 files (same content)', out)
+        self.assertNotIn('deleted', out)  # the files of the former pool stay
         self.assertEqual(self.json('lib')['pool'], '../other')
         self.assertIs(self.json('lib')['local'], False)
         self.assertEqual(self.files('smith2020climate'), [self.path('other', 'files', 'smith-copy.pdf')])
-        mine = self.files('mine2022')
-        self.assertTrue(mine[0].startswith(self.path('other', 'files')), mine)
-        # the old pool keeps its files
+        self.assertEqual(self.files('mine2022'), [self.path('other', 'files', other_mine[0])])
+        # the old pool keeps its files, nothing else was copied
         self.assertTrue(os.path.exists(self.pool_pdf))
         self.assertTrue(os.path.exists(self.mine))
-        self.assertTrue(os.path.samefile(mine[0], self.mine))  # a hard link
-        self.assertEqual(self.origin().get(self.entry('mine2022')).pool, '../other')
+        self.assertEqual(len(os.listdir(self.path('other', 'files'))), 2)
+        self.assertEqual(len(self.bib('other')[1]), 2)
+        # no origin record for the new pool: `papers push` shares entries with it
+        self.assertEqual(self.origin().get(self.entry('mine2022')).pool, '../pool')
 
-    def test_new_pool_created(self):
+    def test_new_pool_missing(self):
+        with self.assertRaises(PapersExit) as cm:
+            self.lib('config pool ../new -y')
+        message = str(cm.exception)
+        self.assertIn('2 entries link to PDFs that the pool ../new does not have', message)
+        self.assertIn('`papers push --pool ../new mine2022 smith2020climate`', message)
+        self.assertFalse(os.path.exists(self.path('new')))
+        self.lib('push --pool ../new --all')  # creates it
         self.lib('config pool ../new -y')
-        self.assertTrue(os.path.exists(self.path('new', '.papersconfig.json')))
         self.assertEqual(len(self.bib('new')[1]), 2)
         self.assertTrue(self.files('mine2022')[0].startswith(self.path('new', 'files')))
 
     def test_unset_pool(self):
+        with self.assertRaisesRegex(PapersExit, 'does not have'):
+            self.lib('config --unset pool -y')
+        self.assertEqual(self.json('lib')['pool'], '../pool')
+        self.lib(f'push --pool {TEST_GLOBAL_POOL} --all')
         self.lib('config --unset pool -y')
         self.assertNotIn('pool', self.json('lib'))
         self.assertTrue(self.files('mine2022')[0].startswith(os.path.join(TEST_GLOBAL_POOL, 'files')))
@@ -1097,7 +1218,7 @@ class TestNonLocal(NonLocalTest):
 
     def setUp(self):
         super().setUp()
-        self.lib('push')
+        self.lib('push --all')
         self.lib('config local false -y')
 
     def test_add_key(self):
@@ -1188,6 +1309,7 @@ class TestNonLocal(NonLocalTest):
         # the global pool is created quietly by the first add
         self.lib('config local true -y')
         self.lib('config --unset pool')
+        self.lib('push --all')
         self.lib('config local false -y')
         Path(self.path('other.bib')).write_text(NEW_BIB.replace('mine2022', 'other2023').replace(
             'My own paper', 'Another paper').replace('mine.pdf', 'other.pdf').replace('2022', '2023'))

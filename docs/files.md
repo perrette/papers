@@ -191,9 +191,9 @@ a local library, the file goes to the files directory as the `files`
 setting says, and a file of the pool is copied (a hard link when possible),
 never moved.
 
-`papers config local false` and `papers config pool` move the files that
-exist into the pool, and say how many links were already broken:
-`papers file check --fix` relinks them afterwards.
+`papers config local false` and `papers config pool` link the library to
+the pool's copies of the files that exist, and say how many links were
+already broken: `papers file check --fix` relinks them afterwards.
 
 Without `--fix`, `papers file check` reports the files it would relink, and
 where they come from. `--fix --dry-run` shows the links that `--fix` would

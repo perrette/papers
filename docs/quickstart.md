@@ -179,11 +179,15 @@ By default the PDFs of all your libraries are in the pool,
 `~/Documents/papers`, and the bibtex of each library links to them there
 (`papers config --global pool PATH` moves the default pool elsewhere). A
 project folder shared with others (git, Dropbox) should keep its own PDFs,
-in its `files/` folder: create it with `papers init --local`, or run
+in its `files/` folder: create it with `papers init --local --pool PATH`
+(or `papers init --local` for a library without pool), or run
 `papers config local true` in an existing library, which copies its PDFs
-from the pool (as hard links when possible). A local library still uses
-the pool for entries. `papers init --pool none` creates a library without
-pool: its PDFs are in the project, and nothing is shared. Several
+from the pool (as hard links when possible). A local library with a pool
+still uses the pool for entries. A library without pool
+(`papers init --local`, or `papers init --pool none`) keeps its PDFs in the
+project, and shares nothing. To move the PDFs of a local library into a
+pool later: `papers config pool PATH`, `papers push --all`, then
+`papers config local false`. Several
 libraries without a pool can share one PDF folder, as in papers 2 (see
 [A shared files folder without a pool](pools.md#a-shared-files-folder-without-a-pool)). See
 [Pools](configuration.md#pools) in the configuration, and

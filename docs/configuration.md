@@ -91,9 +91,14 @@ directory.
 
 Setting `git` to `true` initializes the backup directory and records the
 current bibtex. Setting `paths` rewrites the file links of the bibtex.
-Setting `local` or `pool` moves the files of the library, after listing what
-it will do and asking to continue (`-y` does not ask, `--dry-run` only
-lists; see [Changing local and pool](pools.md#changing-local-and-pool)).
+Setting `local` or `pool` changes where the library links its files:
+`local true` (or `pool none`) copies the pool files that the library links
+to into its files directory; `local false`, and `pool PATH` in a library
+that is not local, link to the pool's copies of the library's PDFs, and
+require the pool to have them already (`papers push` copies them there).
+papers lists what it will do and asks to continue (`-y` does not ask,
+`--dry-run` only lists; see
+[Changing local and pool](pools.md#changing-local-and-pool)).
 `local` is always set in a library (`papers init` stores it), so it has no
 `--unset`.
 
@@ -150,7 +155,8 @@ local: the links of a library that is not local point into your own pool.
 
 ```
 papers init                    # the global pool, not local
-papers init --local            # its own files
+papers init --local            # its own files, no pool
+papers init --local --pool ../shared   # its own files, entries shared with ../shared
 papers init --pool ../shared   # another pool
 papers init --pool none        # no pool, hence local
 ```

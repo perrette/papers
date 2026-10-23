@@ -171,10 +171,11 @@ def get_parser(config=None):
         help='files directory (default: files, or an existing pdfs/, papers/... folder)')
     initp.add_argument('--pool', metavar='PATH|none',
         help='pool of the library: a path (relative to the library), or none (default: the global pool, '
-             f'{_default(config.machine.pool)}, set with `papers config --global pool`)')
+             f'{_default(config.machine.pool)}, set with `papers config --global pool`; with --local: none)')
     initp.add_argument('--local', action='store_true', default=None, dest='local_setting',
         help='the files of the library are in its own files directory (default: in the files directory '
-             'of the pool, the library links to them; a library without pool is local). '
+             'of the pool, the library links to them; a library without pool is local). Without --pool, '
+             'the library has no pool (pool none); --local --pool PATH uses the pool PATH. '
              'Use it for a project folder shared with others (git, Dropbox): the links of a library '
              'that is not local point into your own pool.')
     initp.add_argument('--paths', choices=['relative', 'absolute'],
@@ -193,10 +194,12 @@ def get_parser(config=None):
         description='get or set the settings of the library (git style): without KEY, list the '
                     'settings and where each comes from (library, global or default); with KEY, '
                     'print its value; with KEY VALUE..., set it in the library configuration',
-        epilog='settings: ' + ', '.join(SETTINGS) + '. Changing local or pool moves the files of the library '
-               '(local true: the pool files it links to are copied into its files directory; local false: its '
-               'files go to the pool; pool PATH: they go to the new pool, pool none: local true); papers lists '
-               'what it will do and asks to continue.')
+        epilog='settings: ' + ', '.join(SETTINGS) + '. local true (or pool none) copies the pool files that '
+               'the library links to into its files directory. local false, and pool PATH in a library that '
+               'is not local, link the library to the pool\'s copies of its PDFs (local false deletes the '
+               'library\'s own copies); each PDF must be in the pool entry already, otherwise nothing changes '
+               'and papers names the entries to push first (`papers push KEY...`, or `papers push --pool PATH '
+               'KEY...`). papers lists what it will do and asks to continue.')
     configp.add_argument('key', nargs='?', metavar='KEY')
     configp.add_argument('values', nargs='*', metavar='VALUE')
     configp.add_argument('--unset', metavar='KEY', help='remove the setting: the global or default value applies again')

@@ -70,9 +70,11 @@ The `local` setting of a library says where its files are:
 - `local: true`: the files are in the files directory of the library
   (`files/`).
 
-`papers init --local` creates a local library; the default for new libraries
-is the `local` setting of the global configuration
-(`papers config --global local true`). A library without pool is local.
+`papers init --local` creates a local library without pool (`pool none`);
+`papers init --local --pool PATH` creates a local library that uses the pool
+PATH. Without `--local`, the default for new libraries is the `local`
+setting of the global configuration (`papers config --global local true`).
+A library without pool is local.
 
 In a library that is not local, the file links are the pool entry's; the
 library decides which entries it has. The `files` setting says how a new
@@ -139,7 +141,8 @@ no list of the libraries that depend on it.
 ### Sharing a project folder
 
 A project folder shared with coauthors (git, Dropbox...) should be a local
-library (`papers init --local`, or `papers config local true`): the links of
+library (`papers init --local --pool PATH`, `papers init --local` for no
+pool, or `papers config local true`): the links of
 a library that is not local point into your own pool, which the others do
 not have.
 
@@ -149,20 +152,47 @@ writes the files there, and the client synchronizes them.
 
 ### Changing `local` and `pool`
 
-Changing these settings moves the files of the library. papers lists what
-it will do and asks `Continue? [y/N]`; `-y` answers yes, `--dry-run` only
-shows the list, and without a terminal the command stops with the list
-(pass `-y`). A file that is not safely in a pool is never deleted, and the
-files of a pool are never deleted.
+When a change copies files or deletes the library's copies, papers lists
+what it will do and asks `Continue? [y/N]`; `-y` answers yes, `--dry-run`
+only shows the list, and without a terminal the command stops with the list
+(pass `-y`). The files of a pool are never deleted.
 
 | Command | In a library that is not local | In a local library |
 |---|---|---|
 | `papers config local true` | the pool files it links to are copied into its files directory (hard links when possible), named with its name template, and the links rewritten; the pool keeps its files | nothing to do |
-| `papers config local false` | nothing to do | the files of its files directory go to the pool: a file that the pool entry of the same paper has (same content) becomes a link to the pool's copy, and the library's copy is deleted; the others are moved into the pool's files directory with the pool's name template and attached to the pool entry; entries that the pool does not have are added to it; the links are rewritten |
+| `papers config local false` | nothing to do | the library links to the pool's copies of its PDFs, and its own copies are deleted (see below) |
 | `papers config pool none` | as `local true`, and the library becomes local | the setting changes |
-| `papers config pool PATH` (or `--unset pool`: the global pool) | the files go to the new pool, as with `local false`; the files of the former pool are copied there (hard links when possible), since other projects may use them | the setting changes |
+| `papers config pool PATH` (or `--unset pool`: the global pool) | the library links to the copies of its PDFs in the new pool (see below); the files of the former pool stay where they are | the setting changes |
 
-Metadata is not merged by these commands: `papers push` does that.
+`papers config local false`, and `papers config pool PATH` in a library
+that is not local, only change the file links. Each PDF that the library
+links to must already be linked by the pool entry of the same paper, in
+the pool that the library will use: the same file, or a file of the same
+content. Entries without PDF can stay out of the pool, and broken links do
+not count (`papers file check --fix` relinks them afterwards). If an entry
+has a PDF that the pool entry does not have, nothing is changed, and the
+command lists the entries and the command that copies their PDFs to the
+pool:
+
+- `papers config local false`: `papers push KEY...`, or `papers push --all`
+  when there are many entries;
+- `papers config pool PATH`: `papers push --pool PATH KEY...` (a one-time
+  push, which copies the PDFs to PATH), or `papers push --pool PATH --all`.
+
+Otherwise the library links to the pool's copies. `local false` deletes
+the library's own copies in its files directory, unless an entry of the
+library or of the pool still links to them; `pool PATH` copies or moves no
+file. These commands do not push entries or merge fields: `papers push`
+does that. After `papers config pool PATH`, no entry is shared with the
+new pool yet: `papers push KEY...` or `papers push --all` shares them.
+
+To move the PDFs of a local library into a pool:
+
+```
+papers config pool PATH      # the pool, if the library has none
+papers push --all            # copies the entries and their PDFs to the pool
+papers config local false    # links to the pool's copies, deletes the library's
+```
 
 ## Auto-push
 
@@ -566,10 +596,10 @@ What to watch for, since each library only knows its own entries:
   (the two libraries use the same template); otherwise attach the renamed
   file with `papers file attach KEY FILE`, and remove the link with
   `papers file detach --broken --key KEY`.
-- `papers config local false` in one library moves the shared PDFs into
-  its pool, and the links of the other library break. Once the other
-  library uses the same pool, `papers file check --fix` relinks them to the
-  pool's files (see
+- `papers push --all` then `papers config local false` in one library
+  deletes the shared PDFs once the pool has copies, and the links of the
+  other library break. Once the other library uses the same pool,
+  `papers file check --fix` relinks them to the pool's files (see
   [Reconnecting PDFs and a bibtex](files.md#reconnecting-pdfs-and-a-bibtex)).
 
 ## Example
@@ -610,7 +640,8 @@ A folder shared with someone as a separate pool, for one project:
 ```
 cd ~/projects/tides
 papers export ../shared-with-bob          # a library of its own
-papers config pool ../shared-with-bob     # the pool of tides from now on
+papers config pool ../shared-with-bob     # the pool of tides from now on: it links to the
+                                          # copies of the PDFs that export made
 papers sync --all                         # the first time: records what is shared
 papers sync                               # later changes, both ways
 ```

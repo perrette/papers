@@ -47,6 +47,8 @@ def _initcmd(parser, o, config):
     if config.origin == 'library':
         logger.info(f"the new library is inside the library of {config.file}")
     o.reset = False
+    if o.local_setting and o.pool is None:
+        o.pool = NO_POOL  # --local without --pool: a library of its own, without pool
     config = _install(o, Config(machine=config.machine), DefaultAsker(), target=CONFIG_FILE_LOCAL)
     print('\n'.join(init_summary(config)))
 
@@ -302,45 +304,32 @@ def _local_lines(plan, config):
     return summary, details
 
 
-def _pool_lines(plan, config, pool_path):
-    "the summary and the details (each file) of placing the files of the library in a pool"
-    counts = {'move': 0, 'copy': 0, 'link': 0}
-    sources = {'move': set(), 'copy': set()}
-    added = 0
-    details = []
-    for e, pe, actions in plan:
-        if pe is None:
-            added += 1
-            details.append(f'  {e.key}: added to the pool')
-        for f, action, target in actions:
-            counts[action] += 1
-            if action == 'link':
-                delete = config.filesdir and is_inside(f, config.filesdir)
-                details.append(f'  {e.key}: link to the same file of the pool {_show(target)}'
-                               + (f', delete {_show(f)}' if delete else ''))
-            else:
-                sources[action].add(os.path.dirname(f))
-                details.append(f'  {e.key}: {action} {_show(f)} to the pool')
-
-    def where(action):
-        dirs = sorted(sources[action])
-        if action == 'move' and config.filesdir and all(is_inside(d, config.filesdir) for d in dirs):
-            return _show(config.filesdir)
-        return _show(dirs[0]) if len(dirs) == 1 else f'{len(dirs)} folders'
-
-    summary = []
-    if counts['move']:
-        summary.append(f'move {_files(counts["move"])} from {where("move")} to the pool {_show(pool_path)}')
-    if counts['copy']:
-        summary.append(f'copy {_files(counts["copy"])} from {where("copy")} to the pool {_show(pool_path)} '
-                       '(the former pool keeps them)')
-    if counts['link']:
-        summary.append(f'link to the pool\'s copy for {_files(counts["link"])} that the pool has already '
-                       '(same content; the copy of the library is deleted)')
-    if added:
-        summary.append(f'add {added} entr{"ies" if added != 1 else "y"} to the pool')
-    summary.append('(the library will link to the files in the pool)')
+def _relink_lines(plan, config, pool_label):
+    "the summary and the details (each file) of linking the library to the files of a pool"
+    n = sum(len(actions) for _, actions in plan)
+    own = config.filesdir
+    deleted = [f for _, actions in plan for f, _ in actions if own and is_inside(f, own)]
+    summary = [f'link to the copies in {pool_label} for {_files(n)} (same content)'
+               + (f'; the library\'s copies in {_show(own)} ({_files(len(deleted))}) are deleted' if deleted else '')]
+    details = [f'  {e.key}: {_show(f)} -> {_show(target)}' + (' (deleted)' if own and is_inside(f, own) else '')
+               for e, actions in plan for f, target in actions]
     return summary, details
+
+
+MAX_KEYS = 10
+
+
+def _missing_error(what, missing, pool_label, commands):
+    """the error of `config local false` or `config pool PATH` when entries
+    link to PDFs that the pool entry does not have"""
+    keys = [e.key for e in missing]
+    shown = ', '.join(keys[:MAX_KEYS]) + (f' and {len(keys) - MAX_KEYS} more' if len(keys) > MAX_KEYS else '')
+    n = len(keys)
+    lines = [f'{what}: {n} entr{"ies link" if n != 1 else "y links"} to PDFs that {pool_label} does not have '
+             f'(nothing was changed): {shown}']
+    lines += commands
+    lines.append(f'Then run `papers config {what}` again.')
+    return PapersExit('\n'.join(lines))
 
 
 def _save_setting(config, changes):
@@ -356,7 +345,13 @@ def _save_setting(config, changes):
 
 def _set_pool_or_local(o, config, name):
     """`papers config local true|false`, `papers config pool PATH|none` and
-    `--unset pool`: the files move with the change, after confirmation"""
+    `--unset pool`. Local true (or pool none) copies the pool files that the
+    library links to into its files directory. Local false, or a new pool
+    of a library that is not local, needs each PDF of the library in the
+    pool entry of the same paper (same file or same content): the library
+    then links to the pool's copies, and its own copies are deleted;
+    otherwise it is an error that names the entries. The changes of the
+    files are confirmed first."""
     if name == 'local' and o.unset:
         raise PapersExit('local is set in each library: `papers config local true` or `false`')
     new = copy.copy(config)
@@ -413,15 +408,27 @@ def _set_pool_or_local(o, config, name):
         exchange.to_local(plan, old_dirs)
         delete = []
     else:
+        # the library links to the files of the pool: each PDF must be in the pool already
         new_pools = Pools(new)
         pool = new_pools.pool(quiet=True)
-        plan = exchange.plan_to_pool(pool, copy_dirs=old_dirs)
-        summary, details = _pool_lines(plan, config, new.pool_path()) if plan else ([], [])
-        if plan and not _confirm(o, summary, f'{name} {format_value(changes.get(name, new.get(name)))}', details):
+        what = f'{name} {format_value(changes.get(name, new.get(name)))}'
+        pool_label = f'the pool {new.pool_label()}'
+        plan, missing = exchange.plan_relink(pool)
+        if missing:
+            selection = ' '.join(e.key for e in missing) if len(missing) <= MAX_KEYS else '--all'
+            if config.local:
+                commands = [f'Share them with the pool first: `papers push {selection}`']
+            else:
+                new_arg = o.values[0] if o.values else _show(new.pool_path())
+                commands = [f'Copy them to the new pool first: `papers push --pool {new_arg} {selection}` '
+                            '(a one-time push, which copies the PDFs)']
+            raise _missing_error(what, missing, pool_label, commands)
+        summary, details = _relink_lines(plan, config, pool_label) if plan else ([], [])
+        if plan and not _confirm(o, summary, what, details):
             return
         if papers.config.DRYRUN:
             return done()
-        # the broken links are not moved: file check --fix relinks them
+        # the broken links are not changed: file check --fix relinks those that the pool has
         broken = sum(len(broken_links(biblio, e)) for e in biblio.entries)
         hint = (f'{broken} link{"s were" if broken > 1 else " was"} already broken: '
                 '`papers file check --fix` relinks those that the pool has') if broken else None
@@ -430,8 +437,7 @@ def _set_pool_or_local(o, config, name):
             if hint:
                 print(hint)
             return
-        pool = new_pools.target()
-        delete = exchange.to_pool(pool, plan, copy_dirs=old_dirs)
+        delete = exchange.relink(plan, pool, keep_dirs=old_dirs + [pool.filesdir])
         exchange.pools = new_pools
     save_exchange(exchange)
     _print_biblio_diff(biblio_init, biblio, biblio.entries)

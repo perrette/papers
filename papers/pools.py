@@ -1099,80 +1099,67 @@ class Exchange:
                                  machine=self.config.machine, keep=keep, pool_dirs=dirs)
             self.biblio.rename_entry_files(e, copy=policy)
 
-    def plan_to_pool(self, pool, copy_dirs=()):
-        """what placing the files of the library in `pool` (None: a pool
-        that does not exist yet) does: [(entry, pool entry or None,
-        [(file, action, pool file)])]. The files concerned are those of the
-        files directory of the library (action `move`) and those of
-        `copy_dirs` (the files directory of the former pool: action `copy`,
-        since a pool keeps its files). Action `link`: the pool entry of the
-        same paper has the same file (same content), the library links to it."""
-        own = self.biblio.filesdir
-        copy_dirs = [d for d in copy_dirs if d]
-        plan = []
+    def plan_relink(self, pool):
+        """what linking the library to the files of `pool` does (`papers
+        config local false`, `papers config pool PATH` of a library that is
+        not local): (plan, missing). Each file that a library entry links
+        to (existing files) must be linked by the pool entry of the same
+        paper: the same file, or a file of the same content. plan:
+        [(entry, [(file, pool file)])], the links to replace by the pool's
+        copy; missing: the entries with a file that the pool entry does
+        not have (or that the pool does not have). `pool` None: a pool that
+        does not exist yet."""
+        plan, missing = [], []
         for e in self.biblio.entries:
-            candidates = []
-            for f in self.biblio.get_files(e):
-                if not os.path.isfile(f) or (pool is not None and pool.filesdir and is_inside(f, pool.filesdir)):
-                    continue
-                if own and is_inside(f, own):
-                    candidates.append((f, 'move'))
-                elif any(is_inside(f, d) for d in copy_dirs):
-                    candidates.append((f, 'copy'))
-            if not candidates:
+            files = [f for f in self.biblio.get_files(e) if os.path.isfile(f)]
+            if not files:
                 continue
             pe = self.pool_entry(e, pool)[0] if pool is not None else None
-            pool_files = {}
-            if pe is not None:
-                for pf in pool.biblio.get_files(pe):
-                    if os.path.isfile(pf):
-                        pool_files.setdefault(checksum(pf), pf)
+            pool_files = [pf for pf in pool.biblio.get_files(pe) if os.path.isfile(pf)] if pe is not None else []
+            same = {realpath(pf) for pf in pool_files}
+            hashes = None
             actions = []
-            for f, action in candidates:
-                target = pool_files.get(checksum(f)) if pool_files else None
-                actions.append((f, 'link', target) if target else (f, action, None))
-            plan.append((e, pe, actions))
-        return plan
+            for f in files:
+                if realpath(f) in same:
+                    continue
+                if hashes is None:
+                    hashes = {}
+                    for pf in pool_files:
+                        hashes.setdefault(checksum(pf), pf)
+                target = hashes.get(checksum(f))
+                if target is None:
+                    missing.append(e)
+                    break
+                actions.append((f, target))
+            else:
+                if actions:
+                    plan.append((e, actions))
+        return plan, missing
 
-    def to_pool(self, pool, plan, copy_dirs=()):
-        """apply plan_to_pool (`pool` exists by now): the entries new to the
-        pool are added to it, the files moved or copied into its files
-        directory (with its name template) are attached to the pool entry,
-        and the library links to the pool's files. Return the files to
-        delete once the pool and the library are saved: the library's
-        copies of files that the pool has (never a file of a pool, or a
-        file that an entry still links to)."""
-        copy_dirs = [d for d in copy_dirs if d]
+    def relink(self, plan, pool, keep_dirs=()):
+        """apply plan_relink: the library entries link to the pool's copies.
+        Return the files to delete once the library is saved: the library's
+        own copies (in its files directory) that no entry of the library or
+        of the pool links to, outside `keep_dirs` (files directories of
+        pools)."""
         delete = []
-        for e, pe, actions in plan:
-            mapping = {f: target for f, action, target in actions if action == 'link'}
-            delete.extend(f for f, action, _ in actions if action == 'link' and is_inside(f, self.biblio.filesdir))
-            placed = [f for f, action, _ in actions if action != 'link']
-            if placed:
-                hashes = {f: checksum(f) for f in placed}
-                policy = FilesPolicy('move', pool.filesdir, current_config=self.config.file,
-                                     machine=self.config.machine, pool_dirs=copy_dirs, in_pool=True,
-                                     keep=pool.biblio.get_files(pe) if pe is not None else ())
-                if pe is None:
-                    out = exchange_copy(e, self.biblio, pool.biblio)
-                    pool.biblio.set_files(out, placed)
-                    pe = pool.biblio.insert_entry(out, update_key=True, rename=True, copy=policy)[0]
-                    pool.add_entry(pe)
-                    self.record(e, pool, pe, pe)
-                    before = []
-                else:
-                    before = pool.biblio.get_files(pe)
-                    pool.biblio.set_files(pe, before + placed)
-                    pool.biblio.rename_entry_files(pe, copy=policy)
-                    pool._sizes = None
-                after = [f for f in pool.biblio.get_files(pe) if f not in before and os.path.isfile(f)]
-                for f in placed:
-                    mapping[f] = next((g for g in after if checksum(g) == hashes[f]), f)
-            self.biblio.set_files(e, [mapping.get(f) or f for f in self.biblio.get_files(e)])
-        self._changed(pool)
+        filesdir = self.biblio.filesdir
+        for e, actions in plan:
+            mapping = {realpath(f): target for f, target in actions}
+            files, seen = [], set()
+            for f in self.biblio.get_files(e):
+                f = mapping.get(realpath(f), f)
+                if realpath(f) not in seen:
+                    seen.add(realpath(f))
+                    files.append(f)
+            self.biblio.set_files(e, files)
+            delete.extend(f for f, _ in actions if filesdir and is_inside(f, filesdir))
         linked = {realpath(f) for e in self.biblio.entries for f in self.biblio.get_files(e)}
-        return [f for f in delete if realpath(f) not in linked
-                and not any(is_inside(f, d) for d in copy_dirs + [pool.filesdir])]
+        if pool is not None:
+            linked.update(realpath(f) for e in pool.biblio.entries for f in pool.biblio.get_files(e))
+        dirs = [d for d in keep_dirs if d]
+        return [f for f in dict.fromkeys(delete) if realpath(f) not in linked
+                and not any(is_inside(f, d) for d in dirs)]
 
 
 def _rekey(e, key):
