@@ -1005,10 +1005,8 @@
   <a href="#what-else-changed">What else changed</a>).</li>
 </ul>
 <h2 id="what-changes-for-an-existing-setup">What changes for an existing setup<a class="headerlink" href="#what-changes-for-an-existing-setup" title="Permanent link">&para;</a></h2>
-<p>The commands and options of papers 2 still exist: the forms that changed
-are deprecated, and print a warning that names the new form (see
-<a href="#what-else-changed">What else changed</a>). The bibtex files do not change
-format, and stay readable by papers 2 and by other tools. What changes:</p>
+<p>The bibtex files do not change format, and stay readable by papers 2 and
+by other tools. What changes:</p>
 <ul>
 <li>The configuration files:<ul>
 <li>the configuration of a project library moves from
@@ -1028,11 +1026,68 @@ format, and stay readable by papers 2 and by other tools. What changes:</p>
 <li><code>papers install --global</code> is an error that changes nothing:
   <code>papers init PATH --global</code> creates the default library, and
   <code>papers config --global default PATH</code> registers an existing one.</li>
-<li>The git backup of a library of papers 2.2 to 2.4, kept in <code>.papers/</code>,
-  moves to the backup folder on the first backup of papers 3 (see
-  <a href="../git/">Git integration</a>).</li>
-<li>The output of <code>papers status</code>, <code>papers init</code> and of the exchanges
-  changed: scripts that parse it need updating.</li>
+<li>
+<p>Some commands and options are deprecated. They still work, print a
+  warning that names the new form, and are removed in papers 4:</p>
+<table>
+<thead>
+<tr>
+<th>stop using</th>
+<th>use instead</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>papers install</code></td>
+<td><code>papers init</code>, <code>papers config</code></td>
+</tr>
+<tr>
+<td><code>papers filecheck</code></td>
+<td><code>papers file check</code>, <code>papers file fix</code> and the other <code>papers file</code> commands</td>
+</tr>
+<tr>
+<td><code>papers list --add-files</code> / <code>--rename</code> / <code>--copy</code></td>
+<td><code>papers file attach</code>, <code>papers file rename</code> (<code>--keep-source</code>)</td>
+</tr>
+<tr>
+<td><code>papers list --fetch</code></td>
+<td><code>papers check --fetch</code></td>
+</tr>
+<tr>
+<td><code>papers list --open</code></td>
+<td><code>papers open</code></td>
+</tr>
+<tr>
+<td><code>papers doi</code></td>
+<td><code>papers extract --doi-only</code></td>
+</tr>
+<tr>
+<td><code>papers restore-backup</code></td>
+<td><code>papers restore</code></td>
+</tr>
+<tr>
+<td><code>--attachment</code></td>
+<td><code>--attach</code></td>
+</tr>
+<tr>
+<td><code>-m/--mode</code></td>
+<td><code>--on-duplicate</code></td>
+</tr>
+<tr>
+<td><code>--relative-paths</code> / <code>--absolute-paths</code></td>
+<td><code>papers config paths relative</code> or <code>absolute</code></td>
+</tr>
+<tr>
+<td>- The output of <code>papers status</code>, <code>papers init</code> and of the exchanges</td>
+<td></td>
+</tr>
+<tr>
+<td>changed: scripts that parse it need updating.</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+</li>
 </ul>
 <h2 id="what-becomes-of-a-papers-2-setup">What becomes of a papers 2 setup<a class="headerlink" href="#what-becomes-of-a-papers-2-setup" title="Permanent link">&para;</a></h2>
 <table>
@@ -1163,12 +1218,6 @@ exchanges.</p>
   <code>detach</code>, <code>rm</code>, <code>mv</code>, <code>rename</code>, <code>check</code>, <code>fix</code>, <code>clean</code> (see
   <a href="../files/">Files</a>). They replace <code>papers filecheck</code> and the file options
   of <code>papers list</code> (<code>--add-files</code>, <code>--rename</code>, <code>--copy</code>).</li>
-<li>Deprecated forms still work, with a warning that names the new form, and
-  are removed in papers 4: <code>papers install</code>, <code>papers filecheck</code>,
-  <code>papers doi</code> (<code>papers extract --doi-only</code>), <code>papers restore-backup</code>
-  (<code>papers restore</code>), <code>papers list --fetch</code> / <code>--open</code>, <code>--attachment</code>
-  (<code>--attach</code>), <code>-m/--mode</code> (<code>--on-duplicate</code>), <code>--relative-paths</code> /
-  <code>--absolute-paths</code> (<code>papers config paths relative|absolute</code>).</li>
 </ul>
 
 
