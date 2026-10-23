@@ -428,9 +428,30 @@ def backup_bib(biblio, config, message=None):
             and 'nothing added to commit' not in res.stdout + res.stderr:
         logger.warning(f"the git backup could not commit in {config.gitdir}: "
                        f"{(res.stderr or res.stdout).strip()}")
+    compact_backup(config.gitdir)
     # work on "main" branch for comitting (out of history branch)
     run_git(config.gitdir, ["checkout", "-B", "main"])
     run_git(config.gitdir, ["clean", "-f"])
+
+
+# the number of loose objects of a backup repository from which they are packed (see compact_backup)
+LOOSE_OBJECTS_LIMIT = 150
+
+
+def compact_backup(gitdir):
+    """pack the loose objects of a backup repository once it has
+    LOOSE_OBJECTS_LIMIT of them (about 50 commits). Each commit stores the
+    whole bibtex, compressed (1.6 MB for 10000 entries), and git's automatic
+    gc waits for about 6700 loose objects; a pack stores the differences
+    between versions (50 commits of 10000 entries: 82 MB loose, 4 MB packed;
+    `git repack` takes 2 s, 9 s for 30000 entries). git count-objects, run
+    after each commit, takes a few milliseconds."""
+    res = run_git(gitdir, ["count-objects", "-v"], check=False)
+    count = next((int(line.split(':')[1]) for line in res.stdout.splitlines() if line.startswith('count:')), 0)
+    if count < LOOSE_OBJECTS_LIMIT:
+        return
+    logger.info(f"pack the {count} loose objects of the backup repository {gitdir}")
+    run_git(gitdir, ["repack", "-d", "-q"], check=False)
 
 
 def silent_backup_bib(biblio, config, level=logging.WARNING, *args, **kwargs):

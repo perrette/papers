@@ -96,6 +96,21 @@ class TestBackup(TmpTest):
         with self.assertRaises(PapersExit):
             backup_bib(None, config)
 
+    def test_loose_objects_are_packed(self):
+        config = self.library()
+        loose = lambda: int(next(l.split(':')[1] for l in run_git(config.gitdir, ['count-objects', '-v']).stdout
+                                 .splitlines() if l.startswith('count:')))
+        with mock.patch.object(papers.backup, 'LOOSE_OBJECTS_LIMIT', 8):
+            self.snapshot(config, 'first')
+            self.assertGreater(loose(), 0)
+            for i in range(4):
+                Path(config.bibtex).write_text(ENTRY.replace('One', f'Version {i}'))
+                self.snapshot(config, f'version {i}')
+                self.assertLess(loose(), 8)
+        packs = os.listdir(os.path.join(config.gitdir, '.git', 'objects', 'pack'))
+        self.assertTrue(any(f.endswith('.pack') for f in packs))
+        self.assertEqual(int(run_git(config.gitdir, ['rev-list', '--count', 'HEAD']).stdout), 5)
+
     def test_backup_allocates_gitdir(self):
         config = self.library()
         config.gitdir = None

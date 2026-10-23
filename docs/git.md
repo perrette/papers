@@ -71,6 +71,11 @@ error.
 A commit that fails (e.g. refused by a git hook) prints a warning: the
 bibtex is saved anyway.
 
+Each commit stores the whole bibtex; once the backup directory has 150
+such objects (about 50 commits), the command that commits packs them with
+`git repack`, which keeps only the differences between versions (about 2 s
+for a library of 10000 entries, 9 s for 30000).
+
 ## Where
 
 The backup directory is a subfolder of the backup folder of the machine,
