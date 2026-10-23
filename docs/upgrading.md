@@ -15,7 +15,7 @@ own copy of the PDFs (`local true`) or links to the PDFs of its pool
 | papers 2 | papers 3 |
 |---|---|
 | the global library (`papers install --global`) | the global pool. It is still a library: commands run outside of any project act on it, and `papers -C DIR` reaches it from anywhere |
-| a project library (`papers install --local`) with its own PDFs | a local library (`local true`). It reads the global pool, but writes nothing to it unless you push. With `papers config pool none` it is the same as a new `papers init --local` |
+| a project library (`papers install --local`) with its own PDFs | a local library without pool (`local true`, `pool none`), the same as a new `papers init --local`. `papers config pool PATH` gives it a pool |
 | several project libraries with a common `filesdir` | still works, without a pool (see [A shared files folder without a pool](pools.md#a-shared-files-folder-without-a-pool)); a pool is more efficient |
 | `papers install` | `papers init` to create a library, `papers config` to change it; `papers install` is a deprecated alias |
 
@@ -66,18 +66,16 @@ the details.
 ### Project libraries
 
 A project library of papers 2 (`.papersconfig.json` without `"version"`)
-needs no migration. papers 3 reads it as a local library that uses the
-global pool:
+needs no migration. papers 3 reads it as a local library without pool
+(`pool none`): its PDFs stay in its own files directory, and it works as in
+papers 2.
 
-- its PDFs stay in its own files directory;
-- `papers add` looks in the global pool first. A paper found there is taken
-  with its PDF, copied into the project's files directory (a hard link when
-  possible);
-- nothing is written to the pool unless you run `papers push` (or turn
-  `auto-push` on).
-
-`papers config pool none` stops the lookups in the global pool.
-`papers config pool PATH` makes it use another pool.
+`papers config pool PATH` gives it a pool, for instance
+`papers config pool ~/Documents/papers` for the global pool. `papers add`
+then looks in the pool first: a paper found there is taken with its PDF,
+copied into the project's files directory (a hard link when possible).
+Nothing is written to the pool unless you run `papers push` (or turn
+`auto-push` on).
 
 ## Topic pools
 
@@ -120,7 +118,8 @@ output, and [Pools](pools.md) describes the exchanges.
 
 - `papers init` replaces `papers install`: it asks no questions, and fails
   if the folder has a library already (use `papers config`). By default it
-  creates a library that uses the global pool and links to its PDFs; use
+  creates a library whose pool is the global pool (written in its
+  configuration), and that links to the pool's PDFs; use
   `papers init --local` for a project that keeps its own PDFs, as in
   papers 2.
 - `papers config` gets and sets the settings, in the style of

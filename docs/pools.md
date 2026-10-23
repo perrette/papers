@@ -9,18 +9,24 @@ own library.
 
 A **pool** is a library that other libraries exchange entries with. Nothing
 in the pool marks it as a pool: any library can serve as one, and a pool can
-be used by several libraries. The pool of a library is its `pool` setting:
+be used by several libraries. The pool of a library is its `pool` setting,
+in its configuration file:
 
-- by default, the **global pool**: the `pool` setting of the global
-  configuration, `~/Documents/papers` unless set otherwise
-  (`papers config --global pool PATH`). A library that uses the global pool
-  stores no path: the same project, copied to another machine, uses the
-  global pool of that machine;
 - a path, set with `papers init --pool PATH` or `papers config pool PATH`,
   e.g. a pool for one topic, `~/Documents/papers/sealevel`. A
   path written relative, or under the library, is stored relative to the
-  library (e.g. `../shared-with-bob`); another path is stored as given;
-- `none`: the library exchanges entries with no pool.
+  library (e.g. `../shared-with-bob`); another path is stored with `~` for
+  the home directory, or absolute;
+- `none`: the library exchanges entries with no pool. A library whose
+  configuration has no `pool` setting has no pool either.
+
+`papers init` without `--pool` (and without `--local`) writes the **global
+pool**: the `pool` setting of the global configuration,
+`~/Documents/papers` unless set otherwise (`papers config --global pool
+PATH`). It writes it as the global configuration does, usually with `~`: the
+same project, copied to another machine with the same layout, finds its
+pool there. Changing the global pool later does not change the libraries
+created before.
 
 The global pool does not have to exist: papers creates it (as
 `papers init ~/Documents/papers` would) the first time it writes to it, and
@@ -34,7 +40,7 @@ command stops before changing anything.
 `papers init` in the folder of the global pool creates the pool itself: a
 library without pool, with its own files. Outside of any library, commands
 act on the global pool once it is a library. `papers config --global pool
-none` turns sharing off: new libraries get `pool: none`.
+none` turns sharing off for new libraries: they get `pool: none`.
 
 What a library does with its pool:
 
@@ -166,8 +172,8 @@ only shows the list, and without a terminal the command stops with the list
 |---|---|---|
 | `papers config local true` | the pool files it links to are copied into its files directory (hard links when possible), named with its name template, and the links rewritten; the pool keeps its files | nothing to do |
 | `papers config local false` | nothing to do | the library links to the pool's copies of its PDFs, and its own copies are deleted (see below) |
-| `papers config pool none` | as `local true`, and the library becomes local | the setting changes |
-| `papers config pool PATH` (or `--unset pool`: the global pool) | the library links to the copies of its PDFs in the new pool (see below); the files of the former pool stay where they are | the setting changes |
+| `papers config pool none` (or `--unset pool`) | as `local true`, and the library becomes local | the setting changes |
+| `papers config pool PATH` | the library links to the copies of its PDFs in the new pool (see below); the files of the former pool stay where they are | the setting changes |
 
 `papers config local false`, and `papers config pool PATH` in a library
 that is not local, only change the file links. Each PDF that the library
@@ -257,9 +263,9 @@ ways on `pull` and `push`.
 ## Origin copies
 
 `.papers/origin/`, next to the bibtex of the library, holds one file per
-pool: `global.bib` for the global pool, and for another pool the name of
-its folder and the start of a hash of its path, e.g.
-`shared-with-bob-d15650.bib`. The first lines of the file name the pool and
+pool: the name of its folder and the start of a hash of the pool setting,
+e.g. `shared-with-bob-d15650.bib` for `../shared-with-bob`, or
+`papers-<hash>.bib` for `~/Documents/papers`. The first lines of the file name the pool and
 give the modification time of its bibtex at the last exchange. In a
 library whose pool is `../shared-with-bob`, after `papers pull
 agnew_farrell1978` and `papers pull`:
@@ -578,15 +584,11 @@ independent, and you do not want a central bibliography. To set it up:
 papers init --pool none --filesdir ~/Documents/papers/sealevel   # local, since it has no pool
 papers config pool none                                          # in an existing library
 papers config filesdir ~/Documents/papers/sealevel               # the shared folder
-papers config --global pool none   # no pool for the libraries that do not set one, new ones included
+papers config --global pool none   # new libraries get no pool
 ```
 
-A library configuration of papers 2 without `pool` setting is read as a
-local library (its files are its own) that uses the global pool. It looks
-entries up in the global pool if that exists, but writes nothing to it:
-`add` in a local library adds new entries to the pool only with
-`auto-push`, and `push` and `sync` without KEY exchange only the entries
-shared with the pool. `papers config pool none` stops the lookups.
+A library configuration of papers 2 has no `pool` setting: it is read as a
+local library (its files are its own) without pool, as in papers 2.
 
 What to watch for, since each library only knows its own entries:
 
@@ -616,7 +618,7 @@ The global pool in `~/Documents/papers`, and two projects:
 ```
 mkdir -p ~/projects/sealevel ~/projects/tides
 cd ~/projects/sealevel
-papers init                               # the global pool, not local
+papers init                               # pool: the global pool, not local
 papers add ~/Downloads/esd-4-11-2013.pdf  # fetched from crossref; the PDF goes to
                                           # ~/Documents/papers/files, the entry to both
 

@@ -72,8 +72,8 @@ to crossref, and no second copy of the PDF. `papers sync` later exchanges
 the changes made in either project.
 
 A project that keeps its own PDFs, such as a folder shared with coauthors,
-is created with `papers init --local`. Plain `papers init` uses the global
-pool, `~/Documents/papers`.
+is created with `papers init --local`. Plain `papers init` writes the global
+pool, `~/Documents/papers`, as the pool of the new library.
 
 ## Documentation
 
