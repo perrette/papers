@@ -154,20 +154,54 @@ class TestResolution(PoolTest):
             Pools(self.config('../no/such/pool')).target()
 
     def test_global_pool_not_created_yet(self):
-        pools = Pools(self.config())
         with self.assertNoLogs(papers.logger, level='WARNING'):
-            self.assertIsNone(pools.pool())
-        with self.assertNoLogs(papers.logger, level='WARNING'):
-            self.lib('config --unset pool')
+            self.lib(f'config pool {TEST_GLOBAL_POOL}')
             self.lib('pull')
+        self.assertEqual(self.json('lib')['pool'], '~/Documents/papers')  # written with ~
         self.assertIn('(global pool, not created yet)', self.out('status'))
         self.assertFalse(os.path.exists(TEST_GLOBAL_POOL))
+        pools = Pools(Config.load(self.path('lib', '.papersconfig.json')))
+        with self.assertNoLogs(papers.logger, level='WARNING'):
+            self.assertIsNone(pools.pool())
         pool = pools.target()  # created, quietly
         self.assertEqual(pool.path, TEST_GLOBAL_POOL)
-        self.assertEqual(pool.id, 'global')
-        self.assertEqual(pool.label, f'pool {papers.config.short_home(TEST_GLOBAL_POOL)}')
+        self.assertEqual(pool.id, '~/Documents/papers')  # as the pool setting writes it, like any pool
+        self.assertEqual(pool.label, 'pool ~/Documents/papers')
         self.assertEqual(pool.config.pool, 'none')
         self.assertTrue(pool.config.local)
+
+    def test_no_pool_setting(self):
+        # a library that does not set its pool has none: the global pool is not used
+        os.makedirs(TEST_GLOBAL_POOL)
+        self.papers('init --no-git --pool none', cwd=TEST_GLOBAL_POOL)
+        Path(TEST_GLOBAL_POOL, 'papers.bib').write_text(POOL_BIB)
+        self.lib('config --unset pool')
+        self.assertNotIn('pool', self.json('lib'))
+        config = Config.load(self.path('lib', '.papersconfig.json'))
+        self.assertIsNone(config.pool_path())
+        self.assertEqual(self.out('config pool'), 'none')
+        self.assertRegex(self.out('config'), r'\npool += none  \(default\)\n')
+        self.assertIn('* pool:               none', self.out('status'))
+        # no lookups in the global pool: the entry is added as it is, not taken from there
+        self.take_smith()
+        self.assertEqual(list(self.bib()[1]), ['smith2020climate'])
+        self.assertNotIn('journal', self.entry('smith2020climate'))
+        self.assertEqual(len(self.origin()), 0)
+        with self.assertRaisesRegex(PapersExit, 'no pool'):
+            self.lib('push --all')
+
+    def test_v2_project_library(self):
+        # a project library of papers 2: no pool, as in papers 2, even with a global pool
+        os.makedirs(TEST_GLOBAL_POOL)
+        self.papers('init --no-git --pool none', cwd=TEST_GLOBAL_POOL)
+        Path(TEST_GLOBAL_POOL, 'papers.bib').write_text(POOL_BIB)
+        json.dump({'bibtex': 'papers.bib', 'filesdir': 'files', 'local': True},
+                  open(self.path('lib', '.papersconfig.json'), 'w'))
+        self.assertIn('* pool:               none', self.out('status'))
+        self.take_smith()
+        self.assertEqual(list(self.bib()[1]), ['smith2020climate'])
+        self.assertNotIn('journal', self.entry('smith2020climate'))  # not taken from the global pool
+        self.assertEqual(len(Biblio.load(os.path.join(TEST_GLOBAL_POOL, 'papers.bib'), '').entries), 2)
 
     def test_global_pool_on_a_disk_not_mounted(self):
         # outside the home directory, the global pool needs its parent directory
@@ -228,7 +262,7 @@ class TestOrigin(PoolTest):
         self.assertFalse(origin.changed)
 
     def test_file_names(self):
-        self.assertEqual(origin_file_name('global'), 'global.bib')
+        self.assertRegex(origin_file_name('~/Documents/papers'), r'^papers-[0-9a-f]{6}\.bib$')
         name = origin_file_name('../shared-with-bob')
         self.assertRegex(name, r'^shared-with-bob-[0-9a-f]{6}\.bib$')
         self.assertNotEqual(name, origin_file_name('/data/shared-with-bob'))
@@ -239,37 +273,39 @@ class TestOrigin(PoolTest):
         origin = Origin(path)
         pe = parse_string(POOL_BIB).entries[0]
         origin.set('smith2020climate', '../pool', pe)
-        origin.set('smith2020climate', 'global', pe)
-        origin.set_pulled('global', 12345)
+        origin.set('smith2020climate', '~/Documents/papers', pe)
+        origin.set_pulled('~/Documents/papers', 12345)
         origin.save()
-        self.assertEqual(sorted(os.listdir(path)), sorted(['global.bib', origin_file_name('../pool')]))
-        text = Path(path, 'global.bib').read_text()
-        self.assertTrue(text.startswith('@comment{papers-pool global}\n'), text)
+        name = origin_file_name('~/Documents/papers')
+        self.assertEqual(sorted(os.listdir(path)), sorted([name, origin_file_name('../pool')]))
+        text = Path(path, name).read_text()
+        self.assertTrue(text.startswith('@comment{papers-pool ~/Documents/papers}\n'), text)
         self.assertIn('@comment{papers-pulled 12345}', text)
         self.assertNotIn(POOL_FIELD + ' =', text)
         origin = Origin.load(path)
         lib = entry_from_dict({'ID': 'smith2020climate', 'ENTRYTYPE': 'article'})
-        self.assertEqual((origin.get(lib, 'global').pool, origin.get(lib, '../pool').pool), ('global', '../pool'))
+        self.assertEqual((origin.get(lib, '~/Documents/papers').pool, origin.get(lib, '../pool').pool),
+                         ('~/Documents/papers', '../pool'))
         self.assertIsNone(origin.get(lib, '../other'))
-        self.assertEqual((origin.pulled('global'), origin.pulled('../pool')), (12345, None))
+        self.assertEqual((origin.pulled('~/Documents/papers'), origin.pulled('../pool')), (12345, None))
         self.assertEqual(len(origin), 2)
 
     def test_migration(self):
         # earlier v3 builds: one file, .papers/origin.bib, with a papers-pool
-        # field and papers-pull comments (`default` was the global pool)
+        # field and papers-pull comments
         legacy = self.path('lib', LEGACY_ORIGIN_FILE)
         os.makedirs(os.path.dirname(legacy), exist_ok=True)
         Path(legacy).write_text(
-            '@comment{papers-pull 12345 default}\n\n@comment{papers-pull 678 ../pool}\n\n'
-            '@article{a2020,\n papers-pool = {default},\n papers-pool-key = {A_2020},\n title = {A}\n}\n\n'
+            '@comment{papers-pull 12345 ../other}\n\n@comment{papers-pull 678 ../pool}\n\n'
+            '@article{a2020,\n papers-pool = {../other},\n papers-pool-key = {A_2020},\n title = {A}\n}\n\n'
             '@article{b2020,\n papers-pool = {../pool},\n papers-pool-key = {B_2020},\n title = {B}\n}\n')
         origin = Origin.load(self.path('lib', ORIGIN_DIR))
         self.assertFalse(os.path.exists(legacy))
         self.assertEqual(sorted(os.listdir(self.path('lib', ORIGIN_DIR))),
-                         sorted(['global.bib', origin_file_name('../pool')]))
+                         sorted([origin_file_name('../other'), origin_file_name('../pool')]))
         self.assertEqual([(r.key, r.pool, r.pool_key) for r in origin.records()],
-                         [('a2020', 'global', 'A_2020'), ('b2020', '../pool', 'B_2020')])
-        self.assertEqual((origin.pulled('global'), origin.pulled('../pool')), (12345, 678))
+                         [('a2020', '../other', 'A_2020'), ('b2020', '../pool', 'B_2020')])
+        self.assertEqual((origin.pulled('../other'), origin.pulled('../pool')), (12345, 678))
         self.assertNotIn(POOL_FIELD, origin.records()[0].entry.fields_dict)
         again = Origin.load(self.path('lib', ORIGIN_DIR))
         self.assertEqual(len(again), 2)
@@ -738,7 +774,7 @@ class TestPush(PoolTest):
         self.assertIn('up to date', self.out('status'))
 
     def test_global_pool_created(self):
-        self.lib('config --unset pool')
+        self.lib(f'config pool {TEST_GLOBAL_POOL}')
         out = self.out('push --all')
         self.assertNotIn('create the library', out)  # quietly
         self.assertTrue(os.path.exists(os.path.join(TEST_GLOBAL_POOL, '.papersconfig.json')))
@@ -901,7 +937,7 @@ class TestStatus(PoolTest):
         Path(self.path('mine.pdf')).write_text('mine')
         self.papers('add ../new.bib', cwd=self.path('other'))
         out = self.papers('status', cwd=self.path('other'), sp_cmd='check_output')
-        self.assertIn(f'* pool:               {papers.config.short_home(TEST_GLOBAL_POOL)} (global pool, up to date)',
+        self.assertIn(f'* pool:               {TEST_GLOBAL_POOL} (global pool, up to date)',
                       out)
 
     def test_missing_pool(self):
@@ -1231,13 +1267,14 @@ class TestConfigPool(NonLocalTest):
         self.assertTrue(self.files('mine2022')[0].startswith(self.path('new', 'files')))
 
     def test_unset_pool(self):
-        with self.assertRaisesRegex(PapersExit, 'does not have'):
-            self.lib('config --unset pool -y')
-        self.assertEqual(self.json('lib')['pool'], '../pool')
-        self.lib(f'push --pool {TEST_GLOBAL_POOL} --all')
-        self.lib('config --unset pool -y')
+        # pool none, as `config pool none`: the library becomes local
+        out = self.out('config --unset pool -y')
+        self.assertIn('so it becomes local', out)
         self.assertNotIn('pool', self.json('lib'))
-        self.assertTrue(self.files('mine2022')[0].startswith(os.path.join(TEST_GLOBAL_POOL, 'files')))
+        self.assertIs(self.json('lib')['local'], True)
+        for key in ('smith2020climate', 'mine2022'):
+            self.assertTrue(self.files(key)[0].startswith(self.path('lib', 'files')))
+        self.assertEqual(self.out('config pool'), 'none')
 
     def test_local_library_just_sets(self):
         self.lib('config local true -y')
@@ -1352,7 +1389,7 @@ class TestNonLocal(NonLocalTest):
     def test_add_to_global_pool(self):
         # the global pool is created quietly by the first add
         self.lib('config local true -y')
-        self.lib('config --unset pool')
+        self.lib(f'config pool {TEST_GLOBAL_POOL}')
         self.lib('push --all')
         self.lib('config local false -y')
         Path(self.path('other.bib')).write_text(NEW_BIB.replace('mine2022', 'other2023').replace(

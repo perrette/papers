@@ -7,13 +7,13 @@ configuration next to its bibtex, its directory becomes the global pool
 used outside of any library), and the old file is renamed to <name>.v2.bak.
 It keeps its files (local true) and has no pool itself. The library
 configurations of v2 need no migration: they are read as libraries with
-their own files (local true) that use the global pool.
+their own files (local true) and no pool (pool none).
 """
 import os
 
 from papers import logger
 from papers.config import (Config, CONFIG_FILE, CONFIG_FILE_LOCAL, CONFIG_FILE_LEGACY,
-                           CONFIG_FILE_LEGACY_XDG, INHERITED, NO_POOL, short_home)
+                           CONFIG_FILE_LEGACY_XDG, LIBRARY_SETTINGS, NO_POOL, short_home)
 from papers.files import hidden_bibtex
 from papers.library import get_biblio, savebib, convert_file_links
 
@@ -55,7 +55,7 @@ def migrate_v2_global(machine, relative=False, dryrun=False):
             else:
                 new = Config(file=target, is_library=True, machine=machine,
                              bibtex=old.bibtex, filesdir=old.filesdir, gitdir=old.gitdir)
-                for name in INHERITED:
+                for name in LIBRARY_SETTINGS:
                     if name in old.explicit:
                         new.set(name, old.get(name))
                 new.set('pool', NO_POOL)  # the global pool itself

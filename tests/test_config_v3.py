@@ -50,9 +50,10 @@ class TestResolution(unittest.TestCase):
         self.assertEqual(config.source('editor'), 'global')
         self.assertEqual(config.nameformat.author_num, papers.filename.NAMEFORMAT.author_num)
         self.assertEqual(config.source('name.author-num'), 'default')
-        self.assertEqual(config.pool, papers.config.DEFAULT_POOL)
+        # the pool comes only from the library: without pool setting, none
+        self.assertEqual(config.pool, 'none')
         self.assertEqual(config.source('pool'), 'default')
-        self.assertTrue(config.uses_global_pool)
+        self.assertIsNone(config.pool_path())
 
     def test_save_keeps_inherited_settings_out(self):
         config = Config.load(self.file, machine=self.machine)
@@ -120,7 +121,7 @@ class TestFormatVersion(unittest.TestCase):
         # local is a setting of v3 (in v2, it told a library from the global
         # configuration)
         self.write({'bibtex': 'lib.bib', 'version': 3, 'absolute_paths': True,
-                    'backup_files': True, 'local': False})
+                    'backup_files': True, 'local': False, 'pool': '../pool'})
         config = Config.load(self.file, machine=self.machine)
         self.assertFalse(config.local)
         self.assertTrue(config.is_library)
@@ -131,14 +132,14 @@ class TestFormatVersion(unittest.TestCase):
         self.assertEqual(config.get('paths'), 'absolute')
         self.assertTrue(config.gitlfs)
         self.assertTrue(config.local)  # a library of v2 has its own files
-        self.assertTrue(config.uses_global_pool)
+        self.assertIsNone(config.pool_path())  # and no pool, as in v2
 
     def test_earlier_v3_settings(self):
         # pools and light of earlier v3 builds
         self.machine.data['pool'] = os.path.join(self.temp_dir.name, 'global')
         shared = os.path.join(self.temp_dir.name, 'shared')
         self.machine.pool_names['shared'] = shared
-        for pools, light, pool, local in [(['default'], True, None, False), (['../x', 'default'], None, '../x', True),
+        for pools, light, pool, local in [(['default'], True, self.machine.data['pool'], False), (['../x', 'default'], None, '../x', True),
                                           ([], None, 'none', True), (['shared'], True, shared, False)]:
             self.write({'bibtex': 'lib.bib', 'version': 3, 'pools': pools, 'sync': 'push',
                         **({'light': light} if light is not None else {})})
@@ -171,7 +172,7 @@ class TestInit(ConfigTest):
         js = self.json()
         self.assertEqual(js['bibtex'], 'papers.bib')
         self.assertEqual(js['filesdir'], 'files')
-        self.assertNotIn('pool', js)  # the global pool
+        self.assertEqual(js['pool'], TEST_GLOBAL_POOL)  # the global pool, as the global configuration writes it
         self.assertIs(js['local'], True)  # the global configuration of the tests says so
         self.assertEqual(js['paths'], 'relative')
         self.assertFalse(js['git'])
@@ -289,7 +290,7 @@ class TestDefaultPool(ConfigTest):
         # without global configuration
         machine = MachineConfig.load(os.path.join(self.dir, 'none.json'))
         self.assertEqual(machine.pool_path(), TEST_GLOBAL_POOL)
-        self.assertEqual(Config(machine=machine).pool_path(), TEST_GLOBAL_POOL)
+        self.assertIsNone(Config(machine=machine).pool_path())  # no library, no pool
         self.assertFalse(Config(machine=machine).local)
 
     def test_library_takes_precedence(self):
@@ -371,9 +372,10 @@ class TestConfigCommand(ConfigTest):
         machine = MachineConfig.load()
         self.assertEqual(machine.pool_path(), '/mnt/teaching')
         self.assertIn('pool = /mnt/teaching', self.get('--global'))
-        self.assertEqual(self.get('pool'), '/mnt/teaching')  # inherited by the library
+        # the library keeps the pool that init wrote
+        self.assertEqual(self.get('pool'), TEST_GLOBAL_POOL)
         self.papers('config --global pool none')
-        self.assertEqual(self.get('pool'), 'none')
+        self.assertEqual(self.get('pool'), TEST_GLOBAL_POOL)
         self.papers('config --global --unset pool')
         self.assertEqual(self.get('--global pool'), papers.config.DEFAULT_POOL)
         self.assertIn('(default)', self.get('--global'))

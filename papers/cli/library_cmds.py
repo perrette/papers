@@ -55,7 +55,7 @@ def _initcmd(parser, o, config):
 
 def init_summary(config):
     """what `papers init` prints: the library created, its bibtex, where its
-    files go, its pool (a local library) and its backup"""
+    files go, its pool and its backup"""
     if config.local or not config.has_pool():
         files = f'{_show(config.filesdir)} (the files directory of the library)' if config.filesdir \
             else 'linked where they are (no files directory)'
@@ -64,7 +64,9 @@ def init_summary(config):
     lines = [f'created the library {short_home(str(config.configdir))}',
              f'* bibtex:  {_show(config.bibtex) if config.bibtex else "none"}',
              f'* files:   {files}']
-    if config.local and config.has_pool():
+    if not config.has_pool():
+        lines.append('* pool:    none')
+    elif config.local:  # otherwise the files line names the pool
         lines.append(f'* pool:    {config.pool_label()} (shared entries; the PDFs stay in this library)')
     return lines + ['* backup:  ' + ('git' + (' and git-lfs' if config.gitlfs else '') if config.git else 'off'),
                     '`papers status -v` shows all settings']

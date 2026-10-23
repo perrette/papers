@@ -170,8 +170,9 @@ def get_parser(config=None):
     initp.add_argument('--filesdir', type=file_uri_to_path,
         help='files directory (default: files, or an existing pdfs/, papers/... folder)')
     initp.add_argument('--pool', metavar='PATH|none',
-        help='pool of the library: a path (relative to the library), or none (default: the global pool, '
-             f'{_default(config.machine.pool)}, set with `papers config --global pool`; with --local: none)')
+        help='pool of the library, written in its configuration: a path (relative to the library), or none '
+             f'(default: the global pool, {_default(config.machine.pool)}, set with `papers config --global '
+             'pool`; with --local: none). Changing the global pool later does not change the library.')
     initp.add_argument('--local', action='store_true', default=None, dest='local_setting',
         help='the files of the library are in its own files directory (default: in the files directory '
              'of the pool, the library links to them; a library without pool is local). Without --pool, '
@@ -202,7 +203,7 @@ def get_parser(config=None):
                'KEY...`). papers lists what it will do and asks to continue.')
     configp.add_argument('key', nargs='?', metavar='KEY')
     configp.add_argument('values', nargs='*', metavar='VALUE')
-    configp.add_argument('--unset', metavar='KEY', help='remove the setting: the global or default value applies again')
+    configp.add_argument('--unset', metavar='KEY', help='remove the setting: the global or default value applies again (pool: none)')
     configp.add_argument('--global', action='store_true', dest='is_global',
         help=f'the global configuration, per user ({_default(papers.config.MACHINE_CONFIG_FILE)}), instead of '
              'the library\'s: the global pool, and the default settings of the libraries')
@@ -216,7 +217,7 @@ def get_parser(config=None):
         description='one-time upgrades from papers v2. Without option: turn the global configuration '
                     'of v2 into a library configuration next to its bibtex (local, without pool), and '
                     'register its directory as the global pool. The library configurations of v2 need '
-                    'no migration: they are read as local libraries that use the global pool.')
+                    'no migration: they are read as local libraries without pool (pool none).')
     migratep.add_argument('--relative', action='store_true',
         help='store the file links of the migrated library relative to its bibtex '
              '(default: keep the previous setting)')

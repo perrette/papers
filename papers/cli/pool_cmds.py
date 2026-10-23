@@ -3,7 +3,7 @@ import os
 
 from papers.identifiers import read_selection, select_entries, select_some
 from papers.library import get_biblio, savebib
-from papers.pools import Exchange, GLOBAL_POOL_ID, PoolError, export
+from papers.pools import Exchange, PoolError, export
 from papers.utils import PapersExit
 from papers.cli.common import duplicate_resolver, _entries_or_all, exchange_lines, print_exchange, save_exchange
 
@@ -29,7 +29,7 @@ def _check_pool(exchange):
     path = pools.path()
     if path is None:
         return
-    if pools._is_global(path) and not os.path.exists(path) and not exchange.origin.records(GLOBAL_POOL_ID):
+    if pools._is_global(path) and not os.path.exists(path) and not exchange.origin.records(pools._id(path)):
         return
     try:
         pools.resolve(path)

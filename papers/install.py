@@ -223,10 +223,11 @@ def resolve_install(config, o, probe=None, asker=None, target=None):
 
 def _resolve_pool(config, o, fresh):
     """the pool and local settings of a library: --pool PATH|none (a
-    relative path is relative to the library), else the global pool
-    (nothing stored); --local, else the default of the global configuration.
-    A library without pool is local. In the directory of the global pool,
-    the new library is the pool itself: it has no pool, and is local."""
+    relative path is relative to the library), else for a new library the
+    global pool setting, written as it is there (with ~); --local, else the
+    default of the global configuration. A library without pool is local.
+    In the directory of the global pool, the new library is the pool
+    itself: it has no pool, and is local."""
     pool = getattr(o, 'pool', None)
     local = getattr(o, 'local_setting', None)
     if pool is not None:
@@ -239,6 +240,8 @@ def _resolve_pool(config, o, fresh):
             config.set('pool', NO_POOL)
             print('this is the global pool: the library has no pool, and its files are its own (local)')
             local = True
+        else:
+            config.set('pool', config.machine.pool)
     if local is None and fresh:
         local = config.inherited('local')
     if local is not None:

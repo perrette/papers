@@ -9,6 +9,7 @@ import subprocess as sp
 from papers.config import Config, MachineConfig
 from papers.config import CONFIG_FILE, CONFIG_FILE_LOCAL
 
+from tests import TEST_GLOBAL_POOL
 from tests.common import (paperscmd, PAPERSCMD, BaseTest as TestBaseInstall, BibTest, ConfigTest,
                           InitTest, GitLFSInitTest)
 import tests.test_undo as test_undo
@@ -533,7 +534,7 @@ class TestInstallIsInit(ConfigTest):
 
     def test_install_is_init(self):
         self.papers('install --no-prompt --no-git')
-        self.assertNotIn('pool', self.json())  # the global pool
+        self.assertEqual(self.json()['pool'], TEST_GLOBAL_POOL)  # the global pool, written
         self.assertIn('local', self.json())
 
 

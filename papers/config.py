@@ -104,8 +104,9 @@ for _kind in ('name', 'key'):
 
 # settings that only make sense for a library
 LIBRARY_ONLY = ('bibtex', 'filesdir')
-# settings a library inherits from the global configuration when unset
-INHERITED = [name for name in SETTINGS if name not in ('bibtex', 'filesdir')]
+# settings of a library other than its paths: when the library does not set
+# one, the global configuration applies, except for pool (see Config.inherited)
+LIBRARY_SETTINGS = [name for name in SETTINGS if name not in LIBRARY_ONLY]
 
 
 def default_value(name):
@@ -114,7 +115,7 @@ def default_value(name):
         return getattr(NAMEFORMAT, _attr(name))
     if name.startswith('key.'):
         return getattr(KEYFORMAT, _attr(name))
-    return {'pool': DEFAULT_POOL, 'local': False, 'paths': 'relative', 'files': 'move', 'auto-push': False,
+    return {'local': False, 'paths': 'relative', 'files': 'move', 'auto-push': False,
             'git': False, 'git-lfs': False, 'editor': None}.get(name)
 
 
@@ -267,9 +268,9 @@ class MachineConfig:
     The file has the layout of a library configuration:
         {"pool": "~/Documents/papers", "editor": "vim",
          "nameformat": {"template": "{author}_{year}"}}
-    `pool` is the global pool: the pool of the libraries that do not set
-    theirs (default ~/Documents/papers), or none. `local` is the default of
-    new libraries.
+    `pool` is the global pool (default ~/Documents/papers), or none: the
+    pool that `papers init` writes in a new library, and the library used
+    outside of any library. `local` is the default of new libraries.
     """
     def __init__(self, file=None, data=None):
         self.file = file
@@ -326,7 +327,7 @@ class MachineConfig:
 def _read_earlier_v3(js, machine, file):
     """the settings of the files written by earlier v3 builds, read as the
     current ones: `pools` (a list of names and paths) is the pool (its first
-    entry; the name `default` is the global pool), `light: true` is
+    entry; the name `default` was the global pool), `light: true` is
     `local: false` and its absence `local: true`"""
     pools = js.pop('pools', None)
     light = js.pop('light', None)
@@ -335,14 +336,14 @@ def _read_earlier_v3(js, machine, file):
     if isinstance(pools, list) and 'pool' not in js:
         first = pools[0] if pools else NO_POOL
         if first == 'default':
-            pass  # the global pool
+            js['pool'] = machine.pool
         elif first == NO_POOL or os.path.sep in first or (os.path.altsep and os.path.altsep in first) \
                 or first.startswith(('.', '~')):
             js['pool'] = first
         elif first in machine.pool_names:
             js['pool'] = machine.pool_names[first]
         else:
-            logger.warning(f"{file}: unknown pool name {first}: the library uses the global pool")
+            logger.warning(f"{file}: unknown pool name {first}: the library has no pool")
     if 'local' not in js:
         js['local'] = not light
 
@@ -351,7 +352,8 @@ class Config:
     """configuration of a library
 
     Each setting comes from the library's configuration file, else from the
-    global configuration, else from its built-in default. The attributes
+    global configuration, else from its built-in default; the pool comes
+    only from the library's file (none if it does not set it). The attributes
     hold the resulting values; `explicit` names the settings set in the file.
     """
     def __init__(self, file=None,
@@ -379,9 +381,8 @@ class Config:
         self.absolute_paths = absolute_paths
         self.git = git if git is not None else self.inherited('git')
         self.gitlfs = gitlfs if gitlfs is not None else self.inherited('git-lfs')
-        # the pool: a path (relative to the library), or none; a library
-        # that does not set it uses the global pool of the machine
-        self.pool = pool if pool is not None else self.inherited('pool')
+        # the pool: a path (relative to the library), or none
+        self.pool = pool if pool is not None else NO_POOL
         # local: the files of the library are in its files directory;
         # otherwise they are in the files directory of its pool, and the
         # library links to them. `papers config local` converts the files.
@@ -397,7 +398,11 @@ class Config:
     # settings by name (see SETTINGS)
     # -------------------------------
     def inherited(self, name):
-        "value of a setting when the library does not set it"
+        """value of a setting when the library does not set it: the global
+        configuration, else the built-in default. The pool is none: the
+        global pool setting is only the default of `papers init`."""
+        if name == 'pool':
+            return NO_POOL
         value = self.machine.get(name)
         return copy.deepcopy(value) if value is not None else default_value(name)
 
@@ -437,7 +442,7 @@ class Config:
         self.explicit.add(name)
 
     def unset(self, name):
-        "remove a setting from the library: it is inherited again"
+        "remove a setting from the library: the global or default value applies (pool: none)"
         self.explicit.discard(name)
         self.set(name, None if name in ('bibtex', 'filesdir') else self.inherited(name))
         self.explicit.discard(name)
@@ -452,36 +457,25 @@ class Config:
         "where the value of a setting comes from: library, global or default"
         if self.file and self.is_set(name):
             return 'library'
-        if name not in ('bibtex', 'filesdir') and self.machine.get(name) is not None:
+        if name not in ('bibtex', 'filesdir', 'pool') and self.machine.get(name) is not None:
             return 'global'
         return 'default'
 
     # pool
     # ----
-    @property
-    def uses_global_pool(self):
-        "the library does not set its pool: it uses the global pool of the machine"
-        return not (self.file and self.is_set('pool'))
-
     def pool_path(self):
-        """absolute path of the pool of the library (the global pool, or a
-        path relative to the library), or None (pool none)"""
-        if self.uses_global_pool:
-            return self.machine.pool_path()
-        if self.pool == NO_POOL:
+        """absolute path of the pool of the library (the pool setting, relative
+        to the library), or None (pool none, or no library)"""
+        if not self.file or self.pool == NO_POOL:
             return None
         return os.path.abspath(os.path.join(self.configdir, os.path.expanduser(self.pool)))
 
     def pool_label(self):
-        """the pool as `init`, `status` and the messages name it: the global
-        pool with ~, otherwise the pool setting (relative to the library)"""
-        path = self.pool_path()
-        if path is None:
-            return None
-        return short_home(path) if self.uses_global_pool else self.pool
+        "the pool as the pool setting writes it (relative to the library, or with ~), or None"
+        return self.pool if self.pool_path() is not None else None
 
     def is_pool_library(self):
-        "the library is its own pool (the global pool), so it has none"
+        "the library is its own pool (e.g. pool .), so it has none"
         path = self.pool_path()
         return bool(self.file) and path is not None and os.path.realpath(path) == os.path.realpath(self.configdir)
 
@@ -533,14 +527,14 @@ class Config:
 
     def tojson(self):
         """content of the configuration file: the paths, and the settings that
-        the library sets (the others are inherited when loaded)"""
+        the library sets (the others come from the global configuration when loaded)"""
         js = {
             "filesdir": self._relpath(self.filesdir),
             "bibtex": self._relpath(self.bibtex),
             # by name under the backup folder of each machine
             "gitdir": gitdir_to_json(self._abspath(self.gitdir)) if self.is_library else self._abspath(self.gitdir),
         }
-        for name in INHERITED:
+        for name in LIBRARY_SETTINGS:
             if self.is_set(name) or (name == 'local' and self.is_library):
                 json_set(js, name, self.get(name))
         if self.is_library:
@@ -583,7 +577,7 @@ class Config:
                   bibtex=js.get('bibtex'), filesdir=js.get('filesdir'), gitdir=gitdir)
         if not is_library and json_get(js, 'paths') is None:  # v2 compatibility, remove with migrate
             js['paths'] = 'absolute'  # default of v2 for a global configuration
-        for name in INHERITED:
+        for name in LIBRARY_SETTINGS:
             value = json_get(js, name)
             if value is not None:
                 cfg.set(name, value)

@@ -68,6 +68,7 @@ class TestInitSummary(ConfigTest):
             f'created the library {papers.config.short_home(self.path("lib"))}',
             '* bibtex:  papers.bib',
             '* files:   files (the files directory of the library)',
+            '* pool:    none',
             '* backup:  off',
             '`papers status -v` shows all settings'])
         self.assertEqual(self.json('lib')['pool'], 'none')
@@ -80,18 +81,30 @@ class TestInitSummary(ConfigTest):
         self.assertEqual(self.json('lib')['pool'], '../pool')
         self.assertIs(self.json('lib')['local'], True)
 
-    def test_not_local_keeps_global_pool(self):
-        self.papers('init lib --no-git')
-        self.assertNotIn('pool', self.json('lib'))  # the global pool
+    def test_writes_global_pool(self):
+        # the global pool setting, as written there
+        out = self.papers('init lib --no-git', sp_cmd='check_output')
+        self.assertEqual(self.json('lib')['pool'], TEST_GLOBAL_POOL)
+        self.assertIn(f'* pool:    {TEST_GLOBAL_POOL} (shared entries; the PDFs stay in this library)\n', out)
+        self.papers('config --global pool ~/elsewhere')
+        self.papers('init lib2 --no-git')
+        self.assertEqual(self.json('lib2')['pool'], '~/elsewhere')
+        # the libraries keep their pool when the global pool changes
+        self.assertEqual(self.json('lib')['pool'], TEST_GLOBAL_POOL)
+        self.assertEqual(self.papers('-C lib config pool', sp_cmd='check_output'), TEST_GLOBAL_POOL)
+        self.papers('config --global pool none')
+        self.assertEqual(self.papers('-C lib2 config pool', sp_cmd='check_output'), '~/elsewhere')
+        self.papers('init lib3 --no-git')
+        self.assertEqual(self.json('lib3')['pool'], 'none')
 
     def test_local_no_pool(self):
         out = self.papers('init lib --local --no-git --pool none', sp_cmd='check_output')
-        self.assertNotIn('* pool:', out)
+        self.assertIn('* pool:    none\n', out)
 
     def test_not_local(self):
         self.papers('config --global local false')
         out = self.papers('init lib --git', sp_cmd='check_output')
-        self.assertIn(f'* files:   in the pool {papers.config.short_home(TEST_GLOBAL_POOL)}', out)
+        self.assertIn(f'* files:   in the pool {TEST_GLOBAL_POOL}', out)  # as the global pool setting writes it
         self.assertIn('* backup:  git', out)
         self.assertNotIn('* pool:', out)  # the files line names the pool
         self.assertNotIn('settings:', out)

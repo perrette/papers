@@ -1,9 +1,10 @@
 """Pools: the library that a library exchanges entries with.
 
 The `pool` setting of a library is the path of its pool (relative to the
-library), or none; a library that does not set it uses the global pool of
-the machine (the `pool` setting of the global configuration, by default
-~/Documents/papers). Any library can be a pool.
+library, or with ~), or none; a library that does not set it has no pool.
+`papers init` writes the global pool (the `pool` setting of the global
+configuration, by default ~/Documents/papers) unless told otherwise. Any
+library can be a pool.
 
 - `Pools` resolves the pool of a library, and the pools given on the
   command line (`push --pool PATH`), to libraries, loaded when first used
@@ -148,11 +149,6 @@ def mtime(file):
 # POOLS
 # =====
 
-# how origin records name the global pool (it may be at another path on
-# another machine); records of earlier v3 builds named it `default`
-GLOBAL_POOL_ID = 'global'
-
-
 def check_readable(pool):
     """a pool with entries that could not be read is not written to: papers
     does not see them, and would add the same papers again"""
@@ -165,8 +161,8 @@ def check_readable(pool):
 
 class Pool:
     """a library used as a pool. `id` is how the library names it in its
-    origin records: `global` for the global pool, otherwise its path
-    relative to the library (or absolute)."""
+    origin records: the pool setting of the library for its pool,
+    otherwise its path relative to the library (or absolute)."""
 
     def __init__(self, id, path, config):
         self.id = id
@@ -181,7 +177,7 @@ class Pool:
 
     @property
     def label(self):
-        return f'pool {short_home(self.path) if self.id == GLOBAL_POOL_ID else self.id}'
+        return f'pool {self.id}'
 
     @property
     def filesdir(self):
@@ -282,8 +278,6 @@ class Pools:
 
     def _id(self, path):
         "how the origin records name the pool in `path`"
-        if self._is_global(path):
-            return GLOBAL_POOL_ID
         own = self.path()
         if own is not None and realpath(own) == realpath(path):
             return self.config.pool_label()  # as the pool setting writes it
@@ -404,11 +398,9 @@ _LEGACY_PULL_COMMENT = 'papers-pull'  # <mtime> <pool id>, in the legacy file
 
 
 def origin_file_name(pool):
-    """the origin file of a pool: global.bib for the global pool, otherwise
-    the name of the pool folder and the start of the sha1 of the pool id
-    (two pools in folders of the same name get different files)"""
-    if pool == GLOBAL_POOL_ID:
-        return 'global.bib'
+    """the origin file of a pool: the name of the pool folder and the start
+    of the sha1 of the pool id (two pools in folders of the same name get
+    different files)"""
     name = slugify(os.path.basename(os.path.normpath(pool))) or 'pool'
     return f'{name}-{hashlib.sha1(pool.encode()).hexdigest()[:6]}.bib'
 
@@ -502,17 +494,16 @@ class Origin:
 
     def _migrate(self, legacy):
         """split the single origin file of earlier v3 builds into one file
-        per pool, and remove it (`default` was the global pool)"""
+        per pool, and remove it"""
         lib = self._parse(legacy)
         if lib is None:
             return
-        pool_id = lambda id: GLOBAL_POOL_ID if id == 'default' else id
         for block in lib.comments:
             words = block.comment.strip().split(None, 2)
             if len(words) == 3 and words[0] == _LEGACY_PULL_COMMENT and words[1].isdigit():
-                self.pulls.setdefault(pool_id(words[2]), int(words[1]))
+                self.pulls.setdefault(words[2], int(words[1]))
         for e in lib.entries:
-            pool = pool_id(get_entry_val(e, POOL_FIELD, ''))
+            pool = get_entry_val(e, POOL_FIELD, '')
             self.entries.setdefault(pool, {}).setdefault(e.key.lower(), _strip(e, (POOL_FIELD,)))
         self.changed.update(self.entries, self.pulls)
         if papers.config.DRYRUN:
