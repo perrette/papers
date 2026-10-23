@@ -232,20 +232,17 @@ class TestSync(PoolTest):
         self.edit_pool('journal = {Nat.}', 'journal = {Nature}')
         lines = self.out('sync').splitlines()
         self.assertRegex(lines[0], r'^Modified -> smith2020climate: .* \[from pool ../pool\]$')
-        self.assertEqual(lines[1], 'push to pool ../pool: 1 unchanged')
-        self.assertEqual(len(lines), 2)
+        self.assertEqual(len(lines), 1)  # the push changed nothing: no line
         self.assertEqual(self.entry('smith2020climate')['journal'], 'Nature')
         self.assertEqual(len(self.bib('pool')[1]), 2)  # mine2022 is not shared: not pushed
-        self.assertEqual(self.out('sync'), 'nothing to sync with pool ../pool (1 entry unchanged)')
+        self.assertEqual(self.out('sync'), 'nothing to sync with pool ../pool')
         # --all: each side gets what it does not have
         lines = self.out('sync --all').splitlines()
         self.assertRegex(lines[0], r'^Added -> Brown_2021: .* \[from pool ../pool\]$')
-        self.assertEqual(lines[1], 'pull from pool ../pool: 1 unchanged, 1 added')
-        self.assertRegex(lines[2], r'^Added -> mine2022: .* \[to pool ../pool\]$')
-        self.assertEqual(lines[3], 'push to pool ../pool: 2 unchanged, 1 added')
-        self.assertEqual(len(lines), 4)
+        self.assertRegex(lines[1], r'^Added -> mine2022: .* \[to pool ../pool\]$')
+        self.assertEqual(len(lines), 2)  # one entry each: no count line
         self.assertEqual(len(self.bib('pool')[1]), 3)
-        self.assertEqual(self.out('sync'), 'nothing to sync with pool ../pool (3 entries unchanged)')
+        self.assertEqual(self.out('sync'), 'nothing to sync with pool ../pool')
 
     def test_nothing_shared(self):
         self.papers('init other --no-git')
@@ -255,11 +252,11 @@ class TestSync(PoolTest):
         self.assertEqual(self.bib('other')[1], {})
         self.assertEqual('push to pool ../other: no entries shared with it (`papers push --pool ../other KEY` '
                          'or `papers push --pool ../other --all` adds entries to it)', self.out('push --pool ../other'))
-        self.assertEqual('pull from pool ../other: nothing to do', self.out('pull --pool ../other'))
+        self.assertEqual('nothing to pull from pool ../other', self.out('pull --pool ../other'))
         self.assertEqual(self.bib('other')[1], {})
         # once exchanged, the entries are shared with it
         self.lib('push --pool ../other mine2022')
-        self.assertEqual(self.out('sync --pool ../other'), 'nothing to sync with pool ../other (1 entry unchanged)')
+        self.assertEqual(self.out('sync --pool ../other'), 'nothing to sync with pool ../other')
 
     def test_not_found_only_for_keys_given(self):
         self.edit_pool('@article{Smith_2020,', '@article{Other_2020,')

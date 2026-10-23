@@ -86,17 +86,15 @@ def _initcmd(parser, o, config):
 def init_summary(config):
     """what `papers init` prints: the library created, its bibtex, where its
     files go, its pool and its backup"""
+    lines = [f'created the library {short_home(str(config.configdir))}',
+             f'* bibtex:  {_show(config.bibtex) if config.bibtex else "none"}']
     if not config.has_pool():
         files = f'{_show(config.filesdir)} (the files directory of the library)' if config.filesdir \
             else 'linked where they are (no files directory)'
-        pool = 'none (a self-contained library: its own entries and files)'
+        lines.append(f'* files:   {files}')
     else:
-        files = f'in the pool {config.pool_label()}'
-        pool = f'{config.pool_label()} (a shallow library: it takes its entries from the pool and links to its files)'
-    lines = [f'created the library {short_home(str(config.configdir))}',
-             f'* bibtex:  {_show(config.bibtex) if config.bibtex else "none"}',
-             f'* files:   {files}',
-             f'* pool:    {pool}']
+        lines.extend(['* files:   in the pool (shallow library)',
+                      f'* pool:    {config.pool_label()}'])
     return lines + ['* backup:  ' + ('git' + (' and git-lfs' if config.gitlfs else '') if config.git else 'off'),
                     '`papers status -v` shows all settings']
 

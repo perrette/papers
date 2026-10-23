@@ -76,7 +76,6 @@ class TestInitSummary(ConfigTest):
             f'created the library {papers.config.short_home(self.path("lib"))}',
             '* bibtex:  papers.bib',
             '* files:   files (the files directory of the library)',
-            '* pool:    none (a self-contained library: its own entries and files)',
             '* backup:  off',
             '`papers status -v` shows all settings'])
         self.assertEqual(self.json('lib')['pool'], 'none')
@@ -85,16 +84,15 @@ class TestInitSummary(ConfigTest):
     def test_shallow(self):
         self.papers('init pool --no-git')
         out = self.papers('init lib --git --pool ../pool', sp_cmd='check_output')
-        self.assertIn('* files:   in the pool ../pool\n', out)
-        self.assertIn('* pool:    ../pool (a shallow library: it takes its entries from the pool and links to its '
-                      'files)\n', out)
+        self.assertIn('* files:   in the pool (shallow library)\n* pool:    ../pool\n', out)
         self.assertIn('* backup:  git', out)
         self.assertEqual(self.json('lib')['pool'], '../pool')
         self.assertNotIn('local', self.json('lib'))
 
     def test_pool_none(self):
         out = self.papers('init lib --no-git --pool none', sp_cmd='check_output')
-        self.assertIn('* pool:    none (a self-contained library', out)
+        self.assertIn('* files:   files (the files directory of the library)\n', out)
+        self.assertNotIn('* pool:', out)
 
 
 class TestOtherCommands(ConfigTest):

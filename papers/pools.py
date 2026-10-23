@@ -1180,13 +1180,16 @@ def _rekey(e, key):
 
 def report_counts(report):
     """the counts of the outcomes of pull or push (see Exchange.pull, push):
-    '1 added, 2 unchanged', or 'nothing to do'"""
+    '1 added, 2 modified', or '' when nothing happened (the entries
+    unchanged are not counted)"""
     counts = {}
     for _, _, what in report:
+        if what == 'unchanged':
+            continue
         # as the lines of the entries say
         what = {'updated': 'modified', 'links': 'with file links updated'}.get(what, what)
         counts[what] = counts.get(what, 0) + 1
-    return ', '.join(f'{n} {what}' for what, n in counts.items()) or 'nothing to do'
+    return ', '.join(f'{n} {what}' for what, n in counts.items())
 
 
 def pool_state(origin, pool):

@@ -271,7 +271,7 @@ class TestDefaultLibrary(ConfigTest):
         self.assertEqual([e['ID'] for e in biblio.entries], ['someone2000'])
         out = self.papers('status', sp_cmd='check_output')
         self.assertIn('(default library)', out)
-        self.assertIn('pool:               none', out)
+        self.assertNotIn('* pool:', out)  # self-contained: no pool line
         # never uninstalled from outside
         with self.assertRaisesRegex(PapersExit, 'The default library .* is used outside of libraries'):
             self.papers('uninstall')
@@ -295,7 +295,8 @@ class TestDefaultLibrary(ConfigTest):
 
     def test_init_global(self):
         out = self.papers('init lib --global --no-git', sp_cmd='check_output')
-        self.assertIn('* pool:    none (a self-contained library', out)
+        self.assertIn('* files:   files (the files directory of the library)\n', out)
+        self.assertNotIn('* pool:', out)
         self.assertIn(f'registered {papers.config.short_home(self.path("lib"))} as the default library', out)
         self.assertEqual(MachineConfig.load().default, papers.config.short_home(self.path('lib')))
         self.assertEqual(self.papers('config --global default', sp_cmd='check_output'),
@@ -324,7 +325,7 @@ class TestDefaultLibrary(ConfigTest):
         self.assertFalse(os.path.exists(self.path('lib')))
         self.papers(f'init {TEST_DEFAULT_LIBRARY} --global --no-git')
         out = self.papers('init lib --shallow --no-git', sp_cmd='check_output')
-        self.assertIn('* pool:    ~/Documents/papers (a shallow library', out)
+        self.assertIn('* files:   in the pool (shallow library)\n* pool:    ~/Documents/papers\n', out)
         self.assertEqual(self.json('lib')['pool'], '~/Documents/papers')  # written with ~
         with self.assertRaisesRegex(PapersExit, '--shallow is --pool with the default library'):
             self.papers('init other --shallow --pool ../lib --no-git')

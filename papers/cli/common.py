@@ -309,7 +309,9 @@ def push_notes(pushed, notes=None):
     notes = {} if notes is None else notes
     if not pushed:
         return notes
-    logger.info(f'push to {pushed[0][1].label}: {report_counts(pushed)}')
+    counts = report_counts(pushed)
+    if counts:
+        logger.info(f'push to {pushed[0][1].label}: {counts}')
     for e, pool, what in pushed:
         if what in _PUSH_NOTES:
             text = _PUSH_NOTES[what].format(pool.label)
@@ -331,9 +333,10 @@ _EXCHANGE_LINES = {
 def exchange_lines(report, kind, biblio, pool):
     """the report of pull or push (see papers.pools.Exchange.pull, push):
     (one line per entry added, modified, skipped or not found, the line of
-    the counts or None). The counts are given when more than one entry was
-    involved, or when there is no entry line. pool: the pool of the
-    exchange, or None."""
+    the counts or None). The counts (the entries unchanged aside) are given
+    when more than one entry changed or was not exchanged, or when there is
+    no entry line; without any, the line says there was nothing to
+    exchange. pool: the pool of the exchange, or None."""
     label = pool.label if pool is not None else None
     lines = []
     for e, p, what in report:
@@ -342,9 +345,11 @@ def exchange_lines(report, kind, biblio, pool):
             where = p.label if p is not None else (label or 'the pool')
             lines.append(format_entry(biblio, e, prefix=prefix) + f' [{note.format(where)}]')
     summary = None
-    if len(report) > 1 or not lines:
+    counted = [r for r in report if r[2] != 'unchanged']
+    if len(counted) > 1 or not lines:
         verb = kind if label is None else f'{kind} {"from" if kind == "pull" else "to"} {label}'
-        summary = f'{verb}: {report_counts(report)}'
+        counts = report_counts(report)
+        summary = f'{verb}: {counts}' if counts else f'nothing to {verb}'
     return lines, summary
 
 

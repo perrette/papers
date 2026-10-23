@@ -704,20 +704,19 @@ class Config:
         in_pool = self.shallow
         if in_pool:
             # the files of a shallow library are in its pool (see papers.pools.use_pool_files)
-            lines.append(f'* files:              in the pool {self.pool_label()}')
+            lines.append('* files:              in the pool (shallow library)')
+        elif self.filesdir is None:
+            lines.append('* files:              linked where they are (no files directory)')
         else:
-            if self.filesdir is None:
-                status = bcolors.WARNING+' (unset)'+bcolors.ENDC
-            elif not os.path.exists(self.filesdir):
-                status = bcolors.WARNING+' (missing)'+bcolors.ENDC
+            notes = ['the files directory of the library']
+            if not os.path.exists(self.filesdir):
+                notes.append(bcolors.WARNING+'missing'+bcolors.ENDC)
             elif not os.listdir(self.filesdir):
-                status = bcolors.WARNING+' (empty)'+bcolors.ENDC
+                notes.append(bcolors.WARNING+'empty'+bcolors.ENDC)
             elif check_files:
                 file_count, folder_size = check_filesdir(self.filesdir)
-                status = bcolors.OKBLUE+" ({} files, {:.1f} MB)".format(file_count, folder_size/(1024*1024.0))+bcolors.ENDC
-            else:
-                status = ''
-            lines.append(f'* files directory:    {_fmt_path(self.filesdir) if self.filesdir else self.filesdir}'+status)
+                notes.append(bcolors.OKBLUE+"{} files, {:.1f} MB".format(file_count, folder_size/(1024*1024.0))+bcolors.ENDC)
+            lines.append(f'* files:              {_fmt_path(self.filesdir)} ({", ".join(notes)})')
         if in_pool:
             note = ' (the files added are moved into the pool)' if (self.files or 'move') == 'move' else \
                 ' (the files added are copied into the pool)' if self.files == 'copy' else \
@@ -749,10 +748,8 @@ class Config:
 
         if self.file:
             from papers.pools import status_line  # papers.pools imports this module
-            lines.append('* library:            ' + ('shallow (it takes its entries from the pool, and links to '
-                                                     'the files of the pool)' if self.shallow else
-                                                     'self-contained (its own entries and files)'))
-            lines.append('* pool:               ' + status_line(self))
+            if self.shallow or verbose:
+                lines.append('* pool:               ' + status_line(self))
             if self.shallow:
                 if self.auto_push:
                     text = 'true (the commands push the entries they change to the pool)'

@@ -101,8 +101,7 @@ class TestSetting(OneTimeTest):
 
     def test_init(self):
         out = self.papers('init third --no-git --pool ../pool', sp_cmd='check_output')
-        self.assertIn('* pool:    ../pool (a shallow library: it takes its entries from the pool and links to its '
-                      'files)\n', out)
+        self.assertIn('* files:   in the pool (shallow library)\n* pool:    ../pool\n', out)
         self.assertEqual(self.json('third')['pool'], '../pool')
 
     def test_status(self):
@@ -147,7 +146,8 @@ class TestOneTime(OneTimeTest):
         e = self.entry('Brown_2021')
         self.assertEqual((e['journal'], e['volume']), ('Ocean Science', '7'))
         self.assertEqual(self.entry('Brown_2021', 'other')['volume'], '7')
-        self.assertIn('push to pool ../other: 1 modified, 2 unchanged', out)
+        self.assertRegex(out, r'Modified -> Brown_2021: .* \[in pool ../other\]')
+        self.assertNotIn('unchanged', out)
 
     def test_without_key(self):
         self.lib('pull Smith_2020')
@@ -165,12 +165,12 @@ class TestOneTime(OneTimeTest):
         self.assertEqual(self.json('lib')['pool'], self.path('other'))
         text = Path(self.path('other', 'papers.bib')).read_text()
         Path(self.path('other', 'papers.bib')).write_text(text.replace('{Ocean Sci.}', '{Ocean Science}'))
-        self.assertRegex(self.out('sync'), r'^Modified -> Brown_2021: .* \[from pool ../other\]\n')
+        self.assertRegex(self.out('sync'), r'^Modified -> Brown_2021: .* \[from pool ../other\]$')
         self.assertEqual(self.entry('Brown_2021')['journal'], 'Ocean Science')
         self.assertEqual(os.listdir(self.path('lib', '.papers', 'origin')), [origin_file_name('../other')])
         # and back: the library without pool exchanges with ../other as before
         self.lib('config pool none')
-        self.assertIn('nothing to sync with pool ../other (1 entry unchanged)', self.out('sync --pool ../other'))
+        self.assertIn('nothing to sync with pool ../other', self.out('sync --pool ../other'))
 
     def test_missing_pool(self):
         self.lib('pull Smith_2020')

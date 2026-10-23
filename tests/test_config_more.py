@@ -99,7 +99,7 @@ class TestConfig(unittest.TestCase):
         config = Config(file=os.path.join(self.dir, CONFIG_FILE_LOCAL),
                         bibtex=os.path.join(self.dir, 'missing.bib'))
         status = config.status(check_files=True)
-        self.assertIn('(unset)', status)  # files directory
+        self.assertIn('no files directory', status)
         self.assertIn('(missing)', status)
         config.bibtex = None
         self.assertIn('(unset)', config.status())

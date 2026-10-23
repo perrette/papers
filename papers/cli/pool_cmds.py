@@ -1,7 +1,7 @@
 """papers pull, push, sync, export"""
 from papers.identifiers import read_selection, select_entries, select_some
 from papers.library import get_biblio, savebib
-from papers.pools import Exchange, PoolError, NO_POOL_MESSAGE, export
+from papers.pools import Exchange, PoolError, NO_POOL_MESSAGE, export, report_counts
 from papers.utils import PapersExit
 from papers.cli.common import (duplicate_resolver, _entries_or_all, exchange_lines, print_exchange, save_exchange,
                                library_pools, push_changed, push_notes, print_push_notes)
@@ -165,19 +165,21 @@ def synccmd(parser, o, config):
     exchange = Exchange(config, biblio, exchange.pools, exchange.origin)
     push_report, pool = _push(o, exchange, duplicate_resolver(o, 'push'))
     push_lines, push_summary = exchange_lines(push_report, 'push', biblio, pool)
-    if pull_lines or push_lines:
-        if not pull_lines and pull_report:
+    pull_counted = report_counts(pull_report)
+    push_counted = report_counts(push_report)
+    if pull_lines or push_lines or pull_counted or push_counted:
+        if not pull_lines and pull_counted:
             print(pull_summary)
-        print('\n'.join(push_lines + ([push_summary] if push_summary else [])))
+        if push_lines or push_counted:
+            print('\n'.join(push_lines + ([push_summary] if push_summary else [])))
         return
-    involved = {e.key.lower() for e, _, _ in pull_report + push_report}
+    involved = pull_report or push_report
     label = pool.label
     if not involved and _nothing_shared(o):
         print(f'nothing to sync with {label}: no entries shared with it '
               f'(`papers sync{_options(o)} --all` adds the entries missing on each side)')
     else:
-        n = len(involved)
-        print(f'nothing to sync with {label}' + (f' ({n} entr{"y" if n == 1 else "ies"} unchanged)' if n else ''))
+        print(f'nothing to sync with {label}')
 
 
 def exportcmd(parser, o, config):
