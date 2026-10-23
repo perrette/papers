@@ -150,8 +150,8 @@ Otherwise the library links to the copies in PATH. The library's own
 copies, in its files directory, are deleted, unless an entry of the
 library or of PATH still links to them; nothing is copied or moved. These
 commands do not push entries or merge fields: `papers push` does that. The
-entries exchanged with PATH before (with `--pool PATH`) are shared with it
-already: their origin copies are those of the new pool.
+origin copies of the entries exchanged with PATH before (with `--pool
+PATH`) are those of the new pool.
 
 ### From a self-contained project to a shallow one
 
@@ -187,9 +187,11 @@ delete ~/projects/old-paper/files/perrette_et_al_2013_a-scaling-approach-to-proj
 change entries push them to the pool: `add`, `edit`, `tag`, `list
 --add-tag` and the other actions of `list`, `check`, `file attach`, `file
 rename`, `file detach`, `file rm`, `file mv` and `file fix`. After the
-command, the entries it changed that are shared with the pool, and the
-entries new to the library, are pushed as `papers push KEY...` would push
-them, files included. The other entries are not pushed. In a
+command, the entries it changed that are shared with the pool (the pool
+has the same paper), and the entries new to the library, are pushed as
+`papers push KEY...` would push them, files included. The other entries
+are not pushed: an entry removed from the pool is noted once (see
+[Removed entries](pools.md#removed-entries)). In a
 self-contained library, the setting has no effect (it has no pool; the
 libraries of `--pool PATH` only get what `push` and `sync` send).
 

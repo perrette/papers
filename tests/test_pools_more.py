@@ -19,7 +19,10 @@ class TestPullCheck(PoolTest):
         self.take_smith()
         self.edit_pool('doi = {10.1000/abc123}', 'doi = {10.1000/other}')
         self.edit_pool('@article{Smith_2020,', '@article{Other_2020,')
-        self.assertIn('smith2020climate: not found in pool ../pool', self.out('pull --check'))
+        note = ('smith2020climate: removed from pool ../pool '
+                '(`papers push --pool ../pool smith2020climate` adds it back)')
+        self.assertIn(note, self.out('pull --check'))
+        self.assertIn(note, self.out('pull --check'))  # nothing written
 
     def test_not_pulled_yet(self):
         Path(self.path('lib', 'papers.bib')).write_text(SMITH_BIB)
@@ -287,9 +290,10 @@ class TestSync(PoolTest):
         self.edit_pool('title = {Climate sensitivity revisited}', 'title = {Other}')
         self.assertNotIn('Not found', self.out('pull'))
         self.assertRegex(self.out('pull smith2020climate'), r'Not found -> smith2020climate: .* \[not in pool ../pool\]')
-        out = self.out('sync')  # not found in the pool: pushed to it
+        out = self.out('sync')  # removed from the pool: not pushed back
         self.assertNotIn('Not found', out)
-        self.assertRegex(out, r'^Added -> smith2020climate: .* \[to pool ../pool\]$')
+        self.assertNotIn('Added', out)
+        self.assertRegex(self.out('push smith2020climate'), r'^Added -> smith2020climate: .* \[to pool ../pool\]$')
 
     def test_conflict_stops_before_push(self):
         self.edit_pool('journal = {Nat.}', 'journal = {Nature Climate Change}')

@@ -677,9 +677,9 @@ def get_parser(config=None):
         library --pool PATH (three-way
         merge with the origin copy of the entry, in .papers/origin/): a field changed in the pool
         only is taken, a field changed in the library only is kept, a field changed on both sides
-        is a conflict. Without KEY, only the entries shared with the pool (with an origin copy) are
-        updated; an entry named, or all entries with --all, is matched by the same-paper rule when
-        it has no origin copy. The keys of the library never change. KEY may also be an entry of
+        is a conflict. Without KEY, only the entries shared with the pool (the pool has the same
+        paper: the pool entry of the origin copy, else by the same-paper rule) are updated; an
+        entry without origin copy has no base, and its differences are conflicts. The keys of the library never change. KEY may also be an entry of
         the pool only (its key, DOI, arXiv id or ISBN): it is added to the library, under the pool
         key (with a letter suffix if the library has that key already). New pool files are linked
         in a shallow library (its own pool), and otherwise copied (a hard link when possible) as the
@@ -690,8 +690,7 @@ def get_parser(config=None):
         help=_selection_help + ' (default: the entries shared with the pool)')
     pullp.add_argument('--pool', metavar='PATH', help=_pool_help.format(what='pull from'))
     pullp.add_argument('--all', action='store_true',
-        help='all entries: the entries of the library not shared yet are matched by the same-paper rule in '
-             'the pool, and every entry of the pool that the library does not have is added')
+        help='all entries of the library, and every entry of the pool that the library does not have is added')
     pullp.add_argument('--on-duplicate', choices=ON_DUPLICATE,
         help=_exchange_help.format(receiving='library', incoming='pool'))
     pullp.add_argument('--check', action='store_true',
@@ -702,8 +701,9 @@ def get_parser(config=None):
     pushp = subparsers.add_parser('push', parents=[cfg],
         description='''merge the changes of the entries of the library into their pool entries
         (three-way merge with the origin copy, as pull does in the other direction), in the pool
-        of the library or the library --pool PATH. Without KEY, only the entries shared with the pool (those
-        with an origin copy from it) are pushed; KEY... pushes those entries, and adds them to the pool if
+        of the library or the library --pool PATH. Without KEY, only the entries shared with the pool (the
+        pool has the same paper) are pushed, and an entry removed from the pool is not added back;
+        KEY... pushes those entries, and adds them to the pool if
         it does not have them; --all pushes every entry. Entries new to the pool get a key from
         the pool's key template; their files are copied (a hard link when possible) into the
         pool's files directory, named with the pool's name template. The pool must be a library
@@ -720,8 +720,8 @@ def get_parser(config=None):
 
     syncp = subparsers.add_parser('sync', parents=[cfg],
         description='''`papers pull`, then `papers push` of the same entries, with the pool of the
-        library or the library --pool PATH. Without KEY, only the entries shared with it (those with an origin
-        copy) are exchanged; KEY... exchanges those entries; --all is `pull --all`
+        library or the library --pool PATH. Without KEY, only the entries shared with it (it has the same
+        paper) are exchanged; KEY... exchanges those entries; --all is `pull --all`
         and `push --all`: each side gets the entries it does not have. If the pull leaves
         conflicts undecided (skipped, or the dialogue quit), nothing is pushed.''')
     syncp.add_argument('entries', nargs='*', metavar='KEY',

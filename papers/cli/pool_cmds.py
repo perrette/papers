@@ -3,7 +3,7 @@ import os
 from papers.identifiers import read_selection, select_entries, select_some
 from papers.library import get_biblio, savebib
 from papers.formats import FILENAMES, FORMATS, dumps, load_rispy
-from papers.pools import Exchange, PoolError, NO_POOL_MESSAGE, export, report_counts
+from papers.pools import Exchange, PoolError, NO_POOL_MESSAGE, export, report_counts, removed_note
 from papers.utils import PapersExit
 from papers.cli.common import (duplicate_resolver, _entries_or_all, exchange_lines, print_exchange, save_exchange,
                                library_pools, push_changed, push_notes, print_push_notes)
@@ -78,13 +78,26 @@ def _nothing_shared(o):
     return not o.entries and not o.all
 
 
+def _shared(exchange, entries, pool, o):
+    """the entries shared with the pool among `entries` (see
+    Exchange.sharing), for an exchange without KEY or --all. The entries
+    removed from the pool are left out: their note is printed, and their
+    origin records are dropped (they are no longer shared, and the note
+    comes once)."""
+    shared, removed = exchange.sharing(entries, pool)
+    for e in removed:
+        print(removed_note(e, pool, _options(o)))
+    exchange.forget(removed, pool)
+    return shared
+
+
 def _pull(o, exchange, resolver, pool):
     """the pull of `pull` and `sync`: (report, notes of the push to the pool
     of a shallow library, see _forward). Without KEY or --all, only the
-    entries shared with the pool (origin record)."""
+    entries shared with the pool (see _shared)."""
     entries, new, named = _pull_selection(exchange, pool, o.entries, take_all=o.all)
     if _nothing_shared(o):
-        entries = exchange.shared(entries, pool)
+        entries = _shared(exchange, entries, pool, o)
     report = exchange.pull(entries, pool, resolver, new=new, named=named, record_pull=not o.entries)
     notes = _forward(exchange, pool)
     save_exchange(exchange)
@@ -97,8 +110,10 @@ def pullcmd(parser, o, config):
     if o.check:
         entries = _entries_or_all(biblio, o.entries)
         if _nothing_shared(o):
-            entries = exchange.shared(entries, pool)
-        lines = exchange.check(entries, pool, all_entries=not o.entries)
+            shared, removed = exchange.sharing(entries, pool)
+            listed = {id(e) for e in shared + removed}
+            entries = [e for e in entries if id(e) in listed]
+        lines = exchange.check(entries, pool, all_entries=not o.entries, options=_options(o))
         print('\n'.join(lines) or 'nothing to pull')
         return
     report, notes = _pull(o, exchange, duplicate_resolver(o, 'pull'), pool)
@@ -108,23 +123,26 @@ def pullcmd(parser, o, config):
 
 def _push_entries(exchange, o, pool):
     """the entries to push: those named, all of them with --all, else the
-    entries shared with the pool (origin record)"""
+    entries shared with the pool (see _shared)"""
     biblio = exchange.biblio
     if o.entries:
         return _entries_or_all(biblio, o.entries)
     if o.all:
         return list(biblio.entries)
-    return exchange.shared(biblio.entries, pool)
+    return _shared(exchange, biblio.entries, pool, o)
 
 
 def _push(o, exchange, resolver):
     """the push of `push` and `sync`: (report, pool). Without KEY or --all,
-    only the entries shared with the pool are pushed: nothing is written
-    when there are none."""
+    only the entries shared with the pool are pushed: only the origin
+    records of the entries removed from the pool are written when there
+    are none."""
     nothing_shared = _nothing_shared(o)
     pool = _source(exchange, o)
     entries = _push_entries(exchange, o, pool)
     if not entries and nothing_shared:
+        if exchange.origin.changed:
+            save_exchange(exchange)
         return [], pool
     report = exchange.push(entries, pool, resolver)
     save_exchange(exchange)

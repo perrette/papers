@@ -1,12 +1,13 @@
 """The rules of the exchanges with the pool: the fields that each side
 keeps (key, ids, file), removals, and the auto-push setting"""
 import os
+import shutil
 from pathlib import Path
 from unittest.mock import patch
 
 from papers.pools import ORIGIN_DIR
 from papers.utils import PapersExit
-from tests.test_pools import PoolTest, NEW_BIB, SMITH_BIB, no_fetch
+from tests.test_pools import PoolTest, NEW_BIB, POOL_BIB, SMITH_BIB, no_fetch
 
 NOTE = '[not pushed: changed in the pool too; papers sync decides]'
 
@@ -573,3 +574,83 @@ class TestShallowSharedLinks(ExchangeTest):
         self.assertTrue(os.path.exists(self.si))
         self.assertTrue(os.path.exists(self.pool_pdf))
         self.assertEqual(Path(self.path('pool', 'papers.bib')).read_text(), pool_text)
+
+
+class TestRemovedFromThePool(ExchangeTest):
+    """an entry removed from the pool stays in the library; the exchanges
+    without KEY or --all leave it out, with a note, and drop its origin
+    record (the note comes once); push KEY and push --all add it back"""
+
+    NOTE = ('smith2020climate: removed from pool ../pool '
+            '(`papers push --pool ../pool smith2020climate` adds it back)')
+
+    def setUp(self):
+        super().setUp()
+        self.remove_from_pool()
+
+    def remove_from_pool(self):
+        Path(self.path('pool', 'papers.bib')).write_text(POOL_BIB[POOL_BIB.index('@article{Brown_2021,'):])
+        self.assertEqual(list(self.bib('pool')[1]), ['Brown_2021'])
+
+    def test_push(self):
+        lib_text = Path(self.path('lib', 'papers.bib')).read_text()
+        out = self.out('push')
+        self.assertIn(self.NOTE, out)
+        self.assertNotIn('Added', out)
+        self.assertNotIn('Smith_2020', self.bib('pool')[1])
+        self.assertEqual(Path(self.path('lib', 'papers.bib')).read_text(), lib_text)
+        self.assertIsNone(self.origin().get(self.smith()))
+        out = self.out('push')  # once
+        self.assertNotIn('removed from', out)
+        self.assertIn('no entries shared with it', out)
+        self.assertEqual(len(self.bib('pool')[1]), 1)
+
+    def test_sync(self):
+        out = self.out('sync')
+        self.assertEqual(out.count('removed from pool'), 1)
+        self.assertIn(self.NOTE, out)
+        self.assertEqual(len(self.bib('pool')[1]), 1)
+        self.assertNotIn('removed from', self.out('sync'))
+        self.assertEqual(len(self.bib('pool')[1]), 1)
+
+    def test_push_key_adds_it_back(self):
+        for cmd in ['push smith2020climate', 'push --all', 'push --pool ../pool smith2020climate']:
+            with self.subTest(cmd=cmd):
+                self.remove_from_pool()
+                self.assertIn('Added -> smith2020climate', self.out(cmd))
+                self.assertEqual(len(self.bib('pool')[1]), 2)
+                self.assertIsNotNone(self.origin().get(self.smith()))
+
+    def test_push_key_after_the_note(self):
+        self.out('push')
+        self.assertIn('Added -> smith2020climate', self.out('push smith2020climate'))
+        self.assertIsNotNone(self.origin().get(self.smith()))
+
+    def test_auto_push(self):
+        self.lib('push smith2020climate')  # back in the pool, to make the library shallow
+        self.lib('config pool ../pool -y')
+        self.lib('config auto-push true')
+        self.remove_from_pool()
+        out = self.out('tag smith2020climate --add foo')
+        self.assertIn('removed from pool ../pool (`papers push smith2020climate` adds it back)', out)
+        self.assertEqual(len(self.bib('pool')[1]), 1)
+        self.assertEqual(self.smith()['keywords'], 'foo')
+        self.assertNotIn('removed from', self.out('tag smith2020climate --add bar'))
+        self.assertEqual(len(self.bib('pool')[1]), 1)
+
+
+class TestSharedWithoutRecord(ExchangeTest):
+    "an entry whose paper the pool has is shared, with an origin record or not"
+
+    def test_push(self):
+        shutil.rmtree(self.path('lib', ORIGIN_DIR))
+        self.edit_lib('journal = {Nat.}', 'journal = {Nat.},\n volume = {12}')
+        out = self.out('push')
+        self.assertIn('Modified -> smith2020climate', out)
+        self.assertEqual(self.smith('pool')['volume'], '12')
+        self.assertIsNotNone(self.origin().get(self.smith()))
+
+    def test_pull_check(self):
+        shutil.rmtree(self.path('lib', ORIGIN_DIR))
+        self.edit_pool('journal = {Nat.}', 'journal = {Nature}')
+        self.assertIn('smith2020climate: in pool ../pool as Smith_2020, not pulled yet', self.out('pull --check'))

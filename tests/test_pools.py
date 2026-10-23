@@ -597,11 +597,16 @@ class TestPull(PoolTest):
         self.assertTrue(files[1].startswith(self.path('lib', 'files')))
         self.assertTrue(os.path.samefile(files[1], self.path('pool', 'files', 'smith-si.pdf')))
 
-    def test_entry_without_origin_is_not_shared(self):
-        # without KEY or --all, pull only updates the entries shared with the pool
+    def test_entry_without_origin_is_shared(self):
+        # without KEY or --all, pull updates the entries whose paper the pool has, with an origin record or not
         shutil.rmtree(self.path('lib', ORIGIN_DIR))
-        self.out('pull')
-        self.assertIsNone(self.origin().get(self.entry('smith2020climate')))
+        self.edit_pool('journal = {Nat.}', 'journal = {Nature}')
+        # without origin record, no base for the merge: the change is a conflict
+        with self.assertRaisesRegex(PapersExit, '1 conflict'):
+            self.out('pull')
+        self.out('pull --on-duplicate update')
+        self.assertIsNotNone(self.origin().get(self.entry('smith2020climate')))
+        self.assertEqual(self.entry('smith2020climate')['journal'], 'Nature')
 
     def test_entry_without_origin_is_linked(self):
         for cmd in ['pull smith2020climate', 'pull --all']:
@@ -642,7 +647,11 @@ class TestPull(PoolTest):
         self.edit_pool('@article{Smith_2020,', '@article{Other_2020,')
         self.edit_pool('doi = {10.1000/abc123}', 'doi = {10.1000/other}')
         self.edit_pool('title = {Climate sensitivity revisited}', 'title = {Other}')
-        self.assertEqual(self.out('pull'), 'nothing to pull from pool ../pool')  # not named: not reported
+        # removed from the pool: noted once (the origin record is dropped), not pulled
+        self.assertEqual(self.out('pull'), 'smith2020climate: removed from pool ../pool '
+                         '(`papers push --pool ../pool smith2020climate` adds it back)\nnothing to pull from pool ../pool')
+        self.assertIsNone(self.origin().get(self.entry('smith2020climate')))
+        self.assertEqual(self.out('pull'), 'nothing to pull from pool ../pool')
         out = self.out('pull smith2020climate')
         self.assertRegex(out, r'^Not found -> smith2020climate: .* \[not in pool ../pool\]$')
 
@@ -1323,6 +1332,9 @@ class TestConfigPool(OwnFilesTest):
         # the origin records: mine2022 was pushed to the new pool, smith2020climate is not shared with it
         self.assertIsNotNone(self.origin().get(self.entry('mine2022'), '../other'))
         self.assertIsNone(self.origin().get(self.entry('smith2020climate'), '../other'))
+        # the new pool has the paper of smith2020climate: shared with it, the push records it
+        self.assertIn('push to pool ../other: 1 linked', self.out('push'))
+        self.assertIsNotNone(self.origin().get(self.entry('smith2020climate'), '../other'))
         self.assertIn('nothing to push to pool ../other', self.out('push'))
 
     def test_new_pool_missing(self):

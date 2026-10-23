@@ -46,7 +46,9 @@ files are copied rather than linked.
 The key of an entry belongs to each library: `pull` and `push` never change
 the key of the library they write to. An entry of the library is matched to
 its pool entry by the identity rule (papers.duplicate.same_paper) applied to
-its origin copy, then to the entry itself.
+its origin copy, then to the entry itself. An entry is shared with a pool
+when the pool has its paper this way (Exchange.sharing), with an origin
+record or not: the record is only the base of the merge.
 """
 import datetime
 import hashlib
@@ -779,9 +781,32 @@ class Exchange:
         "the entries of the pool that are not in the library (no library entry, see library_entry)"
         return [pe for pe in pool.biblio.entries if self.library_entry(pe, pool) is None]
 
+    def sharing(self, entries, pool):
+        """(shared, removed) among `entries`: the entries shared with `pool`,
+        those whose paper the pool has (see pool_entry: by origin record,
+        else by the same-paper rule), and the entries that the pool no
+        longer has although they have an origin record of it (removed from
+        the pool since the last exchange)"""
+        shared, removed = [], []
+        for e in entries:
+            pe, record = self.pool_entry(e, pool)
+            if pe is not None:
+                shared.append(e)
+            elif record is not None:
+                removed.append(e)
+        return shared, removed
+
     def shared(self, entries, pool):
-        "the entries that have an origin record of `pool` (the entries shared with it)"
-        return [e for e in entries if self.origin.get(e, pool.id) is not None]
+        "the entries shared with `pool` (see sharing)"
+        return self.sharing(entries, pool)[0]
+
+    def forget(self, entries, pool):
+        """drop the origin records of `pool` of entries that it no longer
+        has (see sharing): they are no longer shared with it"""
+        for e in entries:
+            record = self.origin.get(e, pool.id)
+            if record is not None:
+                self.origin.remove(record.key, pool.id)
 
     def pull(self, entries, pool, resolver, mode=None, record_pull=True, new=(), named=()):
         """three-way merge of the entries of `pool` into the library entries
@@ -849,16 +874,18 @@ class Exchange:
         self.record(e, pool, pe, pe)
         return e
 
-    def check(self, entries, pool, all_entries=True):
+    def check(self, entries, pool, all_entries=True, options=''):
         """the report of `pull --check` with `pool`: a line on the pool if it
-        changed since the last pull, and on the entries whose pool version
-        changed since it was taken (no merge, nothing written)"""
+        changed since the last pull, on the entries whose pool version
+        changed since it was taken, and on those removed from the pool (see
+        removed_note; options: of the command, to repeat in it). No merge,
+        nothing written."""
         lines = [f'{pool.label}: {pool_state(self.origin, pool)}'] if all_entries else []
         for e in entries:
             pe, record = self.pool_entry(e, pool)
             if pe is None:
                 if record is not None:
-                    lines.append(f'{e.key}: not found in {pool.label}')
+                    lines.append(removed_note(e, pool, options))
                 continue
             incoming = exchange_copy(pe, pool.biblio, self.biblio)
             if record is None:
@@ -1188,6 +1215,13 @@ class Exchange:
         dirs = [d for d in keep_dirs if d]
         return [f for f in dict.fromkeys(delete) if realpath(f) not in linked
                 and not any(is_inside(f, d) for d in dirs)]
+
+
+def removed_note(e, pool, options=''):
+    """the note on a library entry that `pool` no longer has (see
+    Exchange.sharing): the exchanges without KEY leave it out. options:
+    those of the command (--pool PATH), to repeat in the note."""
+    return f'{e.key}: removed from {pool.label} (`papers push{options} {e.key}` adds it back)'
 
 
 def _rekey(e, key):

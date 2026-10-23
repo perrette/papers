@@ -32,13 +32,19 @@ What a library does with its pool, or with the library of `--pool PATH`:
   PATH);
 - `papers pull` updates the entries shared with the pool, and adds the
   entries of the pool named, or all of them with `--all`;
-- `papers push` updates the entries shared with the pool (those taken from
-  it, or added to it before), and adds the entries named, or all of them
-  with `--all`;
+- `papers push` updates the entries shared with the pool, and adds the
+  entries named, or all of them with `--all`;
 - `papers sync` does both;
 - `papers status` (pool of a shallow library) and `papers pull --check`
   tell whether the pool changed since the last exchange with it: `up to
   date`, or `changed since last pull or push`.
+
+An entry is **shared** with a pool when the pool has the same paper: the
+pool entry of its origin copy (see [Origin copies](#origin-copies)), else
+the same paper by the same-paper rule (see
+[Keys and identity](#keys-and-identity)). Without KEY or `--all`, `pull`,
+`push` and `sync` exchange the shared entries only, with an origin copy or
+not.
 
 An exchange goes one level only: the pool has no pool, and a library given
 with `--pool PATH` must have none either (`PATH has a pool itself`).
@@ -70,7 +76,11 @@ side changed a field. A removed field counts as a change:
 
 Conflicts are decided in the dialogue or with `--on-duplicate` (see
 [`papers pull`](#papers-pull) and [`papers push`](#papers-push)). An entry
-without origin copy has no base: each field that differs is a conflict.
+without origin copy has no base: each field that differs is a conflict. The
+first exchange of such an entry (e.g. the first `sync` with a library given
+with `--pool PATH` that has papers of the library) asks about these
+conflicts once: afterwards the origin copy is recorded, and the next
+exchanges merge three-way.
 
 ### Removed entries
 
@@ -78,9 +88,18 @@ An entry is never removed by an exchange:
 
 - `papers rm KEY` removes the entry from the library only. `push` and
   `sync` do not remove it from the pool.
-- An entry removed from the pool stays in the libraries that have it.
-  `pull KEY` reports it as `Not found`, and `push` and `sync` add it to the
-  pool again. Remove it from these libraries with `papers rm KEY`.
+- An entry removed from the pool stays in the libraries that have it. It
+  is no longer shared: `pull`, `push` and `sync` without KEY or `--all`
+  (and the auto-push of a shallow library) leave it out, and note it once:
+
+  ```
+  smith2020: removed from pool ~/Documents/papers (`papers push smith2020` adds it back)
+  ```
+
+  Its origin copy for the pool is dropped, so the note does not come again.
+  `push KEY` and `push --all` add it to the pool again; `pull KEY` reports
+  it as `Not found`; `pull --check` lists it with the note (and drops
+  nothing). Remove it from the library with `papers rm KEY`.
 
 ## `papers pull`
 
@@ -88,8 +107,8 @@ An entry is never removed by an exchange:
 papers pull [KEY...|-] [--all] [--pool PATH] [--on-duplicate MODE] [--check]
 ```
 
-Without KEY, `pull` updates the entries shared with the pool: those with
-an origin copy. For each of them (or each entry named, or every entry with
+Without KEY, `pull` updates the entries shared with the pool (the pool
+has the same paper). For each of them (or each entry named, or every entry with
 `--all`), papers finds its entry in the pool (by its origin copy,
 else by the same-paper rule) and merges it into the library entry, field by
 field (see [Merging](#merging)). The pool is the side that sends: a field
@@ -104,14 +123,14 @@ changes. After the merge, the origin copy is the pool's current version.
 A skipped conflict leaves the pool shown as changed in `papers status`.
 
 An entry without origin copy (added before the pool was used, or with
-`--no-pool`) is not shared: `pull` without KEY leaves it alone. Named on the
-command line, or with `--all`, it is matched to the pool by the same-paper
-rule. Its differences with the pool entry are conflicts (there is no
-origin to tell which side changed), a field that only the pool entry has
-is added, and the origin copy is recorded afterwards ("linked").
+`--no-pool`) is matched to the pool by the same-paper rule. Its differences
+with the pool entry are conflicts (there is no origin to tell which side
+changed), a field that only the pool entry has is added, and the origin
+copy is recorded afterwards ("linked").
 
 An entry that the pool does not have is reported (`Not found`) only when it
-is named on the command line. Without KEY, it is left as it is.
+is named on the command line. Without KEY, it is left as it is (with a
+note if it was removed from the pool, see [Removed entries](#removed-entries)).
 
 A KEY is looked up in the library first, then in the pool (its key, DOI,
 arXiv identifier or ISBN): an entry of the pool that the library does not
@@ -169,9 +188,10 @@ papers push [KEY...|-] [--all] [--pool PATH] [--on-duplicate MODE]
 ```
 
 The reverse of `pull`, into the pool of the library or the library of
-`--pool PATH`. Without KEY, only the entries shared with the pool are
-pushed: those with an origin copy from it (taken from it by `add` or
-`pull`, or pushed to it before). `push KEY...` pushes the entries named,
+`--pool PATH`. Without KEY, only the entries shared with the pool (the
+pool has the same paper) are pushed; an entry removed from the pool is not
+added back (see [Removed entries](#removed-entries)). `push KEY...` pushes
+the entries named,
 and `push --all` every entry of the library:
 
 - an entry that is not in the pool is added to it, with a key from the
@@ -198,9 +218,9 @@ papers sync [KEY...|-] [--all] [--pool PATH] [--on-duplicate MODE]
 
 runs `papers pull`, then `papers push` of the same entries:
 
-- without KEY, the entries shared with the pool (with an origin copy from
-  it). An entry added to the library with `--no-pool`, or before the pool
-  was used, is not exchanged: name it, or use `--all`;
+- without KEY, the entries shared with the pool (the pool has the same
+  paper). An entry that the pool does not have is not exchanged: name it,
+  or use `--all`;
 - with KEY..., the entries named. A KEY that only the pool has is added to
   the library, as with `pull`, and a KEY that only the library has is
   added to the pool, as with `push`;
@@ -312,8 +332,8 @@ exchange works as with the pool of a library:
 - the origin copies are recorded for PATH, in its own file of
   `.papers/origin/`: the next exchange with PATH is a three-way merge, and
   a field changed on one side only needs no decision;
-- without KEY or `--all`, the exchange handles the entries exchanged with
-  PATH before (those with an origin copy for PATH);
+- without KEY or `--all`, the exchange handles the entries shared with
+  PATH (PATH has the same paper);
 - `papers sync --pool PATH KEY...` takes the entries named from PATH that
   the library does not have, sends to PATH those that it does not have,
   and merges the others both ways;
@@ -350,8 +370,8 @@ A folder shared with a coauthor, exchanged with from time to time:
 ```
 cd ~/projects/sealevel
 papers export ../shared-with-bob mine2022 smith2020   # a self-contained library for Bob
-papers sync --pool ../shared-with-bob --all            # the first time: records what is shared
-papers sync --pool ../shared-with-bob                  # later changes, both ways
+papers sync --pool ../shared-with-bob                  # the changes of the shared entries, both ways
+papers sync --pool ../shared-with-bob --all            # also the entries missing on each side
 ```
 
 `papers export` is described in [Export](export.md).

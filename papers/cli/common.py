@@ -226,20 +226,18 @@ def library_pools(config):
 
 
 def auto_push_entries(exchange):
-    """the entries that a command pushes to the pool of a shallow library
-    on its own (see Biblio.changed_entries): the entries new to the library
-    (the pool holds their files), and with auto-push, the entries it
-    changed that are shared with the pool (origin record). Removed entries
-    are never pushed. A self-contained library pushes nothing on its own
-    (the auto-push setting does not apply)."""
+    """(new, modified): the entries that a command pushes to the pool of a
+    shallow library on its own (see Biblio.changed_entries): the entries
+    new to the library (the pool holds their files), and with auto-push,
+    the entries it changed (those shared with the pool are pushed, see
+    push_changed). Removed entries are never pushed. A self-contained
+    library pushes nothing on its own (the auto-push setting does not
+    apply)."""
     config = exchange.config
     if not config.shallow:
-        return []
+        return [], []
     new, modified = exchange.biblio.changed_entries()
-    if config.auto_push:
-        shared = [e for e in modified if exchange.origin.get(e, exchange.pool_id) is not None]
-        return new + shared
-    return new
+    return new, (modified if config.auto_push else [])
 
 
 def links_changed(biblio):
@@ -256,22 +254,32 @@ def push_changed(exchange):
     links changed are also updated in the pool, whatever auto-push says
     (see Exchange.push_links). Return the report of the push (see
     Exchange.push)."""
-    entries = auto_push_entries(exchange)
+    new, modified = auto_push_entries(exchange)
     config = exchange.config
     links = links_changed(exchange.biblio) if config.shallow else []
-    if not entries and not links:
+    if not new and not modified and not links:
         return []
     try:
         pool = exchange.pools.target()
     except PoolError as error:
         logger.warning(f'not pushed to the pool: {error}')
         return []
+    # the entries removed from the pool are not pushed (their note says so): no longer shared
+    new_ids = {id(e) for e in new}
+    others = list({id(e): e for e in modified + links if id(e) not in new_ids}.values())
+    shared, removed = exchange.sharing(others, pool)
+    exchange.forget(removed, pool)
+    removed_ids = {id(e) for e in removed}
+    shared_ids = {id(e) for e in shared}
+    entries = new + [e for e in modified if id(e) in shared_ids]
+    links = [e for e in links if id(e) not in removed_ids]
     report = exchange.push(entries, pool, Resolver('skip')) if entries else []
     # the pool entries just added, or not pushed for want of fields, are left as they are
     done = {id(e) for e, _, what in report if what in ('added', 'empty')}
     modified = {id(e) for e, _, what in report if what == 'updated'}  # their line says so already
     linked = exchange.push_links([e for e in links if id(e) not in done], pool, Resolver('skip'))
-    return report + [r for r in linked if not (r[2] == 'links' and id(r[0]) in modified)]
+    return (report + [r for r in linked if not (r[2] == 'links' and id(r[0]) in modified)]
+            + [(e, pool, 'removed') for e in removed])
 
 
 def save_entries(config, biblio, exchange=None):
@@ -299,7 +307,8 @@ def print_push_notes(biblio, notes):
 _PUSH_NOTES = {'added': 'also added to {}', 'updated': 'also modified in {}',
                'links': 'file links also updated in {}',
                'skipped': 'not pushed: changed in the pool too; papers sync decides',
-               'empty': 'not pushed to {}: no fields or no key'}
+               'empty': 'not pushed to {}: no fields or no key',
+               'removed': 'removed from {} (`papers push {key}` adds it back)'}
 
 
 def push_notes(pushed, notes=None):
@@ -314,7 +323,7 @@ def push_notes(pushed, notes=None):
         logger.info(f'push to {pushed[0][1].label}: {counts}')
     for e, pool, what in pushed:
         if what in _PUSH_NOTES:
-            text = _PUSH_NOTES[what].format(pool.label)
+            text = _PUSH_NOTES[what].format(pool.label, key=e.key)
             key = e.key.lower()
             notes[key] = f'{notes[key]}; {text}' if key in notes else text
     return notes
