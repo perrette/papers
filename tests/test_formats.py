@@ -412,7 +412,7 @@ class TestExportFormats(LibraryCommands):
     def test_default_bib(self):
         out = self.out('export ../out --no-git')
         self.assertIn('(papers.bib; files: copy)', out)
-        self.assertEqual(sorted(os.listdir(self.path('out'))), ['.papers', '.papers.bib.backup', 'files', 'papers.bib'])
+        self.assertEqual(sorted(os.listdir(self.path('out'))), ['.papers', 'files', 'papers.bib'])
 
     @needs_rispy
     def test_all(self):
