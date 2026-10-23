@@ -1,14 +1,22 @@
 # Upgrading from papers 2
 
-In papers 2 you had one global library, or a library tied to a project
-with its own PDFs. In papers 3 a library is either self-contained (its own
-entries and PDFs, no pool) or shallow: it uses another library as its
-pool, takes its entries from there and links to the pool's PDFs. Any
-self-contained library can be the pool of others: a project, a library
-per topic (`~/Documents/papers/sealevel`), or one library for everything
-(`~/Documents/papers`, see [A global shared library](global-library.md)).
-Any library can also exchange entries with another library given on the
-command line (`--pool PATH`).
+papers 2 had one global library, or libraries tied to a project, each
+with its own PDFs. papers 3 keeps both, and adds:
+
+- **exchanges between libraries**: `papers pull`, `push` and `sync` copy
+  entries from one library to another and keep them in step, with a
+  field-by-field merge (see [Pools](pools.md));
+- **shallow libraries**: a project library that takes its entries from a
+  shared library, its pool, and links to the pool's PDFs instead of
+  copying them (see [Shallow libraries](shallow-libraries.md)). The shared
+  library can be a library per topic (`~/Documents/papers/sealevel`), or
+  one library for everything, such as the global library of papers 2,
+  which becomes the default library (see
+  [A global shared library](global-library.md));
+- **a review of the commands**: `papers init` and `papers config` replace
+  `papers install`, the commands on attached files are grouped under
+  `papers file`, and older forms are deprecated (see
+  [What else changed](#what-else-changed)).
 
 ## What becomes of a papers 2 setup
 
@@ -143,3 +151,13 @@ exchanges.
 - The global configuration of papers 3 is `~/.config/papers/config.json`
   on Linux. It holds default settings, and optionally the default library
   (`papers config --global default PATH`).
+- `papers file` groups the commands on attached files: `attach`,
+  `detach`, `rm`, `mv`, `rename`, `check`, `fix`, `clean` (see
+  [Files](files.md)). They replace `papers filecheck` and the file options
+  of `papers list` (`--add-files`, `--rename`, `--copy`).
+- Deprecated forms still work, with a warning that names the new form, and
+  are removed in papers 4: `papers install`, `papers filecheck`,
+  `papers doi` (`papers extract --doi-only`), `papers restore-backup`
+  (`papers restore`), `papers list --fetch` / `--open`, `--attachment`
+  (`--attach`), `-m/--mode` (`--on-duplicate`), `--relative-paths` /
+  `--absolute-paths` (`papers config paths relative|absolute`).
