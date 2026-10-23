@@ -1454,10 +1454,16 @@ PATH</code> does not create one.</p>
   pushed only with auto-push. An entry not shared with the pool gets the
   links of the pool entry of the same paper updated; if the pool does not
   have it, the entry is added to the pool, as <code>add</code> does;</li>
-<li><code>file detach</code> never deletes a file. <code>file rm</code> removes the link from the
-  pool entry too, and deletes the file unless another entry of the pool
-  or of the library still links to it (<code>kept FILE: an entry of the pool
-  links to it</code>);</li>
+<li>removing a file and removing an entry are different:</li>
+<li><code>papers file detach KEY FILE</code> removes the link from the library entry
+    and from the pool entry; the file stays;</li>
+<li><code>papers file rm FILE</code> removes the link from both and deletes the file,
+    unless another entry of the pool or of the library still links to it
+    (<code>kept FILE: an entry of the pool links to it</code>). The PDF is removed for
+    every library that uses the pool;</li>
+<li><code>papers rm KEY</code> removes the entry from the library only. The pool entry
+    and its files stay, also with <code>--delete-files</code> (which deletes the files
+    of removed entries in a self-contained library);</li>
 <li><code>pull</code> and <code>sync</code> with the pool link to the pool's files instead of
   copying them, and the library entry follows the pool entry's links: a
   link that the pool entry had at the last exchange and no longer has is
@@ -1471,11 +1477,11 @@ PATH</code> does not create one.</p>
   the pool is relinked to the pool's file by <code>papers file check --fix</code>
   only (see <a href="../files/#reconnecting-pdfs-and-a-bibtex">Reconnecting PDFs and a bibtex</a>).</li>
 </ul>
-<p><code>rm --delete-files</code> never deletes a file of the pool, nor a file that a
-pool entry links to, and it does not change the pool entry. Deleting a file
-in a pool breaks the links of the libraries that use it: it shows up as a
-broken link there (<code>papers file check</code>). The pool keeps no list of the
-libraries that depend on it.</p>
+<p>Deleting a file of the pool, with <code>papers file rm</code> in a shallow library or
+in the pool itself, breaks the links of the other libraries that use it,
+until their next <code>pull</code> or <code>sync</code> removes the link. <code>papers file check</code>
+shows the broken link meanwhile. The pool keeps no list of the libraries
+that depend on it.</p>
 <p>A project folder shared with coauthors (git, Dropbox...) should be a
 self-contained library: the links of a shallow library point into your own
 pool, which the others do not have. Such a project can still exchange
