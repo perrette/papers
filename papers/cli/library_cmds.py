@@ -60,13 +60,33 @@ def initcmd(parser, o, config):
     if o.dir is None:
         _initcmd(parser, o, config)
     else:
+        created = _missing_dirs(libdir)
         os.makedirs(o.dir, exist_ok=True)
-        with set_directory(o.dir):
-            _initcmd(parser, o, find_config(machine=machine))
+        try:
+            with set_directory(o.dir):
+                _initcmd(parser, o, find_config(machine=machine))
+        except BaseException:
+            # a check of _initcmd failed: remove the directories created above, if still empty
+            for d in created:
+                if os.path.isdir(d) and not os.listdir(d):
+                    os.rmdir(d)
+            raise
     if o.is_global:
         machine.set(DEFAULT_LIBRARY, short_home(libdir))
         machine.save()
         print(f'registered {short_home(libdir)} as the default library in {short_home(machine.file)}')
+
+
+def _missing_dirs(path):
+    "the directories that os.makedirs(path) would create, deepest first"
+    missing = []
+    while not os.path.exists(path):
+        missing.append(path)
+        parent = os.path.dirname(path)
+        if parent == path:
+            break
+        path = parent
+    return missing
 
 
 def _initcmd(parser, o, config):

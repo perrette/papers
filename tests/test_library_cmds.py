@@ -121,6 +121,13 @@ class TestOtherCommands(ConfigTest):
             self.papers('init --no-git --no-check-files')
         self.assertFalse(os.path.exists(self.path(CONFIG_FILE_LOCAL)))
 
+    def test_init_dir_not_left_behind(self):
+        # a check that fails after DIR is created removes it again
+        with patch('papers.install.check_git_available', side_effect=PapersExit('no git')), \
+                self.assertRaises((PapersExit, SystemExit)):
+            self.papers('init new/lib --git')
+        self.assertFalse(os.path.exists(self.path('new')))
+
     def test_init_in_a_library(self):
         self.papers('init --no-git')
         os.makedirs(self.path('sub'))
