@@ -443,6 +443,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#optional-ris-support" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Optional: RIS support
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -985,6 +996,20 @@ mitigations are built in:</p>
   equivalent</li>
 </ul>
 <p>The Python dependencies are installed automatically with <code>pip</code>.</p>
+<h2 id="optional-ris-support">Optional: RIS support<a class="headerlink" href="#optional-ris-support" title="Permanent link">&para;</a></h2>
+<p>Reading and writing RIS files (<code>papers add refs.ris</code>,
+<code>papers export --format ris</code>, <code>papers list --format ris</code>) needs the
+<a href="https://pypi.org/project/rispy/">rispy</a> package, which is not installed
+by default. Install it in the environment of papers:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>pip<span class="w"> </span>install<span class="w"> </span><span class="s1">'papers-cli[ris]'</span><span class="w">       </span><span class="c1"># with papers</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>pip<span class="w"> </span>install<span class="w"> </span>rispy<span class="w">                    </span><span class="c1"># or afterwards</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>pipx<span class="w"> </span>inject<span class="w"> </span>papers-cli<span class="w"> </span>rispy<span class="w">         </span><span class="c1"># papers installed with pipx</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>uv<span class="w"> </span>tool<span class="w"> </span>install<span class="w"> </span>papers-cli<span class="w"> </span>--with<span class="w"> </span>rispy<span class="w">   </span><span class="c1"># papers installed with uv</span>
+</code></pre></div>
+<p>When a command needs rispy and it is missing, papers asks in a terminal
+whether to install it with <code>pip</code> (<code>python -m pip install rispy</code>, with the
+Python of papers); otherwise, or on no, it stops without changing anything
+and prints these commands. CSL-JSON needs no extra package.</p>
 
 
 

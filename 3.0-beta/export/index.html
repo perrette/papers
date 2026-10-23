@@ -763,13 +763,30 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#other-formats" class="md-nav__link">
+  <a href="#other-formats-ris-and-csl-json" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Other formats
+        Other formats: RIS and CSL-JSON
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Other formats: RIS and CSL-JSON">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#how-the-fields-are-converted" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How the fields are converted
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -928,13 +945,14 @@
 
 <h1 id="export">Export<a class="headerlink" href="#export" title="Permanent link">&para;</a></h1>
 <h2 id="papers-export"><code>papers export</code><a class="headerlink" href="#papers-export" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>papers export DIR [KEY...|-] [--files copy|link|none]
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>papers export DIR [KEY...|-] [--files copy|link|none] [--format FORMAT]
 </code></pre></div>
 <p>writes the entries (all without KEY) as a new library in <code>DIR</code>, which must
 not exist or be empty, to hand over: its bibtex, its files directory, and
 its configuration (a self-contained library, with the name and key
 templates that the library sets). File links are relative to the new
-bibtex.</p>
+bibtex. <code>--format</code> writes RIS or CSL-JSON as well, or instead (see
+<a href="#other-formats-ris-and-csl-json">Other formats</a>).</p>
 <ul>
 <li><code>--files copy</code> (default) copies the files into <code>DIR/files</code> (hard links
   when possible), named with the name template;</li>
@@ -943,7 +961,7 @@ bibtex.</p>
 </ul>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>$ papers export ~/export-test perrette_landerer2013
 <a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>create the library ~/export-test
-<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>exported 1 entries to ~/export-test (files: copy)
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>exported 1 entries to ~/export-test (papers.bib; files: copy)
 <a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>$ ls ~/export-test ~/export-test/files
 <a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>~/export-test:
 <a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>files
@@ -956,9 +974,245 @@ bibtex.</p>
 <code>papers config pool DIR</code> makes it the pool of the library (the export has
 copies of its PDFs). <code>papers sync --pool DIR</code> exchanges entries with it
 later (see <a href="../pools/#exchanges-with-any-library">Exchanges with any library</a>).</p>
-<h2 id="other-formats">Other formats<a class="headerlink" href="#other-formats" title="Permanent link">&para;</a></h2>
-<p><code>papers export</code> writes a papers library only. Other formats are not
-supported yet.</p>
+<h2 id="other-formats-ris-and-csl-json">Other formats: RIS and CSL-JSON<a class="headerlink" href="#other-formats-ris-and-csl-json" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>papers export DIR [KEY...|-] --format bib|ris|csl-json|all
+</code></pre></div>
+<p><code>--format</code> chooses the files of entries written in <code>DIR</code>, next to
+<code>DIR/files</code>:</p>
+<table>
+<thead>
+<tr>
+<th>format</th>
+<th>file</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>bib</code> (default)</td>
+<td><code>papers.bib</code></td>
+<td>bibtex; <code>DIR</code> is a papers library, as above</td>
+</tr>
+<tr>
+<td><code>ris</code></td>
+<td><code>papers.ris</code></td>
+<td>RIS, read by Zotero, EndNote, Mendeley...; needs the <a href="https://pypi.org/project/rispy/">rispy</a> package (see <a href="../installation/#optional-ris-support">Installation</a>)</td>
+</tr>
+<tr>
+<td><code>csl-json</code></td>
+<td><code>papers.json</code></td>
+<td>CSL-JSON, read by Zotero, pandoc and citeproc processors</td>
+</tr>
+<tr>
+<td><code>all</code></td>
+<td>the three files</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p>Repeat the option or separate the formats with commas
+(<code>--format bib,ris</code>). The file links of each file point to the copies in
+<code>DIR/files</code>, relative to <code>DIR</code> (with <code>--files link</code>, to the files where
+they are). Without <code>bib</code>, <code>DIR</code> is not a papers library (it has no
+<code>.papers/config.json</code>), and papers says so:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>$ papers export ~/export-test --format all
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>create the library ~/export-test
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>exported 1 entries to ~/export-test (papers.bib, papers.ris, papers.json; files: copy)
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>$ papers export ~/for-zotero --format ris
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>exported 1 entries to ~/for-zotero (papers.ris; files: copy)
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>~/for-zotero is not a papers library (no papers.bib): --format bib or all makes one
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>$ cat ~/for-zotero/papers.ris
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>TY  - JOUR
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>ID  - perrette_landerer2013
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>AU  - Perrette, M.
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>AU  - Landerer, F.
+<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>AU  - Riva, R.
+<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>AU  - Frieler, K.
+<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a>AU  - Meinshausen, M.
+<a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a>TI  - A scaling approach to project regional sea level rise and its uncertainties
+<a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a>T2  - Earth System Dynamics
+<a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a>PY  - 2013
+<a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a>VL  - 4
+<a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a>IS  - 1
+<a id="__codelineno-3-20" name="__codelineno-3-20" href="#__codelineno-3-20"></a>SP  - 11
+<a id="__codelineno-3-21" name="__codelineno-3-21" href="#__codelineno-3-21"></a>EP  - 29
+<a id="__codelineno-3-22" name="__codelineno-3-22" href="#__codelineno-3-22"></a>DO  - 10.5194/esd-4-11-2013
+<a id="__codelineno-3-23" name="__codelineno-3-23" href="#__codelineno-3-23"></a>L1  - files/perrette_et_al_2013_a-scaling-approach-to-project-regional-sea-level-rise-and-its-uncertainties.pdf
+<a id="__codelineno-3-24" name="__codelineno-3-24" href="#__codelineno-3-24"></a>ER  - 
+</code></pre></div>
+<p><code>papers list --format ris</code> and <code>--format csl-json</code> write the entries to the
+standard output instead, without copying files (see
+<a href="../listing/#output-formats">Output formats</a>). <code>papers add refs.ris</code> and
+<code>papers add refs.json</code> read these formats (see
+<a href="../adding-entries/#add-ris-and-csl-json-files">Add RIS and CSL-JSON files</a>).</p>
+<h3 id="how-the-fields-are-converted">How the fields are converted<a class="headerlink" href="#how-the-fields-are-converted" title="Permanent link">&para;</a></h3>
+<p>The values are written as unicode (LaTeX accents and commands are
+converted, braces removed). Fields without an equivalent in the format are
+left out.</p>
+<table>
+<thead>
+<tr>
+<th>bibtex</th>
+<th>CSL-JSON</th>
+<th>RIS</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>key</td>
+<td><code>id</code>, <code>citation-key</code></td>
+<td><code>ID</code></td>
+</tr>
+<tr>
+<td>entry type</td>
+<td><code>type</code> (below)</td>
+<td><code>TY</code> (below)</td>
+</tr>
+<tr>
+<td><code>author</code>, <code>editor</code></td>
+<td><code>author</code>, <code>editor</code> (<code>family</code>, <code>given</code>, <code>non-dropping-particle</code>, <code>suffix</code>; a name in braces is a <code>literal</code>)</td>
+<td><code>AU</code>, <code>ED</code> (<code>Family, Given, Suffix</code>)</td>
+</tr>
+<tr>
+<td><code>title</code></td>
+<td><code>title</code></td>
+<td><code>TI</code></td>
+</tr>
+<tr>
+<td><code>journal</code>, <code>booktitle</code></td>
+<td><code>container-title</code></td>
+<td><code>T2</code></td>
+</tr>
+<tr>
+<td><code>series</code></td>
+<td><code>collection-title</code></td>
+<td><code>T3</code></td>
+</tr>
+<tr>
+<td><code>year</code>, <code>month</code></td>
+<td><code>issued</code> (<code>date-parts</code>)</td>
+<td><code>PY</code>, <code>DA</code></td>
+</tr>
+<tr>
+<td><code>volume</code></td>
+<td><code>volume</code></td>
+<td><code>VL</code></td>
+</tr>
+<tr>
+<td><code>number</code>, <code>issue</code></td>
+<td><code>issue</code> (articles), else <code>number</code></td>
+<td><code>IS</code></td>
+</tr>
+<tr>
+<td><code>pages</code></td>
+<td><code>page</code> (<code>11-29</code>)</td>
+<td><code>SP</code>, <code>EP</code></td>
+</tr>
+<tr>
+<td><code>doi</code>, <code>url</code></td>
+<td><code>DOI</code>, <code>URL</code></td>
+<td><code>DO</code>, <code>UR</code></td>
+</tr>
+<tr>
+<td><code>isbn</code>, <code>issn</code></td>
+<td><code>ISBN</code>, <code>ISSN</code></td>
+<td><code>SN</code></td>
+</tr>
+<tr>
+<td><code>publisher</code> (or <code>school</code>, <code>institution</code>)</td>
+<td><code>publisher</code></td>
+<td><code>PB</code></td>
+</tr>
+<tr>
+<td><code>address</code></td>
+<td><code>publisher-place</code></td>
+<td><code>CY</code></td>
+</tr>
+<tr>
+<td><code>abstract</code>, <code>keywords</code>, <code>note</code></td>
+<td><code>abstract</code>, <code>keyword</code>, <code>note</code></td>
+<td><code>AB</code>, <code>KW</code>, <code>N1</code></td>
+</tr>
+<tr>
+<td><code>edition</code>, <code>language</code></td>
+<td><code>edition</code>, <code>language</code></td>
+<td><code>ET</code>, <code>LA</code></td>
+</tr>
+<tr>
+<td><code>file</code></td>
+<td><code>custom.file</code> (a list)</td>
+<td><code>L1</code> (one line per file)</td>
+</tr>
+</tbody>
+</table>
+<p>CSL-JSON has no field for files: the links are written in its <code>custom</code>
+object, <code>"custom": {"file": [...]}</code>, which other programs ignore.</p>
+<table>
+<thead>
+<tr>
+<th>bibtex</th>
+<th>CSL-JSON</th>
+<th>RIS</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>article</code></td>
+<td><code>article-journal</code></td>
+<td><code>JOUR</code></td>
+</tr>
+<tr>
+<td><code>book</code></td>
+<td><code>book</code></td>
+<td><code>BOOK</code></td>
+</tr>
+<tr>
+<td><code>inbook</code>, <code>incollection</code></td>
+<td><code>chapter</code></td>
+<td><code>CHAP</code></td>
+</tr>
+<tr>
+<td><code>inproceedings</code>, <code>conference</code></td>
+<td><code>paper-conference</code></td>
+<td><code>CPAPER</code></td>
+</tr>
+<tr>
+<td><code>proceedings</code></td>
+<td><code>book</code></td>
+<td><code>CONF</code></td>
+</tr>
+<tr>
+<td><code>phdthesis</code>, <code>mastersthesis</code></td>
+<td><code>thesis</code></td>
+<td><code>THES</code></td>
+</tr>
+<tr>
+<td><code>techreport</code></td>
+<td><code>report</code></td>
+<td><code>RPRT</code></td>
+</tr>
+<tr>
+<td><code>misc</code></td>
+<td><code>document</code></td>
+<td><code>GEN</code></td>
+</tr>
+<tr>
+<td><code>online</code></td>
+<td><code>webpage</code></td>
+<td><code>ELEC</code></td>
+</tr>
+<tr>
+<td><code>dataset</code>, <code>software</code></td>
+<td><code>dataset</code>, <code>software</code></td>
+<td><code>DATA</code>, <code>COMP</code></td>
+</tr>
+<tr>
+<td><code>unpublished</code></td>
+<td><code>manuscript</code></td>
+<td><code>UNPB</code></td>
+</tr>
+</tbody>
+</table>
 
 
 
