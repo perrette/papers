@@ -1398,11 +1398,11 @@ bibtex, the files directory and git (<code>-y/--yes</code> accepts the defaults;
 <code>--no-prompt</code> and <code>--force</code> are its deprecated forms). On
 an existing library it updates the library configuration, as in version 2,
 with a deprecation warning: use <code>papers config</code> instead (<code>--edit</code> and
-<code>--reset</code> keep working). <code>papers install --global</code> (deprecated: use
-<code>papers init DIR --global</code>) writes the library configuration next to the
-bibtex and registers its directory as the default library; if a global
-configuration of version 2 exists, it first migrates it as <code>papers
-migrate</code> does. <code>--local</code> is ignored.</p>
+<code>--reset</code> keep working). <code>papers install --global</code> is no longer supported:
+it stops with an error and changes nothing. Create the default library
+with <code>papers init PATH --global</code> (for example <code>papers init
+~/Documents/papers/default --global</code>), or register an existing library
+with <code>papers config --global default PATH</code>. <code>--local</code> is ignored.</p>
 <h2 id="uninstall">Uninstall<a class="headerlink" href="#uninstall" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>papers uninstall
 </code></pre></div>

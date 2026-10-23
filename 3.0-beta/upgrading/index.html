@@ -1136,6 +1136,10 @@ command line (<code>--pool PATH</code>).</p>
 <td><code>papers install</code></td>
 <td><code>papers init</code> to create a library, <code>papers config</code> to change it; <code>papers install</code> is a deprecated alias</td>
 </tr>
+<tr>
+<td><code>papers install --global</code></td>
+<td>an error that changes nothing: <code>papers init PATH --global</code> creates the default library (for example <code>papers init ~/Documents/papers/default --global</code>), <code>papers config --global default PATH</code> registers an existing library</td>
+</tr>
 </tbody>
 </table>
 <h2 id="what-happens-on-the-first-run">What happens on the first run<a class="headerlink" href="#what-happens-on-the-first-run" title="Permanent link">&para;</a></h2>
@@ -1205,11 +1209,12 @@ uses it as pool.</p>
 <p>To move the PDFs of an existing project into a library of the topic, and
 make the project shallow:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>cd ~/projects/sealevel
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>papers push --pool ~/Documents/papers/sealevel --all   # copies the entries and their PDFs there
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>papers config pool ~/Documents/papers/sealevel         # link to its PDFs, delete the project's copies
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>papers init ~/Documents/papers/sealevel                # a new self-contained library
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>papers push --pool ~/Documents/papers/sealevel --all   # copies the entries and their PDFs there
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>papers config pool ~/Documents/papers/sealevel         # link to its PDFs, delete the project's copies
 </code></pre></div>
-<p><code>papers push --pool PATH --all</code> creates the library PATH if it does not
-exist yet (its parent folder must exist). It copies the PDFs as hard links
+<p><code>papers push --pool PATH</code> requires PATH to be a library already
+(<code>papers init PATH</code> creates it). It copies the PDFs as hard links
 when possible, so the PDFs are not read again and nothing is fetched.
 <code>papers config pool PATH</code> refuses until PATH has every PDF of the library,
 and then names the entries to push.</p>

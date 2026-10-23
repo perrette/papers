@@ -1526,14 +1526,15 @@ commands do not push entries or merge fields: <code>papers push</code> does that
 entries exchanged with PATH before (with <code>--pool PATH</code>) are shared with it
 already: their origin copies are those of the new pool.</p>
 <p>To move the PDFs of a self-contained library into another library:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>papers push --pool PATH --all   # copies the entries and their PDFs to PATH (created if missing)
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>papers config pool PATH         # links to the copies in PATH, deletes the library's own
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>papers init PATH                # if PATH is not a library yet
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>papers push --pool PATH --all   # copies the entries and their PDFs to PATH
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>papers config pool PATH         # links to the copies in PATH, deletes the library's own
 </code></pre></div>
 <h2 id="exchanges-with-any-library">Exchanges with any library<a class="headerlink" href="#exchanges-with-any-library" title="Permanent link">&para;</a></h2>
 <p><code>--pool PATH</code> on <code>pull</code>, <code>push</code> and <code>sync</code> exchanges with the library at
 <code>PATH</code>, from any library: self-contained or shallow. PATH must be a
-library without pool (<code>push</code> creates it, as a self-contained library, if
-it does not exist and its parent folder does). The exchange works as with
+library without pool: no command creates it, <code>papers init PATH</code> does. The
+exchange works as with
 the pool of a library:</p>
 <ul>
 <li>the origin copies are recorded for PATH, in its own file of
@@ -1755,7 +1756,8 @@ shallow library, otherwise copied as the <code>files</code> setting says (a hard
 when possible). An identifier found in neither is an error, and nothing is
 changed. <code>--all</code> adds every entry of the pool that the library does not
 have (same-paper rule). A pool that does not exist or is not a library is
-an error of <code>pull</code>, <code>pull --check</code> and <code>sync</code>, and nothing is changed.
+an error of <code>pull</code>, <code>pull --check</code> and <code>sync</code>, and nothing is changed
+(<code>papers init PATH</code> creates it).
 Without <code>--pool PATH</code>, a self-contained library has no pool to pull from:
 <code>this library has no pool: give one with --pool PATH</code>.</p>
 <p><code>pull</code> prints one line per entry added (<code>Added -&gt;</code>), modified
@@ -1829,8 +1831,10 @@ and <code>push --all</code> every entry of the library:</p>
 </ul>
 <p>Push does not change the library: after it, the origin copy is the library
 version that was pushed, and the fields that only the pool entry has come
-with the next <code>pull</code> (or <code>papers sync</code>). The library of <code>--pool PATH</code> is
-created if it does not exist yet (its parent folder must exist).</p>
+with the next <code>pull</code> (or <code>papers sync</code>). A pool that does not exist or is
+not a library is an error of <code>push</code>, and nothing is changed: the message
+suggests <code>papers init PATH</code> (and, when the parent folder of PATH is missing
+too, that a disk may not be mounted).</p>
 <h3 id="a-pool-with-entries-papers-cannot-read">A pool with entries papers cannot read<a class="headerlink" href="#a-pool-with-entries-papers-cannot-read" title="Permanent link">&para;</a></h3>
 <p>An entry that the bibtex parser cannot read, such as one with a field
 given twice or a missing brace, is kept in the file as it is, but papers
