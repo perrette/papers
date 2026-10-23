@@ -3,7 +3,7 @@
 ## Libraries and pools
 
 A **library** is a bibtex file, a files directory and a configuration file
-(`.papersconfig.json`), as created by `papers init` (see
+(`.papers/config.json`), as created by `papers init` (see
 [Configuration](configuration.md#libraries)). Each project usually has its
 own library.
 

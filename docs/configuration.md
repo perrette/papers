@@ -3,7 +3,9 @@
 ## Libraries
 
 A library is a bibtex file, a files directory, and a configuration file
-next to them (`.papersconfig.json`). `papers init` creates one in the
+`.papers/config.json` in the library directory. The `.papers/` folder also
+holds the origin copies of the entries exchanged with pools and the pairs
+recorded as not the same paper. `papers init` creates a library in the
 current directory, and `papers init DIR` in the directory `DIR` (created if
 missing, with its parents):
 
@@ -181,6 +183,14 @@ bibtex that links to files in a central folder.
 The options `--relative-paths` and `--absolute-paths` of the commands still
 override the setting for one command, with a deprecation warning.
 
+To commit only the configuration of a library that is in the git
+repository of a project, add to the `.gitignore` of the project:
+
+```
+.papers/*
+!.papers/config.json
+```
+
 ## Migrating from papers 2
 
 [Upgrading from papers 2](upgrading.md) gives an overview. `papers migrate`
@@ -188,8 +198,8 @@ performs the one-time upgrades from version 2:
 
 - The global configuration of version 2 (`~/.config/papersconfig.json` on
   Linux) defined a library for the whole user account. `papers migrate`
-  writes its settings to a library configuration next to its bibtex (if
-  there is none yet; a self-contained library: it keeps its files and has
+  writes its settings to a library configuration `.papers/config.json` in
+  the directory of its bibtex (if there is none yet; a self-contained library: it keeps its files and has
   no pool), registers the directory of that bibtex as the default library
   in the global configuration (unless another default library is set
   there), and renames the old file to `papersconfig.json.v2.bak`.
@@ -202,9 +212,12 @@ performs the one-time upgrades from version 2:
   into the files directory, named after the name template (as
   `papers file rename` names them).
 
-Library configurations (`.papersconfig.json`) of version 2 keep working
-without migration: they are read as self-contained libraries (their files
-are their own, no pool), as in version 2. The configuration files written by version 3 carry
+Library configurations of version 2 keep working without migration: they
+are read as self-contained libraries (their files are their own, no pool),
+as in version 2. Their file is moved to `.papers/config.json` the next
+time papers saves the configuration (e.g. `papers config`), or by
+`papers migrate` run in the library (see
+[Upgrading from papers 2](upgrading.md#project-libraries)). The configuration files written by version 3 carry
 `"version": 3`; a file without `version` is read as a file of version 2. A
 file with a higher version was written by a newer papers, and papers stops
 with an error.

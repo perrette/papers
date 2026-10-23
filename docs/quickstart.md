@@ -2,7 +2,7 @@
 
 `papers` works like `git`: one command with subcommands, run inside a
 project folder that holds a library. A library is a bibtex file, a
-configuration file (`.papersconfig.json`) and, if it keeps its own PDFs, a
+configuration file (`.papers/config.json`) and, if it keeps its own PDFs, a
 `files/` folder.
 
 This page shows two cases: a self-contained project, with its own bibtex

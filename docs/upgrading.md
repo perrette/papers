@@ -43,13 +43,13 @@ papers 2 is `~/bibliography/papers.bib`:
 ```
 $ papers migrate
 global configuration of papers v2: ~/.config/papersconfig.json
-  create the library configuration ~/bibliography/.papersconfig.json (paths: absolute)
+  create the library configuration ~/bibliography/.papers/config.json (paths: absolute)
   register ~/bibliography as the default library in ~/.config/papers/config.json
   rename ~/.config/papersconfig.json to ~/.config/papersconfig.json.v2.bak
 ```
 
-- The library gets a configuration file next to its bibtex, with the
-  settings of papers 2. It is self-contained: it keeps its own files and
+- The library gets a configuration file, `.papers/config.json` in the
+  directory of its bibtex, with the settings of papers 2. It is self-contained: it keeps its own files and
   has no pool.
 - It is registered as the default library, where it is, unless the global
   configuration of papers 3 already sets another one: commands run
@@ -69,10 +69,22 @@ the details.
 
 ### Project libraries
 
-A project library of papers 2 (`.papersconfig.json` without `"version"`)
-needs no migration. papers 3 reads it as a self-contained library (no
-pool): its PDFs stay in its own files directory, and it works as in
-papers 2.
+A project library of papers 2 needs no migration. papers 3 reads it as a
+self-contained library (no pool): its PDFs stay in its own files
+directory, and it works as in papers 2.
+
+Its configuration file, `.papersconfig.json` in papers 2, is
+`.papers/config.json` in papers 3. papers moves it the next time it saves
+the configuration (e.g. `papers config`), and prints a line that says so:
+
+```
+$ papers config editor vim
+moved ~/projects/sealevel/.papersconfig.json to ~/projects/sealevel/.papers/config.json
+```
+
+`papers migrate`, run in the library, moves it too (`--dry-run` shows
+it). A directory that has both files is an error, and papers changes
+nothing: remove the one you do not want to keep.
 
 It can take papers from another library without changing:
 `papers add --pool ~/Documents/papers --doi DOI` takes a paper that

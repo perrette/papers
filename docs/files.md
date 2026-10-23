@@ -25,7 +25,7 @@ of the user with `papers config --global files copy`. The options
 `-r/--rename` is the same as `--move`, and `-c` the same as `--copy`.
 
 A file that belongs to another library, i.e. a file inside the files
-directory of a library whose configuration (`.papersconfig.json`) is found
+directory of a library whose configuration (`.papers/config.json`) is found
 in the file's directory or above, is never moved: in `move` mode it is
 copied instead (a hard link when possible), so that the other library keeps
 its link. The same holds for a file in the files directory of the pool of
