@@ -36,6 +36,8 @@ theme:
     - navigation.sections
     - navigation.top
     - toc.follow
+    - toc.integrate
+    - navigation.expand
     - search.suggest
     - search.highlight
     - content.code.copy
