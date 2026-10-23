@@ -790,6 +790,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../global-library/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    A global shared library
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../library-management/" class="md-nav__link">
         
   
@@ -1141,19 +1169,19 @@ directory of a library whose configuration (<code>.papersconfig.json</code>) is 
 in the file's directory or above, is never moved: in <code>move</code> mode it is
 copied instead (a hard link when possible), so that the other library keeps
 its link. The same holds for a file in the files directory of the pool of
-the library (see <a href="../pools/">Pools</a>). A file already in the files directory of the current library is
+the library, or of the library of <code>--pool PATH</code> (see <a href="../pools/">Pools</a>). A file already in the files directory of the current library is
 renamed in <code>copy</code> mode too, rather than copied next to itself. A file
 downloaded by papers (a URL given to <code>add</code> or <code>--attach</code>) is always moved
 into the files directory.</p>
-<p>In a library that is not local (<code>local: false</code>, the default), the file
-links are the pool entry's; the library decides which entries it has. The
-files directory where <code>add</code>, <code>file attach</code> and <code>file rename</code> place the files
-is that of the pool, and the name template is the pool's: <code>move</code> and <code>copy</code>
-place the file in the pool's files directory, and the library entry and the
-pool entry link to it there; with <code>link</code>, the file stays where it is, and
-both link to it there. This works on one machine; on another machine that
-uses the pool, such links are broken (see
-<a href="../pools/#local-or-not">Local or not</a>).</p>
+<p>In a shallow library (a library with a pool), the file links are the pool
+entry's; the library decides which entries it has. The files directory
+where <code>add</code>, <code>file attach</code> and <code>file rename</code> place the files is that of the
+pool, and the name template is the pool's: <code>move</code> and <code>copy</code> place the
+file in the pool's files directory, and the library entry and the pool
+entry link to it there; with <code>link</code>, the file stays where it is, and both
+link to it there. This works on one machine; on another machine that uses
+the pool, such links are broken (see
+<a href="../pools/#shallow-libraries">Shallow libraries</a>).</p>
 <h2 id="papers-file"><code>papers file</code><a class="headerlink" href="#papers-file" title="Permanent link">&para;</a></h2>
 <p>The commands of <code>papers file</code> act on the files of the entries. Those that
 take entries accept keys, DOIs, arXiv identifiers or ISBNs (see
@@ -1269,11 +1297,9 @@ from every entry that links to it, then deletes the file.</p>
   the links in the same way, without deleting anything.</li>
 <li>With <code>--key</code>, only the links of those entries are removed; a file that
   another entry still links to is kept on disk, and papers says so.</li>
-<li>In a local library, a file of the pool is never deleted: only the link
-  is removed, and papers says so. In a library that is not local, the link
-  is removed from the pool entry too, and the file (in the pool's files
-  directory or elsewhere) is deleted unless another entry of the pool or
-  of the library still links to it.</li>
+<li>In a shallow library, the link is removed from the pool entry too, and
+  the file (in the pool's files directory or elsewhere) is deleted unless
+  another entry of the pool or of the library still links to it.</li>
 <li>papers does not ask: the file was named on the command line. <code>--dry-run</code>
   shows the links that would be removed and the files and folders that
   would be deleted.</li>
@@ -1293,11 +1319,11 @@ entry: put the files before --key</code>.</p>
 </code></pre></div>
 <h2 id="reconnecting-pdfs-and-a-bibtex">Reconnecting PDFs and a bibtex<a class="headerlink" href="#reconnecting-pdfs-and-a-bibtex" title="Permanent link">&para;</a></h2>
 <p>When the links of a library are broken because the PDFs moved (another
-library that shared the files directory moved them into a pool, a folder
+library that shared the files directory moved them into a library, a folder
 was renamed, a backup was restored elsewhere...), <code>papers file check --fix</code>
 looks for each missing file, without parsing any PDF:</p>
 <ol>
-<li>in the pool of the library, among the files of the pool entry of the
+<li>in a shallow library, in its pool, among the files of the pool entry of the
    same paper (same DOI, arXiv identifier, ISBN, or same title and
    authors): the file with the same file name as the broken link; else
    the one file named <code>&lt;name&gt;--&lt;file name of the link&gt;</code> (the pool renamed
@@ -1312,15 +1338,14 @@ looks for each missing file, without parsing any PDF:</p>
    taken, and papers says which.</li>
 </ol>
 <p>The file found replaces the broken link, and is placed as
-<code>papers file attach KEY FILE</code> places it: in a library that is not local, a
-file of the pool is linked where it is, and a file of a <code>--search</code> folder
-goes to the pool (as the <code>files</code> setting says: moved, copied or linked); in
-a local library, the file goes to the files directory as the <code>files</code>
-setting says, and a file of the pool is copied (a hard link when possible),
-never moved.</p>
-<p><code>papers config local false</code> and <code>papers config pool</code> link the library to
-the pool's copies of the files that exist, and say how many links were
-already broken: <code>papers file check --fix</code> relinks them afterwards.</p>
+<code>papers file attach KEY FILE</code> places it: in a shallow library, a file of
+the pool is linked where it is, and a file of a <code>--search</code> folder goes to
+the pool (as the <code>files</code> setting says: moved, copied or linked); in a
+self-contained library, the file goes to the files directory as the
+<code>files</code> setting says.</p>
+<p><code>papers config pool PATH</code> links the library to the copies in PATH of the
+files that exist, and says how many links were already broken:
+<code>papers file check --fix</code> relinks them afterwards.</p>
 <p>Without <code>--fix</code>, <code>papers file check</code> reports the files it would relink, and
 where they come from. <code>--fix --dry-run</code> shows the links that <code>--fix</code> would
 change, and changes nothing.</p>
@@ -1357,10 +1382,10 @@ files that no remaining entry links to may be deleted too:</p>
 <li>a file outside the files directory is deleted only with <code>--delete-files</code>.</li>
 </ul>
 <p>A file still linked from another entry is never deleted, nor a file in the
-files directory of the pool of the library, nor, in a library that is not
-local, a file that an entry of the pool links to (see
-<a href="../pools/#local-or-not">Local or not</a>); <code>papers rm</code> does not change the
-pool. A file that is a
+files directory of the pool of the library, nor, in a shallow library, a
+file that an entry of the pool links to (see
+<a href="../pools/#shallow-libraries">Shallow libraries</a>); <code>papers rm</code> does not
+change the pool. A file that is a
 hard link (e.g. to the file of another library) can be deleted: this only
 removes this link, and papers says so.</p>
 <h2 id="deprecated-forms">Deprecated forms<a class="headerlink" href="#deprecated-forms" title="Permanent link">&para;</a></h2>

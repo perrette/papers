@@ -906,6 +906,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../global-library/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    A global shared library
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../library-management/" class="md-nav__link">
         
   
@@ -1380,9 +1408,9 @@ without adding anything:</p>
 </code></pre></div>
 <h2 id="what-happens-to-the-files">What happens to the files<a class="headerlink" href="#what-happens-to-the-files" title="Permanent link">&para;</a></h2>
 <p>By default, <code>papers add</code> moves the PDF into the files directory of the
-library, under a name made from the name template: in a library that is not
-local (the default for new libraries), the files directory and the name
-template of its pool (see <a href="../pools/#local-or-not">Local or not</a>). The
+library, under a name made from the name template: in a shallow library
+(a library with a pool), the files directory and the name template of its
+pool (see <a href="../pools/#shallow-libraries">Shallow libraries</a>). The
 <code>files</code> setting of the library changes what happens to the original (see
 <a href="../files/#what-add-does-with-a-file">Files</a>):</p>
 <ul>
@@ -1463,16 +1491,19 @@ identifier. <code>--no-check-duplicate</code> skips this, and adds a new entry.<
 (see <a href="../pools/#add-looks-in-the-pool-first">Pools</a>): a PDF with the same
 content as a pool file, or whose DOI is in the pool, a DOI that a pool entry
 has, or a bibtex entry that is the same paper as a pool entry, is taken from
-the pool, with its files. <code>--no-pool</code> skips this.</p>
+the pool, with its files. <code>--no-pool</code> skips this. <code>--pool PATH</code> looks in
+the library PATH instead, in any library: the entry is taken from PATH with
+its files, its origin is recorded for PATH, and nothing is added to PATH
+(<code>papers -C PATH add</code> is what adds to PATH).</p>
 <p><code>papers add --key KEY</code>, with no file, DOI or other field, takes the pool
 entry of key <code>KEY</code> (ignoring case). When the library already has an entry of
 that key, the files of <code>--attach</code> are attached to it. When neither has it,
 papers stops with an error and changes nothing:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>papers add --key yool2011
 </code></pre></div>
-<p>In a library that is not local (the default), the files of the added
-entries go to the files directory of the pool, and the entries to the pool
-too (see <a href="../pools/#local-or-not">Local or not</a>).</p>
+<p>In a shallow library, the files of the added entries go to the files
+directory of the pool, and the entries to the pool too (see
+<a href="../pools/#shallow-libraries">Shallow libraries</a>).</p>
 <p><code>papers add other.bib</code> copies the entries of <code>other.bib</code> once, with no
 memory of the source. To take entries from the pool so that they stay
 linked to it (later pulls bring the corrections made there), use

@@ -448,10 +448,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#1-a-project-with-its-own-pdfs" class="md-nav__link">
+  <a href="#1-a-self-contained-project" class="md-nav__link">
     <span class="md-ellipsis">
       
-        1. A project with its own PDFs
+        1. A self-contained project
       
     </span>
   </a>
@@ -459,10 +459,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#2-sharing-its-papers-through-a-pool" class="md-nav__link">
+  <a href="#2-a-shallow-project-that-uses-it" class="md-nav__link">
     <span class="md-ellipsis">
       
-        2. Sharing its papers through a pool
+        2. A shallow project that uses it
       
     </span>
   </a>
@@ -470,21 +470,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#3-a-second-project-that-uses-the-pool" class="md-nav__link">
+  <a href="#more" class="md-nav__link">
     <span class="md-ellipsis">
       
-        3. A second project that uses the pool
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#the-default-setup" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        The default setup
+        More
       
     </span>
   </a>
@@ -762,6 +751,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../global-library/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    A global shared library
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../library-management/" class="md-nav__link">
         
   
@@ -971,10 +988,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#1-a-project-with-its-own-pdfs" class="md-nav__link">
+  <a href="#1-a-self-contained-project" class="md-nav__link">
     <span class="md-ellipsis">
       
-        1. A project with its own PDFs
+        1. A self-contained project
       
     </span>
   </a>
@@ -982,10 +999,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#2-sharing-its-papers-through-a-pool" class="md-nav__link">
+  <a href="#2-a-shallow-project-that-uses-it" class="md-nav__link">
     <span class="md-ellipsis">
       
-        2. Sharing its papers through a pool
+        2. A shallow project that uses it
       
     </span>
   </a>
@@ -993,21 +1010,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#3-a-second-project-that-uses-the-pool" class="md-nav__link">
+  <a href="#more" class="md-nav__link">
     <span class="md-ellipsis">
       
-        3. A second project that uses the pool
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#the-default-setup" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        The default setup
+        More
       
     </span>
   </a>
@@ -1044,71 +1050,70 @@
 project folder that holds a library. A library is a bibtex file, a
 configuration file (<code>.papersconfig.json</code>) and, if it keeps its own PDFs, a
 <code>files/</code> folder.</p>
-<p>This page shows a common use case: a project with its own bibtex and PDFs,
-whose papers are then shared through a pool with a second project. It is
-also the way from a papers 2 project library to papers 3.</p>
+<p>This page shows two cases: a self-contained project, with its own bibtex
+and PDFs, and a shallow project that uses the first one as its pool.</p>
 <h2 id="install">Install<a class="headerlink" href="#install" title="Permanent link">&para;</a></h2>
 <p>The 3.0 beta is not on PyPI yet. Install it from the <code>v3</code> branch:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pip install git+https://github.com/perrette/papers.git@v3
 </code></pre></div>
 <p>See <a href="../installation/">Installation</a> for the requirements.</p>
-<h2 id="1-a-project-with-its-own-pdfs">1. A project with its own PDFs<a class="headerlink" href="#1-a-project-with-its-own-pdfs" title="Permanent link">&para;</a></h2>
-<p><code>papers init --local</code> creates a library that keeps its own PDFs, in
-<code>files/</code>, and has no pool:</p>
+<h2 id="1-a-self-contained-project">1. A self-contained project<a class="headerlink" href="#1-a-self-contained-project" title="Permanent link">&para;</a></h2>
+<p><code>papers init</code> creates a self-contained library: its own entries, and its
+own PDFs in <code>files/</code>.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>$ cd ~/projects/sealevel
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>$ papers init --local
-<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>$ papers add ~/Downloads/esd-4-11-2013.pdf
-<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>Added -&gt; perrette_landerer2013: A scaling approach to project regional sea level rise and it... (doi:10.5194/esd-4-11-2013, file:1)
-<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>$ papers add --doi 10.1111/j.1365-246X.1978.tb04232.x
-<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>Added -&gt; bretreger_mather1978: Modelling ocean-loading effects on tidal gravity in Australi... (doi:10.1111/j.1365-246X.1978.tb04232.x)
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>$ papers init
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>created the library ~/projects/sealevel
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>* bibtex:  papers.bib
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>* files:   files (the files directory of the library)
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>* pool:    none (a self-contained library: its own entries and files)
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>* backup:  git
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>`papers status -v` shows all settings
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>$ papers add ~/Downloads/esd-4-11-2013.pdf
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>Added -&gt; perrette_landerer2013: A scaling approach to project regional sea level rise and it... (doi:10.5194/esd-4-11-2013, file:1)
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>$ papers add --doi 10.1111/j.1365-246X.1978.tb04232.x
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>Added -&gt; bretreger_mather1978: Modelling ocean-loading effects on tidal gravity in Australi... (doi:10.1111/j.1365-246X.1978.tb04232.x)
 </code></pre></div>
 <p>The DOI is read from the PDF, the entry is fetched from crossref, and the
 PDF is moved to <code>files/</code> and renamed after the entry.</p>
-<p>For more: <a href="../adding-entries/">Adding entries</a>, <a href="../files/">Files</a>
-(attachments, renaming, moving), <a href="../listing/">Listing and searching</a>,
-<a href="../undo-redo/">Undo and redo</a>.</p>
-<h2 id="2-sharing-its-papers-through-a-pool">2. Sharing its papers through a pool<a class="headerlink" href="#2-sharing-its-papers-through-a-pool" title="Permanent link">&para;</a></h2>
-<p>A pool is a library in a shared location: a bibtex and a folder of PDFs.
-Here it is <code>~/Documents/papers/sealevel</code>, a pool for the sea level papers.
-Declare it, and send all entries to it:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>$ papers config pool ~/Documents/papers/sealevel
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>$ papers push --all
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>create the library ~/Documents/papers/sealevel
-<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>Added -&gt; bretreger_mather1978: Modelling ocean-loading effects on tidal gravity in Australi... (doi:10.1111/j.1365-246X.1978.tb04232.x) [to pool ~/Documents/papers/sealevel]
-<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>Added -&gt; perrette_landerer2013: A scaling approach to project regional sea level rise and it... (doi:10.5194/esd-4-11-2013, file:1) [to pool ~/Documents/papers/sealevel]
-<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>push to pool ~/Documents/papers/sealevel: 2 added
-</code></pre></div>
-<p>The pool now has the entries and a copy of the PDFs. To keep only the
-pool's copies, set <code>local</code> to <code>false</code>: the library links to the PDFs of the
-pool, and its own copies are deleted (papers asks first). This step is
-optional; a project folder shared with coauthors should stay local. See
-<a href="../pools/#local-or-not">Local or not</a>.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>$ papers config local false
-</code></pre></div>
-<h2 id="3-a-second-project-that-uses-the-pool">3. A second project that uses the pool<a class="headerlink" href="#3-a-second-project-that-uses-the-pool" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>$ cd ~/projects/tides
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>$ papers init --pool ~/Documents/papers/sealevel
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>$ papers add --doi 10.5194/esd-4-11-2013
-<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>Added -&gt; perrette_landerer2013: A scaling approach to project regional sea level rise and it... (doi:10.5194/esd-4-11-2013, file:1) [from pool ~/Documents/papers/sealevel]
-<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>$ papers add ~/Downloads/bg-8-515-2011.pdf
-<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>Added -&gt; perrette_yool2011: Near-ubiquity of ice-edge blooms in the Arctic (doi:10.5194/bg-8-515-2011, file:1) [also added to pool ~/Documents/papers/sealevel]
+<p>A self-contained library is also a library that other projects can use.</p>
+<h2 id="2-a-shallow-project-that-uses-it">2. A shallow project that uses it<a class="headerlink" href="#2-a-shallow-project-that-uses-it" title="Permanent link">&para;</a></h2>
+<p><code>papers init --pool PATH</code> creates a shallow library: it takes its entries
+from the library <code>PATH</code>, its pool, and links to the PDFs there. <code>PATH</code> is
+a self-contained library, such as the project above, or a library kept for
+sharing, e.g. <code>~/Documents/papers</code> (see
+<a href="../global-library/">A global shared library</a>).</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>$ cd ~/projects/tides
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>$ papers init --pool ../sealevel
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>created the library ~/projects/tides
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>* bibtex:  papers.bib
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>* files:   in the pool ../sealevel
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>* pool:    ../sealevel (a shallow library: it takes its entries from the pool and links to its files)
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>* backup:  git
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>`papers status -v` shows all settings
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>$ papers add --doi 10.5194/esd-4-11-2013
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>Added -&gt; perrette_landerer2013: A scaling approach to project regional sea level rise and it... (doi:10.5194/esd-4-11-2013, file:1) [from pool ../sealevel]
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>$ papers add ~/Downloads/bg-8-515-2011.pdf
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>Added -&gt; perrette_yool2011: Near-ubiquity of ice-edge blooms in the Arctic (doi:10.5194/bg-8-515-2011, file:1) [also added to pool ../sealevel]
 </code></pre></div>
 <p><code>add</code> looks in the pool first: a paper the pool has is taken from it, with
 its PDF, and nothing is fetched or copied. A new paper goes to the library
-and to the pool, since this library is not local and keeps its PDFs in the
-pool. In a local library with a pool, a new paper goes to the pool only if
-the <code>auto-push</code> setting is on, or with <code>papers push</code>. See
-<a href="../pools/#local-or-not">Local or not</a> and <a href="../pools/#auto-push">Auto-push</a>.</p>
-<p>Each library has only the entries it asks for. Changes to shared entries,
-made in either project, are exchanged with <code>papers sync</code>. See
-<a href="../pools/">Pools</a> for <code>pull</code>, <code>push</code>, <code>sync</code> and the merge.</p>
-<h2 id="the-default-setup">The default setup<a class="headerlink" href="#the-default-setup" title="Permanent link">&para;</a></h2>
-<p><code>papers init</code> without option declares the global pool,
-<code>~/Documents/papers</code>, and is not local. All projects created this way
-share one pool and its PDFs: a paper added in one project is in the pool
-for the others, and steps 1 and 2 are not needed. The global pool is set
-with <code>papers config --global pool PATH</code>. See
-<a href="../pools/#libraries-and-pools">Libraries and pools</a>.</p>
+and to the pool, and its PDF to the pool's <code>files/</code>. Each library has only
+the entries it asks for: <code>tides</code> has two entries, <code>sealevel</code> three.</p>
+<p>Changes to the shared entries, made in either project, are exchanged with
+<code>papers sync</code>. After a tag added in <code>sealevel</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>$ papers sync
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>Modified -&gt; perrette_landerer2013: A scaling approach to project regional sea level rise and it... (doi:10.5194/esd-4-11-2013, file:1, sea-level) [from pool ../sealevel]
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>pull from pool ../sealevel: 1 modified, 1 unchanged
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>push to pool ../sealevel: 2 unchanged
+</code></pre></div>
+<h2 id="more">More<a class="headerlink" href="#more" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="../adding-entries/">Adding entries</a>: PDFs, DOIs, bibtex files, duplicates;</li>
+<li><a href="../files/">Files</a>: attachments, renaming, moving;</li>
+<li><a href="../listing/">Listing and searching</a>;</li>
+<li><a href="../pools/">Pools</a>: self-contained and shallow libraries, <code>pull</code>, <code>push</code>,
+  <code>sync</code> and the merge, exchanges with any library (<code>--pool PATH</code>).</li>
+</ul>
 <p>Coming from papers 2: see <a href="../upgrading/">Upgrading from papers 2</a>.</p>
 
 

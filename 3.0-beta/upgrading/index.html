@@ -515,10 +515,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#topic-pools" class="md-nav__link">
+  <a href="#sharing-papers-between-projects" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Topic pools
+        Sharing papers between projects
       
     </span>
   </a>
@@ -759,6 +759,34 @@
     
   
     Pools
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../global-library/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    A global shared library
   
 
     
@@ -1027,10 +1055,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#topic-pools" class="md-nav__link">
+  <a href="#sharing-papers-between-projects" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Topic pools
+        Sharing papers between projects
       
     </span>
   </a>
@@ -1075,14 +1103,14 @@
 
 <h1 id="upgrading-from-papers-2">Upgrading from papers 2<a class="headerlink" href="#upgrading-from-papers-2" title="Permanent link">&para;</a></h1>
 <p>In papers 2 you had one global library, or a library tied to a project
-with its own PDFs. In papers 3 every library is tied to a project, and
-libraries can share entries and PDFs through a pool. A pool is a library
-in a shared location: a bibtex and a folder of PDFs. The global pool is
-<code>~/Documents/papers</code>; you can add others, for instance one per topic
-(<code>~/Documents/papers/sealevel</code>). Each library uses one pool, or none, and
-different libraries can use different pools. A library either keeps its
-own copy of the PDFs (<code>local true</code>) or links to the PDFs of its pool
-(<code>local false</code>).</p>
+with its own PDFs. In papers 3 a library is either self-contained (its own
+entries and PDFs, no pool) or shallow: it uses another library as its
+pool, takes its entries from there and links to the pool's PDFs. Any
+self-contained library can be the pool of others: a project, a library
+per topic (<code>~/Documents/papers/sealevel</code>), or one library for everything
+(<code>~/Documents/papers</code>, see <a href="../global-library/">A global shared library</a>).
+Any library can also exchange entries with another library given on the
+command line (<code>--pool PATH</code>).</p>
 <h2 id="what-becomes-of-a-papers-2-setup">What becomes of a papers 2 setup<a class="headerlink" href="#what-becomes-of-a-papers-2-setup" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -1094,15 +1122,15 @@ own copy of the PDFs (<code>local true</code>) or links to the PDFs of its pool
 <tbody>
 <tr>
 <td>the global library (<code>papers install --global</code>)</td>
-<td>the global pool. It is still a library: commands run outside of any project act on it, and <code>papers -C DIR</code> reaches it from anywhere</td>
+<td>the default library, after <code>papers migrate</code>, where it is. It is a self-contained library: commands run outside of any project act on it, <code>papers init --shallow</code> creates a project that uses it as pool, and <code>papers -C DIR</code> reaches it from anywhere</td>
 </tr>
 <tr>
 <td>a project library (<code>papers install --local</code>) with its own PDFs</td>
-<td>a local library without pool (<code>local true</code>, <code>pool none</code>), the same as a new <code>papers init --local</code>. <code>papers config pool PATH</code> gives it a pool</td>
+<td>a self-contained library (<code>pool none</code>), the same as a new <code>papers init</code>. <code>papers config pool PATH</code> makes it a shallow library of PATH, once PATH has its PDFs</td>
 </tr>
 <tr>
 <td>several project libraries with a common <code>filesdir</code></td>
-<td>still works, without a pool (see <a href="../pools/#a-shared-files-folder-without-a-pool">A shared files folder without a pool</a>); a pool is more efficient</td>
+<td>still works, with self-contained libraries (see <a href="../pools/#a-shared-files-folder-without-a-pool">A shared files folder without a pool</a>); exchanges between libraries and shallow libraries are more efficient</td>
 </tr>
 <tr>
 <td><code>papers install</code></td>
@@ -1118,7 +1146,7 @@ is converted without a command.</p>
 (<code>~/.config/papersconfig.json</code> on Linux). papers 3 keeps using it outside
 of libraries, and prints a warning on every command:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>$ papers list
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>WARNING:papers:found the global configuration of papers v2 (~/.config/papersconfig.json): it still applies outside of libraries; `papers migrate` turns it into a library and the global pool
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>WARNING:papers:found the global configuration of papers v2 (~/.config/papersconfig.json): it still applies outside of libraries; `papers migrate` turns it into a library, the default library
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>perrette_landerer2013: A scaling approach to project regional sea level rise and it... (doi:10.5194/esd-4-11-2013, file:1)
 </code></pre></div>
 <p><code>papers migrate</code> converts it. In this example the global library of
@@ -1126,15 +1154,18 @@ papers 2 is <code>~/bibliography/papers.bib</code>:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>$ papers migrate
 <a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>global configuration of papers v2: ~/.config/papersconfig.json
 <a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>  create the library configuration ~/bibliography/.papersconfig.json (paths: absolute)
-<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>  register ~/bibliography as the global pool in ~/.config/papers/config.json
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>  register ~/bibliography as the default library in ~/.config/papers/config.json
 <a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>  rename ~/.config/papersconfig.json to ~/.config/papersconfig.json.v2.bak
 </code></pre></div>
 <ul>
 <li>The library gets a configuration file next to its bibtex, with the
-  settings of papers 2. It keeps its own files and has no pool itself.</li>
-<li>Its directory becomes the global pool, unless the global configuration
-  of papers 3 already sets another one. The global pool is then
-  <code>~/bibliography</code>, not <code>~/Documents/papers</code>.</li>
+  settings of papers 2. It is self-contained: it keeps its own files and
+  has no pool.</li>
+<li>It is registered as the default library, where it is, unless the global
+  configuration of papers 3 already sets another one: commands run
+  outside of any project act on it, and <code>papers init --shallow</code> creates a
+  project that uses it as pool (see
+  <a href="../global-library/">A global shared library</a>).</li>
 <li>The bibtex, the PDFs and the git backup stay where they are. File links
   stay absolute, as they were; <code>papers migrate --relative</code> makes them
   relative to the bibtex.</li>
@@ -1147,55 +1178,55 @@ See <a href="../configuration/#migrating-from-papers-2">Migrating from papers 2<
 the details.</p>
 <h3 id="project-libraries">Project libraries<a class="headerlink" href="#project-libraries" title="Permanent link">&para;</a></h3>
 <p>A project library of papers 2 (<code>.papersconfig.json</code> without <code>"version"</code>)
-needs no migration. papers 3 reads it as a local library without pool
-(<code>pool none</code>): its PDFs stay in its own files directory, and it works as in
+needs no migration. papers 3 reads it as a self-contained library (no
+pool): its PDFs stay in its own files directory, and it works as in
 papers 2.</p>
-<p><code>papers config pool PATH</code> gives it a pool, for instance
-<code>papers config pool ~/Documents/papers</code> for the global pool. <code>papers add</code>
-then looks in the pool first: a paper found there is taken with its PDF,
-copied into the project's files directory (a hard link when possible).
-Nothing is written to the pool unless you run <code>papers push</code> (or turn
-<code>auto-push</code> on).</p>
-<h2 id="topic-pools">Topic pools<a class="headerlink" href="#topic-pools" title="Permanent link">&para;</a></h2>
+<p>It can take papers from another library without changing:
+<code>papers add --pool ~/Documents/papers --doi DOI</code> takes a paper that
+<code>~/Documents/papers</code> has, with a copy of its PDF (a hard link when
+possible), and <code>papers sync --pool ~/Documents/papers</code> exchanges later
+changes of the entries taken. Nothing new is written to that library
+unless you push to it.</p>
+<h2 id="sharing-papers-between-projects">Sharing papers between projects<a class="headerlink" href="#sharing-papers-between-projects" title="Permanent link">&para;</a></h2>
 <p>The main new use of papers 3: each project keeps its own bibtex, the one
 its LaTeX document cites, while the PDFs and the curated entries of a topic
-live once in a topic pool. A new project on the same topic takes the
-entries and PDFs it needs from the pool, without fetching anything or
-storing a PDF twice. A correction made in one project reaches the others
-with <code>papers sync</code>.</p>
-<p>To turn an existing project library into the start of a topic pool:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>cd ~/projects/sealevel
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>papers config pool ~/Documents/papers/sealevel   # the topic pool
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>papers push --all          # copies the entries and their PDFs to the pool
-<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>papers config local false  # optional: link to the pool's PDFs, delete the project's copies
+live once in one library. A new project on the same topic takes the
+entries and PDFs it needs from there, without fetching anything or storing
+a PDF twice. A correction made in one project reaches the others with
+<code>papers sync</code>.</p>
+<p>An existing project library can be that library as it is: a new project
+uses it as pool.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>cd ~/projects/tides
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>papers init --pool ../sealevel           # a shallow library
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>papers add --doi 10.5194/esd-4-11-2013   # taken from ../sealevel, with its PDF
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>papers pull perrette_yool2011            # or by key
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>papers sync                              # later: exchange the changes both ways
 </code></pre></div>
-<p><code>papers push --all</code> creates the pool if it does not exist yet (its parent
-folder must exist). It copies the PDFs as hard links when possible, so the
-PDFs are not read again and nothing is fetched. <code>papers config local false</code>
-refuses until the pool has every PDF of the library, and then names the
-entries to push.</p>
-<p>A new project on the same topic:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>cd ~/projects/tides
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>papers init --pool ~/Documents/papers/sealevel
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>papers add --doi 10.5194/esd-4-11-2013   # taken from the pool, with its PDFs
-<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>papers pull perrette_yool2011            # or by key
-<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>papers sync                              # later: exchange the changes both ways
+<p>To move the PDFs of an existing project into a library of the topic, and
+make the project shallow:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>cd ~/projects/sealevel
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>papers push --pool ~/Documents/papers/sealevel --all   # copies the entries and their PDFs there
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>papers config pool ~/Documents/papers/sealevel         # link to its PDFs, delete the project's copies
 </code></pre></div>
-<p>The <a href="../quickstart/">Quickstart</a> runs through these steps with their
-output, and <a href="../pools/">Pools</a> describes the exchanges.</p>
+<p><code>papers push --pool PATH --all</code> creates the library PATH if it does not
+exist yet (its parent folder must exist). It copies the PDFs as hard links
+when possible, so the PDFs are not read again and nothing is fetched.
+<code>papers config pool PATH</code> refuses until PATH has every PDF of the library,
+and then names the entries to push.</p>
+<p>The <a href="../quickstart/">Quickstart</a> runs through a self-contained project and
+a shallow project with their output, and <a href="../pools/">Pools</a> describes the
+exchanges.</p>
 <h2 id="what-else-changed">What else changed<a class="headerlink" href="#what-else-changed" title="Permanent link">&para;</a></h2>
 <ul>
 <li><code>papers init</code> replaces <code>papers install</code>: it asks no questions, and fails
   if the folder has a library already (use <code>papers config</code>). By default it
-  creates a library whose pool is the global pool (written in its
-  configuration), and that links to the pool's PDFs; use
-  <code>papers init --local</code> for a project that keeps its own PDFs, as in
-  papers 2.</li>
+  creates a self-contained library, which keeps its own PDFs, as in
+  papers 2; <code>papers init --pool PATH</code> creates a shallow library.</li>
 <li><code>papers config</code> gets and sets the settings, in the style of
   <code>git config</code> (see <a href="../configuration/#settings">Configuration</a>).</li>
 <li>The global configuration of papers 3 is <code>~/.config/papers/config.json</code>
-  on Linux. It holds the global pool and default settings, and defines no
-  library.</li>
+  on Linux. It holds default settings, and optionally the default library
+  (<code>papers config --global default PATH</code>).</li>
 </ul>
 
 

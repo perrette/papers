@@ -660,6 +660,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../global-library/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    A global shared library
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../library-management/" class="md-nav__link">
         
   
@@ -978,8 +1006,8 @@ deleted by <code>papers file rm</code> is not restored: undo restores the link, 
 is then broken.</p>
 <h2 id="undo-in-a-library-that-has-a-pool">Undo in a library that has a pool<a class="headerlink" href="#undo-in-a-library-that-has-a-pool" title="Permanent link">&para;</a></h2>
 <p>A pool is a library with its own backup and its own history. A command that
-exchanges entries with the pool (<code>add</code> in a library that is not local, a
-command that changes entries with auto-push; <code>push</code>, <code>pull</code>, <code>sync</code>) writes both, and each records a
+exchanges entries with the pool (<code>add</code> in a shallow library, a command
+that changes entries with auto-push; <code>push</code>, <code>pull</code>, <code>sync</code>) writes both, and each records a
 step in its own history.</p>
 <ul>
 <li><code>papers undo</code> and <code>papers redo</code> in the library change the library only.
