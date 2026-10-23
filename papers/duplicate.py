@@ -272,6 +272,12 @@ def same_paper(a, b, distinct=None):
     return Verdict(DIFFERENT, 'no common identifier')
 
 
+def contradicts(a, b):
+    """whether an identifier that both entries have differs (DOI, arXiv id
+    or ISBN, see same_paper; the pairs of distinct.json aside)"""
+    return same_paper(a, b).reason in CONTRADICTIONS
+
+
 # NOT THE SAME PAPER
 # ==================
 
@@ -359,6 +365,24 @@ class Distinct:
         self.changed = False
 
 
+_last_union = None  # (the Distinct objects, their numbers of pairs, the union)
+
+
+def distinct_union(*distincts):
+    """a Distinct with the pairs of several (None skipped), e.g. of a
+    library and its pool, not to be changed: the same object for the same
+    Distinct objects while none of them has new pairs"""
+    global _last_union
+    parts = [d for d in distincts if d is not None]
+    sizes = [len(d.pairs) for d in parts]
+    if _last_union is not None and len(_last_union[0]) == len(parts) \
+            and all(a is b for a, b in zip(_last_union[0], parts)) and _last_union[1] == sizes:
+        return _last_union[2]
+    union = Distinct([pair for d in parts for pair in d.pairs])
+    _last_union = (parts, sizes, union)
+    return union
+
+
 # CANDIDATES AND GROUPS
 # =====================
 
@@ -370,15 +394,21 @@ def _index_keys(e):
 
 
 class IdentityIndex:
-    """entries by identifier, so that a duplicate search only compares an
-    entry with the entries that share one of its identifiers"""
+    """entries by identifier (exact dictionary lookup of the DOI, the arXiv
+    id, each ISBN, the authors and title), so that a duplicate search only
+    compares an entry with the entries that share one of its identifiers.
+    The index keeps the position of each entry (the order in which it was
+    first added): an entry removed and added again (updated) keeps it."""
 
     def __init__(self, entries=()):
         self._index = {}
+        self._position = {}  # id(entry) -> (position, entry): the entry is kept, so that its id is not reused
         for e in entries:
             self.add(e)
 
     def add(self, e):
+        if id(e) not in self._position:
+            self._position[id(e)] = (len(self._position), e)
         for k in _index_keys(e):
             matches = self._index.setdefault(k, [])
             if not any(x is e for x in matches):
@@ -389,6 +419,9 @@ class IdentityIndex:
             matches = self._index.get(k, [])
             matches[:] = [x for x in matches if x is not e]
 
+    def position(self, e):
+        return self._position[id(e)][0]
+
     def candidates(self, e):
         out = []
         for k in _index_keys(e):
@@ -398,21 +431,29 @@ class IdentityIndex:
         return out
 
 
-def find_duplicates(entry, entries, distinct=None, index=None):
+def find_duplicates(entry, entries=None, distinct=None, index=None):
     """[(other, verdict)] for the entries that are the same paper as `entry`
-    (SAME first, then ASK), in the order of `entries`"""
+    (SAME first, then ASK), in the order of `entries`.
+
+    index: an IdentityIndex of the entries to search, kept up to date; with
+    entries None, the indexed entries are searched, in the order of the
+    index (no pass over the entries)"""
     if index is None:
         index = IdentityIndex(entries)
+        entries = None  # the index has them, in their order
     candidates = index.candidates(entry)
-    order = {id(e): i for i, e in enumerate(entries)}
+    if entries is None:
+        position = index.position
+    else:
+        order = {id(e): i for i, e in enumerate(entries)}
+        candidates = [x for x in candidates if id(x) in order]
+        position = lambda e: order[id(e)]
     found = []
     for other in candidates:
-        if id(other) not in order:
-            continue
         verdict = same_paper(other, entry, distinct)
         if verdict.kind != DIFFERENT:
             found.append((other, verdict))
-    found.sort(key=lambda ov: (ov[1].kind != SAME, order[id(ov[0])]))
+    found.sort(key=lambda ov: (ov[1].kind != SAME, position(ov[0])))
     return found
 
 

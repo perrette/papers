@@ -608,6 +608,25 @@ class TestPull(PoolTest):
         self.assertIsNotNone(self.origin().get(self.entry('smith2020climate')))
         self.assertEqual(self.entry('smith2020climate')['journal'], 'Nature')
 
+    def test_recorded_pool_entry_among_same_papers(self):
+        "the pool has the paper twice: the pool entry of the origin record is the one pulled"
+        self.edit_pool('@article{Smith_2020,', SMITH_BIB.replace('smith2020climate', 'Aaa_2020')
+                       .replace('year', 'journal = {Other},\n year') + '\n@article{Smith_2020,')
+        self.edit_pool('journal = {Nat.}', 'journal = {Nature}')
+        self.lib('pull')
+        self.assertEqual(self.entry('smith2020climate')['journal'], 'Nature')
+        self.assertEqual(self.origin().get(self.entry('smith2020climate')).pool_key, 'Smith_2020')
+
+    def test_pool_key_of_another_paper(self):
+        "the pool key of the record now names another paper: the pool entry is found by its identity"
+        self.edit_pool('@article{Smith_2020,', '@article{Smith_2020x,')
+        self.edit_pool('journal = {Nat.}', 'journal = {Nature}')
+        self.edit_pool('@article{Brown_2021,', '@article{Smith_2020,\n doi = {10.1000/other},\n title = {Other},\n'
+                       ' year = {2020}\n}\n\n@article{Brown_2021,')
+        self.lib('pull')
+        self.assertEqual(self.entry('smith2020climate')['journal'], 'Nature')
+        self.assertEqual(self.origin().get(self.entry('smith2020climate')).pool_key, 'Smith_2020x')
+
     def test_entry_without_origin_is_linked(self):
         for cmd in ['pull smith2020climate', 'pull --all']:
             with self.subTest(cmd=cmd):

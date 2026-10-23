@@ -359,7 +359,8 @@ class Biblio:
         return [ entry ]
 
     def _insert_entry_check(self, entry, resolver, update_key=False, rename=False, copy=False, index=None):
-        found = find_duplicates(entry, self.entries, self.distinct, index=index)
+        # the index (see add_entries) has the entries of the library, in their order
+        found = find_duplicates(entry, self.entries if index is None else None, self.distinct, index=index)
         if not found:
             logger.debug('not a duplicate')
             return self._insert_new(entry, update_key=update_key, rename=rename, copy=copy, index=index)

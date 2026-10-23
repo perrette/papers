@@ -98,10 +98,27 @@ class TestEquivalence(unittest.TestCase):
         for e in self.entries:
             expected = describe_found(ref.find_duplicates(e, self.entries, self.ref_distinct))
             self.assertEqual(describe_found(new.find_duplicates(e, self.entries, self.new_distinct)), expected)
+            self.assertEqual(describe_found(new.find_duplicates(e, None, self.new_distinct, index=index)), expected)
             self.assertEqual(describe_found(new.find_duplicates(e, self.entries, self.new_distinct, index=index)),
                              expected)
 
+    def test_find_duplicates_in_a_part(self):
+        "with an index of all entries, only the entries given are searched, in their order"
+        index = new.IdentityIndex(self.entries)
+        part = self.entries[::3][::-1]
+        for e in self.entries[:100]:
+            self.assertEqual(describe_found(new.find_duplicates(e, part, self.new_distinct, index=index)),
+                             describe_found(ref.find_duplicates(e, part, self.ref_distinct)))
 
+    def test_updated_entry_keeps_its_position(self):
+        index = new.IdentityIndex(self.entries)
+        e = self.entries[5]
+        index.remove(e)
+        e['title'] = 'Glacier melt'
+        index.add(e)
+        for x in self.entries[:50]:
+            self.assertEqual(describe_found(new.find_duplicates(x, None, None, index=index)),
+                             describe_found(ref.find_duplicates(x, self.entries)))
 
     def test_duplicate_groups(self):
         described = []
@@ -120,6 +137,15 @@ class TestEquivalence(unittest.TestCase):
         e['title'] = 'Other'
         self.assertEqual(new.identity(e), ref.identity(e))
 
+    def test_distinct_union(self):
+        a, b = new.Distinct([[{'doi': '1'}, {'doi': '2'}]]), new.Distinct()
+        union = new.distinct_union(a, b)
+        self.assertIs(new.distinct_union(a, b), union)
+        b.pairs.append([{'doi': '3'}, {'doi': '4'}])
+        union2 = new.distinct_union(a, b)
+        self.assertIsNot(union2, union)
+        self.assertEqual(len(union2.pairs), 2)
+        self.assertEqual(len(new.distinct_union(a, None).pairs), 1)
 
 
 if __name__ == '__main__':

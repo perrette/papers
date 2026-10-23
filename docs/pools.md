@@ -264,6 +264,15 @@ identifier, ISBN (two books), or else the same authors and title. The pairs
 recorded as "not the same paper" (`.papers/distinct.json`) are merged both
 ways on `pull` and `push`.
 
+An entry with an origin copy is first looked up under the pool key of its
+origin copy: that pool entry is taken if it is the same paper as the origin
+copy or as the entry. Otherwise, e.g. when the pool key now names another
+paper, the pool entry is found by the rule above (from the origin copy,
+then from the entry), and last under the pool key, if its DOI, arXiv
+identifier and ISBN do not differ from those of the origin copy (both
+titles changed). When the pool has the same paper twice, the entry of the
+origin copy is the one exchanged.
+
 ## Origin copies
 
 `.papers/origin/`, next to the bibtex of the library, holds one file per

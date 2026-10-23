@@ -45,8 +45,9 @@ files are copied rather than linked.
 
 The key of an entry belongs to each library: `pull` and `push` never change
 the key of the library they write to. An entry of the library is matched to
-its pool entry by the identity rule (papers.duplicate.same_paper) applied to
-its origin copy, then to the entry itself. An entry is shared with a pool
+its pool entry by the pool key of its origin copy when that pool entry is
+the same paper (papers.duplicate.same_paper), else by the identity rule
+applied to its origin copy, then to the entry itself (Exchange.pool_entry). An entry is shared with a pool
 when the pool has its paper this way (Exchange.sharing), with an origin
 record or not: the record is only the base of the merge.
 """
@@ -62,7 +63,8 @@ from slugify import slugify
 import papers.config
 from papers import logger
 from papers.config import Config, CONFIG_FILE_LOCAL, NO_POOL, library_config_file, short_home
-from papers.duplicate import Distinct, IdentityIndex, find_duplicates, same_paper, SAME, Verdict
+from papers.duplicate import (Distinct, IdentityIndex, contradicts, distinct_union, find_duplicates, same_paper,
+                              SAME, Verdict)
 from papers.entries import (get_entry_val, set_entry_key, entry_copy, parse_string, format_library, format_file,
                             parse_file)
 from papers.bib import Biblio, append_abc, read_text
@@ -208,6 +210,7 @@ class Pool:
         self.shown = shown or short_home(path)
         self._biblio = None
         self._index = None
+        self._keys = None  # lower-case key -> pool entry (see entry_of_key)
         self._sizes = None
 
     def __repr__(self):
@@ -236,22 +239,30 @@ class Pool:
     def bibtex_mtime(self):
         return mtime(self.config.bibtex)
 
+    def distinct(self, distinct=None):
+        "the pairs that are not the same paper of the pool and of `distinct` (see distinct_union)"
+        return distinct_union(self.biblio.distinct, distinct)
+
     def find(self, entry, distinct=None):
         "the pool entry that is the same paper as `entry` (SAME verdict only), or None"
-        pairs = self.biblio.distinct.pairs + (distinct.pairs if distinct is not None else [])
-        found = find_duplicates(entry, self.biblio.entries, Distinct(pairs), index=self.index)
+        found = find_duplicates(entry, None, self.distinct(distinct), index=self.index)
         return next((e for e, verdict in found if verdict.kind == SAME), None)
+
+    def entry_of_key(self, key):
+        "the pool entry of key `key` (ignoring case), or None"
+        if self._keys is None:
+            self._keys = {}
+            for x in self.biblio.entries:
+                self._keys.setdefault(x.key.lower(), x)
+        return self._keys.get((key or '').lower()) if key else None
 
     def by_key(self, key, origin):
         """the pool entry of key `key` (the pool key of an origin record) if
         its identifiers do not contradict the origin copy: found this way
         when the title (the only identifier of entries without DOI) changed
         on both sides"""
-        key = (key or '').lower()
-        pe = next((x for x in self.biblio.entries if x.key.lower() == key), None) if key else None
-        if pe is None:
-            return None
-        if same_paper(pe, origin).reason in ('different DOIs', 'different arXiv ids', 'different ISBNs'):
+        pe = self.entry_of_key(key)
+        if pe is None or contradicts(pe, origin):
             return None
         return pe
 
@@ -284,13 +295,18 @@ class Pool:
         "keep the lookups up to date after an entry was added to the pool"
         if self._index is not None:
             self._index.add(e)
+        if self._keys is not None:
+            self._keys.setdefault(e.key.lower(), e)
         self._sizes = None
 
     def update_entry(self, e, new):
         "replace the content of a pool entry (keeping the lookups up to date)"
         if self._index is not None:
             self._index.remove(e)
+        key = e.key
         apply_entry(e, new)
+        if e.key != key:
+            self._keys = None
         self.add_entry(e)
 
 
@@ -691,12 +707,21 @@ class Exchange:
     # finding the pool entry of a library entry
 
     def pool_entry(self, e, pool):
-        """(pool entry, origin record) of a library entry in `pool`: by its
-        origin record, else by the same-paper rule (record None); (None,
-        record) if the pool does not have it"""
+        """(pool entry, origin record) of a library entry in `pool`: with an
+        origin record, the pool entry of its pool key if it is the same paper
+        as the origin copy or as the entry, else the same paper as the origin
+        copy, then as the entry (see Pool.find), else the pool entry of the
+        pool key if its identifiers do not contradict the origin copy (see
+        Pool.by_key); without record, the same paper as the entry (record
+        None). (None, record) if the pool does not have it."""
         record = self.origin.get(e, pool.id)
         d = self.biblio.distinct
         if record is not None:
+            pe = pool.entry_of_key(record.pool_key)
+            if pe is not None:
+                union = pool.distinct(d)
+                if same_paper(pe, record.entry, union).kind == SAME or same_paper(pe, e, union).kind == SAME:
+                    return pe, record
             pe = pool.find(record.entry, d) or pool.find(e, d) or pool.by_key(record.pool_key, record.entry)
         else:
             pe = pool.find(e, d)
@@ -771,20 +796,36 @@ class Exchange:
     # pull
     # ----
 
-    def library_entry(self, pe, pool):
+    def _library_lookup(self, pool):
+        """the lookups of library_entry, for the library as it is now:
+        {lower-case pool key: lower-case library keys of the origin records
+        of `pool` with that pool key, in the order of the records},
+        {lower-case key: first library entry of that key}, and an
+        IdentityIndex of the library"""
+        by_pool_key = {}
+        for key, record in self.origin.entries.get(pool.id, {}).items():
+            by_pool_key.setdefault(get_entry_val(record, POOL_KEY_FIELD, '').lower(), []).append(key)
+        keys = {}
+        for x in self.biblio.entries:
+            keys.setdefault(self.biblio.key(x), x)
+        return by_pool_key, keys, IdentityIndex(self.biblio.entries)
+
+    def library_entry(self, pe, pool, lookup=None):
         """the library entry of a pool entry: the entry whose origin record
-        has its pool key, else the same paper; or None"""
-        for record in self.origin.records(pool.id):
-            if record.pool_key.lower() == pe.key.lower():
-                e = next((x for x in self.biblio.entries if self.biblio.key(x) == record.key.lower()), None)
-                if e is not None:
-                    return e
-        found = find_duplicates(pe, self.biblio.entries, Distinct(self.biblio.distinct.pairs + pool.biblio.distinct.pairs))
+        has its pool key, else the same paper; or None. lookup: the
+        _library_lookup of the library, unchanged since"""
+        by_pool_key, keys, index = lookup or self._library_lookup(pool)
+        for key in by_pool_key.get(pe.key.lower(), []):
+            e = keys.get(key)
+            if e is not None:
+                return e
+        found = find_duplicates(pe, None, distinct_union(self.biblio.distinct, pool.biblio.distinct), index=index)
         return next((e for e, verdict in found if verdict.kind == SAME), None)
 
     def missing(self, pool):
         "the entries of the pool that are not in the library (no library entry, see library_entry)"
-        return [pe for pe in pool.biblio.entries if self.library_entry(pe, pool) is None]
+        lookup = self._library_lookup(pool)
+        return [pe for pe in pool.biblio.entries if self.library_entry(pe, pool, lookup) is None]
 
     def sharing(self, entries, pool):
         """(shared, removed) among `entries`: the entries shared with `pool`,
