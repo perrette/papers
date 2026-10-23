@@ -172,7 +172,7 @@ ERROR:papers:pool ~/Documents/papers/arctic: 1 entry links to PDFs that the pool
 Copy them to the pool first: `papers push --pool ~/Documents/papers/arctic perrette_landerer2013`
 Then run `papers config pool ~/Documents/papers/arctic` again.
 $ papers push --pool ~/Documents/papers/arctic --all
-Added -> perrette_landerer2013: A scaling approach to project regional sea level rise and it... (doi:10.5194/esd-4-11-2013, file:1) [to pool ../../Documents/papers/arctic]
+Added -> perrette_landerer2013: A scaling approach to project regional sea level rise and it... (doi:10.5194/esd-4-11-2013, file:1) [to pool ~/Documents/papers/arctic]
 $ papers config pool ~/Documents/papers/arctic -y
 link to the copies in the pool ~/Documents/papers/arctic for 1 file (same content); the library's copies in files (1 file) are deleted
 Modified -> perrette_landerer2013: A scaling approach to project regional sea level rise and it... (doi:10.5194/esd-4-11-2013, file:1)
@@ -272,7 +272,7 @@ from `arctic`, without a query to crossref:
 ```
 $ cd ~/projects/thesis
 $ papers add --pool ~/Documents/papers/arctic --doi 10.5194/bg-8-515-2011
-Added -> perrette_yool2011: Near-ubiquity of ice-edge blooms in the Arctic (doi:10.5194/bg-8-515-2011, file:1) [from pool ../../Documents/papers/arctic; also added to pool ~/Documents/papers/sealevel]
+Added -> perrette_yool2011: Near-ubiquity of ice-edge blooms in the Arctic (doi:10.5194/bg-8-515-2011, file:1) [from pool ~/Documents/papers/arctic; also added to pool ~/Documents/papers/sealevel]
 $ ls ~/Documents/papers/sealevel/files
 perrette_et_al_2011_near-ubiquity-of-ice-edge-blooms-in-the-arctic.pdf
 perrette_et_al_2013_a-scaling-approach-to-project-regional-sea-level-rise-and-its-uncertainties.pdf
@@ -290,7 +290,7 @@ comes with `papers pull --pool`, and goes to `sealevel` with `papers push`:
 $ papers -C ~/Documents/papers/arctic tag perrette_yool2011 --add blooms
 Modified -> perrette_yool2011: Near-ubiquity of ice-edge blooms in the Arctic (doi:10.5194/bg-8-515-2011, file:1, blooms)
 $ papers pull --pool ~/Documents/papers/arctic
-Modified -> perrette_yool2011: Near-ubiquity of ice-edge blooms in the Arctic (doi:10.5194/bg-8-515-2011, file:1, blooms) [from pool ../../Documents/papers/arctic]
+Modified -> perrette_yool2011: Near-ubiquity of ice-edge blooms in the Arctic (doi:10.5194/bg-8-515-2011, file:1, blooms) [from pool ~/Documents/papers/arctic]
 $ papers push
 Modified -> perrette_yool2011: Near-ubiquity of ice-edge blooms in the Arctic (doi:10.5194/bg-8-515-2011, file:1, blooms) [in pool ~/Documents/papers/sealevel]
 ```

@@ -165,7 +165,8 @@ class TestOneTime(OneTimeTest):
         self.assertEqual(self.json('lib')['pool'], self.path('other'))
         text = Path(self.path('other', 'papers.bib')).read_text()
         Path(self.path('other', 'papers.bib')).write_text(text.replace('{Ocean Sci.}', '{Ocean Science}'))
-        self.assertRegex(self.out('sync'), r'^Modified -> Brown_2021: .* \[from pool ../other\]$')
+        # the messages name the pool as its setting writes it; the records keep ../other
+        self.assertIn(f'[from pool {self.path("other")}]', self.out('sync'))
         self.assertEqual(self.entry('Brown_2021')['journal'], 'Ocean Science')
         self.assertEqual(os.listdir(self.path('lib', '.papers', 'origin')), [origin_file_name('../other')])
         # and back: the library without pool exchanges with ../other as before

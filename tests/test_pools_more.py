@@ -3,6 +3,7 @@ without files directory, link repairs, the Pool lookups, pull of pool
 entries and sync"""
 import os
 from pathlib import Path
+from unittest.mock import patch
 
 from papers.bib import Biblio
 from papers.config import Config, CONFIG_FILE_LOCAL
@@ -99,7 +100,29 @@ class TestPoolLookups(PoolTest):
     def test_repr_and_label(self):
         pool = self.pool()
         self.assertEqual(repr(pool), f"Pool('../pool', {self.path('pool')!r})")
-        self.assertEqual(pool.label, 'pool ../pool')
+        # the records name it relative to the library; the messages as given
+        self.assertEqual(pool.label, f'pool {self.path("pool")}')
+        with patch.dict(os.environ, {'HOME': self.path()}):
+            self.assertEqual(self.pool().label, 'pool ~/pool')
+
+    def test_label_of_the_pool_option(self):
+        # every message names the pool as --pool gives it, though the records name it ../pool
+        Path(self.path('new.bib')).write_text(NEW_BIB)
+        self.lib('add ../new.bib --no-pool')
+        out = self.out('push --all --pool ./../pool')
+        self.assertIn('[to pool ./../pool]', out)
+        self.assertNotIn('pool ../pool', out)
+        self.assertEqual(self.origin().get(self.entry('mine2022')).pool, '../pool')
+
+    def test_label_of_the_pool_setting(self):
+        # the pool of the library: as its pool setting writes it, though the records name it ../pool
+        self.lib('pull Smith_2020')
+        self.lib(f'config pool {self.path("pool")} -y')
+        self.edit_pool('{Nat.}', '{Nature}')
+        out = self.out('sync')
+        self.assertIn(f'[from pool {self.path("pool")}]', out)
+        self.assertNotIn('pool ../pool', out)
+        self.assertEqual(self.origin().get(self.entry('Smith_2020')).pool, '../pool')
 
     def test_find_file(self):
         pool = self.pool()

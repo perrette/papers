@@ -190,18 +190,20 @@ def check_poolless(pool):
     """the pool of a library, or a library given with --pool PATH, has no
     pool itself: an exchange goes one level"""
     if pool.config.has_pool():
-        raise PoolError(f'{short_home(pool.path)} has a pool itself ({pool.config.pool_label()}): '
+        raise PoolError(f'{pool.shown} has a pool itself ({pool.config.pool_label()}): '
                         'give a library without pool')
 
 
 class Pool:
     """a library used as a pool. `id` is how the library names it in its
-    origin records (see Pools._id)."""
+    origin records (see Pools._id); `shown` is how the messages name it
+    (see Pools.resolve)."""
 
-    def __init__(self, id, path, config):
+    def __init__(self, id, path, config, shown=None):
         self.id = id
         self.path = path
         self.config = config
+        self.shown = shown or short_home(path)
         self._biblio = None
         self._index = None
         self._sizes = None
@@ -211,7 +213,7 @@ class Pool:
 
     @property
     def label(self):
-        return f'pool {self.id}'
+        return f'pool {self.shown}'
 
     @property
     def filesdir(self):
@@ -328,22 +330,36 @@ class Pools:
         rel = os.path.relpath(path, self.libdir)
         return rel if rel.startswith('.') else os.path.join('.', rel)
 
-    def resolve(self, path):
+    def _shown(self, path):
+        """how the messages name the pool in `path` when the command line
+        does not give it: the pool of the library as its pool setting
+        writes it, else with ~ for the home directory"""
+        own = self.path()
+        if own is not None and realpath(own) == realpath(path):
+            return self.config.pool_label()
+        return short_home(path)
+
+    def resolve(self, path, shown=None):
         """the Pool of the library in directory `path`, which must be a
-        library (see not_a_library)"""
+        library (see not_a_library). The messages name it `shown` (the
+        path as given on the command line), by default as _shown says."""
         path = os.path.abspath(path)
         key = realpath(path)
         if key in self._cache:
-            return self._cache[key]
+            pool_ = self._cache[key]
+            if shown:
+                pool_.shown = shown
+            return pool_
+        shown = shown or self._shown(path)
         if self._is_self(path):
-            raise PoolError(f'pool {short_home(path)}: this is the library itself')
+            raise PoolError(f'pool {shown}: this is the library itself')
         configfile = library_config_file(path)
         if configfile is None:
             if os.path.exists(path) and not os.path.isdir(path):
-                raise PoolError(f'pool {short_home(path)}: not a directory')
+                raise PoolError(f'pool {shown}: not a directory')
             raise PoolError(not_a_library('pool', path))
         config = Config.load(configfile, machine=self.config.machine)
-        pool_ = Pool(self._id(path), path, config)
+        pool_ = Pool(self._id(path), path, config, shown)
         self._cache[key] = pool_
         return pool_
 
@@ -377,7 +393,9 @@ class Pools:
     def get(self, path):
         """a library given on the command line (--pool PATH): a path relative
         to the current directory, of a library without pool"""
-        pool_ = self.resolve(os.path.abspath(os.path.expanduser(path)))
+        # named as given; an absolute path with ~ (the shell expands ~/...)
+        shown = path if not os.path.isabs(os.path.expanduser(path)) else short_home(os.path.expanduser(path))
+        pool_ = self.resolve(os.path.abspath(os.path.expanduser(path)), shown=shown)
         check_poolless(pool_)
         return pool_
 
