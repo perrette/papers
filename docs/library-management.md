@@ -120,12 +120,12 @@ remove entries, use `papers rm`.
 
 `papers file check` reports broken links, files linked twice, identical
 files and, with `--metadata`, DOIs of PDFs that differ from their entry's
-DOI. It changes nothing unless `--fix` is passed, which applies the safe
-repairs only. Broken links are removed with `papers file detach --broken`:
+DOI. It changes nothing. `papers file fix` applies the safe repairs
+only. Broken links are removed with `papers file detach --broken`:
 
 ```
 papers file check
-papers file check --fix
+papers file fix
 papers file detach --broken
 ```
 

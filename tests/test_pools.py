@@ -1509,10 +1509,10 @@ class TestShallow(OwnFilesTest):
     def test_file_check_fix(self):
         new = self.rename_in_pool()
         out = self.out('file check')
-        self.assertIn(f'smith2020climate: broken link: {self.pool_pdf} -> {new} (from the pool; relink with --fix)', out)
-        self.assertIn('1 link can be relinked (papers file check --fix), 0 without a file found', out)
+        self.assertIn(f'smith2020climate: broken link: {self.pool_pdf} -> {new} (from the pool)', out)
+        self.assertIn('1 link can be relinked, 0 without a file found', out)
         self.assertNotEqual(self.files('smith2020climate'), [new])
-        out = self.out('file check --fix')
+        out = self.out('file fix')
         self.assertIn(f'smith2020climate: relinked to {new} (from the pool)', out)
         self.assertIn('1 link relinked, 0 still broken', out)
         self.assertEqual(self.files('smith2020climate'), [new])

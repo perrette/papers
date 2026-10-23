@@ -1,4 +1,4 @@
-"""papers file rename, mv, attach, detach, rm, check, clean, and filecheck (deprecated)"""
+"""papers file rename, mv, attach, detach, rm, check, fix, clean, and filecheck (deprecated)"""
 import copy
 import os
 
@@ -22,8 +22,10 @@ def filecheckcmd(parser, o, config):
     check = o.fix_mendeley or o.hash_check or o.metadata_check or not (o.delete_broken or o.rename or o.clean_filesdir)
     new = []
     if check:
-        new.append('papers file check' + (' --metadata' if o.metadata_check else '')
-                   + (' --fix' if o.fix_mendeley or o.hash_check else ''))
+        if o.fix_mendeley or o.hash_check:
+            new.append('papers file fix')
+        if o.metadata_check or not (o.fix_mendeley or o.hash_check):
+            new.append('papers file check' + (' --metadata' if o.metadata_check else ''))
     if o.delete_broken:
         new.append('papers file detach --broken')
     if o.rename:
@@ -218,7 +220,7 @@ def _search_names(e, link, rest, nameformat):
 
 def plan_relinks(exchange, entries, search, nameformat):
     """the files found for the broken links of the entries (see
-    `papers file check --fix`), without parsing any file: the pool of the
+    `papers file fix`), without parsing any file: the pool of the
     library first (Exchange.pool_relinks), then the --search folders (by the
     link's file name, else by the template name of the entry). Return
     (plans, unclear, count): plans [(entry, {link: [files]}, {link: source})]
@@ -271,8 +273,30 @@ def _source(source):
 
 
 def file_checkcmd(parser, o, config):
+    "papers file check: report the problems of the file links, change nothing"
+    _file_check(o, config, fix=False)
+
+
+def file_fixcmd(parser, o, config):
+    "papers file fix: the repairs that `papers file check` reports"
+    _file_check(o, config, fix=True)
+
+
+def _fix_command(o):
+    "the `papers file fix` command for the selection and the --search folders of `papers file check`"
+    return ' '.join(['papers file fix'] + list(o.entries)
+                    + [f'--search {short_home(os.path.abspath(d))}' for d in o.search or []])
+
+
+def _file_check(o, config, fix):
+    """papers file check (fix=False) and papers file fix (fix=True): with
+    fix, apply the safe repairs (repaired paths, the second link of a file
+    linked twice or of identical files removed, broken links relinked to the
+    files found in the pool or the --search folders); --dry-run lists them"""
+    dryrun = papers.config.DRYRUN
+    metadata = getattr(o, 'metadata', False)
     nameformat = config.nameformat  # the library's own (a shallow library places files with the pool's)
-    place = o.fix and not papers.config.DRYRUN
+    place = fix and not dryrun
     pools = library_pools(config) if place else Pools(config)
     biblio = get_biblio(config)
     entries = _entries_or_all(biblio, o.entries)
@@ -303,37 +327,40 @@ def file_checkcmd(parser, o, config):
         if place:
             lines.append(f"{e.key}: relinked to "
                          + '; '.join(f'{files} ({_source(sources[link])})' for link, files in found.items()))
-        elif o.fix:
+        elif fix:
             lines.extend(f"DRYRUN: {e.key}: relink {short_home(link)} -> {files} ({_source(sources[link])})"
                          for link, files in found.items())
         else:
-            lines.extend(f"{e.key}: broken link: {short_home(link)} -> {files} "
-                         f"({_source(sources[link])}; relink with --fix)" for link, files in found.items())
+            lines.extend(f"{e.key}: broken link: {short_home(link)} -> {files} ({_source(sources[link])})"
+                         for link, files in found.items())
     for e, link, reason in unclear:
         lines.append(f"{e.key}: broken link: {short_home(link)}: {reason} (not relinked)")
 
     relinked = sum(len(found) for _, found, _ in loaded + plans)
     issues = list(lines)
+    repairs = []
     skip = {link for _, link, _ in unclear}
     if not place:
         skip |= {link for _, found, _ in plans for link in found}
     for e in entries:
-        issues.extend(check_entry_files(biblio, e, metadata=o.metadata, fix=o.fix, skip=skip))
+        issues.extend(check_entry_files(biblio, e, metadata=metadata, fix=fix, skip=skip, repairs=repairs,
+                                        dryrun=dryrun))
     for line in issues:
         print(line)
     if count:
         left = count - relinked
         detach = ' (papers file detach --broken removes them)' if left else ''
-        if o.fix:
+        if fix:
             print(f"{'DRYRUN: ' if not place else ''}{_links(relinked)} relinked, {left} still broken{detach}")
         else:
-            print(f"{_links(relinked)} can be relinked{' (papers file check --fix)' if relinked else ''}, "
-                  f"{left} without a file found{detach}")
+            print(f"{_links(relinked)} can be relinked, {left} without a file found{detach}")
     if issues:
         print(f"{len(issues)} issue(s) in the files of {len(entries)} entries")
     else:
         print(f"no issue found in the files of {len(entries)} entries")
-    if o.fix and issues:
+    if not fix and relinked + len(repairs):
+        print(f"{_links(relinked + len(repairs))} can be repaired: `{_fix_command(o)}`")
+    if fix and issues:
         print_push_notes(biblio, save_entries(config, biblio, exchange if place else None))
 
 

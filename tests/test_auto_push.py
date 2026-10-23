@@ -345,7 +345,7 @@ class TestShallowFileLinks(ExchangeTest):
         Path(self.path('downloads')).mkdir()
         Path(self.path('downloads', 'gone.pdf')).write_text('found again')
         self.edit_lib('file = {', 'file = {:../somewhere/gone.pdf:pdf;')
-        out = self.out('file check --fix --search ../downloads')
+        out = self.out('file fix --search ../downloads')
         self.assertIn(f'smith2020climate: {LINKS_NOTE}', out)
         new = [f for f in self.files('smith2020climate') if f != self.pool_pdf]
         self.assertTrue(new and new[0].startswith(self.path('pool', 'files')), new)

@@ -421,10 +421,10 @@ def _set_pool(o, config):
             return
         if papers.config.DRYRUN:
             return done()
-        # the broken links are not changed: file check --fix relinks those that the pool has
+        # the broken links are not changed: file fix relinks those that the pool has
         broken = sum(len(broken_links(biblio, e)) for e in biblio.entries)
         hint = (f'{broken} link{"s were" if broken > 1 else " was"} already broken: '
-                '`papers file check --fix` relinks those that the pool has') if broken else None
+                '`papers file fix` relinks those that the pool has') if broken else None
         if not plan:
             done()
             if hint:

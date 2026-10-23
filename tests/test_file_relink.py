@@ -1,4 +1,4 @@
-"""papers file check [--fix] [--search DIR]: the broken links relinked to
+"""papers file check and papers file fix [--search DIR]: the broken links relinked to
 the files of the pool or of the --search folders"""
 import io
 import os
@@ -71,13 +71,18 @@ class TestPoolRelink(RelinkTest):
 
     def test_report(self):
         out = self.out('file check')
-        self.assertIn(f'smith2000a: broken link: {self.gone} -> {self.pool_pdf} (from the pool; relink with --fix)',
+        self.assertIn(f'smith2000a: broken link: {self.gone} -> {self.pool_pdf} (from the pool)',
                       out)
-        self.assertIn('1 link can be relinked (papers file check --fix), 0 without a file found', out)
+        self.assertIn('1 link can be relinked, 0 without a file found', out)
+        self.assertIn('1 link can be repaired: `papers file fix`', out)
         self.assertEqual(self.files('smith2000a'), [self.gone])
 
+    def test_report_hint_with_keys(self):
+        out = self.out('file check smith2000a')
+        self.assertIn('1 link can be repaired: `papers file fix smith2000a`', out)
+
     def test_fix_links_the_pool_file(self):
-        out = self.out('file check --fix')
+        out = self.out('file fix')
         self.assertIn(f'smith2000a: relinked to {short_home(self.pool_pdf)} (from the pool)', out)
         self.assertIn('1 link relinked, 0 still broken\n', out)
         self.assertEqual(self.files('smith2000a'), [self.pool_pdf])
@@ -86,22 +91,24 @@ class TestPoolRelink(RelinkTest):
         self.assertIn('no issue found', self.out('file check'))
 
     def test_dry_run(self):
-        out = self.out('file check --fix --dry-run')
+        out = self.out('file fix --dry-run')
         self.assertIn(f'DRYRUN: smith2000a: relink {self.gone} -> {self.pool_pdf} (from the pool)', out)
         self.assertIn('DRYRUN: 1 link relinked, 0 still broken', out)
+        self.assertNotIn('can be repaired', out)
         self.assertEqual(self.files('smith2000a'), [self.gone])
+        self.assertEqual(self.files('smith2000', where='pool'), [self.pool_pdf])
 
     def test_pool_file_outside_the_pool_files_directory(self):
         # a file of a pool entry is never moved, even outside the files directory of the pool
         external = self.write('elsewhere', 'smith.pdf')
         self.bib(entry('smith2000', external, doi='10.1000/smith'), where='pool')
-        self.lib('file check --fix')
+        self.lib('file fix')
         self.assertEqual(self.files('smith2000a'), [external])
         self.assertTrue(os.path.exists(external))
 
     def test_link_mode_links_the_pool_file(self):
         self.lib('config files link')
-        self.lib('file check --fix')
+        self.lib('file fix')
         self.assertEqual(self.files('smith2000a'), [self.pool_pdf])
 
     def test_same_name(self):
@@ -112,7 +119,7 @@ class TestPoolRelink(RelinkTest):
         others = [self.path('gone', 'other.pdf'), self.path('gone', 'more.pdf')]
         self.bib(entry('smith2000a', self.path('gone', 'smith-si.pdf'), *others, doi='10.1000/smith'))
         self.lib('config files link')
-        out = self.out('file check --fix')
+        out = self.out('file fix')
         self.assertEqual(self.files('smith2000a'), [si] + others)
         self.assertIn('1 link relinked, 2 still broken (papers file detach --broken removes them)', out)
 
@@ -125,7 +132,7 @@ class TestPoolRelink(RelinkTest):
         self.bib(entry('smith2000a', self.path('gone', 'paper.pdf'), self.path('gone', 'supp.pdf'),
                        doi='10.1000/smith'))
         self.lib('config files link')
-        out = self.out('file check --fix')
+        out = self.out('file fix')
         self.assertEqual(self.files('smith2000a'), [main, si])
         self.assertIn('2 links relinked, 0 still broken', out)
 
@@ -136,7 +143,7 @@ class TestPoolRelink(RelinkTest):
         self.bib(entry('smith2000', 'files/x.pdf', 'files/y.pdf', doi='10.1000/smith'), where='pool')
         links = [self.path('gone', 'a.pdf'), self.path('gone', 'b.pdf')]
         self.bib(entry('smith2000a', *links, doi='10.1000/smith'))
-        out = self.out('file check --fix')
+        out = self.out('file fix')
         self.assertEqual(self.files('smith2000a'), links)
         self.assertIn('0 links relinked, 2 still broken', out)
 
@@ -148,14 +155,14 @@ class TestPoolRelink(RelinkTest):
         self.bib(entry('smith2000', 'files/x--supp.pdf', 'files/y--supp.pdf', doi='10.1000/smith'), where='pool')
         links = [self.path('gone', 'supp.pdf'), self.path('gone', 'b.pdf')]
         self.bib(entry('smith2000a', *links, doi='10.1000/smith'))
-        self.out('file check --fix')
+        self.out('file fix')
         self.assertEqual(self.files('smith2000a'), links)
 
     def test_no_guess(self):
         # two broken links of other names, one pool file: nothing is relinked
         links = [self.path('gone', 'a.pdf'), self.path('gone', 'b.pdf')]
         self.bib(entry('smith2000a', *links, doi='10.1000/smith'))
-        out = self.out('file check --fix')
+        out = self.out('file fix')
         self.assertEqual(self.files('smith2000a'), links)
         self.assertIn('0 links relinked, 2 still broken', out)
 
@@ -164,10 +171,11 @@ class TestPoolRelink(RelinkTest):
         out = self.out('file check')
         self.assertIn(f'other2000: broken link: {self.gone} (remove it with', out)
         self.assertIn('0 links can be relinked, 1 without a file found', out)
+        self.assertNotIn('can be repaired', out)
 
     def test_selected_entries(self):
         self.bib(entry('smith2000a', self.gone, doi='10.1000/smith'), entry('two2000', self.path('gone', 'x.pdf')))
-        out = self.out('file check --fix two2000')
+        out = self.out('file fix two2000')
         self.assertEqual(self.files('smith2000a'), [self.gone])
         self.assertIn('0 links relinked, 1 still broken', out)
 
@@ -184,9 +192,10 @@ class TestSearch(RelinkTest):
     def test_basename(self):
         found = self.write('downloads', 'sub', 'paper.pdf')
         out = self.out('file check --search ../downloads')
-        self.assertIn(f'one2000: broken link: {self.gone} -> {found} (found in {self.path("downloads")}; '
-                      'relink with --fix)', out)
-        out = self.out('file check --fix --search ../downloads')
+        self.assertIn(f'one2000: broken link: {self.gone} -> {found} (found in {self.path("downloads")})',
+                      out)
+        self.assertIn(f'1 link can be repaired: `papers file fix --search {self.path("downloads")}`', out)
+        out = self.out('file fix --search ../downloads')
         new = self.path('lib', 'files', self.template)
         self.assertEqual(self.files('one2000'), [new])
         self.assertIn(f'one2000: relinked to {new} (found in {self.path("downloads")})', out)
@@ -197,7 +206,7 @@ class TestSearch(RelinkTest):
         found = self.write('downloads', self.template)
         self.write('downloads', 'other.pdf')
         self.lib('config files copy')
-        self.lib('file check --fix --search ../downloads')
+        self.lib('file fix --search ../downloads')
         new, = self.files('one2000')
         self.assertTrue(os.path.samefile(new, found))  # files: copy (a hard link)
         self.assertTrue(new.startswith(self.path('lib', 'files')))
@@ -206,13 +215,13 @@ class TestSearch(RelinkTest):
         found = self.write('b', 'paper.pdf')
         self.write('a', 'x.pdf')
         self.lib('config files link')
-        self.lib('file check --fix --search ../a --search ../b')
+        self.lib('file fix --search ../a --search ../b')
         self.assertEqual(self.files('one2000'), [found])
 
     def test_ambiguous(self):
         a = self.write('a', 'paper.pdf')
         b = self.write('b', 'sub', 'paper.pdf')
-        out = self.out('file check --fix --search ../a --search ../b')
+        out = self.out('file fix --search ../a --search ../b')
         self.assertIn(f'one2000: broken link: {self.gone}: several files match in the --search folders: '
                       f'{a}, {b} (not relinked)', out)
         self.assertNotIn('remove it with', out)
@@ -223,7 +232,7 @@ class TestSearch(RelinkTest):
     def test_same_file_for_two_entries(self):
         self.bib(entry('one2000', self.gone), entry('two2000', self.path('gone2', 'paper.pdf')))
         found = self.write('downloads', 'paper.pdf')
-        out = self.out('file check --fix --search ../downloads')
+        out = self.out('file fix --search ../downloads')
         self.assertIn(f'one2000: broken link: {self.gone}: {found} matches the broken links of one2000, two2000 '
                       '(not relinked)', out)
         self.assertEqual(self.files('one2000'), [self.gone])
@@ -234,7 +243,7 @@ class TestSearch(RelinkTest):
         self.bib(entry('smith2000a', self.path('gone', 'smith.pdf'), doi='10.1000/smith'))
         self.write('downloads', 'smith.pdf')
         self.lib('config files link')
-        out = self.out('file check --fix --search ../downloads')
+        out = self.out('file fix --search ../downloads')
         self.assertIn('(from the pool)', out)
         self.assertEqual(self.files('smith2000a'), [self.pool_pdf])
 
@@ -245,7 +254,7 @@ class TestSearch(RelinkTest):
     def test_shallow_moves_into_the_pool(self):
         self.lib('config pool ../pool -y')
         found = self.write('downloads', 'paper.pdf')
-        out = self.out('file check --fix --search ../downloads')
+        out = self.out('file fix --search ../downloads')
         new, = self.files('one2000')
         self.assertTrue(new.startswith(self.path('pool', 'files')))
         self.assertIn(f'one2000: relinked to {short_home(new)} (found in {self.path("downloads")})', out)
@@ -291,11 +300,11 @@ class TestSharedFilesDir(ConfigTest):
         out = io.StringIO()
         with redirect_stdout(out):
             self.run_in('lib2', 'config pool ../P -y')
-        self.assertIn('2 links were already broken: `papers file check --fix` relinks those that the pool has',
+        self.assertIn('2 links were already broken: `papers file fix` relinks those that the pool has',
                       out.getvalue())
         out = io.StringIO()
         with redirect_stdout(out):
-            self.run_in('lib2', 'file check --fix')
+            self.run_in('lib2', 'file fix')
         self.assertIn('2 links relinked, 0 still broken', out.getvalue())
 
         biblio = Biblio.load(self.path('lib2', 'papers.bib'), '')
@@ -331,7 +340,7 @@ class TestSharedFilesDir(ConfigTest):
         self.run_in('lib2', 'config pool ../P -y')
         out = io.StringIO()
         with redirect_stdout(out):
-            self.run_in('lib2', 'file check --fix')
+            self.run_in('lib2', 'file fix')
         self.assertIn('3 links relinked, 0 still broken', out.getvalue())
         biblio = Biblio.load(self.path('lib2', 'papers.bib'), '')
         beta = next(e for e in biblio.entries if e.key == 'beta2000')

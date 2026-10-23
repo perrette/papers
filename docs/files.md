@@ -61,6 +61,7 @@ standard input, one per line:
 | `papers file detach --broken [--key KEY...]` | remove the broken links (of all entries without `--key`) |
 | `papers file rm FILE... [-r] [--key KEY...]` | remove the links to the files, then delete the files, like `git rm` (below) |
 | `papers file check [KEY...]` | report broken links and the files found for them (in the pool, and in the folders of `--search DIR`), files linked twice, identical files (same checksum) of an entry, and with `--metadata` a DOI of the PDF that differs from the DOI of the entry (this parses the PDFs) |
+| `papers file fix [KEY...]` | apply the repairs that `papers file check` reports (below); `--search DIR` as for `check` |
 | `papers file clean` | remove the files of the files directory and its subfolders that no entry links to, asking for each one (`-y/--yes` does not ask) |
 
 `papers file attach KEY FILE...` is the low-level form of
@@ -69,8 +70,9 @@ DOI is that of a library entry, `add` attaches the file to it in the same
 way, without fetching anything (see
 [Adding entries](adding-entries.md#entries-already-in-the-library)).
 
-`papers file check` changes nothing unless `--fix` is passed. `--fix` only
-applies the repairs that cannot lose anything: paths saved by Mendeley
+`papers file check` changes nothing, and ends with the number of links that
+`papers file fix` can repair. `papers file fix` only applies the repairs
+that cannot lose anything: paths saved by Mendeley
 (missing leading `/`, latex symbols such as `{\_}`) are repaired when the
 repaired path exists, the second link to the same file, or to an
 identical file, is removed from the entry (the file itself stays on disk;
@@ -164,7 +166,7 @@ papers list --tag draft -K | papers file detach --broken --key -
 
 When the links of a library are broken because the PDFs moved (another
 library that shared the files directory moved them into a library, a folder
-was renamed, a backup was restored elsewhere...), `papers file check --fix`
+was renamed, a backup was restored elsewhere...), `papers file fix`
 looks for each missing file, without parsing any PDF:
 
 1. in a shallow library, in its pool, among the files of the pool entry of the
@@ -190,24 +192,25 @@ self-contained library, the file goes to the files directory as the
 
 `papers config pool PATH` links the library to the copies in PATH of the
 files that exist, and says how many links were already broken:
-`papers file check --fix` relinks them afterwards.
+`papers file fix` relinks them afterwards.
 
-Without `--fix`, `papers file check` reports the files it would relink, and
-where they come from. `--fix --dry-run` shows the links that `--fix` would
-change, and changes nothing.
+`papers file check` reports the files that `papers file fix` would relink,
+and where they come from. `papers file fix --dry-run` shows the links that
+it would change, and changes nothing.
 
 ```
 $ papers file check
-alpha2000: broken link: ~/shared/a.pdf -> ~/P/files/alpha_2000_paper-a.pdf (from the pool; relink with --fix)
-b2000: broken link: ~/shared/b.pdf -> ~/P/files/beta_2000_paper-b.pdf (from the pool; relink with --fix)
-2 links can be relinked (papers file check --fix), 0 without a file found
+alpha2000: broken link: ~/shared/a.pdf -> ~/P/files/alpha_2000_paper-a.pdf (from the pool)
+b2000: broken link: ~/shared/b.pdf -> ~/P/files/beta_2000_paper-b.pdf (from the pool)
+2 links can be relinked, 0 without a file found
 2 issue(s) in the files of 3 entries
-$ papers file check --fix
+2 links can be repaired: `papers file fix`
+$ papers file fix
 alpha2000: relinked to ~/P/files/alpha_2000_paper-a.pdf (from the pool)
 b2000: relinked to ~/P/files/beta_2000_paper-b.pdf (from the pool)
 2 links relinked, 0 still broken
 2 issue(s) in the files of 3 entries
-$ papers file check --fix --search ~/Downloads --search /media/backup/papers
+$ papers file fix --search ~/Downloads --search /media/backup/papers
 ```
 
 For PDFs whose names say nothing about the paper, `papers add -R DIR` is
@@ -245,7 +248,7 @@ removes this link, and papers says so.
 `papers filecheck` still works in v3, with a warning, and runs the
 corresponding commands: `--rename` (`-c`) is `papers file rename`
 (`--keep-source`), `--delete-broken` is `papers file detach --broken`,
-`--hash-check` and `--fix-mendeley` are `papers file check --fix`,
+`--hash-check` and `--fix-mendeley` are `papers file fix`,
 `--metadata-check` is `papers file check --metadata`, and `--clean-filesdir`
 (`--force`) is `papers file clean` (`--yes`). The file actions of
 `papers list` are deprecated too (see [Listing and searching](listing.md)),

@@ -416,17 +416,31 @@ class TestCheck(FileTest):
         self.assertIn('one2000: broken link', out)
         self.assertIn('one2000: identical files', out)
         self.assertIn('two2000: the same file is linked twice', out)
+        # the identical files of one2000, the second link of two2000
+        self.assertIn('2 links can be repaired: `papers file fix`', out)
         self.assertEqual(open(self.path('lib', 'papers.bib')).read(), before)
+
+    def test_check_has_no_fix_option(self):
+        with self.assertRaises(SystemExit):
+            self.lib('file check --fix')
 
     def test_keys(self):
         out = self.out('file check two2000')
         self.assertNotIn('one2000', out)
 
     def test_fix(self):
-        self.lib('file check --fix')
+        self.lib('file fix')
         self.assertEqual(self.files('one2000'), [self.a, self.path('lib', 'files', 'broken.pdf')])
         self.assertEqual(self.files('two2000'), [self.a])
         self.assertTrue(os.path.exists(self.b))  # the file itself is kept
+        self.assertNotIn('can be repaired', self.out('file check'))
+
+    def test_fix_dry_run(self):
+        before = open(self.path('lib', 'papers.bib')).read()
+        out = self.out('file fix --dry-run')
+        self.assertIn(f'DRYRUN: one2000: identical files: {self.a} and {self.b} (second link removed)', out)
+        self.assertIn('DRYRUN: two2000: the same file is linked twice', out)
+        self.assertEqual(open(self.path('lib', 'papers.bib')).read(), before)
 
     def test_metadata(self):
         with patch('papers.files.extract_pdf_doi', return_value='10.1000/other') as extract:

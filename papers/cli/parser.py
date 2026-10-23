@@ -13,7 +13,7 @@ from papers.cli.backup_cmds import undocmd, redocmd, restorecmd, backupcmd, gitc
 from papers.cli.entry_cmds import addcmd, checkcmd, listcmd, editcmd, rmcmd, tagcmd, opencmd
 from papers.cli.fetch_cmds import doicmd, fetchcmd, extractcmd
 from papers.cli.file_cmds import (filecheckcmd, file_renamecmd, file_mvcmd, file_attachcmd, file_detachcmd, file_rmcmd,
-                                  file_checkcmd, file_cleancmd)
+                                  file_checkcmd, file_fixcmd, file_cleancmd)
 from papers.cli.library_cmds import statuscmd, initcmd, configcmd, migratecmd, installcmd, uninstallcmd
 from papers.cli.pool_cmds import pullcmd, pushcmd, synccmd, exportcmd
 
@@ -474,21 +474,29 @@ def get_parser(config=None):
     p.add_argument('-r', action='store_true', dest='recursive', help='FILE can be a folder: the linked files inside it')
     _command(p, file_rmcmd, library=True)
 
+    _search_help = ('also look for the files of the broken links in DIR (recursively), by file name, else by '
+                    'the template name of the entry (can be repeated)')
     p = filesub.add_parser('check', parents=[cfg],
         help='report broken links, identical files, DOI mismatches',
         description='report broken links and the files found for them, links that can be repaired (paths '
                     'saved by Mendeley), files linked twice and identical files (same checksum) of an entry, and '
-                    'with --metadata a DOI of the PDF that differs from the entry\'s. Nothing changes without --fix.')
+                    'with --metadata a DOI of the PDF that differs from the entry\'s. Nothing changes: '
+                    '`papers file fix` applies the repairs.')
     p.add_argument('entries', nargs='*', metavar='KEY', help=_selection_help + ' (default: all entries)')
     p.add_argument('--metadata', action='store_true', help='also compare the DOI of the PDFs with the entry (parses the PDFs)')
-    p.add_argument('--fix', action='store_true',
-        help='apply the safe repairs: repair the paths, remove the second link of a file linked twice or of '
-             'identical files (the files are kept), and relink the broken links to the files found in the pool '
-             '(same paper) or in the --search folders, placed as `papers file attach` does')
-    p.add_argument('--search', action='append', metavar='DIR',
-        help='also look for the files of the broken links in DIR (recursively), by file name, else by the '
-             'template name of the entry (can be repeated)')
+    p.add_argument('--search', action='append', metavar='DIR', help=_search_help)
     _command(p, file_checkcmd, library=True)
+
+    p = filesub.add_parser('fix', parents=[cfg],
+        help='repair the file links that `papers file check` reports',
+        description='apply the safe repairs that `papers file check` reports: repair the paths saved by '
+                    'Mendeley, remove the second link of a file linked twice or of identical files (the files '
+                    'are kept), and relink the broken links to the files found in the pool (same paper) or in '
+                    'the --search folders, placed as `papers file attach` does. With --dry-run, list the '
+                    'repairs and change nothing.')
+    p.add_argument('entries', nargs='*', metavar='KEY', help=_selection_help + ' (default: all entries)')
+    p.add_argument('--search', action='append', metavar='DIR', help=_search_help)
+    _command(p, file_fixcmd, library=True)
 
     p = filesub.add_parser('clean', parents=[cfg],
         help='remove the files of the files directory that no entry links to',

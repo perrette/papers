@@ -778,16 +778,19 @@ def broken_links(biblio, e):
             if repaired is None and not os.path.exists(f)]
 
 
-def check_entry_files(biblio, e, metadata=False, fix=False, skip=()):
+def check_entry_files(biblio, e, metadata=False, fix=False, skip=(), repairs=None, dryrun=False):
     """the problems of the files of an entry, as lines to print:
     broken links, links that a repair of the path would fix (links saved by
     Mendeley), the same file linked twice, identical files (same checksum),
     and with metadata=True a DOI of the PDF that differs from the entry's.
 
     fix: apply the safe repairs (repaired paths; remove the second link of
-    the same or an identical file, the file itself is kept).
+    the same or an identical file, the file itself is kept); with dryrun,
+    the lines of these repairs start with DRYRUN.
     skip: broken links not to report (`papers file check` reports those it
     found a file for itself)
+    repairs: a list that receives the lines of the repairs (done with fix,
+    possible otherwise)
     """
     key = get_entry_val(e, 'ID', '')
     files = biblio.get_files(e)
@@ -795,11 +798,17 @@ def check_entry_files(biblio, e, metadata=False, fix=False, skip=()):
     issues = []
     seen = {}
     hashes = {}
-    done = 'fixed' if fix else 'fix with --fix'
+    if repairs is None:
+        repairs = []
+
+    def repair(line, done):
+        line = ('DRYRUN: ' if fix and dryrun else '') + line + (f' ({done})' if fix else '')
+        issues.append(line)
+        repairs.append(line)
     for file, repaired in zip(files, repaired_paths(biblio, e)):
         if not os.path.exists(file):
             if repaired is not None:
-                issues.append(f'{key}: path can be repaired: {file} -> {repaired} ({done})')
+                repair(f'{key}: path can be repaired: {file} -> {repaired}', 'fixed')
                 if fix:
                     file = repaired
             else:
@@ -810,14 +819,13 @@ def check_entry_files(biblio, e, metadata=False, fix=False, skip=()):
                 continue
         real = realpath(file)
         if real in seen:
-            issues.append(f'{key}: the same file is linked twice: {seen[real]} and {file} ({done})')
+            repair(f'{key}: the same file is linked twice: {seen[real]} and {file}', 'second link removed')
             continue
         seen[real] = file
         if len(files) > 1 and os.path.isfile(file):
             hash_ = checksum(file)
             if hash_ in hashes:
-                issues.append(f'{key}: identical files: {hashes[hash_]} and {file} '
-                              f'({"link removed" if fix else "fix with --fix: removes the second link"})')
+                repair(f'{key}: identical files: {hashes[hash_]} and {file}', 'second link removed')
                 if fix:
                     continue
             hashes.setdefault(hash_, file)

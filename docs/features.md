@@ -20,10 +20,10 @@
 - undo/redo command (`papers undo / redo`)
 - display / search / list entries: format as bibtex or key or whatever (`papers list ... --format line|bibtex|key`, or `-l`, `--plain`, `-K`)
 - edit, remove and tag entries by key or DOI, or from a pipe (`papers edit`, `papers rm`, `papers tag`, `papers list ... -K | papers rm -`)
-- check and fix file links (`papers file check [--fix]`, `papers file detach --broken`, `papers file clean`):
+- check and fix file links (`papers file check`, `papers file fix`, `papers file detach --broken`, `papers file clean`):
     - report broken links, files linked twice and identical files
-    - remove duplicate links (`--fix`)
-    - fix files name after a Mendeley export (`--fix`):
+    - remove duplicate links (`papers file fix`)
+    - fix files name after a Mendeley export (`papers file fix`):
         - leading `/` missing is added
         - latex characters, e.g. `{\_}` or `{\'{e}}` replaced with unicode
 
