@@ -9,7 +9,7 @@ papers undo
 will revert to the previous version. Without git-tracking, repeating it only
 jumps back and forth between the latest and before-latest version.
 
-With git-tracking (the default for fresh installs), `papers undo` and
+With git-tracking (the default of `papers init` when git is installed), `papers undo` and
 `papers redo` step through the whole history of the library (`-n N` steps at
 once).
 History is append-only: undo and redo record *restore commits* in the backup

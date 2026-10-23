@@ -535,7 +535,7 @@ nothing to sync with pool ../sealevel
 ## Undo in a pool
 
 A pool is a library with its own backup history (see
-[Git integration](git.md)). `papers undo` in a library undoes a change of
+[Git integration](git.md#pools-and-shallow-libraries)). `papers undo` in a library undoes a change of
 that library only: an entry that `add` also added to the pool stays in the
 pool. To undo a change in the pool, run the command in the pool, e.g.
 `papers -C ../sealevel undo`. The origin copies of the library are
