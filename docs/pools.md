@@ -108,10 +108,16 @@ In a shallow library:
   pushed only with auto-push. An entry not shared with the pool gets the
   links of the pool entry of the same paper updated; if the pool does not
   have it, the entry is added to the pool, as `add` does;
-- `file detach` never deletes a file. `file rm` removes the link from the
-  pool entry too, and deletes the file unless another entry of the pool
-  or of the library still links to it (`kept FILE: an entry of the pool
-  links to it`);
+- removing a file and removing an entry are different:
+  - `papers file detach KEY FILE` removes the link from the library entry
+    and from the pool entry; the file stays;
+  - `papers file rm FILE` removes the link from both and deletes the file,
+    unless another entry of the pool or of the library still links to it
+    (`kept FILE: an entry of the pool links to it`). The PDF is removed for
+    every library that uses the pool;
+  - `papers rm KEY` removes the entry from the library only. The pool entry
+    and its files stay, also with `--delete-files` (which deletes the files
+    of removed entries in a self-contained library);
 - `pull` and `sync` with the pool link to the pool's files instead of
   copying them, and the library entry follows the pool entry's links: a
   link that the pool entry had at the last exchange and no longer has is
@@ -125,11 +131,11 @@ In a shallow library:
   the pool is relinked to the pool's file by `papers file check --fix`
   only (see [Reconnecting PDFs and a bibtex](files.md#reconnecting-pdfs-and-a-bibtex)).
 
-`rm --delete-files` never deletes a file of the pool, nor a file that a
-pool entry links to, and it does not change the pool entry. Deleting a file
-in a pool breaks the links of the libraries that use it: it shows up as a
-broken link there (`papers file check`). The pool keeps no list of the
-libraries that depend on it.
+Deleting a file of the pool, with `papers file rm` in a shallow library or
+in the pool itself, breaks the links of the other libraries that use it,
+until their next `pull` or `sync` removes the link. `papers file check`
+shows the broken link meanwhile. The pool keeps no list of the libraries
+that depend on it.
 
 A project folder shared with coauthors (git, Dropbox...) should be a
 self-contained library: the links of a shallow library point into your own
