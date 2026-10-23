@@ -1202,7 +1202,7 @@ from the global configuration, otherwise from its built-in default.
 </tr>
 <tr>
 <td><code>files</code></td>
-<td><code>move</code> (default), <code>copy</code> or <code>link</code>: what <code>papers add</code> does with a file (see <a href="../files/#what-add-does-with-a-file">Files</a>)</td>
+<td><code>move</code> (default), <code>copy</code> or <code>link</code>: what <code>papers add</code> does with a file (see <a href="../files/#what-add-does-with-a-file">Files</a>); in a library that is not local, how the file gets to the pool: moved or copied into its files directory, or linked where it is by the library and the pool entry</td>
 </tr>
 <tr>
 <td><code>auto-push</code></td>
@@ -1283,7 +1283,8 @@ of several paths is an error that names the file. Write one path, or
 <code>none</code>, in that file.</p>
 <p><code>local</code> says where the files of the library are: in the files directory of
 the pool (<code>false</code>, the default: the library links to them) or in its own
-(<code>true</code>). A project folder shared with others (git, Dropbox) should be
+(<code>true</code>). In a library that is not local, the file links are the pool
+entry's; the library decides which entries it has. A project folder shared with others (git, Dropbox) should be
 local: the links of a library that is not local point into your own pool.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>papers init                    # the global pool, not local
 <a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>papers init --local            # its own files

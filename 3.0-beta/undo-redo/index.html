@@ -945,7 +945,9 @@ command that made it, e.g.</p>
 </code></pre></div>
 <p>Files that the undone command placed in the files directory stay there.
 When no entry links to them any more (e.g. after undoing <code>papers file
-attach</code>), papers lists them: <code>papers file clean</code> removes them.</p>
+attach</code>), papers lists them: <code>papers file clean</code> removes them. A file
+deleted by <code>papers file rm</code> is not restored: undo restores the link, which
+is then broken.</p>
 <h2 id="undo-in-a-library-that-has-a-pool">Undo in a library that has a pool<a class="headerlink" href="#undo-in-a-library-that-has-a-pool" title="Permanent link">&para;</a></h2>
 <p>A pool is a library with its own backup and its own history. A command that
 exchanges entries with the pool (<code>add</code> in a library that is not local, a
