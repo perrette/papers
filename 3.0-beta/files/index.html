@@ -1290,9 +1290,9 @@ goes to the pool (as the <code>files</code> setting says: moved, copied or linke
 a local library, the file goes to the files directory as the <code>files</code>
 setting says, and a file of the pool is copied (a hard link when possible),
 never moved.</p>
-<p><code>papers config local false</code> and <code>papers config pool</code> move the files that
-exist into the pool, and say how many links were already broken:
-<code>papers file check --fix</code> relinks them afterwards.</p>
+<p><code>papers config local false</code> and <code>papers config pool</code> link the library to
+the pool's copies of the files that exist, and say how many links were
+already broken: <code>papers file check --fix</code> relinks them afterwards.</p>
 <p>Without <code>--fix</code>, <code>papers file check</code> reports the files it would relink, and
 where they come from. <code>--fix --dry-run</code> shows the links that <code>--fix</code> would
 change, and changes nothing.</p>

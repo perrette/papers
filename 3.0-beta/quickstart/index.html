@@ -1211,11 +1211,15 @@ pool changed since the last exchange: see <a href="../pools/">Pools</a>.</p>
 <code>~/Documents/papers</code>, and the bibtex of each library links to them there
 (<code>papers config --global pool PATH</code> moves the default pool elsewhere). A
 project folder shared with others (git, Dropbox) should keep its own PDFs,
-in its <code>files/</code> folder: create it with <code>papers init --local</code>, or run
+in its <code>files/</code> folder: create it with <code>papers init --local --pool PATH</code>
+(or <code>papers init --local</code> for a library without pool), or run
 <code>papers config local true</code> in an existing library, which copies its PDFs
-from the pool (as hard links when possible). A local library still uses
-the pool for entries. <code>papers init --pool none</code> creates a library without
-pool: its PDFs are in the project, and nothing is shared. Several
+from the pool (as hard links when possible). A local library with a pool
+still uses the pool for entries. A library without pool
+(<code>papers init --local</code>, or <code>papers init --pool none</code>) keeps its PDFs in the
+project, and shares nothing. To move the PDFs of a local library into a
+pool later: <code>papers config pool PATH</code>, <code>papers push --all</code>, then
+<code>papers config local false</code>. Several
 libraries without a pool can share one PDF folder, as in papers 2 (see
 <a href="../pools/#a-shared-files-folder-without-a-pool">A shared files folder without a pool</a>). See
 <a href="../configuration/#pools">Pools</a> in the configuration, and

@@ -1240,9 +1240,14 @@ absolute paths. A relative path given to set them is relative to the current
 directory.</p>
 <p>Setting <code>git</code> to <code>true</code> initializes the backup directory and records the
 current bibtex. Setting <code>paths</code> rewrites the file links of the bibtex.
-Setting <code>local</code> or <code>pool</code> moves the files of the library, after listing what
-it will do and asking to continue (<code>-y</code> does not ask, <code>--dry-run</code> only
-lists; see <a href="../pools/#changing-local-and-pool">Changing local and pool</a>).
+Setting <code>local</code> or <code>pool</code> changes where the library links its files:
+<code>local true</code> (or <code>pool none</code>) copies the pool files that the library links
+to into its files directory; <code>local false</code>, and <code>pool PATH</code> in a library
+that is not local, link to the pool's copies of the library's PDFs, and
+require the pool to have them already (<code>papers push</code> copies them there).
+papers lists what it will do and asks to continue (<code>-y</code> does not ask,
+<code>--dry-run</code> only lists; see
+<a href="../pools/#changing-local-and-pool">Changing local and pool</a>).
 <code>local</code> is always set in a library (<code>papers init</code> stores it), so it has no
 <code>--unset</code>.</p>
 <h3 id="global-configuration">Global configuration<a class="headerlink" href="#global-configuration" title="Permanent link">&para;</a></h3>
@@ -1287,9 +1292,10 @@ the pool (<code>false</code>, the default: the library links to them) or in its 
 entry's; the library decides which entries it has. A project folder shared with others (git, Dropbox) should be
 local: the links of a library that is not local point into your own pool.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>papers init                    # the global pool, not local
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>papers init --local            # its own files
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>papers init --pool ../shared   # another pool
-<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>papers init --pool none        # no pool, hence local
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>papers init --local            # its own files, no pool
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>papers init --local --pool ../shared   # its own files, entries shared with ../shared
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>papers init --pool ../shared   # another pool
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>papers init --pool none        # no pool, hence local
 </code></pre></div>
 <p><code>papers status</code> shows the pool of the library (its path, or none), whether
 it is the global pool, is missing or is not a library, and whether it
