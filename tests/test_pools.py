@@ -525,6 +525,12 @@ class TestPull(PoolTest):
         out = self.out('pull')
         self.assertIn('nothing to pull from pool ../pool', out)
 
+    def test_nothing_to_pull_is_not_saved(self):
+        self.lib('pull')
+        with patch('papers.bib.Biblio.save') as save:
+            self.lib('pull')
+        save.assert_not_called()
+
     def test_pool_change_taken_library_change_kept(self):
         self.edit_pool('journal = {Nat.}', 'journal = {Nature},\n volume = {10}')
         self.lib('pull')  # no conflict: no question, even without terminal

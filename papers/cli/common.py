@@ -387,8 +387,9 @@ def save_exchange(exchange):
         for pool in exchange.pools.loaded():
             if pool._biblio is not None and not any(pool is p for p in exchange.changed_pools):
                 pool.biblio.distinct.save()
+    origin_changed = bool(exchange.origin.changed)
     exchange.origin.save()
-    savebib(exchange.biblio, exchange.config)
+    savebib(exchange.biblio, exchange.config, other_changes=origin_changed)
 
 
 def stdin_is_terminal():

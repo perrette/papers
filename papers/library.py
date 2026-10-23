@@ -93,13 +93,17 @@ def get_biblio(config):
     relative_to = os.path.sep if config.absolute_paths else os.path.dirname(config.bibtex)
     if os.path.exists(config.bibtex):
         biblio = Biblio.load(config.bibtex, config.filesdir, nameformat=config.nameformat, keyformat=config.keyformat)
-        if biblio.relative_to != relative_to:
-            biblio.update_file_path(relative_to)
+        if biblio.relative_to != relative_to and biblio.update_file_path(relative_to):
+            biblio.load_changes = True
     else:
         biblio = Biblio.newbib(config.bibtex, config.filesdir, relative_to=relative_to, nameformat=config.nameformat, keyformat=config.keyformat)
     if config.shallow:
         _repair_pool_links(biblio, config)
-    biblio.mark_loaded()  # for the auto-push (papers.cli.common.save_entries)
+        if getattr(biblio, 'repaired_links', None):
+            biblio.load_changes = True
+    # for the auto-push (papers.cli.common.save_entries), the report of the
+    # changes, and savebib, which does not write a library that did not change
+    biblio.mark_loaded()
     return biblio
 
 
@@ -126,12 +130,20 @@ def _repair_pool_links(biblio, config):
         _REPAIRING.discard(key)
 
 
-def savebib(biblio, config):
+def savebib(biblio, config, other_changes=False):
     """
     Given a Biblio object and its configuration, save them to disk.  If you're using the git bib tracker, will trigger a git commit there.
+
+    A library loaded by get_biblio that did not change since (see
+    Biblio.unchanged) is not written, and has no git commit, unless
+    `other_changes` (e.g. the origin records of the library changed,
+    which the git backup has too).
     """
     if papers.config.DRYRUN:
         logger.info(f'DRYRUN: NOT saving {config.bibtex}')
+        return
+    if isinstance(biblio, Biblio) and not other_changes and biblio.unchanged():
+        logger.info(f'{config.bibtex}: nothing changed, not saved')
         return
     logger.info(f'Saving {config.bibtex}')
     if biblio is not None:

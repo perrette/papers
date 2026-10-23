@@ -51,6 +51,11 @@ Each save commits, in the backup directory:
 - with git-lfs only: the attached files and `backup_clean.bib` (see
   [git-lfs](#git-lfs)).
 
+A command that changes no entry and no file of `.papers/` (e.g. `papers
+check` that finds nothing, `papers add` of a duplicate that is skipped, a
+`pull` with nothing to take) does not write the bibtex and commits
+nothing.
+
 The commit message is the command, e.g. `papers add paper.pdf`. A library
 file of `.papers/` that was removed from the library is removed from the
 next snapshot. The library configuration, `.papers/config.json`, is not

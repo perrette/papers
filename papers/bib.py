@@ -1,5 +1,6 @@
 import difflib
 import os
+from collections import Counter
 from pathlib import Path
 import shutil
 from unidecode import unidecode as unicode_to_ascii
@@ -257,6 +258,22 @@ class Biblio:
             if state != self._state(e):
                 modified.append(e)
         return new, modified
+
+    # what changed when the library was loaded, before mark_loaded (file links
+    # converted to the `paths` setting, links to pool files repaired): saved
+    # even if the command changes nothing
+    load_changes = False
+
+    def unchanged(self):
+        """True if the entries are as loaded (see mark_loaded: the same
+        keys, types and fields), nothing changed at load (load_changes) and
+        no pair was added to distinct; False without mark_loaded"""
+        if self.loaded_entries is None or self.load_changes or self.distinct.changed:
+            return False
+        if len(self.loaded_entries) != len(self.db.entries):
+            return False
+        exact = lambda e: (e.entry_type, e.key, tuple(sorted((f.key, str(f.value)) for f in e.fields)))
+        return Counter(map(exact, self.loaded_entries)) == Counter(map(exact, self.db.entries))
 
     def loaded_files(self, e):
         """the files of an entry as loaded (see mark_loaded): [] for an entry
@@ -671,6 +688,7 @@ class Biblio:
         relative_to: new path root:
             None: absolute path
             otherwise: different file root (the bibtex directory)
+        Return the [(old, new)] file fields that changed.
         """
         updates = []
         for e in self.entries:
@@ -680,6 +698,7 @@ class Biblio:
         if len(updates):
             logger.info(f"{len(updates)} entry files were updated")
         self.relative_to = relative_to
+        return updates
 
 
 
