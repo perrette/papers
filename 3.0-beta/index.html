@@ -485,6 +485,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="upgrading/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Upgrading from papers 2
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -992,29 +1020,42 @@
 -->
 <h1 id="papers">papers<a class="headerlink" href="#papers" title="Permanent link">&para;</a></h1>
 <p>Command-line tool to manage your bibliography (PDFs + BibTeX).</p>
-<p>A light-weight, command-line bibliography management tool built like <code>git</code>,
-with a main command <code>papers</code> and a range of subcommands. It lets you:</p>
+<p><code>papers</code> keeps a BibTeX file for each of your projects, and the PDFs that
+go with it. Give it a PDF: it reads the DOI, fetches the entry from
+crossref, renames the PDF after the entry and adds both to your project.
+Projects on the same topic share their entries and PDFs through a pool, so
+each PDF is stored and fetched once.</p>
+<p>It works like <code>git</code>: one <code>papers</code> command with subcommands, run inside a
+project folder.</p>
 <ul>
-<li><strong>Maintain a PDF library</strong> with appropriate, customisable file naming.</li>
-<li><strong>Maintain one or several BibTeX collections</strong>, linked to their PDFs.</li>
-<li><strong>Fetch metadata from the internet</strong> — enough PDF-parsing capability to pull
-  metadata from <a href="https://github.com/CrossRef/rest-api-doc">crossref</a> (by DOI or
-  fulltext search) or google scholar.</li>
-<li><strong>Search and act on your library</strong> with a <code>find</code>/<code>grep</code>-inspired
-  <code>papers list</code> (tag, edit, delete, rename, fetch, deduplicate).</li>
-<li><strong>Stay in control</strong> — plain BibTeX files, optional git tracking, and
-  undo/redo for every change.</li>
+<li><strong>Add papers</strong> from PDFs, DOIs, bibtex files or whole folders. The DOI is
+  read from the PDF, and the metadata comes from
+  <a href="https://github.com/CrossRef/rest-api-doc">crossref</a> (by DOI or full-text
+  search), doi.org or google scholar.</li>
+<li><strong>Name the PDFs</strong> with a template (<code>{authorX}_{year}_{title}</code> by default),
+  and attach supplements to an entry.</li>
+<li><strong>Share entries and PDFs between projects</strong> through a pool: a library in
+  a shared location, such as one per topic. <code>papers pull</code>, <code>push</code> and
+  <code>sync</code> exchange the entries with a field-by-field three-way merge; each
+  project keeps its own keys.</li>
+<li><strong>Search and act on a library</strong> with <code>papers list</code> (tag, edit, delete,
+  rename, fetch, deduplicate), in the style of <code>find</code> and <code>grep</code>.</li>
+<li><strong>Detect duplicates</strong> by DOI, arXiv identifier, ISBN, or authors and
+  title, and merge them.</li>
+<li><strong>Plain files</strong>: the bibtex is the database. Every change is backed up
+  with git (when it is installed), and <code>papers undo</code> / <code>papers redo</code> take it back or restore it.</li>
 </ul>
 <h2 id="get-started">Get started<a class="headerlink" href="#get-started" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pip<span class="w"> </span>install<span class="w"> </span>--pre<span class="w"> </span>papers-cli<span class="w">    </span><span class="c1"># the 3.0 beta</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pip<span class="w"> </span>install<span class="w"> </span>git+https://github.com/perrette/papers.git@v3<span class="w">   </span><span class="c1"># the 3.0 beta</span>
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="nb">cd</span><span class="w"> </span>~/projects/my-paper
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>papers<span class="w"> </span>init<span class="w">                     </span><span class="c1"># a library: papers.bib here, PDFs in ~/Documents/papers</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>papers<span class="w"> </span>init<span class="w"> </span>--local<span class="w">             </span><span class="c1"># a library: papers.bib and files/ here</span>
 <a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>papers<span class="w"> </span>add<span class="w"> </span>~/Downloads/paper.pdf
 <a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>papers<span class="w"> </span>list
 </code></pre></div>
 <ul>
 <li><strong><a href="installation/">Installation</a></strong> — pip install and external dependencies.</li>
-<li><strong><a href="quickstart/">Quickstart</a></strong> — create a library, add and list papers, share the PDFs between projects.</li>
+<li><strong><a href="quickstart/">Quickstart</a></strong> — a project with its own PDFs, its papers moved to a pool, a second project that uses the pool.</li>
+<li><strong><a href="upgrading/">Upgrading from papers 2</a></strong> — what becomes of a papers 2 library, and <code>papers migrate</code>.</li>
 <li><strong><a href="adding-entries/">Adding entries</a></strong> — from PDFs, DOIs, bibtex, or whole directories.</li>
 <li><strong><a href="configuration/">Configuration</a></strong> — libraries, settings and pools.</li>
 </ul>

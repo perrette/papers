@@ -396,6 +396,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../upgrading/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Upgrading from papers 2
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1336,7 +1364,8 @@ be used by several libraries. The pool of a library is its <code>pool</code> set
   (<code>papers config --global pool PATH</code>). A library that uses the global pool
   stores no path: the same project, copied to another machine, uses the
   global pool of that machine;</li>
-<li>a path, set with <code>papers init --pool PATH</code> or <code>papers config pool PATH</code>. A
+<li>a path, set with <code>papers init --pool PATH</code> or <code>papers config pool PATH</code>,
+  e.g. a pool for one topic, <code>~/Documents/papers/sealevel</code>. A
   path written relative, or under the library, is stored relative to the
   library (e.g. <code>../shared-with-bob</code>); another path is stored as given;</li>
 <li><code>none</code>: the library exchanges entries with no pool.</li>
@@ -1346,7 +1375,7 @@ be used by several libraries. The pool of a library is its <code>pool</code> set
 before that a library finds nothing in it, without a warning. A pool given
 by path that does not exist is a warning (a typo, a disk that is not
 mounted); papers creates it when it writes to it only if its parent
-directory exists. The same holds for a global pool outside the home
+directory exists, as a library without pool, with its own files. The same holds for a global pool outside the home
 directory (e.g. <code>/media/usb/papers</code> while the disk is not mounted): the
 command stops before changing anything.</p>
 <p><code>papers init</code> in the folder of the global pool creates the pool itself: a
@@ -1366,6 +1395,9 @@ none</code> turns sharing off: new libraries get <code>pool: none</code>.</p>
   since the last exchange with it: <code>up to date</code>, or <code>changed since last
   pull or push</code>.</li>
 </ul>
+<p>An exchange goes one level only: a library exchanges with its pool, and
+the pool's own pool, if it has one, is not involved. The pool exchanges
+with its pool when a command runs in it (<code>papers -C POOL sync</code>).</p>
 <p><code>pull</code>, <code>push</code> and <code>sync</code> merge each entry field by field: whatever one
 side changed since the last exchange wins; if both sides changed the same
 field, you decide (the origin copy is papers' memory of the entry at the
