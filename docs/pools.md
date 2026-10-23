@@ -16,7 +16,8 @@ be used by several libraries. The pool of a library is its `pool` setting:
   (`papers config --global pool PATH`). A library that uses the global pool
   stores no path: the same project, copied to another machine, uses the
   global pool of that machine;
-- a path, set with `papers init --pool PATH` or `papers config pool PATH`. A
+- a path, set with `papers init --pool PATH` or `papers config pool PATH`,
+  e.g. a pool for one topic, `~/Documents/papers/sealevel`. A
   path written relative, or under the library, is stored relative to the
   library (e.g. `../shared-with-bob`); another path is stored as given;
 - `none`: the library exchanges entries with no pool.
@@ -26,7 +27,7 @@ The global pool does not have to exist: papers creates it (as
 before that a library finds nothing in it, without a warning. A pool given
 by path that does not exist is a warning (a typo, a disk that is not
 mounted); papers creates it when it writes to it only if its parent
-directory exists. The same holds for a global pool outside the home
+directory exists, as a library without pool, with its own files. The same holds for a global pool outside the home
 directory (e.g. `/media/usb/papers` while the disk is not mounted): the
 command stops before changing anything.
 
@@ -47,6 +48,10 @@ What a library does with its pool:
 - `papers status` and `papers pull --check` tell whether the pool changed
   since the last exchange with it: `up to date`, or `changed since last
   pull or push`.
+
+An exchange goes one level only: a library exchanges with its pool, and
+the pool's own pool, if it has one, is not involved. The pool exchanges
+with its pool when a command runs in it (`papers -C POOL sync`).
 
 `pull`, `push` and `sync` merge each entry field by field: whatever one
 side changed since the last exchange wins; if both sides changed the same
