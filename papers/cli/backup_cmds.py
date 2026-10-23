@@ -3,6 +3,7 @@ import fnmatch
 import os
 import shutil
 import subprocess as sp
+import sys
 
 import papers.config
 from papers import logger
@@ -54,6 +55,8 @@ def undocmd(parser, o, config):
     logger.warning("the git backup is off (`papers config git true` enables it): "
                    "undo / redo is limited to 1 step back and forth")
     back = backupfile_func(config.bibtex)
+    if not os.path.exists(back):
+        raise PapersExit(f"nothing to {o.cmd}: no previous version of {os.path.basename(config.bibtex)} ({back})")
     if papers.config.DRYRUN:
         print(f'DRYRUN: {config.bibtex} not swapped with {back}')
         return
@@ -139,6 +142,12 @@ def gitcmd(parser, o, config):
         result = sp.run(['git']+o.gitargs, cwd=config.gitdir, stdout=sp.PIPE)
     except OSError as error:
         raise PapersExit(f'failed to run git: {error}')
-    print(result.stdout.decode(), end='')
+    # git's output as is: it may be binary (e.g. `papers git show HEAD:files/a.pdf`)
+    if hasattr(sys.stdout, 'buffer'):
+        sys.stdout.flush()
+        sys.stdout.buffer.write(result.stdout)
+        sys.stdout.buffer.flush()
+    else:
+        print(result.stdout.decode(errors='replace'), end='')
     if result.returncode != 0:
         raise SystemExit(result.returncode)

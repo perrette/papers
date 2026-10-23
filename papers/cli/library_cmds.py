@@ -6,7 +6,7 @@ import shutil
 
 import papers.config
 from papers import logger
-from papers.backup import init_backup
+from papers.backup import check_git_available, init_backup
 from papers.config import (CONFIG_FILE_LOCAL, Config, DEFAULT_LIBRARY, LIBRARY_ONLY, NO_POOL, library_config_file,
                            SETTINGS, format_value, parse_value, pool_setting, short_home)
 from papers.files import broken_links, delete_files, is_inside
@@ -244,6 +244,8 @@ def configcmd(parser, o, config):
             config.set('git', True)
         if name == 'git' and not value and config.gitlfs:
             config.set('git-lfs', False)
+    if name in ('git', 'git-lfs') and config.git:
+        check_git_available(gitlfs=config.gitlfs)
 
     if papers.config.DRYRUN:
         print(f"DRYRUN: {name} = {format_value(config.get(name))} not saved to {config.file}")

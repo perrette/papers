@@ -1,6 +1,6 @@
 """Git-based backup of the bibliography, and the undo/redo machinery built on it.
 
-When papers is installed with --git, every save of the bibtex file is
+With the git setting (`papers config git true`), every save of the bibtex file is
 mirrored to a dedicated git repository (``config.gitdir``, under
 ``~/.local/share/papers/backups`` by default):
 
@@ -110,6 +110,15 @@ def _identity_env(gitdir):
             if not git('config', key).stdout.strip():
                 env.setdefault(f'GIT_{role}_{var}', value)
     return env
+
+
+def check_git_available(gitlfs=False):
+    "raise PapersExit if git (or with gitlfs, git-lfs) is not installed"
+    if shutil.which('git') is None:
+        raise PapersExit('the git backup needs git, which is not installed (nothing was changed; '
+                         '--no-git or `papers config git false` turns the backup off)')
+    if gitlfs and sp.run(['git', 'lfs', 'version'], capture_output=True).returncode != 0:
+        raise PapersExit('the git-lfs setting needs git-lfs, which is not installed (nothing was changed)')
 
 
 def git_init(gitdir):
@@ -246,9 +255,11 @@ def init_backup(config):
     claim_gitdir(config)
 
     if config.gitlfs:
-        run_git(config.gitdir, 'lfs track "files/"')
+        # staged only: the first snapshot commits it with the bibtex, so that
+        # no state of the history is without the bibtex (undo would remove it)
+        # files/** (not files/: a directory pattern does not apply to its content)
+        run_git(config.gitdir, 'lfs track "files/**"')
         run_git(config.gitdir, 'add .gitattributes')
-        run_git(config.gitdir, 'commit -m "papers install: .gitattribute"', check=False)
 
 
 def check_gitdir_ownership(config):
@@ -398,6 +409,15 @@ def backup_bib(biblio, config, message=None):
         # Remove unlinked files
         clean_filesdir(biblio, interactive=False, ignore_files=[config.backupfile, config.backupfile_clean])
         run_git(config.gitdir, ["add", "files"])
+        attributes = backupdir / ".gitattributes"
+        text = attributes.read_text() if attributes.exists() else ""
+        if "files/**" not in text:
+            # backups made before papers 3 tracked "files/", which git-lfs
+            # does not apply to the files in it: store them with git-lfs now
+            attributes.write_text(text + ("" if not text or text.endswith("\n") else "\n")
+                                  + "files/** filter=lfs diff=lfs merge=lfs -text\n")
+            run_git(config.gitdir, ["add", ".gitattributes"])
+            run_git(config.gitdir, ["add", "--renormalize", "files"])
 
     else:
         logger.info('backup bibliography only (without files)')
@@ -504,9 +524,12 @@ def _restore_from_backupdir(config, restore_files=False, previous=None):
     # restores, which breaks the link and leaves the library file as it is)
     run_git(config.gitdir, ["reset", "--hard", "--quiet", "HEAD"])
 
+    tracked = _tracked_backupfile(config)
+    if not tracked.exists():
+        raise PapersExit(f"the backup state {message} has no copy of the bibtex: {config.bibtex} is left as it is")
     if os.path.exists(config.bibtex):
         os.remove(config.bibtex)
-    shutil.copy(_tracked_backupfile(config), config.bibtex)
+    shutil.copy(tracked, config.bibtex)
     _restore_library_files(config, previous=previous)
 
     # Re-name the file according to back-up bibtex

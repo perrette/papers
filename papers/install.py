@@ -20,7 +20,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from papers import logger
-from papers.backup import init_backup, resolve_gitdir
+from papers.backup import check_git_available, init_backup, resolve_gitdir
 from papers.config import Config, CONFIG_FILE_LOCAL, NO_POOL, pool_setting
 from papers.library import snapshot_backup
 
@@ -207,6 +207,8 @@ def resolve_install(config, o, probe=None, asker=None, target=None):
     if gitlfs is None:
         gitlfs = _ask_bool(asker, "Use git-lfs to back-up associated files ?", bool(config.gitlfs))
     config.set('git-lfs', bool(gitlfs))
+    if config.git:
+        check_git_available(gitlfs=config.gitlfs)
 
     return InstallPlan(
         config=config,
