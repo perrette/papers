@@ -1089,11 +1089,11 @@ standard input, one per line:</p>
 </tr>
 <tr>
 <td><code>papers file check [KEY...]</code></td>
-<td>report broken links and the files found for them (in the pool, and in the folders of <code>--search DIR</code>), files linked twice, identical files (same checksum) of an entry, and with <code>--metadata</code> a DOI of the PDF that differs from the DOI of the entry (this parses the PDFs)</td>
+<td>report broken links and the files found for them (in the pool, in the libraries of <code>--pool PATH</code>, and in the folders of <code>--search DIR</code>), files linked twice, identical files (same checksum) of an entry, and with <code>--metadata</code> a DOI of the PDF that differs from the DOI of the entry (this parses the PDFs)</td>
 </tr>
 <tr>
 <td><code>papers file fix [KEY...]</code></td>
-<td>apply the repairs that <code>papers file check</code> reports (below); <code>--search DIR</code> as for <code>check</code></td>
+<td>apply the repairs that <code>papers file check</code> reports (below); <code>--pool PATH</code> and <code>--search DIR</code> as for <code>check</code>; the files found are copied, never moved (<code>--move</code> moves those of <code>--search</code>)</td>
 </tr>
 <tr>
 <td><code>papers file clean</code></td>
@@ -1192,7 +1192,7 @@ library that shared the files directory moved them into a library, a folder
 was renamed, a backup was restored elsewhere...), <code>papers file fix</code>
 looks for each missing file, without parsing any PDF:</p>
 <ol>
-<li>in a shallow library, in its pool, among the files of the pool entry of the
+<li>in the pool of the library, among the files of the pool entry of the
    same paper (same DOI, arXiv identifier, ISBN, or same title and
    authors): the file with the same file name as the broken link; else
    the one file named <code>&lt;name&gt;--&lt;file name of the link&gt;</code> (the pool renamed
@@ -1200,36 +1200,61 @@ looks for each missing file, without parsing any PDF:</p>
    <a href="../renaming/#entries-with-several-files">Renaming files and keys</a>);
    then, if one broken link of the entry and one file of the pool entry
    are left, that file. When more are left, nothing is guessed;</li>
+<li>in the libraries given with <code>--pool PATH</code> (the option can be repeated),
+   in the same way: the entry of PATH of the same paper, and its files.
+   PATH must be a library (otherwise: <code>create it first with papers init</code>).
+   Nothing changes in PATH, and no origin copy is recorded (see
+   <a href="../pools/#origin-copies">Origin copies</a>): only the file links of the
+   library change;</li>
 <li>in the folders given with <code>--search DIR</code> (searched recursively; the
    option can be repeated): a file with the same file name as the broken
    link, else a file named as the library's name template names the entry
    (with the extension of the link). When several files match, none is
    taken, and papers says which.</li>
 </ol>
-<p>The file found replaces the broken link, and is placed as
-<code>papers file attach KEY FILE</code> places it: in a shallow library, a file of
-the pool is linked where it is, and a file of a <code>--search</code> folder goes to
-the pool (as the <code>files</code> setting says: moved, copied or linked); in a
-self-contained library, the file goes to the files directory as the
-<code>files</code> setting says.</p>
+<p>The file found replaces the broken link. It is never moved, whatever the
+<code>files</code> setting:</p>
+<ul>
+<li>in a self-contained library, it is copied (a hard link when possible)
+  into the files directory, named as <code>papers file attach KEY FILE</code> names
+  it;</li>
+<li>in a shallow library, a file of its pool is linked where it is; a file of
+  <code>--pool PATH</code> or of a <code>--search</code> folder is copied into the files
+  directory of the pool, and the pool entry links to it (as for the other
+  changes of file links, see
+  <a href="../shallow-libraries/#files">Shallow libraries</a>);</li>
+<li>in <code>link</code> mode, or in a library without files directory, the file is
+  linked where it is.</li>
+</ul>
+<p><code>papers file fix --move</code> moves the files found in the <code>--search</code> folders
+instead of copying them. A file in the files directory of another library
+is still copied (<code>... belongs to the library in ...: copied, not moved</code>),
+and so are the files of the pool and of <code>--pool PATH</code>.</p>
 <p><code>papers config pool PATH</code> links the library to the copies in PATH of the
 files that exist, and says how many links were already broken:
 <code>papers file fix</code> relinks them afterwards.</p>
-<p><code>papers file check</code> reports the files that <code>papers file fix</code> would relink,
-and where they come from. <code>papers file fix --dry-run</code> shows the links that
-it would change, and changes nothing.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>$ papers file check
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>alpha2000: broken link: ~/shared/a.pdf -&gt; ~/P/files/alpha_2000_paper-a.pdf (from the pool)
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>b2000: broken link: ~/shared/b.pdf -&gt; ~/P/files/beta_2000_paper-b.pdf (from the pool)
+<p><code>papers file check</code> takes <code>--pool PATH</code> and <code>--search DIR</code> too, reports the
+files that <code>papers file fix</code> would relink and where they come from, and
+ends with the <code>papers file fix</code> command to run, with the same <code>-C DIR</code>,
+<code>--bibtex FILE</code>, KEYs, <code>--pool</code> and <code>--search</code>. <code>papers file fix --dry-run</code>
+shows the links that it would change, and changes nothing. After
+<code>papers file fix</code>, the last line counts the issues left, if any.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>$ papers file check --pool ~/P --search ~/Downloads
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>perrette2013scaling: broken link: ~/old/esd-4-11-2013.pdf -&gt; ~/P/files/perrette_2013_a-scaling-approach.pdf (from the library ~/P)
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>perrette2011: broken link: ~/old/bg-8-515-2011.pdf -&gt; ~/Downloads/bg-8-515-2011.pdf (found in ~/Downloads)
 <a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>2 links can be relinked, 0 without a file found
-<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>2 issue(s) in the files of 3 entries
-<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>2 links can be repaired: `papers file fix`
-<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>$ papers file fix
-<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>alpha2000: relinked to ~/P/files/alpha_2000_paper-a.pdf (from the pool)
-<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>b2000: relinked to ~/P/files/beta_2000_paper-b.pdf (from the pool)
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>2 issue(s) in the files of 2 entries
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>2 links can be repaired: `papers file fix --pool ~/P --search ~/Downloads`
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>$ papers file fix --pool ~/P --search ~/Downloads
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>perrette2013scaling: relinked to ~/thesis/files/perrette_2013_a-scaling-approach-to-project-regional-sea-level-rise.pdf (from the library ~/P)
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>perrette2011: relinked to ~/thesis/files/perrette_2011_near-ubiquity-of-ice-edge-blooms-in-the-arctic.pdf (found in ~/Downloads)
 <a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>2 links relinked, 0 still broken
-<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>2 issue(s) in the files of 3 entries
-<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>$ papers file fix --search ~/Downloads --search /media/backup/papers
+</code></pre></div>
+<p><code>papers file fix</code> works on any bibtex, without <code>papers init</code>: there is no
+files directory, and the files found are linked where they are.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>$ papers file fix --bibtex refs.bib --search ~/Downloads
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>perrette2011: relinked to ~/Downloads/bg-8-515-2011.pdf (found in ~/Downloads)
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>1 link relinked, 0 still broken
 </code></pre></div>
 <p>For PDFs whose names say nothing about the paper, <code>papers add -R DIR</code> is
 the fallback: it parses each PDF, and a PDF with the DOI of a library

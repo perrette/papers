@@ -1079,8 +1079,10 @@ setting says how a new file gets to the pool:</p>
   is recorded, see <a href="../pools/#origin-copies">Origin copies</a>). A change that
   <code>add</code> makes to the fields of an entry the library has already is pushed
   only with auto-push;</li>
-<li><code>papers file attach</code>, <code>file rename</code> and <code>file fix</code> place the files they
-  handle in the same way;</li>
+<li><code>papers file attach</code> and <code>file rename</code> place the files they handle in
+  the same way; <code>file fix</code> copies the files it finds outside the pool into
+  the pool (hard links when possible) and never moves them, unless
+  <code>--move</code> is given for the files of the <code>--search</code> folders;</li>
 <li>the file links are always pushed, whatever the <code>auto-push</code> setting: a
   command that changes the files of an entry (<code>file attach</code>, <code>file rename</code>,
   <code>file detach</code>, <code>file rm</code>, <code>file mv</code>, <code>file fix</code>, <code>edit</code>...) sets the
@@ -1126,7 +1128,8 @@ setting says how a new file gets to the pool:</p>
   write), and by <code>papers file fix</code>. <code>papers file check</code> reports it
   meanwhile, with the new name <code>(from the pool)</code>. A broken link to a file
   outside the pool is relinked to the pool's file by <code>papers file fix</code>
-  only (see
+  only, and <code>papers file fix --pool PATH</code> also takes the files of the same
+  paper in another library PATH, copied into the pool (see
   <a href="../files/#reconnecting-pdfs-and-a-bibtex">Reconnecting PDFs and a bibtex</a>).</li>
 </ul>
 <p>Deleting a file of the pool, with <code>papers file rm</code> in a shallow library or
@@ -1390,7 +1393,9 @@ bibliography. To set it up:</p>
   links to.</li>
 <li><code>papers file rename</code> in one library renames the shared PDF, and the
   link of the other library breaks. <code>papers file check</code> reports the broken
-  link there. <code>papers file fix --search FOLDER</code> relinks it if the new name
+  link there. <code>papers file fix --pool OTHER</code> relinks it to the file of the
+  same paper in the other library (copied, a hard link when possible), and
+  <code>papers file fix --search FOLDER</code> if the new name
   is the one that the library's name template gives the entry (the two
   libraries use the same template); otherwise attach the renamed file with
   <code>papers file attach KEY FILE</code>, and remove the link with
