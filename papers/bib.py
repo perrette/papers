@@ -5,7 +5,6 @@ import shutil
 from unidecode import unidecode as unicode_to_ascii
 from bibtexparser import Library
 from bibtexparser.model import Entry, Field
-from bibtexparser.middlewares import SortBlocksByTypeAndKeyMiddleware
 
 from papers.entries import (
     get_entry_val,
@@ -15,6 +14,7 @@ from papers.entries import (
     entry_content_equal,
     parse_string,
     format_library,
+    sort_blocks,
     library_from_entries,
     parse_file,
     format_file,
@@ -258,8 +258,9 @@ class Biblio:
 
 
     def sort(self):
-        """Re-order library by block type and entry key (public API: SortBlocksByTypeAndKeyMiddleware)."""
-        self.db = SortBlocksByTypeAndKeyMiddleware().transform(library=self.db)
+        """Re-order the library by block type and entry key (see
+        papers.entries.sort_blocks): the entries stay the same objects"""
+        self.db = sort_blocks(self.db)
 
     def insert_entry(self, entry, update_key=False, check_duplicate=False, rename=False, copy=False, metadata={},
                      on_duplicate='error', duplicate_index=None):

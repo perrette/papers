@@ -9,7 +9,7 @@ import os
 import bibtexparser
 from bibtexparser import Library
 from bibtexparser.middlewares import SortFieldsAlphabeticallyMiddleware
-from bibtexparser.model import Entry, Field
+from bibtexparser.model import Entry, ExplicitComment, Field, ImplicitComment, Preamble, String
 from bibtexparser.writer import BibtexFormat
 
 from papers import logger
@@ -99,6 +99,35 @@ def parse_string(bibtex_str):
 def parse_bibtex_file(path, encoding='utf-8'):
     """Parse a BibTeX file; returns Library."""
     return bibtexparser.parse_file(path, encoding=encoding)
+
+
+# the order of the blocks of a saved bibtex (that of bibtexparser's SortBlocksByTypeAndKeyMiddleware)
+BLOCK_ORDER = (String, Preamble, Entry, ImplicitComment, ExplicitComment)
+
+
+def _block_sort_key(block):
+    try:
+        type_index = BLOCK_ORDER.index(type(block))
+    except ValueError:  # e.g. the blocks that could not be parsed: at the end
+        type_index = len(BLOCK_ORDER)
+    return type_index, getattr(block, 'key', '')
+
+
+def sort_blocks(library):
+    """a new Library of the blocks of `library` (the same objects) by type
+    and key, the comments above a block staying with it, in the order
+    of bibtexparser's SortBlocksByTypeAndKeyMiddleware (which deep-copies
+    every block)"""
+    chunks, chunk = [], []
+    for block in library.blocks:
+        chunk.append(block)
+        if not isinstance(block, (ExplicitComment, ImplicitComment)):
+            chunks.append(chunk)
+            chunk = []
+    if chunk:  # comments at the end: sorted by the last of them
+        chunks.append(chunk)
+    chunks.sort(key=lambda chunk: _block_sort_key(chunk[-1]))
+    return Library(blocks=[block for chunk in chunks for block in chunk], fail_on_duplicate_key=False)
 
 
 def format_library(library):
