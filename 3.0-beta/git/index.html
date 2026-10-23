@@ -1022,6 +1022,10 @@ command skips the commit of that command.</p>
 <li>with git-lfs only: the attached files and <code>backup_clean.bib</code> (see
   <a href="#git-lfs">git-lfs</a>).</li>
 </ul>
+<p>A command that changes no entry and no file of <code>.papers/</code> (e.g. <code>papers
+check</code> that finds nothing, <code>papers add</code> of a duplicate that is skipped, a
+<code>pull</code> with nothing to take) does not write the bibtex and commits
+nothing.</p>
 <p>The commit message is the command, e.g. <code>papers add paper.pdf</code>. A library
 file of <code>.papers/</code> that was removed from the library is removed from the
 next snapshot. The library configuration, <code>.papers/config.json</code>, is not
@@ -1034,6 +1038,10 @@ the backup, <code>papers undo</code> only swaps the bibtex with its previous ver
 error.</p>
 <p>A commit that fails (e.g. refused by a git hook) prints a warning: the
 bibtex is saved anyway.</p>
+<p>Each commit stores the whole bibtex; once the backup directory has 150
+such objects (about 50 commits), the command that commits packs them with
+<code>git repack</code>, which keeps only the differences between versions (about 2 s
+for a library of 10000 entries, 9 s for 30000).</p>
 <h2 id="where">Where<a class="headerlink" href="#where" title="Permanent link">&para;</a></h2>
 <p>The backup directory is a subfolder of the backup folder of the machine,
 whatever the location of the library: <code>~/.local/share/papers/backups</code> on
