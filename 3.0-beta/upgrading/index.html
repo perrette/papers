@@ -467,10 +467,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#what-breaks" class="md-nav__link">
+  <a href="#what-changes-for-an-existing-setup" class="md-nav__link">
     <span class="md-ellipsis">
       
-        What breaks
+        What changes for an existing setup
       
     </span>
   </a>
@@ -1004,34 +1004,33 @@
   <code>papers file</code>, and older forms are deprecated (see
   <a href="#what-else-changed">What else changed</a>).</li>
 </ul>
-<h2 id="what-breaks">What breaks<a class="headerlink" href="#what-breaks" title="Permanent link">&para;</a></h2>
+<h2 id="what-changes-for-an-existing-setup">What changes for an existing setup<a class="headerlink" href="#what-changes-for-an-existing-setup" title="Permanent link">&para;</a></h2>
 <p>The commands and options of papers 2 still exist: the forms that changed
 are deprecated, and print a warning that names the new form (see
-<a href="#what-else-changed">What else changed</a>). What does not work as before:</p>
+<a href="#what-else-changed">What else changed</a>). The bibtex files do not change
+format, and stay readable by papers 2 and by other tools. What changes:</p>
 <ul>
+<li>The configuration files:<ul>
+<li>the configuration of a project library moves from
+  <code>.papersconfig.json</code> to <code>.papers/config.json</code> the next time papers
+  saves it. In a project repository, git shows the old file as
+  deleted; scripts that read it need the new path;</li>
+<li><code>papers migrate</code> turns the global configuration of papers 2
+  (<code>~/.config/papersconfig.json</code> on Linux) into the configuration of
+  the global library, and renames it to <code>papersconfig.json.v2.bak</code>.
+  Until then, papers 3 keeps using it outside of libraries, with a
+  warning on every command;</li>
+<li>papers 2 does not read the new configuration files. To go back to
+  papers 2, restore <code>.papersconfig.json</code> (e.g. from the project
+  repository) or <code>papersconfig.json.v2.bak</code>.</li>
+</ul>
+</li>
 <li><code>papers install --global</code> is an error that changes nothing:
   <code>papers init PATH --global</code> creates the default library, and
   <code>papers config --global default PATH</code> registers an existing one.</li>
-<li>The configuration file of a project library moves from
-  <code>.papersconfig.json</code> to <code>.papers/config.json</code> the next time papers
-  saves it. In a project repository, git shows the old file as deleted;
-  scripts that read it need the new path.</li>
-<li><code>papers migrate</code> renames the global configuration of papers 2
-  (<code>~/.config/papersconfig.json</code> on Linux) to <code>papersconfig.json.v2.bak</code>.
-  Until then, papers 3 keeps using it outside of libraries, with a warning
-  on every command.</li>
-<li>papers 2 cannot read a library that papers 3 has saved: it stops with an
-  error on the settings it does not know (<code>paths</code>, <code>pool</code>). To go back to
-  papers 2, restore the configuration file of papers 2 (from your project
-  repository, or <code>papersconfig.json.v2.bak</code> for the global library).</li>
-<li>A library of papers 2.2 to 2.4 kept its git backup in <code>.papers/</code>: the
-  first backup of papers 3 moves it to the backup folder (see
+<li>The git backup of a library of papers 2.2 to 2.4, kept in <code>.papers/</code>,
+  moves to the backup folder on the first backup of papers 3 (see
   <a href="../git/">Git integration</a>).</li>
-<li>A git backup with git-lfs: papers 2 tracked the folder <code>files/</code>, which
-  git-lfs does not apply to the files in it, so the PDFs were stored as
-  plain git objects. papers 3 tracks <code>files/**</code>, and the next save moves
-  the PDFs to LFS. The older commits keep their copies, so the backup
-  grows once.</li>
 <li>The output of <code>papers status</code>, <code>papers init</code> and of the exchanges
   changed: scripts that parse it need updating.</li>
 </ul>
