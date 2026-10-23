@@ -1,12 +1,17 @@
-"""The actions of papers list (--rename, --open, --attach...): the same
-result as the command each one stands for, run on the listed entries."""
+"""The actions of papers list (--rename, --open, --attach, --detach,
+--fix-files, --push, --export...): the same result as the command each one
+stands for, run on the listed entries."""
 import os
+import re
 import shutil
+import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
+from papers.bib import Biblio
 from papers.utils import PapersExit
 from tests.common import FileTest, entry
+from tests.test_pools import NEW_BIB, PoolTest
 
 
 class TestListActions(FileTest):
@@ -103,3 +108,130 @@ class TestListActions(FileTest):
         # one undo step: the links before the rename
         self.lib('undo')
         self.assertIn('lib-src', Path(self.path('lib', 'papers.bib')).read_text())
+
+
+def _snapshot(root):
+    "the files under root and their content (with the mtimes of the origin records left out)"
+    state = {}
+    for folder, _, files in os.walk(root):
+        for f in files:
+            path = os.path.join(folder, f)
+            state[os.path.relpath(path, root)] = re.sub(rb'\d{16,}', b'MTIME', Path(path).read_bytes())
+    return state
+
+
+class SameResult:
+    """assertSame(list_cmd, cmd): the list action and the command, each run
+    from the same state of the temporary directory, leave the same files"""
+
+    def assertSame(self, list_cmd, cmd, run=None):
+        run = run or self.lib
+        saved = tempfile.mkdtemp()
+        try:
+            shutil.copytree(self.dir, os.path.join(saved, 'dir'), symlinks=True)
+            run(list_cmd)
+            after_list = _snapshot(self.dir)
+            shutil.rmtree(self.dir)
+            shutil.copytree(os.path.join(saved, 'dir'), self.dir, symlinks=True)
+            run(cmd)
+            self.assertEqual(after_list, _snapshot(self.dir))
+        finally:
+            shutil.rmtree(saved)
+        return after_list
+
+
+class TestListFileActions(SameResult, FileTest):
+
+    def setUp(self):
+        super().setUp()
+        self.a = self.write('src', 'a.pdf')
+        self.b = self.write('src', 'b.pdf')
+        self.bib(entry('one2000', self.a, self.b, doi='10.1000/one'), entry('two2000', self.path('gone.pdf')),
+                 entry('three2000', self.path('src', 'three.pdf')))
+        Path(self.path('lib', 'papers.bib')).write_text(
+            Path(self.path('lib', 'papers.bib')).read_text().replace('Some One}', 'Some One},\n keywords = {x, y}', 1))
+
+    def test_rm_tag(self):
+        self.assertSame('list --key one2000 --rm-tag x', 'tag one2000 --rm x')
+        self.assertEqual(self.entries_keywords(), 'y')
+
+    def entries_keywords(self):
+        biblio = Biblio.load(self.path('lib', 'papers.bib'), '')
+        return next(e for e in biblio.entries if e.key == 'one2000')['keywords']
+
+    def test_detach_all(self):
+        self.assertSame('list --key one2000 --detach', 'file detach --key one2000')
+        self.assertEqual(self.files('one2000'), [])
+
+    def test_detach_files(self):
+        self.assertSame(f'list --key one2000 --detach {self.a}', f'file detach {self.a} --key one2000')
+        self.assertEqual(self.files('one2000'), [self.b])
+
+    def test_detach_broken(self):
+        self.assertSame('list --year 2000 --detach --broken', 'file detach --broken --key one2000 two2000 three2000')
+        self.assertEqual(self.files('two2000'), [])
+        self.assertEqual(len(self.files('one2000')), 2)
+
+    def test_fix_files(self):
+        self.write('found', 'gone.pdf')
+        out = self.assertSame(f"list --broken-file --fix-files {self.path('found')}",
+                              f"file fix two2000 three2000 --search {self.path('found')}")
+        self.assertIn(os.path.join('found', 'gone.pdf'), out)  # copied, not moved
+        self.assertEqual(len(self.files('two2000')), 1)
+
+    def test_fix_files_move(self):
+        self.write('found', 'gone.pdf')
+        out = self.assertSame(f"list --key two2000 --fix-files {self.path('found')} --move",
+                              f"file fix two2000 --search {self.path('found')} --move")
+        self.assertNotIn(os.path.join('found', 'gone.pdf'), out)
+        self.assertEqual(len(self.files('two2000')), 1)
+
+    def test_export(self):
+        out = self.assertSame(f"list --key one2000 --export {self.path('out')} --export-format bib,csl-json",
+                              f"export {self.path('out')} one2000 --format bib,csl-json")
+        self.assertIn(os.path.join('out', 'papers.json'), out)
+        self.assertIn(os.path.join('out', 'papers.bib'), out)
+
+    def test_export_files(self):
+        out = self.assertSame(f"list --key one2000 --export {self.path('out')} --export-files none",
+                              f"export {self.path('out')} one2000 --files none")
+        self.assertNotIn(b'file', out[os.path.join('out', 'papers.bib')])
+
+    def test_options_need_their_action(self):
+        before = _snapshot(self.dir)
+        for cmd in ['--broken', '--move', '--pool ../x', '--on-duplicate keep', '--export-format ris',
+                    '--detach a.pdf --broken', '--detach --fix-files', '--push --pool a --pool b']:
+            with self.subTest(cmd), self.assertRaises(SystemExit):
+                self.lib(f'list --key one2000 {cmd}')
+        self.assertEqual(_snapshot(self.dir), before)
+
+
+class TestListExchangeActions(SameResult, PoolTest):
+
+    def setUp(self):
+        super().setUp()
+        self.take_smith()
+        Path(self.path('lib', 'papers.bib')).write_text(
+            Path(self.path('lib', 'papers.bib')).read_text() + NEW_BIB.replace('file = {:mine.pdf:pdf},\n', ''))
+
+    def test_push(self):
+        self.assertSame('list --key mine2022 --push --pool ../pool', 'push mine2022 --pool ../pool')
+        self.assertIn('mine2022', self.bib('pool')[1])
+
+    def test_pull(self):
+        self.edit_pool('journal = {Nat.}', 'journal = {Nature}')
+        self.assertSame('list --key smith2020climate --pull --pool ../pool', 'pull smith2020climate --pool ../pool')
+        self.assertEqual(self.entry('smith2020climate')['journal'], 'Nature')
+
+    def test_sync(self):
+        self.edit_pool('journal = {Nat.}', 'journal = {Nature}')
+        self.assertSame('list --sync --pool ../pool', 'sync smith2020climate mine2022 --pool ../pool')
+        self.assertEqual(self.entry('smith2020climate')['journal'], 'Nature')
+        self.assertIn('mine2022', self.bib('pool')[1])
+
+    def test_on_duplicate(self):
+        self.edit_pool('journal = {Nat.}', 'journal = {Nature}')
+        self.edit_lib('journal = {Nat.}', 'journal = {N.}')
+        self.assertSame('list --key smith2020climate --pull --pool ../pool --on-duplicate keep',
+                        'pull smith2020climate --pool ../pool --on-duplicate keep')
+        self.assertEqual(self.entry('smith2020climate')['journal'], 'N.')

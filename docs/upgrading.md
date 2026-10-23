@@ -55,10 +55,11 @@ by other tools. What changes:
     library, and `papers config --global default PATH` registers an
     existing one.
 
-- `papers list` keeps its search options and its actions: `--edit`,
-  `--delete`, `--add-tag`, `--rename` (with `--keep-source`), `--open`,
-  and `--attach` (new). Each runs the command it stands for on the listed
-  entries (see [Actions on the listed entries](listing.md#actions-on-the-listed-entries)).
+- `papers list` keeps its search options and its actions `--edit`,
+  `--delete`, `--add-tag`, `--rename` (with `--keep-source`) and `--open`,
+  and has new ones: `--attach`, `--rm-tag`, `--detach`, `--fix-files`,
+  `--push`, `--pull`, `--sync` and `--export`. Each runs the command it
+  stands for on the listed entries (see [Actions on the listed entries](listing.md#actions-on-the-listed-entries)).
   The other commands read the keys listed by `papers list -K` with `-`,
   e.g. `papers list --no-file -K | papers check --fetch -y -`. A command
   that reads the keys from a pipe cannot ask questions: answer them with

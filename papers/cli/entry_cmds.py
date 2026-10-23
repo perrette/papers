@@ -20,7 +20,9 @@ from papers.library import get_biblio, savebib
 from papers.merge import DuplicateError
 from papers.pools import Exchange, PoolLookup, Pools
 from papers.utils import PapersExit, file_uri_to_path, open_with_system
-from papers.cli.file_cmds import attach_entry_files, rename_entries
+from papers.cli.file_cmds import (attach_entry_files, check_entries_files, detach_entries, file_check_pools,
+                                  rename_entries)
+from papers.cli.pool_cmds import exchange_pools, export_entries, pull_entries, push_entries, sync_entries
 from papers.cli.common import (view_entry_files, set_format_config_from_cmd, _print_biblio_diff, files_mode,
                                duplicate_resolver, save_exchange, stdin_is_terminal, edit_entries, edit_selected,
                                print_kept_files, _delete_files_option, library_pools, push_notes, push_changed,
@@ -505,16 +507,42 @@ def listcmd(parser, o, config):
     if o.fetch:
         logger.warning("`papers list --fetch` is deprecated: use `papers list ... -K | "
                        "papers check --fetch --fetch-all --fix-doi --fix-key --format-name -`")
-    if o.keep_source and not rename:
-        parser.error('--keep-source goes with --rename')
+    detach, fix_files = o.detach is not None, o.fix_files is not None
+    exchange = 'pull' if o.pull else 'push' if o.push else 'sync' if o.sync else None
     actions = [name for name, given in [('--delete', o.delete), ('--edit', o.edit), ('--fetch', o.fetch),
-                                        ('--add-tag', o.add_keywords), ('--attach', attach),
-                                        ('--rename', rename), ('--open', o.open)] if given]
+                                        ('--add-tag', o.add_keywords), ('--rm-tag', o.rm_tag),
+                                        ('--attach', attach), ('--detach', detach), ('--rename', rename),
+                                        ('--fix-files', fix_files), ('--open', o.open), ('--push', o.push),
+                                        ('--pull', o.pull), ('--sync', o.sync), ('--export', o.export)] if given]
     if len(actions) > 1:
         parser.error(f"one action at a time: {' and '.join(actions)}")
+    for option, given, needs, action in [
+            ('--keep-source', o.keep_source, rename, '--rename'),
+            ('--broken', o.broken, detach, '--detach (--broken-file lists the entries with a broken link)'),
+            ('--move', o.move, fix_files, '--fix-files'),
+            ('--pool', o.pool, fix_files or exchange, '--push, --pull, --sync or --fix-files'),
+            ('--on-duplicate', o.on_duplicate, exchange, '--push, --pull or --sync'),
+            ('--export-format', o.export_format, o.export, '--export')]:
+        if given and not needs:
+            parser.error(f'{option} goes with {action}')
+    if o.broken and o.detach:
+        parser.error('--detach --broken takes no FILE')
+    if exchange and len(o.pool or []) > 1:
+        parser.error(f'--{exchange} takes one --pool')
 
-    # rename, attach: the pools of the library, before it is loaded (see papers.cli.file_cmds.rename_entries)
-    pools = library_pools(config) if rename or attach else None
+    # the pools of the library for the actions that place files or exchange
+    # entries, made before it is loaded (see papers.cli.file_cmds.rename_entries)
+    pools = None
+    if rename or attach:
+        pools = library_pools(config)
+    elif fix_files:
+        nameformat = config.nameformat  # the library's own, as for papers file fix
+        pools = file_check_pools(config, fix=True)
+    elif exchange:
+        # the options of papers pull, push, sync KEY...
+        exchange_options = argparse.Namespace(entries=[], all=False, pool=(o.pool or [None])[0], check=False,
+                                              on_duplicate=o.on_duplicate, mode=None, yes=False)
+        pools = exchange_pools(config, exchange_options)
     biblio = get_biblio(config)
     entries = biblio.db.entries
 
@@ -578,6 +606,29 @@ def listcmd(parser, o, config):
         add_tags(entries, o.add_keywords)
         notes = save_entries(config, biblio)
 
+    elif o.rm_tag:
+        remove_tags(entries, o.rm_tag)
+        notes = save_entries(config, biblio)
+
+    elif detach:
+        detach_entries(biblio, config, entries, o.detach, broken=o.broken)
+        return
+
+    elif fix_files:
+        fix_options = argparse.Namespace(search=o.fix_files, pool=o.pool, move=o.move)
+        check_entries_files(fix_options, config, True, pools, biblio, entries, nameformat)
+        return
+
+    elif exchange:
+        run = {'pull': pull_entries, 'push': push_entries, 'sync': sync_entries}[exchange]
+        run(exchange_options, biblio, Exchange(config, biblio, pools), selected=entries)
+        return
+
+    elif o.export:
+        export_options = argparse.Namespace(dir=o.export, format=o.export_format, files=o.export_files, git=o.git)
+        export_entries(export_options, config, biblio, entries)
+        return
+
     elif attach:
         if len(entries) != 1:
             raise PapersExit(f"list only one entry to use --attach ({len(entries)} listed): nothing was changed")
@@ -619,11 +670,10 @@ def listcmd(parser, o, config):
         for e in entries:
             print(format_entry(biblio, e, no_key=o.no_key))
 
-    # report any entry mutations (--add-files, --add-keywords, --edit, --fetch,
+    # report any entry mutations (--attach, --add-tag, --rm-tag, --edit, --fetch,
     # --rename, --delete) using the same Added/Modified/Removed convention as addcmd
-    # (a plain listing changes nothing)
-    if o.add_keywords or o.add_files or o.edit or o.fetch or o.rename or o.delete:
-        _print_biblio_diff(biblio, entries, notes=notes)
+    # (the other actions print their report, as their command does)
+    _print_biblio_diff(biblio, entries, notes=notes)
 
 
 def opencmd(parser, o, config):

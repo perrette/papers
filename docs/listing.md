@@ -126,43 +126,59 @@ These commands take `-`: `edit`, `rm`, `tag`, `open`, `check`, and the
 
 ## Actions on the listed entries
 
-`papers list` can run a command on the entries it lists. Each action calls
-the same code as the command it stands for:
+`papers list` can run a command on the entries it lists: list the entries,
+then act on them. Each action calls the same code as the command it stands
+for, with the listed entries as KEY...:
 
-| action | command |
-|---|---|
-| `-e/--edit` | `papers edit KEY...` |
-| `--delete` (`--delete-files`, `--keep-files`) | `papers rm KEY...` (`--delete-files`, `--keep-files`) |
-| `--add-tag TAG...` | `papers tag --add TAG... KEY...` |
-| `--rename` (`--keep-source`) | `papers file rename KEY...` (`--keep-source`) |
-| `-o/--open` | `papers open KEY...` |
-| `--attach FILE...` | `papers file attach KEY FILE...` |
+| action | command | example |
+|---|---|---|
+| `-e/--edit` | `papers edit KEY...` | `papers list --duplicates --edit` |
+| `--delete` (`--delete-files`, `--keep-files`) | `papers rm KEY...` (same options) | `papers list --tag draft --delete --keep-files` |
+| `--add-tag TAG...` | `papers tag --add TAG... KEY...` | `papers list -a perrette --add-tag ocean` |
+| `--rm-tag TAG...` | `papers tag --rm TAG... KEY...` | `papers list --tag to-read --rm-tag to-read` |
+| `--rename` (`--keep-source`) | `papers file rename KEY...` (`--keep-source`) | `papers list smith 2020 --rename` |
+| `--attach FILE...` | `papers file attach KEY FILE...` | `papers list --title "ice-edge blooms" --attach si.pdf` |
+| `--detach [FILE...]` | `papers file detach [FILE...] --key KEY...` | `papers list --year 2010 --detach` |
+| `--detach --broken` | `papers file detach --broken --key KEY...` | `papers list --broken-file --detach --broken` |
+| `--fix-files [DIR...]` (`--pool PATH`, `--move`) | `papers file fix KEY... [--search DIR...]` (`--pool PATH`, `--move`) | `papers list --broken-file --fix-files ~/pdfs` |
+| `-o/--open` | `papers open KEY...` | `papers list --tag to-read --open` |
+| `--push` (`--pool PATH`, `--on-duplicate`) | `papers push KEY...` (same options) | `papers list --tag thesis --push` |
+| `--pull` (`--pool PATH`, `--on-duplicate`) | `papers pull KEY...` (same options) | `papers list --tag thesis --pull` |
+| `--sync` (`--pool PATH`, `--on-duplicate`) | `papers sync KEY...` (same options) | `papers list --tag thesis --sync` |
+| `--export DIR` (`--export-format`, `--export-files`) | `papers export DIR KEY...` (`--format`, `--files`) | `papers list -a perrette --export out --export-format ris` |
 
-`--delete` asks, in a terminal, whether to delete the files of the entries
-too; `--delete-files` and `--keep-files` answer without asking (see
-[Files](files.md#removing-entries-and-their-files)). `--attach` needs
-exactly one listed entry: with none or several, it is an error and nothing
-changes. The files given to `--attach` are moved, copied or linked as the
-`files` setting says.
+Notes on the options:
+
+- `--delete` asks, in a terminal, whether to delete the files of the
+  entries too; `--delete-files` and `--keep-files` answer without asking
+  (see [Files](files.md#removing-entries-and-their-files)).
+- `--attach` needs exactly one listed entry: with none or several, it is an
+  error and nothing changes. The files are moved, copied or linked as the
+  `files` setting says.
+- `--detach` without FILE removes all the links of the listed entries.
+- The folders given to `--fix-files` are the `--search` folders of
+  `papers file fix`: the broken links are also looked for there. `--move`
+  moves the files found there instead of copying them.
+- `--pool PATH` is the library to exchange with for `--push`, `--pull` and
+  `--sync` (once), and a library to look for files in for `--fix-files`
+  (can be repeated).
+- `--export-format` and `--export-files` are the `--format` and `--files`
+  options of `papers export` (`--format` of `papers list` is the format of
+  its own output).
+- `--detach` and `--fix-files` take any number of values: write them after
+  the search words, or end their values with another option.
+- An option of an action without the action (e.g. `--move` without
+  `--fix-files`) is an error.
 
 The action runs in the same process as the listing: papers can ask
 questions and open the editor, and the library is saved once (one backup
 snapshot, undone by one `papers undo`). One action at a time: two actions
-in the same command are an error.
-
-Examples:
-
-```
-$> papers list --duplicates --edit
-$> papers list smith 2020 --rename
-$> papers list --tag to-read --open
-$> papers list --title "ice-edge blooms" --attach supplement.pdf
-$> papers list --tag draft --delete --keep-files
-```
+in the same command are an error, and nothing changes.
 
 (`papers check --duplicates` merges duplicates, see [Managing your
 library](library-management.md#duplicates).) The other commands that act on
-entries read the keys of `papers list -K` with `-` (see [Piping](#piping)).
+entries, e.g. `papers check`, read the keys of `papers list -K` with `-`
+(see [Piping](#piping)).
 
 These forms are deprecated, print a warning that shows the new form, and
 will be removed in v4:

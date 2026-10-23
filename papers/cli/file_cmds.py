@@ -155,17 +155,25 @@ def _detach(biblio, links):
 def file_detachcmd(parser, o, config):
     biblio = get_biblio(config)
     entries = _key_option_entries(biblio, o.key)
-    if o.broken:
-        if o.files:
-            parser.error('--broken takes no FILE (--key limits it to entries)')
+    if o.broken and o.files:
+        parser.error('--broken takes no FILE (--key limits it to entries)')
+    if not o.broken and not o.files and entries is None:
+        parser.error('papers file detach FILE... [--key KEY...], --key KEY... or --broken [--key KEY...]')
+    detach_entries(biblio, config, entries, o.files, broken=o.broken, recursive=o.recursive)
+
+
+def detach_entries(biblio, config, entries, files=(), broken=False, recursive=False):
+    """`papers file detach` (also `papers list --detach`): remove the links
+    of the entries (None: all entries) to the files (all their links
+    without files; only the broken links with broken=True), and save the
+    library"""
+    if broken:
         links = [(e, [f for f in biblio.get_files(e) if not os.path.exists(f)])
                  for e in (biblio.entries if entries is None else entries)]
-    elif o.files:
-        links = links_to_paths(biblio, o.files, entries, recursive=o.recursive)
-    elif entries is not None:
-        links = [(e, biblio.get_files(e)) for e in entries]
+    elif files:
+        links = links_to_paths(biblio, files, entries, recursive=recursive)
     else:
-        parser.error('papers file detach FILE... [--key KEY...], --key KEY... or --broken [--key KEY...]')
+        links = [(e, biblio.get_files(e)) for e in entries]
     links = [(e, files) for e, files in links if files]
     _detach(biblio, links)
     print_push_notes(biblio, save_entries(config, biblio))
@@ -329,13 +337,27 @@ def _file_check(o, config, fix):
     file of a --search folder (see FilesPolicy for the files of other
     libraries); in link mode, or without files directory, it is linked where
     it is."""
-    dryrun = papers.config.DRYRUN
-    metadata = getattr(o, 'metadata', False)
     nameformat = config.nameformat  # the library's own (a shallow library places files with the pool's)
-    place = fix and not dryrun
-    pools = library_pools(config) if place else Pools(config)
+    pools = file_check_pools(config, fix)
     biblio = get_biblio(config)
     entries = _entries_or_all(biblio, o.entries)
+    check_entries_files(o, config, fix, pools, biblio, entries, nameformat)
+
+
+def file_check_pools(config, fix):
+    """the pools of `papers file check` and `papers file fix`, made before
+    the library is loaded (see rename_entries)"""
+    return library_pools(config) if fix and not papers.config.DRYRUN else Pools(config)
+
+
+def check_entries_files(o, config, fix, pools, biblio, entries, nameformat):
+    """`papers file check` and `papers file fix` (also `papers list
+    --fix-files`) on the entries: see _file_check. o has the options of
+    file check or fix (search, pool, move, metadata); nameformat: the name
+    format of the library, before file_check_pools."""
+    dryrun = papers.config.DRYRUN
+    metadata = getattr(o, 'metadata', False)
+    place = fix and not dryrun
     selected = {id(e) for e in entries}
     exchange = Exchange(config, biblio, pools)
     search = SearchFolders(o.search or [])

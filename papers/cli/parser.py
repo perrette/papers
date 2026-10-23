@@ -94,6 +94,40 @@ def _export_formats(value):
     return formats
 
 
+# the options shared by a command and the action of `papers list` that stands for it
+# =============================================================================
+
+_EXCHANGE_HELP = '''what to do with an entry changed on both
+    sides since the last pull or push: ask (dialogue; the default in a terminal), keep (the
+    {receiving} values are kept), update (the {incoming} values are taken), skip (the entry is
+    left as it is, and comes again next time), error (stop before saving; the default
+    without a terminal). Fields changed on one side only need no decision.'''
+
+
+def _on_duplicate_option(p, receiving, incoming):
+    "--on-duplicate of pull, push and sync (and of their list actions)"
+    p.add_argument('--on-duplicate', choices=ON_DUPLICATE,
+        help=_EXCHANGE_HELP.format(receiving=receiving, incoming=incoming))
+
+
+def _export_options(p, format='--format', files='--files'):
+    "the --format and --files options of export (in list: --export-format and --export-files)"
+    p.add_argument(files, choices=['copy', 'link', 'none'], default='copy',
+        help='copy the files into DIR/files (a hard link when possible; default), link to them where '
+             'they are, or leave the file links out')
+    p.add_argument(format, action='append', type=_export_formats, metavar='FORMAT',
+        help=f'''the files of entries written in DIR: bib (papers.bib, the default: DIR is a papers
+        library), ris (papers.ris; needs the rispy package), csl-json (papers.json), or all; repeat the
+        option or separate the formats with commas, e.g. {format} bib,ris''')
+
+
+def _fix_move_option(p, search='--search'):
+    "--move of file fix (and of list --fix-files)"
+    p.add_argument('--move', action='store_true',
+                   help=f'move the files found in the {search} folders instead of copying them (a file in the '
+                        'files directory of another library is still copied)')
+
+
 def get_parser(config=None):
     if config is None:
         config = papers.config.Config()
@@ -522,9 +556,7 @@ def get_parser(config=None):
     p.add_argument('entries', nargs='*', metavar='KEY', help=_selection_help + ' (default: all entries)')
     p.add_argument('--pool', action='append', metavar='PATH', help=_pool_help)
     p.add_argument('--search', action='append', metavar='DIR', help=_search_help)
-    p.add_argument('--move', action='store_true',
-                   help='move the files found in the --search folders instead of copying them (a file in the '
-                        'files directory of another library is still copied)')
+    _fix_move_option(p)
     _command(p, file_fixcmd, library=True)
 
     p = filesub.add_parser('clean', parents=[cfg],
@@ -644,6 +676,28 @@ def get_parser(config=None):
     grp.add_argument('--attach', nargs='+', type=file_uri_to_path, metavar='FILE',
         help='attach files to the listed entry, as `papers file attach KEY FILE...` (the files setting '
              'applies); an error unless the listing gives exactly one entry')
+    grp.add_argument('--rm-tag', nargs='+', metavar='TAG',
+        help='remove tags from the listed entries, as `papers tag --rm`')
+    grp.add_argument('--detach', nargs='*', type=file_uri_to_path, metavar='FILE',
+        help='remove the links of the listed entries to these files (without FILE: all their links), '
+             'as `papers file detach FILE... --key KEY...`')
+    grp.add_argument('--broken', action='store_true',
+        help='with --detach: only the broken links, as `papers file detach --broken --key KEY...`')
+    grp.add_argument('--fix-files', nargs='*', metavar='DIR',
+        help='repair the file links of the listed entries, as `papers file fix KEY...`; the broken links are '
+             'also looked for in the folders DIR, as `papers file fix --search DIR`')
+    _fix_move_option(grp, search='--fix-files')
+    grp.add_argument('--push', action='store_true', help='push the listed entries, as `papers push KEY...`')
+    grp.add_argument('--pull', action='store_true', help='pull the listed entries, as `papers pull KEY...`')
+    grp.add_argument('--sync', action='store_true', help='sync the listed entries, as `papers sync KEY...`')
+    grp.add_argument('--pool', action='append', metavar='PATH',
+        help='with --push, --pull, --sync: the library to exchange with instead of the pool, as their --pool; '
+             'with --fix-files: also look for the files of the broken links in the library PATH, as '
+             '`papers file fix --pool PATH` (can be repeated)')
+    _on_duplicate_option(grp, receiving='receiving side', incoming='other side')
+    grp.add_argument('--export', metavar='DIR',
+        help='write the listed entries as a new library in DIR, as `papers export DIR KEY...`')
+    _export_options(grp, format='--export-format', files='--export-files')
     grp.add_argument('--fetch', action='store_true', help='deprecated: `papers check --fetch --fetch-all --fix-doi --fix-key --format-name -`')
     grp.add_argument('--add-files', nargs='+', type=file_uri_to_path, metavar='FILE',
         help='deprecated: use --attach (--add-files links the files where they are, or moves them with '
@@ -684,11 +738,6 @@ def get_parser(config=None):
 
     # pull, push, sync, export
     # ========================
-    _exchange_help = '''what to do with an entry changed on both
-        sides since the last pull or push: ask (dialogue; the default in a terminal), keep (the
-        {receiving} values are kept), update (the {incoming} values are taken), skip (the entry is
-        left as it is, and comes again next time), error (stop before saving; the default
-        without a terminal). Fields changed on one side only need no decision.'''
     _pool_help = ('another library to {what} (a library without pool), e.g. a folder shared with someone '
                   '(default: the pool of the library). The origin copies are recorded, as with the pool: '
                   'without KEY or --all, the entries exchanged with PATH before. The files are copied (in a '
@@ -712,8 +761,7 @@ def get_parser(config=None):
     pullp.add_argument('--pool', metavar='PATH', help=_pool_help.format(what='pull from'))
     pullp.add_argument('--all', action='store_true',
         help='all entries of the library, and every entry of the pool that the library does not have is added')
-    pullp.add_argument('--on-duplicate', choices=ON_DUPLICATE,
-        help=_exchange_help.format(receiving='library', incoming='pool'))
+    _on_duplicate_option(pullp, receiving='library', incoming='pool')
     pullp.add_argument('--check', action='store_true',
         help='only report: whether the pool changed since the last pull, and the entries changed in it')
     pullp.set_defaults(mode=None, yes=False)
@@ -734,8 +782,7 @@ def get_parser(config=None):
     pushp.add_argument('--all', action='store_true',
         help='push every entry of the library, adding to the pool those it does not have')
     pushp.add_argument('--pool', metavar='PATH', help=_pool_help.format(what='push to'))
-    pushp.add_argument('--on-duplicate', choices=ON_DUPLICATE,
-        help=_exchange_help.format(receiving='pool', incoming='library'))
+    _on_duplicate_option(pushp, receiving='pool', incoming='library')
     pushp.set_defaults(mode=None, yes=False)
     _command(pushp, pushcmd, library=True)
 
@@ -750,8 +797,7 @@ def get_parser(config=None):
     syncp.add_argument('--all', action='store_true',
         help='also add to each side the entries it does not have (pull --all, push --all)')
     syncp.add_argument('--pool', metavar='PATH', help=_pool_help.format(what='sync with'))
-    syncp.add_argument('--on-duplicate', choices=ON_DUPLICATE,
-        help=_exchange_help.format(receiving='receiving side', incoming='other side'))
+    _on_duplicate_option(syncp, receiving='receiving side', incoming='other side')
     syncp.set_defaults(mode=None, yes=False)
     _command(syncp, synccmd, library=True)
 
@@ -764,13 +810,7 @@ def get_parser(config=None):
         bibtex, DIR is not a papers library.''')
     exportp.add_argument('dir', metavar='DIR', help='directory of the new library (must not exist, or be empty)')
     exportp.add_argument('entries', nargs='*', metavar='KEY', help=_selection_help + ' (default: all entries)')
-    exportp.add_argument('--files', choices=['copy', 'link', 'none'], default='copy',
-        help='copy the files into DIR/files (a hard link when possible; default), link to them where '
-             'they are, or leave the file links out')
-    exportp.add_argument('--format', action='append', type=_export_formats, metavar='FORMAT',
-        help='''the files of entries written in DIR: bib (papers.bib, the default: DIR is a papers
-        library), ris (papers.ris; needs the rispy package), csl-json (papers.json), or all; repeat the
-        option or separate the formats with commas, e.g. --format bib,ris''')
+    _export_options(exportp)
     _command(exportp, exportcmd, library=True)
 
     # open
