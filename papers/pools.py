@@ -13,8 +13,11 @@ the machine (the `pool` setting of the global configuration, by default
 - `Origin` is `.papers/origin/` of a library, one file per pool: for each
   entry exchanged with the pool, the base of the next three-way merge,
   under the library's key, with the pool's key (`papers-pool-key`) and the
-  time (`papers-time`), and in a non-local library the file links of the
-  pool entry after the exchange (`papers-files`). The base is the version
+  time (`papers-time`). In a non-local library the record keeps its `file`
+  field: the file links of the pool entry after the exchange (the library
+  entry has the same links); otherwise it has no `file` field. The file
+  links are not part of the base of the merge (papers.merge.EXCHANGE_OWN).
+  The base is the version
   of the side that sent the entry, as sent: the pool entry for `add` and
   `pull`, the library entry for `push`. The receiving side has taken all of it into account (taken,
   kept or declined), so that what it has beyond it shows as its own change
@@ -385,10 +388,14 @@ LEGACY_ORIGIN_FILE = os.path.join('.papers', 'origin.bib')  # one file for all p
 POOL_FIELD = 'papers-pool'  # in the legacy file only
 POOL_KEY_FIELD = 'papers-pool-key'
 TIME_FIELD = 'papers-time'
-# a non-local library: the file links of the pool entry after the last
-# exchange, as the library writes its links (see Exchange.pool_removed)
-FILES_FIELD = 'papers-files'
-_ORIGIN_FIELDS = (POOL_FIELD, POOL_KEY_FIELD, TIME_FIELD, FILES_FIELD)
+# the file links of a record (a non-local library: those of the pool entry
+# after the last exchange, as the library writes its links, see
+# Exchange.pool_removed); `papers-files` held them in development builds
+# of v3, and is ignored
+FILE_FIELD = 'file'
+_DEV_FILES_FIELD = 'papers-files'
+_ORIGIN_FIELDS = (POOL_FIELD, POOL_KEY_FIELD, TIME_FIELD, _DEV_FILES_FIELD)
+_RECORD_EXTRA = _ORIGIN_FIELDS + (FILE_FIELD,)  # not part of the base entry
 # the first comments of a file: @comment{papers-pool <pool id>} and
 # @comment{papers-pulled <pool bibtex mtime in ns>}
 _POOL_COMMENT = 'papers-pool'
@@ -409,9 +416,10 @@ def origin_file_name(pool):
 class Record:
     """the origin record of a library entry for a pool: `entry` is the base
     version (see the module documentation; under the library key, without
-    the papers-* fields and file links). `files`: in a non-local library,
-    the file links of the pool entry after the last exchange (as written
-    in the library's bibtex), or None if not recorded."""
+    the papers-* fields and file links). `files`: the `file` field of the
+    record, in a non-local library the file links of the pool entry after
+    the last exchange (as written in the library's bibtex), or None if not
+    recorded."""
 
     def __init__(self, key, pool, pool_key, time, entry, files=None):
         self.key = key
@@ -518,7 +526,7 @@ class Origin:
 
     def _record(self, pool, e):
         return Record(e.key, pool, get_entry_val(e, POOL_KEY_FIELD, ''), get_entry_val(e, TIME_FIELD, ''),
-                      _strip(e, _ORIGIN_FIELDS), files=get_entry_val(e, FILES_FIELD, None))
+                      _strip(e, _RECORD_EXTRA), files=get_entry_val(e, FILE_FIELD, None))
 
     def get(self, entry, pool=None):
         """the record of a library entry (by key, or by a former key of its
@@ -540,18 +548,19 @@ class Origin:
         """record the base version of an entry for a pool, with the key of
         the pool entry (the record does not change if it is the same as
         before, its time included), and `files`, the file links of the pool
-        entry (see Record; None: not recorded)"""
-        new = _strip(pool_entry, ('file',) + _ORIGIN_FIELDS)
+        entry, in the `file` field of the record (see Record; None: no
+        `file` field)"""
+        new = _strip(pool_entry, _RECORD_EXTRA)
         records = self.entries.setdefault(pool, {})
         old = records.get(key.lower())
         if old is not None and get_entry_val(old, POOL_KEY_FIELD, '') == pool_entry.key \
-                and _same_fields(_strip(old, _ORIGIN_FIELDS), new):
+                and _same_fields(_strip(old, _RECORD_EXTRA), new):
             self.set_files(key, pool, files)
             return
         set_entry_key(new, key)
-        new.fields += [Field(POOL_KEY_FIELD, pool_entry.key), Field(TIME_FIELD, _now())]
         if files is not None:
-            new.fields.append(Field(FILES_FIELD, files))
+            new.fields.append(Field(FILE_FIELD, files))
+        new.fields += [Field(POOL_KEY_FIELD, pool_entry.key), Field(TIME_FIELD, _now())]
         records[key.lower()] = new
         self.changed.add(pool)
 
@@ -559,12 +568,14 @@ class Origin:
         """set the file links of the pool entry in the record of an entry,
         if it has one (files None: remove them)"""
         old = self.entries.get(pool, {}).get(key.lower())
-        if old is None or get_entry_val(old, FILES_FIELD, None) == files:
+        if old is None or (get_entry_val(old, FILE_FIELD, None) == files
+                           and _DEV_FILES_FIELD not in old.fields_dict):
             return
-        if FILES_FIELD in old.fields_dict:
-            del old[FILES_FIELD]
+        for name in (FILE_FIELD, _DEV_FILES_FIELD):
+            if name in old.fields_dict:
+                del old[name]
         if files is not None:
-            old.fields.append(Field(FILES_FIELD, files))
+            old.fields.append(Field(FILE_FIELD, files))
         self.changed.add(pool)
 
     def remove(self, key, pool):

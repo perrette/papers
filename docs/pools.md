@@ -121,9 +121,9 @@ In a library that is not local:
   the library entry follows the pool entry's links: a link that the pool
   entry had at the last exchange and no longer has is removed from the
   library entry (the file is not deleted). A link that the pool entry never
-  had stays. The origin copy records the pool entry's links for this
-  (`papers-files`); an origin copy written before papers recorded them
-  removes nothing until the next exchange. A one-time exchange (`--pool
+  had stays. The origin copy records the pool entry's links for this, in
+  its `file` field; an origin copy without it removes nothing until the
+  next exchange. A one-time exchange (`--pool
   PATH`, another library) adds links only;
 - when the pool renames a file, the link breaks: it is repaired by looking
   the entry up in the pool, when the library is loaded (saved on the next
@@ -279,9 +279,11 @@ the file of the new pool, and setting the pool back to an earlier one finds
 its origin copies again. The file records, for each entry
 exchanged with the pool (by `add`, `pull` or `push`), its origin copy,
 under the library's key, with the key in the pool (`papers-pool-key`) and
-the time (`papers-time`); in a library that is not local, also the file
-links of the pool entry after the exchange (`papers-files`), so that a pull
-can tell a link that the pool entry removed from one it never had. The modification time is recorded at a pull of
+the time (`papers-time`); in a library that is not local, the origin copy
+also keeps its `file` field, the file links of the pool entry after the
+exchange, so that a pull can tell a link that the pool entry removed from
+one it never had (in a local library it has no `file` field). The file
+links are not part of the three-way merge. The modification time is recorded at a pull of
 all entries that skipped no conflict, or a push or an add when the pool
 had not changed since the previous exchange (or when it is the first
 exchange). A push that leaves the pool entry with fields or files that the

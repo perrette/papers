@@ -484,16 +484,41 @@ class TestNonLocalSharedLinks(ExchangeTest):
         self.assertEqual(self.files('smith2020climate'), [self.pool_pdf])
         self.assertEqual(self.pool_files(), [self.pool_pdf])
 
+    def origin_file(self):
+        origin, = [Path(self.path('lib', ORIGIN_DIR, name)) for name in os.listdir(self.path('lib', ORIGIN_DIR))]
+        return origin
+
+    def test_record_keeps_the_file_field(self):
+        # the record of a non-local library keeps the pool entry's links in its file field
+        self.out(f'file attach smith2020climate {self.si}')
+        record = self.origin().get(self.entry('smith2020climate'))
+        self.assertIsNotNone(record.files)
+        self.assertNotIn('file', record.entry)  # not part of the base of the merge
+        self.assertIn(' file = {', self.origin_file().read_text())
+        self.assertNotIn('papers-files', self.origin_file().read_text())
+
     def test_pull_without_recorded_links_removes_nothing(self):
         # records written before the links were recorded (or by a local library): nothing is removed
         self.out(f'file attach smith2020climate {self.si}')
-        origin, = [Path(self.path('lib', ORIGIN_DIR, name)) for name in os.listdir(self.path('lib', ORIGIN_DIR))]
+        origin = self.origin_file()
         text = origin.read_text()
-        self.assertIn('papers-files', text)
-        origin.write_text(''.join(line for line in text.splitlines(True) if 'papers-files' not in line))
+        origin.write_text(''.join(line for line in text.splitlines(True) if not line.startswith(' file = ')))
         self.papers(f'file detach {self.si}', cwd=self.path('pool'))
         self.out('pull')
         self.assertIn(self.si, self.files('smith2020climate'))
+
+    def test_record_of_development_builds(self):
+        # papers-files (development builds of v3) is ignored: nothing is removed, and the next record drops it
+        self.out(f'file attach smith2020climate {self.si}')
+        origin = self.origin_file()
+        text = origin.read_text()
+        self.assertIn(' file = ', text)
+        origin.write_text(text.replace(' file = ', ' papers-files = '))
+        self.papers(f'file detach {self.si}', cwd=self.path('pool'))
+        self.out('pull')
+        self.assertIn(self.si, self.files('smith2020climate'))
+        self.assertNotIn('papers-files', origin.read_text())
+        self.assertIn(' file = ', origin.read_text())
 
     def test_local_pull_unchanged(self):
         self.out(f'file attach smith2020climate {self.si}')
@@ -502,6 +527,7 @@ class TestNonLocalSharedLinks(ExchangeTest):
         self.papers(f'file detach {self.si}', cwd=self.path('pool'))
         self.out('pull')
         self.assertIn(self.si, self.files('smith2020climate'))
+        self.assertIsNone(self.origin().get(self.entry('smith2020climate')).files)  # a local library: no file field
 
     def test_file_rm_deletes_a_pool_file(self):
         self.lib('config files move')
