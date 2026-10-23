@@ -1023,9 +1023,6 @@ by other tools. What changes:</p>
   repository) or <code>papersconfig.json.v2.bak</code>.</li>
 </ul>
 </li>
-<li><code>papers install --global</code> is an error that changes nothing:
-  <code>papers init PATH --global</code> creates the default library, and
-  <code>papers config --global default PATH</code> registers an existing one.</li>
 <li>
 <p>Some commands and options are deprecated. They still work, print a
   warning that names the new form, and are removed in papers 4:</p>
@@ -1039,23 +1036,19 @@ by other tools. What changes:</p>
 <tbody>
 <tr>
 <td><code>papers install</code></td>
-<td><code>papers init</code>, <code>papers config</code></td>
+<td><code>papers init</code> to create a library, <code>papers config</code> to change it</td>
 </tr>
 <tr>
 <td><code>papers filecheck</code></td>
 <td><code>papers file check</code>, <code>papers file fix</code> and the other <code>papers file</code> commands</td>
 </tr>
 <tr>
-<td><code>papers list --add-files</code> / <code>--rename</code> / <code>--copy</code></td>
-<td><code>papers file attach</code>, <code>papers file rename</code> (<code>--keep-source</code>)</td>
+<td><code>papers list ... --rename</code> / <code>--copy</code> / <code>--open</code> / <code>--fetch</code></td>
+<td><code>papers list ... -K</code> piped to <code>papers file rename -</code>, <code>papers open -</code>, <code>papers check --fetch -</code> (examples below)</td>
 </tr>
 <tr>
-<td><code>papers list --fetch</code></td>
-<td><code>papers check --fetch</code></td>
-</tr>
-<tr>
-<td><code>papers list --open</code></td>
-<td><code>papers open</code></td>
+<td><code>papers list KEY --add-files FILE</code></td>
+<td><code>papers file attach KEY FILE</code></td>
 </tr>
 <tr>
 <td><code>papers doi</code></td>
@@ -1077,16 +1070,28 @@ by other tools. What changes:</p>
 <td><code>--relative-paths</code> / <code>--absolute-paths</code></td>
 <td><code>papers config paths relative</code> or <code>absolute</code></td>
 </tr>
-<tr>
-<td>- The output of <code>papers status</code>, <code>papers init</code> and of the exchanges</td>
-<td></td>
-</tr>
-<tr>
-<td>changed: scripts that parse it need updating.</td>
-<td></td>
-</tr>
 </tbody>
 </table>
+<p><code>papers install --global</code> is not deprecated but an error that changes
+nothing: <code>papers init PATH --global</code> creates the default library, and
+<code>papers config --global default PATH</code> registers an existing one.</p>
+</li>
+<li>
+<p><code>papers list</code> keeps its search options and its actions <code>--edit</code>,
+  <code>--delete</code> and <code>--add-tag</code>. The other actions are done by the command
+  that does them elsewhere, which reads the keys listed by <code>papers list -K</code>
+  with <code>-</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a># papers 2                              # papers 3
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>papers list smith 2020 --rename         papers list smith 2020 -K | papers file rename -
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>papers list smith 2020 --copy           papers list smith 2020 -K | papers file rename --keep-source -
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>papers list --tag to-read --open        papers list --tag to-read -K | papers open -
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>papers list --no-file --fetch           papers list --no-file -K | papers check --fetch --fetch-all --fix-doi --fix-key --format-name -y -
+</code></pre></div>
+<p>A command that reads the keys from a pipe cannot ask questions: answer
+them with its options, as <code>-y</code> above (see
+<a href="../listing/#piping">Piping</a>).
+- The output of <code>papers status</code>, <code>papers init</code> and of the exchanges
+  changed: scripts that parse it need updating.</p>
 </li>
 </ul>
 <h2 id="what-becomes-of-a-papers-2-setup">What becomes of a papers 2 setup<a class="headerlink" href="#what-becomes-of-a-papers-2-setup" title="Permanent link">&para;</a></h2>
@@ -1110,10 +1115,6 @@ by other tools. What changes:</p>
 <td>several project libraries with a common <code>filesdir</code></td>
 <td>still works (see <a href="../shallow-libraries/#comparison">Comparison</a>). The model preferred in papers 3, which is also more efficient, is a shared library (a pool) and project-bound "shallow" libraries connected to it</td>
 </tr>
-<tr>
-<td><code>papers install</code></td>
-<td><code>papers init</code> to create a library, <code>papers config</code> to change it; <code>papers install</code> is a deprecated alias. <code>papers install --global</code> is an error that changes nothing: <code>papers init PATH --global</code> creates the default library (for example <code>papers init ~/Documents/papers/default --global</code>), <code>papers config --global default PATH</code> registers an existing library</td>
-</tr>
 </tbody>
 </table>
 <h2 id="what-happens-on-the-first-run">What happens on the first run<a class="headerlink" href="#what-happens-on-the-first-run" title="Permanent link">&para;</a></h2>
@@ -1123,17 +1124,17 @@ is converted without a command.</p>
 <p>The global library of papers 2 is defined by its global configuration
 (<code>~/.config/papersconfig.json</code> on Linux). papers 3 keeps using it outside
 of libraries, and prints a warning on every command:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>$ papers list
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>WARNING:papers:found the global configuration of papers v2 (~/.config/papersconfig.json): it still applies outside of libraries; `papers migrate` turns it into a library, the default library
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>perrette_landerer2013: A scaling approach to project regional sea level rise and it... (doi:10.5194/esd-4-11-2013, file:1)
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>$ papers list
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>WARNING:papers:found the global configuration of papers v2 (~/.config/papersconfig.json): it still applies outside of libraries; `papers migrate` turns it into a library, the default library
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>perrette_landerer2013: A scaling approach to project regional sea level rise and it... (doi:10.5194/esd-4-11-2013, file:1)
 </code></pre></div>
 <p><code>papers migrate</code> converts it. In this example the global library of
 papers 2 is <code>~/bibliography/papers.bib</code>:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>$ papers migrate
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>global configuration of papers v2: ~/.config/papersconfig.json
-<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>  create the library configuration ~/bibliography/.papers/config.json (paths: absolute)
-<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>  register ~/bibliography as the default library in ~/.config/papers/config.json
-<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>  rename ~/.config/papersconfig.json to ~/.config/papersconfig.json.v2.bak
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>$ papers migrate
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>global configuration of papers v2: ~/.config/papersconfig.json
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>  create the library configuration ~/bibliography/.papers/config.json (paths: absolute)
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>  register ~/bibliography as the default library in ~/.config/papers/config.json
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>  rename ~/.config/papersconfig.json to ~/.config/papersconfig.json.v2.bak
 </code></pre></div>
 <ul>
 <li>The library gets a configuration file, <code>.papers/config.json</code> in the
@@ -1160,8 +1161,8 @@ directory, and it works as in papers 2.</p>
 <p>Its configuration file, <code>.papersconfig.json</code> in papers 2, is
 <code>.papers/config.json</code> in papers 3. papers moves it the next time it saves
 the configuration (e.g. <code>papers config</code>), and prints a line that says so:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>$ papers config editor vim
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>moved ~/projects/sealevel/.papersconfig.json to ~/projects/sealevel/.papers/config.json
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>$ papers config editor vim
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>moved ~/projects/sealevel/.papersconfig.json to ~/projects/sealevel/.papers/config.json
 </code></pre></div>
 <p><code>papers migrate</code>, run in the library, moves it too (<code>--dry-run</code> shows
 it). A directory that has both files is an error, and papers changes
@@ -1181,18 +1182,18 @@ a PDF twice. A correction made in one project reaches the others with
 <code>papers sync</code>.</p>
 <p>An existing project library can be that library as it is: a new project
 uses it as pool.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>cd ~/projects/tides
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>papers init --pool ../sealevel           # a shallow library
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>papers add --doi 10.5194/esd-4-11-2013   # taken from ../sealevel, with its PDF
-<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>papers pull perrette_yool2011            # or by key
-<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>papers sync                              # later: exchange the changes both ways
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>cd ~/projects/tides
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>papers init --pool ../sealevel           # a shallow library
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>papers add --doi 10.5194/esd-4-11-2013   # taken from ../sealevel, with its PDF
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>papers pull perrette_yool2011            # or by key
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>papers sync                              # later: exchange the changes both ways
 </code></pre></div>
 <p>To move the PDFs of an existing project into a library of the topic, and
 make the project shallow:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>cd ~/projects/sealevel
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>papers init ~/Documents/papers/sealevel                # a new self-contained library
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>papers push --pool ~/Documents/papers/sealevel --all   # copies the entries and their PDFs there
-<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>papers config pool ~/Documents/papers/sealevel         # link to its PDFs, delete the project's copies
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>cd ~/projects/sealevel
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>papers init ~/Documents/papers/sealevel                # a new self-contained library
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>papers push --pool ~/Documents/papers/sealevel --all   # copies the entries and their PDFs there
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>papers config pool ~/Documents/papers/sealevel         # link to its PDFs, delete the project's copies
 </code></pre></div>
 <p><code>papers push --pool PATH</code> requires PATH to be a library already
 (<code>papers init PATH</code> creates it). It copies the PDFs as hard links
@@ -1205,10 +1206,10 @@ describes shallow libraries, and <a href="../pools/">Pools</a> describes the
 exchanges.</p>
 <h2 id="what-else-changed">What else changed<a class="headerlink" href="#what-else-changed" title="Permanent link">&para;</a></h2>
 <ul>
-<li><code>papers init</code> replaces <code>papers install</code>: it asks no questions, and fails
-  if the folder has a library already (use <code>papers config</code>). By default it
-  creates a self-contained library, which keeps its own PDFs, as in
-  papers 2; <code>papers init --pool PATH</code> creates a shallow library.</li>
+<li><code>papers init</code> asks no questions, and fails if the folder has a library
+  already (use <code>papers config</code>). By default it creates a self-contained
+  library, which keeps its own PDFs, as in papers 2;
+  <code>papers init --pool PATH</code> creates a shallow library.</li>
 <li><code>papers config</code> gets and sets the settings, in the style of
   <code>git config</code> (see <a href="../configuration/#settings">Configuration</a>).</li>
 <li>The global configuration of papers 3 is <code>~/.config/papers/config.json</code>
@@ -1216,8 +1217,7 @@ exchanges.</p>
   (<code>papers config --global default PATH</code>).</li>
 <li><code>papers file</code> groups the commands on attached files: <code>attach</code>,
   <code>detach</code>, <code>rm</code>, <code>mv</code>, <code>rename</code>, <code>check</code>, <code>fix</code>, <code>clean</code> (see
-  <a href="../files/">Files</a>). They replace <code>papers filecheck</code> and the file options
-  of <code>papers list</code> (<code>--add-files</code>, <code>--rename</code>, <code>--copy</code>).</li>
+  <a href="../files/">Files</a>).</li>
 </ul>
 
 
