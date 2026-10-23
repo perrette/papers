@@ -986,13 +986,12 @@ the files of entries already in the library, e.g. after changing the name
 template or fixing an entry's title:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>papers file rename                      # all entries
 <a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>papers file rename perrette2013         # some entries
-<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>papers list --year 2013 -K | papers file rename -
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>papers list --year 2013 --rename       # the listed entries
 </code></pre></div>
 <p>Each file is moved into the files directory under its new name;
 <code>--keep-source</code> keeps the original too (a hard link when possible). A file
-that belongs to another library is copied, not moved. The deprecated
-<code>papers filecheck --rename</code> and <code>papers list ... --rename</code> run this
-command.</p>
+that belongs to another library is copied, not moved. <code>papers list ... --rename</code>
+and the deprecated <code>papers filecheck --rename</code> run this command.</p>
 <h2 id="control-fields-when-renaming-files">Control fields when renaming files<a class="headerlink" href="#control-fields-when-renaming-files" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>$&gt; papers add --move --info --name-template "{AuthorX}{year}-{Title}" --name-title-sep '' --name-author-sep '' esd-4-11-2013
 <a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>INFO:papers:found doi:10.5194/esd-4-11-2013

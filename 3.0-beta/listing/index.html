@@ -1089,21 +1089,123 @@ line:</p>
 <code>papers file</code> commands that act on entries (<code>rename</code>, <code>check</code>, and the
 <code>--key</code> option of <code>detach</code> and <code>rm</code>).</p>
 <h2 id="actions-on-the-listed-entries">Actions on the listed entries<a class="headerlink" href="#actions-on-the-listed-entries" title="Permanent link">&para;</a></h2>
-<p><code>papers list</code> can also act on the entries it lists, as shortcuts of other
-commands:</p>
+<p><code>papers list</code> can run a command on the entries it lists: list the entries,
+then act on them. Each action calls the same code as the command it stands
+for, with the listed entries as KEY...:</p>
+<table>
+<thead>
+<tr>
+<th>action</th>
+<th>command</th>
+<th>example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>-e/--edit</code></td>
+<td><code>papers edit KEY...</code></td>
+<td><code>papers list --duplicates --edit</code></td>
+</tr>
+<tr>
+<td><code>--delete</code> (<code>--delete-files</code>, <code>--keep-files</code>)</td>
+<td><code>papers rm KEY...</code> (same options)</td>
+<td><code>papers list --tag draft --delete --keep-files</code></td>
+</tr>
+<tr>
+<td><code>--add-tag TAG...</code></td>
+<td><code>papers tag --add TAG... KEY...</code></td>
+<td><code>papers list -a perrette --add-tag ocean</code></td>
+</tr>
+<tr>
+<td><code>--rm-tag TAG...</code></td>
+<td><code>papers tag --rm TAG... KEY...</code></td>
+<td><code>papers list --tag to-read --rm-tag to-read</code></td>
+</tr>
+<tr>
+<td><code>--rename</code> (<code>--keep-source</code>)</td>
+<td><code>papers file rename KEY...</code> (<code>--keep-source</code>)</td>
+<td><code>papers list smith 2020 --rename</code></td>
+</tr>
+<tr>
+<td><code>--attach FILE...</code></td>
+<td><code>papers file attach KEY FILE...</code></td>
+<td><code>papers list --title "ice-edge blooms" --attach si.pdf</code></td>
+</tr>
+<tr>
+<td><code>--detach [FILE...]</code></td>
+<td><code>papers file detach [FILE...] --key KEY...</code></td>
+<td><code>papers list --year 2010 --detach</code></td>
+</tr>
+<tr>
+<td><code>--detach-broken</code></td>
+<td><code>papers file detach --broken --key KEY...</code></td>
+<td><code>papers list --broken-file --detach-broken</code></td>
+</tr>
+<tr>
+<td><code>--fix-files [DIR...]</code> (<code>--pool PATH</code>, <code>--move</code>)</td>
+<td><code>papers file fix KEY... [--search DIR...]</code> (<code>--pool PATH</code>, <code>--move</code>)</td>
+<td><code>papers list --broken-file --fix-files ~/pdfs</code></td>
+</tr>
+<tr>
+<td><code>-o/--open</code></td>
+<td><code>papers open KEY...</code></td>
+<td><code>papers list --tag to-read --open</code></td>
+</tr>
+<tr>
+<td><code>--push</code> (<code>--pool PATH</code>, <code>--on-duplicate</code>)</td>
+<td><code>papers push KEY...</code> (same options)</td>
+<td><code>papers list --tag thesis --push</code></td>
+</tr>
+<tr>
+<td><code>--pull</code> (<code>--pool PATH</code>, <code>--on-duplicate</code>)</td>
+<td><code>papers pull KEY...</code> (same options)</td>
+<td><code>papers list --tag thesis --pull</code></td>
+</tr>
+<tr>
+<td><code>--sync</code> (<code>--pool PATH</code>, <code>--on-duplicate</code>)</td>
+<td><code>papers sync KEY...</code> (same options)</td>
+<td><code>papers list --tag thesis --sync</code></td>
+</tr>
+<tr>
+<td><code>--export DIR</code> (<code>--export-format</code>, <code>--export-files</code>)</td>
+<td><code>papers export DIR KEY...</code> (<code>--format</code>, <code>--files</code>)</td>
+<td><code>papers list -a perrette --export out --export-format ris</code></td>
+</tr>
+</tbody>
+</table>
+<p>Notes on the options:</p>
 <ul>
-<li><code>-e/--edit</code>: edit them in a text editor, as <code>papers edit</code>;</li>
-<li><code>--delete</code>: remove them, as <code>papers rm</code> (in a terminal, papers asks
-  whether to delete their files too; <code>--delete-files</code> and <code>--keep-files</code>
-  answer without asking, see <a href="../files/#removing-entries-and-their-files">Files</a>);</li>
-<li><code>--add-tag TAG...</code>: add tags, as <code>papers tag --add</code>.</li>
+<li><code>--delete</code> asks, in a terminal, whether to delete the files of the
+  entries too; <code>--delete-files</code> and <code>--keep-files</code> answer without asking
+  (see <a href="../files/#removing-entries-and-their-files">Files</a>).</li>
+<li><code>--attach</code> needs exactly one listed entry: with none or several, it is an
+  error and nothing changes. The files are moved, copied or linked as the
+  <code>files</code> setting says.</li>
+<li><code>--detach</code> without FILE removes all the links of the listed entries.</li>
+<li>The folders given to <code>--fix-files</code> are the <code>--search</code> folders of
+  <code>papers file fix</code>: the broken links are also looked for there. <code>--move</code>
+  moves the files found there instead of copying them.</li>
+<li><code>--pool PATH</code> is the library to exchange with for <code>--push</code>, <code>--pull</code> and
+  <code>--sync</code> (once), and a library to look for files in for <code>--fix-files</code>
+  (can be repeated).</li>
+<li><code>--export-format</code> and <code>--export-files</code> are the <code>--format</code> and <code>--files</code>
+  options of <code>papers export</code> (<code>--format</code> of <code>papers list</code> is the format of
+  its own output).</li>
+<li><code>--detach</code> and <code>--fix-files</code> take any number of values: write them after
+  the search words, or end their values with another option.</li>
+<li>An option of an action without the action (e.g. <code>--move</code> without
+  <code>--fix-files</code>) is an error.</li>
 </ul>
-<p>For instance, the duplicates can be edited by hand with (<code>papers check
---duplicates</code> merges them, see <a href="../library-management/#duplicates">Managing your library</a>):</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>$&gt; papers list --duplicates --edit
-</code></pre></div>
-<p>The file actions of <code>papers list</code> are deprecated, and print a warning that
-shows the new form; they will be removed in v4:</p>
+<p>The action runs in the same process as the listing: papers can ask
+questions and open the editor, and the library is saved once (one backup
+snapshot, undone by one <code>papers undo</code>). One action at a time: two actions
+in the same command are an error, and nothing changes.</p>
+<p>(<code>papers check --duplicates</code> merges duplicates, see <a href="../library-management/#duplicates">Managing your
+library</a>.) The other commands that act on
+entries, e.g. <code>papers check</code>, read the keys of <code>papers list -K</code> with <code>-</code>
+(see <a href="#piping">Piping</a>).</p>
+<p>These forms are deprecated, print a warning that shows the new form, and
+will be removed in v4:</p>
 <table>
 <thead>
 <tr>
@@ -1113,16 +1215,12 @@ shows the new form; they will be removed in v4:</p>
 </thead>
 <tbody>
 <tr>
-<td><code>papers list ... --rename</code> (<code>--copy</code>)</td>
-<td><code>papers list ... -K \| papers file rename -</code> (<code>--keep-source</code>)</td>
+<td><code>papers list ... --copy</code></td>
+<td><code>papers list ... --rename --keep-source</code></td>
 </tr>
 <tr>
 <td><code>papers list ... --add-files FILE...</code></td>
-<td><code>papers file attach KEY FILE...</code></td>
-</tr>
-<tr>
-<td><code>papers list ... -o/--open</code></td>
-<td><code>papers list ... -K \| papers open -</code></td>
+<td><code>papers list ... --attach FILE...</code></td>
 </tr>
 <tr>
 <td><code>papers list ... --fetch</code></td>
@@ -1130,6 +1228,9 @@ shows the new form; they will be removed in v4:</p>
 </tr>
 </tbody>
 </table>
+<p><code>--add-files</code> keeps its papers 2 behaviour: it links the files where they
+are, or moves them with <code>--rename</code>, or copies them with <code>--copy</code>.
+<code>--attach</code> follows the <code>files</code> setting.</p>
 
 
 
