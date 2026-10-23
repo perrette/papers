@@ -244,8 +244,8 @@ def get_parser(config=None):
     installp.add_argument('--local', action="store_true", default=None,
         help="""ignored (a library configuration is always local)""")
     installp.add_argument('--global', action="store_false", dest='local', default=None,
-        help="deprecated (`papers init DIR --global`): create or update the library configuration next to "
-             "the bibtex, and register its directory as the default library (used outside of any library)")
+        help="no longer supported: an error that changes nothing (`papers init PATH --global` creates the "
+             "default library, `papers config --global default PATH` registers an existing one)")
 
     installp.add_argument('--git', action='store_true', default=None, help='back up the bibtex with git')
     installp.add_argument('--backup', action=_Deprecated, dest='git', new='--git (or `papers config git true`)')

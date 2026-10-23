@@ -18,6 +18,7 @@ command line (`--pool PATH`).
 | a project library (`papers install --local`) with its own PDFs | a self-contained library (`pool none`), the same as a new `papers init`. `papers config pool PATH` makes it a shallow library of PATH, once PATH has its PDFs |
 | several project libraries with a common `filesdir` | still works, with self-contained libraries (see [A shared files folder without a pool](pools.md#a-shared-files-folder-without-a-pool)); exchanges between libraries and shallow libraries are more efficient |
 | `papers install` | `papers init` to create a library, `papers config` to change it; `papers install` is a deprecated alias |
+| `papers install --global` | an error that changes nothing: `papers init PATH --global` creates the default library (for example `papers init ~/Documents/papers/default --global`), `papers config --global default PATH` registers an existing library |
 
 ## What happens on the first run
 

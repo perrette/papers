@@ -1,6 +1,6 @@
 """papers install, deprecated in v3 (an alias of init, or an update of the
-library configuration), and the libraries made with install --global: to
-remove with the command in v4"""
+library configuration; install --global is an error): to remove with the
+command in v4"""
 import os
 from pathlib import Path
 import json
@@ -9,35 +9,10 @@ import subprocess as sp
 from papers.config import Config, MachineConfig
 from papers.config import CONFIG_FILE, CONFIG_FILE_LOCAL
 
+import papers.config
+from papers.utils import PapersExit
 from tests.common import (paperscmd, PAPERSCMD, BaseTest as TestBaseInstall, BibTest, ConfigTest,
                           InitTest, GitLFSInitTest)
-import tests.test_undo as test_undo
-
-
-# libraries created with the deprecated `papers install --global`
-# (a library configuration next to the bibtex in v3)
-
-class GlobalInstallTest(TestBaseInstall):
-    def setUp(self):
-        super().setUp()
-        self.papers(f'install --force --global --bibtex {self.mybib} --files {self.filesdir}')
-
-    @property
-    def config(self):
-        # v3: the library configuration is written next to the bibtex
-        return Config.load(self._path(CONFIG_FILE_LOCAL))
-
-
-class GlobalGitInstallTest(GlobalInstallTest):
-    def setUp(self):
-        super().setUp()
-        self.papers(f'install --force --global --git --bibtex {self.mybib} --files {self.filesdir}')
-
-
-class GlobalGitLFSInstallTest(GlobalInstallTest):
-    def setUp(self):
-        super().setUp()
-        self.papers(f'install --force --global --git --git-lfs --bibtex {self.mybib} --files {self.filesdir}')
 
 
 bibtex2 = """@article{SomeOneElse2000,
@@ -274,17 +249,6 @@ class TestDefaultLocal(InitTest):
         config = Config.load(self._path(CONFIG_FILE_LOCAL))
         self.assertFalse(config.shallow)
 
-class TestDefaultLocal2(GlobalInstallTest):
-    def test_install(self):
-        # v3: install --global writes a library configuration next to the bibtex
-        self.assertFalse(os.path.exists(CONFIG_FILE))
-        self.assertTrue(self._exists(CONFIG_FILE_LOCAL))
-        self.assertFalse(self.config.shallow)
-        self.papers('install --edit')
-        self.assertTrue(self._exists(CONFIG_FILE_LOCAL))
-        self.assertFalse(os.path.exists(CONFIG_FILE))
-
-
 class TestDefaultScopeIsLocal(TestBaseInstall):
     def test_fresh_install_is_local(self):
         # a fresh install without scope option is local; an existing install
@@ -298,23 +262,19 @@ class TestDefaultScopeIsLocal(TestBaseInstall):
 
 class TestGlobalInstall(TestBaseInstall):
 
-    def test_install(self):
+    def test_install_global_is_an_error(self):
+        machine = open(papers.config.MACHINE_CONFIG_FILE).read()
+        with self.assertRaises(PapersExit) as cm:
+            self.papers(f'install --no-prompt --global --bibtex {self.mybib} --files {self.filesdir}')
+        self.assertIn('`papers init PATH --global`', str(cm.exception))
+        self.assertIn('papers init ~/Documents/papers/default --global', str(cm.exception))
+        self.assertIn('`papers config --global default PATH`', str(cm.exception))
+        # nothing was changed
         self.assertFalse(self._exists(self.mybib))
         self.assertFalse(self._exists(self.filesdir))
+        self.assertFalse(self._exists(CONFIG_FILE_LOCAL))
         self.assertFalse(os.path.exists(CONFIG_FILE))
-        self.papers(f'install --no-prompt --global --bibtex {self.mybib} --files {self.filesdir}')
-        self.assertTrue(self._exists(self.mybib))
-        self.assertTrue(self._exists(self.filesdir))
-        # v3: a library configuration next to the bibtex, registered as the default library
-        self.assertFalse(os.path.exists(CONFIG_FILE))
-        config = Config.load(self._path(CONFIG_FILE_LOCAL))
-        self.assertEqual(config.bibtex, os.path.abspath(self._path(self.mybib)))
-        self.assertEqual(config.filesdir, os.path.abspath(self._path(self.filesdir)))
-        self.assertEqual(os.path.realpath(MachineConfig.load().default_path()),
-                         os.path.realpath(self.temp_dir.name))
-        # the default library is self-contained: no pool, its own files
-        self.assertEqual(config.pool, 'none')
-        self.assertFalse(config.shallow)
+        self.assertEqual(open(papers.config.MACHINE_CONFIG_FILE).read(), machine)
 
 
 class TestGitInstall(TestBaseInstall):
@@ -514,19 +474,6 @@ class TestUninstall2(InitTest):
         self.assertTrue(self._exists(CONFIG_FILE_LOCAL))
         self.assertTrue(os.path.exists(CONFIG_FILE))
         self.assertEqual(open(papers.config.MACHINE_CONFIG_FILE).read(), machine)
-
-
-class TestTimeTravelGitGlobal(GlobalGitInstallTest, test_undo.TimeTravelBase):
-    pass
-
-
-class TestUninstallGlobal(GlobalGitLFSInstallTest):
-    def test_uninstall(self):
-        # v3: install --global writes a library configuration next to the bibtex
-        self.assertTrue(self._exists(CONFIG_FILE_LOCAL))
-        self.assertFalse(os.path.exists(CONFIG_FILE))
-        self.papers('uninstall --recursive')
-        self.assertFalse(self._exists(CONFIG_FILE_LOCAL))
 
 
 class TestInstallIsInit(ConfigTest):

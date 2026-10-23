@@ -10,7 +10,7 @@ from papers.backup import init_backup
 from papers.config import (CONFIG_FILE_LOCAL, Config, DEFAULT_LIBRARY, LIBRARY_CONFIG_FILES, LIBRARY_ONLY, NO_POOL,
                            SETTINGS, format_value, parse_value, pool_setting, short_home)
 from papers.files import broken_links, delete_files, is_inside
-from papers.install import DefaultAsker, InputAsker, RESET_WORDS, _ask_path, apply_install, resolve_install
+from papers.install import DefaultAsker, InputAsker, apply_install, resolve_install
 from papers.library import convert_file_links, find_config, get_biblio, snapshot_backup
 from papers.migrate import migrate_folders, migrate_v2_global
 from papers.pools import Exchange, Pools, library_without_pool
@@ -108,6 +108,8 @@ def installcmd(parser, o, config):
     The decision logic lives in papers.install (resolve_install); this
     function only wires up prompting and applies the resulting plan.
     """
+    if o.local is False:
+        raise PapersExit(INSTALL_GLOBAL_REMOVED)
     if o.edit and o.reset:
         parser.error('--edit and --reset are mutually exclusive')
     if o.edit:
@@ -117,8 +119,6 @@ def installcmd(parser, o, config):
 
     if o.local is True:
         logger.warning("--local is ignored: a library configuration is always in the library (see `papers init`)")
-    if o.local is False:
-        return install_global(parser, o, config, asker)
 
     if config.origin == 'library':
         logger.warning(f"`papers install` on an existing library is deprecated: "
@@ -133,50 +133,10 @@ def installcmd(parser, o, config):
     print(config.status(check_files=not o.no_check_files, verbose=True))
 
 
-def install_global(parser, o, config, asker):
-    """`papers install --global` (deprecated): create or update the library
-    configuration next to the bibtex, and register the library's directory
-    as the default library of the global configuration"""
-    logger.warning("`papers install --global` is deprecated: the global library of papers v2 is now the "
-                   "default library, used outside of any library. Use `papers init DIR --global` (DIR: the "
-                   "library), or `papers config --global default DIR` for an existing library. This command "
-                   "writes the library configuration next to the bibtex, and registers its directory as the "
-                   "default library.")
-    machine = config.machine
-    bibtex = o.bibtex
-    if not bibtex:
-        default = config.bibtex if config.origin in ('v2-global', 'default') and config.bibtex else 'papers.bib'
-        bibtex = _ask_path(asker, "Bibtex file name", default)
-    if not bibtex:
-        raise PapersExit("install --global needs a bibtex file")
-    bibtex = os.path.abspath(bibtex)
-
-    # the global configuration of v2 becomes a library and the default
-    # library, as with `papers migrate` (the library below then updates or replaces it)
-    migrate_v2_global(machine, dryrun=papers.config.DRYRUN)
-
-    libdir = os.path.dirname(bibtex)
-    target = os.path.join(libdir, CONFIG_FILE_LOCAL)
-    existing = Config.load(target, machine=machine) if os.path.exists(target) else Config(machine=machine)
-
-    o.bibtex = bibtex
-    o.pool = NO_POOL  # the default library has no pool
-    if o.filesdir and o.filesdir.lower() not in RESET_WORDS:
-        o.filesdir = os.path.abspath(o.filesdir)
-    if papers.config.DRYRUN and not os.path.isdir(libdir):
-        print(f"DRYRUN: {libdir} not created, {target} not saved")
-        return
-    os.makedirs(libdir, exist_ok=True)
-    with set_directory(libdir):
-        config = _install(o, existing, asker, target=target)
-
-    if papers.config.DRYRUN:
-        print(f"DRYRUN: {libdir} not registered as the default library in {machine.file}")
-        return
-    machine.set(DEFAULT_LIBRARY, short_home(libdir))
-    machine.save()
-    print(f"registered {libdir} as the default library in {machine.file}")
-    print(config.status(check_files=not o.no_check_files, verbose=True))
+INSTALL_GLOBAL_REMOVED = ("`papers install --global` is no longer supported (nothing was changed): create the "
+                          "default library with `papers init PATH --global` (e.g. `papers init "
+                          "~/Documents/papers/default --global`), or register an existing library with "
+                          "`papers config --global default PATH`")
 
 
 def uninstallcmd(parser, o, config):

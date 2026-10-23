@@ -216,11 +216,11 @@ bibtex, the files directory and git (`-y/--yes` accepts the defaults;
 `--no-prompt` and `--force` are its deprecated forms). On
 an existing library it updates the library configuration, as in version 2,
 with a deprecation warning: use `papers config` instead (`--edit` and
-`--reset` keep working). `papers install --global` (deprecated: use
-`papers init DIR --global`) writes the library configuration next to the
-bibtex and registers its directory as the default library; if a global
-configuration of version 2 exists, it first migrates it as `papers
-migrate` does. `--local` is ignored.
+`--reset` keep working). `papers install --global` is no longer supported:
+it stops with an error and changes nothing. Create the default library
+with `papers init PATH --global` (for example `papers init
+~/Documents/papers/default --global`), or register an existing library
+with `papers config --global default PATH`. `--local` is ignored.
 
 ## Uninstall
 

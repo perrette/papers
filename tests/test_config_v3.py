@@ -532,23 +532,17 @@ class TestMigrateV2Global(ConfigTest):
         self.assertIn('`papers config --global default PATH`', out)
         self.assertEqual(MachineConfig.load().default_path(), self.path('other'))
 
-    def test_install_global_migrates(self):
-        # install --global performs the migration of the v2 global configuration
-        with self.assertLogs('papers', level='WARNING') as logs:
+    def test_install_global_is_an_error(self):
+        # install --global changes nothing: neither the v2 configuration nor the default library
+        default = MachineConfig.load().default_path()
+        with self.assertRaises(PapersExit) as cm:
             self.papers('install --global -y --no-git', cwd=self.path('elsewhere'))
-        self.assertIn('`papers init DIR --global`', '\n'.join(logs.output))
-        self.assertIn('`papers config --global default DIR`', '\n'.join(logs.output))
-        self.assertFalse(os.path.exists(CONFIG_FILE))
-        self.assertTrue(os.path.exists(CONFIG_FILE + '.v2.bak'))
-        js = self.json('lib')
-        self.assertEqual(js['bibtex'], 'lib.bib')
-        self.assertEqual(js['editor'], 'nano')
-        self.assertEqual(js['nameformat'], {'template': '{author}-{year}'})
-        self.assertEqual(MachineConfig.load().default_path(), self.path('lib'))
-        # no more warning about the v2 configuration
-        with self.assertNoLogs(papers.logger, level='WARNING'):
-            out = self.papers('status', cwd=self.path('elsewhere'), sp_cmd='check_output')
-        self.assertIn('(default library)', out)
+        self.assertIn('`papers init PATH --global`', str(cm.exception))
+        self.assertIn('`papers config --global default PATH`', str(cm.exception))
+        self.assertTrue(os.path.exists(CONFIG_FILE))
+        self.assertFalse(os.path.exists(CONFIG_FILE + '.v2.bak'))
+        self.assertFalse(os.path.exists(self.path('lib', CONFIG_FILE_LOCAL)))
+        self.assertEqual(MachineConfig.load().default_path(), default)
 
 
 class TestMigrateFolders(ConfigTest):
