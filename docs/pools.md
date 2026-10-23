@@ -37,7 +37,12 @@ What a library does with its pool, or with the library of `--pool PATH`:
 - `papers sync` does both;
 - `papers status` (pool of a shallow library) and `papers pull --check`
   tell whether the pool changed since the last exchange with it: `up to
-  date`, or `changed since last pull or push`.
+  date`, or `changed since last pull or push`;
+- `papers file fix` relinks the broken links to the files of the pool entry
+  of the same paper (`papers file fix --pool PATH` also looks in PATH, which
+  may have a pool itself; nothing changes in PATH and no origin copy is
+  recorded, see
+  [Reconnecting PDFs and a bibtex](files.md#reconnecting-pdfs-and-a-bibtex)).
 
 An entry is **shared** with a pool when the pool has the same paper: the
 pool entry of its origin copy (see [Origin copies](#origin-copies)), else

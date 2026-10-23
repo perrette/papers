@@ -60,8 +60,8 @@ standard input, one per line:
 | `papers file detach --key KEY...` | remove all the links of the entries |
 | `papers file detach --broken [--key KEY...]` | remove the broken links (of all entries without `--key`) |
 | `papers file rm FILE... [-r] [--key KEY...]` | remove the links to the files, then delete the files, like `git rm` (below) |
-| `papers file check [KEY...]` | report broken links and the files found for them (in the pool, and in the folders of `--search DIR`), files linked twice, identical files (same checksum) of an entry, and with `--metadata` a DOI of the PDF that differs from the DOI of the entry (this parses the PDFs) |
-| `papers file fix [KEY...]` | apply the repairs that `papers file check` reports (below); `--search DIR` as for `check` |
+| `papers file check [KEY...]` | report broken links and the files found for them (in the pool, in the libraries of `--pool PATH`, and in the folders of `--search DIR`), files linked twice, identical files (same checksum) of an entry, and with `--metadata` a DOI of the PDF that differs from the DOI of the entry (this parses the PDFs) |
+| `papers file fix [KEY...]` | apply the repairs that `papers file check` reports (below); `--pool PATH` and `--search DIR` as for `check`; the files found are copied, never moved (`--move` moves those of `--search`) |
 | `papers file clean` | remove the files of the files directory and its subfolders that no entry links to, asking for each one (`-y/--yes` does not ask) |
 
 `papers file attach KEY FILE...` is the low-level form of
@@ -169,7 +169,7 @@ library that shared the files directory moved them into a library, a folder
 was renamed, a backup was restored elsewhere...), `papers file fix`
 looks for each missing file, without parsing any PDF:
 
-1. in a shallow library, in its pool, among the files of the pool entry of the
+1. in the pool of the library, among the files of the pool entry of the
    same paper (same DOI, arXiv identifier, ISBN, or same title and
    authors): the file with the same file name as the broken link; else
    the one file named `<name>--<file name of the link>` (the pool renamed
@@ -177,40 +177,68 @@ looks for each missing file, without parsing any PDF:
    [Renaming files and keys](renaming.md#entries-with-several-files));
    then, if one broken link of the entry and one file of the pool entry
    are left, that file. When more are left, nothing is guessed;
-2. in the folders given with `--search DIR` (searched recursively; the
+2. in the libraries given with `--pool PATH` (the option can be repeated),
+   in the same way: the entry of PATH of the same paper, and its files.
+   PATH must be a library (otherwise: `create it first with papers init`).
+   Nothing changes in PATH, and no origin copy is recorded (see
+   [Origin copies](pools.md#origin-copies)): only the file links of the
+   library change;
+3. in the folders given with `--search DIR` (searched recursively; the
    option can be repeated): a file with the same file name as the broken
    link, else a file named as the library's name template names the entry
    (with the extension of the link). When several files match, none is
    taken, and papers says which.
 
-The file found replaces the broken link, and is placed as
-`papers file attach KEY FILE` places it: in a shallow library, a file of
-the pool is linked where it is, and a file of a `--search` folder goes to
-the pool (as the `files` setting says: moved, copied or linked); in a
-self-contained library, the file goes to the files directory as the
-`files` setting says.
+The file found replaces the broken link. It is never moved, whatever the
+`files` setting:
+
+- in a self-contained library, it is copied (a hard link when possible)
+  into the files directory, named as `papers file attach KEY FILE` names
+  it;
+- in a shallow library, a file of its pool is linked where it is; a file of
+  `--pool PATH` or of a `--search` folder is copied into the files
+  directory of the pool, and the pool entry links to it (as for the other
+  changes of file links, see
+  [Shallow libraries](shallow-libraries.md#files));
+- in `link` mode, or in a library without files directory, the file is
+  linked where it is.
+
+`papers file fix --move` moves the files found in the `--search` folders
+instead of copying them. A file in the files directory of another library
+is still copied (`... belongs to the library in ...: copied, not moved`),
+and so are the files of the pool and of `--pool PATH`.
 
 `papers config pool PATH` links the library to the copies in PATH of the
 files that exist, and says how many links were already broken:
 `papers file fix` relinks them afterwards.
 
-`papers file check` reports the files that `papers file fix` would relink,
-and where they come from. `papers file fix --dry-run` shows the links that
-it would change, and changes nothing.
+`papers file check` takes `--pool PATH` and `--search DIR` too, reports the
+files that `papers file fix` would relink and where they come from, and
+ends with the `papers file fix` command to run, with the same `-C DIR`,
+`--bibtex FILE`, KEYs, `--pool` and `--search`. `papers file fix --dry-run`
+shows the links that it would change, and changes nothing. After
+`papers file fix`, the last line counts the issues left, if any.
 
 ```
-$ papers file check
-alpha2000: broken link: ~/shared/a.pdf -> ~/P/files/alpha_2000_paper-a.pdf (from the pool)
-b2000: broken link: ~/shared/b.pdf -> ~/P/files/beta_2000_paper-b.pdf (from the pool)
+$ papers file check --pool ~/P --search ~/Downloads
+perrette2013scaling: broken link: ~/old/esd-4-11-2013.pdf -> ~/P/files/perrette_2013_a-scaling-approach.pdf (from the library ~/P)
+perrette2011: broken link: ~/old/bg-8-515-2011.pdf -> ~/Downloads/bg-8-515-2011.pdf (found in ~/Downloads)
 2 links can be relinked, 0 without a file found
-2 issue(s) in the files of 3 entries
-2 links can be repaired: `papers file fix`
-$ papers file fix
-alpha2000: relinked to ~/P/files/alpha_2000_paper-a.pdf (from the pool)
-b2000: relinked to ~/P/files/beta_2000_paper-b.pdf (from the pool)
+2 issue(s) in the files of 2 entries
+2 links can be repaired: `papers file fix --pool ~/P --search ~/Downloads`
+$ papers file fix --pool ~/P --search ~/Downloads
+perrette2013scaling: relinked to ~/thesis/files/perrette_2013_a-scaling-approach-to-project-regional-sea-level-rise.pdf (from the library ~/P)
+perrette2011: relinked to ~/thesis/files/perrette_2011_near-ubiquity-of-ice-edge-blooms-in-the-arctic.pdf (found in ~/Downloads)
 2 links relinked, 0 still broken
-2 issue(s) in the files of 3 entries
-$ papers file fix --search ~/Downloads --search /media/backup/papers
+```
+
+`papers file fix` works on any bibtex, without `papers init`: there is no
+files directory, and the files found are linked where they are.
+
+```
+$ papers file fix --bibtex refs.bib --search ~/Downloads
+perrette2011: relinked to ~/Downloads/bg-8-515-2011.pdf (found in ~/Downloads)
+1 link relinked, 0 still broken
 ```
 
 For PDFs whose names say nothing about the paper, `papers add -R DIR` is

@@ -58,8 +58,10 @@ What the commands do in a shallow library:
   is recorded, see [Origin copies](pools.md#origin-copies)). A change that
   `add` makes to the fields of an entry the library has already is pushed
   only with auto-push;
-- `papers file attach`, `file rename` and `file fix` place the files they
-  handle in the same way;
+- `papers file attach` and `file rename` place the files they handle in
+  the same way; `file fix` copies the files it finds outside the pool into
+  the pool (hard links when possible) and never moves them, unless
+  `--move` is given for the files of the `--search` folders;
 - the file links are always pushed, whatever the `auto-push` setting: a
   command that changes the files of an entry (`file attach`, `file rename`,
   `file detach`, `file rm`, `file mv`, `file fix`, `edit`...) sets the
@@ -104,7 +106,8 @@ What the commands do in a shallow library:
   write), and by `papers file fix`. `papers file check` reports it
   meanwhile, with the new name `(from the pool)`. A broken link to a file
   outside the pool is relinked to the pool's file by `papers file fix`
-  only (see
+  only, and `papers file fix --pool PATH` also takes the files of the same
+  paper in another library PATH, copied into the pool (see
   [Reconnecting PDFs and a bibtex](files.md#reconnecting-pdfs-and-a-bibtex)).
 
 Deleting a file of the pool, with `papers file rm` in a shallow library or
@@ -356,7 +359,9 @@ Each library only knows its own entries. What to watch for:
   links to.
 - `papers file rename` in one library renames the shared PDF, and the
   link of the other library breaks. `papers file check` reports the broken
-  link there. `papers file fix --search FOLDER` relinks it if the new name
+  link there. `papers file fix --pool OTHER` relinks it to the file of the
+  same paper in the other library (copied, a hard link when possible), and
+  `papers file fix --search FOLDER` if the new name
   is the one that the library's name template gives the entry (the two
   libraries use the same template); otherwise attach the renamed file with
   `papers file attach KEY FILE`, and remove the link with
