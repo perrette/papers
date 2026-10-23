@@ -891,93 +891,6 @@
   
 
     
-      
-      
-  
-  
-  
-  
-    
-    
-    
-    
-      
-        
-        
-      
-    
-    
-    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
-      
-        
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
-        
-          
-          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
-            
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    About
-  
-
-    
-  </span>
-  
-  
-
-            <span class="md-nav__icon md-icon"></span>
-          </label>
-        
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4">
-            <span class="md-nav__icon md-icon"></span>
-            
-  
-    About
-  
-
-          </label>
-          <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../features/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Features
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-          </ul>
-        </nav>
-      
-    </li>
-  
-
-    
   </ul>
 </nav>
                   </div>
@@ -1122,23 +1035,19 @@ command line (<code>--pool PATH</code>).</p>
 <tbody>
 <tr>
 <td>the global library (<code>papers install --global</code>)</td>
-<td>the default library, after <code>papers migrate</code>, where it is. It is a self-contained library: commands run outside of any project act on it, <code>papers init --shallow</code> creates a project that uses it as pool, and <code>papers -C DIR</code> reaches it from anywhere</td>
+<td>the default library, after <code>papers migrate</code>, where it is: a self-contained library that commands run outside of any project act on (<code>papers -C DIR</code> reaches it from anywhere too)</td>
 </tr>
 <tr>
 <td>a project library (<code>papers install --local</code>) with its own PDFs</td>
-<td>a self-contained library (<code>pool none</code>), the same as a new <code>papers init</code>. <code>papers config pool PATH</code> makes it a shallow library of PATH, once PATH has its PDFs</td>
+<td>a self-contained library, the same as a new <code>papers init</code>. <code>papers config pool PATH</code> makes it a shallow library of PATH, once PATH has its PDFs</td>
 </tr>
 <tr>
 <td>several project libraries with a common <code>filesdir</code></td>
-<td>still works, with self-contained libraries (see <a href="../pools/#a-shared-files-folder-without-a-pool">A shared files folder without a pool</a>); exchanges between libraries and shallow libraries are more efficient</td>
+<td>still works (see <a href="../pools/#a-shared-files-folder-without-a-pool">A shared files folder without a pool</a>). The model preferred in papers 3, which is also more efficient, is a shared library (a pool) and project libraries that are shallow libraries of it</td>
 </tr>
 <tr>
 <td><code>papers install</code></td>
-<td><code>papers init</code> to create a library, <code>papers config</code> to change it; <code>papers install</code> is a deprecated alias</td>
-</tr>
-<tr>
-<td><code>papers install --global</code></td>
-<td>an error that changes nothing: <code>papers init PATH --global</code> creates the default library (for example <code>papers init ~/Documents/papers/default --global</code>), <code>papers config --global default PATH</code> registers an existing library</td>
+<td><code>papers init</code> to create a library, <code>papers config</code> to change it; <code>papers install</code> is a deprecated alias. <code>papers install --global</code> is an error that changes nothing: <code>papers init PATH --global</code> creates the default library (for example <code>papers init ~/Documents/papers/default --global</code>), <code>papers config --global default PATH</code> registers an existing library</td>
 </tr>
 </tbody>
 </table>
@@ -1167,8 +1076,7 @@ papers 2 is <code>~/bibliography/papers.bib</code>:</p>
   has no pool.</li>
 <li>It is registered as the default library, where it is, unless the global
   configuration of papers 3 already sets another one: commands run
-  outside of any project act on it, and <code>papers init --shallow</code> creates a
-  project that uses it as pool (see
+  outside of any project act on it (see
   <a href="../global-library/">A global shared library</a>).</li>
 <li>The bibtex, the PDFs and the git backup stay where they are. File links
   stay absolute, as they were; <code>papers migrate --relative</code> makes them
