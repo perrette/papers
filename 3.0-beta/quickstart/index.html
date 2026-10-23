@@ -1095,7 +1095,10 @@ optional; a project folder shared with coauthors should stay local. See
 </code></pre></div>
 <p><code>add</code> looks in the pool first: a paper the pool has is taken from it, with
 its PDF, and nothing is fetched or copied. A new paper goes to the library
-and to the pool.</p>
+and to the pool, since this library is not local and keeps its PDFs in the
+pool. In a local library with a pool, a new paper goes to the pool only if
+the <code>auto-push</code> setting is on, or with <code>papers push</code>. See
+<a href="../pools/#local-or-not">Local or not</a> and <a href="../pools/#auto-push">Auto-push</a>.</p>
 <p>Each library has only the entries it asks for. Changes to shared entries,
 made in either project, are exchanged with <code>papers sync</code>. See
 <a href="../pools/">Pools</a> for <code>pull</code>, <code>push</code>, <code>sync</code> and the merge.</p>
