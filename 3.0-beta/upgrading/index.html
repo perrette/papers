@@ -977,15 +977,24 @@
 
 
 <h1 id="upgrading-from-papers-2">Upgrading from papers 2<a class="headerlink" href="#upgrading-from-papers-2" title="Permanent link">&para;</a></h1>
-<p>In papers 2 you had one global library, or a library tied to a project
-with its own PDFs. In papers 3 a library is either self-contained (its own
-entries and PDFs, no pool) or shallow: it uses another library as its
-pool, takes its entries from there and links to the pool's PDFs. Any
-self-contained library can be the pool of others: a project, a library
-per topic (<code>~/Documents/papers/sealevel</code>), or one library for everything
-(<code>~/Documents/papers</code>, see <a href="../global-library/">A global shared library</a>).
-Any library can also exchange entries with another library given on the
-command line (<code>--pool PATH</code>).</p>
+<p>papers 2 had one global library, or libraries tied to a project, each
+with its own PDFs. papers 3 keeps both, and adds:</p>
+<ul>
+<li><strong>exchanges between libraries</strong>: <code>papers pull</code>, <code>push</code> and <code>sync</code> copy
+  entries from one library to another and keep them in step, with a
+  field-by-field merge (see <a href="../pools/">Pools</a>);</li>
+<li><strong>shallow libraries</strong>: a project library that takes its entries from a
+  shared library, its pool, and links to the pool's PDFs instead of
+  copying them (see <a href="../shallow-libraries/">Shallow libraries</a>). The shared
+  library can be a library per topic (<code>~/Documents/papers/sealevel</code>), or
+  one library for everything, such as the global library of papers 2,
+  which becomes the default library (see
+  <a href="../global-library/">A global shared library</a>);</li>
+<li><strong>a review of the commands</strong>: <code>papers init</code> and <code>papers config</code> replace
+  <code>papers install</code>, the commands on attached files are grouped under
+  <code>papers file</code>, and older forms are deprecated (see
+  <a href="#what-else-changed">What else changed</a>).</li>
+</ul>
 <h2 id="what-becomes-of-a-papers-2-setup">What becomes of a papers 2 setup<a class="headerlink" href="#what-becomes-of-a-papers-2-setup" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -1111,6 +1120,16 @@ exchanges.</p>
 <li>The global configuration of papers 3 is <code>~/.config/papers/config.json</code>
   on Linux. It holds default settings, and optionally the default library
   (<code>papers config --global default PATH</code>).</li>
+<li><code>papers file</code> groups the commands on attached files: <code>attach</code>,
+  <code>detach</code>, <code>rm</code>, <code>mv</code>, <code>rename</code>, <code>check</code>, <code>fix</code>, <code>clean</code> (see
+  <a href="../files/">Files</a>). They replace <code>papers filecheck</code> and the file options
+  of <code>papers list</code> (<code>--add-files</code>, <code>--rename</code>, <code>--copy</code>).</li>
+<li>Deprecated forms still work, with a warning that names the new form, and
+  are removed in papers 4: <code>papers install</code>, <code>papers filecheck</code>,
+  <code>papers doi</code> (<code>papers extract --doi-only</code>), <code>papers restore-backup</code>
+  (<code>papers restore</code>), <code>papers list --fetch</code> / <code>--open</code>, <code>--attachment</code>
+  (<code>--attach</code>), <code>-m/--mode</code> (<code>--on-duplicate</code>), <code>--relative-paths</code> /
+  <code>--absolute-paths</code> (<code>papers config paths relative|absolute</code>).</li>
 </ul>
 
 
