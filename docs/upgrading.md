@@ -1,7 +1,6 @@
 # Upgrading from papers 2
 
-papers 2 had one global library, or libraries tied to a project, each
-with its own PDFs. papers 3 keeps both, and adds:
+papers 3 adds the following new functionalities:
 
 - **exchanges between libraries**: `papers pull`, `push` and `sync` copy
   entries from one library to another and keep them in step, with a
@@ -10,8 +9,7 @@ with its own PDFs. papers 3 keeps both, and adds:
   shared library, its pool, and links to the pool's PDFs instead of
   copying them (see [Shallow libraries](shallow-libraries.md)). The shared
   library can be a library per topic (`~/Documents/papers/sealevel`), or
-  one library for everything, such as the global library of papers 2,
-  which becomes the default library (see
+  one library for everything, the default library (see
   [A global shared library](global-library.md));
 - **a review of the commands**: `papers init` and `papers config` replace
   `papers install`, the commands on attached files are grouped under
