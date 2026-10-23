@@ -91,7 +91,8 @@ forms of `--duplicates --by key`, `--by doi` and `--by title`;
 The commands that act on entries take KEY arguments, where KEY is any of:
 
 - the key of the entry (case-insensitive), or a former key listed in its
-  biblatex `ids` field (comma-separated);
+  biblatex `ids` field (comma-separated); the key of an entry names that
+  entry even if it is also a former key of another entry;
 - a DOI: `10.1000/xyz`, also written `doi:10.1000/xyz` or
   `https://doi.org/10.1000/xyz` (case-insensitive);
 - an arXiv identifier: `2101.01234`, `2101.01234v2`, `arXiv:2101.01234`, or

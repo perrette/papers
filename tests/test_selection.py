@@ -193,6 +193,17 @@ class SelectIdentifiersTest(unittest.TestCase):
         with self.assertRaisesRegex(PapersExit, 'cannot start with a digit'):
             self.select('2000book')
 
+    def test_key_wins_over_alias(self):
+        "a key that is also a former key of another entry names the entry of that key"
+        biblio = Biblio(parse_string(ids_bibtex + '\n@article{Old2020,\n title = {Old},\n year = {2020}\n}\n'))
+        self.assertEqual(keys(select_entries(biblio, ['old2020'])), ['Old2020'])
+        self.assertEqual(keys(select_entries(biblio, ['Older2019'])), ['New2021'])  # the alias still works
+
+    def test_keys_differing_in_case(self):
+        biblio = Biblio(parse_string('@article{Same,\n title = {A}\n}\n\n@article{same,\n title = {B}\n}\n'))
+        with self.assertRaisesRegex(PapersExit, 'several entries match: Same, same'):
+            select_entries(biblio, ['SAME'])
+
 
 class SelectionCommandsTest(InitTest):
     initial_content = bibtex

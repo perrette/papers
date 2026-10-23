@@ -132,6 +132,17 @@ def entry_identifiers(e):
     return ids
 
 
+def _identifier_index(entries):
+    "{(kind, value): entries} of the identifiers of the entries (see entry_identifiers)"
+    index = {}
+    for e in entries:
+        for ident in entry_identifiers(e):
+            matches = index.setdefault(ident, [])
+            if not any(e is x for x in matches):
+                matches.append(e)
+    return index
+
+
 def read_selection(args, stdin=None):
     """the identifiers of the command line, where `-` stands for the lines
     of the standard input (one per line, blank lines ignored)"""
@@ -148,6 +159,8 @@ def read_selection(args, stdin=None):
 def select_entries(biblio, args, stdin=None):
     """the entries named by identifiers (see parse_identifier; `-` reads them
     from the standard input), in the order given and without repetition.
+    The key of an entry names that entry, even if it is also a former key
+    (`ids`) of another entry.
 
     An identifier that matches no entry, or several entries (e.g. an ISBN
     shared by the chapters of a book), is an error, raised before the command
@@ -162,12 +175,11 @@ def select_some(biblio, args, stdin=None):
     """as select_entries, but the identifiers that match no entry are
     returned instead of raising: (entries, identifiers not found)"""
     selection = read_selection(args, stdin=stdin)
-    index = {}
-    for e in biblio.entries:
-        for ident in entry_identifiers(e):
-            matches = index.setdefault(ident, [])
-            if not any(e is x for x in matches):
-                matches.append(e)
+    all_entries = biblio.entries
+    keys = {}  # lower-case key -> entries
+    for e in all_entries:
+        keys.setdefault(get_entry_val(e, 'ID', '').lower(), []).append(e)
+    index = None
     entries = []
     errors = []
     missing = []
@@ -177,7 +189,13 @@ def select_some(biblio, args, stdin=None):
         except ValueError as error:
             errors.append(str(error))
             continue
-        found = index.get(ident, [])
+        # the key of an entry wins over the former keys (ids) of the others:
+        # the index of all identifiers is only needed for the other arguments
+        found = keys.get(ident[1], []) if ident[0] == 'key' else []
+        if len(found) != 1:
+            if index is None:
+                index = _identifier_index(all_entries)
+            found = index.get(ident, [])
         if not found and ident[0] == 'doi':
             # a key that is a DOI (entries fetched with the DOI as key)
             found = index.get(('key', ident[1]), [])
