@@ -179,6 +179,10 @@ class FilesPolicy:
     - a file in the files directory of a pool (`pool_dirs`), or a file of a
       pool entry (`pool_files`), is never moved: it is copied (a hard link
       when possible), or linked in link mode;
+    - a file of `copied` (the files that `papers file fix` found) is copied
+      (a hard link when possible), or linked in link mode, never moved, even
+      from the files directory (with `in_pool`, a file already there is
+      linked where it is);
     - with `in_pool`, `filesdir` is the files directory of the pool of a shallow
       library (papers.pools.use_pool_files): the files already there are
       linked where they are, never renamed, since other libraries may link
@@ -186,7 +190,7 @@ class FilesPolicy:
     """
 
     def __init__(self, mode, filesdir=None, current_config=None, machine=None, keep=(), pool_dirs=(), in_pool=False,
-                 pool_files=()):
+                 pool_files=(), copied=()):
         if mode not in FILES_MODES:
             raise ValueError(f'files mode must be one of {", ".join(FILES_MODES)}, got {mode!r}')
         self.mode = mode
@@ -195,6 +199,7 @@ class FilesPolicy:
         self.keep = {realpath(f) for f in keep}
         self.pool_dirs = [d for d in pool_dirs if d]
         self.pool_files = {realpath(f) for f in pool_files}
+        self.copied = {realpath(f) for f in copied}
         self.in_pool = in_pool
         self._said = set()
 
@@ -205,6 +210,8 @@ class FilesPolicy:
             return 'link'
         if self.mode == 'link':
             return 'link'
+        if realpath(file) in self.copied:
+            return 'link' if self.in_pool and is_inside(file, self.filesdir) else 'copy'
         if is_inside(file, self.filesdir):
             return 'link' if self.in_pool else 'move'
         if realpath(file) in self.pool_files:
@@ -221,14 +228,14 @@ class FilesPolicy:
         return self.mode
 
 
-def files_policy(config, mode, pool_dirs=(), keep=(), pool_files=()):
+def files_policy(config, mode, pool_dirs=(), keep=(), pool_files=(), copied=()):
     """the FilesPolicy of a library (its configuration) for a files mode;
     pool_dirs: the files directories of its pools; pool_files: files of
-    pool entries (outside pool_dirs too)"""
+    pool entries (outside pool_dirs too); copied: files never moved"""
     # files placed in the pool by a shallow library (see papers.pools.use_pool_files)
     in_pool = config.shallow and any(realpath(config.filesdir or '') == realpath(d) for d in pool_dirs)
     return FilesPolicy(mode, config.filesdir, current_config=config.file, machine=config.machine, keep=keep,
-                       pool_dirs=pool_dirs, in_pool=in_pool, pool_files=pool_files)
+                       pool_dirs=pool_dirs, in_pool=in_pool, pool_files=pool_files, copied=copied)
 
 
 # names of the files of an entry, directory scan
@@ -410,13 +417,14 @@ def rename_files(biblio, entries, config, pool_dirs=(), keep_source=False):
             logger.error(f"{get_entry_val(e, 'ID', '')}: {error}")
 
 
-def attach_files(biblio, e, files, config, mode, pool_dirs=(), replace=None, pool_files=()):
+def attach_files(biblio, e, files, config, mode, pool_dirs=(), replace=None, pool_files=(), copied=()):
     """add files to the links of an entry, and place them as the files mode
     says (the files the entry had stay where they are).
 
     replace: {link: [files]}: links of the entry (broken links) replaced in
     place by files, placed in the same way (`files` come after them).
-    pool_files: files of pool entries, never moved (see FilesPolicy)."""
+    pool_files: files of pool entries, never moved (see FilesPolicy).
+    copied: files copied, never moved (see FilesPolicy)."""
     def resolve(f):
         if str(f).startswith("http://") or str(f).startswith("https://"):
             return download_url(f, expect_pdf=False)  # moved into the files directory
@@ -431,7 +439,8 @@ def attach_files(biblio, e, files, config, mode, pool_dirs=(), replace=None, poo
     added = [f for fs in replace.values() for f in fs] + new
     biblio.set_files(e, [g for f in old for g in replace.get(f, [f])] + new)
     if mode != 'link' or any(is_download(f) for f in added):
-        biblio.rename_entry_files(e, copy=files_policy(config, mode, pool_dirs, keep=kept, pool_files=pool_files))
+        biblio.rename_entry_files(e, copy=files_policy(config, mode, pool_dirs, keep=kept, pool_files=pool_files,
+                                                       copied=copied))
 
 
 class SearchFolders:

@@ -492,6 +492,9 @@ def get_parser(config=None):
     p.add_argument('-r', action='store_true', dest='recursive', help='FILE can be a folder: the linked files inside it')
     _command(p, file_rmcmd, library=True)
 
+    _pool_help = ('also look for the files of the broken links in the library PATH, among the files of the '
+                  'entry of the same paper, after the pool of the library and before the --search folders '
+                  '(can be repeated)')
     _search_help = ('also look for the files of the broken links in DIR (recursively), by file name, else by '
                     'the template name of the entry (can be repeated)')
     p = filesub.add_parser('check', parents=[cfg],
@@ -502,6 +505,7 @@ def get_parser(config=None):
                     '`papers file fix` applies the repairs.')
     p.add_argument('entries', nargs='*', metavar='KEY', help=_selection_help + ' (default: all entries)')
     p.add_argument('--metadata', action='store_true', help='also compare the DOI of the PDFs with the entry (parses the PDFs)')
+    p.add_argument('--pool', action='append', metavar='PATH', help=_pool_help)
     p.add_argument('--search', action='append', metavar='DIR', help=_search_help)
     _command(p, file_checkcmd, library=True)
 
@@ -509,11 +513,18 @@ def get_parser(config=None):
         help='repair the file links that `papers file check` reports',
         description='apply the safe repairs that `papers file check` reports: repair the paths saved by '
                     'Mendeley, remove the second link of a file linked twice or of identical files (the files '
-                    'are kept), and relink the broken links to the files found in the pool (same paper) or in '
-                    'the --search folders, placed as `papers file attach` does. With --dry-run, list the '
-                    'repairs and change nothing.')
+                    'are kept), and relink the broken links to the files found in the pool or the libraries of '
+                    '--pool PATH (same paper), or in the --search folders. A file found is never moved: it is '
+                    'copied (a hard link when possible) into the files directory, named as `papers file '
+                    'attach` names it (in a shallow library, into the files directory of its pool; a file of '
+                    'its pool is linked where it is); in link mode or without files directory, it is linked '
+                    'where it is. With --dry-run, list the repairs and change nothing.')
     p.add_argument('entries', nargs='*', metavar='KEY', help=_selection_help + ' (default: all entries)')
+    p.add_argument('--pool', action='append', metavar='PATH', help=_pool_help)
     p.add_argument('--search', action='append', metavar='DIR', help=_search_help)
+    p.add_argument('--move', action='store_true',
+                   help='move the files found in the --search folders instead of copying them (a file in the '
+                        'files directory of another library is still copied)')
     _command(p, file_fixcmd, library=True)
 
     p = filesub.add_parser('clean', parents=[cfg],

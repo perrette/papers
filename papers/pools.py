@@ -395,11 +395,16 @@ class Pools:
     def get(self, path):
         """a library given on the command line (--pool PATH): a path relative
         to the current directory, of a library without pool"""
-        # named as given; an absolute path with ~ (the shell expands ~/...)
-        shown = path if not os.path.isabs(os.path.expanduser(path)) else short_home(os.path.expanduser(path))
-        pool_ = self.resolve(os.path.abspath(os.path.expanduser(path)), shown=shown)
+        pool_ = self.get_library(path)
         check_poolless(pool_)
         return pool_
+
+    def get_library(self, path):
+        """a library given on the command line (--pool PATH), which may have
+        a pool itself (`papers file fix --pool PATH` only takes its files)"""
+        # named as given; an absolute path with ~ (the shell expands ~/...)
+        shown = path if not os.path.isabs(os.path.expanduser(path)) else short_home(os.path.expanduser(path))
+        return self.resolve(os.path.abspath(os.path.expanduser(path)), shown=shown)
 
     def loaded(self):
         "the pools resolved so far"

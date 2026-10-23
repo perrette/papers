@@ -218,17 +218,21 @@ def _search_names(e, link, rest, nameformat):
     return names
 
 
-def plan_relinks(exchange, entries, search, nameformat):
+def plan_relinks(exchange, entries, search, nameformat, others=()):
     """the files found for the broken links of the entries (see
     `papers file fix`), without parsing any file: the pool of the
-    library first (Exchange.pool_relinks), then the --search folders (by the
+    library first, then the libraries of --pool PATH (`others`, see
+    Exchange.pool_relinks), then the --search folders (by the
     link's file name, else by the template name of the entry). Return
     (plans, unclear, count): plans [(entry, {link: [files]}, {link: source})]
-    where source is 'pool' or the --search folder; unclear [(entry, link,
-    reason)] for the links that several files match; count, the number of
-    broken links."""
+    where source is 'pool' (the pool of the library), the Pool of a
+    --pool PATH, or the --search folder; unclear [(entry, link, reason)]
+    for the links that several files match; count, the number of broken
+    links."""
     biblio = exchange.biblio
-    pool = exchange.pools.pool(quiet=True)
+    own = exchange.pools.pool(quiet=True)
+    pools = [(own, 'pool')] if own is not None else []
+    pools += [(p, p) for p in others if p is not own]
     plans, unclear, count = [], [], 0
     claims = {}  # real path of a file found in a --search folder: [(plan, link)]
     for e in entries:
@@ -236,8 +240,12 @@ def plan_relinks(exchange, entries, search, nameformat):
         if not broken:
             continue
         count += len(broken)
-        found = exchange.pool_relinks(e, pool, broken) if pool is not None else {}
-        plan = (e, found, dict.fromkeys(found, 'pool'))
+        found, sources = {}, {}
+        for pool, source in pools:
+            more = exchange.pool_relinks(e, pool, [f for f in broken if f not in found])
+            found.update(more)
+            sources.update(dict.fromkeys(more, source))
+        plan = (e, found, sources)
         linked = {realpath(f) for f in biblio.get_files(e) + [g for fs in found.values() for g in fs]
                   if os.path.exists(f)}
         rest = [f for f in broken if f not in found]
@@ -269,7 +277,11 @@ def _links(n):
 
 
 def _source(source):
-    return 'from the pool' if source == 'pool' else f'found in {short_home(source)}'
+    if source == 'pool':
+        return 'from the pool'
+    if isinstance(source, str):
+        return f'found in {short_home(source)}'
+    return f'from the library {source.shown}'
 
 
 def file_checkcmd(parser, o, config):
@@ -292,7 +304,12 @@ def _file_check(o, config, fix):
     """papers file check (fix=False) and papers file fix (fix=True): with
     fix, apply the safe repairs (repaired paths, the second link of a file
     linked twice or of identical files removed, broken links relinked to the
-    files found in the pool or the --search folders); --dry-run lists them"""
+    files found in the pool, the libraries of --pool PATH or the --search
+    folders); --dry-run lists them. A file found is copied (a hard link when
+    possible) into the files directory, never moved, except with --move a
+    file of a --search folder (see FilesPolicy for the files of other
+    libraries); in link mode, or without files directory, it is linked where
+    it is."""
     dryrun = papers.config.DRYRUN
     metadata = getattr(o, 'metadata', False)
     nameformat = config.nameformat  # the library's own (a shallow library places files with the pool's)
@@ -303,11 +320,14 @@ def _file_check(o, config, fix):
     selected = {id(e) for e in entries}
     exchange = Exchange(config, biblio, pools)
     search = SearchFolders(o.search or [])
+    others = [pools.get_library(p) for p in o.pool or []]
+    mode = files_mode(o, config) if fix else None
+    move = getattr(o, 'move', False)  # --move: the files of the --search folders are moved
 
     # the links to pool files repaired when a shallow library is loaded (already linked), then the others
     loaded = [(e, found, dict.fromkeys(found, 'pool')) for e, found in getattr(biblio, 'repaired_links', [])
               if id(e) in selected]
-    plans, unclear, count = plan_relinks(exchange, entries, search, nameformat)
+    plans, unclear, count = plan_relinks(exchange, entries, search, nameformat, others)
     count += sum(len(found) for _, found, _ in loaded)
 
     lines = []
@@ -319,8 +339,10 @@ def _file_check(o, config, fix):
                 n = len(found.get(f, [f]))
                 positions[f] = range(i, i + n)
                 i += n
-            attach_files(biblio, e, [], config, files_mode(o, config), pools.files_dirs(), replace=found,
-                         pool_files=[f for link in found if sources[link] == 'pool' for f in found[link]])
+            attach_files(biblio, e, [], config, mode, pools.files_dirs(), replace=found,
+                         pool_files=[f for link in found if sources[link] == 'pool' for f in found[link]],
+                         copied=[f for link in found if sources[link] != 'pool'
+                                 and not (move and isinstance(sources[link], str)) for f in found[link]])
             newfiles = biblio.get_files(e)
             found = {link: [newfiles[j] for j in positions[link]] for link in found}
         found = {link: ', '.join(short_home(f) for f in files) for link, files in found.items() if files}

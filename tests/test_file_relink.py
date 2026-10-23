@@ -199,8 +199,49 @@ class TestSearch(RelinkTest):
         new = self.path('lib', 'files', self.template)
         self.assertEqual(self.files('one2000'), [new])
         self.assertIn(f'one2000: relinked to {new} (found in {self.path("downloads")})', out)
-        self.assertFalse(os.path.exists(found))  # files: move
+        # files: move, but a file found is never moved: copied (a hard link)
+        self.assertTrue(os.path.samefile(new, found))
+        self.assertEqual(os.stat(found).st_nlink, 2)
         self.assertEqual(Path(new).read_text(), 'paper.pdf')
+
+    def test_move(self):
+        found = self.write('downloads', 'paper.pdf')
+        out = self.out('file fix --search ../downloads --move')
+        new = self.path('lib', 'files', self.template)
+        self.assertEqual(self.files('one2000'), [new])
+        self.assertIn(f'one2000: relinked to {new} (found in {self.path("downloads")})', out)
+        self.assertFalse(os.path.exists(found))
+        self.assertEqual(Path(new).read_text(), 'paper.pdf')
+
+    def test_move_copies_the_files_of_another_library(self):
+        # a file in the files directory of another library stays there with --move
+        found = self.write('pool', 'files', 'paper.pdf')
+        out = self.out('file fix --search ../pool/files --move')
+        new = self.path('lib', 'files', self.template)
+        self.assertEqual(self.files('one2000'), [new])
+        self.assertIn(f'{found} belongs to the library in {self.path("pool")}: copied, not moved', out)
+        self.assertTrue(os.path.samefile(new, found))
+
+    def test_found_in_the_files_directory(self):
+        # a file found in the files directory (shared with another library?) is not renamed
+        found = self.write('lib', 'files', 'paper.pdf')
+        self.lib('file fix --search files')
+        new = self.path('lib', 'files', self.template)
+        self.assertEqual(self.files('one2000'), [new])
+        self.assertTrue(os.path.samefile(new, found))
+
+    def test_move_without_files_directory(self):
+        self.lib('config --unset filesdir')
+        self.write('downloads', 'paper.pdf')
+        with self.assertRaisesRegex(PapersExit, '--move: the library has no files directory'):
+            self.lib('file fix --search ../downloads --move')
+
+    def test_link_mode(self):
+        # link mode: the file found is linked where it is
+        found = self.write('downloads', 'paper.pdf')
+        self.lib('config files link')
+        self.lib('file fix --search ../downloads')
+        self.assertEqual(self.files('one2000'), [found])
 
     def test_template_name(self):
         found = self.write('downloads', self.template)
@@ -251,17 +292,110 @@ class TestSearch(RelinkTest):
         with self.assertRaisesRegex(PapersExit, '--search ../nope: not a folder'):
             self.lib('file check --search ../nope')
 
-    def test_shallow_moves_into_the_pool(self):
+    def test_shallow_copies_into_the_pool(self):
         self.lib('config pool ../pool -y')
         found = self.write('downloads', 'paper.pdf')
         out = self.out('file fix --search ../downloads')
         new, = self.files('one2000')
         self.assertTrue(new.startswith(self.path('pool', 'files')))
         self.assertIn(f'one2000: relinked to {short_home(new)} (found in {self.path("downloads")})', out)
-        self.assertFalse(os.path.exists(found))
+        self.assertTrue(os.path.samefile(new, found))
         # auto-push false: the entry, not in the pool, goes there with its file (file links are always pushed)
         self.assertIn('one2000: also added to pool ../pool', out)
         self.assertEqual(self.files('one2000', where='pool'), [new])
+
+
+class TestOtherLibrary(RelinkTest):
+    """papers file fix --pool PATH: lib/ (self-contained, files: move) takes
+    the files of the library pool/ (not its pool), by paper identity"""
+
+    def setUp(self):
+        super().setUp()
+        self.gone = self.path('gone', 'smith-paper.pdf')  # not the name of the file of pool/
+        self.bib(entry('smith2000a', self.gone, doi='10.1000/SMITH'))
+        self.template = 'one_2000_title-of-smith2000a.pdf'
+        self.pool_bib = Path(self.path('pool', 'papers.bib')).read_text()
+
+    def test_check(self):
+        out = self.out('file check --pool ../pool')
+        self.assertIn(f'smith2000a: broken link: {self.gone} -> {self.pool_pdf} (from the library ../pool)', out)
+        self.assertEqual(self.files('smith2000a'), [self.gone])
+
+    def test_fix_copies_by_identity(self):
+        before = Path(self.path('lib', 'papers.bib')).read_text()
+        out = self.out('file fix --pool ../pool')
+        new = self.path('lib', 'files', self.template)
+        self.assertIn(f'smith2000a: relinked to {new} (from the library ../pool)', out)
+        self.assertEqual(self.files('smith2000a'), [new])
+        # copied (a hard link), the pool file stays where it is
+        self.assertTrue(os.path.exists(self.pool_pdf))
+        self.assertTrue(os.path.samefile(new, self.pool_pdf))
+        self.assertEqual(os.stat(self.pool_pdf).st_nlink, 2)
+        # only the link changed, in the library; PATH is unchanged and no origin record is written
+        after = Path(self.path('lib', 'papers.bib')).read_text()
+        self.assertEqual(after.replace(os.path.join('files', self.template), self.gone).strip(), before.strip())
+        self.assertEqual(Path(self.path('pool', 'papers.bib')).read_text(), self.pool_bib)
+        self.assertFalse(os.path.exists(self.path('lib', '.papers', 'origin')))
+
+    def test_move_still_copies(self):
+        self.lib('file fix --pool ../pool --move')
+        self.assertTrue(os.path.exists(self.pool_pdf))
+
+    def test_file_of_the_entry_outside_the_files_directory(self):
+        external = self.write('elsewhere', 'smith.pdf')
+        self.bib(entry('smith2000', external, doi='10.1000/smith'), where='pool')
+        self.lib('file fix --pool ../pool --move')
+        new, = self.files('smith2000a')
+        self.assertTrue(os.path.samefile(new, external))
+
+    def test_link_mode(self):
+        self.lib('config files link')
+        self.lib('file fix --pool ../pool')
+        self.assertEqual(self.files('smith2000a'), [self.pool_pdf])
+
+    def test_other_paper(self):
+        self.bib(entry('other2000', self.gone, doi='10.1000/other'))
+        out = self.out('file fix --pool ../pool')
+        self.assertIn('0 links relinked, 1 still broken', out)
+
+    def test_not_a_library(self):
+        os.makedirs(self.path('plain'))
+        with self.assertRaisesRegex(PapersExit, 'create it first with `papers init'):
+            self.lib('file fix --pool ../plain')
+
+    def test_then_search(self):
+        # a link that PATH has no file for is looked for in the --search folders
+        self.bib(entry('smith2000a', self.gone, doi='10.1000/SMITH'), entry('one2000', self.path('gone', 'x.pdf')))
+        found = self.write('downloads', 'x.pdf')
+        out = self.out('file fix --pool ../pool --search ../downloads')
+        self.assertIn('2 links relinked, 0 still broken', out)
+        self.assertIn('(from the library ../pool)', out)
+        self.assertIn(f'(found in {self.path("downloads")})', out)
+        self.assertTrue(os.path.exists(found))
+
+    def test_shallow_library_copies_into_its_pool(self):
+        # lib/ is a shallow library of own/, whose entry has no file: the file of pool/ is copied
+        # into the files directory of own/, and the entry of own/ links to it
+        self.papers('init own --no-git')
+        self.bib(entry('smith2000', doi='10.1000/smith'), where='own')
+        self.lib('config pool ../own -y')
+        out = self.out('file fix --pool ../pool')
+        new, = self.files('smith2000a')
+        self.assertTrue(new.startswith(self.path('own', 'files')), new)
+        self.assertTrue(os.path.samefile(new, self.pool_pdf))
+        self.assertEqual(self.files('smith2000', where='own'), [new])
+        self.assertIn('smith2000a: file links also updated in pool ../own', out)
+        self.assertEqual(Path(self.path('pool', 'papers.bib')).read_text(), self.pool_bib)
+
+    def test_own_pool_first(self):
+        # the pool of the library has the file: PATH is not used
+        self.papers('init own --no-git')
+        own_pdf = self.write('own', 'files', 'smith.pdf')
+        self.bib(entry('smith2000', 'files/smith.pdf', doi='10.1000/smith'), where='own')
+        self.lib('config pool ../own -y')
+        out = self.out('file fix --pool ../pool')
+        self.assertIn('(from the pool)', out)
+        self.assertEqual(self.files('smith2000a'), [own_pdf])
 
 
 class TestSharedFilesDir(ConfigTest):
