@@ -79,3 +79,18 @@ class TestUpdateFilePath(unittest.TestCase):
             entry = {"ID": "test", "file": f":{pdf_path}:pdf"}
             update_file_path(entry, from_relative_to=base, to_relative_to=base, check=True)
             self.assertIn("file", entry)
+
+
+class TestGetEntryVal(unittest.TestCase):
+
+    def test_values(self):
+        from bibtexparser.model import Entry, Field
+        from papers.entries import get_entry_val
+        e = Entry('article', 'Key', [Field('title', 'first'), Field('doi', '10.1/x'), Field('title', 'second')])
+        self.assertEqual(get_entry_val(e, 'ID'), 'Key')
+        self.assertEqual(get_entry_val(e, 'ENTRYTYPE'), 'article')
+        self.assertEqual(get_entry_val(e, 'title'), e.fields_dict['title'].value)  # the last one
+        self.assertEqual(get_entry_val(e, 'title'), 'second')
+        self.assertEqual(get_entry_val(e, 'year', 'none'), 'none')
+        self.assertEqual(get_entry_val({'title': 'T'}, 'title'), 'T')
+        self.assertEqual(get_entry_val({}, 'title', None), None)

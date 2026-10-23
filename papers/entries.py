@@ -17,7 +17,17 @@ from papers import logger
 
 
 def get_entry_val(entry, key, default=''):
-    """Get field value from an entry (v2 Entry or dict-like)."""
+    """Get field value from an entry (v2 Entry or dict-like). Of a field
+    given twice, the last one (as Entry.fields_dict, without building it)."""
+    if isinstance(entry, Entry):
+        if key == 'ID':
+            return entry.key
+        if key == 'ENTRYTYPE':
+            return entry.entry_type
+        for f in reversed(entry.fields):
+            if f.key == key:
+                return f.value
+        return default
     if hasattr(entry, 'fields_dict'):
         if key == 'ID':
             return entry.key
