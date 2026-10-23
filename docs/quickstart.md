@@ -78,7 +78,10 @@ Added -> perrette_yool2011: Near-ubiquity of ice-edge blooms in the Arctic (doi:
 
 `add` looks in the pool first: a paper the pool has is taken from it, with
 its PDF, and nothing is fetched or copied. A new paper goes to the library
-and to the pool.
+and to the pool, since this library is not local and keeps its PDFs in the
+pool. In a local library with a pool, a new paper goes to the pool only if
+the `auto-push` setting is on, or with `papers push`. See
+[Local or not](pools.md#local-or-not) and [Auto-push](pools.md#auto-push).
 
 Each library has only the entries it asks for. Changes to shared entries,
 made in either project, are exchanged with `papers sync`. See
