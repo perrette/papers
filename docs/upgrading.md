@@ -49,9 +49,10 @@ by other tools. What changes:
     | `-m/--mode` | `--on-duplicate` |
     | `--relative-paths` / `--absolute-paths` | `papers config paths relative` or `absolute` |
 
-    `papers install --global` is not deprecated but an error that changes
-    nothing: `papers init PATH --global` creates the default library, and
-    `papers config --global default PATH` registers an existing one.
+    `papers install --global` is removed: it stops with an error, and
+    changes nothing. `papers init PATH --global` creates the default
+    library, and `papers config --global default PATH` registers an
+    existing one.
 
 - `papers list` keeps its search options and its actions `--edit`,
   `--delete` and `--add-tag`. The other actions are done by the command
