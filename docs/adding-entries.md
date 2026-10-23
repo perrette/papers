@@ -193,6 +193,42 @@ memory of the source. To take entries from the pool so that they stay
 linked to it (later pulls bring the corrections made there), use
 `papers pull KEY` (see [`papers pull`](pools.md#papers-pull)).
 
+## Add RIS and CSL-JSON files
+
+`papers add` reads RIS (`.ris`, as exported by Zotero, EndNote, Web of
+Science, Scopus...) and CSL-JSON (`.json`, as exported by Zotero or pandoc)
+files, recognized by their extension; `--format ris|csl-json|bibtex` sets
+the format of a file of another extension. Other files are read as bibtex.
+RIS needs the [rispy](https://pypi.org/project/rispy/) package (see
+[Installation](installation.md#optional-ris-support)).
+
+```
+$ papers add ~/refs.ris --on-duplicate keep
+Added -> perrette_yool2011: Near-ubiquity of ice-edge blooms in the Arctic (doi:10.5194/bg-8-515-2011)
+Modified -> perrette_landerer2013: A scaling approach to project regional sea level rise and it... (doi:10.5194/esd-4-11-2013, file:1)
+```
+
+The entries are added as those of a bibtex file:
+
+- the [duplicate check](#duplicates) and `--on-duplicate` apply;
+- the key is the `ID` of a RIS record, or the `citation-key` or `id` of a
+  CSL-JSON item, when it is a valid bibtex key; otherwise (the item URIs of
+  Zotero, the record numbers of EndNote) it is made from the key template;
+- the file links (RIS `L1`; in CSL-JSON, a `file` key or `custom.file`,
+  which papers writes, since CSL-JSON has no standard field for files) are
+  read relative to the added file and attached as for a bibtex file; links
+  that are not local files (`http://`, EndNote's `internal-pdf://`) are left
+  out with a warning;
+- in a shallow library, the new entries go to the pool too;
+- a directory scan (`-R`) reads PDFs and bibtex files only.
+
+The fields are converted as `papers export --format` writes them (see
+[How the fields are converted](export.md#how-the-fields-are-converted)); a
+few more are read: `T1`, `JO`, `JF` (title, journal), `A2` (editors of a
+chapter, in EndNote exports), `N2` (abstract), `M3` (type of a report); and
+in CSL-JSON, `accessed` (`urldate`), `genre` (the type of a report or
+thesis). Other fields are ignored.
+
 ## Add an entry from its DOI
 
 If you already know the DOI of a PDF, and don't want to gamble the fulltext

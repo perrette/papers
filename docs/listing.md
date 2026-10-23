@@ -55,6 +55,9 @@ Perrette2013: A scaling approach to project regional sea level rise and it... (d
 - `--format line` (the default): one line per entry (also `-l`, `-1`,
   `--one-liner`);
 - `--format bibtex`: the entries as bibtex (also `--plain`);
+- `--format ris`, `--format csl-json`: the entries as RIS or CSL-JSON, with
+  the file links as absolute paths (RIS needs the rispy package; see
+  [Export](export.md#other-formats-ris-and-csl-json) for the conversion);
 - `--format key`: the keys only, one per line (also `-K`, `--key-only`),
   to pipe into other commands (below).
 
