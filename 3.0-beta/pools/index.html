@@ -1769,10 +1769,12 @@ Without <code>--pool PATH</code>, a self-contained library has no pool to pull f
 <p><code>pull</code> prints one line per entry added (<code>Added -&gt;</code>), modified
 (<code>Modified -&gt;</code>), left with a conflict (<code>Conflict -&gt;</code>) or, among the entries
 named, not found in the pool (<code>Not found -&gt;</code>), with the pool in brackets,
-then the counts when more than one entry was involved: <code>added</code>,
-<code>modified</code>, <code>skipped</code>, <code>not found</code>, <code>unchanged</code>, and <code>linked</code> (an entry
+then the counts when more than one entry changed or was not exchanged:
+<code>added</code>, <code>modified</code>, <code>skipped</code>, <code>not found</code>, and <code>linked</code> (an entry
 without origin copy, the same as its pool entry: its origin copy is
-recorded). <code>push</code> prints the same lines for the pool entries. When a
+recorded). The entries unchanged are not counted. When nothing changed,
+<code>pull</code> prints one line, <code>nothing to pull from pool ../sealevel</code>. <code>push</code>
+prints the same lines for the pool entries. When a
 command also adds or changes the entry in the pool (see
 <a href="#auto-push">Auto-push</a>), or <code>add</code> takes it from the pool, its line says so
 in brackets: <code>[also added to pool ~/Documents/papers]</code>, <code>[also modified in
@@ -1868,7 +1870,7 @@ until the entry is fixed in the pool's bibtex. Reading from the pool
 nothing is pushed: decide them with <code>papers pull</code>, then sync again. When
 nothing changed, <code>sync</code> prints one line:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>$ papers sync
-<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>nothing to sync with pool ../sealevel (2 entries unchanged)
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>nothing to sync with pool ../sealevel
 </code></pre></div>
 <h2 id="undo-in-a-pool">Undo in a pool<a class="headerlink" href="#undo-in-a-pool" title="Permanent link">&para;</a></h2>
 <p>A pool is a library with its own backup history (see
