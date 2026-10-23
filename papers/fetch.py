@@ -5,9 +5,6 @@ import json
 import threading
 from urllib.parse import quote, urljoin
 
-import requests
-from bs4 import BeautifulSoup
-
 import papers
 from papers import logger
 from papers.cache import cached
@@ -26,6 +23,7 @@ def http_get(url, **kw):
     are reused across requests"""
     session = getattr(_thread_local, 'session', None)
     if session is None:
+        import requests  # imported when first used: papers --help and the offline commands do without
         session = _thread_local.session = requests.Session()
         session.headers['User-Agent'] = USER_AGENT
     kw.setdefault('timeout', TIMEOUT)
@@ -311,6 +309,7 @@ def fetch_html(url):
     return response.text
 
 def find_bibtex_links(html_content, base_url):
+    from bs4 import BeautifulSoup
     soup = BeautifulSoup(html_content, 'html.parser')
 
     for link in soup.find_all('a', href=True):

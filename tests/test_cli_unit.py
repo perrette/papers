@@ -211,3 +211,14 @@ class TestEditEntries(unittest.TestCase):
         with mock.patch('papers.cli.common.edit_entries', side_effect=OSError('no editor')), \
                 self.assertLogs('papers', level='ERROR'):
             self.assertFalse(edit_selected(biblio, biblio.entries))
+
+
+class TestImports(unittest.TestCase):
+
+    def test_network_modules_not_imported(self):
+        "requests and bs4 are imported when a network query is made, not when papers starts"
+        import subprocess
+        code = "import sys, papers.cli; print(sorted(m for m in ('requests', 'bs4') if m in sys.modules))"
+        out = subprocess.run([sys.executable, '-c', code], capture_output=True, text=True, check=True,
+                             env=dict(os.environ, PYTHONPATH=str(Path(papers.cli.__file__).parents[2])))
+        self.assertEqual(out.stdout.strip(), '[]')

@@ -11,8 +11,6 @@ import shutil
 import tempfile
 from urllib.parse import urlparse, unquote
 
-import requests
-
 import papers.config
 from papers import logger
 from papers.config import Config, config_root, find_library_config
@@ -66,6 +64,7 @@ def download_url(url, expect_pdf=False, dest_dir=None):
                       "(KHTML, like Gecko) Chrome/120.0 Safari/537.36",
         "Accept": "application/pdf,*/*;q=0.8" if expect_pdf else "*/*",
     }
+    import requests  # imported when first used (see papers.fetch.http_get)
     try:
         response = requests.get(url, headers=headers, timeout=30)
     except requests.exceptions.RequestException as err:

@@ -47,13 +47,13 @@ class TmpTest(unittest.TestCase):
 class TestDownload(unittest.TestCase):
 
     def test_connection_error(self):
-        with mock.patch('papers.files.requests.get', side_effect=requests.exceptions.ConnectionError('down')):
+        with mock.patch('requests.get', side_effect=requests.exceptions.ConnectionError('down')):
             with self.assertRaisesRegex(ValueError, 'ConnectionError'):
                 download_url('https://example.org/a.pdf')
 
     def test_waf_challenge_hint(self):
         response = mock.Mock(status_code=202, headers={'content-type': 'text/html'}, content=b'')
-        with mock.patch('papers.files.requests.get', return_value=response):
+        with mock.patch('requests.get', return_value=response):
             with self.assertRaisesRegex(ValueError, 'CAPTCHA'):
                 download_url('https://example.org/a.pdf', expect_pdf=True)
 
