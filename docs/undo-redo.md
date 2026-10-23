@@ -36,8 +36,8 @@ is then broken.
 ## Undo in a library that has a pool
 
 A pool is a library with its own backup and its own history. A command that
-exchanges entries with the pool (`add` in a library that is not local, a
-command that changes entries with auto-push; `push`, `pull`, `sync`) writes both, and each records a
+exchanges entries with the pool (`add` in a shallow library, a command
+that changes entries with auto-push; `push`, `pull`, `sync`) writes both, and each records a
 step in its own history.
 
 - `papers undo` and `papers redo` in the library change the library only.

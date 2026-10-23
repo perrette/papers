@@ -65,9 +65,9 @@ $ papers extract --doi-only bg-8-515-2011.pdf
 ## What happens to the files
 
 By default, `papers add` moves the PDF into the files directory of the
-library, under a name made from the name template: in a library that is not
-local (the default for new libraries), the files directory and the name
-template of its pool (see [Local or not](pools.md#local-or-not)). The
+library, under a name made from the name template: in a shallow library
+(a library with a pool), the files directory and the name template of its
+pool (see [Shallow libraries](pools.md#shallow-libraries)). The
 `files` setting of the library changes what happens to the original (see
 [Files](files.md#what-add-does-with-a-file)):
 
@@ -170,7 +170,10 @@ Before querying crossref, `papers add` looks in the pool of the library
 (see [Pools](pools.md#add-looks-in-the-pool-first)): a PDF with the same
 content as a pool file, or whose DOI is in the pool, a DOI that a pool entry
 has, or a bibtex entry that is the same paper as a pool entry, is taken from
-the pool, with its files. `--no-pool` skips this.
+the pool, with its files. `--no-pool` skips this. `--pool PATH` looks in
+the library PATH instead, in any library: the entry is taken from PATH with
+its files, its origin is recorded for PATH, and nothing is added to PATH
+(`papers -C PATH add` is what adds to PATH).
 
 `papers add --key KEY`, with no file, DOI or other field, takes the pool
 entry of key `KEY` (ignoring case). When the library already has an entry of
@@ -181,9 +184,9 @@ papers stops with an error and changes nothing:
 papers add --key yool2011
 ```
 
-In a library that is not local (the default), the files of the added
-entries go to the files directory of the pool, and the entries to the pool
-too (see [Local or not](pools.md#local-or-not)).
+In a shallow library, the files of the added entries go to the files
+directory of the pool, and the entries to the pool too (see
+[Shallow libraries](pools.md#shallow-libraries)).
 
 `papers add other.bib` copies the entries of `other.bib` once, with no
 memory of the source. To take entries from the pool so that they stay

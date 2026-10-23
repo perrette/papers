@@ -12,8 +12,8 @@ Command-line tool to manage your bibliography (PDFs + BibTeX).
 `papers` keeps a BibTeX file for each of your projects, and the PDFs that
 go with it. Give it a PDF: it reads the DOI, fetches the entry from
 crossref, renames the PDF after the entry and adds both to your project.
-Projects on the same topic share their entries and PDFs through a pool, so
-each PDF is stored and fetched once.
+A project can use another library as its pool, and take its entries and
+PDFs from there, so that each PDF is stored and fetched once.
 
 It works like `git`: one `papers` command with subcommands, run inside a
 project folder.
@@ -24,10 +24,11 @@ project folder.
   search), doi.org or google scholar.
 - **Name the PDFs** with a template (`{authorX}_{year}_{title}` by default),
   and attach supplements to an entry.
-- **Share entries and PDFs between projects** through a pool: a library in
-  a shared location, such as one per topic. `papers pull`, `push` and
-  `sync` exchange the entries with a field-by-field three-way merge; each
-  project keeps its own keys.
+- **Share entries and PDFs between projects**: a shallow project uses
+  another library as its pool, takes its entries from there and links to
+  its PDFs; any library can also exchange entries with another one
+  (`--pool PATH`). `papers pull`, `push` and `sync` exchange the entries
+  with a field-by-field three-way merge; each project keeps its own keys.
 - **Search and act on a library** with `papers list` (tag, edit, delete,
   rename, fetch, deduplicate), in the style of `find` and `grep`.
 - **Detect duplicates** by DOI, arXiv identifier, ISBN, or authors and
@@ -38,53 +39,54 @@ project folder.
 
 ## Example
 
-Two projects that use the pool `~/Documents/papers/sealevel`:
+A project with its own PDFs, and a second project that uses it as pool:
 
 ```
 $ cd ~/projects/sealevel
-$ papers init --pool ~/Documents/papers/sealevel
+$ papers init
 created the library ~/projects/sealevel
 * bibtex:  papers.bib
-* files:   in the pool ~/Documents/papers/sealevel
+* files:   files (the files directory of the library)
+* pool:    none (a self-contained library: its own entries and files)
 * backup:  git
 `papers status -v` shows all settings
 $ papers add ~/Downloads/esd-4-11-2013.pdf
-create the library ~/Documents/papers/sealevel
-Added -> perrette_landerer2013: A scaling approach to project regional sea level rise and it... (doi:10.5194/esd-4-11-2013, file:1) [also added to pool ~/Documents/papers/sealevel]
-$ papers add --doi 10.5194/bg-8-515-2011
-Added -> perrette_yool2011: Near-ubiquity of ice-edge blooms in the Arctic (doi:10.5194/bg-8-515-2011) [also added to pool ~/Documents/papers/sealevel]
+Added -> perrette_landerer2013: A scaling approach to project regional sea level rise and it... (doi:10.5194/esd-4-11-2013, file:1)
 
 $ cd ~/projects/tides
-$ papers init --pool ~/Documents/papers/sealevel
+$ papers init --pool ../sealevel
 created the library ~/projects/tides
 * bibtex:  papers.bib
-* files:   in the pool ~/Documents/papers/sealevel
+* files:   in the pool ../sealevel
+* pool:    ../sealevel (a shallow library: it takes its entries from the pool and links to its files)
 * backup:  git
 `papers status -v` shows all settings
 $ papers add --doi 10.5194/esd-4-11-2013
-Added -> perrette_landerer2013: A scaling approach to project regional sea level rise and it... (doi:10.5194/esd-4-11-2013, file:1) [from pool ~/Documents/papers/sealevel]
+Added -> perrette_landerer2013: A scaling approach to project regional sea level rise and it... (doi:10.5194/esd-4-11-2013, file:1) [from pool ../sealevel]
+$ papers add ~/Downloads/bg-8-515-2011.pdf
+Added -> perrette_yool2011: Near-ubiquity of ice-edge blooms in the Arctic (doi:10.5194/bg-8-515-2011, file:1) [also added to pool ../sealevel]
 $ grep "file =" papers.bib
- file = {:../../Documents/papers/sealevel/files/perrette_et_al_2013_a-scaling-approach-to-project-regional-sea-level-rise-and-its-uncertainties.pdf:pdf},
+ file = {:../sealevel/files/perrette_et_al_2013_a-scaling-approach-to-project-regional-sea-level-rise-and-its-uncertainties.pdf:pdf},
+ file = {:../sealevel/files/perrette_et_al_2011_near-ubiquity-of-ice-edge-blooms-in-the-arctic.pdf:pdf},
 ```
 
-The second project took the entry and the PDF from the pool: no request
-to crossref, and no second copy of the PDF. `papers sync` later exchanges
-the changes made in either project.
-
-A project that keeps its own PDFs, such as a folder shared with coauthors,
-is created with `papers init --local`. Plain `papers init` writes the global
-pool, `~/Documents/papers`, as the pool of the new library.
+The second project took the first entry and its PDF from the pool: no
+request to crossref, and no second copy of the PDF. The paper it added is
+in the pool too. `papers sync` later exchanges the changes made in either
+project. A library kept for sharing, such as `~/Documents/papers`, can be
+the pool of all projects (`papers init --shallow`, see
+[A global shared library](https://perrette.github.io/papers/global-library/)).
 
 ## Documentation
 
 Full documentation: **<https://perrette.github.io/papers/>**
 
 - [Installation](https://perrette.github.io/papers/installation/) (incl. external dependencies)
-- [Quickstart](https://perrette.github.io/papers/quickstart/): a project, its pool, a second project
+- [Quickstart](https://perrette.github.io/papers/quickstart/): a self-contained project, and a shallow project that uses it
 - [Upgrading from papers 2](https://perrette.github.io/papers/upgrading/)
 - [Adding entries](https://perrette.github.io/papers/adding-entries/)
 - [Listing and searching](https://perrette.github.io/papers/listing/)
-- [Pools](https://perrette.github.io/papers/pools/)
+- [Pools](https://perrette.github.io/papers/pools/), [a global shared library](https://perrette.github.io/papers/global-library/)
 - [Configuration](https://perrette.github.io/papers/configuration/)
 - Also: [files](https://perrette.github.io/papers/files/),
   [renaming files and keys](https://perrette.github.io/papers/renaming/),

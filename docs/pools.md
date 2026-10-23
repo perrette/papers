@@ -7,89 +7,70 @@ A **library** is a bibtex file, a files directory and a configuration file
 [Configuration](configuration.md#libraries)). Each project usually has its
 own library.
 
-A **pool** is a library that other libraries exchange entries with. Nothing
-in the pool marks it as a pool: any library can serve as one, and a pool can
-be used by several libraries. The pool of a library is its `pool` setting,
-in its configuration file:
+A library is in one of two states, given by its `pool` setting alone:
 
-- a path, set with `papers init --pool PATH` or `papers config pool PATH`,
-  e.g. a pool for one topic, `~/Documents/papers/sealevel`. A
-  path written relative, or under the library, is stored relative to the
-  library (e.g. `../shared-with-bob`); another path is stored with `~` for
-  the home directory, or absolute;
-- `none`: the library exchanges entries with no pool. A library whose
-  configuration has no `pool` setting has no pool either.
+- **self-contained**: no pool (`pool: none`, or no `pool` setting). The
+  library has its own entries and its own PDFs, in its files directory.
+  `papers init` creates such a library.
+- **shallow**: a pool, the path of another library. The library takes its
+  entries from the pool and links to the pool's PDFs: its file links are
+  those of the pool entries, and the entries and PDFs that it adds go to
+  the pool too. `papers init --pool PATH` creates such a library.
 
-`papers init` without `--pool` (and without `--local`) writes the **global
-pool**: the `pool` setting of the global configuration,
-`~/Documents/papers` unless set otherwise (`papers config --global pool
-PATH`). It writes it as the global configuration does, usually with `~`: the
-same project, copied to another machine with the same layout, finds its
-pool there. Changing the global pool later does not change the libraries
-created before.
+The pool of a shallow library must be an existing library without pool of
+its own (a self-contained library): `papers init --pool PATH` and
+`papers config pool PATH` stop with an error otherwise, and nothing is
+created or changed. Nothing in a library marks it as a pool: any
+self-contained library can serve as the pool of shallow libraries, and a
+pool can be used by several libraries. The pool path is written in the
+configuration relative to the library when it is given relative, or when
+it is under the library (e.g. `../sealevel`); another path is written with
+`~` for the home directory, or absolute.
 
-The global pool does not have to exist: papers creates it (as
-`papers init ~/Documents/papers` would) the first time it writes to it, and
-before that a library finds nothing in it, without a warning. A pool given
-by path that does not exist is a warning (a typo, a disk that is not
-mounted); papers creates it when it writes to it only if its parent
-directory exists, as a library without pool, with its own files. The same holds for a global pool outside the home
-directory (e.g. `/media/usb/papers` while the disk is not mounted): the
-command stops before changing anything.
+Any library, self-contained or shallow, can also exchange entries with
+another library given on the command line, `--pool PATH`, e.g. a folder
+shared with a coauthor (see
+[Exchanges with any library](#exchanges-with-any-library)).
 
-`papers init` in the folder of the global pool creates the pool itself: a
-library without pool, with its own files. Outside of any library, commands
-act on the global pool once it is a library. `papers config --global pool
-none` turns sharing off for new libraries: they get `pool: none`.
+What a library does with its pool, or with the library of `--pool PATH`:
 
-What a library does with its pool:
-
-- `papers add` looks in the pool first;
+- `papers add` looks in the pool first (`papers add --pool PATH` looks in
+  PATH);
 - `papers pull` updates the entries shared with the pool, and adds the
   entries of the pool named, or all of them with `--all`;
 - `papers push` updates the entries shared with the pool (those taken from
   it, or added to it before), and adds the entries named, or all of them
   with `--all`;
 - `papers sync` does both;
-- `papers status` and `papers pull --check` tell whether the pool changed
-  since the last exchange with it: `up to date`, or `changed since last
-  pull or push`.
+- `papers status` (pool of a shallow library) and `papers pull --check`
+  tell whether the pool changed since the last exchange with it: `up to
+  date`, or `changed since last pull or push`.
 
-An exchange goes one level only: a library exchanges with its pool, and
-the pool's own pool, if it has one, is not involved. The pool exchanges
-with its pool when a command runs in it (`papers -C POOL sync`).
+An exchange goes one level only: the pool has no pool, and a library given
+with `--pool PATH` must have none either (`PATH has a pool itself`).
 
 `pull`, `push` and `sync` merge each entry field by field: whatever one
 side changed since the last exchange wins; if both sides changed the same
 field, you decide (the origin copy is papers' memory of the entry at the
 last exchange, see [Origin copies](#origin-copies)).
 
-Nothing is pulled automatically, and nothing is pushed automatically
-unless the `auto-push` setting is on (see [Auto-push](#auto-push)), except
-that in a library that is not local, `add` adds the new entries to the pool
-and the file links of an entry are updated in the pool entry (see
-[Local or not](#local-or-not)).
-An older project does not change because of work in a newer one.
+Nothing is pulled automatically. Nothing is pushed automatically, except
+in a shallow library: `add` adds the new entries to the pool, the file
+links of an entry are updated in the pool entry (see
+[Shallow libraries](#shallow-libraries)), and with the `auto-push` setting
+the changes of the shared entries are pushed too (see
+[Auto-push](#auto-push)). An older project does not change because of work
+in a newer one.
 
-## Local or not
+The [Quickstart](quickstart.md) shows a self-contained project and a
+shallow project that uses it. [A global shared library](global-library.md)
+describes one library used as the pool of all projects.
 
-The `local` setting of a library says where its files are:
+## Shallow libraries
 
-- `local: false` (the default for new libraries): the files are in the files
-  directory of the pool, and the library links to them. A paper used by
-  several projects is stored once;
-- `local: true`: the files are in the files directory of the library
-  (`files/`).
-
-`papers init --local` creates a local library without pool (`pool none`);
-`papers init --local --pool PATH` creates a local library that uses the pool
-PATH. Without `--local`, the default for new libraries is the `local`
-setting of the global configuration (`papers config --global local true`).
-A library without pool is local.
-
-In a library that is not local, the file links are the pool entry's; the
-library decides which entries it has. The `files` setting says how a new
-file gets to the pool:
+In a shallow library, the file links are the pool entry's; the library
+decides which entries it has. The `files` setting says how a new file gets
+to the pool:
 
 - `move` (the default) and `copy`: the file is placed in the pool's files
   directory (moved, or copied: a hard link when possible), named with the
@@ -100,7 +81,10 @@ file gets to the pool:
   machine that uses the pool (a pool in a synchronized folder), such links
   are broken.
 
-In a library that is not local:
+A shallow library has no files directory of its own: `papers init --pool
+PATH` does not create one.
+
+In a shallow library:
 
 - `add` places new files as the `files` setting says, and adds the new
   entries to the pool too, whatever the `auto-push` setting (their origin
@@ -119,101 +103,133 @@ In a library that is not local:
   the library entry no longer has. A link that the library entry had
   before the command, outside the pool's files directory, and that the
   pool entry does not have (for instance a file of the library's own
-  `files/` from when it was local) is not sent; `push` sends it with the
-  other fields. Only the links change: the other fields are pushed only
-  with auto-push. An entry not shared with the pool gets the links of the
-  pool entry of the same paper updated; if the pool does not have it, the
-  entry is added to the pool, as `add` does;
+  `files/` from when it was self-contained) is not sent; `push` sends it
+  with the other fields. Only the links change: the other fields are
+  pushed only with auto-push. An entry not shared with the pool gets the
+  links of the pool entry of the same paper updated; if the pool does not
+  have it, the entry is added to the pool, as `add` does;
 - `file detach` never deletes a file. `file rm` removes the link from the
   pool entry too, and deletes the file unless another entry of the pool
   or of the library still links to it (`kept FILE: an entry of the pool
   links to it`);
-- `pull` and `sync` link to the pool's files instead of copying them, and
-  the library entry follows the pool entry's links: a link that the pool
-  entry had at the last exchange and no longer has is removed from the
-  library entry (the file is not deleted). A link that the pool entry never
-  had stays. The origin copy records the pool entry's links for this, in
-  its `file` field; an origin copy without it removes nothing until the
-  next exchange. A one-time exchange (`--pool
-  PATH`, another library) adds links only;
+- `pull` and `sync` with the pool link to the pool's files instead of
+  copying them, and the library entry follows the pool entry's links: a
+  link that the pool entry had at the last exchange and no longer has is
+  removed from the library entry (the file is not deleted). A link that
+  the pool entry never had stays. The origin copy records the pool entry's
+  links for this, in its `file` field; an origin copy without it removes
+  nothing until the next exchange;
 - when the pool renames a file, the link breaks: it is repaired by looking
   the entry up in the pool, when the library is loaded (saved on the next
   write) and by `papers file check --fix`. A broken link to a file outside
   the pool is relinked to the pool's file by `papers file check --fix`
   only (see [Reconnecting PDFs and a bibtex](files.md#reconnecting-pdfs-and-a-bibtex)).
 
-In any library, `rm --delete-files` never deletes a file of the pool, nor
-a file that a pool entry links to in a library that is not local, and it
-does not change the pool entry. In a local library, `file rm` never deletes
-a file of the pool either. Deleting a file in a pool breaks the links of the libraries that use
-it: it shows up as a broken link there (`papers file check`). The pool keeps
-no list of the libraries that depend on it.
+`rm --delete-files` never deletes a file of the pool, nor a file that a
+pool entry links to, and it does not change the pool entry. Deleting a file
+in a pool breaks the links of the libraries that use it: it shows up as a
+broken link there (`papers file check`). The pool keeps no list of the
+libraries that depend on it.
 
-### Sharing a project folder
-
-A project folder shared with coauthors (git, Dropbox...) should be a local
-library (`papers init --local --pool PATH`, `papers init --local` for no
-pool, or `papers config local true`): the links of
-a library that is not local point into your own pool, which the others do
-not have.
+A project folder shared with coauthors (git, Dropbox...) should be a
+self-contained library: the links of a shallow library point into your own
+pool, which the others do not have. Such a project can still exchange
+entries with your libraries through `--pool PATH`.
 
 A pool can be in a folder synchronized by a cloud client on the local disk
-(e.g. `papers config --global pool ~/Dropbox/papers`): papers reads and
-writes the files there, and the client synchronizes them.
+(e.g. `~/Dropbox/papers`): papers reads and writes the files there, and
+the client synchronizes them.
 
-### Changing `local` and `pool`
+### Changing the pool
 
-When a change copies files or deletes the library's copies, papers lists
-what it will do and asks `Continue? [y/N]`; `-y` answers yes, `--dry-run`
-only shows the list, and without a terminal the command stops with the list
-(pass `-y`). The files of a pool are never deleted.
+`papers config pool PATH|none` changes the state of a library, and its
+files follow. When a change copies files or deletes the library's copies,
+papers lists what it will do and asks `Continue? [y/N]`; `-y` answers yes,
+`--dry-run` only shows the list, and without a terminal the command stops
+with the list (pass `-y`). The files of a pool are never deleted.
 
-| Command | In a library that is not local | In a local library |
+| Command | In a self-contained library | In a shallow library |
 |---|---|---|
-| `papers config local true` | the pool files it links to are copied into its files directory (hard links when possible), named with its name template, and the links rewritten; the pool keeps its files | nothing to do |
-| `papers config local false` | nothing to do | the library links to the pool's copies of its PDFs, and its own copies are deleted (see below) |
-| `papers config pool none` (or `--unset pool`) | as `local true`, and the library becomes local | the setting changes |
-| `papers config pool PATH` | the library links to the copies of its PDFs in the new pool (see below); the files of the former pool stay where they are | the setting changes |
+| `papers config pool PATH` | the library becomes shallow: it links to the copies of its PDFs in PATH, and its own copies are deleted (see below) | the library links to the copies of its PDFs in the new pool (see below); the files of the former pool stay where they are |
+| `papers config pool none` (or `--unset pool`) | nothing to do | the library becomes self-contained: the pool files that it links to are copied into its files directory (hard links when possible), named with its name template, and the links rewritten; the pool keeps its files |
 
-`papers config local false`, and `papers config pool PATH` in a library
-that is not local, only change the file links. Each PDF that the library
-links to must already be linked by the pool entry of the same paper, in
-the pool that the library will use: the same file, or a file of the same
-content. Entries without PDF can stay out of the pool, and broken links do
-not count (`papers file check --fix` relinks them afterwards). If an entry
-has a PDF that the pool entry does not have, nothing is changed, and the
-command lists the entries and the command that copies their PDFs to the
-pool:
+PATH must be an existing library without pool. Each PDF that the library
+links to must already be linked by the entry of the same paper in PATH:
+the same file, or a file of the same content. Entries without PDF need not
+be in PATH, and broken links do not count (`papers file check --fix`
+relinks them afterwards). If an entry has a PDF that PATH does not have,
+nothing is changed, and the command lists the entries (the first ten, and
+the number of the others) and the command that copies their PDFs there:
+`papers push --pool PATH KEY...`, or `papers push --pool PATH --all` when
+there are more than ten.
 
-- `papers config local false`: `papers push KEY...`, or `papers push --all`
-  when there are many entries;
-- `papers config pool PATH`: `papers push --pool PATH KEY...` (a one-time
-  push, which copies the PDFs to PATH), or `papers push --pool PATH --all`.
+Otherwise the library links to the copies in PATH. The library's own
+copies, in its files directory, are deleted, unless an entry of the
+library or of PATH still links to them; nothing is copied or moved. These
+commands do not push entries or merge fields: `papers push` does that. The
+entries exchanged with PATH before (with `--pool PATH`) are shared with it
+already: their origin copies are those of the new pool.
 
-Otherwise the library links to the pool's copies. `local false` deletes
-the library's own copies in its files directory, unless an entry of the
-library or of the pool still links to them; `pool PATH` copies or moves no
-file. These commands do not push entries or merge fields: `papers push`
-does that. After `papers config pool PATH`, no entry is shared with the
-new pool yet: `papers push KEY...` or `papers push --all` shares them.
-
-To move the PDFs of a local library into a pool:
+To move the PDFs of a self-contained library into another library:
 
 ```
-papers config pool PATH      # the pool, if the library has none
-papers push --all            # copies the entries and their PDFs to the pool
-papers config local false    # links to the pool's copies, deletes the library's
+papers push --pool PATH --all   # copies the entries and their PDFs to PATH (created if missing)
+papers config pool PATH         # links to the copies in PATH, deletes the library's own
 ```
+
+## Exchanges with any library
+
+`--pool PATH` on `pull`, `push` and `sync` exchanges with the library at
+`PATH`, from any library: self-contained or shallow. PATH must be a
+library without pool (`push` creates it, as a self-contained library, if
+it does not exist and its parent folder does). The exchange works as with
+the pool of a library:
+
+- the origin copies are recorded for PATH, in its own file of
+  `.papers/origin/`: the next exchange with PATH is a three-way merge, and
+  a field changed on one side only needs no decision;
+- without KEY or `--all`, the exchange handles the entries exchanged with
+  PATH before (those with an origin copy for PATH);
+- `papers sync --pool PATH KEY...` takes the entries named from PATH that
+  the library does not have, sends to PATH those that it does not have,
+  and merges the others both ways;
+- `papers pull --pool PATH --all` takes every entry of PATH, and
+  `papers push --pool PATH --all` sends every entry of the library.
+
+An entry that has no origin copy for PATH yet (the first exchange) has no
+base: each field that differs is a conflict, decided in the dialogue or
+with `--on-duplicate`.
+
+```
+$ papers sync --pool ../shared-with-bob
+nothing to sync with pool ../shared-with-bob: no entries shared with it (`papers sync --pool ../shared-with-bob --all` adds the entries missing on each side)
+```
+
+The files are copied, as the `files` setting says (a file of PATH is
+never moved): the entries taken from PATH get copies of its files (a hard
+link when possible) and the entries sent to PATH get copies of theirs in
+its files directory. The file links of a shallow library are those of the
+pool entries for its own pool only. A shallow library that takes entries
+from PATH places their files in the files directory of its pool, and adds
+the entries new to the library to its pool, as `add` does (`[also added to
+pool ...]`); the changes of the fields go to the pool with `papers push`,
+or with auto-push.
+
+`papers config pool PATH` makes PATH the pool of the library (see
+[Changing the pool](#changing-the-pool)); the origin copies recorded for
+PATH stay valid, however PATH is written.
 
 ## Auto-push
 
-`papers config auto-push true` makes the commands that change entries push
-them to the pool, in a local library or not: `add`, `edit`, `tag`,
-`list --add-tag` and the other actions of `list`, `check`, `file attach`,
-`file rename`, `file detach`, `file rm`, `file mv` and `file check --fix`.
-After the command, the entries it changed that are shared with the pool,
-and the entries new to the library, are pushed as `papers push KEY...`
-would push them, files included. The other entries are not pushed.
+`papers config auto-push true` in a shallow library makes the commands that
+change entries push them to the pool: `add`, `edit`, `tag`, `list
+--add-tag` and the other actions of `list`, `check`, `file attach`, `file
+rename`, `file detach`, `file rm`, `file mv` and `file check --fix`. After
+the command, the entries it changed that are shared with the pool, and the
+entries new to the library, are pushed as `papers push KEY...` would push
+them, files included. The other entries are not pushed. In a
+self-contained library, the setting has no effect (it has no pool; the
+libraries of `--pool PATH` only get what `push` and `sync` send).
 
 - `rm` is never pushed: removing an entry from the library does not
   remove it from the pool.
@@ -226,10 +242,10 @@ $ papers tag Smith_2020 --add bar
 Modified -> Smith_2020: Climate sensitivity revisited (doi:10.1000/abc123, foo | bar) [not pushed: changed in the pool too; papers sync decides]
 ```
 
-With `auto-push false` (the default, local or not), nothing is pushed
-automatically, apart from the new entries of `add` and the file links in a
-library that is not local (see [Local or not](#local-or-not)): run
-`papers push` or `papers sync`.
+With `auto-push false` (the default), nothing is pushed automatically,
+apart from the new entries of `add` and the file links of a shallow
+library (see [Shallow libraries](#shallow-libraries)): run `papers push` or
+`papers sync`.
 
 ## A finished paper
 
@@ -263,12 +279,14 @@ ways on `pull` and `push`.
 ## Origin copies
 
 `.papers/origin/`, next to the bibtex of the library, holds one file per
-pool: the name of its folder and the start of a hash of the pool setting,
-e.g. `shared-with-bob-d15650.bib` for `../shared-with-bob`, or
-`papers-<hash>.bib` for `~/Documents/papers`. The first lines of the file name the pool and
-give the modification time of its bibtex at the last exchange. In a
-library whose pool is `../shared-with-bob`, after `papers pull
-agnew_farrell1978` and `papers pull`:
+pool: the pool of the library, and each library exchanged with through
+`--pool PATH`. A file is named after the folder of the pool and the start
+of a hash of its path as the library names it, e.g.
+`shared-with-bob-d15650.bib` for `../shared-with-bob`, or
+`papers-<hash>.bib` for `~/Documents/papers`. The first lines of the file
+name the pool and give the modification time of its bibtex at the last
+exchange. In a library whose pool is `../shared-with-bob`, after `papers
+pull agnew_farrell1978` and `papers pull`:
 
 ```
 @comment{papers-pool ../shared-with-bob}
@@ -284,23 +302,25 @@ agnew_farrell1978` and `papers pull`:
 }
 ```
 
-Only the file of the pool of the library is used and written. The files of
-earlier pools are kept: after `papers config pool PATH`, the library starts
-the file of the new pool, and setting the pool back to an earlier one finds
-its origin copies again. The file records, for each entry
-exchanged with the pool (by `add`, `pull` or `push`), its origin copy,
-under the library's key, with the key in the pool (`papers-pool-key`) and
-the time (`papers-time`); in a library that is not local, the origin copy
-also keeps its `file` field, the file links of the pool entry after the
-exchange, so that a pull can tell a link that the pool entry removed from
-one it never had (in a local library it has no `file` field). The file
-links are not part of the three-way merge. The modification time is recorded at a pull of
-all entries that skipped no conflict, or a push or an add when the pool
-had not changed since the previous exchange (or when it is the first
+The file records, for each entry exchanged with the pool (by `add`, `pull`
+or `push`), its origin copy, under the library's key, with the key in the
+pool (`papers-pool-key`) and the time (`papers-time`). In a shallow
+library, the origin copy for its pool also keeps its `file` field, the
+file links of the pool entry after the exchange, so that a pull can tell a
+link that the pool entry removed from one it never had (the origin copies
+for other libraries have no `file` field). The file links are not part of
+the three-way merge. The modification time is recorded at a pull of all
+entries that skipped no conflict, or a push or an add when the pool had
+not changed since the previous exchange (or when it is the first
 exchange). A push that leaves the pool entry with fields or files that the
 library entry does not have does not count: `papers status` then shows the
 pool as changed until the next pull. The files are part of the git backup
 of the library (see [Git integration](git.md)).
+
+The files of all pools are kept: after `papers config pool PATH`, the
+library uses the file of PATH (with the origin copies of the exchanges
+with `--pool PATH`, if any), and setting the pool back to an earlier one
+finds its origin copies again.
 
 Earlier v3 beta versions kept all the origin copies in one file,
 `.papers/origin.bib`: papers splits it into these files the first time it
@@ -337,16 +357,23 @@ entry, without querying crossref:
   pool's fields are taken, the entry keeps its key, and its fields that the
   pool entry does not have are kept.
 
-The entry gets the pool's files: in a local library in `copy` and `move`
-mode they are copied into the library's files directory (a hard link when
-possible), named with the library's name template; a pool file is never
-moved. In `link` mode, and in a library that is not local, the entry links
-to the pool's file. A PDF given that has the same content as a file of
-the pool entry is removed in `move` mode, since it is stored already, and
-kept in `copy` and `link` mode; a PDF with other content is attached to
-the entry as another file, placed as the files mode says. The origin copy
-is recorded. `--no-pool` skips the
-lookup.
+The entry gets the pool's files: in a shallow library, the entry links to
+the pool's file; otherwise, in `copy` and `move` mode they are copied into
+the library's files directory (a hard link when possible), named with the
+library's name template, and in `link` mode the entry links to the pool's
+file. A pool file is never moved. A PDF given that has the same content as
+a file of the pool entry is removed in `move` mode, since it is stored
+already, and kept in `copy` and `link` mode; a PDF with other content is
+attached to the entry as another file, placed as the files mode says. The
+origin copy is recorded. `--no-pool` skips the lookup.
+
+`papers add --pool PATH` looks in the library PATH instead (PATH must be a
+library without pool), in the same way: a paper that PATH has is taken from
+it with its files, copied as the files mode says (in a shallow library,
+into the files directory of its pool, and the entry goes to its pool too,
+as any new entry), and the origin copy is recorded for PATH, so that
+`papers pull --pool PATH` brings the later corrections. Nothing new is sent
+to PATH. This is not `papers -C PATH add`, which adds to the library PATH.
 
 ## `papers pull`
 
@@ -368,7 +395,7 @@ field. A removed field counts as a change:
 | removed on both sides | removed |
 
 File links are merged: new files of the pool entry are linked in a
-library that is not local, and otherwise copied into the library's files
+shallow library (from its own pool), and otherwise copied into the files
 directory as the `files` setting says. The key of the library entry never
 changes. After the merge, the origin copy is the pool's current version.
 A skipped conflict leaves the pool shown as changed in `papers status`.
@@ -376,10 +403,9 @@ A skipped conflict leaves the pool shown as changed in `papers status`.
 An entry without origin copy (added before the pool was used, or with
 `--no-pool`) is not shared: `pull` without KEY leaves it alone. Named on the
 command line, or with `--all`, it is matched to the pool by the same-paper
-rule. Its differences
-with the pool entry are conflicts (there is no origin to tell which side
-changed), a field that only the pool entry has is added, and the origin
-copy is recorded afterwards ("linked").
+rule. Its differences with the pool entry are conflicts (there is no
+origin to tell which side changed), a field that only the pool entry has
+is added, and the origin copy is recorded afterwards ("linked").
 
 An entry that the pool does not have is reported (`Not found`) only when it
 is named on the command line. Without KEY, it is left as it is.
@@ -388,17 +414,13 @@ A KEY is looked up in the library first, then in the pool (its key, DOI,
 arXiv identifier or ISBN): an entry of the pool that the library does not
 have is added to it (`added`), with its origin copy, under the pool key
 (see [Keys and identity](#keys-and-identity)); its files are linked in a
-library that is not local, otherwise copied as the `files` setting says (a
-hard link when possible). An identifier found in neither is an error, and
-nothing is changed. `--all` adds every entry of the pool that the library
-does not have (same-paper rule). Without KEY or `--all`, `pull` only
-updates the entries shared with the pool, like `push` and `sync`. A pool
-that does not exist or is not a library is an error of `pull`, `pull --check` and `sync`, and nothing is changed
-(the global pool that was not created yet is not: there is nothing to
-pull).
-
-`--pool PATH` pulls from another library once, see
-[One-time exchanges](#one-time-exchanges).
+shallow library, otherwise copied as the `files` setting says (a hard link
+when possible). An identifier found in neither is an error, and nothing is
+changed. `--all` adds every entry of the pool that the library does not
+have (same-paper rule). A pool that does not exist or is not a library is
+an error of `pull`, `pull --check` and `sync`, and nothing is changed.
+Without `--pool PATH`, a self-contained library has no pool to pull from:
+`this library has no pool: give one with --pool PATH`.
 
 `pull` prints one line per entry added (`Added ->`), modified
 (`Modified ->`), left with a conflict (`Conflict ->`) or, among the entries
@@ -406,13 +428,12 @@ named, not found in the pool (`Not found ->`), with the pool in brackets,
 then the counts when more than one entry was involved: `added`,
 `modified`, `skipped`, `not found`, `unchanged`, and `linked` (an entry
 without origin copy, the same as its pool entry: its origin copy is
-recorded). `push` prints the same lines for the
-pool entries. When a command also adds or changes the entry in the pool
-(see [Auto-push](#auto-push)), or `add` takes it from the pool, its line
-says so in brackets: `[also added to pool ~/Documents/papers]`,
-`[also modified in pool ~/Documents/papers]`,
-`[not pushed: changed in the pool too; papers sync decides]`,
-`[from pool ~/Documents/papers]`.
+recorded). `push` prints the same lines for the pool entries. When a
+command also adds or changes the entry in the pool (see
+[Auto-push](#auto-push)), or `add` takes it from the pool, its line says so
+in brackets: `[also added to pool ~/Documents/papers]`, `[also modified in
+pool ~/Documents/papers]`, `[not pushed: changed in the pool too; papers
+sync decides]`, `[from pool ~/Documents/papers]`.
 
 Conflicts are decided as for duplicates (see
 [The dialogue](adding-entries.md#the-dialogue)), with `--on-duplicate`:
@@ -431,8 +452,8 @@ mode.
 `papers pull --check` only reports: whether the pool changed since the last
 pull (a modification time check), and the entries whose pool version
 changed since their origin copy, with the fields (without KEY, the entries
-shared with the pool). `papers status` shows the
-first part too.
+shared with the pool). `papers status` shows the first part too, for the
+pool of a shallow library.
 
 ## `papers push`
 
@@ -440,24 +461,25 @@ first part too.
 papers push [KEY...|-] [--all] [--pool PATH] [--on-duplicate MODE]
 ```
 
-The reverse of `pull`, into the pool of the library (or `--pool PATH`,
-once, see [One-time exchanges](#one-time-exchanges)). Without KEY, only the
-entries shared with the pool are pushed: those with an origin copy from it
-(taken from it by `add` or `pull`, or pushed to it before). `push KEY...`
-pushes the entries named, and `push --all` every entry of the library:
+The reverse of `pull`, into the pool of the library or the library of
+`--pool PATH`. Without KEY, only the entries shared with the pool are
+pushed: those with an origin copy from it (taken from it by `add` or
+`pull`, or pushed to it before). `push KEY...` pushes the entries named,
+and `push --all` every entry of the library:
 
 - an entry that is not in the pool is added to it, with a key from the
   pool's key template; its files are copied into the pool's files directory
   (a hard link when possible), named with the pool's name template;
 - an entry that is in the pool is merged three-way into the pool entry:
   fields changed or removed in the library only are taken, fields changed
-  or removed in the pool only are kept, conflicts are decided with `--on-duplicate` (`keep`: the
-  pool values, `update`: the library values). The pool key does not change.
+  or removed in the pool only are kept, conflicts are decided with
+  `--on-duplicate` (`keep`: the pool values, `update`: the library values).
+  The pool key does not change.
 
 Push does not change the library: after it, the origin copy is the library
 version that was pushed, and the fields that only the pool entry has come
-with the next `pull` (or `papers sync`). The pool is created if it does not
-exist yet.
+with the next `pull` (or `papers sync`). The library of `--pool PATH` is
+created if it does not exist yet (its parent folder must exist).
 
 ### A pool with entries papers cannot read
 
@@ -493,38 +515,8 @@ nothing changed, `sync` prints one line:
 
 ```
 $ papers sync
-nothing to sync with pool ~/Documents/papers (2 entries unchanged)
+nothing to sync with pool ../sealevel (2 entries unchanged)
 ```
-
-## One-time exchanges
-
-`--pool PATH` on `pull`, `push` and `sync` exchanges with the library at
-`PATH` once, e.g. a folder shared with a coauthor. It reads and writes only
-that library, not the pool of the library, and records no origin copy: no
-entry becomes shared with it, and the origin copies of the pool do not
-change. When `PATH` is the pool of the library, `--pool PATH` is the usual
-exchange.
-
-- `papers sync --pool PATH KEY...` takes the entries named from `PATH`
-  that the library does not have, sends to `PATH` those that it does not
-  have, and merges the others both ways;
-- `papers pull --pool PATH --all` takes every entry of `PATH`, and
-  `papers push --pool PATH --all` sends every entry of the library;
-- an entry taken from `PATH` is shared with no pool; an entry sent to
-  `PATH` stays shared with the pool of the library if it was.
-
-Without an origin copy, there is nothing to tell which side changed a
-field: each field that differs is a conflict, decided in the dialogue or
-with `--on-duplicate`. Without KEY or `--all`, nothing is exchanged:
-
-```
-$ papers sync --pool ../shared-with-bob
-nothing to sync with pool ../shared-with-bob: not the pool of the library, so no entries are shared with it (`papers sync --pool PATH KEY...` or `--all` exchanges entries with it once)
-```
-
-The entries taken from it link to its files in a library that is not local
-(in a local library, they are copied as the `files` setting says), and the
-entries sent to it get copies of their files in its files directory.
 
 ## Undo in a pool
 
@@ -532,8 +524,8 @@ A pool is a library with its own backup history (see
 [Git integration](git.md)). `papers undo` in a library undoes a change of
 that library only: an entry that `add` also added to the pool stays in the
 pool. To undo a change in the pool, run the command in the pool, e.g.
-`papers -C ~/Documents/papers undo` for the global pool. The origin copies
-of the library are restored with its bibtex: see
+`papers -C ../sealevel undo`. The origin copies of the library are
+restored with its bibtex: see
 [Undo in a library that has a pool](undo-redo.md#undo-in-a-library-that-has-a-pool).
 
 ## `papers export`
@@ -544,8 +536,9 @@ papers export DIR [KEY...|-] [--files copy|link|none]
 
 writes the entries (all without KEY) as a new library in `DIR`, which must
 not exist or be empty, to hand over: its bibtex, its files directory, and
-its configuration (with the name and key templates that the library sets,
-`local: true` and `pool: none`). File links are relative to the new bibtex.
+its configuration (a self-contained library, with the name and key
+templates that the library sets). File links are relative to the new
+bibtex.
 
 - `--files copy` (default) copies the files into `DIR/files` (hard links
   when possible), named with the name template;
@@ -553,42 +546,44 @@ its configuration (with the name and key templates that the library sets,
 - `--files none` leaves the file links out.
 
 `papers add DIR --recursive` adds an exported library to another one, and
-`papers config pool DIR` makes it the pool of the library.
+`papers config pool DIR` makes it the pool of the library (the export has
+copies of its PDFs).
 
 ## A shared files folder without a pool
 
 In papers 2, several libraries could keep their PDFs in one folder: each
-library has its own bibtex, no pool (`pool: none`), its own files
-(`local: true`), and a `filesdir` that points to a common folder outside
-the project, e.g. `~/Documents/papers/sealevel` used by two projects. This
-setup still works in v3.
+library has its own bibtex, and a `filesdir` that points to a common
+folder outside the project, e.g. `~/Documents/papers/sealevel` used by two
+projects. This setup still works in v3, with self-contained libraries.
 
-It is less efficient than a pool. Each library has its own bibtex, and
-knows nothing of the others: adding to the second library a paper that the
-first one has (even its PDF, already in the shared folder) reads the PDF
-again, extracts its DOI and fetches the entry from crossref (the request is
-answered from the cache when the same DOI was fetched on this machine).
-Changes to an entry in one library do not reach the other.
+Each library has its own bibtex, and knows nothing of the others: adding to
+the second library a paper that the first one has (even its PDF, already
+in the shared folder) reads the PDF again, extracts its DOI and fetches the
+entry from crossref (the request is answered from the cache when the same
+DOI was fetched on this machine). Changes to an entry in one library do
+not reach the other.
 
-The pool model of v3 avoids this: by default, a library is not local (it
-has no files of its own) and its entries are copies of the entries of the
-pool, whose PDFs are in the pool's files folder. A paper that is in the
-pool already is taken from it, without reading the PDF or fetching anything,
-and `papers sync` keeps the copies up to date. In both setups, each PDF is
-stored once.
+papers 3 offers two other ways:
+
+1. exchanges with any library: `papers add --pool PATH` takes a paper that
+   the library PATH has, without reading the PDF or fetching anything, and
+   `papers sync --pool PATH` keeps the entries exchanged up to date. Each
+   library keeps its own copies of the PDFs (hard links when possible);
+2. shallow projects that link to the PDFs of a shared library: a project
+   created with `papers init --pool PATH` takes its entries from PATH and
+   links to its PDFs, and the papers it adds go to PATH. Each PDF is stored
+   once.
 
 A shared files folder without a pool is enough when the libraries are
-independent, and you do not want a central bibliography. To set it up:
+independent, and you do not want a shared bibliography. To set it up:
 
 ```
-papers init --pool none --filesdir ~/Documents/papers/sealevel   # local, since it has no pool
-papers config pool none                                          # in an existing library
-papers config filesdir ~/Documents/papers/sealevel               # the shared folder
-papers config --global pool none   # new libraries get no pool
+papers init --filesdir ~/Documents/papers/sealevel   # a new library
+papers config filesdir ~/Documents/papers/sealevel   # an existing library
 ```
 
 A library configuration of papers 2 has no `pool` setting: it is read as a
-local library (its files are its own) without pool, as in papers 2.
+self-contained library, as in papers 2.
 
 What to watch for, since each library only knows its own entries:
 
@@ -605,52 +600,43 @@ What to watch for, since each library only knows its own entries:
   (the two libraries use the same template); otherwise attach the renamed
   file with `papers file attach KEY FILE`, and remove the link with
   `papers file detach --broken --key KEY`.
-- `papers push --all` then `papers config local false` in one library
-  deletes the shared PDFs once the pool has copies, and the links of the
-  other library break. Once the other library uses the same pool,
+- `papers push --pool PATH --all` then `papers config pool PATH` in one
+  library deletes the shared PDFs once PATH has copies, and the links of
+  the other library break. Once the other library uses the same pool
+  (`papers config pool PATH`, which counts the broken links),
   `papers file check --fix` relinks them to the pool's files (see
   [Reconnecting PDFs and a bibtex](files.md#reconnecting-pdfs-and-a-bibtex)).
 
 ## Example
 
-The global pool in `~/Documents/papers`, and two projects:
+A self-contained project, `sealevel`, and a shallow project, `tides`, that
+uses it as pool:
 
 ```
-mkdir -p ~/projects/sealevel ~/projects/tides
 cd ~/projects/sealevel
-papers init                               # pool: the global pool, not local
-papers add ~/Downloads/esd-4-11-2013.pdf  # fetched from crossref; the PDF goes to
-                                          # ~/Documents/papers/files, the entry to both
+papers init                               # self-contained
+papers add ~/Downloads/esd-4-11-2013.pdf  # fetched from crossref; the PDF goes to files/
 
 cd ~/projects/tides
-papers init
-papers add --doi 10.5194/esd-4-11-2013    # taken from the pool: no query, the file is linked
+papers init --pool ../sealevel            # shallow
+papers add --doi 10.5194/esd-4-11-2013    # taken from sealevel: no query, the file is linked
 ```
 
-Later, the entry is completed in the pool (e.g. its pages), and adapted in
-`tides` (a journal abbreviation):
+Later, the entry is completed in `sealevel` (e.g. its pages), and adapted
+in `tides` (a journal abbreviation):
 
 ```
 cd ~/projects/tides
-papers status                  # pool: ~/Documents/papers (global pool, changed since last pull or push)
-papers pull --check            # perrette_landerer2013: changed in pool ~/Documents/papers: pages
+papers status                  # pool: ../sealevel (changed since last pull or push)
+papers pull --check            # perrette_landerer2013: changed in pool ../sealevel: pages
 papers pull                    # pages taken; the journal abbreviation is kept
 ```
 
-A project shared with a colleague through git keeps its own files:
+A folder shared with a coauthor, exchanged with from time to time:
 
 ```
 cd ~/projects/sealevel
-papers config local true       # copies the pool files into files/ (hard links), after asking
-```
-
-A folder shared with someone as a separate pool, for one project:
-
-```
-cd ~/projects/tides
-papers export ../shared-with-bob          # a library of its own
-papers config pool ../shared-with-bob     # the pool of tides from now on: it links to the
-                                          # copies of the PDFs that export made
-papers sync --all                         # the first time: records what is shared
-papers sync                               # later changes, both ways
+papers export ../shared-with-bob mine2022 smith2020   # a self-contained library for Bob
+papers sync --pool ../shared-with-bob --all            # the first time: records what is shared
+papers sync --pool ../shared-with-bob                  # later changes, both ways
 ```

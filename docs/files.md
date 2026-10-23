@@ -29,20 +29,20 @@ directory of a library whose configuration (`.papersconfig.json`) is found
 in the file's directory or above, is never moved: in `move` mode it is
 copied instead (a hard link when possible), so that the other library keeps
 its link. The same holds for a file in the files directory of the pool of
-the library (see [Pools](pools.md)). A file already in the files directory of the current library is
+the library, or of the library of `--pool PATH` (see [Pools](pools.md)). A file already in the files directory of the current library is
 renamed in `copy` mode too, rather than copied next to itself. A file
 downloaded by papers (a URL given to `add` or `--attach`) is always moved
 into the files directory.
 
-In a library that is not local (`local: false`, the default), the file
-links are the pool entry's; the library decides which entries it has. The
-files directory where `add`, `file attach` and `file rename` place the files
-is that of the pool, and the name template is the pool's: `move` and `copy`
-place the file in the pool's files directory, and the library entry and the
-pool entry link to it there; with `link`, the file stays where it is, and
-both link to it there. This works on one machine; on another machine that
-uses the pool, such links are broken (see
-[Local or not](pools.md#local-or-not)).
+In a shallow library (a library with a pool), the file links are the pool
+entry's; the library decides which entries it has. The files directory
+where `add`, `file attach` and `file rename` place the files is that of the
+pool, and the name template is the pool's: `move` and `copy` place the
+file in the pool's files directory, and the library entry and the pool
+entry link to it there; with `link`, the file stays where it is, and both
+link to it there. This works on one machine; on another machine that uses
+the pool, such links are broken (see
+[Shallow libraries](pools.md#shallow-libraries)).
 
 ## `papers file`
 
@@ -137,11 +137,9 @@ from every entry that links to it, then deletes the file.
   the links in the same way, without deleting anything.
 - With `--key`, only the links of those entries are removed; a file that
   another entry still links to is kept on disk, and papers says so.
-- In a local library, a file of the pool is never deleted: only the link
-  is removed, and papers says so. In a library that is not local, the link
-  is removed from the pool entry too, and the file (in the pool's files
-  directory or elsewhere) is deleted unless another entry of the pool or
-  of the library still links to it.
+- In a shallow library, the link is removed from the pool entry too, and
+  the file (in the pool's files directory or elsewhere) is deleted unless
+  another entry of the pool or of the library still links to it.
 - papers does not ask: the file was named on the command line. `--dry-run`
   shows the links that would be removed and the files and folders that
   would be deleted.
@@ -165,11 +163,11 @@ papers list --tag draft -K | papers file detach --broken --key -
 ## Reconnecting PDFs and a bibtex
 
 When the links of a library are broken because the PDFs moved (another
-library that shared the files directory moved them into a pool, a folder
+library that shared the files directory moved them into a library, a folder
 was renamed, a backup was restored elsewhere...), `papers file check --fix`
 looks for each missing file, without parsing any PDF:
 
-1. in the pool of the library, among the files of the pool entry of the
+1. in a shallow library, in its pool, among the files of the pool entry of the
    same paper (same DOI, arXiv identifier, ISBN, or same title and
    authors): the file with the same file name as the broken link; else
    the one file named `<name>--<file name of the link>` (the pool renamed
@@ -184,16 +182,15 @@ looks for each missing file, without parsing any PDF:
    taken, and papers says which.
 
 The file found replaces the broken link, and is placed as
-`papers file attach KEY FILE` places it: in a library that is not local, a
-file of the pool is linked where it is, and a file of a `--search` folder
-goes to the pool (as the `files` setting says: moved, copied or linked); in
-a local library, the file goes to the files directory as the `files`
-setting says, and a file of the pool is copied (a hard link when possible),
-never moved.
+`papers file attach KEY FILE` places it: in a shallow library, a file of
+the pool is linked where it is, and a file of a `--search` folder goes to
+the pool (as the `files` setting says: moved, copied or linked); in a
+self-contained library, the file goes to the files directory as the
+`files` setting says.
 
-`papers config local false` and `papers config pool` link the library to
-the pool's copies of the files that exist, and say how many links were
-already broken: `papers file check --fix` relinks them afterwards.
+`papers config pool PATH` links the library to the copies in PATH of the
+files that exist, and says how many links were already broken:
+`papers file check --fix` relinks them afterwards.
 
 Without `--fix`, `papers file check` reports the files it would relink, and
 where they come from. `--fix --dry-run` shows the links that `--fix` would
@@ -236,10 +233,10 @@ files that no remaining entry links to may be deleted too:
 - a file outside the files directory is deleted only with `--delete-files`.
 
 A file still linked from another entry is never deleted, nor a file in the
-files directory of the pool of the library, nor, in a library that is not
-local, a file that an entry of the pool links to (see
-[Local or not](pools.md#local-or-not)); `papers rm` does not change the
-pool. A file that is a
+files directory of the pool of the library, nor, in a shallow library, a
+file that an entry of the pool links to (see
+[Shallow libraries](pools.md#shallow-libraries)); `papers rm` does not
+change the pool. A file that is a
 hard link (e.g. to the file of another library) can be deleted: this only
 removes this link, and papers says so.
 

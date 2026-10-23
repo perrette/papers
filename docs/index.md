@@ -18,13 +18,13 @@ Command-line tool to manage your bibliography (PDFs + BibTeX).
 ```bash
 pip install git+https://github.com/perrette/papers.git@v3   # the 3.0 beta
 cd ~/projects/my-paper
-papers init --local             # a library: papers.bib and files/ here
+papers init                     # a library: papers.bib and files/ here
 papers add ~/Downloads/paper.pdf
 papers list
 ```
 
 - **[Installation](installation.md)** — pip install and external dependencies.
-- **[Quickstart](quickstart.md)** — a project with its own PDFs, its papers moved to a pool, a second project that uses the pool.
+- **[Quickstart](quickstart.md)** — a self-contained project, and a shallow project that uses it as pool.
 - **[Upgrading from papers 2](upgrading.md)** — what becomes of a papers 2 library, and `papers migrate`.
 - **[Adding entries](adding-entries.md)** — from PDFs, DOIs, bibtex, or whole directories.
 - **[Configuration](configuration.md)** — libraries, settings and pools.
@@ -37,6 +37,7 @@ papers list
 - [Files](files.md)
 - [Configuration](configuration.md)
 - [Pools](pools.md)
+- [A global shared library](global-library.md)
 - [Managing your library](library-management.md)
 - [Git integration](git.md)
 - [Undo and redo](undo-redo.md)
