@@ -434,7 +434,13 @@ def print_kept_files(kept, in_pool):
         print(f"kept {f}: it is a file of a pool")
 
 
-def _delete_files_option(parser, o):
+def _delete_files_option(parser, o, config):
+    """the delete_files argument of remove_entries for --delete-files and
+    --keep-files (rm, list --delete); --delete-files is an error in a shallow
+    library, whose files are the pool's"""
     if o.delete_files and o.keep_files:
         parser.error('--delete-files and --keep-files are mutually exclusive')
+    if o.delete_files and config.shallow:
+        raise PapersExit('--delete-files: the files of a shallow library are the pool\'s: '
+                         'remove them with `papers file rm FILE`')
     return True if o.delete_files else (False if o.keep_files else None)

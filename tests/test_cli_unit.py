@@ -139,11 +139,21 @@ class TestHelpers(unittest.TestCase):
 
     def test_delete_files_option(self):
         parser = argparse.ArgumentParser()
+        config = argparse.Namespace(shallow=False)
         with mock.patch.object(parser, 'error', side_effect=SystemExit(2)):
             with self.assertRaises(SystemExit):
-                _delete_files_option(parser, argparse.Namespace(delete_files=True, keep_files=True))
-        self.assertIsNone(_delete_files_option(parser, argparse.Namespace(delete_files=False, keep_files=False)))
-        self.assertFalse(_delete_files_option(parser, argparse.Namespace(delete_files=False, keep_files=True)))
+                _delete_files_option(parser, argparse.Namespace(delete_files=True, keep_files=True), config)
+        self.assertIsNone(_delete_files_option(parser, argparse.Namespace(delete_files=False, keep_files=False),
+                                               config))
+        self.assertFalse(_delete_files_option(parser, argparse.Namespace(delete_files=False, keep_files=True),
+                                              config))
+        self.assertTrue(_delete_files_option(parser, argparse.Namespace(delete_files=True, keep_files=False),
+                                             config))
+        shallow = argparse.Namespace(shallow=True)
+        with self.assertRaisesRegex(PapersExit, 'shallow library'):
+            _delete_files_option(parser, argparse.Namespace(delete_files=True, keep_files=False), shallow)
+        self.assertIsNone(_delete_files_option(parser, argparse.Namespace(delete_files=False, keep_files=False),
+                                               shallow))
 
     def test_print_kept_files(self):
         with redirect_stdout(io.StringIO()) as out:

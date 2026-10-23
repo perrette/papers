@@ -1393,10 +1393,24 @@ class TestShallow(OwnFilesTest):
                 self.assertEqual(len(self.bib('pool')[1]), pool_entries)
 
     def test_rm_never_deletes_pool_files(self):
-        out = self.out('rm smith2020climate --delete-files')
+        # in a terminal, papers does not ask about the files of the pool
+        with patch('papers.cli.entry_cmds.stdin_is_terminal', lambda: True), \
+                patch('builtins.input', side_effect=AssertionError('asked')):
+            out = self.out('rm smith2020climate')
         self.assertTrue(os.path.exists(self.pool_pdf))
         self.assertIn('it is a file of a pool', out)
         self.assertNotIn('smith2020climate', self.bib()[1])
+        self.assertIn('Smith_2020', self.bib('pool')[1])  # the pool entry stays
+
+    def test_rm_delete_files_is_an_error(self):
+        before = Path(self.path('lib', 'papers.bib')).read_text()
+        for cmd in ('rm smith2020climate --delete-files', 'list smith --delete --delete-files'):
+            with self.subTest(cmd=cmd):
+                with self.assertRaisesRegex(PapersExit, "--delete-files: the files of a shallow library are "
+                                                        "the pool's: remove them with `papers file rm FILE`"):
+                    self.lib(cmd)
+                self.assertEqual(Path(self.path('lib', 'papers.bib')).read_text(), before)
+                self.assertTrue(os.path.exists(self.pool_pdf))
 
     def test_file_rm_deletes_the_pool_file(self):
         # the link goes in the pool entry too: no entry links to the file any more

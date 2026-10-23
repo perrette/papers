@@ -116,8 +116,10 @@ In a shallow library:
     (`kept FILE: an entry of the pool links to it`). The PDF is removed for
     every library that uses the pool;
   - `papers rm KEY` removes the entry from the library only. The pool entry
-    and its files stay, also with `--delete-files` (which deletes the files
-    of removed entries in a self-contained library);
+    and its files stay, and papers does not ask about them.
+    `papers rm KEY --delete-files` (and `papers list ... --delete
+    --delete-files`) is an error, and nothing is removed: the files of a
+    shallow library are the pool's, `papers file rm FILE` deletes them;
 - `pull` and `sync` with the pool link to the pool's files instead of
   copying them, and the library entry follows the pool entry's links: a
   link that the pool entry had at the last exchange and no longer has is

@@ -279,7 +279,9 @@ def remove_entries(biblio, entries, config, delete_files=None, ask=True):
     links to. delete_files=True deletes them all; False keeps them; None
     asks, in a terminal (ask=True), whether to delete those inside the files
     directory, and keeps them without a terminal. A file outside the files
-    directory is only deleted with delete_files=True.
+    directory is only deleted with delete_files=True. In a shallow library,
+    the files that the pool entries link to are kept (rmcmd refuses
+    --delete-files there).
     """
     pools = Pools(config)
     inside, outside, kept, in_pool = papers.files.remove_entries(biblio, entries, config.filesdir,
@@ -297,7 +299,8 @@ def remove_entries(biblio, entries, config, delete_files=None, ask=True):
     if delete_files:
         return inside + outside
     if outside:
-        print(f"kept {len(outside)} file(s) outside the files directory (`--delete-files` deletes them):")
+        note = '' if config.shallow else ' (`--delete-files` deletes them)'
+        print(f"kept {len(outside)} file(s) outside the files directory{note}:")
         for f in outside:
             print(f"  {f}")
     if not inside:
@@ -312,7 +315,8 @@ def remove_entries(biblio, entries, config, delete_files=None, ask=True):
     print(f"kept {len(inside)} file(s) of the removed entries in the files directory:")
     for f in inside:
         print(f"  {f}")
-    print("delete them with `papers file clean`, or remove the entries with `--delete-files`")
+    print("delete them with `papers file clean`"
+          + ("" if config.shallow else ", or remove the entries with `--delete-files`"))
     return []
 
 
@@ -385,10 +389,11 @@ def editcmd(parser, o, config):
 
 
 def rmcmd(parser, o, config):
+    delete = _delete_files_option(parser, o, config)
     biblio = get_biblio(config)
     biblio_init = copy.deepcopy(biblio)
     entries = select_entries(biblio, o.entries)
-    todelete = remove_entries(biblio, entries, config, delete_files=_delete_files_option(parser, o),
+    todelete = remove_entries(biblio, entries, config, delete_files=delete,
                               ask='-' not in o.entries)
     savebib(biblio, config)
     _print_biblio_diff(biblio_init, biblio, entries)
@@ -580,7 +585,7 @@ def listcmd(parser, o, config):
         notes = save_entries(config, biblio)
 
     elif o.delete:
-        todelete = remove_entries(biblio, entries, config, delete_files=_delete_files_option(parser, o))
+        todelete = remove_entries(biblio, entries, config, delete_files=_delete_files_option(parser, o, config))
         savebib(biblio, config)
         delete_files(todelete, dryrun=papers.config.DRYRUN)
 

@@ -600,7 +600,7 @@ def get_parser(config=None):
                     'on entries read the keys of `papers list -K` with -, e.g. `papers list smith -K | papers file rename -`')
     grp.add_argument('--delete', action='store_true',
         help='remove the listed entries, as `papers rm` (asks whether to delete their files, in a terminal)')
-    grp.add_argument('--delete-files', action='store_true', help='with --delete: also delete their files, as `papers rm --delete-files`')
+    grp.add_argument('--delete-files', action='store_true', help='with --delete: also delete their files, as `papers rm --delete-files` (an error in a shallow library)')
     grp.add_argument('--keep-files', action='store_true', help='with --delete: keep their files, without asking')
     grp.add_argument('-e', '--edit', action='store_true', help='edit the listed entries in a text editor, as `papers edit`')
     grp.add_argument('--fetch', action='store_true', help='deprecated: `papers check --fetch --fetch-all --fix-doi --fix-key --format-name -`')
@@ -622,12 +622,13 @@ def get_parser(config=None):
     rmp = subparsers.add_parser('rm', parents=[cfg],
         description='remove entries. Their files that no other entry links to may be deleted too: in a '
                     'terminal, papers asks for those in the files directory; without a terminal, they are kept. '
-                    'Files outside the files directory are only deleted with --delete-files.')
+                    'Files outside the files directory are only deleted with --delete-files. In a shallow '
+                    'library, the files of the pool are kept: `papers file rm FILE` deletes them.')
     rmp.add_argument('entries', nargs='+', metavar='KEY',
         help=_selection_help)
     rmp.add_argument('--delete-files', action='store_true',
         help='also delete the files of the entries that no other entry links to, without asking '
-             '(also those outside the files directory)')
+             '(also those outside the files directory); an error in a shallow library')
     rmp.add_argument('--keep-files', action='store_true', help='keep the files, without asking')
     _command(rmp, rmcmd, library=True)
 

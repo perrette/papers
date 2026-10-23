@@ -239,7 +239,9 @@ A file still linked from another entry is never deleted, nor a file in the
 files directory of the pool of the library, nor, in a shallow library, a
 file that an entry of the pool links to (see
 [Shallow libraries](pools.md#shallow-libraries)); `papers rm` does not
-change the pool. A file that is a
+change the pool. In a shallow library, `--delete-files` is an error and
+nothing is removed: the files are the pool's, and `papers file rm FILE`
+deletes them. A file that is a
 hard link (e.g. to the file of another library) can be deleted: this only
 removes this link, and papers says so.
 

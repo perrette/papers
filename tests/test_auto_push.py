@@ -5,6 +5,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from papers.pools import ORIGIN_DIR
+from papers.utils import PapersExit
 from tests.test_pools import PoolTest, NEW_BIB, SMITH_BIB, no_fetch
 
 NOTE = '[not pushed: changed in the pool too; papers sync decides]'
@@ -564,8 +565,11 @@ class TestShallowSharedLinks(ExchangeTest):
     def test_rm_key_deletes_no_file_of_the_pool(self):
         self.out(f'file attach smith2020climate {self.si}')
         pool_text = Path(self.path('pool', 'papers.bib')).read_text()
-        out = self.out('rm smith2020climate --delete-files')
-        self.assertIn('it is a file of a pool', out)
+        with self.assertRaisesRegex(PapersExit, 'the files of a shallow library are the pool'):
+            self.out('rm smith2020climate --delete-files')
+        self.assertIn('smith2020climate', Path(self.path('lib', 'papers.bib')).read_text())
+        self.assertIn('it is a file of a pool', self.out('rm smith2020climate'))
+        self.assertNotIn('smith2020climate', Path(self.path('lib', 'papers.bib')).read_text())
         self.assertTrue(os.path.exists(self.si))
         self.assertTrue(os.path.exists(self.pool_pdf))
         self.assertEqual(Path(self.path('pool', 'papers.bib')).read_text(), pool_text)
