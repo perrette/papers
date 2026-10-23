@@ -838,6 +838,8 @@ class TestExport(PoolTest):
         self.assertTrue(os.path.samefile(files[0], self.lib_pdf))
         text = Path(self.path('out', 'papers.bib')).read_text()
         self.assertIn('file = {:files/', text)  # relative links
+        # a new library: no backup of a previous bibtex
+        self.assertFalse(os.path.exists(self.path('out', '.papers.bib.backup')))
         # a library of its own, to hand over
         self.assertEqual(self.json('out')['pool'], 'none')
         self.assertNotIn('local', self.json('out'))

@@ -1367,6 +1367,10 @@ def export(biblio, config, entries, dest, files='copy', git=None, library=True):
             if setting.startswith(('name.', 'key.')) and config.source(setting) == 'library':
                 new.set(setting, config.get(setting))
         new.save()
+        if os.path.exists(new.bibtex) and not read_text(new.bibtex).strip():
+            # the empty bibtex of the new library: removed, so that the save of
+            # the export writes no backup of it (.papers.bib.backup)
+            os.remove(new.bibtex)
         target = Biblio(filesdir=new.filesdir, nameformat=new.nameformat, keyformat=new.keyformat,
                         relative_to=os.path.dirname(new.bibtex), distinct=Distinct.for_bibtex(new.bibtex))
         current = new.file
