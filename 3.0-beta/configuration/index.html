@@ -822,6 +822,62 @@
   
   
     <li class="md-nav__item">
+      <a href="../shallow-libraries/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Shallow libraries
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../export/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Export
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../global-library/" class="md-nav__link">
         
   
@@ -1044,7 +1100,7 @@ library that does not set it has no pool (<code>none</code>).
 </tr>
 <tr>
 <td><code>auto-push</code></td>
-<td><code>false</code> (default) or <code>true</code>: in a shallow library, the commands that change entries push them to the pool (the entries shared with it, and new ones), see <a href="../pools/#auto-push">Pools</a>; no effect in a self-contained library</td>
+<td><code>false</code> (default) or <code>true</code>: in a shallow library, the commands that change entries push them to the pool (the entries shared with it, and new ones), see <a href="../shallow-libraries/#auto-push">Auto-push</a>; no effect in a self-contained library</td>
 </tr>
 <tr>
 <td><code>git</code></td>
@@ -1084,7 +1140,7 @@ in PATH, and requires PATH to have them already (<code>papers push --pool PATH</
 copies them there); in a shallow library, <code>pool none</code> copies the pool
 files that the library links to into its files directory. papers lists
 what it will do and asks to continue (<code>-y</code> does not ask, <code>--dry-run</code> only
-lists; see <a href="../pools/#changing-the-pool">Changing the pool</a>).</p>
+lists; see <a href="../shallow-libraries/#changing-the-pool">Changing the pool</a>).</p>
 <h3 id="global-configuration">Global configuration<a class="headerlink" href="#global-configuration" title="Permanent link">&para;</a></h3>
 <p><code>papers config --global</code> reads and writes the global configuration (per
 user, as in <code>git config --global</code>) instead of the library's:
@@ -1113,7 +1169,7 @@ with <code>papers init --shallow</code> before: each keeps the pool written in i
 configuration.</p>
 <h2 id="pools">Pools<a class="headerlink" href="#pools" title="Permanent link">&para;</a></h2>
 <p>A pool is a library that other libraries exchange entries with (see
-<a href="../pools/">Pools</a> for <code>add</code>, <code>pull</code>, <code>push</code>, <code>sync</code> and <code>export</code>). A library
+<a href="../pools/">Pools</a> for <code>add</code>, <code>pull</code>, <code>push</code> and <code>sync</code>, and <a href="../export/">Export</a>). A library
 has at most one pool, its <code>pool</code> setting: a path relative to the library
 (e.g. <code>../shared-with-bob</code>), a path with <code>~</code> or absolute, or <code>none</code>. A
 library that does not set it has no pool. The pool must be an existing

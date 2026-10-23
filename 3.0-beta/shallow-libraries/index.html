@@ -1,0 +1,1465 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Command-line tool to manage your bibliography (PDFs + BibTeX)">
+      
+      
+      
+        <link rel="canonical" href="https://perrette.github.io/papers/3.0-beta/shallow-libraries/">
+      
+      
+        <link rel="prev" href="../pools/">
+      
+      
+        <link rel="next" href="../export/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Shallow libraries - papers</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#shallow-libraries" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="papers" class="md-header__button md-logo" aria-label="papers" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            papers
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Shallow libraries
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/perrette/papers" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    perrette/papers
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="papers" class="md-nav__button md-logo" aria-label="papers" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    papers
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/perrette/papers" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    perrette/papers
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quickstart
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../upgrading/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Upgrading from papers 2
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guides
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Guides
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../adding-entries/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Adding entries
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../listing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Listing and searching
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../renaming/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Renaming files and keys
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../files/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Files
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../pools/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pools
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Shallow libraries
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Shallow libraries
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#what-a-shallow-library-is" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What a shallow library is
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#papers-init-pool" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        papers init --pool
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Files
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#changing-the-pool" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Changing the pool
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Changing the pool">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#from-a-self-contained-project-to-a-shallow-one" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        From a self-contained project to a shallow one
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#auto-push" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Auto-push
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#use-case-topic-libraries" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Use case: topic libraries
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Use case: topic libraries">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#a-paper-relevant-to-both-topics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A paper relevant to both topics
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#comparison" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Comparison
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Comparison">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#warnings-for-a-shared-files-folder" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Warnings for a shared files folder
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../export/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Export
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../global-library/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    A global shared library
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../library-management/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Managing your library
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../git/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Git integration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../undo-redo/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Undo and redo
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/perrette/papers/edit/v3/shallow-libraries.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="shallow-libraries">Shallow libraries<a class="headerlink" href="#shallow-libraries" title="Permanent link">&para;</a></h1>
+<h2 id="what-a-shallow-library-is">What a shallow library is<a class="headerlink" href="#what-a-shallow-library-is" title="Permanent link">&para;</a></h2>
+<p>A shallow library has a pool: the path of another library, in its <code>pool</code>
+setting. It takes its entries from the pool and links to the pool's PDFs.
+Its file links are those of the pool entries. The entries and PDFs that it
+adds go to the pool too. The library decides which entries it has: the
+pool usually has more.</p>
+<p>A library without pool is self-contained: it has its own entries and its
+own PDFs. See <a href="../pools/">Pools</a> for the exchanges between a library and
+its pool (<code>pull</code>, <code>push</code>, <code>sync</code>).</p>
+<h2 id="papers-init-pool"><code>papers init --pool</code><a class="headerlink" href="#papers-init-pool" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>papers init [DIR] --pool PATH
+</code></pre></div>
+<p>creates a shallow library that uses the library PATH as pool. PATH must be
+an existing library without pool of its own (a self-contained library):
+<code>papers init --pool PATH</code> and <code>papers config pool PATH</code> stop with an error
+otherwise, and nothing is created or changed:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>$ papers init ~/projects/x --pool ~/projects/thesis
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>ERROR:papers:--pool ~/projects/thesis: ~/projects/thesis has a pool itself (~/Documents/papers/sealevel): give a library without pool (nothing was changed)
+</code></pre></div>
+<p>The pool path is written in the configuration relative to the library when
+it is given relative, or when it is under the library (e.g.
+<code>../sealevel</code>); another path is written with <code>~</code> for the home directory,
+or absolute. <code>papers init --shallow</code> uses the default library as pool (see
+<a href="../global-library/">A global shared library</a>).</p>
+<p>A shallow library has no files directory of its own: <code>papers init --pool
+PATH</code> does not create one.</p>
+<h2 id="files">Files<a class="headerlink" href="#files" title="Permanent link">&para;</a></h2>
+<p>In a shallow library, the file links are the pool entry's. The <code>files</code>
+setting says how a new file gets to the pool:</p>
+<ul>
+<li><code>move</code> (the default) and <code>copy</code>: the file is placed in the pool's files
+  directory (moved, or copied: a hard link when possible), named with the
+  pool's name template (a name template set on the library is not used);
+  the library entry and the pool entry link to it there;</li>
+<li><code>link</code>: the file stays where it is, and the library entry and the pool
+  entry both link to it there. This works on one machine; on another
+  machine that uses the pool (a pool in a synchronized folder), such links
+  are broken.</li>
+</ul>
+<p>What the commands do in a shallow library:</p>
+<ul>
+<li><code>add</code> places new files as the <code>files</code> setting says, and adds the new
+  entries to the pool too, whatever the <code>auto-push</code> setting (their origin
+  is recorded, see <a href="../pools/#origin-copies">Origin copies</a>). A change that
+  <code>add</code> makes to the fields of an entry the library has already is pushed
+  only with auto-push;</li>
+<li><code>papers file attach</code>, <code>file rename</code> and <code>file fix</code> place the files they
+  handle in the same way;</li>
+<li>the file links are always pushed, whatever the <code>auto-push</code> setting: a
+  command that changes the files of an entry (<code>file attach</code>, <code>file rename</code>,
+  <code>file detach</code>, <code>file rm</code>, <code>file mv</code>, <code>file fix</code>, <code>edit</code>...) sets the
+  links of the pool entry to match right away, and says so: <code>file links
+  also updated in pool ...</code>. The pool entry gets the links that the
+  command added, wherever they point, and the links of the library entry
+  into the pool's files directory, and loses the links that the library
+  entry no longer has. A link that the library entry had before the
+  command, outside the pool's files directory, and that the pool entry
+  does not have (for instance a file of the library's own <code>files/</code> from
+  when it was self-contained) is not sent; <code>push</code> sends it with the other
+  fields. Only the links change: the other fields are pushed only with
+  auto-push. An entry not shared with the pool gets the links of the pool
+  entry of the same paper updated; if the pool does not have it, the entry
+  is added to the pool, as <code>add</code> does;</li>
+<li>removing a file and removing an entry are different:</li>
+<li><code>papers file detach KEY FILE</code> removes the link from the library entry
+    and from the pool entry; the file stays;</li>
+<li><code>papers file rm FILE</code> removes the link from both and deletes the file,
+    unless another entry of the pool or of the library still links to it
+    (<code>kept FILE: an entry of the pool links to it</code>). The PDF is removed for
+    every library that uses the pool;</li>
+<li>
+<p><code>papers rm KEY</code> removes the entry from the library only. The pool entry
+    and its files stay, and papers does not ask about them.
+    <code>papers rm KEY --delete-files</code> (and <code>papers list ... --delete
+    --delete-files</code>) is an error, and nothing is removed:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>$ papers rm perrette_yool2011 --delete-files
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>ERROR:papers:--delete-files: the files of a shallow library are the pool's: remove them with `papers file rm FILE`
+</code></pre></div>
+</li>
+<li>
+<p><code>pull</code> and <code>sync</code> with the pool link to the pool's files instead of
+  copying them, and the library entry follows the pool entry's links: a
+  link that the pool entry had at the last exchange and no longer has is
+  removed from the library entry (the file is not deleted). A link that
+  the pool entry never had stays. The origin copy records the pool entry's
+  links for this, in its <code>file</code> field; an origin copy without it removes
+  nothing until the next exchange;</p>
+</li>
+<li>when the pool renames a file, the link breaks. It is repaired by looking
+  the entry up in the pool when the library is loaded (saved on the next
+  write), and by <code>papers file fix</code>. <code>papers file check</code> reports it
+  meanwhile, with the new name <code>(from the pool)</code>. A broken link to a file
+  outside the pool is relinked to the pool's file by <code>papers file fix</code>
+  only (see
+  <a href="../files/#reconnecting-pdfs-and-a-bibtex">Reconnecting PDFs and a bibtex</a>).</li>
+</ul>
+<p>Deleting a file of the pool, with <code>papers file rm</code> in a shallow library or
+in the pool itself, breaks the links of the other libraries that use it,
+until their next <code>pull</code> or <code>sync</code> removes the link. <code>papers file check</code>
+shows the broken link meanwhile. The pool keeps no list of the libraries
+that depend on it.</p>
+<p>A project folder shared with coauthors (git, Dropbox...) should be a
+self-contained library: the links of a shallow library point into your own
+pool, which the others do not have. Such a project can still exchange
+entries with your libraries through <code>--pool PATH</code> (see
+<a href="../pools/#exchanges-with-any-library">Exchanges with any library</a>).</p>
+<p>A pool can be in a folder synchronized by a cloud client on the local disk
+(e.g. <code>~/Dropbox/papers</code>): papers reads and writes the files there, and
+the client synchronizes them.</p>
+<h2 id="changing-the-pool">Changing the pool<a class="headerlink" href="#changing-the-pool" title="Permanent link">&para;</a></h2>
+<p><code>papers config pool PATH|none</code> changes the state of a library, and its
+files follow. When a change copies files or deletes the library's copies,
+papers lists what it will do and asks <code>Continue? [y/N]</code>; <code>-y</code> answers yes,
+<code>--dry-run</code> only shows the list, and without a terminal the command stops
+with the list (pass <code>-y</code>). The files of a pool are never deleted.</p>
+<table>
+<thead>
+<tr>
+<th>Command</th>
+<th>In a self-contained library</th>
+<th>In a shallow library</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>papers config pool PATH</code></td>
+<td>the library becomes shallow: it links to the copies of its PDFs in PATH, and its own copies are deleted (see below)</td>
+<td>the library links to the copies of its PDFs in the new pool (see below); the files of the former pool stay where they are</td>
+</tr>
+<tr>
+<td><code>papers config pool none</code> (or <code>--unset pool</code>)</td>
+<td>nothing to do</td>
+<td>the library becomes self-contained: the pool files that it links to are copied into its files directory (hard links when possible), named with its name template, and the links rewritten; the pool keeps its files</td>
+</tr>
+</tbody>
+</table>
+<p>PATH must be an existing library without pool. Each PDF that the library
+links to must already be linked by the entry of the same paper in PATH:
+the same file, or a file of the same content. Entries without PDF need not
+be in PATH, and broken links do not count (<code>papers file fix</code> relinks them
+afterwards). If an entry has a PDF that PATH does not have, nothing is
+changed, and the command lists the entries (the first ten, and the number
+of the others) and the command that copies their PDFs there:
+<code>papers push --pool PATH KEY...</code>, or <code>papers push --pool PATH --all</code> when
+there are more than ten.</p>
+<p>Otherwise the library links to the copies in PATH. The library's own
+copies, in its files directory, are deleted, unless an entry of the
+library or of PATH still links to them; nothing is copied or moved. These
+commands do not push entries or merge fields: <code>papers push</code> does that. The
+entries exchanged with PATH before (with <code>--pool PATH</code>) are shared with it
+already: their origin copies are those of the new pool.</p>
+<h3 id="from-a-self-contained-project-to-a-shallow-one">From a self-contained project to a shallow one<a class="headerlink" href="#from-a-self-contained-project-to-a-shallow-one" title="Permanent link">&para;</a></h3>
+<p>To move the PDFs of a self-contained library into another library, and
+make the library shallow:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>papers init PATH                # if PATH is not a library yet
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>papers push --pool PATH --all   # copies the entries and their PDFs to PATH
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>papers config pool PATH         # links to the copies in PATH, deletes the library's own
+</code></pre></div>
+<p>For a project with one PDF and the library <code>~/Documents/papers/arctic</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>$ papers config pool ~/Documents/papers/arctic
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>ERROR:papers:pool ~/Documents/papers/arctic: 1 entry links to PDFs that the pool ~/Documents/papers/arctic does not have (nothing was changed): perrette_landerer2013
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>Copy them to the pool first: `papers push --pool ~/Documents/papers/arctic perrette_landerer2013`
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>Then run `papers config pool ~/Documents/papers/arctic` again.
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>$ papers push --pool ~/Documents/papers/arctic --all
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>Added -&gt; perrette_landerer2013: A scaling approach to project regional sea level rise and it... (doi:10.5194/esd-4-11-2013, file:1) [to pool ../../Documents/papers/arctic]
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>$ papers config pool ~/Documents/papers/arctic -y
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>link to the copies in the pool ~/Documents/papers/arctic for 1 file (same content); the library's copies in files (1 file) are deleted
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>Modified -&gt; perrette_landerer2013: A scaling approach to project regional sea level rise and it... (doi:10.5194/esd-4-11-2013, file:1)
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>pool = ~/Documents/papers/arctic (in ~/projects/old-paper/.papers/config.json)
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>the library is now shallow: it links to the PDFs of the pool entries, and `papers add` adds its new entries to the pool
+<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>delete ~/projects/old-paper/files/perrette_et_al_2013_a-scaling-approach-to-project-regional-sea-level-rise-and-its-uncertainties.pdf (hard link: the other links remain)
+</code></pre></div>
+<h2 id="auto-push">Auto-push<a class="headerlink" href="#auto-push" title="Permanent link">&para;</a></h2>
+<p><code>papers config auto-push true</code> in a shallow library makes the commands that
+change entries push them to the pool: <code>add</code>, <code>edit</code>, <code>tag</code>, <code>list
+--add-tag</code> and the other actions of <code>list</code>, <code>check</code>, <code>file attach</code>, <code>file
+rename</code>, <code>file detach</code>, <code>file rm</code>, <code>file mv</code> and <code>file fix</code>. After the
+command, the entries it changed that are shared with the pool, and the
+entries new to the library, are pushed as <code>papers push KEY...</code> would push
+them, files included. The other entries are not pushed. In a
+self-contained library, the setting has no effect (it has no pool; the
+libraries of <code>--pool PATH</code> only get what <code>push</code> and <code>sync</code> send).</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>$ papers config auto-push true
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>$ papers tag perrette_landerer2013 --add sealevel
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>Modified -&gt; perrette_landerer2013: A scaling approach to project regional sea level rise and it... (doi:10.5194/esd-4-11-2013, file:1, sealevel) [also modified in pool ~/Documents/papers/sealevel]
+</code></pre></div>
+<ul>
+<li><code>rm</code> is never pushed: removing an entry from the library does not
+  remove it from the pool.</li>
+<li>A conflict (the same field changed in the pool since the last exchange)
+  does not stop the command: the entry is saved in the library, is not
+  pushed, and its line says so:</li>
+</ul>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>$ papers tag Smith_2020 --add bar
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>Modified -&gt; Smith_2020: Climate sensitivity revisited (doi:10.1000/abc123, foo | bar) [not pushed: changed in the pool too; papers sync decides]
+</code></pre></div>
+<p>With <code>auto-push false</code> (the default), nothing is pushed automatically,
+apart from the new entries of <code>add</code> and the file links (see
+<a href="#files">Files</a>): run <code>papers push</code> or <code>papers sync</code>.</p>
+<h2 id="use-case-topic-libraries">Use case: topic libraries<a class="headerlink" href="#use-case-topic-libraries" title="Permanent link">&para;</a></h2>
+<p>Two topic libraries, each self-contained, and two projects, each shallow
+on one of them:</p>
+<ul>
+<li><code>~/Documents/papers/sealevel</code> and <code>~/Documents/papers/arctic</code>: the topic
+  libraries, with the PDFs;</li>
+<li><code>~/projects/thesis</code>: a thesis, shallow on <code>sealevel</code>;</li>
+<li><code>~/projects/arctic-paper</code>: a paper, shallow on <code>arctic</code>.</li>
+</ul>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>$ papers init ~/Documents/papers/sealevel
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>created the library ~/Documents/papers/sealevel
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>* bibtex:  papers.bib
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>* files:   files (the files directory of the library)
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>* backup:  git
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>`papers status -v` shows all settings
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>$ papers init ~/Documents/papers/arctic
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>created the library ~/Documents/papers/arctic
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>...
+<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>$ papers init ~/projects/thesis --pool ~/Documents/papers/sealevel
+<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a>created the library ~/projects/thesis
+<a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a>* bibtex:  papers.bib
+<a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a>* files:   in the pool (shallow library)
+<a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a>* pool:    ~/Documents/papers/sealevel
+<a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a>* backup:  git
+<a id="__codelineno-7-16" name="__codelineno-7-16" href="#__codelineno-7-16"></a>`papers status -v` shows all settings
+<a id="__codelineno-7-17" name="__codelineno-7-17" href="#__codelineno-7-17"></a>$ papers init ~/projects/arctic-paper --pool ~/Documents/papers/arctic
+<a id="__codelineno-7-18" name="__codelineno-7-18" href="#__codelineno-7-18"></a>created the library ~/projects/arctic-paper
+<a id="__codelineno-7-19" name="__codelineno-7-19" href="#__codelineno-7-19"></a>...
+</code></pre></div>
+<p>Each project adds its papers. They go to its topic library:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>$ cd ~/projects/thesis
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>$ papers add ~/Downloads/esd-4-11-2013.pdf
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>Added -&gt; perrette_landerer2013: A scaling approach to project regional sea level rise and it... (doi:10.5194/esd-4-11-2013, file:1) [also added to pool ~/Documents/papers/sealevel]
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>$ cd ~/projects/arctic-paper
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>$ papers add ~/Downloads/bg-8-515-2011.pdf
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>Added -&gt; perrette_yool2011: Near-ubiquity of ice-edge blooms in the Arctic (doi:10.5194/bg-8-515-2011, file:1) [also added to pool ~/Documents/papers/arctic]
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>$ ls ~/projects/arctic-paper ~/Documents/papers/arctic/files
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>~/Documents/papers/arctic/files:
+<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>perrette_et_al_2011_near-ubiquity-of-ice-edge-blooms-in-the-arctic.pdf
+<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>
+<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a>~/projects/arctic-paper:
+<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a>papers.bib
+</code></pre></div>
+<h3 id="a-paper-relevant-to-both-topics">A paper relevant to both topics<a class="headerlink" href="#a-paper-relevant-to-both-topics" title="Permanent link">&para;</a></h3>
+<p>A shallow library has one pool. The thesis also cites
+<code>perrette_yool2011</code>, which is in <code>arctic</code>. <code>papers add --pool</code> takes it
+from <code>arctic</code>, without a query to crossref:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>$ cd ~/projects/thesis
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>$ papers add --pool ~/Documents/papers/arctic --doi 10.5194/bg-8-515-2011
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>Added -&gt; perrette_yool2011: Near-ubiquity of ice-edge blooms in the Arctic (doi:10.5194/bg-8-515-2011, file:1) [from pool ../../Documents/papers/arctic; also added to pool ~/Documents/papers/sealevel]
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>$ ls ~/Documents/papers/sealevel/files
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>perrette_et_al_2011_near-ubiquity-of-ice-edge-blooms-in-the-arctic.pdf
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>perrette_et_al_2013_a-scaling-approach-to-project-regional-sea-level-rise-and-its-uncertainties.pdf
+</code></pre></div>
+<p>The entry is now in the thesis and in <code>sealevel</code>. Its PDF is copied into
+the files directory of <code>sealevel</code>: a hard link when both libraries are on
+the same disk. <code>papers pull --pool ~/Documents/papers/arctic
+perrette_yool2011</code> does the same.</p>
+<p>The thesis records an origin copy for <code>arctic</code>. A later change in <code>arctic</code>
+comes with <code>papers pull --pool</code>, and goes to <code>sealevel</code> with <code>papers push</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>$ papers -C ~/Documents/papers/arctic tag perrette_yool2011 --add blooms
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>Modified -&gt; perrette_yool2011: Near-ubiquity of ice-edge blooms in the Arctic (doi:10.5194/bg-8-515-2011, file:1, blooms)
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>$ papers pull --pool ~/Documents/papers/arctic
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>Modified -&gt; perrette_yool2011: Near-ubiquity of ice-edge blooms in the Arctic (doi:10.5194/bg-8-515-2011, file:1, blooms) [from pool ../../Documents/papers/arctic]
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>$ papers push
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>Modified -&gt; perrette_yool2011: Near-ubiquity of ice-edge blooms in the Arctic (doi:10.5194/bg-8-515-2011, file:1, blooms) [in pool ~/Documents/papers/sealevel]
+</code></pre></div>
+<p>The paper project gets the change from its own pool:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>$ cd ~/projects/arctic-paper
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>$ papers status
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>...
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>* pool:               ~/Documents/papers/arctic (changed since last pull or push)
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>...
+<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>$ papers pull
+<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a>Modified -&gt; perrette_yool2011: Near-ubiquity of ice-edge blooms in the Arctic (doi:10.5194/bg-8-515-2011, file:1, blooms) [from pool ~/Documents/papers/arctic]
+</code></pre></div>
+<p><code>papers sync --pool ~/Documents/papers/arctic</code> in the thesis also sends
+the changes made in the thesis to <code>arctic</code>. The two topic libraries can
+also exchange entries directly, e.g. <code>papers -C ~/Documents/papers/sealevel
+pull --pool ~/Documents/papers/arctic perrette_yool2011</code>; the thesis then
+takes the entry from its pool with <code>papers add --doi</code>.</p>
+<h2 id="comparison">Comparison<a class="headerlink" href="#comparison" title="Permanent link">&para;</a></h2>
+<p>Three ways to use papers with several libraries:</p>
+<ul>
+<li>a <strong>shared files folder</strong> (papers 2): several self-contained libraries
+  with a common files directory, and no pool;</li>
+<li><strong>shallow libraries</strong>: projects with a pool;</li>
+<li><strong>self-contained libraries</strong> that exchange entries with <code>--pool PATH</code>.</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Shared files folder</th>
+<th>Shallow libraries</th>
+<th>Self-contained, <code>--pool PATH</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Setup</td>
+<td><code>papers init --filesdir FOLDER</code> in each project</td>
+<td><code>papers init POOL</code>, then <code>papers init --pool POOL</code> in each project</td>
+<td><code>papers init</code> in each library</td>
+</tr>
+<tr>
+<td>Where the PDFs are</td>
+<td>in the common folder, one copy</td>
+<td>in the pool's files directory, one copy; the projects link there</td>
+<td>in each library's files directory; a copy is a hard link when possible</td>
+</tr>
+<tr>
+<td>Entries</td>
+<td>each library has its own; a change in one does not reach the other</td>
+<td>the project chooses which pool entries it has; new entries go to the pool; changes go with <code>push</code>, <code>pull</code> and <code>sync</code> (or auto-push); file links always follow</td>
+<td>each library has its own; the entries exchanged are kept in step by <code>pull</code>, <code>push</code> and <code>sync</code> with <code>--pool PATH</code></td>
+</tr>
+<tr>
+<td><code>add</code> of a paper another library has</td>
+<td>reads the PDF again and fetches the entry from crossref (from the cache when the same DOI was fetched on this machine)</td>
+<td>takes the pool entry, without query; links to the pool's PDF</td>
+<td><code>papers add --pool PATH</code> takes the entry and a copy of its files, without query; <code>papers add</code> alone fetches the entry</td>
+</tr>
+<tr>
+<td>A file renamed</td>
+<td>the link of the other libraries breaks</td>
+<td>the links of the other shallow libraries are repaired from the pool, when loaded or by <code>papers file fix</code></td>
+<td>each library has its own copy: the others are not affected</td>
+</tr>
+<tr>
+<td>A file removed</td>
+<td>the other libraries keep a broken link</td>
+<td>the PDF is removed for every library of the pool; their next <code>pull</code> or <code>sync</code> removes the link</td>
+<td>each library removes its own copy only</td>
+</tr>
+</tbody>
+</table>
+<h3 id="warnings-for-a-shared-files-folder">Warnings for a shared files folder<a class="headerlink" href="#warnings-for-a-shared-files-folder" title="Permanent link">&para;</a></h3>
+<p>A library configuration of papers 2 has no <code>pool</code> setting: it is read as a
+self-contained library, as in papers 2. A shared files folder is enough
+when the libraries are independent and you do not want a shared
+bibliography. To set it up:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>papers init --filesdir ~/Documents/pdfs   # a new library
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>papers config filesdir ~/Documents/pdfs   # an existing library
+</code></pre></div>
+<p>Each library only knows its own entries. What to watch for:</p>
+<ul>
+<li><code>papers file clean</code> in one library lists the PDFs of the other
+  libraries in the shared folder as unlinked, asks about each, and deletes
+  them once confirmed (all of them with <code>-y</code>). <code>papers file clean
+  --dry-run -y</code> shows the list and deletes nothing.</li>
+<li><code>papers rm --delete-files</code> and <code>papers file rm</code> keep a PDF that another
+  entry of the same library links to, but not one that another library
+  links to.</li>
+<li><code>papers file rename</code> in one library renames the shared PDF, and the
+  link of the other library breaks. <code>papers file check</code> reports the broken
+  link there. <code>papers file fix --search FOLDER</code> relinks it if the new name
+  is the one that the library's name template gives the entry (the two
+  libraries use the same template); otherwise attach the renamed file with
+  <code>papers file attach KEY FILE</code>, and remove the link with
+  <code>papers file detach --broken --key KEY</code>.</li>
+<li><code>papers push --pool PATH --all</code> then <code>papers config pool PATH</code> in one
+  library deletes the shared PDFs once PATH has copies, and the links of
+  the other library break. Once the other library uses the same pool
+  (<code>papers config pool PATH</code>, which counts the broken links),
+  <code>papers file fix</code> relinks them to the pool's files (see
+  <a href="../files/#reconnecting-pdfs-and-a-bibtex">Reconnecting PDFs and a bibtex</a>).</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.instant", "navigation.tracking", "navigation.sections", "navigation.top", "toc.follow", "toc.integrate", "navigation.expand", "search.suggest", "search.highlight", "content.code.copy", "content.action.edit"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"default": "stable", "provider": "mike"}}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>

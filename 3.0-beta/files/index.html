@@ -794,6 +794,62 @@
   
   
     <li class="md-nav__item">
+      <a href="../shallow-libraries/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Shallow libraries
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../export/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Export
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../global-library/" class="md-nav__link">
         
   
@@ -989,7 +1045,7 @@ file in the pool's files directory, and the library entry and the pool
 entry link to it there; with <code>link</code>, the file stays where it is, and both
 link to it there. This works on one machine; on another machine that uses
 the pool, such links are broken (see
-<a href="../pools/#shallow-libraries">Shallow libraries</a>).</p>
+<a href="../shallow-libraries/#files">Shallow libraries</a>).</p>
 <h2 id="papers-file"><code>papers file</code><a class="headerlink" href="#papers-file" title="Permanent link">&para;</a></h2>
 <p>The commands of <code>papers file</code> act on the files of the entries. Those that
 take entries accept keys, DOIs, arXiv identifiers or ISBNs (see
@@ -1198,7 +1254,7 @@ files that no remaining entry links to may be deleted too:</p>
 <p>A file still linked from another entry is never deleted, nor a file in the
 files directory of the pool of the library, nor, in a shallow library, a
 file that an entry of the pool links to (see
-<a href="../pools/#shallow-libraries">Shallow libraries</a>); <code>papers rm</code> does not
+<a href="../shallow-libraries/#files">Shallow libraries</a>); <code>papers rm</code> does not
 change the pool. In a shallow library, <code>--delete-files</code> is an error and
 nothing is removed: the files are the pool's, and <code>papers file rm FILE</code>
 deletes them. A file that is a
