@@ -178,7 +178,8 @@ override the setting for one command, with a deprecation warning.
 
 ## Migrating from papers 2
 
-`papers migrate` performs the one-time upgrades from version 2:
+[Upgrading from papers 2](upgrading.md) gives an overview. `papers migrate`
+performs the one-time upgrades from version 2:
 
 - The global configuration of version 2 (`~/.config/papersconfig.json` on
   Linux) defined a library for the whole user account. `papers migrate`

@@ -76,6 +76,7 @@ nav:
   - Getting started:
       - Installation: installation.md
       - Quickstart: quickstart.md
+      - Upgrading from papers 2: upgrading.md
   - Guides:
       - Adding entries: adding-entries.md
       - Listing and searching: listing.md
