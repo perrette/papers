@@ -18,10 +18,8 @@ papers 3 adds the following new functionalities:
 
 ## What changes for an existing setup
 
-The commands and options of papers 2 still exist: the forms that changed
-are deprecated, and print a warning that names the new form (see
-[What else changed](#what-else-changed)). The bibtex files do not change
-format, and stay readable by papers 2 and by other tools. What changes:
+The bibtex files do not change format, and stay readable by papers 2 and
+by other tools. What changes:
 
 - The configuration files:
     - the configuration of a project library moves from
@@ -39,9 +37,21 @@ format, and stay readable by papers 2 and by other tools. What changes:
 - `papers install --global` is an error that changes nothing:
   `papers init PATH --global` creates the default library, and
   `papers config --global default PATH` registers an existing one.
-- The git backup of a library of papers 2.2 to 2.4, kept in `.papers/`,
-  moves to the backup folder on the first backup of papers 3 (see
-  [Git integration](git.md)).
+- Some commands and options are deprecated. They still work, print a
+  warning that names the new form, and are removed in papers 4:
+
+    | stop using | use instead |
+    |---|---|
+    | `papers install` | `papers init`, `papers config` |
+    | `papers filecheck` | `papers file check`, `papers file fix` and the other `papers file` commands |
+    | `papers list --add-files` / `--rename` / `--copy` | `papers file attach`, `papers file rename` (`--keep-source`) |
+    | `papers list --fetch` | `papers check --fetch` |
+    | `papers list --open` | `papers open` |
+    | `papers doi` | `papers extract --doi-only` |
+    | `papers restore-backup` | `papers restore` |
+    | `--attachment` | `--attach` |
+    | `-m/--mode` | `--on-duplicate` |
+    | `--relative-paths` / `--absolute-paths` | `papers config paths relative` or `absolute` |
 - The output of `papers status`, `papers init` and of the exchanges
   changed: scripts that parse it need updating.
 
@@ -182,9 +192,3 @@ exchanges.
   `detach`, `rm`, `mv`, `rename`, `check`, `fix`, `clean` (see
   [Files](files.md)). They replace `papers filecheck` and the file options
   of `papers list` (`--add-files`, `--rename`, `--copy`).
-- Deprecated forms still work, with a warning that names the new form, and
-  are removed in papers 4: `papers install`, `papers filecheck`,
-  `papers doi` (`papers extract --doi-only`), `papers restore-backup`
-  (`papers restore`), `papers list --fetch` / `--open`, `--attachment`
-  (`--attach`), `-m/--mode` (`--on-duplicate`), `--relative-paths` /
-  `--absolute-paths` (`papers config paths relative|absolute`).
