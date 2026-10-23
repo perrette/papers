@@ -295,8 +295,13 @@ def file_fixcmd(parser, o, config):
 
 
 def _fix_command(o):
-    "the `papers file fix` command for the selection and the --search folders of `papers file check`"
-    return ' '.join(['papers file fix'] + list(o.entries)
+    """the `papers file fix` command for the options of `papers file check`:
+    -C DIR, --bibtex FILE, the selection, --pool and --search"""
+    directory = getattr(o, 'directory', None)
+    return ' '.join(['papers'] + ([f'-C {directory}'] if directory else []) + ['file fix']
+                    + ([f'--bibtex {o.bibtex}'] if o.bibtex else [])
+                    + list(o.entries)
+                    + [f'--pool {short_home(os.path.abspath(os.path.expanduser(p)))}' for p in o.pool or []]
                     + [f'--search {short_home(os.path.abspath(d))}' for d in o.search or []])
 
 
@@ -376,7 +381,14 @@ def _file_check(o, config, fix):
             print(f"{'DRYRUN: ' if not place else ''}{_links(relinked)} relinked, {left} still broken{detach}")
         else:
             print(f"{_links(relinked)} can be relinked, {left} without a file found{detach}")
-    if issues:
+    if place:
+        # the issues left: neither relinked nor repaired
+        left = len(issues) - (len(lines) - len(unclear)) - len(repairs)
+        if left:
+            print(f"{left} issue(s) left in the files of {len(entries)} entries")
+        elif not issues:
+            print(f"no issue found in the files of {len(entries)} entries")
+    elif issues:
         print(f"{len(issues)} issue(s) in the files of {len(entries)} entries")
     else:
         print(f"no issue found in the files of {len(entries)} entries")

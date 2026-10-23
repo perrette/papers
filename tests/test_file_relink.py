@@ -243,6 +243,29 @@ class TestSearch(RelinkTest):
         self.lib('file fix --search ../downloads')
         self.assertEqual(self.files('one2000'), [found])
 
+    def test_hint_with_bibtex_and_directory(self):
+        self.write('downloads', 'paper.pdf')
+        out = self.out('file check --bibtex papers.bib --search ../downloads')
+        self.assertIn('1 link can be repaired: '
+                      f'`papers file fix --bibtex papers.bib --search {self.path("downloads")}`', out)
+        out = self.out('-C lib file check one2000 --search ../downloads', where='.')
+        self.assertIn('1 link can be repaired: '
+                      f'`papers -C lib file fix one2000 --search {self.path("downloads")}`', out)
+
+    def test_no_issues_line_after_a_full_fix(self):
+        self.write('downloads', 'paper.pdf')
+        out = self.out('file fix --search ../downloads')
+        self.assertIn('1 link relinked, 0 still broken', out)
+        self.assertNotIn('issue(s)', out)
+        self.assertNotIn('no issue found', out)
+
+    def test_issues_left_line(self):
+        self.bib(entry('one2000', self.gone), entry('two2000', self.path('gone', 'two.pdf')))
+        self.write('downloads', 'paper.pdf')
+        out = self.out('file fix --search ../downloads')
+        self.assertIn('1 link relinked, 1 still broken', out)
+        self.assertIn('1 issue(s) left in the files of 2 entries', out)
+
     def test_template_name(self):
         found = self.write('downloads', self.template)
         self.write('downloads', 'other.pdf')
@@ -319,6 +342,7 @@ class TestOtherLibrary(RelinkTest):
     def test_check(self):
         out = self.out('file check --pool ../pool')
         self.assertIn(f'smith2000a: broken link: {self.gone} -> {self.pool_pdf} (from the library ../pool)', out)
+        self.assertIn(f'1 link can be repaired: `papers file fix --pool {self.path("pool")}`', out)
         self.assertEqual(self.files('smith2000a'), [self.gone])
 
     def test_fix_copies_by_identity(self):
@@ -336,6 +360,7 @@ class TestOtherLibrary(RelinkTest):
         self.assertEqual(after.replace(os.path.join('files', self.template), self.gone).strip(), before.strip())
         self.assertEqual(Path(self.path('pool', 'papers.bib')).read_text(), self.pool_bib)
         self.assertFalse(os.path.exists(self.path('lib', '.papers', 'origin')))
+        self.assertNotIn('issue(s)', out)
 
     def test_move_still_copies(self):
         self.lib('file fix --pool ../pool --move')

@@ -52,10 +52,10 @@ def main(args=None):
     if not os.path.isdir(directory):
         raise PapersExit(f'-C {directory}: not a directory')
     with set_directory(directory):
-        return _main(argv)
+        return _main(argv, directory)
 
 
-def _main(argv):
+def _main(argv, directory=None):
     check_legacy_global_config()
     config = find_config()
 
@@ -92,6 +92,8 @@ def _main(argv):
         return
 
     o, args = parser.parse_known_args(argv)
+    if directory is not None:
+        o.directory = directory  # -C DIR, taken before the parser (the hints repeat it)
     if args:
         # the error of the command given (`papers rm: error: ...`), before anything runs
         (getattr(o, 'command_parser', None) or subparsers.choices.get(o.cmd) or parser).error(f'unrecognized arguments: {" ".join(args)}')
