@@ -1,5 +1,4 @@
 """papers file rename, mv, attach, detach, rm, check, fix, clean, and filecheck (deprecated)"""
-import copy
 import os
 
 import papers.config
@@ -60,11 +59,10 @@ def file_renamecmd(parser, o, config):
     set_format_config_from_cmd(o, config, 'name')
     pools = library_pools(config)
     biblio = get_biblio(config)
-    biblio_init = copy.deepcopy(biblio)
     entries = _entries_or_all(biblio, o.entries)
     rename_files(biblio, entries, config, pools.files_dirs(), keep_source=o.keep_source)
     notes = save_entries(config, biblio, Exchange(config, biblio, pools))
-    _print_biblio_diff(biblio_init, biblio, entries, notes=notes)
+    _print_biblio_diff(biblio, entries, notes=notes)
 
 
 def file_mvcmd(parser, o, config):
@@ -122,11 +120,10 @@ def file_attachcmd(parser, o, config):
     set_format_config_from_cmd(o, config, 'name')
     pools = library_pools(config)
     biblio = get_biblio(config)
-    biblio_init = copy.deepcopy(biblio)
     e = _one_entry(biblio, o.key)
     attach_files(biblio, e, o.files, config, files_mode(o, config), pools.files_dirs())
     notes = save_entries(config, biblio, Exchange(config, biblio, pools))
-    _print_biblio_diff(biblio_init, biblio, [e], notes=notes)
+    _print_biblio_diff(biblio, [e], notes=notes)
 
 
 def _detach(biblio, links):

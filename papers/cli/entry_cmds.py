@@ -1,5 +1,4 @@
 """papers add, check, list, edit, rm, tag, open"""
-import copy
 import fnmatch
 import os
 import re
@@ -72,7 +71,6 @@ def addcmd(parser, o, config):
         raise PapersExit('--pool PATH and --no-pool exclude each other')
     pools = library_pools(config)  # in a shallow library, files go to the pool
     biblio = get_biblio(config)
-    biblio_init = copy.deepcopy(biblio)
     exchange = Exchange(config, biblio, pools)
     source_dirs = []  # the files directory of the library of --pool PATH
     if not o.no_pool:
@@ -251,7 +249,7 @@ def addcmd(parser, o, config):
 
     # compare entries to inform user
     # this is not very efficient but I have yet to hear a complaint about speed
-    _print_biblio_diff(biblio_init, biblio, entries, show_existing=True, notes=notes)
+    _print_biblio_diff(biblio, entries, show_existing=True, notes=notes)
 
     if o.open:
         for e in entries:
@@ -382,7 +380,6 @@ def rename_tag(entries, old, new):
 
 def editcmd(parser, o, config):
     biblio = get_biblio(config)
-    biblio_init = copy.deepcopy(biblio)
     entries = select_entries(biblio, o.entries)
     if not entries:
         return
@@ -396,24 +393,22 @@ def editcmd(parser, o, config):
             pass
     if edit_selected(biblio, entries):
         notes = save_entries(config, biblio)
-        _print_biblio_diff(biblio_init, biblio, biblio.entries, notes=notes)
+        _print_biblio_diff(biblio, biblio.entries, notes=notes)
 
 
 def rmcmd(parser, o, config):
     delete = _delete_files_option(parser, o, config)
     biblio = get_biblio(config)
-    biblio_init = copy.deepcopy(biblio)
     entries = select_entries(biblio, o.entries)
     todelete = remove_entries(biblio, entries, config, delete_files=delete,
                               ask='-' not in o.entries)
     savebib(biblio, config)
-    _print_biblio_diff(biblio_init, biblio, entries)
+    _print_biblio_diff(biblio, entries)
     delete_files(todelete, dryrun=papers.config.DRYRUN)
 
 
 def tagcmd(parser, o, config):
     biblio = get_biblio(config)
-    biblio_init = copy.deepcopy(biblio)
     if o.rename:
         if o.entries or o.add or o.rm:
             parser.error('--rename OLD NEW applies to the whole library: no KEY, --add or --rm')
@@ -431,7 +426,7 @@ def tagcmd(parser, o, config):
         add_tags(entries, o.add or [])
         remove_tags(entries, o.rm or [])
         notes = save_entries(config, biblio)
-        _print_biblio_diff(biblio_init, biblio, entries, notes=notes)
+        _print_biblio_diff(biblio, entries, notes=notes)
         return
 
     entries = select_entries(biblio, o.entries) if o.entries else biblio.entries
@@ -509,7 +504,6 @@ def listcmd(parser, o, config):
                        "papers check --fetch --fetch-all --fix-doi --fix-key --format-name -`")
 
     biblio = get_biblio(config)
-    biblio_init = copy.deepcopy(biblio)
     entries = biblio.db.entries
 
     if o.review_required:
@@ -620,7 +614,9 @@ def listcmd(parser, o, config):
 
     # report any entry mutations (--add-files, --add-keywords, --edit, --fetch,
     # --rename, --delete) using the same Added/Modified/Removed convention as addcmd
-    _print_biblio_diff(biblio_init, biblio, entries, notes=notes)
+    # (a plain listing changes nothing)
+    if o.add_keywords or o.add_files or o.edit or o.fetch or o.rename or o.delete:
+        _print_biblio_diff(biblio, entries, notes=notes)
 
 
 def opencmd(parser, o, config):

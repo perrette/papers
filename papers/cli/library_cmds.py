@@ -409,7 +409,6 @@ def _set_pool(o, config):
         return done()
 
     biblio = get_biblio(config)
-    biblio_init = copy.deepcopy(biblio)
     exchange = Exchange(config, biblio, old_pools)
     hint = None
     if to_self:
@@ -455,7 +454,7 @@ def _set_pool(o, config):
         delete = exchange.relink(plan, pool, keep_dirs=old_dirs + [pool.filesdir])
         exchange.pools = new_pools
     save_exchange(exchange)
-    _print_biblio_diff(biblio_init, biblio, biblio.entries)
+    _print_biblio_diff(biblio, biblio.entries)
     done()
     delete_files(delete)
     if hint:

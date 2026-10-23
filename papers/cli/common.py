@@ -4,6 +4,7 @@ entry selection and the report of the changes."""
 import os
 import re
 import sys
+from types import SimpleNamespace
 
 import papers.config
 import papers.utils
@@ -90,26 +91,29 @@ def check_install(parser, o, config, bibtex_must_exist=True):
     return config
 
 
-def _print_biblio_diff(biblio_init, biblio, touched_entries, show_existing=False, notes=None):
+def _print_biblio_diff(biblio, touched_entries, show_existing=False, notes=None):
     """Emit Added/Modified/Removed (and optionally Existing) lines for
-    entries that differ between the pre-command snapshot and the
-    post-command state.
+    entries that differ between the entries as loaded (see
+    Biblio.mark_loaded, done by get_biblio) and the post-command state.
 
     `touched_entries` scopes the Modified/Existing check to entries the
     command actually considered (matches addcmd's original semantics).
     `notes`: {lower-case key: text} added to the line of an entry, in
     brackets (where else it went, or where it came from).
     """
+    if biblio.loaded_entries is None:
+        raise ValueError('_print_biblio_diff needs the entries as loaded (Biblio.mark_loaded)')
     notes = notes or {}
     note = lambda ID: f' [{notes[ID.lower()]}]' if ID.lower() in notes else ''
-    old_set = set(get_entry_val(e, 'ID', '') for e in biblio_init.entries)
-    old_entries_by_key = {get_entry_val(e, 'ID', ''): e for e in biblio_init.db.entries}
-    new_set = set(get_entry_val(e, 'ID', '') for e in biblio.entries)
+    old_entries_by_key = {get_entry_val(e, 'ID', ''): e for e in biblio.loaded_entries}
+    old_set = set(old_entries_by_key)
     new_entries_by_key = {get_entry_val(e, 'ID', ''): e for e in biblio.db.entries}
+    new_set = set(new_entries_by_key)
     modified_set = set(get_entry_val(e, 'ID', '') for e in touched_entries).intersection(set.intersection(old_set, new_set))
 
+    loaded = SimpleNamespace(relative_to=biblio.loaded_relative_to)  # the file links as loaded
     for ID in sorted(old_set - new_set):
-        print(format_entry(biblio_init, old_entries_by_key[ID], prefix="Removed"))
+        print(format_entry(loaded, old_entries_by_key[ID], prefix="Removed"))
 
     for ID in sorted(new_set - old_set):
         print(format_entry(biblio, new_entries_by_key[ID], prefix="Added") + note(ID))

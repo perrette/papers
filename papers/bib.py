@@ -173,7 +173,8 @@ class Biblio:
         # `add` looks in the pool first (see papers.pools.PoolLookup)
         self.pool_lookup = None
         # the entries as loaded (see mark_loaded, changed_entries)
-        self.loaded = None
+        self.loaded_entries = None
+        self._loaded = None
 
     def move(self, file, newfile, copy=False, hardlink=False):
         return _move(file, newfile, copy=copy, dryrun=papers.config.DRYRUN, hardlink=hardlink)
@@ -220,8 +221,21 @@ class Biblio:
         return e.entry_type.lower(), sorted((f.key, str(f.value)) for f in e.fields)
 
     def mark_loaded(self):
-        "remember the entries as they are now (as loaded), for changed_entries"
-        self.loaded = {self.key(e): self._state(e) for e in self.entries}
+        """remember the entries as they are now (as loaded), for
+        changed_entries and the report of the changes of a command
+        (loaded_entries: copies of the entries; loaded_relative_to)"""
+        self.loaded_entries = [entry_copy(e) for e in self.entries]
+        self.loaded_relative_to = self.relative_to
+        self._loaded = None
+
+    @property
+    def loaded(self):
+        "{lower-case key: state} of the entries as loaded (see mark_loaded), or None"
+        if self.loaded_entries is None:
+            return None
+        if self._loaded is None:
+            self._loaded = {self.key(e): self._state(e) for e in self.loaded_entries}
+        return self._loaded
 
     def changed_entries(self):
         """(new, modified): the entries added since mark_loaded (neither their
