@@ -25,7 +25,6 @@ $ papers init ~/Documents/papers --global
 created the library ~/Documents/papers
 * bibtex:  papers.bib
 * files:   files (the files directory of the library)
-* pool:    none (a self-contained library: its own entries and files)
 * backup:  git
 `papers status -v` shows all settings
 registered ~/Documents/papers as the default library in ~/.config/papers/config.json
@@ -48,8 +47,8 @@ $ cd ~/projects/ice
 $ papers init --shallow
 created the library ~/projects/ice
 * bibtex:  papers.bib
-* files:   in the pool ~/Documents/papers
-* pool:    ~/Documents/papers (a shallow library: it takes its entries from the pool and links to its files)
+* files:   in the pool (shallow library)
+* pool:    ~/Documents/papers
 * backup:  git
 `papers status -v` shows all settings
 $ papers add --doi 10.5194/esd-4-11-2013
@@ -83,11 +82,9 @@ $ papers list
 perrette_landerer2013: A scaling approach to project regional sea level rise and it... (doi:10.5194/esd-4-11-2013)
 $ papers status
 papers library: ~/Documents/papers (default library)
-* files directory:    Documents/papers/files (empty)
+* files:              Documents/papers/files (the files directory of the library, empty)
 * files mode:         move
 * bibtex:             Documents/papers/papers.bib (1 entries, 0 file links)
-* library:            self-contained (its own entries and files)
-* pool:               none
 ```
 
 The default library can take papers from other libraries too, e.g. a

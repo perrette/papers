@@ -433,10 +433,12 @@ Without `--pool PATH`, a self-contained library has no pool to pull from:
 `pull` prints one line per entry added (`Added ->`), modified
 (`Modified ->`), left with a conflict (`Conflict ->`) or, among the entries
 named, not found in the pool (`Not found ->`), with the pool in brackets,
-then the counts when more than one entry was involved: `added`,
-`modified`, `skipped`, `not found`, `unchanged`, and `linked` (an entry
+then the counts when more than one entry changed or was not exchanged:
+`added`, `modified`, `skipped`, `not found`, and `linked` (an entry
 without origin copy, the same as its pool entry: its origin copy is
-recorded). `push` prints the same lines for the pool entries. When a
+recorded). The entries unchanged are not counted. When nothing changed,
+`pull` prints one line, `nothing to pull from pool ../sealevel`. `push`
+prints the same lines for the pool entries. When a
 command also adds or changes the entry in the pool (see
 [Auto-push](#auto-push)), or `add` takes it from the pool, its line says so
 in brackets: `[also added to pool ~/Documents/papers]`, `[also modified in
@@ -525,7 +527,7 @@ nothing changed, `sync` prints one line:
 
 ```
 $ papers sync
-nothing to sync with pool ../sealevel (2 entries unchanged)
+nothing to sync with pool ../sealevel
 ```
 
 ## Undo in a pool

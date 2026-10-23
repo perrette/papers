@@ -47,7 +47,6 @@ $ papers init
 created the library ~/projects/sealevel
 * bibtex:  papers.bib
 * files:   files (the files directory of the library)
-* pool:    none (a self-contained library: its own entries and files)
 * backup:  git
 `papers status -v` shows all settings
 $ papers add ~/Downloads/esd-4-11-2013.pdf
@@ -57,8 +56,8 @@ $ cd ~/projects/tides
 $ papers init --pool ../sealevel
 created the library ~/projects/tides
 * bibtex:  papers.bib
-* files:   in the pool ../sealevel
-* pool:    ../sealevel (a shallow library: it takes its entries from the pool and links to its files)
+* files:   in the pool (shallow library)
+* pool:    ../sealevel
 * backup:  git
 `papers status -v` shows all settings
 $ papers add --doi 10.5194/esd-4-11-2013

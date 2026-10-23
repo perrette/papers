@@ -14,7 +14,6 @@ $> papers init
 created the library ~/projects/sealevel
 * bibtex:  papers.bib
 * files:   files (the files directory of the library)
-* pool:    none (a self-contained library: its own entries and files)
 * backup:  git
 `papers status -v` shows all settings
 ```
@@ -168,10 +167,12 @@ papers init --pool ../shared   # shallow: the pool is ../shared
 papers init --shallow          # shallow: the pool is the default library
 ```
 
-`papers status` shows whether the library is self-contained or shallow,
-its pool (its path, or none), whether the pool is missing or is not a
-library, and whether it changed since the last exchange with it, and the
-`auto-push` setting of a shallow library.
+`papers status` shows where the files of the library are: its files
+directory (self-contained library), or in the pool (shallow library). For
+a shallow library, it also shows the pool (its path, whether it is
+missing or is not a library, and whether it changed since the last
+exchange with it) and the `auto-push` setting. `papers status -v` shows
+the pool of a self-contained library too: `none`.
 
 ## Relative versus absolute paths
 
