@@ -228,7 +228,7 @@ def addcmd(parser, o, config):
     notes = {key: f'from {pool.label}' for key, pool in (lookup.taken_from.items() if lookup else [])}
     push_notes(push_changed(exchange), notes)
     pool = lookup.pool if lookup else None
-    if pool is not None and not any(pool is p for p in exchange.changed_pools):
+    if pool is not None and not any(pool is p for p in exchange.changed_pools + exchange.pushed_pools):
         exchange.after_take(pool)
     save_exchange(exchange)
 

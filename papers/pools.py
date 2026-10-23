@@ -57,7 +57,7 @@ from papers.config import Config, CONFIG_FILE_LOCAL, LIBRARY_CONFIG_FILES, NO_PO
 from papers.duplicate import Distinct, IdentityIndex, find_duplicates, same_paper, SAME, Verdict
 from papers.entries import (get_entry_val, set_entry_key, entry_copy, parse_string, format_library, format_file,
                             parse_file)
-from papers.bib import Biblio, append_abc
+from papers.bib import Biblio, append_abc, read_text
 from papers.extract import parse_doi_from_pdf_metadata, parse_dois, pdfhead, pdftail, title_in_text
 from papers.files import ATTACHMENT_SEP, FilesPolicy, realpath, is_inside
 from papers.install import resolve_install, apply_install, DefaultAsker
@@ -610,8 +610,11 @@ class Origin:
             records = self.entries.get(pool, {})
             for key in sorted(records):
                 lib.add(entry_copy(records[key]))
-            with open(os.path.join(self.dir, origin_file_name(pool)), 'w') as f:
-                f.write(format_library(lib))
+            path = os.path.join(self.dir, origin_file_name(pool))
+            text = format_library(lib)
+            if read_text(path) != text:  # a file that has this content already is not written
+                with open(path, 'w') as f:
+                    f.write(text)
         self.changed = set()
 
 
@@ -636,7 +639,8 @@ class Exchange:
         self.biblio = biblio
         self.pools = pools or Pools(config)
         self.origin = origin if origin is not None else Origin.for_bibtex(config.bibtex)
-        self.changed_pools = []
+        self.changed_pools = []  # the pools to save
+        self.pushed_pools = []   # the pools pushed to (changed or not): after_push after the save
         self._after = {}  # pool id -> state of the push for after_push
         path = self.pools.path()
         self.pool_id = self.pools._id(path) if path is not None else None
@@ -880,11 +884,15 @@ class Exchange:
                     report.append((e, pool, self._push_new(e, pool)))
                 continue
             report.append((e, pool, self._push_one(e, pool, pe, record, resolver)))
-        self._changed(pool)
+        if not any(p is pool for p in self.pushed_pools):
+            self.pushed_pools.append(pool)
+        if any(what in ('added', 'updated') for _, _, what in report):  # the pool entries changed
+            self._changed(pool)
         return report
 
     def after_push(self, pool):
-        """after the pool was saved: if it had not changed since the last
+        """after the pool was saved (a pool that the push did not change is
+        not written, see `push`): if it had not changed since the last
         exchange (or this is the first), the push does not count as a
         change of the pool, unless a pushed entry left the pool with
         something that the library does not have (a pull would bring it)"""

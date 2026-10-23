@@ -170,11 +170,12 @@ class TestAutoPush(ExchangeTest):
         self.edit_pool('title = {Ocean heat}', 'title = {Ocean heat},\n note = {pool}')
         with patch('papers.bib.fetch_bibtex_by_doi', no_fetch):
             self.lib('add --doi 10.1000/brown')
-        pool_text = Path(self.path('pool', 'papers.bib')).read_text()
+        fields = lambda: {k: {f.key: f.value for f in e.fields} for k, e in self.bib('pool')[1].items()}
+        before = fields()
         self.lib('tag smith2020climate --add foo')
         self.assertEqual(self.entry('Brown_2021', 'pool')['note'], 'pool')
-        self.assertEqual(Path(self.path('pool', 'papers.bib')).read_text(),
-                         pool_text.replace('journal = {Nat.},', 'journal = {Nat.},\n keywords = {foo},'))
+        before['Smith_2020']['keywords'] = 'foo'
+        self.assertEqual(fields(), before)
 
     def test_entry_not_shared_is_not_pushed(self):
         Path(self.path('lib', 'papers.bib')).write_text(

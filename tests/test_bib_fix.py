@@ -259,6 +259,24 @@ class TestBiblio(unittest.TestCase):
         self.assertTrue(os.path.exists(os.path.join(self.dir, '.papers.bib.backup')))
         self.assertTrue(Distinct.for_bibtex(bibtex).pairs)
 
+    def test_save_without_change_does_not_write(self):
+        bibtex = os.path.join(self.dir, 'papers.bib')
+        Path(bibtex).write_text(ENTRY)
+        biblio = Biblio.load(bibtex, '')
+        biblio.save(bibtex)  # written as papers formats it
+        backup = os.path.join(self.dir, '.papers.bib.backup')
+        os.utime(bibtex, ns=(10**18, 10**18))
+        os.utime(backup, ns=(10**18, 10**18))
+        Biblio.load(bibtex, '').save(bibtex)
+        self.assertEqual(os.stat(bibtex).st_mtime_ns, 10**18)
+        self.assertEqual(os.stat(backup).st_mtime_ns, 10**18)
+        biblio = Biblio.load(bibtex, '')
+        biblio.entries[0]['year'] = '2001'
+        biblio.save(bibtex)
+        self.assertNotEqual(os.stat(bibtex).st_mtime_ns, 10**18)
+        self.assertNotEqual(os.stat(backup).st_mtime_ns, 10**18)
+        self.assertIn('2001', Path(bibtex).read_text())
+
     def test_save_with_other_relative_root_warns(self):
         bibtex = os.path.join(self.dir, 'papers.bib')
         biblio = biblio_of(ENTRY, relative_to=os.path.join(self.dir, 'elsewhere'))

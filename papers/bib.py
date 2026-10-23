@@ -114,6 +114,15 @@ def _same_content(file, files):
 def backupfile(bibtex):
     return os.path.join(os.path.dirname(bibtex), '.'+os.path.basename(bibtex)+'.backup')
 
+
+def read_text(file):
+    "the content of a text file (as `open(file, 'w').write` was given it), or None if it cannot be read"
+    try:
+        with open(file) as f:
+            return f.read()
+    except (OSError, UnicodeDecodeError):
+        return None
+
 class DuplicateKeyError(PapersExit):
     "a new entry has the key of another paper of the library"
 
@@ -603,13 +612,21 @@ class Biblio:
         return format_library(self.db)
 
     def save(self, bibtex):
-        if os.path.exists(bibtex):
-            shutil.copy(bibtex, backupfile(bibtex))
+        """write the library to `bibtex` (the previous version goes to its
+        backup file). A bibtex that has this content already is not
+        written: its modification time (and its backup) stay as they are."""
         if self.relative_to not in (os.path.sep, None) and Path(self.relative_to).resolve() != Path(bibtex).parent.resolve():
             logger.warning("Saving bibtex file with relative paths may break links. Consider using `Biblio.update_file_path(Path(bibtex).parent)` before.")
         self.sort()  # consistent order before writing
         s = self.format()
-        open(bibtex, 'w').write(s)
+        if os.path.exists(bibtex):
+            if read_text(bibtex) == s:
+                logger.debug(f'{bibtex}: unchanged, not written')
+            else:
+                shutil.copy(bibtex, backupfile(bibtex))
+                open(bibtex, 'w').write(s)
+        else:
+            open(bibtex, 'w').write(s)
         if self.distinct.changed:
             if self.distinct.path is None:
                 ondisk = Distinct.for_bibtex(bibtex)

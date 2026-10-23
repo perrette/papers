@@ -842,6 +842,50 @@ class TestStatus(PoolTest):
         self.lib('pull')
         self.assertIn('(up to date)', self.out('status'))
 
+    def check_no_flip(self, config=None):
+        """two libraries on the same pool (lib and b), with the same entry:
+        an exchange that changes nothing does not write the pool, and the
+        other library stays up to date. config: a command run in both
+        libraries first"""
+        if config:
+            self.lib(config)
+        self.take_smith()
+        self.papers('init b --no-git --pool ../pool --local')
+        b = lambda cmd: self.papers(cmd, cwd=self.path('b'))
+        if config:
+            b(config)
+        b_status = lambda: self.papers('status', cwd=self.path('b'), sp_cmd='check_output')
+        pool_bib = self.path('pool', 'papers.bib')
+        content = Path(pool_bib).read_text()
+        backup = self.path('pool', '.papers.bib.backup')
+        os.utime(pool_bib, ns=(10**18, 10**18))  # a past write of the pool, recorded by both libraries
+        self.lib('pull')
+        with patch('papers.bib.fetch_bibtex_by_doi', no_fetch):
+            b('add ../smith.bib')  # taken from the pool
+        self.assertIn('(up to date)', b_status())
+        self.assertEqual(os.stat(pool_bib).st_mtime_ns, 10**18)
+        self.assertIn('(up to date)', self.out('status'))
+        backup_mtime = os.stat(backup).st_mtime_ns if os.path.exists(backup) else None
+        self.lib('sync')
+        self.assertIn('(up to date)', self.out('status'))
+        self.assertIn('(up to date)', b_status())
+        b('sync')
+        self.lib('push')
+        self.assertIn('(up to date)', self.out('status'))
+        self.assertIn('(up to date)', b_status())
+        self.assertEqual(os.stat(pool_bib).st_mtime_ns, 10**18)
+        self.assertEqual(Path(pool_bib).read_text(), content)
+        self.assertEqual(os.stat(backup).st_mtime_ns if os.path.exists(backup) else None, backup_mtime)
+
+    def test_no_change_no_flip(self):
+        self.check_no_flip()
+
+    def test_no_change_no_flip_auto_push(self):
+        self.check_no_flip('config auto-push true')
+
+    def test_no_change_no_flip_not_local(self):
+        self.check_no_flip('config local false')
+
     def test_partial_pull_is_not_an_exchange(self):
         self.take_smith()
         self.edit_pool('journal = {Nat.}', 'journal = {Nature}')

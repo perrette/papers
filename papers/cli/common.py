@@ -370,6 +370,8 @@ def save_exchange(exchange):
         check_readable(pool)
     for pool in exchange.changed_pools:
         savebib(pool.biblio, pool.config)
+    for pool in exchange.changed_pools + [p for p in exchange.pushed_pools
+                                          if not any(p is x for x in exchange.changed_pools)]:
         exchange.after_push(pool)
     if not papers.config.DRYRUN:
         for pool in exchange.pools.loaded():
