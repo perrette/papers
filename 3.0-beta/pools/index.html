@@ -1099,14 +1099,19 @@ shared with a coauthor (see
   PATH);</li>
 <li><code>papers pull</code> updates the entries shared with the pool, and adds the
   entries of the pool named, or all of them with <code>--all</code>;</li>
-<li><code>papers push</code> updates the entries shared with the pool (those taken from
-  it, or added to it before), and adds the entries named, or all of them
-  with <code>--all</code>;</li>
+<li><code>papers push</code> updates the entries shared with the pool, and adds the
+  entries named, or all of them with <code>--all</code>;</li>
 <li><code>papers sync</code> does both;</li>
 <li><code>papers status</code> (pool of a shallow library) and <code>papers pull --check</code>
   tell whether the pool changed since the last exchange with it: <code>up to
   date</code>, or <code>changed since last pull or push</code>.</li>
 </ul>
+<p>An entry is <strong>shared</strong> with a pool when the pool has the same paper: the
+pool entry of its origin copy (see <a href="#origin-copies">Origin copies</a>), else
+the same paper by the same-paper rule (see
+<a href="#keys-and-identity">Keys and identity</a>). Without KEY or <code>--all</code>, <code>pull</code>,
+<code>push</code> and <code>sync</code> exchange the shared entries only, with an origin copy or
+not.</p>
 <p>An exchange goes one level only: the pool has no pool, and a library given
 with <code>--pool PATH</code> must have none either (<code>PATH has a pool itself</code>).</p>
 <p>Nothing is pulled automatically. Nothing is pushed automatically, except
@@ -1151,21 +1156,31 @@ side changed a field. A removed field counts as a change:</p>
 </table>
 <p>Conflicts are decided in the dialogue or with <code>--on-duplicate</code> (see
 <a href="#papers-pull"><code>papers pull</code></a> and <a href="#papers-push"><code>papers push</code></a>). An entry
-without origin copy has no base: each field that differs is a conflict.</p>
+without origin copy has no base: each field that differs is a conflict. The
+first exchange of such an entry (e.g. the first <code>sync</code> with a library given
+with <code>--pool PATH</code> that has papers of the library) asks about these
+conflicts once: afterwards the origin copy is recorded, and the next
+exchanges merge three-way.</p>
 <h3 id="removed-entries">Removed entries<a class="headerlink" href="#removed-entries" title="Permanent link">&para;</a></h3>
 <p>An entry is never removed by an exchange:</p>
 <ul>
 <li><code>papers rm KEY</code> removes the entry from the library only. <code>push</code> and
   <code>sync</code> do not remove it from the pool.</li>
-<li>An entry removed from the pool stays in the libraries that have it.
-  <code>pull KEY</code> reports it as <code>Not found</code>, and <code>push</code> and <code>sync</code> add it to the
-  pool again. Remove it from these libraries with <code>papers rm KEY</code>.</li>
+<li>An entry removed from the pool stays in the libraries that have it. It
+  is no longer shared: <code>pull</code>, <code>push</code> and <code>sync</code> without KEY or <code>--all</code>
+  (and the auto-push of a shallow library) leave it out, and note it once:</li>
 </ul>
-<h2 id="papers-pull"><code>papers pull</code><a class="headerlink" href="#papers-pull" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>papers pull [KEY...|-] [--all] [--pool PATH] [--on-duplicate MODE] [--check]
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>smith2020: removed from pool ~/Documents/papers (`papers push smith2020` adds it back)
 </code></pre></div>
-<p>Without KEY, <code>pull</code> updates the entries shared with the pool: those with
-an origin copy. For each of them (or each entry named, or every entry with
+<p>Its origin copy for the pool is dropped, so the note does not come again.
+  <code>push KEY</code> and <code>push --all</code> add it to the pool again; <code>pull KEY</code> reports
+  it as <code>Not found</code>; <code>pull --check</code> lists it with the note (and drops
+  nothing). Remove it from the library with <code>papers rm KEY</code>.</p>
+<h2 id="papers-pull"><code>papers pull</code><a class="headerlink" href="#papers-pull" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>papers pull [KEY...|-] [--all] [--pool PATH] [--on-duplicate MODE] [--check]
+</code></pre></div>
+<p>Without KEY, <code>pull</code> updates the entries shared with the pool (the pool
+has the same paper). For each of them (or each entry named, or every entry with
 <code>--all</code>), papers finds its entry in the pool (by its origin copy,
 else by the same-paper rule) and merges it into the library entry, field by
 field (see <a href="#merging">Merging</a>). The pool is the side that sends: a field
@@ -1178,13 +1193,13 @@ directory as the <code>files</code> setting says. The key of the library entry n
 changes. After the merge, the origin copy is the pool's current version.
 A skipped conflict leaves the pool shown as changed in <code>papers status</code>.</p>
 <p>An entry without origin copy (added before the pool was used, or with
-<code>--no-pool</code>) is not shared: <code>pull</code> without KEY leaves it alone. Named on the
-command line, or with <code>--all</code>, it is matched to the pool by the same-paper
-rule. Its differences with the pool entry are conflicts (there is no
-origin to tell which side changed), a field that only the pool entry has
-is added, and the origin copy is recorded afterwards ("linked").</p>
+<code>--no-pool</code>) is matched to the pool by the same-paper rule. Its differences
+with the pool entry are conflicts (there is no origin to tell which side
+changed), a field that only the pool entry has is added, and the origin
+copy is recorded afterwards ("linked").</p>
 <p>An entry that the pool does not have is reported (<code>Not found</code>) only when it
-is named on the command line. Without KEY, it is left as it is.</p>
+is named on the command line. Without KEY, it is left as it is (with a
+note if it was removed from the pool, see <a href="#removed-entries">Removed entries</a>).</p>
 <p>A KEY is looked up in the library first, then in the pool (its key, DOI,
 arXiv identifier or ISBN): an entry of the pool that the library does not
 have is added to it (<code>added</code>), with its origin copy, under the pool key
@@ -1252,12 +1267,13 @@ changed since their origin copy, with the fields (without KEY, the entries
 shared with the pool). <code>papers status</code> shows the first part too, for the
 pool of a shallow library.</p>
 <h2 id="papers-push"><code>papers push</code><a class="headerlink" href="#papers-push" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>papers push [KEY...|-] [--all] [--pool PATH] [--on-duplicate MODE]
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>papers push [KEY...|-] [--all] [--pool PATH] [--on-duplicate MODE]
 </code></pre></div>
 <p>The reverse of <code>pull</code>, into the pool of the library or the library of
-<code>--pool PATH</code>. Without KEY, only the entries shared with the pool are
-pushed: those with an origin copy from it (taken from it by <code>add</code> or
-<code>pull</code>, or pushed to it before). <code>push KEY...</code> pushes the entries named,
+<code>--pool PATH</code>. Without KEY, only the entries shared with the pool (the
+pool has the same paper) are pushed; an entry removed from the pool is not
+added back (see <a href="#removed-entries">Removed entries</a>). <code>push KEY...</code> pushes
+the entries named,
 and <code>push --all</code> every entry of the library:</p>
 <ul>
 <li>an entry that is not in the pool is added to it, with a key from the
@@ -1276,13 +1292,13 @@ not a library is an error of <code>push</code>, and nothing is changed: the mess
 suggests <code>papers init PATH</code> (and, when the parent folder of PATH is missing
 too, that a disk may not be mounted).</p>
 <h2 id="papers-sync"><code>papers sync</code><a class="headerlink" href="#papers-sync" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>papers sync [KEY...|-] [--all] [--pool PATH] [--on-duplicate MODE]
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>papers sync [KEY...|-] [--all] [--pool PATH] [--on-duplicate MODE]
 </code></pre></div>
 <p>runs <code>papers pull</code>, then <code>papers push</code> of the same entries:</p>
 <ul>
-<li>without KEY, the entries shared with the pool (with an origin copy from
-  it). An entry added to the library with <code>--no-pool</code>, or before the pool
-  was used, is not exchanged: name it, or use <code>--all</code>;</li>
+<li>without KEY, the entries shared with the pool (the pool has the same
+  paper). An entry that the pool does not have is not exchanged: name it,
+  or use <code>--all</code>;</li>
 <li>with KEY..., the entries named. A KEY that only the pool has is added to
   the library, as with <code>pull</code>, and a KEY that only the library has is
   added to the pool, as with <code>push</code>;</li>
@@ -1292,8 +1308,8 @@ too, that a disk may not be mounted).</p>
 <p>If the pull leaves conflicts undecided (skipped, or the dialogue quit),
 nothing is pushed: decide them with <code>papers pull</code>, then sync again. When
 nothing changed, <code>sync</code> prints one line:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>$ papers sync
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>nothing to sync with pool ../sealevel
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>$ papers sync
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>nothing to sync with pool ../sealevel
 </code></pre></div>
 <h2 id="keys-and-identity">Keys and identity<a class="headerlink" href="#keys-and-identity" title="Permanent link">&para;</a></h2>
 <p>The key of an entry belongs to each library: it is what LaTeX documents
@@ -1325,17 +1341,17 @@ of a hash of its path as the library names it, e.g.
 name the pool and give the modification time of its bibtex at the last
 exchange. In a library whose pool is <code>../shared-with-bob</code>, after <code>papers
 pull agnew_farrell1978</code> and <code>papers pull</code>:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>@comment{papers-pool ../shared-with-bob}
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>@comment{papers-pulled 1792681264781917448}
-<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>
-<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>@article{agnew_farrell1978,
-<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a> author = {Agnew, D. C. and Farrell, W. E.},
-<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a> papers-pool-key = {agnew_farrell1978},
-<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a> papers-time = {2026-10-22T17:01:45+02:00},
-<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a> title = {Self-consistent equilibrium ocean tides},
-<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a> year = {1978}
-<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>}
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>@comment{papers-pool ../shared-with-bob}
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>@comment{papers-pulled 1792681264781917448}
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>@article{agnew_farrell1978,
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a> author = {Agnew, D. C. and Farrell, W. E.},
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a> papers-pool-key = {agnew_farrell1978},
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a> papers-time = {2026-10-22T17:01:45+02:00},
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a> title = {Self-consistent equilibrium ocean tides},
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a> year = {1978}
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>}
 </code></pre></div>
 <p>The file records, for each entry exchanged with the pool (by <code>add</code>, <code>pull</code>
 or <code>push</code>), its origin copy, under the library's key, with the key in the
@@ -1378,8 +1394,8 @@ exchange works as with the pool of a library:</p>
 <li>the origin copies are recorded for PATH, in its own file of
   <code>.papers/origin/</code>: the next exchange with PATH is a three-way merge, and
   a field changed on one side only needs no decision;</li>
-<li>without KEY or <code>--all</code>, the exchange handles the entries exchanged with
-  PATH before (those with an origin copy for PATH);</li>
+<li>without KEY or <code>--all</code>, the exchange handles the entries shared with
+  PATH (PATH has the same paper);</li>
 <li><code>papers sync --pool PATH KEY...</code> takes the entries named from PATH that
   the library does not have, sends to PATH those that it does not have,
   and merges the others both ways;</li>
@@ -1389,8 +1405,8 @@ exchange works as with the pool of a library:</p>
 <p>An entry that has no origin copy for PATH yet (the first exchange) has no
 base: each field that differs is a conflict, decided in the dialogue or
 with <code>--on-duplicate</code>.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>$ papers sync --pool ../shared-with-bob
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>nothing to sync with pool ../shared-with-bob: no entries shared with it (`papers sync --pool ../shared-with-bob --all` adds the entries missing on each side)
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>$ papers sync --pool ../shared-with-bob
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>nothing to sync with pool ../shared-with-bob: no entries shared with it (`papers sync --pool ../shared-with-bob --all` adds the entries missing on each side)
 </code></pre></div>
 <p>The files are copied, as the <code>files</code> setting says (a file of PATH is
 never moved): the entries taken from PATH get copies of its files (a hard
@@ -1407,10 +1423,10 @@ example.</p>
 <a href="../shallow-libraries/#changing-the-pool">Changing the pool</a>); the origin
 copies recorded for PATH stay valid, however PATH is written.</p>
 <p>A folder shared with a coauthor, exchanged with from time to time:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>cd ~/projects/sealevel
-<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>papers export ../shared-with-bob mine2022 smith2020   # a self-contained library for Bob
-<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>papers sync --pool ../shared-with-bob --all            # the first time: records what is shared
-<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>papers sync --pool ../shared-with-bob                  # later changes, both ways
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>cd ~/projects/sealevel
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>papers export ../shared-with-bob mine2022 smith2020   # a self-contained library for Bob
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>papers sync --pool ../shared-with-bob                  # the changes of the shared entries, both ways
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>papers sync --pool ../shared-with-bob --all            # also the entries missing on each side
 </code></pre></div>
 <p><code>papers export</code> is described in <a href="../export/">Export</a>.</p>
 <h2 id="add-looks-in-the-pool-first"><code>add</code> looks in the pool first<a class="headerlink" href="#add-looks-in-the-pool-first" title="Permanent link">&para;</a></h2>

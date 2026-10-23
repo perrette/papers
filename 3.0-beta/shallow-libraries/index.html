@@ -1182,8 +1182,8 @@ there are more than ten.</p>
 copies, in its files directory, are deleted, unless an entry of the
 library or of PATH still links to them; nothing is copied or moved. These
 commands do not push entries or merge fields: <code>papers push</code> does that. The
-entries exchanged with PATH before (with <code>--pool PATH</code>) are shared with it
-already: their origin copies are those of the new pool.</p>
+origin copies of the entries exchanged with PATH before (with <code>--pool
+PATH</code>) are those of the new pool.</p>
 <h3 id="from-a-self-contained-project-to-a-shallow-one">From a self-contained project to a shallow one<a class="headerlink" href="#from-a-self-contained-project-to-a-shallow-one" title="Permanent link">&para;</a></h3>
 <p>To move the PDFs of a self-contained library into another library, and
 make the library shallow:</p>
@@ -1197,7 +1197,7 @@ make the library shallow:</p>
 <a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>Copy them to the pool first: `papers push --pool ~/Documents/papers/arctic perrette_landerer2013`
 <a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>Then run `papers config pool ~/Documents/papers/arctic` again.
 <a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>$ papers push --pool ~/Documents/papers/arctic --all
-<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>Added -&gt; perrette_landerer2013: A scaling approach to project regional sea level rise and it... (doi:10.5194/esd-4-11-2013, file:1) [to pool ../../Documents/papers/arctic]
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>Added -&gt; perrette_landerer2013: A scaling approach to project regional sea level rise and it... (doi:10.5194/esd-4-11-2013, file:1) [to pool ~/Documents/papers/arctic]
 <a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>$ papers config pool ~/Documents/papers/arctic -y
 <a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>link to the copies in the pool ~/Documents/papers/arctic for 1 file (same content); the library's copies in files (1 file) are deleted
 <a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>Modified -&gt; perrette_landerer2013: A scaling approach to project regional sea level rise and it... (doi:10.5194/esd-4-11-2013, file:1)
@@ -1210,9 +1210,11 @@ make the library shallow:</p>
 change entries push them to the pool: <code>add</code>, <code>edit</code>, <code>tag</code>, <code>list
 --add-tag</code> and the other actions of <code>list</code>, <code>check</code>, <code>file attach</code>, <code>file
 rename</code>, <code>file detach</code>, <code>file rm</code>, <code>file mv</code> and <code>file fix</code>. After the
-command, the entries it changed that are shared with the pool, and the
-entries new to the library, are pushed as <code>papers push KEY...</code> would push
-them, files included. The other entries are not pushed. In a
+command, the entries it changed that are shared with the pool (the pool
+has the same paper), and the entries new to the library, are pushed as
+<code>papers push KEY...</code> would push them, files included. The other entries
+are not pushed: an entry removed from the pool is noted once (see
+<a href="../pools/#removed-entries">Removed entries</a>). In a
 self-contained library, the setting has no effect (it has no pool; the
 libraries of <code>--pool PATH</code> only get what <code>push</code> and <code>sync</code> send).</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>$ papers config auto-push true
@@ -1281,7 +1283,7 @@ on one of them:</p>
 from <code>arctic</code>, without a query to crossref:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>$ cd ~/projects/thesis
 <a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>$ papers add --pool ~/Documents/papers/arctic --doi 10.5194/bg-8-515-2011
-<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>Added -&gt; perrette_yool2011: Near-ubiquity of ice-edge blooms in the Arctic (doi:10.5194/bg-8-515-2011, file:1) [from pool ../../Documents/papers/arctic; also added to pool ~/Documents/papers/sealevel]
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>Added -&gt; perrette_yool2011: Near-ubiquity of ice-edge blooms in the Arctic (doi:10.5194/bg-8-515-2011, file:1) [from pool ~/Documents/papers/arctic; also added to pool ~/Documents/papers/sealevel]
 <a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>$ ls ~/Documents/papers/sealevel/files
 <a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>perrette_et_al_2011_near-ubiquity-of-ice-edge-blooms-in-the-arctic.pdf
 <a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>perrette_et_al_2013_a-scaling-approach-to-project-regional-sea-level-rise-and-its-uncertainties.pdf
@@ -1295,7 +1297,7 @@ comes with <code>papers pull --pool</code>, and goes to <code>sealevel</code> wi
 <div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>$ papers -C ~/Documents/papers/arctic tag perrette_yool2011 --add blooms
 <a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>Modified -&gt; perrette_yool2011: Near-ubiquity of ice-edge blooms in the Arctic (doi:10.5194/bg-8-515-2011, file:1, blooms)
 <a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>$ papers pull --pool ~/Documents/papers/arctic
-<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>Modified -&gt; perrette_yool2011: Near-ubiquity of ice-edge blooms in the Arctic (doi:10.5194/bg-8-515-2011, file:1, blooms) [from pool ../../Documents/papers/arctic]
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>Modified -&gt; perrette_yool2011: Near-ubiquity of ice-edge blooms in the Arctic (doi:10.5194/bg-8-515-2011, file:1, blooms) [from pool ~/Documents/papers/arctic]
 <a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>$ papers push
 <a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>Modified -&gt; perrette_yool2011: Near-ubiquity of ice-edge blooms in the Arctic (doi:10.5194/bg-8-515-2011, file:1, blooms) [in pool ~/Documents/papers/sealevel]
 </code></pre></div>

@@ -1002,11 +1002,21 @@ command.</p>
 <a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>INFO:papers:renamed file(s): 1
 </code></pre></div>
 <p>where <code>--name-template</code> is a python template (formatted via the <code>.format()</code>
-method) with valid fields being any field available in the bibtex. Fields not
-in the bibtex will remain untouched.</p>
+method). Its placeholders are:</p>
+<ul>
+<li><code>{author}</code>, <code>{Author}</code>, <code>{AUTHOR}</code>, <code>{authorX}</code>, <code>{AuthorX}</code>: the authors
+  (see below)</li>
+<li><code>{year}</code>, <code>{journal}</code></li>
+<li><code>{title}</code>, <code>{Title}</code>: the title words (see the modifiers below)</li>
+<li><code>{key}</code> (or <code>{ID}</code>): the bibtex key of the entry</li>
+<li><code>{doi}</code>, <code>{doi_}</code> (the doi with <code>-</code> in place of <code>/</code>, <code>.</code> and the other
+  characters that are not letters or digits, for a file name),
+  <code>{doi_or_id}</code> (the same, or the key if the entry has no doi)</li>
+</ul>
+<p>Another placeholder is an error that lists these.</p>
 <p>To rename <code>esd-4-11-2013.pdf</code> as <code>perrette_2013.pdf</code>, the template should be
 <code>--name-template {author}_{year} --name-author-num 1</code>. If that happens to be
-the entry ID, <code>ID</code> also works.</p>
+the entry key, <code>{key}</code> also works.</p>
 <p>To rename <code>esd-4-11-2013.pdf</code> as
 <code>2013/Perrette2013-AScalingApproachToProjectRegionalSeaLevelRiseAndItsUncertainties.pdf</code>,
 name-template should be
