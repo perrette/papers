@@ -42,10 +42,6 @@ papers list
 - [Git integration](git.md)
 - [Undo and redo](undo-redo.md)
 
-## About
-
-- [Features](features.md)
-
 ## From the same author
 
 A few other open-source tools I maintain.

@@ -91,8 +91,7 @@ Full documentation: **<https://perrette.github.io/papers/>**
   [renaming files and keys](https://perrette.github.io/papers/renaming/),
   [managing your library](https://perrette.github.io/papers/library-management/),
   [git integration](https://perrette.github.io/papers/git/),
-  [undo/redo](https://perrette.github.io/papers/undo-redo/),
-  [features](https://perrette.github.io/papers/features/)
+  [undo/redo](https://perrette.github.io/papers/undo-redo/)
 
 `papers --help` and `papers <command> --help` describe every command and
 option.

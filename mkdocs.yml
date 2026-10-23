@@ -88,5 +88,3 @@ nav:
       - Managing your library: library-management.md
       - Git integration: git.md
       - Undo and redo: undo-redo.md
-  - About:
-      - Features: features.md

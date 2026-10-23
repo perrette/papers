@@ -14,11 +14,10 @@ command line (`--pool PATH`).
 
 | papers 2 | papers 3 |
 |---|---|
-| the global library (`papers install --global`) | the default library, after `papers migrate`, where it is. It is a self-contained library: commands run outside of any project act on it, `papers init --shallow` creates a project that uses it as pool, and `papers -C DIR` reaches it from anywhere |
-| a project library (`papers install --local`) with its own PDFs | a self-contained library (`pool none`), the same as a new `papers init`. `papers config pool PATH` makes it a shallow library of PATH, once PATH has its PDFs |
-| several project libraries with a common `filesdir` | still works, with self-contained libraries (see [A shared files folder without a pool](pools.md#a-shared-files-folder-without-a-pool)); exchanges between libraries and shallow libraries are more efficient |
-| `papers install` | `papers init` to create a library, `papers config` to change it; `papers install` is a deprecated alias |
-| `papers install --global` | an error that changes nothing: `papers init PATH --global` creates the default library (for example `papers init ~/Documents/papers/default --global`), `papers config --global default PATH` registers an existing library |
+| the global library (`papers install --global`) | the default library, after `papers migrate`, where it is: a self-contained library that commands run outside of any project act on (`papers -C DIR` reaches it from anywhere too) |
+| a project library (`papers install --local`) with its own PDFs | a self-contained library, the same as a new `papers init`. `papers config pool PATH` makes it a shallow library of PATH, once PATH has its PDFs |
+| several project libraries with a common `filesdir` | still works (see [A shared files folder without a pool](pools.md#a-shared-files-folder-without-a-pool)). The model preferred in papers 3, which is also more efficient, is a shared library (a pool) and project libraries that are shallow libraries of it |
+| `papers install` | `papers init` to create a library, `papers config` to change it; `papers install` is a deprecated alias. `papers install --global` is an error that changes nothing: `papers init PATH --global` creates the default library (for example `papers init ~/Documents/papers/default --global`), `papers config --global default PATH` registers an existing library |
 
 ## What happens on the first run
 
@@ -53,8 +52,7 @@ global configuration of papers v2: ~/.config/papersconfig.json
   has no pool.
 - It is registered as the default library, where it is, unless the global
   configuration of papers 3 already sets another one: commands run
-  outside of any project act on it, and `papers init --shallow` creates a
-  project that uses it as pool (see
+  outside of any project act on it (see
   [A global shared library](global-library.md)).
 - The bibtex, the PDFs and the git backup stay where they are. File links
   stay absolute, as they were; `papers migrate --relative` makes them
