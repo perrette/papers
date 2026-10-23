@@ -111,12 +111,12 @@ class TestListActions(FileTest):
 
 
 def _snapshot(root):
-    "the files under root and their content (with the mtimes of the origin records left out)"
+    "the files under root and their content (with the mtimes and times of the origin records left out)"
     state = {}
     for folder, _, files in os.walk(root):
         for f in files:
             path = os.path.join(folder, f)
-            state[os.path.relpath(path, root)] = re.sub(rb'\d{16,}', b'MTIME', Path(path).read_bytes())
+            state[os.path.relpath(path, root)] = re.sub(rb'\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d[^},\s]*', b'TIME', re.sub(rb'\d{16,}', b'MTIME', Path(path).read_bytes()))
     return state
 
 
