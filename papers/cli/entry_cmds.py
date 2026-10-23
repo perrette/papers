@@ -3,6 +3,7 @@ import copy
 import fnmatch
 import os
 import re
+import sys
 
 import papers.config
 import papers.files
@@ -10,6 +11,7 @@ from papers import logger
 from papers.bib import isvalidkey
 from papers.duplicate import FUZZY_RATIO, duplicate_groups, fuzzy_pairs
 from papers.encoding import family_names, format_entries, format_entry, format_key, parse_keywords, standard_name
+from papers.formats import dumps, file_format, load_rispy
 from papers.entries import entry_from_dict, get_entry_val, format_file, parse_file
 from papers.extract import isvaliddoi, prefetch_pdf_metadata
 from papers.files import (attach_files, delete_files, describe_file, download_url, files_policy, rename_files,
@@ -177,6 +179,11 @@ def addcmd(parser, o, config):
         if len(pdfs) > 1:
             prefetch_pdf_metadata(pdfs, search_doi=not o.no_query_doi, search_fulltext=not o.no_query_fulltext)
 
+    # RIS needs rispy: asked about (or the command stops) before anything is added
+    if any(not os.path.isdir(f) and not f.lower().endswith('.pdf') and file_format(f, o.format) == 'ris'
+           for f in o.file):
+        load_rispy()
+
     for file in o.file:
         try:
             if os.path.isdir(file):
@@ -195,8 +202,12 @@ def addcmd(parser, o, config):
                            scholar=o.scholar, doi=o.doi,
                            **kw) )
 
-            else: # file.endswith('.bib'):
+            elif file_format(file, o.format) == 'bibtex':
                 entries.extend( biblio.add_bibtex_file(file, attachments=o.attachment, rename=rename, copy=policy, **kw) )
+
+            else:  # RIS, CSL-JSON
+                entries.extend( biblio.add_file_of_format(file, file_format(file, o.format),
+                                attachments=o.attachment, rename=rename, copy=policy, **kw) )
 
         except (EOFError, DuplicateError):
             raise  # a question without answer, or --on-duplicate error, stops the command (see main_clean_exit)
@@ -601,6 +612,8 @@ def listcmd(parser, o, config):
             print(get_entry_val(e, 'ID', ''))
     elif o.format == 'bibtex':
         print(format_entries(entries))
+    elif o.format in ('ris', 'csl-json'):
+        sys.stdout.write(dumps(entries, o.format, files=biblio.get_files))
     else:
         for e in entries:
             print(format_entry(biblio, e, no_key=o.no_key))

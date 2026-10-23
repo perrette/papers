@@ -1,6 +1,8 @@
 """papers pull, push, sync, export"""
+import os
 from papers.identifiers import read_selection, select_entries, select_some
 from papers.library import get_biblio, savebib
+from papers.formats import FILENAMES, FORMATS, dumps, load_rispy
 from papers.pools import Exchange, PoolError, NO_POOL_MESSAGE, export, report_counts
 from papers.utils import PapersExit
 from papers.cli.common import (duplicate_resolver, _entries_or_all, exchange_lines, print_exchange, save_exchange,
@@ -183,8 +185,28 @@ def synccmd(parser, o, config):
 
 
 def exportcmd(parser, o, config):
+    formats = [f for fmts in (o.format or [['bibtex']]) for f in fmts]
+    formats = [f for f in FORMATS if f in formats]  # once each, in this order
+    if 'ris' in formats:
+        load_rispy()  # before anything is written
     biblio = get_biblio(config)
     entries = _entries_or_all(biblio, o.entries)
-    new, target = export(biblio, config, entries, o.dir, files=o.files, git=o.git)
-    savebib(target, new)
-    print(f'exported {len(entries)} entries to {new.configdir} (files: {o.files})')
+    library = 'bibtex' in formats
+    new, target = export(biblio, config, entries, o.dir, files=o.files, git=o.git, library=library)
+    dest = new.configdir if library else os.path.abspath(o.dir)
+    written = []
+    if library:
+        savebib(target, new)
+        written.append(os.path.basename(new.bibtex))
+    for fmt in formats:
+        if fmt == 'bibtex':
+            continue
+        path = os.path.join(dest, FILENAMES[fmt])
+        text = dumps(target.entries, fmt,
+                     files=lambda e: [os.path.relpath(f, dest) for f in target.get_files(e)])
+        with open(path, 'w', encoding='utf-8') as f:
+            f.write(text)
+        written.append(FILENAMES[fmt])
+    print(f'exported {len(entries)} entries to {dest} ({", ".join(written)}; files: {o.files})')
+    if not library:
+        print(f'{dest} is not a papers library (no {FILENAMES["bibtex"]}): --format bib or all makes one')

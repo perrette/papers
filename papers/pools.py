@@ -1344,33 +1344,47 @@ def use_pool_files(config, pools):
 # EXPORT
 # ======
 
-def export(biblio, config, entries, dest, files='copy', git=None):
+def export(biblio, config, entries, dest, files='copy', git=None, library=True):
     """write the entries (and their files, as `files` says: copy, link or
     none) as a new library in directory `dest`, which must not exist or be
     empty: a self-contained library (pool none, its own files), to be
     handed over. Return (configuration,
-    bibliography) of the new library, for the caller to save."""
+    bibliography) of the new library, for the caller to save.
+
+    library=False: `dest` is not made a library (no configuration, no
+    bibtex; the caller writes the entries in other formats): the files are
+    placed in `dest/files` all the same, named with the name template of
+    the library, and the configuration returned is None."""
     if os.path.exists(dest) and (not os.path.isdir(dest) or os.listdir(dest)):
         raise PapersExit(f'{dest}: exists and is not an empty directory')
     if papers.config.DRYRUN:
         raise PapersExit('export does not support --dry-run')
-    name = os.path.basename(config.bibtex) if config.bibtex else 'papers.bib'
-    new = create_library(os.path.abspath(dest), config.machine, bibtex=name, git=git)
-    for setting in papers.config.SETTINGS:
-        if setting.startswith(('name.', 'key.')) and config.source(setting) == 'library':
-            new.set(setting, config.get(setting))
-    new.save()
-    target = Biblio(filesdir=new.filesdir, nameformat=new.nameformat, keyformat=new.keyformat,
-                    relative_to=os.path.dirname(new.bibtex), distinct=Distinct.for_bibtex(new.bibtex))
+    dest = os.path.abspath(dest)
+    if library:
+        name = os.path.basename(config.bibtex) if config.bibtex else 'papers.bib'
+        new = create_library(dest, config.machine, bibtex=name, git=git)
+        for setting in papers.config.SETTINGS:
+            if setting.startswith(('name.', 'key.')) and config.source(setting) == 'library':
+                new.set(setting, config.get(setting))
+        new.save()
+        target = Biblio(filesdir=new.filesdir, nameformat=new.nameformat, keyformat=new.keyformat,
+                        relative_to=os.path.dirname(new.bibtex), distinct=Distinct.for_bibtex(new.bibtex))
+        current = new.file
+    else:
+        new, current = None, None
+        os.makedirs(dest, exist_ok=True)
+        target = Biblio(filesdir=os.path.join(dest, 'files'), nameformat=config.nameformat,
+                        keyformat=config.keyformat, relative_to=dest)
     for e in entries:
         c = entry_for(e, biblio, target)
         if files == 'none' and 'file' in c.fields_dict:
             del c['file']
         target.db.add(c)
         if files == 'copy' and target.get_files(c):
-            target.rename_entry_files(c, copy=FilesPolicy('copy', target.filesdir, current_config=new.file,
+            target.rename_entry_files(c, copy=FilesPolicy('copy', target.filesdir, current_config=current,
                                                           machine=config.machine))
-    target.distinct.update(biblio.distinct)
+    if library:
+        target.distinct.update(biblio.distinct)
     return new, target
 
 

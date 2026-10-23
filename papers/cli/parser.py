@@ -80,6 +80,20 @@ def _format_parser(kind, title, what, fmt, template_help):
     return parser
 
 
+def _export_formats(value):
+    "the formats of `papers export --format`: bib, ris, csl-json, all, separated by commas"
+    names = {'bib': 'bibtex', 'bibtex': 'bibtex', 'ris': 'ris', 'csl-json': 'csl-json', 'json': 'csl-json'}
+    formats = []
+    for name in (v.strip().lower() for v in value.split(',') if v.strip()):
+        if name == 'all':
+            formats.extend(['bibtex', 'ris', 'csl-json'])
+        elif name in names:
+            formats.append(names[name])
+        else:
+            raise argparse.ArgumentTypeError(f'unknown format {name!r} (choose from bib, ris, csl-json, all)')
+    return formats
+
+
 def get_parser(config=None):
     if config is None:
         config = papers.config.Config()
@@ -273,13 +287,17 @@ def get_parser(config=None):
 
     # add
     # ===
-    addp = subparsers.add_parser('add', description='''add PDF(s) or bibtex(s) to library. In a
+    addp = subparsers.add_parser('add', description='''add PDF(s), bibtex(s), RIS (.ris) or CSL-JSON (.json)
+        file(s) to library. In a
         shallow library, the files go to the files directory of the pool (files mode
         move or copy; with link, they stay where they are), and the entries to the pool too. Adding a bibtex file (`papers add other.bib`) copies its entries once, with no
         memory of where they came from; `papers pull` instead keeps the entries linked to the pool,
         and later pulls bring its corrections.''',
         parents=[cfg, namefmt, keyfmt])
     addp.add_argument('file', nargs='*', default=[], type=file_uri_to_path)
+    addp.add_argument('--format', choices=['bibtex', 'ris', 'csl-json'],
+        help='''the format of the added files that are not PDFs (default: from the extension:
+        .ris is RIS, .json is CSL-JSON, other files are bibtex). RIS needs the rispy package.''')
 
     grp = addp.add_argument_group('duplicate check',
         description='''An added entry is the same paper as a library entry when they have
@@ -582,8 +600,9 @@ def get_parser(config=None):
 
     grp = listp.add_argument_group('formatting')
     mgrp = grp.add_mutually_exclusive_group()
-    mgrp.add_argument('--format', choices=['line', 'bibtex', 'key'],
-        help='line: one line per entry (the default); bibtex: the entries as bibtex; key: the keys only, '
+    mgrp.add_argument('--format', choices=['line', 'bibtex', 'ris', 'csl-json', 'key'],
+        help='line: one line per entry (the default); bibtex, ris, csl-json: the entries in that format '
+             '(file links as absolute paths; RIS needs the rispy package); key: the keys only, '
              'one per line (to pipe into the commands that take -, e.g. `papers file rename -`)')
     mgrp.add_argument('--plain', action='store_const', dest='format', const='bibtex', help='same as --format bibtex')
     mgrp.add_argument('-l', '-1', '--one-liner', action='store_const', dest='format', const='line',
@@ -719,12 +738,18 @@ def get_parser(config=None):
         description='''write entries as a new library in DIR, to hand over: bibtex, files,
         configuration (a self-contained library: its own files, no pool), with file links relative to
         the bibtex. `papers add DIR --recursive` adds it back; `papers config pool DIR` makes it the
-        pool of the library.''')
+        pool of the library. With --format, the entries are also, or instead, written as RIS
+        (DIR/papers.ris) or CSL-JSON (DIR/papers.json), with file links relative to DIR; without
+        bibtex, DIR is not a papers library.''')
     exportp.add_argument('dir', metavar='DIR', help='directory of the new library (must not exist, or be empty)')
     exportp.add_argument('entries', nargs='*', metavar='KEY', help=_selection_help + ' (default: all entries)')
     exportp.add_argument('--files', choices=['copy', 'link', 'none'], default='copy',
         help='copy the files into DIR/files (a hard link when possible; default), link to them where '
              'they are, or leave the file links out')
+    exportp.add_argument('--format', action='append', type=_export_formats, metavar='FORMAT',
+        help='''the files of entries written in DIR: bib (papers.bib, the default: DIR is a papers
+        library), ris (papers.ris; needs the rispy package), csl-json (papers.json), or all; repeat the
+        option or separate the formats with commas, e.g. --format bib,ris''')
     _command(exportp, exportcmd, library=True)
 
     # open

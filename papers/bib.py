@@ -406,16 +406,24 @@ class Biblio:
         bib = parse_string(bibtex)
         if convert_to_unicode:
             bib = latex_to_unicode_library(bib)
+        return self.add_entries(bib.entries, relative_to=relative_to, attachments=attachments, **kw)
+
+    def add_entries(self, added, relative_to=None, attachments=None, what='bibtex', **kw):
+        """add entries read from a file (bibtex, RIS, CSL-JSON...): their file
+        links are relative to `relative_to`; an entry without key gets one from
+        the key template"""
         fields = [k for k in kw.get('metadata') or {} if k != 'file']
-        if fields and len(bib.entries) > 1:
-            raise ValueError(f'the bibtex has {len(bib.entries)} entries: the fields given on the command line '
+        if fields and len(added) > 1:
+            raise ValueError(f'the {what} has {len(added)} entries: the fields given on the command line '
                              '(--title, --key, --metadata...) apply to one entry only')
         entries = []
         # one index for all entries, so that the duplicate search compares an
         # entry with the entries that share an identifier only
-        if kw.get('check_duplicate') and kw.get('duplicate_index') is None and bib.entries:
+        if kw.get('check_duplicate') and kw.get('duplicate_index') is None and added:
             kw['duplicate_index'] = IdentityIndex(self.entries)
-        for e in bib.entries:
+        for e in added:
+            if not e.key:
+                set_entry_key(e, self.generate_key(e))
             files = []
             if "file" in e:
                 # make sure paths relative to other bibtex are inserted correctly
@@ -444,6 +452,13 @@ class Biblio:
         # file links in the added bibtex are relative to its own directory
         # (the absolute path matters: dirname('papers.bib') is '')
         return self.add_bibtex(bibtex, relative_to=os.path.dirname(os.path.abspath(file)), **kw)
+
+    def add_file_of_format(self, file, fmt, **kw):
+        "add the entries of a RIS or CSL-JSON file (see papers.formats)"
+        from papers.formats import read_file
+        names = {'ris': 'RIS file', 'csl-json': 'CSL-JSON file'}
+        return self.add_entries(read_file(file, fmt), relative_to=os.path.dirname(os.path.abspath(file)),
+                                what=names.get(fmt, fmt), **kw)
 
 
     def find_doi(self, doi):
