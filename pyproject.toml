@@ -35,6 +35,18 @@ dependencies = [
 dynamic = ["version"]
 
 [project.optional-dependencies]
+# RIS import and export (`papers add refs.ris`, `papers export --format ris`)
+ris = ["rispy"]
+# the test suite: rispy for the RIS tests, jsonschema to validate the
+# CSL-JSON output (it needs rpds-py, a compiled package: left out on the
+# newest Python versions, where the schema test is skipped)
+test = [
+    "pytest",
+    "pytest-cov",
+    "pyflakes",
+    "rispy",
+    "jsonschema; python_version < '3.14'",
+]
 docs = [
     # Pin below MkDocs 2.0: that release drops the plugin/theme/config system
     # with no migration path and is incompatible with Material for MkDocs.
@@ -84,10 +96,7 @@ python =
 
 [testenv]
 commands = pytest --cov=papers --cov-append --cov-report=term-missing {posargs} -xv
-deps =
-    pytest
-    pytest-cov
-    pyflakes
+extras = test
 depends =
     {py311,py312,py313,py314,py314t,py315,py315t}: clean
     report: py311,py312,py313,py314,py314t,py315,py315t
