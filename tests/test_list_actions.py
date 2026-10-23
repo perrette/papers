@@ -168,9 +168,13 @@ class TestListFileActions(SameResult, FileTest):
         self.assertEqual(self.files('one2000'), [self.b])
 
     def test_detach_broken(self):
-        self.assertSame('list --year 2000 --detach --broken', 'file detach --broken --key one2000 two2000 three2000')
+        self.assertSame('list --year 2000 --detach-broken', 'file detach --broken --key one2000 two2000 three2000')
         self.assertEqual(self.files('two2000'), [])
         self.assertEqual(len(self.files('one2000')), 2)
+
+    def test_broken_is_broken_file(self):
+        "--broken is short for the search option --broken-file, as before (--detach-broken detaches)"
+        self.assertEqual(self.out('list --broken -K').split(), ['two2000', 'three2000'])
 
     def test_fix_files(self):
         self.write('found', 'gone.pdf')
@@ -199,8 +203,8 @@ class TestListFileActions(SameResult, FileTest):
 
     def test_options_need_their_action(self):
         before = _snapshot(self.dir)
-        for cmd in ['--broken', '--move', '--pool ../x', '--on-duplicate keep', '--export-format ris',
-                    '--detach a.pdf --broken', '--detach --fix-files', '--push --pool a --pool b']:
+        for cmd in ['--move', '--pool ../x', '--on-duplicate keep', '--export-format ris',
+                    '--detach a.pdf --detach-broken', '--detach --fix-files', '--push --pool a --pool b']:
             with self.subTest(cmd), self.assertRaises(SystemExit):
                 self.lib(f'list --key one2000 {cmd}')
         self.assertEqual(_snapshot(self.dir), before)

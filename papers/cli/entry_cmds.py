@@ -507,7 +507,7 @@ def listcmd(parser, o, config):
     if o.fetch:
         logger.warning("`papers list --fetch` is deprecated: use `papers list ... -K | "
                        "papers check --fetch --fetch-all --fix-doi --fix-key --format-name -`")
-    detach, fix_files = o.detach is not None, o.fix_files is not None
+    detach, fix_files = o.detach is not None or o.detach_broken, o.fix_files is not None
     exchange = 'pull' if o.pull else 'push' if o.push else 'sync' if o.sync else None
     actions = [name for name, given in [('--delete', o.delete), ('--edit', o.edit), ('--fetch', o.fetch),
                                         ('--add-tag', o.add_keywords), ('--rm-tag', o.rm_tag),
@@ -518,15 +518,14 @@ def listcmd(parser, o, config):
         parser.error(f"one action at a time: {' and '.join(actions)}")
     for option, given, needs, action in [
             ('--keep-source', o.keep_source, rename, '--rename'),
-            ('--broken', o.broken, detach, '--detach (--broken-file lists the entries with a broken link)'),
             ('--move', o.move, fix_files, '--fix-files'),
             ('--pool', o.pool, fix_files or exchange, '--push, --pull, --sync or --fix-files'),
             ('--on-duplicate', o.on_duplicate, exchange, '--push, --pull or --sync'),
             ('--export-format', o.export_format, o.export, '--export')]:
         if given and not needs:
             parser.error(f'{option} goes with {action}')
-    if o.broken and o.detach:
-        parser.error('--detach --broken takes no FILE')
+    if o.detach_broken and o.detach:
+        parser.error('--detach-broken takes no FILE')
     if exchange and len(o.pool or []) > 1:
         parser.error(f'--{exchange} takes one --pool')
 
@@ -611,7 +610,7 @@ def listcmd(parser, o, config):
         notes = save_entries(config, biblio)
 
     elif detach:
-        detach_entries(biblio, config, entries, o.detach, broken=o.broken)
+        detach_entries(biblio, config, entries, o.detach or [], broken=o.detach_broken)
         return
 
     elif fix_files:

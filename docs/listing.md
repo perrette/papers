@@ -139,7 +139,7 @@ for, with the listed entries as KEY...:
 | `--rename` (`--keep-source`) | `papers file rename KEY...` (`--keep-source`) | `papers list smith 2020 --rename` |
 | `--attach FILE...` | `papers file attach KEY FILE...` | `papers list --title "ice-edge blooms" --attach si.pdf` |
 | `--detach [FILE...]` | `papers file detach [FILE...] --key KEY...` | `papers list --year 2010 --detach` |
-| `--detach --broken` | `papers file detach --broken --key KEY...` | `papers list --broken-file --detach --broken` |
+| `--detach-broken` | `papers file detach --broken --key KEY...` | `papers list --broken-file --detach-broken` |
 | `--fix-files [DIR...]` (`--pool PATH`, `--move`) | `papers file fix KEY... [--search DIR...]` (`--pool PATH`, `--move`) | `papers list --broken-file --fix-files ~/pdfs` |
 | `-o/--open` | `papers open KEY...` | `papers list --tag to-read --open` |
 | `--push` (`--pool PATH`, `--on-duplicate`) | `papers push KEY...` (same options) | `papers list --tag thesis --push` |

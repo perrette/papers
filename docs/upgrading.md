@@ -57,7 +57,7 @@ by other tools. What changes:
 
 - `papers list` keeps its search options and its actions `--edit`,
   `--delete`, `--add-tag`, `--rename` (with `--keep-source`) and `--open`,
-  and has new ones: `--attach`, `--rm-tag`, `--detach`, `--fix-files`,
+  and has new ones: `--attach`, `--rm-tag`, `--detach`, `--detach-broken`, `--fix-files`,
   `--push`, `--pull`, `--sync` and `--export`. Each runs the command it
   stands for on the listed entries (see [Actions on the listed entries](listing.md#actions-on-the-listed-entries)).
   The other commands read the keys listed by `papers list -K` with `-`,

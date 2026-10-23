@@ -681,8 +681,8 @@ def get_parser(config=None):
     grp.add_argument('--detach', nargs='*', type=file_uri_to_path, metavar='FILE',
         help='remove the links of the listed entries to these files (without FILE: all their links), '
              'as `papers file detach FILE... --key KEY...`')
-    grp.add_argument('--broken', action='store_true',
-        help='with --detach: only the broken links, as `papers file detach --broken --key KEY...`')
+    grp.add_argument('--detach-broken', action='store_true',
+        help='remove the broken links of the listed entries, as `papers file detach --broken --key KEY...`')
     grp.add_argument('--fix-files', nargs='*', metavar='DIR',
         help='repair the file links of the listed entries, as `papers file fix KEY...`; the broken links are '
              'also looked for in the folders DIR, as `papers file fix --search DIR`')
