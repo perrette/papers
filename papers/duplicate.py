@@ -22,9 +22,11 @@ Pairs that the user answered "not the same paper" for are kept in
 `.papers/distinct.json` of the library (see `Distinct`), and same_paper
 returns "different" for them.
 """
+import functools
 import json
 import os
 import re
+from typing import NamedTuple
 
 from unidecode import unidecode
 
@@ -66,11 +68,23 @@ class Verdict:
 # NORMALIZATION
 # =============
 
+# the number of values kept by the memos of the normalization and the identity
+MEMO_SIZE = 1 << 18
+
+
+def _latex_to_unicode(s):
+    "latex_to_unicode, without its work for a plain ASCII text (no backslash, no brace)"
+    if s.isascii() and '\\' not in s and '{' not in s and '}' not in s:
+        return s
+    return latex_to_unicode(s)
+
+
+@functools.lru_cache(maxsize=MEMO_SIZE)
 def normalize_text(s):
     """lower case, LaTeX and accents to ASCII, no braces, single spaces"""
     if not s:
         return ''
-    s = latex_to_unicode(s)
+    s = _latex_to_unicode(s)
     s = unidecode(s)
     s = s.replace('{', '').replace('}', '')
     return ' '.join(s.lower().split())
@@ -100,57 +114,96 @@ def family_name_ids(field):
     return [normalize_text(parse_name(n)[0]) for n in split_names(field)]
 
 
+# IDENTITY
+# ========
+
+# the fields that the identifiers of an entry are made of
+IDENTITY_FIELDS = ('ENTRYTYPE', 'doi', 'archiveprefix', 'archivePrefix', 'eprint', 'isbn', 'author', 'title')
+
+
+class Identifiers(NamedTuple):
+    "the normalized identifiers of an entry (see identifiers_of)"
+    type: str
+    doi: str
+    arxiv: str
+    isbns: frozenset
+    author: str
+    title: str
+    authortitle: str
+
+
+def _compute_identifiers(e):
+    entry_type = get_entry_val(e, 'ENTRYTYPE', '').lower()
+    doi = normalize_doi(get_entry_val(e, 'doi', '')) or ''
+    if entry_type == 'book':
+        values = re.split(r'[,;]', get_entry_val(e, 'isbn', ''))
+        isbns = frozenset(i for i in (normalize_isbn(v) for v in values if v.strip()) if i)
+    else:  # a chapter carries the ISBN of its book
+        isbns = frozenset()
+    author = ' '.join(family_name_ids(get_entry_val(e, 'author', '')))
+    title = normalize_text(get_entry_val(e, 'title', ''))
+    authortitle = author + '|' + title if author and title else ''
+    return Identifiers(entry_type, doi, entry_arxiv(e), isbns, author, title, authortitle)
+
+
+@functools.lru_cache(maxsize=MEMO_SIZE)
+def _identifiers_of_values(values):
+    return _compute_identifiers(dict(zip(IDENTITY_FIELDS, values)))
+
+
+def identifiers_of(e):
+    """the Identifiers of an entry, memoized by the values of its
+    IDENTITY_FIELDS (an edited entry gets its new identifiers)"""
+    values = tuple(get_entry_val(e, k, '') for k in IDENTITY_FIELDS)
+    try:
+        return _identifiers_of_values(values)
+    except TypeError:  # a value that cannot be hashed
+        return _compute_identifiers(e)
+
+
 def author_id(e):
-    return ' '.join(family_name_ids(get_entry_val(e, 'author', '')))
+    return identifiers_of(e).author
 
 
 def title_id(e):
-    return normalize_text(get_entry_val(e, 'title', ''))
+    return identifiers_of(e).title
 
 
 def authortitle_id(e):
     "normalized 'authors|title', or '' when the authors or the title are missing"
-    author, title = author_id(e), title_id(e)
-    if not author or not title:
-        return ''
-    return author + '|' + title
+    return identifiers_of(e).authortitle
 
 
 def entry_type(e):
-    return get_entry_val(e, 'ENTRYTYPE', '').lower()
+    return identifiers_of(e).type
 
-
-# IDENTITY
-# ========
 
 def doi_id(e):
-    return normalize_doi(get_entry_val(e, 'doi', '')) or ''
+    return identifiers_of(e).doi
 
 
 def isbn_ids(e):
     "the normalized ISBNs of a @book entry (none for other types)"
-    if entry_type(e) != 'book':
-        return frozenset()
-    values = re.split(r'[,;]', get_entry_val(e, 'isbn', ''))
-    return frozenset(i for i in (normalize_isbn(v) for v in values if v.strip()) if i)
+    return identifiers_of(e).isbns
 
 
 def identity(e):
     """the identifiers of an entry: dict with the keys doi, arxiv, isbn
     (comma-separated, books only) and authortitle (or title, without
     authors), those it has"""
+    ids = identifiers_of(e)
     ident = {}
-    if doi_id(e):
-        ident['doi'] = doi_id(e)
-    if entry_arxiv(e):
-        ident['arxiv'] = entry_arxiv(e)
-    if isbn_ids(e):
-        ident['isbn'] = ','.join(sorted(isbn_ids(e)))
-    if authortitle_id(e):
-        ident['authortitle'] = authortitle_id(e)
-    elif title_id(e):
+    if ids.doi:
+        ident['doi'] = ids.doi
+    if ids.arxiv:
+        ident['arxiv'] = ids.arxiv
+    if ids.isbns:
+        ident['isbn'] = ','.join(sorted(ids.isbns))
+    if ids.authortitle:
+        ident['authortitle'] = ids.authortitle
+    elif ids.title:
         # no authors: the title tells apart entries that share an identifier
-        ident['title'] = title_id(e)
+        ident['title'] = ids.title
     return ident
 
 
@@ -180,11 +233,15 @@ def search_result_mismatch(e, found, ratio=TITLE_MATCH_RATIO):
 
 
 def _guard(a, b, reason):
-    "the title guard on equal identifiers"
-    if entry_type(a) != entry_type(b) and titles_differ(a, b):
-        return Verdict(ASK, f'{reason}, but the entry types ({entry_type(a)}, {entry_type(b)}) '
+    "the title guard on equal identifiers (a, b: Identifiers)"
+    if a.type != b.type and a.title and b.title and a.title != b.title:
+        return Verdict(ASK, f'{reason}, but the entry types ({a.type}, {b.type}) '
                             'and the titles differ')
     return Verdict(SAME, reason)
+
+
+# the reasons of same_paper for two entries whose identifiers contradict each other
+CONTRADICTIONS = ('different DOIs', 'different arXiv ids', 'different ISBNs')
 
 
 def same_paper(a, b, distinct=None):
@@ -193,27 +250,24 @@ def same_paper(a, b, distinct=None):
     if distinct is not None and distinct.contains(a, b):
         return Verdict(DIFFERENT, 'marked as not the same paper (.papers/distinct.json)')
 
-    doi_a, doi_b = doi_id(a), doi_id(b)
-    if doi_a and doi_b:
-        if doi_a != doi_b:
-            return Verdict(DIFFERENT, 'different DOIs')
-        return _guard(a, b, f'same DOI {doi_a}')
+    ia, ib = identifiers_of(a), identifiers_of(b)
+    if ia.doi and ib.doi:
+        if ia.doi != ib.doi:
+            return Verdict(DIFFERENT, CONTRADICTIONS[0])
+        return _guard(ia, ib, f'same DOI {ia.doi}')
 
-    arxiv_a, arxiv_b = entry_arxiv(a), entry_arxiv(b)
-    if arxiv_a and arxiv_b:
-        if arxiv_a != arxiv_b:
-            return Verdict(DIFFERENT, 'different arXiv ids')
-        return _guard(a, b, f'same arXiv id {arxiv_a}')
+    if ia.arxiv and ib.arxiv:
+        if ia.arxiv != ib.arxiv:
+            return Verdict(DIFFERENT, CONTRADICTIONS[1])
+        return _guard(ia, ib, f'same arXiv id {ia.arxiv}')
 
-    isbn_a, isbn_b = isbn_ids(a), isbn_ids(b)
-    if isbn_a and isbn_b:
-        common = isbn_a & isbn_b
+    if ia.isbns and ib.isbns:
+        common = ia.isbns & ib.isbns
         if not common:
-            return Verdict(DIFFERENT, 'different ISBNs')
+            return Verdict(DIFFERENT, CONTRADICTIONS[2])
         return Verdict(SAME, f'same ISBN {min(common)}')
 
-    at_a, at_b = authortitle_id(a), authortitle_id(b)
-    if at_a and at_b and at_a == at_b:
+    if ia.authortitle and ib.authortitle and ia.authortitle == ib.authortitle:
         return Verdict(SAME, 'same title and authors')
     return Verdict(DIFFERENT, 'no common identifier')
 
@@ -271,6 +325,8 @@ class Distinct:
         return cls(pairs, path)
 
     def contains(self, a, b):
+        if not self.pairs:
+            return False
         ia, ib = identity(a), identity(b)
         for x, y in self.pairs:
             if (_side_matches(x, ia) and _side_matches(y, ib)) or (_side_matches(y, ia) and _side_matches(x, ib)):
