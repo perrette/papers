@@ -259,6 +259,7 @@ class TestGitdirByName(unittest.TestCase):
 
     def test_absolute_path_of_previous_versions(self):
         gitdir = os.path.join(BACKUP_DIR, 'lib-0123abcd')
+        os.makedirs(os.path.dirname(self.path(CONFIG_FILE_LOCAL)), exist_ok=True)
         json.dump({'bibtex': 'lib.bib', 'gitdir': gitdir, 'version': 3},
                   open(self.path(CONFIG_FILE_LOCAL), 'w'))
         config = Config.load(self.path(CONFIG_FILE_LOCAL))
@@ -326,6 +327,18 @@ class TestDotPapersGitdir(ConfigTest):
         log = paperscmd('git log --format=%s', cwd=self.path('lib'), sp_cmd='check_output')
         self.assertEqual(log.splitlines()[-1], 'v2 snapshot')  # the history moved too
         self.assertIn('a2000', Path(config.gitdir, 'papers.bib').read_text())
+
+    def test_tracked_configuration_stays(self):
+        # .papers/config.json is the library configuration of papers 3: a
+        # repository that tracked it leaves it in the library
+        from papers.backup import run_git
+        dot = self.path('lib', '.papers')
+        run_git(dot, ['add', 'config.json'])
+        run_git(dot, ['commit', '-m', 'config'])
+        with self.assertLogs('papers', level='WARNING'):
+            self.papers('add ../a.bib', cwd=self.path('lib'))
+        config = Config.load(self.path('lib', CONFIG_FILE_LOCAL))
+        self.assertEqual(os.path.dirname(config.gitdir), BACKUP_DIR)
 
 
 class TestCommitFailure(GitInitTest):

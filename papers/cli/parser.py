@@ -215,11 +215,12 @@ def get_parser(config=None):
     # migrate
     # =======
     migratep = subparsers.add_parser('migrate', parents=[cfg],
-        description='one-time upgrades from papers v2. Without option: turn the global configuration '
-                    'of v2 into a library configuration next to its bibtex (a self-contained library: '
-                    'its own files, no pool), and register it, where it is, as the default library. The '
-                    'library configurations of v2 need no migration: they are read as self-contained '
-                    'libraries (no pool).')
+        description='one-time upgrades from papers v2. Without option: move the configuration of the '
+                    'current library from .papersconfig.json (papers v2) to .papers/config.json, and turn the '
+                    'global configuration of v2 into a library configuration in the directory of its bibtex '
+                    '(a self-contained library: its own files, no pool), registered, where it is, as the '
+                    'default library. The library configurations of v2 are read as self-contained libraries '
+                    '(no pool), and moved to .papers/config.json when papers saves them.')
     migratep.add_argument('--relative', action='store_true',
         help='store the file links of the migrated library relative to its bibtex '
              '(default: keep the previous setting)')

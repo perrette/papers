@@ -5,7 +5,8 @@ import tempfile
 import unittest
 from unittest import mock
 
-from papers.config import (Config, MachineConfig, file_version, gitdir_from_json, json_get, json_set, short_home)
+from papers.config import (CONFIG_FILE_LOCAL, Config, MachineConfig, file_version, gitdir_from_json, json_get, json_set,
+                           short_home)
 from papers.utils import PapersExit
 
 
@@ -76,7 +77,7 @@ class TestConfig(unittest.TestCase):
         self.tmp.cleanup()
 
     def test_relpath_failure_keeps_the_path(self):
-        config = Config(file=os.path.join(self.dir, '.papersconfig.json'), is_library=True)
+        config = Config(file=os.path.join(self.dir, CONFIG_FILE_LOCAL), is_library=True)
         with mock.patch('papers.config.os.path.relpath', side_effect=ValueError('other drive')), \
                 self.assertLogs('papers', level='WARNING'):
             self.assertEqual(config._relpath('/x/papers.bib'), '/x/papers.bib')
@@ -95,7 +96,7 @@ class TestConfig(unittest.TestCase):
             Config()._update_paths_to_absolute()
 
     def test_status_unset_and_missing(self):
-        config = Config(file=os.path.join(self.dir, '.papersconfig.json'),
+        config = Config(file=os.path.join(self.dir, CONFIG_FILE_LOCAL),
                         bibtex=os.path.join(self.dir, 'missing.bib'))
         status = config.status(check_files=True)
         self.assertIn('(unset)', status)  # files directory

@@ -6,6 +6,7 @@ from unittest.mock import patch
 import papers.config
 from papers.utils import PapersExit
 from tests.common import ConfigTest, FileTest
+from papers.config import CONFIG_FILE_LOCAL
 
 
 class TestConfigCmd(FileTest):
@@ -120,7 +121,7 @@ class TestOtherCommands(ConfigTest):
         # it did nothing on init; install keeps it (it skips the files count of the status)
         with self.assertRaises(SystemExit):
             self.papers('init --no-git --no-check-files')
-        self.assertFalse(os.path.exists(self.path('.papersconfig.json')))
+        self.assertFalse(os.path.exists(self.path(CONFIG_FILE_LOCAL)))
 
     def test_init_in_a_library(self):
         self.papers('init --no-git')

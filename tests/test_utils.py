@@ -7,7 +7,6 @@ from papers.utils import (
     strip_colors,
     strip_ansi_link,
     strip_all,
-    search_config,
     check_filesdir,
     checksum,
     hash_bytestr_iter,
@@ -113,30 +112,6 @@ class TestColorEnabled(unittest.TestCase):
             self.assertEqual(bcolors.OKGREEN, '\033[92m')
         finally:
             use_color(color)
-
-
-class TestSearchConfig(unittest.TestCase):
-
-    def test_finds_file_in_current_dir(self):
-        with tempfile.TemporaryDirectory() as d:
-            config_file = os.path.join(d, "config.json")
-            open(config_file, 'w').close()
-            result = search_config(["config.json"], d)
-            self.assertEqual(result, config_file)
-
-    def test_returns_default_when_not_found(self):
-        with tempfile.TemporaryDirectory() as d:
-            result = search_config(["nonexistent.json"], d, default="/default")
-            self.assertEqual(result, "/default")
-
-    def test_searches_parent_dirs(self):
-        with tempfile.TemporaryDirectory() as d:
-            subdir = os.path.join(d, "sub", "deep")
-            os.makedirs(subdir)
-            config_file = os.path.join(d, "papersconfig.json")
-            open(config_file, 'w').close()
-            result = search_config(["papersconfig.json"], subdir)
-            self.assertEqual(result, config_file)
 
 
 class TestChecksum(unittest.TestCase):

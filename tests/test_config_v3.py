@@ -29,6 +29,7 @@ class TestResolution(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
         self.file = os.path.join(self.temp_dir.name, CONFIG_FILE_LOCAL)
+        os.makedirs(os.path.dirname(self.file))
         json.dump({'bibtex': 'lib.bib', 'keyformat': {'template': '{author}'}, 'paths': 'absolute'},
                   open(self.file, 'w'))
         self.machine = MachineConfig(os.path.join(self.temp_dir.name, 'machine.json'),
@@ -98,6 +99,7 @@ class TestFormatVersion(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
         self.file = os.path.join(self.temp_dir.name, CONFIG_FILE_LOCAL)
+        os.makedirs(os.path.dirname(self.file))
         self.machine = MachineConfig(os.path.join(self.temp_dir.name, 'machine.json'))
 
     def tearDown(self):

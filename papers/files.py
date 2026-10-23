@@ -15,11 +15,11 @@ import requests
 
 import papers.config
 from papers import logger
-from papers.config import Config, LIBRARY_CONFIG_FILES
+from papers.config import Config, config_root, find_library_config
 from papers.entries import get_entry_val, parse_string, parse_file, format_file
 from papers.extract import extract_pdf_doi, isvaliddoi
 from papers.latexenc import latex_to_unicode
-from papers.utils import checksum, search_config, PapersExit
+from papers.utils import checksum, PapersExit
 
 
 FILES_MODES = ('move', 'copy', 'link')
@@ -131,7 +131,7 @@ class OtherLibraries:
 
     def __init__(self, current=None, machine=None):
         "current: configuration file of the current library (not an other library)"
-        self.current = realpath(current) if current else None
+        self.current = realpath(config_root(current)) if current else None
         self.machine = machine
         self._cache = {}
 
@@ -148,14 +148,11 @@ class OtherLibraries:
         "configuration of the other library whose files directory holds `file`, or None"
         start = os.path.dirname(os.path.abspath(file))
         while True:
-            configfile = search_config(LIBRARY_CONFIG_FILES, start_dir=start, default=None)
+            configfile = find_library_config(start)
             if configfile is None:
                 return None
-            # the configuration file is in <library>/ or <library>/.papers/
-            libdir = os.path.dirname(configfile)
-            if os.path.basename(libdir) == '.papers':
-                libdir = os.path.dirname(libdir)
-            if self.current is None or realpath(configfile) != self.current:
+            libdir = str(config_root(configfile))
+            if self.current is None or realpath(libdir) != self.current:
                 config = self._config(configfile)
                 if config is not None and config.filesdir and is_inside(file, config.filesdir):
                     return config

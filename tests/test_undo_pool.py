@@ -7,7 +7,7 @@ from pathlib import Path
 
 from papers.backup import run_git, cursor_commit
 from papers.bib import Biblio
-from papers.config import Config
+from papers.config import Config, CONFIG_FILE_LOCAL
 from papers.pools import ORIGIN_DIR, Origin
 
 from tests.common import ConfigTest
@@ -51,7 +51,7 @@ class UndoPoolTest(ConfigTest):
         return self.papers(cmd, cwd=self.path('lib'), sp_cmd='check_output')
 
     def gitdir(self, where):
-        return Config.load(self.path(where, '.papersconfig.json')).gitdir
+        return Config.load(self.path(where, CONFIG_FILE_LOCAL)).gitdir
 
     def commits(self, where):
         return int(run_git(self.gitdir(where), ['rev-list', '--count', 'HEAD']).stdout)

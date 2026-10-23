@@ -7,12 +7,12 @@ import shutil
 import papers.config
 from papers import logger
 from papers.backup import init_backup
-from papers.config import (CONFIG_FILE_LOCAL, Config, DEFAULT_LIBRARY, LIBRARY_CONFIG_FILES, LIBRARY_ONLY, NO_POOL,
+from papers.config import (CONFIG_FILE_LOCAL, Config, DEFAULT_LIBRARY, LIBRARY_ONLY, NO_POOL, library_config_file,
                            SETTINGS, format_value, parse_value, pool_setting, short_home)
 from papers.files import broken_links, delete_files, is_inside
 from papers.install import DefaultAsker, InputAsker, apply_install, resolve_install
 from papers.library import convert_file_links, find_config, get_biblio, snapshot_backup
-from papers.migrate import migrate_folders, migrate_v2_global
+from papers.migrate import migrate_folders, migrate_library_config, migrate_v2_global
 from papers.pools import Exchange, Pools, library_without_pool
 from papers.utils import PapersExit, set_directory
 from papers.cli.common import (format_options, check_install, _print_biblio_diff, no_library_message,
@@ -70,12 +70,12 @@ def initcmd(parser, o, config):
 
 
 def _initcmd(parser, o, config):
-    for name in LIBRARY_CONFIG_FILES:
-        if os.path.exists(name):
-            hint = (' (`papers config --global default PATH` registers an existing library as the default one)'
-                    if o.is_global else '')
-            raise PapersExit(f"a library already exists here ({name}): "
-                             f"change its settings with `papers config`{hint}")
+    existing = library_config_file('.')
+    if existing:
+        hint = (' (`papers config --global default PATH` registers an existing library as the default one)'
+                if o.is_global else '')
+        raise PapersExit(f"a library already exists here ({existing}): "
+                         f"change its settings with `papers config`{hint}")
     if config.origin == 'library':
         logger.info(f"the new library is inside the library of {config.file}")
     o.reset = False
@@ -482,8 +482,12 @@ def migratecmd(parser, o, config):
     """one-time upgrades from papers v2"""
     if o.folders:
         return migrate_folders(check_install(parser, o, config))
-    if not migrate_v2_global(config.machine, relative=o.relative, dryrun=papers.config.DRYRUN):
-        print("nothing to migrate: no global configuration of papers v2 was found")
+    dryrun = papers.config.DRYRUN
+    moved = config.origin in ('library', 'default') and migrate_library_config(config, dryrun=dryrun)
+    if not migrate_v2_global(config.machine, relative=o.relative, dryrun=dryrun) and not moved:
+        print("nothing to migrate: no global configuration of papers v2 was found"
+              + (f", and the library configuration is already {CONFIG_FILE_LOCAL}"
+                 if config.origin in ('library', 'default') else ''))
 
 
 def statuscmd(parser, o, config):

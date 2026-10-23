@@ -7,7 +7,7 @@ from contextlib import redirect_stdout
 from pathlib import Path
 
 import papers.config
-from papers.config import Config, MachineConfig
+from papers.config import Config, MachineConfig, CONFIG_FILE_LOCAL
 from papers.bib import Biblio
 from papers.utils import PapersExit
 
@@ -69,8 +69,8 @@ class TestSetting(FilesModeTest):
     def test_machine_then_library(self):
         self.assertEqual(self.lib('config files', sp_cmd='check_output'), 'link')  # tests/__init__.py
         self.lib('config files copy')
-        self.assertEqual(json.load(open(self.path('lib', '.papersconfig.json')))['files'], 'copy')
-        config = Config.load(self.path('lib', '.papersconfig.json'))
+        self.assertEqual(json.load(open(self.path('lib', CONFIG_FILE_LOCAL)))['files'], 'copy')
+        config = Config.load(self.path('lib', CONFIG_FILE_LOCAL))
         self.assertEqual(config.source('files'), 'library')
         self.lib('config --unset files')
         self.assertEqual(self.lib('config files', sp_cmd='check_output'), 'link')

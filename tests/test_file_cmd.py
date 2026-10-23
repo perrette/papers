@@ -9,6 +9,7 @@ from unittest.mock import patch
 from papers.utils import PapersExit
 
 from tests.common import PAPERSCMD, FileTest, entry
+from papers.config import CONFIG_FILE_LOCAL
 
 
 class TestRename(FileTest):
@@ -155,7 +156,7 @@ class TestMv(FileTest):
 
     def test_rule6_files_directory(self):
         self.lib('file mv files library-files')
-        self.assertEqual(json.load(open(self.path('lib', '.papersconfig.json')))['filesdir'], 'library-files')
+        self.assertEqual(json.load(open(self.path('lib', CONFIG_FILE_LOCAL)))['filesdir'], 'library-files')
         self.assertEqual(self.files('two2000'), [self.path('lib', 'library-files', 'sub', 'b.pdf')])
         self.assertEqual(self.lib('config filesdir', sp_cmd='check_output'), self.path('lib', 'library-files'))
 

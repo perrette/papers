@@ -8,8 +8,8 @@ from unittest import mock
 
 import papers.config
 import papers.library
-from papers.config import Config
-from papers.library import check_legacy_config, check_legacy_global_config, get_biblio, savebib
+from papers.config import Config, CONFIG_FILE_LOCAL
+from papers.library import check_legacy_global_config, get_biblio, savebib
 
 
 class TmpTest(unittest.TestCase):
@@ -48,13 +48,6 @@ class TestLegacyConfig(TmpTest):
         self.assertIn('Delete to remove this warning', logs.output[0])
         self.assertTrue(os.path.exists(self.path('legacy.json')))
 
-    def test_library_config_in_dot_papers(self):
-        os.makedirs(self.path('lib', '.papers'))
-        Path(self.path('lib', '.papers', 'config.json')).write_text('{}')
-        new = check_legacy_config(self.path('lib', '.papers', 'config.json'))
-        self.assertEqual(new, self.path('lib', '.papersconfig.json'))
-        self.assertTrue(os.path.exists(new))
-
     # .papers/config.json as papers v2.2 to v2.4 wrote it (`papers install
     # --local`): paths relative to the library directory, the parent of
     # .papers (v2 read them against Path(file).parent.parent), and the
@@ -78,20 +71,17 @@ class TestLegacyConfig(TmpTest):
         # used to resolve the paths against .papers/
         self.assert_v2_paths(Config.load(self.v2_library(), machine=papers.config.MachineConfig()))
 
-    def test_v2_dot_papers_moved(self):
+    def test_v2_dot_papers_found_in_place(self):
         self.v2_library()
         with mock.patch.object(papers.library, 'CONFIG_FILE', self.path('none.json')):
             config = papers.library.find_config(self.path('lib'), machine=papers.config.MachineConfig())
-        self.assertEqual(config.file, self.path('lib', '.papersconfig.json'))
+        self.assertEqual(config.file, self.path('lib', '.papers', 'config.json'))
         self.assert_v2_paths(config)
 
     def test_v2_dot_papers_saved_in_place(self):
         config = Config.load(self.v2_library(), machine=papers.config.MachineConfig())
         config.save()
         self.assert_v2_paths(Config.load(config.file, machine=papers.config.MachineConfig()))
-
-    def test_missing_file_is_returned_as_is(self):
-        self.assertEqual(check_legacy_config(self.path('none.json')), self.path('none.json'))
 
 
 class TestGetBiblio(TmpTest):
@@ -108,7 +98,7 @@ class TestGetBiblio(TmpTest):
 
     def test_pool_link_repair_failure_is_a_warning(self):
         Path(self.path('papers.bib')).write_text('')
-        config = Config(file=self.path('.papersconfig.json'), bibtex=self.path('papers.bib'),
+        config = Config(file=self.path(CONFIG_FILE_LOCAL), bibtex=self.path('papers.bib'),
                         filesdir=self.path('files'), pool=self.path('pool'))  # a shallow library
         with mock.patch('papers.pools.Exchange', side_effect=RuntimeError('broken pool')), \
                 self.assertLogs('papers', level='WARNING') as logs:

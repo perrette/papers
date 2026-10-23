@@ -41,6 +41,7 @@ class TestPoolSettingAsList(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
         self.file = os.path.join(self.temp_dir.name, CONFIG_FILE_LOCAL)
+        os.makedirs(os.path.dirname(self.file))
         self.machine = MachineConfig(os.path.join(self.temp_dir.name, 'machine.json'), {})
 
     def tearDown(self):
@@ -233,7 +234,7 @@ class TestSmallFixes(PoolTest):
         try:
             paperscmd('init homelib --no-git', cwd=os.environ['HOME'])
             out = paperscmd('config pool none', cwd=home_lib, sp_cmd='check_output')
-            self.assertEqual(out, 'pool = none (in ~/homelib/.papersconfig.json)')
+            self.assertEqual(out, 'pool = none (in ~/homelib/.papers/config.json)')
         finally:
             shutil.rmtree(home_lib, ignore_errors=True)
 

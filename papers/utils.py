@@ -108,27 +108,6 @@ def check_filesdir(folder):
     return file_count, folder_size
 
 
-def search_config(filenames, start_dir, default=None):
-    """the first of `filenames` found in start_dir or a directory above it
-    (the root directory excluded), else `default`"""
-    current_dir = os.path.abspath(start_dir)
-    root_dir = os.path.abspath(os.sep)
-    while True:
-        for filename in filenames:
-            file_path = os.path.join(current_dir, filename)
-            if os.path.exists(file_path):
-                return file_path
-
-        parent_dir = os.path.dirname(current_dir)
-        if parent_dir == current_dir:
-            return default
-
-        # root
-        if parent_dir == root_dir:
-            return default
-        current_dir = parent_dir
-
-
 def hash_bytestr_iter(bytesiter, hasher, ashexstr=False):
     for block in bytesiter:
         hasher.update(block)

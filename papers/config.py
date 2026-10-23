@@ -16,9 +16,12 @@ DRYRUN = False
 # macOS/Windows, where the legacy locations below are checked for migration)
 # the global configuration of papers v2 (v2 compatibility, remove with migrate)
 CONFIG_FILE = os.path.join(platformdirs.user_config_dir(), 'papersconfig.json')
-CONFIG_FILE_LOCAL = '.papersconfig.json'
-# file names of a library configuration (.papers/config.json: older versions)
-LIBRARY_CONFIG_FILES = [CONFIG_FILE_LOCAL, os.path.join('.papers', 'config.json')]
+# the configuration file of a library, relative to the library directory
+CONFIG_FILE_LOCAL = os.path.join('.papers', 'config.json')
+# its name in papers 2: read, and moved to CONFIG_FILE_LOCAL when the
+# configuration is saved (see Config.save)
+CONFIG_FILE_LOCAL_V2 = '.papersconfig.json'
+LIBRARY_CONFIG_FILES = [CONFIG_FILE_LOCAL, CONFIG_FILE_LOCAL_V2]
 
 DATA_DIR = platformdirs.user_data_dir('papers')
 BACKUP_DIR = os.path.join(DATA_DIR, 'backups')
@@ -227,13 +230,62 @@ def gitdir_from_json(value, root):
 
 def config_root(file):
     """the directory that the relative paths of a library configuration file
-    refer to: the directory of the file, or the library directory for the
-    .papers/config.json of papers v2.2 to v2.4 (which read and wrote them
-    relative to the parent of .papers)"""
+    refer to, the library directory: the parent of .papers for
+    .papers/config.json (as papers v2.2 to v2.4 also read and wrote it), the
+    directory of the file for the .papersconfig.json of papers 2"""
     p = Path(file)
     if p.name == 'config.json' and p.parent.name == '.papers':
         return p.parent.parent
     return p.parent
+
+
+def library_config_file(path):
+    """the configuration file of the library in directory `path`, or None.
+    A directory with both names (.papers/config.json and .papersconfig.json
+    of papers 2) is an error: the user keeps one."""
+    found = [os.path.join(path, name) for name in LIBRARY_CONFIG_FILES
+             if os.path.isfile(os.path.join(path, name))]
+    if len(found) > 1:
+        raise PapersExit(f"{short_home(os.path.abspath(path))} has two library configurations, "
+                         f"{CONFIG_FILE_LOCAL} and {CONFIG_FILE_LOCAL_V2} (of papers 2): keep one of them "
+                         "and remove the other (nothing was changed)")
+    return found[0] if found else None
+
+
+def find_library_config(start_dir='.'):
+    """the configuration file of the library of start_dir: in start_dir or a
+    directory above it (the root directory excluded), else None"""
+    current = os.path.abspath(start_dir)
+    while True:
+        parent = os.path.dirname(current)
+        if parent == current:  # the root directory
+            return None
+        file = library_config_file(current)
+        if file is not None:
+            return file
+        current = parent
+
+
+def move_v2_config(file, dryrun=False):
+    """move the library configuration of papers 2 `file` (.papersconfig.json)
+    to .papers/config.json in the same directory, and return the new path
+    (with dryrun: only say so). Error if both files exist."""
+    libdir = os.path.dirname(os.path.abspath(file))
+    new = os.path.join(libdir, CONFIG_FILE_LOCAL)
+    if os.path.exists(new):
+        library_config_file(libdir)  # the error of two configurations
+    if dryrun:
+        print(f"DRYRUN: {short_home(file)} not moved to {short_home(new)}")
+        return file
+    os.makedirs(os.path.dirname(new), exist_ok=True)
+    os.replace(file, new)
+    print(f"moved {short_home(file)} to {short_home(new)}")
+    return new
+
+
+def is_v2_config_name(file):
+    "a library configuration file with the name of papers 2 (.papersconfig.json)"
+    return file is not None and os.path.basename(file) == CONFIG_FILE_LOCAL_V2
 
 
 def is_backup_name(value):
@@ -549,7 +601,18 @@ class Config:
         return js
 
     def save(self):
-        json.dump(self.tojson(), open(self.file, 'w'), sort_keys=True, indent=2, separators=(',', ': '))
+        """write the configuration file; a library configuration of papers 2
+        (.papersconfig.json) is moved to .papers/config.json first. With
+        --dry-run, nothing is written."""
+        if DRYRUN:
+            logger.info(f'DRYRUN: {self.file} not saved')
+            return
+        if self.is_library and is_v2_config_name(self.file):
+            self.file = move_v2_config(self.file)
+        if os.path.dirname(self.file):
+            os.makedirs(os.path.dirname(self.file), exist_ok=True)
+        with open(self.file, 'w') as f:
+            json.dump(self.tojson(), f, sort_keys=True, indent=2, separators=(',', ': '))
 
 
     @classmethod

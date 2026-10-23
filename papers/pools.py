@@ -59,7 +59,7 @@ from slugify import slugify
 
 import papers.config
 from papers import logger
-from papers.config import Config, CONFIG_FILE_LOCAL, LIBRARY_CONFIG_FILES, NO_POOL, short_home
+from papers.config import Config, CONFIG_FILE_LOCAL, NO_POOL, library_config_file, short_home
 from papers.duplicate import Distinct, IdentityIndex, find_duplicates, same_paper, SAME, Verdict
 from papers.entries import (get_entry_val, set_entry_key, entry_copy, parse_string, format_library, format_file,
                             parse_file)
@@ -82,15 +82,6 @@ NO_POOL_MESSAGE = 'this library has no pool: give one with `--pool PATH`'
 
 # LIBRARIES
 # =========
-
-def library_config_file(path):
-    "the configuration file of the library in directory `path`, or None"
-    for name in LIBRARY_CONFIG_FILES:
-        file = os.path.join(path, name)
-        if os.path.isfile(file):
-            return file
-    return None
-
 
 def create_library(path, machine, bibtex='papers.bib', git=None):
     """create a self-contained library (no pool, its own files) in

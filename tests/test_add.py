@@ -13,6 +13,7 @@ from papers.utils import PapersExit
 from unittest.mock import patch
 
 from tests.common import PAPERSCMD, paperscmd, prepare_paper, prepare_paper2, BibTest, FileTest, entry
+from papers.config import CONFIG_FILE_LOCAL
 
 
 def unicode_fields(entry):
@@ -128,8 +129,8 @@ class TestAdd(BibTest):
             shutil.rmtree(self.filesdir)
         if os.path.exists(self.mybib):
             os.remove(self.mybib)
-        if os.path.exists('.papersconfig.json'):
-            os.remove('.papersconfig.json')
+        if os.path.exists(CONFIG_FILE_LOCAL):
+            os.remove(CONFIG_FILE_LOCAL)
 
 
 class TestAdd2(TestAdd):
@@ -241,8 +242,8 @@ class TestAddBib(BibTest):
     def tearDown(self):
         os.remove(self.mybib)
         os.remove(self.somebib)
-        if os.path.exists('.papersconfig.json'):
-            os.remove('.papersconfig.json')
+        if os.path.exists(CONFIG_FILE_LOCAL):
+            os.remove(CONFIG_FILE_LOCAL)
 
 
 class TestAddDir(BibTest):
@@ -392,8 +393,8 @@ class TestAddConflict(BibTest):
             shutil.rmtree(self.filesdir)
         if os.path.exists(self.otherbib):
             os.remove(self.otherbib)
-        if os.path.exists('.papersconfig.json'):
-            os.remove('.papersconfig.json')
+        if os.path.exists(CONFIG_FILE_LOCAL):
+            os.remove(CONFIG_FILE_LOCAL)
 
 
     def test_add_same(self):

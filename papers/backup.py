@@ -197,7 +197,7 @@ def claim_gitdir(config):
 def move_gitdir_out_of_library(config):
     """The backup directory of the libraries of papers v2.2 to v2.4 is
     <library>/.papers, the folder where papers 3 keeps the files of the
-    library (origin/, distinct.json): the backup would copy them into
+    library (config.json, origin/, distinct.json): the backup would copy them into
     itself, and `git clean` would remove them. Move the repository (its
     .git and the files it tracks) to a new directory of the backup folder,
     and record it in the library configuration."""
@@ -218,9 +218,11 @@ def move_gitdir_out_of_library(config):
         for name in tracked + [MANIFEST_NAME]:
             if (gitdir / name).is_file():
                 os.makedirs(os.path.dirname(os.path.join(new, name)), exist_ok=True)
-                shutil.move(str(gitdir / name), os.path.join(new, name))
+                # .papers/config.json is the configuration of the library: it stays
+                move = shutil.copy if os.path.normpath(name) == 'config.json' else shutil.move
+                move(str(gitdir / name), os.path.join(new, name))
     logger.warning(f"the backup directory {gitdir} is the folder of the library's own files since papers 3 "
-                   f"(origin/, distinct.json): the backup moved to {new}")
+                   f"(config.json, origin/, distinct.json): the backup moved to {new}")
     config.gitdir = new
     if config.file and config.is_library and os.path.exists(config.file):
         config.save()

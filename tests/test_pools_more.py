@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 
 from papers.bib import Biblio
-from papers.config import Config
+from papers.config import Config, CONFIG_FILE_LOCAL
 from papers.pools import Exchange, Pools, PoolError, load_biblio, mtime, use_pool_files
 from papers.utils import PapersExit
 
@@ -60,7 +60,7 @@ class TestExchange(PoolTest):
 
     def exchange(self, pool=None):
         "the Exchange of lib, with a pool setting"
-        config = Config.load(self.path('lib', '.papersconfig.json'))
+        config = Config.load(self.path('lib', CONFIG_FILE_LOCAL))
         if pool:
             config.set('pool', pool)
         return Exchange(config, Biblio.load(config.bibtex, config.filesdir))
@@ -94,7 +94,7 @@ class TestExchange(PoolTest):
 class TestPoolLookups(PoolTest):
 
     def pool(self):
-        return Pools(Config.load(self.path('lib', '.papersconfig.json'))).get(self.path('pool'))
+        return Pools(Config.load(self.path('lib', CONFIG_FILE_LOCAL))).get(self.path('pool'))
 
     def test_repr_and_label(self):
         pool = self.pool()
@@ -120,7 +120,7 @@ class TestPoolLookups(PoolTest):
 
     def test_pool_path_given_as_in_setting(self):
         # a path given on the command line is named as the pool setting writes it
-        pools = Pools(Config.load(self.path('lib', '.papersconfig.json')))
+        pools = Pools(Config.load(self.path('lib', CONFIG_FILE_LOCAL)))
         self.assertEqual(pools.get(self.path('pool')).id, '../pool')
 
     def test_load_biblio_without_bibtex(self):

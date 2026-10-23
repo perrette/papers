@@ -5,16 +5,14 @@ save it with its git backup.
 import copy
 import os
 import shutil
-from pathlib import Path
 
 import papers.config
 from papers import logger
 from papers.backup import backup_bib, silent_backup_bib, resolve_gitdir
 from papers.bib import Biblio
 from papers.entries import get_entry_val
-from papers.config import (Config, MachineConfig, CONFIG_FILE, CONFIG_FILE_LOCAL, LIBRARY_CONFIG_FILES,
-                           CONFIG_FILE_LEGACY, CONFIG_FILE_LEGACY_XDG)
-from papers.utils import search_config
+from papers.config import (Config, MachineConfig, CONFIG_FILE, CONFIG_FILE_LEGACY, CONFIG_FILE_LEGACY_XDG,
+                           find_library_config, library_config_file)
 
 
 def check_legacy_global_config():
@@ -32,21 +30,6 @@ def check_legacy_global_config():
             logger.warning(f"Legacy config file found: {legacy}. Delete to remove this warning:  rm -f '{legacy}'")
 
 
-def check_legacy_config(configfile):
-    " move config file from ~/.local/.share/papers/ to ~/.config/papersconfig.json and .papers/config.json to .papersconfig.json"
-    if os.path.exists(configfile):
-        p = Path(configfile)
-        if configfile == CONFIG_FILE_LEGACY:
-            shutil.move(configfile, CONFIG_FILE)
-            configfile = CONFIG_FILE
-        elif p.name == "config.json" and p.parent.name == ".papers":
-            newname = str(p.parent.parent/CONFIG_FILE_LOCAL)
-            shutil.move(configfile, newname)
-            configfile = newname
-
-    return configfile
-
-
 def find_config(start_dir='.', machine=None):
     """The configuration that commands act on, with `origin` telling where it
     was found:
@@ -56,17 +39,17 @@ def find_config(start_dir='.', machine=None):
     - None: no library (a Config with the inherited settings only).
     """
     machine = machine or MachineConfig.load()
-    configfile = search_config(LIBRARY_CONFIG_FILES, start_dir=start_dir, default=None)
+    configfile = find_library_config(start_dir)
     origin = 'library'
     if configfile is None and os.path.exists(CONFIG_FILE):
         configfile, origin = CONFIG_FILE, 'v2-global'
     if configfile is None:
         default = machine.default_path()
-        if default and os.path.exists(os.path.join(default, CONFIG_FILE_LOCAL)):
-            configfile, origin = os.path.join(default, CONFIG_FILE_LOCAL), 'default'
+        if default and os.path.isdir(default):
+            configfile, origin = library_config_file(default), 'default'
     if configfile is None:
         return Config(machine=machine)
-    config = Config.load(check_legacy_config(configfile), machine=machine,
+    config = Config.load(configfile, machine=machine,
                          is_library=False if origin == 'v2-global' else None)
     config.origin = origin
     return config
@@ -85,10 +68,9 @@ def config_for_bibtex(bibtex, config):
     if config.bibtex and os.path.realpath(bibtex) == os.path.realpath(config.bibtex):
         return config
 
-    configfile = search_config(LIBRARY_CONFIG_FILES,
-                               start_dir=os.path.dirname(os.path.abspath(bibtex)), default=None)
+    configfile = find_library_config(os.path.dirname(os.path.abspath(bibtex)))
     if configfile is not None:
-        other = Config.load(check_legacy_config(configfile), machine=config.machine)
+        other = Config.load(configfile, machine=config.machine)
         if other.bibtex and os.path.realpath(other.bibtex) == os.path.realpath(bibtex):
             logger.info(f'configuration of {bibtex}: {configfile}')
             other.origin = 'library'

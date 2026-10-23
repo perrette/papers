@@ -10,7 +10,7 @@ from unittest.mock import patch
 
 import papers.config
 from papers.bib import Biblio
-from papers.config import Config
+from papers.config import Config, CONFIG_FILE_LOCAL
 from papers.duplicate import Distinct
 from papers.entries import entry_from_dict, parse_string
 from papers.pools import Pools, PoolError, Origin, ORIGIN_DIR, LEGACY_ORIGIN_FILE, POOL_FIELD, origin_file_name
@@ -83,7 +83,7 @@ class PoolTest(ConfigTest):
             return cmd
         if os.path.realpath(cwd) != os.path.realpath(self.path('lib')):
             return cmd
-        if json.load(open(self.path('lib', '.papersconfig.json'))).get('pool', 'none') != 'none':
+        if json.load(open(self.path('lib', CONFIG_FILE_LOCAL))).get('pool', 'none') != 'none':
             return cmd
         return cmd + ' --pool ../pool'
 
@@ -133,7 +133,7 @@ class PoolTest(ConfigTest):
 class TestResolution(PoolTest):
 
     def config(self, pool=None):
-        config = Config.load(self.path('lib', '.papersconfig.json'))
+        config = Config.load(self.path('lib', CONFIG_FILE_LOCAL))
         if pool is None:
             config.unset('pool')
         else:
@@ -184,7 +184,7 @@ class TestResolution(PoolTest):
         self.papers(f'config --global default {TEST_DEFAULT_LIBRARY}')
         self.lib('config --unset pool')
         self.assertNotIn('pool', self.json('lib'))
-        config = Config.load(self.path('lib', '.papersconfig.json'))
+        config = Config.load(self.path('lib', CONFIG_FILE_LOCAL))
         self.assertIsNone(config.pool_path())
         self.assertEqual(self.out('config pool'), 'none')
         self.assertRegex(self.out('config'), r'\npool += none  \(default\)\n')
@@ -208,7 +208,7 @@ class TestResolution(PoolTest):
         Path(TEST_DEFAULT_LIBRARY, 'papers.bib').write_text(POOL_BIB)
         self.papers(f'config --global default {TEST_DEFAULT_LIBRARY}')
         json.dump({'bibtex': 'papers.bib', 'filesdir': 'files', 'local': True},
-                  open(self.path('lib', '.papersconfig.json'), 'w'))
+                  open(self.path('lib', CONFIG_FILE_LOCAL), 'w'))
         self.assertIn('* pool:               none', self.out('status'))
         Path(self.path('smith.bib')).write_text(SMITH_BIB)
         with patch('papers.bib.fetch_bibtex_by_doi', no_fetch):
@@ -329,7 +329,7 @@ class TestOrigin(PoolTest):
     def test_backup(self):
         self.lib('config git true')
         self.take_smith('add ../smith.bib')
-        config = Config.load(self.path('lib', '.papersconfig.json'))
+        config = Config.load(self.path('lib', CONFIG_FILE_LOCAL))
         name = os.path.join(ORIGIN_DIR, origin_file_name('../pool'))
         backup = os.path.join(config.gitdir, name)
         self.assertTrue(os.path.exists(backup))
@@ -808,7 +808,7 @@ class TestPush(PoolTest):
         self.assertFalse(os.path.exists(self.path('new')))
         self.papers('init new --no-git')
         self.lib('push --all --pool ../new')
-        self.assertEqual(json.load(open(self.path('new', '.papersconfig.json')))['pool'], 'none')
+        self.assertEqual(json.load(open(self.path('new', CONFIG_FILE_LOCAL)))['pool'], 'none')
         self.assertEqual(len(self.bib('new')[1]), 1)
 
 
@@ -1211,8 +1211,8 @@ class TestConfigPoolSelfContained(OwnFilesTest):
         # `local` of earlier v3 builds: the pool alone says whether the library is shallow
         js = self.json('lib')
         js.update(pool='../pool', local=True)
-        json.dump(js, open(self.path('lib', '.papersconfig.json'), 'w'))
-        config = Config.load(self.path('lib', '.papersconfig.json'))
+        json.dump(js, open(self.path('lib', CONFIG_FILE_LOCAL), 'w'))
+        config = Config.load(self.path('lib', CONFIG_FILE_LOCAL))
         self.assertTrue(config.shallow)
         self.assertFalse(hasattr(config, 'local'))
         config.save()

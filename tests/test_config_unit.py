@@ -5,7 +5,7 @@ import unittest
 from unittest import mock
 from pathlib import Path
 
-from papers.config import Config
+from papers.config import Config, CONFIG_FILE_LOCAL
 
 
 class TestConfigRelpath(unittest.TestCase):
@@ -14,7 +14,7 @@ class TestConfigRelpath(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             bib = os.path.join(d, "lib.bib")
             open(bib, 'w').close()
-            cfg = Config(file=os.path.join(d, ".papersconfig.json"), bibtex=bib, is_library=True)
+            cfg = Config(file=os.path.join(d, CONFIG_FILE_LOCAL), bibtex=bib, is_library=True)
             # Path under root -> relative
             sub = os.path.join(d, "sub", "file.pdf")
             os.makedirs(os.path.dirname(sub))

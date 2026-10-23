@@ -2,18 +2,20 @@
 
 The global configuration of v2 defined a library for the whole user account.
 In v3 it becomes an ordinary library, where it is: its settings are written
-to a library configuration next to its bibtex, it is registered as the
-default library (the `default` setting of the global configuration: the
-library used outside of any library), and the old file is renamed to
-<name>.v2.bak. It is self-contained: its own files, no pool. The library
-configurations of v2 need no migration: they are read as self-contained
-libraries (no pool).
+to a library configuration (.papers/config.json in the directory of its
+bibtex), it is registered as the default library (the `default` setting of
+the global configuration: the library used outside of any library), and the
+old file is renamed to <name>.v2.bak. It is self-contained: its own files,
+no pool. The library configurations of v2 (.papersconfig.json) are read as
+self-contained libraries (no pool); they are moved to .papers/config.json
+when papers saves them, or by `papers migrate` in the library.
 """
 import os
 
 from papers import logger
 from papers.config import (Config, CONFIG_FILE, CONFIG_FILE_LOCAL, CONFIG_FILE_LEGACY, CONFIG_FILE_LEGACY_XDG,
-                           DEFAULT_LIBRARY, LIBRARY_SETTINGS, NO_POOL, short_home)
+                           DEFAULT_LIBRARY, LIBRARY_SETTINGS, NO_POOL, is_v2_config_name, library_config_file,
+                           move_v2_config, short_home)
 from papers.files import hidden_bibtex
 from papers.library import get_biblio, savebib, convert_file_links
 
@@ -50,8 +52,9 @@ def migrate_v2_global(machine, relative=False, dryrun=False):
         else:
             libdir = os.path.dirname(old.bibtex)
             target = os.path.join(libdir, CONFIG_FILE_LOCAL)
-            if os.path.exists(target):
-                print(f"  a library configuration already exists: {target} (kept as is)")
+            existing = library_config_file(libdir) if os.path.isdir(libdir) else None
+            if existing:
+                print(f"  a library configuration already exists: {existing} (kept as is)")
             else:
                 new = Config(file=target, is_library=True, machine=machine,
                              bibtex=old.bibtex, filesdir=old.filesdir, gitdir=old.gitdir)
@@ -86,6 +89,15 @@ def migrate_v2_global(machine, relative=False, dryrun=False):
     if files:
         logger.info(f"migrated {len(files)} global configuration file(s)")
     return len(files)
+
+
+def migrate_library_config(config, dryrun=False):
+    """move the configuration of the library `config` from .papersconfig.json
+    (papers 2) to .papers/config.json. Return True if there was one to move."""
+    if not (config.file and config.is_library and is_v2_config_name(config.file)):
+        return False
+    config.file = move_v2_config(config.file, dryrun=dryrun)
+    return True
 
 
 def migrate_folders(config):
