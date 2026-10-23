@@ -67,7 +67,7 @@ $ papers init --shallow
 ERROR:papers:no default library: `papers init PATH --global` or `papers config --global default PATH`
 ```
 
-See [Pools](pools.md) for what a shallow library does with its pool: `add`
+See [Shallow libraries](shallow-libraries.md) for what a shallow library does with its pool: `add`
 looks in it first and adds the new papers to it, and `papers sync`
 exchanges the changes of the shared entries.
 

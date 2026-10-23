@@ -85,11 +85,12 @@ Full documentation: **<https://perrette.github.io/papers/>**
 - [Upgrading from papers 2](https://perrette.github.io/papers/upgrading/)
 - [Adding entries](https://perrette.github.io/papers/adding-entries/)
 - [Listing and searching](https://perrette.github.io/papers/listing/)
-- [Pools](https://perrette.github.io/papers/pools/), [a global shared library](https://perrette.github.io/papers/global-library/)
+- [Pools](https://perrette.github.io/papers/pools/), [shallow libraries](https://perrette.github.io/papers/shallow-libraries/), [a global shared library](https://perrette.github.io/papers/global-library/)
 - [Configuration](https://perrette.github.io/papers/configuration/)
 - Also: [files](https://perrette.github.io/papers/files/),
   [renaming files and keys](https://perrette.github.io/papers/renaming/),
   [managing your library](https://perrette.github.io/papers/library-management/),
+  [export](https://perrette.github.io/papers/export/),
   [git integration](https://perrette.github.io/papers/git/),
   [undo/redo](https://perrette.github.io/papers/undo-redo/)
 

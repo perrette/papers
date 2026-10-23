@@ -37,6 +37,8 @@ papers list
 - [Files](files.md)
 - [Configuration](configuration.md)
 - [Pools](pools.md)
+- [Shallow libraries](shallow-libraries.md)
+- [Export](export.md)
 - [A global shared library](global-library.md)
 - [Managing your library](library-management.md)
 - [Git integration](git.md)

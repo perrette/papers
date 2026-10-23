@@ -67,7 +67,7 @@ $ papers extract --doi-only bg-8-515-2011.pdf
 By default, `papers add` moves the PDF into the files directory of the
 library, under a name made from the name template: in a shallow library
 (a library with a pool), the files directory and the name template of its
-pool (see [Shallow libraries](pools.md#shallow-libraries)). The
+pool (see [Shallow libraries](shallow-libraries.md#files)). The
 `files` setting of the library changes what happens to the original (see
 [Files](files.md#what-add-does-with-a-file)):
 
@@ -186,7 +186,7 @@ papers add --key yool2011
 
 In a shallow library, the files of the added entries go to the files
 directory of the pool, and the entries to the pool too (see
-[Shallow libraries](pools.md#shallow-libraries)).
+[Shallow libraries](shallow-libraries.md#files)).
 
 `papers add other.bib` copies the entries of `other.bib` once, with no
 memory of the source. To take entries from the pool so that they stay

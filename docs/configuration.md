@@ -77,7 +77,7 @@ library that does not set it has no pool (`none`).
 | `pool` | path of the library's pool (relative to the library, or with `~`): the library is shallow; or `none` (the value when the library does not set it): the library is self-contained (see [Pools](pools.md#libraries-and-pools)) |
 | `paths` | `relative` (default) or `absolute`: how file links are written in the bibtex |
 | `files` | `move` (default), `copy` or `link`: what `papers add` does with a file (see [Files](files.md#what-add-does-with-a-file)); in a shallow library, how the file gets to the pool: moved or copied into its files directory, or linked where it is by the library and the pool entry |
-| `auto-push` | `false` (default) or `true`: in a shallow library, the commands that change entries push them to the pool (the entries shared with it, and new ones), see [Pools](pools.md#auto-push); no effect in a self-contained library |
+| `auto-push` | `false` (default) or `true`: in a shallow library, the commands that change entries push them to the pool (the entries shared with it, and new ones), see [Auto-push](shallow-libraries.md#auto-push); no effect in a self-contained library |
 | `git` | `true` or `false`: back up the bibtex with git (see [Git integration](git.md)) |
 | `git-lfs` | `true` or `false`: also back up the files with git-lfs |
 | `editor` | command that opens a text editor, e.g. `vim` or `subl -w` (it wins over `$VISUAL` and `$EDITOR`, which are used without it) |
@@ -102,7 +102,7 @@ in PATH, and requires PATH to have them already (`papers push --pool PATH`
 copies them there); in a shallow library, `pool none` copies the pool
 files that the library links to into its files directory. papers lists
 what it will do and asks to continue (`-y` does not ask, `--dry-run` only
-lists; see [Changing the pool](pools.md#changing-the-pool)).
+lists; see [Changing the pool](shallow-libraries.md#changing-the-pool)).
 
 ### Global configuration
 
@@ -139,7 +139,7 @@ configuration.
 ## Pools
 
 A pool is a library that other libraries exchange entries with (see
-[Pools](pools.md) for `add`, `pull`, `push`, `sync` and `export`). A library
+[Pools](pools.md) for `add`, `pull`, `push` and `sync`, and [Export](export.md)). A library
 has at most one pool, its `pool` setting: a path relative to the library
 (e.g. `../shared-with-bob`), a path with `~` or absolute, or `none`. A
 library that does not set it has no pool. The pool must be an existing

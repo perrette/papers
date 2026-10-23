@@ -83,7 +83,10 @@ Modified -> perrette_landerer2013: A scaling approach to project regional sea le
 - [Adding entries](adding-entries.md): PDFs, DOIs, bibtex files, duplicates;
 - [Files](files.md): attachments, renaming, moving;
 - [Listing and searching](listing.md);
-- [Pools](pools.md): self-contained and shallow libraries, `pull`, `push`,
-  `sync` and the merge, exchanges with any library (`--pool PATH`).
+- [Pools](pools.md): `pull`, `push`, `sync` and the merge, exchanges with
+  any library (`--pool PATH`);
+- [Shallow libraries](shallow-libraries.md): files, changing the pool,
+  auto-push, topic libraries, and a comparison with a shared files folder;
+- [Export](export.md): a library to hand over.
 
 Coming from papers 2: see [Upgrading from papers 2](upgrading.md).

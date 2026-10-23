@@ -16,7 +16,7 @@ command line (`--pool PATH`).
 |---|---|
 | the global library (`papers install --global`) | the default library, after `papers migrate`, where it is: a self-contained library that commands run outside of any project act on (`papers -C DIR` reaches it from anywhere too) |
 | a project library (`papers install --local`) with its own PDFs | a self-contained library, the same as a new `papers init`. `papers config pool PATH` makes it a shallow library of PATH, once PATH has its PDFs |
-| several project libraries with a common `filesdir` | still works (see [A shared files folder without a pool](pools.md#a-shared-files-folder-without-a-pool)). The model preferred in papers 3, which is also more efficient, is a shared library (a pool) and project-bound "shallow" libraries connected to it |
+| several project libraries with a common `filesdir` | still works (see [Comparison](shallow-libraries.md#comparison)). The model preferred in papers 3, which is also more efficient, is a shared library (a pool) and project-bound "shallow" libraries connected to it |
 | `papers install` | `papers init` to create a library, `papers config` to change it; `papers install` is a deprecated alias. `papers install --global` is an error that changes nothing: `papers init PATH --global` creates the default library (for example `papers init ~/Documents/papers/default --global`), `papers config --global default PATH` registers an existing library |
 
 ## What happens on the first run
@@ -128,7 +128,8 @@ when possible, so the PDFs are not read again and nothing is fetched.
 and then names the entries to push.
 
 The [Quickstart](quickstart.md) runs through a self-contained project and
-a shallow project with their output, and [Pools](pools.md) describes the
+a shallow project with their output, [Shallow libraries](shallow-libraries.md)
+describes shallow libraries, and [Pools](pools.md) describes the
 exchanges.
 
 ## What else changed

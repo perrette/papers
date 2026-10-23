@@ -42,7 +42,7 @@ file in the pool's files directory, and the library entry and the pool
 entry link to it there; with `link`, the file stays where it is, and both
 link to it there. This works on one machine; on another machine that uses
 the pool, such links are broken (see
-[Shallow libraries](pools.md#shallow-libraries)).
+[Shallow libraries](shallow-libraries.md#files)).
 
 ## `papers file`
 
@@ -238,7 +238,7 @@ files that no remaining entry links to may be deleted too:
 A file still linked from another entry is never deleted, nor a file in the
 files directory of the pool of the library, nor, in a shallow library, a
 file that an entry of the pool links to (see
-[Shallow libraries](pools.md#shallow-libraries)); `papers rm` does not
+[Shallow libraries](shallow-libraries.md#files)); `papers rm` does not
 change the pool. In a shallow library, `--delete-files` is an error and
 nothing is removed: the files are the pool's, and `papers file rm FILE`
 deletes them. A file that is a
