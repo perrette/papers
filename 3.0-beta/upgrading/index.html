@@ -1098,7 +1098,7 @@ own copy of the PDFs (<code>local true</code>) or links to the PDFs of its pool
 </tr>
 <tr>
 <td>a project library (<code>papers install --local</code>) with its own PDFs</td>
-<td>a local library (<code>local true</code>). It reads the global pool, but writes nothing to it unless you push. With <code>papers config pool none</code> it is the same as a new <code>papers init --local</code></td>
+<td>a local library without pool (<code>local true</code>, <code>pool none</code>), the same as a new <code>papers init --local</code>. <code>papers config pool PATH</code> gives it a pool</td>
 </tr>
 <tr>
 <td>several project libraries with a common <code>filesdir</code></td>
@@ -1147,18 +1147,15 @@ See <a href="../configuration/#migrating-from-papers-2">Migrating from papers 2<
 the details.</p>
 <h3 id="project-libraries">Project libraries<a class="headerlink" href="#project-libraries" title="Permanent link">&para;</a></h3>
 <p>A project library of papers 2 (<code>.papersconfig.json</code> without <code>"version"</code>)
-needs no migration. papers 3 reads it as a local library that uses the
-global pool:</p>
-<ul>
-<li>its PDFs stay in its own files directory;</li>
-<li><code>papers add</code> looks in the global pool first. A paper found there is taken
-  with its PDF, copied into the project's files directory (a hard link when
-  possible);</li>
-<li>nothing is written to the pool unless you run <code>papers push</code> (or turn
-  <code>auto-push</code> on).</li>
-</ul>
-<p><code>papers config pool none</code> stops the lookups in the global pool.
-<code>papers config pool PATH</code> makes it use another pool.</p>
+needs no migration. papers 3 reads it as a local library without pool
+(<code>pool none</code>): its PDFs stay in its own files directory, and it works as in
+papers 2.</p>
+<p><code>papers config pool PATH</code> gives it a pool, for instance
+<code>papers config pool ~/Documents/papers</code> for the global pool. <code>papers add</code>
+then looks in the pool first: a paper found there is taken with its PDF,
+copied into the project's files directory (a hard link when possible).
+Nothing is written to the pool unless you run <code>papers push</code> (or turn
+<code>auto-push</code> on).</p>
 <h2 id="topic-pools">Topic pools<a class="headerlink" href="#topic-pools" title="Permanent link">&para;</a></h2>
 <p>The main new use of papers 3: each project keeps its own bibtex, the one
 its LaTeX document cites, while the PDFs and the curated entries of a topic
@@ -1190,7 +1187,8 @@ output, and <a href="../pools/">Pools</a> describes the exchanges.</p>
 <ul>
 <li><code>papers init</code> replaces <code>papers install</code>: it asks no questions, and fails
   if the folder has a library already (use <code>papers config</code>). By default it
-  creates a library that uses the global pool and links to its PDFs; use
+  creates a library whose pool is the global pool (written in its
+  configuration), and that links to the pool's PDFs; use
   <code>papers init --local</code> for a project that keeps its own PDFs, as in
   papers 2.</li>
 <li><code>papers config</code> gets and sets the settings, in the style of

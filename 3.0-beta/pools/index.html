@@ -1357,19 +1357,24 @@
 own library.</p>
 <p>A <strong>pool</strong> is a library that other libraries exchange entries with. Nothing
 in the pool marks it as a pool: any library can serve as one, and a pool can
-be used by several libraries. The pool of a library is its <code>pool</code> setting:</p>
+be used by several libraries. The pool of a library is its <code>pool</code> setting,
+in its configuration file:</p>
 <ul>
-<li>by default, the <strong>global pool</strong>: the <code>pool</code> setting of the global
-  configuration, <code>~/Documents/papers</code> unless set otherwise
-  (<code>papers config --global pool PATH</code>). A library that uses the global pool
-  stores no path: the same project, copied to another machine, uses the
-  global pool of that machine;</li>
 <li>a path, set with <code>papers init --pool PATH</code> or <code>papers config pool PATH</code>,
   e.g. a pool for one topic, <code>~/Documents/papers/sealevel</code>. A
   path written relative, or under the library, is stored relative to the
-  library (e.g. <code>../shared-with-bob</code>); another path is stored as given;</li>
-<li><code>none</code>: the library exchanges entries with no pool.</li>
+  library (e.g. <code>../shared-with-bob</code>); another path is stored with <code>~</code> for
+  the home directory, or absolute;</li>
+<li><code>none</code>: the library exchanges entries with no pool. A library whose
+  configuration has no <code>pool</code> setting has no pool either.</li>
 </ul>
+<p><code>papers init</code> without <code>--pool</code> (and without <code>--local</code>) writes the <strong>global
+pool</strong>: the <code>pool</code> setting of the global configuration,
+<code>~/Documents/papers</code> unless set otherwise (<code>papers config --global pool
+PATH</code>). It writes it as the global configuration does, usually with <code>~</code>: the
+same project, copied to another machine with the same layout, finds its
+pool there. Changing the global pool later does not change the libraries
+created before.</p>
 <p>The global pool does not have to exist: papers creates it (as
 <code>papers init ~/Documents/papers</code> would) the first time it writes to it, and
 before that a library finds nothing in it, without a warning. A pool given
@@ -1381,7 +1386,7 @@ command stops before changing anything.</p>
 <p><code>papers init</code> in the folder of the global pool creates the pool itself: a
 library without pool, with its own files. Outside of any library, commands
 act on the global pool once it is a library. <code>papers config --global pool
-none</code> turns sharing off: new libraries get <code>pool: none</code>.</p>
+none</code> turns sharing off for new libraries: they get <code>pool: none</code>.</p>
 <p>What a library does with its pool:</p>
 <ul>
 <li><code>papers add</code> looks in the pool first;</li>
@@ -1517,12 +1522,12 @@ only shows the list, and without a terminal the command stops with the list
 <td>the library links to the pool's copies of its PDFs, and its own copies are deleted (see below)</td>
 </tr>
 <tr>
-<td><code>papers config pool none</code></td>
+<td><code>papers config pool none</code> (or <code>--unset pool</code>)</td>
 <td>as <code>local true</code>, and the library becomes local</td>
 <td>the setting changes</td>
 </tr>
 <tr>
-<td><code>papers config pool PATH</code> (or <code>--unset pool</code>: the global pool)</td>
+<td><code>papers config pool PATH</code></td>
 <td>the library links to the copies of its PDFs in the new pool (see below); the files of the former pool stay where they are</td>
 <td>the setting changes</td>
 </tr>
@@ -1602,9 +1607,9 @@ recorded as "not the same paper" (<code>.papers/distinct.json</code>) are merged
 ways on <code>pull</code> and <code>push</code>.</p>
 <h2 id="origin-copies">Origin copies<a class="headerlink" href="#origin-copies" title="Permanent link">&para;</a></h2>
 <p><code>.papers/origin/</code>, next to the bibtex of the library, holds one file per
-pool: <code>global.bib</code> for the global pool, and for another pool the name of
-its folder and the start of a hash of its path, e.g.
-<code>shared-with-bob-d15650.bib</code>. The first lines of the file name the pool and
+pool: the name of its folder and the start of a hash of the pool setting,
+e.g. <code>shared-with-bob-d15650.bib</code> for <code>../shared-with-bob</code>, or
+<code>papers-&lt;hash&gt;.bib</code> for <code>~/Documents/papers</code>. The first lines of the file name the pool and
 give the modification time of its bibtex at the last exchange. In a
 library whose pool is <code>../shared-with-bob</code>, after <code>papers pull
 agnew_farrell1978</code> and <code>papers pull</code>:</p>
@@ -1913,14 +1918,10 @@ independent, and you do not want a central bibliography. To set it up:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>papers init --pool none --filesdir ~/Documents/papers/sealevel   # local, since it has no pool
 <a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>papers config pool none                                          # in an existing library
 <a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>papers config filesdir ~/Documents/papers/sealevel               # the shared folder
-<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>papers config --global pool none   # no pool for the libraries that do not set one, new ones included
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>papers config --global pool none   # new libraries get no pool
 </code></pre></div>
-<p>A library configuration of papers 2 without <code>pool</code> setting is read as a
-local library (its files are its own) that uses the global pool. It looks
-entries up in the global pool if that exists, but writes nothing to it:
-<code>add</code> in a local library adds new entries to the pool only with
-<code>auto-push</code>, and <code>push</code> and <code>sync</code> without KEY exchange only the entries
-shared with the pool. <code>papers config pool none</code> stops the lookups.</p>
+<p>A library configuration of papers 2 has no <code>pool</code> setting: it is read as a
+local library (its files are its own) without pool, as in papers 2.</p>
 <p>What to watch for, since each library only knows its own entries:</p>
 <ul>
 <li><code>papers file clean</code> in one library lists the PDFs of the other
@@ -1946,7 +1947,7 @@ shared with the pool. <code>papers config pool none</code> stops the lookups.</p
 <p>The global pool in <code>~/Documents/papers</code>, and two projects:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>mkdir -p ~/projects/sealevel ~/projects/tides
 <a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>cd ~/projects/sealevel
-<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>papers init                               # the global pool, not local
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>papers init                               # pool: the global pool, not local
 <a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>papers add ~/Downloads/esd-4-11-2013.pdf  # fetched from crossref; the PDF goes to
 <a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>                                          # ~/Documents/papers/files, the entry to both
 <a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>
