@@ -2,13 +2,22 @@
 
 ## Install papers
 
+papers 3 (beta) is not on PyPI yet. Install it from the `v3` branch:
+
+```bash
+pip install git+https://github.com/perrette/papers.git@v3
+```
+
+papers 2, the current release:
+
 ```bash
 pip install papers-cli
 ```
 
 Note there is another project registered on PyPI as `papers`, hence
 `papers-cli` for command-line-interface. The installed command is still
-`papers`.
+`papers`. To upgrade a papers 2 setup, see
+[Upgrading from papers 2](upgrading.md).
 
 ## Name clash with GNOME Papers
 
