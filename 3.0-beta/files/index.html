@@ -1165,7 +1165,7 @@ of the user with <code>papers config --global files copy</code>. The options
 <code>--move</code>, <code>--copy</code> and <code>--link</code> of <code>papers add</code> override it for one command;
 <code>-r/--rename</code> is the same as <code>--move</code>, and <code>-c</code> the same as <code>--copy</code>.</p>
 <p>A file that belongs to another library, i.e. a file inside the files
-directory of a library whose configuration (<code>.papersconfig.json</code>) is found
+directory of a library whose configuration (<code>.papers/config.json</code>) is found
 in the file's directory or above, is never moved: in <code>move</code> mode it is
 copied instead (a hard link when possible), so that the other library keeps
 its link. The same holds for a file in the files directory of the pool of

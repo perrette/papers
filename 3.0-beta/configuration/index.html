@@ -1182,7 +1182,9 @@
 <h1 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">&para;</a></h1>
 <h2 id="libraries">Libraries<a class="headerlink" href="#libraries" title="Permanent link">&para;</a></h2>
 <p>A library is a bibtex file, a files directory, and a configuration file
-next to them (<code>.papersconfig.json</code>). <code>papers init</code> creates one in the
+<code>.papers/config.json</code> in the library directory. The <code>.papers/</code> folder also
+holds the origin copies of the entries exchanged with pools and the pairs
+recorded as not the same paper. <code>papers init</code> creates a library in the
 current directory, and <code>papers init DIR</code> in the directory <code>DIR</code> (created if
 missing, with its parents):</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>$&gt; papers init
@@ -1366,14 +1368,19 @@ so that a library folder can be moved or shared with its files. Set
 bibtex that links to files in a central folder.</p>
 <p>The options <code>--relative-paths</code> and <code>--absolute-paths</code> of the commands still
 override the setting for one command, with a deprecation warning.</p>
+<p>To commit only the configuration of a library that is in the git
+repository of a project, add to the <code>.gitignore</code> of the project:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>.papers/*
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>!.papers/config.json
+</code></pre></div>
 <h2 id="migrating-from-papers-2">Migrating from papers 2<a class="headerlink" href="#migrating-from-papers-2" title="Permanent link">&para;</a></h2>
 <p><a href="../upgrading/">Upgrading from papers 2</a> gives an overview. <code>papers migrate</code>
 performs the one-time upgrades from version 2:</p>
 <ul>
 <li>The global configuration of version 2 (<code>~/.config/papersconfig.json</code> on
   Linux) defined a library for the whole user account. <code>papers migrate</code>
-  writes its settings to a library configuration next to its bibtex (if
-  there is none yet; a self-contained library: it keeps its files and has
+  writes its settings to a library configuration <code>.papers/config.json</code> in
+  the directory of its bibtex (if there is none yet; a self-contained library: it keeps its files and has
   no pool), registers the directory of that bibtex as the default library
   in the global configuration (unless another default library is set
   there), and renames the old file to <code>papersconfig.json.v2.bak</code>.
@@ -1386,9 +1393,12 @@ performs the one-time upgrades from version 2:</p>
   into the files directory, named after the name template (as
   <code>papers file rename</code> names them).</li>
 </ul>
-<p>Library configurations (<code>.papersconfig.json</code>) of version 2 keep working
-without migration: they are read as self-contained libraries (their files
-are their own, no pool), as in version 2. The configuration files written by version 3 carry
+<p>Library configurations of version 2 keep working without migration: they
+are read as self-contained libraries (their files are their own, no pool),
+as in version 2. Their file is moved to <code>.papers/config.json</code> the next
+time papers saves the configuration (e.g. <code>papers config</code>), or by
+<code>papers migrate</code> run in the library (see
+<a href="../upgrading/#project-libraries">Upgrading from papers 2</a>). The configuration files written by version 3 carry
 <code>"version": 3</code>; a file without <code>version</code> is read as a file of version 2. A
 file with a higher version was written by a newer papers, and papers stops
 with an error.</p>
@@ -1404,7 +1414,7 @@ with <code>papers init PATH --global</code> (for example <code>papers init
 ~/Documents/papers/default --global</code>), or register an existing library
 with <code>papers config --global default PATH</code>. <code>--local</code> is ignored.</p>
 <h2 id="uninstall">Uninstall<a class="headerlink" href="#uninstall" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>papers uninstall
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>papers uninstall
 </code></pre></div>
 <p>removes the library configuration and reports what it leaves behind (the
 bibtex file, the files directory, and the backup directory if any). Pass

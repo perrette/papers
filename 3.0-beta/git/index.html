@@ -1002,6 +1002,8 @@ entries exchanged with the pool, one file per pool, see
 <code>.papers/distinct.json</code> (pairs that are not the same paper) when they exist.
 <code>papers restore</code>, <code>undo</code> and <code>redo</code> restore the bibtex and these files
 together (a file that the restored snapshot does not have is removed).
+The library configuration (<code>.papers/config.json</code>) is not in the backup:
+<code>papers restore</code>, <code>undo</code> and <code>redo</code> leave it as it is.
 If <code>--git-lfs</code> is passed, the attached files are backed up along
 with the bibtex: they are hard-linked into the backup directory and tracked
 with git-lfs, together with a copy of the bibtex whose file paths point into
@@ -1032,7 +1034,8 @@ used the bibtex name alone), it moves the current library to a fresh
 directory instead of mixing the two histories. Directories created by older
 versions keep their name and are adopted as-is.</p>
 <p>The libraries of papers 2.2 to 2.4 kept their backup in <code>.papers/</code> next to
-the bibtex, the folder of <code>origin/</code> and <code>distinct.json</code> since papers 3:
+the bibtex, the folder of <code>config.json</code>, <code>origin/</code> and <code>distinct.json</code>
+since papers 3:
 the first backup moves that repository (its history and the files it
 tracks) to a new subfolder of the backup folder, with a warning, and the
 library configuration records it. A backup commit that fails (e.g. refused

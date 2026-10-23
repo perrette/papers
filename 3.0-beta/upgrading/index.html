@@ -1157,13 +1157,13 @@ of libraries, and prints a warning on every command:</p>
 papers 2 is <code>~/bibliography/papers.bib</code>:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>$ papers migrate
 <a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>global configuration of papers v2: ~/.config/papersconfig.json
-<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>  create the library configuration ~/bibliography/.papersconfig.json (paths: absolute)
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>  create the library configuration ~/bibliography/.papers/config.json (paths: absolute)
 <a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>  register ~/bibliography as the default library in ~/.config/papers/config.json
 <a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>  rename ~/.config/papersconfig.json to ~/.config/papersconfig.json.v2.bak
 </code></pre></div>
 <ul>
-<li>The library gets a configuration file next to its bibtex, with the
-  settings of papers 2. It is self-contained: it keeps its own files and
+<li>The library gets a configuration file, <code>.papers/config.json</code> in the
+  directory of its bibtex, with the settings of papers 2. It is self-contained: it keeps its own files and
   has no pool.</li>
 <li>It is registered as the default library, where it is, unless the global
   configuration of papers 3 already sets another one: commands run
@@ -1181,10 +1181,18 @@ papers before 2.19 kept in one folder per entry into the files directory.
 See <a href="../configuration/#migrating-from-papers-2">Migrating from papers 2</a> for
 the details.</p>
 <h3 id="project-libraries">Project libraries<a class="headerlink" href="#project-libraries" title="Permanent link">&para;</a></h3>
-<p>A project library of papers 2 (<code>.papersconfig.json</code> without <code>"version"</code>)
-needs no migration. papers 3 reads it as a self-contained library (no
-pool): its PDFs stay in its own files directory, and it works as in
-papers 2.</p>
+<p>A project library of papers 2 needs no migration. papers 3 reads it as a
+self-contained library (no pool): its PDFs stay in its own files
+directory, and it works as in papers 2.</p>
+<p>Its configuration file, <code>.papersconfig.json</code> in papers 2, is
+<code>.papers/config.json</code> in papers 3. papers moves it the next time it saves
+the configuration (e.g. <code>papers config</code>), and prints a line that says so:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>$ papers config editor vim
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>moved ~/projects/sealevel/.papersconfig.json to ~/projects/sealevel/.papers/config.json
+</code></pre></div>
+<p><code>papers migrate</code>, run in the library, moves it too (<code>--dry-run</code> shows
+it). A directory that has both files is an error, and papers changes
+nothing: remove the one you do not want to keep.</p>
 <p>It can take papers from another library without changing:
 <code>papers add --pool ~/Documents/papers --doi DOI</code> takes a paper that
 <code>~/Documents/papers</code> has, with a copy of its PDF (a hard link when
@@ -1200,18 +1208,18 @@ a PDF twice. A correction made in one project reaches the others with
 <code>papers sync</code>.</p>
 <p>An existing project library can be that library as it is: a new project
 uses it as pool.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>cd ~/projects/tides
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>papers init --pool ../sealevel           # a shallow library
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>papers add --doi 10.5194/esd-4-11-2013   # taken from ../sealevel, with its PDF
-<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>papers pull perrette_yool2011            # or by key
-<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>papers sync                              # later: exchange the changes both ways
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>cd ~/projects/tides
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>papers init --pool ../sealevel           # a shallow library
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>papers add --doi 10.5194/esd-4-11-2013   # taken from ../sealevel, with its PDF
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>papers pull perrette_yool2011            # or by key
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>papers sync                              # later: exchange the changes both ways
 </code></pre></div>
 <p>To move the PDFs of an existing project into a library of the topic, and
 make the project shallow:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>cd ~/projects/sealevel
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>papers init ~/Documents/papers/sealevel                # a new self-contained library
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>papers push --pool ~/Documents/papers/sealevel --all   # copies the entries and their PDFs there
-<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>papers config pool ~/Documents/papers/sealevel         # link to its PDFs, delete the project's copies
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>cd ~/projects/sealevel
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>papers init ~/Documents/papers/sealevel                # a new self-contained library
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>papers push --pool ~/Documents/papers/sealevel --all   # copies the entries and their PDFs there
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>papers config pool ~/Documents/papers/sealevel         # link to its PDFs, delete the project's copies
 </code></pre></div>
 <p><code>papers push --pool PATH</code> requires PATH to be a library already
 (<code>papers init PATH</code> creates it). It copies the PDFs as hard links
