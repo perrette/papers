@@ -56,6 +56,15 @@ class TestSortFormat(unittest.TestCase):
         after = [(e.key, sorted((f.key, f.value) for f in e.fields)) for e in biblio.entries]
         self.assertEqual(after, [(k, sorted(fields)) for k, fields in before])
 
+    def test_no_copy_warning_for_large_library(self):
+        "bibtexparser warns when its unparse stack deep-copies a library of 10000 blocks or more"
+        from bibtexparser.model import Entry, Field
+        from papers.entries import library_from_entries, format_library
+        library = library_from_entries([Entry('article', f'k{i}', [Field('title', f'T {i}')]) for i in range(10000)])
+        with self.assertNoLogs('bibtexparser', level='WARNING'):
+            text = format_library(library)
+        self.assertTrue(text.startswith('@article{k0,\n title = {T 0}\n}\n'))
+
     def test_entries_are_kept_by_save(self):
         "an entry held before a save is still the entry of the library after it"
         bibtex = os.path.join(self.tmp, 'papers.bib')

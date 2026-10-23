@@ -4,13 +4,14 @@ Value access, entry copy/compare, parse/format, and the `file` field
 (parse_file, format_file). Used by bib, encoding, duplicate, extract.
 No dependency on bib or encoding to avoid circular imports.
 """
+import copy
 import os
 
 import bibtexparser
 from bibtexparser import Library
-from bibtexparser.middlewares import SortFieldsAlphabeticallyMiddleware
+from bibtexparser.middlewares.enclosing import AddEnclosingMiddleware
 from bibtexparser.model import Entry, ExplicitComment, Field, ImplicitComment, Preamble, String
-from bibtexparser.writer import BibtexFormat
+from bibtexparser.writer import BibtexFormat, write
 
 from papers import logger
 
@@ -130,14 +131,40 @@ def sort_blocks(library):
     return Library(blocks=[block for chunk in chunks for block in chunk], fail_on_duplicate_key=False)
 
 
+# the enclosing of bibtexparser's default unparse stack (default_unparse_stack)
+_ENCLOSING = AddEnclosingMiddleware(allow_inplace_modification=True, default_enclosing="{",
+                                    reuse_previous_enclosing=False, enclose_integers=True)
+
+
+def _writable_copy(block):
+    """a copy of a block that the enclosing may change: new Field objects
+    for an entry (its values are strings, shared), a deep copy otherwise
+    (strings, preambles, comments: few)"""
+    if isinstance(block, Entry):
+        fields = []
+        for f in block.fields:
+            field = Field(f.key, f.value)
+            if getattr(f, 'enclosing', None) is not None:  # e.g. month = jan
+                field.enclosing = f.enclosing
+            fields.append(field)
+        return Entry(block.entry_type, block.key, fields)
+    return copy.deepcopy(block)
+
+
 def format_library(library):
     """Serialize a Library to a BibTeX string (single-space indent, newline between entries).
-    Fields in alphabetical order. Mutates the library in place (field order)."""
-    library = SortFieldsAlphabeticallyMiddleware().transform(library=library)
+    Fields in alphabetical order. Mutates the library in place (field order).
+
+    The text is that of bibtexparser.write_string with its default unparse
+    stack, which deep-copies every block: here the values are enclosed in
+    light copies of the blocks, written as they are (bibtexparser.writer)."""
+    for e in library.entries:
+        e.fields = sorted(e.fields, key=lambda f: f.key)
+    blocks = [_ENCLOSING.transform_block(_writable_copy(b), library) for b in library.blocks]
     fmt = BibtexFormat()
     fmt.indent = " "
     fmt.block_separator = "\n"
-    return bibtexparser.write_string(library, bibtex_format=fmt)
+    return write(Library(blocks=blocks, fail_on_duplicate_key=False), bibtex_format=fmt)
 
 
 # The file field
