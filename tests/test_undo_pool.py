@@ -270,5 +270,31 @@ class TestUndoPoolNoGit(UndoPoolTest):
         self.assertEqual(self.keywords('mine2022', 'pool'), 'a')
 
 
+class TestUndoFileRmNonLocal(UndoPoolTest):
+    """`file rm` in a library that is not local deletes the pool file and
+    removes the link from the pool entry: undo in the library restores its
+    link (broken: the file is not restored), and the pool keeps the change"""
+
+    def test_undo_file_rm(self):
+        self.lib('add ../new.bib')
+        self.lib('config files move')
+        Path(self.path('si.pdf')).write_text('supplement')
+        self.lib(f'file attach mine2022 {self.path("si.pdf")}')
+        biblio = Biblio.load(self.path('lib', 'papers.bib'), '')
+        si, = biblio.get_files(self.entries()['mine2022'])
+        self.assertTrue(si.startswith(self.path('pool', 'files')), si)
+        self.lib(f'file rm {si}')
+        self.assertFalse(os.path.exists(si))
+        self.assertNotIn('file', self.entries('pool')['mine2022'].fields_dict)
+
+        self.lib('undo')
+        self.assertEqual(biblio.get_files(self.entries()['mine2022']), [si])
+        self.assertFalse(os.path.exists(si))
+        self.assertNotIn('file', self.entries('pool')['mine2022'].fields_dict)
+        # the pool entry no longer has the link it had at the restored state: the pull removes it
+        self.lib('pull')
+        self.assertNotIn('file', self.entries()['mine2022'].fields_dict)
+
+
 if __name__ == '__main__':
     unittest.main()

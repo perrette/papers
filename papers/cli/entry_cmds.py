@@ -275,8 +275,16 @@ def remove_entries(biblio, entries, config, delete_files=None, ask=True):
     directory, and keeps them without a terminal. A file outside the files
     directory is only deleted with delete_files=True.
     """
+    pools = Pools(config)
     inside, outside, kept, in_pool = papers.files.remove_entries(biblio, entries, config.filesdir,
-                                                                 pool_dirs=Pools(config).files_dirs())
+                                                                 pool_dirs=pools.files_dirs())
+    pool = pools.pool(quiet=True) if config.file and not config.local else None
+    if pool is not None:
+        # a non-local library: the files that the pool entries link to, wherever they are, are the pool's
+        linked = {os.path.realpath(f) for e in pool.biblio.entries for f in pool.biblio.get_files(e)}
+        in_pool += [f for f in inside + outside if os.path.realpath(f) in linked]
+        inside = [f for f in inside if os.path.realpath(f) not in linked]
+        outside = [f for f in outside if os.path.realpath(f) not in linked]
     if delete_files is False:
         return []
     print_kept_files(kept, in_pool)

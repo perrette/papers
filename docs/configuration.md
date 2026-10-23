@@ -71,7 +71,7 @@ from the global configuration, otherwise from its built-in default.
 | `pool` | path of the library's pool (relative to the library), or `none` (default: the global pool) |
 | `local` | `true`: the files are in the files directory of the library; `false`: in the files directory of the pool (see [Pools](pools.md#local-or-not)) |
 | `paths` | `relative` (default) or `absolute`: how file links are written in the bibtex |
-| `files` | `move` (default), `copy` or `link`: what `papers add` does with a file (see [Files](files.md#what-add-does-with-a-file)) |
+| `files` | `move` (default), `copy` or `link`: what `papers add` does with a file (see [Files](files.md#what-add-does-with-a-file)); in a library that is not local, how the file gets to the pool: moved or copied into its files directory, or linked where it is by the library and the pool entry |
 | `auto-push` | `false` (default) or `true`: the commands that change entries push them to the pool (the entries shared with it, and new ones), see [Pools](pools.md#auto-push) |
 | `git` | `true` or `false`: back up the bibtex with git (see [Git integration](git.md)) |
 | `git-lfs` | `true` or `false`: also back up the files with git-lfs |
@@ -144,7 +144,8 @@ of several paths is an error that names the file. Write one path, or
 
 `local` says where the files of the library are: in the files directory of
 the pool (`false`, the default: the library links to them) or in its own
-(`true`). A project folder shared with others (git, Dropbox) should be
+(`true`). In a library that is not local, the file links are the pool
+entry's; the library decides which entries it has. A project folder shared with others (git, Dropbox) should be
 local: the links of a library that is not local point into your own pool.
 
 ```

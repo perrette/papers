@@ -664,7 +664,8 @@ class Config:
             lines.append(f'* files directory:    {_fmt_path(self.filesdir) if self.filesdir else self.filesdir}'+status)
         if in_pool:
             note = ' (the files added are moved into the pool)' if (self.files or 'move') == 'move' else \
-                ' (the files added are copied into the pool)' if self.files == 'copy' else ''
+                ' (the files added are copied into the pool)' if self.files == 'copy' else \
+                ' (the files added stay where they are, the pool entry links to them there)'
         else:
             note = ' (no files directory: the files are linked where they are)' if self.filesdir is None else ''
         lines.append(f'* files mode:         {self.files or "move"}' + note)

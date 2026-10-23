@@ -29,7 +29,9 @@ undo: papers.bib restored to 3f2a1c9 papers add paper.pdf (2026-10-22 14:03)
 
 Files that the undone command placed in the files directory stay there.
 When no entry links to them any more (e.g. after undoing `papers file
-attach`), papers lists them: `papers file clean` removes them.
+attach`), papers lists them: `papers file clean` removes them. A file
+deleted by `papers file rm` is not restored: undo restores the link, which
+is then broken.
 
 ## Undo in a library that has a pool
 

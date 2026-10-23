@@ -74,39 +74,65 @@ The `local` setting of a library says where its files are:
 is the `local` setting of the global configuration
 (`papers config --global local true`). A library without pool is local.
 
+In a library that is not local, the file links are the pool entry's; the
+library decides which entries it has. The `files` setting says how a new
+file gets to the pool:
+
+- `move` (the default) and `copy`: the file is placed in the pool's files
+  directory (moved, or copied: a hard link when possible), named with the
+  pool's name template (a name template set on the library is not used);
+  the library entry and the pool entry link to it there;
+- `link`: the file stays where it is, and the library entry and the pool
+  entry both link to it there. This works on one machine; on another
+  machine that uses the pool (a pool in a synchronized folder), such links
+  are broken.
+
 In a library that is not local:
 
-- `add` places new files in the pool's files directory, named with the
-  pool's name template (a name template set on the library is not used),
-  and adds the new entries to the pool too, whatever the `auto-push`
-  setting (their origin is recorded, see [Origin copies](#origin-copies)).
-  A change that `add` makes to an entry the library has already is pushed
-  only with auto-push;
+- `add` places new files as the `files` setting says, and adds the new
+  entries to the pool too, whatever the `auto-push` setting (their origin
+  is recorded, see [Origin copies](#origin-copies)). A change that `add`
+  makes to the fields of an entry the library has already is pushed only
+  with auto-push;
 - `papers file attach`, `file rename` and `file check --fix` place the
-  files they handle in the pool's files directory too;
+  files they handle in the same way;
 - the file links are always pushed, whatever the `auto-push` setting: a
   command that changes the files of an entry (`file attach`, `file rename`,
   `file detach`, `file rm`, `file mv`, `file check --fix`, `edit`...) sets
   the links of the pool entry to match right away, and its line ends with
-  `[file links also updated in pool ...]`. The pool entry links to the
-  files of the library entry that are in the pool's files directory, and
-  no longer to the files that the library entry no longer links to. Only
-  the links change: the other fields are pushed only with auto-push, and
-  nothing is recorded in the origin copy. No file is deleted: a pool file
-  detached or removed (`file rm`) stays in the pool, and `papers file
-  clean` in the pool lists it if no pool entry links to it any more. An
-  entry not shared with the pool gets the links of the pool entry of the
-  same paper updated; if the pool does not have it, the entry is added to
-  the pool, as `add` does;
-- `pull` links to the pool's files instead of copying them;
+  `[file links also updated in pool ...]`. The pool entry gets the links
+  that the command added, wherever they point, and the links of the
+  library entry into the pool's files directory, and loses the links that
+  the library entry no longer has. A link that the library entry had
+  before the command, outside the pool's files directory, and that the
+  pool entry does not have (for instance a file of the library's own
+  `files/` from when it was local) is not sent; `push` sends it with the
+  other fields. Only the links change: the other fields are pushed only
+  with auto-push. An entry not shared with the pool gets the links of the
+  pool entry of the same paper updated; if the pool does not have it, the
+  entry is added to the pool, as `add` does;
+- `file detach` never deletes a file. `file rm` removes the link from the
+  pool entry too, and deletes the file unless another entry of the pool
+  or of the library still links to it (`kept FILE: an entry of the pool
+  links to it`);
+- `pull` and `sync` link to the pool's files instead of copying them, and
+  the library entry follows the pool entry's links: a link that the pool
+  entry had at the last exchange and no longer has is removed from the
+  library entry (the file is not deleted). A link that the pool entry never
+  had stays. The origin copy records the pool entry's links for this
+  (`papers-files`); an origin copy written before papers recorded them
+  removes nothing until the next exchange. A one-time exchange (`--pool
+  PATH`, another library) adds links only;
 - when the pool renames a file, the link breaks: it is repaired by looking
   the entry up in the pool, when the library is loaded (saved on the next
   write) and by `papers file check --fix`. A broken link to a file outside
   the pool is relinked to the pool's file by `papers file check --fix`
   only (see [Reconnecting PDFs and a bibtex](files.md#reconnecting-pdfs-and-a-bibtex)).
 
-In any library, `rm --delete-files` and `file rm` never delete a file of the
-pool. Deleting a file in a pool breaks the links of the libraries that use
+In any library, `rm --delete-files` never deletes a file of the pool, nor
+a file that a pool entry links to in a library that is not local, and it
+does not change the pool entry. In a local library, `file rm` never deletes
+a file of the pool either. Deleting a file in a pool breaks the links of the libraries that use
 it: it shows up as a broken link there (`papers file check`). The pool keeps
 no list of the libraries that depend on it.
 
@@ -223,7 +249,9 @@ the file of the new pool, and setting the pool back to an earlier one finds
 its origin copies again. The file records, for each entry
 exchanged with the pool (by `add`, `pull` or `push`), its origin copy,
 under the library's key, with the key in the pool (`papers-pool-key`) and
-the time (`papers-time`). The modification time is recorded at a pull of
+the time (`papers-time`); in a library that is not local, also the file
+links of the pool entry after the exchange (`papers-files`), so that a pull
+can tell a link that the pool entry removed from one it never had. The modification time is recorded at a pull of
 all entries that skipped no conflict, or a push or an add when the pool
 had not changed since the previous exchange (or when it is the first
 exchange). A push that leaves the pool entry with fields or files that the

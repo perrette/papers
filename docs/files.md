@@ -34,9 +34,14 @@ renamed in `copy` mode too, rather than copied next to itself. A file
 downloaded by papers (a URL given to `add` or `--attach`) is always moved
 into the files directory.
 
-In a library that is not local (`local: false`, the default), the files
-directory where `add`, `file attach` and `file rename` place the files is
-that of the pool, and the name template is the pool's (see
+In a library that is not local (`local: false`, the default), the file
+links are the pool entry's; the library decides which entries it has. The
+files directory where `add`, `file attach` and `file rename` place the files
+is that of the pool, and the name template is the pool's: `move` and `copy`
+place the file in the pool's files directory, and the library entry and the
+pool entry link to it there; with `link`, the file stays where it is, and
+both link to it there. This works on one machine; on another machine that
+uses the pool, such links are broken (see
 [Local or not](pools.md#local-or-not)).
 
 ## `papers file`
@@ -132,8 +137,11 @@ from every entry that links to it, then deletes the file.
   the links in the same way, without deleting anything.
 - With `--key`, only the links of those entries are removed; a file that
   another entry still links to is kept on disk, and papers says so.
-- A file of the pool is never deleted (e.g. the files that a library that
-  is not local links to): only the link is removed, and papers says so.
+- In a local library, a file of the pool is never deleted: only the link
+  is removed, and papers says so. In a library that is not local, the link
+  is removed from the pool entry too, and the file (in the pool's files
+  directory or elsewhere) is deleted unless another entry of the pool or
+  of the library still links to it.
 - papers does not ask: the file was named on the command line. `--dry-run`
   shows the links that would be removed and the files and folders that
   would be deleted.
@@ -228,8 +236,10 @@ files that no remaining entry links to may be deleted too:
 - a file outside the files directory is deleted only with `--delete-files`.
 
 A file still linked from another entry is never deleted, nor a file in the
-files directory of the pool of the library (e.g. the files that a library
-that is not local links to, see [Local or not](pools.md#local-or-not)). A file that is a
+files directory of the pool of the library, nor, in a library that is not
+local, a file that an entry of the pool links to (see
+[Local or not](pools.md#local-or-not)); `papers rm` does not change the
+pool. A file that is a
 hard link (e.g. to the file of another library) can be deleted: this only
 removes this link, and papers says so.
 

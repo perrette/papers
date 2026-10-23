@@ -13,9 +13,10 @@ the machine (the `pool` setting of the global configuration, by default
 - `Origin` is `.papers/origin/` of a library, one file per pool: for each
   entry exchanged with the pool, the base of the next three-way merge,
   under the library's key, with the pool's key (`papers-pool-key`) and the
-  time (`papers-time`). The base is the version of the side that sent the
-  entry, as sent: the pool entry for `add` and `pull`, the library entry
-  for `push`. The receiving side has taken all of it into account (taken,
+  time (`papers-time`), and in a non-local library the file links of the
+  pool entry after the exchange (`papers-files`). The base is the version
+  of the side that sent the entry, as sent: the pool entry for `add` and
+  `pull`, the library entry for `push`. The receiving side has taken all of it into account (taken,
   kept or declined), so that what it has beyond it shows as its own change
   in the next exchange the other way. Only the pool of the library gets
   records: `--pool PATH` with another library is a one-time exchange,
@@ -51,7 +52,8 @@ import papers.config
 from papers import logger
 from papers.config import Config, CONFIG_FILE_LOCAL, LIBRARY_CONFIG_FILES, NO_POOL, short_home
 from papers.duplicate import Distinct, IdentityIndex, find_duplicates, same_paper, SAME, Verdict
-from papers.entries import get_entry_val, set_entry_key, entry_copy, parse_string, format_library
+from papers.entries import (get_entry_val, set_entry_key, entry_copy, parse_string, format_library, format_file,
+                            parse_file)
 from papers.bib import Biblio, append_abc
 from papers.extract import parse_doi_from_pdf_metadata, parse_dois, pdfhead, pdftail, title_in_text
 from papers.files import ATTACHMENT_SEP, FilesPolicy, realpath, is_inside
@@ -383,7 +385,10 @@ LEGACY_ORIGIN_FILE = os.path.join('.papers', 'origin.bib')  # one file for all p
 POOL_FIELD = 'papers-pool'  # in the legacy file only
 POOL_KEY_FIELD = 'papers-pool-key'
 TIME_FIELD = 'papers-time'
-_ORIGIN_FIELDS = (POOL_FIELD, POOL_KEY_FIELD, TIME_FIELD)
+# a non-local library: the file links of the pool entry after the last
+# exchange, as the library writes its links (see Exchange.pool_removed)
+FILES_FIELD = 'papers-files'
+_ORIGIN_FIELDS = (POOL_FIELD, POOL_KEY_FIELD, TIME_FIELD, FILES_FIELD)
 # the first comments of a file: @comment{papers-pool <pool id>} and
 # @comment{papers-pulled <pool bibtex mtime in ns>}
 _POOL_COMMENT = 'papers-pool'
@@ -404,14 +409,17 @@ def origin_file_name(pool):
 class Record:
     """the origin record of a library entry for a pool: `entry` is the base
     version (see the module documentation; under the library key, without
-    the papers-* fields and file links)"""
+    the papers-* fields and file links). `files`: in a non-local library,
+    the file links of the pool entry after the last exchange (as written
+    in the library's bibtex), or None if not recorded."""
 
-    def __init__(self, key, pool, pool_key, time, entry):
+    def __init__(self, key, pool, pool_key, time, entry, files=None):
         self.key = key
         self.pool = pool
         self.pool_key = pool_key
         self.time = time
         self.entry = entry
+        self.files = files
 
     def __repr__(self):
         return f'Record({self.key!r}, {self.pool!r}, {self.pool_key!r})'
@@ -510,7 +518,7 @@ class Origin:
 
     def _record(self, pool, e):
         return Record(e.key, pool, get_entry_val(e, POOL_KEY_FIELD, ''), get_entry_val(e, TIME_FIELD, ''),
-                      _strip(e, _ORIGIN_FIELDS))
+                      _strip(e, _ORIGIN_FIELDS), files=get_entry_val(e, FILES_FIELD, None))
 
     def get(self, entry, pool=None):
         """the record of a library entry (by key, or by a former key of its
@@ -528,19 +536,35 @@ class Origin:
         return [self._record(id, e) for id, records in self.entries.items() if pool is None or id == pool
                 for e in records.values()]
 
-    def set(self, key, pool, pool_entry):
+    def set(self, key, pool, pool_entry, files=None):
         """record the base version of an entry for a pool, with the key of
         the pool entry (the record does not change if it is the same as
-        before, its time included)"""
+        before, its time included), and `files`, the file links of the pool
+        entry (see Record; None: not recorded)"""
         new = _strip(pool_entry, ('file',) + _ORIGIN_FIELDS)
         records = self.entries.setdefault(pool, {})
         old = records.get(key.lower())
         if old is not None and get_entry_val(old, POOL_KEY_FIELD, '') == pool_entry.key \
                 and _same_fields(_strip(old, _ORIGIN_FIELDS), new):
+            self.set_files(key, pool, files)
             return
         set_entry_key(new, key)
         new.fields += [Field(POOL_KEY_FIELD, pool_entry.key), Field(TIME_FIELD, _now())]
+        if files is not None:
+            new.fields.append(Field(FILES_FIELD, files))
         records[key.lower()] = new
+        self.changed.add(pool)
+
+    def set_files(self, key, pool, files):
+        """set the file links of the pool entry in the record of an entry,
+        if it has one (files None: remove them)"""
+        old = self.entries.get(pool, {}).get(key.lower())
+        if old is None or get_entry_val(old, FILES_FIELD, None) == files:
+            return
+        if FILES_FIELD in old.fields_dict:
+            del old[FILES_FIELD]
+        if files is not None:
+            old.fields.append(Field(FILES_FIELD, files))
         self.changed.add(pool)
 
     def remove(self, key, pool):
@@ -633,6 +657,42 @@ class Exchange:
         self.biblio.distinct.update(pool.biblio.distinct)
         pool.biblio.distinct.update(self.biblio.distinct)
 
+    # the file links of a library that is not local: those of the pool entry
+
+    def _shares_links(self, pool):
+        "a non-local library and its own pool: the library entry's file links are the pool entry's"
+        return not self.config.local and self.is_own(pool)
+
+    def record(self, e, pool, base, pe):
+        """record the origin of a library entry (origin.set): `base`, and in
+        a non-local library the file links of the pool entry `pe`"""
+        files = None
+        if self._shares_links(pool):
+            files = format_file(pool.biblio.get_files(pe), relative_to=self.biblio.relative_to)
+        self.origin.set(e.key, pool.id, base, files=files)
+
+    def new_links(self, e, pool):
+        """in a non-local library, the file links that the command added to a
+        library entry (not there when the library was loaded): they go to
+        the pool entry as they are, wherever they point"""
+        if not self._shares_links(pool):
+            return []
+        before = self.biblio.loaded_files(e)
+        if before is None:
+            return []
+        old = {realpath(f) for f in before}
+        return [f for f in self.biblio.get_files(e) if realpath(f) not in old]
+
+    def pool_removed(self, e, pe, record, pool):
+        """in a non-local library, the file links of a library entry that the
+        pool entry had at the last exchange (origin record) and no longer
+        has: real paths. A link that the pool entry never had stays."""
+        if not self._shares_links(pool) or record is None or record.files is None:
+            return set()
+        base = {realpath(f) for f in parse_file(record.files, relative_to=self.biblio.relative_to)}
+        now = {realpath(f) for f in pool.biblio.get_files(pe)}
+        return {realpath(f) for f in self.biblio.get_files(e)} & (base - now)
+
     # files
 
     def files_policy(self, mode=None, keep=(), pools=()):
@@ -717,10 +777,11 @@ class Exchange:
         incoming = exchange_copy(pe, pool.biblio, self.biblio)
         merge = Merge([e, incoming], relative_to=self.biblio.relative_to, exchange=True,
                       base=record.entry if record is not None else None)
-        if not merge.conflicts and not merge.additions and not merge.new_files:
+        removed = self.pool_removed(e, pe, record, pool)
+        if not merge.conflicts and not merge.additions and not merge.new_files and not removed:
             if not own:
                 return 'unchanged'
-            self.origin.set(e.key, pool.id, pe)
+            self.record(e, pool, pe, pe)
             return 'unchanged' if record is not None else 'linked'
         if merge.conflicts:
             decision = resolver.decide(merge, 'pull', Verdict(SAME, pool.label))
@@ -731,9 +792,11 @@ class Exchange:
             new = merge.result()
         old_files = self.biblio.get_files(e)
         apply_entry(e, new)
+        if removed:  # the pool entry no longer links to them
+            self.biblio.set_files(e, [f for f in self.biblio.get_files(e) if realpath(f) not in removed])
         self._place_files(e, self.files_policy(mode, keep=old_files, pools=[pool]))
         if own:
-            self.origin.set(e.key, pool.id, pe)
+            self.record(e, pool, pe, pe)
         return 'updated'
 
     def _pull_new(self, pe, pool, mode):
@@ -746,7 +809,7 @@ class Exchange:
         self.biblio.db.add(e)
         self._place_files(e, self.files_policy(mode, pools=[pool]))
         if self.is_own(pool):
-            self.origin.set(e.key, pool.id, pe)
+            self.record(e, pool, pe, pe)
         return e
 
     def check(self, entries, pool, all_entries=True):
@@ -771,7 +834,7 @@ class Exchange:
                 continue
             merge = Merge([e, incoming], relative_to=self.biblio.relative_to, base=record.entry)
             changed = [f.name for f in merge.additions + merge.conflicts]
-            if merge.new_files:
+            if merge.new_files or self.pool_removed(e, pe, record, pool):
                 changed.append('file')
             if changed:
                 n = len(merge.conflicts)
@@ -833,7 +896,8 @@ class Exchange:
 
     def _push_new(self, e, pool):
         out = exchange_copy(e, self.biblio, pool.biblio)
-        policy = self._pool_policy(pool)
+        # in a non-local library, the links added by the command are linked where they are
+        policy = self._pool_policy(pool, keep=self.new_links(e, pool))
         # an entry without fields, or without a key, is not written to the pool
         if not any(k not in ('file', 'ids') for k in out.fields_dict):
             logger.info(f'{e.key or "an entry without key"}: not pushed to {pool.label}: the entry has no fields')
@@ -848,7 +912,7 @@ class Exchange:
         new = pool.biblio.insert_entry(out, update_key=update_key, rename=pool.filesdir is not None, copy=policy)[0]
         pool.add_entry(new)
         if self.is_own(pool):
-            self.origin.set(e.key, pool.id, new)
+            self.record(e, pool, new, new)
         return 'added'
 
     def _push_one(self, e, pool, pe, record, resolver):
@@ -871,7 +935,9 @@ class Exchange:
         old_files = pool.biblio.get_files(pe)
         pool.update_entry(pe, new)
         if pool.filesdir is not None:
-            pool.biblio.rename_entry_files(pe, copy=self._pool_policy(pool, keep=old_files))
+            # in a non-local library, the links added by the command are linked where they are
+            keep = old_files + self.new_links(e, pool)
+            pool.biblio.rename_entry_files(pe, copy=self._pool_policy(pool, keep=keep))
         if own:
             self._pushed(e, pool, pe, outgoing)
         return 'updated'
@@ -880,7 +946,7 @@ class Exchange:
         """record the origin of a pushed entry: the library's version, as
         sent (see the module documentation), so that what the pool entry
         has beyond it comes with the next pull"""
-        self.origin.set(e.key, pool.id, outgoing)
+        self.record(e, pool, outgoing, pe)
         incoming = exchange_copy(pe, pool.biblio, self.biblio)
         after = Merge([e, incoming], relative_to=self.biblio.relative_to, base=outgoing)
         if after.additions or after.conflicts or after.new_files:
@@ -888,14 +954,18 @@ class Exchange:
 
     def push_links(self, entries, pool, resolver):
         """a non-local library: the pool entries of `entries` (whose file
-        links changed in the command) link to the files that the library
-        entries link to in the pool's files directory, and no longer to the
-        files that the library entries no longer link to. Only the file
-        links of the pool entry change, nothing is recorded, and no file is
-        deleted. An entry that the pool does not have, and that links to a
-        pool file, is pushed (added to the pool, as `add` does). Return
-        [(entry, pool, what)], what being 'links' (the pool entry's links
-        changed), or as Exchange.push says for the entries pushed."""
+        links changed in the command) link to the files that the command
+        linked the library entries to, wherever they are, and to those
+        that the library entries link to in the pool's files directory; and
+        no longer to the files that the library entries no longer link to.
+        Only the file links of the pool entry change (and in its origin
+        record), and no file is deleted. A link that the library entry had
+        when loaded, outside the pool's files directory, is not sent (`push`
+        sends it, as the other fields). An entry that the pool does not
+        have, with links to send, is pushed (added to the pool, as `add`
+        does). Return [(entry, pool, what)], what being 'links' (the pool
+        entry's links changed), or as Exchange.push says for the entries
+        pushed."""
         if entries:
             check_readable(pool)
         report = []
@@ -904,8 +974,9 @@ class Exchange:
             before = self.biblio.loaded_files(e) or []
             after = self.biblio.get_files(e)
             removed = {realpath(f) for f in before} - {realpath(f) for f in after}
-            added = [f for f in after if pool.filesdir and is_inside(f, pool.filesdir)]
-            pe, _ = self.pool_entry(e, pool)
+            new = {realpath(f) for f in self.new_links(e, pool)}
+            added = [f for f in after if realpath(f) in new or (pool.filesdir and is_inside(f, pool.filesdir))]
+            pe, record = self.pool_entry(e, pool)
             if pe is None:
                 if added:
                     missing.append(e)
@@ -924,6 +995,8 @@ class Exchange:
             pool.biblio.set_files(pe, files)
             pool._sizes = None
             self._changed(pool)
+            if record is not None and self._shares_links(pool):
+                self.origin.set_files(e.key, pool.id, format_file(files, relative_to=self.biblio.relative_to))
             report.append((e, pool, 'links'))
         if missing:
             report += self.push(missing, pool, resolver)
@@ -1085,7 +1158,7 @@ class Exchange:
                     pool.biblio.set_files(out, placed)
                     pe = pool.biblio.insert_entry(out, update_key=True, rename=True, copy=policy)[0]
                     pool.add_entry(pe)
-                    self.origin.set(e.key, pool.id, pe)
+                    self.record(e, pool, pe, pe)
                     before = []
                 else:
                     before = pool.biblio.get_files(pe)
@@ -1227,7 +1300,7 @@ class PoolLookup:
         for e in result:
             self.taken_from[e.key.lower()] = pool
             if self.exchange.origin.get(e, pool.id) is None:
-                self.exchange.origin.set(e.key, pool.id, pe)
+                self.exchange.record(e, pool, pe, pe)
         if biblio is not None and rename and callable(copy):
             self._remove_moved(biblio, result, [f for f in same if copy(f) == 'move'])
 

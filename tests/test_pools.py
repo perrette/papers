@@ -1129,11 +1129,13 @@ class TestNonLocal(NonLocalTest):
         self.assertIn('it is a file of a pool', out)
         self.assertNotIn('smith2020climate', self.bib()[1])
 
-    def test_file_rm_never_deletes_pool_files(self):
+    def test_file_rm_deletes_the_pool_file(self):
+        # the link goes in the pool entry too: no entry links to the file any more
         out = self.out(f'file rm {self.pool_pdf}')
-        self.assertTrue(os.path.exists(self.pool_pdf))
-        self.assertIn('it is a file of a pool', out)
+        self.assertFalse(os.path.exists(self.pool_pdf))
+        self.assertIn(f'delete {self.pool_pdf}', out)
         self.assertEqual(self.files('smith2020climate'), [])
+        self.assertEqual(self.files('Smith_2020', 'pool'), [])
 
     def test_add_places_files_in_pool(self):
         self.papers('config name.template {title}', cwd=self.path('pool'))

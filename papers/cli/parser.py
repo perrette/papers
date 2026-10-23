@@ -267,8 +267,8 @@ def get_parser(config=None):
     # add
     # ===
     addp = subparsers.add_parser('add', description='''add PDF(s) or bibtex(s) to library. In a
-        library that is not local, the files go to the files directory of the pool, and the entries
-        to the pool too. Adding a bibtex file (`papers add other.bib`) copies its entries once, with no
+        library that is not local, the files go to the files directory of the pool (files mode
+        move or copy; with link, they stay where they are), and the entries to the pool too. Adding a bibtex file (`papers add other.bib`) copies its entries once, with no
         memory of where they came from; `papers pull` instead keeps the entries linked to the pool,
         and later pulls bring its corrections.''',
         parents=[cfg, namefmt, keyfmt])
@@ -337,7 +337,10 @@ def get_parser(config=None):
         template, and remove the original; copy: place them there, and keep the original
         (a hard link when possible, otherwise a copy); link: leave them where they are,
         the entry links to them there. A file that belongs to another library (inside
-        its files directory) is never moved: it is copied instead.''')
+        its files directory) is never moved: it is copied instead. In a library that is not
+        local, the file links are those of the pool entry: move and copy place the files in
+        the files directory of the pool, link leaves them where they are and the pool entry
+        links to them there too.''')
     grp.add_argument('--attach', nargs='+', type=file_uri_to_path, dest='attachment', metavar='FILE',
         help='attach these files to the entry (e.g. supplementary material)')
     grp.add_argument('--attachment', nargs='+', type=file_uri_to_path, dest='attachment_deprecated',
@@ -449,7 +452,9 @@ def get_parser(config=None):
         description='like git rm: remove the links to FILE from every entry that links to it, then delete '
                     'the file. A file that no entry links to is an error, and nothing changes. With --key, only '
                     'the links of these entries are removed, and a file that another entry still links to is '
-                    'kept. A file of a pool is never deleted, only the link. -r FOLDER: the linked files '
+                    'kept. A file of a pool is not deleted, only the link, except in a library that is not local: '
+                    'there the link is removed from the pool entry too, and the file is deleted unless another '
+                    'entry of the pool links to it. -r FOLDER: the linked files '
                     'inside FOLDER (the unlinked files stay, and the folders left empty are removed).')
     p.add_argument('files', nargs='*', metavar='FILE', type=file_uri_to_path)
     p.add_argument('-k', '--key', nargs='+', action='extend', metavar='KEY', help=_key_help)

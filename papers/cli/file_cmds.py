@@ -164,15 +164,40 @@ def file_rmcmd(parser, o, config):
         parser.error('papers file rm FILE... [-r] [--key KEY...]')
     links = links_to_paths(biblio, o.files, entries, recursive=o.recursive)
     _detach(biblio, links)
-    inside, outside, kept, in_pool = files_to_delete(biblio, [f for _, files in links for f in files],
-                                                     config.filesdir, pool_dirs=Pools(config).files_dirs())
-    print_push_notes(biblio, save_entries(config, biblio))
-    print_kept_files(kept, in_pool)
+    removed = [f for _, files in links for f in files]
+    keep_dirs = [config.filesdir]
+    if config.file and not config.local and config.has_pool():
+        # a non-local library: the links of the pool entries were removed too
+        # (save_entries); a pool file that no entry of the pool or of the
+        # library links to any more is deleted
+        exchange = Exchange(config, biblio)
+        notes = save_entries(config, biblio, exchange)
+        pool = exchange.pools.pool(quiet=True)
+        if pool is None:  # the pool cannot be read: its files are kept
+            inside, outside, kept, in_pool = files_to_delete(biblio, removed, config.filesdir,
+                                                             pool_dirs=exchange.pools.files_dirs())
+            pool_linked = set()
+        else:
+            inside, outside, kept, in_pool = files_to_delete(biblio, removed, config.filesdir)
+            pool_linked = {realpath(f) for e in pool.biblio.entries for f in pool.biblio.get_files(e)}
+            keep_dirs.append(pool.filesdir)
+        pool_kept = [f for f in inside + outside if realpath(f) in pool_linked]
+        inside = [f for f in inside if realpath(f) not in pool_linked]
+        outside = [f for f in outside if realpath(f) not in pool_linked]
+        print_push_notes(biblio, notes)
+        print_kept_files(kept, in_pool)
+        for f in pool_kept:
+            print(f"kept {f}: an entry of the pool links to it")
+    else:
+        inside, outside, kept, in_pool = files_to_delete(biblio, removed, config.filesdir,
+                                                         pool_dirs=Pools(config).files_dirs())
+        print_push_notes(biblio, save_entries(config, biblio))
+        print_kept_files(kept, in_pool)
     deleted = inside + outside
     delete_files(deleted, dryrun=papers.config.DRYRUN)
     for path in o.files:
         if os.path.isdir(path):
-            remove_empty_folders(deleted, path, keep=[config.filesdir], dryrun=papers.config.DRYRUN)
+            remove_empty_folders(deleted, path, keep=keep_dirs, dryrun=papers.config.DRYRUN)
 
 
 def _search_names(e, link, rest, nameformat):

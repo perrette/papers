@@ -1,8 +1,10 @@
 """The rules of the exchanges with the pool: the fields that each side
 keeps (key, ids, file), removals, and the auto-push setting"""
+import os
 from pathlib import Path
 from unittest.mock import patch
 
+from papers.pools import ORIGIN_DIR
 from tests.test_pools import PoolTest, NEW_BIB, SMITH_BIB, no_fetch
 
 NOTE = '[not pushed: changed in the pool too; papers sync decides]'
@@ -222,13 +224,28 @@ class TestNonLocalAutoPush(ExchangeTest):
                       'the changes)', self.out('status'))
 
     def test_add_new_entry_goes_to_the_pool(self):
+        # files mode link: the PDF stays where it is, the library and the pool entry link it there
         Path(self.path('new.bib')).write_text(NEW_BIB)
         Path(self.path('mine.pdf')).write_text('mine')
         out = self.out('add ../new.bib')
         self.assertIn('also added to pool ../pool', out)
         biblio, entries = self.bib('pool')
         pe = next(e for e in entries.values() if e['title'] == 'My own paper')
-        self.assertTrue(biblio.get_files(pe)[0].startswith(self.path('pool', 'files')))
+        self.assertEqual(biblio.get_files(pe), [self.path('mine.pdf')])
+        self.assertEqual(self.files('mine2022'), [self.path('mine.pdf')])
+
+    def test_add_new_entry_copy_mode(self):
+        self.lib('config files copy')
+        Path(self.path('new.bib')).write_text(NEW_BIB)
+        Path(self.path('mine.pdf')).write_text('mine')
+        self.out('add ../new.bib')
+        biblio, entries = self.bib('pool')
+        pe = next(e for e in entries.values() if e['title'] == 'My own paper')
+        files = biblio.get_files(pe)
+        self.assertEqual(len(files), 1)
+        self.assertTrue(files[0].startswith(self.path('pool', 'files')))
+        self.assertEqual(self.files('mine2022'), files)
+        self.assertTrue(Path(self.path('mine.pdf')).exists())
 
     def test_changes_not_pushed(self):
         self.lib('tag smith2020climate --add foo')
@@ -307,10 +324,10 @@ class TestNonLocalFileLinks(ExchangeTest):
         _, si = self.attach()
         out = self.out(f'file rm {si}')
         self.assertIn(f'smith2020climate: {LINKS_NOTE}', out)
-        self.assertIn('it is a file of a pool', out)
+        self.assertIn(f'delete {si}', out)
         self.assertEqual(self.files('smith2020climate'), [self.pool_pdf])
         self.assertEqual(self.pool_files(), [self.pool_pdf])
-        self.assertTrue(Path(si).exists())  # file rm never deletes a pool file
+        self.assertFalse(Path(si).exists())  # no entry of the pool links to it any more
 
     def test_mv(self):
         _, si = self.attach()
@@ -357,4 +374,168 @@ class TestNonLocalFileLinks(ExchangeTest):
         pool_text = Path(self.path('pool', 'papers.bib')).read_text()
         out = self.out(f'file attach smith2020climate {self.path("si.pdf")}')
         self.assertNotIn('pool', out)
+        self.assertEqual(Path(self.path('pool', 'papers.bib')).read_text(), pool_text)
+
+
+BROWN_BIB = """@article{brown2021,
+ author = {Brown, Bob},
+ doi = {10.1000/brown},
+ file = {:brown.pdf:pdf},
+ title = {Ocean heat},
+ year = {2021}
+}
+"""
+
+
+class TestNonLocalSharedLinks(ExchangeTest):
+    """a non-local library: the file links of a library entry are those of
+    its pool entry, both ways; files mode link: a PDF added stays where it
+    is, and the library and the pool entry link to it there"""
+
+    def setUp(self):
+        super().setUp()
+        self.lib('config local false -y')
+        self.lib('config files link')
+        Path(self.path('si.pdf')).write_text('supplement')
+        self.si = self.path('si.pdf')
+
+    def pool_files(self, key='Smith_2020'):
+        return self.files(key, where='pool')
+
+    def pool_folder(self):
+        return sorted(os.listdir(self.path('pool', 'files')))
+
+    def test_status(self):
+        self.assertIn('* files mode:         link (the files added stay where they are, the pool entry links '
+                      'to them there)', self.out('status'))
+
+    def test_add_link_mode_entry_new_to_the_pool(self):
+        self.lib('config files copy')
+        Path(self.path('new.bib')).write_text(NEW_BIB)
+        Path(self.path('mine.pdf')).write_text('mine')
+        self.out('add ../new.bib --link')
+        record = self.origin().get(self.entry('mine2022'))
+        self.assertEqual(self.files('mine2022'), [self.path('mine.pdf')])
+        self.assertEqual(self.pool_files(record.pool_key), [self.path('mine.pdf')])
+        self.assertEqual(self.pool_folder(), ['smith.pdf'])  # no copy
+
+    def test_add_link_mode_entry_in_the_pool(self):
+        # the pool has the paper (Brown_2021), without file: the pool entry links the PDF where it is
+        Path(self.path('brown.bib')).write_text(BROWN_BIB)
+        Path(self.path('brown.pdf')).write_text('brown')
+        out = self.out('add ../brown.bib')
+        self.assertIn('from pool ../pool', out)
+        self.assertEqual(self.files('brown2021'), [self.path('brown.pdf')])
+        self.assertEqual(self.pool_files('Brown_2021'), [self.path('brown.pdf')])
+        self.assertEqual(self.pool_folder(), ['smith.pdf'])
+
+    def test_attach_link_mode(self):
+        out = self.out(f'file attach smith2020climate {self.si}')
+        self.assertIn(LINKS_NOTE, out)
+        self.assertEqual(self.files('smith2020climate'), [self.pool_pdf, self.si])
+        self.assertEqual(self.pool_files(), [self.pool_pdf, self.si])
+        self.assertEqual(self.pool_folder(), ['smith.pdf'])
+
+    def test_attach_move_mode(self):
+        self.lib('config files move')
+        self.out(f'file attach smith2020climate {self.si}')
+        new = [f for f in self.files('smith2020climate') if f != self.pool_pdf]
+        self.assertEqual(len(new), 1)
+        self.assertTrue(new[0].startswith(self.path('pool', 'files')), new)
+        self.assertEqual(self.pool_files(), self.files('smith2020climate'))
+        self.assertFalse(os.path.exists(self.si))
+
+    def test_loaded_link_not_sent(self):
+        # a link that the library had when loaded and the pool never had (from when it was local) stays
+        # in the library only; the links added by a command are sent
+        Path(self.path('lib', 'files')).mkdir(exist_ok=True)
+        Path(self.path('lib', 'files', 'old.pdf')).write_text('old')
+        self.edit_lib('file = {', 'file = {:files/old.pdf:pdf;')
+        self.out(f'file attach smith2020climate {self.si}')
+        self.assertEqual(self.pool_files(), [self.pool_pdf, self.si])
+        self.assertIn(self.path('lib', 'files', 'old.pdf'), self.files('smith2020climate'))
+
+    def test_pull_removes_the_links_the_pool_removed(self):
+        Path(self.path('lib', 'files')).mkdir(exist_ok=True)
+        Path(self.path('lib', 'files', 'old.pdf')).write_text('old')
+        self.edit_lib('file = {', 'file = {:files/old.pdf:pdf;')
+        self.out(f'file attach smith2020climate {self.si}')
+        # the pool entry loses the link (e.g. `file detach` in another library of the pool)
+        self.papers(f'file detach {self.si}', cwd=self.path('pool'))
+        self.assertEqual(self.pool_files(), [self.pool_pdf])
+        self.assertIn('smith2020climate: changed in pool ../pool: file', self.out('pull --check'))
+        self.out('pull')
+        # the link the pool entry never had stays
+        self.assertEqual(sorted(self.files('smith2020climate')),
+                         sorted([self.path('lib', 'files', 'old.pdf'), self.pool_pdf]))
+        self.assertTrue(os.path.exists(self.si))
+        self.assertNotIn('smith2020climate', self.out('pull --check'))
+
+    def test_pull_adds_the_links_the_pool_added(self):
+        self.lib('pull')  # records the links of the pool entry
+        self.papers(f'file attach Smith_2020 {self.si} --link', cwd=self.path('pool'))
+        self.out('pull')
+        self.assertEqual(self.files('smith2020climate'), [self.pool_pdf, self.si])
+
+    def test_sync_removes_the_links_the_pool_removed(self):
+        self.out(f'file attach smith2020climate {self.si}')
+        self.papers(f'file detach {self.si}', cwd=self.path('pool'))
+        self.out('sync')
+        self.assertEqual(self.files('smith2020climate'), [self.pool_pdf])
+        self.assertEqual(self.pool_files(), [self.pool_pdf])
+
+    def test_pull_without_recorded_links_removes_nothing(self):
+        # records written before the links were recorded (or by a local library): nothing is removed
+        self.out(f'file attach smith2020climate {self.si}')
+        origin, = [Path(self.path('lib', ORIGIN_DIR, name)) for name in os.listdir(self.path('lib', ORIGIN_DIR))]
+        text = origin.read_text()
+        self.assertIn('papers-files', text)
+        origin.write_text(''.join(line for line in text.splitlines(True) if 'papers-files' not in line))
+        self.papers(f'file detach {self.si}', cwd=self.path('pool'))
+        self.out('pull')
+        self.assertIn(self.si, self.files('smith2020climate'))
+
+    def test_local_pull_unchanged(self):
+        self.out(f'file attach smith2020climate {self.si}')
+        self.lib('config local true -y')
+        self.lib('config files link')
+        self.papers(f'file detach {self.si}', cwd=self.path('pool'))
+        self.out('pull')
+        self.assertIn(self.si, self.files('smith2020climate'))
+
+    def test_file_rm_deletes_a_pool_file(self):
+        self.lib('config files move')
+        self.out(f'file attach smith2020climate {self.si}')
+        si, = [f for f in self.files('smith2020climate') if f != self.pool_pdf]
+        out = self.out(f'file rm {si} --dry-run')
+        self.assertIn(f'DRYRUN: delete {si}', out)
+        self.assertTrue(os.path.exists(si))
+        self.assertEqual(self.pool_files(), [self.pool_pdf, si])
+        out = self.out(f'file rm {si}')
+        self.assertIn(f'delete {si}', out)
+        self.assertFalse(os.path.exists(si))
+        self.assertEqual(self.pool_files(), [self.pool_pdf])
+
+    def test_file_rm_deletes_a_file_linked_in_place(self):
+        self.out(f'file attach smith2020climate {self.si}')
+        self.out(f'file rm {self.si}')
+        self.assertFalse(os.path.exists(self.si))
+        self.assertEqual(self.pool_files(), [self.pool_pdf])
+
+    def test_file_rm_keeps_a_file_of_another_pool_entry(self):
+        self.out(f'file attach smith2020climate {self.si}')
+        self.papers(f'file attach Brown_2021 {self.si} --link', cwd=self.path('pool'))
+        out = self.out(f'file rm {self.si}')
+        self.assertIn(f'kept {self.si}: an entry of the pool links to it', out)
+        self.assertTrue(os.path.exists(self.si))
+        self.assertEqual(self.pool_files(), [self.pool_pdf])
+        self.assertEqual(self.pool_files('Brown_2021'), [self.si])
+
+    def test_rm_key_deletes_no_file_of_the_pool(self):
+        self.out(f'file attach smith2020climate {self.si}')
+        pool_text = Path(self.path('pool', 'papers.bib')).read_text()
+        out = self.out('rm smith2020climate --delete-files')
+        self.assertIn('it is a file of a pool', out)
+        self.assertTrue(os.path.exists(self.si))
+        self.assertTrue(os.path.exists(self.pool_pdf))
         self.assertEqual(Path(self.path('pool', 'papers.bib')).read_text(), pool_text)
