@@ -2,7 +2,13 @@
 
 ## Install papers
 
-papers 3 (beta) is not on PyPI yet. Install it from the `v3` branch:
+papers 3 (beta) is published on PyPI as a pre-release: `--pre` installs it.
+
+```bash
+pip install --pre papers-cli
+```
+
+The development version, from the `v3` branch:
 
 ```bash
 pip install git+https://github.com/perrette/papers.git@v3

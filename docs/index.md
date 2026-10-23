@@ -16,7 +16,7 @@ Command-line tool to manage your bibliography (PDFs + BibTeX).
 ## Get started
 
 ```bash
-pip install git+https://github.com/perrette/papers.git@v3   # the 3.0 beta
+pip install --pre papers-cli    # the 3.0 beta
 cd ~/projects/my-paper
 papers init                     # a library: papers.bib and files/ here
 papers add ~/Downloads/paper.pdf

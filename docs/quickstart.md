@@ -10,10 +10,10 @@ and PDFs, and a shallow project that uses the first one as its pool.
 
 ## Install
 
-The 3.0 beta is not on PyPI yet. Install it from the `v3` branch:
+The 3.0 beta is published on PyPI as a pre-release:
 
 ```
-pip install git+https://github.com/perrette/papers.git@v3
+pip install --pre papers-cli
 ```
 
 See [Installation](installation.md) for the requirements.

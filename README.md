@@ -101,10 +101,10 @@ option.
 
 ## Install
 
-papers 3 (beta, this branch) is not on PyPI yet:
+papers 3 (beta), published on PyPI as a pre-release:
 
 ```bash
-pip install git+https://github.com/perrette/papers.git@v3
+pip install --pre papers-cli
 ```
 
 papers 2, the current release:
