@@ -34,24 +34,41 @@ by other tools. What changes:
     - papers 2 does not read the new configuration files. To go back to
       papers 2, restore `.papersconfig.json` (e.g. from the project
       repository) or `papersconfig.json.v2.bak`.
-- `papers install --global` is an error that changes nothing:
-  `papers init PATH --global` creates the default library, and
-  `papers config --global default PATH` registers an existing one.
 - Some commands and options are deprecated. They still work, print a
   warning that names the new form, and are removed in papers 4:
 
     | stop using | use instead |
     |---|---|
-    | `papers install` | `papers init`, `papers config` |
+    | `papers install` | `papers init` to create a library, `papers config` to change it |
     | `papers filecheck` | `papers file check`, `papers file fix` and the other `papers file` commands |
-    | `papers list --add-files` / `--rename` / `--copy` | `papers file attach`, `papers file rename` (`--keep-source`) |
-    | `papers list --fetch` | `papers check --fetch` |
-    | `papers list --open` | `papers open` |
+    | `papers list ... --rename` / `--copy` / `--open` / `--fetch` | `papers list ... -K` piped to `papers file rename -`, `papers open -`, `papers check --fetch -` (examples below) |
+    | `papers list KEY --add-files FILE` | `papers file attach KEY FILE` |
     | `papers doi` | `papers extract --doi-only` |
     | `papers restore-backup` | `papers restore` |
     | `--attachment` | `--attach` |
     | `-m/--mode` | `--on-duplicate` |
     | `--relative-paths` / `--absolute-paths` | `papers config paths relative` or `absolute` |
+
+    `papers install --global` is not deprecated but an error that changes
+    nothing: `papers init PATH --global` creates the default library, and
+    `papers config --global default PATH` registers an existing one.
+
+- `papers list` keeps its search options and its actions `--edit`,
+  `--delete` and `--add-tag`. The other actions are done by the command
+  that does them elsewhere, which reads the keys listed by `papers list -K`
+  with `-`:
+
+    ```
+    # papers 2                              # papers 3
+    papers list smith 2020 --rename         papers list smith 2020 -K | papers file rename -
+    papers list smith 2020 --copy           papers list smith 2020 -K | papers file rename --keep-source -
+    papers list --tag to-read --open        papers list --tag to-read -K | papers open -
+    papers list --no-file --fetch           papers list --no-file -K | papers check --fetch --fetch-all --fix-doi --fix-key --format-name -y -
+    ```
+
+    A command that reads the keys from a pipe cannot ask questions: answer
+    them with its options, as `-y` above (see
+    [Piping](listing.md#piping)).
 - The output of `papers status`, `papers init` and of the exchanges
   changed: scripts that parse it need updating.
 
@@ -62,7 +79,6 @@ by other tools. What changes:
 | the global library (`papers install --global`) | the default library, after `papers migrate`, where it is: a self-contained library that commands run outside of any project act on (`papers -C DIR` reaches it from anywhere too) |
 | a project library (`papers install --local`) with its own PDFs | a self-contained library, the same as a new `papers init`. `papers config pool PATH` makes it a shallow library of PATH, once PATH has its PDFs |
 | several project libraries with a common `filesdir` | still works (see [Comparison](shallow-libraries.md#comparison)). The model preferred in papers 3, which is also more efficient, is a shared library (a pool) and project-bound "shallow" libraries connected to it |
-| `papers install` | `papers init` to create a library, `papers config` to change it; `papers install` is a deprecated alias. `papers install --global` is an error that changes nothing: `papers init PATH --global` creates the default library (for example `papers init ~/Documents/papers/default --global`), `papers config --global default PATH` registers an existing library |
 
 ## What happens on the first run
 
@@ -179,10 +195,10 @@ exchanges.
 
 ## What else changed
 
-- `papers init` replaces `papers install`: it asks no questions, and fails
-  if the folder has a library already (use `papers config`). By default it
-  creates a self-contained library, which keeps its own PDFs, as in
-  papers 2; `papers init --pool PATH` creates a shallow library.
+- `papers init` asks no questions, and fails if the folder has a library
+  already (use `papers config`). By default it creates a self-contained
+  library, which keeps its own PDFs, as in papers 2;
+  `papers init --pool PATH` creates a shallow library.
 - `papers config` gets and sets the settings, in the style of
   `git config` (see [Configuration](configuration.md#settings)).
 - The global configuration of papers 3 is `~/.config/papers/config.json`
@@ -190,5 +206,4 @@ exchanges.
   (`papers config --global default PATH`).
 - `papers file` groups the commands on attached files: `attach`,
   `detach`, `rm`, `mv`, `rename`, `check`, `fix`, `clean` (see
-  [Files](files.md)). They replace `papers filecheck` and the file options
-  of `papers list` (`--add-files`, `--rename`, `--copy`).
+  [Files](files.md)).
