@@ -53,7 +53,7 @@ def make_template_fields(
     - title : normalized title in lower case, separated by {title_sep} ('-' by default) with max {title_word_num} words
     - Title: same as title by with capitalized words
     - year
-    - ID : bibtex key
+    - key, ID : bibtex key
     - doi : bibtex DOI
     - doi- : slugified doi (for use in filenames)
     Each one of these needs a specific, explicit assignment below.
@@ -95,11 +95,33 @@ def make_template_fields(
         "year": year,
         "title": title,
         "Title": Title,
+        "key": get_entry_val(entry, "ID", ""),
         "ID": get_entry_val(entry, "ID", ""),
         "doi": get_entry_val(entry, "doi", ""),
         "doi_": slugify(get_entry_val(entry, "doi", "")),
         "doi_or_id": slugify(get_entry_val(entry, "doi", get_entry_val(entry, "ID", ""))),
     }
+
+
+class TemplateError(ValueError):
+    "a name or key template that cannot be formatted"
+
+
+PLACEHOLDERS = list(make_template_fields({}))
+
+
+def format_template(template, fields, kind='name'):
+    """`template` formatted with `fields` (see make_template_fields); an
+    unknown placeholder is a TemplateError that lists the available ones"""
+    try:
+        return template.format(**fields)
+    except (KeyError, IndexError) as error:
+        name = error.args[0] if isinstance(error, KeyError) else ''
+        available = ', '.join('{' + f + '}' for f in PLACEHOLDERS)
+        raise TemplateError(f'unknown placeholder {{{name}}} in the {kind} template {template!r}; '
+                            f'available: {available}') from None
+    except ValueError as error:
+        raise TemplateError(f'invalid {kind} template {template!r}: {error}') from None
 
 
 class Format:
@@ -122,7 +144,8 @@ class Format:
 
     """
     def __init__(self, template, author_num=2, title_word_num=100, title_word_size=1, title_length=100,
-                 author_sep="_", title_sep="-", unknown_strict=False, unknown_template=None):
+                 author_sep="_", title_sep="-", unknown_strict=False, unknown_template=None, kind='name'):
+        self.kind = kind  # name or key: for the errors
         self.template = template
         self.author_num = author_num
         self.author_sep = author_sep
@@ -144,9 +167,9 @@ class Format:
         fields = make_template_fields(entry, **vars(self))
 
         if self.unknown_template and self.is_unknown(entry):
-            return self.unknown_template.format(**fields)
+            return format_template(self.unknown_template, fields, self.kind + ' unknown')
 
-        return self.template.format(**fields)
+        return format_template(self.template, fields, self.kind)
 
     def __call__(self, entry):
         # Support both dict and bibtexparser v2 Entry (convert to dict for ** unpacking)
@@ -156,5 +179,5 @@ class Format:
 
 # the unknown-key fallback uses the slugified doi: a raw doi (slashes,
 # parentheses, unicode...) makes for an invalid or unwieldy bibtex key
-KEYFORMAT = Format(template='{author}{year}', author_num=2, author_sep="_", unknown_template="{doi_}")
+KEYFORMAT = Format(template='{author}{year}', author_num=2, author_sep="_", unknown_template="{doi_}", kind='key')
 NAMEFORMAT = Format(template='{authorX}_{year}_{title}', author_sep="_", title_sep="-", unknown_template="unknown_{doi_or_id}")

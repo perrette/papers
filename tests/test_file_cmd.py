@@ -38,6 +38,16 @@ class TestRename(FileTest):
         new, = self.files('one2000')
         self.assertEqual(os.stat(new).st_ino, os.stat(self.a).st_ino)
 
+    def test_key_placeholder(self):
+        self.lib('file rename --name-template {key} one2000')
+        self.assertEqual(os.path.basename(self.files('one2000')[0]), 'one2000.pdf')
+
+    def test_unknown_placeholder(self):
+        with self.assertLogs('papers', 'ERROR') as logs:
+            self.lib('file rename --name-template {xxx} one2000')
+        self.assertIn('unknown placeholder {xxx} in the name template', '\n'.join(logs.output))
+        self.assertTrue(os.path.exists(self.a))
+
     def test_stdin(self):
         with patch('sys.stdin', io.StringIO('one2000\n')):
             self.lib('file rename -')

@@ -56,12 +56,22 @@ INFO:papers:renamed file(s): 1
 ```
 
 where `--name-template` is a python template (formatted via the `.format()`
-method) with valid fields being any field available in the bibtex. Fields not
-in the bibtex will remain untouched.
+method). Its placeholders are:
+
+- `{author}`, `{Author}`, `{AUTHOR}`, `{authorX}`, `{AuthorX}`: the authors
+  (see below)
+- `{year}`, `{journal}`
+- `{title}`, `{Title}`: the title words (see the modifiers below)
+- `{key}` (or `{ID}`): the bibtex key of the entry
+- `{doi}`, `{doi_}` (the doi with `-` in place of `/`, `.` and the other
+  characters that are not letters or digits, for a file name),
+  `{doi_or_id}` (the same, or the key if the entry has no doi)
+
+Another placeholder is an error that lists these.
 
 To rename `esd-4-11-2013.pdf` as `perrette_2013.pdf`, the template should be
 `--name-template {author}_{year} --name-author-num 1`. If that happens to be
-the entry ID, `ID` also works.
+the entry key, `{key}` also works.
 
 To rename `esd-4-11-2013.pdf` as
 `2013/Perrette2013-AScalingApproachToProjectRegionalSeaLevelRiseAndItsUncertainties.pdf`,

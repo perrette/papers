@@ -1,7 +1,7 @@
 """Unit tests for papers.filename"""
 import unittest
 
-from papers.filename import Format, UNKNOWN_AUTHOR, UNKNOWN_YEAR, UNKNOWN_TITLE, listtag, make_template_fields
+from papers.filename import Format, TemplateError, UNKNOWN_AUTHOR, UNKNOWN_YEAR, UNKNOWN_TITLE, listtag, make_template_fields
 
 
 class TestFormatIsUnknown(unittest.TestCase):
@@ -62,3 +62,27 @@ class TestTitleLength(unittest.TestCase):
         fmt = Format(template='{title}', title_length=12)
         self.assertEqual(fmt({'title': 'Climate sensitivity revisited'}), 'climate')
         self.assertEqual(Format(template='{Title}', title_length=4)({'title': 'Climate'}), 'Clim')
+
+
+ENTRY = {"ID": "smith2020", "author": "Smith, John", "year": "2020", "title": "Climate"}
+
+
+class TestPlaceholders(unittest.TestCase):
+
+    def test_key(self):
+        self.assertEqual(Format(template="{key}")(ENTRY), "smith2020")
+        self.assertEqual(Format(template="{ID}")(ENTRY), "smith2020")
+
+    def test_unknown_placeholder(self):
+        with self.assertRaises(TemplateError) as cm:
+            Format(template="{year}_{xxx}")(ENTRY)
+        message = str(cm.exception)
+        self.assertIn("unknown placeholder {xxx} in the name template '{year}_{xxx}'", message)
+        self.assertIn("available: {author}", message)
+        self.assertIn("{key}", message)
+        with self.assertRaisesRegex(TemplateError, r'unknown placeholder \{foo\} in the key template'):
+            Format(template="{foo}", kind='key')(ENTRY)
+        with self.assertRaisesRegex(TemplateError, r'unknown placeholder \{\} in the name template'):
+            Format(template="{}")(ENTRY)
+        with self.assertRaisesRegex(TemplateError, 'invalid name template'):
+            Format(template="{year")(ENTRY)
