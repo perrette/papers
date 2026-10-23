@@ -1228,6 +1228,10 @@ standard input, one per line:</p>
 <td>report broken links and the files found for them (in the pool, and in the folders of <code>--search DIR</code>), files linked twice, identical files (same checksum) of an entry, and with <code>--metadata</code> a DOI of the PDF that differs from the DOI of the entry (this parses the PDFs)</td>
 </tr>
 <tr>
+<td><code>papers file fix [KEY...]</code></td>
+<td>apply the repairs that <code>papers file check</code> reports (below); <code>--search DIR</code> as for <code>check</code></td>
+</tr>
+<tr>
 <td><code>papers file clean</code></td>
 <td>remove the files of the files directory and its subfolders that no entry links to, asking for each one (<code>-y/--yes</code> does not ask)</td>
 </tr>
@@ -1238,8 +1242,9 @@ standard input, one per line:</p>
 DOI is that of a library entry, <code>add</code> attaches the file to it in the same
 way, without fetching anything (see
 <a href="../adding-entries/#entries-already-in-the-library">Adding entries</a>).</p>
-<p><code>papers file check</code> changes nothing unless <code>--fix</code> is passed. <code>--fix</code> only
-applies the repairs that cannot lose anything: paths saved by Mendeley
+<p><code>papers file check</code> changes nothing, and ends with the number of links that
+<code>papers file fix</code> can repair. <code>papers file fix</code> only applies the repairs
+that cannot lose anything: paths saved by Mendeley
 (missing leading <code>/</code>, latex symbols such as <code>{\_}</code>) are repaired when the
 repaired path exists, the second link to the same file, or to an
 identical file, is removed from the entry (the file itself stays on disk;
@@ -1320,7 +1325,7 @@ entry: put the files before --key</code>.</p>
 <h2 id="reconnecting-pdfs-and-a-bibtex">Reconnecting PDFs and a bibtex<a class="headerlink" href="#reconnecting-pdfs-and-a-bibtex" title="Permanent link">&para;</a></h2>
 <p>When the links of a library are broken because the PDFs moved (another
 library that shared the files directory moved them into a library, a folder
-was renamed, a backup was restored elsewhere...), <code>papers file check --fix</code>
+was renamed, a backup was restored elsewhere...), <code>papers file fix</code>
 looks for each missing file, without parsing any PDF:</p>
 <ol>
 <li>in a shallow library, in its pool, among the files of the pool entry of the
@@ -1345,21 +1350,22 @@ self-contained library, the file goes to the files directory as the
 <code>files</code> setting says.</p>
 <p><code>papers config pool PATH</code> links the library to the copies in PATH of the
 files that exist, and says how many links were already broken:
-<code>papers file check --fix</code> relinks them afterwards.</p>
-<p>Without <code>--fix</code>, <code>papers file check</code> reports the files it would relink, and
-where they come from. <code>--fix --dry-run</code> shows the links that <code>--fix</code> would
-change, and changes nothing.</p>
+<code>papers file fix</code> relinks them afterwards.</p>
+<p><code>papers file check</code> reports the files that <code>papers file fix</code> would relink,
+and where they come from. <code>papers file fix --dry-run</code> shows the links that
+it would change, and changes nothing.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>$ papers file check
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>alpha2000: broken link: ~/shared/a.pdf -&gt; ~/P/files/alpha_2000_paper-a.pdf (from the pool; relink with --fix)
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>b2000: broken link: ~/shared/b.pdf -&gt; ~/P/files/beta_2000_paper-b.pdf (from the pool; relink with --fix)
-<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>2 links can be relinked (papers file check --fix), 0 without a file found
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>alpha2000: broken link: ~/shared/a.pdf -&gt; ~/P/files/alpha_2000_paper-a.pdf (from the pool)
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>b2000: broken link: ~/shared/b.pdf -&gt; ~/P/files/beta_2000_paper-b.pdf (from the pool)
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>2 links can be relinked, 0 without a file found
 <a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>2 issue(s) in the files of 3 entries
-<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>$ papers file check --fix
-<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>alpha2000: relinked to ~/P/files/alpha_2000_paper-a.pdf (from the pool)
-<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>b2000: relinked to ~/P/files/beta_2000_paper-b.pdf (from the pool)
-<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>2 links relinked, 0 still broken
-<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>2 issue(s) in the files of 3 entries
-<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>$ papers file check --fix --search ~/Downloads --search /media/backup/papers
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>2 links can be repaired: `papers file fix`
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>$ papers file fix
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>alpha2000: relinked to ~/P/files/alpha_2000_paper-a.pdf (from the pool)
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>b2000: relinked to ~/P/files/beta_2000_paper-b.pdf (from the pool)
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>2 links relinked, 0 still broken
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>2 issue(s) in the files of 3 entries
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>$ papers file fix --search ~/Downloads --search /media/backup/papers
 </code></pre></div>
 <p>For PDFs whose names say nothing about the paper, <code>papers add -R DIR</code> is
 the fallback: it parses each PDF, and a PDF with the DOI of a library
@@ -1385,14 +1391,16 @@ files that no remaining entry links to may be deleted too:</p>
 files directory of the pool of the library, nor, in a shallow library, a
 file that an entry of the pool links to (see
 <a href="../pools/#shallow-libraries">Shallow libraries</a>); <code>papers rm</code> does not
-change the pool. A file that is a
+change the pool. In a shallow library, <code>--delete-files</code> is an error and
+nothing is removed: the files are the pool's, and <code>papers file rm FILE</code>
+deletes them. A file that is a
 hard link (e.g. to the file of another library) can be deleted: this only
 removes this link, and papers says so.</p>
 <h2 id="deprecated-forms">Deprecated forms<a class="headerlink" href="#deprecated-forms" title="Permanent link">&para;</a></h2>
 <p><code>papers filecheck</code> still works in v3, with a warning, and runs the
 corresponding commands: <code>--rename</code> (<code>-c</code>) is <code>papers file rename</code>
 (<code>--keep-source</code>), <code>--delete-broken</code> is <code>papers file detach --broken</code>,
-<code>--hash-check</code> and <code>--fix-mendeley</code> are <code>papers file check --fix</code>,
+<code>--hash-check</code> and <code>--fix-mendeley</code> are <code>papers file fix</code>,
 <code>--metadata-check</code> is <code>papers file check --metadata</code>, and <code>--clean-filesdir</code>
 (<code>--force</code>) is <code>papers file clean</code> (<code>--yes</code>). The file actions of
 <code>papers list</code> are deprecated too (see <a href="../listing/">Listing and searching</a>),

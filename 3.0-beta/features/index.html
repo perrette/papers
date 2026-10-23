@@ -1020,10 +1020,10 @@
 <li>undo/redo command (<code>papers undo / redo</code>)</li>
 <li>display / search / list entries: format as bibtex or key or whatever (<code>papers list ... --format line|bibtex|key</code>, or <code>-l</code>, <code>--plain</code>, <code>-K</code>)</li>
 <li>edit, remove and tag entries by key or DOI, or from a pipe (<code>papers edit</code>, <code>papers rm</code>, <code>papers tag</code>, <code>papers list ... -K | papers rm -</code>)</li>
-<li>check and fix file links (<code>papers file check [--fix]</code>, <code>papers file detach --broken</code>, <code>papers file clean</code>):<ul>
+<li>check and fix file links (<code>papers file check</code>, <code>papers file fix</code>, <code>papers file detach --broken</code>, <code>papers file clean</code>):<ul>
 <li>report broken links, files linked twice and identical files</li>
-<li>remove duplicate links (<code>--fix</code>)</li>
-<li>fix files name after a Mendeley export (<code>--fix</code>):<ul>
+<li>remove duplicate links (<code>papers file fix</code>)</li>
+<li>fix files name after a Mendeley export (<code>papers file fix</code>):<ul>
 <li>leading <code>/</code> missing is added</li>
 <li>latex characters, e.g. <code>{\_}</code> or <code>{\'{e}}</code> replaced with unicode</li>
 </ul>

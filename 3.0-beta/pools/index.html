@@ -1437,11 +1437,11 @@ PATH</code> does not create one.</p>
   is recorded, see <a href="#origin-copies">Origin copies</a>). A change that <code>add</code>
   makes to the fields of an entry the library has already is pushed only
   with auto-push;</li>
-<li><code>papers file attach</code>, <code>file rename</code> and <code>file check --fix</code> place the
+<li><code>papers file attach</code>, <code>file rename</code> and <code>file fix</code> place the
   files they handle in the same way;</li>
 <li>the file links are always pushed, whatever the <code>auto-push</code> setting: a
   command that changes the files of an entry (<code>file attach</code>, <code>file rename</code>,
-  <code>file detach</code>, <code>file rm</code>, <code>file mv</code>, <code>file check --fix</code>, <code>edit</code>...) sets
+  <code>file detach</code>, <code>file rm</code>, <code>file mv</code>, <code>file fix</code>, <code>edit</code>...) sets
   the links of the pool entry to match right away, and its line ends with
   <code>[file links also updated in pool ...]</code>. The pool entry gets the links
   that the command added, wherever they point, and the links of the
@@ -1462,8 +1462,10 @@ PATH</code> does not create one.</p>
     (<code>kept FILE: an entry of the pool links to it</code>). The PDF is removed for
     every library that uses the pool;</li>
 <li><code>papers rm KEY</code> removes the entry from the library only. The pool entry
-    and its files stay, also with <code>--delete-files</code> (which deletes the files
-    of removed entries in a self-contained library);</li>
+    and its files stay, and papers does not ask about them.
+    <code>papers rm KEY --delete-files</code> (and <code>papers list ... --delete
+    --delete-files</code>) is an error, and nothing is removed: the files of a
+    shallow library are the pool's, <code>papers file rm FILE</code> deletes them;</li>
 <li><code>pull</code> and <code>sync</code> with the pool link to the pool's files instead of
   copying them, and the library entry follows the pool entry's links: a
   link that the pool entry had at the last exchange and no longer has is
@@ -1473,8 +1475,8 @@ PATH</code> does not create one.</p>
   nothing until the next exchange;</li>
 <li>when the pool renames a file, the link breaks: it is repaired by looking
   the entry up in the pool, when the library is loaded (saved on the next
-  write) and by <code>papers file check --fix</code>. A broken link to a file outside
-  the pool is relinked to the pool's file by <code>papers file check --fix</code>
+  write) and by <code>papers file fix</code>. A broken link to a file outside
+  the pool is relinked to the pool's file by <code>papers file fix</code>
   only (see <a href="../files/#reconnecting-pdfs-and-a-bibtex">Reconnecting PDFs and a bibtex</a>).</li>
 </ul>
 <p>Deleting a file of the pool, with <code>papers file rm</code> in a shallow library or
@@ -1519,7 +1521,7 @@ with the list (pass <code>-y</code>). The files of a pool are never deleted.</p>
 <p>PATH must be an existing library without pool. Each PDF that the library
 links to must already be linked by the entry of the same paper in PATH:
 the same file, or a file of the same content. Entries without PDF need not
-be in PATH, and broken links do not count (<code>papers file check --fix</code>
+be in PATH, and broken links do not count (<code>papers file fix</code>
 relinks them afterwards). If an entry has a PDF that PATH does not have,
 nothing is changed, and the command lists the entries (the first ten, and
 the number of the others) and the command that copies their PDFs there:
@@ -1576,7 +1578,7 @@ PATH stay valid, however PATH is written.</p>
 <p><code>papers config auto-push true</code> in a shallow library makes the commands that
 change entries push them to the pool: <code>add</code>, <code>edit</code>, <code>tag</code>, <code>list
 --add-tag</code> and the other actions of <code>list</code>, <code>check</code>, <code>file attach</code>, <code>file
-rename</code>, <code>file detach</code>, <code>file rm</code>, <code>file mv</code> and <code>file check --fix</code>. After
+rename</code>, <code>file detach</code>, <code>file rm</code>, <code>file mv</code> and <code>file fix</code>. After
 the command, the entries it changed that are shared with the pool, and the
 entries new to the library, are pushed as <code>papers push KEY...</code> would push
 them, files included. The other entries are not pushed. In a
@@ -1936,7 +1938,7 @@ self-contained library, as in papers 2.</p>
   links to.</li>
 <li><code>papers file rename</code> in one library renames the shared PDF, and the
   link of the other library breaks. <code>papers file check</code> reports the broken
-  link there. <code>papers file check --fix --search FOLDER</code> relinks it if the
+  link there. <code>papers file fix --search FOLDER</code> relinks it if the
   new name is the one that the library's name template gives the entry
   (the two libraries use the same template); otherwise attach the renamed
   file with <code>papers file attach KEY FILE</code>, and remove the link with
@@ -1945,7 +1947,7 @@ self-contained library, as in papers 2.</p>
   library deletes the shared PDFs once PATH has copies, and the links of
   the other library break. Once the other library uses the same pool
   (<code>papers config pool PATH</code>, which counts the broken links),
-  <code>papers file check --fix</code> relinks them to the pool's files (see
+  <code>papers file fix</code> relinks them to the pool's files (see
   <a href="../files/#reconnecting-pdfs-and-a-bibtex">Reconnecting PDFs and a bibtex</a>).</li>
 </ul>
 <h2 id="example">Example<a class="headerlink" href="#example" title="Permanent link">&para;</a></h2>

@@ -1139,10 +1139,10 @@ remove entries, use <code>papers rm</code>.</p>
 <h2 id="checking-and-fixing-files">Checking and fixing files<a class="headerlink" href="#checking-and-fixing-files" title="Permanent link">&para;</a></h2>
 <p><code>papers file check</code> reports broken links, files linked twice, identical
 files and, with <code>--metadata</code>, DOIs of PDFs that differ from their entry's
-DOI. It changes nothing unless <code>--fix</code> is passed, which applies the safe
-repairs only. Broken links are removed with <code>papers file detach --broken</code>:</p>
+DOI. It changes nothing. <code>papers file fix</code> applies the safe repairs
+only. Broken links are removed with <code>papers file detach --broken</code>:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>papers file check
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>papers file check --fix
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>papers file fix
 <a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>papers file detach --broken
 </code></pre></div>
 <p><code>papers file rename</code> places the files in the files directory under their
