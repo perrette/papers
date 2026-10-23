@@ -16,35 +16,32 @@ papers 3 adds the following new functionalities:
   `papers file`, and older forms are deprecated (see
   [What else changed](#what-else-changed)).
 
-## What breaks
+## What changes for an existing setup
 
 The commands and options of papers 2 still exist: the forms that changed
 are deprecated, and print a warning that names the new form (see
-[What else changed](#what-else-changed)). What does not work as before:
+[What else changed](#what-else-changed)). The bibtex files do not change
+format, and stay readable by papers 2 and by other tools. What changes:
 
+- The configuration files:
+    - the configuration of a project library moves from
+      `.papersconfig.json` to `.papers/config.json` the next time papers
+      saves it. In a project repository, git shows the old file as
+      deleted; scripts that read it need the new path;
+    - `papers migrate` turns the global configuration of papers 2
+      (`~/.config/papersconfig.json` on Linux) into the configuration of
+      the global library, and renames it to `papersconfig.json.v2.bak`.
+      Until then, papers 3 keeps using it outside of libraries, with a
+      warning on every command;
+    - papers 2 does not read the new configuration files. To go back to
+      papers 2, restore `.papersconfig.json` (e.g. from the project
+      repository) or `papersconfig.json.v2.bak`.
 - `papers install --global` is an error that changes nothing:
   `papers init PATH --global` creates the default library, and
   `papers config --global default PATH` registers an existing one.
-- The configuration file of a project library moves from
-  `.papersconfig.json` to `.papers/config.json` the next time papers
-  saves it. In a project repository, git shows the old file as deleted;
-  scripts that read it need the new path.
-- `papers migrate` renames the global configuration of papers 2
-  (`~/.config/papersconfig.json` on Linux) to `papersconfig.json.v2.bak`.
-  Until then, papers 3 keeps using it outside of libraries, with a warning
-  on every command.
-- papers 2 cannot read a library that papers 3 has saved: it stops with an
-  error on the settings it does not know (`paths`, `pool`). To go back to
-  papers 2, restore the configuration file of papers 2 (from your project
-  repository, or `papersconfig.json.v2.bak` for the global library).
-- A library of papers 2.2 to 2.4 kept its git backup in `.papers/`: the
-  first backup of papers 3 moves it to the backup folder (see
+- The git backup of a library of papers 2.2 to 2.4, kept in `.papers/`,
+  moves to the backup folder on the first backup of papers 3 (see
   [Git integration](git.md)).
-- A git backup with git-lfs: papers 2 tracked the folder `files/`, which
-  git-lfs does not apply to the files in it, so the PDFs were stored as
-  plain git objects. papers 3 tracks `files/**`, and the next save moves
-  the PDFs to LFS. The older commits keep their copies, so the backup
-  grows once.
 - The output of `papers status`, `papers init` and of the exchanges
   changed: scripts that parse it need updating.
 
