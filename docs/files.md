@@ -159,7 +159,7 @@ papers file detach files/volume.pdf --key smith2020    # from one chapter
 papers file detach --key smith2020                     # all its links
 papers file rm files/old-version.pdf
 papers file rm -r files/2013 --dry-run
-papers list --tag draft -K | papers file detach --broken --key -
+papers list --tag draft --detach-broken
 ```
 
 ## Reconnecting PDFs and a bibtex
