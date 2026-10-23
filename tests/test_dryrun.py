@@ -5,7 +5,7 @@ from pathlib import Path
 
 from papers.config import DATA_DIR
 
-from tests import TEST_GLOBAL_POOL
+from tests import TEST_DEFAULT_LIBRARY
 from tests.common import ConfigTest
 from tests.test_pools import NEW_BIB
 
@@ -31,7 +31,7 @@ class DryRunTest(ConfigTest):
         return self.papers(cmd, cwd=self.path('lib'), **kw)
 
     def assertNoWrites(self, cmd):
-        dirs = [self.dir, TEST_GLOBAL_POOL, DATA_DIR]
+        dirs = [self.dir, TEST_DEFAULT_LIBRARY, DATA_DIR]
         before = snapshot(*dirs)
         self.lib(cmd)
         after = snapshot(*dirs)
@@ -39,21 +39,18 @@ class DryRunTest(ConfigTest):
         self.assertEqual(changed, [], f'{cmd} wrote these files')
 
 
-class TestNonLocalDryRun(DryRunTest):
-    """a library that is not local, with the global pool, which does not
-    exist yet"""
+class TestShallowDryRun(DryRunTest):
+    "a shallow library, and its pool"
 
     def setUp(self):
         super().setUp()
-        self.papers('init lib --git')
-        self.lib('config local false -y')
+        self.papers('init pool --git')
+        self.papers('init lib --git --pool ../pool')
         Path(self.path('new.bib')).write_text(NEW_BIB)
         Path(self.path('mine.pdf')).write_text('mine')
-        self.assertFalse(os.path.exists(TEST_GLOBAL_POOL))
 
     def test_add(self):
         self.assertNoWrites('add ../new.bib --dry-run')
-        self.assertFalse(os.path.exists(TEST_GLOBAL_POOL))
 
     def test_file_attach_and_rename(self):
         # an entry of the library, and a file to attach or rename
@@ -61,15 +58,15 @@ class TestNonLocalDryRun(DryRunTest):
         self.assertNoWrites(f'file attach mine2022 {self.path("mine.pdf")} --dry-run')
         self.assertNoWrites('file rename --dry-run')
         self.assertNoWrites('push --dry-run')
-        self.assertFalse(os.path.exists(TEST_GLOBAL_POOL))
 
     def test_add_then_dry_runs(self):
         self.lib('add ../new.bib')
-        self.assertTrue(os.path.exists(TEST_GLOBAL_POOL))
+        self.assertIn('mine2022', Path(self.path('pool', 'papers.bib')).read_text())
         Path(self.path('mine.pdf')).write_text('mine')
+        self.papers('init other --no-git')
         for cmd in ['add ../new.bib --on-duplicate update', 'tag mine2022 --add x', 'rm mine2022 --keep-files',
-                    'check -y', 'pull', 'push', 'sync', 'undo', 'restore',
-                    'config local true', 'config pool none', 'install --edit']:
+                    'check -y', 'pull', 'push', 'sync', 'undo', 'restore', 'push --pool ../other --all',
+                    'pull --pool ../pool --all', 'config pool none', 'install --edit']:
             self.assertNoWrites(cmd + ' --dry-run')
 
     def test_undo_redo(self):
@@ -82,10 +79,10 @@ class TestNonLocalDryRun(DryRunTest):
         self.assertNoWrites('undo --dry-run')
 
 
-class TestLocalDryRun(DryRunTest):
+class TestSelfContainedDryRun(DryRunTest):
 
     def test_undo_without_git(self):
-        self.papers('init lib --no-git --local')
+        self.papers('init lib --no-git')
         Path(self.path('new.bib')).write_text(NEW_BIB)
         Path(self.path('mine.pdf')).write_text('mine')
         self.lib('add ../new.bib')

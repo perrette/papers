@@ -117,9 +117,11 @@ class TestRemovals(ExchangeTest):
 
 
 class TestAutoPush(ExchangeTest):
+    "a shallow library with auto-push"
 
     def setUp(self):
         super().setUp()
+        self.lib('config pool ../pool -y')
         self.lib('config auto-push true')
 
     def test_tag(self):
@@ -160,11 +162,12 @@ class TestAutoPush(ExchangeTest):
         self.lib(f'file attach smith2020climate {self.path("si.pdf")}')
         biblio, entries = self.bib('pool')
         self.assertEqual(len(biblio.get_files(entries['Smith_2020'])), 2)
-        # detach: the pool keeps its links (file is not merged)
+        # detach: the file links of a shallow library are those of the pool entry
         self.lib('file detach --key smith2020climate')
         self.assertEqual(self.files('smith2020climate'), [])
         biblio, entries = self.bib('pool')
-        self.assertEqual(len(biblio.get_files(entries['Smith_2020'])), 2)
+        self.assertEqual(biblio.get_files(entries['Smith_2020']), [])
+        self.assertTrue(os.path.exists(self.pool_pdf))  # not deleted
 
     def test_only_the_entries_changed(self):
         self.edit_pool('title = {Ocean heat}', 'title = {Ocean heat},\n note = {pool}')
@@ -213,12 +216,12 @@ class TestAutoPushOff(ExchangeTest):
         self.assertEqual(self.smith('pool')['keywords'], 'foo')
 
 
-class TestNonLocalAutoPush(ExchangeTest):
-    "a non-local library: add puts the new entries in the pool, the changes follow auto-push"
+class TestShallowAutoPush(ExchangeTest):
+    "a shallow library: add puts the new entries in the pool, the changes follow auto-push"
 
     def setUp(self):
         super().setUp()
-        self.lib('config local false -y')
+        self.lib('config pool ../pool -y')
 
     def test_status(self):
         self.assertIn('* auto-push:          false (add adds the new entries to the pool; push or sync sends '
@@ -267,14 +270,14 @@ class TestNonLocalAutoPush(ExchangeTest):
 LINKS_NOTE = 'file links also updated in pool ../pool'
 
 
-class TestNonLocalFileLinks(ExchangeTest):
-    """a non-local library, auto-push off: the commands that change the file
+class TestShallowFileLinks(ExchangeTest):
+    """a shallow library, auto-push off: the commands that change the file
     links of an entry update the links of the pool entry right away"""
 
     def setUp(self):
         super().setUp()
         self.lib('config files copy')
-        self.lib('config local false -y')
+        self.lib('config pool ../pool -y')
         Path(self.path('si.pdf')).write_text('supplement')
 
     def pool_files(self, key='Smith_2020'):
@@ -371,7 +374,7 @@ class TestNonLocalFileLinks(ExchangeTest):
         self.assertEqual(self.unlinked_in_pool(), [])
 
     def test_local_library_is_unaffected(self):
-        self.lib('config local true -y')
+        self.lib('config pool none -y')
         pool_text = Path(self.path('pool', 'papers.bib')).read_text()
         out = self.out(f'file attach smith2020climate {self.path("si.pdf")}')
         self.assertNotIn('pool', out)
@@ -388,14 +391,14 @@ BROWN_BIB = """@article{brown2021,
 """
 
 
-class TestNonLocalSharedLinks(ExchangeTest):
-    """a non-local library: the file links of a library entry are those of
+class TestShallowSharedLinks(ExchangeTest):
+    """a shallow library: the file links of a library entry are those of
     its pool entry, both ways; files mode link: a PDF added stays where it
     is, and the library and the pool entry link to it there"""
 
     def setUp(self):
         super().setUp()
-        self.lib('config local false -y')
+        self.lib('config pool ../pool -y')
         self.lib('config files link')
         Path(self.path('si.pdf')).write_text('supplement')
         self.si = self.path('si.pdf')
@@ -490,7 +493,7 @@ class TestNonLocalSharedLinks(ExchangeTest):
         return origin
 
     def test_record_keeps_the_file_field(self):
-        # the record of a non-local library keeps the pool entry's links in its file field
+        # the record of a shallow library keeps the pool entry's links in its file field
         self.out(f'file attach smith2020climate {self.si}')
         record = self.origin().get(self.entry('smith2020climate'))
         self.assertIsNotNone(record.files)
@@ -499,7 +502,7 @@ class TestNonLocalSharedLinks(ExchangeTest):
         self.assertNotIn('papers-files', self.origin_file().read_text())
 
     def test_pull_without_recorded_links_removes_nothing(self):
-        # records written before the links were recorded (or by a local library): nothing is removed
+        # records written before the links were recorded (or by a self-contained library): nothing is removed
         self.out(f'file attach smith2020climate {self.si}')
         origin = self.origin_file()
         text = origin.read_text()
@@ -523,12 +526,12 @@ class TestNonLocalSharedLinks(ExchangeTest):
 
     def test_local_pull_unchanged(self):
         self.out(f'file attach smith2020climate {self.si}')
-        self.lib('config local true -y')
+        self.lib('config pool none -y')
         self.lib('config files link')
         self.papers(f'file detach {self.si}', cwd=self.path('pool'))
         self.out('pull')
         self.assertIn(self.si, self.files('smith2020climate'))
-        self.assertIsNone(self.origin().get(self.entry('smith2020climate')).files)  # a local library: no file field
+        self.assertIsNone(self.origin().get(self.entry('smith2020climate')).files)  # a self-contained library: no file field
 
     def test_file_rm_deletes_a_pool_file(self):
         self.lib('config files move')

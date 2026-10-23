@@ -211,10 +211,10 @@ def resolve_install(config, o, probe=None, asker=None, target=None):
     return InstallPlan(
         config=config,
         create_bibtex=bool(config.bibtex) and not os.path.exists(config.bibtex),
-        # a library that is not local places its files in the pool: its files
+        # a shallow library places its files in the pool: its files
         # directory is created when a file is written there
         create_filesdir=bool(config.filesdir) and not os.path.exists(config.filesdir)
-                        and (config.local or not config.has_pool()),
+                        and not config.has_pool(),
         remove_config_files=remove_config_files,
         init_git=config.git,
         snapshot=config.git and bool(config.bibtex),
@@ -222,33 +222,14 @@ def resolve_install(config, o, probe=None, asker=None, target=None):
 
 
 def _resolve_pool(config, o, fresh):
-    """the pool and local settings of a library: --pool PATH|none (a
-    relative path is relative to the library), else for a new library the
-    global pool setting, written as it is there (with ~); --local, else the
-    default of the global configuration. A library without pool is local.
-    In the directory of the global pool, the new library is the pool
-    itself: it has no pool, and is local."""
+    """the pool setting of a library: --pool PATH|none (a relative path is
+    relative to the library), else none for a new library (self-contained:
+    its own entries and files)"""
     pool = getattr(o, 'pool', None)
-    local = getattr(o, 'local_setting', None)
     if pool is not None:
         config.set('pool', pool_setting(pool, str(config.configdir)))
     elif fresh:
-        global_pool = config.machine.pool_path()
-        if global_pool is None:
-            config.set('pool', NO_POOL)
-        elif os.path.realpath(global_pool) == os.path.realpath(config.configdir):
-            config.set('pool', NO_POOL)
-            print('this is the global pool: the library has no pool, and its files are its own (local)')
-            local = True
-        else:
-            config.set('pool', config.machine.pool)
-    if local is None and fresh:
-        local = config.inherited('local')
-    if local is not None:
-        config.set('local', bool(local))
-    if not config.local and config.pool_path() is None:
-        print('pool none: the library is local (its files are in its own files directory)')
-        config.set('local', True)
+        config.set('pool', NO_POOL)
 
 
 def apply_install(plan):

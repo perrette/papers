@@ -58,26 +58,28 @@ class TestPushConflict(PoolTest):
 
 class TestExchange(PoolTest):
 
-    def exchange(self):
+    def exchange(self, pool=None):
+        "the Exchange of lib, with a pool setting"
         config = Config.load(self.path('lib', '.papersconfig.json'))
+        if pool:
+            config.set('pool', pool)
         return Exchange(config, Biblio.load(config.bibtex, config.filesdir))
 
     def test_to_local_without_filesdir(self):
         exchange = self.exchange()
         exchange.biblio.filesdir = None
         with self.assertRaisesRegex(PapersExit, 'no files directory'):
-            exchange.to_local([], [])
+            exchange.own_files([], [])
 
     def test_pool_without_filesdir(self):
-        exchange = self.exchange()
+        exchange = self.exchange('../pool')  # a shallow library
         exchange.pools.pool().config.filesdir = None
-        exchange.config.local = False
         with self.assertRaisesRegex(PoolError, 'has no files directory'):
             use_pool_files(exchange.config, exchange.pools)
 
     def test_repair_links_without_pool_entry_or_file(self):
         self.take_smith()
-        exchange = self.exchange()
+        exchange = self.exchange('../pool')
         e = exchange.biblio.entries[0]
         # a broken link into the pool, and the pool entry has no file the entry does not link to
         exchange.biblio.set_files(e, [self.pool_pdf, self.path('pool', 'files', 'renamed.pdf')])
@@ -92,7 +94,7 @@ class TestExchange(PoolTest):
 class TestPoolLookups(PoolTest):
 
     def pool(self):
-        return Pools(Config.load(self.path('lib', '.papersconfig.json'))).pool()
+        return Pools(Config.load(self.path('lib', '.papersconfig.json'))).get(self.path('pool'))
 
     def test_repr_and_label(self):
         pool = self.pool()
@@ -159,8 +161,8 @@ class TestPullEntries(PoolTest):
         self.assertTrue(files[0].startswith(self.path('lib', 'files')))
         self.assertTrue(os.path.samefile(files[0], self.pool_pdf))  # a hard link
 
-    def test_non_local_links(self):
-        self.lib('config local false -y')
+    def test_shallow_links(self):
+        self.lib('config pool ../pool -y')
         self.lib('config files copy')
         self.lib('pull Smith_2020')
         self.assertEqual(self.files('Smith_2020'), [self.pool_pdf])
@@ -193,18 +195,27 @@ class TestPullEntries(PoolTest):
         self.assertEqual(sorted(self.bib()[1]), ['Brown_2021', 'smith2020climate'])
 
     def test_other_pool(self):
-        self.papers('init other --no-git --pool none')
+        self.papers('init other --no-git')
         Path(self.path('other', 'papers.bib')).write_text(NEW_BIB.replace(' file = {:mine.pdf:pdf},\n', ''))
         self.lib('pull --pool ../other mine2022')
-        self.assertIsNone(self.origin().get(self.entry('mine2022')))  # one-time: shared with no pool
+        record = self.origin().get(self.entry('mine2022'), '../other')  # recorded for ../other
+        self.assertEqual(record.pool_key, 'mine2022')
+        self.assertIsNone(self.origin().get(self.entry('mine2022'), '../pool'))
+        # a later pull without KEY: the entries exchanged with ../other, merged three-way
+        Path(self.path('other', 'papers.bib')).write_text(
+            NEW_BIB.replace(' file = {:mine.pdf:pdf},\n', ' volume = {3},\n'))
+        self.edit_lib('year = {2022}', 'journal = {J. Mine},\n year = {2022}')
+        self.lib('pull --pool ../other')
+        e = self.entry('mine2022')
+        self.assertEqual((e['volume'], e['journal']), ('3', 'J. Mine'))  # no conflict
         self.lib('pull --pool ../other --all')
         self.assertEqual(list(self.bib()[1]), ['mine2022'])
 
     def test_no_pool(self):
-        self.lib('config pool none')
-        with self.assertRaisesRegex(PapersExit, 'no pool'):
-            self.lib('pull Smith_2020')
-        self.assertIn('pull: nothing to do', self.out('pull'))
+        for cmd in ['pull Smith_2020', 'pull', 'push --all', 'sync']:
+            with self.assertRaisesRegex(PapersExit, 'this library has no pool: give one with `--pool PATH`'):
+                self.papers(cmd, cwd=self.path('lib'))
+        self.assertEqual(self.bib()[1], {})
 
 
 class TestSync(PoolTest):
@@ -237,15 +248,18 @@ class TestSync(PoolTest):
         self.assertEqual(self.out('sync'), 'nothing to sync with pool ../pool (3 entries unchanged)')
 
     def test_nothing_shared(self):
-        self.papers('init other --no-git --pool none')
+        self.papers('init other --no-git')
         out = self.out('sync --pool ../other')
-        self.assertEqual(out, 'nothing to sync with pool ../other: not the pool of the library, so no entries are shared '
-                              'with it (`papers sync --pool PATH KEY...` or `--all` exchanges entries with it once)')
+        self.assertEqual(out, 'nothing to sync with pool ../other: no entries shared with it '
+                              '(`papers sync --pool ../other --all` adds the entries missing on each side)')
         self.assertEqual(self.bib('other')[1], {})
-        self.assertIn('push to pool ../other: not the pool of the library, so no entries are shared with it',
-                      self.out('push --pool ../other'))
-        self.assertIn('pull from pool ../other: not the pool of the library', self.out('pull --pool ../other'))
+        self.assertEqual('push to pool ../other: no entries shared with it (`papers push --pool ../other KEY` '
+                         'or `papers push --pool ../other --all` adds entries to it)', self.out('push --pool ../other'))
+        self.assertEqual('pull from pool ../other: nothing to do', self.out('pull --pool ../other'))
         self.assertEqual(self.bib('other')[1], {})
+        # once exchanged, the entries are shared with it
+        self.lib('push --pool ../other mine2022')
+        self.assertEqual(self.out('sync --pool ../other'), 'nothing to sync with pool ../other (1 entry unchanged)')
 
     def test_not_found_only_for_keys_given(self):
         self.edit_pool('@article{Smith_2020,', '@article{Other_2020,')

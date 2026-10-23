@@ -55,18 +55,11 @@ def set_format_config_from_cmd(o, config, kind):
         setattr(fmt, name.split('.')[1].replace('-', '_'), value)
 
 
-def init_hint(config):
-    "how to create a library, here or for the global pool"
-    pool = config.machine.pool_path()
-    if pool is None:
-        return "Create a library with `papers init`"
-    return f"Create a library with `papers init` (here) or `papers init {short_home(pool)}` (the global pool)"
-
-
 def no_library_message(config):
-    pool = config.machine.pool_path()
-    where = f", and the global pool ({pool}) is not a library" if pool else ""
-    return f"no library found in this directory or above{where}. {init_hint(config)}"
+    "the error of a command that needs a library, run outside of any library"
+    default = config.machine.default_path()
+    where = f" (the default library {short_home(default)} is not a library)" if default else ""
+    return f"no library found here{where}: `papers init`"
 
 
 def check_install(parser, o, config, bibtex_must_exist=True):
@@ -223,31 +216,30 @@ def _one_entry(biblio, key):
 
 
 def library_pools(config):
-    """the pools of the library. In a non-local library, the files that the
+    """the pools of the library. In a shallow library, the files that the
     command places go to the pool, as with `add` (see
     papers.pools.use_pool_files)."""
     pools = Pools(config)
-    if config.file and not config.local:
+    if config.shallow:
         use_pool_files(config, pools)
     return pools
 
 
 def auto_push_entries(exchange):
-    """the entries that the command pushes to the pool on its own (see
-    Biblio.changed_entries): with auto-push, the entries it changed that
-    are shared with the pool (origin record) and the entries new to the
-    library; in a non-local library, the entries new to the library in any
-    case (the pool holds their files). Removed entries are never pushed."""
+    """the entries that a command pushes to the pool of a shallow library
+    on its own (see Biblio.changed_entries): the entries new to the library
+    (the pool holds their files), and with auto-push, the entries it
+    changed that are shared with the pool (origin record). Removed entries
+    are never pushed. A self-contained library pushes nothing on its own
+    (the auto-push setting does not apply)."""
     config = exchange.config
-    if not config.file or not config.has_pool():
+    if not config.shallow:
         return []
     new, modified = exchange.biblio.changed_entries()
     if config.auto_push:
         shared = [e for e in modified if exchange.origin.get(e, exchange.pool_id) is not None]
         return new + shared
-    if not config.local:
-        return new
-    return []
+    return new
 
 
 def links_changed(biblio):
@@ -260,13 +252,13 @@ def links_changed(biblio):
 def push_changed(exchange):
     """push the entries of auto_push_entries to the pool (not saved): an
     entry that changed in the pool too is not pushed (`papers sync`
-    decides). In a non-local library, the file links of the entries whose
+    decides). In a shallow library, the file links of the entries whose
     links changed are also updated in the pool, whatever auto-push says
     (see Exchange.push_links). Return the report of the push (see
     Exchange.push)."""
     entries = auto_push_entries(exchange)
     config = exchange.config
-    links = links_changed(exchange.biblio) if config.file and config.has_pool() and not config.local else []
+    links = links_changed(exchange.biblio) if config.shallow else []
     if not entries and not links:
         return []
     try:
@@ -287,7 +279,7 @@ def save_entries(config, biblio, exchange=None):
     push_changed pushed them. Return the notes of the push, {lower-case
     key: note}, for _print_biblio_diff or print_push_notes."""
     if exchange is None:
-        if not config.file or not config.has_pool() or (config.local and not config.auto_push):
+        if not config.shallow:
             savebib(biblio, config)
             return {}
         exchange = Exchange(config, biblio)

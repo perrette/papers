@@ -38,7 +38,7 @@ class TestGitIdentity(unittest.TestCase):
 
     def test_no_identity(self):
         os.makedirs(os.path.join(self.dir, 'lib'))
-        res = self.papers('init', '--git', '--local')
+        res = self.papers('init', '--git')
         self.assertNotIn('identity', res.stderr)
         res = self.papers('add', '../new.bib')
         self.assertNotIn('identity', res.stderr)
@@ -55,7 +55,7 @@ class TestGitIdentity(unittest.TestCase):
         with open(self.gitconfig, 'a') as f:
             f.write('\tname = Jane Doe\n\temail = jane@example.org\n')
         os.makedirs(os.path.join(self.dir, 'lib'))
-        self.papers('init', '--git', '--local')
+        self.papers('init', '--git')
         self.papers('add', '../new.bib')
         log = self.papers('git', 'log', '--format=%an <%ae>|%cn <%ce>').stdout.splitlines()
         self.assertEqual(set(log), {'Jane Doe <jane@example.org>|Jane Doe <jane@example.org>'})
@@ -64,6 +64,6 @@ class TestGitIdentity(unittest.TestCase):
         with open(self.gitconfig, 'a') as f:
             f.write('\tname = Jane Doe\n')
         os.makedirs(os.path.join(self.dir, 'lib'))
-        self.papers('init', '--git', '--local')
+        self.papers('init', '--git')
         log = self.papers('git', 'log', '--format=%an <%ae>').stdout.splitlines()
         self.assertEqual(log, ['Jane Doe <papers@localhost>'])

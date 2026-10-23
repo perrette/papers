@@ -166,8 +166,8 @@ def file_rmcmd(parser, o, config):
     _detach(biblio, links)
     removed = [f for _, files in links for f in files]
     keep_dirs = [config.filesdir]
-    if config.file and not config.local and config.has_pool():
-        # a non-local library: the links of the pool entries were removed too
+    if config.shallow:
+        # a shallow library: the links of the pool entries were removed too
         # (save_entries); a pool file that no entry of the pool or of the
         # library links to any more is deleted
         exchange = Exchange(config, biblio)
@@ -271,7 +271,7 @@ def _source(source):
 
 
 def file_checkcmd(parser, o, config):
-    nameformat = config.nameformat  # the library's own (a non-local library places files with the pool's)
+    nameformat = config.nameformat  # the library's own (a shallow library places files with the pool's)
     place = o.fix and not papers.config.DRYRUN
     pools = library_pools(config) if place else Pools(config)
     biblio = get_biblio(config)
@@ -280,7 +280,7 @@ def file_checkcmd(parser, o, config):
     exchange = Exchange(config, biblio, pools)
     search = SearchFolders(o.search or [])
 
-    # the links to pool files repaired when a non-local library is loaded (already linked), then the others
+    # the links to pool files repaired when a shallow library is loaded (already linked), then the others
     loaded = [(e, found, dict.fromkeys(found, 'pool')) for e, found in getattr(biblio, 'repaired_links', [])
               if id(e) in selected]
     plans, unclear, count = plan_relinks(exchange, entries, search, nameformat)

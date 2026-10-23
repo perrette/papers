@@ -9,7 +9,6 @@ import subprocess as sp
 from papers.config import Config, MachineConfig
 from papers.config import CONFIG_FILE, CONFIG_FILE_LOCAL
 
-from tests import TEST_GLOBAL_POOL
 from tests.common import (paperscmd, PAPERSCMD, BaseTest as TestBaseInstall, BibTest, ConfigTest,
                           InitTest, GitLFSInitTest)
 import tests.test_undo as test_undo
@@ -269,18 +268,18 @@ class TestInstallEditor(TestBaseInstall):
 class TestDefaultLocal(InitTest):
     def test_install(self):
         self.assertTrue(self._exists(CONFIG_FILE_LOCAL))
-        self.assertTrue(self.config.local)
+        self.assertFalse(self.config.shallow)
         self.papers('install --edit')
         self.assertTrue(self._exists(CONFIG_FILE_LOCAL))
         config = Config.load(self._path(CONFIG_FILE_LOCAL))
-        self.assertTrue(config.local)
+        self.assertFalse(config.shallow)
 
 class TestDefaultLocal2(GlobalInstallTest):
     def test_install(self):
         # v3: install --global writes a library configuration next to the bibtex
         self.assertFalse(os.path.exists(CONFIG_FILE))
         self.assertTrue(self._exists(CONFIG_FILE_LOCAL))
-        self.assertTrue(self.config.local)
+        self.assertFalse(self.config.shallow)
         self.papers('install --edit')
         self.assertTrue(self._exists(CONFIG_FILE_LOCAL))
         self.assertFalse(os.path.exists(CONFIG_FILE))
@@ -294,7 +293,7 @@ class TestDefaultScopeIsLocal(TestBaseInstall):
         self.assertTrue(self._exists(CONFIG_FILE_LOCAL))
         self.assertFalse(os.path.exists(CONFIG_FILE))
         config = Config.load(self._path(CONFIG_FILE_LOCAL))
-        self.assertTrue(config.local)
+        self.assertFalse(config.shallow)
 
 
 class TestGlobalInstall(TestBaseInstall):
@@ -306,16 +305,16 @@ class TestGlobalInstall(TestBaseInstall):
         self.papers(f'install --no-prompt --global --bibtex {self.mybib} --files {self.filesdir}')
         self.assertTrue(self._exists(self.mybib))
         self.assertTrue(self._exists(self.filesdir))
-        # v3: a library configuration next to the bibtex, registered as the global pool
+        # v3: a library configuration next to the bibtex, registered as the default library
         self.assertFalse(os.path.exists(CONFIG_FILE))
         config = Config.load(self._path(CONFIG_FILE_LOCAL))
         self.assertEqual(config.bibtex, os.path.abspath(self._path(self.mybib)))
         self.assertEqual(config.filesdir, os.path.abspath(self._path(self.filesdir)))
-        self.assertEqual(os.path.realpath(MachineConfig.load().pool_path()),
+        self.assertEqual(os.path.realpath(MachineConfig.load().default_path()),
                          os.path.realpath(self.temp_dir.name))
-        # the global pool has no pool, and its files are its own
+        # the default library is self-contained: no pool, its own files
         self.assertEqual(config.pool, 'none')
-        self.assertTrue(config.local)
+        self.assertFalse(config.shallow)
 
 
 class TestGitInstall(TestBaseInstall):
@@ -534,8 +533,8 @@ class TestInstallIsInit(ConfigTest):
 
     def test_install_is_init(self):
         self.papers('install --no-prompt --no-git')
-        self.assertEqual(self.json()['pool'], TEST_GLOBAL_POOL)  # the global pool, written
-        self.assertIn('local', self.json())
+        self.assertEqual(self.json()['pool'], 'none')  # self-contained, as with init
+        self.assertNotIn('local', self.json())
 
 
 class TestReinstallSubfolder(BibTest):

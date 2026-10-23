@@ -1,40 +1,51 @@
 """papers pull, push, sync, export"""
-import os
-
 from papers.identifiers import read_selection, select_entries, select_some
 from papers.library import get_biblio, savebib
-from papers.pools import Exchange, PoolError, export
+from papers.pools import Exchange, PoolError, NO_POOL_MESSAGE, export
 from papers.utils import PapersExit
-from papers.cli.common import duplicate_resolver, _entries_or_all, exchange_lines, print_exchange, save_exchange
+from papers.cli.common import (duplicate_resolver, _entries_or_all, exchange_lines, print_exchange, save_exchange,
+                               library_pools, push_changed, push_notes, print_push_notes)
+
+
+def _exchange(config, o):
+    """the library of an exchange (pull, push, sync): the library given with
+    --pool PATH or the pool of the library (an error if the library has
+    none), and the Exchange. A shallow library that exchanges with another
+    library than its pool places the files it takes in its pool, as `add`
+    does (see papers.pools.use_pool_files)."""
+    if not getattr(o, 'pool', None) and not config.has_pool():
+        raise PapersExit(NO_POOL_MESSAGE)
+    pools = None
+    if getattr(o, 'pool', None) and config.shallow:
+        try:
+            pools = library_pools(config)
+        except PoolError as error:
+            raise PapersExit(f'{error} (nothing was changed)')
+    biblio = get_biblio(config)
+    exchange = Exchange(config, biblio, pools)
+    return biblio, exchange
 
 
 def _source(exchange, o, create=False):
-    """the pool of the command: --pool PATH, else the library's (None if it
-    has none, or the global pool does not exist yet and not create)"""
+    """the pool of the command: --pool PATH, else the library's (create:
+    created if it does not exist yet)"""
     if getattr(o, 'pool', None):
         return exchange.pools.get(o.pool, create=create)
     if create:
         return exchange.pools.target()
-    pool = exchange.pools.pool(quiet=True)
-    if pool is None:
-        _check_pool(exchange)
-    return pool
-
-
-def _check_pool(exchange):
-    """the pool of the library is missing or cannot be read: an error (once,
-    rather than `not found` for each entry), unless the library has no
-    pool, or the global pool was not created yet and nothing came from it"""
-    pools = exchange.pools
-    path = pools.path()
-    if path is None:
-        return
-    if pools._is_global(path) and not os.path.exists(path) and not exchange.origin.records(pools._id(path)):
-        return
     try:
-        pools.resolve(path)
+        return exchange.pools.resolve(exchange.pools.path())
     except PoolError as error:
         raise PapersExit(f'{error} (nothing was changed)')
+
+
+def _forward(exchange, pool):
+    """a shallow library that took entries from another library than its
+    pool: they go to its pool too, as with `add` (see
+    papers.cli.common.push_changed); return the notes of that push"""
+    if not exchange.config.shallow or exchange.is_own(pool):
+        return {}
+    return push_notes(push_changed(exchange))
 
 
 def _pull_selection(exchange, pool, args, take_all=False):
@@ -49,9 +60,6 @@ def _pull_selection(exchange, pool, args, take_all=False):
     named = list(entries) if selection else []
     new = []
     if missing:
-        if pool is None:
-            raise PapersExit('\n'.join(f'{arg}: no entry found' for arg in missing)
-                             + '\n(the library has no pool to look in; nothing was changed)')
         for pe in select_entries(pool.biblio, missing):
             e = exchange.library_entry(pe, pool)
             if e is not None:
@@ -61,8 +69,6 @@ def _pull_selection(exchange, pool, args, take_all=False):
             elif not any(pe is x for x in new):
                 new.append(pe)
     if take_all:
-        if pool is None:
-            raise PapersExit('--all: the library has no pool')
         new.extend(pe for pe in exchange.missing(pool) if not any(pe is x for x in new))
     return entries, new, named
 
@@ -72,46 +78,32 @@ def _nothing_shared(o):
     return not o.entries and not o.all
 
 
-def _one_time(exchange, o, pool):
-    "--pool PATH that is not the pool of the library: a one-time exchange, without origin records"
-    return bool(getattr(o, 'pool', None)) and not exchange.is_own(pool)
-
-
-def _one_time_note(kind, pool):
-    "the message of pull, push or sync --pool PATH without KEY or --all, PATH not being the library's pool"
-    verb = {'pull': 'takes entries from it', 'push': 'sends entries to it', 'sync': 'exchanges entries with it'}[kind]
-    prep = {'pull': 'from', 'push': 'to', 'sync': 'with'}[kind]
-    return (f'{kind} {prep} {pool.label}: not the pool of the library, so no entries are shared with it '
-            f'(`papers {kind} --pool PATH KEY...` or `--all` {verb} once)')
-
-
 def _pull(o, exchange, resolver, pool):
-    """the pull of `pull` and `sync`: return its report. Without KEY or
-    --all, only the entries shared with the pool (origin record)."""
+    """the pull of `pull` and `sync`: (report, notes of the push to the pool
+    of a shallow library, see _forward). Without KEY or --all, only the
+    entries shared with the pool (origin record)."""
     entries, new, named = _pull_selection(exchange, pool, o.entries, take_all=o.all)
     if _nothing_shared(o):
         entries = exchange.shared(entries, pool)
     report = exchange.pull(entries, pool, resolver, new=new, named=named, record_pull=not o.entries)
+    notes = _forward(exchange, pool)
     save_exchange(exchange)
-    return report
+    return report, notes
 
 
 def pullcmd(parser, o, config):
-    biblio = get_biblio(config)
-    exchange = Exchange(config, biblio)
+    biblio, exchange = _exchange(config, o)
     pool = _source(exchange, o)
-    if _one_time(exchange, o, pool) and _nothing_shared(o):
-        print(_one_time_note('pull', pool))
-        return
     if o.check:
         entries = _entries_or_all(biblio, o.entries)
         if _nothing_shared(o):
             entries = exchange.shared(entries, pool)
-        lines = exchange.check(entries, pool, all_entries=not o.entries) if pool is not None else []
+        lines = exchange.check(entries, pool, all_entries=not o.entries)
         print('\n'.join(lines) or 'nothing to pull')
         return
-    report = _pull(o, exchange, duplicate_resolver(o, 'pull'), pool)
+    report, notes = _pull(o, exchange, duplicate_resolver(o, 'pull'), pool)
     print_exchange(report, 'pull', biblio, pool)
+    print_push_notes(biblio, notes)
 
 
 def _push_entries(exchange, o, pool):
@@ -122,7 +114,7 @@ def _push_entries(exchange, o, pool):
         return _entries_or_all(biblio, o.entries)
     if o.all:
         return list(biblio.entries)
-    return exchange.shared(biblio.entries, pool) if pool is not None else []
+    return exchange.shared(biblio.entries, pool)
 
 
 def _push(o, exchange, resolver):
@@ -130,8 +122,6 @@ def _push(o, exchange, resolver):
     only the entries shared with the pool are pushed: nothing is created or
     written when there are none."""
     nothing_shared = _nothing_shared(o)
-    if nothing_shared and not getattr(o, 'pool', None) and exchange.pools.path() is None:
-        exchange.pools.target()  # the error: no pool
     pool = _source(exchange, o, create=not nothing_shared)
     entries = _push_entries(exchange, o, pool)
     if not entries and nothing_shared:
@@ -141,21 +131,17 @@ def _push(o, exchange, resolver):
     return report, pool
 
 
-def _pool_label(exchange, pool):
-    "how the messages name the pool of a push (it may not exist yet)"
-    return pool.label if pool is not None else f'pool {exchange.config.pool_label()}'
+def _options(o):
+    "the --pool option of the command, to repeat in a message"
+    return f' --pool {o.pool}' if getattr(o, 'pool', None) else ''
 
 
 def pushcmd(parser, o, config):
-    biblio = get_biblio(config)
-    exchange = Exchange(config, biblio)
+    biblio, exchange = _exchange(config, o)
     report, pool = _push(o, exchange, duplicate_resolver(o, 'push'))
     if not report and _nothing_shared(o):
-        if _one_time(exchange, o, pool):
-            print(_one_time_note('push', pool))
-        else:
-            print(f'push to {_pool_label(exchange, pool)}: no entries shared with it '
-                  '(`papers push KEY` or `papers push --all` adds entries to it)')
+        print(f'push to {pool.label}: no entries shared with it '
+              f'(`papers push{_options(o)} KEY` or `papers push{_options(o)} --all` adds entries to it)')
         return
     print_exchange(report, 'push', biblio, pool)
 
@@ -164,15 +150,12 @@ def synccmd(parser, o, config):
     """pull, then push the same entries (without KEY or --all, the entries
     shared with the pool); stop before pushing if the pull left conflicts
     undecided. One line when nothing changed."""
-    biblio = get_biblio(config)
-    exchange = Exchange(config, biblio)
+    biblio, exchange = _exchange(config, o)
     o.entries = read_selection(o.entries)  # read once, for the pull and the push
     pool = _source(exchange, o)
-    if _one_time(exchange, o, pool) and _nothing_shared(o):
-        print('nothing to ' + _one_time_note('sync', pool))
-        return
     resolver = duplicate_resolver(o, 'pull')
-    pull_report = _pull(o, exchange, resolver, pool)
+    pull_report, notes = _pull(o, exchange, resolver, pool)
+    print_push_notes(biblio, notes)
     pull_report = [r for r in pull_report if r[2] != 'not found']  # the push adds them
     pull_lines, pull_summary = exchange_lines(pull_report, 'pull', biblio, pool)
     if pull_lines:
@@ -190,10 +173,10 @@ def synccmd(parser, o, config):
         print('\n'.join(push_lines + ([push_summary] if push_summary else [])))
         return
     involved = {e.key.lower() for e, _, _ in pull_report + push_report}
-    label = _pool_label(exchange, pool)
+    label = pool.label
     if not involved and _nothing_shared(o):
         print(f'nothing to sync with {label}: no entries shared with it '
-              '(`papers sync --all` adds the entries missing on each side)')
+              f'(`papers sync{_options(o)} --all` adds the entries missing on each side)')
     else:
         n = len(involved)
         print(f'nothing to sync with {label}' + (f' ({n} entr{"y" if n == 1 else "ies"} unchanged)' if n else ''))

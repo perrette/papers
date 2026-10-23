@@ -57,10 +57,8 @@ def file_version(js, file):
     return version
 
 
-# global configuration: the global pool and default settings for libraries
+# global configuration: the default library and default settings for libraries
 MACHINE_CONFIG_FILE = os.path.join(platformdirs.user_config_dir('papers'), 'config.json')
-# the global pool without global configuration
-DEFAULT_POOL = os.path.join('~', 'Documents', 'papers')
 # the value of the pool setting for no pool
 NO_POOL = 'none'
 
@@ -89,7 +87,6 @@ SETTINGS = {
     'bibtex': 'path',
     'filesdir': 'path',
     'pool': 'pool',
-    'local': 'bool',
     'paths': ('relative', 'absolute'),
     'files': ('move', 'copy', 'link'),
     'auto-push': 'bool',
@@ -115,7 +112,7 @@ def default_value(name):
         return getattr(NAMEFORMAT, _attr(name))
     if name.startswith('key.'):
         return getattr(KEYFORMAT, _attr(name))
-    return {'local': False, 'paths': 'relative', 'files': 'move', 'auto-push': False,
+    return {'paths': 'relative', 'files': 'move', 'auto-push': False,
             'git': False, 'git-lfs': False, 'editor': None}.get(name)
 
 
@@ -262,15 +259,18 @@ def pool_setting(path, libdir, base=None):
     return short_home(full)
 
 
+# the setting of the global configuration that names the default library
+DEFAULT_LIBRARY = 'default'
+
+
 class MachineConfig:
-    """global configuration: the global pool and the defaults of library settings
+    """global configuration: the default library and the defaults of library settings
 
     The file has the layout of a library configuration:
-        {"pool": "~/Documents/papers", "editor": "vim",
+        {"default": "~/Documents/papers", "editor": "vim",
          "nameformat": {"template": "{author}_{year}"}}
-    `pool` is the global pool (default ~/Documents/papers), or none: the
-    pool that `papers init` writes in a new library, and the library used
-    outside of any library. `local` is the default of new libraries.
+    `default` (optional) is the default library: a library without pool,
+    used outside of any library, and the pool of `papers init --shallow`.
     """
     def __init__(self, file=None, data=None):
         self.file = file
@@ -281,8 +281,6 @@ class MachineConfig:
         names = self.data.pop('pools', None)
         if isinstance(names, dict):
             self.pool_names = names
-            if 'default' in names and self.data.get('pool') is None:
-                self.data['pool'] = names['default']
 
     @classmethod
     def load(cls, file=None):
@@ -295,7 +293,9 @@ class MachineConfig:
                 logger.warning(f"unreadable global configuration {file}: {error} -- ignored")
         file_version(data, file)
         data.pop('version', None)
-        _single_pool(data, file)
+        if data.pop('pool', None) not in (None, NO_POOL):
+            logger.warning(f"{file}: the global pool setting is no longer used (ignored); "
+                           "`papers config --global default PATH` sets a default library")
         return cls(file, data)
 
     def exists(self):
@@ -308,15 +308,15 @@ class MachineConfig:
         json_set(self.data, name, value)
 
     @property
-    def pool(self):
-        "the global pool as written (with ~), or none"
-        return self.get('pool') or DEFAULT_POOL
+    def default(self):
+        "the default library as written (with ~), or None"
+        return self.data.get(DEFAULT_LIBRARY) or None
 
-    def pool_path(self):
-        "absolute path of the global pool, or None (pool none)"
-        if self.pool == NO_POOL:
+    def default_path(self):
+        "absolute path of the default library, or None"
+        if self.default is None:
             return None
-        return os.path.abspath(os.path.expanduser(self.pool))
+        return os.path.abspath(os.path.expanduser(self.default))
 
     def save(self):
         os.makedirs(os.path.dirname(self.file), exist_ok=True)
@@ -327,16 +327,16 @@ class MachineConfig:
 def _read_earlier_v3(js, machine, file):
     """the settings of the files written by earlier v3 builds, read as the
     current ones: `pools` (a list of names and paths) is the pool (its first
-    entry; the name `default` was the global pool), `light: true` is
-    `local: false` and its absence `local: true`"""
+    entry; the name `default` is the default library). The settings `light`
+    and `local` are gone: a library with a pool is shallow."""
     pools = js.pop('pools', None)
-    light = js.pop('light', None)
-    js.pop('sync', None)
+    for name in ('light', 'local', 'sync'):
+        js.pop(name, None)
     _single_pool(js, file)
     if isinstance(pools, list) and 'pool' not in js:
         first = pools[0] if pools else NO_POOL
         if first == 'default':
-            js['pool'] = machine.pool
+            js['pool'] = machine.default or NO_POOL
         elif first == NO_POOL or os.path.sep in first or (os.path.altsep and os.path.altsep in first) \
                 or first.startswith(('.', '~')):
             js['pool'] = first
@@ -344,8 +344,6 @@ def _read_earlier_v3(js, machine, file):
             js['pool'] = machine.pool_names[first]
         else:
             logger.warning(f"{file}: unknown pool name {first}: the library has no pool")
-    if 'local' not in js:
-        js['local'] = not light
 
 
 class Config:
@@ -355,6 +353,10 @@ class Config:
     global configuration, else from its built-in default; the pool comes
     only from the library's file (none if it does not set it). The attributes
     hold the resulting values; `explicit` names the settings set in the file.
+
+    A library without pool is self-contained: its own entries and files. A
+    library with a pool is shallow (see `shallow`): it links to the files
+    of the pool entries, and adds its new entries to the pool.
     """
     def __init__(self, file=None,
         bibtex=None, filesdir=None,
@@ -362,7 +364,7 @@ class Config:
         nameformat=None,
         editor=None,
         gitdir=None, git=None, gitlfs=None, is_library=None, absolute_paths=None,
-        pool=None, local=None, files=None, auto_push=None, machine=None):
+        pool=None, files=None, auto_push=None, machine=None):
         self.file = file
         # False for the global configuration of v2 (v2 compatibility, remove with migrate)
         self.is_library = is_library
@@ -383,15 +385,12 @@ class Config:
         self.gitlfs = gitlfs if gitlfs is not None else self.inherited('git-lfs')
         # the pool: a path (relative to the library), or none
         self.pool = pool if pool is not None else NO_POOL
-        # local: the files of the library are in its files directory;
-        # otherwise they are in the files directory of its pool, and the
-        # library links to them. `papers config local` converts the files.
-        self.local = bool(local) if local is not None else bool(self.inherited('local'))
         # what `add` does with a file: move or copy it into the files
         # directory, or link it where it is (see papers.files.FilesPolicy)
         self.files = files if files is not None else self.inherited('files')
         # auto-push: the commands that change entries push them to the pool
-        # (those shared with it, and new ones; see papers.cli.common.save_entries)
+        # (those shared with it, and new ones; see papers.cli.common.save_entries),
+        # in a shallow library only
         self.auto_push = auto_push if auto_push is not None else self.inherited('auto-push')
 
 
@@ -400,7 +399,7 @@ class Config:
     def inherited(self, name):
         """value of a setting when the library does not set it: the global
         configuration, else the built-in default. The pool is none: the
-        global pool setting is only the default of `papers init`."""
+        global configuration has no pool."""
         if name == 'pool':
             return NO_POOL
         value = self.machine.get(name)
@@ -483,6 +482,12 @@ class Config:
         return self.pool_path() is not None and not self.is_pool_library()
 
     @property
+    def shallow(self):
+        """a library with a pool: its entries link to the files of the pool
+        entries, and its new entries go to the pool (see papers.pools)"""
+        return bool(self.file) and self.has_pool()
+
+    @property
     def backupfile_clean(self):
         "copy of the bibtex with file paths relative to the backup directory (--git-lfs mode)"
         return Path(self.gitdir)/'backup_clean.bib'
@@ -535,7 +540,7 @@ class Config:
             "gitdir": gitdir_to_json(self._abspath(self.gitdir)) if self.is_library else self._abspath(self.gitdir),
         }
         for name in LIBRARY_SETTINGS:
-            if self.is_set(name) or (name == 'local' and self.is_library):
+            if self.is_set(name):
                 json_set(js, name, self.get(name))
         if self.is_library:
             js["version"] = CONFIG_VERSION
@@ -560,7 +565,6 @@ class Config:
             v2_local = js.pop('local', None)  # in v2: a library, not the global configuration
             if is_library is None:
                 is_library = v2_local
-            js['local'] = True  # the libraries of v2 have their own files
         if is_library is None:
             # v2 global configurations (papersconfig.json, not hidden) are not local
             is_library = os.path.basename(the_file) != os.path.basename(CONFIG_FILE)
@@ -582,11 +586,6 @@ class Config:
             if value is not None:
                 cfg.set(name, value)
         cfg._update_paths_to_absolute()
-        if not cfg.local and not cfg.has_pool():
-            if not cfg.is_pool_library():
-                logger.warning(f"{the_file}: local is false, but the library has no pool: its files are "
-                               "its own (set `papers config local true`)")
-            cfg.local = True
         return cfg
 
 
@@ -621,7 +620,7 @@ class Config:
 
         lines = []
         if self.file and os.path.exists(self.file):
-            status = (str(self.configdir) if self.is_library else self.file) + ' ' + {'global-pool': '(global pool)',
+            status = (str(self.configdir) if self.is_library else self.file) + ' ' + {'default': '(default library)',
                       'v2-global': '(global configuration of papers v2: run `papers migrate`)'}.get(self.origin, '')
         else:
             status = bcolors.WARNING+"(no library found: create one with `papers init`)"+bcolors.ENDC
@@ -639,9 +638,9 @@ class Config:
         if self.file is None and self.bibtex is None:
             return '\n'.join(lines)  # no library
 
-        in_pool = self.file and not self.local and self.has_pool()
+        in_pool = self.shallow
         if in_pool:
-            # the files of a library that is not local are in its pool (see papers.pools.use_pool_files)
+            # the files of a shallow library are in its pool (see papers.pools.use_pool_files)
             lines.append(f'* files:              in the pool {self.pool_label()}')
         else:
             if self.filesdir is None:
@@ -687,16 +686,15 @@ class Config:
 
         if self.file:
             from papers.pools import status_line  # papers.pools imports this module
+            lines.append('* library:            ' + ('shallow (it takes its entries from the pool, and links to '
+                                                     'the files of the pool)' if self.shallow else
+                                                     'self-contained (its own entries and files)'))
             lines.append('* pool:               ' + status_line(self))
-            lines.append('* local:              ' + ('true (the files are in the files directory of the library)'
-                         if self.local else "false (the files are in the pool)"))
-            if self.has_pool():
+            if self.shallow:
                 if self.auto_push:
                     text = 'true (the commands push the entries they change to the pool)'
-                elif not self.local:
-                    text = 'false (add adds the new entries to the pool; push or sync sends the changes)'
                 else:
-                    text = 'false (push or sync sends the changes to the pool)'
+                    text = 'false (add adds the new entries to the pool; push or sync sends the changes)'
                 lines.append('* auto-push:          ' + text)
 
         if verbose:

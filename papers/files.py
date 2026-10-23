@@ -182,7 +182,7 @@ class FilesPolicy:
     - a file in the files directory of a pool (`pool_dirs`), or a file of a
       pool entry (`pool_files`), is never moved: it is copied (a hard link
       when possible), or linked in link mode;
-    - with `in_pool`, `filesdir` is the files directory of the pool of a non-local
+    - with `in_pool`, `filesdir` is the files directory of the pool of a shallow
       library (papers.pools.use_pool_files): the files already there are
       linked where they are, never renamed, since other libraries may link
       to them.
@@ -228,8 +228,8 @@ def files_policy(config, mode, pool_dirs=(), keep=(), pool_files=()):
     """the FilesPolicy of a library (its configuration) for a files mode;
     pool_dirs: the files directories of its pools; pool_files: files of
     pool entries (outside pool_dirs too)"""
-    # files placed in the pool by a non-local library (see papers.pools.use_pool_files)
-    in_pool = not config.local and any(realpath(config.filesdir or '') == realpath(d) for d in pool_dirs)
+    # files placed in the pool by a shallow library (see papers.pools.use_pool_files)
+    in_pool = config.shallow and any(realpath(config.filesdir or '') == realpath(d) for d in pool_dirs)
     return FilesPolicy(mode, config.filesdir, current_config=config.file, machine=config.machine, keep=keep,
                        pool_dirs=pool_dirs, in_pool=in_pool, pool_files=pool_files)
 

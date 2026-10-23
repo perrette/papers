@@ -66,13 +66,18 @@ def addcmd(parser, o, config):
     set_format_config_from_cmd(o, config, 'name')
     set_format_config_from_cmd(o, config, 'key')
 
-    pools = library_pools(config)  # in a non-local library, files go to the pool
+    if o.pool and o.no_pool:
+        raise PapersExit('--pool PATH and --no-pool exclude each other')
+    pools = library_pools(config)  # in a shallow library, files go to the pool
     biblio = get_biblio(config)
     biblio_init = copy.deepcopy(biblio)
     exchange = Exchange(config, biblio, pools)
+    source_dirs = []  # the files directory of the library of --pool PATH
     if not o.no_pool:
-        lookup = PoolLookup(exchange)
+        lookup = PoolLookup(exchange, pools.get(o.pool) if o.pool else None)
         biblio.pool_lookup = lookup if lookup else None
+        if o.pool and lookup.pool.filesdir:
+            source_dirs = [lookup.pool.filesdir]
 
     entries = []
 
@@ -84,7 +89,7 @@ def addcmd(parser, o, config):
 
     # what to do with the files: see papers.files.FilesPolicy
     mode = files_mode(o, config)
-    policy = files_policy(config, mode, pools.files_dirs())
+    policy = files_policy(config, mode, pools.files_dirs() + source_dirs)
     rename = mode != 'link'
 
     metadata = {k: v for k, v in o.metadata or []}
@@ -223,7 +228,8 @@ def addcmd(parser, o, config):
                 del e[k]
         biblio.entries = others + entries
 
-    # auto-push, or the new entries of a non-local library: also in the pool
+    # auto-push, or the new entries of a shallow library: also in its pool
+    # (never in the library of --pool PATH)
     lookup = biblio.pool_lookup
     notes = {key: f'from {pool.label}' for key, pool in (lookup.taken_from.items() if lookup else [])}
     push_notes(push_changed(exchange), notes)
@@ -278,9 +284,9 @@ def remove_entries(biblio, entries, config, delete_files=None, ask=True):
     pools = Pools(config)
     inside, outside, kept, in_pool = papers.files.remove_entries(biblio, entries, config.filesdir,
                                                                  pool_dirs=pools.files_dirs())
-    pool = pools.pool(quiet=True) if config.file and not config.local else None
+    pool = pools.pool(quiet=True) if config.shallow else None
     if pool is not None:
-        # a non-local library: the files that the pool entries link to, wherever they are, are the pool's
+        # a shallow library: the files that the pool entries link to, wherever they are, are the pool's
         linked = {os.path.realpath(f) for e in pool.biblio.entries for f in pool.biblio.get_files(e)}
         in_pool += [f for f in inside + outside if os.path.realpath(f) in linked]
         inside = [f for f in inside if os.path.realpath(f) not in linked]

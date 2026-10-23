@@ -30,18 +30,16 @@ OTHER_BIB = """@article{other2023,
 
 
 class UndoPoolTest(ConfigTest):
-    """a pool in pool/ and a library in lib/ that uses it, both with the
-    git backup; local: whether the library is local (then with auto-push,
-    so that `add` writes the pool too)"""
+    """a pool in pool/ and a shallow library in lib/ that uses it, both
+    with the git backup; auto_push: the auto-push setting of the library"""
 
-    local = False
+    auto_push = False
 
     def setUp(self):
         super().setUp()
-        self.papers('config --global local ' + ('true' if self.local else 'false'))
-        self.papers('init pool --git --pool none')
-        self.papers('init lib --git --pool ../pool' + (' --local' if self.local else ''))
-        if self.local:
+        self.papers('init pool --git')
+        self.papers('init lib --git --pool ../pool')
+        if self.auto_push:
             self.lib('config auto-push true')
         Path(self.path('new.bib')).write_text(NEW_BIB)
         Path(self.path('other.bib')).write_text(OTHER_BIB)
@@ -184,7 +182,7 @@ class UndoInLibrary:
 
 
 class TestUndoPool(UndoPoolTest, UndoInLibrary):
-    "a library that is not local: add adds the new entries to the pool too"
+    "a shallow library: add adds the new entries to the pool too"
 
     def test_pool_undo_redo(self):
         self.lib('add ../new.bib')
@@ -241,15 +239,15 @@ class TestUndoPool(UndoPoolTest, UndoInLibrary):
         self.assertEqual(Path(distinct).read_text(), '{"distinct": []}\n')
 
 
-class TestUndoPoolLocal(UndoPoolTest, UndoInLibrary):
-    "a local library, with auto-push"
-    local = True
+class TestUndoPoolAutoPush(UndoPoolTest, UndoInLibrary):
+    "a shallow library, with auto-push"
+    auto_push = True
 
 
 class TestUndoPoolNoGit(UndoPoolTest):
-    """a local library without the git backup: undo swaps the bibtex with
+    """a shallow library without the git backup: undo swaps the bibtex with
     its previous version, and leaves the origin records as they are"""
-    local = True
+    auto_push = True
 
     def setUp(self):
         super().setUp()
@@ -270,8 +268,8 @@ class TestUndoPoolNoGit(UndoPoolTest):
         self.assertEqual(self.keywords('mine2022', 'pool'), 'a')
 
 
-class TestUndoFileRmNonLocal(UndoPoolTest):
-    """`file rm` in a library that is not local deletes the pool file and
+class TestUndoFileRmShallow(UndoPoolTest):
+    """`file rm` in a shallow library deletes the pool file and
     removes the link from the pool entry: undo in the library restores its
     link (broken: the file is not restored), and the pool keeps the change"""
 

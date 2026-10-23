@@ -1,19 +1,19 @@
 """One-time upgrades from papers v2 (`papers migrate`).
 
 The global configuration of v2 defined a library for the whole user account.
-In v3 it becomes an ordinary library: its settings are written to a library
-configuration next to its bibtex, its directory becomes the global pool
-(the `pool` setting of the global configuration; it is also the library
-used outside of any library), and the old file is renamed to <name>.v2.bak.
-It keeps its files (local true) and has no pool itself. The library
-configurations of v2 need no migration: they are read as libraries with
-their own files (local true) and no pool (pool none).
+In v3 it becomes an ordinary library, where it is: its settings are written
+to a library configuration next to its bibtex, it is registered as the
+default library (the `default` setting of the global configuration: the
+library used outside of any library), and the old file is renamed to
+<name>.v2.bak. It is self-contained: its own files, no pool. The library
+configurations of v2 need no migration: they are read as self-contained
+libraries (no pool).
 """
 import os
 
 from papers import logger
-from papers.config import (Config, CONFIG_FILE, CONFIG_FILE_LOCAL, CONFIG_FILE_LEGACY,
-                           CONFIG_FILE_LEGACY_XDG, LIBRARY_SETTINGS, NO_POOL, short_home)
+from papers.config import (Config, CONFIG_FILE, CONFIG_FILE_LOCAL, CONFIG_FILE_LEGACY, CONFIG_FILE_LEGACY_XDG,
+                           DEFAULT_LIBRARY, LIBRARY_SETTINGS, NO_POOL, short_home)
 from papers.files import hidden_bibtex
 from papers.library import get_biblio, savebib, convert_file_links
 
@@ -58,8 +58,7 @@ def migrate_v2_global(machine, relative=False, dryrun=False):
                 for name in LIBRARY_SETTINGS:
                     if name in old.explicit:
                         new.set(name, old.get(name))
-                new.set('pool', NO_POOL)  # the global pool itself
-                new.set('local', True)
+                new.set('pool', NO_POOL)  # self-contained
                 new.set('git', old.get('git'))
                 new.set('git-lfs', old.get('git-lfs'))
                 new.set('paths', 'relative' if relative else old.get('paths'))
@@ -70,15 +69,15 @@ def migrate_v2_global(machine, relative=False, dryrun=False):
                         convert_file_links(new)
                         print(f"  the file links of {new.bibtex} are now relative to its directory")
 
-            current = machine.get('pool')
+            current = machine.default
             if current is None or _same_path(current, libdir):
-                print(f"  {prefix}register {libdir} as the global pool in {machine.file}")
+                print(f"  {prefix}register {libdir} as the default library in {machine.file}")
                 if not dryrun:
-                    machine.set('pool', short_home(libdir))
+                    machine.set(DEFAULT_LIBRARY, short_home(libdir))
                     machine.save()
             else:
-                print(f"  the global pool is already {current}: not changed "
-                      f"(change it with `papers config --global pool PATH`)")
+                print(f"  the default library is already {current}: not changed "
+                      f"(change it with `papers config --global default PATH`)")
 
         backup = file + '.v2.bak'
         print(f"  {prefix}rename {file} to {backup}")

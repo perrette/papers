@@ -5,7 +5,6 @@ from unittest.mock import patch
 
 import papers.config
 from papers.utils import PapersExit
-from tests import TEST_GLOBAL_POOL
 from tests.common import ConfigTest, FileTest
 
 
@@ -43,15 +42,23 @@ class TestConfigCmd(FileTest):
         with self.assertRaises(PapersExit):
             self.lib('config key.author-num many')
 
-    def test_global_pool_takes_one_path(self):
+    def test_global_has_no_pool(self):
+        with self.assertRaisesRegex(PapersExit, 'the global configuration has no pool'):
+            self.lib('config --global pool a')
+
+    def test_global_default_takes_one_path(self):
         with self.assertRaisesRegex(PapersExit, 'takes one value'):
-            self.lib('config --global pool a b')
+            self.lib('config --global default a b')
+
+    def test_default_is_global(self):
+        with self.assertRaisesRegex(PapersExit, 'default is a setting of the global configuration'):
+            self.lib('config default ../lib')
 
     def test_global_dry_run(self):
-        out = self.out('config --global pool /a/b --dry-run')
+        out = self.out(f'config --global default {self.path("lib")} --dry-run')
         papers.config.DRYRUN = False
         self.assertIn('not saved', out)
-        self.assertNotEqual(self.out('config --global pool').strip(), '/a/b')
+        self.assertEqual(self.out('config --global default').strip(), '')
 
     def test_global_get(self):
         self.lib('config --global files copy')
@@ -61,53 +68,32 @@ class TestConfigCmd(FileTest):
 
 class TestInitSummary(ConfigTest):
 
-    def test_local(self):
-        # --local without --pool: no pool
-        out = self.papers('init lib --local --no-git', sp_cmd='check_output')
+    def test_self_contained(self):
+        # by default, a self-contained library
+        out = self.papers('init lib --no-git', sp_cmd='check_output')
         self.assertEqual(out.splitlines(), [
             f'created the library {papers.config.short_home(self.path("lib"))}',
             '* bibtex:  papers.bib',
             '* files:   files (the files directory of the library)',
-            '* pool:    none',
+            '* pool:    none (a self-contained library: its own entries and files)',
             '* backup:  off',
             '`papers status -v` shows all settings'])
         self.assertEqual(self.json('lib')['pool'], 'none')
-        self.assertIs(self.json('lib')['local'], True)
+        self.assertNotIn('local', self.json('lib'))
 
-    def test_local_pool_path(self):
-        self.papers('init pool --no-git --pool none')
-        out = self.papers('init lib --local --no-git --pool ../pool', sp_cmd='check_output')
-        self.assertIn('* pool:    ../pool (shared entries; the PDFs stay in this library)\n', out)
-        self.assertEqual(self.json('lib')['pool'], '../pool')
-        self.assertIs(self.json('lib')['local'], True)
-
-    def test_writes_global_pool(self):
-        # the global pool setting, as written there
-        out = self.papers('init lib --no-git', sp_cmd='check_output')
-        self.assertEqual(self.json('lib')['pool'], TEST_GLOBAL_POOL)
-        self.assertIn(f'* pool:    {TEST_GLOBAL_POOL} (shared entries; the PDFs stay in this library)\n', out)
-        self.papers('config --global pool ~/elsewhere')
-        self.papers('init lib2 --no-git')
-        self.assertEqual(self.json('lib2')['pool'], '~/elsewhere')
-        # the libraries keep their pool when the global pool changes
-        self.assertEqual(self.json('lib')['pool'], TEST_GLOBAL_POOL)
-        self.assertEqual(self.papers('-C lib config pool', sp_cmd='check_output'), TEST_GLOBAL_POOL)
-        self.papers('config --global pool none')
-        self.assertEqual(self.papers('-C lib2 config pool', sp_cmd='check_output'), '~/elsewhere')
-        self.papers('init lib3 --no-git')
-        self.assertEqual(self.json('lib3')['pool'], 'none')
-
-    def test_local_no_pool(self):
-        out = self.papers('init lib --local --no-git --pool none', sp_cmd='check_output')
-        self.assertIn('* pool:    none\n', out)
-
-    def test_not_local(self):
-        self.papers('config --global local false')
-        out = self.papers('init lib --git', sp_cmd='check_output')
-        self.assertIn(f'* files:   in the pool {TEST_GLOBAL_POOL}', out)  # as the global pool setting writes it
+    def test_shallow(self):
+        self.papers('init pool --no-git')
+        out = self.papers('init lib --git --pool ../pool', sp_cmd='check_output')
+        self.assertIn('* files:   in the pool ../pool\n', out)
+        self.assertIn('* pool:    ../pool (a shallow library: it takes its entries from the pool and links to its '
+                      'files)\n', out)
         self.assertIn('* backup:  git', out)
-        self.assertNotIn('* pool:', out)  # the files line names the pool
-        self.assertNotIn('settings:', out)
+        self.assertEqual(self.json('lib')['pool'], '../pool')
+        self.assertNotIn('local', self.json('lib'))
+
+    def test_pool_none(self):
+        out = self.papers('init lib --no-git --pool none', sp_cmd='check_output')
+        self.assertIn('* pool:    none (a self-contained library', out)
 
 
 class TestOtherCommands(ConfigTest):
@@ -122,7 +108,7 @@ class TestOtherCommands(ConfigTest):
             self.papers('uninstall')
 
     def test_migrate_light_is_gone(self):
-        # replaced by `papers config local false|true`
+        # replaced by `papers config pool PATH|none`
         with self.assertRaises(SystemExit):
             self.papers('migrate --light')
 

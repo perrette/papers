@@ -53,12 +53,17 @@ class TestMachineConfig(unittest.TestCase):
             self.assertEqual(MachineConfig.load(self.file).data, {})
 
     def test_pool_names_of_earlier_v3(self):
-        # the pool names of earlier v3 builds: `default` is the global pool
+        # the pool names of earlier v3 builds: read for the libraries that name their pool
         machine = MachineConfig(self.file, {'pools': {'default': '/a', 'x': '/b'}})
-        self.assertEqual(machine.pool_path(), '/a')
         self.assertEqual(machine.pool_names['x'], '/b')
         self.assertNotIn('pools', machine.data)
-        self.assertIsNone(MachineConfig(self.file, {'pool': 'none'}).pool_path())
+        self.assertIsNone(machine.default)  # not the default library
+
+    def test_default_library(self):
+        machine = MachineConfig(self.file, {'default': '~/lib'})
+        self.assertEqual(machine.default, '~/lib')
+        self.assertEqual(machine.default_path(), os.path.expanduser('~/lib'))
+        self.assertIsNone(MachineConfig(self.file, {}).default_path())
 
 
 class TestConfig(unittest.TestCase):

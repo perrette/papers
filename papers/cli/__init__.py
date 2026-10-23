@@ -105,7 +105,7 @@ def _main(argv):
 
     if os.path.exists(CONFIG_FILE) and o.cmd != 'migrate' and not (o.cmd == 'install' and o.local is False):
         logger.warning(f"found the global configuration of papers v2 ({CONFIG_FILE}): it still applies "
-                       "outside of libraries; `papers migrate` turns it into a library and the global pool")
+                       "outside of libraries; `papers migrate` turns it into a library, the default library")
 
     # modify disk state?
     if hasattr(o,'dry_run'):

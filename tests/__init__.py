@@ -5,9 +5,8 @@ import tempfile
 import subprocess as sp
 
 # Keep the tests away from the user's configuration, backups and default
-# pool: papers.config derives its locations from platformdirs, which honors
-# the XDG variables on Linux, and the built-in default pool is
-# ~/Documents/papers. HOME and the XDG variables are set before papers is
+# library: papers.config derives its locations from platformdirs, which
+# honors the XDG variables on Linux. HOME and the XDG variables are set before papers is
 # imported, and are inherited by the `python3 -m papers` subprocesses of
 # some tests. The cache is shared on purpose (it spares network queries): it
 # stays where it was before HOME changes.
@@ -30,19 +29,17 @@ os.makedirs(os.environ['HOME'])
 os.environ['XDG_CONFIG_HOME'] = os.path.join(_TEST_HOME, 'config')
 os.environ['XDG_DATA_HOME'] = os.path.join(_TEST_HOME, 'data')
 
-# The global pool (~/Documents/papers without global configuration) is
-# used outside of any library: it is under the temporary HOME, and the
-# global configuration names it too.
+# The global configuration sets no default library: the tests of the
+# default library register one, e.g. TEST_DEFAULT_LIBRARY, under the
+# temporary HOME (tests.common.ConfigTest restores the global configuration
+# and removes that directory after each test).
 import json
 import papers.config
-TEST_GLOBAL_POOL = os.path.join(os.environ['HOME'], 'Documents', 'papers')
-assert os.path.expanduser(papers.config.DEFAULT_POOL) == TEST_GLOBAL_POOL
+TEST_DEFAULT_LIBRARY = os.path.join(os.environ['HOME'], 'Documents', 'papers')
 # The files mode is `link` (the default is `move`): `papers add` then leaves
 # the PDFs where they are, as in v2, so that the cached PDFs of
 # tests/downloadedpapers are never moved. The tests of the files modes set
-# the mode they test. New libraries are local (the default is not): their
-# files are in their own files directory, as the tests of the files expect.
-# The tests of the libraries that are not local set it.
+# the mode they test.
 os.makedirs(os.path.dirname(papers.config.MACHINE_CONFIG_FILE))
 with open(papers.config.MACHINE_CONFIG_FILE, 'w') as f:
-    json.dump({'pool': TEST_GLOBAL_POOL, 'files': 'link', 'local': True}, f)
+    json.dump({'files': 'link'}, f)

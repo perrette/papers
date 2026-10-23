@@ -109,7 +109,7 @@ class TestGetBiblio(TmpTest):
     def test_pool_link_repair_failure_is_a_warning(self):
         Path(self.path('papers.bib')).write_text('')
         config = Config(file=self.path('.papersconfig.json'), bibtex=self.path('papers.bib'),
-                        filesdir=self.path('files'), local=False)
+                        filesdir=self.path('files'), pool=self.path('pool'))  # a shallow library
         with mock.patch('papers.pools.Exchange', side_effect=RuntimeError('broken pool')), \
                 self.assertLogs('papers', level='WARNING') as logs:
             get_biblio(config)

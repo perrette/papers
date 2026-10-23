@@ -1,41 +1,46 @@
-"""Pools: the library that a library exchanges entries with.
+"""Pools: the libraries that a library exchanges entries with.
 
-The `pool` setting of a library is the path of its pool (relative to the
-library, or with ~), or none; a library that does not set it has no pool.
-`papers init` writes the global pool (the `pool` setting of the global
-configuration, by default ~/Documents/papers) unless told otherwise. Any
-library can be a pool.
+A library is in one of two states, given by its `pool` setting:
 
-- `Pools` resolves the pool of a library, and the pools given on the
+- no pool (`pool: none`, or no setting): the library is self-contained,
+  with its own entries and its own files (its files directory);
+- a pool (the path of a library, relative to the library or with ~): the
+  library is shallow. Its entries link to the files of the pool entries,
+  and its new entries (and their files) go to the pool.
+
+The pool of a library has no pool itself (an exchange goes one level).
+Any library can also exchange entries with another library given on the
+command line (`--pool PATH`), as it does with its pool, except that the
+files are copied rather than linked.
+
+- `Pools` resolves the pool of a library, and the libraries given on the
   command line (`push --pool PATH`), to libraries, loaded when first used
-  and kept for the run. A library never uses itself as a pool. The global
-  pool may not exist yet: it is created, without a message, the first time
-  papers writes to it.
-- `Origin` is `.papers/origin/` of a library, one file per pool: for each
+  and kept for the run. A library never uses itself as a pool.
+- `Origin` is `.papers/origin/` of a library, one file per pool (the pool
+  of the library, and each library given with `--pool PATH`): for each
   entry exchanged with the pool, the base of the next three-way merge,
   under the library's key, with the pool's key (`papers-pool-key`) and the
-  time (`papers-time`). In a non-local library the record keeps its `file`
-  field: the file links of the pool entry after the exchange (the library
-  entry has the same links); otherwise it has no `file` field. The file
-  links are not part of the base of the merge (papers.merge.EXCHANGE_OWN).
-  The base is the version
+  time (`papers-time`). In a shallow library the record for its pool
+  keeps its `file` field: the file links of the pool entry after the
+  exchange (the library entry has the same links); otherwise it has no
+  `file` field. The file links are not part of the base of the merge
+  (papers.merge.EXCHANGE_OWN). The base is the version
   of the side that sent the entry, as sent: the pool entry for `add` and
   `pull`, the library entry for `push`. The receiving side has taken all of it into account (taken,
   kept or declined), so that what it has beyond it shows as its own change
-  in the next exchange the other way. Only the pool of the library gets
-  records: `--pool PATH` with another library is a one-time exchange,
-  without records. The files of earlier pools are kept: setting the pool
-  back to one of them finds its records again. Each file also holds the
+  in the next exchange the other way. The files of earlier pools are kept:
+  setting the pool back to one of them, or exchanging with it again,
+  finds its records again. Each file also holds the
   modification time of the pool's bibtex at the last exchange with it (a
   pull of all entries that skipped none; a push or an add when the pool had
   not changed since the previous exchange, or that were the first, and a
   push only if it left the pool with nothing that the library does not
   have), so that `status` and `pull --check` can tell that a pool changed
   since.
-- `Exchange` does what involves a library and its pool: `add` looking in
+- `Exchange` does what involves a library and a pool: `add` looking in
   the pool first (`PoolLookup`), `pull`, `push`, the conversions of the
-  files of `papers config local` and `papers config pool`, and the repair of
-  broken links to pool files.
+  files of `papers config pool`, and the repair of broken links to pool
+  files.
 - `export` writes a selection of a library as a new library.
 
 The key of an entry belongs to each library: `pull` and `push` never change
@@ -68,7 +73,11 @@ from papers.utils import PapersExit, checksum, bcolors
 
 
 class PoolError(PapersExit):
-    "a pool that cannot be used (missing, not a library)"
+    "a pool that cannot be used (missing, not a library, has a pool)"
+
+
+# the error of the exchanges without pool
+NO_POOL_MESSAGE = 'this library has no pool: give one with `--pool PATH`'
 
 
 # LIBRARIES
@@ -83,23 +92,21 @@ def library_config_file(path):
     return None
 
 
-def create_library(path, machine, bibtex='papers.bib', git=None, quiet=False):
-    """create a library without pool, with its own files (local), in
-    directory `path` (as `papers init --pool none` does, without
-    questions), and return its configuration. With --dry-run, nothing is
-    written: the configuration is that of the library to be created."""
+def create_library(path, machine, bibtex='papers.bib', git=None):
+    """create a self-contained library (no pool, its own files) in
+    directory `path` (as `papers init` does), and return its
+    configuration. With --dry-run, nothing is written: the configuration
+    is that of the library to be created."""
     o = SimpleNamespace(bibtex=os.path.join(path, bibtex), filesdir=os.path.join(path, 'files'),
-                        reset=False, paths=None, absolute_paths=None, pool=NO_POOL, local_setting=True, gitdir=None,
+                        reset=False, paths=None, absolute_paths=None, pool=NO_POOL, gitdir=None,
                         editor=None, git=git, git_lfs=None)
     plan = resolve_install(Config(machine=machine), o, asker=DefaultAsker(),
                            target=os.path.join(path, CONFIG_FILE_LOCAL))
     if papers.config.DRYRUN:
-        if not quiet:
-            print(f'DRYRUN: create the library {path}')
+        print(f'DRYRUN: create the library {path}')
         return plan.config
     os.makedirs(path, exist_ok=True)
-    if not quiet:
-        print(f'create the library {path}')
+    print(f'create the library {path}')
     return Config.load(apply_install(plan).file, machine=machine)
 
 
@@ -159,10 +166,33 @@ def check_readable(pool):
                          + f'. Fix {short_home(pool.config.bibtex)} before writing to the pool (nothing was changed)')
 
 
+def library_without_pool(path, machine, what):
+    """the configuration of the library in directory `path`, which must
+    exist and have no pool: the pool of a shallow library, or the default
+    library (`what` names it in the errors)"""
+    configfile = library_config_file(path)
+    if configfile is None:
+        reason = 'does not exist' if not os.path.exists(path) else f'is not a library (no {CONFIG_FILE_LOCAL})'
+        raise PoolError(f'{what} {short_home(path)} {reason}: create it first with `papers init '
+                        f'{short_home(path)}` (nothing was changed)')
+    config = Config.load(configfile, machine=machine)
+    if config.has_pool():
+        raise PoolError(f'{what} {short_home(path)} has a pool itself ({config.pool_label()}): '
+                        'give a library without pool (nothing was changed)')
+    return config
+
+
+def check_poolless(pool):
+    """the pool of a library, or a library given with --pool PATH, has no
+    pool itself: an exchange goes one level"""
+    if pool.config.has_pool():
+        raise PoolError(f'{short_home(pool.path)} has a pool itself ({pool.config.pool_label()}): '
+                        'give a library without pool')
+
+
 class Pool:
     """a library used as a pool. `id` is how the library names it in its
-    origin records: the pool setting of the library for its pool,
-    otherwise its path relative to the library (or absolute)."""
+    origin records (see Pools._id)."""
 
     def __init__(self, id, path, config):
         self.id = id
@@ -263,6 +293,8 @@ class Pools:
     def __init__(self, config):
         self.config = config
         self._cache = {}
+        # the pool ids of the origin records of the library (see _id)
+        self.known_ids = []
 
     @property
     def libdir(self):
@@ -272,12 +304,20 @@ class Pools:
     def _is_self(self, path):
         return self.config.file is not None and realpath(path) == realpath(self.libdir)
 
-    def _is_global(self, path):
-        global_path = self.config.machine.pool_path()
-        return global_path is not None and realpath(path) == realpath(global_path)
+    def set_known_ids(self, ids):
+        """the pool ids of the origin records of the library: a pool keeps
+        the id that its records use, however it is given"""
+        self.known_ids = sorted(ids)
+        for pool_ in self._cache.values():
+            pool_.id = self._id(pool_.path)
 
     def _id(self, path):
-        "how the origin records name the pool in `path`"
+        """how the origin records name the pool in `path`: the id of its
+        records if it has some (see set_known_ids), else for the pool of the
+        library its pool setting, else its path relative to the library"""
+        for id in self.known_ids:
+            if realpath(os.path.join(self.libdir, os.path.expanduser(id))) == realpath(path):
+                return id
         own = self.path()
         if own is not None and realpath(own) == realpath(path):
             return self.config.pool_label()  # as the pool setting writes it
@@ -286,8 +326,8 @@ class Pools:
 
     def resolve(self, path, create=False):
         """the Pool of the library in directory `path`. create: create the
-        library if it does not exist (quietly for the global pool; another
-        path needs an existing parent directory, e.g. a mounted disk)."""
+        library if it does not exist (its parent directory must exist, e.g.
+        a mounted disk)."""
         path = os.path.abspath(path)
         key = realpath(path)
         if key in self._cache:
@@ -313,16 +353,14 @@ class Pools:
         return pool_
 
     def _create(self, path):
-        """create the library of a pool in `path`: its parent directory must
-        exist (a disk that is not mounted is not created), except for the
-        global pool under the home directory (e.g. ~/Documents/papers on a
-        system without ~/Documents), created quietly"""
+        """create the library of a pool in `path` (self-contained): its
+        parent directory must exist (a disk that is not mounted is not
+        created)"""
         parent = os.path.dirname(path)
-        is_global = self._is_global(path)
-        if not os.path.isdir(parent) and not (is_global and is_inside(path, os.path.expanduser('~'))):
+        if not os.path.isdir(parent):
             raise PoolError(f'pool {short_home(path)}: {short_home(parent)} does not exist (disk not mounted?)')
         try:
-            return create_library(path, self.config.machine, quiet=is_global)
+            return create_library(path, self.config.machine)
         except OSError as error:
             raise PoolError(f'pool {short_home(path)}: could not be created ({error})')
 
@@ -333,14 +371,11 @@ class Pools:
 
     def pool(self, create=False, quiet=False):
         """the pool of the library, or None (pool none, or the library is its
-        own pool). The global pool that does not exist yet is None too (or
-        is created, with create). Another pool that cannot be read is a
-        warning (none with quiet), and None; with create, an error."""
+        own pool). A pool that cannot be read is a warning (none with
+        quiet), and None; with create, an error (a pool that does not exist
+        is created if its parent directory exists)."""
         path = self.path()
         if path is None:
-            return None
-        if not create and self._is_global(path) and not os.path.exists(path):
-            logger.debug(f'the global pool {path} does not exist yet')
             return None
         try:
             return self.resolve(path, create=create)
@@ -352,17 +387,19 @@ class Pools:
             return None
 
     def target(self):
-        """the pool that push and the non-local libraries write to, created
+        """the pool that push and the shallow libraries write to, created
         if it does not exist yet"""
         pool = self.pool(create=True)
         if pool is None:
-            raise PoolError('the library has no pool (pool none): set one with `papers config pool PATH`, '
-                            'or give one with --pool PATH')
+            raise PoolError(NO_POOL_MESSAGE)
         return pool
 
     def get(self, path, create=False):
-        "a pool given on the command line: a path relative to the current directory"
-        return self.resolve(os.path.abspath(os.path.expanduser(path)), create=create)
+        """a library given on the command line (--pool PATH): a path relative
+        to the current directory, of a library without pool"""
+        pool_ = self.resolve(os.path.abspath(os.path.expanduser(path)), create=create)
+        check_poolless(pool_)
+        return pool_
 
     def loaded(self):
         "the pools resolved so far"
@@ -382,7 +419,7 @@ LEGACY_ORIGIN_FILE = os.path.join('.papers', 'origin.bib')  # one file for all p
 POOL_FIELD = 'papers-pool'  # in the legacy file only
 POOL_KEY_FIELD = 'papers-pool-key'
 TIME_FIELD = 'papers-time'
-# the file links of a record (a non-local library: those of the pool entry
+# the file links of a record (a shallow library: those of the pool entry
 # after the last exchange, as the library writes its links, see
 # Exchange.pool_removed); `papers-files` held them in development builds
 # of v3, and is ignored
@@ -409,7 +446,7 @@ class Record:
     """the origin record of a library entry for a pool: `entry` is the base
     version (see the module documentation; under the library key, without
     the papers-* fields and file links). `files`: the `file` field of the
-    record, in a non-local library the file links of the pool entry after
+    record, in a shallow library the file links of the pool entry after
     the last exchange (as written in the library's bibtex), or None if not
     recorded."""
 
@@ -619,17 +656,19 @@ def _same_fields(a, b):
 # ========================================
 
 class Exchange:
-    """a library (configuration and bibliography) with its pool and origin
-    records. The origin records are used and written for the pool of the
-    library only: an exchange with another library (`--pool PATH`) is
-    one-time. The command saves: the origin first (`origin.save()`), then
-    the library and the pools that changed (`changed_pools`)."""
+    """a library (configuration and bibliography) with its pools and origin
+    records: the pool of the library, and the libraries given with `--pool
+    PATH`. The origin records are used and written for every pool; the
+    file links of a shallow library are those of the pool entries for its
+    own pool only. The command saves: the origin first (`origin.save()`),
+    then the library and the pools that changed (`changed_pools`)."""
 
     def __init__(self, config, biblio, pools=None, origin=None):
         self.config = config
         self.biblio = biblio
         self.pools = pools or Pools(config)
         self.origin = origin if origin is not None else Origin.for_bibtex(config.bibtex)
+        self.pools.set_known_ids(set(self.origin.entries) | set(self.origin.pulls))
         self.changed_pools = []  # the pools to save
         self.pushed_pools = []   # the pools pushed to (changed or not): after_push after the save
         self._after = {}  # pool id -> state of the push for after_push
@@ -641,16 +680,16 @@ class Exchange:
             self.changed_pools.append(pool)
 
     def is_own(self, pool):
-        "whether `pool` is the pool of the library, the only one with origin records"
+        "whether `pool` is the pool of the library (rather than a library given with --pool PATH)"
         return pool is not None and pool.id == self.pool_id
 
     # finding the pool entry of a library entry
 
     def pool_entry(self, e, pool):
         """(pool entry, origin record) of a library entry in `pool`: by its
-        origin record (pool of the library only), else by the same-paper rule (record
-        None); (None, record) if the pool does not have it"""
-        record = self.origin.get(e, pool.id) if self.is_own(pool) else None
+        origin record, else by the same-paper rule (record None); (None,
+        record) if the pool does not have it"""
+        record = self.origin.get(e, pool.id)
         d = self.biblio.distinct
         if record is not None:
             pe = pool.find(record.entry, d) or pool.find(e, d) or pool.by_key(record.pool_key, record.entry)
@@ -663,22 +702,22 @@ class Exchange:
         self.biblio.distinct.update(pool.biblio.distinct)
         pool.biblio.distinct.update(self.biblio.distinct)
 
-    # the file links of a library that is not local: those of the pool entry
+    # the file links of a shallow library: those of the pool entry
 
     def _shares_links(self, pool):
-        "a non-local library and its own pool: the library entry's file links are the pool entry's"
-        return not self.config.local and self.is_own(pool)
+        "a shallow library and its own pool: the library entry's file links are the pool entry's"
+        return self.config.shallow and self.is_own(pool)
 
     def record(self, e, pool, base, pe):
         """record the origin of a library entry (origin.set): `base`, and in
-        a non-local library the file links of the pool entry `pe`"""
+        a shallow library, for its pool, the file links of the pool entry `pe`"""
         files = None
         if self._shares_links(pool):
             files = format_file(pool.biblio.get_files(pe), relative_to=self.biblio.relative_to)
         self.origin.set(e.key, pool.id, base, files=files)
 
     def new_links(self, e, pool):
-        """in a non-local library, the file links that the command added to a
+        """in a shallow library, the file links that the command added to a
         library entry (not there when the library was loaded): they go to
         the pool entry as they are, wherever they point"""
         if not self._shares_links(pool):
@@ -690,7 +729,7 @@ class Exchange:
         return [f for f in self.biblio.get_files(e) if realpath(f) not in old]
 
     def pool_removed(self, e, pe, record, pool):
-        """in a non-local library, the file links of a library entry that the
+        """in a shallow library, the file links of a library entry that the
         pool entry had at the last exchange (origin record) and no longer
         has: real paths. A link that the pool entry never had stays."""
         if not self._shares_links(pool) or record is None or record.files is None:
@@ -703,18 +742,21 @@ class Exchange:
 
     def files_policy(self, mode=None, keep=(), pools=()):
         """what to do with the files of entries taken from a pool (see
-        papers.files.FilesPolicy): in a non-local library they are linked
-        where they are, otherwise as the files mode says (a pool file is
-        copied, never moved). pools: other pools than the library's that
-        the files come from."""
-        if not self.config.local:
+        papers.files.FilesPolicy): in a shallow library, those of its pool
+        are linked where they are; otherwise as the files mode says (a pool
+        file is copied, never moved). In a shallow library, the files of
+        another library go to the files directory of its pool (see
+        papers.pools.use_pool_files). pools: the pools that the files come
+        from (default: the pool of the library)."""
+        if self.config.shallow and (not pools or any(self.is_own(p) for p in pools)):
             mode = 'link'
         mode = mode or self.config.files or 'move'
         if self.biblio.filesdir is None:
             mode = 'link'
         dirs = self.pools.files_dirs() + [p.filesdir for p in pools if p.filesdir]
         return FilesPolicy(mode, self.biblio.filesdir, current_config=self.config.file,
-                           machine=self.config.machine, keep=keep, pool_dirs=dirs)
+                           machine=self.config.machine, keep=keep, pool_dirs=dirs,
+                           in_pool=self.config.shallow)
 
     def _place_files(self, e, policy):
         if policy.mode == 'link' or self.biblio.filesdir is None:
@@ -726,8 +768,8 @@ class Exchange:
 
     def library_entry(self, pe, pool):
         """the library entry of a pool entry: the entry whose origin record
-        has its pool key (pool of the library), else the same paper; or None"""
-        for record in (self.origin.records(pool.id) if self.is_own(pool) else []):
+        has its pool key, else the same paper; or None"""
+        for record in self.origin.records(pool.id):
             if record.pool_key.lower() == pe.key.lower():
                 e = next((x for x in self.biblio.entries if self.biblio.key(x) == record.key.lower()), None)
                 if e is not None:
@@ -740,16 +782,12 @@ class Exchange:
         return [pe for pe in pool.biblio.entries if self.library_entry(pe, pool) is None]
 
     def shared(self, entries, pool):
-        "the entries that have an origin record of `pool`, the pool of the library (the entries shared with it)"
-        if not self.is_own(pool):
-            return []
+        "the entries that have an origin record of `pool` (the entries shared with it)"
         return [e for e in entries if self.origin.get(e, pool.id) is not None]
 
     def pull(self, entries, pool, resolver, mode=None, record_pull=True, new=(), named=()):
         """three-way merge of the entries of `pool` into the library entries
         (see papers.merge), and the pool entries `new` added to the library.
-        The origin records are used and written for the pool of the library
-        only: with another pool (`--pool PATH`), the exchange is one-time.
         An entry that the pool does not have is reported (`not found`) only
         if it is one of `named` (the entries named on the command line).
         pool None: nothing to merge. Return the outcome of each entry: list of (entry, pool, what)
@@ -771,22 +809,19 @@ class Exchange:
         for pe in new:
             report.append((self._pull_new(pe, pool, mode), pool, 'added'))
         # a pull that skipped (or quit) leaves pool changes to take: not a pull of the pool
-        if record_pull and self.is_own(pool) and not resolver.quit \
+        if record_pull and pool is not None and not resolver.quit \
                 and not any(what == 'skipped' for _, _, what in report):
             self.origin.set_pulled(pool.id, before)
         return report
 
     def _pull_one(self, e, pool, pe, record, resolver, mode):
-        own = self.is_own(pool)
-        if not self.config.local:
+        if self._shares_links(pool):
             self.repair_links([e], pool=pool)
         incoming = exchange_copy(pe, pool.biblio, self.biblio)
         merge = Merge([e, incoming], relative_to=self.biblio.relative_to, exchange=True,
                       base=record.entry if record is not None else None)
         removed = self.pool_removed(e, pe, record, pool)
         if not merge.conflicts and not merge.additions and not merge.new_files and not removed:
-            if not own:
-                return 'unchanged'
             self.record(e, pool, pe, pe)
             return 'unchanged' if record is not None else 'linked'
         if merge.conflicts:
@@ -801,30 +836,26 @@ class Exchange:
         if removed:  # the pool entry no longer links to them
             self.biblio.set_files(e, [f for f in self.biblio.get_files(e) if realpath(f) not in removed])
         self._place_files(e, self.files_policy(mode, keep=old_files, pools=[pool]))
-        if own:
-            self.record(e, pool, pe, pe)
+        self.record(e, pool, pe, pe)
         return 'updated'
 
     def _pull_new(self, pe, pool, mode):
         """add a pool entry to the library, under the pool key (with a letter
         suffix if the library has this key already); its files are linked
-        in a non-local library, else placed as the files mode says"""
+        in a shallow library (its own pool), else placed as the files mode says"""
         keys = {self.biblio.key(x) for x in self.biblio.entries}
         key = pe.key if pe.key.lower() not in keys else append_abc(pe.key, keys)
         e = exchange_copy(pe, pool.biblio, self.biblio, key=key)
         self.biblio.db.add(e)
         self._place_files(e, self.files_policy(mode, pools=[pool]))
-        if self.is_own(pool):
-            self.record(e, pool, pe, pe)
+        self.record(e, pool, pe, pe)
         return e
 
     def check(self, entries, pool, all_entries=True):
         """the report of `pull --check` with `pool`: a line on the pool if it
-        changed since the last pull (pool of the library), and on the entries whose
-        pool version changed since it was taken (no merge, nothing
-        written)"""
-        own = self.is_own(pool)
-        lines = [f'{pool.label}: {pool_state(self.origin, pool)}'] if all_entries and own else []
+        changed since the last pull, and on the entries whose pool version
+        changed since it was taken (no merge, nothing written)"""
+        lines = [f'{pool.label}: {pool_state(self.origin, pool)}'] if all_entries else []
         for e in entries:
             pe, record = self.pool_entry(e, pool)
             if pe is None:
@@ -835,8 +866,7 @@ class Exchange:
             if record is None:
                 merge = Merge([e, incoming], relative_to=self.biblio.relative_to, exchange=True)
                 if not merge.is_exact() or merge.new_files:
-                    lines.append(f'{e.key}: in {pool.label} as {pe.key}, '
-                                 + ('not pulled yet' if own else 'different'))
+                    lines.append(f'{e.key}: in {pool.label} as {pe.key}, not pulled yet')
                 continue
             merge = Merge([e, incoming], relative_to=self.biblio.relative_to, base=record.entry)
             changed = [f.name for f in merge.additions + merge.conflicts]
@@ -854,14 +884,12 @@ class Exchange:
     def push(self, entries, pool, resolver, include_new=True):
         """three-way merge of the library entries into the pool entries;
         entries new to the pool are added to it, with a key from the pool's
-        key template. Records are used and written for the pool of the library only:
-        with another pool (`--pool PATH`), the push is one-time. Return
-        [(entry, pool, what)], what being 'added', 'updated', 'linked',
+        key template. Return [(entry, pool, what)], what being 'added', 'updated', 'linked',
         'unchanged', 'skipped' or 'empty' (an entry without fields or key,
         not pushed)."""
         check_readable(pool)
         self.merge_distinct(pool)
-        if self.is_own(pool) and pool.id not in self._after:
+        if pool.id not in self._after:
             before = pool.bibtex_mtime()
             # [the pool had not changed since the last exchange, a pushed entry left it ahead of the library]
             self._after[pool.id] = [before is None or self.origin.pulled(pool.id) == before, False]
@@ -888,7 +916,7 @@ class Exchange:
         change of the pool, unless a pushed entry left the pool with
         something that the library does not have (a pull would bring it)"""
         state = self._after.get(pool.id)
-        if state is None or state[1]:  # not the pool of the library, or left ahead of the library
+        if state is None or state[1]:  # not pushed to, or left ahead of the library
             return
         if state[0] or self.origin.first_exchange(pool.id):
             self.origin.set_pulled(pool.id, pool.bibtex_mtime())
@@ -896,7 +924,7 @@ class Exchange:
     def after_take(self, pool):
         """after `add` took entries from the pool (not saved): the first
         exchange with the pool records its modification time, as a pull"""
-        if self.is_own(pool) and self.origin.first_exchange(pool.id) and self.origin.records(pool.id):
+        if self.origin.first_exchange(pool.id) and self.origin.records(pool.id):
             self.origin.set_pulled(pool.id, pool.bibtex_mtime())
 
     def _pool_policy(self, pool, keep=()):
@@ -906,7 +934,7 @@ class Exchange:
 
     def _push_new(self, e, pool):
         out = exchange_copy(e, self.biblio, pool.biblio)
-        # in a non-local library, the links added by the command are linked where they are
+        # in a shallow library, the links added by the command are linked where they are
         policy = self._pool_policy(pool, keep=self.new_links(e, pool))
         # an entry without fields, or without a key, is not written to the pool
         if not any(k not in ('file', 'ids') for k in out.fields_dict):
@@ -921,18 +949,14 @@ class Exchange:
                 set_entry_key(out, pool.biblio.append_abc_to_key(out))
         new = pool.biblio.insert_entry(out, update_key=update_key, rename=pool.filesdir is not None, copy=policy)[0]
         pool.add_entry(new)
-        if self.is_own(pool):
-            self.record(e, pool, new, new)
+        self.record(e, pool, new, new)
         return 'added'
 
     def _push_one(self, e, pool, pe, record, resolver):
-        own = self.is_own(pool)
         outgoing = exchange_copy(e, self.biblio, pool.biblio, key=pe.key)
         merge = Merge([pe, outgoing], relative_to=pool.biblio.relative_to, exchange=True,
                       base=_rekey(record.entry, pe.key) if record is not None else None)
         if not merge.conflicts and not merge.additions and not merge.new_files:
-            if not own:
-                return 'unchanged'
             self._pushed(e, pool, pe, outgoing)
             return 'unchanged' if record is not None else 'linked'
         if merge.conflicts:
@@ -945,11 +969,10 @@ class Exchange:
         old_files = pool.biblio.get_files(pe)
         pool.update_entry(pe, new)
         if pool.filesdir is not None:
-            # in a non-local library, the links added by the command are linked where they are
+            # in a shallow library, the links added by the command are linked where they are
             keep = old_files + self.new_links(e, pool)
             pool.biblio.rename_entry_files(pe, copy=self._pool_policy(pool, keep=keep))
-        if own:
-            self._pushed(e, pool, pe, outgoing)
+        self._pushed(e, pool, pe, outgoing)
         return 'updated'
 
     def _pushed(self, e, pool, pe, outgoing):
@@ -963,7 +986,7 @@ class Exchange:
             self._after[pool.id][1] = True
 
     def push_links(self, entries, pool, resolver):
-        """a non-local library: the pool entries of `entries` (whose file
+        """a shallow library: the pool entries of `entries` (whose file
         links changed in the command) link to the files that the command
         linked the library entries to, wherever they are, and to those
         that the library entries link to in the pool's files directory; and
@@ -997,7 +1020,7 @@ class Exchange:
             files += [f for f in added if realpath(f) not in linked]
             if files == old:
                 continue
-            if self.is_own(pool) and pool.id not in self._after:
+            if pool.id not in self._after:
                 before_mtime = pool.bibtex_mtime()
                 if before_mtime is not None and self.origin.pulled(pool.id) == before_mtime:
                     # the pool had not changed since the last exchange: it has not now either
@@ -1081,10 +1104,10 @@ class Exchange:
             repaired.append((e, found))
         return repaired
 
-    # conversions of the files (papers config local, papers config pool)
-    # ------------------------------------------------------------------
+    # conversions of the files (papers config pool)
+    # ---------------------------------------------
 
-    def plan_to_local(self, dirs=None):
+    def plan_own_files(self, dirs=None):
         """the pool files that the library links to (dirs: the files
         directories of the pool, by default the library's pool), to copy into
         its files directory: [(entry, files)]"""
@@ -1097,8 +1120,8 @@ class Exchange:
                 plan.append((e, files))
         return plan
 
-    def to_local(self, plan, dirs):
-        """copy (a hard link when possible) the files of plan_to_local into
+    def own_files(self, plan, dirs):
+        """copy (a hard link when possible) the files of plan_own_files into
         the files directory, with the library's name template, and relink
         them; the pool keeps its files"""
         if self.biblio.filesdir is None:
@@ -1111,20 +1134,18 @@ class Exchange:
 
     def plan_relink(self, pool):
         """what linking the library to the files of `pool` does (`papers
-        config local false`, `papers config pool PATH` of a library that is
-        not local): (plan, missing). Each file that a library entry links
+        config pool PATH`): (plan, missing). Each file that a library entry links
         to (existing files) must be linked by the pool entry of the same
         paper: the same file, or a file of the same content. plan:
         [(entry, [(file, pool file)])], the links to replace by the pool's
         copy; missing: the entries with a file that the pool entry does
-        not have (or that the pool does not have). `pool` None: a pool that
-        does not exist yet."""
+        not have (or that the pool does not have)."""
         plan, missing = [], []
         for e in self.biblio.entries:
             files = [f for f in self.biblio.get_files(e) if os.path.isfile(f)]
             if not files:
                 continue
-            pe = self.pool_entry(e, pool)[0] if pool is not None else None
+            pe = self.pool_entry(e, pool)[0]
             pool_files = [pf for pf in pool.biblio.get_files(pe) if os.path.isfile(pf)] if pe is not None else []
             same = {realpath(pf) for pf in pool_files}
             hashes = None
@@ -1165,8 +1186,7 @@ class Exchange:
             self.biblio.set_files(e, files)
             delete.extend(f for f, _ in actions if filesdir and is_inside(f, filesdir))
         linked = {realpath(f) for e in self.biblio.entries for f in self.biblio.get_files(e)}
-        if pool is not None:
-            linked.update(realpath(f) for e in pool.biblio.entries for f in pool.biblio.get_files(e))
+        linked.update(realpath(f) for e in pool.biblio.entries for f in pool.biblio.get_files(e))
         dirs = [d for d in keep_dirs if d]
         return [f for f in dict.fromkeys(delete) if realpath(f) not in linked
                 and not any(is_inside(f, d) for d in dirs)]
@@ -1208,11 +1228,12 @@ class PoolLookup:
     """the pool lookup of `add` (Biblio.pool_lookup): an added PDF, DOI or
     bibtex entry that is the same paper as a pool entry is taken from the
     pool, without fetching anything. The entries taken are recorded in the
-    origin once inserted (see `inserted`)."""
+    origin once inserted (see `inserted`). pool: the library to look in
+    (`add --pool PATH`), by default the pool of the library."""
 
-    def __init__(self, exchange):
+    def __init__(self, exchange, pool=None):
         self.exchange = exchange
-        self.pool = exchange.pools.pool()
+        self.pool = pool if pool is not None else exchange.pools.pool()
         self._taken = {}
         self._same = {}  # the files given that have the content of a file of the pool entry
         self.taken_from = {}  # lower-case library key -> the pool of the entry taken
@@ -1323,14 +1344,15 @@ class PoolLookup:
 
 
 def use_pool_files(config, pools):
-    """in a non-local library, `add` places the files in the pool, under
+    """in a shallow library, `add` places the files in the pool, under
     the pool's name template: set them in the configuration of the run
     (the pool is created if it does not exist yet)"""
     pool = pools.target()
     if pool.filesdir is None:
-        raise PoolError(f'{pool.label} has no files directory, and this library is not local')
+        raise PoolError(f'{pool.label} has no files directory, and this library is shallow (its files are '
+                        'in the pool)')
     if config.source('name.template') == 'library':
-        logger.warning('the name template of a non-local library is not used: the files are named '
+        logger.warning('the name template of a shallow library is not used: the files are named '
                        f'with the template of {pool.label}')
     config.filesdir = pool.filesdir
     config.nameformat = pool.config.nameformat
@@ -1343,8 +1365,8 @@ def use_pool_files(config, pools):
 def export(biblio, config, entries, dest, files='copy', git=None):
     """write the entries (and their files, as `files` says: copy, link or
     none) as a new library in directory `dest`, which must not exist or be
-    empty: a library of its own, without pool and with its own files (pool
-    none, local true), to be handed over. Return (configuration,
+    empty: a self-contained library (pool none, its own files), to be
+    handed over. Return (configuration,
     bibliography) of the new library, for the caller to save."""
     if os.path.exists(dest) and (not os.path.isdir(dest) or os.listdir(dest)):
         raise PapersExit(f'{dest}: exists and is not an empty directory')
@@ -1374,21 +1396,23 @@ def export(biblio, config, entries, dest, files='copy', git=None):
 # ======
 
 def status_line(config):
-    """the pool of a library in `papers status`: its path (or none), whether
-    it is the global pool, exists, and changed since the last exchange"""
+    """the pool of a library in `papers status`: its path (or none: the
+    library is self-contained), whether it exists, and changed since the
+    last exchange"""
     path = config.pool_path()
     if path is None:
         return 'none'
     pools = Pools(config)
     text = config.pool_label()
-    notes = ['global pool'] if pools._is_global(path) else []
+    notes = []
     if pools._is_self(path):
         notes.append('this library: it has no pool')
     elif not os.path.exists(path):
-        notes.append('not created yet' if pools._is_global(path) else bcolors.WARNING + 'missing' + bcolors.ENDC)
+        notes.append(bcolors.WARNING + 'missing' + bcolors.ENDC)
     else:
         try:
             origin = Origin.for_bibtex(config.bibtex) if config.bibtex else Origin()
+            pools.set_known_ids(set(origin.entries) | set(origin.pulls))
             notes.append(pool_state(origin, pools.resolve(path)))
         except PoolError:
             notes.append(bcolors.WARNING + 'not a library' + bcolors.ENDC)
