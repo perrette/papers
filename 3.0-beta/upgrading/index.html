@@ -1072,9 +1072,10 @@ by other tools. What changes:</p>
 </tr>
 </tbody>
 </table>
-<p><code>papers install --global</code> is not deprecated but an error that changes
-nothing: <code>papers init PATH --global</code> creates the default library, and
-<code>papers config --global default PATH</code> registers an existing one.</p>
+<p><code>papers install --global</code> is removed: it stops with an error, and
+changes nothing. <code>papers init PATH --global</code> creates the default
+library, and <code>papers config --global default PATH</code> registers an
+existing one.</p>
 </li>
 <li>
 <p><code>papers list</code> keeps its search options and its actions <code>--edit</code>,
