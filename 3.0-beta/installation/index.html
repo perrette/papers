@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.0">
     
     
       
@@ -31,10 +31,10 @@
       
     
     
-      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      <link rel="stylesheet" href="../assets/stylesheets/main.57a0d79d.min.css">
       
         
-        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="../assets/stylesheets/palette.fb2fffe2.min.css">
       
       
 
@@ -950,11 +950,14 @@
 
 <h1 id="installation">Installation<a class="headerlink" href="#installation" title="Permanent link">&para;</a></h1>
 <h2 id="install-papers">Install papers<a class="headerlink" href="#install-papers" title="Permanent link">&para;</a></h2>
-<p>papers 3 (beta) is not on PyPI yet. Install it from the <code>v3</code> branch:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pip<span class="w"> </span>install<span class="w"> </span>git+https://github.com/perrette/papers.git@v3
+<p>papers 3 (beta) is published on PyPI as a pre-release: <code>--pre</code> installs it.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pip<span class="w"> </span>install<span class="w"> </span>--pre<span class="w"> </span>papers-cli
+</code></pre></div>
+<p>The development version, from the <code>v3</code> branch:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>pip<span class="w"> </span>install<span class="w"> </span>git+https://github.com/perrette/papers.git@v3
 </code></pre></div>
 <p>papers 2, the current release:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>pip<span class="w"> </span>install<span class="w"> </span>papers-cli
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>pip<span class="w"> </span>install<span class="w"> </span>papers-cli
 </code></pre></div>
 <p>Note there is another project registered on PyPI as <code>papers</code>, hence
 <code>papers-cli</code> for command-line-interface. The installed command is still
@@ -1001,10 +1004,10 @@ mitigations are built in:</p>
 <code>papers export --format ris</code>, <code>papers list --format ris</code>) needs the
 <a href="https://pypi.org/project/rispy/">rispy</a> package, which is not installed
 by default. Install it in the environment of papers:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>pip<span class="w"> </span>install<span class="w"> </span><span class="s1">'papers-cli[ris]'</span><span class="w">       </span><span class="c1"># with papers</span>
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>pip<span class="w"> </span>install<span class="w"> </span>rispy<span class="w">                    </span><span class="c1"># or afterwards</span>
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>pipx<span class="w"> </span>inject<span class="w"> </span>papers-cli<span class="w"> </span>rispy<span class="w">         </span><span class="c1"># papers installed with pipx</span>
-<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>uv<span class="w"> </span>tool<span class="w"> </span>install<span class="w"> </span>papers-cli<span class="w"> </span>--with<span class="w"> </span>rispy<span class="w">   </span><span class="c1"># papers installed with uv</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>pip<span class="w"> </span>install<span class="w"> </span><span class="s1">'papers-cli[ris]'</span><span class="w">       </span><span class="c1"># with papers</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>pip<span class="w"> </span>install<span class="w"> </span>rispy<span class="w">                    </span><span class="c1"># or afterwards</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>pipx<span class="w"> </span>inject<span class="w"> </span>papers-cli<span class="w"> </span>rispy<span class="w">         </span><span class="c1"># papers installed with pipx</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>uv<span class="w"> </span>tool<span class="w"> </span>install<span class="w"> </span>papers-cli<span class="w"> </span>--with<span class="w"> </span>rispy<span class="w">   </span><span class="c1"># papers installed with uv</span>
 </code></pre></div>
 <p>When a command needs rispy and it is missing, papers asks in a terminal
 whether to install it with <code>pip</code> (<code>python -m pip install rispy</code>, with the
@@ -1065,10 +1068,10 @@ and prints these commands. CSL-JSON needs no extra package.</p>
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.instant", "navigation.tracking", "navigation.sections", "navigation.top", "toc.follow", "toc.integrate", "navigation.expand", "search.suggest", "search.highlight", "content.code.copy", "content.action.edit"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"default": "stable", "provider": "mike"}}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.instant", "navigation.tracking", "navigation.sections", "navigation.top", "toc.follow", "toc.integrate", "navigation.expand", "search.suggest", "search.highlight", "content.code.copy", "content.action.edit"], "search": "../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"default": "stable", "provider": "mike"}}</script>
     
     
-      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      <script src="../assets/javascripts/bundle.c21346df.min.js"></script>
       
     
   </body>
