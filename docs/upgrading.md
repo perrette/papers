@@ -11,10 +11,17 @@ papers 3 adds the following new functionalities:
   library can be a library per topic (`~/Documents/papers/sealevel`), or
   one library for everything, the default library (see
   [A global shared library](global-library.md));
+- **speed**: on a library of 10,000 entries, common commands take about
+  half the time (`papers list` 1.5 s → 0.7 s, `papers add` 2.3 s → 1.2 s),
+  and the duplicate checks are two orders of magnitude faster
+  (`papers list --duplicates` on 1,000 entries: 30 s → 0.2 s);
 - **a review of the commands**: `papers init` and `papers config` replace
   `papers install`, the commands on attached files are grouped under
-  `papers file`, and older forms are deprecated (see
-  [What else changed](#what-else-changed)).
+  `papers file`, `papers list` has more actions, and older forms are
+  deprecated (see [What else changed](#what-else-changed));
+- **RIS and CSL-JSON**: `papers add refs.ris` (or `.json`) imports them,
+  `papers list --format` and `papers export` write them (see
+  [Export](export.md)).
 
 ## What changes for an existing setup
 
