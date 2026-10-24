@@ -10,7 +10,7 @@ Command-line tool to manage your bibliography (PDFs + BibTeX).
 
 > **papers 3.0 beta**: `pip install --pre papers-cli` installs it.
 > See the [3.0 beta documentation](https://perrette.github.io/papers/3.0-beta/) and [upgrading from papers 2](https://perrette.github.io/papers/3.0-beta/upgrading/).
-> Please report problems and suggestions in an [issue](https://github.com/perrette/papers/issues).
+> Please report problems and suggestions in the [feedback issue](https://github.com/perrette/papers/issues/115).
 
 Disclaimer: This tool requires further development and testing, and might never
 be fully production-ready (contributors welcome). \
