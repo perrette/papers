@@ -1,5 +1,40 @@
-"""That is the script called by the papers cli command
-"""
+"""That is the script called by the papers cli command"""
+
+__lazy_modules__ = [
+    "ox",
+    "copy",
+    "sys",
+    "pathlib",
+    "logging",
+    "argparse",
+    "subprocess",
+    "shutil",
+    "itertools",
+    "fnmatch",
+    "papers",
+    "json",
+    "dataclasses",
+    "contextlib",
+    "tempfile",
+    "hashlib",
+    "platformdirs",
+    "fcntl",
+    "re",
+    "unicodedata",
+    "bibtexparser",
+    "crossref",
+    "pymupdf",
+    "requests",
+    "bs4",
+    "urllib",
+    "papidfuzz",
+    "scholarly",
+    "operator",
+    "difflib",
+    "logging",
+    "slugify",
+    "unidecode",
+]
 import os
 import copy
 import sys
