@@ -2,19 +2,22 @@ import os
 import subprocess as sp
 import tempfile
 import shutil
-# import json
+import json
 import unittest
 import difflib
+from tests import TEST_DEFAULT_LIBRARY
 from tests.download import downloadpdf
 from pathlib import Path
 import io
 from contextlib import redirect_stdout
+from unittest.mock import patch
 import shlex
 
 import papers
+import papers.config
 from papers import logger, logging
 from papers.utils import set_directory
-from papers.__main__ import main
+from papers.cli import main
 from papers.config import CONFIG_FILE, CONFIG_FILE_LOCAL, Config, DATA_DIR
 from papers.bib import Biblio
 
@@ -142,6 +145,10 @@ class BibTest(unittest.TestCase):
         else:
             cls._backup_dir = None
 
+        # the global configuration (default pool) as set in tests/__init__.py
+        cls._machine_config = open(papers.config.MACHINE_CONFIG_FILE).read() \
+            if os.path.exists(papers.config.MACHINE_CONFIG_FILE) else None
+
     @classmethod
     def tearDownClass(cls):
         """ Restore any pre-existing global config
@@ -157,6 +164,11 @@ class BibTest(unittest.TestCase):
         if cls._backup_dir is not None:
             shutil.move(os.path.join(cls._backup_dir.name, os.path.basename(DATA_DIR)), DATA_DIR)
             cls._backup_dir.cleanup()
+
+        if cls._machine_config is not None:
+            open(papers.config.MACHINE_CONFIG_FILE, 'w').write(cls._machine_config)
+        elif os.path.exists(papers.config.MACHINE_CONFIG_FILE):
+            os.remove(papers.config.MACHINE_CONFIG_FILE)
 
 
     def assertMultiLineEqual(self, first, second, msg=None):
@@ -243,42 +255,135 @@ class BaseTest(BibTest):
 
 
 
-class LocalInstallTest(BaseTest):
+class InitTest(BaseTest):
+    """a library created with `papers init` in the temporary directory"""
+
+    init_options = ''
+
     def setUp(self):
         super().setUp()
-        self.papers(f'install --force --local --bibtex {self.mybib} --files {self.filesdir}')
+        self.papers(f'init {self.init_options} --bibtex {self.mybib} --filesdir {self.filesdir}')
 
     @property
     def config(self):
         return Config.load(self._path(CONFIG_FILE_LOCAL))
 
-class GlobalInstallTest(BaseTest):
+
+class GitInitTest(InitTest):
+    init_options = '--git'
+
+
+class GitLFSInitTest(InitTest):
+    init_options = '--git-lfs'
+
+
+class ConfigTest(BibTest):
+    """a temporary directory, as current directory of the commands"""
+
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.dir = os.path.realpath(self.temp_dir.name)
+        self.machine_config = open(papers.config.MACHINE_CONFIG_FILE).read()
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+        shutil.rmtree(TEST_DEFAULT_LIBRARY, ignore_errors=True)
+        open(papers.config.MACHINE_CONFIG_FILE, 'w').write(self.machine_config)
+
+    def papers(self, cmd, cwd=None, **kw):
+        return paperscmd(cmd, cwd=cwd or self.dir, **kw)
+
+    def path(self, *p):
+        return os.path.join(self.dir, *p)
+
+    def json(self, *p):
+        return json.load(open(self.path(*p, CONFIG_FILE_LOCAL)))
+
+
+def entry(key, *files, doi=None):
+    "the bibtex of an entry with these files"
+    file = ';'.join(f':{f}:pdf' for f in files)
+    return (f"@article{{{key},\n author = {{Some One}},\n"
+            + (f" doi = {{{doi}}},\n" if doi else "")
+            + (f" file = {{{file}}},\n" if files else "")
+            + f" title = {{Title of {key}}},\n year = {{2000}}\n}}\n\n")
+
+
+class FileTest(ConfigTest):
+    """a library in lib/ with files in lib/files"""
+
     def setUp(self):
         super().setUp()
-        self.papers(f'install --force --global --bibtex {self.mybib} --files {self.filesdir}')
+        os.makedirs(self.path('lib'))
+        self.lib('init --no-git')
+        os.makedirs(self.path('lib', 'files'), exist_ok=True)
 
-    @property
-    def config(self):
-        return Config.load(CONFIG_FILE)
+    def lib(self, cmd, **kw):
+        return self.papers(cmd, cwd=self.path('lib'), **kw)
+
+    def out(self, cmd):
+        out = io.StringIO()
+        with redirect_stdout(out):
+            self.lib(cmd)
+        return out.getvalue()
+
+    def write(self, *p, content=None):
+        path = self.path(*p)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        Path(path).write_text(content or os.path.basename(path))
+        return path
+
+    def bib(self, *entries):
+        Path(self.path('lib', 'papers.bib')).write_text(''.join(entries))
+
+    def files(self, key):
+        biblio = Biblio.load(self.path('lib', 'papers.bib'), '')
+        e = next(e for e in biblio.entries if e.key == key)
+        return biblio.get_files(e)
+
+    def libfiles(self):
+        "the files of lib/files (relative paths)"
+        return sorted(os.path.relpath(os.path.join(root, f), self.path('lib', 'files'))
+                      for root, _, files in os.walk(self.path('lib', 'files')) for f in files)
 
 
-class LocalGitInstallTest(LocalInstallTest):
+class LibraryTest(unittest.TestCase):
+    """a library papers.bib with the content `lib` in a temporary
+    directory, used with --bibtex (no library configuration)"""
+
+    lib = ''
+
     def setUp(self):
-        super().setUp()
-        self.papers(f'install --force --local --git --bibtex {self.mybib} --files {self.filesdir}')
+        self.tmp = tempfile.TemporaryDirectory()
+        self.dir = os.path.realpath(self.tmp.name)
+        self.bibtex = self.path('papers.bib')
+        Path(self.bibtex).write_text(self.lib)
 
-class GlobalGitInstallTest(GlobalInstallTest):
-    def setUp(self):
-        super().setUp()
-        self.papers(f'install --force --global --git --bibtex {self.mybib} --files {self.filesdir}')
+    def tearDown(self):
+        self.tmp.cleanup()
 
-class LocalGitLFSInstallTest(LocalInstallTest):
-    def setUp(self):
-        super().setUp()
-        self.papers(f'install --force --local --git --git-lfs --bibtex {self.mybib} --files {self.filesdir}')
+    def path(self, *p):
+        return os.path.join(self.dir, *p)
 
+    def write(self, name, content):
+        Path(self.path(name)).write_text(content)
+        return self.path(name)
 
-class GlobalGitLFSInstallTest(GlobalInstallTest):
-    def setUp(self):
-        super().setUp()
-        self.papers(f'install --force --global --git --git-lfs --bibtex {self.mybib} --files {self.filesdir}')
+    def papers(self, cmd, answers=None, editor=None):
+        "run papers in the library directory; the text it printed"
+        out = io.StringIO()
+        env = {'EDITOR': editor} if editor else {}
+        with patch('builtins.input', side_effect=list(answers or [])), patch.dict(os.environ, env), \
+                redirect_stdout(out):
+            paperscmd(f'{cmd} --bibtex {self.bibtex} --no-git', cwd=self.dir)
+        return out.getvalue()
+
+    def entries(self):
+        return {e.key: e for e in Biblio.load(self.bibtex, '').entries}
+
+    def entry(self, key):
+        return self.entries()[key]
+
+    def distinct(self):
+        path = self.path('.papers', 'distinct.json')
+        return json.load(open(path))['distinct'] if os.path.exists(path) else []

@@ -1,13 +1,14 @@
 import os
 import json
+import shutil
 import tempfile
 from pathlib import Path
 import unittest
 
 from papers.backup import default_gitdir, read_manifest, write_manifest
 from papers.bib import Biblio
-from papers.config import CONFIG_FILE_LOCAL
-from tests.common import BaseTest, LocalGitInstallTest, paperscmd
+from papers.config import CONFIG_FILE_LOCAL, BACKUP_DIR, Config
+from tests.common import BaseTest, ConfigTest, GitInitTest, paperscmd
 
 
 class TestDefaultGitdirNaming(unittest.TestCase):
@@ -24,7 +25,7 @@ class TestDefaultGitdirNaming(unittest.TestCase):
         self.assertEqual(default_gitdir("/x/lib.bib"), default_gitdir("/x/lib.bib"))
 
 
-class TestManifest(LocalGitInstallTest):
+class TestManifest(GitInitTest):
 
     def test_install_writes_manifest(self):
         manifest = read_manifest(self.config.gitdir)
@@ -33,8 +34,8 @@ class TestManifest(LocalGitInstallTest):
 
     def test_manifest_untracked_and_survives_operations(self):
         self.papers(f'add {self.anotherbib}')
-        self.papers(f'undo')
-        self.papers(f'redo')
+        self.papers('undo')
+        self.papers('redo')
         manifest = read_manifest(self.config.gitdir)
         self.assertIsNotNone(manifest)
         self.assertEqual(Path(manifest["bibtex"]), Path(self._path(self.mybib)).resolve())
@@ -75,12 +76,12 @@ class TestManifest(LocalGitInstallTest):
 class TestBackupListWithoutGit(BaseTest):
 
     def test_backup_list_reports_git_off(self):
-        self.papers(f'install --force --local --no-git --bibtex {self.mybib} --files {self.filesdir}')
+        self.papers(f'init --no-git --bibtex {self.mybib} --filesdir {self.filesdir}')
         out = self.papers('backup list', sp_cmd='check_output')
         self.assertIn('git-tracking is off', out)
 
 
-class TestBackupRemove(LocalGitInstallTest):
+class TestBackupRemove(GitInitTest):
 
     def test_remove_by_name(self):
         gitdir = self.config.gitdir
@@ -106,7 +107,7 @@ class TestBackupRemove(LocalGitInstallTest):
         self.assertNotIn(name, out)
 
 
-class TestLegacyLayout(LocalGitInstallTest):
+class TestLegacyLayout(GitInitTest):
     """Backup directories written by older versions tracked backup_copy.bib /
     backup_clean.bib; the new layout tracks the bibtex under its own name."""
 
@@ -132,11 +133,11 @@ class TestLegacyLayout(LocalGitInstallTest):
         # a new snapshot on top of the legacy layout
         open(self._path("more.bib"), "w").write(
             "@article{More2024,\n author = {Mo Re},\n title = {More},\n year = {2024}\n}")
-        self.papers(f'add more.bib')
+        self.papers('add more.bib')
 
         # undo materializes the legacy-layout snapshot: restore must fall back
         # to backup_copy.bib
-        self.papers(f'undo')
+        self.papers('undo')
         self.assertMultiLineEqual(open(self._path(self.mybib)).read(), bib1)
 
 
@@ -153,7 +154,7 @@ def _snapshots(gitdir):
     return backup_info(gitdir)['snapshots'] or 0
 
 
-class TestAddFromAnotherDirectory(LocalGitInstallTest):
+class TestAddFromAnotherDirectory(GitInitTest):
     """`papers add --bibtex /path/to/library.bib` run from another directory:
     the configuration (and backup directory) of that library applies,
     whatever the current directory holds"""
@@ -179,7 +180,7 @@ class TestAddFromAnotherDirectory(LocalGitInstallTest):
 
     def test_cwd_local_config_with_broken_git_setup(self):
         # the current directory is another library whose backup directory does not exist
-        paperscmd(f'install --force --local --bibtex other.bib --files otherfiles', cwd=self.other.name)
+        paperscmd('init --bibtex other.bib --filesdir otherfiles', cwd=self.other.name)
         otherconfig = os.path.join(self.other.name, CONFIG_FILE_LOCAL)
         js = json.load(open(otherconfig))
         js['git'] = True
@@ -215,7 +216,137 @@ class TestAddFromAnotherDirectory(LocalGitInstallTest):
 
     def test_backup_failure_does_not_abort_the_command(self):
         from unittest import mock
-        with mock.patch('papers.__main__.silent_backup_bib', side_effect=RuntimeError('git is broken')):
+        with mock.patch('papers.library.silent_backup_bib', side_effect=RuntimeError('git is broken')):
             with self.assertLogs('papers', level='ERROR'):
                 self.papers(f'add {self.anotherbib}')
         self.assertEqual(len(Biblio.load(self._path(self.mybib), '').entries), 1)
+
+
+class TestGitdirByName(unittest.TestCase):
+    """the library configuration names its backup directory, resolved under
+    the backup folder of the machine (BACKUP_DIR)"""
+
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.dir = os.path.realpath(self.temp_dir.name)
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
+    def path(self, *p):
+        return os.path.join(self.dir, *p)
+
+    def json(self, *p):
+        return json.load(open(self.path(*p, CONFIG_FILE_LOCAL)))
+
+    def config(self, gitdir):
+        config = Config(file=self.path(CONFIG_FILE_LOCAL), is_library=True,
+                        bibtex=self.path('lib.bib'), gitdir=gitdir)
+        config.save()
+        return Config.load(config.file)
+
+    def test_by_name(self):
+        gitdir = os.path.join(BACKUP_DIR, 'lib-0123abcd')
+        config = self.config(gitdir)
+        self.assertEqual(self.json()['gitdir'], 'lib-0123abcd')
+        self.assertEqual(config.gitdir, gitdir)
+
+    def test_custom_location(self):
+        gitdir = self.path('elsewhere', 'backup')
+        config = self.config(gitdir)
+        self.assertEqual(self.json()['gitdir'], gitdir)
+        self.assertEqual(config.gitdir, gitdir)
+
+    def test_absolute_path_of_previous_versions(self):
+        gitdir = os.path.join(BACKUP_DIR, 'lib-0123abcd')
+        os.makedirs(os.path.dirname(self.path(CONFIG_FILE_LOCAL)), exist_ok=True)
+        json.dump({'bibtex': 'lib.bib', 'gitdir': gitdir, 'version': 3},
+                  open(self.path(CONFIG_FILE_LOCAL), 'w'))
+        config = Config.load(self.path(CONFIG_FILE_LOCAL))
+        self.assertEqual(config.gitdir, gitdir)
+        config.save()
+        self.assertEqual(self.json()['gitdir'], 'lib-0123abcd')
+
+    def test_init_and_copied_library(self):
+        os.makedirs(self.path('a'))
+        paperscmd('init --git', cwd=self.path('a'))
+        name = self.json('a')['gitdir']
+        self.assertEqual(os.path.basename(name), name)
+        gitdir = os.path.join(BACKUP_DIR, name)
+        self.assertTrue(os.path.isdir(os.path.join(gitdir, '.git')))
+        self.assertEqual(Config.load(self.path('a', CONFIG_FILE_LOCAL)).gitdir, gitdir)
+        out = paperscmd('backup list', cwd=self.path('a'), sp_cmd='check_output')
+        self.assertIn(f'* {name}: {self.path("a", "papers.bib")}', out)
+        self.assertIn('[current]', out)
+
+        # a copy of the library names the same backup directory: it moves
+        # to a fresh one instead of sharing it
+        shutil.copytree(self.path('a'), self.path('b'))
+        open(self.path('new.bib'), 'w').write(bibtex_new)
+        paperscmd('add ../new.bib', cwd=self.path('b'))
+        nameb = self.json('b')['gitdir']
+        self.assertNotEqual(nameb, name)
+        self.assertEqual(os.path.basename(nameb), nameb)
+        self.assertEqual(Path(read_manifest(os.path.join(BACKUP_DIR, nameb))['bibtex']),
+                         Path(self.path('b', 'papers.bib')))
+        self.assertEqual(Path(read_manifest(gitdir)['bibtex']), Path(self.path('a', 'papers.bib')))
+        self.assertEqual(_snapshots(gitdir), 1)
+        self.assertEqual(self.json('a')['gitdir'], name)
+
+
+class TestDotPapersGitdir(ConfigTest):
+    """the libraries of papers v2.2 to v2.4 back up into <library>/.papers,
+    where papers 3 keeps distinct.json and origin.bib"""
+
+    def setUp(self):
+        super().setUp()
+        from papers.backup import run_git, git_init
+        dot = self.path('lib', '.papers')
+        os.makedirs(dot)
+        Path(self.path('lib', 'papers.bib')).write_text('')
+        Path(dot, 'config.json').write_text(
+            '{"bibtex": "papers.bib", "filesdir": "files", "git": true, "gitdir": ".papers", "local": true}')
+        git_init(dot)
+        Path(dot, 'papers.bib').write_text('')
+        run_git(dot, ['add', 'papers.bib'])
+        run_git(dot, ['commit', '-m', 'v2 snapshot'])
+        Path(dot, 'distinct.json').write_text('[]')
+        Path(self.path('a.bib')).write_text(
+            '@article{a2000,\n author = {One, Some},\n title = {A title},\n year = {2000}\n}\n')
+
+    def test_moved_to_the_backup_folder(self):
+        with self.assertLogs('papers', level='WARNING') as logs:
+            self.papers('add ../a.bib', cwd=self.path('lib'))
+        self.assertTrue(any('the backup moved to' in line for line in logs.output))
+        # the files of the library stay, the repository moved
+        self.assertTrue(os.path.exists(self.path('lib', '.papers', 'distinct.json')))
+        self.assertFalse(os.path.exists(self.path('lib', '.papers', '.git')))
+        self.assertFalse(os.path.exists(self.path('lib', '.papers', '.papers')))
+        config = Config.load(self.path('lib', CONFIG_FILE_LOCAL))
+        self.assertEqual(os.path.dirname(config.gitdir), BACKUP_DIR)
+        log = paperscmd('git log --format=%s', cwd=self.path('lib'), sp_cmd='check_output')
+        self.assertEqual(log.splitlines()[-1], 'v2 snapshot')  # the history moved too
+        self.assertIn('a2000', Path(config.gitdir, 'papers.bib').read_text())
+
+    def test_tracked_configuration_stays(self):
+        # .papers/config.json is the library configuration of papers 3: a
+        # repository that tracked it leaves it in the library
+        from papers.backup import run_git
+        dot = self.path('lib', '.papers')
+        run_git(dot, ['add', 'config.json'])
+        run_git(dot, ['commit', '-m', 'config'])
+        with self.assertLogs('papers', level='WARNING'):
+            self.papers('add ../a.bib', cwd=self.path('lib'))
+        config = Config.load(self.path('lib', CONFIG_FILE_LOCAL))
+        self.assertEqual(os.path.dirname(config.gitdir), BACKUP_DIR)
+
+
+class TestCommitFailure(GitInitTest):
+
+    def test_warning(self):
+        hook = Path(self.config.gitdir, '.git', 'hooks', 'pre-commit')
+        hook.write_text('#!/bin/sh\necho refused >&2\nexit 1\n')
+        hook.chmod(0o755)
+        with self.assertLogs('papers', level='WARNING') as logs:
+            self.papers(f'add {self.anotherbib}')
+        self.assertTrue(any('could not commit' in line and 'refused' in line for line in logs.output))

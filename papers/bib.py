@@ -1,11 +1,11 @@
+import difflib
 import os
+from collections import Counter
 from pathlib import Path
 import shutil
-import tempfile
-import requests
 from unidecode import unidecode as unicode_to_ascii
-import bibtexparser
 from bibtexparser import Library
+from bibtexparser.model import Entry, Field
 
 from papers.entries import (
     get_entry_val,
@@ -15,8 +15,11 @@ from papers.entries import (
     entry_content_equal,
     parse_string,
     format_library,
-    entry_from_dict,
+    sort_blocks,
     library_from_entries,
+    parse_file,
+    format_file,
+    update_file_path,
 )
 from papers.encoding import (
     latex_to_unicode_library,
@@ -26,104 +29,48 @@ from papers.encoding import (
 import papers
 from papers import logger
 
-from papers.extract import extract_pdf_doi, isvaliddoi, parse_doi
-from papers.extract import extract_pdf_metadata
-from papers.extract import fetch_bibtex_by_fulltext_crossref, fetch_bibtex_by_doi
+from papers.extract import parse_doi
+from papers.extract import (extract_pdf_metadata, parse_doi_from_pdf_metadata, parse_dois, pdfhead, pdftail,
+                            title_in_text)
+from papers.fetch import fetch_bibtex_by_fulltext_crossref, fetch_bibtex_by_doi
 
-from papers.encoding import parse_file, format_file, standard_name, family_names, format_entries, update_file_path, format_entry
-from papers.latexenc import unicode_to_latex, latex_to_unicode
+from papers.encoding import standard_name, family_names, format_entries
+from papers.latexenc import string_to_latex
 
 from papers.filename import NAMEFORMAT, KEYFORMAT
-from papers.utils import bcolors, checksum, move as _move
+from papers.files import (download_url, read_entry_dir, attachment_names, remove_entry_dir_if_empty, realpath,
+                          scan_dir_items)
+from papers.utils import bcolors, checksum, move as _move, PapersExit
 import papers.config
 
 from papers.duplicate import (
-    conflict_resolution_on_insert,
-    entry_diff,
-    merge_files,
-    check_duplicates,
-    entry_id,
-    _build_duplicate_index,
-    _get_duplicate_candidates,
-    _add_to_duplicate_index,
+    SAME,
+    Distinct,
+    IdentityIndex,
+    find_duplicates,
+    duplicate_groups,
+    same_paper,
+    search_result_mismatch,
 )
-
-# URL DOWNLOAD
-# ============
-
-def _basename_from_url(url):
-    from urllib.parse import urlparse, unquote
-    path = urlparse(url).path
-    name = unquote(path.rsplit('/', 1)[-1]) or 'download'
-    # strip characters that would break filesystem paths
-    return name.replace('/', '_').replace('\\', '_')
+from papers.merge import Merge, Resolver, Decision, DuplicateError, apply_entry, option_hint
 
 
-def download_url(url, expect_pdf=False, dest_dir=None):
-    """Download a URL to a local file and return its path.
+# the fields of `add --key` and `--type` in the metadata of insert_entry
+METADATA_NAMES = {'ID': 'key', 'ENTRYTYPE': 'type'}
 
-    The file is saved into a fresh temporary directory using the URL's
-    basename so that downstream renaming preserves a meaningful filename.
+# the fields that check --encoding latex leaves as they are
+LATEX_SKIP = {'abstract', 'file', 'doi', 'url', 'eprint', 'isbn', 'issn', 'ids'}
 
-    If ``expect_pdf`` is True, the response must look like a PDF (content-type
-    containing ``pdf`` or bytes beginning with ``%PDF``); otherwise only
-    HTML responses are rejected (e.g. login/landing pages).
-    """
-    headers = {
-        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
-                      "(KHTML, like Gecko) Chrome/120.0 Safari/537.36",
-        "Accept": "application/pdf,*/*;q=0.8" if expect_pdf else "*/*",
-    }
-    try:
-        response = requests.get(url, headers=headers, timeout=30)
-    except requests.exceptions.RequestException as err:
-        raise ValueError(
-            f"Failed to download from {url}: {type(err).__name__}: {err}. "
-            "The connection failed before any HTTP response was received — "
-            "this is often transient (try again), or due to TLS/network issues."
-        ) from err
-    ctype = response.headers.get("content-type", "").lower()
-    if response.status_code != 200:
-        hint = ""
-        if response.headers.get("x-amzn-waf-action") or response.status_code == 202:
-            hint = (" — server appears to require a JavaScript/CAPTCHA challenge "
-                    "(AWS WAF or similar); download manually in a browser "
-                    "and re-run with the local file path")
-        raise ValueError(
-            f"Failed to download from {url}: HTTP {response.status_code} "
-            f"(content-type: {ctype or 'unknown'}){hint}"
-        )
-    if expect_pdf:
-        if "pdf" not in ctype and not response.content.startswith(b"%PDF"):
-            raise ValueError(
-                f"URL did not return a PDF: {url} (content-type: {ctype or 'unknown'}). "
-                "The server likely returned an HTML landing/login page; "
-                "download the PDF manually in a browser and re-run with the local file path."
-            )
-    else:
-        if "html" in ctype or response.content[:512].lstrip().lower().startswith((b"<!doctype html", b"<html")):
-            raise ValueError(
-                f"URL returned an HTML page rather than a file: {url} "
-                f"(content-type: {ctype or 'unknown'}). The server likely returned "
-                "a landing/login page; download the file manually in a browser "
-                "and re-run with the local file path."
-            )
 
-    basename = _basename_from_url(url)
-    if expect_pdf:
-        if not basename.lower().endswith('.pdf'):
-            basename += '.pdf'
-    else:
-        import mimetypes
-        ext = mimetypes.guess_extension((ctype or '').split(';')[0].strip())
-        if ext and not basename.lower().endswith(ext.lower()):
-            basename += ext
-    dest_dir = dest_dir or tempfile.mkdtemp(prefix='papers_dl_')
-    local = os.path.join(dest_dir, basename)
-    with open(local, 'wb') as f:
-        f.write(response.content)
-    return local
-
+def entry_diff(e_old, e, color=True):
+    "line diff of two entries, as bibtex"
+    lines = difflib.ndiff(format_entries([e_old]).splitlines(1), format_entries([e]).splitlines(1))
+    diff = ''.join(lines)
+    if not color:
+        return diff
+    colors = {'+': bcolors.OKGREEN, '-': bcolors.FAIL, '?': bcolors.WARNING}
+    return '\n'.join(colors[line[0]] + line + bcolors.ENDC if line[:1] in colors else line
+                     for line in diff.splitlines())
 
 # KEY GENERATION
 # ==============
@@ -137,274 +84,83 @@ def append_abc(key, keys=[]):
     >>> append_abc('Author2000', ['Author2000', 'Author2000b'])
     'Author2000c'
     """
-    letters = list('abcdefghijklmnopqrstuvwxyz')
+    letters = 'abcdefghijklmnopqrstuvwxyz'
+    keys = {k.lower() for k in keys}  # keys are compared ignoring case
 
-    if key[-1] in letters:
-        i = letters.index(key[-1])
-        letters = letters[i+1:]
+    # a letter after a digit is a suffix of this function (Author2000b)
+    if len(key) > 1 and key[-1] in letters and key[-2].isdigit():
+        letters = letters[letters.index(key[-1])+1:]
         key = key[:-1]
     else:
         letters = letters[1:] # start at b
 
     for l in letters:
-        Key = (key+l)
-        if Key not in keys:
-            key = Key
-            break
-    assert Key not in keys, 'not enough letters in the alphabets to solve key conflict? or maybe something went wrong...'
-    return Key
+        if (key+l).lower() not in keys:
+            return key+l
+    raise ValueError(f'{key}: no free key with a letter suffix')
 
 
-# DUPLICATE DEFINITION (entry_id, author_id, title_id live in papers.duplicate)
-# =============================================================================
-
-FUZZY_RATIO = 80
-
-# Default similarity is used in papers add
-# False positive (to weak a test) and distinct entries will be merged
-# False negative and duplicates will be created
-# PARTIAL means that If either DOI or author+title agree, that is good enough to be considered a duplicate
-# I cant think of any situation where two legitimately distinct papers test True with partial similarity.
-DEFAULT_SIMILARITY = 'PARTIAL'
-
-EXACT_DUPLICATES = 104
-GOOD_DUPLICATES = 103
-FAIR_DUPLICATES = 102
-PARTIAL_DUPLICATES = 101
-FUZZY_DUPLICATES = 100
-
-
-def compare_entries(e1, e2, fuzzy=False):
-    """assess two entries' similarity
-    """
-    if entry_content_equal(e1, e2):
-        return EXACT_DUPLICATES
-
-    id1 = entry_id(e1)
-    id2 = entry_id(e2)
-
-    logger.debug('{} ?= {}'.format(id1, id2))
-
-    if id1 == id2:
-        score = GOOD_DUPLICATES
-
-    elif get_entry_val(e1, 'doi') and get_entry_val(e2, 'doi') and e1['doi'] == e2['doi']:
-        score = FAIR_DUPLICATES
-
-    # elif all([f1==f2 for f1, f2 in zip(id1, id2) if f1 and f2]): # ID and AUTHORTITLE agree
-    #     score = FAIR_DUPLICATES
-    # COMMENT: same as GOOD_DUPLICATES when all fields are defined, but also returns true when one field is missing in one entry
-
-    elif any([f1==f2 for f1, f2 in zip(id1, id2) if f1 and f2]): # any of ID or AUTHORTITLE agree
-        score = PARTIAL_DUPLICATES
-
-    elif not fuzzy:
-        score = 0
-
-    else:
-        from rapidfuzz.fuzz import token_set_ratio
-        doi1, tag1 = id1
-        doi2, tag2 = id2
-        score = token_set_ratio(tag1, tag2)
-
-    return score
-
-def are_duplicates(e1, e2, similarity=DEFAULT_SIMILARITY, fuzzy_ratio=FUZZY_RATIO):
-    level = dict(
-        EXACT = EXACT_DUPLICATES,
-        GOOD = GOOD_DUPLICATES,
-        FAIR = FAIR_DUPLICATES,
-        PARTIAL = PARTIAL_DUPLICATES,
-        FUZZY = FUZZY_DUPLICATES,
-        )
+def _same_content(file, files):
+    "the first of `files` with the content of `file` (same size, then same checksum), or None"
     try:
-        target = level[similarity]
-    except KeyError:
-        raise ValueError('similarity must be one of EXACT, GOOD, FAIR, PARTIAL, FUZZY')
-
-    score = compare_entries(e1, e2, fuzzy=target==FUZZY_DUPLICATES)
-    logger.debug('score: {}, target: {}, similarity: {}'.format(score, target, similarity))
-    return score >= target
-
-
-def hidden_bibtex(direc):
-    """metadata of a directory of files of a single entry (layout of versions
-    before 2.19, still read by `papers add` and `filecheck --clean-filesdir`)"""
-    dirname = os.path.basename(direc)
-    return os.path.join(direc, '.'+dirname+'.bib')
-
-
-def read_entry_dir(direc, update_files=True, relative_to=None):
-    """add a directory that contain files from a single entry
-    """
-    dirname = os.path.basename(direc)
-    hidden_bib = hidden_bibtex(direc)
-    if not os.path.exists(hidden_bib):
-        raise TypeError('hidden bib missing: not an entry dir')
-
-    db = parse_string(open(hidden_bib).read())
-    assert len(db.entries) == 1, 'hidden bib must have one entry, got: '+str(len(db.entries))
-    entry = db.entries[0]
-
-    if update_files:
-        for root, direcs, files in os.walk(direc):
-            break # do not look further in subdirectories, cause any rename would flatten the tree
-        files = [os.path.join(direc, file) for file in files if not file.startswith('.')]
-
-    entry['file'] = format_file(files, relative_to=relative_to)
-    return entry
-
-
-# separates the entry name from the label of its other files: <name>--<label>.<ext>
-ATTACHMENT_SEP = '--'
-
-
-def attachment_label(file, prefixes=()):
-    """label of an entry's file other than the first one: its name without
-    extension, stripped of a '<prefix>--' already added by a rename"""
-    stem = os.path.splitext(os.path.basename(file))[0]
-    for prefix in prefixes:
-        head = prefix + ATTACHMENT_SEP
-        if prefix and stem.startswith(head) and len(stem) > len(head):
-            return stem[len(head):]
-    return stem
-
-
-def attachment_names(files, target):
-    """new paths of an entry's files: target.<ext> for the first one,
-    target--<label>.<ext> for the others (see `attachment_label`),
-    with a -2, -3... suffix if two labels coincide"""
-    newfiles = [target + os.path.splitext(files[0])[1]]
-    # prefixes of a previous rename: the current name of the first file, the target name
-    prefixes = [os.path.splitext(os.path.basename(files[0]))[0], os.path.basename(target)]
-    taken = {os.path.normcase(newfiles[0])}
-    for file in files[1:]:
-        ext = os.path.splitext(file)[1]
-        label = attachment_label(file, prefixes)
-        newfile = target + ATTACHMENT_SEP + label + ext
-        i = 2
-        while os.path.normcase(newfile) in taken:
-            newfile = f'{target}{ATTACHMENT_SEP}{label}-{i}{ext}'
-            i += 1
-        taken.add(os.path.normcase(newfile))
-        newfiles.append(newfile)
-    return newfiles
-
-
-def remove_entry_dir_if_empty(direc):
-    """remove a directory of previous versions' layout (<name>/ with a hidden
-    .<name>.bib) when nothing but the hidden bibtex is left in it"""
-    hidden_bib = hidden_bibtex(direc)
-    if not os.path.isfile(hidden_bib):
-        return
-    leftovers = [f for f in os.listdir(direc) if f != os.path.basename(hidden_bib)]
-    if leftovers:
-        logger.info(f'keep directory {direc}: other files remain ({", ".join(sorted(leftovers))})')
-        return
-    logger.info('remove directory: '+direc)
-    if not papers.config.DRYRUN:
-        shutil.rmtree(direc)
+        size = os.path.getsize(file)
+    except OSError:
+        return None
+    for f in files:
+        if os.path.isfile(f) and os.path.getsize(f) == size and checksum(f) == checksum(file):
+            return f
+    return None
 
 
 def backupfile(bibtex):
     return os.path.join(os.path.dirname(bibtex), '.'+os.path.basename(bibtex)+'.backup')
 
-class DuplicateKeyError(ValueError):
-    pass
 
-def group_attachments(names):
-    """split the file names of a directory into main files and attachments:
-    <name>--<label>.<ext> is an attachment of <name>.pdf when that file is
-    among the names (the layout of `Biblio.rename_entry_files`). Returns a
-    dict {main: [attachments]} in which every name that is not an attachment
-    is a main file (with an empty list in most cases)."""
-    stems = {os.path.splitext(name)[0]: name for name in names if name.lower().endswith('.pdf')}
-    groups = {}
-    attached = {}
-    for name in names:
-        stem = os.path.splitext(name)[0]
-        # the longest main stem that this name continues with '--'
-        prefixes = [s for s in stems if stems[s] != name and stem.startswith(s + ATTACHMENT_SEP)]
-        if prefixes:
-            attached[name] = stems[max(prefixes, key=len)]
-    for name in names:
-        if name not in attached:
-            groups[name] = []
-    for name in names:
-        if name in attached:
-            main = attached[name]
-            while main in attached:  # a--b--c.pdf continues a--b.pdf, an attachment of a.pdf
-                main = attached[main]
-            groups[main].append(name)
-    return groups
+def read_text(file):
+    "the content of a text file (as `open(file, 'w').write` was given it), or None if it cannot be read"
+    try:
+        with open(file) as f:
+            return f.read()
+    except (OSError, UnicodeDecodeError):
+        return None
+
+class DuplicateKeyError(PapersExit):
+    "a new entry has the key of another paper of the library"
+
+def unreadable_blocks(db):
+    """the entries of a parsed bibtex that bibtexparser could not read (a
+    field given twice, a syntax error): [(line, reason)]. Their text is
+    written back as it is, but papers does not see them."""
+    found = []
+    for block in getattr(db, 'failed_blocks', []):
+        if type(block).__name__ == 'DuplicateFieldKeyBlock':
+            reason = str(block.error).split('. Note')[0].replace('Duplicate field keys on entry', 'a field given twice')
+        else:
+            reason = 'syntax error'
+        found.append(((block.start_line or 0) + 1, reason))
+    return found
 
 
-def scan_dir_walk(direc):
-    """the files scanned by Biblio.scan_dir: yield ('entry', dir, []) for
-    entry directories of the pre-2.19 layout (with a hidden bibtex), and
-    ('file', path, attachments) for other files, where attachments are the
-    files named after it (see `group_attachments`)"""
-    top = os.path.abspath(direc)
-    for root, direcs, files in os.walk(direc):
-        dirname = os.path.basename(root)
-        # never skip the scan root itself: basename('.') == '.' looks hidden
-        if os.path.abspath(root) != top:
-            if dirname.startswith('.'): continue
-            if dirname.startswith('_'): continue
-
-        if os.path.exists(hidden_bibtex(root)):
-            yield 'entry', root, []
-            continue
-
-        names = sorted(file for file in files if not file.startswith('.'))
-        for name, attachments in group_attachments(names).items():
-            yield 'file', os.path.join(root, name), [os.path.join(root, a) for a in attachments]
-
-
-def scan_dir_items(direc, quiet=False):
-    """the items of `scan_dir_walk`, in the order Biblio.scan_dir adds them:
-    entry directories and bibtex files first, then the other files, without
-    those linked from the bibtex files (their entry comes from the bibtex,
-    so they are neither parsed nor looked up online)"""
-    first, others = [], []
-    for item in scan_dir_walk(direc):
-        kind, path, _ = item
-        (first if kind == 'entry' or path.lower().endswith('.bib') else others).append(item)
-    linked = set()
-    for kind, path, _ in first:
-        if kind != 'file':
-            continue
-        try:
-            db = parse_string(open(path).read())
-        except Exception as error:
-            logger.warning(path+'::'+str(error))
-            continue
-        relative_to = os.path.dirname(os.path.abspath(path))
-        for e in db.entries:
-            for file in parse_file(get_entry_val(e, 'file', ''), relative_to=relative_to):
-                linked.add(os.path.realpath(file))
-    rest = []
-    for item in others:
-        if os.path.realpath(item[1]) in linked:
-            if not quiet:
-                logger.info(f'{item[1]}: linked from a scanned bibtex file, not scanned')
-            continue
-        rest.append(item)
-    return first + rest
+def unreadable_message(bibtex, unreadable):
+    lines = '; '.join(f'line {line}: {reason}' for line, reason in unreadable)
+    n = len(unreadable)
+    home = os.path.expanduser('~')
+    if bibtex.startswith(home + os.sep):
+        bibtex = '~' + bibtex[len(home):]
+    return (f'{bibtex}: {n} entr{"ies" if n > 1 else "y"} could not be read ({lines}): '
+            'papers ignores them until they are fixed')
 
 
 class Biblio:
     """
     The bibtex object that we operate on, which is mainly used to read and write to dynamically, and can then send the changes to be stored in a specified bibtex file on disk.
     """
-    def __init__(self, db=None, filesdir=None, key_field='ID', nameformat=NAMEFORMAT, keyformat=KEYFORMAT, similarity=DEFAULT_SIMILARITY, relative_to=None):
+    def __init__(self, db=None, filesdir=None, nameformat=NAMEFORMAT, keyformat=KEYFORMAT, relative_to=None, distinct=None):
         """
         relative_to : bibtex directory, optional
             use relative paths instead of absolute path
         """
         self.filesdir = filesdir
-        # assume an already sorted list
-        self.key_field = key_field
         if db is None:
             db = Library()
         elif not isinstance(db, Library):
@@ -412,8 +168,14 @@ class Biblio:
         self.db = db
         self.nameformat = nameformat
         self.keyformat = keyformat
-        self.similarity = similarity
+        # pairs of entries that are not the same paper (see papers.duplicate.Distinct)
+        self.distinct = distinct if distinct is not None else Distinct()
         self.relative_to = os.path.sep if relative_to is None else relative_to
+        # `add` looks in the pool first (see papers.pools.PoolLookup)
+        self.pool_lookup = None
+        # the entries as loaded (see mark_loaded, changed_entries)
+        self.loaded_entries = None
+        self._loaded = None
 
     def move(self, file, newfile, copy=False, hardlink=False):
         return _move(file, newfile, copy=copy, dryrun=papers.config.DRYRUN, hardlink=hardlink)
@@ -431,26 +193,18 @@ class Biblio:
         for e in entries:
             self.db.add(e)
 
-    @classmethod
-    def loads(cls, bibtex, filesdir):
-        db = parse_string(bibtex)
-        return cls(db, filesdir)
-
-    def dumps(self):
-        return format_library(self.db)
+    unreadable = ()  # [(line, reason)] of the entries of the bibtex that could not be read
 
     @classmethod
     def load(cls, bibtex, filesdir, relative_to=None, **kw):
         bibtexs = open(bibtex).read()
-        loaded_bib = cls(parse_string(bibtexs), filesdir, relative_to=relative_to if relative_to is not None else os.path.dirname(bibtex), **kw)
+        kw.setdefault('distinct', Distinct.for_bibtex(bibtex))
+        db = parse_string(bibtexs)
+        loaded_bib = cls(db, filesdir, relative_to=relative_to if relative_to is not None else os.path.dirname(bibtex), **kw)
+        loaded_bib.unreadable = unreadable_blocks(db)
+        if loaded_bib.unreadable:
+            logger.warning(unreadable_message(bibtex, loaded_bib.unreadable))
         return loaded_bib
-
-    # make sure the path is right
-    # def assert_files_exist(self):
-    #     for e in self.entries:
-    #         files = parse_file(e["file"], self.relative_to)
-    #         for f in files:
-    #             assert os.path.exists(f), f"{f} does not exist"
 
     @classmethod
     def newbib(cls, bibtex, filesdir, relative_to=None, **kw):
@@ -461,39 +215,125 @@ class Biblio:
         return cls.load(bibtex, filesdir, relative_to=relative_to, **kw)
 
     def key(self, e):
-        return e[self.key_field].lower()
+        return e['ID'].lower()
 
-    def eq(self, e1, e2):
-        return are_duplicates(e1, e2, similarity=self.similarity)
+    @staticmethod
+    def _state(e):
+        return e.entry_type.lower(), sorted((f.key, str(f.value)) for f in e.fields)
 
-    def __contains___(self, entry):
-        return any({self.eq(entry, e) for e in self.entries})
+    def mark_loaded(self):
+        """remember the entries as they are now (as loaded), for
+        changed_entries and the report of the changes of a command
+        (loaded_entries: copies of the entries; loaded_relative_to)"""
+        self.loaded_entries = [entry_copy(e) for e in self.entries]
+        self.loaded_relative_to = self.relative_to
+        self._loaded = None
+
+    @property
+    def loaded(self):
+        "{lower-case key: state} of the entries as loaded (see mark_loaded), or None"
+        if self.loaded_entries is None:
+            return None
+        if self._loaded is None:
+            self._loaded = {self.key(e): self._state(e) for e in self.loaded_entries}
+        return self._loaded
+
+    def changed_entries(self):
+        """(new, modified): the entries added since mark_loaded (neither their
+        key nor a former key of their ids field was there), and those that
+        changed (an entry whose key changed and that has its former key in
+        ids is modified). Removed entries are in neither. Without
+        mark_loaded, nothing changed."""
+        if self.loaded is None:
+            return [], []
+        new, modified = [], []
+        for e in self.entries:
+            state = self.loaded.get(self.key(e))
+            if state is None:
+                former = [k.strip().lower() for k in get_entry_val(e, 'ids', '').split(',')]
+                state = next((self.loaded[k] for k in former if k in self.loaded), None)
+                if state is None:
+                    new.append(e)
+                    continue
+            if state != self._state(e):
+                modified.append(e)
+        return new, modified
+
+    # what changed when the library was loaded, before mark_loaded (file links
+    # converted to the `paths` setting, links to pool files repaired): saved
+    # even if the command changes nothing
+    load_changes = False
+
+    def unchanged(self):
+        """True if the entries are as loaded (see mark_loaded: the same
+        keys, types and fields), nothing changed at load (load_changes) and
+        no pair was added to distinct; False without mark_loaded"""
+        if self.loaded_entries is None or self.load_changes or self.distinct.changed:
+            return False
+        if len(self.loaded_entries) != len(self.db.entries):
+            return False
+        exact = lambda e: (e.entry_type, e.key, tuple(sorted((f.key, str(f.value)) for f in e.fields)))
+        return Counter(map(exact, self.loaded_entries)) == Counter(map(exact, self.db.entries))
+
+    def loaded_files(self, e):
+        """the files of an entry as loaded (see mark_loaded): [] for an entry
+        new since, None without mark_loaded"""
+        if self.loaded is None:
+            return None
+        state = self.loaded.get(self.key(e))
+        if state is None:
+            former = [k.strip().lower() for k in get_entry_val(e, 'ids', '').split(',')]
+            state = next((self.loaded[k] for k in former if k in self.loaded), None)
+        value = next((v for k, v in state[1] if k == 'file'), '') if state is not None else ''
+        return parse_file(value, relative_to=self.relative_to)
 
 
     def sort(self):
-        """Re-order library by block type and entry key (public API: SortBlocksByTypeAndKeyMiddleware)."""
-        from bibtexparser.middlewares import SortBlocksByTypeAndKeyMiddleware
-        self.db = SortBlocksByTypeAndKeyMiddleware().transform(library=self.db)
+        """Re-order the library by block type and entry key (see
+        papers.entries.sort_blocks): the entries stay the same objects"""
+        self.db = sort_blocks(self.db)
 
-    def insert_entry(self, entry, update_key=False, check_duplicate=False, rename=False, copy=False, metadata={}, **checkopt):
-        """
+    def insert_entry(self, entry, update_key=False, check_duplicate=False, rename=False, copy=False, metadata={},
+                     on_duplicate='error', duplicate_index=None):
+        """insert an entry, and return the entries of the library it ended in
+        (none when a duplicate was skipped).
+
+        update_key: give the entry a key from the key template (entries new
+            to the library only: a duplicate keeps the key of the library)
+        check_duplicate: look for the same paper in the library (see
+            papers.duplicate.same_paper), and merge or not as `on_duplicate`
+            says: one of ask, keep, update, skip, error, or a Resolver
+        duplicate_index: an IdentityIndex of the library, kept up to date
+        metadata: fields given on the command line (`add --title...`), as a
+            dict: they replace the fields of the entry, the files of its
+            `file` field are added to the entry's, and an `ID` sets the key
+            (which update_key then leaves as it is)
         """
         if metadata:
-            files = self.get_files(entry) + self.get_files(metadata)
-            self.set_files(metadata, files)
+            self.apply_metadata(entry, metadata)
+            if 'ID' in metadata:
+                update_key = False
 
+        if check_duplicate:
+            resolver = on_duplicate if isinstance(on_duplicate, Resolver) else Resolver(on_duplicate)
+            return self._insert_entry_check(entry, resolver, update_key=update_key, rename=rename, copy=copy,
+                                            index=duplicate_index)
+
+        return self._insert_new(entry, update_key=update_key, rename=rename, copy=copy, index=duplicate_index)
+
+    def apply_metadata(self, entry, metadata):
+        """set the fields of `metadata` (a dict, see insert_entry) in the
+        entry; the files of its `file` field are added to the entry's"""
+        fields = {k: v for k, v in metadata.items() if k != 'file'}
+        update_entry(entry, fields)
+        files = self.get_files(entry) + self.get_files(metadata)
+        if files:
+            self.set_files(entry, files)
+
+    def _insert_new(self, entry, update_key=False, rename=False, copy=False, index=None, free_key=False):
+        "insert an entry new to the library"
         if update_key:
             set_entry_key(entry, self.generate_key(entry))
-
-        # additional checks on DOI etc...
-        if check_duplicate:
-            logger.debug('check duplicates : TRUE')
-            return self.insert_entry_check(
-                entry, update_key=update_key, rename=rename, copy=copy,
-                duplicate_index=checkopt.pop('duplicate_index', None), **checkopt
-            )
-        else:
-            logger.debug('check duplicates : FALSE')
 
         # Key duplicate check: lookup by key (public API), case-insensitive to match entries_dict keys
         key_lower = self.key(entry)
@@ -504,7 +344,13 @@ class Biblio:
         if existing_same_key is not None:
             logger.info('key duplicate: '+self.key(existing_same_key))
 
-            if get_entry_val(existing_same_key, 'title', '') == get_entry_val(entry, 'title', ''):
+            if free_key:
+                newkey = self.append_abc_to_key(entry)
+                logger.info('key conflict: {} => {}'.format(get_entry_val(entry, 'ID', ''), newkey))
+                set_entry_key(entry, newkey)
+
+            elif get_entry_val(existing_same_key, 'title', '') == get_entry_val(entry, 'title', '') \
+                    and same_paper(existing_same_key, entry, self.distinct).kind == SAME:
                 logger.info('exact duplicate')
                 # keep the files of the new entry
                 files = self.get_files(existing_same_key) + self.get_files(entry)
@@ -513,114 +359,62 @@ class Biblio:
                 if rename: self.rename_entry_files(existing_same_key, copy=copy)
                 return [ existing_same_key ]
 
-            if update_key:
-                newkey = self.generate_key(entry)  # unique key from content (e.g. DOI)
-                logger.info('update key: {} => {}'.format(get_entry_val(entry, 'ID', ''), newkey))
-                set_entry_key(entry, newkey)
-
-            else:
-                raise DuplicateKeyError('Key conflict. Try update_key is True or specify --key KEY explicitly')
+            else:  # (with update_key, the key generated above is not in the library)
+                raise DuplicateKeyError(f'{get_entry_val(entry, "ID", "")}: this key is already in the library, '
+                                        'for another paper: pass -u/--update-key to generate a new key, '
+                                        'or --key KEY')
 
         else:
             logger.info('new entry: '+self.key(entry))
 
         self.db.add(entry)
+        if index is not None:
+            index.add(entry)
 
         if rename: self.rename_entry_files(entry, copy=copy)
 
         return [ entry ]
 
-    def insert_entry_check(self, entry, update_key=False, mergefiles=True, on_conflict='i', rename=False, copy=False, duplicate_index=None):
-        # FUZZY can match on token_set_ratio(authortitle) without same doi/authortitle, so index would miss some duplicates
-        if self.similarity == 'FUZZY':
-            candidates = self.entries
-        elif duplicate_index is not None:
-            by_doi, by_authortitle = duplicate_index
-            candidates = _get_duplicate_candidates(entry, by_doi, by_authortitle)
-        else:
-            by_doi, by_authortitle = _build_duplicate_index(self.entries)
-            candidates = _get_duplicate_candidates(entry, by_doi, by_authortitle)
-        duplicates = [e for e in candidates if self.eq(e, entry)]
-
-        if not duplicates:
+    def _insert_entry_check(self, entry, resolver, update_key=False, rename=False, copy=False, index=None):
+        # the index (see add_entries) has the entries of the library, in their order
+        found = find_duplicates(entry, self.entries if index is None else None, self.distinct, index=index)
+        if not found:
             logger.debug('not a duplicate')
-            return self.insert_entry(entry, update_key, rename=rename, copy=copy)
+            return self._insert_new(entry, update_key=update_key, rename=rename, copy=copy, index=index)
 
+        existing, verdict = found[0]
+        logger.debug(f'duplicate of {get_entry_val(existing, "ID", "")}: {verdict.reason}')
+        merge = Merge([existing, entry], relative_to=self.relative_to)
 
+        if verdict.kind == SAME and merge.is_exact():
+            decision = Decision('merge', merge, merge.result())
+            n = len(merge.new_files)
+            print(f'already in library: {merge.key}' + (f' (+{n} file{"s" if n > 1 else ""})' if n else ''))
         else:
-            # some duplicates...
-            logger.debug('duplicate(s) found: {}'.format(len(duplicates)))
+            decision = resolver.decide(merge, 'add', verdict)
 
-            # pick only the most similar duplicate, if more than one
-            # the point of check_duplicate is to avoid increasing disorder, not to clean the existing mess
-            if len(duplicates) > 1:
-                duplicates.sort(key=lambda e: compare_entries(entry, e), reverse=True)
+        if decision.kind == 'merge':
+            if index is not None:
+                index.remove(existing)
+            apply_entry(existing, decision.entry)
+            if index is not None:
+                index.add(existing)
+            if rename: self.rename_entry_files(existing, copy=copy)
+            return [ existing ]
 
-            candidate = duplicates[0]
+        if decision.kind == 'distinct':
+            self.distinct.add(existing, entry)
+            return self._insert_new(entry, update_key=update_key, rename=rename, copy=copy, index=index, free_key=True)
 
-            if entry_content_equal(entry, candidate):
-                logger.debug('exact duplicate')
-                if mergefiles:
-                    file = merge_files([candidate, entry], relative_to=self.relative_to)
-                    if file and get_entry_val(candidate, 'file', '') != file:
-                        candidate['file'] = file
-                if rename: self.rename_entry_files(candidate, copy=copy)
-                return [ candidate ]
-
-            if update_key and get_entry_val(entry, 'ID', '') != get_entry_val(candidate, 'ID', ''):
-                logger.info('duplicate :: update key to match existing entry: {} => {}'.format(get_entry_val(entry, 'ID', ''), get_entry_val(candidate, 'ID', '')))
-                set_entry_key(entry, get_entry_val(candidate, 'ID', ''))
-                if entry_content_equal(entry, candidate):
-                    logger.debug('fixed: exact duplicate after key sync')
-                    if rename: self.rename_entry_files(candidate, copy=copy)
-                    return [ candidate ]
-
-            if mergefiles:
-
-                file = merge_files([candidate, entry], relative_to=self.relative_to)
-                if len({file, get_entry_val(entry, 'file', ''), get_entry_val(candidate, 'file', '')}) > 1:
-                    logger.info('duplicate :: merge files')
-                    entry['file'] = candidate['file'] = file
-
-
-            if entry_content_equal(entry, candidate):
-                logger.debug('fixed: exact duplicate')
-                if rename: self.rename_entry_files(candidate, copy=copy)
-                return [ candidate ]
-
-            logger.debug('conflict resolution: '+on_conflict)
-            candidate_key_before = get_entry_val(candidate, 'ID', '')
-            resolved = conflict_resolution_on_insert(candidate, entry, mode=on_conflict)
-            # remove(block) uses block.key; conflict_resolution may have updated candidate.key in place (e.g. mode U).
-            # Restore original key so remove() finds the right dict entry, then restore key for re-insert.
-            candidate_key_after = get_entry_val(candidate, 'ID', '') if resolved and resolved[0] is candidate else None
-            if hasattr(candidate, 'key'):
-                candidate.key = candidate_key_before
-            self.db.remove(candidate)
-            if candidate_key_after is not None and hasattr(candidate, 'key'):
-                candidate.key = candidate_key_after
-            entries = []
-            for e in resolved:
-                # the existing entry keeps its key (and so does the single
-                # resolved entry that carries it, e.g. an overwrite with
-                # --update-key): only entries new to the library get a key
-                # regenerated from the template
-                keeps_key = e is candidate or (
-                    len(resolved) == 1 and get_entry_val(e, 'ID', '') == candidate_key_before)
-                if not keeps_key and not update_key and self.key(e) in {self.key(x) for x in self.entries}:
-                    # both entries kept (append): the new one needs a free key
-                    newkey = self.append_abc_to_key(e)
-                    logger.info('key conflict: {} => {}'.format(get_entry_val(e, 'ID', ''), newkey))
-                    set_entry_key(e, newkey)
-                entries.extend( self.insert_entry(e, update_key and not keeps_key, rename=rename, copy=copy) )
-            return entries
+        print(f'skipped: {get_entry_val(entry, "ID", "")} (already in library: {merge.key})')
+        return []
 
 
     def generate_key(self, entry):
         " generate a unique key not yet present in the record "
         keys = {self.key(e) for e in self.db.entries}
         key = self.keyformat(entry)
-        if keys and key in keys: # and not isinstance(keys, set):
+        if key.lower() in keys:
             key = append_abc(key, keys)
         return key
 
@@ -645,14 +439,24 @@ class Biblio:
         bib = parse_string(bibtex)
         if convert_to_unicode:
             bib = latex_to_unicode_library(bib)
+        return self.add_entries(bib.entries, relative_to=relative_to, attachments=attachments, **kw)
+
+    def add_entries(self, added, relative_to=None, attachments=None, what='bibtex', **kw):
+        """add entries read from a file (bibtex, RIS, CSL-JSON...): their file
+        links are relative to `relative_to`; an entry without key gets one from
+        the key template"""
+        fields = [k for k in kw.get('metadata') or {} if k != 'file']
+        if fields and len(added) > 1:
+            raise ValueError(f'the {what} has {len(added)} entries: the fields given on the command line '
+                             '(--title, --key, --metadata...) apply to one entry only')
         entries = []
-        # Build index once so duplicate check is O(candidates) not O(library size) per entry
-        check_dup = kw.get('check_duplicate', True)
-        if check_dup and bib.entries:
-            duplicate_index = _build_duplicate_index(self.entries)
-        else:
-            duplicate_index = None
-        for e in bib.entries:
+        # one index for all entries, so that the duplicate search compares an
+        # entry with the entries that share an identifier only
+        if kw.get('check_duplicate') and kw.get('duplicate_index') is None and added:
+            kw['duplicate_index'] = IdentityIndex(self.entries)
+        for e in added:
+            if not e.key:
+                set_entry_key(e, self.generate_key(e))
             files = []
             if "file" in e:
                 # make sure paths relative to other bibtex are inserted correctly
@@ -662,15 +466,18 @@ class Biblio:
             if files:
                 self.set_files(e, files)
 
-            run_kw = dict(kw)
-            if duplicate_index is not None:
-                run_kw['duplicate_index'] = duplicate_index
-            added = self.insert_entry(e, **run_kw)
-            entries.extend(added)
-            if duplicate_index is not None:
-                for new_e in added:
-                    _add_to_duplicate_index(new_e, duplicate_index[0], duplicate_index[1])
+            taken = self.pool_lookup.entry(self, e) if self.pool_lookup else None
+            if taken is not None:
+                entries.extend(self._insert_taken(taken, **kw))
+            else:
+                entries.extend(self.insert_entry(e, **kw))
         return entries
+
+    def _insert_taken(self, entry, **kw):
+        "insert an entry taken from a pool, and record its origin"
+        result = self.insert_entry(entry, **kw)
+        self.pool_lookup.inserted(entry, result, self, rename=kw.get('rename', False), copy=kw.get('copy', False))
+        return result
 
 
     def add_bibtex_file(self, file, **kw):
@@ -679,11 +486,99 @@ class Biblio:
         # (the absolute path matters: dirname('papers.bib') is '')
         return self.add_bibtex(bibtex, relative_to=os.path.dirname(os.path.abspath(file)), **kw)
 
+    def add_file_of_format(self, file, fmt, **kw):
+        "add the entries of a RIS or CSL-JSON file (see papers.formats)"
+        from papers.formats import read_file
+        names = {'ris': 'RIS file', 'csl-json': 'CSL-JSON file'}
+        return self.add_entries(read_file(file, fmt), relative_to=os.path.dirname(os.path.abspath(file)),
+                                what=names.get(fmt, fmt), **kw)
+
+
+    def find_doi(self, doi):
+        "the library entry that is the same paper as an entry of DOI `doi` (an arXiv DOI matches the eprint), or None"
+        found = find_duplicates(Entry('misc', 'doi', [Field('doi', doi)]), self.entries, self.distinct)
+        return next((e for e, verdict in found if verdict.kind == SAME), None)
+
+    def find_pdf(self, pdf):
+        """the library entry of the DOI of a PDF, or None, without network
+        query: the DOI of the PDF metadata, else a DOI of the text whose
+        library entry has its title in the text"""
+        try:
+            doi = parse_doi_from_pdf_metadata(pdf)
+            if doi:
+                return self.find_doi(doi)
+            txt = pdfhead(pdf)
+            candidates = parse_dois(txt, pdftail(pdf))
+        except Exception as error:
+            logger.debug(f'{pdf}: {error}')
+            return None
+        for candidate in candidates:
+            e = self.find_doi(candidate)
+            if e is not None and title_in_text(get_entry_val(e, 'title', ''), txt):
+                return e
+        return None
+
+    def attach_to_existing(self, e, files, rename=False, copy=False, **kw):
+        """`add` of the files of a paper that the library has (same DOI): the
+        files are added to the entry and placed as `file attach` does, the
+        entry's fields and other files are not touched (nor by the fields of
+        `metadata`, given on the command line: `papers edit` changes them).
+        Return [e]."""
+        ignored = [k for k in kw.get('metadata') or {} if k not in ('file', 'doi')]
+        if ignored:
+            names = ', '.join(METADATA_NAMES.get(k, k) for k in ignored)
+            logger.warning(f'{e.key} is already in the library: its fields are not changed '
+                           f'(ignored: {names}; use `papers edit {e.key}`)')
+        old = self.get_files(e)
+        known = {realpath(f) for f in old}
+        new = [os.path.abspath(f) for f in files if realpath(f) not in known]
+        # a file with the content of a file of the entry is not attached again
+        same = {f: _same_content(f, old) for f in new}
+        new = [f for f in new if same[f] is None]
+        print(f'already in library: {e.key}' + (f' (+{len(new)} file{"s" if len(new) > 1 else ""})' if new else ''))
+        for f, other in same.items():
+            if other is not None:
+                print(f'{f}: not attached, the entry has the same file: {other}')
+        if not new:
+            return [e]
+        self.set_files(e, old + new)
+        if rename:
+            if callable(copy):
+                policy = lambda f: 'link' if realpath(f) in known else copy(f)
+            else:
+                policy = lambda f: 'link' if realpath(f) in known else ('copy' if copy else 'move')
+            self.rename_entry_files(e, copy=policy)
+        return [e]
 
     def fetch_doi(self, doi, **kw):
+        attachments = [os.path.abspath(f) for f in kw.get('attachments') or []]
+        existing = self.find_doi(doi) if kw.get('check_duplicate') else None
+        if existing is not None:
+            return self.attach_to_existing(existing, attachments, **kw)
+        taken =self.pool_lookup.doi(self, doi, attachments) if self.pool_lookup else None
+        if taken is not None:
+            kw.pop('attachments', None)
+            kw["update_key"] = True
+            return self._insert_taken(taken, **kw)
         bibtex = fetch_bibtex_by_doi(doi)
         kw["update_key"] = True  # fetched key is always updated
         return self.add_bibtex(bibtex, **kw)
+
+
+    def add_key(self, key, **kw):
+        """`add --key KEY` alone: the library entry of key KEY (ignoring
+        case) gets the attachments, else the pool entry of key KEY is
+        taken. Return the entries, or None if no pool has the key."""
+        attachments = [os.path.abspath(f) for f in kw.pop('attachments', None) or []]
+        # the key of the library or pool entry is kept as it is written there
+        kw['metadata'] = {k: v for k, v in (kw.get('metadata') or {}).items() if k != 'ID'}
+        existing = next((e for e in self.entries if self.key(e) == key.lower()), None)
+        if existing is not None:
+            return self.attach_to_existing(existing, attachments, **kw)
+        taken = self.pool_lookup.key(self, key, attachments) if self.pool_lookup else None
+        if taken is None:
+            return None
+        return self._insert_taken(taken, **kw)
 
 
     def add_pdf(self, pdf, attachments=None, search_doi=True, search_fulltext=True, scholar=False, doi=None, **kw):
@@ -691,6 +586,19 @@ class Biblio:
         if str(pdf).startswith("http"):
             pdf = download_url(pdf, expect_pdf=True)
             kw['rename'] = True  # always rename downloaded files
+
+        # the library first (same DOI: the files are attached to its entry), then the pools, then online
+        if kw.get('check_duplicate'):
+            existing = self.find_doi(doi) if doi else (self.find_pdf(pdf) if search_doi else None)
+            if existing is not None:
+                return self.attach_to_existing(existing, [pdf] + list(attachments or []), **kw)
+
+        if self.pool_lookup:
+            files = [os.path.abspath(f) for f in [pdf] + list(attachments or [])]
+            taken = self.pool_lookup.pdf(self, files[0], files=files, doi=doi)
+            if taken is not None:
+                kw["update_key"] = True
+                return self._insert_taken(taken, **kw)
 
         if doi:
             bibtex = fetch_bibtex_by_doi(doi)
@@ -725,6 +633,8 @@ class Biblio:
                 try:
                     entry = read_entry_dir(path, relative_to=self.relative_to)
                     yield from self.insert_entry(entry, **kw)
+                except (EOFError, DuplicateError):
+                    raise
                 except Exception as error:
                     logger.warning(path+'::'+str(error))
                 continue
@@ -734,8 +644,8 @@ class Biblio:
                     yield from self.add_pdf(path, attachments=attachments, search_doi=search_doi, search_fulltext=search_fulltext, **kw)
                 elif path.lower().endswith('.bib'):
                     yield from self.add_bibtex_file(path, **kw)
-            except EOFError:
-                raise  # a question without answer stops the scan
+            except (EOFError, DuplicateError):
+                raise  # a question without answer, or --on-duplicate error, stops the scan
             except Exception as error:
                 logger.warning(path+'::'+str(error))
                 continue
@@ -750,13 +660,27 @@ class Biblio:
         return format_library(self.db)
 
     def save(self, bibtex):
-        if os.path.exists(bibtex):
-            shutil.copy(bibtex, backupfile(bibtex))
+        """write the library to `bibtex` (the previous version goes to its
+        backup file). A bibtex that has this content already is not
+        written: its modification time (and its backup) stay as they are."""
         if self.relative_to not in (os.path.sep, None) and Path(self.relative_to).resolve() != Path(bibtex).parent.resolve():
             logger.warning("Saving bibtex file with relative paths may break links. Consider using `Biblio.update_file_path(Path(bibtex).parent)` before.")
         self.sort()  # consistent order before writing
         s = self.format()
-        open(bibtex, 'w').write(s)
+        if os.path.exists(bibtex):
+            if read_text(bibtex) == s:
+                logger.debug(f'{bibtex}: unchanged, not written')
+            else:
+                shutil.copy(bibtex, backupfile(bibtex))
+                open(bibtex, 'w').write(s)
+        else:
+            open(bibtex, 'w').write(s)
+        if self.distinct.changed:
+            if self.distinct.path is None:
+                ondisk = Distinct.for_bibtex(bibtex)
+                ondisk.update(self.distinct)
+                self.distinct = ondisk
+            self.distinct.save()
 
 
     def update_file_path(self, relative_to):
@@ -764,6 +688,7 @@ class Biblio:
         relative_to: new path root:
             None: absolute path
             otherwise: different file root (the bibtex directory)
+        Return the [(old, new)] file fields that changed.
         """
         updates = []
         for e in self.entries:
@@ -773,16 +698,56 @@ class Biblio:
         if len(updates):
             logger.info(f"{len(updates)} entry files were updated")
         self.relative_to = relative_to
+        return updates
 
 
 
-    def check_duplicates(self, key=None, eq=None, mode='i'):
-        """remove duplicates, in some sensse (see papers.conflict.check_duplicates)
+    def check_duplicates(self, on_duplicate='error'):
+        """merge the entries of the library that are the same paper (see
+        papers.duplicate.duplicate_groups). The target of each group (entry
+        1) is the entry with most fields; it keeps its key, and the keys of
+        the other entries go to its ids field.
+
+        on_duplicate: ask, keep, skip, error, or a Resolver
         """
-        self.entries = check_duplicates(self.entries, key=key, eq=eq or self.eq, issorted=key is self.key, mode=mode)
+        resolver = on_duplicate if isinstance(on_duplicate, Resolver) else Resolver(on_duplicate)
+        if resolver.mode == 'update':
+            raise ValueError('--on-duplicate update is not available for check (no side is new)')
+        groups = duplicate_groups(self.entries, self.distinct)
+        logger.info(f'{len(groups)} group(s) of duplicates')
+        if resolver.mode == 'skip':
+            return
+        if resolver.mode == 'error' and groups:
+            lines = []
+            for g in groups:
+                lines.append(Resolver.describe(Merge(g.entries, relative_to=self.relative_to, keys_to_ids=True),
+                                               'check', g))
+            raise DuplicateError('\n'.join(lines) + '\n' + option_hint('check'))
 
+        for g in groups:
+            if resolver.quit:
+                break
+            merge = Merge(g.entries, relative_to=self.relative_to, keys_to_ids=True)
+            if g.kind == SAME and merge.is_exact():
+                decision = Decision('merge', merge, merge.result())
+            else:
+                decision = resolver.decide(merge, 'check', g)
 
-    def rename_entry_files(self, e, copy=False, formatter=None, relative_to=None, hardlink=False):
+            if decision.kind == 'merge':
+                target = decision.merge.target
+                others = decision.merge.others
+                apply_entry(target, decision.entry)
+                for e in others:
+                    self.db.remove(e)
+                print(f'merged into {get_entry_val(target, "ID", "")}: '
+                      + ', '.join(get_entry_val(e, 'ID', '') for e in others) + ' (kept in ids)')
+
+            elif decision.kind == 'distinct':
+                for i, a in enumerate(g.entries):
+                    for b in g.entries[i+1:]:
+                        self.distinct.add(a, b)
+
+    def rename_entry_files(self, e, copy=False, formatter=None, relative_to=None, hardlink=True):
         """ Rename files
 
         The first file is named after the entry: <filesdir>/<name>.<ext>, and
@@ -790,6 +755,11 @@ class Biblio:
         <label> is the file's original name (see `attachment_names`).
         Directories of previous versions (<name>/ with a hidden .<name>.bib)
         are emptied into that layout, and removed when nothing else is left.
+
+        copy: keep the original file (a hard link when possible, with
+            hardlink=True, otherwise a copy). It can also be a function that
+            tells for each file what to do: 'move', 'copy', or 'link' (leave
+            the file where it is), see papers.files.FilesPolicy.
 
         See `papers.filename.Format` class and REAMDE.md for infos.
         """
@@ -807,27 +777,33 @@ class Biblio:
         # absolute, to compare with the (absolute) current file paths
         target = os.path.join(os.path.abspath(self.filesdir), newname)
 
+        if callable(copy):
+            actions = [copy(file) for file in files]
+        else:
+            actions = ['copy' if copy else 'move' for file in files]
+
         count = 0
         newfiles = []
-        for file, newfile in zip(files, attachment_names(files, target)):
-            if not os.path.exists(file):
+        for file, newfile, action in zip(files, attachment_names(files, target), actions):
+            if action == 'link':
+                newfile = file
+            elif not os.path.exists(file):
                 logger.warning(file+': original file link is broken')
                 newfile = file
             elif file != newfile:
-                self.move(file, newfile, copy, hardlink=hardlink)
+                self.move(file, newfile, action == 'copy', hardlink=hardlink)
                 count += 1
             newfiles.append(newfile)
         self.set_files(e, newfiles, relative_to=relative_to)
 
-        if not copy:
-            for direc in {os.path.dirname(file) for file in files}:
-                remove_entry_dir_if_empty(direc)
+        for direc in {os.path.dirname(file) for file, action in zip(files, actions) if action == 'move'}:
+            remove_entry_dir_if_empty(direc)
 
         if count > 0:
             logger.info('renamed file(s): {}'.format(count))
 
 
-    def rename_entries_files(self, copy=False, relative_to=None, hardlink=False):
+    def rename_entries_files(self, copy=False, relative_to=None, hardlink=True):
         for e in self.db.entries:
             try:
                 self.rename_entry_files(e, copy, relative_to=relative_to, hardlink=hardlink)
@@ -862,14 +838,12 @@ class Biblio:
             if encoding == "unicode":
                 convert_entry_to_unicode(e)
             else:
-                for k in e:
-                    if k == k.lower() and k != 'abstract': # all but ENTRYTYPE, ID, abstract
+                # all fields but the abstract, and the paths and identifiers
+                # (string_to_latex escapes _ and ~)
+                for k in [k for k, _ in e.items() if k not in LATEX_SKIP]:
+                    if k == k.lower():  # not ENTRYTYPE, ID
                         try:
-                            if encoding == 'unicode':
-                                e[k] = latex_to_unicode(e[k])
-                            elif encoding == 'latex':
-                                e[k] = unicode_to_latex(e[k])
-                        # except KeyError as error:
+                            e[k] = string_to_latex(e[k])
                         except (KeyError, ValueError) as error:
                             logger.warning(get_entry_val(e, 'ID', '')+': '+k+': failed to encode: '+str(error))
 
@@ -893,6 +867,7 @@ class Biblio:
 
         if fetch or fetch_all:
             bibtex = None
+            searched = False
             if 'doi' in e and e['doi']:
                 logger.info(get_entry_val(e, 'ID', '')+': fetch doi: '+e['doi'])
                 try:
@@ -907,6 +882,7 @@ class Biblio:
                 logger.info(get_entry_val(e, 'ID', '')+': fetch-all: '+str(kw))
                 try:
                     bibtex = fetch_bibtex_by_fulltext_crossref('', **kw)
+                    searched = True
                 except Exception as error:
                     logger.warning('...failed to fetch/update bibtex (all): '+str(error))
 
@@ -914,6 +890,13 @@ class Biblio:
                 db = parse_string(bibtex)
                 e2 = db.entries[0]
                 self.fix_entry(e2, encoding=encoding, format_name=True)
+                # the best search result may be another paper
+                mismatch = searched and search_result_mismatch(e, e2)
+                if mismatch:
+                    logger.warning('...fetch-all: rejected search result ({}): {} ({})'.format(
+                        mismatch, get_entry_val(e2, 'title', ''), get_entry_val(e2, 'doi', 'no doi')))
+                    bibtex = None
+            if bibtex:
                 strip_e = lambda e_: {k: e_[k] for k, _ in e_.items() if k not in ['ID', 'file'] and k in e2}
                 if strip_e(e) != strip_e(e2):
                     logger.info('...fetch-update entry')
@@ -945,188 +928,5 @@ class Biblio:
                         del e[k]
 
 
-def get_biblio(config):
-    """
-    This function initializes a Biblio object based on the bibtex file specified as command line argument or in config file.
-    If no bibtex file is specified, it raises a ValueError().
-    """
-    if config.bibtex is None:
-        raise ValueError('bibtex is not initialized')
-    relative_to = os.path.sep if config.absolute_paths else (os.path.dirname(config.bibtex) if config.bibtex else None)
-    if config.bibtex and os.path.exists(config.bibtex):
-        biblio = Biblio.load(config.bibtex, config.filesdir, nameformat=config.nameformat, keyformat=config.keyformat)
-        if biblio.relative_to != relative_to:
-            biblio.update_file_path(relative_to)
-    else:
-        biblio = Biblio.newbib(config.bibtex, config.filesdir, relative_to=relative_to, nameformat=config.nameformat, keyformat=config.keyformat)
-    return biblio
-
-
 def isvalidkey(key):
     return key and not key[0].isdigit()
-
-
-def entry_filecheck_metadata(e, file, image=False):
-    ''' parse pdf metadata and compare with entry: only doi for now
-    '''
-    if 'doi' not in e:
-        raise ValueError(get_entry_val(e, 'ID', '')+': no doi, skip PDF parsing')
-
-    try:
-        doi = extract_pdf_doi(file, image=image)
-    except Exception as error:
-        raise ValueError(get_entry_val(e, 'ID', '')+': failed to parse doi: "{}"'.format(file))
-    if not isvaliddoi(doi):
-        raise ValueError(get_entry_val(e, 'ID', '')+': invalid parsed doi: '+doi)
-
-    if doi.lower() != e['doi'].lower():
-        raise ValueError(get_entry_val(e, 'ID', '')+': doi: entry <=> pdf : {} <=> {}'.format(e['doi'].lower(), doi.lower()))
-
-
-def entry_filecheck(e, delete_broken=False, fix_mendeley=False,
-    check_hash=False, check_metadata=False, interactive=True, image=False, relative_to=None):
-    """
-    Checks the bib entry file actually corresponds to an existing, correct file on disk.
-    """
-
-    if 'file' not in e:
-        return
-
-    if check_hash:
-        import hashlib
-
-    newfiles = []
-    hashes = set()
-    realpaths = set()
-    fixed = {}
-
-    for i, file in enumerate(parse_file(e['file'], relative_to=relative_to)):
-
-        realpath = os.path.realpath(file)
-        if realpath in realpaths:
-            logger.info(get_entry_val(e, 'ID', '')+': remove duplicate path: "{}"'.format(fixed.get(file, file)))
-            continue
-        realpaths.add(realpath) # put here so that for identical
-                                   # files that are checked and finally not
-                                   # included, the work is done only once
-
-        if fix_mendeley and not os.path.exists(file):
-            old = file
-
-            # replace any "{\_}" with "_"
-            try:
-                file = latex_to_unicode(file)
-            except KeyError as error:
-                logger.warning(get_entry_val(e, 'ID', '')+': '+str(error)+': failed to convert latex symbols to unicode: '+file)
-
-            # fix root (e.g. path starts with home instead of /home)
-            dirname = os.path.dirname(file)
-            candidate = os.path.sep + file
-            if (not file.startswith(os.path.sep) and dirname # only apply when some directory name is specified
-                and not os.path.exists(dirname)
-                and os.path.exists(os.path.dirname(candidate))): # simply requires that '/'+directory exists
-                # and os.path.exists(newfile)):
-                    # logger.info('prepend "/" to file name: "{}"'.format(file))
-                    file = candidate
-
-            if old != file:
-                logger.info(get_entry_val(e, 'ID', '')+': file name fixed: "{}" => "{}".'.format(old, file))
-                fixed[old] = file # keep record of fixed files
-
-        # parse PDF and check for metadata
-        if check_metadata and file.lower().endswith('.pdf'):
-            try:
-                entry_filecheck_metadata(e, file, image=image)
-            except ValueError as error:
-                logger.warning(error)
-
-        # check existence
-        if not os.path.exists(file):
-            logger.warning(get_entry_val(e, 'ID', '')+': "{}" does not exist'.format(file)+delete_broken*' ==> delete')
-            if delete_broken:
-                logger.info('delete file from entry: "{}"'.format(file))
-                continue
-            elif interactive:
-                ans = input('delete file from entry ? [Y/n] ')
-                if ans.lower() == 'y':
-                    continue
-
-        elif check_hash:
-            # hash_ = hashlib.sha256(open(file, 'rb').read()).digest()
-            hash_ = checksum(file) # a little faster
-            if hash_ in hashes:
-                logger.info(get_entry_val(e, 'ID', '')+': file already exists (identical checksum): "{}"'.format(file))
-                continue
-            hashes.add(hash_)
-
-        newfiles.append(file)
-
-    e['file'] = format_file(newfiles, relative_to=relative_to)
-
-
-def clean_filesdir(biblio, interactive=True, ignore_files=None, ignore_folders=None):
-    if biblio.filesdir is None:
-        raise ValueError('filesdir is not defined, cannot clean')
-    removed_files = []
-
-    allfiles = set(os.path.abspath(file) for e in biblio.entries for file in biblio.get_files(e))
-    if ignore_files:
-        for f in ignore_files:
-            allfiles.add(os.path.abspath(f))
-    allfolders = set(os.path.abspath(folder) for e in biblio.entries for folder in {os.path.dirname(file) for file in biblio.get_files(e)})
-
-    if ignore_folders is None:
-        ignore_folders = []
-
-    for root, direcs, files in os.walk(biblio.filesdir):
-
-        ANS = None  # Y(es) or N(o) for all files in this folder (reset at each pass)
-        if root in ignore_folders:
-            continue
-        if '.git' in root.split(os.path.sep):
-            continue
-        for file in files:
-            path = os.path.abspath(os.path.join(root, file))
-            if file.startswith('.') or file.endswith('.bib'):
-                continue
-            if path not in allfiles:
-                if interactive:
-                    if ANS is None:
-                        ans = input(f"File: {os.path.relpath(path, biblio.filesdir)} not in library. Remove ? [Y/n/Y/N] ")
-                    else:
-                        ans = ANS
-                    if ans in ['Y', 'N']:
-                        ans = ANS = ans.lower()  # same reply for all files in this folder
-                    if ans.lower() == 'y':
-                        os.remove(path)
-                        removed_files.append(path)
-                else:
-                    logger.info(f"Remove unlinked file {os.path.relpath(path, biblio.filesdir)}.")
-                    os.remove(path)
-                    removed_files.append(path)
-
-        for direc in direcs:
-            if direc.startswith('.'):
-                continue
-            if direc in ignore_folders:
-                continue
-
-            # Check multifile entries
-            bibtex = os.path.join(root, direc, '.'+direc+'.bib')
-            if not os.path.exists(bibtex):
-                continue
-
-            direcpath = os.path.abspath(os.path.join(root, direc))
-
-            if direcpath not in allfolders:
-                if interactive:
-                    ans = input(f"Folder: {os.path.relpath(direcpath, root)} not in library. Remove ? [Y/n] ")
-                    if ans.lower() == 'y':
-                        shutil.rmtree(os.path.join(root, direcpath))
-                else:
-                    logger.info(f"Remove folder {direc}.")
-                    shutil.rmtree(os.path.join(root, direcpath))
-
-        break
-
-    return removed_files

@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# Vendored module (bibserver, as customized in bibtexparser v1): not edited by hand.
 
 # Original source: github.com/okfn/bibserver
 # Authors:
@@ -8,7 +9,6 @@
 
 import itertools
 import re
-import sys
 import unicodedata
 
 __all__ = ['string_to_latex', 'latex_to_unicode', 'protect_uppercase',

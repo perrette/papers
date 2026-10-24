@@ -5,7 +5,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from papers.bib import Biblio, group_attachments
+from papers.bib import Biblio
+from papers.files import group_attachments
 from papers.config import Config, CONFIG_FILE_LOCAL
 from papers.utils import move
 from tests.common import paperscmd, BibTest
@@ -112,22 +113,9 @@ class TestLocalConfigSubfolder(BibTest):
     def tearDown(self):
         self.temp_dir.cleanup()
 
-    def test_reinstall_keeps_paths(self):
-        paperscmd('install --local --no-prompt --no-git --bibtex refs/papers.bib --filesdir files', cwd=self.dir)
-        configfile = os.path.join(self.dir, CONFIG_FILE_LOCAL)
-        for _ in range(2):
-            js = json.load(open(configfile))
-            self.assertEqual(js['bibtex'], os.path.join('refs', 'papers.bib'))
-            self.assertEqual(js['filesdir'], 'files')
-            config = Config.load(configfile)
-            self.assertEqual(Path(config.bibtex), Path(self.dir, 'refs', 'papers.bib').resolve())
-            self.assertEqual(Path(config.filesdir), Path(self.dir, 'files').resolve())
-            # update the install
-            paperscmd('install --no-prompt --editor vim', cwd=self.dir)
-
     def test_save_from_another_directory(self):
         configfile = os.path.join(self.dir, CONFIG_FILE_LOCAL)
-        config = Config(file=configfile, local=True,
+        config = Config(file=configfile, is_library=True,
                         bibtex=os.path.join(self.dir, 'refs', 'papers.bib'),
                         filesdir=os.path.join(self.dir, 'files'))
         config.save()
@@ -257,7 +245,7 @@ class TestScanFlatLayout(BibTest):
     def test_scan(self):
         from unittest import mock
         with mock.patch('papers.bib.extract_pdf_metadata', self.fake_metadata), \
-                mock.patch('papers.__main__.prefetch_pdf_metadata', lambda *a, **k: None):
+                mock.patch('papers.cli.entry_cmds.prefetch_pdf_metadata', lambda *a, **k: None):
             paperscmd('add --recursive files --bibtex lib.bib --no-git --relative-paths', cwd=self.dir)
         self.assertEqual(sorted(self.scanned), ['main.pdf', 'other.pdf'])
         biblio = Biblio.load(os.path.join(self.dir, 'lib.bib'), None)
@@ -281,7 +269,7 @@ class TestScanFlatLayout(BibTest):
 }
 """)
         with mock.patch('papers.bib.extract_pdf_metadata', self.fake_metadata), \
-                mock.patch('papers.__main__.prefetch_pdf_metadata', lambda *a, **k: None):
+                mock.patch('papers.cli.entry_cmds.prefetch_pdf_metadata', lambda *a, **k: None):
             paperscmd('add --recursive scanned --bibtex lib.bib --no-git --relative-paths', cwd=self.dir)
         self.assertEqual(self.scanned, ['other.pdf'])
         biblio = Biblio.load(os.path.join(self.dir, 'lib.bib'), None)

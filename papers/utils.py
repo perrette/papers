@@ -1,10 +1,14 @@
 import os
 import re
+import shlex
 import shutil
 import hashlib
 import subprocess, platform
+import sys
+import tempfile
 from contextlib import contextmanager
 from pathlib import Path
+from urllib.parse import urlparse, unquote
 
 from papers import logger
 
@@ -14,7 +18,8 @@ class PapersExit(Exception):
 
 
 class bcolors:
-    # https://stackoverflow.com/a/287944/2192272
+    """the colour codes of the output (https://stackoverflow.com/a/287944/2192272):
+    empty strings when the output has no colours (see use_color)"""
     HEADER = '\033[95m'
     OKBLUE = '\033[94m'
     OKGREEN = '\033[92m'
@@ -24,19 +29,51 @@ class bcolors:
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
 
+
+_COLOR_CODES = {name: code for name, code in vars(bcolors).items() if not name.startswith('_')}
+
+
+def color_enabled(choice='auto', stream=None):
+    """whether the output has colours and hyperlinks: --color always or
+    never, else (auto) only when the standard output is a terminal and the
+    NO_COLOR environment variable is not set (https://no-color.org)"""
+    if choice == 'always':
+        return True
+    if choice == 'never' or os.environ.get('NO_COLOR'):
+        return False
+    stream = sys.stdout if stream is None else stream
+    try:
+        return stream.isatty()
+    except (AttributeError, ValueError, OSError):
+        return False
+
+
+def use_color(enabled):
+    "turn the colours and hyperlinks of the output on or off"
+    global COLOR
+    COLOR = enabled
+    for name, code in _COLOR_CODES.items():
+        setattr(bcolors, name, code if enabled else '')
+
+
+COLOR = True
+use_color(color_enabled())
+
+
 def strip_colors(s):
-    for name, c in vars(bcolors).items():
-        if name.startswith("_"):
-            continue
+    for c in _COLOR_CODES.values():
         s = s.replace(c, '')
     return s
 
 
 def ansi_link(uri, label=None):
-    """https://stackoverflow.com/a/71309268/2192272
+    """https://stackoverflow.com/a/71309268/2192272 (the label only, when
+    the output has no colours)
     """
     if label is None:
         label = uri
+    if not COLOR:
+        return label
     parameters = ''
 
     # OSC 8 ; params ; URI ST <name> OSC 8 ;; ST
@@ -69,28 +106,6 @@ def check_filesdir(folder):
             folder_size += os.path.getsize(filename)
             file_count += 1
     return file_count, folder_size
-
-
-def search_config(filenames, start_dir, default=None):
-    """Thanks Chat GPT !"""
-    current_dir = os.path.abspath(start_dir)
-    root_dir = os.path.abspath(os.sep)
-    while True:
-        for filename in filenames:
-            file_path = os.path.join(current_dir, filename)
-            if os.path.exists(file_path):
-                return file_path
-
-        parent_dir = os.path.dirname(current_dir)
-        if parent_dir == current_dir:
-            return default
-
-        # root
-        if parent_dir == root_dir:
-            return default
-        current_dir = parent_dir
-
-    return default
 
 
 def hash_bytestr_iter(bytesiter, hasher, ashexstr=False):
@@ -171,7 +186,7 @@ def move(f1, f2, copy=False, interactive=True, dryrun=False, hardlink=False):
         if hardlink:
             try:
                 _hardlink(f1, f2)
-            except:
+            except OSError:  # e.g. another file system, or no hard links there
                 _copy(f1, f2)
         else:
             _copy(f1, f2)
@@ -204,16 +219,15 @@ def set_directory(path: Path):
         os.chdir(origin)
 
 
-def view_pdf(filepath):
-    """
-    https://stackoverflow.com/questions/434597/open-document-with-default-os-application-in-python-both-in-windows-and-mac-os
-    """
+def open_with_system(path):
+    """open a file or a folder with the application the system associates with it
+    (https://stackoverflow.com/questions/434597)"""
     if platform.system() == 'Darwin':       # macOS
-        subprocess.call(('open', filepath))
+        subprocess.call(('open', path))
     elif platform.system() == 'Windows':    # Windows
-        os.startfile(filepath)
+        os.startfile(path)
     else:                                   # linux variants
-        subprocess.call(('xdg-open', filepath))
+        subprocess.call(('xdg-open', path))
 
 
 def file_uri_to_path(arg):
@@ -222,7 +236,6 @@ def file_uri_to_path(arg):
     Desktop entries launch viewers with `%U`, i.e. with file:// URIs.
     """
     if arg.startswith('file://'):
-        from urllib.parse import urlparse, unquote
         return unquote(urlparse(arg).path)
     return arg
 
@@ -252,14 +265,24 @@ def find_masked_viewer(name='papers'):
     return None
 
 
-def open_folder(path):
-    system_platform = platform.system()
+# the `editor` setting of the library of the command (set by papers.cli.main)
+EDITOR = None
 
-    if system_platform == "Windows":
-        os.startfile(path)
-    elif system_platform == "Darwin":  # macOS
-        os.system(f'open "{path}"')
-    elif system_platform == "Linux":
-        os.system(f'xdg-open "{path}"')
-    else:
-        print("Unsupported operating system.")
+
+def edit_text(text, editor=None):
+    """edit a text in a text editor (the `editor` setting, else $VISUAL, else
+    $EDITOR, else vi): the edited text, or None if the editor failed. The
+    editor is a command that may have arguments (e.g. "subl -w"); it must
+    wait until the file is closed."""
+    editor = editor or EDITOR or os.environ.get('VISUAL') or os.environ.get('EDITOR') or 'vi'
+    fd, filename = tempfile.mkstemp(suffix='.bib')
+    try:
+        with os.fdopen(fd, 'w') as f:
+            f.write(text)
+        if os.system(f'{editor} {shlex.quote(filename)}') != 0:
+            logger.error('the editor failed')
+            return None
+        with open(filename) as f:
+            return f.read()
+    finally:
+        os.remove(filename)

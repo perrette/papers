@@ -1,4 +1,4 @@
-"""Resolution and application of `papers install`.
+"""Resolution and application of `papers init` and `papers install`.
 
 The decision logic lives in :func:`resolve_install`: it combines a
 pre-existing configuration, the command-line options, a filesystem probe and
@@ -7,13 +7,12 @@ plus the actions to perform. :func:`apply_install` executes the plan.
 
 Prompting goes through the Asker interface, so the whole precedence matrix
 (command-line flag vs. prompt vs. pre-existing value vs. discovered default)
-is testable without scripting stdin.
+is testable without scripting stdin. `papers init` never prompts.
 
-Semantics: installing over an existing configuration of the same scope
-*updates* it -- options you pass change, everything else is kept. Pass
-``--reset`` to discard it and start over from defaults. An existing
-configuration of the other scope (local vs. global) is left alone: a warning
-states which one takes precedence.
+Semantics: installing over an existing library configuration *updates* it --
+options you pass change, everything else is kept (this is the deprecated
+`papers install`; `papers config` changes settings in v3). Pass ``--reset``
+to discard it and start over from defaults.
 """
 import os
 import shutil
@@ -21,7 +20,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from papers import logger
-from papers.config import Config, CONFIG_FILE, CONFIG_FILE_LOCAL, DATA_DIR
+from papers.backup import check_git_available, init_backup, resolve_gitdir
+from papers.config import Config, CONFIG_FILE_LOCAL, NO_POOL, pool_setting
+from papers.library import snapshot_backup
 
 # words that clear a value at a prompt or on the command line
 RESET_WORDS = ('none', 'null', 'unset', 'undefined', 'reset', 'delete')
@@ -48,17 +49,6 @@ class DefaultAsker(Asker):
         return ''
 
 
-class ScriptedAsker(Asker):
-    "for tests: replay prepared answers, record the questions"
-    def __init__(self, *answers):
-        self.answers = list(answers)
-        self.questions = []
-
-    def ask(self, question, default=''):
-        self.questions.append(question)
-        return self.answers.pop(0) if self.answers else ''
-
-
 @dataclass
 class FsProbe:
     """What the filesystem offers as defaults, gathered up front."""
@@ -69,14 +59,11 @@ class FsProbe:
 CHECKDIRS = ["files", "pdfs", "pdf", "papers", "bibliography"]
 
 
-def probe_filesystem(local):
+def probe_filesystem():
+    "bibtex files and files folders of the current directory"
     bibs = [str(f) for f in sorted(Path('.').glob('*.bib'))]
-    checkdirs = list(CHECKDIRS)
-    if not local:
-        bibs += [str(f) for f in sorted(Path(DATA_DIR).glob('*.bib'))]
-        checkdirs = [os.path.join(DATA_DIR, 'files')] + checkdirs
     return FsProbe(bibtex_files=bibs,
-                   existing_dirs=[d for d in checkdirs if os.path.exists(str(d))])
+                   existing_dirs=[d for d in CHECKDIRS if os.path.exists(str(d))])
 
 
 @dataclass
@@ -110,52 +97,34 @@ def _ask_bool(asker, question, default):
     return ans.lower() in ('y', 'yes')
 
 
-def resolve_install(config, o, probe=None, asker=None):
+def resolve_install(config, o, probe=None, asker=None, target=None):
     """Combine pre-existing config, options, filesystem and answers into an InstallPlan.
 
-    `config` is the pre-existing configuration (`config.file is None` when not
-    installed); `o` the argparse namespace of the install command.
+    `config` is the library configuration to update, or a fresh Config
+    (`config.file is None`); `o` the argparse namespace of the init or
+    install command; `target` the configuration file to write (default: the
+    one of `config`, else .papersconfig.json in the current directory).
     """
     asker = asker or DefaultAsker()
 
-    # scope: keep the existing install's scope unless specified;
-    # a fresh install is local by default
-    if o.local is None:
-        o.local = bool(config.local) if config.file is not None else True
-    o.local = bool(o.local)
-
-    same_scope = config.file is not None and bool(config.local) == o.local
     old_file = None
-
-    if config.file is not None and not same_scope:
-        # never delete the other scope's configuration; just state precedence
-        if o.local:
-            logger.warning(f"a global install exists ({config.file}); "
-                           "the local install will take precedence in this directory")
-        else:
-            logger.warning(f"a local install exists ({config.file}) and will take "
-                           "precedence over the global install in this directory")
-        config = Config()
-    elif same_scope and getattr(o, 'reset', False):
+    if config.file is not None and getattr(o, 'reset', False):
         logger.info(f"reset pre-existing configuration: {config.file}")
         old_file = config.file
-        config = Config()
+        config = Config(machine=config.machine)
     # else: update the existing configuration (default)
 
     fresh = config.file is None
 
     # target configuration file
-    if o.local:
-        papersconfig = config.file or CONFIG_FILE_LOCAL
-    else:
-        papersconfig = CONFIG_FILE
+    papersconfig = target or config.file or CONFIG_FILE_LOCAL
 
     remove_config_files = []
     if old_file and Path(old_file).resolve() != Path(papersconfig).resolve():
         remove_config_files.append(old_file)
 
     if probe is None:
-        probe = probe_filesystem(o.local)
+        probe = probe_filesystem()
 
     # --- bibtex ---
     default_bibtex = config.bibtex or 'papers.bib'
@@ -196,53 +165,73 @@ def resolve_install(config, o, probe=None, asker=None):
     config.bibtex = str(bibtex) if bibtex else None
     config.filesdir = str(filesdir) if filesdir else None
     config.file = papersconfig
-    config.local = o.local
+    config.is_library = True
 
-    if o.absolute_paths is not None:
-        config.absolute_paths = o.absolute_paths
+    # a new library stores these settings rather than inheriting them later:
+    # they determine its content (the file links) and where it looks for entries
+    if getattr(o, 'paths', None) is not None:
+        config.set('paths', o.paths)
+    elif getattr(o, 'absolute_paths', None) is not None:
+        config.set('paths', 'absolute' if o.absolute_paths else 'relative')
     elif fresh:
-        config.absolute_paths = not o.local
+        config.set('paths', config.get('paths'))
+
+    _resolve_pool(config, o, fresh)
 
     # Unless otherwise specified (option not advertized -- help suppressed)
     # the git directory is centralized in the backup dir.
-    if o.gitdir:
+    if getattr(o, 'gitdir', None):
         config.gitdir = o.gitdir
     elif config.gitdir and os.path.exists(config.gitdir):
         pass  # keep the pre-existing backup directory and its history
     elif config.bibtex is not None:
-        from papers.backup import resolve_gitdir
         config.gitdir = resolve_gitdir(config.bibtex)
 
     if o.editor:
-        config.editor = o.editor
+        config.set('editor', o.editor)
 
     # --- git tracking ---
     git = True if o.git_lfs else o.git
     if git is None:
-        if fresh:
+        if fresh and config.source('git') == 'default':
             # fresh installs default to git-tracking when git is available
             default_git = shutil.which('git') is not None
         else:
             default_git = bool(config.git)
         git = _ask_bool(asker, "Use git to back-up the bibtex file ?", default_git)
-    config.git = bool(git)
+    config.set('git', bool(git))
 
     gitlfs = o.git_lfs
     if not config.git:
         gitlfs = False
     if gitlfs is None:
         gitlfs = _ask_bool(asker, "Use git-lfs to back-up associated files ?", bool(config.gitlfs))
-    config.gitlfs = bool(gitlfs)
-    config.backup_files = config.gitlfs
+    config.set('git-lfs', bool(gitlfs))
+    if config.git:
+        check_git_available(gitlfs=config.gitlfs)
 
     return InstallPlan(
         config=config,
         create_bibtex=bool(config.bibtex) and not os.path.exists(config.bibtex),
-        create_filesdir=bool(config.filesdir) and not os.path.exists(config.filesdir),
+        # a shallow library places its files in the pool: its files
+        # directory is created when a file is written there
+        create_filesdir=bool(config.filesdir) and not os.path.exists(config.filesdir)
+                        and not config.has_pool(),
         remove_config_files=remove_config_files,
         init_git=config.git,
         snapshot=config.git and bool(config.bibtex),
     )
+
+
+def _resolve_pool(config, o, fresh):
+    """the pool setting of a library: --pool PATH|none (a relative path is
+    relative to the library), else none for a new library (self-contained:
+    its own entries and files)"""
+    pool = getattr(o, 'pool', None)
+    if pool is not None:
+        config.set('pool', pool_setting(pool, str(config.configdir)))
+    elif fresh:
+        config.set('pool', NO_POOL)
 
 
 def apply_install(plan):
@@ -269,25 +258,9 @@ def apply_install(plan):
     config.save()
 
     if plan.init_git:
-        from papers.backup import claim_gitdir
-        if (Path(config.gitdir)/'.git').exists():
-            logger.warning(f'{config.gitdir} is already initialized')
-        else:
-            os.makedirs(config.gitdir, exist_ok=True)
-            config.gitcmd('init')
-
-        # an explicit install takes ownership of the backup directory
-        claim_gitdir(config)
-
-        if config.gitlfs:
-            config.gitcmd('lfs track "files/"')
-            config.gitcmd('add .gitattributes')
-            config.gitcmd('commit -m "papers install: .gitattribute"', check=False)
+        init_backup(config)
 
     if plan.snapshot:
-        from papers.bib import get_biblio
-        from papers.backup import backup_bib
-        biblio = get_biblio(config)
-        backup_bib(biblio, config)
+        snapshot_backup(config)
 
     return config

@@ -1,94 +1,16 @@
 import os
 from pathlib import Path
-from unidecode import unidecode as unicode_to_ascii
 
 from bibtexparser.middlewares import LatexDecodingMiddleware
 
-from papers import logger
 from papers.entries import (
     get_entry_val,
     library_from_entries,
     format_library,
     update_entry,
+    parse_file,
 )
 from papers.utils import ansi_link as link, bcolors
-
-
-# Parse / format bibtex file entry
-# ================================
-
-def _parse_file(file):
-    """parse a single file entry: 'path', 'path:type' or 'description:path:type',
-    where the path of the three-field form may itself contain colons
-    (e.g. a journal name like ": Applied Economics" in the file name)
-    """
-    parts = file.split(':')
-
-    if len(parts) == 1:  # no ':'
-        return file
-
-    if len(parts) == 2:
-        path, type = parts
-        return path
-
-    # description:path:type -- description and type cannot contain ':'
-    return ':'.join(parts[1:-1])
-
-
-def _format_file(file, type=None):
-    if not type:
-        type = os.path.splitext(file)[1].strip('.')
-    return ':'+file+':'+type
-
-
-def parse_file(file, relative_to=None):
-    " return list of absolute paths "
-    if not file:
-        return []
-
-    files = []
-    for f in file.split(';'):
-        if not f.strip():
-            continue
-        path = _parse_file(f)
-        if not path:
-            # joining an empty path to relative_to would point at a directory
-            logger.warning(f'empty file path in file field (ignored): {f!r}')
-            continue
-        files.append(path)
-    if relative_to is not None:
-        files = [os.path.abspath(os.path.join(relative_to, f)) for f in files]
-
-    return files
-
-
-def update_file_path(entry, from_relative_to, to_relative_to, check=False):
-    if 'file' in entry:
-        old_file = entry["file"]
-        file_path = parse_file(entry["file"], from_relative_to)
-        if check:
-            for f in file_path:
-                assert os.path.exists(f), f"{f} does not exist"
-        new_file = format_file(file_path, to_relative_to)
-        if new_file != old_file:
-            logger.debug(f"""update_file_path {get_entry_val(entry, 'ID', '')} {old_file} (relative to {repr(from_relative_to)}) {new_file} (relative to {repr(to_relative_to)})""")
-            # logger.debug(f"""{entry.get("ID")}: update file {old_file} to {new_file}""")
-        entry["file"] = new_file
-        if old_file != new_file:
-            return (old_file, new_file)
-
-
-def format_file(files, relative_to=None):
-    # make sure the path is right
-    if relative_to is not None:
-        msg = f"FORMAT FILE {', '.join(files)}"
-        if relative_to == os.path.sep:
-            files = [os.path.abspath(p) for p in files]
-        else:
-            files = [os.path.normpath(os.path.relpath(p, relative_to)) for p in files]
-        msg += f" => {', '.join(files)}"
-        logger.debug(msg)
-    return ';'.join([_format_file(f) for f in files])
 
 
 def format_entries(entries):
@@ -107,13 +29,6 @@ def convert_entry_to_unicode(entry):
     lib = latex_to_unicode_library(lib)
     update_entry(entry, lib.entries[0])
 
-
-def entry_to_unicode_dict(entry):
-    """Return a dict of entry fields (excluding ID) with LaTeX decoded to unicode (for comparison)."""
-    lib = library_from_entries([entry])
-    lib = latex_to_unicode_library(lib)
-    e = lib.entries[0]
-    return {k: get_entry_val(e, k, '') for k, _ in e.items() if k != 'ID'}
 
 def parse_keywords(e):
     return [w.strip() for w in get_entry_val(e, 'keywords', '').split(',') if w.strip()]
@@ -156,42 +71,6 @@ def format_entry(biblio, e, no_key=False, prefix=""):
 
 # Parse name entry
 # ================
-
-def _outermost_bracket_groups(string, type='{}'):
-    '''
-    >>> outermost_bracket_groups('{my name}')
-    ['my name']
-    >>> outermost_bracket_groups("{my nam\\'{e}}")
-    ["my nam\\\'{e}"]
-    >>> outermost_bracket_groups('{my} {name}')
-    ['my', 'name']
-    >>> outermost_bracket_groups("{my} {nam\\'{e}}")
-    ['my', "nam\\'{e}"]
-    '''
-    l, r = type
-    level = 0
-    matches = []
-    for c in string:
-        if c == l:
-            level += 1
-            if level == 1:
-                expr = []
-        elif c == r:
-            level -= 1
-            if level == 0:  # close main
-                matches.append(''.join(expr))
-        elif level >= 1:
-            expr.append(c)
-    return matches
-
-
-def strip_outmost_brackets(family):
-    # strip brakets
-    brackets = _outermost_bracket_groups(family)
-    if len(brackets) == 1 and brackets[0] == family[1:-1]:
-        family = family[1:-1] # strip name' bracket
-    return family
-
 
 def standard_name(author):
     """Normalize author string to 'Last, First' per author (e.g. 'John Smith and Jane Doe' -> 'Smith, John and Doe, Jane')."""

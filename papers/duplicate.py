@@ -1,790 +1,542 @@
-import operator
+"""Whether two entries are the same paper.
+
+`same_paper(a, b, distinct)` is the only duplicate rule of papers: `add`
+(including `add DIR`), `check --duplicates` and `list --duplicates` use it,
+and so will `pull` and `push`. It compares, in this order:
+
+1. the DOI (case-insensitive, without doi.org/ or doi: prefix);
+2. the arXiv identifier (`eprint` with `archivePrefix = arXiv` or no
+   archivePrefix, and the arXiv DOIs 10.48550/arXiv.<id>), without version;
+3. the ISBN, for two @book entries only (a chapter carries the ISBN of its
+   book, and each edition has its own);
+4. otherwise the family names of the authors and the title, normalized
+   (case, braces, accents, whitespace), both non-empty on both sides.
+
+The first identifier that both entries have decides: equal values make the
+same paper, different values two papers. Title guard: equal identifiers with
+different entry types AND different titles (normalized; e.g. a chapter
+exported with the DOI of its book, a dataset "Data for: X" deposited under
+the DOI of article "X") give "ask" instead of "same".
+
+Pairs that the user answered "not the same paper" for are kept in
+`.papers/distinct.json` of the library (see `Distinct`), and same_paper
+returns "different" for them.
+"""
+import functools
+import json
 import os
-import itertools
 import re
-import shlex
-import difflib
+from typing import NamedTuple
 
-import bibtexparser
+from unidecode import unidecode
 
-from papers.entries import (
-    get_entry_val,
-    parse_string,
-    format_library,
-    library_from_entries,
-    entry_from_dict,
-)
-
-import logging
-logger = logging.getLogger(__name__)
-
-from papers.extract import isvaliddoi, fetch_entry
-from papers.encoding import parse_file, format_file, format_entries, family_names
-from papers.entries import update_entry
-
-from papers.utils import bcolors, checksum
+from papers import logger
+from papers.entries import get_entry_val
+from papers.identifiers import normalize_doi, normalize_isbn, entry_arxiv
+from papers.latexenc import latex_to_unicode
 
 
-# ENTRY IDENTITY (for duplicate indexing and comparison)
-# ======================================================
+SAME = 'same'
+DIFFERENT = 'different'
+ASK = 'ask'
+
+# minimum author+title score of `list --duplicates --fuzzy`
+FUZZY_RATIO = 80
+
+# minimum title score for a search result to be taken for the entry
+# (`check --fetch-all`)
+TITLE_MATCH_RATIO = 90
 
 
-def _remove_unicode(s, replace='_'):
-    s2 = []
-    for c in s:
-        if ord(c) > 128:
-            c = replace
-        s2.append(c)
-    return ''.join(s2)
+class Verdict:
+    """result of same_paper: `kind` is SAME, DIFFERENT or ASK, `reason`
+    says why (e.g. "same DOI 10.1000/xyz")"""
+
+    def __init__(self, kind, reason=''):
+        self.kind = kind
+        self.reason = reason
+
+    def __eq__(self, other):
+        if isinstance(other, str):
+            return self.kind == other
+        return isinstance(other, Verdict) and (self.kind, self.reason) == (other.kind, other.reason)
+
+    def __repr__(self):
+        return f'Verdict({self.kind!r}, {self.reason!r})'
 
 
-def _simplify_string(s):
-    """Replace unicode, strip, lower case."""
-    s = _remove_unicode(s)
-    return s.lower().strip()
+# NORMALIZATION
+# =============
+
+# the number of values kept by the memos of the normalization and the identity
+MEMO_SIZE = 1 << 18
+
+
+def _latex_to_unicode(s):
+    "latex_to_unicode, without its work for a plain ASCII text (no backslash, no brace)"
+    if s.isascii() and '\\' not in s and '{' not in s and '}' not in s:
+        return s
+    return latex_to_unicode(s)
+
+
+@functools.lru_cache(maxsize=MEMO_SIZE)
+def normalize_text(s):
+    """lower case, LaTeX and accents to ASCII, no braces, single spaces"""
+    if not s:
+        return ''
+    s = _latex_to_unicode(s)
+    s = unidecode(s)
+    s = s.replace('{', '').replace('}', '')
+    return ' '.join(s.lower().split())
+
+
+def split_names(field):
+    "the names of an author (or editor) field"
+    return [n.strip() for n in re.split(r'\s+and\s+', field or '') if n.strip()]
+
+
+def parse_name(name):
+    """(family, given) of one name: 'Smith, John', 'John Smith', or
+    '{van der Berg}, Jane'. Given names may be empty."""
+    name = name.strip()
+    if ',' in name:
+        family, given = name.split(',', 1)
+        return family.strip(), given.strip()
+    # last word, keeping a braced group together
+    m = re.match(r'^(.*?)\s*(\{[^{}]*\}|\S+)$', name)
+    if not m:
+        return name, ''
+    return m.group(2), m.group(1).strip()
+
+
+def family_name_ids(field):
+    "normalized family names of an author field"
+    return [normalize_text(parse_name(n)[0]) for n in split_names(field)]
+
+
+# IDENTITY
+# ========
+
+# the fields that the identifiers of an entry are made of
+IDENTITY_FIELDS = ('ENTRYTYPE', 'doi', 'archiveprefix', 'archivePrefix', 'eprint', 'isbn', 'author', 'title')
+
+
+class Identifiers(NamedTuple):
+    "the normalized identifiers of an entry (see identifiers_of)"
+    type: str
+    doi: str
+    arxiv: str
+    isbns: frozenset
+    author: str
+    title: str
+    authortitle: str
+
+
+def _compute_identifiers(e):
+    entry_type = get_entry_val(e, 'ENTRYTYPE', '').lower()
+    doi = normalize_doi(get_entry_val(e, 'doi', '')) or ''
+    if entry_type == 'book':
+        values = re.split(r'[,;]', get_entry_val(e, 'isbn', ''))
+        isbns = frozenset(i for i in (normalize_isbn(v) for v in values if v.strip()) if i)
+    else:  # a chapter carries the ISBN of its book
+        isbns = frozenset()
+    author = ' '.join(family_name_ids(get_entry_val(e, 'author', '')))
+    title = normalize_text(get_entry_val(e, 'title', ''))
+    authortitle = author + '|' + title if author and title else ''
+    return Identifiers(entry_type, doi, entry_arxiv(e), isbns, author, title, authortitle)
+
+
+@functools.lru_cache(maxsize=MEMO_SIZE)
+def _identifiers_of_values(values):
+    return _compute_identifiers(dict(zip(IDENTITY_FIELDS, values)))
+
+
+def identifiers_of(e):
+    """the Identifiers of an entry, memoized by the values of its
+    IDENTITY_FIELDS (an edited entry gets its new identifiers)"""
+    values = tuple(get_entry_val(e, k, '') for k in IDENTITY_FIELDS)
+    try:
+        return _identifiers_of_values(values)
+    except TypeError:  # a value that cannot be hashed
+        return _compute_identifiers(e)
 
 
 def author_id(e):
-    return _simplify_string(' '.join(family_names(get_entry_val(e, 'author', ''))))
+    return identifiers_of(e).author
 
 
 def title_id(e):
-    return _simplify_string(get_entry_val(e, 'title', ''))
+    return identifiers_of(e).title
 
 
-def entry_id(e):
-    """Entry identifier which is not the bibtex key. Returns (doi_lower, authortitle)."""
-    authortitle = ''.join([author_id(e), title_id(e)])
-    return (get_entry_val(e, 'doi', '').lower(), authortitle)
+def authortitle_id(e):
+    "normalized 'authors|title', or '' when the authors or the title are missing"
+    return identifiers_of(e).authortitle
 
 
-def _build_duplicate_index(entries):
-    """Build (by_doi, by_authortitle) so duplicate checks only run on candidates. O(n)."""
-    by_doi = {}
-    by_authortitle = {}
-    for e in entries:
-        doi, at = entry_id(e)
-        if doi:
-            by_doi.setdefault(doi, []).append(e)
-        if at:
-            by_authortitle.setdefault(at, []).append(e)
-    return (by_doi, by_authortitle)
+def entry_type(e):
+    return identifiers_of(e).type
 
 
-def _get_duplicate_candidates(entry, by_doi, by_authortitle):
-    """Return list of entries that might duplicate `entry` (same doi or authortitle)."""
-    doi, at = entry_id(entry)
-    candidates = by_doi.get(doi, []) + by_authortitle.get(at, [])
-    # deduplicate by id(); same entry can be in both indices
-    seen = set()
-    out = []
-    for e in candidates:
-        if id(e) not in seen:
-            seen.add(id(e))
-            out.append(e)
-    return out
+def doi_id(e):
+    return identifiers_of(e).doi
 
 
-def _add_to_duplicate_index(entry, by_doi, by_authortitle):
-    """Register one entry in the index (after it was added to the library)."""
-    doi, at = entry_id(entry)
-    if doi:
-        by_doi.setdefault(doi, []).append(entry)
-    if at:
-        by_authortitle.setdefault(at, []).append(entry)
+def isbn_ids(e):
+    "the normalized ISBNs of a @book entry (none for other types)"
+    return identifiers_of(e).isbns
 
 
-# SEARCH DUPLICATES
-# =================
+def identity(e):
+    """the identifiers of an entry: dict with the keys doi, arxiv, isbn
+    (comma-separated, books only) and authortitle (or title, without
+    authors), those it has"""
+    ids = identifiers_of(e)
+    ident = {}
+    if ids.doi:
+        ident['doi'] = ids.doi
+    if ids.arxiv:
+        ident['arxiv'] = ids.arxiv
+    if ids.isbns:
+        ident['isbn'] = ','.join(sorted(ids.isbns))
+    if ids.authortitle:
+        ident['authortitle'] = ids.authortitle
+    elif ids.title:
+        # no authors: the title tells apart entries that share an identifier
+        ident['title'] = ids.title
+    return ident
 
 
-def _group_key(groups, check):
-    for k in groups:
-        for ee in groups[k]:
-            if check(ee):
-                return k
-    return None
+def titles_differ(a, b):
+    "both titles known, and different after normalization"
+    ta, tb = title_id(a), title_id(b)
+    return bool(ta and tb and ta != tb)
 
 
-def groupby_equal(entries, eq=None):
-    """groupby based on full equality (slow !)
-
-    >>> groupby_equal([(1,0),(1,1),(1,2),(2,0),(3,0),(2,1),(4,0)], lambda e1, e2: e1[0]==e2[0])
-    [(0, {(1, 0), (1, 1), (1, 2)}),
-     (1, {(2, 0), (2, 1)}),
-     (2, {(3, 0)}),
-     (3, {(4, 0)})]
-    """
-    equal = eq or operator.eq
-    groups = {}
-    for e in entries:
-        k = _group_key(groups, lambda ee: equal(ee,e))
-        if k is None:
-            group = []
-            groups[len(groups)] = group
-        else:
-            group = groups[k]
-        group.append(e)
-    return sorted(groups.items())
+def search_result_mismatch(e, found, ratio=TITLE_MATCH_RATIO):
+    """why a bibliographic search result `found` is not the paper of entry
+    `e`, or '' when it is: the normalized titles must be equal or score at
+    least `ratio` (rapidfuzz ratio, 0-100), and the authors must have a
+    family name in common"""
+    from rapidfuzz.fuzz import ratio as fuzz_ratio
+    ta, tb = title_id(e), title_id(found)
+    if not ta or not tb:
+        return 'no title'
+    if ta != tb:
+        score = fuzz_ratio(ta, tb)
+        if score < ratio:
+            return f'different title ({score:.0f}% similar)'
+    common = set(family_name_ids(get_entry_val(e, 'author', ''))) & set(family_name_ids(get_entry_val(found, 'author', '')))
+    if not common - {''}:
+        return 'no author in common'
+    return ''
 
 
-def search_duplicates(entries, key=None, eq=None, issorted=False, filter_key=None):
-    """search for duplicates
-
-    entries: list elements
-    key: key to check for equality
-    eq: binary operator for equality check (slower)
-    issorted: if True and key is provided, skip sort
-
-    returns:
-    - unique_entries : list (entries for which no duplicates where found)
-    - duplicates : list of list (groups of duplicates)
-
-    examples:
-    >>> search_duplicates([(1,0), (1,1), (1,2), (2,0), (3,0), (2,1), (4,0)], key=lambda e: e[0])
-    ([(3, 0), (4, 0)], [[(1, 0), (1, 1), (1, 2)], [(2, 0), (2, 1)]])
-
-    >>> search_duplicates([(1,0), (1,1), (1,2), (2,0), (3,0), (2,1), (4,0)], eq=lambda e1, e2: e1[0]==e2[0])
-    ([(3, 0), (4, 0)], [[(1, 2), (1, 0), (1, 1)], [(2, 0), (2, 1)]])
-    """
-    if key or eq is None:
-        if not issorted:
-            entries = sorted(entries, key=key)
-        grouped = itertools.groupby(entries, key)
-
-    else:
-        grouped = groupby_equal(entries, eq)
-
-    duplicates = []
-    unique_entries = []
-
-    for e, g in grouped:
-        group = list(g)
-        if len(group) > 1 and (not filter_key or filter_key(e)):
-            logger.info('key:'+str(e))
-            duplicates.append(group)
-        else:
-            logger.debug('unique:'+str(e))
-            unique_entries.extend(group)
-
-    return unique_entries, duplicates
+def _guard(a, b, reason):
+    "the title guard on equal identifiers (a, b: Identifiers)"
+    if a.type != b.type and a.title and b.title and a.title != b.title:
+        return Verdict(ASK, f'{reason}, but the entry types ({a.type}, {b.type}) '
+                            'and the titles differ')
+    return Verdict(SAME, reason)
 
 
-def list_duplicates(entries, **kw):
-    entries, duplicate_groups = search_duplicates(entries, **kw)
-    return list(itertools.chain(*duplicate_groups))
+# the reasons of same_paper for two entries whose identifiers contradict each other
+CONTRADICTIONS = ('different DOIs', 'different arXiv ids', 'different ISBNs')
 
 
-def list_uniques(entries, **kw):
-    entries, duplicate_groups = search_duplicates(entries, **kw)
-    return entries
+def same_paper(a, b, distinct=None):
+    """Verdict(SAME, DIFFERENT or ASK, reason) for two entries (see the module
+    documentation). `distinct` is a Distinct, or None."""
+    if distinct is not None and distinct.contains(a, b):
+        return Verdict(DIFFERENT, 'marked as not the same paper (.papers/distinct.json)')
+
+    ia, ib = identifiers_of(a), identifiers_of(b)
+    if ia.doi and ib.doi:
+        if ia.doi != ib.doi:
+            return Verdict(DIFFERENT, CONTRADICTIONS[0])
+        return _guard(ia, ib, f'same DOI {ia.doi}')
+
+    if ia.arxiv and ib.arxiv:
+        if ia.arxiv != ib.arxiv:
+            return Verdict(DIFFERENT, CONTRADICTIONS[1])
+        return _guard(ia, ib, f'same arXiv id {ia.arxiv}')
+
+    if ia.isbns and ib.isbns:
+        common = ia.isbns & ib.isbns
+        if not common:
+            return Verdict(DIFFERENT, CONTRADICTIONS[2])
+        return Verdict(SAME, f'same ISBN {min(common)}')
+
+    if ia.authortitle and ib.authortitle and ia.authortitle == ib.authortitle:
+        return Verdict(SAME, 'same title and authors')
+    return Verdict(DIFFERENT, 'no common identifier')
 
 
+def contradicts(a, b):
+    """whether an identifier that both entries have differs (DOI, arXiv id
+    or ISBN, see same_paper; the pairs of distinct.json aside)"""
+    return same_paper(a, b).reason in CONTRADICTIONS
 
-# ANALYZE DUPLICATES
+
+# NOT THE SAME PAPER
 # ==================
 
-
-class ConflictingField:
-    def __init__(self, choices=[]):
-        self.choices = choices
-
-    def resolve(self, force=False):
-        # TODO: remove `force` argument
-        choices = [v for v in self.choices if v]
-
-        if len(choices) == 1 or force:
-            return choices[0]
-        else:
-            return self
+DISTINCT_FILE = os.path.join('.papers', 'distinct.json')
 
 
-class MergedEntry(dict):
-
-    def isresolved(self):
-        return not any([isinstance(self[k], ConflictingField) for k in self])
-
-    def resolve(self, force=False):
-        for k in self:
-            if isinstance(self[k], ConflictingField):
-                self[k] = self[k].resolve(force)
-
-        return dict(self) if self.isresolved() else self
-
-
-def merge_entries(entries, force=False):
-    merged = MergedEntry()  # dict
-    for e in entries:
-        for k, v in e.items():
-            if k not in merged:
-                merged[k] = ConflictingField([])
-            if v not in merged[k].choices:
-                merged[k].choices.append(v)
-    return merged.resolve(force)
+def _side_matches(recorded, ident):
+    """a recorded identity matches the identity of an entry when they have
+    the same DOI, arXiv id and ISBN (or both none of them), and the same
+    authors and title (or title) when both have them"""
+    if not recorded:
+        return False
+    for k in ('doi', 'arxiv', 'isbn'):
+        if recorded.get(k) != ident.get(k):
+            return False
+    for k in ('authortitle', 'title'):
+        if k in recorded and k in ident and recorded[k] != ident[k]:
+            return False
+    return True
 
 
-class DummyBcolors:
-    def __getattr__(self, s):
-        return ''
-dummybcolors = DummyBcolors()
+class Distinct:
+    """Pairs of entries that are not the same paper, recorded by identity
+    (see `identity`), not by key, so that the file means the same in every
+    library. Stored in .papers/distinct.json next to the bibtex:
 
-
-def _has_field(entry, k):
-    """Field membership that also works for ID/ENTRYTYPE on bibtexparser-v2
-    entries (`'ID' in entry` is always False for those)."""
-    if k in ('ID', 'ENTRYTYPE') and hasattr(entry, 'fields_dict'):
-        return True
-    return k in entry
-
-
-
-def _colordiffline(line, sign=None):
-    if sign == '+' or line.startswith('+'):
-        return bcolors.OKGREEN + line + bcolors.ENDC
-    elif sign == '-' or line.startswith('-'):
-        return bcolors.FAIL + line + bcolors.ENDC
-    elif sign == '?' or line.startswith('?'):
-        return bcolors.WARNING + line + bcolors.ENDC
-    elif sign == '!' or line.startswith('!'):
-        return bcolors.BOLD + bcolors.WARNING + line + bcolors.ENDC
-    elif sign == '*' or line.startswith('*'):
-        return bcolors.BOLD + line + bcolors.ENDC
-    # elif sign == '>' or line.startswith('>'):
-        # return bcolors.BOLD + line + bcolors.ENDC
-        # return bcolors.BOLD + bcolors.WARNING + line + bcolors.ENDC
-    else:
-        return line
-
-
-def entry_diff(e_old, e, color=True):
-    " update diff "
-    s_old = format_entries([e_old])
-    s = format_entries([e])
-    ndiff = difflib.ndiff(s_old.splitlines(1), s.splitlines(1))
-    diff = ''.join(ndiff)
-    if color:
-        return "\n".join([_colordiffline(line) for line in diff.splitlines()])
-    else:
-        return diff
-
-
-def entry_ndiff(entries, color=True):
-    ' diff of many entries '
-    m = merge_entries(entries)
-    SECRET_STRING = 'REPLACE_{}_FIELD'
-    # non-greedy: the "@type{key," line can hold two placeholders
-    regex = re.compile(SECRET_STRING.format('(.+?)'))
-    choices = {}
-    somemissing = []
-    for k in m:
-        if isinstance(m[k], ConflictingField):
-            choices[k] = m[k].choices
-            m[k] = SECRET_STRING.format(k)
-        elif any(not _has_field(e, k) for e in entries):
-            somemissing.append(k)
-    lib = library_from_entries([m])
-    s = format_library(lib)
-    lines = []
-    for line in s.splitlines():
-        matches = regex.findall(line)
-        if matches:
-            lines.append('\u2304'*3)
-            # one line per alternative; with several conflicting fields on
-            # the line, the j-th line takes the j-th choice of each
-            for j in range(max(len(choices[k]) for k in matches)):
-                newline = line
-                for k in matches:
-                    newline = newline.replace(SECRET_STRING.format(k), '{}'.format(choices[k][min(j, len(choices[k])-1)]))
-                newline = '  '+newline
-                lines.append(_colordiffline(newline, '!') if color else newline)
-                lines.append('---')
-            lines.pop() # remove last ---
-            # lines.append('^^^')
-            lines.append('\u2303'*3)
-        elif any('{} = {{'.format(k) in line for k in somemissing):
-            newline = '  '+line
-            lines.append(_colordiffline(newline, sign='*') if color else newline)
-        elif not line.startswith(('@','}')):
-            lines.append('  '+line)
-        else:
-            lines.append(line)
-    return '\n'.join(lines)
-
-
-def entry_sdiff(entries, color=True, bcolors=bcolors, best=None):
-    """split diff
+        {"distinct": [[{"doi": "10.1000/a", "authortitle": "..."}, {...}], ...]}
     """
-    if not entries:
-        return ''
-    assert all(entries), 'some entries are empty'
 
-    if not color:
-        bcolors = dummybcolors
+    def __init__(self, pairs=None, path=None):
+        self.pairs = list(pairs or [])
+        self.path = path
+        self.changed = False
 
-    merged = merge_entries(entries)
-    conflicting_fields = [k for k in merged if isinstance(merged[k], ConflictingField)]
-    somemissing = [k for k in merged if k not in conflicting_fields
-                   and any(not _has_field(e, k) for e in entries)]
+    @classmethod
+    def for_bibtex(cls, bibtex):
+        "the pairs recorded for the library of this bibtex file"
+        path = os.path.join(os.path.dirname(os.path.abspath(bibtex)), DISTINCT_FILE)
+        return cls.load(path)
 
-    entry_strings = []
+    @classmethod
+    def load(cls, path):
+        pairs = []
+        if os.path.exists(path):
+            try:
+                with open(path) as f:
+                    pairs = [p for p in json.load(f).get('distinct', [])
+                             if isinstance(p, list) and len(p) == 2]
+            except (ValueError, OSError, AttributeError) as error:
+                logger.warning(f'{path}: could not be read ({error}); ignored')
+        return cls(pairs, path)
 
-    for i, entry in enumerate(entries):
-        lib = library_from_entries([entry])
-        string = format_library(lib)
-        # color the conflicting fields
-        lines = []
-        for line in string.splitlines():
-            for k in conflicting_fields+somemissing:
-                fmt = lambda s : (bcolors.WARNING if k in conflicting_fields else bcolors.BOLD)+s+bcolors.ENDC
-                if k != k.lower() and '@' in line:
-                    value = get_entry_val(entry, k, '')
-                    if value:
-                        line = line.replace(value, fmt(value))
-                elif line.strip().startswith('{} = {{'.format(k)):
-                    line = fmt(line)
-            lines.append(line)
-        string = '\n'.join(lines)
-        if best is None:
-            entry_strings.append(bcolors.OKBLUE+'* ('+str(i+1)+')'+bcolors.ENDC+'\n'+string)
-        elif entry is best:
-            entry_strings.append(bcolors.OKBLUE+'* ('+str(i+1)+')'+bcolors.ENDC+'\n'+string)
-        else:
-            entry_strings.append(bcolors.OKBLUE+'  ('+str(i+1)+')'+bcolors.ENDC+'\n'+string)
+    def contains(self, a, b):
+        if not self.pairs:
+            return False
+        ia, ib = identity(a), identity(b)
+        for x, y in self.pairs:
+            if (_side_matches(x, ia) and _side_matches(y, ib)) or (_side_matches(y, ia) and _side_matches(x, ib)):
+                return True
+        return False
 
-    return '\n'.join(entry_strings)
+    def add(self, a, b):
+        "record that entries a and b are not the same paper"
+        ia, ib = identity(a), identity(b)
+        if not ia or not ib or self.contains(a, b):
+            return
+        self.pairs.append([ia, ib])
+        self.changed = True
 
+    def update(self, other):
+        "union with the pairs of another Distinct (e.g. of a pool, on pull or push)"
+        for pair in other.pairs:
+            if pair not in self.pairs and [pair[1], pair[0]] not in self.pairs:
+                self.pairs.append(pair)
+                self.changed = True
 
-
-# RESOLVE DUPLICATES
-# ==================
-
-def merge_files(entries, relative_to=None):
-    checksums = []
-    files = []
-    for e in entries:
-        for f in parse_file(get_entry_val(e, 'file', ''), relative_to=relative_to):
-            check = checksum(f) if os.path.exists(f) else None
-            if f not in files and (check is None or check not in checksums):
-                files.append(f)
-                if check is not None:
-                    checksums.append(check)
-    return format_file(files, relative_to=relative_to)
+    def save(self, path=None):
+        path = path or self.path
+        if not self.changed or path is None:
+            return
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, 'w') as f:
+            json.dump({'distinct': self.pairs}, f, indent=1, sort_keys=True)
+            f.write('\n')
+        self.changed = False
 
 
-def _ask_pick_loop(entries, extra=[], select=False):
+_last_union = None  # (the Distinct objects, their numbers of pairs, the union)
 
-    entry_choices = [str(i+1) for i in range(len(entries))]
-    if select:
-        select_choices = ['-'+c for c in entry_choices]
+
+def distinct_union(*distincts):
+    """a Distinct with the pairs of several (None skipped), e.g. of a
+    library and its pool, not to be changed: the same object for the same
+    Distinct objects while none of them has new pairs"""
+    global _last_union
+    parts = [d for d in distincts if d is not None]
+    sizes = [len(d.pairs) for d in parts]
+    if _last_union is not None and len(_last_union[0]) == len(parts) \
+            and all(a is b for a, b in zip(_last_union[0], parts)) and _last_union[1] == sizes:
+        return _last_union[2]
+    union = Distinct([pair for d in parts for pair in d.pairs])
+    _last_union = (parts, sizes, union)
+    return union
+
+
+# CANDIDATES AND GROUPS
+# =====================
+
+def _index_keys(e):
+    ident = identity(e)
+    keys = [(k, v) for k, v in ident.items() if k != 'isbn']
+    keys += [('isbn', i) for i in isbn_ids(e)]
+    return keys
+
+
+class IdentityIndex:
+    """entries by identifier (exact dictionary lookup of the DOI, the arXiv
+    id, each ISBN, the authors and title), so that a duplicate search only
+    compares an entry with the entries that share one of its identifiers.
+    The index keeps the position of each entry (the order in which it was
+    first added): an entry removed and added again (updated) keeps it."""
+
+    def __init__(self, entries=()):
+        self._index = {}
+        self._position = {}  # id(entry) -> (position, entry): the entry is kept, so that its id is not reused
+        for e in entries:
+            self.add(e)
+
+    def add(self, e):
+        if id(e) not in self._position:
+            self._position[id(e)] = (len(self._position), e)
+        for k in _index_keys(e):
+            matches = self._index.setdefault(k, [])
+            if not any(x is e for x in matches):
+                matches.append(e)
+
+    def remove(self, e):
+        for k in _index_keys(e):
+            matches = self._index.get(k, [])
+            matches[:] = [x for x in matches if x is not e]
+
+    def position(self, e):
+        return self._position[id(e)][0]
+
+    def candidates(self, e):
+        out = []
+        for k in _index_keys(e):
+            for x in self._index.get(k, []):
+                if x is not e and not any(x is y for y in out):
+                    out.append(x)
+        return out
+
+
+def find_duplicates(entry, entries=None, distinct=None, index=None):
+    """[(other, verdict)] for the entries that are the same paper as `entry`
+    (SAME first, then ASK), in the order of `entries`.
+
+    index: an IdentityIndex of the entries to search, kept up to date; with
+    entries None, the indexed entries are searched, in the order of the
+    index (no pass over the entries)"""
+    if index is None:
+        index = IdentityIndex(entries)
+        entries = None  # the index has them, in their order
+    candidates = index.candidates(entry)
+    if entries is None:
+        position = index.position
     else:
-        select_choices = []
-    choices = entry_choices + select_choices + extra
-
-    def _process_choice(i):
-        i = i.strip()
-        if i in entry_choices:
-            return entries[int(i)-1]
-        elif i in select_choices:
-            return [e for e in entries if e is not entries[int(i[1:])-1]]
-        elif select and len(i.lstrip('-').split()) > 1:
-            if i.startswith('-'):
-                deselect = [_process_choice(ii) for ii in i[1:].split()]
-                return [e for e in entries if not any(e is x for x in deselect)]
-            else:
-                return [_process_choice(ii) for ii in i.split()]
-        elif i in choices:
-            return i
-        else:
-            raise ValueError(i)
-
-    while True:
-        print('choices: '+', '.join(choices))
-        i = input('>>> ')
-        try:
-            return _process_choice(i)
-        except (ValueError, IndexError):
-            print(f'invalid choice: {i!r}')
-            continue
+        order = {id(e): i for i, e in enumerate(entries)}
+        candidates = [x for x in candidates if id(x) in order]
+        position = lambda e: order[id(e)]
+    found = []
+    for other in candidates:
+        verdict = same_paper(other, entry, distinct)
+        if verdict.kind != DIFFERENT:
+            found.append((other, verdict))
+    found.sort(key=lambda ov: (ov[1].kind != SAME, position(ov[0])))
+    return found
 
 
-def choose_entry_interactive(entries, extra=[], msg='', select=False, best=None):
+class Group:
+    """entries of the library that are the same paper. entries[0] is the
+    entry with most fields (the proposed target of a merge). `kind` is SAME,
+    or ASK when the title guard fires for a pair of the group."""
 
-    print(entry_sdiff(entries, best=best))
-
-    if msg:
-        print(msg)
-    else:
-        print()
-    return _ask_pick_loop(entries, extra, select)
-
-
-def edit_entries(entries, diff=False, ndiff=False, editor=None):
-    '''edit entries and insert result in database
-    '''
-    # write the listed entries to temporary file
-    import tempfile
-    fd, filename = tempfile.mkstemp(suffix='.txt')
-    os.close(fd)
-    try:
-        return _edit_entries_file(filename, entries, diff, ndiff, editor)
-    finally:
-        os.remove(filename)
-
-
-def _edit_entries_file(filename, entries, diff, ndiff, editor):
-
-    if (diff or ndiff) and len(entries) > 1:
-        if ndiff or len(entries) > 2:
-            entrystring = entry_ndiff(entries, color=False)
-        else:
-            entrystring = entry_diff(*entries, color=False)
-    else:
-        lib = library_from_entries(entries)
-        entrystring = format_library(lib)
-
-    with open(filename, 'w') as f:
-        f.write(entrystring)
-
-    editor = editor or os.environ.get('VISUAL') or os.environ.get('EDITOR') or 'vi'
-    res = os.system('{} {}'.format(editor, shlex.quote(filename)))
-
-    if res != 0:
-        logger.error('failed to edit file -- keeping original entries')
-        return entries
-
-    db_updated = parse_string(open(filename).read())
-    new_entries = db_updated.entries
-
-    # validate the round trip: an edited diff saved with its +/- markers, or
-    # any other text that does not parse back to sane bibtex, must not be
-    # silently inserted into the library
-    failed = getattr(db_updated, 'failed_blocks', None)
-    if failed:
-        logger.error('some edited blocks could not be parsed as bibtex -- keeping original entries')
-        return entries
-    if entries and not new_entries:
-        logger.error('edited file contains no bibtex entry -- keeping original entries')
-        return entries
-    fieldname = re.compile(r'^[A-Za-z][\w-]*$')
-    for e in new_entries:
-        bad = [k for k, _ in e.items() if not fieldname.match(k)]
-        if bad:
-            logger.error(f'edited entry {get_entry_val(e, "ID", "")!r} has malformed field name(s) {bad} '
-                         '(unedited diff markers?) -- keeping original entries')
-            return entries
-
-    logger.info('successfully edited file, insert edited entries')
-    return new_entries
-
-
-def score(e):
-    ' entry score, in terms of reliability '
-    has_doi = bool(get_entry_val(e, 'doi', '')) and isvaliddoi(get_entry_val(e, 'doi', ''))
-    n_fields = len(e.fields) if hasattr(e, 'fields') else len(e)
-    return (100*has_doi + 50*('title' in e) + 10*('author' in e) + 1*('file' in e))*100 + n_fields
-
-
-def bestentry(entries):
-    return sorted(entries, key=score)[-1]
-
-
-class DuplicateSkip(Exception):
-    pass
-
-class DuplicateSkipAll(Exception):
-    pass
-
-
-class DuplicateHandler:
-
-    def __init__(self, entries):
+    def __init__(self, entries, kind, reason):
         self.entries = entries
+        self.kind = kind
+        self.reason = reason
 
-    # view methods
-    def viewdiff(self, color=True, update=False):
-        if len(self.entries) == 2 and update:
-            return entry_diff(*self.entries, color=color)
-        else:
-            return entry_ndiff(self.entries, color=color)
 
-    def viewsplit(self, color=False):
-        return entry_sdiff(self.entries, color=color, best=self.best())
+def _nfields(e):
+    return len(list(e.items()))
 
-    def format(self, diffview=False, update=False, color=True):
-        return self.viewdiff(color, update) if diffview else self.viewsplit(color)
 
-    # action methods
-    def remove_duplicates(self):
-        self.entries = unique(self.entries) # note: loose order
+def duplicate_groups(entries, distinct=None):
+    """the groups of 2 or more entries that are the same paper.
 
-    def edit(self, diffview=False, update=False):
-        self.entries = edit_entries(self.entries, diff=diffview, ndiff=not update)
+    Entries linked by SAME or ASK verdicts are grouped, and a group never
+    holds two entries that are different papers: when a copy without DOI
+    matches two entries with different DOIs by authors and title, it goes
+    with the first of them (most fields first), and the other is left out."""
+    entries = list(entries)
+    index = IdentityIndex(entries)
+    position = {id(e): i for i, e in enumerate(entries)}
+    parent = list(range(len(entries)))
 
-    def delete(self):
-        self.entries = []
+    def find(i):
+        while parent[i] != i:
+            parent[i] = parent[parent[i]]
+            i = parent[i]
+        return i
 
-    def best(self):
-        return bestentry(self.entries)
+    for i, e in enumerate(entries):
+        for other in index.candidates(e):
+            j = position[id(other)]
+            if j > i and same_paper(e, other, distinct).kind != DIFFERENT:
+                parent[find(j)] = find(i)
 
-    def fetch(self):
-        # pick best entry to update from
-        return fetch_entry(self.best())
+    components = {}
+    for i in range(len(entries)):
+        components.setdefault(find(i), []).append(entries[i])
 
-    def merge_files(self):
-        file = merge_files(self.entries)
-        if file:
-            for e in self.entries:
-                e['file'] = file
-
-    def merge(self, interactive=True):
-        """Merge the group into one entry; conflicting fields take the best
-        entry's value. In interactive mode a conflicting merge is appended to
-        the group as a proposal for review instead of replacing it.
-        """
-        self.merge_files()
-        merged = merge_entries(self.entries)
-        had_conflict = isinstance(merged, MergedEntry)
-
-        if had_conflict:
-            fields = [k for k in merged if isinstance(merged[k], ConflictingField)]
-            logger.warning('conflicting entries for fields: '+str(fields)+' (resolved from the best entry)')
-            best = self.best()
-            for k in fields:
-                merged[k] = get_entry_val(best, k, None) or merged[k].choices[0]
-            merged = dict(merged)
-
-        # the library only accepts proper Entry objects, not dicts
-        proposal = entry_from_dict(merged) if isinstance(merged, dict) else merged
-
-        if interactive and had_conflict:
-            # conflicts were auto-resolved: append as a proposal for review
-            print(f'the merged entry is appended to the group as ({len(self.entries)+1})')
-            self.entries.append(proposal)
-        else:
-            self.entries = [proposal]
-
-    # interactive loops
-    def interactive_loop(self, diffview=False, update=False):
-
-        self.remove_duplicates()
-
-        while len(self.entries) > 1:
-
-            choices = list('mfednsSvVq')
-            n = len(self.entries)
-            txt = f'''
-
-Keep entries by number -- or choose an action:
-  N     keep only entry N, delete the others (e.g. 1)
-  N M   keep entries N and M, delete the others (e.g. 1 2)
-  -N    keep all entries but entry N
-(m)erge the group into one entry (conflicts resolved from *, shown for review)
-(f)etch metadata for the * entry and add the result to the group
-(e)dit the group in an editor
-(d)elete the whole group (all {n} entries!)
-(n)ot duplicates: keep all entries and stop asking about this group
-(s)kip this group (decide later)
-(S)kip all remaining groups (decide later)
-(v)iew toggle (split - diff)
-(V)iew toggle for diff mode
-(q)uit: stop checking, keep everything not yet decided
-'''
-            header = bcolors.OKBLUE + f'{n} duplicates -- * marks the most complete entry (used by merge and fetch):' + bcolors.ENDC
-            if not diffview:
-                e = choose_entry_interactive(self.entries, extra=choices, msg=header+txt, select=True, best=self.best())
+    groups = []
+    for root in sorted(components):
+        component = sorted(components[root], key=lambda e: -_nfields(e))
+        parts = []
+        for e in component:
+            for part in parts:
+                verdicts = [same_paper(x, e, distinct) for x in part]
+                if all(v.kind != DIFFERENT for v in verdicts):
+                    part.append(e)
+                    break
             else:
-                print(self.format(diffview=True, update=update))
-                print(header + txt)
-                e = _ask_pick_loop(self.entries, extra=choices, select=True)
-
-            if e == 'm':
-                self.merge()
-
-            elif e == 'e':
-                self.edit(diffview, update)
-
-            elif e == 'd':
-                ans = input(f'delete all {n} entries? [y/N] ')
-                if ans.lower() == 'y':
-                    self.delete()
-
-            elif e == 'f':
-                self.entries.append(self.fetch())
-                self.remove_duplicates()
-
-            elif e in ('S', 'q'):
-                raise DuplicateSkipAll()
-
-            elif e == 's':
-                raise DuplicateSkip()
-
-            elif e == 'n':
-                break
-
-            elif isinstance(e, dict):
-                # the library only accepts proper Entry objects
-                self.entries = [entry_from_dict(e)]
-
-            elif hasattr(e, 'fields_dict'):
-                # v2 Entry (user picked one entry by index)
-                self.entries = [e]
-
-            elif isinstance(e, list):
-                self.entries = e
-
-            elif e == 'v':
-                diffview = not diffview  # toggle view
-
-            elif e == 'V':
-                if not diffview:
-                    diffview = True  # toggle view
-                else:
-                    update = not update
-
-            else:
-                print(e)
-                raise ValueError('this is a bug')
-
-        return self.entries
+                parts.append([e])
+        for part in parts:
+            if len(part) < 2:
+                continue
+            kind, reason = SAME, ''
+            for i, a in enumerate(part):
+                for b in part[i+1:]:
+                    v = same_paper(a, b, distinct)
+                    if v.kind == ASK and kind == SAME:
+                        kind, reason = ASK, v.reason
+                    elif not reason:
+                        reason = v.reason
+            groups.append(Group(part, kind, reason))
+    return groups
 
 
-
-def resolve_duplicates(duplicates, mode='i'):
-    conflict = DuplicateHandler(duplicates)
-    conflict.remove_duplicates()
-
-    if len(conflict.entries) > 1:
-        if mode == 'i':
-            conflict.interactive_loop()
-        elif mode == 'm':
-            conflict.merge(interactive=False)
-        elif mode == 's':
-            pass
-        else:
-            print(conflict.format())
-            raise ValueError('unresolved conflicts')
-
-    return conflict.entries
-
-
-def check_duplicates(entries, key=None, eq=None, issorted=False, filter_key=None, mode='i'):
-    """check duplicates, given a key or equality function
-    !! resolved duplicates are appended to the list of entries
-    """
-    entries, duplicate_groups = search_duplicates(entries, key, eq, issorted, filter_key)
-    logger.info(str(len(duplicate_groups))+' duplicate(s)')
-
-    for i, duplicates in enumerate(duplicate_groups):
-        try:
-            entries.extend(resolve_duplicates(duplicates, mode))
-        except DuplicateSkip:
-            entries.extend(duplicates)
-        except DuplicateSkipAll:
-            # keep this group AND every group not yet processed untouched
-            entries.extend(itertools.chain(duplicates, *duplicate_groups[i+1:]))
-            break
-    return entries
-
-
-
-# SPECIAL CASE OF CONFLICT RESOLUTION: on insert
-# ==============================================
-
-def conflict_resolution_on_insert(old, new, mode='i'):
-    """conflict resolution with two entries
-    """
-    asked = mode == 'i'
-    if mode == 'i':
-        print(bcolors.OKBLUE + 'duplicate found -- comparing:' + bcolors.ENDC)
-        print(_colordiffline('  - existing entry, already in your library', '-'))
-        print(_colordiffline('  + new entry, being added', '+'))
-        print(entry_diff(old, new))
-        print(bcolors.OKBLUE + 'what to do?' + bcolors.ENDC)
-        print('''
-(u)pdate existing with the new entry's missing fields (existing values win on conflict)
-(U)pdate existing with the new entry's values (new values win on conflict)
-(o)verwrite: replace the existing entry entirely with the new one
-(s)kip the new entry (keep the existing one unchanged)
-(a)ppend the new entry anyway (keep both)
-(e)dit the merged diff in an editor
-(E)dit both entries separately (they are not duplicates)
-(r)aise an error (abort)'''.strip()
-)
-        choices = list('uUosaeEr')
-        ans = None
-        while ans not in choices:
-            if ans is not None:
-                print(f'invalid choice: {ans!r}')
-            print('choices: '+', '.join(choices))
-            ans = input('>>> ')
-        mode = ans
-
-    # overwrite?
-    if mode == 'o':
-        resolved = [new]
-
-    elif mode == 'a':
-        resolved = [old, new]
-
-    elif mode == 'u':
-        logger.info('update missing fields')
-        update_entry(new, old)
-        update_entry(old, new)
-        resolved = [old]
-
-    elif mode == 'U':
-        logger.info('update with other')
-        update_entry(old, new)
-        resolved = [old]
-
-    # skip
-    elif mode == 's':
-        resolved = [old]
-
-    # raise on conflict
-    elif mode == 'r':
-        raise ValueError('conflicting entries')
-
-    # edit
-    elif mode in ('e', 'E'):
-        edited = [old, new]
-        resolved = edit_entries(edited, diff=mode == 'e')
-        if resolved is edited:
-            # the edit failed (see the error above): nothing was decided, and
-            # returning both entries would add the new one as a separate entry
-            if asked:
-                return conflict_resolution_on_insert(old, new, mode='i')
-            raise ValueError('conflicting entries (the edit failed)')
-
-    else:
-        raise ValueError('conflicting entries')
-
-    return resolved
-
-
-
-
-# DEPRECATED TOOLS
-# ================
-
-def unique(entries):
-    entries_ = []
-    for e in entries:
-        if e not in entries_:
-            entries_.append(e)
-    return entries_
-
-# class DoiKey(object):
-#     def __init__(self, valid=False):
-#         self.count = -1
-#         self.valid = valid
-
-#     def plusone(self):
-#         self.count += 1
-#         return self.count
-
-#     def key(self, e):
-#         if self.valid:
-#             return (e.get('doi','') and isvaliddoi(e['doi']))  or self.plusone()
-#         else:
-#             return e.get('doi','') or self.plusone()
+def fuzzy_pairs(entries, ratio=FUZZY_RATIO):
+    """pairs of entries whose authors and titles score at least `ratio`
+    (rapidfuzz token_set_ratio, 0-100). For listing only: papers never
+    merges on this."""
+    from rapidfuzz.fuzz import token_set_ratio
+    ids = [(e, author_id(e) + ' ' + title_id(e)) for e in entries]
+    ids = [(e, s) for e, s in ids if s.strip()]
+    pairs = []
+    for i, (a, sa) in enumerate(ids):
+        for b, sb in ids[i+1:]:
+            if token_set_ratio(sa, sb, score_cutoff=ratio):
+                pairs.append((a, b))
+    return pairs

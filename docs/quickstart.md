@@ -1,77 +1,92 @@
 # Quickstart
 
-This tool's interface is built like `git`, with a main command `papers` and a
-range of subcommands. This page walks through the most common first steps.
+`papers` works like `git`: one command with subcommands, run inside a
+project folder that holds a library. A library is a bibtex file, a
+configuration file (`.papers/config.json`) and, if it keeps its own PDFs, a
+`files/` folder.
 
-## Extract PDF metadata and add to library
+This page shows two cases: a self-contained project, with its own bibtex
+and PDFs, and a shallow project that uses the first one as its pool.
 
-Start with a PDF of your choice (modern enough to have a DOI, e.g. anything
-from the Copernicus publications). For the sake of the example, one of mine:
-<https://www.earth-syst-dynam.net/4/11/2013/esd-4-11-2013.pdf>
+## Install
 
-Extract the PDF metadata (DOI-based if available, otherwise crossref, or google
-scholar if so specified):
-
-```
-$> papers extract esd-4-11-2013.pdf
-@article{Perrette_2013,
-doi = {10.5194/esd-4-11-2013},
-url = {https://doi.org/10.5194%2Fesd-4-11-2013},
-year = 2013,
-month = {jan},
-publisher = {Copernicus {GmbH}},
-volume = {4},
-number = {1},
-pages = {11--29},
-author = {M. Perrette and F. Landerer and R. Riva and K. Frieler and M. Meinshausen},
-title = {A scaling approach to project regional sea level rise and its uncertainties},
-journal = {Earth System Dynamics}
-}
-```
-
-Add the PDF to your `papers.bib` library, and rename a copy of it in a files
-directory `files`:
+The 3.0 beta is published on PyPI as a pre-release:
 
 ```
-$> papers add esd-4-11-2013.pdf --rename --copy --bibtex papers.bib --filesdir files --info
-INFO:papers:found doi:10.5194/esd-4-11-2013
-INFO:papers:new entry: perrette_landerer2013
-INFO:papers:mv /home/perrette/playground/papers/esd-4-11-2013.pdf files/perrette_et_al_2013_a-scaling-approach-to-project-regional-sea-level-rise-and-its-uncertainties.pdf
-INFO:papers:renamed file(s): 1
+pip install --pre papers-cli
 ```
 
-(the `--info` argument asks for the above output information to be printed out
-to the terminal)
+See [Installation](installation.md) for the requirements.
 
-Without `--rename` the PDF is linked where it is, and nothing is copied into
-the files directory; `--copy` only applies together with `--rename`.
+## 1. A self-contained project
 
-See [Adding entries](adding-entries.md) for the full range of ways to add
-entries, and [Renaming files and keys](renaming.md) for how to specify file
-naming patterns.
-
-## List entries
-
-Pretty listing by default (otherwise pass `--plain` for plain bibtex):
+`papers init` creates a self-contained library: its own entries, and its
+own PDFs in `files/`.
 
 ```
-$> papers list
-Perrette2013: A scaling approach to project regional sea level rise and it... (doi:10.5194/esd-4-11-2013, file:1)
+$ cd ~/projects/sealevel
+$ papers init
+created the library ~/projects/sealevel
+* bibtex:  papers.bib
+* files:   files (the files directory of the library)
+* backup:  git
+`papers status -v` shows all settings
+$ papers add ~/Downloads/esd-4-11-2013.pdf
+Added -> perrette_landerer2013: A scaling approach to project regional sea level rise and it... (doi:10.5194/esd-4-11-2013, file:1)
+$ papers add --doi 10.1111/j.1365-246X.1978.tb04232.x
+Added -> bretreger_mather1978: Modelling ocean-loading effects on tidal gravity in Australi... (doi:10.1111/j.1365-246X.1978.tb04232.x)
 ```
 
-See [Listing and searching](listing.md) for the full power of `papers list`.
+The DOI is read from the PDF, the entry is fetched from crossref, and the
+PDF is moved to `files/` and renamed after the entry.
 
-## Make settings persistent
+A self-contained library is also a library that other projects can use.
 
-In the common case where the bibtex, files directory and naming formats do not
-change, install `papers` so that you don't need to pass them every time:
+## 2. A shallow project that uses it
+
+`papers init --pool PATH` creates a shallow library: it takes its entries
+from the library `PATH`, its pool, and links to the PDFs there. `PATH` is
+a self-contained library, such as the project above, or a library kept for
+sharing, e.g. `~/Documents/papers` (see
+[A global shared library](global-library.md)).
 
 ```
-papers install --bibtex papers.bib --filesdir files
+$ cd ~/projects/tides
+$ papers init --pool ../sealevel
+created the library ~/projects/tides
+* bibtex:  papers.bib
+* files:   in the pool (shallow library)
+* pool:    ../sealevel
+* backup:  git
+`papers status -v` shows all settings
+$ papers add --doi 10.5194/esd-4-11-2013
+Added -> perrette_landerer2013: A scaling approach to project regional sea level rise and it... (doi:10.5194/esd-4-11-2013, file:1) [from pool ../sealevel]
+$ papers add ~/Downloads/bg-8-515-2011.pdf
+Added -> perrette_yool2011: Near-ubiquity of ice-edge blooms in the Arctic (doi:10.5194/bg-8-515-2011, file:1) [also added to pool ../sealevel]
 ```
 
-See [Configuration and install](configuration.md) for details.
+`add` looks in the pool first: a paper the pool has is taken from it, with
+its PDF, and nothing is fetched or copied. A new paper goes to the library
+and to the pool, and its PDF to the pool's `files/`. Each library has only
+the entries it asks for: `tides` has two entries, `sealevel` three.
 
-!!! tip
-    Consult the inline help (`papers --help`, `papers <command> --help`) for
-    more detailed documentation of every option.
+Changes to the shared entries, made in either project, are exchanged with
+`papers sync`. After a tag added in `sealevel`:
+
+```
+$ papers sync
+Modified -> perrette_landerer2013: A scaling approach to project regional sea level rise and it... (doi:10.5194/esd-4-11-2013, file:1, sea-level) [from pool ../sealevel]
+```
+
+## More
+
+- [Adding entries](adding-entries.md): PDFs, DOIs, bibtex files, duplicates;
+- [Files](files.md): attachments, renaming, moving;
+- [Listing and searching](listing.md);
+- [Pools](pools.md): `pull`, `push`, `sync` and the merge, exchanges with
+  any library (`--pool PATH`);
+- [Shallow libraries](shallow-libraries.md): files, changing the pool,
+  auto-push, topic libraries, and a comparison with a shared files folder;
+- [Export](export.md): a library to hand over.
+
+Coming from papers 2: see [Upgrading from papers 2](upgrading.md).

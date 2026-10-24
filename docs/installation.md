@@ -2,13 +2,28 @@
 
 ## Install papers
 
+papers 3 (beta) is published on PyPI as a pre-release: `--pre` installs it.
+
+```bash
+pip install --pre papers-cli
+```
+
+The development version, from the `v3` branch:
+
+```bash
+pip install git+https://github.com/perrette/papers.git@v3
+```
+
+papers 2, the current release:
+
 ```bash
 pip install papers-cli
 ```
 
 Note there is another project registered on PyPI as `papers`, hence
 `papers-cli` for command-line-interface. The installed command is still
-`papers`.
+`papers`. To upgrade a papers 2 setup, see
+[Upgrading from papers 2](upgrading.md).
 
 ## Name clash with GNOME Papers
 
@@ -47,3 +62,22 @@ mitigations are built in:
   equivalent
 
 The Python dependencies are installed automatically with `pip`.
+
+## Optional: RIS support
+
+Reading and writing RIS files (`papers add refs.ris`,
+`papers export --format ris`, `papers list --format ris`) needs the
+[rispy](https://pypi.org/project/rispy/) package, which is not installed
+by default. Install it in the environment of papers:
+
+```bash
+pip install 'papers-cli[ris]'       # with papers
+pip install rispy                    # or afterwards
+pipx inject papers-cli rispy         # papers installed with pipx
+uv tool install papers-cli --with rispy   # papers installed with uv
+```
+
+When a command needs rispy and it is missing, papers asks in a terminal
+whether to install it with `pip` (`python -m pip install rispy`, with the
+Python of papers); otherwise, or on no, it stops without changing anything
+and prints these commands. CSL-JSON needs no extra package.
