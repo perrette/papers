@@ -62,6 +62,17 @@ class TestGitHelpers(TmpTest):
             run_git(self.path('repo'), 'log')
         self.assertNotEqual(run_git(self.path('repo'), ['log'], check=False).returncode, 0)
 
+    def test_run_git_stays_in_the_backup_directory(self):
+        # a backup directory without .git inside another repository (#116):
+        # git must not use the enclosing repository
+        env = dict(os.environ, GIT_AUTHOR_NAME='t', GIT_AUTHOR_EMAIL='t@t',
+                   GIT_COMMITTER_NAME='t', GIT_COMMITTER_EMAIL='t@t')
+        sp.run(['git', 'init', '-q', self.dir], check=True)
+        sp.run(['git', 'commit', '-q', '--allow-empty', '-m', 'outer'], cwd=self.dir, env=env, check=True)
+        os.makedirs(self.path('repo'))
+        with self.assertLogs('papers', level='ERROR'), self.assertRaises(sp.CalledProcessError):
+            run_git(self.path('repo'), 'log')
+
     def test_unreadable_manifest(self):
         os.makedirs(self.path('repo'))
         Path(self.path('repo', 'manifest.json')).write_text('{broken')

@@ -7,7 +7,7 @@ import sys
 
 import papers.config
 from papers import logger
-from papers.backup import git_redo, git_restore_state, git_undo, list_backup_dirs, restore_from_backupdir, run_git
+from papers.backup import git_env, git_redo, git_restore_state, git_undo, list_backup_dirs, restore_from_backupdir, run_git
 from papers.bib import Biblio, backupfile as backupfile_func
 from papers.files import is_inside
 from papers.utils import PapersExit, bcolors
@@ -139,7 +139,7 @@ def gitcmd(parser, o, config):
     if not config.gitdir or not os.path.isdir(config.gitdir):
         raise PapersExit('the library has no git backup: enable it with `papers config git true`')
     try:
-        result = sp.run(['git']+o.gitargs, cwd=config.gitdir, stdout=sp.PIPE)
+        result = sp.run(['git']+o.gitargs, cwd=config.gitdir, stdout=sp.PIPE, env=git_env(config.gitdir))
     except OSError as error:
         raise PapersExit(f'failed to run git: {error}')
     # git's output as is: it may be binary (e.g. `papers git show HEAD:files/a.pdf`)

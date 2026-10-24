@@ -67,6 +67,16 @@ MANIFEST_NAME = "manifest.json"
 LAYOUT_VERSION = 2
 
 
+def git_env(gitdir, env=None):
+    """the environment of a git command in the backup repository `gitdir`:
+    git does not look for a repository above `gitdir`, so that a backup
+    directory without .git never reaches an enclosing repository (e.g. a
+    home directory under git)"""
+    env = dict(os.environ if env is None else env)
+    env['GIT_CEILING_DIRECTORIES'] = os.path.dirname(os.path.abspath(gitdir))
+    return env
+
+
 def run_git(gitdir, cmd, check=True):
     """Run a git command in the backup repository.
 
@@ -78,7 +88,7 @@ def run_git(gitdir, cmd, check=True):
     args = shlex.split(cmd) if isinstance(cmd, str) else [str(a) for a in cmd]
     logger.debug(f"git -C {gitdir} {' '.join(args)}")
     env = _identity_env(gitdir) if args[:1] in (['commit'], ['commit-tree']) else None
-    res = sp.run(['git'] + args, cwd=gitdir, capture_output=True, text=True, env=env)
+    res = sp.run(['git'] + args, cwd=gitdir, capture_output=True, text=True, env=git_env(gitdir, env))
     if res.returncode != 0:
         message = f"Command failed: 'git {' '.join(args)}': {res.stderr.strip()}"
         if check:
@@ -99,7 +109,7 @@ def _identity_env(gitdir):
     and GIT_COMMITTER_* variables), else with the fallback identity for what
     is missing"""
     def git(*args):
-        return sp.run(['git'] + list(args), cwd=gitdir, capture_output=True, text=True)
+        return sp.run(['git'] + list(args), cwd=gitdir, capture_output=True, text=True, env=git_env(gitdir))
 
     env = None
     for role in ('AUTHOR', 'COMMITTER'):
