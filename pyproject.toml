@@ -9,7 +9,7 @@ authors = [
 ]
 description='utilities to keep your PDF library organized'
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.11"
 keywords = ['bibtex', 'references','bibliography']
 license = {text = "MIT"}
 classifiers = [
@@ -70,12 +70,10 @@ papers-cli = "papers.__main__:main_clean_exit"
 # and then run "tox" from this directory.
 legacy_tox_ini = """
 [tox]
-envlist = clean, py39, py310, py311, py312, py313, py314, py315, report
+envlist = clean, py311, py312, py313, py314, py315, report
 
 [gh-actions]
 python =
-    3.9: py39
-    3.10: py310
     3.11: py311
     3.12: py312
     3.13: py313
@@ -90,8 +88,8 @@ deps =
     pytest
     pytest-cov
 depends =
-    {py39,py310,py311,py312,py313,py314,py314t,py315,py315t}: clean
-    report: py39,py310,py311,py312,py313,py314,py314t,py315,py315t
+    {py311,py312,py313,py314,py314t,py315,py315t}: clean
+    report: py311,py312,py313,py314,py314t,py315,py315t
 
 
 [testenv:report]
