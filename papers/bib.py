@@ -228,7 +228,8 @@ def are_duplicates(e1, e2, similarity=DEFAULT_SIMILARITY, fuzzy_ratio=FUZZY_RATI
 
 
 def hidden_bibtex(direc):
-    " save metadata for a bundle of files "
+    """metadata of a directory of files of a single entry (layout of versions
+    before 2.19, still read by `papers add` and `filecheck --clean-filesdir`)"""
     dirname = os.path.basename(direc)
     return os.path.join(direc, '.'+dirname+'.bib')
 
@@ -254,15 +255,95 @@ def read_entry_dir(direc, update_files=True, relative_to=None):
     return entry
 
 
+# separates the entry name from the label of its other files: <name>--<label>.<ext>
+ATTACHMENT_SEP = '--'
+
+
+def attachment_label(file, prefixes=()):
+    """label of an entry's file other than the first one: its name without
+    extension, stripped of a '<prefix>--' already added by a rename"""
+    stem = os.path.splitext(os.path.basename(file))[0]
+    for prefix in prefixes:
+        head = prefix + ATTACHMENT_SEP
+        if prefix and stem.startswith(head) and len(stem) > len(head):
+            return stem[len(head):]
+    return stem
+
+
+def attachment_names(files, target):
+    """new paths of an entry's files: target.<ext> for the first one,
+    target--<label>.<ext> for the others (see `attachment_label`),
+    with a -2, -3... suffix if two labels coincide"""
+    newfiles = [target + os.path.splitext(files[0])[1]]
+    # prefixes of a previous rename: the current name of the first file, the target name
+    prefixes = [os.path.splitext(os.path.basename(files[0]))[0], os.path.basename(target)]
+    taken = {os.path.normcase(newfiles[0])}
+    for file in files[1:]:
+        ext = os.path.splitext(file)[1]
+        label = attachment_label(file, prefixes)
+        newfile = target + ATTACHMENT_SEP + label + ext
+        i = 2
+        while os.path.normcase(newfile) in taken:
+            newfile = f'{target}{ATTACHMENT_SEP}{label}-{i}{ext}'
+            i += 1
+        taken.add(os.path.normcase(newfile))
+        newfiles.append(newfile)
+    return newfiles
+
+
+def remove_entry_dir_if_empty(direc):
+    """remove a directory of previous versions' layout (<name>/ with a hidden
+    .<name>.bib) when nothing but the hidden bibtex is left in it"""
+    hidden_bib = hidden_bibtex(direc)
+    if not os.path.isfile(hidden_bib):
+        return
+    leftovers = [f for f in os.listdir(direc) if f != os.path.basename(hidden_bib)]
+    if leftovers:
+        logger.info(f'keep directory {direc}: other files remain ({", ".join(sorted(leftovers))})')
+        return
+    logger.info('remove directory: '+direc)
+    if not papers.config.DRYRUN:
+        shutil.rmtree(direc)
+
+
 def backupfile(bibtex):
     return os.path.join(os.path.dirname(bibtex), '.'+os.path.basename(bibtex)+'.backup')
 
 class DuplicateKeyError(ValueError):
     pass
 
+def group_attachments(names):
+    """split the file names of a directory into main files and attachments:
+    <name>--<label>.<ext> is an attachment of <name>.pdf when that file is
+    among the names (the layout of `Biblio.rename_entry_files`). Returns a
+    dict {main: [attachments]} in which every name that is not an attachment
+    is a main file (with an empty list in most cases)."""
+    stems = {os.path.splitext(name)[0]: name for name in names if name.lower().endswith('.pdf')}
+    groups = {}
+    attached = {}
+    for name in names:
+        stem = os.path.splitext(name)[0]
+        # the longest main stem that this name continues with '--'
+        prefixes = [s for s in stems if stems[s] != name and stem.startswith(s + ATTACHMENT_SEP)]
+        if prefixes:
+            attached[name] = stems[max(prefixes, key=len)]
+    for name in names:
+        if name not in attached:
+            groups[name] = []
+    for name in names:
+        if name in attached:
+            main = attached[name]
+            while main in attached:  # a--b--c.pdf continues a--b.pdf, an attachment of a.pdf
+                main = attached[main]
+            groups[main].append(name)
+    return groups
+
+
 def scan_dir_walk(direc):
-    """the files scanned by Biblio.scan_dir: yield ('entry', dir) for entry
-    directories (with a hidden bibtex), ('file', path) for other files"""
+    """the files scanned by Biblio.scan_dir: yield ('entry', dir, []) for
+    entry directories of the pre-2.19 layout (with a hidden bibtex), and
+    ('file', path, attachments) for other files, where attachments are the
+    files named after it (see `group_attachments`)"""
     top = os.path.abspath(direc)
     for root, direcs, files in os.walk(direc):
         dirname = os.path.basename(root)
@@ -272,12 +353,44 @@ def scan_dir_walk(direc):
             if dirname.startswith('_'): continue
 
         if os.path.exists(hidden_bibtex(root)):
-            yield 'entry', root
+            yield 'entry', root, []
             continue
 
-        for file in files:
-            if not file.startswith('.'):
-                yield 'file', os.path.join(root, file)
+        names = sorted(file for file in files if not file.startswith('.'))
+        for name, attachments in group_attachments(names).items():
+            yield 'file', os.path.join(root, name), [os.path.join(root, a) for a in attachments]
+
+
+def scan_dir_items(direc, quiet=False):
+    """the items of `scan_dir_walk`, in the order Biblio.scan_dir adds them:
+    entry directories and bibtex files first, then the other files, without
+    those linked from the bibtex files (their entry comes from the bibtex,
+    so they are neither parsed nor looked up online)"""
+    first, others = [], []
+    for item in scan_dir_walk(direc):
+        kind, path, _ = item
+        (first if kind == 'entry' or path.lower().endswith('.bib') else others).append(item)
+    linked = set()
+    for kind, path, _ in first:
+        if kind != 'file':
+            continue
+        try:
+            db = parse_string(open(path).read())
+        except Exception as error:
+            logger.warning(path+'::'+str(error))
+            continue
+        relative_to = os.path.dirname(os.path.abspath(path))
+        for e in db.entries:
+            for file in parse_file(get_entry_val(e, 'file', ''), relative_to=relative_to):
+                linked.add(os.path.realpath(file))
+    rest = []
+    for item in others:
+        if os.path.realpath(item[1]) in linked:
+            if not quiet:
+                logger.info(f'{item[1]}: linked from a scanned bibtex file, not scanned')
+            continue
+        rest.append(item)
+    return first + rest
 
 
 class Biblio:
@@ -393,6 +506,11 @@ class Biblio:
 
             if get_entry_val(existing_same_key, 'title', '') == get_entry_val(entry, 'title', ''):
                 logger.info('exact duplicate')
+                # keep the files of the new entry
+                files = self.get_files(existing_same_key) + self.get_files(entry)
+                if files:
+                    self.set_files(existing_same_key, files)
+                if rename: self.rename_entry_files(existing_same_key, copy=copy)
                 return [ existing_same_key ]
 
             if update_key:
@@ -489,6 +607,11 @@ class Biblio:
                 # regenerated from the template
                 keeps_key = e is candidate or (
                     len(resolved) == 1 and get_entry_val(e, 'ID', '') == candidate_key_before)
+                if not keeps_key and not update_key and self.key(e) in {self.key(x) for x in self.entries}:
+                    # both entries kept (append): the new one needs a free key
+                    newkey = self.append_abc_to_key(e)
+                    logger.info('key conflict: {} => {}'.format(get_entry_val(e, 'ID', ''), newkey))
+                    set_entry_key(e, newkey)
                 entries.extend( self.insert_entry(e, update_key and not keeps_key, rename=rename, copy=copy) )
             return entries
 
@@ -595,7 +718,7 @@ class Biblio:
 
     def scan_dir_iter(self, direc, search_doi=True, search_fulltext=True, **kw):
 
-        for kind, path in scan_dir_walk(direc):
+        for kind, path, attachments in scan_dir_items(direc):
             # a special entry directory
             if kind == 'entry':
                 logger.debug('read from hidden bibtex')
@@ -608,9 +731,11 @@ class Biblio:
 
             try:
                 if path.lower().endswith('.pdf'):
-                    yield from self.add_pdf(path, search_doi=search_doi, search_fulltext=search_fulltext, **kw)
+                    yield from self.add_pdf(path, attachments=attachments, search_doi=search_doi, search_fulltext=search_fulltext, **kw)
                 elif path.lower().endswith('.bib'):
                     yield from self.add_bibtex_file(path, **kw)
+            except EOFError:
+                raise  # a question without answer stops the scan
             except Exception as error:
                 logger.warning(path+'::'+str(error))
                 continue
@@ -660,6 +785,12 @@ class Biblio:
     def rename_entry_files(self, e, copy=False, formatter=None, relative_to=None, hardlink=False):
         """ Rename files
 
+        The first file is named after the entry: <filesdir>/<name>.<ext>, and
+        any other file is placed next to it as <name>--<label>.<ext>, where
+        <label> is the file's original name (see `attachment_names`).
+        Directories of previous versions (<name>/ with a hidden .<name>.bib)
+        are emptied into that layout, and removed when nothing else is left.
+
         See `papers.filename.Format` class and REAMDE.md for infos.
         """
 
@@ -667,74 +798,30 @@ class Biblio:
             raise ValueError('filesdir is None, cannot rename entries')
 
         files = self.get_files(e)
-        # newname = entrydir(e, root)
-
-        direc = self.filesdir
 
         if not files:
             logger.info('no files to rename')
             return
 
         newname = (formatter or self.nameformat)(e)
-        count = 0
-        if len(files) == 1:
-            file = files[0]
-            base, ext = os.path.splitext(file)
-            newfile = os.path.join(direc, newname+ext)
+        # absolute, to compare with the (absolute) current file paths
+        target = os.path.join(os.path.abspath(self.filesdir), newname)
 
+        count = 0
+        newfiles = []
+        for file, newfile in zip(files, attachment_names(files, target)):
             if not os.path.exists(file):
-                # raise ValueError(file+': original file link is broken')
                 logger.warning(file+': original file link is broken')
                 newfile = file
-
             elif file != newfile:
                 self.move(file, newfile, copy, hardlink=hardlink)
-                # assert os.path.exists(newfile)
-                # if not copy:
-                #     assert not os.path.exists(file)
                 count += 1
+            newfiles.append(newfile)
+        self.set_files(e, newfiles, relative_to=relative_to)
 
-            newfiles = [newfile]
-            self.set_files(e, newfiles, relative_to=relative_to)
-
-
-        # several files: only rename container
-        else:
-            newdir = os.path.join(direc, newname)
-            newfiles = []
-            for file in files:
-                newfile = os.path.join(newdir, os.path.basename(file))
-                if not os.path.exists(file):
-                    logger.warning(file+': original file link is broken')
-                    newfile = file
-                elif file != newfile:
-                    self.move(file, newfile, copy, hardlink=hardlink)
-                    # assert os.path.exists(newfile)
-                    count += 1
-                newfiles.append(newfile)
-            self.set_files(e, newfiles, relative_to=relative_to)
-
-            # create hidden bib entry for special dir
-            bibname = hidden_bibtex(newdir)
-            lib = library_from_entries([e])
-            bibtex = format_library(lib)
-            if not papers.config.DRYRUN:
-                with open(bibname,'w') as f:
-                    f.write(bibtex)
-
-            # remove old direc if empty?
-            direcs = list({os.path.dirname(file) for file in files})
-            if len(direcs) == 1:
-                leftovers = os.listdir(direcs[0])
-                if not leftovers or len(leftovers) == 1 and leftovers[0] == os.path.basename(hidden_bibtex(direcs[0])):
-                    logger.debug('remove tree: '+direcs[0])
-                    if not papers.config.DRYRUN:
-                        shutil.rmtree(direcs[0])
-            else:
-                logger.debug('some left overs, do not remove tree: '+direcs[0])
-
-        # for f in parse_file(e['file'], self.relative_to):
-        #     assert os.path.exists(f), f
+        if not copy:
+            for direc in {os.path.dirname(file) for file in files}:
+                remove_entry_dir_if_empty(direc)
 
         if count > 0:
             logger.info('renamed file(s): {}'.format(count))
@@ -790,9 +877,10 @@ class Biblio:
             if 'doi' in e and e['doi']:
                 try:
                     doi = parse_doi('doi:'+e['doi'])
-                except:
+                except Exception:
+                    # keep the DOI as it is, and go on with the other fixes
                     logger.warning(get_entry_val(e, 'ID', '')+': failed to fix doi: '+e['doi'])
-                    return
+                    doi = e['doi']
 
                 if doi.lower() != e['doi'].lower():
                     logger.info(get_entry_val(e, 'ID', '')+': fix doi: {} ==> {}'.format(e['doi'], doi))

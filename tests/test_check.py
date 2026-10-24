@@ -1,3 +1,4 @@
+import unittest
 """Tests for papers check --format-name --encoding --fix-doi --fix-key
 Documented in README: fix entries (papers check --format-name --encoding unicode --fix-doi --fix-key ...)
 """
@@ -101,3 +102,23 @@ class TestCheckEncoding(LocalInstallTest):
         # Should not contain raw LaTeX
         self.assertNotIn("{\\'e}", author or '')
         self.assertNotIn("{\\'e}", title or '')
+
+
+class TestFixEntryBadDoi(unittest.TestCase):
+
+    def test_other_fixes_still_applied(self):
+        # a DOI that cannot be parsed used to stop fix_entry for that entry
+        from unittest import mock
+        from papers.bib import Biblio
+        biblio = Biblio()
+        biblio.add_bibtex("""@article{a2000,
+ author = {Author, A.},
+ title = {One},
+ year = {2000},
+ doi = {not a doi}
+}""")
+        e = biblio.entries[0]
+        with mock.patch('papers.bib.fetch_bibtex_by_doi', side_effect=ValueError('offline')) as fetch:
+            biblio.fix_entry(e, fix_doi=True, fetch=True)
+        fetch.assert_called_once()
+        self.assertEqual(e['doi'], 'not a doi')

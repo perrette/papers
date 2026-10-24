@@ -40,6 +40,15 @@ theme:
     - content.code.copy
     - content.action.edit
 
+extra:
+  # the versions are deployed by mike (see .github/workflows/docs.yml)
+  version:
+    provider: mike
+    default: stable
+
+extra_css:
+  - stylesheets/extra.css
+
 plugins:
   - search
   - include-markdown

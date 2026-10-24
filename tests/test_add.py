@@ -142,15 +142,12 @@ class TestAdd2(TestAdd):
         main_, si_ = file_.split(';')
         main = self._checkfile(main_)
         si = self._checkfile(si_)
-        # files have been moved in an appropriately named directory
-        dirmain = os.path.dirname(main)
-        dirsi = os.path.dirname(si)
-        self.assertEqual(dirmain, dirsi)
-        dirmains = dirmain.split(os.path.sep)
-        self.assertEqual(Path(dirmain).name, Path(self.file_rename).stem)
-        # individual files have not been renamed
-        self.assertEqual(os.path.basename(main), os.path.basename(self.pdf))
-        self.assertEqual(os.path.basename(si), os.path.basename(self.si))
+        # flat layout: the main file is named after the entry, the other
+        # one next to it, with its original name as a label
+        self.assertEqual(os.path.dirname(main), os.path.dirname(si))
+        name = Path(self.file_rename).stem
+        self.assertEqual(os.path.basename(main), name + '.pdf')
+        self.assertEqual(os.path.basename(si), name + '--' + os.path.basename(self.si))
         # old pdfs still exists
         self.assertTrue(os.path.exists(self.pdf))
         self.assertTrue(os.path.exists(self.si))

@@ -1,0 +1,5 @@
+/* The repository widget (top right) shows the latest GitHub release on every
+   version of the docs: hide it, the version selector says which docs these are. */
+.md-source__fact--version {
+  display: none;
+}

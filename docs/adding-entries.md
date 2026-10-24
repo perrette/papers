@@ -32,7 +32,7 @@ to `--absolute-paths`/`--relative-paths` or the installed setting); with
 `--rename` they are moved (or copied with `--copy`) into the files directory.
 
 See [Renaming files and keys](renaming.md) for how to specify file naming
-patterns.
+patterns, and how the files of an entry with attachments are named.
 
 ## Add a whole directory of PDFs
 
@@ -45,6 +45,16 @@ papers add --rename --recursive /home/perette/playground/papers/papers_test
 where, above, the `papers_test` directory contains a few PDF files. For each
 PDF, `papers` will attempt to extract the metadata and add the relevant file to
 the bibliography, and rename files into the files directory.
+
+Files named after a PDF of the same directory, as `--rename` names
+attachments (`<name>--<label>.<ext>` next to `<name>.pdf`, see
+[Renaming files and keys](renaming.md#entries-with-several-files)), are added
+as attachments of that PDF's entry, whatever their type, instead of being
+scanned as papers of their own. Bibtex files found in the directory are added
+too, before the PDFs, and the files they link to are not scanned: their entry
+comes from the bibtex, so a folder that holds a bibtex and its files is added
+without looking anything up online. Folders of the pre-2.19 layout (with a
+hidden `.<name>.bib`) are read from their hidden bibtex.
 
 The metadata of a PDF are found as follows:
 

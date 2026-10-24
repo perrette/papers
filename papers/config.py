@@ -105,25 +105,31 @@ class Config:
         return run_git(self.gitdir, cmd, check=check)
 
 
+    @property
+    def configdir(self):
+        "directory that relative paths of a local configuration file refer to"
+        return Path(self.file).parent.resolve() if self.file else Path.cwd()
+
     def _relpath(self, p):
         if p is None: return p
         if not self.local:
             return str(Path(p).resolve())  # abspath
 
-        # otherwise express path relative to bibtex (parent of config file),
-        # with '..' components if needed (e.g. files directory outside it)
+        # otherwise express path relative to the directory of the config file
+        # (as `load` reads it), with '..' components if needed (e.g. files
+        # directory outside it); a relative p is relative to the current directory
         try:
-            return os.path.relpath(self.root / p, self.root)
+            return os.path.relpath(Path(p).resolve(), self.configdir)
         except ValueError:
             # e.g. different drive on Windows
-            logger.warning(f"config :: can't save {p} as relative path to {self.root}")
+            logger.warning(f"config :: can't save {p} as relative path to {self.configdir}")
             return p
 
     def _abspath(self, p, root=None):
         if p is None: return p
         if not self.local:
             return str(Path(p).resolve())  # abspath
-        p2 = str((Path(root).resolve() if root is not None else self.root) / p)
+        p2 = str((Path(root).resolve() if root is not None else self.configdir) / p)
         return p2
 
 
