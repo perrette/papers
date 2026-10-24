@@ -654,20 +654,23 @@ def listcmd(parser, o, config):
 
     elif o.open:
         open_entries(biblio, entries)
+        return
 
-    elif o.field:
-        for e in entries:
-            print(format_key(e, no_key=o.no_key),*[get_entry_val(e, k, "") for k in o.field])
-    elif o.format == 'key':
-        for e in entries:
-            print(get_entry_val(e, 'ID', ''))
-    elif o.format == 'bibtex':
-        print(format_entries(entries))
-    elif o.format in ('ris', 'csl-json'):
-        sys.stdout.write(dumps(entries, o.format, files=biblio.get_files))
     else:
-        for e in entries:
-            print(format_entry(biblio, e, no_key=o.no_key))
+        if o.field:
+            for e in entries:
+                print(format_key(e, no_key=o.no_key),*[get_entry_val(e, k, "") for k in o.field])
+        elif o.format == 'key':
+            for e in entries:
+                print(get_entry_val(e, 'ID', ''))
+        elif o.format == 'bibtex':
+            print(format_entries(entries))
+        elif o.format in ('ris', 'csl-json'):
+            sys.stdout.write(dumps(entries, o.format, files=biblio.get_files))
+        else:
+            for e in entries:
+                print(format_entry(biblio, e, no_key=o.no_key))
+        return  # nothing was changed: no Added/Modified/Removed lines to look for
 
     # report any entry mutations (--attach, --add-tag, --rm-tag, --edit, --fetch,
     # --rename, --delete) using the same Added/Modified/Removed convention as addcmd
