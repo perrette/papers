@@ -999,10 +999,17 @@
   library can be a library per topic (<code>~/Documents/papers/sealevel</code>), or
   one library for everything, the default library (see
   <a href="../global-library/">A global shared library</a>);</li>
+<li><strong>speed</strong>: on a library of 10,000 entries, common commands take about
+  half the time (<code>papers list</code> 1.5 s → 0.7 s, <code>papers add</code> 2.3 s → 1.2 s),
+  and the duplicate checks are two orders of magnitude faster
+  (<code>papers list --duplicates</code> on 1,000 entries: 30 s → 0.2 s);</li>
 <li><strong>a review of the commands</strong>: <code>papers init</code> and <code>papers config</code> replace
   <code>papers install</code>, the commands on attached files are grouped under
-  <code>papers file</code>, and older forms are deprecated (see
-  <a href="#what-else-changed">What else changed</a>).</li>
+  <code>papers file</code>, <code>papers list</code> has more actions, and older forms are
+  deprecated (see <a href="#what-else-changed">What else changed</a>);</li>
+<li><strong>RIS and CSL-JSON</strong>: <code>papers add refs.ris</code> (or <code>.json</code>) imports them,
+  <code>papers list --format</code> and <code>papers export</code> write them (see
+  <a href="../export/">Export</a>).</li>
 </ul>
 <h2 id="what-changes-for-an-existing-setup">What changes for an existing setup<a class="headerlink" href="#what-changes-for-an-existing-setup" title="Permanent link">&para;</a></h2>
 <p>The bibtex files do not change format, and stay readable by papers 2 and
