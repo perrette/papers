@@ -996,10 +996,12 @@ attached files (see <a href="#git-lfs">git-lfs</a>):</p>
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>created the library ~/projects/sealevel
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>* bibtex:  papers.bib
 <a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>* files:   files (the files directory of the library)
-<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>* backup:  git and git-lfs
-<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>`papers status -v` shows all settings
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>* backup:  bibtex and files history (git + git-lfs)
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>`papers config` lists and sets the settings
 </code></pre></div>
-<p>The <code>* backup:</code> line says <code>git</code>, <code>git and git-lfs</code>, or <code>off</code>. With <code>--git</code>
+<p>The <code>* backup:</code> line says <code>bibtex history (git)</code>,
+<code>bibtex and files history (git + git-lfs)</code>, or
+<code>previous bibtex only (git off: one undo step)</code>. With <code>--git</code>
 or <code>--git-lfs</code>, <code>papers init</code> stops with an error before creating the
 library when git (or git-lfs) is not installed; so does
 <code>papers config git true</code>.</p>
@@ -1049,9 +1051,8 @@ Linux (<code>$XDG_DATA_HOME/papers/backups</code> when <code>XDG_DATA_HOME</code
 platform's user data directory elsewhere (on macOS,
 <code>~/Library/Application Support/papers/backups</code>). <code>papers status -v</code> shows
 the backup directory of the library:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>* backup (git):       True
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>* backup files (git-lfs): False
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>* backup directory:   /home/me/.local/share/papers/backups/sealevel-papers-3f9a1c2b
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>* backup:             bibtex history (git)
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>* git backup folder:  ~/.local/share/papers/backups/sealevel-papers-3f9a1c2b
 </code></pre></div>
 <p>The directory is named after the parent folder of the bibtex and the
 bibtex, plus a hash of the full path of the bibtex (e.g.

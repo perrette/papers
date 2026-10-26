@@ -1027,8 +1027,8 @@ missing, with its parents):</p>
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>created the library ~/projects/sealevel
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>* bibtex:  papers.bib
 <a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>* files:   files (the files directory of the library)
-<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>* backup:  git
-<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>`papers status -v` shows all settings
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>* backup:  bibtex history (git)
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>`papers config` lists and sets the settings
 </code></pre></div>
 <p>By default the library is self-contained (no pool), the bibtex is
 <code>papers.bib</code> (or the first <code>.bib</code> file present in the directory) and the
@@ -1055,21 +1055,34 @@ file in its directory or above), the settings of that library apply.</p>
 <p>Outside of any library, commands act on the default library if the global
 configuration sets one (see <a href="../global-library/">A global shared library</a>),
 and otherwise fail: <code>no library found here: papers init</code>.</p>
-<p>Type <code>papers status</code> to see which library a command acts on, and
-<code>papers status -v</code> to also see its settings and where each one comes from.</p>
+<p>Type <code>papers status</code> to see which library a command acts on: where its
+bibtex and its files are, its pool and its backup. <code>papers status -v</code> also
+shows the git backup folder, the configuration file, the cache directory and
+the version. <code>papers config</code> lists the settings and where each one comes from.</p>
 <h2 id="settings">Settings<a class="headerlink" href="#settings" title="Permanent link">&para;</a></h2>
 <p><code>papers config</code> gets and sets the settings, in the style of <code>git config</code>:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>papers config                          # list the settings and where each comes from
 <a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>papers config name.template            # print one setting
 <a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>papers config name.template '{author}_{year}_{title}'   # set it in the library
 <a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>papers config --unset name.template    # remove it from the library
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>papers config --prune                  # remove the values equal to the global or default value
 </code></pre></div>
 <p>Each setting comes from the library configuration if it sets it, otherwise
 from the global configuration, otherwise from its built-in default. The
 exception is <code>pool</code>: it comes only from the library configuration, and a
 library that does not set it has no pool (<code>none</code>).
 <code>papers config</code> without argument shows the source of each setting as
-<code>(library)</code>, <code>(global)</code> or <code>(default)</code>.</p>
+<code>(library)</code>, <code>(global)</code> or <code>(default)</code>. In a shallow library, <code>filesdir</code>
+and the <code>name.*</code> settings are marked <code>not used: shallow library</code>: the
+files are in the pool, named with the pool's template (<code>filesdir</code> is where
+<code>papers config pool none</code> copies them).</p>
+<p>The library configuration keeps only the settings that differ from the
+global or default value: setting one to that value removes it from the
+file, and the library then follows the global configuration. <code>pool</code> is
+the exception: once set, even to <code>none</code>, it stays until
+<code>papers config --unset pool</code>. <code>papers config --prune</code> removes the values
+equal to the global or default value from a file written by an earlier
+version (papers also leaves them out each time it saves the file).</p>
 <table>
 <thead>
 <tr>
@@ -1194,10 +1207,10 @@ links of a shallow library point into your own pool.</p>
 </code></pre></div>
 <p><code>papers status</code> shows where the files of the library are: its files
 directory (self-contained library), or in the pool (shallow library). For
-a shallow library, it also shows the pool (its path, whether it is
-missing or is not a library, and whether it changed since the last
-exchange with it) and the <code>auto-push</code> setting. <code>papers status -v</code> shows
-the pool of a self-contained library too: <code>none</code>.</p>
+a shallow library, it also shows the pool: its path, whether it is
+missing or is not a library, whether it changed since the last exchange
+with it, and the <code>auto-push</code> setting, e.g.
+<code>* pool:   ../sealevel (up to date, auto-push: off)</code>.</p>
 <h2 id="relative-versus-absolute-paths">Relative versus absolute paths<a class="headerlink" href="#relative-versus-absolute-paths" title="Permanent link">&para;</a></h2>
 <p>The file links in the bibtex are relative to the bibtex directory by default,
 so that a library folder can be moved or shared with its files. Set
