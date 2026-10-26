@@ -1524,7 +1524,7 @@ class TestShallow(OwnFilesTest):
             'My own paper', 'Another paper').replace('mine.pdf', 'other.pdf').replace('2022', '2023'))
         Path(self.path('other.pdf')).write_text('other')
         out = self.out('add ../other.bib')
-        self.assertRegex(out, r'^Added -> other2023: Another paper \(file:1\) \[also added to pool ../pool\]$')
+        self.assertRegex(out, r'^Added -> other2023: Another paper \(file:1\) \[also added to pool ../pool\]\n    \S+/other.pdf --> copied to \S+/pool/files/mine_2023_another-paper.pdf$')
         self.lib('rm smith2020climate --keep-files')
         Path(self.path('smith.bib')).write_text(SMITH_BIB)
         with patch('papers.bib.fetch_bibtex_by_doi', no_fetch):

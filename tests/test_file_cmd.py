@@ -21,14 +21,14 @@ class TestRename(FileTest):
         self.bib(entry('one2000', self.a), entry('two2000', self.b))
 
     def test_all(self):
-        self.lib('file rename')
+        self.lib('file rename --move')
         self.assertFalse(os.path.exists(self.a))
         self.assertFalse(os.path.exists(self.b))
         self.assertEqual(len(self.libfiles()), 2)
         self.assertTrue(self.files('one2000')[0].startswith(self.path('lib', 'files')))
 
     def test_keys(self):
-        self.lib('file rename two2000')
+        self.lib('file rename two2000 --move')
         self.assertTrue(os.path.exists(self.a))
         self.assertFalse(os.path.exists(self.b))
 
@@ -39,7 +39,7 @@ class TestRename(FileTest):
         self.assertEqual(os.stat(new).st_ino, os.stat(self.a).st_ino)
 
     def test_key_placeholder(self):
-        self.lib('file rename --name-template {key} one2000')
+        self.lib('file rename --name-template {key} one2000 --move')
         self.assertEqual(os.path.basename(self.files('one2000')[0]), 'one2000.pdf')
 
     def test_unknown_placeholder(self):
@@ -50,18 +50,18 @@ class TestRename(FileTest):
 
     def test_stdin(self):
         with patch('sys.stdin', io.StringIO('one2000\n')):
-            self.lib('file rename -')
+            self.lib('file rename - --move')
         self.assertFalse(os.path.exists(self.a))
         self.assertTrue(os.path.exists(self.b))
 
     def test_empty_stdin_renames_nothing(self):
         with patch('sys.stdin', io.StringIO('')):
-            self.lib('file rename -')
+            self.lib('file rename - --move')
         self.assertTrue(os.path.exists(self.a))
         self.assertTrue(os.path.exists(self.b))
 
     def test_pipe(self):
-        sp.check_call(f'{PAPERSCMD} list -K --title "of two" | {PAPERSCMD} file rename -',
+        sp.check_call(f'{PAPERSCMD} list -K --title "of two" | {PAPERSCMD} file rename - --move',
                       shell=True, cwd=self.path('lib'))
         self.assertTrue(os.path.exists(self.a))
         self.assertFalse(os.path.exists(self.b))
@@ -76,7 +76,7 @@ class TestRename(FileTest):
         self.papers('init --no-git', cwd=self.path('other'))
         c = self.write('other', 'files', 'c.pdf')
         self.bib(entry('three2000', c))
-        self.lib('file rename')
+        self.lib('file rename --move')
         self.assertTrue(os.path.exists(c))
         self.assertEqual(len(self.libfiles()), 1)
 

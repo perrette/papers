@@ -38,10 +38,15 @@ papers file rename perrette2013         # some entries
 papers list --year 2013 --rename       # the listed entries
 ```
 
-Each file is moved into the files directory under its new name;
-`--keep-source` keeps the original too (a hard link when possible). A file
-that belongs to another library is copied, not moved. `papers list ... --rename`
-and the deprecated `papers filecheck --rename` run this command.
+A file already in the files directory is renamed. A file outside it (e.g.
+in a folder of your project) is moved, copied or left where it is as the
+`files` setting says (moved by default, see
+[Files](files.md#what-add-does-with-a-file)). `--move`, `--copy` and
+`--link` override the setting; `--keep-source` is the same as `--copy` (a
+hard link when possible). A file that belongs to another library is copied,
+not moved. `papers list ... --rename` runs this command (with `--move` or
+`--keep-source`); the deprecated `papers filecheck --rename` moves the
+files, whatever the setting.
 
 ## Control fields when renaming files
 

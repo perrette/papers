@@ -455,7 +455,8 @@ class TestAddOnDuplicate(LibraryTest):
     def test_exact_duplicate_never_asks(self):
         exact = self.write('exact.bib', EXACT)
         out = self.papers(f'add {exact}')  # no terminal: would be an error if it asked
-        self.assertIn('already in library: smith2020climate (+1 file)', out)
+        self.assertNotIn('already in library', out)  # the Modified line says it
+        self.assertIn('Modified -> smith2020climate', out)
         e = self.entry('smith2020climate')
         self.assertEqual(e['file'], ':files/smith.pdf:pdf;:other/smith-preprint.pdf:pdf')
         self.assertEqual(len(self.entries()), 1)

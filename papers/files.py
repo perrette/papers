@@ -17,10 +17,10 @@ from papers.config import Config, config_root, find_library_config
 from papers.entries import get_entry_val, parse_string, parse_file, format_file
 from papers.extract import extract_pdf_doi, isvaliddoi
 from papers.latexenc import latex_to_unicode
-from papers.utils import checksum, PapersExit
+from papers.utils import checksum, stdin_is_terminal, PapersExit
 
 
-FILES_MODES = ('move', 'copy', 'link')
+FILES_MODES = ('ask', 'move', 'copy', 'link')
 
 
 def realpath(path):
@@ -166,7 +166,9 @@ class FilesPolicy:
     argument of Biblio.rename_entry_files): 'move', 'copy' (a hard link when
     possible) or 'link' (leave it where it is).
 
-    - mode is the `files` setting (or its command-line override);
+    - mode is the `files` setting (or its command-line override); with ask,
+      each file that the rules below do not decide is asked about (see
+      `ask`);
     - a file that belongs to another library (see OtherLibraries) is never
       moved: `move` falls back to `copy` for it, so that the other library
       keeps its link;
@@ -201,6 +203,30 @@ class FilesPolicy:
         self.copied = {realpath(f) for f in copied}
         self.in_pool = in_pool
         self._said = set()
+        self._for_all = None  # the answer of ask for all the next files
+
+    def ask(self, file):
+        """files mode ask: move, copy or link this file, as the user answers
+        (M, C or L: also for the next files; Enter: link). Without a terminal,
+        the file is linked where it is."""
+        if self._for_all is not None:
+            return self._for_all
+        where = papers.config.short_home(self.filesdir) if self.filesdir else 'the files directory'
+        if not stdin_is_terminal():
+            logger.warning(f'{file}: left where it is (files mode ask, no terminal to ask): '
+                           '--move, --copy or --link chooses, or `papers config files move|copy|link`')
+            self._for_all = 'link'
+            return 'link'
+        answers = {'m': 'move', 'c': 'copy', 'l': 'link'}
+        while True:
+            answer = input(f'{papers.config.short_home(file)}: [m]ove it to {where}, [c]opy it there, or '
+                           '[l]eave it where it is (Enter)? (M, C, L: the same for all the next files) ').strip()
+            if not answer:
+                return 'link'
+            if answer.lower() in answers and len(answer) == 1:
+                if answer.isupper():
+                    self._for_all = answers[answer.lower()]
+                return answers[answer.lower()]
 
     def __call__(self, file):
         if is_download(file):
@@ -217,14 +243,15 @@ class FilesPolicy:
             return 'link' if self.in_pool else 'copy'
         if any(is_inside(file, d) for d in self.pool_dirs):
             return 'copy'
-        if self.mode == 'move':
+        mode = self.ask(file) if self.mode == 'ask' else self.mode
+        if mode == 'move':
             owner = self.others.owner(file)
             if owner is not None:
                 if file not in self._said:
                     print(f'{file} belongs to the library in {owner.configdir}: copied, not moved')
                     self._said.add(file)
                 return 'copy'
-        return self.mode
+        return mode
 
 
 def files_policy(config, mode, pool_dirs=(), keep=(), pool_files=(), copied=()):
@@ -401,14 +428,17 @@ def scan_dir_items(direc, quiet=False):
 # papers file rename, attach, detach
 # ==================================
 
-def rename_files(biblio, entries, config, pool_dirs=(), keep_source=False):
+def rename_files(biblio, entries, config, pool_dirs=(), keep_source=False, mode=None):
     """place the files of the entries in the files directory, under their
-    template name (a file that belongs to another library is copied, see
-    FilesPolicy)"""
+    template name: the files already there are renamed, the others are
+    moved, copied or left where they are as the files mode says (mode, else
+    the `files` setting; keep_source: copy). A file that belongs to another
+    library is copied, see FilesPolicy."""
     if config.filesdir is None:
         raise PapersExit('the library has no files directory: pass --filesdir, '
                          'or set it with `papers config filesdir DIR`')
-    policy = files_policy(config, 'copy' if keep_source else 'move', pool_dirs)
+    mode = 'copy' if keep_source else (mode or config.files or 'move')
+    policy = files_policy(config, mode, pool_dirs)
     for e in entries:
         try:
             biblio.rename_entry_files(e, copy=policy)

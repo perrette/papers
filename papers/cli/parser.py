@@ -121,11 +121,12 @@ def _export_options(p, format='--format', files='--files'):
         option or separate the formats with commas, e.g. {format} bib,ris''')
 
 
-def _fix_move_option(p, search='--search'):
-    "--move of file fix (and of list --fix-files)"
+def _fix_move_option(p, search='--search', rename=False):
+    "--move of file fix (and of list --fix-files and --rename)"
     p.add_argument('--move', action='store_true',
                    help=f'move the files found in the {search} folders instead of copying them (a file in the '
-                        'files directory of another library is still copied)')
+                        'files directory of another library is still copied)'
+                        + ('; with --rename: files mode move, whatever the setting' if rename else ''))
 
 
 def get_parser(config=None):
@@ -150,7 +151,7 @@ def get_parser(config=None):
         p.set_defaults(func=func, library=library, bibtex_must_exist=bibtex_must_exist, command_parser=p)
 
     def _files_mode_options(grp, add=False):
-        "the files mode options of add (with its aliases -r/--rename and -c) and file attach"
+        "the files mode options of add (with its aliases -r/--rename and -c), file attach and file rename"
         grp.add_argument('--move', action='store_true', help='files mode move, whatever the setting')
         if add:
             grp.add_argument('-r','--rename', action='store_true', help='same as --move')
@@ -474,11 +475,15 @@ def get_parser(config=None):
     p = filesub.add_parser('rename', parents=[cfg, namefmt],
         help='place the files in the files directory under their template name',
         description='place the files of the entries (all entries without KEY) in the files directory, '
-                    'under the name made from the name template. A file that belongs to another library '
-                    '(inside its files directory) is copied, not moved.')
+                    'under the name made from the name template. The files already there are renamed; the '
+                    'others are moved, copied or left where they are as the files setting says (ask: papers '
+                    'asks for each one). A file that belongs to another library (inside its files directory) '
+                    'is copied, not moved.')
     p.add_argument('entries', nargs='*', metavar='KEY', help=_selection_help)
-    p.add_argument('--keep-source', action='store_true',
-        help='keep the files where they are too (a hard link when possible, otherwise a copy)')
+    grp = p.add_argument_group('files mode')
+    _files_mode_options(grp)
+    grp.add_argument('--keep-source', action='store_true',
+        help='keep the files where they are too (a hard link when possible, otherwise a copy): same as --copy')
     _command(p, file_renamecmd, library=True)
 
     p = filesub.add_parser('mv', parents=[cfg],
@@ -689,7 +694,7 @@ def get_parser(config=None):
     grp.add_argument('--fix-files', nargs='*', metavar='DIR',
         help='repair the file links of the listed entries, as `papers file fix KEY...`; the broken links are '
              'also looked for in the folders DIR, as `papers file fix --search DIR`')
-    _fix_move_option(grp, search='--fix-files')
+    _fix_move_option(grp, search='--fix-files', rename=True)
     grp.add_argument('--push', action='store_true', help='push the listed entries, as `papers push KEY...`')
     grp.add_argument('--pull', action='store_true', help='pull the listed entries, as `papers pull KEY...`')
     grp.add_argument('--sync', action='store_true', help='sync the listed entries, as `papers sync KEY...`')

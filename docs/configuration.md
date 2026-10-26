@@ -90,7 +90,7 @@ version (papers also leaves them out each time it saves the file).
 | `filesdir` | path of the files directory |
 | `pool` | path of the library's pool (relative to the library, or with `~`): the library is shallow; or `none` (the value when the library does not set it): the library is self-contained (see [Pools](pools.md#libraries-and-pools)) |
 | `paths` | `relative` (default) or `absolute`: how file links are written in the bibtex |
-| `files` | `move` (default), `copy` or `link`: what `papers add` does with a file (see [Files](files.md#what-add-does-with-a-file)); in a shallow library, how the file gets to the pool: moved or copied into its files directory, or linked where it is by the library and the pool entry |
+| `files` | `move` (default), `copy`, `link` or `ask`: what `papers add`, `file attach` and `file rename` do with a file outside the files directory (see [Files](files.md#what-add-does-with-a-file)); in a shallow library, how the file gets to the pool: moved or copied into its files directory, or linked where it is by the library and the pool entry |
 | `auto-push` | `false` (default) or `true`: in a shallow library, the commands that change entries push them to the pool (the entries shared with it, and new ones), see [Auto-push](shallow-libraries.md#auto-push); no effect in a self-contained library |
 | `git` | `true` or `false`: back up the bibtex with git (see [Git integration](git.md)) |
 | `git-lfs` | `true` or `false`: also back up the files with git-lfs |

@@ -286,3 +286,11 @@ def edit_text(text, editor=None):
             return f.read()
     finally:
         os.remove(filename)
+
+
+def stdin_is_terminal():
+    "the standard input is a terminal (papers can ask)"
+    try:
+        return sys.stdin.isatty()
+    except (AttributeError, ValueError, OSError):
+        return False

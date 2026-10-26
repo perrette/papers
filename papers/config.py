@@ -91,7 +91,7 @@ SETTINGS = {
     'filesdir': 'path',
     'pool': 'pool',
     'paths': ('relative', 'absolute'),
-    'files': ('move', 'copy', 'link'),
+    'files': ('ask', 'move', 'copy', 'link'),
     'auto-push': 'bool',
     'git': 'bool',
     'git-lfs': 'bool',

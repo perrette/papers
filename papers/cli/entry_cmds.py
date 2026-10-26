@@ -518,7 +518,7 @@ def listcmd(parser, o, config):
         parser.error(f"one action at a time: {' and '.join(actions)}")
     for option, given, needs, action in [
             ('--keep-source', o.keep_source, rename, '--rename'),
-            ('--move', o.move, fix_files, '--fix-files'),
+            ('--move', o.move, fix_files or rename, '--fix-files or --rename'),
             ('--pool', o.pool, fix_files or exchange, '--push, --pull, --sync or --fix-files'),
             ('--on-duplicate', o.on_duplicate, exchange, '--push, --pull or --sync'),
             ('--export-format', o.export_format, o.export, '--export')]:
@@ -645,7 +645,8 @@ def listcmd(parser, o, config):
         notes = save_entries(config, biblio)
 
     elif rename:
-        notes = rename_entries(biblio, config, pools, entries, keep_source=keep_source)
+        notes = rename_entries(biblio, config, pools, entries, keep_source=keep_source,
+                               mode='move' if o.move else None)
 
     elif o.delete:
         todelete = remove_entries(biblio, entries, config, delete_files=_delete_files_option(parser, o, config))

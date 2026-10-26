@@ -176,9 +176,15 @@ class Biblio:
         # the entries as loaded (see mark_loaded, changed_entries)
         self.loaded_entries = None
         self._loaded = None
+        # {new path: (original path, 'moved' or 'copied')}: the files placed by the command, for its report
+        self.placed = {}
 
     def move(self, file, newfile, copy=False, hardlink=False):
-        return _move(file, newfile, copy=copy, dryrun=papers.config.DRYRUN, hardlink=hardlink)
+        result = _move(file, newfile, copy=copy, dryrun=papers.config.DRYRUN, hardlink=hardlink)
+        if not papers.config.DRYRUN and os.path.realpath(file) != os.path.realpath(newfile):
+            source, _ = self.placed.pop(file, (file, None))  # a file placed twice: from where it was
+            self.placed[newfile] = (source, 'copied' if copy else 'moved')
+        return result
 
     @property
     def entries(self):
@@ -388,8 +394,8 @@ class Biblio:
 
         if verdict.kind == SAME and merge.is_exact():
             decision = Decision('merge', merge, merge.result())
-            n = len(merge.new_files)
-            print(f'already in library: {merge.key}' + (f' (+{n} file{"s" if n > 1 else ""})' if n else ''))
+            if not merge.new_files:  # otherwise the entry is reported Modified, with its new files
+                print(f'already in library: {merge.key}')
         else:
             decision = resolver.decide(merge, 'add', verdict)
 
@@ -535,7 +541,8 @@ class Biblio:
         # a file with the content of a file of the entry is not attached again
         same = {f: _same_content(f, old) for f in new}
         new = [f for f in new if same[f] is None]
-        print(f'already in library: {e.key}' + (f' (+{len(new)} file{"s" if len(new) > 1 else ""})' if new else ''))
+        if not new:  # otherwise the entry is reported Modified, with its new files
+            print(f'already in library: {e.key}')
         for f, other in same.items():
             if other is not None:
                 print(f'{f}: not attached, the entry has the same file: {other}')

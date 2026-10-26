@@ -46,7 +46,8 @@ def filecheckcmd(parser, o, config):
             detach_links(biblio, e, [f for f in biblio.get_files(e) if not os.path.exists(f)])
 
     if o.rename:
-        rename_files(biblio, biblio.entries, config, Pools(config).files_dirs(), keep_source=o.copy)
+        # deprecated: moves the files, as before the files setting applied to the renames
+        rename_files(biblio, biblio.entries, config, Pools(config).files_dirs(), keep_source=o.copy, mode='move')
 
     if o.clean_filesdir:
         print("Check files directory for unlinked files")
@@ -55,13 +56,13 @@ def filecheckcmd(parser, o, config):
     print_push_notes(biblio, save_entries(config, biblio))
 
 
-def rename_entries(biblio, config, pools, entries, keep_source=False):
+def rename_entries(biblio, config, pools, entries, keep_source=False, mode=None):
     """`papers file rename` (also `papers list --rename`): place the files of
     the entries under their template name, and save the library. pools: the
     library_pools of the configuration, made before the library is loaded
     (in a shallow library, they set the files directory and name template
     of the run). Return the notes of save_entries."""
-    rename_files(biblio, entries, config, pools.files_dirs(), keep_source=keep_source)
+    rename_files(biblio, entries, config, pools.files_dirs(), keep_source=keep_source, mode=mode)
     return save_entries(config, biblio, Exchange(config, biblio, pools))
 
 
@@ -70,7 +71,8 @@ def file_renamecmd(parser, o, config):
     pools = library_pools(config)
     biblio = get_biblio(config)
     entries = _entries_or_all(biblio, o.entries)
-    notes = rename_entries(biblio, config, pools, entries, keep_source=o.keep_source)
+    mode = files_mode(o, config) if o.move or o.copy or o.link else None
+    notes = rename_entries(biblio, config, pools, entries, keep_source=o.keep_source, mode=mode)
     _print_biblio_diff(biblio, entries, notes=notes)
 
 

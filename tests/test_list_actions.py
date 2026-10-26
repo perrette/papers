@@ -43,7 +43,7 @@ class TestListActions(FileTest):
         self.assertEqual(self.state('lib'), self.state('lib2'))
 
     def test_rename(self):
-        self.assertSame('list --year 2000 --rename', 'file rename one2000 two2000')
+        self.assertSame('list --year 2000 --rename --move', 'file rename one2000 two2000 --move')
         self.assertEqual(self.state('lib')[2], [])
         self.assertEqual(len(self.libfiles()), 2)
 
@@ -102,7 +102,7 @@ class TestListActions(FileTest):
         self.lib('config git true')
         count = lambda: int(self.out('git rev-list --count HEAD').strip())
         before = count()
-        self.lib('list --year 2000 --rename')
+        self.lib('list --year 2000 --rename --move')
         self.assertEqual(count(), before + 1)
         self.assertNotIn('lib-src', Path(self.path('lib', 'papers.bib')).read_text())
         # one undo step: the links before the rename

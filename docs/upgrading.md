@@ -206,6 +206,9 @@ exchanges.
 - The global configuration of papers 3 is `~/.config/papers/config.json`
   on Linux. It holds default settings, and optionally the default library
   (`papers config --global default PATH`).
+- The `files` setting (`move` by default, `copy`, `link` or `ask`) applies
+  to `papers file rename` too, and `ask` asks for each file (see
+  [Files](files.md#what-add-does-with-a-file)).
 - `papers file` groups the commands on attached files: `attach`,
   `detach`, `rm`, `mv`, `rename`, `check`, `fix`, `clean` (see
   [Files](files.md)).

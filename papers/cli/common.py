@@ -3,7 +3,6 @@
 entry selection and the report of the changes."""
 import os
 import re
-import sys
 from types import SimpleNamespace
 
 import papers.config
@@ -17,7 +16,7 @@ from papers.identifiers import read_selection, select_entries
 from papers.library import config_for_bibtex, savebib
 from papers.merge import Resolver
 from papers.pools import Exchange, PoolError, Pools, check_readable, report_counts, use_pool_files
-from papers.utils import PapersExit, edit_text, open_with_system
+from papers.utils import PapersExit, edit_text, open_with_system, stdin_is_terminal
 
 
 def view_entry_files(biblio, entry):
@@ -117,14 +116,31 @@ def _print_biblio_diff(biblio, touched_entries, show_existing=False, notes=None)
 
     for ID in sorted(new_set - old_set):
         print(format_entry(biblio, new_entries_by_key[ID], prefix="Added") + note(ID))
+        _print_placed(biblio, new_entries_by_key[ID])
 
     for ID in sorted(modified_set):
         before = old_entries_by_key[ID]
         after = new_entries_by_key[ID]
         if not entry_content_equal(before, after):
             print(format_entry(biblio, after, prefix="Modified") + note(ID))
+            _print_placed(biblio, after)
         elif show_existing:
             print(format_entry(biblio, after, prefix="Existing") + note(ID))
+
+
+def _print_placed(biblio, e):
+    "the files of the entry that the command moved or copied (Biblio.placed): from where, to where"
+    def show(path):
+        relative = os.path.relpath(path)
+        return relative if not relative.startswith('..') else short_home(path)
+    for f in biblio.get_files(e):
+        source, action = getattr(biblio, 'placed', {}).get(f, (None, None))
+        if source is None:
+            continue
+        if os.path.dirname(source) == os.path.dirname(f):
+            print(f'    {show(source)} --> renamed to {os.path.basename(f)}')
+        else:
+            print(f'    {show(source)} --> {action} to {show(f)}')
 
 
 def files_mode(o, config):
@@ -392,11 +408,6 @@ def save_exchange(exchange):
     savebib(exchange.biblio, exchange.config, other_changes=origin_changed)
 
 
-def stdin_is_terminal():
-    try:
-        return sys.stdin.isatty()
-    except (AttributeError, ValueError, OSError):
-        return False
 
 
 def edit_entries(entries, editor=None):

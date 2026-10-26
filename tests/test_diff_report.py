@@ -59,4 +59,4 @@ class TestDiffReport(FileTest):
         self.assertEqual(self.report(f'file attach three2000 {pdf} --link'), ['Modified three2000'])
 
     def test_file_rename(self):
-        self.assertEqual(self.report('file rename one2000'), ['Modified one2000'])
+        self.assertEqual(self.report('file rename one2000 --move'), ['Modified one2000'])

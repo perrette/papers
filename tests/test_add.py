@@ -710,7 +710,9 @@ class TestAddExistingEntry(FileTest):
 
     def test_doi_option(self):
         out = self.add(f'add {self.new} --doi 10.1000/ONE --title Other')
-        self.assertIn('already in library: one2000 (+1 file)', out)
+        self.assertNotIn('already in library', out)  # the Modified line says it
+        self.assertIn('Modified -> one2000', out)
+        self.assertIn(f'    {self.new} --> moved to files/one_2000_title-of-one2000--new.pdf\n', out)  # where it went
         self.assertEqual(self.keys(), ['one2000', 'two2000'])
         files = self.files('one2000')
         self.assertEqual(files[0], self.a)  # untouched
@@ -725,7 +727,8 @@ class TestAddExistingEntry(FileTest):
 
     def test_doi_without_file(self):
         out = self.add(f'add --doi 10.1000/one --attach {self.si} --link')
-        self.assertIn('already in library: one2000', out)
+        self.assertIn('Modified -> one2000', out)
+        self.assertNotIn(' --> ', out)  # linked where it is
         self.assertEqual(self.files('one2000'), [self.a, self.si])
 
     def test_arxiv_doi(self):
@@ -738,7 +741,7 @@ class TestAddExistingEntry(FileTest):
     def test_doi_of_pdf_metadata(self):
         with patch('papers.bib.parse_doi_from_pdf_metadata', return_value='10.1000/one'):
             out = self.add(f'add {self.new} --link')
-        self.assertIn('already in library: one2000', out)
+        self.assertIn('Modified -> one2000', out)
         self.assertEqual(self.files('one2000'), [self.a, self.new])
 
     def test_doi_of_pdf_text(self):
@@ -773,8 +776,9 @@ class TestAddExistingEntry(FileTest):
         with patch('papers.bib.parse_doi_from_pdf_metadata', return_value='10.1000/one'):
             out = self.add(f'add -R {self.path("src")}')
         self.assertEqual(self.keys(), ['one2000', 'two2000'])
-        self.assertEqual(out.count('already in library: one2000 (+1 file)\n'), 2)  # new.pdf, si.pdf
-        self.assertIn('already in library: one2000\n', out)  # sub/copy.pdf
+        self.assertEqual(out.count('already in library: one2000\n'), 1)  # sub/copy.pdf
+        self.assertEqual(out.count('Modified -> one2000'), 1)  # new.pdf, si.pdf
+        self.assertEqual(out.count(' --> moved to '), 2)
         files = self.files('one2000')
         self.assertEqual(len(files), 3)
         self.assertEqual(files[0], self.a)

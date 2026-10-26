@@ -75,7 +75,10 @@ pool (see [Shallow libraries](shallow-libraries.md#files)). The
   original;
 - `copy`: place it in the files directory and keep the original (a hard link
   when possible, otherwise a copy);
-- `link`: leave it where it is; the entry links to it there.
+- `link`: leave it where it is; the entry links to it there;
+- `ask`: ask for each file, `m` (move), `c` (copy) or `l` (link, also
+  Enter); `M`, `C` or `L` answers for all the next files; without a
+  terminal, the file is linked where it is.
 
 `--move`, `--copy` and `--link` override the setting for one command
 (`-r/--rename` is the same as `--move`, `-c` as `--copy`):

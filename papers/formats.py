@@ -30,7 +30,7 @@ from bibtexparser.model import Entry, Field
 
 from papers import logger
 from papers.entries import get_entry_val, format_file
-from papers.utils import PapersExit
+from papers.utils import PapersExit, stdin_is_terminal
 
 FORMATS = ('bibtex', 'ris', 'csl-json')
 
@@ -59,11 +59,6 @@ def _rispy_help():
             + ' (with uv: `uv tool install papers-cli --with rispy`)')
 
 
-def _is_terminal():
-    try:
-        return sys.stdin.isatty()
-    except (AttributeError, ValueError, OSError):
-        return False
 
 
 def load_rispy(interactive=None, input=input):
@@ -76,7 +71,7 @@ def load_rispy(interactive=None, input=input):
     except ImportError:
         pass
     if interactive is None:
-        interactive = _is_terminal()
+        interactive = stdin_is_terminal()
     if importlib.util.find_spec('pip') is None:
         raise PapersExit(f'RIS needs the rispy package, which is not installed, and pip is not available in the '
                          f'Python environment of papers ({sys.executable}): {_rispy_help()}')

@@ -16,13 +16,24 @@ files attached with `--attach`:
 | `files` | the file is placed in the files directory | the original is removed |
 |---|---|---|
 | `move` (default) | yes, under its template name | yes |
+| `ask` | papers asks for each file: move, copy or leave it (link) | as answered |
 | `copy` | yes, as a hard link when possible (same file system), otherwise a copy | no |
 | `link` | no: the entry links to the file where it is | no |
+
+With `ask`, papers names each file that is outside the files directory and
+waits for an answer: `m` (move), `c` (copy) or `l` (leave it where it is,
+also Enter); `M`, `C` or `L` gives the same answer for all the next files of
+the command. A file already in the files directory is renamed without
+asking. Without a terminal (a script, a pipe), papers does not ask: the
+files are left where they are, with a warning.
 
 Set it for a library with `papers config files copy`, or for all libraries
 of the user with `papers config --global files copy`. The options
 `--move`, `--copy` and `--link` of `papers add` override it for one command;
 `-r/--rename` is the same as `--move`, and `-c` the same as `--copy`.
+`papers file attach`, `papers file rename` (`--keep-source` is the same as
+`--copy`) and `papers list --rename` (with `--move` or `--keep-source`)
+follow the setting too.
 
 A file that belongs to another library, i.e. a file inside the files
 directory of a library whose configuration (`.papers/config.json`) is found

@@ -1,14 +1,16 @@
-"""What `add` does with a file: the `files` setting (move, copy, link) and
+"""What `add` does with a file: the `files` setting (ask, move, copy, link) and
 its command-line overrides"""
 import io
 import json
 import os
 from contextlib import redirect_stdout
 from pathlib import Path
+from unittest.mock import patch
 
 import papers.config
 from papers.config import Config, MachineConfig, CONFIG_FILE_LOCAL
 from papers.bib import Biblio
+from papers.files import FilesPolicy
 from papers.utils import PapersExit
 
 from tests.common import ConfigTest
@@ -65,6 +67,34 @@ class TestSetting(FilesModeTest):
         self.lib('add ../src/a.bib')
         self.assertFalse(os.path.exists(self.pdf))
         self.assertEqual(self.files(), [self.moved_name()])
+
+    def test_ask(self):
+        self.lib('config files ask')
+        # no terminal to ask: the file stays where it is
+        with self.assertLogs('papers', level='WARNING') as logs, \
+                patch('papers.files.stdin_is_terminal', return_value=False):
+            self.lib('add ../src/a.bib')
+        self.assertIn('left where it is (files mode ask, no terminal to ask)', '\n'.join(logs.output))
+        self.assertTrue(os.path.exists(self.pdf))
+        self.assertEqual(self.files(), [self.pdf])
+        # file rename follows the setting too; --move overrides it
+        with patch('papers.files.stdin_is_terminal', return_value=False):
+            self.lib('file rename')
+        self.assertEqual(self.files(), [self.pdf])
+        self.lib('file rename --move')
+        self.assertFalse(os.path.exists(self.pdf))
+        self.assertEqual(self.files(), [self.moved_name()])
+
+    def test_ask_answers(self):
+        files = [self.path('src', f'{name}.pdf') for name in 'bcdefg']
+        policy = FilesPolicy('ask', self.path('lib', 'files'))
+        inside = self.path('lib', 'files', 'x.pdf')
+        with patch('papers.files.stdin_is_terminal', return_value=True), \
+                patch('builtins.input', side_effect=['x', 'c', '', 'l', 'm', 'M']) as ask:
+            self.assertEqual(policy(inside), 'move')  # in the files directory: renamed, not asked
+            # x: asked again; Enter: link
+            self.assertEqual([policy(f) for f in files], ['copy', 'link', 'link', 'move', 'move', 'move'])
+        self.assertEqual(ask.call_count, 6)  # M: the last file is not asked
 
     def test_machine_then_library(self):
         self.assertEqual(self.lib('config files', sp_cmd='check_output'), 'link')  # tests/__init__.py
