@@ -39,7 +39,8 @@ from papers.latexenc import string_to_latex
 
 from papers.filename import NAMEFORMAT, KEYFORMAT
 from papers.files import (download_url, read_entry_dir, attachment_names, remove_entry_dir_if_empty, realpath,
-                          scan_dir_items)
+                          scan_dir_items, is_download)
+from papers import journal
 from papers.utils import bcolors, checksum, move as _move, PapersExit
 import papers.config
 
@@ -184,6 +185,8 @@ class Biblio:
         if not papers.config.DRYRUN and os.path.realpath(file) != os.path.realpath(newfile):
             source, _ = self.placed.pop(file, (file, None))  # a file placed twice: from where it was
             self.placed[newfile] = (source, 'copied' if copy else 'moved')
+            if not is_download(file):  # a download is not put back into its temporary folder
+                journal.record('copied' if copy else 'moved', file, newfile)
         return result
 
     @property

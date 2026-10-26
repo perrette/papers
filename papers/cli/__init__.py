@@ -4,6 +4,7 @@ import os
 import sys
 
 import papers.config
+import papers.journal
 import papers.utils
 from papers import __version__, logger
 from papers.config import CONFIG_FILE
@@ -126,6 +127,7 @@ def _main(argv, directory=None):
         config = check_install(o.command_parser, o, config, bibtex_must_exist=o.bibtex_must_exist)
     # the editor setting wins over $VISUAL and $EDITOR
     papers.utils.EDITOR = config.editor
+    papers.journal.start(config.bibtex)  # the file operations of the command (see papers.journal)
     o.func(o.command_parser, o, config)
 
 

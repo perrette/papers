@@ -6,8 +6,9 @@ import subprocess as sp
 import sys
 
 import papers.config
-from papers import logger
-from papers.backup import git_env, git_redo, git_restore_state, git_undo, list_backup_dirs, restore_from_backupdir, run_git
+from papers import journal, logger
+from papers.backup import (git_env, git_redo, git_restore_state, git_undo, list_backup_dirs, restore_from_backupdir,
+                           run_git, _pool_dirs)
 from papers.bib import Biblio, backupfile as backupfile_func
 from papers.files import is_inside
 from papers.utils import PapersExit, bcolors
@@ -25,12 +26,15 @@ def _time_travel(config, kind, func, o):
     """undo or redo with the git backup: say which state is restored, and
     which files of the files directory no entry links to any more"""
     before = _linked_files(config)
-    target = func(config, restore_files=o.restore_files, steps=o.steps)
+    file_lines = []
+    target = func(config, restore_files=o.restore_files, steps=o.steps, file_lines=file_lines)
     if target is None:  # --dry-run
         return
     info = run_git(config.gitdir, ["log", "-1", "--date=format:%Y-%m-%d %H:%M", "--pretty=%h %s (%ad)",
                                    target]).stdout.strip()
     print(f'{kind}: {os.path.basename(config.bibtex)} restored to {info}')
+    if file_lines:
+        print('\n'.join(file_lines))
     after = _linked_files(config)
     unlinked = sorted(f for f in before - after
                       if os.path.isfile(f) and config.filesdir and is_inside(f, config.filesdir))
@@ -60,12 +64,18 @@ def undocmd(parser, o, config):
     if papers.config.DRYRUN:
         print(f'DRYRUN: {config.bibtex} not swapped with {back}')
         return
+    # the files of the last command: moved back, or again (see papers.journal)
+    file_lines, files_journal = journal.swap_last(config.bibtex, _pool_dirs(config))
     tmp = config.bibtex + '.tmp'
     logger.info(config.bibtex+' <==> '+back)
     shutil.copy(config.bibtex, tmp)
     shutil.move(back, config.bibtex)
     shutil.move(tmp, back)
+    if files_journal is not None:
+        journal.save_swapped(config.bibtex, files_journal)
     print(f'{o.cmd}: {os.path.basename(config.bibtex)} swapped with its previous version ({back})')
+    if file_lines:
+        print('\n'.join(file_lines))
 
 
 def restorecmd(parser, o, config):

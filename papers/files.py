@@ -12,7 +12,7 @@ import tempfile
 from urllib.parse import urlparse, unquote
 
 import papers.config
-from papers import logger
+from papers import journal, logger
 from papers.config import Config, config_root, find_library_config
 from papers.entries import get_entry_val, parse_string, parse_file, format_file
 from papers.extract import extract_pdf_doi, isvaliddoi
@@ -682,9 +682,11 @@ def execute_moves(moves, force=False):
             if parent and not os.path.isdir(parent):
                 os.makedirs(parent)
             if force and os.path.isfile(move.target) and not move.isdir:
+                journal.record('removed', move.target, digest=checksum(move.target))
                 os.remove(move.target)
             logger.info(f'mv {move.src} {move.target}')
             shutil.move(move.src, move.target)
+            journal.record('moved', move.src, move.target)
         except OSError as error:
             return done, error
         done.append(move)
@@ -906,6 +908,7 @@ def clean_filesdir(biblio, interactive=True, ignore_files=None, ignore_folders=N
         elif folder:
             shutil.rmtree(path)
         else:
+            journal.record('removed', path, digest=checksum(path))
             os.remove(path)
 
     for root, direcs, files in os.walk(biblio.filesdir):

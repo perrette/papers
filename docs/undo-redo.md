@@ -27,11 +27,36 @@ command that made it, e.g.
 undo: papers.bib restored to 3f2a1c9 papers add paper.pdf (2026-10-22 14:03)
 ```
 
-Files that the undone command placed in the files directory stay there.
-When no entry links to them any more (e.g. after undoing `papers file
-attach`), papers lists them: `papers file clean` removes them. A file
-deleted by `papers file rm` is not restored: undo restores the link, which
-is then broken.
+## Files
+
+Each command records the files it moves, renames, copies or deletes (with
+the git backup, in the snapshot of the command, `files-journal.json`;
+without it, next to the backup of the bibtex, `.papers.bib.files.json`).
+`papers undo` of one step puts them back: a moved or renamed file is moved
+back where it was, even outside the library (e.g. a folder of the project
+that `papers file rename` moved it from), a copy placed in the files
+directory is removed; `papers redo` does the operations again. Each file
+is listed:
+
+```
+undo: papers.bib restored to 3f2a1c9 papers add paper.pdf (2026-10-22 14:03)
+    files/perrette_2013_a-scaling-approach.pdf --> moved back to ~/Downloads/esd-4-11-2013.pdf
+```
+
+A file is put back only if it is where the command left it, with the same
+content, and its former place is free; otherwise papers says so and
+leaves it as it is (e.g. a PDF annotated since). In a shallow library, a
+file that `add` moved into the files directory of the pool is copied back:
+the pool entry keeps it.
+
+`papers undo -n N` (N > 1) and `papers restore` do not move files: they
+say so when the commands they go over moved some, and the files that no
+entry links to any more are listed (`papers file clean` removes them).
+Undo one step at a time to put the files back with each command. A file
+deleted by a command (`papers rm --delete-files`) is not restored: undo
+restores the link, which is then broken, and says so (with git-lfs,
+`--restore-files` takes the files from the backup). The commands made
+before papers recorded the files (3.0.0b3) are undone without them.
 
 ## Undo in a library that has a pool
 

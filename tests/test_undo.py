@@ -1,4 +1,5 @@
 import os
+import shutil
 from pathlib import Path
 import subprocess as sp
 from papers.backup import run_git
@@ -187,6 +188,7 @@ class TestUndoGitLocal(GitLFSInitTest):
         self.assertEqual(len(biblio.entries), 0)
 
         pdf, doi, key, newkey, year, bibtex, file_rename = prepare_paper()
+        pdf = shutil.copy(pdf, self._path('bg-8-515-2011.pdf'))  # the rename moves it: not the test file
 
         self.papers(f'add {pdf} --doi {doi}')
 
@@ -220,17 +222,11 @@ class TestUndoGitLocal(GitLFSInitTest):
         self.assertMultiLineEqual(backup.format(), backup0.format())
         self.assertTrue(backup_file_path)
 
-        # The biblio has its file pointer to the backup directory:
+        # the rename recorded its move (papers.journal): undo moved the file back where it was
         biblio = Biblio.load(self._path(self.mybib), '')
-        self.assertFalse(biblio.format() == biblio_original.format())
-        self.assertEqual(len(biblio.entries), 1)
-
-        self.assertNotEqual(biblio.get_files(biblio.entries[0]), biblio_original.get_files(biblio_original.entries[0]))
-        self.assertEqual(biblio.get_files(biblio.entries[0]), backup.get_files(backup.entries[0]))
-
-        # ...that's because the original file does not exist
-        self.assertTrue(os.path.exists(biblio.get_files(biblio.entries[0])[0]))
-        self.assertFalse(os.path.exists(biblio_original.get_files(biblio_original.entries[0])[0]))
+        self.assertMultiLineEqual(biblio.format(), biblio_original.format())
+        self.assertTrue(os.path.exists(pdf))
+        self.assertFalse(os.path.exists(file_path))
 
         self.papers('redo')
 
@@ -251,6 +247,7 @@ class TestUndoGitLocal(GitLFSInitTest):
         # the backup copy is a hard link of the library file, so it is
         # edited too: restore used to bring back the edited version
         pdf, doi, key, newkey, year, bibtex, file_rename = prepare_paper()
+        pdf = shutil.copy(pdf, self._path('bg-8-515-2011.pdf'))  # the rename moves it: not the test file
         self.papers(f'add {pdf} --doi {doi} --copy')
         biblio = Biblio.load(self._path(self.mybib), '')
         file_path = biblio.get_files(biblio.entries[0])[0]
@@ -268,6 +265,7 @@ class TestUndoGitLocal(GitLFSInitTest):
         self.assertEqual(len(biblio.entries), 0)
 
         pdf, doi, key, newkey, year, bibtex, file_rename = prepare_paper()
+        pdf = shutil.copy(pdf, self._path('bg-8-515-2011.pdf'))  # the rename moves it: not the test file
 
         self.papers(f'add {pdf} --doi {doi}')
 
@@ -329,6 +327,7 @@ class TestUndoGitLocal(GitLFSInitTest):
         self.assertEqual(len(biblio.entries), 0)
 
         pdf, doi, key, newkey, year, bibtex, file_rename = prepare_paper()
+        pdf = shutil.copy(pdf, self._path('bg-8-515-2011.pdf'))  # the rename moves it: not the test file
 
         self.papers(f'add {pdf} --doi {doi}')
 
@@ -455,11 +454,20 @@ class TestUndoMessages(GitInitTest):
         out = self.out('undo')
         self.assertRegex(out.splitlines()[0], rf'^undo: {self.mybib} restored to [0-9a-f]+ papers add '
                                               rf'{self.anotherbib} \(\d{{4}}-\d\d-\d\d \d\d:\d\d\)$')
-        self.assertIn('1 file(s) of the files directory are linked by no entry now '
-                      '(`papers file clean` removes them)', out)
-        self.assertIn(attached, out)
-        self.assertTrue(os.path.exists(attached))  # left in place
+        # the file is moved back where it was (papers.journal)
+        self.assertIn(' --> moved back to si.pdf', out)
+        self.assertNotIn('linked by no entry', out)
+        self.assertFalse(os.path.exists(attached))
+        self.assertEqual(Path(self._path('si.pdf')).read_text(), 'supplement')
 
         out = self.out('redo')
         self.assertRegex(out, rf'^redo: {self.mybib} restored to [0-9a-f]+ papers file attach')
-        self.assertNotIn('linked by no entry', out)
+        self.assertIn('si.pdf --> moved to ', out)
+        self.assertTrue(os.path.exists(attached))
+        self.assertFalse(os.path.exists(self._path('si.pdf')))
+
+        # undo of two steps: the files stay where they are
+        out = self.out('undo -n 2')
+        self.assertIn('the files that these commands moved, copied or removed stay as they are', out)
+        self.assertIn('1 file(s) of the files directory are linked by no entry now', out)
+        self.assertTrue(os.path.exists(attached))

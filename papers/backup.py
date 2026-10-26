@@ -53,7 +53,7 @@ from pathlib import Path
 from slugify import slugify
 
 import papers.config
-from papers import logger, __version__
+from papers import journal, logger, __version__
 from papers.bib import Biblio
 from papers.config import BACKUP_DIR, BACKUP_DIR_LEGACY
 from papers.duplicate import DISTINCT_FILE
@@ -405,6 +405,16 @@ def backup_bib(biblio, config, message=None):
             (backupdir / name).unlink()
             run_git(config.gitdir, ["rm", "--cached", "--ignore-unmatch", "--quiet", name], check=False)
 
+    # the file operations of the command, reversed by undo (see papers.journal)
+    ops = journal.take(config.bibtex)
+    journal_path = backupdir / journal.JOURNAL_FILE
+    if ops:
+        journal_path.write_text(json.dumps(ops, indent=1))
+        run_git(config.gitdir, ["add", journal.JOURNAL_FILE])
+    elif journal_path.exists():
+        journal_path.unlink()
+        run_git(config.gitdir, ["rm", "--cached", "--ignore-unmatch", "--quiet", journal.JOURNAL_FILE], check=False)
+
     if config.gitlfs:
         logger.info('backup bibliography with files')
         config.backupfile_clean.unlink(missing_ok=True)
@@ -412,12 +422,14 @@ def backup_bib(biblio, config, message=None):
         backupfilesdir = backupdir/"files"
         backupfilesdir.mkdir(exist_ok=True)
         biblio.filesdir = str(backupfilesdir)
-        biblio.rename_entries_files(copy=True, relative_to=backupdir, hardlink=True)
+        with journal.paused():  # the copies of the backup are not the command's
+            biblio.rename_entries_files(copy=True, relative_to=backupdir, hardlink=True)
         biblio.save(config.backupfile_clean)
         run_git(config.gitdir, ["add", config.backupfile_clean.name])
 
         # Remove unlinked files
-        clean_filesdir(biblio, interactive=False, ignore_files=[config.backupfile, config.backupfile_clean])
+        with journal.paused():
+            clean_filesdir(biblio, interactive=False, ignore_files=[config.backupfile, config.backupfile_clean])
         run_git(config.gitdir, ["add", "files"])
         attributes = backupdir / ".gitattributes"
         text = attributes.read_text() if attributes.exists() else ""
@@ -701,8 +713,40 @@ def git_restore_state(config, ref, restore_files=False, kind="restore-backup"):
     restore_from_backupdir(config, restore_files=restore_files, previous=previous)
 
 
-def git_undo(config, restore_files=False, steps=1):
-    "go back `steps` states; return the commit of the state restored (None with --dry-run)"
+def _journal_of(gitdir, commit):
+    "the file operations of the command of a commit (see papers.journal)"
+    res = run_git(gitdir, ["show", f"{commit}:{journal.JOURNAL_FILE}"], check=False)
+    if res.returncode != 0:
+        return []
+    try:
+        return json.loads(res.stdout)
+    except ValueError:
+        return []
+
+
+def _pool_dirs(config):
+    "the files directory of the pool of a shallow library: a file moved there is copied back by undo"
+    if not config.shallow:
+        return []
+    from papers.pools import pool_files_dir  # papers.pools imports this module
+    return [pool_files_dir(config)]
+
+
+def _files_of_steps(config, commits, kind, file_lines, apply):
+    """the files of the commands of the states that undo or redo goes over:
+    one step, its file operations are reversed or replayed (apply); several,
+    the files stay where they are"""
+    if len(commits) == 1:
+        file_lines.extend(apply(_journal_of(config.gitdir, commits[0]), _pool_dirs(config)))
+    elif any(_journal_of(config.gitdir, c) for c in commits):
+        file_lines.append(f'    the files that these commands moved, copied or removed stay as they are '
+                          f'({kind} of one step moves them too)')
+
+
+def git_undo(config, restore_files=False, steps=1, file_lines=None):
+    """go back `steps` states; return the commit of the state restored (None
+    with --dry-run). One step: the file operations of the command undone are
+    reversed (see papers.journal), their report goes to file_lines."""
     if not papers.config.DRYRUN:
         check_gitdir_ownership(config)
     _require_history(config.gitdir)
@@ -714,13 +758,18 @@ def git_undo(config, restore_files=False, steps=1):
         raise PapersExit("nothing to undo")
     if _dryrun_restore(config, res.stdout.strip(), "undo"):
         return None
+    undone = run_git(config.gitdir, ["rev-list", "--first-parent", f"{res.stdout.strip()}..{cur}"]).stdout.split()
     previous = _append_restore_commit(config, res.stdout.strip(), kind="undo")
+    # the files first: the links of the restored bibtex find them
+    _files_of_steps(config, undone, 'undo', file_lines if file_lines is not None else [], journal.reverse)
     restore_from_backupdir(config, restore_files=restore_files, previous=previous)
     return res.stdout.strip()
 
 
-def git_redo(config, restore_files=False, steps=1):
-    "go forward `steps` states; return the commit of the state restored (None with --dry-run)"
+def git_redo(config, restore_files=False, steps=1, file_lines=None):
+    """go forward `steps` states; return the commit of the state restored
+    (None with --dry-run). One step: the file operations of the command
+    redone are replayed (see papers.journal), their report goes to file_lines."""
     if not papers.config.DRYRUN:
         check_gitdir_ownership(config)
     _require_history(config.gitdir)
@@ -742,5 +791,6 @@ def git_redo(config, restore_files=False, steps=1):
     if _dryrun_restore(config, futures[steps-1], "redo"):
         return None
     previous = _append_restore_commit(config, futures[steps-1], kind="redo")
+    _files_of_steps(config, futures[:steps], 'redo', file_lines if file_lines is not None else [], journal.replay)
     restore_from_backupdir(config, restore_files=restore_files, previous=previous)
     return futures[steps-1]

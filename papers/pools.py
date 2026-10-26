@@ -61,7 +61,7 @@ from bibtexparser.model import Entry, ExplicitComment, Field
 from slugify import slugify
 
 import papers.config
-from papers import logger
+from papers import journal, logger
 from papers.config import Config, CONFIG_FILE_LOCAL, NO_POOL, library_config_file, short_home
 from papers.duplicate import (Distinct, IdentityIndex, contradicts, distinct_union, find_duplicates, same_paper,
                               SAME, Verdict)
@@ -1421,6 +1421,7 @@ class PoolLookup:
                 logger.info(f'DRYRUN: {f} not removed (the same as {target})')
                 continue
             logger.info(f'{f}: removed, the same as {target} (files mode move)')
+            journal.record('removed', f, target, digest=checksum(f))
             os.remove(f)
 
 

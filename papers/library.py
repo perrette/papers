@@ -7,7 +7,7 @@ import os
 import shutil
 
 import papers.config
-from papers import logger
+from papers import journal, logger
 from papers.backup import backup_bib, silent_backup_bib, resolve_gitdir
 from papers.bib import Biblio
 from papers.entries import get_entry_val
@@ -156,6 +156,8 @@ def savebib(biblio, config, other_changes=False):
             logger.error(f'the bibliography was saved, but its git backup failed: {error}')
     else:
         logger.debug('do not backup bib: git is off')
+        # the file operations of the command, for undo (see papers.journal)
+        journal.save_last(config.bibtex, journal.take(config.bibtex))
 
 
 def convert_file_links(config):
