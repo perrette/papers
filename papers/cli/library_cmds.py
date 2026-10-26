@@ -1,5 +1,6 @@
 """papers status, init, install, uninstall, config, migrate"""
 import copy
+import json
 import os
 from pathlib import Path
 import shutil
@@ -8,7 +9,7 @@ import papers.config
 from papers import logger
 from papers.backup import check_git_available, init_backup
 from papers.config import (CONFIG_FILE_LOCAL, Config, DEFAULT_LIBRARY, LIBRARY_ONLY, NO_POOL, library_config_file,
-                           SETTINGS, format_value, parse_value, pool_setting, short_home)
+                           SETTINGS, format_value, json_get, parse_value, pool_setting, short_home)
 from papers.files import broken_links, delete_files, is_inside
 from papers.install import DefaultAsker, InputAsker, apply_install, resolve_install
 from papers.library import convert_file_links, find_config, get_biblio, snapshot_backup
@@ -115,8 +116,8 @@ def init_summary(config):
     else:
         lines.extend(['* files:   in the pool (shallow library)',
                       f'* pool:    {config.pool_label()}'])
-    return lines + ['* backup:  ' + ('git' + (' and git-lfs' if config.gitlfs else '') if config.git else 'off'),
-                    '`papers status -v` shows all settings']
+    return lines + ['* backup:  ' + config.backup_summary(),
+                    '`papers config` lists and sets the settings']
 
 
 def installcmd(parser, o, config):
@@ -232,6 +233,11 @@ def configcmd(parser, o, config):
 
     if config.file is None:
         raise PapersExit(f"{no_library_message(config)}, or use `papers config --global`")
+
+    if o.prune:
+        if name:
+            parser.error('--prune takes no setting: papers config --prune')
+        return _prune(config)
 
     if not name:
         print(f"# {config.file}")
@@ -351,6 +357,23 @@ def _missing_error(what, missing, pool_label, commands):
     lines += commands
     lines.append(f'Then run `papers config {what}` again.')
     return PapersExit('\n'.join(lines))
+
+
+def _prune(config):
+    "`papers config --prune`: save the library configuration without the settings equal to their inherited value"
+    if config.origin == 'v2-global':
+        raise PapersExit(f"{config.file} is the global configuration of papers v2: run `papers migrate` first")
+    before = json.load(open(config.file))
+    after = config.tojson()
+    removed = [name for name in SETTINGS if json_get(before, name) is not None and json_get(after, name) is None]
+    if not removed:
+        print(f'nothing to remove from {short_home(config.file)}')
+        return
+    if papers.config.DRYRUN:
+        print(f'DRYRUN: {", ".join(removed)} not removed from {short_home(config.file)}')
+        return
+    config.save()
+    print(f'removed from {short_home(config.file)} (equal to the global or default value): {", ".join(removed)}')
 
 
 def _save_setting(config, changes):
@@ -513,4 +536,4 @@ def statuscmd(parser, o, config):
     print(config.status(check_files=not o.no_check_files, verbose=o.verbose))
     if config.file is None:
         default = config.machine.default_path()
-        print(f"* default library:    {short_home(default) + ' (not a library)' if default else 'none'}")
+        print(f"* default library: {short_home(default) + ' (not a library)' if default else 'none'}")

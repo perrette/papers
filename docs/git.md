@@ -18,11 +18,13 @@ $> papers init --bibtex papers.bib --filesdir files [ --no-git | --git-lfs ]
 created the library ~/projects/sealevel
 * bibtex:  papers.bib
 * files:   files (the files directory of the library)
-* backup:  git and git-lfs
-`papers status -v` shows all settings
+* backup:  bibtex and files history (git + git-lfs)
+`papers config` lists and sets the settings
 ```
 
-The `* backup:` line says `git`, `git and git-lfs`, or `off`. With `--git`
+The `* backup:` line says `bibtex history (git)`,
+`bibtex and files history (git + git-lfs)`, or
+`previous bibtex only (git off: one undo step)`. With `--git`
 or `--git-lfs`, `papers init` stops with an error before creating the
 library when git (or git-lfs) is not installed; so does
 `papers config git true`.
@@ -86,9 +88,8 @@ platform's user data directory elsewhere (on macOS,
 the backup directory of the library:
 
 ```
-* backup (git):       True
-* backup files (git-lfs): False
-* backup directory:   /home/me/.local/share/papers/backups/sealevel-papers-3f9a1c2b
+* backup:             bibtex history (git)
+* git backup folder:  ~/.local/share/papers/backups/sealevel-papers-3f9a1c2b
 ```
 
 The directory is named after the parent folder of the bibtex and the

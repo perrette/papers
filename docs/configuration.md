@@ -14,8 +14,8 @@ $> papers init
 created the library ~/projects/sealevel
 * bibtex:  papers.bib
 * files:   files (the files directory of the library)
-* backup:  git
-`papers status -v` shows all settings
+* backup:  bibtex history (git)
+`papers config` lists and sets the settings
 ```
 
 By default the library is self-contained (no pool), the bibtex is
@@ -49,8 +49,10 @@ Outside of any library, commands act on the default library if the global
 configuration sets one (see [A global shared library](global-library.md)),
 and otherwise fail: `no library found here: papers init`.
 
-Type `papers status` to see which library a command acts on, and
-`papers status -v` to also see its settings and where each one comes from.
+Type `papers status` to see which library a command acts on: where its
+bibtex and its files are, its pool and its backup. `papers status -v` also
+shows the git backup folder, the configuration file, the cache directory and
+the version. `papers config` lists the settings and where each one comes from.
 
 ## Settings
 
@@ -61,6 +63,7 @@ papers config                          # list the settings and where each comes 
 papers config name.template            # print one setting
 papers config name.template '{author}_{year}_{title}'   # set it in the library
 papers config --unset name.template    # remove it from the library
+papers config --prune                  # remove the values equal to the global or default value
 ```
 
 Each setting comes from the library configuration if it sets it, otherwise
@@ -68,7 +71,18 @@ from the global configuration, otherwise from its built-in default. The
 exception is `pool`: it comes only from the library configuration, and a
 library that does not set it has no pool (`none`).
 `papers config` without argument shows the source of each setting as
-`(library)`, `(global)` or `(default)`.
+`(library)`, `(global)` or `(default)`. In a shallow library, `filesdir`
+and the `name.*` settings are marked `not used: shallow library`: the
+files are in the pool, named with the pool's template (`filesdir` is where
+`papers config pool none` copies them).
+
+The library configuration keeps only the settings that differ from the
+global or default value: setting one to that value removes it from the
+file, and the library then follows the global configuration. `pool` is
+the exception: once set, even to `none`, it stays until
+`papers config --unset pool`. `papers config --prune` removes the values
+equal to the global or default value from a file written by an earlier
+version (papers also leaves them out each time it saves the file).
 
 | Setting | Values |
 |---|---|
@@ -169,10 +183,10 @@ papers init --shallow          # shallow: the pool is the default library
 
 `papers status` shows where the files of the library are: its files
 directory (self-contained library), or in the pool (shallow library). For
-a shallow library, it also shows the pool (its path, whether it is
-missing or is not a library, and whether it changed since the last
-exchange with it) and the `auto-push` setting. `papers status -v` shows
-the pool of a self-contained library too: `none`.
+a shallow library, it also shows the pool: its path, whether it is
+missing or is not a library, whether it changed since the last exchange
+with it, and the `auto-push` setting, e.g.
+`* pool:   ../sealevel (up to date, auto-push: off)`.
 
 ## Relative versus absolute paths
 

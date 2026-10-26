@@ -61,7 +61,7 @@ class TestBackupCmds(FileTest):
     def test_git_lfs_first_snapshot(self):
         "the files are tracked with git-lfs, and no state of the history lacks the bibtex"
         self.lib('config git-lfs true')
-        gitdir = self.out('status -v').split('backup directory:')[1].split()[0]
+        gitdir = os.path.expanduser(self.out('status -v').split('git backup folder:')[1].split()[0])
         with open(os.path.join(gitdir, '.gitattributes')) as f:
             self.assertIn('files/** filter=lfs', f.read())
         self.assertEqual(self.out('git rev-list --count HEAD').strip(), '1')

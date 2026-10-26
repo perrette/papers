@@ -76,8 +76,8 @@ class TestInitSummary(ConfigTest):
             f'created the library {papers.config.short_home(self.path("lib"))}',
             '* bibtex:  papers.bib',
             '* files:   files (the files directory of the library)',
-            '* backup:  off',
-            '`papers status -v` shows all settings'])
+            '* backup:  previous bibtex only (git off: one undo step)',
+            '`papers config` lists and sets the settings'])
         self.assertEqual(self.json('lib')['pool'], 'none')
         self.assertNotIn('local', self.json('lib'))
 
@@ -85,7 +85,7 @@ class TestInitSummary(ConfigTest):
         self.papers('init pool --no-git')
         out = self.papers('init lib --git --pool ../pool', sp_cmd='check_output')
         self.assertIn('* files:   in the pool (shallow library)\n* pool:    ../pool\n', out)
-        self.assertIn('* backup:  git', out)
+        self.assertIn('* backup:  bibtex history (git)', out)
         self.assertEqual(self.json('lib')['pool'], '../pool')
         self.assertNotIn('local', self.json('lib'))
 

@@ -1493,16 +1493,25 @@ def export(biblio, config, entries, dest, files='copy', git=None, library=True):
 # STATUS
 # ======
 
-def status_line(config):
+def pool_files_dir(config):
+    "files directory of the pool of a shallow library, or None (no pool, or not readable)"
+    try:
+        pool = Pools(config).pool(quiet=True)
+    except PoolError:
+        return None
+    return pool.filesdir if pool is not None else None
+
+
+def status_line(config, notes=()):
     """the pool of a library in `papers status`: its path (or none: the
     library is self-contained), whether it exists, and changed since the
-    last exchange"""
+    last exchange; then `notes`"""
     path = config.pool_path()
     if path is None:
         return 'none'
     pools = Pools(config)
     text = config.pool_label()
-    notes = []
+    extra, notes = list(notes), []
     if pools._is_self(path):
         notes.append('this library: it has no pool')
     elif not os.path.exists(path):
@@ -1514,4 +1523,5 @@ def status_line(config):
             notes.append(pool_state(origin, pools.resolve(path)))
         except PoolError:
             notes.append(bcolors.WARNING + 'not a library' + bcolors.ENDC)
+    notes.extend(extra)
     return text + (f' ({", ".join(notes)})' if notes else '')

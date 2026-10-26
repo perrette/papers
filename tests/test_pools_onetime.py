@@ -106,7 +106,7 @@ class TestSetting(OneTimeTest):
 
     def test_status(self):
         self.papers('init third --no-git --pool ../pool')
-        self.assertIn('* pool:               ../pool (not pulled from yet)\n', self.out('status', cwd='third'))
+        self.assertIn('* pool:   ../pool (not pulled from yet, auto-push: off)\n', self.out('status', cwd='third'))
 
 
 class TestOneTime(OneTimeTest):

@@ -29,8 +29,8 @@ $ papers init
 created the library ~/projects/sealevel
 * bibtex:  papers.bib
 * files:   files (the files directory of the library)
-* backup:  git
-`papers status -v` shows all settings
+* backup:  bibtex history (git)
+`papers config` lists and sets the settings
 $ papers add ~/Downloads/esd-4-11-2013.pdf
 Added -> perrette_landerer2013: A scaling approach to project regional sea level rise and it... (doi:10.5194/esd-4-11-2013, file:1)
 $ papers add --doi 10.1111/j.1365-246X.1978.tb04232.x
@@ -57,8 +57,8 @@ created the library ~/projects/tides
 * bibtex:  papers.bib
 * files:   in the pool (shallow library)
 * pool:    ../sealevel
-* backup:  git
-`papers status -v` shows all settings
+* backup:  bibtex history (git)
+`papers config` lists and sets the settings
 $ papers add --doi 10.5194/esd-4-11-2013
 Added -> perrette_landerer2013: A scaling approach to project regional sea level rise and it... (doi:10.5194/esd-4-11-2013, file:1) [from pool ../sealevel]
 $ papers add ~/Downloads/bg-8-515-2011.pdf

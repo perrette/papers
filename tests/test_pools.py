@@ -189,9 +189,9 @@ class TestResolution(PoolTest):
         self.assertEqual(self.out('config pool'), 'none')
         self.assertRegex(self.out('config'), r'\npool += none  \(default\)\n')
         out = self.out('status')
-        self.assertIn('* files:              files (the files directory of the library', out)
+        self.assertIn('* files:  files (the files directory of the library', out)
         self.assertNotIn('* pool:', out)  # self-contained: no pool line
-        self.assertIn('* pool:               none', self.out('status -v'))
+        self.assertNotIn('* pool:', self.out('status -v'))
         # no lookups in the default library: the entry is added as it is, not taken from there
         Path(self.path('smith.bib')).write_text(SMITH_BIB)
         with patch('papers.bib.fetch_bibtex_by_doi', no_fetch):
@@ -212,7 +212,7 @@ class TestResolution(PoolTest):
         json.dump({'bibtex': 'papers.bib', 'filesdir': 'files', 'local': True},
                   open(self.path('lib', CONFIG_FILE_LOCAL), 'w'))
         self.assertNotIn('* pool:', self.out('status'))
-        self.assertIn('* pool:               none', self.out('status -v'))
+        self.assertNotIn('* pool:', self.out('status -v'))
         Path(self.path('smith.bib')).write_text(SMITH_BIB)
         with patch('papers.bib.fetch_bibtex_by_doi', no_fetch):
             self.papers('add ../smith.bib', cwd=self.path('lib'))
@@ -922,27 +922,29 @@ class TestStatus(PoolTest):
 
     def test_status(self):
         out = self.out('status')
-        self.assertIn('* files:              files (the files directory of the library', out)
+        self.assertIn('* files:  files (the files directory of the library', out)
         self.assertNotIn('* pool:', out)
         self.assertNotIn('* library:', out)
-        self.assertIn('* pool:               none', self.out('status -v'))
+        self.assertNotIn('* pool:', self.out('status -v'))
         self.assertNotIn('auto-push', out)
         self.assertNotIn('local', out)
         self.lib('config pool ../pool -y')
         out = self.out('status')
         self.assertNotIn('* library:', out)
-        self.assertIn('* pool:               ../pool (not pulled from yet)', out)
-        self.assertIn('* files:              in the pool (shallow library)', out)
-        self.assertIn('* auto-push:          false', out)
-        self.assertIn('* files mode:         link', out)  # the global configuration of the tests
-        self.lib('config files copy')
-        self.assertIn('* files mode:         copy', self.out('status'))
+        self.assertIn('* pool:   ../pool (not pulled from yet, auto-push: off)', out)
+        self.assertIn(f'* files:  in the pool, {self.path("pool", "files")}\n', out)
+        self.assertNotIn('files mode', out)  # a setting: `papers config`
         self.lib('config auto-push true')
-        self.assertIn('* auto-push:          true', self.out('status'))
+        self.assertIn('* pool:   ../pool (not pulled from yet, auto-push: on)', self.out('status'))
         self.lib('config pool none')
         out = self.out('status')
         self.assertNotIn('* pool:', out)
         self.assertNotIn('auto-push', out)
+        # the bibtex first, then the files; -v adds the locations, no settings
+        lines = self.out('status -v').splitlines()
+        self.assertEqual([line.split(':')[0] for line in lines[1:-1]],
+                         ['* bibtex', '* files', '* backup', '* configuration file', '* cache directory', '* version'])
+        self.assertEqual(lines[-1], '`papers config` lists and sets the settings')
 
     def test_after_add_from_pool(self):
         # the first exchange with the pool counts as a pull
@@ -1019,7 +1021,7 @@ class TestStatus(PoolTest):
         Path(self.path('mine.pdf')).write_text('mine')
         self.papers('add ../new.bib', cwd=self.path('other'))
         out = self.papers('status', cwd=self.path('other'), sp_cmd='check_output')
-        self.assertIn('* pool:               ../pool (up to date)', out)
+        self.assertIn('* pool:   ../pool (up to date, auto-push: off)', out)
 
     def test_missing_pool(self):
         self.lib('config pool ../pool -y')
@@ -1095,7 +1097,7 @@ class TestConfigPoolSelfContained(OwnFilesTest):
         self.assertEqual(os.listdir(self.path('lib', 'files')), [])
         self.assertEqual(Path(self.path('pool', 'papers.bib')).read_text(), pool_text)
         self.assertIn('the library is now shallow', out)
-        self.assertIn('* files:              in the pool (shallow library)', self.out('status'))
+        self.assertIn(f'* files:  in the pool, {self.path("pool", "files")}\n', self.out('status'))
         # the origin records of the exchanges with --pool ../pool are those of the pool
         self.assertIn('nothing to push to pool ../pool', self.out('push'))
 
@@ -1231,14 +1233,11 @@ class TestConfigPoolSelfContained(OwnFilesTest):
         self.papers('init other --no-git --pool ../pool')
         self.assertFalse(os.path.exists(self.path('other', 'files')))
         out = self.papers('status', cwd=self.path('other'), sp_cmd='check_output')
-        self.assertIn('* files:              in the pool (shallow library)\n', out)  # as init says
+        self.assertIn(f'* files:  in the pool, {self.path("pool", "files")}\n', out)
         self.assertNotIn('files directory', out)
-        self.papers('config files move', cwd=self.path('other'))
-        self.assertIn('* files mode:         move (the files added are moved into the pool)',
-                      self.papers('status', cwd=self.path('other'), sp_cmd='check_output'))
         self.papers('init fourth --no-git')
         self.assertTrue(os.path.isdir(self.path('fourth', 'files')))
-        self.assertIn('* files:              files (the files directory of the library, empty)',
+        self.assertIn('* files:  files (the files directory of the library, empty)',
                       self.papers('status', cwd=self.path('fourth'), sp_cmd='check_output'))
         # the files of the pool are copied into it when the library becomes self-contained
         Path(self.path('smith.bib')).write_text(SMITH_BIB)

@@ -25,8 +25,8 @@ $ papers init ~/Documents/papers --global
 created the library ~/Documents/papers
 * bibtex:  papers.bib
 * files:   files (the files directory of the library)
-* backup:  git
-`papers status -v` shows all settings
+* backup:  bibtex history (git)
+`papers config` lists and sets the settings
 registered ~/Documents/papers as the default library in ~/.config/papers/config.json
 ```
 
@@ -49,8 +49,8 @@ created the library ~/projects/ice
 * bibtex:  papers.bib
 * files:   in the pool (shallow library)
 * pool:    ~/Documents/papers
-* backup:  git
-`papers status -v` shows all settings
+* backup:  bibtex history (git)
+`papers config` lists and sets the settings
 $ papers add --doi 10.5194/esd-4-11-2013
 Added -> perrette_landerer2013: A scaling approach to project regional sea level rise and it... (doi:10.5194/esd-4-11-2013) [also added to pool ~/Documents/papers]
 ```
@@ -81,10 +81,11 @@ $ cd ~
 $ papers list
 perrette_landerer2013: A scaling approach to project regional sea level rise and it... (doi:10.5194/esd-4-11-2013)
 $ papers status
-papers library: ~/Documents/papers (default library)
-* files:              Documents/papers/files (the files directory of the library, empty)
-* files mode:         move
-* bibtex:             Documents/papers/papers.bib (1 entries, 0 file links)
+papers library: ~/Documents/papers (default library, set in ~/.config/papers/config.json)
+* bibtex: Documents/papers/papers.bib (1 entries, 0 file links)
+* files:  Documents/papers/files (the files directory of the library, empty)
+* backup: bibtex history (git)
+`papers config` lists and sets the settings
 ```
 
 The default library can take papers from other libraries too, e.g. a

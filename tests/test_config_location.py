@@ -116,7 +116,7 @@ class TestV2Library(V2LibraryTest):
         out = io.StringIO()
         with redirect_stdout(out):
             self.papers('status')
-        self.assertIn('(default library)', out.getvalue())
+        self.assertIn('(default library, set in ', out.getvalue())
 
     def test_moved_on_save(self):
         before = json.load(open(self.old()))

@@ -405,6 +405,8 @@ class Config:
     global configuration, else from its built-in default; the pool comes
     only from the library's file (none if it does not set it). The attributes
     hold the resulting values; `explicit` names the settings set in the file.
+    The file keeps the pool once set, and the other settings when they differ
+    from the global or default value (see `is_set`).
 
     A library without pool is self-contained: its own entries and files. A
     library with a pool is shallow (see `shallow`): it links to the files
@@ -499,10 +501,14 @@ class Config:
         self.explicit.discard(name)
 
     def is_set(self, name):
-        "the library sets this setting (in its file, or changed since loaded)"
+        """the library sets this setting: the pool once set (pool none: a
+        self-contained library), the other settings when their value differs
+        from the global or default value (a value equal to it is not saved)"""
         if name in ('bibtex', 'filesdir'):
             return getattr(self, name) is not None
-        return name in self.explicit or self.get(name) != self.inherited(name)
+        if name == 'pool' and name in self.explicit:
+            return True
+        return self.get(name) != self.inherited(name)
 
     def source(self, name):
         "where the value of a setting comes from: library, global or default"
@@ -578,8 +584,8 @@ class Config:
         if p is None: return p
         if not self.is_library:  # v2 compatibility, remove with migrate
             return str(Path(p).resolve())  # abspath
-        p2 = str((Path(root).resolve() if root is not None else self.configdir) / p)
-        return p2
+        # normpath, not resolve: '..' is removed, the symbolic links are kept
+        return os.path.normpath((Path(root).resolve() if root is not None else self.configdir) / p)
 
 
     def tojson(self):
@@ -661,6 +667,12 @@ class Config:
             setattr(self, field, self._abspath(getattr(self, field), root))
 
 
+    def unused_while_shallow(self, name):
+        """the settings that a shallow library does not use: its files are in
+        the pool, named with the pool's template (filesdir is where
+        `papers config pool none` copies them)"""
+        return self.shallow and (name == 'filesdir' or name.startswith('name.'))
+
     def settings_lines(self, names=None):
         """lines `name = value (source)` of `papers config` and `papers status -v`
         (bibtex and filesdir as absolute paths, as `papers config KEY` prints them)"""
@@ -669,11 +681,16 @@ class Config:
         lines = []
         for name in names:
             value = self.get(name)
-            lines.append(f'{name.ljust(width)} = {format_value(value)}  ({self.source(name)})')
+            note = ', not used: shallow library' if self.unused_while_shallow(name) else ''
+            lines.append(f'{name.ljust(width)} = {format_value(value)}  ({self.source(name)}{note})')
         return lines
 
 
     def status(self, check_files=False, verbose=False):
+        """`papers status`: where the library, its bibtex and its files are,
+        its pool and its backup (-v: also the backup folder, the
+        configuration file, the cache and the version). `papers config` lists the
+        settings."""
 
         def _fmt_path(p):
             if self.is_library:
@@ -681,50 +698,66 @@ class Config:
             else:  # v2 compatibility, remove with migrate
                 return p
 
-        lines = []
         if self.file and os.path.exists(self.file):
-            status = (str(self.configdir) if self.is_library else self.file) + ' ' + {'default': '(default library)',
-                      'v2-global': '(global configuration of papers v2: run `papers migrate`)'}.get(self.origin, '')
+            if self.origin == 'default':
+                note = f'(default library, set in {short_home(self.machine.file)})'
+            else:
+                note = {'v2-global': '(global configuration of papers v2: run `papers migrate`)'}.get(self.origin, '')
+            status = (str(self.configdir) if self.is_library else self.file) + ' ' + note
         else:
             status = bcolors.WARNING+"(no library found: create one with `papers init`)"+bcolors.ENDC
-        lines.append(bcolors.BOLD+f'papers library: {status}'.rstrip()+bcolors.ENDC)
-        lines.append(bcolors.BOLD+f'version {__version__}'+bcolors.ENDC)
+        header = [bcolors.BOLD+f'papers library: {status}'.rstrip()+bcolors.ENDC]
+        items = []  # (label, value), aligned
+        if self.file is not None or self.bibtex is not None:
+            items.append(('bibtex', self._bibtex_status(check_files, _fmt_path)))
+            items.append(('files', self._files_status(check_files, _fmt_path)))
+            if self.file and self.shallow:
+                from papers.pools import status_line  # papers.pools imports this module
+                items.append(('pool', status_line(self, notes=[f'auto-push: {"on" if self.auto_push else "off"}'])))
+            items.append(('backup', self.backup_summary()))
+            if verbose and self.git:
+                items.append(('git backup folder', short_home(str(self.gitdir))))
         if verbose:
-            lines.append('* configuration file: '+(_fmt_path(self.file) if self.file and os.path.exists(self.file) else bcolors.WARNING+'none'+bcolors.ENDC))
-            lines.append('* global config:      '+self.machine.file+('' if self.machine.exists() else ' (none)'))
-            lines.append('* cache directory:    '+CACHE_DIR)
-            lines.append('* backup (git):       '+str(self.git))
-            if self.git:
-                lines.append('* backup files (git-lfs): '+str(self.gitlfs))
-                lines.append('* backup directory:   '+str(self.gitdir))
+            items.append(('configuration file', _fmt_path(self.file) if self.file and os.path.exists(self.file)
+                          else bcolors.WARNING+'none'+bcolors.ENDC))
+            items.append(('cache directory', short_home(CACHE_DIR)))
+            items.append(('version', __version__))
 
-        if self.file is None and self.bibtex is None:
-            return '\n'.join(lines)  # no library
+        width = max(len(label) for label, _ in items) + 1 if items else 0
+        lines = header + [f'* {(label + ":").ljust(width)} {value}' for label, value in items]
+        if self.file:
+            lines.append('`papers config` lists and sets the settings')
+        return '\n'.join(lines)
 
-        in_pool = self.shallow
-        if in_pool:
+    def backup_summary(self):
+        "what the backup keeps (see papers.backup)"
+        if not self.git:
+            return 'previous bibtex only (git off: one undo step)'
+        if self.gitlfs:
+            return 'bibtex and files history (git + git-lfs)'
+        return 'bibtex history (git)'
+
+    def _files_status(self, check_files, _fmt_path):
+        "where the files of the library are"
+        if self.shallow:
             # the files of a shallow library are in its pool (see papers.pools.use_pool_files)
-            lines.append('* files:              in the pool (shallow library)')
-        elif self.filesdir is None:
-            lines.append('* files:              linked where they are (no files directory)')
-        else:
-            notes = ['the files directory of the library']
-            if not os.path.exists(self.filesdir):
-                notes.append(bcolors.WARNING+'missing'+bcolors.ENDC)
-            elif not os.listdir(self.filesdir):
-                notes.append(bcolors.WARNING+'empty'+bcolors.ENDC)
-            elif check_files:
-                file_count, folder_size = check_filesdir(self.filesdir)
-                notes.append(bcolors.OKBLUE+"{} files, {:.1f} MB".format(file_count, folder_size/(1024*1024.0))+bcolors.ENDC)
-            lines.append(f'* files:              {_fmt_path(self.filesdir)} ({", ".join(notes)})')
-        if in_pool:
-            note = ' (the files added are moved into the pool)' if (self.files or 'move') == 'move' else \
-                ' (the files added are copied into the pool)' if self.files == 'copy' else \
-                ' (the files added stay where they are, the pool entry links to them there)'
-        else:
-            note = ' (no files directory: the files are linked where they are)' if self.filesdir is None else ''
-        lines.append(f'* files mode:         {self.files or "move"}' + note)
+            from papers.pools import pool_files_dir  # papers.pools imports this module
+            pool_dir = pool_files_dir(self)
+            return f'in the pool, {short_home(pool_dir)}' if pool_dir else 'in the pool'
+        if self.filesdir is None:
+            return 'linked where they are (no files directory)'
+        notes = ['the files directory of the library']
+        if not os.path.exists(self.filesdir):
+            notes.append(bcolors.WARNING+'missing'+bcolors.ENDC)
+        elif not os.listdir(self.filesdir):
+            notes.append(bcolors.WARNING+'empty'+bcolors.ENDC)
+        elif check_files:
+            file_count, folder_size = check_filesdir(self.filesdir)
+            notes.append(bcolors.OKBLUE+"{} files, {:.1f} MB".format(file_count, folder_size/(1024*1024.0))+bcolors.ENDC)
+        return f'{_fmt_path(self.filesdir)} ({", ".join(notes)})'
 
+    def _bibtex_status(self, check_files, _fmt_path):
+        "the bibtex of the library, and its state"
         if self.bibtex is None:
             status = bcolors.WARNING+' (unset)'+bcolors.ENDC
         elif not os.path.exists(self.bibtex):
@@ -744,21 +777,4 @@ class Config:
             status = bcolors.WARNING+' (empty)'+bcolors.ENDC
         else:
             status = ''
-        lines.append(f'* bibtex:             {_fmt_path(self.bibtex) if self.bibtex else self.bibtex}'+status)
-
-        if self.file:
-            from papers.pools import status_line  # papers.pools imports this module
-            if self.shallow or verbose:
-                lines.append('* pool:               ' + status_line(self))
-            if self.shallow:
-                if self.auto_push:
-                    text = 'true (the commands push the entries they change to the pool)'
-                else:
-                    text = 'false (add adds the new entries to the pool; push or sync sends the changes)'
-                lines.append('* auto-push:          ' + text)
-
-        if verbose:
-            lines.append('* settings:')
-            lines.extend('    '+line for line in self.settings_lines())
-
-        return '\n'.join(lines)
+        return f'{_fmt_path(self.bibtex) if self.bibtex else self.bibtex}'+status

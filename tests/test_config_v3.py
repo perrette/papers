@@ -177,9 +177,10 @@ class TestInit(ConfigTest):
         self.assertEqual(js['filesdir'], 'files')
         self.assertEqual(js['pool'], 'none')  # self-contained
         self.assertNotIn('local', js)
-        self.assertEqual(js['paths'], 'relative')
-        self.assertFalse(js['git'])
-        self.assertNotIn('nameformat', js)  # inherited
+        # the default values are not saved
+        self.assertNotIn('paths', js)
+        self.assertNotIn('git', js)
+        self.assertNotIn('nameformat', js)
         self.assertTrue(os.path.isfile(self.path('papers.bib')))
         self.assertTrue(os.path.isdir(self.path('files')))
 
@@ -206,8 +207,12 @@ class TestInit(ConfigTest):
         self.papers('config --global paths absolute')
         self.papers('init')
         js = self.json()
-        self.assertFalse(js['git'])
-        self.assertEqual(js['paths'], 'absolute')
+        # the values of the global configuration are not saved: the library inherits them
+        self.assertNotIn('git', js)
+        self.assertNotIn('paths', js)
+        config = Config.load(self.path(CONFIG_FILE_LOCAL))
+        self.assertFalse(config.git)
+        self.assertEqual(config.get('paths'), 'absolute')
 
     def test_init_existing(self):
         self.papers('init --no-git')
@@ -270,7 +275,7 @@ class TestDefaultLibrary(ConfigTest):
         biblio = Biblio.load(os.path.join(TEST_DEFAULT_LIBRARY, 'papers.bib'), '')
         self.assertEqual([e['ID'] for e in biblio.entries], ['someone2000'])
         out = self.papers('status', sp_cmd='check_output')
-        self.assertIn('(default library)', out)
+        self.assertIn('(default library, set in ', out)
         self.assertNotIn('* pool:', out)  # self-contained: no pool line
         # never uninstalled from outside
         with self.assertRaisesRegex(PapersExit, 'The default library .* is used outside of libraries'):
@@ -283,14 +288,14 @@ class TestDefaultLibrary(ConfigTest):
                 self.papers(cmd)
         out = self.papers('status', sp_cmd='check_output')
         self.assertIn('(no library found: create one with `papers init`)', out)
-        self.assertIn('* default library:    none', out)
+        self.assertIn('* default library: none', out)
         # a default library that is not a library (any more)
         self.papers(f'init {TEST_DEFAULT_LIBRARY} --global --no-git')
         os.remove(os.path.join(TEST_DEFAULT_LIBRARY, CONFIG_FILE_LOCAL))
         with self.assertRaisesRegex(PapersExit, r'^no library found here \(the default library ~/Documents/papers '
                                                 r'is not a library\): `papers init`'):
             self.papers('list')
-        self.assertIn('* default library:    ~/Documents/papers (not a library)',
+        self.assertIn('* default library: ~/Documents/papers (not a library)',
                       self.papers('status', sp_cmd='check_output'))
 
     def test_init_global(self):
@@ -376,6 +381,34 @@ class TestConfigCommand(ConfigTest):
     def get(self, cmd):
         return self.papers('config ' + cmd, sp_cmd='check_output')
 
+    def test_default_values_not_saved(self):
+        self.papers('config name.template "{author}_{year}"')
+        self.papers(f'config name.template "{papers.filename.NAMEFORMAT.template}"')
+        self.assertNotIn('nameformat', self.json())
+        self.papers('config paths relative')
+        self.assertNotIn('paths', self.json())
+
+    def test_prune(self):
+        # a file that holds default values (written by earlier builds)
+        js = self.json()
+        js['git'] = False
+        js['keyformat'] = {'author_num': papers.filename.KEYFORMAT.author_num, 'template': '{author}'}
+        Path(self.path(CONFIG_FILE_LOCAL)).write_text(json.dumps(js))
+        self.assertRegex(self.get(''), r'\ngit += false  \(default\)\n')
+        out = self.get('--prune')
+        self.assertIn('key.author-num', out)
+        self.assertIn('git', out)
+        js = self.json()
+        self.assertNotIn('git', js)
+        self.assertEqual(js['keyformat'], {'template': '{author}'})
+        self.assertIn('nothing to remove', self.get('--prune'))
+
+    def test_paths_normalized(self):
+        os.makedirs(self.path('..', 'outside'), exist_ok=True)
+        self.papers('config filesdir ../outside')
+        self.assertEqual(self.json()['filesdir'], '../outside')
+        self.assertEqual(self.get('filesdir').strip(), os.path.realpath(self.path('..', 'outside')))
+
     def test_get_set_unset(self):
         self.assertEqual(self.get('name.template'), papers.filename.NAMEFORMAT.template)
         self.papers('config name.template "{author}_{year}"')
@@ -459,7 +492,7 @@ class TestConfigCommand(ConfigTest):
         count = self.papers('git rev-list --all --count', sp_cmd='check_output')
         self.assertEqual(count, '1')
         self.papers('config git false')
-        self.assertFalse(self.json()['git'])
+        self.assertNotIn('git', self.json())  # the default
 
 
 class TestMigrateV2Global(ConfigTest):
@@ -507,7 +540,7 @@ class TestMigrateV2Global(ConfigTest):
         self.assertEqual(MachineConfig.load().default_path(), self.path('lib'))  # where it is
         # the library is now the default library
         out = self.papers('status', cwd=self.path('elsewhere'), sp_cmd='check_output')
-        self.assertIn('(default library)', out)
+        self.assertIn('(default library, set in ', out)
         # idempotent
         out = self.papers('migrate', sp_cmd='check_output')
         self.assertIn('nothing to migrate', out)
@@ -515,7 +548,7 @@ class TestMigrateV2Global(ConfigTest):
 
     def test_migrate_relative(self):
         self.papers('migrate --relative')
-        self.assertEqual(self.json('lib')['paths'], 'relative')
+        self.assertNotIn('paths', self.json('lib'))  # relative, the default
         biblio = Biblio.load(self.path('lib', 'lib.bib'), '')
         self.assertEqual(biblio.entries[0]['file'], ':a.pdf:pdf')
 
