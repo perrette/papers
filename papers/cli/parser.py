@@ -6,6 +6,7 @@ from papers import logger
 import papers.config
 from papers.config import SETTINGS
 from papers.duplicate import FUZZY_RATIO
+from papers.formats import FILENAMES, FORMATS, extensions_help
 from papers.identifiers import ACCEPTED as ENTRY_IDS
 from papers.merge import ON_DUPLICATE
 from papers.utils import file_uri_to_path
@@ -80,17 +81,20 @@ def _format_parser(kind, title, what, fmt, template_help):
     return parser
 
 
+# the names of the formats in `papers export --format` (bib, json, bib.json: other forms)
+_EXPORT_NAMES = {'bib': 'bibtex', 'json': 'csl-json', 'bib.json': 'bibjson', **{fmt: fmt for fmt in FORMATS}}
+
+
 def _export_formats(value):
-    "the formats of `papers export --format`: bib, ris, csl-json, all, separated by commas"
-    names = {'bib': 'bibtex', 'bibtex': 'bibtex', 'ris': 'ris', 'csl-json': 'csl-json', 'json': 'csl-json'}
+    "the formats of `papers export --format`: names of FORMATS (or bib, json), all, separated by commas"
     formats = []
     for name in (v.strip().lower() for v in value.split(',') if v.strip()):
         if name == 'all':
-            formats.extend(['bibtex', 'ris', 'csl-json'])
-        elif name in names:
-            formats.append(names[name])
+            formats.extend(FORMATS)
+        elif name in _EXPORT_NAMES:
+            formats.append(_EXPORT_NAMES[name])
         else:
-            raise argparse.ArgumentTypeError(f'unknown format {name!r} (choose from bib, ris, csl-json, all)')
+            raise argparse.ArgumentTypeError(f'unknown format {name!r} (choose from bib, {", ".join(FORMATS[1:])}, all)')
     return formats
 
 
@@ -116,9 +120,9 @@ def _export_options(p, format='--format', files='--files'):
         help='copy the files into DIR/files (a hard link when possible; default), link to them where '
              'they are, or leave the file links out')
     p.add_argument(format, action='append', type=_export_formats, metavar='FORMAT',
-        help=f'''the files of entries written in DIR: bib (papers.bib, the default: DIR is a papers
-        library), ris (papers.ris; needs the rispy package), csl-json (papers.json), or all; repeat the
-        option or separate the formats with commas, e.g. {format} bib,ris''')
+        help=f'''the files of entries written in DIR: bib ({FILENAMES['bibtex']}, the default: DIR is a papers
+        library), {', '.join(f'{fmt} ({FILENAMES[fmt]})' for fmt in FORMATS[1:])}, or all (RIS needs the
+        rispy package); repeat the option or separate the formats with commas, e.g. {format} bib,ris''')
 
 
 def _fix_move_option(p, search='--search', rename=False):
@@ -336,9 +340,9 @@ def get_parser(config=None):
         and later pulls bring its corrections.''',
         parents=[cfg, namefmt, keyfmt])
     addp.add_argument('file', nargs='*', default=[], type=file_uri_to_path)
-    addp.add_argument('--format', choices=['bibtex', 'ris', 'csl-json'],
-        help='''the format of the added files that are not PDFs (default: from the extension:
-        .ris is RIS, .json is CSL-JSON, other files are bibtex). RIS needs the rispy package.''')
+    addp.add_argument('--format', choices=FORMATS,
+        help=f'''the format of the added files that are not PDFs (default: from the extension:
+        {extensions_help()}). RIS needs the rispy package.''')
 
     grp = addp.add_argument_group('duplicate check',
         description='''An added entry is the same paper as a library entry when they have
@@ -666,8 +670,8 @@ def get_parser(config=None):
 
     grp = listp.add_argument_group('formatting')
     mgrp = grp.add_mutually_exclusive_group()
-    mgrp.add_argument('--format', choices=['line', 'bibtex', 'ris', 'csl-json', 'key'],
-        help='line: one line per entry (the default); bibtex, ris, csl-json: the entries in that format '
+    mgrp.add_argument('--format', choices=['line', *FORMATS, 'key'],
+        help=f'line: one line per entry (the default); {", ".join(FORMATS)}: the entries in that format '
              '(file links as absolute paths; RIS needs the rispy package); key: the keys only, '
              'one per line (to pipe into the commands that take -, e.g. `papers file rename -`)')
     mgrp.add_argument('--plain', action='store_const', dest='format', const='bibtex', help='same as --format bibtex')
@@ -738,9 +742,8 @@ def get_parser(config=None):
         help='replace the entry by the entry in FILE, without an editor (- reads it from the standard input: '
              'a pipe, or a paste, ended by the closing brace of the entry). The entry keeps its key, and its '
              'file and keywords fields when FILE has none; its other fields are those of FILE')
-    editp.add_argument('--format', choices=['bibtex', 'ris', 'csl-json'],
-        help='the format of --from FILE (default: from the extension: .ris is RIS, .json is CSL-JSON, '
-             'other files and - are bibtex)')
+    editp.add_argument('--format', choices=FORMATS,
+        help=f'the format of --from FILE (default: from the extension: {extensions_help()}; - is bibtex)')
     _command(editp, editcmd, library=True)
 
     rmp = subparsers.add_parser('rm', parents=[cfg],

@@ -59,9 +59,12 @@ them (`--any`: one of them).
 - `--format line` (the default): one line per entry (also `-l`, `-1`,
   `--one-liner`);
 - `--format bibtex`: the entries as bibtex (also `--plain`);
-- `--format ris`, `--format csl-json`: the entries as RIS or CSL-JSON, with
-  the file links as absolute paths (RIS needs the rispy package; see
-  [Export](export.md#other-formats-ris-and-csl-json) for the conversion);
+- `--format ris`, `--format csl-json`, `--format bibjson`: the entries as
+  RIS, CSL-JSON or BibJSON, with the file links as absolute paths (RIS
+  needs the rispy package; see
+  [Export](export.md#other-formats-ris-csl-json-and-bibjson) for the
+  conversion). BibJSON keeps the bibtex fields as they are: it is the
+  format for programs that read the library;
 - `--format key`: the keys only, one per line (also `-K`, `--key-only`),
   to pipe into other commands (below).
 
@@ -134,8 +137,8 @@ These commands take `-`: `edit`, `rm`, `tag`, `open`, `check`, and the
 without opening an editor (for scripts and other programs). The entry keeps
 its key, and its `file` and `keywords` fields when FILE has none; its other
 fields are those of FILE (a field that FILE does not have is removed). FILE
-is bibtex, or RIS (`.ris`) or CSL-JSON (`.json`), or the format given with
-`--format`. `--from -` reads the entry from the standard input:
+is bibtex, or RIS (`.ris`), CSL-JSON (`.json`) or BibJSON (`.bib.json`),
+or the format given with `--format`. `--from -` reads the entry from the standard input:
 
 ```
 papers extract paper.pdf | papers edit perrette2013 --from -

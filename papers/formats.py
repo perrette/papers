@@ -33,20 +33,34 @@ from papers import logger
 from papers.entries import get_entry_val, format_file
 from papers.utils import PapersExit, stdin_is_terminal
 
-FORMATS = ('bibtex', 'ris', 'csl-json')
+FORMATS = ('bibtex', 'ris', 'csl-json', 'bibjson')
+
+# the name of each format in the messages
+LABELS = {'bibtex': 'bibtex', 'ris': 'RIS', 'csl-json': 'CSL-JSON', 'bibjson': 'BibJSON'}
 
 # the format of an added file, from its extension (other files are bibtex)
-EXTENSIONS = {'.bib': 'bibtex', '.ris': 'ris', '.json': 'csl-json'}
+EXTENSIONS = {'.bib': 'bibtex', '.ris': 'ris', '.json': 'csl-json', '.bib.json': 'bibjson'}
 
 # the name of the file of each format that `papers export` writes
-FILENAMES = {'bibtex': 'papers.bib', 'ris': 'papers.ris', 'csl-json': 'papers.json'}
+FILENAMES = {'bibtex': 'papers.bib', 'ris': 'papers.ris', 'csl-json': 'papers.json', 'bibjson': 'papers.bib.json'}
 
 
 def file_format(path, forced=None):
     "the format of an added file: `forced` if given, else from its extension (bibtex by default)"
     if forced:
         return forced
-    return EXTENSIONS.get(os.path.splitext(path)[1].lower(), 'bibtex')
+    name = os.path.basename(path).lower()
+    # the longest extension first: .bib.json before .json
+    for extension in sorted(EXTENSIONS, key=len, reverse=True):
+        if name.endswith(extension):
+            return EXTENSIONS[extension]
+    return 'bibtex'
+
+
+def extensions_help():
+    "the formats of the extensions, for the help of the options: .ris is RIS, ..."
+    known = ', '.join(f'{ext} is {LABELS[fmt]}' for ext, fmt in EXTENSIONS.items() if fmt != 'bibtex')
+    return f'{known}, other files are bibtex'
 
 
 # rispy, optional
@@ -801,26 +815,101 @@ def loads_ris(text, rispy=None):
     return [ris_to_entry(ref) for ref in refs]
 
 
+# BibJSON
+# =======
+# the convention of the Open Knowledge Foundation for bibtex records in JSON
+# (https://github.com/rufuspollock-okfn/bibjson): a collection
+# {"metadata": {...}, "records": [...]}; a record has the bibtex fields as
+# they are (LaTeX included: nothing is lost), with "type" and "id" for the
+# entry type and key, and the structures BibJSON gives some of them: author
+# and editor are lists of {"name": ...}, journal is {"name": ...}. The file
+# links are a list of paths, "file".
+
+_BIBJSON_NAMES = ('author', 'editor')
+_BIBJSON_SKIPPED = ('type', 'id', 'cid', 'collection', 'file', 'identifier', 'link', 'license')
+
+
+def entry_to_bibjson(e, files=()):
+    record = {'type': e.entry_type, 'id': e.key}
+    for field in e.fields:
+        if field.key == 'file':
+            continue
+        if field.key in _BIBJSON_NAMES:
+            record[field.key] = [{'name': name} for name in _split_depth0(field.value, r'\s+and\s+')]
+        elif field.key == 'journal':
+            record['journal'] = {'name': field.value}
+        else:
+            record[field.key] = field.value
+    if files:
+        record['file'] = list(files)
+    return record
+
+
+def _bibjson_text(value):
+    "a value of a record as a bibtex value: the names of objects, lists joined"
+    if isinstance(value, dict):
+        return _bibjson_text(value.get('name', ''))
+    if isinstance(value, list):
+        return ', '.join(_bibjson_text(v) for v in value)
+    return str(value)
+
+
+def bibjson_to_entry(record):
+    fields = {}
+    for name, value in record.items():
+        if name.startswith('_') or name in _BIBJSON_SKIPPED:
+            continue
+        if name in _BIBJSON_NAMES and isinstance(value, list):
+            fields[name] = ' and '.join(_bibjson_text(v) for v in value)
+        else:
+            fields[name] = _bibjson_text(value)
+    if 'doi' not in fields:  # the DOI of BibJSON identifiers: [{"type": "doi", "id": ...}]
+        doi = next((i.get('id') for i in record.get('identifier') or []
+                    if isinstance(i, dict) and str(i.get('type', '')).lower() == 'doi'), None)
+        if doi:
+            fields['doi'] = _clean_doi(doi)
+    key = usable_key(record.get('id')) or usable_key(record.get('cid'))
+    return _entry(str(record.get('type') or 'misc').lower(), key, fields, _file_paths(record.get('file')))
+
+
+def dumps_bibjson(entries, files=lambda e: ()):
+    records = [entry_to_bibjson(e, files(e)) for e in entries]
+    collection = {'metadata': {'records': len(records)}, 'records': records}
+    return json.dumps(collection, indent=2, ensure_ascii=False) + '\n'
+
+
+def loads_bibjson(text):
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError as error:
+        raise ValueError(f'not a BibJSON file: {error}')
+    if isinstance(data, dict):
+        data = data.get('records', [data])  # a collection, or one record
+    if not isinstance(data, list) or not all(isinstance(x, dict) for x in data):
+        raise ValueError('not a BibJSON file: a collection {"records": [...]} or a list of records is expected')
+    return [bibjson_to_entry(record) for record in data]
+
+
 # any format
 # ==========
 
+_DUMPS = {'ris': dumps_ris, 'csl-json': dumps_csl, 'bibjson': dumps_bibjson}
+_LOADS = {'ris': loads_ris, 'csl-json': loads_csl, 'bibjson': loads_bibjson}
+
+
 def dumps(entries, fmt, files=lambda e: ()):
-    """the entries as a text in format `fmt` (ris or csl-json; `files`:
+    """the entries as a text in format `fmt` (other than bibtex; `files`:
     entry -> paths of its file links, as written)"""
-    if fmt == 'ris':
-        return dumps_ris(entries, files)
-    if fmt == 'csl-json':
-        return dumps_csl(entries, files)
-    raise ValueError(f'unknown format: {fmt}')
+    if fmt not in _DUMPS:
+        raise ValueError(f'unknown format: {fmt}')
+    return _DUMPS[fmt](entries, files)
 
 
 def loads(text, fmt):
-    "the entries of a text in format `fmt` (ris or csl-json), as bibtex entries"
-    if fmt == 'ris':
-        return loads_ris(text)
-    if fmt == 'csl-json':
-        return loads_csl(text)
-    raise ValueError(f'unknown format: {fmt}')
+    "the entries of a text in format `fmt` (other than bibtex), as bibtex entries"
+    if fmt not in _LOADS:
+        raise ValueError(f'unknown format: {fmt}')
+    return _LOADS[fmt](text)
 
 
 def read_file(path, fmt):

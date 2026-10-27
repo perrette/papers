@@ -19,7 +19,7 @@ papers 3 adds the following new functionalities:
   `papers install`, the commands on attached files are grouped under
   `papers file`, `papers list` has more actions, and older forms are
   deprecated (see [What else changed](#what-else-changed));
-- **RIS and CSL-JSON**: `papers add refs.ris` (or `.json`) imports them,
+- **RIS, CSL-JSON and BibJSON**: `papers add refs.ris` (or `.json`, `.bib.json`) imports them,
   `papers list --format` and `papers export` write them (see
   [Export](export.md)).
 

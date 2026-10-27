@@ -10,8 +10,8 @@ writes the entries (all without KEY) as a new library in `DIR`, which must
 not exist or be empty, to hand over: its bibtex, its files directory, and
 its configuration (a self-contained library, with the name and key
 templates that the library sets). File links are relative to the new
-bibtex. `--format` writes RIS or CSL-JSON as well, or instead (see
-[Other formats](#other-formats-ris-and-csl-json)).
+bibtex. `--format` writes RIS, CSL-JSON or BibJSON as well, or instead (see
+[Other formats](#other-formats-ris-csl-json-and-bibjson)).
 
 - `--files copy` (default) copies the files into `DIR/files` (hard links
   when possible), named with the name template;
@@ -36,10 +36,10 @@ perrette_et_al_2013_a-scaling-approach-to-project-regional-sea-level-rise-and-it
 copies of its PDFs). `papers sync --pool DIR` exchanges entries with it
 later (see [Exchanges with any library](pools.md#exchanges-with-any-library)).
 
-## Other formats: RIS and CSL-JSON
+## Other formats: RIS, CSL-JSON and BibJSON
 
 ```
-papers export DIR [KEY...|-] --format bib|ris|csl-json|all
+papers export DIR [KEY...|-] --format bib|ris|csl-json|bibjson|all
 ```
 
 `--format` chooses the files of entries written in `DIR`, next to
@@ -50,7 +50,8 @@ papers export DIR [KEY...|-] --format bib|ris|csl-json|all
 | `bib` (default) | `papers.bib` | bibtex; `DIR` is a papers library, as above |
 | `ris` | `papers.ris` | RIS, read by Zotero, EndNote, Mendeley...; needs the [rispy](https://pypi.org/project/rispy/) package (see [Installation](installation.md#optional-ris-support)) |
 | `csl-json` | `papers.json` | CSL-JSON, read by Zotero, pandoc and citeproc processors |
-| `all` | the three files | |
+| `bibjson` (or `bib.json`) | `papers.bib.json` | BibJSON: the bibtex fields as they are, in JSON, for programs (see [BibJSON](#bibjson)) |
+| `all` | the four files | |
 
 Repeat the option or separate the formats with commas
 (`--format bib,ris`). The file links of each file point to the copies in
@@ -61,7 +62,7 @@ they are). Without `bib`, `DIR` is not a papers library (it has no
 ```
 $ papers export ~/export-test --format all
 create the library ~/export-test
-exported 1 entries to ~/export-test (papers.bib, papers.ris, papers.json; files: copy)
+exported 1 entries to ~/export-test (papers.bib, papers.ris, papers.json, papers.bib.json; files: copy)
 $ papers export ~/for-zotero --format ris
 exported 1 entries to ~/for-zotero (papers.ris; files: copy)
 ~/for-zotero is not a papers library (no papers.bib): --format bib or all makes one
@@ -85,11 +86,11 @@ L1  - files/perrette_et_al_2013_a-scaling-approach-to-project-regional-sea-level
 ER  - 
 ```
 
-`papers list --format ris` and `--format csl-json` write the entries to the
-standard output instead, without copying files (see
-[Output formats](listing.md#output-formats)). `papers add refs.ris` and
-`papers add refs.json` read these formats (see
-[Add RIS and CSL-JSON files](adding-entries.md#add-ris-and-csl-json-files)).
+`papers list --format ris`, `--format csl-json` and `--format bibjson`
+write the entries to the standard output instead, without copying files
+(see [Output formats](listing.md#output-formats)). `papers add refs.ris`,
+`papers add refs.json` and `papers add refs.bib.json` read these formats
+(see [Add RIS, CSL-JSON and BibJSON files](adding-entries.md#add-ris-csl-json-and-bibjson-files)).
 
 ### How the fields are converted
 
@@ -133,3 +134,52 @@ object, `"custom": {"file": [...]}`, which other programs ignore.
 | `online` | `webpage` | `ELEC` |
 | `dataset`, `software` | `dataset`, `software` | `DATA`, `COMP` |
 | `unpublished` | `manuscript` | `UNPB` |
+
+### BibJSON
+
+[BibJSON](https://github.com/rufuspollock-okfn/bibjson) is the convention of
+the Open Knowledge Foundation for bibliographic records in JSON. RIS and
+CSL-JSON convert the fields to those of other programs and lose some of
+them; BibJSON keeps the bibtex fields as they are (LaTeX included), so that
+a program can read the whole library:
+
+```
+$ papers list perrette --format bibjson
+{
+  "metadata": {
+    "records": 1
+  },
+  "records": [
+    {
+      "type": "article",
+      "id": "perrette_landerer2013",
+      "author": [
+        {
+          "name": "Perrette, M."
+        },
+        ...
+      ],
+      "journal": {
+        "name": "Earth System Dynamics"
+      },
+      "title": "A scaling approach to project regional sea level rise and its uncertainties",
+      "year": "2013",
+      "file": [
+        "/home/me/papers/files/perrette_et_al_2013_a-scaling-approach-to-project-regional-sea-level-rise-and-its-uncertainties.pdf"
+      ]
+    }
+  ]
+}
+```
+
+- `type` and `id` are the entry type and key;
+- `author` and `editor` are lists of `{"name": ...}`, and `journal` is
+  `{"name": ...}`, as BibJSON gives them;
+- the other fields are strings, as in the bibtex;
+- `file` is the list of the file links (absolute paths with `papers list`,
+  relative to `DIR` with `papers export`).
+
+`papers add refs.bib.json` reads a collection (`{"records": [...]}`), a
+list of records or one record. It also reads the DOI of BibJSON
+identifiers (`"identifier": [{"type": "doi", "id": ...}]`), and joins the
+lists of strings (e.g. keywords) with commas.
