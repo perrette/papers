@@ -672,6 +672,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#output-for-programs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Output for programs
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#actions-on-the-listed-entries" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1118,6 +1129,24 @@ the input too, Ctrl-C cancels).</p>
 <p>An edit that does not parse, has a malformed field name, or gives the entry
 the key of another entry is not applied, and the command exits with status
 1, with <code>--from</code> as with the editor.</p>
+<h2 id="output-for-programs">Output for programs<a class="headerlink" href="#output-for-programs" title="Permanent link">&para;</a></h2>
+<p><code>--porcelain</code> (after git's option of that name) makes the output of a command
+stable for programs: the standard output has only the entries that the
+command added, modified or removed, or found already in the library
+(<code>papers add</code> of an entry that is there), one per line, without colours:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>$ papers add paper.pdf --porcelain
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>added perrette2013
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>$ papers tag perrette2013 smith2020 --add to-read --porcelain
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>modified perrette2013
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>modified smith2020
+</code></pre></div>
+<p>The lines are <code>added KEY</code>, <code>modified KEY</code>, <code>removed KEY</code> and <code>existing KEY</code>.
+They are facts about keys: an entry whose key changes (e.g. <code>papers check
+--fix-key</code>, or a key changed in the editor) is <code>removed OLD</code> and <code>added NEW</code>,
+and an entry merged into another one is <code>removed</code> (a program that follows an
+entry across a change of key can match it by DOI). Every other message
+(questions, warnings, the files moved) goes to the standard error. An error
+exits with status 1.</p>
 <h2 id="actions-on-the-listed-entries">Actions on the listed entries<a class="headerlink" href="#actions-on-the-listed-entries" title="Permanent link">&para;</a></h2>
 <p><code>papers list</code> can run a command on the entries it lists: list the entries,
 then act on them. Each action calls the same code as the command it stands
