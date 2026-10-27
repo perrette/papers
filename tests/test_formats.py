@@ -1,10 +1,13 @@
-"""RIS and CSL-JSON: the mappings of papers.formats, the import of sample
-exports (tests/formats), `papers export --format`, `papers list --format`,
-`papers add FILE.ris|FILE.json`, and what happens when rispy is missing.
+"""RIS, CSL-JSON and BibJSON: the mappings of papers.formats, the import of
+sample exports (tests/formats), `papers export --format`, `papers list
+--format`, `papers add FILE.ris|FILE.json|FILE.bib.json`, and what happens
+when rispy is missing.
 
 tests/formats/csl-data.json is the CSL-JSON schema of
 https://github.com/citation-style-language/schema
 (schemas/input/csl-data.json, commit 40b3ce0, 2022-03-21, MIT license).
+tests/formats/bibjson.json has the two example records of the BibJSON page
+(https://github.com/rufuspollock-okfn/bibjson, index.html).
 """
 import importlib.util
 import io
@@ -269,6 +272,59 @@ class TestCSL(unittest.TestCase):
                 self.assertEqual(item['type'], other['type'], key)
 
 
+class TestBibJSON(unittest.TestCase):
+
+    def test_article(self):
+        record = formats.entry_to_bibjson(sample_entries()[0], ['files/a.pdf'])
+        self.assertEqual((record['type'], record['id']), ('article', 'perrette_landerer2013'))
+        self.assertEqual(record['author'][0], {'name': 'Perrette, M.'})
+        self.assertEqual(record['journal'], {'name': 'Earth System Dynamics'})
+        self.assertEqual(record['file'], ['files/a.pdf'])
+        collection = json.loads(formats.dumps_bibjson(sample_entries()))
+        self.assertEqual(collection['metadata'], {'records': 7})
+        self.assertEqual(len(collection['records']), 7)
+
+    def test_round_trip(self):
+        # nothing is lost: the fields as they are, LaTeX included
+        entries = sample_entries()
+        back = formats.loads_bibjson(formats.dumps_bibjson(entries, files=lambda e: ['files/x.pdf']))
+        for e, b in zip(entries, back):
+            self.assertEqual((b.key, b.entry_type), (e.key, e.entry_type))
+            self.assertEqual(links(b), ['files/x.pdf'])
+            self.assertEqual({k: v for k, v in fields(b).items() if k != 'file'},
+                             {k: v for k, v in fields(e).items() if k != 'file'}, e.key)
+
+    def test_spec_examples(self):
+        first, second = read_file(os.path.join(FIXTURES, 'bibjson.json'), 'bibjson')
+        self.assertEqual(first.key, '')  # no id: papers makes one
+        self.assertEqual(fields(first)['author'].split(' and ')[:2], ['Richard Jones', 'Mark MacGillivray'])
+        self.assertEqual(fields(first)['journal'], 'Journal of Cheminformatics')
+        self.assertEqual(fields(first)['doi'], '10.1186/1758-2946-3-47')  # from the identifiers
+        self.assertNotIn('link', fields(first))
+        self.assertEqual(second.key, 'ID_1')
+        self.assertEqual(fields(second)['author'], 'Erdös, Paul')
+        self.assertEqual(fields(second)['journal'], 'American Journal of Mathematics')
+        self.assertNotIn('collection', fields(second))
+
+    def test_one_record_or_list(self):
+        record = {'type': 'book', 'id': 'b2000', 'title': 'T', 'keywords': ['a', 'b'], 'file': 'b.pdf'}
+        for text in (json.dumps(record), json.dumps([record])):
+            [e] = formats.loads_bibjson(text)
+            self.assertEqual((e.key, e.entry_type, fields(e)['keywords']), ('b2000', 'book', 'a, b'))
+            self.assertEqual(links(e), ['b.pdf'])
+
+    def test_not_bibjson(self):
+        self.assertRaises(ValueError, formats.loads_bibjson, 'not json')
+        self.assertRaises(ValueError, formats.loads_bibjson, '"a string"')
+
+    def test_file_format(self):
+        self.assertEqual(formats.file_format('a/papers.bib.json'), 'bibjson')
+        self.assertEqual(formats.file_format('a/papers.JSON'), 'csl-json')
+        self.assertEqual(formats.file_format('a/papers.ris'), 'ris')
+        self.assertEqual(formats.file_format('a/refs.txt'), 'bibtex')
+        self.assertEqual(formats.file_format('a/refs.txt', 'bibjson'), 'bibjson')
+
+
 @needs_rispy
 class TestRIS(unittest.TestCase):
 
@@ -417,7 +473,7 @@ class TestExportFormats(LibraryCommands):
     @needs_rispy
     def test_all(self):
         out = self.out('export ../out --format all --no-git')
-        self.assertIn('(papers.bib, papers.ris, papers.json; files: copy)', out)
+        self.assertIn('(papers.bib, papers.ris, papers.json, papers.bib.json; files: copy)', out)
         self.assertNotIn('not a papers library', out)
         biblio, entries = self.entries('out', 'papers.bib')
         self.assertEqual(len(entries), 7)
@@ -446,6 +502,15 @@ class TestExportFormats(LibraryCommands):
         self.lib('export ../out --format ris --format csl-json,ris')
         self.assertEqual(sorted(os.listdir(self.path('out'))), ['files', 'papers.json', 'papers.ris'])
 
+    def test_bibjson(self):
+        self.lib('export ../out --format bib.json')
+        self.assertEqual(sorted(os.listdir(self.path('out'))), ['files', 'papers.bib.json'])
+        records = json.load(open(self.path('out', 'papers.bib.json')))['records']
+        record = next(r for r in records if r['id'] == 'perrette_landerer2013')
+        [file] = record['file']
+        self.assertTrue(file.startswith('files/'))
+        self.assertTrue(os.path.samefile(self.path('out', file), self.pdf))
+
     def test_files_none(self):
         self.lib('export ../out --format csl-json --files none')
         items = json.load(open(self.path('out', 'papers.json')))
@@ -462,6 +527,11 @@ class TestListFormats(LibraryCommands):
         items = json.loads(self.out('list perrette --format csl-json'))
         self.assertEqual([i['id'] for i in items], ['perrette_landerer2013'])
         self.assertEqual(items[0]['custom'], {'file': [self.pdf]})  # absolute paths
+
+    def test_bibjson(self):
+        records = json.loads(self.out('list perrette --format bibjson'))['records']
+        self.assertEqual([r['id'] for r in records], ['perrette_landerer2013'])
+        self.assertEqual(records[0]['file'], [self.pdf])  # absolute paths
 
     @needs_rispy
     def test_ris(self):
@@ -527,6 +597,14 @@ class TestAddFormats(LibraryCommands):
         self.lib('add ../refs.txt --format ris --no-pool')
         _, entries = self.entries('lib', 'papers.bib')
         self.assertIn('A forced book', [e.fields_dict['title'].value for e in entries.values()])
+
+    def test_add_bibjson(self):
+        record = {'type': 'book', 'id': 'doe2024', 'author': [{'name': 'Doe, Jane'}], 'title': 'A BibJSON book',
+                  'year': '2024'}
+        Path(self.path('refs.bib.json')).write_text(json.dumps({'records': [record]}))
+        self.lib('add ../refs.bib.json --no-pool')
+        _, entries = self.entries('lib', 'papers.bib')
+        self.assertEqual(entries['doe2024'].fields_dict['title'].value, 'A BibJSON book')
 
     def test_bibtex_by_default(self):
         # a file of another extension is bibtex, as before

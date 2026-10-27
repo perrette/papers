@@ -196,11 +196,12 @@ memory of the source. To take entries from the pool so that they stay
 linked to it (later pulls bring the corrections made there), use
 `papers pull KEY` (see [`papers pull`](pools.md#papers-pull)).
 
-## Add RIS and CSL-JSON files
+## Add RIS, CSL-JSON and BibJSON files
 
 `papers add` reads RIS (`.ris`, as exported by Zotero, EndNote, Web of
-Science, Scopus...) and CSL-JSON (`.json`, as exported by Zotero or pandoc)
-files, recognized by their extension; `--format ris|csl-json|bibtex` sets
+Science, Scopus...), CSL-JSON (`.json`, as exported by Zotero or pandoc)
+and BibJSON (`.bib.json`, see [BibJSON](export.md#bibjson)) files,
+recognized by their extension; `--format ris|csl-json|bibjson|bibtex` sets
 the format of a file of another extension. Other files are read as bibtex.
 RIS needs the [rispy](https://pypi.org/project/rispy/) package (see
 [Installation](installation.md#optional-ris-support)).

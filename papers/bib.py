@@ -521,11 +521,10 @@ class Biblio:
         return self.add_bibtex(bibtex, relative_to=os.path.dirname(os.path.abspath(file)), **kw)
 
     def add_file_of_format(self, file, fmt, **kw):
-        "add the entries of a RIS or CSL-JSON file (see papers.formats)"
-        from papers.formats import read_file
-        names = {'ris': 'RIS file', 'csl-json': 'CSL-JSON file'}
+        "add the entries of a RIS, CSL-JSON or BibJSON file (see papers.formats)"
+        from papers.formats import LABELS, read_file
         return self.add_entries(read_file(file, fmt), relative_to=os.path.dirname(os.path.abspath(file)),
-                                what=names.get(fmt, fmt), **kw)
+                                what=f'{LABELS[fmt]} file', **kw)
 
 
     def find_doi(self, doi):
