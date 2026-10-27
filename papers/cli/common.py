@@ -110,10 +110,15 @@ def _print_biblio_diff(biblio, touched_entries, show_existing=False, notes=None)
     new_entries_by_key = {get_entry_val(e, 'ID', ''): e for e in biblio.db.entries}
     new_set = set(new_entries_by_key)
     modified_set = set(get_entry_val(e, 'ID', '') for e in touched_entries).intersection(set.intersection(old_set, new_set))
+    # the entries whose key changed (Biblio.renamed_keys): neither removed nor added
+    renamed = {new: old for old, new in biblio.renamed_keys()}
+    removed_set = old_set - new_set - set(renamed.values())
+    added_set = new_set - old_set - set(renamed)
 
     if porcelain is not None:  # --porcelain: the keys only, for programs
-        lines = [f'removed {ID}' for ID in sorted(old_set - new_set)]
-        lines += [f'added {ID}' for ID in sorted(new_set - old_set)]
+        lines = [f'removed {ID}' for ID in sorted(removed_set)]
+        lines += [f'renamed {renamed[ID]} {ID}' for ID in sorted(renamed)]
+        lines += [f'added {ID}' for ID in sorted(added_set)]
         for ID in sorted(modified_set):
             if not entry_content_equal(old_entries_by_key[ID], new_entries_by_key[ID]):
                 lines.append(f'modified {ID}')
@@ -124,10 +129,14 @@ def _print_biblio_diff(biblio, touched_entries, show_existing=False, notes=None)
         return
 
     loaded = SimpleNamespace(relative_to=biblio.loaded_relative_to)  # the file links as loaded
-    for ID in sorted(old_set - new_set):
+    for ID in sorted(removed_set):
         print(format_entry(loaded, old_entries_by_key[ID], prefix="Removed"))
 
-    for ID in sorted(new_set - old_set):
+    for ID in sorted(renamed):
+        print(format_entry(biblio, new_entries_by_key[ID], prefix="Renamed").rstrip() + f' (was {renamed[ID]})'
+              + note(ID))
+
+    for ID in sorted(added_set):
         print(format_entry(biblio, new_entries_by_key[ID], prefix="Added") + note(ID))
         _print_placed(biblio, new_entries_by_key[ID])
 
@@ -324,6 +333,8 @@ def save_entries(config, biblio, exchange=None):
             savebib(biblio, config)
             return {}
         exchange = Exchange(config, biblio)
+    for old, new in biblio.renamed_keys():  # the records follow the key, before the push looks them up
+        exchange.origin.rekey(old, new)
     notes = push_notes(push_changed(exchange))
     save_exchange(exchange)
     return notes
@@ -427,6 +438,29 @@ class EditRejected(PapersExit):
     "an edit that is not applied: the entries stay as they were (exit 1)"
 
 
+# the name of a bibtex field
+FIELD_NAME = re.compile(r'^[A-Za-z][\w-]*$')
+
+# the fields that `papers edit --set/--unset` does not change, and what does
+_NOT_SET = {'id': '`papers edit KEY --key NEW`', 'file': '`papers file attach` and `detach`'}
+
+
+def set_fields(entries, values=(), unset=()):
+    """set the fields [(name, value)] of the entries, and remove the fields
+    `unset`; EditRejected for a malformed name, the key or the file links"""
+    for name in [name for name, _ in values] + list(unset):
+        if name.lower() in _NOT_SET:
+            raise EditRejected(f'{name}: changed by {_NOT_SET[name.lower()]}, not --set or --unset')
+        if not FIELD_NAME.match(name):
+            raise EditRejected(f'{name!r} is not a field name')
+    for e in entries:
+        for name, value in values:
+            e[name.lower()] = value
+        for name in unset:
+            if name.lower() in e.fields_dict:
+                del e[name.lower()]
+
+
 def parse_edited(text, fmt='bibtex'):
     """the entries of an edited text (bibtex, or ris or csl-json); EditRejected
     if it does not parse, has no entry, or has a malformed field name"""
@@ -443,9 +477,8 @@ def parse_edited(text, fmt='bibtex'):
             raise EditRejected(f'the text could not be read as {fmt} ({error}) -- keeping original entries')
     if not new_entries:
         raise EditRejected('the edited text contains no entry -- keeping original entries')
-    fieldname = re.compile(r'^[A-Za-z][\w-]*$')
     for e in new_entries:
-        bad = [k for k, _ in e.items() if not fieldname.match(k)]
+        bad = [k for k, _ in e.items() if not FIELD_NAME.match(k)]
         if bad:
             raise EditRejected(f'edited entry {get_entry_val(e, "ID", "")!r} has malformed field name(s) {bad} '
                                '-- keeping original entries')

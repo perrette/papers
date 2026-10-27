@@ -145,6 +145,14 @@ class TestAutoPush(ExchangeTest):
             self.lib('edit smith2020climate')
         self.assertEqual(self.smith('pool')['note'], 'edited')
 
+    def test_edit_key(self):
+        # a change of key is not a new entry for the pool
+        pool_keys = sorted(self.bib('pool')[1])
+        self.lib('edit smith2020climate --key smith2020')
+        self.assertEqual(sorted(self.bib('pool')[1]), pool_keys)
+        self.lib('edit smith2020 --set note=after')
+        self.assertEqual(self.smith('pool')['note'], 'after')
+
     def test_check_duplicates(self):
         Path(self.path('lib', 'papers.bib')).write_text(Path(self.path('lib', 'papers.bib')).read_text()
             + '\n@article{zdup,\n doi = {10.1000/abc123},\n note = {from the duplicate}\n}\n')

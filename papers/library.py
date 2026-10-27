@@ -146,6 +146,8 @@ def savebib(biblio, config, other_changes=False):
         logger.info(f'{config.bibtex}: nothing changed, not saved')
         return
     logger.info(f'Saving {config.bibtex}')
+    if isinstance(biblio, Biblio):
+        follow_renamed_keys(biblio, config)
     if biblio is not None:
         if isinstance(biblio, Biblio):
             papers.checksums.update(config, biblio)
@@ -162,6 +164,21 @@ def savebib(biblio, config, other_changes=False):
         logger.debug('do not backup bib: git is off')
         # the file operations of the command, for undo (see papers.journal)
         journal.save_last(config.bibtex, config.gitdir, journal.take(config.bibtex))
+
+
+def follow_renamed_keys(biblio, config):
+    """what names the entries whose key changed in the command (see
+    Biblio.renamed_keys): the crossref fields of the other entries, and the
+    records of the exchanges with pools (.papers/origin/)"""
+    renamed = biblio.renamed_keys()
+    if not renamed:
+        return
+    from papers.pools import Origin  # papers.pools imports this module
+    origin = Origin.for_bibtex(config.bibtex)
+    for old, new in renamed:
+        biblio.rekey_references(old, new)
+        origin.rekey(old, new)
+    origin.save()
 
 
 def finish_journal():
