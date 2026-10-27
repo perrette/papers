@@ -782,7 +782,11 @@ class Biblio:
 
         newname = (formatter or self.nameformat)(e)
         # absolute, to compare with the (absolute) current file paths
-        target = os.path.join(os.path.abspath(self.filesdir), newname)
+        filesdir = os.path.abspath(self.filesdir)
+        target = os.path.normpath(os.path.join(filesdir, newname))
+        if os.path.commonpath([filesdir, target]) != filesdir or target == filesdir:
+            logger.error(f'{get_entry_val(e, "ID", "")}: the file name {newname!r} points outside the files directory: the files are left where they are')
+            return
 
         if callable(copy):
             actions = [copy(file) for file in files]
