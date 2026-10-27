@@ -166,8 +166,12 @@ modified smith2020
 ```
 
 The lines are `added KEY`, `modified KEY`, `removed KEY` and `existing KEY`.
-Every other message (questions, warnings, the files moved) goes to the
-standard error. An error exits with status 1.
+They are facts about keys: an entry whose key changes (e.g. `papers check
+--fix-key`, or a key changed in the editor) is `removed OLD` and `added NEW`,
+and an entry merged into another one is `removed` (a program that follows an
+entry across a change of key can match it by DOI). Every other message
+(questions, warnings, the files moved) goes to the standard error. An error
+exits with status 1.
 
 ## Actions on the listed entries
 
