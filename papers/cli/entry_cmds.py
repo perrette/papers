@@ -25,7 +25,7 @@ from papers.cli.file_cmds import (attach_entry_files, check_entries_files, detac
 from papers.cli.pool_cmds import exchange_pools, export_entries, pull_entries, push_entries, sync_entries
 from papers.cli.common import (view_entry_files, set_format_config_from_cmd, _print_biblio_diff, files_mode,
                                duplicate_resolver, save_exchange, stdin_is_terminal, edit_entries, edit_selected,
-                               EditRejected, parse_edited, replace_entries,
+                               EditRejected, parse_edited, replace_entries, set_fields,
                                print_kept_files, _delete_files_option, library_pools, push_notes, push_changed,
                                save_entries, print_push_notes)
 
@@ -281,7 +281,8 @@ def checkcmd(parser, o, config):
     elif o.on_duplicate or o.mode:
         logger.warning('--on-duplicate and -m/--mode only apply with --duplicates')
 
-    print_push_notes(biblio, save_entries(config, biblio))
+    notes = save_entries(config, biblio)
+    _print_biblio_diff(biblio, biblio.entries, notes=notes)
 
 
 def remove_entries(biblio, entries, config, delete_files=None, ask=True):
@@ -405,6 +406,12 @@ def _entry_from(path, fmt, entry):
 
 
 def editcmd(parser, o, config):
+    ways = [name for name, given in (('--from', o.from_file), ('--set/--unset', o.set or o.unset),
+                                     ('--key', o.new_key)) if given]
+    if len(ways) > 1:
+        parser.error(f'{" and ".join(ways)}: one at a time')
+    if o.keep_old_key and not o.new_key:
+        parser.error('--keep-old-key goes with --key NEW')
     if o.from_file == '-' and '-' in o.entries:
         parser.error('--from - and the keys from the standard input (-): only one of them can read it')
     if o.format and not o.from_file:
@@ -417,18 +424,22 @@ def editcmd(parser, o, config):
         if len(entries) != 1:
             raise PapersExit(f'--from replaces one entry: {len(entries)} selected')
         replace_entries(biblio, entries, [_entry_from(o.from_file, o.format, entries[0])])
-        notes = save_entries(config, biblio)
-        _print_biblio_diff(biblio, biblio.entries, notes=notes)
-        return
-    if '-' in o.entries and not stdin_is_terminal():
-        # the keys came from a pipe: the editor reads the terminal
-        try:
-            fd = os.open('/dev/tty', os.O_RDONLY)
-            os.dup2(fd, 0)
-            os.close(fd)
-        except OSError:
-            pass
-    edit_selected(biblio, entries)
+    elif o.set or o.unset:
+        set_fields(entries, o.set or [], o.unset or [])
+    elif o.new_key:
+        if len(entries) != 1:
+            raise PapersExit(f'--key changes the key of one entry: {len(entries)} selected')
+        biblio.set_key(entries[0], o.new_key, keep_old=o.keep_old_key)
+    else:
+        if '-' in o.entries and not stdin_is_terminal():
+            # the keys came from a pipe: the editor reads the terminal
+            try:
+                fd = os.open('/dev/tty', os.O_RDONLY)
+                os.dup2(fd, 0)
+                os.close(fd)
+            except OSError:
+                pass
+        edit_selected(biblio, entries)
     notes = save_entries(config, biblio)
     _print_biblio_diff(biblio, biblio.entries, notes=notes)
 

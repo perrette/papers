@@ -525,6 +525,17 @@ class TestPull(PoolTest):
         out = self.out('pull')
         self.assertIn('nothing to pull from pool ../pool', out)
 
+    def test_key_changed(self):
+        # the record of the exchange follows the key (papers edit --key)
+        self.lib('edit smith2020climate --key smith2020')
+        e = self.entry('smith2020')
+        self.assertEqual(self.origin().get(e).key, 'smith2020')
+        self.assertIn('nothing to pull from pool ../pool', self.out('pull'))
+        self.edit_pool('journal = {Nat.}', 'journal = {Nature}')
+        self.lib('pull')
+        self.assertEqual(self.entry('smith2020')['journal'], 'Nature')
+        self.assertEqual(list(self.bib()[1]), ['smith2020'])
+
     def test_nothing_to_pull_is_not_saved(self):
         self.lib('pull')
         with patch('papers.bib.Biblio.save') as save:

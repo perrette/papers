@@ -331,3 +331,73 @@ class TestEditFrom(EntryTest):
             self.lib('edit one2000 --format ris')
         with self.assertRaisesRegex(PapersExit, 'missing.bib'):
             self.lib('edit one2000 --from missing.bib')
+
+
+class TestEditSet(EntryTest):
+    "papers edit KEY... --set FIELD=VALUE --unset FIELD, --key NEW"
+
+    def setUp(self):
+        super().setUp()
+        self.bib(tagged('one2000', 'kiwi', 'files/one.pdf'), entry('two2000'),
+                 '@incollection{chap2000,\n crossref = {one2000},\n title = {A chapter}\n}\n')
+
+    def porcelain(self, cmd):
+        out = io.StringIO()
+        with redirect_stdout(out), patch('sys.stderr', io.StringIO()):
+            self.lib(cmd + ' --porcelain')
+        return out.getvalue().splitlines()
+
+    def test_set_unset(self):
+        self.lib('edit one2000 two2000 --set journal="Earth System Dynamics" Year=2013')
+        for key in ('one2000', 'two2000'):
+            e = self.entry(key)
+            self.assertEqual((e['journal'], e['year']), ('Earth System Dynamics', '2013'))
+        self.lib('edit one2000 --unset journal keywords')
+        e = self.entry('one2000')
+        self.assertNotIn('journal', e)
+        self.assertNotIn('keywords', e)
+        self.assertIn('one.pdf', e['file'])
+
+    def test_set_refused(self):
+        for value in ('file=x.pdf', 'ID=x', 'bad.name=x'):
+            with self.assertRaises(PapersExit):
+                self.lib(f'edit one2000 --set {value}')
+        with self.assertRaises(PapersExit):
+            self.lib('edit one2000 --unset file')
+        with self.assertRaises(SystemExit), patch('sys.stderr', io.StringIO()):
+            self.lib('edit one2000 --set novalue')
+        with self.assertRaises(SystemExit), patch('sys.stderr', io.StringIO()):
+            self.lib('edit one2000 --set a=b --key x')
+        self.assertIn('one.pdf', self.entry('one2000')['file'])
+
+    def test_key(self):
+        self.assertEqual(self.porcelain('edit one2000 --key perrette2013'),
+                         ['renamed one2000 perrette2013', 'modified chap2000'])
+        self.assertEqual(self.keys(), ['chap2000', 'perrette2013', 'two2000'])
+        self.assertEqual(self.entry('chap2000')['crossref'], 'perrette2013')  # follows
+        self.assertNotIn('ids', self.entry('perrette2013'))
+
+    def test_fix_key(self):
+        # any change of key of an entry is a rename, papers check --fix-key too
+        self.bib('@article{2000bad,\n author = {Smith, John},\n title = {Climate},\n year = {2000}\n}\n',
+                 '@incollection{chap,\n crossref = {2000bad},\n title = {A chapter}\n}\n')
+        self.assertEqual(self.porcelain('check --fix-key -y'), ['renamed 2000bad smith2000', 'modified chap'])
+        self.assertEqual(self.entry('chap')['crossref'], 'smith2000')
+
+    def test_keep_old_key(self):
+        self.lib('edit one2000 --key perrette2013 --keep-old-key')
+        self.assertEqual(self.entry('perrette2013')['ids'], 'one2000')
+        self.lib('edit one2000 --set note=found')  # the old key still selects it
+        self.assertEqual(self.entry('perrette2013')['note'], 'found')
+
+    def test_key_refused(self):
+        with self.assertRaisesRegex(PapersExit, 'another entry'):
+            self.lib('edit one2000 --key two2000')
+        with self.assertRaisesRegex(PapersExit, 'not a valid key'):
+            self.lib('edit one2000 --key "a b"')
+        with self.assertRaisesRegex(PapersExit, 'one entry'):
+            self.lib('edit one2000 two2000 --key x')
+        with self.assertRaises(SystemExit), patch('sys.stderr', io.StringIO()):
+            self.lib('edit one2000 --keep-old-key')
+        self.assertEqual(self.keys(), ['chap2000', 'one2000', 'two2000'])
+

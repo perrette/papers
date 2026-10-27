@@ -1,5 +1,6 @@
 import difflib
 import os
+import re
 from collections import Counter
 from pathlib import Path
 import shutil
@@ -176,6 +177,7 @@ class Biblio:
         self.pool_lookup = None
         # the entries as loaded (see mark_loaded, changed_entries)
         self.loaded_entries = None
+        self.loaded_keys = ()
         self._loaded = None
         # {new path: (original path, 'moved' or 'copied')}: the files placed by the command, for its report
         self.placed = {}
@@ -260,8 +262,44 @@ class Biblio:
         changed_entries and the report of the changes of a command
         (loaded_entries: copies of the entries; loaded_relative_to)"""
         self.loaded_entries = [entry_copy(e) for e in self.entries]
+        self.loaded_keys = [(e, e.key) for e in self.entries]  # the entries themselves, for renamed_keys
         self.loaded_relative_to = self.relative_to
         self._loaded = None
+
+    def renamed_keys(self):
+        """[(old, new)]: the entries whose key changed since mark_loaded (the
+        same entry; its old key no longer in the library, its new key not in
+        it when loaded: not a merge), [] without mark_loaded"""
+        if self.loaded_entries is None:
+            return []
+        now = {e.key.lower() for e in self.entries}
+        before = {key.lower() for _, key in self.loaded_keys}
+        present = {id(e) for e in self.entries}
+        return [(old, e.key) for e, old in self.loaded_keys
+                if id(e) in present and e.key.lower() != old.lower()
+                and old.lower() not in now and e.key.lower() not in before]
+
+    def rekey_references(self, old, new):
+        "the crossref fields of the entries that name `old` (a key that changed to `new`)"
+        for e in self.entries:
+            if get_entry_val(e, 'crossref', '').lower() == old.lower():
+                e['crossref'] = new
+
+    def set_key(self, e, new, keep_old=False):
+        """change the key of entry `e` to `new` (with keep_old, its former key
+        goes to its ids field, where papers and biblatex still find it); the
+        records of the exchanges with pools follow when the library is saved
+        (see papers.library.savebib)"""
+        if not isvalidkey(new) or _KEY_FORBIDDEN.search(new):
+            raise PapersExit(f'{new!r} is not a valid key (no spaces, commas, braces, quotes, or #%~=()\\; '
+                             'not starting with a digit)')
+        if any(x is not e and x.key.lower() == new.lower() for x in self.entries):
+            raise PapersExit(f'{new}: another entry of the library has this key')
+        old = e.key
+        set_entry_key(e, new)
+        if keep_old:
+            ids = [i.strip() for i in get_entry_val(e, 'ids', '').split(',') if i.strip()]
+            e['ids'] = ', '.join([i for i in ids if i.lower() != new.lower()] + [old])
 
     @property
     def loaded(self):
@@ -281,17 +319,26 @@ class Biblio:
         if self.loaded is None:
             return [], []
         new, modified = [], []
+        renamed = self._renamed_map()
         for e in self.entries:
-            state = self.loaded.get(self.key(e))
+            state = self._loaded_state(e, renamed)
             if state is None:
-                former = [k.strip().lower() for k in get_entry_val(e, 'ids', '').split(',')]
-                state = next((self.loaded[k] for k in former if k in self.loaded), None)
-                if state is None:
-                    new.append(e)
-                    continue
-            if state != self._state(e):
+                new.append(e)
+            elif state != self._state(e):
                 modified.append(e)
         return new, modified
+
+    def _renamed_map(self):
+        "{lower-case new key: lower-case old key} of renamed_keys"
+        return {new.lower(): old.lower() for old, new in self.renamed_keys()}
+
+    def _loaded_state(self, e, renamed):
+        """the state of an entry as loaded: by its key, a key it had before
+        in the command (`renamed`, see _renamed_map), or a former key of its
+        ids field; None for an entry new since mark_loaded"""
+        former = [k.strip().lower() for k in get_entry_val(e, 'ids', '').split(',')]
+        keys = [self.key(e), renamed.get(self.key(e))] + former
+        return next((self.loaded[k] for k in keys if k in self.loaded), None)
 
     # what changed when the library was loaded, before mark_loaded (file links
     # converted to the `paths` setting, links to pool files repaired): saved
@@ -314,10 +361,7 @@ class Biblio:
         new since, None without mark_loaded"""
         if self.loaded is None:
             return None
-        state = self.loaded.get(self.key(e))
-        if state is None:
-            former = [k.strip().lower() for k in get_entry_val(e, 'ids', '').split(',')]
-            state = next((self.loaded[k] for k in former if k in self.loaded), None)
+        state = self._loaded_state(e, self._renamed_map())
         value = next((v for k, v in state[1] if k == 'file'), '') if state is not None else ''
         return parse_file(value, relative_to=self.relative_to)
 
@@ -969,6 +1013,10 @@ class Biblio:
                 for k in [k for k, _ in e.items()]:
                     if k not in e_old:
                         del e[k]
+
+
+# the characters that a bibtex key cannot have
+_KEY_FORBIDDEN = re.compile(r'[\s,{}"#%~=()\\]')
 
 
 def isvalidkey(key):

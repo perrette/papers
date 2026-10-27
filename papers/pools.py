@@ -631,6 +631,15 @@ class Origin:
         if self.entries.get(pool, {}).pop(key.lower(), None) is not None:
             self.changed.add(pool)
 
+    def rekey(self, old, new):
+        "the records of a library entry whose key changed from `old` to `new`, in every pool"
+        for pool, records in self.entries.items():
+            record = records.pop(old.lower(), None)
+            if record is not None:
+                set_entry_key(record, new)
+                records[new.lower()] = record
+                self.changed.add(pool)
+
     def pulled(self, pool):
         "mtime (ns) of the pool's bibtex at the last exchange (see set_pulled), or None"
         return self.pulls.get(pool)

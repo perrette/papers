@@ -81,6 +81,14 @@ def _format_parser(kind, title, what, fmt, template_help):
     return parser
 
 
+def _field_value(text):
+    "FIELD=VALUE of add --metadata and edit --set: (field, value)"
+    name, sep, value = text.partition('=')
+    if not sep or not name.strip():
+        raise argparse.ArgumentTypeError(f'{text!r}: FIELD=VALUE expected')
+    return name.strip(), value
+
+
 # the names of the formats in `papers export --format` (bib, json, bib.json: other forms)
 _EXPORT_NAMES = {'bib': 'bibtex', 'json': 'csl-json', 'bib.json': 'bibjson', **{fmt: fmt for fmt in FORMATS}}
 
@@ -177,8 +185,9 @@ def get_parser(config=None):
              'NO_COLOR environment variable is not set')
     loggingp.add_argument('--porcelain', action='store_true',
         help='output for programs (as git\'s): the standard output has only the entries that the command '
-             'added, modified or removed, or found already in the library, one per line: "added KEY", '
-             '"modified KEY", "removed KEY", "existing KEY"; every other message goes to the standard error')
+             'added, modified, renamed or removed, or found already in the library, one per line: "added KEY", '
+             '"modified KEY", "renamed OLD NEW", "removed KEY", "existing KEY"; every other message goes to the '
+             'standard error')
 
     cfg = argparse.ArgumentParser(add_help=False, parents=[loggingp])
     grp = cfg.add_argument_group('config')
@@ -400,7 +409,7 @@ def get_parser(config=None):
         warning (until v4)''')
     grp.add_argument('--journal', help='the journal')
     grp.add_argument('--year', help='the year')
-    grp.add_argument('--metadata', nargs="+", metavar="KEY=VALUE", type=lambda meta: meta.split('=', 1),
+    grp.add_argument('--metadata', nargs="+", metavar="FIELD=VALUE", type=_field_value,
         help='any fields')
     grp.add_argument('--no-query-doi', action='store_true', help='do not attempt to parse and query doi')
     grp.add_argument('--no-query-fulltext', action='store_true', help='do not attempt to query fulltext in case doi query fails')
@@ -735,7 +744,8 @@ def get_parser(config=None):
     # edit, rm, tag
     # =============
     editp = subparsers.add_parser('edit', parents=[cfg],
-        description='edit entries in a text editor (the editor setting, else $VISUAL, else $EDITOR)')
+        description='edit entries in a text editor (the editor setting, else $VISUAL, else $EDITOR), or '
+                    'without an editor: --from, --set and --unset, --key')
     editp.add_argument('entries', nargs='+', metavar='KEY',
         help=_selection_help)
     editp.add_argument('--from', dest='from_file', metavar='FILE',
@@ -744,6 +754,17 @@ def get_parser(config=None):
              'file and keywords fields when FILE has none; its other fields are those of FILE')
     editp.add_argument('--format', choices=FORMATS,
         help=f'the format of --from FILE (default: from the extension: {extensions_help()}; - is bibtex)')
+    editp.add_argument('--set', nargs='+', metavar='FIELD=VALUE', type=_field_value,
+        help='set fields of the entries, e.g. --set journal="Earth System Dynamics" year=2013 (the value '
+             'replaces the whole field, as written in bibtex: author="Smith, John and Doe, Jane"). '
+             'Not the key (--key) or the file links (papers file attach, detach); tags: papers tag')
+    editp.add_argument('--unset', nargs='+', metavar='FIELD', help='remove fields of the entries')
+    editp.add_argument('--key', dest='new_key', metavar='NEW',
+        help='change the key of the entry (one entry). The records of the exchanges with pools and the '
+             'crossref fields of other entries follow; LaTeX documents that cite the old key do not')
+    editp.add_argument('--keep-old-key', action='store_true',
+        help='with --key: the old key goes to the ids field of the entry, where papers and biblatex '
+             'still find it')
     _command(editp, editcmd, library=True)
 
     rmp = subparsers.add_parser('rm', parents=[cfg],

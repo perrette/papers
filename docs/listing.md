@@ -149,15 +149,43 @@ In a terminal, `papers edit KEY --from -` waits for the entry: paste it, and
 papers continues when the closing brace of the entry is read (Ctrl-D ends
 the input too, Ctrl-C cancels).
 
+`--set` and `--unset` change single fields, of one entry or several:
+
+```
+papers edit perrette2013 --set journal="Earth System Dynamics" year=2013
+papers list --journal "Earth Syst. Dyn." -K | papers edit - --set journal="Earth System Dynamics"
+papers edit smith2020 --unset note
+```
+
+The value replaces the whole field, written as in bibtex
+(`--set author="Smith, John and Doe, Jane"`). The key and the file links
+are not changed this way: `--key` (below) changes the key, and
+`papers file attach` and `detach` the file links. `papers tag` adds and
+removes single tags of the `keywords` field.
+
+`--key NEW` changes the key of one entry:
+
+```
+papers edit perrette_landerer2013 --key perrette2013 [--keep-old-key]
+```
+
+The `crossref` fields of other entries that name the old key, and the
+records of the exchanges with pools (see [Pools](pools.md)), follow the new
+key; LaTeX documents that cite the old key do not. With `--keep-old-key`,
+the old key goes to the `ids` field of the entry: papers (e.g.
+`papers edit OLD`) and biblatex still find the entry by it. A key that
+another entry has is refused. `papers check --fix-key` changes keys the
+same way.
+
 An edit that does not parse, has a malformed field name, or gives the entry
 the key of another entry is not applied, and the command exits with status
-1, with `--from` as with the editor.
+1, with `--from`, `--set` and `--key` as with the editor.
 
 ## Output for programs
 
 `--porcelain` (after git's option of that name) makes the output of a command
 stable for programs: the standard output has only the entries that the
-command added, modified or removed, or found already in the library
+command added, modified, renamed or removed, or found already in the library
 (`papers add` of an entry that is there), one per line, without colours:
 
 ```
@@ -168,11 +196,12 @@ modified perrette2013
 modified smith2020
 ```
 
-The lines are `added KEY`, `modified KEY`, `removed KEY` and `existing KEY`.
-They are facts about keys: an entry whose key changes (e.g. `papers check
---fix-key`, or a key changed in the editor) is `removed OLD` and `added NEW`,
+The lines are `added KEY`, `modified KEY`, `renamed OLD NEW`, `removed KEY`
+and `existing KEY`. `renamed OLD NEW` is an entry whose key the command
+changed (`papers edit OLD --key NEW`, `papers check --fix-key`). An entry
+replaced in the editor with another key is `removed OLD` and `added NEW`,
 and an entry merged into another one is `removed` (a program that follows an
-entry across a change of key can match it by DOI). Every other message
+entry across these can match it by DOI). Every other message
 (questions, warnings, the files moved) goes to the standard error. An error
 exits with status 1.
 
