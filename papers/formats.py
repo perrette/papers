@@ -17,6 +17,7 @@ has no field for files, they are written in the `custom` object
 (`"custom": {"file": [...]}`); on import, a `file` key of the item (a
 string separated by `;`, or a list) is read too.
 """
+import functools
 import importlib
 import importlib.util
 import json
@@ -101,13 +102,25 @@ def load_rispy(interactive=None, input=input):
 # helpers
 # =======
 
+# the characters of LaTeX markup: a value without them is text already
+_LATEX_CHARS = set('\\{}$~%&')
+
+
+@functools.lru_cache(maxsize=None)
+def _latex_converter():
+    # built once: building one rebuilds the table of LaTeX macros (most of the time of a CSL export)
+    from pylatexenc.latex2text import LatexNodes2Text
+    return LatexNodes2Text(math_mode='verbatim')
+
+
 def _latex_to_unicode(value):
     "a bibtex value as unicode text: LaTeX commands decoded, braces removed"
     if not value:
         return value
+    if _LATEX_CHARS.isdisjoint(value):
+        return value.strip()
     try:
-        from pylatexenc.latex2text import LatexNodes2Text
-        return LatexNodes2Text(math_mode='verbatim').latex_to_text(value).strip()
+        return _latex_converter().latex_to_text(value).strip()
     except Exception as error:  # pragma: no cover - pylatexenc is a dependency of bibtexparser
         logger.debug(f'latex to unicode: {error}: {value!r}')
         return value.replace('{', '').replace('}', '')
