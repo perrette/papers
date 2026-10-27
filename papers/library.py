@@ -160,6 +160,20 @@ def savebib(biblio, config, other_changes=False):
         journal.save_last(config.bibtex, journal.take(config.bibtex))
 
 
+def finish_journal():
+    """at the end of a command: the file operations done after the last
+    snapshot of its library (e.g. the files deleted by papers rm, once the
+    library is saved) join that snapshot, for undo (see papers.journal)"""
+    ops, where = journal.leftover()
+    if not ops or where is None or papers.config.DRYRUN:
+        return
+    if where[0] == 'git':
+        from papers.backup import amend_journal
+        amend_journal(where[1], where[2], ops)
+    else:
+        journal.append_last(where[1], ops)
+
+
 def convert_file_links(config):
     "write the file links of the bibtex as the `paths` setting says (relative or absolute)"
     biblio = get_biblio(config)  # converts to absolute links if needed

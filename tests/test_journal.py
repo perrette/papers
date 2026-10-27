@@ -1,6 +1,12 @@
 """undo and redo move the files of the command back and forth (papers.journal)"""
 import os
+import time
 from pathlib import Path
+from unittest.mock import patch
+
+from papers import journal
+from papers.config import Config, CONFIG_FILE_LOCAL
+from papers.files import delete_files
 
 from tests.common import FileTest, entry
 
@@ -90,7 +96,7 @@ class TestWithoutGit(JournalTest):
     def test_deleted_file_reported(self):
         self.lib('rm one2000 --delete-files')
         out = self.out('undo')
-        self.assertIn('deleted by the command, not restored', out)
+        self.assertIn('restored from the trash', out)
 
 
 class TestWithGit(JournalTest):
@@ -148,3 +154,72 @@ class TestShallow(FileTest):
         self.papers('undo', cwd=self.path('shallow'))
         self.assertTrue(os.path.exists(a))
         self.assertEqual(os.listdir(self.path('pool', 'files')), pool_files)  # the pool entry still links it
+
+
+class TestTrash(JournalTest):
+
+    def setUp(self):
+        super().setUp()
+        self.lib('config git true')
+
+    def trash(self):
+        config = Config.load(self.path('lib', CONFIG_FILE_LOCAL))
+        return config.trash()[0]
+
+    def test_rm_undo_restores_from_the_trash(self):
+        self.lib('rm one2000 --delete-files')
+        self.assertFalse(os.path.exists(self.a))
+        self.assertEqual(len(os.listdir(self.trash())), 1)
+        out = self.out('undo')
+        self.assertIn('restored from the trash', out)
+        self.assertEqual(Path(self.a).read_text(), 'pdf a')
+        self.assertEqual(self.files('one2000'), [self.a])
+        out = self.out('redo')
+        self.assertIn('deleted again (to the trash)', out)
+        self.assertFalse(os.path.exists(self.a))
+        # the trash is not backed up
+        self.assertNotIn('trash', self.lib('git status --short', sp_cmd='check_output'))
+
+    def test_larger_than_the_trash_is_kept_without_terminal(self):
+        self.lib('config trash-size 0')
+        with patch('papers.files.stdin_is_terminal', return_value=False), \
+                self.assertLogs('papers', level='WARNING') as logs:
+            self.lib('rm one2000 --delete-files')
+        self.assertIn('more than the trash holds (0 MB, the trash-size setting)', '\n'.join(logs.output))
+        self.assertTrue(os.path.exists(self.a))  # kept
+
+    def test_larger_than_the_trash_confirmed(self):
+        self.lib('config trash-size 0')
+        with patch('papers.files.stdin_is_terminal', return_value=True), \
+                patch('builtins.input', return_value='y'):
+            self.lib('rm one2000 --delete-files')
+        self.assertFalse(os.path.exists(self.a))
+        self.assertFalse(os.path.isdir(self.trash()) and os.listdir(self.trash()))
+        self.assertIn('deleted by the command, not restored', self.out('undo'))
+
+    def test_old_files_leave_the_trash(self):
+        trash = self.trash()
+        os.makedirs(trash)
+        old = self.write(trash, 'old.pdf')
+        os.utime(old, (0, 0))
+        recent = self.write(trash, 'recent.pdf')
+        journal.empty_trash(trash, days=30, megabytes=100)
+        self.assertEqual(os.listdir(trash), ['recent.pdf'])
+        # beyond the size: the oldest go first
+        Path(old).write_bytes(b'x' * journal.MB)
+        os.utime(old, (time.time() - 10, time.time() - 10))
+        journal.empty_trash(trash, days=30, megabytes=1)
+        self.assertEqual(sorted(os.listdir(trash)), ['recent.pdf'])
+        self.assertTrue(os.path.exists(recent))
+
+    def test_identical_copy_not_trashed(self):
+        # e.g. papers config pool: the library's copy is deleted, the pool has the same file
+        copy = self.write('pool', 'a.pdf', content='pdf a')
+        journal.start(self.path('lib', 'papers.bib'), (self.trash(), 30, 100))
+        delete_files([self.a], same={self.a: copy})
+        self.assertFalse(os.path.exists(self.a))
+        self.assertFalse(os.path.isdir(self.trash()))
+        ops, _ = journal.leftover()
+        self.assertEqual([(op['op'], op['dst']) for op in ops], [('removed', copy)])
+        self.assertIn('restored (a copy of', '\n'.join(journal.reverse(ops)))
+        self.assertEqual(Path(self.a).read_text(), 'pdf a')

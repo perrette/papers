@@ -7,7 +7,7 @@ import sys
 
 import papers.config
 import papers.files
-from papers import journal, logger
+from papers import logger
 from papers.bib import isvalidkey
 from papers.duplicate import FUZZY_RATIO, duplicate_groups, fuzzy_pairs
 from papers.encoding import family_names, format_entries, format_entry, format_key, parse_keywords, standard_name
@@ -405,7 +405,6 @@ def rmcmd(parser, o, config):
     entries = select_entries(biblio, o.entries)
     todelete = remove_entries(biblio, entries, config, delete_files=delete,
                               ask='-' not in o.entries)
-    journal.record_deletions(todelete)
     savebib(biblio, config)
     _print_biblio_diff(biblio, entries)
     delete_files(todelete, dryrun=papers.config.DRYRUN)
@@ -651,7 +650,6 @@ def listcmd(parser, o, config):
 
     elif o.delete:
         todelete = remove_entries(biblio, entries, config, delete_files=_delete_files_option(parser, o, config))
-        journal.record_deletions(todelete)
         savebib(biblio, config)
         delete_files(todelete, dryrun=papers.config.DRYRUN)
 

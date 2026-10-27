@@ -96,6 +96,8 @@ SETTINGS = {
     'git': 'bool',
     'git-lfs': 'bool',
     'editor': 'str',
+    'trash-days': 'int',
+    'trash-size': 'int',
 }
 for _kind in ('name', 'key'):
     for _field in _FORMAT_FIELDS:
@@ -115,7 +117,7 @@ def default_value(name):
         return getattr(NAMEFORMAT, _attr(name))
     if name.startswith('key.'):
         return getattr(KEYFORMAT, _attr(name))
-    return {'paths': 'relative', 'files': 'move', 'auto-push': False,
+    return {'paths': 'relative', 'files': 'move', 'auto-push': False, 'trash-days': 30, 'trash-size': 100,
             'git': False, 'git-lfs': False, 'editor': None}.get(name)
 
 
@@ -446,6 +448,15 @@ class Config:
         # (those shared with it, and new ones; see papers.cli.common.save_entries),
         # in a shallow library only
         self.auto_push = auto_push if auto_push is not None else self.inherited('auto-push')
+        # the trash of the deleted files (see papers.journal.remove): days, megabytes
+        self.trash_days = self.inherited('trash-days')
+        self.trash_size = self.inherited('trash-size')
+
+    def trash(self):
+        "(directory, days, megabytes) of the trash of the library (see papers.journal), or None"
+        if not self.is_library or not self.gitdir:
+            return None
+        return os.path.join(self.gitdir, 'trash'), self.trash_days, self.trash_size  # papers.journal.TRASH_DIR
 
 
     # settings by name (see SETTINGS)
@@ -717,6 +728,11 @@ class Config:
             items.append(('backup', self.backup_summary()))
             if verbose and self.git:
                 items.append(('git backup folder', short_home(str(self.gitdir))))
+            if verbose and self.trash():
+                from papers.journal import MB, trash_size  # papers.journal imports this module
+                count, size = trash_size(self.trash()[0])
+                items.append(('trash', f'{count} file{"" if count == 1 else "s"}, {size / MB:.1f} MB (kept '
+                              f'{self.trash_days} days, up to {self.trash_size} MB: undo restores them)'))
         if verbose:
             items.append(('configuration file', _fmt_path(self.file) if self.file and os.path.exists(self.file)
                           else bcolors.WARNING+'none'+bcolors.ENDC))

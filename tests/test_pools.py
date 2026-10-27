@@ -943,7 +943,8 @@ class TestStatus(PoolTest):
         # the bibtex first, then the files; -v adds the locations, no settings
         lines = self.out('status -v').splitlines()
         self.assertEqual([line.split(':')[0] for line in lines[1:-1]],
-                         ['* bibtex', '* files', '* backup', '* configuration file', '* cache directory', '* version'])
+                         ['* bibtex', '* files', '* backup', '* trash', '* configuration file', '* cache directory',
+                          '* version'])
         self.assertEqual(lines[-1], '`papers config` lists and sets the settings')
 
     def test_after_add_from_pool(self):

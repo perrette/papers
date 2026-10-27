@@ -269,9 +269,9 @@ class TestUndoPoolNoGit(UndoPoolTest):
 
 
 class TestUndoFileRmShallow(UndoPoolTest):
-    """`file rm` in a shallow library deletes the pool file and
+    """`file rm` in a shallow library deletes the pool file (to the trash) and
     removes the link from the pool entry: undo in the library restores its
-    link (broken: the file is not restored), and the pool keeps the change"""
+    link and the file, and the pool keeps the change"""
 
     def test_undo_file_rm(self):
         self.lib('add ../new.bib')
@@ -287,7 +287,7 @@ class TestUndoFileRmShallow(UndoPoolTest):
 
         self.lib('undo')
         self.assertEqual(biblio.get_files(self.entries()['mine2022']), [si])
-        self.assertFalse(os.path.exists(si))
+        self.assertEqual(Path(si).read_text(), 'supplement')  # from the trash
         self.assertNotIn('file', self.entries('pool')['mine2022'].fields_dict)
         # the pool entry no longer has the link it had at the restored state: the pull removes it
         self.lib('pull')

@@ -690,6 +690,7 @@ class Exchange:
         self.pools = pools or Pools(config)
         self.origin = origin if origin is not None else Origin.for_bibtex(config.bibtex)
         self.pools.set_known_ids(set(self.origin.entries) | set(self.origin.pulls))
+        self.same = {}  # file deleted -> its identical copy that stays (see relink, delete_files)
         self.changed_pools = []  # the pools to save
         self.pushed_pools = []   # the pools pushed to (changed or not): after_push after the save
         self._after = {}  # pool id -> state of the push for after_push
@@ -1243,7 +1244,7 @@ class Exchange:
         Return the files to delete once the library is saved: the library's
         own copies (in its files directory) that no entry of the library or
         of the pool links to, outside `keep_dirs` (files directories of
-        pools)."""
+        pools). `same` maps each of them to its pool copy (see delete_files)."""
         delete = []
         filesdir = self.biblio.filesdir
         for e, actions in plan:
@@ -1256,6 +1257,7 @@ class Exchange:
                     files.append(f)
             self.biblio.set_files(e, files)
             delete.extend(f for f, _ in actions if filesdir and is_inside(f, filesdir))
+            self.same.update((f, target) for f, target in actions)
         linked = {realpath(f) for e in self.biblio.entries for f in self.biblio.get_files(e)}
         linked.update(realpath(f) for e in pool.biblio.entries for f in pool.biblio.get_files(e))
         dirs = [d for d in keep_dirs if d]
@@ -1422,7 +1424,8 @@ class PoolLookup:
                 continue
             logger.info(f'{f}: removed, the same as {target} (files mode move)')
             journal.record('removed', f, target, digest=checksum(f))
-            os.remove(f)
+            with journal.paused():  # recorded above: undo copies the identical file back
+                journal.remove(f)
 
 
 def use_pool_files(config, pools):

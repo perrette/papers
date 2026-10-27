@@ -682,8 +682,7 @@ def execute_moves(moves, force=False):
             if parent and not os.path.isdir(parent):
                 os.makedirs(parent)
             if force and os.path.isfile(move.target) and not move.isdir:
-                journal.record('removed', move.target, digest=checksum(move.target))
-                os.remove(move.target)
+                journal.remove(move.target)
             logger.info(f'mv {move.src} {move.target}')
             shutil.move(move.src, move.target)
             journal.record('moved', move.src, move.target)
@@ -743,12 +742,43 @@ def describe_file(file):
     return file
 
 
-def delete_files(files, dryrun=False):
+def delete_files(files, dryrun=False, same=None):
+    """delete the files, to the trash of the library (see papers.journal.remove).
+    same: {file: its identical copy that stays}: such a file is not put in
+    the trash, undo copies it back from its copy. More than the trash holds:
+    papers asks first (without a terminal, the files are kept), and they are
+    deleted for good."""
+    files = [f for f in files if os.path.isfile(f)]
+    same = {f: copy for f, copy in (same or {}).items()
+            if f in files and os.path.isfile(copy) and checksum(copy) == checksum(f)}
+    total = sum(os.path.getsize(f) for f in files if f not in same)
+    capacity = journal.trash_capacity()
+    trash = capacity is None or total <= capacity * journal.MB
+    if not trash and not dryrun:
+        what = (f'{len(files)} file{"s" if len(files) > 1 else ""} to delete, {total / journal.MB:.0f} MB: more than '
+                f'the trash holds ({capacity} MB, the trash-size setting), undo could not bring them back')
+        if not stdin_is_terminal():
+            logger.warning(f'{what}: kept (no terminal to confirm)')
+            for file in files:
+                print(f'kept {file}')
+            return
+        if input(f'{what}. Delete them for good? [y/N] ').strip().lower() not in ('y', 'yes'):
+            for file in files:
+                print(f'kept {file}')
+            return
     for file in files:
         note = ' (hard link: the other links remain)' if is_hard_link(file) else ''
+        if trash and capacity is not None and file not in same:
+            note += ' (to the trash: undo restores it)'
         print(f'{"DRYRUN: " if dryrun else ""}delete {file}{note}')
-        if not dryrun:
-            os.remove(file)
+        if dryrun:
+            continue
+        if file in same:
+            journal.record('removed', file, same[file], digest=checksum(file))
+            with journal.paused():  # recorded with its copy: not to the trash
+                journal.remove(file)
+        else:
+            journal.remove(file, trash=trash)  # to the trash of the library
 
 
 # papers file check
@@ -908,8 +938,7 @@ def clean_filesdir(biblio, interactive=True, ignore_files=None, ignore_folders=N
         elif folder:
             shutil.rmtree(path)
         else:
-            journal.record('removed', path, digest=checksum(path))
-            os.remove(path)
+            journal.remove(path)
 
     for root, direcs, files in os.walk(biblio.filesdir):
 

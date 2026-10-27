@@ -479,7 +479,7 @@ def _set_pool(o, config):
     save_exchange(exchange)
     _print_biblio_diff(biblio, biblio.entries)
     done()
-    delete_files(delete)
+    delete_files(delete, same=exchange.same)
     if hint:
         print(hint)
 

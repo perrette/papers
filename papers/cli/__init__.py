@@ -8,7 +8,7 @@ import papers.journal
 import papers.utils
 from papers import __version__, logger
 from papers.config import CONFIG_FILE
-from papers.library import check_legacy_global_config, find_config
+from papers.library import check_legacy_global_config, find_config, finish_journal
 from papers.utils import PapersExit, file_uri_to_path, find_masked_viewer, set_directory, open_with_system
 from papers.cli.common import check_install
 from papers.cli.parser import get_parser
@@ -127,8 +127,10 @@ def _main(argv, directory=None):
         config = check_install(o.command_parser, o, config, bibtex_must_exist=o.bibtex_must_exist)
     # the editor setting wins over $VISUAL and $EDITOR
     papers.utils.EDITOR = config.editor
-    papers.journal.start(config.bibtex)  # the file operations of the command (see papers.journal)
+    # the file operations of the command (see papers.journal)
+    papers.journal.start(config.bibtex, config.trash() if config.file else None)
     o.func(o.command_parser, o, config)
+    finish_journal()
 
 
 def main_clean_exit(args=None):

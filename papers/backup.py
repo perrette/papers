@@ -370,6 +370,8 @@ def backup_bib(biblio, config, message=None):
 
     # a snapshot made while undone must append to the full history
     adopt_legacy_undone_state(config.gitdir)
+    # the trash of the library (see papers.journal.remove) is not backed up
+    _exclude_from_git(config.gitdir, journal.TRASH_DIR + '/')
 
     # stop tracking files under their pre-layout-2 names; restore still
     # understands them when materializing old snapshots
@@ -454,6 +456,23 @@ def backup_bib(biblio, config, message=None):
     # work on "main" branch for comitting (out of history branch)
     run_git(config.gitdir, ["checkout", "-B", "main"])
     run_git(config.gitdir, ["clean", "-f"])
+    if journal.is_owner(config.bibtex):
+        # the operations done after it join this snapshot (see papers.library.finish_journal)
+        journal.saved(('git', config.gitdir, run_git(config.gitdir, ["rev-parse", "HEAD"]).stdout.strip()))
+
+
+def amend_journal(gitdir, commit, ops):
+    """add operations to the journal of the snapshot `commit`, if it is
+    still the last one (see papers.library.finish_journal)"""
+    if run_git(gitdir, ["rev-parse", "HEAD"], check=False).stdout.strip() != commit:
+        logger.warning(f'{len(ops)} file operation(s) not recorded for undo: the backup changed since')
+        return
+    path = Path(gitdir) / journal.JOURNAL_FILE
+    ops = (json.loads(path.read_text()) if path.exists() else []) + ops
+    path.write_text(json.dumps(ops, indent=1))
+    run_git(gitdir, ["add", journal.JOURNAL_FILE])
+    run_git(gitdir, ["commit", "--amend", "--no-edit", "--quiet"])
+    journal.saved(('git', gitdir, run_git(gitdir, ["rev-parse", "HEAD"]).stdout.strip()))
 
 
 # the number of loose objects of a backup repository from which they are packed (see compact_backup)

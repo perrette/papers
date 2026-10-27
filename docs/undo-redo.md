@@ -52,11 +52,32 @@ the pool entry keeps it.
 `papers undo -n N` (N > 1) and `papers restore` do not move files: they
 say so when the commands they go over moved some, and the files that no
 entry links to any more are listed (`papers file clean` removes them).
-Undo one step at a time to put the files back with each command. A file
-deleted by a command (`papers rm --delete-files`) is not restored: undo
-restores the link, which is then broken, and says so (with git-lfs,
-`--restore-files` takes the files from the backup). The commands made
-before papers recorded the files (3.0.0b3) are undone without them.
+Undo one step at a time to put the files back with each command. The
+commands made before papers recorded the files (3.0.0b3) are undone
+without them.
+
+### The trash
+
+A file that a command deletes (`papers rm --delete-files`, `papers file
+rm`, `papers file clean`, the library's copies replaced by those of the
+pool with `papers config pool PATH`) goes to the trash of the library, in
+its backup folder (`papers status -v` shows it), and `papers undo` puts it
+back:
+
+```
+undo: papers.bib restored to 3f2a1c9 papers add paper.pdf (2026-10-22 14:03)
+    files/perrette_2013_a-scaling-approach.pdf: restored from the trash
+```
+
+A file stays in the trash for 30 days at most (the `trash-days` setting),
+and the trash holds 100 MB at most (`trash-size`): beyond that, the oldest
+files leave it first. A command that would delete more than the trash
+holds asks first, and then deletes the files for good; without a terminal
+to ask, it keeps them. A file that has an identical copy that stays (e.g.
+in the pool) is not put in the trash: undo copies it back from that copy.
+A file that is no longer in the trash is not restored: undo says so, and
+the restored link is broken (with git-lfs, `--restore-files` takes the
+files of the files directory from the backup).
 
 ## Undo in a library that has a pool
 
