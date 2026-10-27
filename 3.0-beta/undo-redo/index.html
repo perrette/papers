@@ -1018,9 +1018,9 @@ writes the checksum of the files it moves, copies, adds or links; the git
 backup commits the file with the bibtex. <code>papers file checksum</code> writes the
 checksums of all the files (or of the entries given), <code>--check</code> reports
 the files whose content changed since their checksum (e.g. annotated PDFs)
-and writes nothing, and <code>--remove</code> removes the checksums. With
-<code>papers config checksums false</code>, the commands write no checksum (those
-written stay), and undo finds the files through the journal only.</p>
+and writes nothing. With <code>papers config checksums false</code>, the commands
+write no checksum, and undo finds the files through the journal of the
+commands only.</p>
 <h3 id="the-trash">The trash<a class="headerlink" href="#the-trash" title="Permanent link">&para;</a></h3>
 <p>A file that a command deletes (<code>papers rm --delete-files</code>, <code>papers file
 rm</code>, <code>papers file clean</code>, the library's copies replaced by those of the
