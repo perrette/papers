@@ -639,10 +639,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#add-ris-and-csl-json-files" class="md-nav__link">
+  <a href="#add-ris-csl-json-and-bibjson-files" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Add RIS and CSL-JSON files
+        Add RIS, CSL-JSON and BibJSON files
       
     </span>
   </a>
@@ -1270,10 +1270,11 @@ directory of the pool, and the entries to the pool too (see
 memory of the source. To take entries from the pool so that they stay
 linked to it (later pulls bring the corrections made there), use
 <code>papers pull KEY</code> (see <a href="../pools/#papers-pull"><code>papers pull</code></a>).</p>
-<h2 id="add-ris-and-csl-json-files">Add RIS and CSL-JSON files<a class="headerlink" href="#add-ris-and-csl-json-files" title="Permanent link">&para;</a></h2>
+<h2 id="add-ris-csl-json-and-bibjson-files">Add RIS, CSL-JSON and BibJSON files<a class="headerlink" href="#add-ris-csl-json-and-bibjson-files" title="Permanent link">&para;</a></h2>
 <p><code>papers add</code> reads RIS (<code>.ris</code>, as exported by Zotero, EndNote, Web of
-Science, Scopus...) and CSL-JSON (<code>.json</code>, as exported by Zotero or pandoc)
-files, recognized by their extension; <code>--format ris|csl-json|bibtex</code> sets
+Science, Scopus...), CSL-JSON (<code>.json</code>, as exported by Zotero or pandoc)
+and BibJSON (<code>.bib.json</code>, see <a href="../export/#bibjson">BibJSON</a>) files,
+recognized by their extension; <code>--format ris|csl-json|bibjson|bibtex</code> sets
 the format of a file of another extension. Other files are read as bibtex.
 RIS needs the <a href="https://pypi.org/project/rispy/">rispy</a> package (see
 <a href="../installation/#optional-ris-support">Installation</a>).</p>

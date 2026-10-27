@@ -1057,9 +1057,12 @@ them (<code>--any</code>: one of them).</p>
 <li><code>--format line</code> (the default): one line per entry (also <code>-l</code>, <code>-1</code>,
   <code>--one-liner</code>);</li>
 <li><code>--format bibtex</code>: the entries as bibtex (also <code>--plain</code>);</li>
-<li><code>--format ris</code>, <code>--format csl-json</code>: the entries as RIS or CSL-JSON, with
-  the file links as absolute paths (RIS needs the rispy package; see
-  <a href="../export/#other-formats-ris-and-csl-json">Export</a> for the conversion);</li>
+<li><code>--format ris</code>, <code>--format csl-json</code>, <code>--format bibjson</code>: the entries as
+  RIS, CSL-JSON or BibJSON, with the file links as absolute paths (RIS
+  needs the rispy package; see
+  <a href="../export/#other-formats-ris-csl-json-and-bibjson">Export</a> for the
+  conversion). BibJSON keeps the bibtex fields as they are: it is the
+  format for programs that read the library;</li>
 <li><code>--format key</code>: the keys only, one per line (also <code>-K</code>, <code>--key-only</code>),
   to pipe into other commands (below).</li>
 </ul>
@@ -1118,8 +1121,8 @@ line:</p>
 without opening an editor (for scripts and other programs). The entry keeps
 its key, and its <code>file</code> and <code>keywords</code> fields when FILE has none; its other
 fields are those of FILE (a field that FILE does not have is removed). FILE
-is bibtex, or RIS (<code>.ris</code>) or CSL-JSON (<code>.json</code>), or the format given with
-<code>--format</code>. <code>--from -</code> reads the entry from the standard input:</p>
+is bibtex, or RIS (<code>.ris</code>), CSL-JSON (<code>.json</code>) or BibJSON (<code>.bib.json</code>),
+or the format given with <code>--format</code>. <code>--from -</code> reads the entry from the standard input:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>papers extract paper.pdf | papers edit perrette2013 --from -
 <a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>papers fetch 10.5194/esd-4-11-2013 | papers edit perrette2013 --from -
 </code></pre></div>

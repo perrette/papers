@@ -950,7 +950,7 @@ PDFs from there, so that each PDF is stored and fetched once.</p>
 <p>It works like <code>git</code>: one <code>papers</code> command with subcommands, run inside a
 project folder.</p>
 <ul>
-<li><strong>Add papers</strong> from PDFs, DOIs, bibtex, RIS or CSL-JSON files, or whole folders. The DOI is
+<li><strong>Add papers</strong> from PDFs, DOIs, bibtex, RIS, CSL-JSON or BibJSON files, or whole folders. The DOI is
   read from the PDF, and the metadata comes from
   <a href="https://github.com/CrossRef/rest-api-doc">crossref</a> (by DOI or full-text
   search), doi.org or google scholar.</li>
@@ -966,7 +966,7 @@ project folder.</p>
 <li><strong>Detect duplicates</strong> by DOI, arXiv identifier, ISBN, or authors and
   title, and merge them.</li>
 <li><strong>Export</strong> a selection as a library with copies of its PDFs, or as RIS
-  and CSL-JSON (for Zotero, EndNote, pandoc).</li>
+  and CSL-JSON (for Zotero, EndNote, pandoc) or BibJSON (for programs).</li>
 <li><strong>Plain files</strong>: the bibtex is the database. Every change is backed up
   with git (when it is installed), and <code>papers undo</code> / <code>papers redo</code> take it back or restore it.</li>
 </ul>
