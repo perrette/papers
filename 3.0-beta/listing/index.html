@@ -661,6 +661,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#editing-without-an-editor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Editing without an editor
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#actions-on-the-listed-entries" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1024,6 +1035,9 @@ lists them with the number of entries, adds and removes them:</p>
 <a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>$&gt; papers list --tag sea-level projections
 <a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>Perrette2013: A scaling approach to project regional sea level rise and it... (doi:10.5194/esd-4-11-2013, file:1, sea-level | projections )
 </code></pre></div>
+<p><code>--tag</code> matches whole tags, whatever their case: <code>--tag ice</code> does not find
+<code>ice-review</code>, <code>--tag 'ice*'</code> does. With several tags, an entry needs all of
+them (<code>--any</code>: one of them).</p>
 <p><code>papers list ... --add-tag TAG...</code> adds tags to the listed entries.</p>
 <h2 id="output-formats">Output formats<a class="headerlink" href="#output-formats" title="Permanent link">&para;</a></h2>
 <p><code>papers list</code> supports a number of special flags such as <code>--duplicates</code>,
@@ -1088,6 +1102,22 @@ line:</p>
 <p>These commands take <code>-</code>: <code>edit</code>, <code>rm</code>, <code>tag</code>, <code>open</code>, <code>check</code>, and the
 <code>papers file</code> commands that act on entries (<code>rename</code>, <code>check</code>, and the
 <code>--key</code> option of <code>detach</code> and <code>rm</code>).</p>
+<h2 id="editing-without-an-editor">Editing without an editor<a class="headerlink" href="#editing-without-an-editor" title="Permanent link">&para;</a></h2>
+<p><code>papers edit KEY --from FILE</code> replaces the entry by the entry in FILE,
+without opening an editor (for scripts and other programs). The entry keeps
+its key, and its <code>file</code> and <code>keywords</code> fields when FILE has none; its other
+fields are those of FILE (a field that FILE does not have is removed). FILE
+is bibtex, or RIS (<code>.ris</code>) or CSL-JSON (<code>.json</code>), or the format given with
+<code>--format</code>. <code>--from -</code> reads the entry from the standard input:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>papers extract paper.pdf | papers edit perrette2013 --from -
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>papers fetch 10.5194/esd-4-11-2013 | papers edit perrette2013 --from -
+</code></pre></div>
+<p>In a terminal, <code>papers edit KEY --from -</code> waits for the entry: paste it, and
+papers continues when the closing brace of the entry is read (Ctrl-D ends
+the input too, Ctrl-C cancels).</p>
+<p>An edit that does not parse, has a malformed field name, or gives the entry
+the key of another entry is not applied, and the command exits with status
+1, with <code>--from</code> as with the editor.</p>
 <h2 id="actions-on-the-listed-entries">Actions on the listed entries<a class="headerlink" href="#actions-on-the-listed-entries" title="Permanent link">&para;</a></h2>
 <p><code>papers list</code> can run a command on the entries it lists: list the entries,
 then act on them. Each action calls the same code as the command it stands
