@@ -209,8 +209,8 @@ class TestEditEntries(unittest.TestCase):
     def test_edit_selected_error(self):
         biblio = biblio_of(entry('one2000'))
         with mock.patch('papers.cli.common.edit_entries', side_effect=OSError('no editor')), \
-                self.assertLogs('papers', level='ERROR'):
-            self.assertFalse(edit_selected(biblio, biblio.entries))
+                self.assertLogs('papers', level='ERROR'), self.assertRaises(PapersExit):
+            edit_selected(biblio, biblio.entries)
 
 
 class TestImports(unittest.TestCase):

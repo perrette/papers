@@ -84,7 +84,7 @@ class TestListFilters(FileTest):
 
     def test_edit_failure_saves_nothing(self):
         with patch('papers.cli.common.edit_entries', side_effect=OSError('no editor')), \
-                self.assertLogs('papers', level='ERROR'):
+                self.assertLogs('papers', level='ERROR'), self.assertRaises(PapersExit):
             self.lib('list --key one2000 -e')
 
 
@@ -110,6 +110,6 @@ class TestEditPipe(FileTest):
         self.bib(entry('one2000'))
         with patch('sys.stdin', io.StringIO('one2000\n')), \
                 patch('papers.cli.entry_cmds.os.open', side_effect=OSError('no terminal')) as tty, \
-                patch('papers.cli.common.edit_entries', side_effect=lambda entries: entries):
+                patch('papers.cli.common.edit_entries', side_effect=lambda entries: list(entries)):
             self.lib('edit -')
         tty.assert_called_once()

@@ -47,6 +47,25 @@ Perrette2013: A scaling approach to project regional sea level rise and it... (d
 
 `papers list ... --add-tag TAG...` adds tags to the listed entries.
 
+## Editing entries
+
+`papers edit KEY...` opens the entries as bibtex in a text editor (the
+`editor` setting, else `$VISUAL`, else `$EDITOR`). With `--from FILE`, the
+entries are replaced by the entries of the bibtex FILE instead, without an
+editor (`-` reads the standard input), for a script or a program that writes
+the entry:
+
+```
+$> papers edit perrette2013 --from perrette2013.bib
+$> papers list perrette2013 --format bibtex | my-script | papers edit perrette2013 --from -
+```
+
+An edit is rejected if the text does not parse as bibtex, if a field name is
+not valid, or if no entry is left: the entries are kept, papers prints the
+error and the exit status is 1, with the editor and with `--from`. With
+several keys, FILE has their entries, as the text in the editor does: they
+replace all the entries given.
+
 ## Output formats
 
 `papers list` supports a number of special flags such as `--duplicates`,

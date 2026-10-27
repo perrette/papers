@@ -1,9 +1,13 @@
 """papers edit, rm, tag, and their shortcuts on list"""
 import io
 import os
-from contextlib import redirect_stdout
+import subprocess
+import sys
+from contextlib import redirect_stderr, redirect_stdout
+from pathlib import Path
 from unittest.mock import patch
 
+import papers
 from papers.bib import Biblio
 from papers.encoding import parse_keywords
 from papers.utils import PapersExit
@@ -176,7 +180,7 @@ class TestEdit(EntryTest):
         def edit(entries):
             self.assertEqual([e.key for e in entries], ['two2000'])
             entries[0]['title'] = 'Edited'
-            return entries
+            return list(entries)
         with patch('papers.cli.common.edit_entries', side_effect=edit):
             self.lib('edit two2000')
         self.assertEqual(self.entry('two2000')['title'], 'Edited')
@@ -244,7 +248,89 @@ class TestEdit(EntryTest):
     def test_list_edit(self):
         def edit(entries):
             entries[0]['title'] = 'Edited'
-            return entries
+            return list(entries)
         with patch('papers.cli.common.edit_entries', side_effect=edit):
             self.lib('list --key one2000 -e')
         self.assertEqual(self.entry('one2000')['title'], 'Edited')
+
+    def edited(self, key, title):
+        return entry(key).replace(f'Title of {key}', title)
+
+    def assertUnchanged(self):
+        self.assertEqual(self.keys(), ['one2000', 'two2000'])
+        self.assertEqual(self.entry('two2000')['title'], 'Title of two2000')
+
+    def test_from_file(self):
+        new = self.write('src', 'two.bib', content=self.edited('two2000', 'Edited'))
+        self.lib(f'edit two2000 --from {new}')
+        self.assertEqual(self.entry('two2000')['title'], 'Edited')
+        self.assertEqual(self.entry('one2000')['title'], 'Title of one2000')
+        self.assertEqual(self.keys(), ['one2000', 'two2000'])
+
+    def test_from_stdin(self):
+        with patch('sys.stdin', io.StringIO(self.edited('two2000', 'Edited'))):
+            self.lib('edit two2000 --from -')
+        self.assertEqual(self.entry('two2000')['title'], 'Edited')
+        self.assertEqual(self.keys(), ['one2000', 'two2000'])
+
+    def test_from_several_keys(self):
+        new = self.write('src', 'both.bib', content=self.edited('one2000', 'First') + self.edited('two2000', 'Second'))
+        self.lib(f'edit one2000 two2000 --from {new}')
+        self.assertEqual(self.entry('one2000')['title'], 'First')
+        self.assertEqual(self.entry('two2000')['title'], 'Second')
+
+    def test_from_rejected(self):
+        for text in ['just text', entry('two2000') + '@article{three,\n title = {unclosed\n',
+                     '@article{two2000,\n bad.name = {x}\n}\n']:
+            new = self.write('src', 'bad.bib', content=text)
+            with self.subTest(text=text), self.assertLogs('papers', level='ERROR'), self.assertRaises(PapersExit):
+                self.lib(f'edit two2000 --from {new}')
+            self.assertUnchanged()
+
+    def test_from_missing_file(self):
+        with self.assertRaisesRegex(PapersExit, 'none.bib: No such file'):
+            self.lib(f'edit two2000 --from {self.path("src", "none.bib")}')
+
+    def test_from_and_keys_from_stdin(self):
+        err = io.StringIO()
+        with redirect_stderr(err), self.assertRaises(SystemExit):
+            self.lib('edit - --from -')
+        self.assertIn('both read the standard input', err.getvalue())
+
+    def test_rejected_exit_status(self):
+        new = self.write('src', 'bad.bib', content='just text')
+        env = dict(os.environ, PYTHONPATH=str(Path(papers.__file__).parent.parent))
+        res = subprocess.run([sys.executable, '-m', 'papers', 'edit', 'two2000', '--from', new], cwd=self.path('lib'),
+                             stdin=subprocess.DEVNULL, capture_output=True, text=True, env=env)
+        self.assertEqual(res.returncode, 1)
+        self.assertIn('contains no bibtex entry', res.stderr)
+        self.assertNotIn('Traceback', res.stderr)
+        self.assertUnchanged()
+
+    def test_editor_rejected(self):
+        editor = self.write('bin', 'editor.sh', content='#!/bin/sh\necho "not bibtex" > "$1"\n')
+        os.chmod(editor, 0o755)
+        self.lib(f'config editor {editor}')
+        with self.assertLogs('papers', level='ERROR'), self.assertRaises(PapersExit):
+            self.lib('edit two2000')
+        self.assertUnchanged()
+
+    def test_editor_failed(self):
+        self.lib('config editor false')
+        with self.assertLogs('papers', level='ERROR'), self.assertRaises(PapersExit):
+            self.lib('edit two2000')
+        self.assertUnchanged()
+
+    def test_from_one_backup_commit(self):
+        self.lib('config git true')
+        count = lambda: int(self.out('git rev-list --count HEAD').strip())
+        before = count()
+        new = self.write('src', 'two.bib', content=self.edited('two2000', 'Edited'))
+        self.lib(f'edit two2000 --from {new}')
+        self.assertEqual(count(), before + 1)
+        bad = self.write('src', 'bad.bib', content='just text')
+        with self.assertLogs('papers', level='ERROR'), self.assertRaises(PapersExit):
+            self.lib(f'edit two2000 --from {bad}')
+        self.assertEqual(count(), before + 1)  # a rejected edit is not saved
+        self.lib('undo')  # one undo step
+        self.assertUnchanged()

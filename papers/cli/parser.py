@@ -727,9 +727,15 @@ def get_parser(config=None):
     # edit, rm, tag
     # =============
     editp = subparsers.add_parser('edit', parents=[cfg],
-        description='edit entries in a text editor (the editor setting, else $VISUAL, else $EDITOR)')
+        description='edit entries in a text editor (the editor setting, else $VISUAL, else $EDITOR), or '
+                    'replace them by the entries of a file (--from). An edit that is rejected (the text does '
+                    'not parse as bibtex, a field name is not valid, no entry is left) changes nothing, and '
+                    'the exit status is 1.')
     editp.add_argument('entries', nargs='+', metavar='KEY',
         help=_selection_help)
+    editp.add_argument('--from', dest='from_file', metavar='FILE',
+        help='instead of the editor, replace the entries by the entries of the bibtex FILE (- for the standard '
+             'input); with several KEY, FILE has their entries')
     _command(editp, editcmd, library=True)
 
     rmp = subparsers.add_parser('rm', parents=[cfg],

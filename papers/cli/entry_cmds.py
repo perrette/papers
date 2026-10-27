@@ -382,6 +382,9 @@ def rename_tag(entries, old, new):
 
 
 def editcmd(parser, o, config):
+    if o.from_file == '-' and '-' in o.entries:
+        parser.error('--from - and the key - both read the standard input')
+    text = None if o.from_file is None else _read_edited(o.from_file)
     biblio = get_biblio(config)
     entries = select_entries(biblio, o.entries)
     if not entries:
@@ -394,9 +397,20 @@ def editcmd(parser, o, config):
             os.close(fd)
         except OSError:
             pass
-    if edit_selected(biblio, entries):
-        notes = save_entries(config, biblio)
-        _print_biblio_diff(biblio, biblio.entries, notes=notes)
+    edit_selected(biblio, entries, text)
+    notes = save_entries(config, biblio)
+    _print_biblio_diff(biblio, biblio.entries, notes=notes)
+
+
+def _read_edited(path):
+    "the text of the file --from, or of the standard input (-)"
+    try:
+        if path == '-':
+            return sys.stdin.read()
+        with open(path, encoding='utf-8') as f:
+            return f.read()
+    except OSError as error:
+        raise PapersExit(f'--from {path}: {error.strerror}')
 
 
 def rmcmd(parser, o, config):
@@ -634,8 +648,7 @@ def listcmd(parser, o, config):
         notes = attach_entry_files(biblio, config, pools, entries[0], attach, attach_mode)
 
     elif o.edit:
-        if not edit_selected(biblio, entries):
-            return
+        edit_selected(biblio, entries)
         entries = biblio.entries
         notes = save_entries(config, biblio)
 

@@ -417,7 +417,12 @@ def edit_entries(entries, editor=None):
     if text is None:
         logger.error('failed to edit file -- keeping original entries')
         return entries
+    return parse_edited(text, entries)
 
+
+def parse_edited(text, entries):
+    """the entries of the edited bibtex text, or the original entries if the
+    text is rejected (it does not parse as bibtex, no entry or a bad field name)"""
     db_updated = parse_string(text)
     new_entries = db_updated.entries
 
@@ -440,16 +445,19 @@ def edit_entries(entries, editor=None):
     return new_entries
 
 
-def edit_selected(biblio, entries):
-    "edit entries in a text editor, and put them back in the bibliography; False on failure"
+def edit_selected(biblio, entries, text=None):
+    """edit entries in a text editor, or replace them by the entries of the
+    bibtex `text`, and put them back in the bibliography; PapersExit (the
+    error is logged) if the edit is rejected"""
     others = [e for e in biblio.db.entries if not any(e is x for x in entries)]
     try:
-        edited = edit_entries(entries)
+        edited = edit_entries(entries) if text is None else parse_edited(text, entries)
     except Exception as error:
         logger.error(str(error))
-        return False
+        edited = entries
+    if edited is entries:  # rejected: the entries are kept
+        raise PapersExit()
     biblio.entries = others + edited
-    return True
 
 
 def print_kept_files(kept, in_pool):
