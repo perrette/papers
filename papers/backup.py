@@ -49,9 +49,11 @@ from pathlib import Path
 
 from slugify import slugify
 
+import papers.checksums
 import papers.config
 from papers import journal, logger
 from papers.bib import Biblio
+from papers.checksums import FILES_JSON
 from papers.config import BACKUP_DIR, BACKUP_DIR_LEGACY
 from papers.duplicate import DISTINCT_FILE
 from papers.entries import get_entry_val
@@ -296,7 +298,7 @@ def backup_bib(biblio, config, message=None):
     # are not the same paper; a file removed from the library leaves the backup
     from papers.pools import ORIGIN_DIR, LEGACY_ORIGIN_FILE  # papers.pools imports this module
     libdir = Path(config.bibtex).parent
-    names = {DISTINCT_FILE, LEGACY_ORIGIN_FILE}
+    names = {DISTINCT_FILE, LEGACY_ORIGIN_FILE, FILES_JSON}
     for d in (libdir / ORIGIN_DIR, backupdir / ORIGIN_DIR):
         if d.is_dir():
             names.update(os.path.join(ORIGIN_DIR, f.name) for f in d.iterdir() if f.suffix == '.bib')
@@ -449,13 +451,13 @@ def restore_from_backupdir(config, restore_files=False, previous=None):
 
 def _library_files(gitdir, rev):
     """the library files of .papers/ that the backup commit `rev` tracks
-    (see backup_bib): the origin records and distinct.json"""
+    (see backup_bib): the origin records, distinct.json and files.json"""
     from papers.pools import ORIGIN_DIR, LEGACY_ORIGIN_FILE  # papers.pools imports this module
     out = run_git(gitdir, ["ls-tree", "-r", "-z", "--name-only", rev, "--", ".papers"]).stdout
     names = set()
     for name in out.split("\0"):
         name = os.path.normpath(name) if name else ""
-        if name in (DISTINCT_FILE, LEGACY_ORIGIN_FILE) or (
+        if name in (DISTINCT_FILE, LEGACY_ORIGIN_FILE, FILES_JSON) or (
                 os.path.dirname(name) == ORIGIN_DIR and name.endswith(".bib")):
             names.add(name)
     return names
@@ -620,8 +622,9 @@ def _require_history(gitdir):
         raise PapersExit("no backup history (no snapshot recorded yet)")
 
 
-def git_restore_state(config, ref, restore_files=False, kind="restore-backup"):
-    """Append a restore commit for `ref` and restore the bibtex from it."""
+def git_restore_state(config, ref, restore_files=False, kind="restore-backup", file_lines=None):
+    """Append a restore commit for `ref` and restore the bibtex from it, and
+    the files (see _restore_files), whose report goes to file_lines."""
     if not papers.config.DRYRUN:
         adopt_central_backup(config)
     _require_history(config.gitdir)
@@ -631,6 +634,16 @@ def git_restore_state(config, ref, restore_files=False, kind="restore-backup"):
     target = res.stdout.strip()
     if _dryrun_restore(config, target, "restore"):
         return
+    cur = cursor_commit(config.gitdir)
+    if _is_ancestor(config.gitdir, target, cur):
+        older, newer, undo = target, cur, True
+    elif _is_ancestor(config.gitdir, cur, target):
+        older, newer, undo = cur, target, False
+    else:
+        older, newer, undo = None, None, True  # not on one line: no operations, the checksums only
+    lines = _restore_files(config, target, older, newer, undo)
+    if file_lines is not None:
+        file_lines.extend(lines)
     previous = _append_restore_commit(config, target, kind=kind)
     restore_from_backupdir(config, restore_files=restore_files, previous=previous)
 
@@ -654,21 +667,72 @@ def _pool_dirs(config):
     return [pool_files_dir(config)]
 
 
-def _files_of_steps(config, commits, kind, file_lines, apply):
-    """the files of the commands of the states that undo or redo goes over:
-    one step, its file operations are reversed or replayed (apply); several,
-    the files stay where they are"""
-    if len(commits) == 1:
-        file_lines.extend(apply(_journal_of(config.gitdir, commits[0]), _pool_dirs(config)))
-    elif any(_journal_of(config.gitdir, c) for c in commits):
-        file_lines.append(f'    the files that these commands moved, copied or removed stay as they are '
-                          f'({kind} of one step moves them too)')
+def _is_ancestor(gitdir, a, b):
+    return run_git(gitdir, ["merge-base", "--is-ancestor", a, b], check=False).returncode == 0
+
+
+def _steps_between(gitdir, older, newer):
+    """the commits of the commands from the state `older` to the state
+    `newer` that moved, copied or deleted files, oldest first, with their
+    operations (a restore commit has none of its own)"""
+    out = run_git(gitdir, ["log", "--first-parent", "--reverse", "-z", "--pretty=format:%H %B",
+                           f"{older}..{newer}"]).stdout
+    steps = []
+    for record in out.split("\x00"):
+        sha, _, body = record.strip().partition(" ")
+        if sha and _restores_target(body) is None:
+            ops = _journal_of(gitdir, sha)
+            if ops:
+                steps.append((sha, ops))
+    return steps
+
+
+def _show_file(gitdir, rev, name):
+    "the content of a file of a backup commit, or None"
+    res = run_git(gitdir, ["show", f"{rev}:{name}"], check=False)
+    return res.stdout if res.returncode == 0 else None
+
+
+def _restore_files(config, target, older, newer, undo):
+    """bring the files from the links of the bibtex to those of the state
+    `target` (see papers.journal.restore): command by command, for the
+    commands between the states `older` and `newer` that moved, copied or
+    deleted files (the last one first for undo), then from the links of the
+    bibtex to those of `target`, by checksum. Return the lines of the report."""
+    from bibtexparser import parse_string
+    relative_to = os.path.dirname(os.path.abspath(config.bibtex))
+    links = {}
+
+    def links_of(rev):
+        if rev not in links:
+            text = _show_file(config.gitdir, rev, config.backupfile.name)
+            if text is None:
+                text = _show_file(config.gitdir, rev, "backup_copy.bib") or ""
+            links[rev] = papers.checksums.entry_links(parse_string(text).entries, relative_to)
+        return links[rev]
+
+    def hashes_of(rev):
+        return papers.checksums.parse(_show_file(config.gitdir, rev, FILES_JSON) or "{}", config)
+
+    trash = config.trash()
+    kw = dict(pool_dirs=_pool_dirs(config), trash_dir=trash[0] if trash else None, gitdir=config.gitdir)
+    lines = []
+    steps = _steps_between(config.gitdir, older, newer) if older else []
+    for sha, ops in (reversed(steps) if undo else steps):
+        before, after = f"{sha}^", sha
+        if undo:
+            lines += journal.restore(links_of(after), links_of(before), ops, True, hashes=hashes_of(before), **kw)
+        else:
+            lines += journal.restore(links_of(before), links_of(after), ops, False, hashes=hashes_of(after), **kw)
+    current = papers.checksums.bibtex_links(config.bibtex, relative_to)
+    lines += journal.restore(current, links_of(target), [], undo, hashes=hashes_of(target), **kw)
+    return lines
 
 
 def git_undo(config, restore_files=False, steps=1, file_lines=None):
     """go back `steps` states; return the commit of the state restored (None
-    with --dry-run). One step: the file operations of the command undone are
-    reversed (see papers.journal), their report goes to file_lines."""
+    with --dry-run). The files follow (see _restore_files), their report
+    goes to file_lines."""
     if not papers.config.DRYRUN:
         adopt_central_backup(config)
     _require_history(config.gitdir)
@@ -680,18 +744,20 @@ def git_undo(config, restore_files=False, steps=1, file_lines=None):
         raise PapersExit("nothing to undo")
     if _dryrun_restore(config, res.stdout.strip(), "undo"):
         return None
-    undone = run_git(config.gitdir, ["rev-list", "--first-parent", f"{res.stdout.strip()}..{cur}"]).stdout.split()
-    previous = _append_restore_commit(config, res.stdout.strip(), kind="undo")
+    target = res.stdout.strip()
     # the files first: the links of the restored bibtex find them
-    _files_of_steps(config, undone, 'undo', file_lines if file_lines is not None else [], journal.reverse)
+    lines = _restore_files(config, target, target, cur, undo=True)
+    if file_lines is not None:
+        file_lines.extend(lines)
+    previous = _append_restore_commit(config, target, kind="undo")
     restore_from_backupdir(config, restore_files=restore_files, previous=previous)
     return res.stdout.strip()
 
 
 def git_redo(config, restore_files=False, steps=1, file_lines=None):
     """go forward `steps` states; return the commit of the state restored
-    (None with --dry-run). One step: the file operations of the command
-    redone are replayed (see papers.journal), their report goes to file_lines."""
+    (None with --dry-run). The files follow (see _restore_files), their
+    report goes to file_lines."""
     if not papers.config.DRYRUN:
         adopt_central_backup(config)
     _require_history(config.gitdir)
@@ -712,7 +778,9 @@ def git_redo(config, restore_files=False, steps=1, file_lines=None):
         raise PapersExit("nothing to redo")
     if _dryrun_restore(config, futures[steps-1], "redo"):
         return None
+    lines = _restore_files(config, futures[steps-1], cur, futures[steps-1], undo=False)
+    if file_lines is not None:
+        file_lines.extend(lines)
     previous = _append_restore_commit(config, futures[steps-1], kind="redo")
-    _files_of_steps(config, futures[:steps], 'redo', file_lines if file_lines is not None else [], journal.replay)
     restore_from_backupdir(config, restore_files=restore_files, previous=previous)
     return futures[steps-1]

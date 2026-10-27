@@ -284,6 +284,10 @@ def configcmd(parser, o, config):
             snapshot_backup(config)
     if name == 'paths' and config.bibtex and os.path.exists(config.bibtex):
         convert_file_links(config)
+    if name == 'checksums':
+        print('the files get a checksum when a command moves, copies, adds or links them: '
+              '`papers file checksum` writes those of all the files' if config.checksums else
+              'the checksums written stay: `papers file checksum --remove` removes them')
 
 
 # papers config pool: the files follow

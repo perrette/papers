@@ -50,6 +50,10 @@ Each save commits, in the backup folder:
   `.papers/origin/*.bib` (one file per pool, see
   [Pools](pools.md#origin-copies));
 - `.papers/distinct.json`, the pairs recorded as not the same paper;
+- `.papers/files.json`, the checksums of the files (see
+  [Checksums](undo-redo.md#checksums));
+- `files-journal.json`, the files that the command moved, copied or
+  deleted (see [Files](undo-redo.md#files));
 - with git-lfs only: the attached files and `backup_clean.bib` (see
   [git-lfs](#git-lfs)).
 

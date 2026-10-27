@@ -13,7 +13,7 @@ from papers.cli.backup_cmds import undocmd, redocmd, restorecmd, backupcmd, gitc
 from papers.cli.entry_cmds import addcmd, checkcmd, listcmd, editcmd, rmcmd, tagcmd, opencmd
 from papers.cli.fetch_cmds import doicmd, fetchcmd, extractcmd
 from papers.cli.file_cmds import (filecheckcmd, file_renamecmd, file_mvcmd, file_attachcmd, file_detachcmd, file_rmcmd,
-                                  file_checkcmd, file_fixcmd, file_cleancmd)
+                                  file_checkcmd, file_fixcmd, file_cleancmd, file_checksumcmd)
 from papers.cli.library_cmds import statuscmd, initcmd, configcmd, migratecmd, installcmd, uninstallcmd
 from papers.cli.pool_cmds import pullcmd, pushcmd, synccmd, exportcmd
 
@@ -468,7 +468,7 @@ def get_parser(config=None):
     # ====
     filep = subparsers.add_parser('file', description='the files of the entries: rename, move, attach, '
         'detach, remove, check them, and clean the files directory')
-    filesub = filep.add_subparsers(dest='file_cmd', metavar="{rename,mv,attach,detach,rm,check,clean}")
+    filesub = filep.add_subparsers(dest='file_cmd', metavar="{rename,mv,attach,detach,rm,check,fix,clean,checksum}")
     _command(filep, None)  # without subcommand: the help of papers file
 
     p = filesub.add_parser('rename', parents=[cfg, namefmt],
@@ -572,6 +572,21 @@ def get_parser(config=None):
                     'asking for each one. Hidden files and folders, and .bib files, are skipped.')
     p.add_argument('-y', '--yes', action='store_true', help='do not ask')
     _command(p, file_cleancmd, library=True)
+
+    p = filesub.add_parser('checksum', parents=[cfg],
+        help='write the checksums of the files, for undo and to find changed files',
+        description='write the checksums (sha256) of the files of the entries (all entries without KEY) in '
+                    '.papers/files.json. Undo, redo and restore find a file by its checksum. With the checksums '
+                    'setting (true by default), the commands write the checksums of the files they move, copy, '
+                    'add or link; this command writes those of the other files. A file whose content changed '
+                    'since its checksum (e.g. annotated) is reported.')
+    p.add_argument('entries', nargs='*', metavar='KEY', help=_selection_help + ' (default: all entries)')
+    grp = p.add_mutually_exclusive_group()
+    grp.add_argument('--check', action='store_true',
+        help='report the files that changed since their checksum, and write nothing')
+    grp.add_argument('--remove', action='store_true', help='remove the checksums (`papers config checksums false` '
+                     'stops the commands from writing them)')
+    _command(p, file_checksumcmd, library=True)
 
     # filecheck
     # =====

@@ -1,5 +1,6 @@
-"""The file operations of a command, recorded so that `papers undo` and
-`papers redo` move the files back and forth with the bibtex (one step).
+"""The file operations of a command, the trash of a library, and `restore`,
+which brings the files from one state of the library to another (undo,
+redo, restore).
 
 Each operation is a dict: `op` is moved (a file or a folder, renamed or
 moved to another folder), copied, trashed (a file deleted by the command,
@@ -9,13 +10,13 @@ identical file that was kept, if any); `checksum` the sha256 of the file
 (None for a folder). With the git backup, the operations of a command are
 committed with its snapshot (JOURNAL_FILE); without it, the operations of
 the last command are kept in the backup folder of the library, next to the
-previous bibtex (see journal_file). The operations done after the save of the library (e.g.
-the files deleted by papers rm) join them when the command ends (see
-papers.library.finish_journal).
+previous bibtex (see journal_file). The operations done after the save of
+the library (e.g. the files deleted by papers rm) join them when the
+command ends (see papers.library.finish_journal).
 
-An operation is reversed (or replayed) only when the files are where it
-left them, with the same content, and the place they go back to is free;
-otherwise it is reported and nothing is done for that file.
+`restore` compares the files that the entries link to in the two states:
+the operations say what the commands did (moved or copied, deleted or only
+unlinked, where from), the checksums find the files (see papers.checksums).
 """
 import json
 import os
@@ -89,6 +90,11 @@ def take(bibtex):
     return ops
 
 
+def pending(bibtex):
+    "the operations of the command so far, if it acts on the library of this bibtex"
+    return list(_ops) if is_owner(bibtex) else []
+
+
 def is_owner(bibtex):
     "the library of this bibtex is the library of the command"
     return bool(bibtex) and _owner == os.path.realpath(bibtex)
@@ -151,8 +157,20 @@ def remove(path, trash=True):
     empty_trash(directory, days, megabytes)
 
 
+def _to_system_trash(path):
+    """a file that leaves the trash of the library goes to the trash of the
+    system (the user empties it), or is deleted if there is none"""
+    try:
+        from send2trash import send2trash
+        send2trash(path)
+    except Exception as error:  # no trash of the system (e.g. a server), or no send2trash
+        logger.debug(f'{path}: not sent to the trash of the system ({error}): deleted')
+        os.remove(path)
+
+
 def empty_trash(directory, days, megabytes):
-    "remove the files of the trash older than `days`, then the oldest ones beyond `megabytes`"
+    """the files of the trash older than `days`, then the oldest ones beyond
+    `megabytes`, go to the trash of the system"""
     if not os.path.isdir(directory):
         return
     files = [os.path.join(directory, f) for f in os.listdir(directory)]
@@ -162,8 +180,8 @@ def empty_trash(directory, days, megabytes):
     for mtime, size, f in files:  # the oldest first
         if mtime >= limit and total <= megabytes * MB:
             break
-        logger.info(f'{f}: removed from the trash')
-        os.remove(f)
+        logger.info(f'{f}: leaves the trash of the library, to the trash of the system')
+        _to_system_trash(f)
         total -= size
 
 
@@ -213,11 +231,12 @@ def append_last(bibtex, backupdir, ops):
         json.dump(journal, f, indent=1)
 
 
-def swap_last(bibtex, backupdir, pool_dirs=()):
-    """the bibtex was swapped with its backup (undo or redo without git):
-    reverse the operations of the last command, or replay them if they
-    were reversed. To call before the swap; return the lines of the report,
-    and the journal to save after the swap (see save_swapped), or None."""
+def swap_last(bibtex, backupdir, current, target, pool_dirs=()):
+    """the bibtex is swapped with its previous version (undo or redo without
+    git): bring the files from the links of the bibtex (current) to those of
+    the previous version (target), see `restore`. To call before the swap;
+    return the lines of the report, and the journal to save after the swap
+    (see save_swapped), or None."""
     path = journal_file(backupdir)
     if not os.path.exists(path) or not os.path.exists(bibtex):
         return [], None
@@ -228,7 +247,8 @@ def swap_last(bibtex, backupdir, pool_dirs=()):
     if journal.get('bibtex') != _checksum(bibtex):
         return [], None  # the bibtex changed since: the operations are not those of its last change
     undo = journal.get('state') == 'done'
-    lines = (reverse if undo else replay)(journal.get('ops') or [], pool_dirs)
+    lines = restore(current, target, journal.get('ops') or [], undo, pool_dirs=pool_dirs,
+                    trash_dir=os.path.join(backupdir, TRASH_DIR))
     journal['state'] = 'undone' if undo else 'done'
     return lines, journal
 
@@ -240,8 +260,8 @@ def save_swapped(bibtex, backupdir, journal):
         json.dump(journal, f, indent=1)
 
 
-# reverse and replay
-# ==================
+# restore: from one state of the files to another
+# ===============================================
 
 def _show(path):
     relative = os.path.relpath(path)
@@ -253,13 +273,6 @@ def _arrow(src, dst, verb):
     if os.path.dirname(src) == os.path.dirname(dst) and verb.startswith('moved'):
         return f'    {_show(src)} --> {verb.replace("moved", "renamed")} {os.path.basename(dst)}'
     return f'    {_show(src)} --> {verb} {_show(dst)}'
-
-
-def _same(path, digest):
-    "path is the file of this checksum (a folder: exists)"
-    if digest is None:
-        return os.path.isdir(path)
-    return _checksum(path) == digest
 
 
 def _place(src, dst, copy=False):
@@ -277,70 +290,166 @@ def _inside(path, dirs):
     return any(real.startswith(os.path.realpath(d) + os.sep) for d in dirs if d)
 
 
-def reverse(ops, pool_dirs=()):
-    """undo the operations, the last one first; a file moved into the files
-    directory of the pool (pool_dirs) is copied back, the pool keeps it.
+def lfs_object(gitdir, digest):
+    "the copy of a file of this checksum in the git-lfs store of a backup, or None"
+    if not gitdir or not digest:
+        return None
+    path = os.path.join(gitdir, '.git', 'lfs', 'objects', digest[:2], digest[2:4], digest)
+    return path if os.path.isfile(path) else None
+
+
+def trash_object(trash_dir, digest):
+    "the file of this checksum in the trash, or None"
+    if not trash_dir or not digest or not os.path.isdir(trash_dir):
+        return None
+    for name in os.listdir(trash_dir):
+        if os.path.splitext(name)[0] == digest:
+            return os.path.join(trash_dir, name)
+    return None
+
+
+def restore(current, target, ops, undo, hashes=None, pool_dirs=(), trash_dir=None, gitdir=None):
+    """bring the files from one state of the library to another (undo,
+    redo, restore). current, target: the paths of the files that the
+    entries link to, now and in the state restored; ops: the operations of
+    the commands between the two states, oldest first; undo: the state
+    restored is the earlier one; hashes: the checksums of the files of the
+    state restored ({path: sha256}, see papers.checksums).
+
+    A file that the restored state links to and that does not exist is
+    taken from: the other end of a move or copy of the commands; a file of
+    the same checksum (one that no entry links to any more is moved, one
+    that an entry links to, or a file of the pool, is copied); the trash;
+    the git-lfs store of the backup (gitdir). Then the files that the
+    commands put in place and that the restored state does not link go
+    back: moved back to where they came from, or deleted (a copy; a
+    file that the command deleted, when redone, goes to the trash). Files
+    are never overwritten, and a file that changed since the command stays
+    as it is; files that the commands did not touch are left alone.
     Return the lines of the report."""
     lines = []
-    for op in reversed(ops):
-        kind, src, dst, digest = op['op'], op['src'], op.get('dst'), op.get('checksum')
-        if kind in ('moved', 'copied') and not _same(dst, digest):
-            lines.append(f'    {_show(dst)}: not where the command left it (or changed since): left as it is')
-        elif kind == 'moved' and os.path.exists(src):
-            lines.append(f'    {_show(dst)}: not moved back, {_show(src)} exists')
-        elif kind == 'moved':
-            copy = _inside(dst, pool_dirs)
-            _place(dst, src, copy=copy)
-            lines.append(_arrow(dst, src, 'copied back to' if copy else 'moved back to'))
-        elif kind == 'copied' and not _same(src, digest):
-            lines.append(f'    {_show(dst)}: kept, the original {_show(src)} is missing or changed')
-        elif kind == 'copied':
-            os.remove(dst)
-            lines.append(f'    {_show(dst)}: removed (a copy of {_show(src)})')
-        elif kind == 'trashed' and os.path.exists(src):
-            lines.append(f'    {_show(src)}: exists, not restored from the trash')
-        elif kind == 'trashed' and _same(dst, digest):
-            _place(dst, src)
-            lines.append(f'    {_show(src)}: restored from the trash')
-        elif kind == 'trashed':
-            lines.append(f'    {_show(src)}: no longer in the trash (see the trash-days and trash-size settings), '
-                         'not restored')
-        elif kind == 'removed' and os.path.exists(src):
-            lines.append(f'    {_show(src)}: exists, not restored')
-        elif kind == 'removed' and dst and _same(dst, digest):
-            _place(dst, src, copy=True)
-            lines.append(f'    {_show(src)}: restored (a copy of {_show(dst)})')
-        elif kind == 'removed':
-            lines.append(f'    {_show(src)}: deleted by the command, not restored')
-    return lines
-
-
-def replay(ops, pool_dirs=()):
-    "redo the operations reversed by `reverse`, the first one first; return the lines of the report"
-    lines = []
+    back = ' back' if undo else ''
+    current, target = set(current), set(target)
+    known = dict(hashes or {})
+    moves = [op for op in ops if op['op'] in ('moved', 'copied')]
     for op in ops:
-        kind, src, dst, digest = op['op'], op['src'], op.get('dst'), op.get('checksum')
-        if kind in ('moved', 'copied') and not _same(src, digest):
-            lines.append(f'    {_show(src)}: not where it was (or changed since): left as it is')
-        elif kind == 'moved' and _inside(dst, pool_dirs) and _same(dst, digest):
-            # copied back from the pool by `reverse`: the pool has the file
-            os.remove(src)
-            lines.append(_arrow(src, dst, 'moved to'))
-        elif kind in ('moved', 'copied') and os.path.exists(dst):
-            lines.append(f'    {_show(src)}: not {kind} again, {_show(dst)} exists')
-        elif kind in ('moved', 'copied'):
-            _place(src, dst, copy=kind == 'copied')
-            lines.append(_arrow(src, dst, f'{kind} to'))
-        elif kind == 'trashed' and _same(src, digest):
-            if os.path.exists(dst):
-                os.remove(src)
+        for path in (op['src'], op.get('dst')):
+            if path and op.get('checksum') and op['op'] in ('moved', 'copied', 'trashed', 'removed'):
+                known.setdefault(path, op['checksum'])
+    digests = {}
+
+    def digest(path):
+        if path not in digests:
+            digests[path] = _checksum(path) if os.path.isfile(path) else None
+        return digests[path]
+
+    def partners(path):
+        "the other ends of the moves and copies of `path`, the last command first, with the operation"
+        for op in reversed(moves):
+            if op['src'] == path and op['dst']:
+                yield op['dst'], op
+            elif op.get('dst') == path:
+                yield op['src'], op
+
+    mentioned = {p for op in moves for p in (op['src'], op['dst']) if p}
+    # the identical files kept when the commands deleted a file (e.g. that of the pool): copied
+    kept = {op['dst'] for op in ops if op['op'] == 'removed' and op.get('dst')}
+    candidates = sorted((current | mentioned) - target) + sorted(target)
+    reported = set()
+
+    def place(path, src, copy, verb):
+        "put the file src at path, and report it"
+        _place(src, path, copy=copy)
+        digests.pop(src, None)
+        digests.pop(path, None)
+        lines.append(_arrow(src, path, verb))
+
+    for path in sorted(target - current):
+        want = known.get(path)
+        if os.path.lexists(path):
+            # the place is taken by another file: what the command put elsewhere stays there
+            if want and digest(path) != want:
+                for other, _ in partners(path):
+                    if os.path.exists(other) and other not in reported:
+                        lines.append(f'    {_show(other)}: not moved{back}, {_show(path)} exists')
+                        reported.add(other)
+            continue
+        source = None
+        for other, op in partners(path):
+            if not os.path.exists(other):
+                continue
+            if want and os.path.isfile(other) and digest(other) != want:
+                lines.append(f'    {_show(other)}: not where the command left it (or changed since): left as it is')
+                reported.add(other)
+                continue
+            source = other, op['op'] == 'copied' and other == op['src'], True
+            break
+        if source is None and want:
+            other = next((c for c in candidates if c != path and os.path.isfile(c) and digest(c) == want), None)
+            if other is not None:
+                source = other, False, False
+        if source is not None:
+            other, copy, moved_by_command = source
+            copy = copy or other in target or other in kept or _inside(other, pool_dirs)
+            if copy and not moved_by_command:
+                _place(other, path, copy=True)
+                lines.append(f'    {_show(path)}: restored (a copy of {_show(other)})')
             else:
-                _place(src, dst)
-            os.utime(dst)
-            lines.append(f'    {_show(src)}: deleted again (to the trash)')
-        elif kind == 'removed' and _same(src, digest):
-            os.remove(src)
-            lines.append(f'    {_show(src)}: removed again')
+                place(path, other, copy, ('copied' if copy else 'moved') + back + ' to')
+            continue
+        found = trash_object(trash_dir, want)
+        if found:
+            _place(found, path)
+            lines.append(f'    {_show(path)}: restored from the trash')
+            continue
+        found = lfs_object(gitdir, want)
+        if found:
+            _place(found, path, copy=True)
+            lines.append(f'    {_show(path)}: restored from the git-lfs copy')
+            continue
+        deleted = [op for op in ops if op['src'] == path and op['op'] in ('trashed', 'removed')]
+        if deleted and deleted[-1]['op'] == 'trashed':
+            lines.append(f'    {_show(path)}: no longer in the trash (see the trash-days and trash-size settings), '
+                         'not restored')
+        elif deleted or want:
+            lines.append(f'    {_show(path)}: deleted by the command, not restored')
+
+    # the files that the commands put in place, and that the restored state does not link
+    for path in sorted((current | mentioned) - target):
+        if path in reported or not os.path.isfile(path):
+            continue
+        if undo:
+            for other, op in partners(path):
+                if op['dst'] != path or os.path.lexists(other) or other in current:
+                    continue
+                if op.get('checksum') and digest(path) != op['checksum']:
+                    lines.append(f'    {_show(path)}: not where the command left it (or changed since): '
+                                 'left as it is')
+                elif op['op'] == 'moved':
+                    copy = _inside(path, pool_dirs)
+                    place(other, path, copy, ('copied' if copy else 'moved') + ' back to')
+                break
+            else:
+                copied = next((op for op in reversed(moves) if op['op'] == 'copied' and op['dst'] == path), None)
+                if copied and os.path.isfile(copied['src']) and digest(copied['src']) == digest(path):
+                    os.remove(path)
+                    lines.append(f'    {_show(path)}: removed (a copy of {_show(copied["src"])})')
+        else:
+            deleted = next((op for op in reversed(ops) if op['src'] == path
+                            and op['op'] in ('trashed', 'removed', 'moved')), None)
+            if deleted is None or (deleted.get('checksum') and digest(path) != deleted['checksum']):
+                continue
+            if deleted['op'] == 'moved':
+                # copied back by the undo (e.g. from the pool, which keeps it): moved again
+                if deleted['dst'] in target and digest(deleted['dst']) == digest(path):
+                    os.remove(path)
+                    lines.append(_arrow(path, deleted['dst'], 'moved to'))
+            elif deleted['op'] == 'trashed':
+                remove(path)
+                lines.append(f'    {_show(path)}: deleted again (to the trash)')
+            else:
+                os.remove(path)
+                lines.append(f'    {_show(path)}: removed again')
     return lines
 
 

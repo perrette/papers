@@ -96,6 +96,7 @@ version (papers also leaves them out each time it saves the file).
 | `git-lfs` | `true` or `false`: also back up the files with git-lfs |
 | `trash-days` | `30` (default): the days a file deleted by a command stays in the trash of the library, for undo (see [Undo and redo](undo-redo.md#files)) |
 | `trash-size` | `100` (default): the size of the trash of the library, in MB; papers asks before deleting more than that at once |
+| `checksums` | `true` (default): the commands write the checksum of the files they move, copy, add or link in `.papers/files.json`, for undo (see [Checksums](undo-redo.md#checksums)) |
 | `editor` | command that opens a text editor, e.g. `vim` or `subl -w` (it wins over `$VISUAL` and `$EDITOR`, which are used without it) |
 | `name.template`, `name.author-num`, `name.author-sep`, `name.title-word-num`, `name.title-word-size`, `name.title-length`, `name.title-sep`, `name.unknown-template`, `name.unknown-strict` | file name format |
 | `key.template`, `key.author-num`, `key.author-sep`, `key.title-word-num`, `key.title-word-size`, `key.title-length`, `key.title-sep`, `key.unknown-template`, `key.unknown-strict` | bibtex key format |

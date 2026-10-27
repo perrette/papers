@@ -29,32 +29,59 @@ undo: papers.bib restored to 3f2a1c9 papers add paper.pdf (2026-10-22 14:03)
 
 ## Files
 
-Each command records the files it moves, renames, copies or deletes (with
-the git backup, in the snapshot of the command, `files-journal.json`;
-without it, next to the backup of the bibtex, `.papers.bib.files.json`).
-`papers undo` of one step puts them back: a moved or renamed file is moved
-back where it was, even outside the library (e.g. a folder of the project
-that `papers file rename` moved it from), a copy placed in the files
-directory is removed; `papers redo` does the operations again. Each file
-is listed:
+`papers undo`, `papers redo` (of any number of steps, `-n N`) and
+`papers restore --ref COMMIT` bring the files back with the bibtex: a
+moved or renamed file is moved back where it was, even outside the library
+(e.g. a folder of the project that `papers file rename` moved it from, or
+`~/Downloads` for `papers add --move`), a copy placed in the files directory
+is removed, a deleted file comes back from the trash; redo does the same
+again. Each file is listed:
 
 ```
 undo: papers.bib restored to 3f2a1c9 papers add paper.pdf (2026-10-22 14:03)
     files/perrette_2013_a-scaling-approach.pdf --> moved back to ~/Downloads/esd-4-11-2013.pdf
 ```
 
-A file is put back only if it is where the command left it, with the same
-content, and its former place is free; otherwise papers says so and
-leaves it as it is (e.g. a PDF annotated since). In a shallow library, a
-file that `add` moved into the files directory of the pool is copied back:
-the pool entry keeps it.
+papers compares the files that the entries link to now with those of the
+restored state, and finds each missing file:
 
-`papers undo -n N` (N > 1) and `papers restore` do not move files: they
-say so when the commands they go over moved some, and the files that no
-entry links to any more are listed (`papers file clean` removes them).
-Undo one step at a time to put the files back with each command. The
-commands made before papers recorded the files (3.0.0b3) are undone
-without them.
+- where the commands in between moved or copied it: each command records
+  the files it moves, renames, copies or deletes, with their checksum (with
+  the git backup, in the snapshot of the command, `files-journal.json`;
+  without it, in the backup folder, `.papers/backup/previous-files.json`);
+- by its checksum (`.papers/files.json`, see [Checksums](#checksums)): a
+  file that no entry links to any more is moved, a file that an entry links
+  to, or a file of the pool, is copied;
+- in the trash (see [The trash](#the-trash));
+- in the git-lfs copies of the backup.
+
+The rules:
+
+- A file is never overwritten: if its former place is taken, papers says so
+  and leaves it where it is.
+- A file whose content changed since the command (e.g. a PDF annotated
+  since) is left as it is, with a message.
+- A file outside the library that a command only unlinked (e.g.
+  `papers file detach`) is never deleted by undo or redo, and the files
+  that no command touched are left alone.
+- In a shallow library, a file that `add` moved into the files directory of
+  the pool is copied back: the pool entry keeps it.
+
+The commands made before papers recorded the files (3.0.0b3) have no
+journal: their files are found by checksum only, if `papers file checksum`
+wrote them.
+
+### Checksums
+
+`.papers/files.json` holds the checksum (sha256) of the files that the
+entries link to. With the `checksums` setting (true by default), a command
+writes the checksum of the files it moves, copies, adds or links; the git
+backup commits the file with the bibtex. `papers file checksum` writes the
+checksums of all the files (or of the entries given), `--check` reports
+the files whose content changed since their checksum (e.g. annotated PDFs)
+and writes nothing, and `--remove` removes the checksums. With
+`papers config checksums false`, the commands write no checksum (those
+written stay), and undo finds the files through the journal only.
 
 ### The trash
 
@@ -71,7 +98,8 @@ undo: papers.bib restored to 3f2a1c9 papers add paper.pdf (2026-10-22 14:03)
 
 A file stays in the trash for 30 days at most (the `trash-days` setting),
 and the trash holds 100 MB at most (`trash-size`): beyond that, the oldest
-files leave it first. A command that would delete more than the trash
+files leave it first, to the trash of the system (where there is one,
+otherwise they are deleted). A command that would delete more than the trash
 holds asks first, and then deletes the files for good; without a terminal
 to ask, it keeps them. A file that has an identical copy that stays (e.g.
 in the pool) is not put in the trash: undo copies it back from that copy.

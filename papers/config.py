@@ -98,6 +98,7 @@ SETTINGS = {
     'editor': 'str',
     'trash-days': 'int',
     'trash-size': 'int',
+    'checksums': 'bool',
 }
 for _kind in ('name', 'key'):
     for _field in _FORMAT_FIELDS:
@@ -118,7 +119,7 @@ def default_value(name):
     if name.startswith('key.'):
         return getattr(KEYFORMAT, _attr(name))
     return {'paths': 'relative', 'files': 'move', 'auto-push': False, 'trash-days': 30, 'trash-size': 100,
-            'git': False, 'git-lfs': False, 'editor': None}.get(name)
+            'checksums': True, 'git': False, 'git-lfs': False, 'editor': None}.get(name)
 
 
 def _attr(name):
@@ -449,6 +450,8 @@ class Config:
         # the trash of the deleted files (see papers.journal.remove): days, megabytes
         self.trash_days = self.inherited('trash-days')
         self.trash_size = self.inherited('trash-size')
+        # the checksums of the files that the commands touch (see papers.checksums)
+        self.checksums = self.inherited('checksums')
 
     @property
     def gitdir(self):

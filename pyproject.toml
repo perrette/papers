@@ -31,6 +31,7 @@ dependencies = [
     "requests",
     "beautifulsoup4",
     "platformdirs",
+    "send2trash",
 ]
 dynamic = ["version"]
 

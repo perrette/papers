@@ -466,8 +466,8 @@ class TestUndoMessages(GitInitTest):
         self.assertTrue(os.path.exists(attached))
         self.assertFalse(os.path.exists(self._path('si.pdf')))
 
-        # undo of two steps: the files stay where they are
+        # undo of two steps: the files follow too
         out = self.out('undo -n 2')
-        self.assertIn('the files that these commands moved, copied or removed stay as they are', out)
-        self.assertIn('1 file(s) of the files directory are linked by no entry now', out)
-        self.assertTrue(os.path.exists(attached))
+        self.assertIn(' --> moved back to si.pdf', out)
+        self.assertFalse(os.path.exists(attached))
+        self.assertEqual(Path(self._path('si.pdf')).read_text(), 'supplement')

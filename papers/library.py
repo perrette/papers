@@ -6,6 +6,7 @@ import copy
 import os
 import shutil
 
+import papers.checksums
 import papers.config
 from papers import journal, logger
 from papers.backup import backup_bib, ensure_backupdir, silent_backup_bib
@@ -146,6 +147,8 @@ def savebib(biblio, config, other_changes=False):
         return
     logger.info(f'Saving {config.bibtex}')
     if biblio is not None:
+        if isinstance(biblio, Biblio):
+            papers.checksums.update(config, biblio)
         if not config.git and config.gitdir:
             ensure_backupdir(config)
         biblio.save(config.bibtex, backup=None if config.git else config.previous_bibtex)

@@ -5,6 +5,7 @@ import shutil
 import subprocess as sp
 import sys
 
+import papers.checksums
 import papers.config
 from papers import journal, logger
 from papers.backup import git_env, git_redo, git_restore_state, git_undo, restore_from_backupdir, run_git, _pool_dirs
@@ -65,7 +66,10 @@ def undocmd(parser, o, config):
         print(f'DRYRUN: {config.bibtex} not swapped with {back}')
         return
     # the files of the last command: moved back, or again (see papers.journal)
-    file_lines, files_journal = journal.swap_last(config.bibtex, config.gitdir, _pool_dirs(config))
+    relative_to = os.path.dirname(os.path.abspath(config.bibtex))
+    file_lines, files_journal = journal.swap_last(
+        config.bibtex, config.gitdir, papers.checksums.bibtex_links(config.bibtex, relative_to),
+        papers.checksums.bibtex_links(back, relative_to), _pool_dirs(config))
     tmp = config.bibtex + '.tmp'
     logger.info(config.bibtex+' <==> '+back)
     shutil.copy(config.bibtex, tmp)
@@ -84,7 +88,10 @@ def restorecmd(parser, o, config):
     if not config.git:
         raise PapersExit('restore needs the git backup: enable it with `papers config git true`')
     if o.ref:
-        git_restore_state(config, o.ref, restore_files=o.restore_files)
+        file_lines = []
+        git_restore_state(config, o.ref, restore_files=o.restore_files, file_lines=file_lines)
+        if file_lines:
+            print('\n'.join(file_lines))
     else:
         restore_from_backupdir(config, restore_files=o.restore_files)
 

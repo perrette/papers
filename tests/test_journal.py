@@ -1,11 +1,19 @@
-"""undo and redo move the files of the command back and forth (papers.journal)"""
+"""undo, redo and restore bring the files back and forth with the bibtex
+(papers.journal.restore): the safety rules (never overwrite, a file changed
+since stays, an external file only unlinked is never deleted, the pool keeps
+its files), and the places a file is found (the journal, the checksums, the
+trash, the git-lfs store)"""
+import json
 import os
+import shutil
 import time
 from pathlib import Path
 from unittest.mock import patch
 
 from papers import journal
+from papers.checksums import FILES_JSON
 from papers.config import Config, CONFIG_FILE_LOCAL
+from papers.utils import checksum
 from papers.files import delete_files
 
 from tests.common import FileTest, entry
@@ -123,12 +131,88 @@ class TestWithGit(JournalTest):
         self.assertFalse(os.path.exists(self.a))
         self.assertTrue(os.path.exists(b))
 
-    def test_several_steps_leave_the_files(self):
+    def test_several_steps(self):
         self.lib('file rename --move')
         self.lib('tag one2000 --add x')
         out = self.out('undo -n 2')
-        self.assertIn('stay as they are', out)
+        self.assertIn(' --> moved back to ', out)
+        self.assertEqual(Path(self.a).read_text(), 'pdf a')
+        self.assertEqual(self.libfiles(), [])
+        self.lib('redo -n 2')
         self.assertFalse(os.path.exists(self.a))
+        self.assertEqual(len(self.libfiles()), 1)
+
+    def test_chain_of_moves(self):
+        # rename, then move by papers file mv: undo of both finds the file at its last place
+        self.lib('file rename --move')
+        moved = self.moved()
+        self.lib(f'file mv {moved} files/renamed.pdf')
+        self.lib('undo -n 2')
+        self.assertEqual(Path(self.a).read_text(), 'pdf a')
+        self.assertEqual(self.libfiles(), [])
+        self.lib('redo -n 2')
+        self.assertEqual(self.libfiles(), ['renamed.pdf'])
+        self.assertFalse(os.path.exists(self.a))
+
+    def test_restore_ref(self):
+        first = self.lib('git rev-list --max-parents=0 HEAD', sp_cmd='check_output').strip()
+        self.lib('file rename --move')
+        self.lib('tag one2000 --add x')
+        out = self.out(f'restore --ref {first}')
+        self.assertIn(' --> moved back to ', out)
+        self.assertEqual(Path(self.a).read_text(), 'pdf a')
+        self.assertEqual(self.files('one2000'), [self.a])
+
+    def test_external_file_only_unlinked(self):
+        # detach keeps the file: neither redo nor undo deletes it
+        self.lib(f'file detach {self.a}')
+        self.lib('undo')
+        self.assertEqual(self.files('one2000'), [self.a])
+        self.lib('redo')
+        self.assertEqual(self.files('one2000'), [])
+        self.assertEqual(Path(self.a).read_text(), 'pdf a')
+        self.lib('undo')
+        self.assertTrue(os.path.exists(self.a))
+
+    def test_add_moved_from_outside(self):
+        b = self.write('downloads', 'b.pdf', content='pdf b')
+        Path(self.path('downloads', 'b.bib')).write_text(entry('two2000', b))
+        self.lib('add ../downloads/b.bib --move')
+        self.assertFalse(os.path.exists(b))
+        out = self.out('undo')
+        self.assertIn(' --> moved back to ', out)
+        self.assertEqual(Path(b).read_text(), 'pdf b')
+        self.assertEqual(self.libfiles(), [])
+        self.lib('redo')
+        self.assertFalse(os.path.exists(b))
+        self.assertEqual(len(self.libfiles()), 1)
+
+    def test_add_then_delete_several_steps(self):
+        # the file went from downloads/ to the files directory, then to the
+        # trash: undo of both puts it back in downloads/, redo in the trash
+        b = self.write('downloads', 'b.pdf', content='pdf b')
+        Path(self.path('downloads', 'b.bib')).write_text(entry('two2000', b))
+        self.lib('add ../downloads/b.bib --move')
+        self.lib('rm two2000 --delete-files')
+        out = self.out('undo -n 2')
+        self.assertIn('restored from the trash', out)
+        self.assertIn(' --> moved back to ', out)
+        self.assertEqual(Path(b).read_text(), 'pdf b')
+        self.assertEqual(self.libfiles(), [])
+        out = self.out('redo -n 2')
+        self.assertIn('deleted again (to the trash)', out)
+        self.assertFalse(os.path.exists(b))
+        self.assertEqual(self.libfiles(), [])
+
+    def test_add_copied_from_outside(self):
+        b = self.write('downloads', 'b.pdf', content='pdf b')
+        Path(self.path('downloads', 'b.bib')).write_text(entry('two2000', b))
+        self.lib('add ../downloads/b.bib --copy')
+        self.assertIn('removed (a copy of ', self.out('undo'))
+        self.assertEqual(self.libfiles(), [])
+        self.lib('redo')
+        self.assertEqual(len(self.libfiles()), 1)
+        self.assertEqual(Path(b).read_text(), 'pdf b')
 
     def test_journal_is_committed(self):
         self.lib('file rename --move')
@@ -137,6 +221,61 @@ class TestWithGit(JournalTest):
         self.lib('tag one2000 --add x')
         out = self.lib('git show --stat HEAD', sp_cmd='check_output')
         self.assertIn('files-journal.json', out)  # removed: that command moved nothing
+
+
+class TestChecksums(JournalTest):
+    "the checksums of the files, .papers/files.json"
+
+    def setUp(self):
+        super().setUp()
+        self.lib('config git true')
+
+    def hashes(self):
+        path = self.path('lib', FILES_JSON)
+        return json.load(open(path))['files'] if os.path.exists(path) else {}
+
+    def test_written_by_the_commands(self):
+        self.lib('file rename --move')
+        moved = self.moved()
+        self.assertEqual(self.hashes(), {os.path.relpath(moved, self.path('lib')): checksum(moved).hex()})
+        self.assertIn(FILES_JSON, self.lib('git ls-files', sp_cmd='check_output'))  # backed up
+        self.lib('rm one2000')
+        self.assertEqual(self.hashes(), {})  # no entry links the file
+
+    def test_setting_off(self):
+        self.lib('config checksums false')
+        self.lib('file rename --move')
+        self.assertEqual(self.hashes(), {})
+        self.lib('undo')  # with the journal only
+        self.assertEqual(Path(self.a).read_text(), 'pdf a')
+
+    def test_command(self):
+        self.assertIn('1 checksum written', self.out('file checksum'))
+        self.assertEqual(self.hashes(), {os.path.relpath(self.a, self.path('lib')): checksum(self.a).hex()})
+        Path(self.a).write_text('annotated')
+        out = self.out('file checksum --check')
+        self.assertIn('changed since its checksum', out)
+        self.assertNotEqual(self.hashes()[os.path.relpath(self.a, self.path('lib'))], checksum(self.a).hex())
+        self.assertIn('1 checksum written (1 changed)', self.out('file checksum'))
+        self.assertIn('removed 1 checksum', self.out('file checksum --remove'))
+        self.assertEqual(self.hashes(), {})
+        self.lib('undo')  # the checksums are back
+        self.assertEqual(len(self.hashes()), 1)
+
+    def test_found_by_checksum(self):
+        # the journal of the command is gone (e.g. a command of an earlier
+        # version): the checksum of the restored state finds the file
+        self.lib('file checksum')
+        self.lib('file rename --move')
+        moved = self.moved()
+        commit = self.lib('git rev-parse HEAD', sp_cmd='check_output').strip()
+        self.lib('git rm -q files-journal.json')
+        self.lib('git commit -q --amend --no-edit')
+        self.assertNotEqual(self.lib('git rev-parse HEAD', sp_cmd='check_output').strip(), commit)
+        out = self.out('undo')
+        self.assertIn('moved back to', out)
+        self.assertEqual(Path(self.a).read_text(), 'pdf a')
+        self.assertFalse(os.path.exists(moved))
 
 
 class TestShallow(FileTest):
@@ -154,6 +293,9 @@ class TestShallow(FileTest):
         self.papers('undo', cwd=self.path('shallow'))
         self.assertTrue(os.path.exists(a))
         self.assertEqual(os.listdir(self.path('pool', 'files')), pool_files)  # the pool entry still links it
+        self.papers('redo', cwd=self.path('shallow'))
+        self.assertFalse(os.path.exists(a))  # moved again: the pool has it
+        self.assertEqual(os.listdir(self.path('pool', 'files')), pool_files)
 
 
 class TestTrash(JournalTest):
@@ -197,14 +339,36 @@ class TestTrash(JournalTest):
         self.assertFalse(os.path.isdir(self.trash()) and os.listdir(self.trash()))
         self.assertIn('deleted by the command, not restored', self.out('undo'))
 
+    def test_trash_emptied(self):
+        self.lib('rm one2000 --delete-files')
+        shutil.rmtree(self.trash())
+        self.assertIn('no longer in the trash', self.out('undo'))
+        self.assertFalse(os.path.exists(self.a))
+
+    def test_git_lfs_store(self):
+        # the git-lfs copies of the backups of earlier versions: undo finds a file there by its checksum
+        digest = checksum(self.a).hex()
+        self.lib('rm one2000 --delete-files')
+        shutil.rmtree(self.trash())
+        gitdir = os.path.dirname(self.trash())
+        lfs = os.path.join(gitdir, '.git', 'lfs', 'objects', digest[:2], digest[2:4])
+        os.makedirs(lfs)
+        Path(lfs, digest).write_text('pdf a')
+        self.assertIn('restored from the git-lfs copy', self.out('undo'))
+        self.assertEqual(Path(self.a).read_text(), 'pdf a')
+
     def test_old_files_leave_the_trash(self):
         trash = self.trash()
         os.makedirs(trash)
         old = self.write(trash, 'old.pdf')
         os.utime(old, (0, 0))
         recent = self.write(trash, 'recent.pdf')
-        journal.empty_trash(trash, days=30, megabytes=100)
-        self.assertEqual(os.listdir(trash), ['recent.pdf'])
+        with patch('send2trash.send2trash') as system_trash:
+            journal.empty_trash(trash, days=30, megabytes=100)
+        system_trash.assert_called_once_with(old)  # to the trash of the system
+        os.remove(old)
+        old = self.write(trash, 'old.pdf')
+        self.assertEqual(sorted(os.listdir(trash)), ['old.pdf', 'recent.pdf'])
         # beyond the size: the oldest go first
         Path(old).write_bytes(b'x' * journal.MB)
         os.utime(old, (time.time() - 10, time.time() - 10))
@@ -221,5 +385,7 @@ class TestTrash(JournalTest):
         self.assertFalse(os.path.isdir(self.trash()))
         ops, _ = journal.leftover()
         self.assertEqual([(op['op'], op['dst']) for op in ops], [('removed', copy)])
-        self.assertIn('restored (a copy of', '\n'.join(journal.reverse(ops)))
+        lines = journal.restore({copy}, {self.a}, ops, undo=True)
+        self.assertIn('restored (a copy of', '\n'.join(lines))
+        self.assertTrue(os.path.exists(copy))  # the pool keeps it
         self.assertEqual(Path(self.a).read_text(), 'pdf a')

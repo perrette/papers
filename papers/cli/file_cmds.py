@@ -1,6 +1,7 @@
-"""papers file rename, mv, attach, detach, rm, check, fix, clean, and filecheck (deprecated)"""
+"""papers file rename, mv, attach, detach, rm, check, fix, clean, checksum, and filecheck (deprecated)"""
 import os
 
+import papers.checksums
 import papers.config
 from papers import logger
 from papers.entries import get_entry_val
@@ -8,9 +9,9 @@ from papers.config import short_home
 from papers.files import (SearchFolders, attach_files, broken_links, check_entry_files, clean_filesdir,
                           delete_files, detach_links, execute_moves, files_to_delete, link_snapshot, linked_files,
                           links_to_paths, moved_links, plan_moves, realpath, remove_empty_folders, rename_files)
-from papers.library import get_biblio
+from papers.library import get_biblio, savebib
 from papers.pools import Exchange, Pools
-from papers.utils import PapersExit
+from papers.utils import PapersExit, checksum
 from papers.cli.common import (set_format_config_from_cmd, _print_biblio_diff, files_mode,
                                _entries_or_all, _one_entry, _key_option_entries, print_kept_files, library_pools,
                                save_entries, print_push_notes)
@@ -443,3 +444,42 @@ def file_cleancmd(parser, o, config):
     removed = clean_filesdir(biblio, interactive=not o.yes, ignore_files=[config.bibtex])
     print(f"{'DRYRUN: ' if papers.config.DRYRUN else ''}removed {len(removed)} unlinked file(s) "
           f"from {config.filesdir}")
+
+
+def file_checksumcmd(parser, o, config):
+    """papers file checksum: write (or check, or remove) the checksums of the
+    files of the entries in .papers/files.json (see papers.checksums)"""
+    if papers.checksums.files_json(config) is None:
+        raise PapersExit('the checksums are kept in a library (.papers/files.json): this bibtex has none')
+    biblio = get_biblio(config)
+    paths = sorted({os.path.normpath(f) for e in _entries_or_all(biblio, o.entries) for f in biblio.get_files(e)})
+    hashes = papers.checksums.load(config)
+    if o.remove:
+        removed = [p for p in paths if p in hashes]
+        for p in removed:
+            del hashes[p]
+        papers.checksums.save(config, hashes)
+        print(f"removed {len(removed)} checksum{'' if len(removed) == 1 else 's'}")
+    else:
+        written, changed, missing = 0, [], []
+        for p in paths:
+            if not os.path.isfile(p):
+                missing.append(p)
+                continue
+            digest = checksum(p).hex()
+            if p in hashes and hashes[p] != digest:
+                changed.append(p)
+            if hashes.get(p) != digest:
+                written += 1
+                hashes[p] = digest
+        for p in changed:
+            print(f"{short_home(p)}: changed since its checksum{'' if o.check else ' (updated)'}")
+        if missing:
+            print(f"{len(missing)} broken link{'' if len(missing) == 1 else 's'} (`papers file check` reports them)")
+        if o.check:
+            print(f"{len(paths) - len(missing)} files checked, {len(changed)} changed, "
+                  f"{written - len(changed)} without checksum")
+            return
+        papers.checksums.save(config, hashes)
+        print(f"{written} checksum{'' if written == 1 else 's'} written ({len(changed)} changed)")
+    savebib(biblio, config, other_changes=True)  # the backup commits files.json
