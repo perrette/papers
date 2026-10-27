@@ -1177,7 +1177,10 @@ pool (see <a href="../shallow-libraries/#files">Shallow libraries</a>). The
   original;</li>
 <li><code>copy</code>: place it in the files directory and keep the original (a hard link
   when possible, otherwise a copy);</li>
-<li><code>link</code>: leave it where it is; the entry links to it there.</li>
+<li><code>link</code>: leave it where it is; the entry links to it there;</li>
+<li><code>ask</code>: ask for each file, <code>m</code> (move), <code>c</code> (copy) or <code>l</code> (link, also
+  Enter); <code>M</code>, <code>C</code> or <code>L</code> answers for all the next files; without a
+  terminal, the file is linked where it is.</li>
 </ul>
 <p><code>--move</code>, <code>--copy</code> and <code>--link</code> override the setting for one command
 (<code>-r/--rename</code> is the same as <code>--move</code>, <code>-c</code> as <code>--copy</code>):</p>

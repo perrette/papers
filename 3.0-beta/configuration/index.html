@@ -1109,7 +1109,7 @@ version (papers also leaves them out each time it saves the file).</p>
 </tr>
 <tr>
 <td><code>files</code></td>
-<td><code>move</code> (default), <code>copy</code> or <code>link</code>: what <code>papers add</code> does with a file (see <a href="../files/#what-add-does-with-a-file">Files</a>); in a shallow library, how the file gets to the pool: moved or copied into its files directory, or linked where it is by the library and the pool entry</td>
+<td><code>move</code> (default), <code>copy</code>, <code>link</code> or <code>ask</code>: what <code>papers add</code>, <code>file attach</code> and <code>file rename</code> do with a file outside the files directory (see <a href="../files/#what-add-does-with-a-file">Files</a>); in a shallow library, how the file gets to the pool: moved or copied into its files directory, or linked where it is by the library and the pool entry</td>
 </tr>
 <tr>
 <td><code>auto-push</code></td>
@@ -1122,6 +1122,14 @@ version (papers also leaves them out each time it saves the file).</p>
 <tr>
 <td><code>git-lfs</code></td>
 <td><code>true</code> or <code>false</code>: also back up the files with git-lfs</td>
+</tr>
+<tr>
+<td><code>trash-days</code></td>
+<td><code>30</code> (default): the days a file deleted by a command stays in the trash of the library, for undo (see <a href="../undo-redo/#files">Undo and redo</a>)</td>
+</tr>
+<tr>
+<td><code>trash-size</code></td>
+<td><code>100</code> (default): the size of the trash of the library, in MB; papers asks before deleting more than that at once</td>
 </tr>
 <tr>
 <td><code>editor</code></td>

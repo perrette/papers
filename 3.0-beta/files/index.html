@@ -1013,6 +1013,11 @@ files attached with <code>--attach</code>:</p>
 <td>yes</td>
 </tr>
 <tr>
+<td><code>ask</code></td>
+<td>papers asks for each file: move, copy or leave it (link)</td>
+<td>as answered</td>
+</tr>
+<tr>
 <td><code>copy</code></td>
 <td>yes, as a hard link when possible (same file system), otherwise a copy</td>
 <td>no</td>
@@ -1024,10 +1029,19 @@ files attached with <code>--attach</code>:</p>
 </tr>
 </tbody>
 </table>
+<p>With <code>ask</code>, papers names each file that is outside the files directory and
+waits for an answer: <code>m</code> (move), <code>c</code> (copy) or <code>l</code> (leave it where it is,
+also Enter); <code>M</code>, <code>C</code> or <code>L</code> gives the same answer for all the next files of
+the command. A file already in the files directory is renamed without
+asking. Without a terminal (a script, a pipe), papers does not ask: the
+files are left where they are, with a warning.</p>
 <p>Set it for a library with <code>papers config files copy</code>, or for all libraries
 of the user with <code>papers config --global files copy</code>. The options
 <code>--move</code>, <code>--copy</code> and <code>--link</code> of <code>papers add</code> override it for one command;
-<code>-r/--rename</code> is the same as <code>--move</code>, and <code>-c</code> the same as <code>--copy</code>.</p>
+<code>-r/--rename</code> is the same as <code>--move</code>, and <code>-c</code> the same as <code>--copy</code>.
+<code>papers file attach</code>, <code>papers file rename</code> (<code>--keep-source</code> is the same as
+<code>--copy</code>) and <code>papers list --rename</code> (with <code>--move</code> or <code>--keep-source</code>)
+follow the setting too.</p>
 <p>A file that belongs to another library, i.e. a file inside the files
 directory of a library whose configuration (<code>.papers/config.json</code>) is found
 in the file's directory or above, is never moved: in <code>move</code> mode it is
