@@ -265,6 +265,35 @@ def find_masked_viewer(name='papers'):
     return None
 
 
+def write_atomic(path, text):
+    """write `text` to `path` through a temporary file next to it, then
+    replaced in one step: a crash, or a program reading the file meanwhile
+    (a sync client), never sees a partial file. A symbolic link is followed
+    (its target is written), and the permissions of the file are kept."""
+    path = os.path.realpath(path)
+    directory = os.path.dirname(path)
+    if os.path.exists(path):
+        mode = os.stat(path).st_mode & 0o7777
+    else:
+        umask = os.umask(0)
+        os.umask(umask)
+        mode = 0o666 & ~umask
+    fd, tmp = tempfile.mkstemp(dir=directory, prefix='.' + os.path.basename(path) + '.', suffix='.tmp')
+    try:
+        with os.fdopen(fd, 'w') as f:
+            f.write(text)
+            f.flush()
+            os.fsync(f.fileno())
+        os.chmod(tmp, mode)
+        os.replace(tmp, path)
+    except BaseException:
+        try:
+            os.remove(tmp)
+        except OSError:
+            pass
+        raise
+
+
 # the `editor` setting of the library of the command (set by papers.cli.main)
 EDITOR = None
 

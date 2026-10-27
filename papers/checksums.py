@@ -15,7 +15,7 @@ import papers.config
 from papers import journal
 from papers.config import config_root
 from papers.entries import parse_file
-from papers.utils import checksum
+from papers.utils import checksum, write_atomic
 
 FILES_JSON = os.path.join('.papers', 'files.json')
 
@@ -61,9 +61,7 @@ def save(config, hashes):
     stored = {(p if config.absolute_paths else os.path.relpath(p, base)): digest
               for p, digest in sorted(hashes.items())}
     os.makedirs(os.path.dirname(path), exist_ok=True)
-    with open(path, 'w') as f:
-        json.dump({'files': stored}, f, indent=1, sort_keys=True)
-        f.write('\n')
+    write_atomic(path, json.dumps({'files': stored}, indent=1, sort_keys=True) + '\n')
 
 
 def entry_links(entries, relative_to):

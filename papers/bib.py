@@ -41,7 +41,7 @@ from papers.filename import NAMEFORMAT, KEYFORMAT
 from papers.files import (download_url, read_entry_dir, attachment_names, remove_entry_dir_if_empty, realpath,
                           scan_dir_items, is_download)
 from papers import journal
-from papers.utils import bcolors, checksum, move as _move, PapersExit
+from papers.utils import bcolors, checksum, move as _move, write_atomic, PapersExit
 import papers.config
 
 from papers.duplicate import (
@@ -121,6 +121,10 @@ def read_text(file):
     except (OSError, UnicodeDecodeError):
         return None
 
+class BibtexChanged(PapersExit):
+    "the bibtex was written by another program since papers read it"
+
+
 class DuplicateKeyError(PapersExit):
     "a new entry has the key of another paper of the library"
 
@@ -199,6 +203,30 @@ class Biblio:
             self.db.add(e)
 
     unreadable = ()  # [(line, reason)] of the entries of the bibtex that could not be read
+    read_state = None  # (path, size and modification time, text) of the bibtex as read or last written
+
+    def _remember(self, bibtex, text):
+        path = os.path.realpath(bibtex)
+        st = os.stat(path)
+        self.read_state = (path, (st.st_size, st.st_mtime_ns), text)
+
+    def _current_text(self, bibtex):
+        """the text of `bibtex` on disk; raise BibtexChanged if it is not the
+        text that this library read or last wrote (another program wrote it
+        since). The text is read only when its size or modification time
+        changed."""
+        path = os.path.realpath(bibtex)
+        if self.read_state is None or self.read_state[0] != path:
+            return read_text(bibtex)
+        st = os.stat(path)
+        if (st.st_size, st.st_mtime_ns) == self.read_state[1]:
+            return self.read_state[2]
+        text = read_text(bibtex)
+        if text != self.read_state[2]:
+            raise BibtexChanged(f'{bibtex} changed since papers read it (another program wrote it meanwhile): '
+                                'papers did not write it. Run the command again. The files that the command '
+                                'moved or copied stay where it put them.')
+        return text
 
     @classmethod
     def load(cls, bibtex, filesdir, relative_to=None, **kw):
@@ -206,6 +234,7 @@ class Biblio:
         kw.setdefault('distinct', Distinct.for_bibtex(bibtex))
         db = parse_string(bibtexs)
         loaded_bib = cls(db, filesdir, relative_to=relative_to if relative_to is not None else os.path.dirname(bibtex), **kw)
+        loaded_bib._remember(bibtex, bibtexs)
         loaded_bib.unreadable = unreadable_blocks(db)
         if loaded_bib.unreadable:
             logger.warning(unreadable_message(bibtex, loaded_bib.unreadable))
@@ -216,7 +245,7 @@ class Biblio:
         assert not os.path.exists(bibtex)
         if os.path.dirname(bibtex) and not os.path.exists(os.path.dirname(bibtex)):
             os.makedirs(os.path.dirname(bibtex))
-        open(bibtex,'w').write('')
+        write_atomic(bibtex, '')
         return cls.load(bibtex, filesdir, relative_to=relative_to, **kw)
 
     def key(self, e):
@@ -668,20 +697,24 @@ class Biblio:
     def save(self, bibtex, backup=None):
         """write the library to `bibtex` (the previous version goes to
         `backup`, if given). A bibtex that has this content already is not
-        written: its modification time (and its backup) stay as they are."""
+        written: its modification time (and its backup) stay as they are.
+        The file is replaced in one step (see write_atomic). A bibtex that
+        another program wrote since this library read it is not written:
+        BibtexChanged."""
         if self.relative_to not in (os.path.sep, None) and Path(self.relative_to).resolve() != Path(bibtex).parent.resolve():
             logger.warning("Saving bibtex file with relative paths may break links. Consider using `Biblio.update_file_path(Path(bibtex).parent)` before.")
         self.sort()  # consistent order before writing
         s = self.format()
         if os.path.exists(bibtex):
-            if read_text(bibtex) == s:
+            if self._current_text(bibtex) == s:
                 logger.debug(f'{bibtex}: unchanged, not written')
             else:
                 if backup:
                     shutil.copy(bibtex, backup)
-                open(bibtex, 'w').write(s)
+                write_atomic(bibtex, s)
         else:
-            open(bibtex, 'w').write(s)
+            write_atomic(bibtex, s)
+        self._remember(bibtex, s)
         if self.distinct.changed:
             if self.distinct.path is None:
                 ondisk = Distinct.for_bibtex(bibtex)

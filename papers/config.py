@@ -7,7 +7,7 @@ from papers.entries import parse_string, get_entry_val, parse_file
 from papers import logger
 from papers.filename import NAMEFORMAT, KEYFORMAT
 from papers import __version__
-from papers.utils import bcolors, check_filesdir, PapersExit
+from papers.utils import bcolors, check_filesdir, PapersExit, write_atomic
 
 DRYRUN = False
 
@@ -649,8 +649,7 @@ class Config:
             self.file = move_v2_config(self.file)
         if os.path.dirname(self.file):
             os.makedirs(os.path.dirname(self.file), exist_ok=True)
-        with open(self.file, 'w') as f:
-            json.dump(self.tojson(), f, sort_keys=True, indent=2, separators=(',', ': '))
+        write_atomic(self.file, json.dumps(self.tojson(), sort_keys=True, indent=2, separators=(',', ': ')))
 
 
     @classmethod
