@@ -150,6 +150,25 @@ An edit that does not parse, has a malformed field name, or gives the entry
 the key of another entry is not applied, and the command exits with status
 1, with `--from` as with the editor.
 
+## Output for programs
+
+`--porcelain` (after git's option of that name) makes the output of a command
+stable for programs: the standard output has only the entries that the
+command added, modified or removed, or found already in the library
+(`papers add` of an entry that is there), one per line, without colours:
+
+```
+$ papers add paper.pdf --porcelain
+added perrette2013
+$ papers tag perrette2013 smith2020 --add to-read --porcelain
+modified perrette2013
+modified smith2020
+```
+
+The lines are `added KEY`, `modified KEY`, `removed KEY` and `existing KEY`.
+Every other message (questions, warnings, the files moved) goes to the
+standard error. An error exits with status 1.
+
 ## Actions on the listed entries
 
 `papers list` can run a command on the entries it lists: list the entries,

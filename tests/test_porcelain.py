@@ -1,0 +1,43 @@
+"""--porcelain: the entries a command added, modified or removed, for programs"""
+import io
+import sys
+from contextlib import redirect_stderr, redirect_stdout
+
+from tests.common import FileTest, entry
+
+
+class TestPorcelain(FileTest):
+
+    def setUp(self):
+        super().setUp()
+        self.bib(entry('one2000'), entry('two2000'))
+
+    def run_porcelain(self, cmd):
+        out, err = io.StringIO(), io.StringIO()
+        with redirect_stdout(out), redirect_stderr(err):
+            self.lib(cmd + ' --porcelain')
+        return out.getvalue().splitlines(), err.getvalue()
+
+    def test_add(self):
+        new = self.write('new.bib', content=entry('three2000'))
+        lines, _ = self.run_porcelain(f'add {new}')
+        self.assertEqual(lines, ['added three2000'])
+        lines, _ = self.run_porcelain(f'add {new}')
+        self.assertEqual(lines, ['existing three2000'])
+
+    def test_tag_and_rm(self):
+        self.assertEqual(self.run_porcelain('tag one2000 --add x')[0], ['modified one2000'])
+        self.assertEqual(self.run_porcelain('rm two2000 --keep-files')[0], ['removed two2000'])
+
+    def test_other_messages_on_stderr(self):
+        # the human messages of the command go to the standard error
+        lines, err = self.run_porcelain('tag one2000 two2000 --add x')
+        self.assertEqual(lines, ['modified one2000', 'modified two2000'])
+        lines, err = self.run_porcelain('tag')
+        self.assertEqual(lines, [])
+        self.assertIn('x (2)', err)
+
+    def test_stdout_restored(self):
+        stdout = sys.stdout
+        self.run_porcelain('tag one2000 --add y')
+        self.assertIs(sys.stdout, stdout)

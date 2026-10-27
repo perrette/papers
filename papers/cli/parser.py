@@ -171,6 +171,10 @@ def get_parser(config=None):
     loggingp.add_argument('--color', choices=['auto', 'always', 'never'], default='auto',
         help='colours and hyperlinks in the output: auto (default) when the output is a terminal and the '
              'NO_COLOR environment variable is not set')
+    loggingp.add_argument('--porcelain', action='store_true',
+        help='output for programs (as git\'s): the standard output has only the entries that the command '
+             'added, modified or removed, or found already in the library, one per line: "added KEY", '
+             '"modified KEY", "removed KEY", "existing KEY"; every other message goes to the standard error')
 
     cfg = argparse.ArgumentParser(add_help=False, parents=[loggingp])
     grp = cfg.add_argument_group('config')
