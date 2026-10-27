@@ -177,10 +177,24 @@ class TestEdit(EntryTest):
             self.assertEqual([e.key for e in entries], ['two2000'])
             entries[0]['title'] = 'Edited'
             return entries
-        with patch('papers.cli.common.edit_entries', side_effect=edit):
+        with patch('papers.cli.common.edit_in_editor', side_effect=edit):
             self.lib('edit two2000')
         self.assertEqual(self.entry('two2000')['title'], 'Edited')
         self.assertEqual(self.keys(), ['one2000', 'two2000'])
+
+    def test_edit_rejected_exits(self):
+        # an edit that does not parse is an error, exit 1 (#117)
+        with patch('papers.cli.common.edit_text', return_value='@article{two2000,\n title = {unclosed\n'), \
+                self.assertRaises(PapersExit):
+            self.lib('edit two2000')
+        self.assertEqual(self.entry('two2000')['title'], 'Title of two2000')
+
+    def test_edit_key_taken(self):
+        with patch('papers.cli.common.edit_text', return_value=entry('one2000')), \
+                self.assertRaisesRegex(PapersExit, 'another entry'):
+            self.lib('edit two2000')
+        self.assertEqual(self.keys(), ['one2000', 'two2000'])
+
 
     def editor_script(self):
         script = self.write('bin', 'editor.sh', content="#!/bin/sh\nsed -i 's/Original/Edited/' \"$1\"\n")
@@ -236,7 +250,7 @@ class TestEdit(EntryTest):
         self.assertEqual(self.entry('one2000')['title'], 'Edited')
 
     def test_unknown_key(self):
-        with patch('papers.cli.common.edit_entries') as edit:
+        with patch('papers.cli.common.edit_in_editor') as edit:
             with self.assertRaises(PapersExit):
                 self.lib('edit nope2000')
             edit.assert_not_called()
@@ -245,6 +259,75 @@ class TestEdit(EntryTest):
         def edit(entries):
             entries[0]['title'] = 'Edited'
             return entries
-        with patch('papers.cli.common.edit_entries', side_effect=edit):
+        with patch('papers.cli.common.edit_in_editor', side_effect=edit):
             self.lib('list --key one2000 -e')
         self.assertEqual(self.entry('one2000')['title'], 'Edited')
+
+
+class TestEditFrom(EntryTest):
+    "papers edit KEY --from FILE (#117)"
+
+    def setUp(self):
+        super().setUp()
+        self.bib(tagged('one2000', 'kiwi', 'files/one.pdf'), entry('two2000'))
+
+    def test_from_file(self):
+        new = self.write('new.bib', content='@article{fetched_2000,\n author = {New One},\n'
+                                             ' title = {New title},\n doi = {10.1/x}\n}\n')
+        self.lib(f'edit one2000 --from {new}')
+        e = self.entry('one2000')  # the key stays
+        self.assertEqual(e['title'], 'New title')
+        self.assertEqual(e['doi'], '10.1/x')
+        self.assertNotIn('year', e)  # the other fields are those of FILE
+        self.assertEqual(parse_keywords(e), ['kiwi'])  # kept: FILE has none
+        self.assertIn('one.pdf', e['file'])
+        self.assertEqual(self.keys(), ['one2000', 'two2000'])
+
+    def test_from_file_with_file_and_keywords(self):
+        new = self.write('new.bib', content='@article{x,\n title = {T},\n keywords = {ocean},\n'
+                                             ' file = {:files/other.pdf:pdf}\n}\n')
+        self.lib(f'edit one2000 --from {new}')
+        e = self.entry('one2000')
+        self.assertEqual(parse_keywords(e), ['ocean'])
+        self.assertIn('other.pdf', e['file'])
+
+    def test_from_stdin_pipe(self):
+        with patch('sys.stdin', io.StringIO('@article{x,\n title = {Piped}\n}\n')), \
+                patch('papers.utils.stdin_is_terminal', return_value=False):
+            self.lib('edit one2000 --from -')
+        self.assertEqual(self.entry('one2000')['title'], 'Piped')
+
+    def test_from_stdin_paste(self):
+        # in a terminal, the closing brace ends the input: the next lines are not read
+        stdin = io.StringIO('@article{x,\n title = {Pasted {Title}}\n}\nnot read\n')
+        with patch('sys.stdin', stdin), patch('papers.utils.stdin_is_terminal', return_value=True), \
+                redirect_stdout(io.StringIO()):
+            self.lib('edit one2000 --from -')
+        self.assertEqual(self.entry('one2000')['title'], 'Pasted {Title}')
+        self.assertEqual(stdin.read(), 'not read\n')
+
+    def test_from_ris(self):
+        import importlib.util
+        if importlib.util.find_spec('rispy') is None:
+            self.skipTest('rispy is not installed')
+        new = self.write('new.ris', content='TY  - JOUR\nTI  - From RIS\nPY  - 2001\nER  - \n')
+        self.lib(f'edit one2000 --from {new}')
+        self.assertEqual(self.entry('one2000')['title'], 'From RIS')
+
+    def test_two_entries(self):
+        new = self.write('new.bib', content=entry('a') + entry('b'))
+        with self.assertRaisesRegex(PapersExit, '2 entries'):
+            self.lib(f'edit one2000 --from {new}')
+
+    def test_one_key(self):
+        new = self.write('new.bib', content=entry('a'))
+        with self.assertRaisesRegex(PapersExit, 'one entry'):
+            self.lib(f'edit one2000 two2000 --from {new}')
+
+    def test_errors(self):
+        with self.assertRaises(SystemExit), redirect_stdout(io.StringIO()):
+            self.lib('edit - --from -')
+        with self.assertRaises(SystemExit), redirect_stdout(io.StringIO()):
+            self.lib('edit one2000 --format ris')
+        with self.assertRaisesRegex(PapersExit, 'missing.bib'):
+            self.lib('edit one2000 --from missing.bib')

@@ -12,19 +12,20 @@ from papers.bib import isvalidkey
 from papers.duplicate import FUZZY_RATIO, duplicate_groups, fuzzy_pairs
 from papers.encoding import family_names, format_entries, format_entry, format_key, parse_keywords, standard_name
 from papers.formats import dumps, file_format, load_rispy
-from papers.entries import entry_from_dict, get_entry_val, format_file, parse_file
+from papers.entries import entry_from_dict, get_entry_val, format_file, parse_file, set_entry_key
 from papers.extract import isvaliddoi, prefetch_pdf_metadata
 from papers.files import delete_files, describe_file, download_url, files_policy, scan_dir_items
 from papers.identifiers import normalize_doi, read_selection, select_entries
 from papers.library import get_biblio, savebib
 from papers.merge import DuplicateError
 from papers.pools import Exchange, PoolLookup, Pools
-from papers.utils import PapersExit, file_uri_to_path, open_with_system
+from papers.utils import PapersExit, file_uri_to_path, open_with_system, read_entry_text
 from papers.cli.file_cmds import (attach_entry_files, check_entries_files, detach_entries, file_check_pools,
                                   rename_entries)
 from papers.cli.pool_cmds import exchange_pools, export_entries, pull_entries, push_entries, sync_entries
 from papers.cli.common import (view_entry_files, set_format_config_from_cmd, _print_biblio_diff, files_mode,
                                duplicate_resolver, save_exchange, stdin_is_terminal, edit_entries, edit_selected,
+                               EditRejected, parse_edited, replace_entries,
                                print_kept_files, _delete_files_option, library_pools, push_notes, push_changed,
                                save_entries, print_push_notes)
 
@@ -381,10 +382,43 @@ def rename_tag(entries, old, new):
     return count
 
 
+def _entry_from(path, fmt, entry):
+    """the entry of `path` (- : the standard input) in place of `entry`: with
+    its key, and its file and keywords fields when the new one has none"""
+    if path == '-':
+        text = read_entry_text()
+    else:
+        try:
+            with open(path, encoding='utf-8-sig') as f:
+                text = f.read()
+        except OSError as error:
+            raise PapersExit(f'--from {path}: {error.strerror}')
+    new = parse_edited(text, file_format(path, fmt) if path != '-' else (fmt or 'bibtex'))
+    if len(new) != 1:
+        raise EditRejected(f'--from {path}: {len(new)} entries, --from takes one -- keeping original entries')
+    new = new[0]
+    set_entry_key(new, get_entry_val(entry, 'ID', ''))
+    for name in ('file', 'keywords'):
+        if get_entry_val(new, name, None) is None and get_entry_val(entry, name, None) is not None:
+            new[name] = get_entry_val(entry, name)
+    return new
+
+
 def editcmd(parser, o, config):
+    if o.from_file == '-' and '-' in o.entries:
+        parser.error('--from - and the keys from the standard input (-): only one of them can read it')
+    if o.format and not o.from_file:
+        parser.error('--format is the format of --from FILE')
     biblio = get_biblio(config)
     entries = select_entries(biblio, o.entries)
     if not entries:
+        return
+    if o.from_file:
+        if len(entries) != 1:
+            raise PapersExit(f'--from replaces one entry: {len(entries)} selected')
+        replace_entries(biblio, entries, [_entry_from(o.from_file, o.format, entries[0])])
+        notes = save_entries(config, biblio)
+        _print_biblio_diff(biblio, biblio.entries, notes=notes)
         return
     if '-' in o.entries and not stdin_is_terminal():
         # the keys came from a pipe: the editor reads the terminal
@@ -394,9 +428,9 @@ def editcmd(parser, o, config):
             os.close(fd)
         except OSError:
             pass
-    if edit_selected(biblio, entries):
-        notes = save_entries(config, biblio)
-        _print_biblio_diff(biblio, biblio.entries, notes=notes)
+    edit_selected(biblio, entries)
+    notes = save_entries(config, biblio)
+    _print_biblio_diff(biblio, biblio.entries, notes=notes)
 
 
 def rmcmd(parser, o, config):
@@ -424,7 +458,9 @@ def tagcmd(parser, o, config):
 
     if o.add or o.rm:
         if not o.entries:
-            parser.error('--add and --rm need the entries: KEY..., or - to read them from the standard input')
+            parser.error('--add and --rm need the entries: KEY..., or - to read them from the standard input. '
+                         '--add and --rm take all the words after them: put the keys first '
+                         '(papers tag KEY... --add TAG...)')
         entries = select_entries(biblio, o.entries)
         add_tags(entries, o.add or [])
         remove_tags(entries, o.rm or [])
@@ -572,7 +608,14 @@ def listcmd(parser, o, config):
     if o.abstract:
         entries = [e for e in entries if 'abstract' in e and _longmatch(e['abstract'], o.abstract)]
     if o.keywords:
-        entries = [e for e in entries if 'keywords' in e and _longmatch(e['keywords'], o.keywords)]
+        if o.fuzzy:
+            entries = [e for e in entries if 'keywords' in e and _longmatch(e['keywords'], o.keywords)]
+        else:
+            # whole tags, not part of the keywords field: --tag ice does not find ice-review (ice* does)
+            def _has_tag(e, target):
+                return any(fnmatch.fnmatch(tag.lower(), target.lower()) for tag in parse_keywords(e))
+            entries = [e for e in entries
+                       if (any if o.any else all)(_has_tag(e, target) for target in o.keywords)]
     if o.fullsearch:
         o.strict = False
         entries = [e for e in entries if _longmatch(_fullsearch_string(e), o.fullsearch)]
@@ -634,8 +677,7 @@ def listcmd(parser, o, config):
         notes = attach_entry_files(biblio, config, pools, entries[0], attach, attach_mode)
 
     elif o.edit:
-        if not edit_selected(biblio, entries):
-            return
+        edit_selected(biblio, entries)
         entries = biblio.entries
         notes = save_entries(config, biblio)
 

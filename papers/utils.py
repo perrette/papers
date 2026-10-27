@@ -265,6 +265,35 @@ def find_masked_viewer(name='papers'):
     return None
 
 
+def write_atomic(path, text):
+    """write `text` to `path` through a temporary file next to it, then
+    replaced in one step: a crash, or a program reading the file meanwhile
+    (a sync client), never sees a partial file. A symbolic link is followed
+    (its target is written), and the permissions of the file are kept."""
+    path = os.path.realpath(path)
+    directory = os.path.dirname(path)
+    if os.path.exists(path):
+        mode = os.stat(path).st_mode & 0o7777
+    else:
+        umask = os.umask(0)
+        os.umask(umask)
+        mode = 0o666 & ~umask
+    fd, tmp = tempfile.mkstemp(dir=directory, prefix='.' + os.path.basename(path) + '.', suffix='.tmp')
+    try:
+        with os.fdopen(fd, 'w') as f:
+            f.write(text)
+            f.flush()
+            os.fsync(f.fileno())
+        os.chmod(tmp, mode)
+        os.replace(tmp, path)
+    except BaseException:
+        try:
+            os.remove(tmp)
+        except OSError:
+            pass
+        raise
+
+
 # the `editor` setting of the library of the command (set by papers.cli.main)
 EDITOR = None
 
@@ -286,6 +315,35 @@ def edit_text(text, editor=None):
             return f.read()
     finally:
         os.remove(filename)
+
+
+def read_entry_text(stdin=None, terminal=None):
+    """the text of one entry from the standard input. From a pipe or a file:
+    all of it. From a terminal (a paste): until the braces of the first
+    @type{...} close, or the end of the input (Ctrl-D), with a hint on the
+    standard error first. Only for one entry: the braces of a second entry
+    are not waited for."""
+    stdin = stdin or sys.stdin
+    if terminal is None:
+        terminal = stdin_is_terminal()
+    if not terminal:
+        return stdin.read()
+    print('Paste or type the entry: papers continues when its closing brace is read '
+          '(Ctrl-D ends the input, Ctrl-C cancels)', file=sys.stderr)
+    lines, depth, started, opened = [], 0, False, False
+    for line in stdin:
+        lines.append(line)
+        for char in line:
+            if char == '@':
+                started = True
+            elif started and char == '{':
+                depth += 1
+                opened = True
+            elif started and char == '}':
+                depth -= 1
+        if opened and depth <= 0:
+            break
+    return ''.join(lines)
 
 
 def stdin_is_terminal():

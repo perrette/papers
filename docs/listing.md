@@ -45,6 +45,10 @@ $> papers list --tag sea-level projections
 Perrette2013: A scaling approach to project regional sea level rise and it... (doi:10.5194/esd-4-11-2013, file:1, sea-level | projections )
 ```
 
+`--tag` matches whole tags, whatever their case: `--tag ice` does not find
+`ice-review`, `--tag 'ice*'` does. With several tags, an entry needs all of
+them (`--any`: one of them).
+
 `papers list ... --add-tag TAG...` adds tags to the listed entries.
 
 ## Output formats
@@ -123,6 +127,28 @@ papers list --review-required -K | papers edit -
 These commands take `-`: `edit`, `rm`, `tag`, `open`, `check`, and the
 `papers file` commands that act on entries (`rename`, `check`, and the
 `--key` option of `detach` and `rm`).
+
+## Editing without an editor
+
+`papers edit KEY --from FILE` replaces the entry by the entry in FILE,
+without opening an editor (for scripts and other programs). The entry keeps
+its key, and its `file` and `keywords` fields when FILE has none; its other
+fields are those of FILE (a field that FILE does not have is removed). FILE
+is bibtex, or RIS (`.ris`) or CSL-JSON (`.json`), or the format given with
+`--format`. `--from -` reads the entry from the standard input:
+
+```
+papers extract paper.pdf | papers edit perrette2013 --from -
+papers fetch 10.5194/esd-4-11-2013 | papers edit perrette2013 --from -
+```
+
+In a terminal, `papers edit KEY --from -` waits for the entry: paste it, and
+papers continues when the closing brace of the entry is read (Ctrl-D ends
+the input too, Ctrl-C cancels).
+
+An edit that does not parse, has a malformed field name, or gives the entry
+the key of another entry is not applied, and the command exits with status
+1, with `--from` as with the editor.
 
 ## Actions on the listed entries
 

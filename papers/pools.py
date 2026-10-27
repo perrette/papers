@@ -73,7 +73,7 @@ from papers.files import ATTACHMENT_SEP, FilesPolicy, realpath, is_inside
 from papers.install import resolve_install, apply_install, DefaultAsker
 from papers.library import get_biblio
 from papers.merge import Merge, apply_entry
-from papers.utils import PapersExit, checksum, bcolors
+from papers.utils import PapersExit, checksum, bcolors, write_atomic
 
 
 class PoolError(PapersExit):
@@ -662,8 +662,7 @@ class Origin:
             path = os.path.join(self.dir, origin_file_name(pool))
             text = format_library(lib)
             if read_text(path) != text:  # a file that has this content already is not written
-                with open(path, 'w') as f:
-                    f.write(text)
+                write_atomic(path, text)
         self.changed = set()
 
 

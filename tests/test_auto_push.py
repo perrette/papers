@@ -141,7 +141,7 @@ class TestAutoPush(ExchangeTest):
         def edit(entries):
             entries[0]['note'] = 'edited'
             return entries
-        with patch('papers.cli.common.edit_entries', side_effect=edit):
+        with patch('papers.cli.common.edit_in_editor', side_effect=edit):
             self.lib('edit smith2020climate')
         self.assertEqual(self.smith('pool')['note'], 'edited')
 
