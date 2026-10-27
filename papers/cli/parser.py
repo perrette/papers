@@ -641,7 +641,7 @@ def get_parser(config=None):
     grp.add_argument('--abstract', help='abstract', nargs="+")
     grp.add_argument('-k', '--key', '--id', nargs='+', help='entry key')
     grp.add_argument('--doi', nargs='+', help='DOI')
-    grp.add_argument('--keywords', '--tag', nargs='+', help='keywords (tags)')
+    grp.add_argument('--keywords', '--tag', nargs='+', help="keywords (tags): whole tags, case-insensitive, with * patterns (--tag 'ice*')")
 
 
     grp = listp.add_argument_group('check')

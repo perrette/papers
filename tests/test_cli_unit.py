@@ -4,6 +4,7 @@ import argparse
 import io
 import logging
 import os
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -222,3 +223,17 @@ class TestImports(unittest.TestCase):
         out = subprocess.run([sys.executable, '-c', code], capture_output=True, text=True, check=True,
                              env=dict(os.environ, PYTHONPATH=str(Path(papers.cli.__file__).parents[2])))
         self.assertEqual(out.stdout.strip(), '[]')
+
+
+class TestBrokenPipe(unittest.TestCase):
+
+    def test_no_traceback(self):
+        # papers list | head (#121): a subprocess, since the handler replaces the standard output
+        code = ("import papers.cli as c\n"
+                "def main(args=None): raise BrokenPipeError\n"
+                "c.main = main\n"
+                "c.main_clean_exit()\n")
+        res = subprocess.run([sys.executable, '-c', code], capture_output=True, text=True,
+                             env={**os.environ, 'PYTHONPATH': os.getcwd()})
+        self.assertEqual(res.returncode, 1)
+        self.assertNotIn('Traceback', res.stderr)

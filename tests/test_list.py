@@ -159,6 +159,15 @@ class SearchTest(ListTest):
         out = self.papers('list --plain --tag kiwi bonobo --any', sp_cmd='check_output')
         self.assertMultiLineEqual(out, self.initial_content)
 
+    def test_list_tag_whole(self):
+        # a whole tag, not part of the keywords field (#121)
+        self.assertEqual(self.papers('list --plain --tag kiw', sp_cmd='check_output'), "")
+        self.assertEqual(self.papers('list --plain --tag "kiwi, ocean"', sp_cmd='check_output'), "")
+        out = self.papers('list --plain --tag "kiw*"', sp_cmd='check_output')
+        self.assertMultiLineEqual(out, self.initial_content)
+        out = self.papers('list --plain --tag KIWI', sp_cmd='check_output')
+        self.assertMultiLineEqual(out, self.initial_content)
+
 
     def test_list_combined(self):
         out = self.papers('list --plain --year 2011 --author perrette', sp_cmd='check_output')

@@ -6,6 +6,7 @@ No dependency on bib or encoding to avoid circular imports.
 """
 import copy
 import os
+import re
 
 import bibtexparser
 from bibtexparser import Library
@@ -100,16 +101,26 @@ def library_from_entries(entries):
     return lib
 
 
+def lowercase_fields(library):
+    """the field names of the entries in lower case (BibTeX ignores their
+    case: older JabRef files write Title, Keywords...), in place"""
+    for e in library.entries:
+        for f in e.fields:
+            if f.key != f.key.lower():
+                f.key = f.key.lower()
+    return library
+
+
 def parse_string(bibtex_str):
     """Parse a BibTeX string; returns Library. Handles empty string."""
     if not bibtex_str or not bibtex_str.strip():
         return Library()
-    return bibtexparser.parse_string(bibtex_str)
+    return lowercase_fields(bibtexparser.parse_string(bibtex_str))
 
 
 def parse_bibtex_file(path, encoding='utf-8'):
     """Parse a BibTeX file; returns Library."""
-    return bibtexparser.parse_file(path, encoding=encoding)
+    return lowercase_fields(bibtexparser.parse_file(path, encoding=encoding))
 
 
 # the order of the blocks of a saved bibtex (that of bibtexparser's SortBlocksByTypeAndKeyMiddleware)
@@ -161,6 +172,21 @@ def _writable_copy(block):
     return copy.deepcopy(block)
 
 
+# the line that bibtexparser writes above a block it could not parse
+_FAILED_COMMENT = re.compile(r'% WARNING Parsing failed for the following \d+ lines\.')
+
+
+def _without_failed_comments(block):
+    """`block` without the lines that bibtexparser wrote above an unreadable
+    block at the previous saves (it writes them again), or None if nothing
+    else is left of it"""
+    if not isinstance(block, ImplicitComment) or not _FAILED_COMMENT.search(block.comment):
+        return block
+    lines = [line for line in block.comment.splitlines() if not _FAILED_COMMENT.fullmatch(line.strip())]
+    comment = '\n'.join(lines).strip('\n')
+    return ImplicitComment(comment, start_line=block.start_line) if comment.strip() else None
+
+
 def format_library(library):
     """Serialize a Library to a BibTeX string (single-space indent, newline between entries).
     Fields in alphabetical order. Mutates the library in place (field order).
@@ -170,7 +196,8 @@ def format_library(library):
     light copies of the blocks, written as they are (bibtexparser.writer)."""
     for e in library.entries:
         e.fields = sorted(e.fields, key=lambda f: f.key)
-    blocks = [_ENCLOSING.transform_block(_writable_copy(b), library) for b in library.blocks]
+    blocks = [_without_failed_comments(b) for b in library.blocks]
+    blocks = [_ENCLOSING.transform_block(_writable_copy(b), library) for b in blocks if b is not None]
     fmt = BibtexFormat()
     fmt.indent = " "
     fmt.block_separator = "\n"

@@ -154,3 +154,9 @@ def main_clean_exit(args=None):
                      'run the command in a terminal, or answer with its options '
                      '(e.g. --on-duplicate for duplicates, -y/--yes)')
         sys.exit(1)
+    except BrokenPipeError:
+        # the output was closed before the end (papers list | head): no traceback,
+        # and nothing more written to it (the recipe of the Python docs, signal module)
+        devnull = os.open(os.devnull, os.O_WRONLY)
+        os.dup2(devnull, sys.stdout.fileno())
+        sys.exit(1)

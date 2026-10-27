@@ -45,6 +45,10 @@ $> papers list --tag sea-level projections
 Perrette2013: A scaling approach to project regional sea level rise and it... (doi:10.5194/esd-4-11-2013, file:1, sea-level | projections )
 ```
 
+`--tag` matches whole tags, whatever their case: `--tag ice` does not find
+`ice-review`, `--tag 'ice*'` does. With several tags, an entry needs all of
+them (`--any`: one of them).
+
 `papers list ... --add-tag TAG...` adds tags to the listed entries.
 
 ## Output formats

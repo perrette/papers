@@ -424,7 +424,9 @@ def tagcmd(parser, o, config):
 
     if o.add or o.rm:
         if not o.entries:
-            parser.error('--add and --rm need the entries: KEY..., or - to read them from the standard input')
+            parser.error('--add and --rm need the entries: KEY..., or - to read them from the standard input. '
+                         '--add and --rm take all the words after them: put the keys first '
+                         '(papers tag KEY... --add TAG...)')
         entries = select_entries(biblio, o.entries)
         add_tags(entries, o.add or [])
         remove_tags(entries, o.rm or [])
@@ -572,7 +574,14 @@ def listcmd(parser, o, config):
     if o.abstract:
         entries = [e for e in entries if 'abstract' in e and _longmatch(e['abstract'], o.abstract)]
     if o.keywords:
-        entries = [e for e in entries if 'keywords' in e and _longmatch(e['keywords'], o.keywords)]
+        if o.fuzzy:
+            entries = [e for e in entries if 'keywords' in e and _longmatch(e['keywords'], o.keywords)]
+        else:
+            # whole tags, not part of the keywords field: --tag ice does not find ice-review (ice* does)
+            def _has_tag(e, target):
+                return any(fnmatch.fnmatch(tag.lower(), target.lower()) for tag in parse_keywords(e))
+            entries = [e for e in entries
+                       if (any if o.any else all)(_has_tag(e, target) for target in o.keywords)]
     if o.fullsearch:
         o.strict = False
         entries = [e for e in entries if _longmatch(_fullsearch_string(e), o.fullsearch)]
