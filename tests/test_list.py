@@ -1,10 +1,12 @@
-import bibtexparser
 import os
+import subprocess as sp
+import sys
 import unittest
 from unittest.mock import patch
 from urllib.parse import quote
-from tests.common import LocalInstallTest, BaseTest, BibTest, Biblio, tempfile, paperscmd
-from papers.__main__ import VIEWER_PASSTHROUGH_ENV
+import papers
+from tests.common import InitTest, BaseTest, BibTest, tempfile, paperscmd
+from papers.cli import VIEWER_PASSTHROUGH_ENV
 from papers.utils import PapersExit, find_masked_viewer, file_uri_to_path
 from papers.utils import strip_all
 
@@ -25,7 +27,7 @@ bibtex = """@article{Perrette_2011,
 }"""
 
 
-class ListTest(LocalInstallTest):
+class ListTest(InitTest):
     initial_content = bibtex
     anotherbib_content = None
 
@@ -33,124 +35,164 @@ class ListTest(LocalInstallTest):
 class FormattingTest(ListTest):
 
     def test_format(self):
-        out = self.papers(f'list -l', sp_cmd='check_output')
+        out = self.papers('list -l', sp_cmd='check_output')
         self.assertEqual(strip_all(out), "Perrette_2011: Near-ubiquity of ice-edge blooms in the Arctic (doi:10.5194/bg-8-515-2011, files:2, kiwi | ocean)")
 
-        out = self.papers(f'list --key-only', sp_cmd='check_output')
+        out = self.papers('list --key-only', sp_cmd='check_output')
         self.assertEqual(out, "Perrette_2011")
 
-        out = self.papers(f'list -f month doi', sp_cmd='check_output')
+        out = self.papers('list --field month doi', sp_cmd='check_output')
         self.assertEqual(strip_all(out), "Perrette_2011: feb 10.5194/bg-8-515-2011")
+
+    def test_color(self):
+        line = "Perrette_2011: Near-ubiquity of ice-edge blooms in the Arctic (doi:10.5194/bg-8-515-2011, files:2, kiwi | ocean)"
+        # the standard output of the tests is not a terminal: no colours, no hyperlinks
+        self.assertEqual(self.papers('list -l', sp_cmd='check_output'), line)
+        self.assertEqual(self.papers('list -l --color never', sp_cmd='check_output'), line)
+        out = self.papers('list -l --color always', sp_cmd='check_output')
+        self.assertIn('\033[', out)
+        self.assertIn('\033]8;;https://doi.org/10.5194/bg-8-515-2011', out)
+        self.assertEqual(strip_all(out), line)
+        self.assertNotIn('\033', self.papers('status', sp_cmd='check_output'))
+
+    @unittest.skipUnless(hasattr(os, 'openpty'), 'needs a pseudo-terminal')
+    def test_color_in_terminal(self):
+        def run(**env):
+            master, slave = os.openpty()
+            environ = {k: v for k, v in os.environ.items() if k != 'NO_COLOR'}
+            environ['PYTHONPATH'] = os.path.dirname(os.path.dirname(papers.__file__))
+            sp.run([sys.executable, '-m', 'papers', 'list', '-l'], cwd=self.temp_dir.name, stdout=slave,
+                   env={**environ, **env}, check=True)
+            os.close(slave)
+            out = os.read(master, 100000).decode()
+            os.close(master)
+            return out
+        self.assertIn('\033[', run())
+        self.assertNotIn('\033', run(NO_COLOR='1'))
+        self.assertIn('\033', run(NO_COLOR=''))
+
+    def test_format_option(self):
+        line = self.papers('list -l', sp_cmd='check_output')
+        self.assertEqual(self.papers('list', sp_cmd='check_output'), line)
+        self.assertEqual(self.papers('list --format line', sp_cmd='check_output'), line)
+        self.assertEqual(self.papers('list --format key', sp_cmd='check_output'), 'Perrette_2011')
+        self.assertMultiLineEqual(self.papers('list --format bibtex', sp_cmd='check_output'),
+                                  self.papers('list --plain', sp_cmd='check_output'))
+        self.assertIn('@article{Perrette_2011', self.papers('list --format bibtex', sp_cmd='check_output'))
+
+    def test_format_exclusive(self):
+        with self.assertRaises(SystemExit):
+            self.papers('list --format key --plain', sp_cmd='check_output')
 
 
 class SearchTest(ListTest):
 
     def test_list_title(self):
-        out = self.papers(f'list --plain --title "ice-edge blooms"', sp_cmd='check_output')
+        out = self.papers('list --plain --title "ice-edge blooms"', sp_cmd='check_output')
         self.assertMultiLineEqual(out, self.initial_content)
 
     def test_list_title_fuzzy(self):
-        out = self.papers(f'list --plain --title "ice edge bloom arctc"', sp_cmd='check_output')
+        out = self.papers('list --plain --title "ice edge bloom arctc"', sp_cmd='check_output')
         self.assertEqual(out, "")
 
-        out = self.papers(f'list --plain --title "ice edge bloom arctc" --fuzzy', sp_cmd='check_output')
+        out = self.papers('list --plain --title "ice edge bloom arctc" --fuzzy', sp_cmd='check_output')
         self.assertMultiLineEqual(out, self.initial_content)
 
     def test_list_title_multiple(self):
-        out = self.papers(f'list --plain --title ice edge', sp_cmd='check_output')
+        out = self.papers('list --plain --title ice edge', sp_cmd='check_output')
         self.assertMultiLineEqual(out, self.initial_content)
 
-        out = self.papers(f'list --plain --title ice edge antarctic', sp_cmd='check_output')
+        out = self.papers('list --plain --title ice edge antarctic', sp_cmd='check_output')
         self.assertEqual(out, "")
 
-        out = self.papers(f'list --plain --title ice edge antarctic --any', sp_cmd='check_output')
+        out = self.papers('list --plain --title ice edge antarctic --any', sp_cmd='check_output')
         self.assertMultiLineEqual(out, self.initial_content)
 
     def test_list_author(self):
-        out = self.papers(f'list --plain --author perrette', sp_cmd='check_output')
+        out = self.papers('list --plain --author perrette', sp_cmd='check_output')
         self.assertMultiLineEqual(out, self.initial_content)
 
-        out = self.papers(f'list --plain --author perrette balafon', sp_cmd='check_output')
+        out = self.papers('list --plain --author perrette balafon', sp_cmd='check_output')
         self.assertEqual(out, "")
 
-        out = self.papers(f'list --plain --author perrette balafon --any', sp_cmd='check_output')
+        out = self.papers('list --plain --author perrette balafon --any', sp_cmd='check_output')
         self.assertMultiLineEqual(out, self.initial_content)
 
     def test_list_first_author(self):
-        out = self.papers(f'list --plain --first-author perrette', sp_cmd='check_output')
+        out = self.papers('list --plain --first-author perrette', sp_cmd='check_output')
         self.assertMultiLineEqual(out, self.initial_content)
 
         # Yool is an author, but not the first author
-        out = self.papers(f'list --plain --first-author yool', sp_cmd='check_output')
+        out = self.papers('list --plain --first-author yool', sp_cmd='check_output')
         self.assertEqual(out, "")
 
     def test_list_key(self):
-        out = self.papers(f'list --plain --key perrette', sp_cmd='check_output')
+        out = self.papers('list --plain --key perrette', sp_cmd='check_output')
         self.assertMultiLineEqual(out, self.initial_content)
 
-        out = self.papers(f'list --plain --key perrette --strict', sp_cmd='check_output')
+        out = self.papers('list --plain --key perrette --strict', sp_cmd='check_output')
         self.assertEqual(out, "")
 
-        out = self.papers(f'list --plain --key perrette_2011 --strict', sp_cmd='check_output')
+        out = self.papers('list --plain --key perrette_2011 --strict', sp_cmd='check_output')
         self.assertMultiLineEqual(out, self.initial_content)
 
     def test_list_year(self):
-        out = self.papers(f'list --plain --year 201', sp_cmd='check_output')
+        out = self.papers('list --plain --year 201', sp_cmd='check_output')
         self.assertMultiLineEqual(out, self.initial_content)
 
-        out = self.papers(f'list --plain --year 201 --strict', sp_cmd='check_output')
+        out = self.papers('list --plain --year 201 --strict', sp_cmd='check_output')
         self.assertEqual(out, "")
 
-        out = self.papers(f'list --plain --year 2011 --strict', sp_cmd='check_output')
+        out = self.papers('list --plain --year 2011 --strict', sp_cmd='check_output')
         self.assertMultiLineEqual(out, self.initial_content)
 
     def test_list_tag(self):
-        out = self.papers(f'list --plain --tag kiwi', sp_cmd='check_output')
+        out = self.papers('list --plain --tag kiwi', sp_cmd='check_output')
         self.assertMultiLineEqual(out, self.initial_content)
 
-        out = self.papers(f'list --plain --tag kiwi ocean', sp_cmd='check_output')
+        out = self.papers('list --plain --tag kiwi ocean', sp_cmd='check_output')
         self.assertMultiLineEqual(out, self.initial_content)
 
-        out = self.papers(f'list --plain --tag kiwi bonobo', sp_cmd='check_output')
+        out = self.papers('list --plain --tag kiwi bonobo', sp_cmd='check_output')
         self.assertEqual(out, "")
 
-        out = self.papers(f'list --plain --tag kiwi bonobo --any', sp_cmd='check_output')
+        out = self.papers('list --plain --tag kiwi bonobo --any', sp_cmd='check_output')
         self.assertMultiLineEqual(out, self.initial_content)
 
 
     def test_list_combined(self):
-        out = self.papers(f'list --plain --year 2011 --author perrette', sp_cmd='check_output')
+        out = self.papers('list --plain --year 2011 --author perrette', sp_cmd='check_output')
         self.assertMultiLineEqual(out, self.initial_content)
 
         # Here we'd need the full name (never useful in practice)
-        out = self.papers(f'list --plain --year 2011 --author perrette --strict', sp_cmd='check_output')
+        out = self.papers('list --plain --year 2011 --author perrette --strict', sp_cmd='check_output')
         self.assertEqual(out, "")
 
-        out = self.papers(f'list --plain --year 2021 --author perrette', sp_cmd='check_output')
+        out = self.papers('list --plain --year 2021 --author perrette', sp_cmd='check_output')
         self.assertEqual(out, "")
 
         # --any has no effect on multiple strings
-        out = self.papers(f'list --plain --year 2021 --author perrette --any', sp_cmd='check_output')
+        out = self.papers('list --plain --year 2021 --author perrette --any', sp_cmd='check_output')
         self.assertEqual(out, "")
 
 
     def test_list_fullsearch(self):
-        out = self.papers(f'list --plain 2011 perrette', sp_cmd='check_output')
+        out = self.papers('list --plain 2011 perrette', sp_cmd='check_output')
         self.assertMultiLineEqual(out, self.initial_content)
 
         # --strict is deactivated
-        out = self.papers(f'list --plain 2011 perrette --strict', sp_cmd='check_output')
+        out = self.papers('list --plain 2011 perrette --strict', sp_cmd='check_output')
         self.assertMultiLineEqual(out, self.initial_content)
 
-        out = self.papers(f'list --plain 2021 perrette', sp_cmd='check_output')
+        out = self.papers('list --plain 2021 perrette', sp_cmd='check_output')
         self.assertEqual(out, "")
 
         # any works well on full search strings
-        out = self.papers(f'list --plain 2021 perrette --any', sp_cmd='check_output')
+        out = self.papers('list --plain 2021 perrette --any', sp_cmd='check_output')
         self.assertMultiLineEqual(out, self.initial_content)
 
 
-class ListBrokenFileTest(LocalInstallTest):
+class ListBrokenFileTest(InitTest):
     """papers list --broken-file lists entries with broken file links"""
     # Entry with file pointing to non-existent path
     initial_content = """@article{BrokenFile2020,
@@ -167,7 +209,7 @@ class ListBrokenFileTest(LocalInstallTest):
         self.assertIn('BrokenFile2020', out)
         self.assertIn('Test', out)
 
-class ListDuplicatesTest(LocalInstallTest):
+class ListDuplicatesTest(InitTest):
     """papers list --duplicates lists entries with duplicate DOIs/keys"""
     initial_content = """@article{Entry1,
  author = {Author A},
@@ -189,7 +231,7 @@ class ListDuplicatesTest(LocalInstallTest):
         self.assertIn('Entry2', out)
 
 
-class ListReviewRequiredTest(LocalInstallTest):
+class ListReviewRequiredTest(InitTest):
     """papers list --review-required lists suspicious entries (invalid doi, missing fields, etc.)"""
     # Entry with key starting with digit (invalid)
     initial_content = """@article{2020InvalidKey,
@@ -207,44 +249,44 @@ class ListReviewRequiredTest(LocalInstallTest):
 
 class EditTest(ListTest):
     def test_delete(self):
-        out = self.papers(f'list --author perrette --delete', sp_cmd='check_output')
+        out = self.papers('list --author perrette --delete', sp_cmd='check_output')
         self.assertIn("Removed", strip_all(out))
         self.assertIn("Perrette_2011", strip_all(out))
 
-        out = self.papers(f'list', sp_cmd='check_output')
+        out = self.papers('list', sp_cmd='check_output')
         self.assertEqual(out, "")
 
 
     def test_add_tag(self):
 
-        out = self.papers(f'list --tag newtag', sp_cmd='check_output')
+        out = self.papers('list --tag newtag', sp_cmd='check_output')
         self.assertEqual(out, "")
 
-        self.papers(f'list --author perrette --add-tag newtag -1')
+        self.papers('list --author perrette --add-tag newtag -1')
         # self.assertEqual(strip_all(out), "Perrette_2011: Near-ubiquity of ice-edge blooms in the Arctic (doi:10.5194/bg-8-515-2011, files:2, kiwi | ocean | newtag)")
 
-        out = self.papers(f'list --tag newtag -1', sp_cmd='check_output')
+        out = self.papers('list --tag newtag -1', sp_cmd='check_output')
         self.assertEqual(strip_all(out), "Perrette_2011: Near-ubiquity of ice-edge blooms in the Arctic (doi:10.5194/bg-8-515-2011, files:2, kiwi | ocean | newtag)")
 
     def test_add_files(self):
 
         with tempfile.NamedTemporaryFile() as temp, tempfile.NamedTemporaryFile() as temp2:
-            out = self.papers(f'list 2011 perrette -1', sp_cmd='check_output')
+            out = self.papers('list 2011 perrette -1', sp_cmd='check_output')
             self.assertEqual(strip_all(out), "Perrette_2011: Near-ubiquity of ice-edge blooms in the Arctic (doi:10.5194/bg-8-515-2011, files:2, kiwi | ocean)")
 
             out = self.papers(f'list 2011 perrette --add-files {temp.name}  {temp2.name} --rename --copy', sp_cmd='check_output')
 
-            out = self.papers(f'list 2011 perrette -1', sp_cmd='check_output')
+            out = self.papers('list 2011 perrette -1', sp_cmd='check_output')
             self.assertEqual(strip_all(out), "Perrette_2011: Near-ubiquity of ice-edge blooms in the Arctic (doi:10.5194/bg-8-515-2011, files:4, kiwi | ocean)")
 
     def test_add_files_file_uri(self):
         with tempfile.NamedTemporaryFile(suffix=' a.pdf') as temp:
             uri = 'file://' + temp.name.replace(' ', '%20')
             self.papers(f'list 2011 perrette --add-files {uri}')
-            out = self.papers(f'list 2011 perrette -1', sp_cmd='check_output')
+            out = self.papers('list 2011 perrette -1', sp_cmd='check_output')
             self.assertIn('files:3', strip_all(out))
 
-class OpenCmdTest(LocalInstallTest):
+class OpenCmdTest(InitTest):
     initial_content = """@article{NoFile2020,
  author = {No File},
  title = {Nothing attached},
@@ -265,7 +307,7 @@ class OpenCmdTest(LocalInstallTest):
         from unittest.mock import patch
         f = self._path('direct.pdf')
         open(f, 'w').write('x')
-        with patch('papers.__main__.view_pdf') as viewer:
+        with patch('papers.cli.entry_cmds.open_with_system') as viewer:
             self.papers(f'open {f}')
             viewer.assert_called_once_with(f)
 
@@ -276,8 +318,8 @@ class OpenCmdTest(LocalInstallTest):
         f = self._path('direct.pdf')
         open(f, 'w').write('x')
         with patch.dict(os.environ), \
-                patch('papers.__main__.find_masked_viewer', return_value=None), \
-                patch('papers.__main__.view_pdf') as viewer:
+                patch('papers.cli.find_masked_viewer', return_value=None), \
+                patch('papers.cli.open_with_system') as viewer:
             os.environ.pop(VIEWER_PASSTHROUGH_ENV, None)
             self.papers(f'{f}')
             viewer.assert_called_once_with(f)
@@ -285,8 +327,8 @@ class OpenCmdTest(LocalInstallTest):
     def test_subcommand_wins_over_file(self):
         # a file named like a subcommand does not hijack the CLI
         open(self._path('status'), 'w').write('x')
-        with patch('papers.__main__.find_masked_viewer') as finder, \
-                patch('papers.__main__.view_pdf') as viewer:
+        with patch('papers.cli.find_masked_viewer') as finder, \
+                patch('papers.cli.open_with_system') as viewer:
             self.papers('status')
             finder.assert_not_called()
             viewer.assert_not_called()
@@ -306,16 +348,16 @@ class ViewerPassthroughNoInstallTest(BaseTest):
 
     def test_bare_file_argument_without_install(self):
         # the viewer passthrough must work without any papers install
-        with patch('papers.__main__.find_masked_viewer', return_value=None), \
-                patch('papers.__main__.view_pdf') as viewer:
+        with patch('papers.cli.find_masked_viewer', return_value=None), \
+                patch('papers.cli.open_with_system') as viewer:
             self.papers(f'{self.pdf}')
             viewer.assert_called_once_with(self.pdf)
 
     def test_file_uri_argument(self):
         # desktop entries launch the viewer as `papers %U`, i.e. with file:// URIs
         uri = 'file://' + quote(self.pdf)
-        with patch('papers.__main__.find_masked_viewer', return_value=None), \
-                patch('papers.__main__.view_pdf') as viewer:
+        with patch('papers.cli.find_masked_viewer', return_value=None), \
+                patch('papers.cli.open_with_system') as viewer:
             self.papers(f"'{uri}'")
             viewer.assert_called_once_with(self.pdf)
 
@@ -323,9 +365,9 @@ class ViewerPassthroughNoInstallTest(BaseTest):
         # the masked viewer is exec'd with the original arguments, instead of
         # xdg-open, which may resolve back to this command
         uri = 'file://' + quote(self.pdf)
-        with patch('papers.__main__.find_masked_viewer', return_value='/usr/bin/papers'), \
-                patch('papers.__main__.os.execv') as execv, \
-                patch('papers.__main__.view_pdf') as viewer:
+        with patch('papers.cli.find_masked_viewer', return_value='/usr/bin/papers'), \
+                patch('papers.cli.os.execv') as execv, \
+                patch('papers.cli.open_with_system') as viewer:
             self.papers(f"'{uri}' {self.pdf}")
             execv.assert_called_once_with('/usr/bin/papers', ['/usr/bin/papers', uri, self.pdf])
             viewer.assert_not_called()
@@ -333,8 +375,8 @@ class ViewerPassthroughNoInstallTest(BaseTest):
     def test_loop_guard(self):
         # handed to the system viewer once already: stop instead of looping
         os.environ[VIEWER_PASSTHROUGH_ENV] = '1'
-        with patch('papers.__main__.find_masked_viewer', return_value=None), \
-                patch('papers.__main__.view_pdf') as viewer:
+        with patch('papers.cli.find_masked_viewer', return_value=None), \
+                patch('papers.cli.open_with_system') as viewer:
             with self.assertRaises(PapersExit):
                 self.papers(f'{self.pdf}')
             viewer.assert_not_called()

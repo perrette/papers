@@ -1,816 +1,775 @@
-"""Tests for papers duplicate detection and merging (21% -> higher coverage)"""
+"""Duplicate detection (same_paper, distinct.json), merge, the dialogue, and
+the --on-duplicate option of add and check"""
+import json
 import os
-import subprocess as sp
+import subprocess
+import sys
 import tempfile
 import unittest
-
+from pathlib import Path
 from unittest.mock import patch
 
-import bibtexparser
-from papers.entries import parse_string as bp_parse_string
-
-from papers.bib import Biblio
+from papers.cli.common import edit_entries
 from papers.duplicate import (
-    search_duplicates,
-    list_duplicates,
-    list_uniques,
-    groupby_equal,
-    merge_entries,
-    MergedEntry,
-    ConflictingField,
-    check_duplicates,
-    edit_entries,
-    entry_sdiff,
-    entry_ndiff,
-    title_id,
+    same_paper, SAME, DIFFERENT, ASK, Distinct, duplicate_groups, fuzzy_pairs,
 )
-from papers.entries import entry_from_dict, get_entry_val, format_library, library_from_entries
-from papers.utils import bcolors
-from tests.common import PAPERSCMD, paperscmd, BibTest
-
-
-class TestDuplicateSearch(unittest.TestCase):
-    """Unit tests for search_duplicates, list_duplicates, list_uniques"""
-
-    def test_search_duplicates_by_key(self):
-        entries = [(1, 0), (1, 1), (1, 2), (2, 0), (3, 0), (2, 1), (4, 0)]
-        uniques, dups = search_duplicates(entries, key=lambda e: e[0])
-        self.assertEqual(len(uniques), 2)  # (3,0) and (4,0)
-        self.assertEqual(len(dups), 2)  # 2 groups of duplicates
-        self.assertEqual(len(dups[0]), 3)  # three (1,x)
-        self.assertEqual(len(dups[1]), 2)  # two (2,x)
-
-    def test_list_duplicates_returns_all_duplicate_entries(self):
-        entries = [(1, 0), (1, 1), (2, 0), (2, 1)]
-        result = list_duplicates(entries, key=lambda e: e[0])
-        # list_duplicates returns entries in duplicate groups (groups with len > 1)
-        self.assertEqual(len(result), 4)  # (1,0), (1,1), (2,0), (2,1)
-
-    def test_list_uniques_returns_only_unique_entries(self):
-        entries = [(1, 0), (1, 1), (3, 0), (4, 0)]
-        result = list_uniques(entries, key=lambda e: e[0])
-        self.assertEqual(len(result), 2)  # (3,0), (4,0)
-
-
-class TestGroupbyEqual(unittest.TestCase):
-
-    def test_groups_by_equality(self):
-        entries = [(1, 0), (1, 1), (1, 2), (2, 0), (3, 0), (2, 1), (4, 0)]
-        groups = groupby_equal(entries, eq=lambda e1, e2: e1[0] == e2[0])
-        self.assertEqual(len(groups), 4)
-
-
-class TestMergeEntries(unittest.TestCase):
-
-    def test_merge_identical_entries(self):
-        e1 = {"author": "Smith", "year": "2020"}
-        e2 = {"author": "Smith", "year": "2020"}
-        merged = merge_entries([e1, e2])
-        self.assertEqual(merged["author"], "Smith")
-        self.assertEqual(merged["year"], "2020")
-
-    def test_merge_conflicting_entries(self):
-        e1 = {"author": "Smith", "year": "2020"}
-        e2 = {"author": "Jones", "year": "2020"}
-        merged = merge_entries([e1, e2])
-        self.assertIsInstance(merged["author"], ConflictingField)
-        self.assertEqual(merged["year"], "2020")
-
-    def test_merge_force_resolves_conflicts(self):
-        e1 = {"author": "Smith"}
-        e2 = {"author": "Jones"}
-        merged = merge_entries([e1, e2], force=True)
-        self.assertIsInstance(merged, dict)
-        self.assertIn(merged["author"], ["Smith", "Jones"])
-
-
-class SimilarityBase(unittest.TestCase):
-
-    similarity = None
-
-    reference = """@article{Perrette_2011,
- author = {M. Perrette and A. Yool and G. D. Quartly and E. E. Popova},
- doi = {10.5194/bg-8-515-2011},
- title = {Near-ubiquity of ice-edge blooms in the Arctic},
- year = {2011}
-}"""
-
-    anotherkey = """@article{OtherKey,
- author = {M. Perrette and A. Yool and G. D. Quartly and E. E. Popova},
- doi = {10.5194/bg-8-515-2011},
- title = {Near-ubiquity of ice-edge blooms in the Arctic},
- year = {2011}
-}"""
-
-    missingfield = """@article{Perrette_2011,
- author = {M. Perrette and A. Yool and G. D. Quartly and E. E. Popova},
- doi = {10.5194/bg-8-515-2011},
- title = {Near-ubiquity of ice-edge blooms in the Arctic},
-}"""
-
-    missingdoi = """@article{Perrette_2011,
- author = {M. Perrette and A. Yool and G. D. Quartly and E. E. Popova},
- title = {Near-ubiquity of ice-edge blooms in the Arctic},
-}"""
-
-    missingtitauthor = """@article{Perrette_2011,
- doi = {10.5194/bg-8-515-2011},
-}"""
-
-    conflictauthor = """@article{Perrette_2011,
- author = {SomeOneElse},
- doi = {10.5194/bg-8-515-2011},
- title = {Near-ubiquity of ice-edge blooms in the Arctic},
-}"""
-
-    conflictdoi = """@article{Perrette_2011,
- author = {M. Perrette and A. Yool and G. D. Quartly and E. E. Popova},
- doi = {10.5194/XXX},
- title = {Near-ubiquity of ice-edge blooms in the Arctic},
-}"""
-
-    conflictyear = """@article{Perrette_2011,
- author = {M. Perrette and A. Yool and G. D. Quartly and E. E. Popova},
- doi = {10.5194/bg-8-515-2011},
- title = {Near-ubiquity of ice-edge blooms in the Arctic},
- year = {2012}
-}"""
-
-
-    def isduplicate(self, a, b):
-        """test Biblio's eq method for duplicates.
-        Parse a and b separately so v2 (which collapses duplicate keys in one parse) yields two entries.
-        """
-        db1 = bp_parse_string(a)
-        db2 = bp_parse_string(b)
-        e1, e2 = db1.entries[0], db2.entries[0]
-        refs = Biblio(similarity=self.similarity)
-        return refs.eq(e1, e2)
-
-
-class TestCheckDuplicatesResolution(unittest.TestCase):
-    """Resolution machinery of `papers check --duplicates` (check_duplicates)."""
-
-    bib = """@article{A2000,
- author = {A. Author},
- title = {One},
- year = {2000}
-}
-@article{A2000b,
- author = {A. Author},
- title = {One},
- year = {2001}
-}
-@article{B2010,
- author = {B. Author},
- title = {Two},
- year = {2010}
-}
-@article{B2010b,
- author = {B. Author},
- title = {Two},
- year = {2011}
-}"""
-
-    eq = staticmethod(lambda a, b: title_id(a) == title_id(b))
-
-    def entries(self):
-        return bp_parse_string(self.bib).entries
-
-    def test_skip_all_keeps_remaining_groups(self):
-        # 'S' (skip all) used to silently DELETE every not-yet-processed group
-        with patch('builtins.input', side_effect=['S']):
-            result = check_duplicates(self.entries(), eq=self.eq, mode='i')
-        self.assertEqual(sorted(get_entry_val(e, 'ID') for e in result),
-                         ['A2000', 'A2000b', 'B2010', 'B2010b'])
-
-    def test_skip_keeps_current_group(self):
-        with patch('builtins.input', side_effect=['s', 's']):
-            result = check_duplicates(self.entries(), eq=self.eq, mode='i')
-        self.assertEqual(len(result), 4)
-
-    def test_merge_mode(self):
-        # advertised by `papers check --duplicates -m m` but never implemented
-        result = check_duplicates(self.entries()[:2], eq=self.eq, mode='m')
-        self.assertEqual(len(result), 1)
-        # conflicting year resolved, common fields kept
-        self.assertEqual(get_entry_val(result[0], 'title'), 'One')
-        # the merged entry must be a proper Entry, insertable into a Library
-        self.assertTrue(hasattr(result[0], 'fields_dict'))
-        self.assertIn('@article', format_library(library_from_entries(result)))
-
-    def test_interactive_merge_then_pick_is_saveable(self):
-        # merging used to produce a plain dict that crashed the library on save
-        with patch('builtins.input', side_effect=['m', '3']):
-            result = check_duplicates(self.entries()[:2], eq=self.eq, mode='i')
-        self.assertEqual(len(result), 1)
-        self.assertTrue(hasattr(result[0], 'fields_dict'))
-
-    def test_quit_keeps_everything(self):
-        with patch('builtins.input', side_effect=['q']):
-            result = check_duplicates(self.entries(), eq=self.eq, mode='i')
-        self.assertEqual(len(result), 4)
-
-    def test_delete_requires_confirmation(self):
-        # 'd' then decline -> nothing deleted; 'n' keeps each group
-        with patch('builtins.input', side_effect=['d', 'n', 'n', 'n']):
-            result = check_duplicates(self.entries(), eq=self.eq, mode='i')
-        self.assertEqual(len(result), 4)
-
-        # 'd' then confirm -> the first group (2 entries) is deleted
-        with patch('builtins.input', side_effect=['d', 'y', 'n']):
-            result = check_duplicates(self.entries(), eq=self.eq, mode='i')
-        self.assertEqual(len(result), 2)
-
-    def test_invalid_input_reprompts(self):
-        with patch('builtins.input', side_effect=['x', '99', 'q']):
-            result = check_duplicates(self.entries(), eq=self.eq, mode='i')
-        self.assertEqual(len(result), 4)
-
-    def test_pick_works_in_diff_view(self):
-        # toggling to diff view used to remove the number choices entirely
-        with patch('builtins.input', side_effect=['v', '1', 'n']):
-            result = check_duplicates(self.entries(), eq=self.eq, mode='i')
-        self.assertEqual(len(result), 3)  # group 1 reduced to entry 1, group 2 kept
-
-
-class TestDeselect(unittest.TestCase):
-    """'-N' keeps every entry of the group except entry N"""
-
-    bib = """@article{A2000,
- author = {A. Author},
- title = {One},
- year = {2000}
-}
-@article{A2001,
- author = {A. Author},
- title = {One},
- year = {2001}
-}
-@article{A2002,
- author = {A. Author},
- title = {One},
- year = {2002}
-}"""
-
-    eq = staticmethod(lambda a, b: title_id(a) == title_id(b))
-
-    def check(self, answer):
-        # the remaining entries are presented again as a smaller group: keep them
-        with patch('builtins.input', side_effect=[answer, 'n']):
-            result = check_duplicates(bp_parse_string(self.bib).entries, eq=self.eq, mode='i')
-        return sorted(get_entry_val(e, 'ID') for e in result)
-
-    def test_first(self):
-        # used to remove entry 2
-        self.assertEqual(self.check('-1'), ['A2001', 'A2002'])
-
-    def test_last(self):
-        # used to be rejected as an invalid choice
-        self.assertEqual(self.check('-3'), ['A2000', 'A2001'])
-
-
-class TestEditEntriesRoundTrip(unittest.TestCase):
-
-    bib = """@article{A2000,
- author = {A. Author},
- journal = {Journal One},
- title = {One},
- year = {2000}
-}
-@article{A2000b,
- author = {A. Author},
- title = {One},
- year = {2001}
-}"""
-
-    def entries(self):
-        return bp_parse_string(self.bib).entries
-
-    def test_editor_failure_returns_originals(self):
-        entries = self.entries()
-        # used to crash with NameError ('db' undefined)
-        result = edit_entries(entries, editor='false')
-        self.assertEqual(result, entries)
-
-    def test_unedited_diff_is_not_inserted(self):
-        # saving the raw +/- diff text unchanged used to corrupt the library
-        entries = self.entries()
-        result = edit_entries(entries, diff=True, editor='true')
-        self.assertEqual(result, entries)
-
-
-class TestSplitDiffRendering(unittest.TestCase):
-
-    def test_no_spurious_highlight(self):
-        # bibtexparser-v2 entries always tested False for `'ID' in entry`, so the
-        # entry type was always bold and a conflicting key was wrapped twice
-        entries = bp_parse_string("""@article{A2000,
- author = {A. Author},
- title = {One},
- year = {2000}
-}
-@article{A2000b,
- author = {A. Author},
- title = {One},
- year = {2000}
-}""").entries
-        out = entry_sdiff(entries)
-        self.assertNotIn(bcolors.BOLD + 'article', out)              # same type: no highlight
-        self.assertNotIn(bcolors.WARNING + bcolors.WARNING, out)     # key: single wrap
-        self.assertIn(bcolors.WARNING + 'A2000' + bcolors.ENDC, out) # conflicting key: one wrap
-
-
-class TestDuplicatesExact(SimilarityBase):
-
-    similarity = 'EXACT'
-
-    def test_exactsame(self):
-        self.assertTrue(self.isduplicate(self.reference, self.reference))
-
-    def test_anotherkey(self):
-        self.assertFalse(self.isduplicate(self.reference, self.anotherkey))
-
-    def test_missingfield(self):
-        self.assertFalse(self.isduplicate(self.reference, self.missingfield))
-
-    def test_missingdoi(self):
-        self.assertFalse(self.isduplicate(self.reference, self.missingdoi))
-
-    def test_missingtitauthor(self):
-        self.assertFalse(self.isduplicate(self.reference, self.missingtitauthor))
-
-    def test_conflictauthor(self):
-        self.assertFalse(self.isduplicate(self.reference, self.conflictauthor))
-
-    def test_conflictdoi(self):
-        self.assertFalse(self.isduplicate(self.reference, self.conflictdoi))
-
-    def test_conflictyear(self):
-        self.assertFalse(self.isduplicate(self.reference, self.conflictyear))
-
-
-class TestDuplicatesGood(TestDuplicatesExact):
-
-    similarity = 'GOOD'
-
-    def test_anotherkey(self):
-        self.assertTrue(self.isduplicate(self.reference, self.anotherkey))
-
-    def test_missingfield(self):
-        self.assertTrue(self.isduplicate(self.reference, self.missingfield))
-
-    def test_conflictyear(self):
-        self.assertTrue(self.isduplicate(self.reference, self.conflictyear))
-
-
-class TestDuplicatesFair(TestDuplicatesGood):
-
-    similarity = 'FAIR'
-
-    def test_missingtitauthor(self):
-        self.assertTrue(self.isduplicate(self.reference, self.missingtitauthor))
-
-    def test_conflictauthor(self):
-        self.assertTrue(self.isduplicate(self.reference, self.conflictauthor))
-
-
-class TestDuplicatesPartial(TestDuplicatesFair):
-
-    similarity = 'PARTIAL'
-
-    def test_missingdoi(self):
-        self.assertTrue(self.isduplicate(self.reference, self.missingdoi))
-
-    def test_conflictdoi(self):
-        self.assertTrue(self.isduplicate(self.reference, self.conflictdoi))
-
-
-class TestInsertEntryCheckSimilarityLevels(unittest.TestCase):
-    """
-    Test that insert_entry(..., check_duplicate=True) applies each similarity level
-    correctly. Protects the duplicate-check logic (and index optimization) from
-    regressions: duplicates must be merged, non-duplicates must be added.
-    """
-
-    def _add_entry(self, biblio, entry_dict, check_duplicate=True, on_conflict='u'):
-        entry = entry_from_dict(entry_dict)
-        return biblio.insert_entry(
-            entry, check_duplicate=check_duplicate, on_conflict=on_conflict
-        )
-
-    def test_exact_duplicate_merged_non_duplicate_added(self):
-        b = Biblio(similarity='EXACT')
-        e1 = {'ENTRYTYPE': 'article', 'ID': 'Key1', 'author': 'Smith', 'title': 'Same', 'doi': '10.1/a', 'year': '2020'}
-        self._add_entry(b, e1)
-        self.assertEqual(len(b.entries), 1)
-        # Same content (including same key) → entry_content_equal → exact duplicate → merge
-        e2 = {'ENTRYTYPE': 'article', 'ID': 'Key1', 'author': 'Smith', 'title': 'Same', 'doi': '10.1/a', 'year': '2020'}
-        merged = self._add_entry(b, e2)
-        self.assertEqual(len(b.entries), 1, 'EXACT: duplicate should be merged')
-        self.assertEqual(get_entry_val(merged[0], 'ID', '').lower(), 'key1', 'EXACT: should keep first entry')
-        # Different title → not duplicate → add
-        e3 = {'ENTRYTYPE': 'article', 'ID': 'Key3', 'author': 'Smith', 'title': 'Other', 'doi': '10.1/b', 'year': '2020'}
-        self._add_entry(b, e3)
-        self.assertEqual(len(b.entries), 2, 'EXACT: non-duplicate should be added')
-
-    def test_good_duplicate_merged_non_duplicate_added(self):
-        b = Biblio(similarity='GOOD')
-        e1 = {'ENTRYTYPE': 'article', 'ID': 'Key1', 'author': 'Smith, John', 'title': 'A paper', 'doi': '10.1/a', 'year': '2020'}
-        self._add_entry(b, e1)
-        self.assertEqual(len(b.entries), 1)
-        # Same (doi, authortitle), different key/year → GOOD duplicate → merge
-        e2 = {'ENTRYTYPE': 'article', 'ID': 'Key2', 'author': 'Smith, John', 'title': 'A paper', 'doi': '10.1/a', 'year': '2021'}
-        self._add_entry(b, e2)
-        self.assertEqual(len(b.entries), 1, 'GOOD: duplicate should be merged')
-        # Different authortitle → not duplicate
-        e3 = {'ENTRYTYPE': 'article', 'ID': 'Key3', 'author': 'Jones', 'title': 'Other', 'doi': '10.1/b', 'year': '2020'}
-        self._add_entry(b, e3)
-        self.assertEqual(len(b.entries), 2, 'GOOD: non-duplicate should be added')
-
-    def test_fair_duplicate_merged_non_duplicate_added(self):
-        b = Biblio(similarity='FAIR')
-        e1 = {'ENTRYTYPE': 'article', 'ID': 'Key1', 'author': 'Smith', 'title': 'Paper A', 'doi': '10.1/a', 'year': '2020'}
-        self._add_entry(b, e1)
-        self.assertEqual(len(b.entries), 1)
-        # Same doi, different author/title → FAIR duplicate → merge
-        e2 = {'ENTRYTYPE': 'article', 'ID': 'Key2', 'author': 'Jones', 'title': 'Paper B', 'doi': '10.1/a', 'year': '2021'}
-        self._add_entry(b, e2)
-        self.assertEqual(len(b.entries), 1, 'FAIR: duplicate (same doi) should be merged')
-        # Different doi and different authortitle → not duplicate
-        e3 = {'ENTRYTYPE': 'article', 'ID': 'Key3', 'author': 'Lee', 'title': 'Other', 'doi': '10.1/b', 'year': '2020'}
-        self._add_entry(b, e3)
-        self.assertEqual(len(b.entries), 2, 'FAIR: non-duplicate should be added')
-
-    def test_partial_duplicate_merged_non_duplicate_added(self):
-        b = Biblio(similarity='PARTIAL')
-        e1 = {'ENTRYTYPE': 'article', 'ID': 'Key1', 'author': 'Smith', 'title': 'Same title', 'doi': '10.1/a', 'year': '2020'}
-        self._add_entry(b, e1)
-        self.assertEqual(len(b.entries), 1)
-        # Same authortitle, different doi → PARTIAL duplicate → merge
-        e2 = {'ENTRYTYPE': 'article', 'ID': 'Key2', 'author': 'Smith', 'title': 'Same title', 'doi': '10.1/b', 'year': '2021'}
-        self._add_entry(b, e2)
-        self.assertEqual(len(b.entries), 1, 'PARTIAL: duplicate (same authortitle) should be merged')
-        # Different doi and different authortitle → not duplicate
-        e3 = {'ENTRYTYPE': 'article', 'ID': 'Key3', 'author': 'Jones', 'title': 'Other', 'doi': '10.1/c', 'year': '2020'}
-        self._add_entry(b, e3)
-        self.assertEqual(len(b.entries), 2, 'PARTIAL: non-duplicate should be added')
-
-    def test_fuzzy_duplicate_merged_non_duplicate_added(self):
-        b = Biblio(similarity='FUZZY')
-        # Same authortitle → GOOD duplicate (score 103 >= 100) → merge. Exercises FUZZY full-scan path.
-        e1 = {'ENTRYTYPE': 'article', 'ID': 'Key1', 'author': 'Smith, John', 'title': 'Climate change impacts', 'doi': '', 'year': '2020'}
-        self._add_entry(b, e1)
-        self.assertEqual(len(b.entries), 1)
-        e2 = {'ENTRYTYPE': 'article', 'ID': 'Key2', 'author': 'Smith, John', 'title': 'Climate change impacts', 'doi': '', 'year': '2021'}
-        self._add_entry(b, e2)
-        self.assertEqual(len(b.entries), 1, 'FUZZY: duplicate (same authortitle) should be merged')
-        # Clearly different → not duplicate
-        e3 = {'ENTRYTYPE': 'article', 'ID': 'Key3', 'author': 'Jones', 'title': 'Unrelated topic', 'doi': '10.1/x', 'year': '2020'}
-        self._add_entry(b, e3)
-        self.assertEqual(len(b.entries), 2, 'FUZZY: non-duplicate should be added')
-
-    def test_batch_add_with_index_same_result_as_single_add(self):
-        """Index optimization (add_bibtex) must yield same duplicate result as single inserts."""
-        bib_with_dup = """@article{Key1,
- author = {Smith},
- title = {Same},
- doi = {10.1/a},
+from papers.entries import entry_from_dict, parse_string
+from papers.merge import (
+    Merge, Dialogue, DuplicateError, names_compatible, CONFLICT, ADDED, SAME as UNCHANGED,
+)
+from tests.common import LibraryTest
+
+
+def entry(key='key', type='article', **fields):
+    return entry_from_dict(dict(fields, ID=key, ENTRYTYPE=type))
+
+
+def kind(a, b, distinct=None):
+    return same_paper(a, b, distinct).kind
+
+
+SMITH = dict(author='Smith, John and Doe, Jane', title='Climate sensitivity revisited', year='2020')
+
+
+# IDENTITY
+# ========
+
+class TestIdentifiers(unittest.TestCase):
+
+    def test_doi_case_and_prefix(self):
+        a = entry('a', doi='10.1000/ABC123', title='One')
+        b = entry('b', doi='https://doi.org/10.1000/abc123', title='Other title')
+        self.assertEqual(kind(a, b), SAME)
+        self.assertIn('same DOI 10.1000/abc123', same_paper(a, b).reason)
+
+    def test_different_dois_are_different_papers(self):
+        # same authors and title: the 2019 preprint and the 2020 article
+        a = entry('a', doi='10.1000/abc123', **SMITH)
+        b = entry('b', type='misc', doi='10.5194/egusphere-2019-1', **SMITH)
+        self.assertEqual(kind(a, b), DIFFERENT)
+
+    def test_arxiv_eprint(self):
+        a = entry('a', eprint='2101.01234v2', archivePrefix='arXiv', title='One')
+        b = entry('b', eprint='arXiv:2101.01234', title='Two')  # no archivePrefix
+        self.assertEqual(kind(a, b), SAME)
+
+    def test_arxiv_doi_and_eprint(self):
+        a = entry('a', doi='10.48550/arXiv.2101.01234', title='One')
+        b = entry('b', eprint='2101.01234', title='Two')
+        self.assertEqual(kind(a, b), SAME)
+
+    def test_other_archive_is_not_arxiv(self):
+        a = entry('a', eprint='2101.01234', archivePrefix='HAL', title='One', author='A, B')
+        b = entry('b', eprint='2101.01234', title='Two', author='C, D')
+        self.assertEqual(kind(a, b), DIFFERENT)
+
+    def test_different_arxiv_ids(self):
+        a = entry('a', eprint='2101.01234', **SMITH)
+        b = entry('b', eprint='2101.09999', **SMITH)
+        self.assertEqual(kind(a, b), DIFFERENT)
+
+    def test_isbn_books(self):
+        a = entry('a', type='book', isbn='0-306-40615-2', title='A book')
+        b = entry('b', type='book', isbn='978-0-306-40615-7', title='The book')
+        self.assertEqual(kind(a, b), SAME)
+
+    def test_isbn_different_books(self):
+        a = entry('a', type='book', isbn='0-306-40615-2', **SMITH)
+        b = entry('b', type='book', isbn='978-3-16-148410-0', **SMITH)  # another edition
+        self.assertEqual(kind(a, b), DIFFERENT)
+
+    def test_isbn_ignored_for_chapters(self):
+        # a chapter carries the ISBN of its book
+        book = entry('a', type='book', isbn='0-306-40615-2', author='Ed, A', title='Handbook')
+        chapter = entry('b', type='incollection', isbn='0-306-40615-2', author='Smith, J', title='Chapter')
+        self.assertEqual(kind(book, chapter), DIFFERENT)
+
+    def test_author_title(self):
+        a = entry('a', author='Smith, John and Doe, Jane', title='Climate {Sensitivity}  revisited')
+        b = entry('b', author='J. Smith and J. Doe', title='climate sensitivity revisited')
+        self.assertEqual(kind(a, b), SAME)
+        self.assertEqual(same_paper(a, b).reason, 'same title and authors')
+
+    def test_author_title_accents(self):
+        a = entry('a', author='M{\\"u}ller, H.', title='Über alles')
+        b = entry('b', author='Müller, Hans', title='{\\"U}ber alles')
+        self.assertEqual(kind(a, b), SAME)
+
+    def test_title_without_authors_is_not_enough(self):
+        a = entry('a', title='Editorial')
+        b = entry('b', title='Editorial')
+        self.assertEqual(kind(a, b), DIFFERENT)
+
+    def test_one_doi_only_falls_back_to_author_title(self):
+        a = entry('a', doi='10.1000/abc123', **SMITH)
+        b = entry('b', **SMITH)
+        self.assertEqual(kind(a, b), SAME)
+
+    def test_order_doi_before_arxiv(self):
+        a = entry('a', doi='10.1000/a', eprint='2101.01234', **SMITH)
+        b = entry('b', doi='10.1000/b', eprint='2101.01234', **SMITH)
+        self.assertEqual(kind(a, b), DIFFERENT)
+
+    def test_order_arxiv_before_author_title(self):
+        a = entry('a', doi='10.1000/a', eprint='2101.01234', title='One', author='A, B')
+        b = entry('b', eprint='2101.01234', title='Two', author='C, D')
+        self.assertEqual(kind(a, b), SAME)  # b has no DOI: the arXiv id decides
+
+    def test_order_isbn_before_author_title(self):
+        a = entry('a', type='book', isbn='0-306-40615-2', **SMITH)
+        b = entry('b', type='book', isbn='978-3-16-148410-0', **SMITH)
+        self.assertEqual(kind(a, b), DIFFERENT)
+
+
+class TestTitleGuard(unittest.TestCase):
+
+    def test_types_and_titles_differ(self):
+        # a chapter exported with the DOI of its book
+        book = entry('a', type='book', doi='10.1000/book', title='Handbook of climate')
+        chapter = entry('b', type='incollection', doi='10.1000/book', title='Sea level rise')
+        v = same_paper(book, chapter)
+        self.assertEqual(v.kind, ASK)
+        self.assertIn('entry types', v.reason)
+
+    def test_same_type_always_same(self):
+        a = entry('a', doi='10.1000/x', title='Handbook of climate')
+        b = entry('b', doi='10.1000/x', title='Sea level rise')
+        self.assertEqual(kind(a, b), SAME)
+
+    def test_titles_equal_after_normalization(self):
+        a = entry('a', doi='10.1000/x', title='Climate sensitivity revisited')
+        b = entry('b', type='misc', doi='10.1000/x', title='{Climate} Sensitivity  Revisited')
+        self.assertEqual(kind(a, b), SAME)
+
+    def test_dataset_of_article(self):
+        # a near-identical title is not enough when the types differ
+        a = entry('a', doi='10.1000/x', title='Climate sensitivity revisited')
+        b = entry('b', type='misc', doi='10.1000/x', title='Data for: Climate sensitivity revisited')
+        self.assertEqual(kind(a, b), ASK)
+
+    def test_arxiv_guard(self):
+        a = entry('a', eprint='2101.01234', title='Climate sensitivity revisited')
+        b = entry('b', type='misc', eprint='2101.01234', title='Data and code')
+        self.assertEqual(kind(a, b), ASK)
+
+
+class TestDistinct(unittest.TestCase):
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.bibtex = os.path.join(self.tmp.name, 'papers.bib')
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def test_recorded_and_honoured(self):
+        a = entry('a', **SMITH)
+        b = entry('b', **SMITH)
+        d = Distinct.for_bibtex(self.bibtex)
+        self.assertEqual(kind(a, b, d), SAME)
+        d.add(a, b)
+        d.save()
+        path = os.path.join(self.tmp.name, '.papers', 'distinct.json')
+        self.assertEqual(json.load(open(path))['distinct'],
+                         [[{'authortitle': 'smith doe|climate sensitivity revisited'}] * 2])
+        d2 = Distinct.for_bibtex(self.bibtex)
+        self.assertEqual(kind(a, b, d2), DIFFERENT)
+        self.assertEqual(kind(b, a, d2), DIFFERENT)
+
+    def test_identities_not_keys(self):
+        d = Distinct()
+        d.add(entry('a', **SMITH), entry('b', **SMITH))
+        # other keys, same identities
+        self.assertEqual(kind(entry('x', **SMITH), entry('y', **SMITH), d), DIFFERENT)
+
+    def test_title_guard_pair(self):
+        book = entry('a', type='book', doi='10.1000/book', title='Handbook of climate')
+        chapter = entry('b', type='incollection', doi='10.1000/book', title='Sea level rise')
+        d = Distinct()
+        d.add(book, chapter)
+        self.assertEqual(kind(book, chapter, d), DIFFERENT)
+        # another chapter of the same book is still asked about
+        other = entry('c', type='incollection', doi='10.1000/book', title='Ocean tides')
+        self.assertEqual(kind(book, other, d), ASK)
+
+    def test_does_not_leak_to_other_entries(self):
+        with_doi = entry('a', doi='10.1000/abc123', **SMITH)
+        without = entry('b', **SMITH)
+        preprint = entry('c', doi='10.5194/egusphere-2019-1', **SMITH)
+        d = Distinct()
+        d.add(with_doi, without)
+        self.assertEqual(kind(with_doi, without, d), DIFFERENT)
+        self.assertEqual(kind(without, preprint, d), SAME)
+
+    def test_update(self):
+        d1, d2 = Distinct(), Distinct()
+        d2.add(entry('a', doi='10.1/a'), entry('b', doi='10.1/b'))
+        d1.update(d2)
+        d1.update(d2)
+        self.assertEqual(len(d1.pairs), 1)
+
+
+class TestGroups(unittest.TestCase):
+
+    def test_copy_without_doi_goes_with_one_entry(self):
+        article = entry('article', doi='10.1000/abc123', journal='Nature', **SMITH)
+        copy = entry('copy', **SMITH)
+        preprint = entry('preprint', type='misc', doi='10.5194/egusphere-2019-1', **SMITH)
+        groups = duplicate_groups([copy, preprint, article])
+        self.assertEqual(len(groups), 1)
+        self.assertEqual([e.key for e in groups[0].entries], ['article', 'copy'])  # most fields first
+
+    def test_ask_group(self):
+        book = entry('a', type='book', doi='10.1000/book', title='Handbook of climate')
+        chapter = entry('b', type='incollection', doi='10.1000/book', title='Sea level rise')
+        groups = duplicate_groups([book, chapter])
+        self.assertEqual(groups[0].kind, ASK)
+
+    def test_fuzzy_pairs(self):
+        a = entry('a', author='Smith, J.', title='Climate sensitivity revisited')
+        b = entry('b', author='Smith, J.', title='Climate sensitivity revisited again')
+        c = entry('c', author='Brown, B.', title='Ocean tides')
+        self.assertEqual([(x.key, y.key) for x, y in fuzzy_pairs([a, b, c])], [('a', 'b')])
+
+
+# MERGE
+# =====
+
+class TestNames(unittest.TestCase):
+
+    def test_initials(self):
+        self.assertTrue(names_compatible('Smith, John and Doe, Jane', 'Smith, J. and Doe, J.'))
+        self.assertTrue(names_compatible('Smith, John D.', 'J. Smith'))
+        self.assertTrue(names_compatible('Perrette, M.', 'M. Perrette'))
+
+    def test_different_first_names(self):
+        self.assertFalse(names_compatible('Smith, John', 'Smith, Jane'))
+        self.assertFalse(names_compatible('Smith, J.', 'Jones, J.'))
+        self.assertFalse(names_compatible('Smith, J.', 'Smith, J. and Doe, J.'))
+
+    def test_fuller_form_kept_from_either_side(self):
+        full, short = 'Smith, John and Doe, Jane', 'Smith, J. and Doe, J.'
+        m = Merge([entry('a', author=short, title='T'), entry('b', author=full, title='T')])
+        self.assertEqual(m.conflicts, [])
+        self.assertEqual(m.result()['author'], full)
+        m = Merge([entry('a', author=full, title='T'), entry('b', author=short, title='T')])
+        self.assertEqual(m.result()['author'], full)
+
+    def test_different_names_conflict(self):
+        m = Merge([entry('a', author='Smith, John'), entry('b', author='Smith, Jane')])
+        self.assertEqual([f.name for f in m.conflicts], ['author'])
+
+
+class TestMerge(unittest.TestCase):
+
+    def test_model(self):
+        lib = entry('smith2020climate', doi='10.1000/abc123', journal='Nature', keywords='climate, mine',
+                    file=':/tmp/files/smith.pdf:pdf', **SMITH)
+        new = entry('Smith_2020', doi='10.1000/ABC123', journal='Nature Climate Change', volume='10',
+                    file=':/tmp/other/smith-preprint.pdf:pdf',
+                    author='Smith, J. and Doe, J.', title='Climate Sensitivity Revisited', year='2020')
+        m = Merge([lib, new])
+        status = {f.name: f.status for f in m.fields}
+        self.assertEqual(status['journal'], CONFLICT)
+        self.assertEqual(status['volume'], ADDED)
+        for name in ('doi', 'title', 'author', 'year', 'keywords'):
+            self.assertEqual(status[name], UNCHANGED, name)
+        self.assertFalse(m.is_exact())
+        r = m.result()
+        self.assertEqual(r.key, 'smith2020climate')
+        self.assertEqual(r['doi'], '10.1000/abc123')            # target's spelling
+        self.assertEqual(r['title'], 'Climate sensitivity revisited')
+        self.assertEqual(r['journal'], 'Nature')
+        self.assertEqual(r['volume'], '10')
+        self.assertEqual(r['file'], ':/tmp/files/smith.pdf:pdf;:/tmp/other/smith-preprint.pdf:pdf')
+        m.choose_all(1)
+        self.assertEqual(m.result()['journal'], 'Nature Climate Change')
+        self.assertEqual(m.result().key, 'smith2020climate')
+
+    def test_files_by_real_path(self):
+        with tempfile.TemporaryDirectory() as d:
+            pdf = os.path.join(d, 'a.pdf')
+            Path(pdf).write_text('x')
+            os.symlink(pdf, os.path.join(d, 'link.pdf'))
+            m = Merge([entry('a', file=f':{pdf}:pdf'), entry('b', file=f':{d}/./link.pdf:pdf')])
+            self.assertEqual(m.files, [pdf])
+            self.assertEqual(m.new_files, [])
+            self.assertTrue(m.is_exact())
+
+    def test_keys_to_ids(self):
+        a = entry('a', ids='old, b', title='T')
+        b = entry('b', title='T')
+        c = entry('c', ids='a, old2', title='T')
+        m = Merge([a, b, c], keys_to_ids=True)
+        self.assertEqual(m.result()['ids'], 'old, b, old2, c')
+
+    def test_no_ids_in_add(self):
+        m = Merge([entry('a', title='T'), entry('b', title='T')])
+        self.assertNotIn('ids', m.result())
+
+    def test_with_target(self):
+        m = Merge([entry('a', journal='J1'), entry('b', journal='J2')], keys_to_ids=True).with_target(1)
+        self.assertEqual(m.result().key, 'b')
+        self.assertEqual(m.result()['journal'], 'J2')
+        self.assertEqual(m.result()['ids'], 'a')
+
+
+class TestDialogue(unittest.TestCase):
+
+    def merge(self):
+        lib = entry('smith2020climate', doi='10.1000/abc123', journal='Nature', **SMITH)
+        new = entry('Smith_2020', doi='10.1000/abc123', journal='Nature Climate Change', volume='10', **SMITH)
+        return Merge([lib, new])
+
+    def test_screen(self):
+        text = Dialogue(self.merge(), 'add', 'same DOI 10.1000/abc123').screen()
+        self.assertIn('Already in library: smith2020climate (same DOI 10.1000/abc123)', text)
+        self.assertIn('!  journal = {Nature}', text)
+        self.assertIn('!            2: {Nature Climate Change}', text)
+        self.assertIn('+  volume  = {10}', text)
+        self.assertIn('   title   = {Climate sensitivity revisited}', text)
+        self.assertIn('1 conflict. The key smith2020climate is kept', text)
+        self.assertIn('n not the same paper (add Smith_2020 separately)', text)
+        self.assertNotIn('t N', text)
+
+    def test_check_screen(self):
+        text = Dialogue(Merge(self.merge().entries, keys_to_ids=True), 'check').screen()
+        self.assertIn('2: Smith_2020 (kept in ids)', text)
+        self.assertIn('t N make entry N the target', text)
+        self.assertIn('Entry 2 is removed after the merge', text)
+
+    def test_parse(self):
+        d = Dialogue(self.merge(), 'add')
+        self.assertEqual(d.parse('2').kind, 'take')
+        self.assertEqual(d.parse('2').index, 1)
+        self.assertEqual(d.parse('3').kind, 'invalid')
+        self.assertEqual(d.parse('t 2').kind, 'invalid')  # check only
+        for answer, k in [('f', 'fields'), ('e', 'edit'), ('n', 'distinct'), ('s', 'skip'),
+                          ('q', 'quit'), ('?', 'help'), ('u', 'invalid')]:
+            self.assertEqual(d.parse(answer).kind, k, answer)
+        d = Dialogue(Merge(self.merge().entries, keys_to_ids=True), 'check')
+        self.assertEqual(d.parse('t 2').kind, 'target')
+        self.assertEqual(d.parse('t2').index, 1)
+
+    def test_edit_text(self):
+        m = self.merge()
+        text = m.edit_text()
+        self.assertIn('% journal = {Nature Climate Change}   (2)', text)
+        e = m.parse_edit(text.replace('journal = {Nature}', 'journal = {Science}').replace('smith2020climate', 'otherkey'))
+        self.assertEqual(e.key, 'smith2020climate')
+        self.assertEqual(e['journal'], 'Science')
+        self.assertIsNone(m.parse_edit('@article{a,\n title = {x}\n}\n@article{b,\n title = {y}\n}'))
+        self.assertIsNone(m.parse_edit('- journal = {x}'))
+
+
+# ADD
+# ===
+
+LIB = """@article{smith2020climate,
+ author = {Smith, John and Doe, Jane},
+ doi = {10.1000/abc123},
+ file = {:files/smith.pdf:pdf},
+ journal = {Nature},
+ keywords = {climate, mine},
+ title = {Climate sensitivity revisited},
  year = {2020}
 }
-@article{Key2,
- author = {Smith},
- title = {Same},
- doi = {10.1/a},
+"""
+
+NEW = """@article{Smith_2020,
+ author = {Smith, J. and Doe, J.},
+ doi = {10.1000/ABC123},
+ file = {:other/smith-preprint.pdf:pdf},
+ journal = {Nature Climate Change},
+ title = {Climate Sensitivity Revisited},
+ volume = {10},
+ year = {2020}
+}
+"""
+
+EXACT = """@article{otherkey,
+ author = {Smith, J. and Doe, J.},
+ doi = {10.1000/abc123},
+ file = {:other/smith-preprint.pdf:pdf},
+ title = {Climate sensitivity revisited}
+}
+"""
+
+
+class TestAddOnDuplicate(LibraryTest):
+
+    lib = LIB
+
+    def setUp(self):
+        super().setUp()
+        self.new = self.write('new.bib', NEW)
+
+    def test_default_without_terminal_is_error(self):
+        with self.assertRaises(DuplicateError) as cm:
+            self.papers(f'add {self.new}')
+        self.assertIn('--on-duplicate', str(cm.exception))
+        self.assertIn('already in library as smith2020climate', str(cm.exception))
+        self.assertEqual(Path(self.bibtex).read_text(), LIB)
+
+    def test_error_exit_status(self):
+        env = dict(os.environ, PYTHONPATH=str(Path(__file__).parent.parent))
+        res = subprocess.run([sys.executable, '-m', 'papers', 'add', 'new.bib', '--bibtex', 'papers.bib', '--no-git'],
+                             cwd=self.dir, stdin=subprocess.DEVNULL, capture_output=True, text=True, env=env)
+        self.assertEqual(res.returncode, 1)
+        self.assertIn('Pass --on-duplicate with one of: ask, keep, update, skip', res.stderr)
+        self.assertNotIn('Traceback', res.stderr)
+
+    def test_keep(self):
+        self.papers(f'add {self.new} --on-duplicate keep')
+        e = self.entry('smith2020climate')
+        self.assertEqual(len(self.entries()), 1)
+        self.assertEqual(e['journal'], 'Nature')
+        self.assertEqual(e['volume'], '10')
+        self.assertEqual(e['author'], 'Smith, John and Doe, Jane')
+        self.assertEqual(e['title'], 'Climate sensitivity revisited')
+        self.assertEqual(e['file'], ':files/smith.pdf:pdf;:other/smith-preprint.pdf:pdf')
+        self.assertNotIn('ids', e)
+
+    def test_update(self):
+        self.papers(f'add {self.new} --on-duplicate update')
+        e = self.entry('smith2020climate')  # the library key
+        self.assertEqual(len(self.entries()), 1)
+        self.assertEqual(e['journal'], 'Nature Climate Change')
+        self.assertEqual(e['keywords'], 'climate, mine')  # fields only in the library stay
+        self.assertEqual(e['author'], 'Smith, John and Doe, Jane')  # fuller form
+
+    def test_update_key_does_not_change_the_library_key(self):
+        self.papers(f'add {self.new} --on-duplicate update -u')
+        self.assertEqual(list(self.entries()), ['smith2020climate'])
+
+    def test_update_key_new_entries_only(self):
+        other = self.write('other.bib', '@article{X,\n author = {Brown, Bob},\n title = {Ocean tides},\n year = {2001}\n}\n')
+        self.papers(f'add {other} {self.new} --on-duplicate keep -u')
+        self.assertEqual(sorted(self.entries()), ['brown2001', 'smith2020climate'])
+
+    def test_skip(self):
+        out = self.papers(f'add {self.new} --on-duplicate skip')
+        self.assertEqual(Path(self.bibtex).read_text(), LIB)
+        self.assertIn('skipped: Smith_2020 (already in library: smith2020climate)', out)
+
+    def test_exact_duplicate_never_asks(self):
+        exact = self.write('exact.bib', EXACT)
+        out = self.papers(f'add {exact}')  # no terminal: would be an error if it asked
+        self.assertNotIn('already in library', out)  # the Modified line says it
+        self.assertIn('Modified -> smith2020climate', out)
+        e = self.entry('smith2020climate')
+        self.assertEqual(e['file'], ':files/smith.pdf:pdf;:other/smith-preprint.pdf:pdf')
+        self.assertEqual(len(self.entries()), 1)
+
+    def test_no_check_duplicate(self):
+        self.papers(f'add {self.new} --no-check-duplicate')
+        self.assertEqual(sorted(self.entries()), ['Smith_2020', 'smith2020climate'])
+
+    def test_add_dir(self):
+        os.makedirs(self.path('dir'))
+        Path(self.path('dir', 'new.bib')).write_text(NEW)
+        self.papers(f'add {self.path("dir")} --recursive --on-duplicate keep')
+        self.assertEqual(list(self.entries()), ['smith2020climate'])
+        self.assertEqual(self.entry('smith2020climate')['volume'], '10')
+
+    def test_add_dir_error(self):
+        os.makedirs(self.path('dir'))
+        Path(self.path('dir', 'new.bib')).write_text(NEW)
+        with self.assertRaises(DuplicateError):
+            self.papers(f'add {self.path("dir")} --recursive')
+        self.assertEqual(Path(self.bibtex).read_text(), LIB)
+
+
+class TestAddDialogue(LibraryTest):
+
+    lib = LIB
+
+    def setUp(self):
+        super().setUp()
+        self.new = self.write('new.bib', NEW)
+
+    def add(self, *answers, editor=None):
+        return self.papers(f'add {self.new} --on-duplicate ask', answers=answers, editor=editor)
+
+    def test_1(self):
+        out = self.add('1')
+        self.assertIn('!  journal  = {Nature}', out)
+        e = self.entry('smith2020climate')
+        self.assertEqual((e['journal'], e['volume']), ('Nature', '10'))
+
+    def test_2(self):
+        self.add('2')
+        self.assertEqual(list(self.entries()), ['smith2020climate'])
+        self.assertEqual(self.entry('smith2020climate')['journal'], 'Nature Climate Change')
+
+    def test_f(self):
+        out = self.add('f', '3', '2')  # 3 is invalid
+        self.assertIn('  1  Nature                 library', out)
+        self.assertIn('  2  Nature Climate Change  new', out)
+        self.assertEqual(self.entry('smith2020climate')['journal'], 'Nature Climate Change')
+
+    def test_e(self):
+        editor = "sed -i -e 's/journal = {Nature}/journal = {Science}/'"
+        self.add('e', editor=editor)
+        e = self.entry('smith2020climate')
+        self.assertEqual((e['journal'], e['volume']), ('Science', '10'))
+        self.assertEqual(len(self.entries()), 1)
+
+    def test_failed_edit_goes_back_to_the_menu(self):
+        # an editor that fails, then one that leaves text that is not one entry:
+        # never insert both entries
+        self.add('e', 's', editor='false')
+        self.assertEqual(Path(self.bibtex).read_text(), LIB)
+        self.add('e', 's', editor="sh -c 'echo \"- journal = {x}\" > \"$0\"'")
+        self.assertEqual(Path(self.bibtex).read_text(), LIB)
+
+    def test_n(self):
+        self.add('n')
+        self.assertEqual(sorted(self.entries()), ['Smith_2020', 'smith2020climate'])
+        self.assertEqual(len(self.distinct()), 1)
+        # not asked again
+        self.papers(f'add {self.write("again.bib", NEW.replace("Smith_2020", "Smith_2020b"))}')
+        self.assertEqual(len(self.entries()), 3)
+
+    def test_n_same_key_gets_a_free_key(self):
+        same_key = self.write('samekey.bib', NEW.replace('Smith_2020', 'smith2020climate'))
+        self.papers(f'add {same_key} --on-duplicate ask', answers=['n'])
+        entries = self.entries()
+        self.assertEqual(len(entries), 2)
+        self.assertEqual(entries['smith2020climate']['journal'], 'Nature')
+
+    def test_s(self):
+        self.add('s')
+        self.assertEqual(Path(self.bibtex).read_text(), LIB)
+
+    def test_q_skips_remaining_duplicates(self):
+        both = self.write('both.bib', NEW + '\n' + NEW.replace('Smith_2020', 'Smith_2020b')
+                          + '\n@article{X,\n author = {Brown, Bob},\n title = {Ocean tides}\n}\n')
+        self.papers(f'add {both} --on-duplicate ask', answers=['q'])
+        self.assertEqual(sorted(self.entries()), ['X', 'smith2020climate'])
+        self.assertNotIn('volume', self.entry('smith2020climate'))
+
+    def test_help_and_invalid(self):
+        out = self.add('?', 'u', 'x', '1')
+        self.assertIn('not the same paper: add the new entry separately', out)
+        self.assertIn("invalid answer: 'u'", out)
+
+    def test_title_guard_asks(self):
+        chapter = self.write('chapter.bib', '@incollection{chap,\n doi = {10.1000/abc123},\n'
+                             ' title = {Sea level rise in the next century}\n}\n')
+        with self.assertRaises(DuplicateError):
+            self.papers(f'add {chapter}')
+        # keep does not merge it either
+        self.papers(f'add {chapter} --on-duplicate keep')
+        self.assertEqual(list(self.entries()), ['smith2020climate'])
+        out = self.papers(f'add {chapter} --on-duplicate ask', answers=['n'])
+        self.assertIn('but the entry types (article, incollection) and the titles differ', out)
+        self.assertEqual(sorted(self.entries()), ['chap', 'smith2020climate'])
+        self.assertEqual(len(self.distinct()), 1)
+
+
+# CHECK
+# =====
+
+GROUP = LIB + """
+@article{Smith_2020,
+ author = {Smith, J. and Doe, J.},
+ file = {:other/smith-preprint.pdf:pdf},
+ journal = {Nature Climate Change},
+ title = {Climate Sensitivity Revisited},
+ year = {2020}
+}
+
+@misc{smith2019preprint,
+ author = {Smith, John and Doe, Jane},
+ doi = {10.5194/egusphere-2019-1},
+ title = {Climate sensitivity revisited},
+ year = {2019}
+}
+
+@article{brown2021,
+ author = {Brown, Bob},
+ title = {Other},
  year = {2021}
 }
 """
-        b = Biblio(similarity='PARTIAL')
-        b.add_bibtex(bib_with_dup, check_duplicate=True, on_conflict='u')
-        # Key1 and Key2 are GOOD/PARTIAL duplicates (same doi, same authortitle) → merged to one
-        self.assertEqual(len(b.entries), 1, 'add_bibtex with duplicate pair should merge (index path)')
-        # Same bib added one-by-one should also merge
-        b2 = Biblio(similarity='PARTIAL')
-        db = bp_parse_string(bib_with_dup)
-        for e in db.entries:
-            b2.insert_entry(e, check_duplicate=True, on_conflict='u')
-        self.assertEqual(len(b2.entries), 1, 'single inserts with duplicate pair should merge (no-index path)')
 
 
-class TestDuplicates(TestDuplicatesPartial):
+class TestCheckOnDuplicate(LibraryTest):
 
-    @staticmethod
-    def isduplicate(a, b):
-        """test Biblio's eq method for duplicates.
-        Parse a and b separately so v2 yields two entries."""
-        db1 = bp_parse_string(a)
-        db2 = bp_parse_string(b)
-        e1, e2 = db1.entries[0], db2.entries[0]
-        refs = Biblio()
-        return refs.eq(e1, e2)
+    lib = GROUP
 
+    def test_default_without_terminal_is_error(self):
+        with self.assertRaises(DuplicateError) as cm:
+            self.papers('check --duplicates')
+        self.assertIn('same paper: smith2020climate, Smith_2020', str(cm.exception))
+        self.assertIn('--on-duplicate', str(cm.exception))
+        self.assertEqual(Path(self.bibtex).read_text(), GROUP)
 
-class TestDuplicatesAdd(TestDuplicates):
+    def test_keep(self):
+        out = self.papers('check --duplicates --on-duplicate keep')
+        self.assertIn('merged into smith2020climate: Smith_2020 (kept in ids)', out)
+        entries = self.entries()
+        self.assertEqual(sorted(entries), ['brown2021', 'smith2019preprint', 'smith2020climate'])
+        e = entries['smith2020climate']
+        self.assertEqual(e['journal'], 'Nature')
+        self.assertEqual(e['ids'], 'Smith_2020')
+        self.assertEqual(e['file'], ':files/smith.pdf:pdf;:other/smith-preprint.pdf:pdf')
+        self.assertEqual(entries['smith2019preprint']['doi'], '10.5194/egusphere-2019-1')
 
-    def setUp(self):
-        self.mybib = tempfile.mktemp(prefix='papers.bib')
-        self.otherbib = tempfile.mktemp(prefix='papers.otherbib')
-
-    def tearDown(self):
-        os.remove(self.mybib)
-        os.remove(self.otherbib)
-
-    def isduplicate(self, a, b):
-        """test Biblio's eq method in 'add' mode
-        """
-        open(self.mybib, 'w').write(a)
-        open(self.otherbib, 'w').write(b)
-        res = paperscmd(f'add {self.otherbib} --bibtex {self.mybib} --update-key --mode r --debug', sp_cmd="call")
-        return res != 0
-
-    @unittest.skip("skip cause does not make sense with add")
-    def test_exactsame(self):
-        pass
-
-    @unittest.skip("skip cause does not make sense with add")
-    def test_anotherkey(self):
-        pass
-
-
-
-class TestAddResolveDuplicate(BibTest):
-
-    original = """@article{Perrette_2011,
- doi = {10.5194/bg-8-515-2011},
- journal = {Biogeosciences},
- year = {RareYear}
-}"""
-
-
-    conflict = """@article{AnotherKey,
- author = {New Author Field},
- doi = {10.5194/bg-8-515-2011},
- journal = {ConflictJournal}
-}"""
-
-
-    def setUp(self):
-        self.mybib = tempfile.mktemp(prefix='papers.bib')
-        self.otherbib = tempfile.mktemp(prefix='papers.otherbib')
-        open(self.mybib, 'w').write(self.original)
-
-    def tearDown(self):
-        os.remove(self.mybib)
-        os.remove(self.otherbib)
-
-    def command(self, mode):
-        return f'echo {mode} | {PAPERSCMD} add {self.otherbib} --bibtex {self.mybib} --debug'
-
-    def test_overwrite(self):
-
-        expected = self.conflict
-
-        open(self.otherbib, 'w').write(self.conflict)
-        sp.check_call(self.command('o'), shell=True)
-        self.assertMultiLineEqual(open(self.mybib).read().strip(), expected) # entries did not change
-
+    def test_ids_appended_without_repetition(self):
+        Path(self.bibtex).write_text(GROUP.replace(' journal = {Nature},', ' ids = {old, Smith_2020},\n journal = {Nature},'))
+        self.papers('check --duplicates --on-duplicate keep')
+        self.assertEqual(self.entry('smith2020climate')['ids'], 'old, Smith_2020')
 
     def test_skip(self):
+        self.papers('check --duplicates --on-duplicate skip')
+        self.assertEqual(len(self.entries()), 4)
 
-        expected = self.original
+    def test_force_is_skip(self):
+        self.papers('check --duplicates --force')
+        self.assertEqual(len(self.entries()), 4)
 
-        open(self.otherbib, 'w').write(self.conflict)
-        sp.check_call(self.command('s'), shell=True)
-        self.assertMultiLineEqual(open(self.mybib).read().strip(), expected) # entries did not change
+    def test_update_not_available(self):
+        with self.assertRaises(SystemExit):
+            self.papers('check --duplicates --on-duplicate update')
 
-    def test_append(self):
-        open(self.otherbib, 'w').write(self.conflict)
-        sp.check_call(self.command('a'), shell=True)
-        # paperscmd(f'add {} --bibtex {} --debug'.format(self.otherbib, self.mybib))
-        expected = self.conflict + '\n\n' + self.original
-        self.assertMultiLineEqual(open(self.mybib).read().strip(), expected) # entries did not change
-
-
-    def test_raises(self):
-        # update key to new entry, but does not merge...
-        open(self.otherbib, 'w').write(self.conflict)
-        func = lambda: sp.check_call(self.command('r'), shell=True)
-        self.assertRaises(Exception, func)
+    def test_mode_m(self):
+        with self.assertLogs('papers', level='WARNING') as logs:
+            self.papers('check --duplicates -m m')
+        self.assertIn('use --on-duplicate keep', '\n'.join(logs.output))
+        self.assertEqual(len(self.entries()), 3)
 
 
-    def test_original_updated_from_conflict(self):
+class TestCheckDialogue(LibraryTest):
 
-        expected = """@article{Perrette_2011,
- author = {New Author Field},
- doi = {10.5194/bg-8-515-2011},
- journal = {Biogeosciences},
- year = {RareYear}
-}"""
+    lib = GROUP
 
-        open(self.otherbib, 'w').write(self.conflict)
-        sp.check_call(self.command('u'), shell=True)
-        self.assertMultiLineEqual(open(self.mybib).read().strip(), expected) # entries did not change
+    def check(self, *answers, editor=None):
+        return self.papers('check --duplicates --on-duplicate ask', answers=answers, editor=editor)
 
+    def test_1(self):
+        out = self.check('1')
+        self.assertIn('2: Smith_2020 (kept in ids)', out)
+        e = self.entry('smith2020climate')
+        self.assertEqual((e['journal'], e['ids']), ('Nature', 'Smith_2020'))
 
-    def test_conflict_updated_from_original(self):
+    def test_2(self):
+        self.check('2')
+        e = self.entry('smith2020climate')
+        self.assertEqual(e['journal'], 'Nature Climate Change')
+        self.assertNotIn('Smith_2020', self.entries())
 
-        expected = """@article{AnotherKey,
- author = {New Author Field},
- doi = {10.5194/bg-8-515-2011},
- journal = {ConflictJournal},
- year = {RareYear}
-}"""
+    def test_t(self):
+        out = self.check('t 2', '1')
+        self.assertIn('merged into Smith_2020: smith2020climate (kept in ids)', out)
+        e = self.entry('Smith_2020')
+        self.assertEqual(e['journal'], 'Nature Climate Change')
+        self.assertEqual(e['doi'], '10.1000/abc123')
+        self.assertEqual(e['ids'], 'smith2020climate')
+        self.assertEqual(e['author'], 'Smith, John and Doe, Jane')
+        self.assertNotIn('smith2020climate', self.entries())
 
-        open(self.otherbib, 'w').write(self.conflict)
-        sp.check_call(self.command('U'), shell=True)
-        self.assertMultiLineEqual(open(self.mybib).read().strip(), expected) # entries did not change
+    def test_f(self):
+        self.check('f', '2')
+        self.assertEqual(self.entry('smith2020climate')['journal'], 'Nature Climate Change')
 
+    def test_e(self):
+        self.check('e', editor="sed -i -e 's/journal = {Nature}/journal = {Science}/'")
+        e = self.entry('smith2020climate')
+        self.assertEqual((e['journal'], e['ids']), ('Science', 'Smith_2020'))
+        self.assertEqual(len(self.entries()), 3)
 
-    def test_conflict_updated_from_original_but_originalkey(self):
+    def test_failed_edit(self):
+        self.check('e', 's', editor='false')
+        self.assertEqual(len(self.entries()), 4)
 
-        # with --update-key a duplicate is merged under the existing entry's key
-        expected = """@article{Perrette_2011,
- author = {New Author Field},
- doi = {10.5194/bg-8-515-2011},
- journal = {ConflictJournal},
- year = {RareYear}
-}"""
-        open(self.otherbib, 'w').write(self.conflict)
-        sp.check_call(self.command('U') + ' --update-key', shell=True)
-        self.assertMultiLineEqual(open(self.mybib).read().strip(), expected) # entries did not change
+    def test_n_remembered(self):
+        self.check('n')
+        self.assertEqual(len(self.entries()), 4)
+        self.assertEqual(len(self.distinct()), 1)
+        # the next check does not ask about this pair, but finds the copy
+        # without DOI and the preprint (same authors and title)
+        with self.assertRaises(DuplicateError) as cm:
+            self.papers('check --duplicates')
+        self.assertIn('same paper: Smith_2020, smith2019preprint', str(cm.exception))
 
-
-
-class TestAddResolveDuplicateCommand(TestAddResolveDuplicate):
-
-    def command(self, mode):
-        return f'{PAPERSCMD} add {self.otherbib} --bibtex {self.mybib} --mode {mode} --debug'
-
-
-
-class TestCheckResolveDuplicate(BibTest):
-
-    original = """@article{Perrette_2011,
- doi = {10.5194/bg-8-515-2011},
- journal = {Biogeosciences},
- year = {RareYear}
-}"""
-
-
-    conflict = """@article{AnotherKey,
- author = {New Author Field},
- doi = {10.5194/bg-8-515-2011},
- journal = {ConflictJournal}
-}"""
+    def test_s_and_q(self):
+        self.check('s')
+        self.assertEqual(len(self.entries()), 4)
+        self.check('q')
+        self.assertEqual(len(self.entries()), 4)
 
 
-    def setUp(self):
-        self.mybib = tempfile.mktemp(prefix='papers.bib')
-        # Write conflict first so parse order is (1)=AnotherKey, (2)=Perrette_2011; pick 1/2 tests rely on this order
-        open(self.mybib, 'w').write(self.conflict + '\n\n' + self.original)
+# LIST
+# ====
 
-    def tearDown(self):
-        os.remove(self.mybib)
-
-    def command(self, mode):
-        return f'echo {mode} | {PAPERSCMD} check --duplicates --bibtex {self.mybib} --debug'
-
-    def test_pick_conflict_1(self):
-
-        expected = self.conflict
-
-        sp.check_call(self.command('1'), shell=True)
-        self.assertMultiLineEqual(open(self.mybib).read().strip(), expected) # entries did not change
-
-    def test_pick_reference_2(self):
-
-        expected = self.original
-
-        sp.check_call(self.command('2'), shell=True)
-        self.assertMultiLineEqual(open(self.mybib).read().strip(), expected) # entries did not change
-
-
-    def test_skip_check(self):
-
-        expected = self.conflict + '\n\n' + self.original
-
-        sp.check_call(self.command('s'), shell=True)
-        self.assertMultiLineEqual(open(self.mybib).read().strip(), expected) # entries did not change
-
-
-    def test_not_a_duplicate(self):
-
-        expected = self.conflict + '\n\n' + self.original
-
-        sp.check_call(self.command('n'), shell=True)
-        self.assertMultiLineEqual(open(self.mybib).read().strip(), expected) # entries did not change
-
-
-    def test_raises(self):
-        # update key to new entry, but does not merge...
-        func = lambda: sp.check_call(self.command('r'), shell=True)
-        self.assertRaises(Exception, func)
-
-
-    def test_merge(self):
-        # update key to new entry, but does not merge...
-        expected = """@article{AnotherKey,
-         author = {New Author Field},
-         doi = {10.5194/bg-8-515-2011},
-         journal = {ConflictJournal},
-         year = {RareYear}
-        }"""
-        func = lambda: sp.check_call(self.command('m\n3'), shell=True)
-        self.assertRaises(Exception, func)
-
-
-
-class TestNdiffTypeAndKey(unittest.TestCase):
-
-    def test_type_and_key_differ(self):
-        # used to raise KeyError: 'ENTRYTYPE_FIELD{REPLACE_ID'
-        entries = bp_parse_string("""@article{A2000,
- author = {A. Author},
- title = {One}
+LIST = GROUP + """
+@book{handbook,
+ doi = {10.1000/book},
+ title = {Handbook of climate}
 }
-@misc{A2000b,
- author = {A. Author},
- title = {One}
-}""").entries
-        text = entry_ndiff(entries, color=False)
-        self.assertIn('@article{A2000,', text)
-        self.assertIn('@misc{A2000b,', text)
+
+@incollection{chapter,
+ doi = {10.1000/book},
+ title = {Sea level rise}
+}
+"""
 
 
-class TestNoInput(unittest.TestCase):
-    """a duplicate question with a closed standard input: clean error, no traceback"""
+class TestListDuplicates(LibraryTest):
 
-    def test_check_duplicates(self):
-        import subprocess, sys, tempfile
-        with tempfile.TemporaryDirectory() as d:
-            open(os.path.join(d, 'lib.bib'), 'w').write(TestDeselect.bib)
-            env = dict(os.environ, PYTHONPATH=os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-            res = subprocess.run([sys.executable, '-m', 'papers', 'check', '--duplicates', '--bibtex', 'lib.bib', '--no-git'],
-                                 cwd=d, stdin=subprocess.DEVNULL, capture_output=True, text=True, env=env)
-        self.assertEqual(res.returncode, 1)
-        self.assertNotIn('Traceback', res.stderr)
-        self.assertIn('no input to answer it', res.stderr)
+    lib = LIST
+
+    def keys(self, cmd):
+        return self.papers(cmd + ' -K').split()
+
+    def test_duplicates(self):
+        self.assertEqual(self.keys('list --duplicates'), ['smith2020climate', 'Smith_2020', 'handbook', 'chapter'])
+
+    def test_invert(self):
+        self.assertEqual(sorted(self.keys('list --duplicates --invert')), ['brown2021', 'smith2019preprint'])
+
+    def test_distinct(self):
+        d = Distinct.for_bibtex(self.bibtex)
+        entries = self.entries()
+        d.add(entries['handbook'], entries['chapter'])
+        d.save()
+        self.assertEqual(self.keys('list --duplicates'), ['smith2020climate', 'Smith_2020'])
+
+    def test_fuzzy(self):
+        self.assertIn('smith2019preprint', self.keys('list --duplicates --fuzzy'))
+
+    def test_by(self):
+        self.assertEqual(self.keys('list --duplicates --by doi'), ['handbook', 'chapter'])
+        self.assertEqual(sorted(self.keys('list --duplicates --by title')),
+                         ['Smith_2020', 'smith2019preprint', 'smith2020climate'])
+        self.assertEqual(self.keys('list --duplicates --by key'), [])
+        self.assertEqual(self.keys('list --by doi'), ['handbook', 'chapter'])  # implies --duplicates
+        self.assertNotIn('handbook', self.keys('list --by doi --invert'))
 
 
-class TestAddConflicts(unittest.TestCase):
-    """add-time duplicate resolution (Biblio.add_bibtex)"""
 
-    old = """@article{A2000,
- author = {A. Author},
- title = {One},
- year = {2000},
- file = {:/tmp/old.pdf:pdf}
-}"""
-    new = """@article{A2000,
- author = {A. Author},
- title = {One},
- year = {2001},
- file = {:/tmp/new.pdf:pdf}
-}"""
+class TestEditEntries(unittest.TestCase):
 
-    def biblio(self):
-        from papers.bib import Biblio
-        biblio = Biblio()
-        biblio.add_bibtex(self.old)
-        return biblio
-
-    def keys(self, biblio):
-        return sorted(get_entry_val(e, 'ID') for e in biblio.entries)
-
-    def test_append_same_key(self):
-        # used to abort the whole add with a key conflict after the user chose (a)ppend
-        biblio = self.biblio()
-        biblio.add_bibtex(self.new, check_duplicate=True, on_conflict='a')
-        self.assertEqual(self.keys(biblio), ['A2000', 'A2000b'])
-
-    def test_failed_edit_asks_again(self):
-        # a failed edit used to add the new entry separately
-        biblio = self.biblio()
-        with patch('papers.duplicate.edit_entries', side_effect=lambda entries, **kw: entries), \
-                patch('builtins.input', side_effect=['e', 's']):
-            biblio.add_bibtex(self.new.replace('{A2000,', '{Other2001,'), check_duplicate=True, on_conflict='i')
-        self.assertEqual(self.keys(biblio), ['A2000'])
-
-    def test_no_check_duplicate_keeps_files(self):
-        # same key and title: the new entry's file used to be dropped
-        biblio = self.biblio()
-        biblio.add_bibtex(self.new.replace('2001', '2000'), check_duplicate=False)
-        self.assertEqual(self.keys(biblio), ['A2000'])
-        self.assertEqual(sorted(biblio.get_files(biblio.entries[0])), ['/tmp/new.pdf', '/tmp/old.pdf'])
+    def test_editor_failure_returns_originals(self):
+        entries = parse_string('@article{A2000,\n title = {One}\n}').entries
+        self.assertIs(edit_entries(entries, editor='false'), entries)
 
 
 class TestEditEntriesTempFile(unittest.TestCase):
+
+    bib = """@article{A2000,
+ author = {A. Author},
+ title = {One},
+ year = {2000}
+}"""
 
     def test_temporary_file_removed(self):
         import tempfile
         with tempfile.TemporaryDirectory() as d:
             with patch('tempfile.tempdir', d):
-                edit_entries(bp_parse_string(TestDeselect.bib).entries, editor='true')
+                edit_entries(parse_string(self.bib).entries, editor='true')
             self.assertEqual(os.listdir(d), [])
 
     def test_editor_fallback(self):
@@ -818,5 +777,5 @@ class TestEditEntriesTempFile(unittest.TestCase):
         with patch.dict(os.environ, {}, clear=False) as env, patch('os.system', return_value=1) as system:
             env.pop('EDITOR', None)
             env.pop('VISUAL', None)
-            edit_entries(bp_parse_string(TestDeselect.bib).entries)
+            edit_entries(parse_string(self.bib).entries)
         self.assertTrue(system.call_args[0][0].startswith('vi '))

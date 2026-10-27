@@ -7,17 +7,29 @@ from papers.utils import (
     strip_colors,
     strip_ansi_link,
     strip_all,
-    search_config,
     check_filesdir,
     checksum,
     hash_bytestr_iter,
-    file_as_blockiter,
     ansi_link,
     bcolors,
+    color_enabled,
+    use_color,
 )
+import papers.utils
 
 
-class TestAnsiLink(unittest.TestCase):
+class ColorTest(unittest.TestCase):
+    "the colours of the output on (the tests run without terminal: off)"
+
+    def setUp(self):
+        self._color = papers.utils.COLOR
+        use_color(True)
+
+    def tearDown(self):
+        use_color(self._color)
+
+
+class TestAnsiLink(ColorTest):
 
     def test_ansi_link_with_label(self):
         result = ansi_link("https://example.com", "click here")
@@ -29,7 +41,12 @@ class TestAnsiLink(unittest.TestCase):
         self.assertIn("example.com", result)
 
 
-class TestStripColors(unittest.TestCase):
+    def test_no_link_without_colors(self):
+        use_color(False)
+        self.assertEqual(ansi_link("https://example.com", "click here"), "click here")
+
+
+class TestStripColors(ColorTest):
 
     def test_strip_okgreen(self):
         s = f"{bcolors.OKGREEN}green{bcolors.ENDC}"
@@ -50,7 +67,7 @@ class TestStripAnsiLink(unittest.TestCase):
         self.assertNotIn("example.com", result)
 
 
-class TestStripAll(unittest.TestCase):
+class TestStripAll(ColorTest):
 
     def test_strips_both_colors_and_links(self):
         s = f"{bcolors.OKBLUE}\033]8;;url\033\\link\033]8;;\033\\{bcolors.ENDC}"
@@ -58,28 +75,43 @@ class TestStripAll(unittest.TestCase):
         self.assertEqual(result, "link")
 
 
-class TestSearchConfig(unittest.TestCase):
+class FakeTerminal:
+    def isatty(self):
+        return True
 
-    def test_finds_file_in_current_dir(self):
-        with tempfile.TemporaryDirectory() as d:
-            config_file = os.path.join(d, "config.json")
-            open(config_file, 'w').close()
-            result = search_config(["config.json"], d)
-            self.assertEqual(result, config_file)
 
-    def test_returns_default_when_not_found(self):
-        with tempfile.TemporaryDirectory() as d:
-            result = search_config(["nonexistent.json"], d, default="/default")
-            self.assertEqual(result, "/default")
+class TestColorEnabled(unittest.TestCase):
 
-    def test_searches_parent_dirs(self):
-        with tempfile.TemporaryDirectory() as d:
-            subdir = os.path.join(d, "sub", "deep")
-            os.makedirs(subdir)
-            config_file = os.path.join(d, "papersconfig.json")
-            open(config_file, 'w').close()
-            result = search_config(["papersconfig.json"], subdir)
-            self.assertEqual(result, config_file)
+    def setUp(self):
+        self._no_color = os.environ.pop('NO_COLOR', None)
+
+    def tearDown(self):
+        os.environ.pop('NO_COLOR', None)
+        if self._no_color is not None:
+            os.environ['NO_COLOR'] = self._no_color
+
+    def test_auto(self):
+        self.assertTrue(color_enabled('auto', FakeTerminal()))
+        self.assertFalse(color_enabled('auto', open(os.devnull, 'w')))
+        os.environ['NO_COLOR'] = '1'
+        self.assertFalse(color_enabled('auto', FakeTerminal()))
+        os.environ['NO_COLOR'] = ''  # empty: not set (https://no-color.org)
+        self.assertTrue(color_enabled('auto', FakeTerminal()))
+
+    def test_always_never(self):
+        os.environ['NO_COLOR'] = '1'
+        self.assertTrue(color_enabled('always', open(os.devnull, 'w')))
+        self.assertFalse(color_enabled('never', FakeTerminal()))
+
+    def test_use_color(self):
+        color = papers.utils.COLOR
+        try:
+            use_color(False)
+            self.assertEqual(bcolors.OKGREEN + 'x' + bcolors.ENDC, 'x')
+            use_color(True)
+            self.assertEqual(bcolors.OKGREEN, '\033[92m')
+        finally:
+            use_color(color)
 
 
 class TestChecksum(unittest.TestCase):
@@ -127,3 +159,31 @@ class TestCheckFilesdirCase(unittest.TestCase):
             open(os.path.join(d, "b.pdf"), "w").write("dummy")
             count, size = check_filesdir(d)
             self.assertEqual(count, 2)
+
+
+class TestSpecificExceptions(unittest.TestCase):
+    "the exceptions that used to be caught by bare except clauses"
+
+    def test_hardlink_falls_back_to_copy(self):
+        from unittest.mock import patch
+        from papers.utils import move
+        with tempfile.TemporaryDirectory() as d:
+            src, dst = os.path.join(d, 'a.pdf'), os.path.join(d, 'b.pdf')
+            open(src, 'w').write('a')
+            with patch('os.link', side_effect=OSError('cross-device link')):
+                move(src, dst, copy=True, hardlink=True)
+            self.assertEqual(open(dst).read(), 'a')
+            self.assertNotEqual(os.stat(src).st_ino, os.stat(dst).st_ino)
+
+    def test_isvaliddoi(self):
+        from papers.extract import isvaliddoi
+        self.assertTrue(isvaliddoi('10.1000/abc123'))
+        self.assertFalse(isvaliddoi('not a doi'))
+
+    def test_status_corrupted_bibtex(self):
+        from papers.config import Config
+        with tempfile.TemporaryDirectory() as d:
+            bibtex = os.path.join(d, 'papers.bib')
+            open(bibtex, 'wb').write(b'\xff\xfe\x00not utf-8')
+            config = Config(bibtex=bibtex, filesdir=d)
+            self.assertIn('(corrupted)', config.status(check_files=True))

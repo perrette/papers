@@ -1,4 +1,4 @@
-"""Unit tests for papers.bib helpers (66% -> higher coverage)"""
+"""Unit tests for papers.bib helpers, and the download helpers of papers.files"""
 import os
 import unittest
 from unittest import mock
@@ -6,18 +6,9 @@ from unittest import mock
 from papers.bib import (
     append_abc,
     isvalidkey,
-    compare_entries,
-    are_duplicates,
-    hidden_bibtex,
-    backupfile as backupfile_fn,
-    download_url,
-    _basename_from_url,
-    EXACT_DUPLICATES,
-    GOOD_DUPLICATES,
-    FAIR_DUPLICATES,
-    PARTIAL_DUPLICATES,
 )
-from papers.duplicate import author_id, title_id, entry_id
+from papers.files import hidden_bibtex, download_url, _basename_from_url
+from papers.duplicate import author_id, title_id, authortitle_id
 
 
 def _fake_response(content=b"", status=200, content_type=""):
@@ -37,14 +28,6 @@ class TestHiddenBibtex(unittest.TestCase):
         )
 
 
-class TestBackupfile(unittest.TestCase):
-
-    def test_backupfile(self):
-        result = backupfile_fn("/path/to/library.bib")
-        self.assertIn("backup", result)
-        self.assertTrue(result.endswith(".backup"))
-
-
 class TestAppendAbc(unittest.TestCase):
 
     def test_append_b_to_new_key(self):
@@ -56,6 +39,18 @@ class TestAppendAbc(unittest.TestCase):
     def test_with_existing_keys(self):
         result = append_abc('Author2000', ['Author2000', 'Author2000b'])
         self.assertEqual(result, 'Author2000c')
+
+    def test_ignores_case(self):
+        self.assertEqual(append_abc('Author2000', ['author2000', 'author2000b']), 'Author2000c')
+
+    def test_key_ending_with_a_letter(self):
+        # the last letter is a suffix only after a digit: 'perrette' used to become 'perrettf'
+        self.assertEqual(append_abc('perrette', ['perrette']), 'perretteb')
+        self.assertEqual(append_abc('10-1000-abc', ['10-1000-abc']), '10-1000-abcb')
+
+    def test_no_letter_left(self):
+        with self.assertRaises(ValueError):
+            append_abc('Author2000z', ['Author2000z'])
 
 
 class TestIsvalidkey(unittest.TestCase):
@@ -73,40 +68,6 @@ class TestIsvalidkey(unittest.TestCase):
         self.assertFalse(isvalidkey(None))
 
 
-class TestCompareEntries(unittest.TestCase):
-
-    def test_exact_duplicates(self):
-        e = {"author": "Smith", "title": "Test", "year": "2020", "doi": "10.1234/test"}
-        self.assertEqual(compare_entries(e, e), EXACT_DUPLICATES)
-
-    def test_good_duplicates_same_author_title_doi(self):
-        e1 = {"author": "Smith, John", "title": "A paper", "year": "2020", "doi": "10.1234/test"}
-        e2 = {"author": "Smith, John", "title": "A paper", "year": "2021", "doi": "10.1234/test"}
-        self.assertEqual(compare_entries(e1, e2), GOOD_DUPLICATES)
-
-    def test_partial_duplicates_same_author_title_diff_doi(self):
-        e1 = {"author": "Smith, John", "title": "A paper", "year": "2020", "doi": "10.1234/a"}
-        e2 = {"author": "Smith, John", "title": "A paper", "year": "2020", "doi": "10.1234/b"}
-        self.assertEqual(compare_entries(e1, e2), PARTIAL_DUPLICATES)
-
-    def test_fair_duplicates_same_doi(self):
-        e1 = {"author": "Smith", "title": "Paper A", "year": "2020", "doi": "10.5194/bg-8-515-2011"}
-        e2 = {"author": "Jones", "title": "Paper B", "year": "2021", "doi": "10.5194/bg-8-515-2011"}
-        self.assertEqual(compare_entries(e1, e2), FAIR_DUPLICATES)
-
-    def test_no_match_returns_zero(self):
-        e1 = {"author": "Smith", "title": "Paper A", "doi": "10.1234/a"}
-        e2 = {"author": "Jones", "title": "Paper B", "doi": "10.1234/b"}
-        self.assertEqual(compare_entries(e1, e2, fuzzy=False), 0)
-
-    def test_fuzzy_similarity(self):
-        e1 = {"author": "Smith, John", "title": "Climate change impacts", "doi": ""}
-        e2 = {"author": "Smith, J.", "title": "Climate change impact on oceans", "doi": ""}
-        score = compare_entries(e1, e2, fuzzy=True)
-        self.assertGreater(score, 0)
-        self.assertLessEqual(score, 100)
-
-
 class TestEntryId(unittest.TestCase):
 
     def test_author_id(self):
@@ -117,34 +78,20 @@ class TestEntryId(unittest.TestCase):
         e = {"title": "A Test Paper"}
         self.assertEqual(title_id(e), "a test paper")
 
-    def test_entry_id(self):
+    def test_authortitle_id(self):
         e = {"author": "Smith, J.", "title": "Paper", "doi": "10.1234/test"}
-        doi, authortitle = entry_id(e)
-        self.assertEqual(doi, "10.1234/test")
-        self.assertIn("smith", authortitle)
-        self.assertIn("paper", authortitle)
+        self.assertEqual(authortitle_id(e), "smith|paper")
 
-    def test_author_id_replaces_unicode(self):
-        """_remove_unicode replaces chars with ord > 128"""
-        e = {"author": "Müller, Hans"}
-        self.assertEqual(author_id(e), "m_ller")
+    def test_authortitle_id_needs_both(self):
+        self.assertEqual(authortitle_id({"title": "Editorial"}), "")
+        self.assertEqual(authortitle_id({"author": "Smith, J."}), "")
 
+    def test_author_id_accents(self):
+        e = {"author": "M{\\\"u}ller, Hans and Müller, Jens"}
+        self.assertEqual(author_id(e), "muller muller")
 
-class TestAreDuplicates(unittest.TestCase):
-
-    def test_exact_are_duplicates(self):
-        e = {"author": "Smith", "title": "Test", "year": "2020"}
-        self.assertTrue(are_duplicates(e, e, similarity="EXACT"))
-
-    def test_partial_same_doi(self):
-        e1 = {"author": "A", "title": "X", "doi": "10.1234/x"}
-        e2 = {"author": "B", "title": "Y", "doi": "10.1234/x"}
-        self.assertTrue(are_duplicates(e1, e2, similarity="PARTIAL"))
-
-    def test_invalid_similarity_raises(self):
-        e = {"author": "A", "title": "X"}
-        with self.assertRaises(ValueError):
-            are_duplicates(e, e, similarity="INVALID")
+    def test_title_id_braces_and_spaces(self):
+        self.assertEqual(title_id({"title": "The {CO2}   Problem"}), "the co2 problem")
 
 
 class TestBasenameFromUrl(unittest.TestCase):
@@ -176,7 +123,7 @@ class TestDownloadUrl(unittest.TestCase):
     def test_pdf_saved_with_url_basename(self):
         url = "https://example.org/paper.pdf"
         resp = _fake_response(content=b"%PDF-1.4\n...", content_type="application/pdf")
-        with mock.patch("papers.bib.requests.get", return_value=resp):
+        with mock.patch("requests.get", return_value=resp):
             local = download_url(url, expect_pdf=True)
         try:
             self.assertEqual(os.path.basename(local), "paper.pdf")
@@ -188,7 +135,7 @@ class TestDownloadUrl(unittest.TestCase):
     def test_attachment_saved_with_url_basename(self):
         url = "https://example.org/supp.zip"
         resp = _fake_response(content=b"PK\x03\x04zipdata", content_type="application/zip")
-        with mock.patch("papers.bib.requests.get", return_value=resp):
+        with mock.patch("requests.get", return_value=resp):
             local = download_url(url, expect_pdf=False)
         try:
             self.assertEqual(os.path.basename(local), "supp.zip")
@@ -198,7 +145,7 @@ class TestDownloadUrl(unittest.TestCase):
     def test_rejects_html_for_attachment(self):
         url = "https://example.org/login.html"
         resp = _fake_response(content=b"<html><body>login</body></html>", content_type="text/html")
-        with mock.patch("papers.bib.requests.get", return_value=resp):
+        with mock.patch("requests.get", return_value=resp):
             with self.assertRaises(ValueError) as cm:
                 download_url(url, expect_pdf=False)
         self.assertIn("HTML page", str(cm.exception))
@@ -206,14 +153,14 @@ class TestDownloadUrl(unittest.TestCase):
     def test_rejects_html_for_attachment_when_content_type_missing(self):
         url = "https://example.org/supp.zip"
         resp = _fake_response(content=b"<!DOCTYPE html><html>", content_type="")
-        with mock.patch("papers.bib.requests.get", return_value=resp):
+        with mock.patch("requests.get", return_value=resp):
             with self.assertRaises(ValueError):
                 download_url(url, expect_pdf=False)
 
     def test_rejects_non_pdf_when_expect_pdf(self):
         url = "https://example.org/paper"
         resp = _fake_response(content=b"<html>landing</html>", content_type="text/html")
-        with mock.patch("papers.bib.requests.get", return_value=resp):
+        with mock.patch("requests.get", return_value=resp):
             with self.assertRaises(ValueError) as cm:
                 download_url(url, expect_pdf=True)
         self.assertIn("did not return a PDF", str(cm.exception))
@@ -221,7 +168,7 @@ class TestDownloadUrl(unittest.TestCase):
     def test_appends_pdf_extension_when_missing(self):
         url = "https://example.org/article/12345"
         resp = _fake_response(content=b"%PDF-1.7", content_type="application/pdf")
-        with mock.patch("papers.bib.requests.get", return_value=resp):
+        with mock.patch("requests.get", return_value=resp):
             local = download_url(url, expect_pdf=True)
         try:
             self.assertTrue(local.endswith(".pdf"))
@@ -231,7 +178,7 @@ class TestDownloadUrl(unittest.TestCase):
     def test_attachment_appends_extension_from_content_type(self):
         url = "https://doi.pangaea.de/10.1594/PANGAEA.760904?format=zip"
         resp = _fake_response(content=b"PK\x03\x04zip", content_type="application/zip")
-        with mock.patch("papers.bib.requests.get", return_value=resp):
+        with mock.patch("requests.get", return_value=resp):
             local = download_url(url, expect_pdf=False)
         try:
             self.assertTrue(local.endswith(".zip"))
@@ -241,7 +188,7 @@ class TestDownloadUrl(unittest.TestCase):
     def test_attachment_does_not_double_extension(self):
         url = "https://example.org/supp.zip"
         resp = _fake_response(content=b"PK\x03\x04zip", content_type="application/zip")
-        with mock.patch("papers.bib.requests.get", return_value=resp):
+        with mock.patch("requests.get", return_value=resp):
             local = download_url(url, expect_pdf=False)
         try:
             self.assertEqual(os.path.basename(local), "supp.zip")
@@ -251,7 +198,7 @@ class TestDownloadUrl(unittest.TestCase):
     def test_http_error_includes_url(self):
         url = "https://example.org/missing.pdf"
         resp = _fake_response(content=b"", content_type="text/plain", status=404)
-        with mock.patch("papers.bib.requests.get", return_value=resp):
+        with mock.patch("requests.get", return_value=resp):
             with self.assertRaises(ValueError) as cm:
                 download_url(url, expect_pdf=True)
         self.assertIn("404", str(cm.exception))
