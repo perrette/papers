@@ -1057,7 +1057,7 @@ configuration sets one (see <a href="../global-library/">A global shared library
 and otherwise fail: <code>no library found here: papers init</code>.</p>
 <p>Type <code>papers status</code> to see which library a command acts on: where its
 bibtex and its files are, its pool and its backup. <code>papers status -v</code> also
-shows the git backup folder, the configuration file, the cache directory and
+shows the backup folder (<code>.papers/backup</code>), the configuration file, the cache directory and
 the version. <code>papers config</code> lists the settings and where each one comes from.</p>
 <h2 id="settings">Settings<a class="headerlink" href="#settings" title="Permanent link">&para;</a></h2>
 <p><code>papers config</code> gets and sets the settings, in the style of <code>git config</code>:</p>
@@ -1132,6 +1132,10 @@ version (papers also leaves them out each time it saves the file).</p>
 <td><code>100</code> (default): the size of the trash of the library, in MB; papers asks before deleting more than that at once</td>
 </tr>
 <tr>
+<td><code>checksums</code></td>
+<td><code>true</code> (default): the commands write the checksum of the files they move, copy, add or link in <code>.papers/files.json</code>, for undo (see <a href="../undo-redo/#checksums">Checksums</a>)</td>
+</tr>
+<tr>
 <td><code>editor</code></td>
 <td>command that opens a text editor, e.g. <code>vim</code> or <code>subl -w</code> (it wins over <code>$VISUAL</code> and <code>$EDITOR</code>, which are used without it)</td>
 </tr>
@@ -1153,7 +1157,7 @@ that the library can be moved or shared as a whole. <code>papers config bibtex</
 <code>papers config filesdir</code> and the list of <code>papers config</code> show them as
 absolute paths. A relative path given to set them is relative to the current
 directory.</p>
-<p>Setting <code>git</code> to <code>true</code> initializes the backup directory and records the
+<p>Setting <code>git</code> to <code>true</code> initializes the backup folder and records the
 current bibtex. Setting <code>paths</code> rewrites the file links of the bibtex.
 Setting <code>pool</code> changes where the library links its files: <code>pool PATH</code> (an
 existing library without pool) links to the copies of the library's PDFs
@@ -1275,8 +1279,8 @@ with <code>papers config --global default PATH</code>. <code>--local</code> is i
 <div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>papers uninstall
 </code></pre></div>
 <p>removes the library configuration and reports what it leaves behind (the
-bibtex file, the files directory, and the backup directory if any). Pass
-<code>--remove-backup</code> to also remove the backup directory. It never removes the
+bibtex file, the files directory, and the backup folder <code>.papers/backup</code> if
+any). Pass <code>--remove-backup</code> to also remove the backup folder. It never removes the
 global configuration. From outside of any library it does not remove
 the default library's configuration: run <code>papers -C DIR uninstall</code> for that.</p>
 <p><code>papers uninstall --recursive</code> is deprecated and ignored (there is no global

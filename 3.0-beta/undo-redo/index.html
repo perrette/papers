@@ -874,6 +874,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#checksums" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Checksums
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#the-trash" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -962,40 +973,67 @@ command that made it, e.g.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>undo: papers.bib restored to 3f2a1c9 papers add paper.pdf (2026-10-22 14:03)
 </code></pre></div>
 <h2 id="files">Files<a class="headerlink" href="#files" title="Permanent link">&para;</a></h2>
-<p>Each command records the files it moves, renames, copies or deletes (with
-the git backup, in the snapshot of the command, <code>files-journal.json</code>;
-without it, next to the backup of the bibtex, <code>.papers.bib.files.json</code>).
-<code>papers undo</code> of one step puts them back: a moved or renamed file is moved
-back where it was, even outside the library (e.g. a folder of the project
-that <code>papers file rename</code> moved it from), a copy placed in the files
-directory is removed; <code>papers redo</code> does the operations again. Each file
-is listed:</p>
+<p><code>papers undo</code>, <code>papers redo</code> (of any number of steps, <code>-n N</code>) and
+<code>papers restore --ref COMMIT</code> bring the files back with the bibtex: a
+moved or renamed file is moved back where it was, even outside the library
+(e.g. a folder of the project that <code>papers file rename</code> moved it from, or
+<code>~/Downloads</code> for <code>papers add --move</code>), a copy placed in the files directory
+is removed, a deleted file comes back from the trash; redo does the same
+again. Each file is listed:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>undo: papers.bib restored to 3f2a1c9 papers add paper.pdf (2026-10-22 14:03)
 <a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>    files/perrette_2013_a-scaling-approach.pdf --&gt; moved back to ~/Downloads/esd-4-11-2013.pdf
 </code></pre></div>
-<p>A file is put back only if it is where the command left it, with the same
-content, and its former place is free; otherwise papers says so and
-leaves it as it is (e.g. a PDF annotated since). In a shallow library, a
-file that <code>add</code> moved into the files directory of the pool is copied back:
-the pool entry keeps it.</p>
-<p><code>papers undo -n N</code> (N &gt; 1) and <code>papers restore</code> do not move files: they
-say so when the commands they go over moved some, and the files that no
-entry links to any more are listed (<code>papers file clean</code> removes them).
-Undo one step at a time to put the files back with each command. The
-commands made before papers recorded the files (3.0.0b3) are undone
-without them.</p>
+<p>papers compares the files that the entries link to now with those of the
+restored state, and finds each missing file:</p>
+<ul>
+<li>where the commands in between moved or copied it: each command records
+  the files it moves, renames, copies or deletes, with their checksum (with
+  the git backup, in the snapshot of the command, <code>files-journal.json</code>;
+  without it, in the backup folder, <code>.papers/backup/previous-files.json</code>);</li>
+<li>by its checksum (<code>.papers/files.json</code>, see <a href="#checksums">Checksums</a>): a
+  file that no entry links to any more is moved, a file that an entry links
+  to, or a file of the pool, is copied;</li>
+<li>in the trash (see <a href="#the-trash">The trash</a>);</li>
+<li>in the git-lfs copies of the backup.</li>
+</ul>
+<p>The rules:</p>
+<ul>
+<li>A file is never overwritten: if its former place is taken, papers says so
+  and leaves it where it is.</li>
+<li>A file whose content changed since the command (e.g. a PDF annotated
+  since) is left as it is, with a message.</li>
+<li>A file outside the library that a command only unlinked (e.g.
+  <code>papers file detach</code>) is never deleted by undo or redo, and the files
+  that no command touched are left alone.</li>
+<li>In a shallow library, a file that <code>add</code> moved into the files directory of
+  the pool is copied back: the pool entry keeps it.</li>
+</ul>
+<p>The commands made before papers recorded the files (3.0.0b3) have no
+journal: their files are found by checksum only, if <code>papers file checksum</code>
+wrote them.</p>
+<h3 id="checksums">Checksums<a class="headerlink" href="#checksums" title="Permanent link">&para;</a></h3>
+<p><code>.papers/files.json</code> holds the checksum (sha256) of the files that the
+entries link to. With the <code>checksums</code> setting (true by default), a command
+writes the checksum of the files it moves, copies, adds or links; the git
+backup commits the file with the bibtex. <code>papers file checksum</code> writes the
+checksums of all the files (or of the entries given), <code>--check</code> reports
+the files whose content changed since their checksum (e.g. annotated PDFs)
+and writes nothing, and <code>--remove</code> removes the checksums. With
+<code>papers config checksums false</code>, the commands write no checksum (those
+written stay), and undo finds the files through the journal only.</p>
 <h3 id="the-trash">The trash<a class="headerlink" href="#the-trash" title="Permanent link">&para;</a></h3>
 <p>A file that a command deletes (<code>papers rm --delete-files</code>, <code>papers file
 rm</code>, <code>papers file clean</code>, the library's copies replaced by those of the
 pool with <code>papers config pool PATH</code>) goes to the trash of the library, in
-its backup folder (<code>papers status -v</code> shows it), and <code>papers undo</code> puts it
+its backup folder, <code>.papers/backup/trash</code>, and <code>papers undo</code> puts it
 back:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>undo: papers.bib restored to 3f2a1c9 papers add paper.pdf (2026-10-22 14:03)
 <a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>    files/perrette_2013_a-scaling-approach.pdf: restored from the trash
 </code></pre></div>
 <p>A file stays in the trash for 30 days at most (the <code>trash-days</code> setting),
 and the trash holds 100 MB at most (<code>trash-size</code>): beyond that, the oldest
-files leave it first. A command that would delete more than the trash
+files leave it first, to the trash of the system (where there is one,
+otherwise they are deleted). A command that would delete more than the trash
 holds asks first, and then deletes the files for good; without a terminal
 to ask, it keeps them. A file that has an identical copy that stays (e.g.
 in the pool) is not put in the trash: undo copies it back from that copy.

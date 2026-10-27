@@ -1152,7 +1152,9 @@ papers 2 is <code>~/bibliography/papers.bib</code>:</p>
   configuration of papers 3 already sets another one: commands run
   outside of any project act on it (see
   <a href="../global-library/">A global shared library</a>).</li>
-<li>The bibtex, the PDFs and the git backup stay where they are. File links
+<li>The bibtex and the PDFs stay where they are. The git backup moves into
+  the library, <code>.papers/backup</code> (see
+  <a href="../git/#backups-of-earlier-versions">Backups of earlier versions</a>). File links
   stay absolute, as they were; <code>papers migrate --relative</code> makes them
   relative to the bibtex.</li>
 <li><code>papers migrate --dry-run</code> shows what it would do. Running
