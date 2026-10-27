@@ -102,6 +102,7 @@ def _print_biblio_diff(biblio, touched_entries, show_existing=False, notes=None)
     """
     if biblio.loaded_entries is None:
         raise ValueError('_print_biblio_diff needs the entries as loaded (Biblio.mark_loaded)')
+    porcelain = papers.utils.PORCELAIN
     notes = notes or {}
     note = lambda ID: f' [{notes[ID.lower()]}]' if ID.lower() in notes else ''
     old_entries_by_key = {get_entry_val(e, 'ID', ''): e for e in biblio.loaded_entries}
@@ -109,6 +110,18 @@ def _print_biblio_diff(biblio, touched_entries, show_existing=False, notes=None)
     new_entries_by_key = {get_entry_val(e, 'ID', ''): e for e in biblio.db.entries}
     new_set = set(new_entries_by_key)
     modified_set = set(get_entry_val(e, 'ID', '') for e in touched_entries).intersection(set.intersection(old_set, new_set))
+
+    if porcelain is not None:  # --porcelain: the keys only, for programs
+        lines = [f'removed {ID}' for ID in sorted(old_set - new_set)]
+        lines += [f'added {ID}' for ID in sorted(new_set - old_set)]
+        for ID in sorted(modified_set):
+            if not entry_content_equal(old_entries_by_key[ID], new_entries_by_key[ID]):
+                lines.append(f'modified {ID}')
+            elif show_existing:
+                lines.append(f'existing {ID}')
+        for line in lines:
+            print(line, file=porcelain)
+        return
 
     loaded = SimpleNamespace(relative_to=biblio.loaded_relative_to)  # the file links as loaded
     for ID in sorted(old_set - new_set):

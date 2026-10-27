@@ -107,6 +107,12 @@ def _main(argv, directory=None):
     handle_logging(o)
     papers.utils.use_color(papers.utils.color_enabled(getattr(o, 'color', 'auto')))
 
+    with papers.utils.porcelain_output(getattr(o, 'porcelain', False)):
+        _run(o, parser, subparsers, config)
+
+
+def _run(o, parser, subparsers, config):
+    "the command of the parsed arguments `o`"
     if os.path.exists(CONFIG_FILE) and o.cmd != 'migrate' and not (o.cmd == 'install' and o.local is False):
         logger.warning(f"found the global configuration of papers v2 ({CONFIG_FILE}): it still applies "
                        "outside of libraries; `papers migrate` turns it into a library, the default library")

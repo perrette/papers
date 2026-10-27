@@ -294,6 +294,25 @@ def write_atomic(path, text):
         raise
 
 
+# the standard output of --porcelain (papers.cli.main): the other messages go to the standard error
+PORCELAIN = None
+
+
+@contextmanager
+def porcelain_output(enabled):
+    """with --porcelain: the standard output is the standard error, and
+    PORCELAIN the real standard output (for papers.cli.common._print_biblio_diff)"""
+    global PORCELAIN
+    if not enabled:
+        yield
+        return
+    PORCELAIN, sys.stdout = sys.stdout, sys.stderr
+    try:
+        yield
+    finally:
+        sys.stdout, PORCELAIN = PORCELAIN, None
+
+
 # the `editor` setting of the library of the command (set by papers.cli.main)
 EDITOR = None
 
