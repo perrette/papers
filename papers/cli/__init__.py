@@ -3,6 +3,7 @@ import logging
 import os
 import sys
 
+import papers.backup
 import papers.config
 import papers.journal
 import papers.utils
@@ -127,6 +128,8 @@ def _main(argv, directory=None):
         config = check_install(o.command_parser, o, config, bibtex_must_exist=o.bibtex_must_exist)
     # the editor setting wins over $VISUAL and $EDITOR
     papers.utils.EDITOR = config.editor
+    # the backup of papers 3.0.0b2 and earlier moves to the library
+    papers.backup.adopt_central_backup(config)
     # the file operations of the command (see papers.journal)
     papers.journal.start(config.bibtex, config.trash() if config.file else None)
     o.func(o.command_parser, o, config)

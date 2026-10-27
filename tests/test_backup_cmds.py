@@ -1,5 +1,5 @@
 """papers backup, restore and git: the cases without backup, and the
-questions of backup remove"""
+backup folders of papers 3.0.0b2 and earlier"""
 import os
 from unittest.mock import patch
 
@@ -9,43 +9,36 @@ from tests.common import ConfigTest, FileTest
 
 class TestBackupCmds(FileTest):
 
-    def info(self, current=False):
-        return {'gitdir': self.path('backup-x'), 'bibtex': self.path('gone.bib'), 'current': current,
-                'snapshots': 3, 'last': '2026-01-01', 'size': 2048}
-
     def test_restore_without_git(self):
         with self.assertRaisesRegex(PapersExit, 'papers config git true'):
             self.lib('restore')
 
+    def old(self, name):
+        "a backup folder of papers 3.0.0b2 or earlier"
+        from papers.config import BACKUP_DIR
+        os.makedirs(os.path.join(BACKUP_DIR, name, '.git'), exist_ok=True)
+        return os.path.join(BACKUP_DIR, name)
+
     def test_remove_answer_no(self):
-        with patch('papers.cli.backup_cmds.list_backup_dirs', return_value=[self.info(current=True)]), \
-                patch('papers.cli.backup_cmds.shutil.rmtree') as rmtree, \
-                patch('builtins.input', return_value='n'), \
-                self.assertLogs('papers', level='WARNING') as logs:
+        old = self.old('backup-x')
+        with patch('builtins.input', return_value='n'):
             out = self.out('backup remove backup-x')
-        rmtree.assert_not_called()
-        self.assertIn("current library's backup directory", logs.output[0])
-        self.assertIn('(bibtex missing)', out)
-        self.assertIn('3 snapshots, last 2026-01-01', out)
+        self.assertIn('* backup-x', out)
+        self.assertTrue(os.path.isdir(old))
 
     def test_remove_nothing_matches(self):
-        with patch('papers.cli.backup_cmds.list_backup_dirs', return_value=[self.info()]):
-            self.assertIn('no matching backup directory', self.out('backup remove other'))
+        self.old('backup-x')
+        self.assertNotIn('backup-x', self.out('backup remove other'))
 
     def test_remove_needs_names(self):
         with self.assertRaises(SystemExit):
             self.lib('backup remove')
 
-    def test_list_without_snapshot(self):
-        self.lib('config git true')
-        with patch('papers.cli.backup_cmds.list_backup_dirs', return_value=[]):
-            out = self.out('backup')
-        self.assertIn('no backup directory found', out)
-        self.assertIn('no snapshot recorded yet', out)
-
-    def test_list_git_off(self):
-        with patch('papers.cli.backup_cmds.list_backup_dirs', return_value=[]):
-            self.assertIn('git-tracking is off', self.out('backup list'))
+    def test_list(self):
+        self.assertIn('(git off: previous bibtex only)', self.out('backup'))
+        self.assertNotIn('papers 3.0.0b2', self.out('backup'))
+        self.old('backup-x')
+        self.assertIn('* backup-x', self.out('backup list'))
 
     def test_undo_without_git_nor_previous_version(self):
         with self.assertRaisesRegex(PapersExit, 'nothing to undo'):
@@ -61,7 +54,7 @@ class TestBackupCmds(FileTest):
     def test_git_lfs_first_snapshot(self):
         "the files are tracked with git-lfs, and no state of the history lacks the bibtex"
         self.lib('config git-lfs true')
-        gitdir = os.path.expanduser(self.out('status -v').split('git backup folder:')[1].split()[0])
+        gitdir = os.path.expanduser(self.out('status -v').split('backup folder:')[1].split()[0])
         with open(os.path.join(gitdir, '.gitattributes')) as f:
             self.assertIn('files/** filter=lfs', f.read())
         self.assertEqual(self.out('git rev-list --count HEAD').strip(), '1')

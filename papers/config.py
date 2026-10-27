@@ -209,20 +209,14 @@ def short_home(path):
     return path
 
 
-def gitdir_to_json(gitdir):
-    """how a library configuration stores its backup directory: by name if it
-    is in the backup folder of the machine (BACKUP_DIR), else as absolute path"""
-    if gitdir is None:
-        return None
-    gitdir = os.path.abspath(gitdir)
-    if os.path.realpath(os.path.dirname(gitdir)) == os.path.realpath(BACKUP_DIR):
-        return os.path.basename(gitdir)
-    return gitdir
+# the backup of a library, in its .papers folder (see papers.backup)
+BACKUP_DIR_LOCAL = os.path.join('.papers', 'backup')
 
 
 def gitdir_from_json(value, root):
-    """backup directory of a library configuration: a name is a directory of
-    the machine's backup folder, a path is relative to the library (root)"""
+    """the backup directory that a library configuration of papers 3.0.0b2 or
+    earlier named (a name: a directory of the machine's backup folder; a
+    path: relative to the library), for papers.backup.adopt_central_backup"""
     if value is None:
         return None
     if is_backup_name(value):
@@ -430,7 +424,11 @@ class Config:
         self.explicit = set()
         self.filesdir = filesdir
         self.bibtex = bibtex
-        self.gitdir = gitdir
+        # the backup directory, if not the default (see the gitdir property)
+        self._gitdir = gitdir
+        # the backup directory that the configuration file named (papers 3.0.0b2 or
+        # earlier), moved to the library by papers.backup.adopt_central_backup
+        self.legacy_gitdir = None
         self.keyformat = copy.deepcopy(keyformat) if keyformat is not None else self._inherited_format('key')
         self.nameformat = copy.deepcopy(nameformat) if nameformat is not None else self._inherited_format('name')
         self.editor = editor if editor is not None else self.inherited('editor')
@@ -451,6 +449,28 @@ class Config:
         # the trash of the deleted files (see papers.journal.remove): days, megabytes
         self.trash_days = self.inherited('trash-days')
         self.trash_size = self.inherited('trash-size')
+
+    @property
+    def gitdir(self):
+        """the backup directory: .papers/backup in the library; for a bibtex
+        without library, .papers/backup-<name of the bibtex> next to it"""
+        if self._gitdir is not None:
+            return self._gitdir
+        if self.file and self.is_library:
+            return os.path.abspath(os.path.join(config_root(self.file), BACKUP_DIR_LOCAL))
+        if self.bibtex:
+            return os.path.join(os.path.dirname(os.path.abspath(self.bibtex)),
+                                BACKUP_DIR_LOCAL + '-' + os.path.basename(self.bibtex))
+        return None
+
+    @gitdir.setter
+    def gitdir(self, value):
+        self._gitdir = value
+
+    @property
+    def previous_bibtex(self):
+        "the previous version of the bibtex, for undo without git (see papers.cli.backup_cmds.undocmd)"
+        return os.path.join(self.gitdir, 'previous.bib')
 
     def trash(self):
         "(directory, days, megabytes) of the trash of the library (see papers.journal), or None"
@@ -565,7 +585,7 @@ class Config:
     def backupfile(self):
         "tracked verbatim copy of the bibtex, named after it"
         name = Path(self.bibtex).name if self.bibtex else 'library.bib'
-        if name in ('backup_clean.bib', 'manifest.json'):
+        if name in ('backup_clean.bib', 'previous.bib'):
             # avoid clashing with the backup directory's own files
             name = 'backup_' + name
         return Path(self.gitdir)/name
@@ -605,8 +625,6 @@ class Config:
         js = {
             "filesdir": self._relpath(self.filesdir),
             "bibtex": self._relpath(self.bibtex),
-            # by name under the backup folder of each machine
-            "gitdir": gitdir_to_json(self._abspath(self.gitdir)) if self.is_library else self._abspath(self.gitdir),
         }
         for name in LIBRARY_SETTINGS:
             if self.is_set(name):
@@ -658,7 +676,8 @@ class Config:
             else:
                 gitdir = gitdir_from_json(gitdir, config_root(the_file))
         cfg = cls(file=the_file, is_library=is_library, machine=machine,
-                  bibtex=js.get('bibtex'), filesdir=js.get('filesdir'), gitdir=gitdir)
+                  bibtex=js.get('bibtex'), filesdir=js.get('filesdir'))
+        cfg.legacy_gitdir = gitdir
         if not is_library and json_get(js, 'paths') is None:  # v2 compatibility, remove with migrate
             js['paths'] = 'absolute'  # default of v2 for a global configuration
         for name in LIBRARY_SETTINGS:
@@ -674,7 +693,7 @@ class Config:
             logger.warning("_update_paths_to_absolute: only works if Config.file is defined")
             return
         root = config_root(self.file)
-        for field in ['bibtex', 'filesdir', 'gitdir']:
+        for field in ['bibtex', 'filesdir']:
             setattr(self, field, self._abspath(getattr(self, field), root))
 
 
@@ -726,8 +745,8 @@ class Config:
                 from papers.pools import status_line  # papers.pools imports this module
                 items.append(('pool', status_line(self, notes=[f'auto-push: {"on" if self.auto_push else "off"}'])))
             items.append(('backup', self.backup_summary()))
-            if verbose and self.git:
-                items.append(('git backup folder', short_home(str(self.gitdir))))
+            if verbose:
+                items.append(('backup folder', short_home(str(self.gitdir))))
             if verbose and self.trash():
                 from papers.journal import MB, trash_size  # papers.journal imports this module
                 count, size = trash_size(self.trash()[0])

@@ -284,8 +284,7 @@ class TestRenamedOptions(FileTest):
             self.assertFalse(fix.call_args.kwargs['interactive'])
 
     def test_backup_force(self):
-        with patch('papers.cli.backup_cmds.list_backup_dirs', return_value=[]):
-            self.warns('backup remove x -f', '-f is deprecated: use -y/--yes')
+        self.warns('backup remove x -f', '-f is deprecated: use -y/--yes')
 
     def test_install_no_prompt(self):
         for option in ('--no-prompt', '--force'):

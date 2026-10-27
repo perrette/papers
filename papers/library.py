@@ -8,7 +8,7 @@ import shutil
 
 import papers.config
 from papers import journal, logger
-from papers.backup import backup_bib, silent_backup_bib, resolve_gitdir
+from papers.backup import backup_bib, ensure_backupdir, silent_backup_bib
 from papers.bib import Biblio
 from papers.entries import get_entry_val
 from papers.config import (Config, MachineConfig, CONFIG_FILE, CONFIG_FILE_LEGACY, CONFIG_FILE_LEGACY_XDG,
@@ -79,8 +79,7 @@ def config_for_bibtex(bibtex, config):
     logger.debug(f'{bibtex} has no configuration of its own: use {config.file} without saving it')
     config = copy.copy(config)
     config.file = None
-    if config.git:
-        config.gitdir = resolve_gitdir(bibtex)
+    config.gitdir = None  # the backup folder of its own (see Config.gitdir)
     return config
 
 
@@ -147,7 +146,9 @@ def savebib(biblio, config, other_changes=False):
         return
     logger.info(f'Saving {config.bibtex}')
     if biblio is not None:
-        biblio.save(config.bibtex)
+        if not config.git and config.gitdir:
+            ensure_backupdir(config)
+        biblio.save(config.bibtex, backup=None if config.git else config.previous_bibtex)
     if config.git:
         # the backup comes last: a failure must not undo the work done above
         try:
@@ -157,7 +158,7 @@ def savebib(biblio, config, other_changes=False):
     else:
         logger.debug('do not backup bib: git is off')
         # the file operations of the command, for undo (see papers.journal)
-        journal.save_last(config.bibtex, journal.take(config.bibtex))
+        journal.save_last(config.bibtex, config.gitdir, journal.take(config.bibtex))
 
 
 def finish_journal():
@@ -171,7 +172,7 @@ def finish_journal():
         from papers.backup import amend_journal
         amend_journal(where[1], where[2], ops)
     else:
-        journal.append_last(where[1], ops)
+        journal.append_last(where[1], where[2], ops)
 
 
 def convert_file_links(config):

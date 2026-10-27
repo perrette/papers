@@ -1,5 +1,4 @@
-"""Unit tests of papers.backup: run_git, the manifest and the backup
-directories, backup_bib, restore (with git-lfs), undo and redo errors, and
+"""Unit tests of papers.backup: run_git, the backup folder, backup_bib, restore (with git-lfs), undo and redo errors, and
 the undone state of older versions"""
 import os
 import subprocess as sp
@@ -9,9 +8,8 @@ from pathlib import Path
 from unittest import mock
 
 import papers.backup
-from papers.backup import (adopt_legacy_undone_state, backup_bib, check_gitdir_ownership, git_redo,
-                           git_restore_state, git_undo, list_backup_dirs, read_manifest, resolve_gitdir,
-                           legacy_gitdir, restore_from_backupdir, run_git, _exclude_from_git)
+from papers.backup import (adopt_legacy_undone_state, backup_bib, exclude, git_redo, git_restore_state, git_undo,
+                           restore_from_backupdir, run_git)
 from papers.bib import Biblio
 from papers.config import Config
 from papers.utils import PapersExit
@@ -73,31 +71,10 @@ class TestGitHelpers(TmpTest):
         with self.assertLogs('papers', level='ERROR'), self.assertRaises(sp.CalledProcessError):
             run_git(self.path('repo'), 'log')
 
-    def test_unreadable_manifest(self):
-        os.makedirs(self.path('repo'))
-        Path(self.path('repo', 'manifest.json')).write_text('{broken')
-        with self.assertLogs('papers', level='WARNING'):
-            self.assertIsNone(read_manifest(self.path('repo')))
-
     def test_exclude_without_git(self):
         os.makedirs(self.path('repo'))
-        _exclude_from_git(self.path('repo'), 'manifest.json')  # nothing to do without .git
+        exclude(self.path('repo'))  # nothing to do without .git
         self.assertFalse(os.path.exists(self.path('repo', '.git')))
-
-    def test_legacy_gitdir_is_used(self):
-        bibtex = self.path('lib', 'papers.bib')
-        os.makedirs(legacy_gitdir(bibtex))
-        self.assertEqual(resolve_gitdir(bibtex), legacy_gitdir(bibtex))
-
-    def test_list_backup_dirs(self):
-        os.makedirs(self.path('legacy-backups', 'old'))
-        config = self.library()
-        config.gitdir = self.path('elsewhere')
-        os.makedirs(config.gitdir)
-        dirs = [info['gitdir'] for info in list_backup_dirs(config)]
-        self.assertEqual(dirs, [self.path('legacy-backups', 'old'), self.path('elsewhere')])
-        self.assertTrue(list_backup_dirs(config)[-1]['current'])
-
 
 class TestBackup(TmpTest):
 
@@ -126,15 +103,9 @@ class TestBackup(TmpTest):
         config = self.library()
         config.gitdir = None
         self.snapshot(config, 'first')
-        self.assertTrue(config.gitdir.startswith(self.path('backups')))
-        self.assertEqual(read_manifest(config.gitdir)['bibtex'], config.bibtex)
-
-    def test_pre_manifest_directory_is_adopted(self):
-        config = self.library()
-        os.makedirs(config.gitdir)
-        run_git(config.gitdir, 'init')
-        check_gitdir_ownership(config)
-        self.assertEqual(read_manifest(config.gitdir)['bibtex'], config.bibtex)
+        # a bibtex without library: a backup folder of its own, next to it
+        self.assertEqual(config.gitdir, self.path('lib', '.papers', 'backup-papers.bib'))
+        self.assertTrue(os.path.isdir(self.path('lib', '.papers', 'backup-papers.bib', '.git')))
 
     def test_undo_redo_without_history(self):
         config = self.library()

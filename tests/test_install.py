@@ -369,35 +369,34 @@ class TestInstallEdit(TestBaseInstall):
             config = Config.load(self._path(CONFIG_FILE_LOCAL))
             self.assertEqual(os.path.realpath(config.filesdir), os.path.realpath(outside))
 
-    def test_edit_reallocates_missing_gitdir(self):
-        # older configs carried a never-created legacy gitdir; enabling git via
-        # --edit should allocate the current (hashed) naming scheme instead
-        from papers.config import BACKUP_DIR
-        self.papers(f'install --force --local --no-git --bibtex {self.mybib} --files {self.filesdir}')
-        config = Config.load(self._path(CONFIG_FILE_LOCAL))
-        legacy = os.path.join(BACKUP_DIR, 'references-never-created')
-        config.gitdir = legacy
-        config.save()
+    def write_gitdir(self, value):
+        "the backup folder that the configuration of papers 3.0.0b2 named"
+        js = json.load(open(self._path(CONFIG_FILE_LOCAL)))
+        js['gitdir'] = value
+        json.dump(js, open(self._path(CONFIG_FILE_LOCAL), 'w'))
 
+    def test_edit_with_a_missing_central_gitdir(self):
+        self.papers(f'install --force --local --no-git --bibtex {self.mybib} --files {self.filesdir}')
+        self.write_gitdir('references-never-created')
         self.papers('install --local --edit --git')
         config = Config.load(self._path(CONFIG_FILE_LOCAL))
-        self.assertNotEqual(config.gitdir, legacy)
-        self.assertTrue(os.path.isdir(config.gitdir))
-        self.assertFalse(os.path.exists(legacy))
+        self.assertEqual(config.gitdir, os.path.join(self._path('.papers'), 'backup'))
+        self.assertTrue(os.path.isdir(os.path.join(config.gitdir, '.git')))
+        self.assertNotIn('gitdir', json.load(open(self._path(CONFIG_FILE_LOCAL))))
 
-    def test_edit_keeps_existing_gitdir(self):
+    def test_edit_adopts_the_central_gitdir(self):
+        from papers.backup import git_init
         from papers.config import BACKUP_DIR
         self.papers(f'install --force --local --no-git --bibtex {self.mybib} --files {self.filesdir}')
-        config = Config.load(self._path(CONFIG_FILE_LOCAL))
         legacy = os.path.join(BACKUP_DIR, 'references')
         os.makedirs(legacy)
-        config.gitdir = legacy
-        config.save()
-
+        git_init(legacy)
+        self.write_gitdir('references')
         self.papers('install --local --edit --git')
         config = Config.load(self._path(CONFIG_FILE_LOCAL))
-        self.assertEqual(config.gitdir, legacy)
-        self.assertTrue((Path(legacy)/'.git').is_dir())
+        self.assertEqual(config.gitdir, os.path.join(self._path('.papers'), 'backup'))
+        self.assertTrue(os.path.isdir(os.path.join(config.gitdir, '.git')))
+        self.assertFalse(os.path.exists(legacy))
 
     def test_edit_no_duplicate_bibtex_candidates(self):
         # the configured (absolute) bibtex and the same file found by the

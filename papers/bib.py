@@ -113,10 +113,6 @@ def _same_content(file, files):
     return None
 
 
-def backupfile(bibtex):
-    return os.path.join(os.path.dirname(bibtex), '.'+os.path.basename(bibtex)+'.backup')
-
-
 def read_text(file):
     "the content of a text file (as `open(file, 'w').write` was given it), or None if it cannot be read"
     try:
@@ -669,9 +665,9 @@ class Biblio:
         """Return the library as a BibTeX string. Does not sort; call sort() first if you need ordered output."""
         return format_library(self.db)
 
-    def save(self, bibtex):
-        """write the library to `bibtex` (the previous version goes to its
-        backup file). A bibtex that has this content already is not
+    def save(self, bibtex, backup=None):
+        """write the library to `bibtex` (the previous version goes to
+        `backup`, if given). A bibtex that has this content already is not
         written: its modification time (and its backup) stay as they are."""
         if self.relative_to not in (os.path.sep, None) and Path(self.relative_to).resolve() != Path(bibtex).parent.resolve():
             logger.warning("Saving bibtex file with relative paths may break links. Consider using `Biblio.update_file_path(Path(bibtex).parent)` before.")
@@ -681,7 +677,8 @@ class Biblio:
             if read_text(bibtex) == s:
                 logger.debug(f'{bibtex}: unchanged, not written')
             else:
-                shutil.copy(bibtex, backupfile(bibtex))
+                if backup:
+                    shutil.copy(bibtex, backup)
                 open(bibtex, 'w').write(s)
         else:
             open(bibtex, 'w').write(s)

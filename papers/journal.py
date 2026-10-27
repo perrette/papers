@@ -8,8 +8,8 @@ good); `src` the path before, `dst` the path after (for removed: the
 identical file that was kept, if any); `checksum` the sha256 of the file
 (None for a folder). With the git backup, the operations of a command are
 committed with its snapshot (JOURNAL_FILE); without it, the operations of
-the last command are kept next to the backup of the bibtex (see
-journal_file). The operations done after the save of the library (e.g.
+the last command are kept in the backup folder of the library, next to the
+previous bibtex (see journal_file). The operations done after the save of the library (e.g.
 the files deleted by papers rm) join them when the command ends (see
 papers.library.finish_journal).
 
@@ -178,28 +178,30 @@ def trash_size(directory):
 # without the git backup: the operations of the last command
 # ==========================================================
 
-def journal_file(bibtex):
-    "the operations of the last command, next to the backup of the bibtex (see papers.bib.backupfile)"
-    return os.path.join(os.path.dirname(bibtex), '.' + os.path.basename(bibtex) + '.files.json')
+def journal_file(backupdir):
+    "the operations of the last command, in the backup folder of the library, next to the previous bibtex"
+    return os.path.join(backupdir, 'previous-files.json')
 
 
-def save_last(bibtex, ops):
+def save_last(bibtex, backupdir, ops):
     "after a command that wrote the bibtex (git backup off); no operations: no file"
     if papers.config.DRYRUN:
         return
     if is_owner(bibtex):
-        saved(('file', bibtex))
+        saved(('file', bibtex, backupdir))
     if not ops:
-        if os.path.exists(journal_file(bibtex)):
-            os.remove(journal_file(bibtex))
+        if os.path.exists(journal_file(backupdir)):
+            os.remove(journal_file(backupdir))
         return
-    with open(journal_file(bibtex), 'w') as f:
+    os.makedirs(backupdir, exist_ok=True)
+    with open(journal_file(backupdir), 'w') as f:
         json.dump({'bibtex': _checksum(bibtex), 'state': 'done', 'ops': ops}, f, indent=1)
 
 
-def append_last(bibtex, ops):
+def append_last(bibtex, backupdir, ops):
     "operations done after the save of the bibtex (git backup off): join those of its last change"
-    path = journal_file(bibtex)
+    path = journal_file(backupdir)
+    os.makedirs(backupdir, exist_ok=True)
     journal = {'bibtex': _checksum(bibtex), 'state': 'done', 'ops': []}
     if os.path.exists(path):
         try:
@@ -211,12 +213,12 @@ def append_last(bibtex, ops):
         json.dump(journal, f, indent=1)
 
 
-def swap_last(bibtex, pool_dirs=()):
+def swap_last(bibtex, backupdir, pool_dirs=()):
     """the bibtex was swapped with its backup (undo or redo without git):
     reverse the operations of the last command, or replay them if they
     were reversed. To call before the swap; return the lines of the report,
     and the journal to save after the swap (see save_swapped), or None."""
-    path = journal_file(bibtex)
+    path = journal_file(backupdir)
     if not os.path.exists(path) or not os.path.exists(bibtex):
         return [], None
     try:
@@ -231,10 +233,10 @@ def swap_last(bibtex, pool_dirs=()):
     return lines, journal
 
 
-def save_swapped(bibtex, journal):
+def save_swapped(bibtex, backupdir, journal):
     "after the swap of swap_last: the journal of the bibtex now in place"
     journal['bibtex'] = _checksum(bibtex)
-    with open(journal_file(bibtex), 'w') as f:
+    with open(journal_file(backupdir), 'w') as f:
         json.dump(journal, f, indent=1)
 
 

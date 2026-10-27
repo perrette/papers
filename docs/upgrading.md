@@ -117,7 +117,9 @@ global configuration of papers v2: ~/.config/papersconfig.json
   configuration of papers 3 already sets another one: commands run
   outside of any project act on it (see
   [A global shared library](global-library.md)).
-- The bibtex, the PDFs and the git backup stay where they are. File links
+- The bibtex and the PDFs stay where they are. The git backup moves into
+  the library, `.papers/backup` (see
+  [Backups of earlier versions](git.md#backups-of-earlier-versions)). File links
   stay absolute, as they were; `papers migrate --relative` makes them
   relative to the bibtex.
 - `papers migrate --dry-run` shows what it would do. Running

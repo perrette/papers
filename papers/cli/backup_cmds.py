@@ -7,11 +7,11 @@ import sys
 
 import papers.config
 from papers import journal, logger
-from papers.backup import (git_env, git_redo, git_restore_state, git_undo, list_backup_dirs, restore_from_backupdir,
-                           run_git, _pool_dirs)
-from papers.bib import Biblio, backupfile as backupfile_func
+from papers.backup import git_env, git_redo, git_restore_state, git_undo, restore_from_backupdir, run_git, _pool_dirs
+from papers.bib import Biblio
+from papers.config import BACKUP_DIR, BACKUP_DIR_LEGACY
 from papers.files import is_inside
-from papers.utils import PapersExit, bcolors
+from papers.utils import PapersExit
 
 
 def _linked_files(config):
@@ -58,21 +58,21 @@ def undocmd(parser, o, config):
 
     logger.warning("the git backup is off (`papers config git true` enables it): "
                    "undo / redo is limited to 1 step back and forth")
-    back = backupfile_func(config.bibtex)
+    back = config.previous_bibtex
     if not os.path.exists(back):
         raise PapersExit(f"nothing to {o.cmd}: no previous version of {os.path.basename(config.bibtex)} ({back})")
     if papers.config.DRYRUN:
         print(f'DRYRUN: {config.bibtex} not swapped with {back}')
         return
     # the files of the last command: moved back, or again (see papers.journal)
-    file_lines, files_journal = journal.swap_last(config.bibtex, _pool_dirs(config))
+    file_lines, files_journal = journal.swap_last(config.bibtex, config.gitdir, _pool_dirs(config))
     tmp = config.bibtex + '.tmp'
     logger.info(config.bibtex+' <==> '+back)
     shutil.copy(config.bibtex, tmp)
     shutil.move(back, config.bibtex)
     shutil.move(tmp, back)
     if files_journal is not None:
-        journal.save_swapped(config.bibtex, files_journal)
+        journal.save_swapped(config.bibtex, config.gitdir, files_journal)
     print(f'{o.cmd}: {os.path.basename(config.bibtex)} swapped with its previous version ({back})')
     if file_lines:
         print('\n'.join(file_lines))
@@ -89,56 +89,34 @@ def restorecmd(parser, o, config):
         restore_from_backupdir(config, restore_files=o.restore_files)
 
 
-def _print_backup_info(info):
-    owner = info['bibtex'] or 'unknown library (no manifest)'
-    status = ''
-    if info['bibtex'] and not os.path.exists(info['bibtex']):
-        status = bcolors.WARNING + ' (bibtex missing)' + bcolors.ENDC
-    current = ' [current]' if info['current'] else ''
-    snapshots = f"{info['snapshots']} snapshots" if info['snapshots'] is not None else 'no snapshot'
-    last = f", last {info['last']}" if info['last'] else ''
-    size = f"{info['size']/(1024*1024):.1f} MB"
-    print(f"* {os.path.basename(info['gitdir'])}: {owner}{status} ({snapshots}{last}, {size}){current}")
-    print(f"    {info['gitdir']}")
-
-
 def backupcmd(parser, o, config):
-    infos = list_backup_dirs(config)
+    """where the backup of the library is, and the backup folders of papers
+    3.0.0b2 and earlier that no library took (see papers.backup.adopt_central_backup)"""
+    if config.bibtex:
+        state = 'git' if config.git else 'git off: previous bibtex only'
+        print(f"backup of {papers.config.short_home(config.bibtex)}: "
+              f"{papers.config.short_home(str(config.gitdir))} ({state})")
+    left = []
+    for root in dict.fromkeys([BACKUP_DIR, BACKUP_DIR_LEGACY]):
+        if os.path.isdir(root):
+            left += [os.path.join(root, d) for d in sorted(os.listdir(root)) if os.path.isdir(os.path.join(root, d))]
     if o.patterns:
-        infos = [info for info in infos
-                 if any(fnmatch.fnmatch(os.path.basename(info['gitdir']), p) for p in o.patterns)]
-
-    if o.action == 'remove':
-        if not o.patterns:
-            parser.error('backup remove requires directory name(s) -- see `papers backup list`')
-        if not infos:
-            print('no matching backup directory')
-            return
-        for info in infos:
-            _print_backup_info(info)
-            if info['current']:
-                logger.warning("this is the current library's backup directory; "
-                               "removing it discards its history (a fresh one is created on the next save)")
-            if not o.yes:
-                ans = input(f"remove {info['gitdir']} ? [y/N] ")
-                if ans.lower() != 'y':
-                    continue
-            shutil.rmtree(info['gitdir'])
-            print(f"removed {info['gitdir']}")
+        left = [d for d in left if any(fnmatch.fnmatch(os.path.basename(d), p) for p in o.patterns)]
+    if o.action == 'remove' and not o.patterns:
+        parser.error('backup remove requires folder name(s) -- see `papers backup list`')
+    if not left:
         return
-
-    if not infos:
-        print('no matching backup directory' if o.patterns else 'no backup directory found')
-    for info in infos:
-        _print_backup_info(info)
-
-    # always say where the current library stands
-    if not o.patterns and config.bibtex:
-        if not config.git:
-            print(f"current library: {config.bibtex} :: git-tracking is off "
-                  f"(enable with `papers config git true`)")
-        elif not any(info['current'] for info in infos):
-            print(f"current library: {config.bibtex} :: no snapshot recorded yet")
+    if o.action == 'list':
+        print("backups of papers 3.0.0b2 and earlier (each library moves its own to .papers/backup when papers "
+              "uses it: these belong to libraries not used since; `papers backup remove NAME` removes one):")
+    for d in left:
+        print(f"* {os.path.basename(d)}: {papers.config.short_home(d)}")
+        if o.action != 'remove':
+            continue
+        if not o.yes and input(f"remove {d} ? [y/N] ").lower() != 'y':
+            continue
+        shutil.rmtree(d)
+        print(f"removed {d}")
 
 
 def gitcmd(parser, o, config):

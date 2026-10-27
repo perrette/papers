@@ -3,6 +3,7 @@
 case of DOIs in fetch, the exit code of papers git, and the error of an
 unknown option"""
 import io
+import os
 from contextlib import redirect_stderr
 from unittest.mock import patch
 
@@ -30,12 +31,11 @@ class TestOptions(FileTest):
         self.assertTrue(fix.call_args.kwargs['interactive'])
 
     def test_backup_remove_yes(self):
-        info = {'gitdir': self.path('backup-x'), 'bibtex': None, 'current': False, 'snapshots': None,
-                'last': None, 'size': 0}
-        with patch('papers.cli.backup_cmds.list_backup_dirs', return_value=[info]), \
-                patch('papers.cli.backup_cmds.shutil.rmtree') as rmtree, patch('builtins.input', no_question):
+        from papers.config import BACKUP_DIR
+        os.makedirs(os.path.join(BACKUP_DIR, 'backup-x'))
+        with patch('builtins.input', no_question):
             self.lib('backup remove backup-x --yes')
-        rmtree.assert_called_once_with(self.path('backup-x'))
+        self.assertFalse(os.path.exists(os.path.join(BACKUP_DIR, 'backup-x')))
 
     def test_extract_doi_only(self):
         with patch('papers.cli.fetch_cmds.extract_pdf_doi', return_value='10.1000/x') as doi, \

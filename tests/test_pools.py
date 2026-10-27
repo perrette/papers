@@ -943,7 +943,7 @@ class TestStatus(PoolTest):
         # the bibtex first, then the files; -v adds the locations, no settings
         lines = self.out('status -v').splitlines()
         self.assertEqual([line.split(':')[0] for line in lines[1:-1]],
-                         ['* bibtex', '* files', '* backup', '* trash', '* configuration file', '* cache directory',
+                         ['* bibtex', '* files', '* backup', '* backup folder', '* trash', '* configuration file', '* cache directory',
                           '* version'])
         self.assertEqual(lines[-1], '`papers config` lists and sets the settings')
 

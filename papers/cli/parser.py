@@ -305,7 +305,6 @@ def get_parser(config=None):
     installp.add_argument('--git-lfs', action='store_true', default=None, help='also back up the files with git-lfs (implies --git)')
     installp.add_argument('--backup-files', action=_Deprecated, dest='git_lfs',
                           new='--git-lfs (or `papers config git-lfs true`)')
-    installp.add_argument('--gitdir', default=None, help=argparse.SUPPRESS)
     installp.add_argument('--editor', help="""Set command to open text editor. Need to wait until closing ! E.g. vim or subl -w""")
     installp.add_argument('--pool', metavar='PATH|none', help=argparse.SUPPRESS)
 
@@ -894,11 +893,13 @@ def get_parser(config=None):
 
     # backup
     # ======
-    backupp = subparsers.add_parser('backup', description='manage backup directories', parents=[loggingp])
+    backupp = subparsers.add_parser('backup', parents=[loggingp],
+        description='where the backup of the library is (.papers/backup), and the backup folders that papers '
+                    '3.0.0b2 and earlier kept in a folder of the machine, for libraries not used since')
     backupp.add_argument('action', nargs='?', choices=['list', 'remove'], default='list',
-        help='list (default) known backup directories and the library each belongs to, or remove them')
+        help='list (default) the backup folders of papers 3.0.0b2 and earlier, or remove them')
     backupp.add_argument('patterns', nargs='*', metavar='name',
-        help='directory name(s), glob patterns allowed (filter for list, required for remove)')
+        help='folder name(s), glob patterns allowed (filter for list, required for remove)')
     backupp.add_argument('-y', '--yes', action='store_true', help='remove without confirmation')
     backupp.add_argument('-f', '--force', action=_Deprecated, dest='yes', new='-y/--yes')
     _command(backupp, backupcmd)

@@ -111,9 +111,12 @@ class TestListActions(FileTest):
 
 
 def _snapshot(root):
-    "the files under root and their content (with the mtimes and times of the origin records left out)"
+    """the files under root and their content (with the mtimes and times of the
+    origin records left out, and the git repositories of the backups)"""
     state = {}
-    for folder, _, files in os.walk(root):
+    for folder, dirs, files in os.walk(root):
+        if '.git' in dirs:
+            dirs.remove('.git')
         for f in files:
             path = os.path.join(folder, f)
             state[os.path.relpath(path, root)] = re.sub(rb'\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d[^},\s]*', b'TIME', re.sub(rb'\d{16,}', b'MTIME', Path(path).read_bytes()))

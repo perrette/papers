@@ -51,7 +51,7 @@ and otherwise fail: `no library found here: papers init`.
 
 Type `papers status` to see which library a command acts on: where its
 bibtex and its files are, its pool and its backup. `papers status -v` also
-shows the git backup folder, the configuration file, the cache directory and
+shows the backup folder (`.papers/backup`), the configuration file, the cache directory and
 the version. `papers config` lists the settings and where each one comes from.
 
 ## Settings
@@ -110,7 +110,7 @@ that the library can be moved or shared as a whole. `papers config bibtex`,
 absolute paths. A relative path given to set them is relative to the current
 directory.
 
-Setting `git` to `true` initializes the backup directory and records the
+Setting `git` to `true` initializes the backup folder and records the
 current bibtex. Setting `paths` rewrites the file links of the bibtex.
 Setting `pool` changes where the library links its files: `pool PATH` (an
 existing library without pool) links to the copies of the library's PDFs
@@ -259,8 +259,8 @@ papers uninstall
 ```
 
 removes the library configuration and reports what it leaves behind (the
-bibtex file, the files directory, and the backup directory if any). Pass
-`--remove-backup` to also remove the backup directory. It never removes the
+bibtex file, the files directory, and the backup folder `.papers/backup` if
+any). Pass `--remove-backup` to also remove the backup folder. It never removes the
 global configuration. From outside of any library it does not remove
 the default library's configuration: run `papers -C DIR uninstall` for that.
 

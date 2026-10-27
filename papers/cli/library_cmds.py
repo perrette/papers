@@ -191,7 +191,7 @@ def _uninstall(parser, o, config):
             print(f"removed backup directory: {config.gitdir}")
         else:
             print(f"the backup directory remains: {config.gitdir}")
-            print(f"  remove it with `papers backup remove {os.path.basename(config.gitdir)}`")
+            print(f"  remove it with `rm -r {config.gitdir}`, or `papers uninstall --remove-backup`")
 
 
 def _check_setting_name(name, is_global):

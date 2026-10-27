@@ -200,7 +200,6 @@ class TestUndoAfterMove(V2LibraryTest):
         os.replace(self.old(), self.new())
         self.lib('config git true')
         os.replace(self.new(), self.old())
-        os.rmdir(os.path.dirname(self.new()))
         self.write('a.bib', content=entry('a2000'))
         self.lib(f'add {self.path("a.bib")}')
         self.assertTrue(os.path.exists(self.old()))  # the add does not save the configuration

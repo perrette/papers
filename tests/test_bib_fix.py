@@ -255,24 +255,24 @@ class TestBiblio(unittest.TestCase):
         biblio.distinct = Distinct()  # not attached to a file yet
         a = biblio.entries[0]
         biblio.distinct.add(a, parse_string(ENTRY.replace('10.1000/a', '10.1000/b')).entries[0])
-        biblio.save(bibtex)
-        self.assertTrue(os.path.exists(os.path.join(self.dir, '.papers.bib.backup')))
+        biblio.save(bibtex, backup=os.path.join(self.dir, 'previous.bib'))
+        self.assertTrue(os.path.exists(os.path.join(self.dir, 'previous.bib')))
         self.assertTrue(Distinct.for_bibtex(bibtex).pairs)
 
     def test_save_without_change_does_not_write(self):
         bibtex = os.path.join(self.dir, 'papers.bib')
         Path(bibtex).write_text(ENTRY)
         biblio = Biblio.load(bibtex, '')
-        biblio.save(bibtex)  # written as papers formats it
-        backup = os.path.join(self.dir, '.papers.bib.backup')
+        backup = os.path.join(self.dir, 'previous.bib')
+        biblio.save(bibtex, backup=backup)  # written as papers formats it
         os.utime(bibtex, ns=(10**18, 10**18))
         os.utime(backup, ns=(10**18, 10**18))
-        Biblio.load(bibtex, '').save(bibtex)
+        Biblio.load(bibtex, '').save(bibtex, backup=backup)
         self.assertEqual(os.stat(bibtex).st_mtime_ns, 10**18)
         self.assertEqual(os.stat(backup).st_mtime_ns, 10**18)
         biblio = Biblio.load(bibtex, '')
         biblio.entries[0]['year'] = '2001'
-        biblio.save(bibtex)
+        biblio.save(bibtex, backup=backup)
         self.assertNotEqual(os.stat(bibtex).st_mtime_ns, 10**18)
         self.assertNotEqual(os.stat(backup).st_mtime_ns, 10**18)
         self.assertIn('2001', Path(bibtex).read_text())

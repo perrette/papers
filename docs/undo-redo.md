@@ -61,7 +61,7 @@ without them.
 A file that a command deletes (`papers rm --delete-files`, `papers file
 rm`, `papers file clean`, the library's copies replaced by those of the
 pool with `papers config pool PATH`) goes to the trash of the library, in
-its backup folder (`papers status -v` shows it), and `papers undo` puts it
+its backup folder, `.papers/backup/trash`, and `papers undo` puts it
 back:
 
 ```

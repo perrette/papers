@@ -20,7 +20,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from papers import logger
-from papers.backup import check_git_available, init_backup, resolve_gitdir
+from papers.backup import check_git_available, init_backup
 from papers.config import Config, CONFIG_FILE_LOCAL, NO_POOL, pool_setting
 from papers.library import snapshot_backup
 
@@ -177,15 +177,6 @@ def resolve_install(config, o, probe=None, asker=None, target=None):
         config.set('paths', config.get('paths'))
 
     _resolve_pool(config, o, fresh)
-
-    # Unless otherwise specified (option not advertized -- help suppressed)
-    # the git directory is centralized in the backup dir.
-    if getattr(o, 'gitdir', None):
-        config.gitdir = o.gitdir
-    elif config.gitdir and os.path.exists(config.gitdir):
-        pass  # keep the pre-existing backup directory and its history
-    elif config.bibtex is not None:
-        config.gitdir = resolve_gitdir(config.bibtex)
 
     if o.editor:
         config.set('editor', o.editor)

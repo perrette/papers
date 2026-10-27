@@ -6,7 +6,6 @@ from unittest import mock
 from papers.bib import (
     append_abc,
     isvalidkey,
-    backupfile as backupfile_fn,
 )
 from papers.files import hidden_bibtex, download_url, _basename_from_url
 from papers.duplicate import author_id, title_id, authortitle_id
@@ -27,14 +26,6 @@ class TestHiddenBibtex(unittest.TestCase):
             hidden_bibtex("/path/to/mypaper"),
             "/path/to/mypaper/.mypaper.bib"
         )
-
-
-class TestBackupfile(unittest.TestCase):
-
-    def test_backupfile(self):
-        result = backupfile_fn("/path/to/library.bib")
-        self.assertIn("backup", result)
-        self.assertTrue(result.endswith(".backup"))
 
 
 class TestAppendAbc(unittest.TestCase):
