@@ -28,6 +28,18 @@ UNKNOWN_YEAR = '0000'
 UNKNOWN_JOURNAL = None
 UNKNOWN_TITLE = ""
 
+def path_safe(value):
+    """`value` without path separators (and not '.' or '..'), so that a field
+    of an entry cannot make a file name point outside the files directory"""
+    if value is None:
+        return value
+    value = str(value)
+    for sep in ('/', '\\', '\0'):
+        value = value.replace(sep, '-')
+    if value and not value.strip('.'):
+        value = '-' * len(value)
+    return value
+
 def make_template_fields(
     entry,
     author_num=2,
@@ -45,6 +57,8 @@ def make_template_fields(
     - AUTHOR : same as author but upper case
     - authorX: first; first and second; first et al
     - journal: journal name
+    (the values of journal, year, ID and doi have their path separators
+    replaced with '-': see path_safe)
     - title : normalized title in lower case, separated by {title_sep} ('-' by default) with max {title_word_num} words
     - Title: same as title by with capitalized words
     - year
@@ -62,9 +76,9 @@ def make_template_fields(
     authorX = AuthorX.lower()
 
     # a thing that's not a bibtex article won't have a journal
-    journal = get_entry_val(entry, "journal", UNKNOWN_JOURNAL)
+    journal = path_safe(get_entry_val(entry, "journal", UNKNOWN_JOURNAL))
 
-    year = str(get_entry_val(entry, "year", UNKNOWN_YEAR))
+    year = path_safe(get_entry_val(entry, "year", UNKNOWN_YEAR))
 
     if not title_word_num or not get_entry_val(entry, "title", ""):
         title = UNKNOWN_TITLE
@@ -91,8 +105,8 @@ def make_template_fields(
         "year": year,
         "title": title,
         "Title": Title,
-        "ID": get_entry_val(entry, "ID", ""),
-        "doi": get_entry_val(entry, "doi", ""),
+        "ID": path_safe(get_entry_val(entry, "ID", "")),
+        "doi": path_safe(get_entry_val(entry, "doi", "")),
         "doi_": slugify(get_entry_val(entry, "doi", "")),
         "doi_or_id": slugify(get_entry_val(entry, "doi", get_entry_val(entry, "ID", ""))),
     }
