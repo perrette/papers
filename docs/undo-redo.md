@@ -79,9 +79,9 @@ writes the checksum of the files it moves, copies, adds or links; the git
 backup commits the file with the bibtex. `papers file checksum` writes the
 checksums of all the files (or of the entries given), `--check` reports
 the files whose content changed since their checksum (e.g. annotated PDFs)
-and writes nothing, and `--remove` removes the checksums. With
-`papers config checksums false`, the commands write no checksum (those
-written stay), and undo finds the files through the journal only.
+and writes nothing. With `papers config checksums false`, the commands
+write no checksum, and undo finds the files through the journal of the
+commands only.
 
 ### The trash
 

@@ -257,10 +257,9 @@ class TestChecksums(JournalTest):
         self.assertIn('changed since its checksum', out)
         self.assertNotEqual(self.hashes()[os.path.relpath(self.a, self.path('lib'))], checksum(self.a).hex())
         self.assertIn('1 checksum written (1 changed)', self.out('file checksum'))
-        self.assertIn('removed 1 checksum', self.out('file checksum --remove'))
-        self.assertEqual(self.hashes(), {})
-        self.lib('undo')  # the checksums are back
-        self.assertEqual(len(self.hashes()), 1)
+        self.assertEqual(self.hashes()[os.path.relpath(self.a, self.path('lib'))], checksum(self.a).hex())
+        self.lib('undo')  # the checksums before
+        self.assertNotEqual(self.hashes()[os.path.relpath(self.a, self.path('lib'))], checksum(self.a).hex())
 
     def test_found_by_checksum(self):
         # the journal of the command is gone (e.g. a command of an earlier

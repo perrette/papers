@@ -447,39 +447,32 @@ def file_cleancmd(parser, o, config):
 
 
 def file_checksumcmd(parser, o, config):
-    """papers file checksum: write (or check, or remove) the checksums of the
-    files of the entries in .papers/files.json (see papers.checksums)"""
+    """papers file checksum: write (or check) the checksums of the files of
+    the entries in .papers/files.json (see papers.checksums)"""
     if papers.checksums.files_json(config) is None:
         raise PapersExit('the checksums are kept in a library (.papers/files.json): this bibtex has none')
     biblio = get_biblio(config)
     paths = sorted({os.path.normpath(f) for e in _entries_or_all(biblio, o.entries) for f in biblio.get_files(e)})
     hashes = papers.checksums.load(config)
-    if o.remove:
-        removed = [p for p in paths if p in hashes]
-        for p in removed:
-            del hashes[p]
-        papers.checksums.save(config, hashes)
-        print(f"removed {len(removed)} checksum{'' if len(removed) == 1 else 's'}")
-    else:
-        written, changed, missing = 0, [], []
-        for p in paths:
-            if not os.path.isfile(p):
-                missing.append(p)
-                continue
-            digest = checksum(p).hex()
-            if p in hashes and hashes[p] != digest:
-                changed.append(p)
-            if hashes.get(p) != digest:
-                written += 1
-                hashes[p] = digest
-        for p in changed:
-            print(f"{short_home(p)}: changed since its checksum{'' if o.check else ' (updated)'}")
-        if missing:
-            print(f"{len(missing)} broken link{'' if len(missing) == 1 else 's'} (`papers file check` reports them)")
-        if o.check:
-            print(f"{len(paths) - len(missing)} files checked, {len(changed)} changed, "
-                  f"{written - len(changed)} without checksum")
-            return
-        papers.checksums.save(config, hashes)
-        print(f"{written} checksum{'' if written == 1 else 's'} written ({len(changed)} changed)")
+    written, changed, missing = 0, [], []
+    for p in paths:
+        if not os.path.isfile(p):
+            missing.append(p)
+            continue
+        digest = checksum(p).hex()
+        if p in hashes and hashes[p] != digest:
+            changed.append(p)
+        if hashes.get(p) != digest:
+            written += 1
+            hashes[p] = digest
+    for p in changed:
+        print(f"{short_home(p)}: changed since its checksum{'' if o.check else ' (updated)'}")
+    if missing:
+        print(f"{len(missing)} broken link{'' if len(missing) == 1 else 's'} (`papers file check` reports them)")
+    if o.check:
+        print(f"{len(paths) - len(missing)} files checked, {len(changed)} changed, "
+              f"{written - len(changed)} without checksum")
+        return
+    papers.checksums.save(config, hashes)
+    print(f"{written} checksum{'' if written == 1 else 's'} written ({len(changed)} changed)")
     savebib(biblio, config, other_changes=True)  # the backup commits files.json

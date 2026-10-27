@@ -581,11 +581,8 @@ def get_parser(config=None):
                     'add or link; this command writes those of the other files. A file whose content changed '
                     'since its checksum (e.g. annotated) is reported.')
     p.add_argument('entries', nargs='*', metavar='KEY', help=_selection_help + ' (default: all entries)')
-    grp = p.add_mutually_exclusive_group()
-    grp.add_argument('--check', action='store_true',
+    p.add_argument('--check', action='store_true',
         help='report the files that changed since their checksum, and write nothing')
-    grp.add_argument('--remove', action='store_true', help='remove the checksums (`papers config checksums false` '
-                     'stops the commands from writing them)')
     _command(p, file_checksumcmd, library=True)
 
     # filecheck

@@ -287,7 +287,7 @@ def configcmd(parser, o, config):
     if name == 'checksums':
         print('the files get a checksum when a command moves, copies, adds or links them: '
               '`papers file checksum` writes those of all the files' if config.checksums else
-              'the checksums written stay: `papers file checksum --remove` removes them')
+              'the commands write no checksum (undo finds the files through the journal of the commands)')
 
 
 # papers config pool: the files follow
