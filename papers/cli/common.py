@@ -410,46 +410,76 @@ def save_exchange(exchange):
 
 
 
-def edit_entries(entries, editor=None):
-    """edit entries in a text editor; returns the edited entries, or the
-    original entries if the edit failed or does not parse as bibtex"""
-    text = edit_text(format_library(library_from_entries(entries)), editor=editor)
-    if text is None:
-        logger.error('failed to edit file -- keeping original entries')
-        return entries
+class EditRejected(PapersExit):
+    "an edit that is not applied: the entries stay as they were (exit 1)"
 
-    db_updated = parse_string(text)
-    new_entries = db_updated.entries
 
-    failed = getattr(db_updated, 'failed_blocks', None)
-    if failed:
-        logger.error('some edited blocks could not be parsed as bibtex -- keeping original entries')
-        return entries
-    if entries and not new_entries:
-        logger.error('edited file contains no bibtex entry -- keeping original entries')
-        return entries
+def parse_edited(text, fmt='bibtex'):
+    """the entries of an edited text (bibtex, or ris or csl-json); EditRejected
+    if it does not parse, has no entry, or has a malformed field name"""
+    if fmt == 'bibtex':
+        db = parse_string(text)
+        if getattr(db, 'failed_blocks', None):
+            raise EditRejected('some edited blocks could not be parsed as bibtex -- keeping original entries')
+        new_entries = db.entries
+    else:
+        from papers.formats import loads
+        try:
+            new_entries = loads(text, fmt)
+        except Exception as error:
+            raise EditRejected(f'the text could not be read as {fmt} ({error}) -- keeping original entries')
+    if not new_entries:
+        raise EditRejected('the edited text contains no entry -- keeping original entries')
     fieldname = re.compile(r'^[A-Za-z][\w-]*$')
     for e in new_entries:
         bad = [k for k, _ in e.items() if not fieldname.match(k)]
         if bad:
-            logger.error(f'edited entry {get_entry_val(e, "ID", "")!r} has malformed field name(s) {bad} '
-                         '-- keeping original entries')
-            return entries
+            raise EditRejected(f'edited entry {get_entry_val(e, "ID", "")!r} has malformed field name(s) {bad} '
+                               '-- keeping original entries')
+    return new_entries
 
+
+def edit_in_editor(entries, editor=None):
+    "the entries edited in a text editor; EditRejected if the editor failed or the edit is not valid"
+    text = edit_text(format_library(library_from_entries(entries)), editor=editor)
+    if text is None:
+        raise EditRejected('failed to edit file -- keeping original entries')
+    return parse_edited(text)
+
+
+def edit_entries(entries, editor=None):
+    """edit entries in a text editor; returns the edited entries, or the
+    original entries if the edit failed or does not parse as bibtex"""
+    try:
+        new_entries = edit_in_editor(entries, editor)
+    except EditRejected as error:
+        logger.error(str(error))
+        return entries
     logger.info('successfully edited file, insert edited entries')
     return new_entries
 
 
-def edit_selected(biblio, entries):
-    "edit entries in a text editor, and put them back in the bibliography; False on failure"
+def replace_entries(biblio, entries, edited):
+    """put the edited entries in place of `entries`; EditRejected if one
+    has the key of another entry of the library"""
     others = [e for e in biblio.db.entries if not any(e is x for x in entries)]
-    try:
-        edited = edit_entries(entries)
-    except Exception as error:
-        logger.error(str(error))
-        return False
+    taken = {get_entry_val(e, 'ID', '') for e in others}
+    for e in edited:
+        if get_entry_val(e, 'ID', '') in taken:
+            raise EditRejected(f'{get_entry_val(e, "ID", "")}: another entry of the library has this key '
+                               '-- keeping original entries')
     biblio.entries = others + edited
-    return True
+
+
+def edit_selected(biblio, entries):
+    "edit entries in a text editor, and put them back in the bibliography; EditRejected on failure"
+    try:
+        edited = edit_in_editor(entries)
+    except EditRejected:
+        raise
+    except Exception as error:
+        raise EditRejected(f'{error} -- keeping original entries')
+    replace_entries(biblio, entries, edited)
 
 
 def print_kept_files(kept, in_pool):

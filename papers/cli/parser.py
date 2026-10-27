@@ -730,6 +730,13 @@ def get_parser(config=None):
         description='edit entries in a text editor (the editor setting, else $VISUAL, else $EDITOR)')
     editp.add_argument('entries', nargs='+', metavar='KEY',
         help=_selection_help)
+    editp.add_argument('--from', dest='from_file', metavar='FILE',
+        help='replace the entry by the entry in FILE, without an editor (- reads it from the standard input: '
+             'a pipe, or a paste, ended by the closing brace of the entry). The entry keeps its key, and its '
+             'file and keywords fields when FILE has none; its other fields are those of FILE')
+    editp.add_argument('--format', choices=['bibtex', 'ris', 'csl-json'],
+        help='the format of --from FILE (default: from the extension: .ris is RIS, .json is CSL-JSON, '
+             'other files and - are bibtex)')
     _command(editp, editcmd, library=True)
 
     rmp = subparsers.add_parser('rm', parents=[cfg],

@@ -83,9 +83,12 @@ class TestListFilters(FileTest):
         self.assertIn('papers check --fetch', '\n'.join(logs.output))
 
     def test_edit_failure_saves_nothing(self):
-        with patch('papers.cli.common.edit_entries', side_effect=OSError('no editor')), \
-                self.assertLogs('papers', level='ERROR'):
+        before = open(self.path('lib', 'papers.bib')).read()
+        # exits 1 (#117)
+        with patch('papers.cli.common.edit_in_editor', side_effect=OSError('no editor')), \
+                self.assertRaisesRegex(PapersExit, 'no editor'):
             self.lib('list --key one2000 -e')
+        self.assertEqual(open(self.path('lib', 'papers.bib')).read(), before)
 
 
 class TestTagErrors(FileTest):
@@ -110,6 +113,6 @@ class TestEditPipe(FileTest):
         self.bib(entry('one2000'))
         with patch('sys.stdin', io.StringIO('one2000\n')), \
                 patch('papers.cli.entry_cmds.os.open', side_effect=OSError('no terminal')) as tty, \
-                patch('papers.cli.common.edit_entries', side_effect=lambda entries: entries):
+                patch('papers.cli.common.edit_in_editor', side_effect=lambda entries: entries):
             self.lib('edit -')
         tty.assert_called_once()

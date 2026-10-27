@@ -209,9 +209,9 @@ class TestEditEntries(unittest.TestCase):
 
     def test_edit_selected_error(self):
         biblio = biblio_of(entry('one2000'))
-        with mock.patch('papers.cli.common.edit_entries', side_effect=OSError('no editor')), \
-                self.assertLogs('papers', level='ERROR'):
-            self.assertFalse(edit_selected(biblio, biblio.entries))
+        with mock.patch('papers.cli.common.edit_in_editor', side_effect=OSError('no editor')):
+            self.assertRaisesRegex(PapersExit, 'no editor', edit_selected, biblio, biblio.entries)
+        self.assertEqual([e.key for e in biblio.entries], ['one2000'])
 
 
 class TestImports(unittest.TestCase):

@@ -317,6 +317,35 @@ def edit_text(text, editor=None):
         os.remove(filename)
 
 
+def read_entry_text(stdin=None, terminal=None):
+    """the text of one entry from the standard input. From a pipe or a file:
+    all of it. From a terminal (a paste): until the braces of the first
+    @type{...} close, or the end of the input (Ctrl-D), with a hint on the
+    standard error first. Only for one entry: the braces of a second entry
+    are not waited for."""
+    stdin = stdin or sys.stdin
+    if terminal is None:
+        terminal = stdin_is_terminal()
+    if not terminal:
+        return stdin.read()
+    print('Paste or type the entry: papers continues when its closing brace is read '
+          '(Ctrl-D ends the input, Ctrl-C cancels)', file=sys.stderr)
+    lines, depth, started, opened = [], 0, False, False
+    for line in stdin:
+        lines.append(line)
+        for char in line:
+            if char == '@':
+                started = True
+            elif started and char == '{':
+                depth += 1
+                opened = True
+            elif started and char == '}':
+                depth -= 1
+        if opened and depth <= 0:
+            break
+    return ''.join(lines)
+
+
 def stdin_is_terminal():
     "the standard input is a terminal (papers can ask)"
     try:
