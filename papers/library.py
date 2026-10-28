@@ -19,8 +19,9 @@ from papers.config import (Config, MachineConfig, CONFIG_FILE, CONFIG_FILE_LEGAC
 
 def check_legacy_global_config():
     """move the global config file from locations used by previous versions
-    (~/.local/share/papers/config.json on every platform, and the XDG-style
-    location on macOS/Windows where platformdirs now differs)"""
+    ($XDG_DATA_HOME/config.json, by default ~/.local/share/config.json, not in
+    a papers folder, on every platform, as papers 2.4 wrote it; and the
+    XDG-style location on macOS/Windows where platformdirs now differs)"""
     for legacy in [CONFIG_FILE_LEGACY, CONFIG_FILE_LEGACY_XDG]:
         if os.path.realpath(legacy) == os.path.realpath(CONFIG_FILE) or not os.path.exists(legacy):
             continue
