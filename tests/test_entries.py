@@ -94,3 +94,12 @@ class TestGetEntryVal(unittest.TestCase):
         self.assertEqual(get_entry_val(e, 'year', 'none'), 'none')
         self.assertEqual(get_entry_val({'title': 'T'}, 'title'), 'T')
         self.assertEqual(get_entry_val({}, 'title', None), None)
+
+
+def test_standard_name_braces():
+    from papers.encoding import standard_name
+    assert standard_name('John {van der Berg}') == '{van der Berg}, John'
+    assert standard_name('{World Health Organization}') == '{World Health Organization}'
+    assert standard_name('John Smith and\n  Jane Doe') == 'Smith, John and Doe, Jane'
+    assert standard_name('Smith, John and {Barnes and Noble}') == 'Smith, John and {Barnes and Noble}'
+    assert standard_name('Jean-Paul de la Fontaine') == 'Fontaine, Jean-Paul de la'
