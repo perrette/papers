@@ -340,3 +340,14 @@ class TestPoolIdentifier(ConfigTest):
         out = self.papers('pull', cwd=lib, sp_cmd='check_output')
         self.assertIn('Modified -> mine2022: Corrected', out)
         self.assertIn('(in sync)', self.papers('status', cwd=lib, sp_cmd='check_output'))
+
+    def test_file_named_after_the_pool_folder(self):
+        self.papers('init sealevel')
+        self.papers('init lib --pool ../sealevel')
+        Path(self.path('new.bib')).write_text('@article{mine2022,\n title = {Mine},\n year = {2022}\n}\n')
+        self.papers('add ../new.bib', cwd=self.path('lib'))
+        self.papers('pull', cwd=self.path('lib'))
+        names = os.listdir(self.path('lib', '.papers', 'origin'))
+        self.assertEqual(len(names), 1)
+        self.assertTrue(names[0].startswith('sealevel-'), names)
+        self.assertIn('@comment{papers-pool-path', Path(self.path('lib', '.papers', 'origin', names[0])).read_text())

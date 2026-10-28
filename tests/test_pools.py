@@ -997,14 +997,14 @@ class TestStatus(PoolTest):
         self.assertEqual(hint, '`papers sync --dry-run` shows the changes, `papers sync` exchanges them')
 
     def test_same_change_on_both_sides(self):
-        # the pool file changed, but the entry is the same on both sides: in sync, and recorded silently
+        # the pool file changed, but the entry is the same on both sides: in sync (nothing of the library written)
         self.shallow_with_smith()
         self.edit_lib('journal = {Nat.}', 'journal = {Nature}')
         self.edit_pool('journal = {Nat.}', 'journal = {Nature}')
         line, hint = self.pool_line()
         self.assertTrue(line.endswith('../pool (in sync)'), line)
         self.assertEqual(hint, '`papers config` lists and sets the settings')
-        self.assertIn('up to date', self.state())  # the modification time of the pool is recorded
+        self.assertIn('changed since last pull or push', self.state())  # status writes no origin file
 
     def test_fast_path(self):
         # once status found them in sync, it compares only the entries of the pieces that changed since
@@ -1026,12 +1026,32 @@ class TestStatus(PoolTest):
         self.assertTrue(self.pool_line()[0].endswith('(in sync)'))
 
     def test_fast_path_after_a_touch(self):
-        # the pool file rewritten as it was: in sync, its time recorded, nothing read
+        # the pool file rewritten as it was: in sync, from the pieces, and nothing of the library written
         self.shallow_with_smith()
         self.out('status')
+        origin = {f: Path(self.path('lib', '.papers', 'origin', f)).read_text()
+                  for f in os.listdir(self.path('lib', '.papers', 'origin'))}
         os.utime(self.path('pool', 'papers.bib'), ns=(1, 1))
         self.assertTrue(self.pool_line()[0].endswith('(in sync)'))
-        self.assertIn('up to date', self.state())
+        self.assertEqual({f: Path(self.path('lib', '.papers', 'origin', f)).read_text()
+                          for f in os.listdir(self.path('lib', '.papers', 'origin'))}, origin)
+
+    def test_entry_type_changed(self):
+        # @article -> @book in the library: push would send it, status says so
+        self.shallow_with_smith()
+        self.out('status')
+        self.edit_lib('@article{smith2020climate', '@book{smith2020climate')
+        self.assertTrue(self.pool_line()[0].endswith('(library changed)'), self.pool_line())
+
+    def test_entry_removed_from_the_pool(self):
+        # once in sync, an entry removed from the pool shows (the fast comparison does not skip it)
+        self.shallow_with_smith()
+        self.out('status')
+        text = Path(self.path('pool', 'papers.bib')).read_text()
+        start = text.index('@article{Smith_2020')
+        end = text.find('\n@', start + 1)
+        Path(self.path('pool', 'papers.bib')).write_text(text[:start] + (text[end + 1:] if end > 0 else ''))
+        self.assertFalse(self.pool_line()[0].endswith('(in sync)'), self.pool_line())
 
     def test_other_entries_of_the_pool(self):
         # a change of the pool that does not concern the library

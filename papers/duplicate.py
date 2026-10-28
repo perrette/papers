@@ -323,7 +323,7 @@ class Distinct:
         pairs = []
         if os.path.exists(path):
             try:
-                with open(path) as f:
+                with open(path, encoding='utf-8-sig') as f:
                     pairs = [p for p in json.load(f).get('distinct', [])
                              if isinstance(p, list) and len(p) == 2]
             except (ValueError, OSError, AttributeError) as error:

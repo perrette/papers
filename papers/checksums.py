@@ -45,7 +45,7 @@ def load(config):
     path = files_json(config)
     if path is None or not os.path.exists(path):
         return {}
-    return parse(open(path).read(), config)
+    return parse(open(path, encoding='utf-8-sig').read(), config)
 
 
 def save(config, hashes):

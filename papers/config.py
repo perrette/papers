@@ -239,7 +239,7 @@ def ignore_papers_folder(folder):
         return
     path = os.path.join(folder, '.gitignore')
     try:
-        current = open(path).read() if os.path.exists(path) else None
+        current = open(path, encoding='utf-8').read() if os.path.exists(path) else None
         if current is None or current in _LEGACY_GITIGNORES:
             write_atomic(path, GITIGNORE)
     except OSError as error:
@@ -358,7 +358,7 @@ class MachineConfig:
         data = {}
         if os.path.exists(file):
             try:
-                data = json.load(open(file))
+                data = json.load(open(file, encoding='utf-8-sig'))
             except (json.JSONDecodeError, OSError) as error:
                 logger.warning(f"unreadable global configuration {file}: {error} -- ignored")
         file_version(data, file)
@@ -489,7 +489,7 @@ class Config:
             if os.path.exists(self.file) and not DRYRUN:
                 # the identifier only: the settings in memory may be those of the command
                 # (e.g. the files directory of the pool, see papers.pools.use_pool_files)
-                js = json.load(open(self.file))
+                js = json.load(open(self.file, encoding='utf-8-sig'))
                 js['id'] = self.id
                 write_atomic(self.file, json.dumps(js, sort_keys=True, indent=2, separators=(',', ': ')))
         return self.id
@@ -653,7 +653,7 @@ class Config:
     def load(cls, the_file, machine=None, is_library=None):
         """is_library=False for a global configuration of v2 (the default
         tells them apart by the file content or name)"""
-        js = json.load(open(the_file))
+        js = json.load(open(the_file, encoding='utf-8-sig'))
         version = file_version(js, the_file)
         if is_library is None and version >= 3:
             is_library = True  # v3 has no global configuration

@@ -322,6 +322,8 @@ class Pools:
         self.known_ids = []
         # called with (former id, new id, path) when the records of a pool move to its library id (see _id)
         self.renamed = None
+        # called with (id, path) for a pool named by its library id: where it is, for its origin file
+        self.located = None
 
     @property
     def libdir(self):
@@ -354,6 +356,8 @@ class Pools:
         if own_id:
             if former is not None:
                 self.renamed(former, own_id, path)
+            if self.located is not None:
+                self.located(own_id, path)
             return own_id
         if former is not None:
             return former
@@ -477,7 +481,7 @@ def _library_id(path):
     "the identifier of the library in directory `path` (the `id` of its configuration), or None"
     try:
         file = library_config_file(path)
-        id = json.load(open(file)).get('id') if file else None
+        id = json.load(open(file, encoding='utf-8-sig')).get('id') if file else None
     except (OSError, ValueError, AttributeError, PapersExit):
         return None
     return id if isinstance(id, str) and re.fullmatch(r'[0-9a-f]{32}', id) else None
@@ -567,7 +571,7 @@ class Origin:
     @staticmethod
     def _parse(path):
         try:
-            return parse_string(open(path).read())
+            return parse_string(open(path, encoding='utf-8-sig').read())
         except Exception as error:
             logger.warning(f'{path}: could not be read ({error}); ignored')
             return None
@@ -682,6 +686,24 @@ class Origin:
                 records[new.lower()] = record
                 self.changed.add(pool)
 
+    def file_of(self, pool):
+        "the origin file of the pool id `pool` (see origin_file_name), or None without origin folder"
+        if self.dir is None:
+            return None
+        if pool in self.read_from:
+            return self.read_from[pool]
+        where = self.paths.get(pool)
+        return os.path.join(self.dir, origin_file_name(pool, os.path.expanduser(where) if where else None))
+
+    def locate(self, pool, path):
+        """where the pool `pool` (a library identifier) is: its origin file
+        is named after that folder, and says it (see _PATH_COMMENT)"""
+        where = short_home(path)
+        if self.paths.get(pool) != where:
+            self.paths[pool] = where
+            if pool in self.entries or pool in self.pulls:
+                self.changed.add(pool)  # written again, under the name of the folder
+
     def rename_pool(self, old, new, path=None):
         """the records of the pool `old` move to the id `new` (the pool's
         library identifier, see Pools._id); path: where the pool is"""
@@ -770,6 +792,7 @@ class Exchange:
         self.pools = pools or Pools(config)
         self.origin = origin if origin is not None else Origin.for_bibtex(config.bibtex)
         self.pools.renamed = self.origin.rename_pool
+        self.pools.located = self.origin.locate
         self.pools.set_known_ids(set(self.origin.entries) | set(self.origin.pulls))
         self.same = {}  # file deleted -> its identical copy that stays (see relink, delete_files)
         self.changed_pools = []  # the pools to save
@@ -1664,7 +1687,7 @@ class _Pieces:
         self.now = {side: history.pieces(read_text(f) if f and os.path.exists(f) else '')
                     for side, f in self.files.items()}
         try:
-            self.then = json.load(open(self.path))[pool.id] if self.path else None
+            self.then = json.load(open(self.path, encoding='utf-8'))[pool.id] if self.path else None
         except (OSError, ValueError, KeyError, TypeError):
             self.then = None
 
@@ -1673,6 +1696,8 @@ class _Pieces:
         that changed since, or None (not known: compare everything)"""
         if not isinstance(self.then, dict):
             return None
+        if set(self.then.get('pool', ())) - set(self.now['pool']):
+            return None  # pieces gone from the pool (an entry removed): their keys are not known
         new = {side: [p for d, p in self.now[side].items() if d not in set(self.then.get(side, ()))]
                for side in self.now}
         return _keys(new['library'] + new['origin']), _keys(new['pool'])
@@ -1683,7 +1708,7 @@ class _Pieces:
             return
         self.now['origin'] = history.pieces(read_text(origin_path) if os.path.exists(origin_path) else '')
         try:
-            data = json.load(open(self.path))
+            data = json.load(open(self.path, encoding='utf-8'))
         except (OSError, ValueError):
             data = {}
         data[self.pool.id] = {side: sorted(p) for side, p in self.now.items()}
@@ -1697,7 +1722,8 @@ def exchange_state(config, pools, path):
     push would find it), or not exchanged yet; and the hint of the state.
     A pool whose file changed without any difference for the library (e.g.
     the same change on both sides, or entries of other libraries) is in
-    sync: its modification time is recorded, as by a pull."""
+    sync. Nothing of the library is written (its origin records stay as
+    they are): only the pieces found in sync, on the machine (see _Pieces)."""
     origin = Origin.for_bibtex(config.bibtex) if config.bibtex else Origin()
     pools.set_known_ids(set(origin.entries) | set(origin.pulls))
     pool = pools.resolve(path)
@@ -1707,14 +1733,10 @@ def exchange_state(config, pools, path):
     if not config.bibtex or not os.path.exists(config.bibtex):
         return 'in sync', None
     moved = origin.pulled(pool.id) != pool.bibtex_mtime()
-    origin_path = os.path.join(origin.dir, origin_file_name(pool.id)) if origin.dir else None
+    origin_path = origin.file_of(pool.id)
     pieces = _Pieces(config, pool, origin_path)
     changed = pieces.changed()
     if changed == (set(), set()):  # no piece changed on any side since status found them in sync
-        if moved and not papers.config.DRYRUN:
-            origin.set_pulled(pool.id, pool.bibtex_mtime())
-            origin.save()
-            pieces.save(origin_path)
         return 'in sync', None
     biblio = Biblio.load(config.bibtex, config.filesdir)
     exchange = Exchange(config, biblio, pools, origin=origin)
@@ -1725,7 +1747,7 @@ def exchange_state(config, pools, path):
             continue
         if changed is not None and e.key.lower() not in changed[0] and record.pool_key.lower() not in changed[1]:
             continue  # in pieces that changed on no side since they were in sync
-        if not moved and _fields(e) == _fields(record.entry):
+        if not moved and _fields(e) == _fields(record.entry) and e.entry_type.lower() == record.entry.entry_type.lower():
             continue  # neither side changed (the pool file did not change)
         pe, record = exchange.pool_entry(e, pool)
         if pe is None:
@@ -1748,9 +1770,6 @@ def exchange_state(config, pools, path):
         state = 'both changed' if pool_changed and library_changed else (
             'pool changed' if pool_changed else 'library changed')
         return state, _HINTS[state]
-    if moved and not papers.config.DRYRUN:
-        origin.set_pulled(pool.id, pool.bibtex_mtime())
-        origin.save()
     if origin_path:
         pieces.save(origin_path)
     return 'in sync', None
