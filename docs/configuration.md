@@ -203,7 +203,11 @@ stands with it:
 
 papers compares the entries, not only the files: a pool that changed in
 entries the library does not have, or the same change made on both sides,
-is in sync. `papers status -v` also shows the number of steps of the
+is in sync. Once it found them in sync, papers remembers (with the history
+of the library, on the computer) the pieces of the library, of the pool and
+of the origin copies at that time, and later compares only the entries of
+the pieces that changed since: a single change does not cost a comparison
+of the whole library. `papers status -v` also shows the number of steps of the
 history of the library (see [Undo and redo](undo-redo.md)).
 
 ## Relative versus absolute paths

@@ -221,6 +221,11 @@ class Store:
         return dropped
 
 
+def pieces(text):
+    "{checksum: piece} of a text cut as the store cuts it (see put_text), nothing stored"
+    return {sha256(p.encode('utf-8')): p for p in _pieces(text)}
+
+
 def _pieces(text):
     "the text cut in pieces of about PIECE_ENTRIES entries (see _ENTRY)"
     piece, count = [], 0

@@ -1005,6 +1005,33 @@ class TestStatus(PoolTest):
         self.assertEqual(hint, '`papers config` lists and sets the settings')
         self.assertIn('up to date', self.state())  # the modification time of the pool is recorded
 
+    def test_fast_path(self):
+        # once status found them in sync, it compares only the entries of the pieces that changed since
+        self.shallow_with_smith()
+        self.out('status')
+        config = Config.load(self.path('lib', CONFIG_FILE_LOCAL))
+        project, _ = papers.backup.project_of(config, create=False)
+        self.assertTrue(os.path.exists(os.path.join(project.dir, 'exchanges.json')))  # on the machine
+        self.assertFalse(os.path.exists(self.path('lib', '.papers', 'exchanges.json')))
+        from papers.pools import exchange_state, Pools
+        with patch('papers.pools.Biblio.load', side_effect=AssertionError('nothing to read')):
+            self.assertEqual(exchange_state(config, Pools(config), self.path('pool')), ('in sync', None))
+        # a change on either side is found
+        self.edit_pool('journal = {Nat.}', 'journal = {Nature}')
+        self.assertTrue(self.pool_line()[0].endswith('(pool changed)'))
+        self.edit_lib('title = {Climate sensitivity revisited}', 'title = {Climate sensitivity, revisited}')
+        self.assertTrue(self.pool_line()[0].endswith('(both changed)'))
+        self.lib('sync --on-duplicate skip')
+        self.assertTrue(self.pool_line()[0].endswith('(in sync)'))
+
+    def test_fast_path_after_a_touch(self):
+        # the pool file rewritten as it was: in sync, its time recorded, nothing read
+        self.shallow_with_smith()
+        self.out('status')
+        os.utime(self.path('pool', 'papers.bib'), ns=(1, 1))
+        self.assertTrue(self.pool_line()[0].endswith('(in sync)'))
+        self.assertIn('up to date', self.state())
+
     def test_other_entries_of_the_pool(self):
         # a change of the pool that does not concern the library
         self.shallow_with_smith()
