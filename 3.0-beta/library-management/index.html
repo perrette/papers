@@ -840,6 +840,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#two-commands-at-the-same-time" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Two commands at the same time
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1076,6 +1087,26 @@ files are in their own folder, and not mixed up with other things, obviously.</p
 removing them: a way to check what is actually tracked and what is not.</p>
 <p>See <a href="../files/">Files</a> for all the <code>papers file</code> commands. <code>papers filecheck</code>
 is the deprecated form of these commands (it still works, with a warning).</p>
+<h2 id="two-commands-at-the-same-time">Two commands at the same time<a class="headerlink" href="#two-commands-at-the-same-time" title="Permanent link">&para;</a></h2>
+<p>A command that changes a library locks it while it runs: the file
+<code>.papers/lock</code> says which command holds it (process and computer). A
+command that changes a library and its pool (<code>add</code> in a shallow library,
+<code>push</code>, <code>sync</code>, an undo that also undoes the pool's step) locks the library
+first, then the pool. Another command that wants to change the same
+library waits, with a line that names the command holding it, and stops
+after 30 seconds with an error; nothing is written. Commands that only read
+(<code>list</code> without an action, <code>status</code>, <code>export</code>, <code>file check</code>, <code>history</code>) do
+not wait.</p>
+<p>The holder rewrites the lock every 2 seconds. A lock that nobody rewrote
+for 10 seconds, or that names a process of this computer that no longer
+exists (e.g. after a crash), is stale: the next command takes it over. A
+command that lost its lock (e.g. the computer was asleep) stops before it
+writes.</p>
+<p>The lock works for a library on a network drive, used from several
+computers. It does not work for a folder kept in sync by a service
+(Dropbox, Nextcloud, Syncthing...), where a file reaches the other
+computers seconds or minutes later. There, papers notices a bibtex changed
+outside papers since it read it, and does not write over it.</p>
 
 
 
