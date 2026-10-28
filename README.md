@@ -35,8 +35,15 @@ project folder.
   title, and merge them.
 - **Export** a selection as a library with copies of its PDFs, or as RIS
   and CSL-JSON (for Zotero, EndNote, pandoc) or BibJSON (for programs).
-- **Plain files**: the bibtex is the database. `papers undo` / `papers redo`
-  take back any command, with the files it moved or deleted.
+- **Plain files**: the bibtex is the database, the PDFs stay in folders you
+  see, and the library can be edited with any tool.
+- **Undo anything**: every command is a step of the library's history,
+  kept on your computer; `papers undo` / `papers redo` take back any
+  command, with the files it moved, renamed or deleted, and a change made
+  outside papers is never lost.
+- **Fast on large libraries**: the parsed bibtex is cached piece by piece,
+  and `papers status` compares a project with its pool only where they
+  changed.
 <!-- intro-end -->
 
 ## Example

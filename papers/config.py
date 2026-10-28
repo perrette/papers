@@ -785,7 +785,8 @@ class Config:
         elif check_files:
             try:
                 bibtexstring = open(self.bibtex).read()
-                db = parse_string(bibtexstring)
+                from papers.bib import parse_cache  # papers.bib imports this module
+                db = parse_string(bibtexstring, cache=parse_cache())
                 if len(db.entries):
                     nfiles = sum(len(parse_file(get_entry_val(e, 'file', ''))) for e in db.entries)
                     status = bcolors.OKBLUE+' ({} entries, {} file links)'.format(len(db.entries), nfiles)+bcolors.ENDC

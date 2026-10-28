@@ -11,10 +11,12 @@ papers 3 adds the following new functionalities:
   library can be a library per topic (`~/Documents/papers/sealevel`), or
   one library for everything, the default library (see
   [A global shared library](global-library.md));
-- **speed**: on a library of 10,000 entries, common commands take about
-  half the time (`papers list` 1.5 s → 0.7 s, `papers add` 2.3 s → 1.2 s),
-  and the duplicate checks are two orders of magnitude faster
-  (`papers list --duplicates` on 1,000 entries: 30 s → 0.2 s);
+- **speed**: on a library of 10,000 entries, common commands take a third
+  to a half of the time of papers 2 (`papers list` 0.87 s → 0.27 s,
+  `papers add` 1.70 s → 0.69 s), and the duplicate checks are two orders
+  of magnitude faster (`papers list --duplicates` on 1,000 entries:
+  18.6 s → 0.13 s). Measured with papers 2.19.6 and 3.0.0b4 on the same
+  machine and libraries (`scripts/generate_dummy_bib.py`);
 - **a review of the commands**: `papers init` and `papers config` replace
   `papers install`, the commands on attached files are grouped under
   `papers file`, `papers list` has more actions, and older forms are
@@ -22,10 +24,21 @@ papers 3 adds the following new functionalities:
 - **RIS, CSL-JSON and BibJSON**: `papers add refs.ris` (or `.json`, `.bib.json`) imports them,
   `papers list --format` and `papers export` write them (see
   [Export](export.md));
-- **undo without git**: `papers undo` takes back any command, with the
-  files it moved, renamed or deleted, without git or git-lfs (see
+- **a history of each library, without git**: every command is a step;
+  `papers undo` and `papers redo` take back any command with the files it
+  moved, renamed or deleted (also outside the library, e.g. a PDF taken
+  from `~/Downloads`), a change made outside papers is recorded as a step
+  of its own, and `papers history` lists the steps. The history is kept on
+  the computer, and git and git-lfs are no longer needed (see
   [Undo and redo](undo-redo.md)). The git backup of papers 2 is no longer
-  used (see [Backups of earlier versions](git.md#backups-of-earlier-versions)).
+  used (see [Backups of earlier versions](git.md#backups-of-earlier-versions));
+- **`papers status` and the pool**: a shallow library says whether it is
+  `in sync` with its pool, or which side changed, and which command shows
+  and exchanges the changes (see [Configuration](configuration.md#pools));
+- **for programs**: `--porcelain` lists the entries a command added,
+  modified, renamed or removed, and `papers edit KEY --from FILE`, `--set`,
+  `--unset` and `--key` change an entry without an editor (used by
+  [Papers Desktop](https://github.com/mathesislab/papers-desktop)).
 
 ## What changes for an existing setup
 

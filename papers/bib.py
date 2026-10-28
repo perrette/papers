@@ -122,6 +122,12 @@ def read_text(file):
     except (OSError, UnicodeDecodeError):
         return None
 
+def parse_cache():
+    "the cache of the parsed bibtex (see papers.parsecache), in the cache folder of the machine"
+    from papers.parsecache import Cache
+    return Cache(os.path.join(papers.config.CACHE_DIR, 'parsed'))
+
+
 class BibtexChanged(PapersExit):
     "the bibtex was written by another program since papers read it"
 
@@ -234,7 +240,7 @@ class Biblio:
     def load(cls, bibtex, filesdir, relative_to=None, **kw):
         bibtexs = open(bibtex).read()
         kw.setdefault('distinct', Distinct.for_bibtex(bibtex))
-        db = parse_string(bibtexs)
+        db = parse_string(bibtexs, cache=parse_cache())
         loaded_bib = cls(db, filesdir, relative_to=relative_to if relative_to is not None else os.path.dirname(bibtex), **kw)
         loaded_bib._remember(bibtex, bibtexs)
         loaded_bib.unreadable = unreadable_blocks(db)
