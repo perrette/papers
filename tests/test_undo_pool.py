@@ -144,10 +144,28 @@ class UndoInLibrary:
         self.lib('add ../new.bib')
         self.tag('mine2022', 'b', where='pool')
         out = self.out('undo')
-        # the pool has a step on top of that of the add: the library only
-        self.assertIn('pool ../pool: changed since step', out)
+        # the pool has a step on top of that of the add, which changed the entry: the revert keeps it
+        self.assertIn('pool ../pool: changed since; step', out)
+        self.assertIn('mine2022: added by step', out)
         self.assertNotIn('mine2022', self.entries())
         self.assertEqual(self.keywords('mine2022', 'pool'), 'a, b')
+
+    def test_pool_changed_since_elsewhere(self):
+        # another entry changed in the pool since the add: the add is reverted there
+        self.lib('add ../other.bib')
+        self.lib('add ../new.bib')
+        self.tag('other2023', 'b', where='pool')
+        pool = self.commits('pool')
+        out = self.out('undo')
+        self.assertIn('pool ../pool: changed since, so step', out)
+        self.assertNotIn('mine2022', self.entries('pool'))
+        self.assertEqual(self.keywords('other2023', 'pool'), 'b')
+        self.assertEqual(self.commits('pool'), pool + 1)  # a new step: the revert
+        # redo takes the revert back in the pool
+        self.assertIn('pool ../pool: changed since, so step', self.out('redo'))
+        self.assertIn('mine2022', self.entries('pool'))
+        self.assertIn('mine2022', self.entries())
+        self.assertEqual(self.keywords('other2023', 'pool'), 'b')
 
     def test_pool_changed_outside_papers(self):
         self.lib('add ../new.bib')
@@ -312,6 +330,29 @@ class TestUndoPool(UndoPoolTest, UndoInLibrary):
 class TestUndoPoolAutoPush(UndoPoolTest, UndoInLibrary):
     "a shallow library, with auto-push"
     auto_push = True
+
+    def test_undo_pushes_what_a_step_did_not(self):
+        # a step made with auto-push off left a change unpushed: the undo to it pushes it
+        self.lib('add ../new.bib')
+        self.lib('config auto-push false')
+        self.lib('list -k mine2022 --add-tag b')
+        self.lib('list -k mine2022 --add-tag c')
+        self.assertEqual(self.keywords('mine2022', 'pool'), 'a')
+        self.lib('config auto-push true')
+        out = self.out('undo')
+        self.assertEqual(self.keywords('mine2022'), 'a, b')
+        self.assertIn('mine2022: also modified in pool ../pool', out)
+        self.assertEqual(self.keywords('mine2022', 'pool'), 'a, b')
+        # the step undone can still be redone
+        self.lib('redo')
+        self.assertEqual(self.keywords('mine2022'), 'a, b, c')
+
+    def test_undo_without_anything_to_push(self):
+        self.lib('add ../new.bib')
+        self.tag('mine2022', 'foo')
+        lib = self.commits('lib')
+        self.lib('undo')
+        self.assertEqual(self.commits('lib'), lib)  # no step of a push
 
 
 class TestUndoFileRmShallow(UndoPoolTest):

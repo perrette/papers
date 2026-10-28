@@ -4,6 +4,7 @@ import time
 
 import papers.config
 import papers.history
+import papers.lock
 from papers import backup, logger
 from papers.bib import Biblio
 from papers.files import is_inside
@@ -18,6 +19,37 @@ def _linked_files(config):
         return set()
     biblio = Biblio.load(config.bibtex, config.filesdir)
     return {os.path.realpath(f) for e in biblio.entries for f in biblio.get_files(e)}
+
+
+def _auto_push(config):
+    """after undo or redo in a shallow library with auto-push: the shared
+    entries that differ from their origin copy are pushed, as after any
+    command (an entry changed in the pool too is left to `papers sync`).
+    Nothing to push in general: undo and redo restore the origin copies
+    with the bibtex. A push is a step of the library (its origin copies);
+    the steps that redo brings back stay."""
+    from papers.cli.common import print_push_notes, push_notes, save_exchange
+    from papers.library import get_biblio
+    from papers.merge import Resolver
+    from papers.pools import Exchange, PoolError
+    if not config.shallow or not config.auto_push or papers.config.DRYRUN:
+        return
+    biblio = get_biblio(config)
+    exchange = Exchange(config, biblio)
+    try:
+        pool = exchange.pools.target()
+    except PoolError as error:
+        logger.warning(f'not pushed to the pool: {error}')
+        return
+    shared, _ = exchange.sharing(biblio.entries, pool)
+    report = exchange.push(shared, pool, Resolver('skip'), include_new=False)
+    if any(what == 'updated' for _, _, what in report):
+        project, place = backup.project_of(config)
+        redo = project.head(place)['redo']
+        save_exchange(exchange)
+        project = project.store.project(project.id)
+        project.set_head(place, project.head(place)['state'], redo)
+    print_push_notes(biblio, push_notes(report))
 
 
 def _time_travel(config, kind, func, *args):
@@ -45,10 +77,14 @@ def _time_travel(config, kind, func, *args):
 
 def undocmd(parser, o, config):
     _time_travel(config, 'undo', backup.undo, o.steps, o.library_only)
+    if not o.library_only:
+        _auto_push(config)
 
 
 def redocmd(parser, o, config):
     _time_travel(config, 'redo', backup.redo, o.steps, o.library_only)
+    if not o.library_only:
+        _auto_push(config)
 
 
 def restorecmd(parser, o, config):
@@ -126,6 +162,28 @@ def drop_files(config, target, yes=False):
     print(f'dropped {len(found)} file{"s" if len(found) > 1 else ""} ({_size(total)}) from the history')
 
 
+def revert(o, config):
+    """papers history --revert N: take back step N alone (see papers.revert),
+    saved as a new step; the report of the entries, and of the pools that
+    step N also changed"""
+    from papers.cli.common import _print_biblio_diff, duplicate_resolver, save_entries
+    from papers.library import get_biblio
+    import papers.revert
+    if not config.bibtex or not os.path.exists(config.bibtex):
+        raise PapersExit('no library: --revert takes back a step of the history of a library')
+    papers.lock.acquire(config)
+    biblio = get_biblio(config)
+    lines = papers.revert.revert(config, biblio, o.revert, duplicate_resolver(o, 'revert'))
+    backup.mark(config, reverts=[o.revert])
+    notes = save_entries(config, biblio)
+    _print_biblio_diff(biblio, biblio.entries, notes=notes)
+    if lines:
+        print('\n'.join(lines))
+    project, _ = backup.project_of(config)
+    for line in papers.revert.pool_lines(config, project, o.revert):
+        print(line)
+
+
 def _confirm(question):
     if not stdin_is_terminal():
         raise PapersExit(f'{question} no terminal to confirm: -y/--yes removes without asking')
@@ -162,6 +220,8 @@ def historycmd(parser, o, config):
         return _show_all(config)
     if o.drop_files:
         return drop_files(config, o.drop_files, yes=o.yes)
+    if o.revert is not None:
+        return revert(o, config)
     project, place = backup.project_of(config, create=False) if config.bibtex else (None, None)
     head = project.head(place) if project else None
     if head is None:

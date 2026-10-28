@@ -833,6 +833,8 @@ class Resolver:
         if context == 'pull':
             pool = get_entry_val(merge.others[0], 'ID', '')
             return f'{merge.key}: changed in the library and in {verdict.reason} ({pool}; {what})'
+        if context == 'revert':
+            return f'{merge.key}: changed since {verdict.reason} too ({what})'
         if context == 'push':
             key = get_entry_val(merge.others[0], 'ID', '')
             return f'{key}: changed in the library and in {verdict.reason} ({merge.key}; {what})'
@@ -842,5 +844,6 @@ class Resolver:
 
 def option_hint(context):
     words = 'ask, keep, skip' if context == 'check' else 'ask, keep, update, skip'
+    command = 'history' if context == 'revert' else context
     return (f'Pass --on-duplicate with one of: {words} (ask is the default in a terminal), '
-            f'see `papers {context} --help`.')
+            f'see `papers {command} --help`.')

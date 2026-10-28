@@ -972,7 +972,8 @@ def get_parser(config=None):
     _undo_help = ('undo the last change of the library: the bibtex and the files (moved back, deleted files '
                   'restored from the history). Each command that changes the library is a step of its '
                   'history (`papers history`); a change made outside papers (an editor, another program) is '
-                  'recorded as a step of its own when papers next writes the library')
+                  'recorded as a step of its own when papers next writes the library. To take back an older '
+                  'step alone: `papers history --revert N`')
     undop = subparsers.add_parser('undo', parents=[cfg, _restorep, _stepsp], help=_undo_help, description=_undo_help)
     _command(undop, undocmd, library=True)
     _redo_help = 'redo a change undone by `papers undo`'
@@ -1015,6 +1016,17 @@ def get_parser(config=None):
         historyp.add_argument('--drop-files', metavar='N|PATH',
             help='remove from the history the files that step N deleted, or the file deleted from PATH '
                  '(by any step): they go to the trash of the system, and undo no longer brings them back')
+        historyp.add_argument('--revert', type=int, metavar='N',
+            help='take back the changes of step N alone, as a new step (`papers undo` takes the revert back); '
+                 'unlike `papers undo -n N`, which goes back over the last N steps, the later steps are kept. '
+                 'Per entry, a three-way merge: what step N changed goes back, unless it changed since '
+                 '(a conflict, as in pull); the files of step N go back as undo moves them')
+        historyp.add_argument('--on-duplicate', choices=ON_DUPLICATE,
+            help='with --revert: what to do with an entry that changed since step N too: ask (dialogue; the '
+                 'default in a terminal), keep (its values now are kept), update (the values before step N '
+                 'are taken), skip (the entry is left as it is), error (stop before saving; the default '
+                 'without a terminal)')
+        historyp.set_defaults(mode=None)
         historyp.add_argument('-n', type=int, default=20, help='number of steps to show (default: 20; 0: all)')
         historyp.add_argument('-y', '--yes', action='store_true', help='remove or drop without confirmation')
         if name == 'backup':
