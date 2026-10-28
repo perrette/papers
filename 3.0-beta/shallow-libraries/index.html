@@ -1050,7 +1050,7 @@ an existing library without pool of its own (a self-contained library):
 <code>papers init --pool PATH</code> and <code>papers config pool PATH</code> stop with an error
 otherwise, and nothing is created or changed:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>$ papers init ~/projects/x --pool ~/projects/thesis
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>ERROR:papers:--pool ~/projects/thesis: ~/projects/thesis has a pool itself (~/Documents/papers/sealevel): give a library without pool (nothing was changed)
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>papers: error: --pool ~/projects/thesis: ~/projects/thesis has a pool itself (~/Documents/papers/sealevel): give a library without pool (nothing was changed)
 </code></pre></div>
 <p>The pool path is written in the configuration relative to the library when
 it is given relative, or when it is under the library (e.g.
@@ -1111,7 +1111,7 @@ setting says how a new file gets to the pool:</p>
     <code>papers rm KEY --delete-files</code> (and <code>papers list ... --delete
     --delete-files</code>) is an error, and nothing is removed:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>$ papers rm perrette_yool2011 --delete-files
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>ERROR:papers:--delete-files: the files of a shallow library are the pool's: remove them with `papers file rm FILE`
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>papers: error: --delete-files: the files of a shallow library are the pool's: remove them with `papers file rm FILE`
 </code></pre></div>
 </li>
 <li>
@@ -1196,7 +1196,7 @@ make the library shallow:</p>
 </code></pre></div>
 <p>For a project with one PDF and the library <code>~/Documents/papers/arctic</code>:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>$ papers config pool ~/Documents/papers/arctic
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>ERROR:papers:pool ~/Documents/papers/arctic: 1 entry links to PDFs that the pool ~/Documents/papers/arctic does not have (nothing was changed): perrette_landerer2013
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>papers: error: pool ~/Documents/papers/arctic: 1 entry links to PDFs that the pool ~/Documents/papers/arctic does not have (nothing was changed): perrette_landerer2013
 <a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>Copy them to the pool first: `papers push --pool ~/Documents/papers/arctic perrette_landerer2013`
 <a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>Then run `papers config pool ~/Documents/papers/arctic` again.
 <a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>$ papers push --pool ~/Documents/papers/arctic --all

@@ -998,7 +998,7 @@ same layout finds it there. Changing the default library later does not
 change the projects created before. Without a default library,
 <code>papers init --shallow</code> stops:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>$ papers init --shallow
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>ERROR:papers:no default library: `papers init PATH --global` or `papers config --global default PATH`
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>papers: error: no default library: `papers init PATH --global` or `papers config --global default PATH`
 </code></pre></div>
 <p>See <a href="../shallow-libraries/">Shallow libraries</a> for what a shallow library does with its pool: <code>add</code>
 looks in it first and adds the new papers to it, and <code>papers sync</code>
@@ -1024,7 +1024,7 @@ self-contained project (see
 <p>Without a default library, a command outside of any library stops:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>$ papers config --global default none
 <a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>$ papers list
-<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>ERROR:papers:no library found here: `papers init`, or pass --bibtex
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>papers: error: no library found here: `papers init`, or pass --bibtex
 <a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>$ papers status
 <a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>papers library: (no library found: create one with `papers init`)
 <a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>* default library:    none

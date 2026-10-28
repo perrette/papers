@@ -1118,11 +1118,11 @@
 <p>The <code>papers add</code> command adds entries to your library, with or without a PDF
 attachment.</p>
 <h2 id="add-a-pdf-extract-metadata-automatically">Add a PDF (extract metadata automatically)<a class="headerlink" href="#add-a-pdf-extract-metadata-automatically" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>$&gt; papers add esd-4-11-2013.pdf --bibtex papers.bib --filesdir files --info
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>INFO:papers:found doi:10.5194/esd-4-11-2013
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>INFO:papers:new entry: perrette_landerer2013
-<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>INFO:papers:mv /home/perrette/playground/papers/esd-4-11-2013.pdf files/perrette_et_al_2013_a-scaling-approach-to-project-regional-sea-level-rise-and-its-uncertainties.pdf
-<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>INFO:papers:renamed file(s): 1
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>$&gt; papers add esd-4-11-2013.pdf --bibtex papers.bib --filesdir files -v
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>papers: info: found doi:10.5194/esd-4-11-2013
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>papers: info: new entry: perrette_landerer2013
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>papers: info: mv /home/perrette/playground/papers/esd-4-11-2013.pdf files/perrette_et_al_2013_a-scaling-approach-to-project-regional-sea-level-rise-and-its-uncertainties.pdf
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>papers: info: renamed file(s): 1
 </code></pre></div>
 <p>That is equivalent to doing:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>papers extract esd-4-11-2013.pdf &gt; entry.bib
