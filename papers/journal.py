@@ -248,6 +248,12 @@ def _place(src, dst, copy=False):
         shutil.move(src, dst)
 
 
+def _deleted_again(path):
+    "the line of a file deleted again by redo (see remove)"
+    where = 'kept in the history' if keeps_deleted() else 'to the trash of the system'
+    return f'    {_show(path)}: deleted again ({where})'
+
+
 def _inside(path, dirs):
     real = os.path.realpath(path)
     return any(real.startswith(os.path.realpath(d) + os.sep) for d in dirs if d)
@@ -385,7 +391,7 @@ def restore(current, target, ops, undo, hashes=None, pool_dirs=(), find_deleted=
                              'not restored')
         elif not undo and os.path.isfile(path) and digest(path) == op.get('checksum'):
             remove(path)
-            lines.append(f'    {_show(path)}: deleted again (kept in the history)')
+            lines.append(_deleted_again(path))
 
     # the files that the commands copied to a place linked before and after (papers file fix from the
     # history): removed by undo, copied again by redo
@@ -437,7 +443,7 @@ def restore(current, target, ops, undo, hashes=None, pool_dirs=(), find_deleted=
                     lines.append(_arrow(path, deleted['dst'], 'moved to'))
             elif deleted['op'] == 'trashed':
                 remove(path)
-                lines.append(f'    {_show(path)}: deleted again (kept in the history)')
+                lines.append(_deleted_again(path))
             else:
                 record('removed', path, digest=digest(path))
                 os.remove(path)

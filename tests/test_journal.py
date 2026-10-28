@@ -376,6 +376,13 @@ class TestDeleted(JournalTest):
         self.assertEqual(self.kept(), [])
         self.assertIn('deleted by the command, not restored', self.out('undo'))
 
+    def test_redo_with_keep_deleted_files_false(self):
+        self.lib('rm one2000 --delete-files')
+        self.lib('undo')
+        self.lib('config --global keep-deleted-files false')
+        self.assertIn('deleted again (to the trash of the system)', self.out('redo'))
+        self.assertFalse(os.path.exists(self.a))
+
     def test_history_emptied(self):
         self.lib('rm one2000 --delete-files')
         shutil.rmtree(self.store().file_objects)
