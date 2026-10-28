@@ -7,6 +7,7 @@ The store is a folder of the machine (papers.config.HISTORY_DIR):
     file-objects/ab/ab12….pdf the files deleted by the commands, named by their sha256
     projects/<id>/states/     one state per command, named by its identifier (see state_id), in a tree
     projects/<id>/heads.json  the current state of each place that uses the project
+    numbers.json              the identifiers of the numbered states of earlier versions (see Store.upgrade)
 
 A project is the history of a library, named by its identifier; a place is
 where the library is (the real path of its bibtex): a copy of a library is
@@ -162,7 +163,9 @@ class Store:
         place, reverts, and the steps of the pools that a step links to, in
         other projects). All projects at once (a step names the steps of its
         pools); the result does not depend on who does it, so two commands
-        doing it at the same time agree."""
+        doing it at the same time agree. The numbers and their identifiers
+        are kept in numbers.json: a link from another store (history-separate)
+        names a pool's state by its number (see Project.upgraded)."""
         numbered, maps = {}, {}
         for id in self.project_ids():
             folder = os.path.join(self.projects, id, 'states')
@@ -182,6 +185,10 @@ class Store:
                 if state.get('reverts'):
                     state['reverts'] = [maps[id][r] for r in state['reverts'] if r in maps[id]]
                 maps[id][n] = state_id(state)
+        known = self.numbers()
+        for id, ids in maps.items():
+            known.setdefault(id, {}).update({str(n): i for n, i in ids.items()})
+        _write(os.path.join(self.root, 'numbers.json'), json.dumps(known, indent=1).encode())
         for id, states in numbered.items():
             project = self.project(id)
             for n, state in states.items():
@@ -205,6 +212,11 @@ class Store:
                     os.remove(os.path.join(project.states_dir, f'{n:06d}.json'))
                 except FileNotFoundError:
                     pass
+
+    def numbers(self):
+        "{project id: {number: identifier}} of the numbered states upgraded (see upgrade)"
+        known = _read_json(os.path.join(self.root, 'numbers.json'), {})
+        return known if isinstance(known, dict) else {}
 
     # size and retention
     # ==================
@@ -292,6 +304,13 @@ def state_id(state):
     return sha256(('\n'.join(lines) + '\n').encode('utf-8'))
 
 
+def is_file_object(path):
+    "a file of the files deleted by the commands (file-objects/ab/ab12….pdf), in any store"
+    folder = os.path.dirname(path)
+    return os.path.basename(os.path.dirname(folder)) == 'file-objects' \
+        and os.path.basename(path).startswith(os.path.basename(folder))
+
+
 def short(n):
     "the identifier of a state as the messages show it"
     return n[:SHORT] if isinstance(n, str) else n
@@ -360,6 +379,14 @@ class Project:
 
     def state(self, n):
         return self.states().get(n)
+
+    def upgraded(self, n):
+        """the identifier of the state that an earlier version numbered n (a
+        link from a state of another store, see Store.upgrade); else n"""
+        if not isinstance(n, int) or isinstance(n, bool):
+            return n
+        self.states()  # numbered states upgraded first
+        return self.store.numbers().get(self.id, {}).get(str(n), n)
 
     def resolve(self, ref):
         """the identifier of the state that `ref` names: the identifier, or a

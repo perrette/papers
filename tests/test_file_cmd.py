@@ -2,6 +2,7 @@
 import io
 import json
 import os
+import shutil
 import subprocess as sp
 from pathlib import Path
 from unittest.mock import patch
@@ -568,6 +569,58 @@ class TestFixFromHistory(FileTest):
         self.assertEqual(Path(a).read_text(), 'pdf a')
         self.lib('redo')
         self.assertFalse(os.path.exists(a))
+
+    def fixed_after_another_step(self):
+        "a file deleted by a step, another step, then file fix: return the file"
+        import papers.backup
+        from papers import journal
+        from papers.library import finish_journal
+        a = self.write('lib', 'files', 'a.pdf', content='pdf a')
+        self.bib(entry('one2000', a))
+        self.lib('file checksum')  # a first state
+        config = self.config()
+        journal.start(config.bibtex, papers.backup.Deleted(config))
+        journal.remove(a)
+        finish_journal(config)
+        Path(self.path('other.bib')).write_text(entry('other2001'))
+        self.lib('add ../other.bib')  # another step
+        self.assertIn('restored from the history', self.out('file fix'))
+        return a
+
+    def undo_redo_fix(self, a):
+        self.lib('undo')  # the copy is a step: undo removes it again
+        self.assertFalse(os.path.exists(a))
+        self.lib('redo')
+        self.assertEqual(Path(a).read_text(), 'pdf a')
+
+    def test_restored_file_kept_by_its_step(self):
+        # the step that deleted the file is dropped (retention): the step of
+        # file fix keeps the file in the history, for its undo and redo
+        import time
+        import papers.backup
+        from papers import history
+        a = self.fixed_after_another_step()
+        project, place = papers.backup.project_of(self.config(), create=False)
+        fix = project.head(place)['state']
+        add = project.state(fix)['parent']
+        for n in project.line(add)[1:]:
+            project.drop(n)
+        project.store.prune(10**9, now=time.time() + 2 * history.GRACE)
+        self.undo_redo_fix(a)
+
+    def test_restored_file_after_history_dir_change(self):
+        import json
+        import papers.config
+        a = self.fixed_after_another_step()
+        new = os.path.join(self.history_dir.name, 'moved')
+        os.makedirs(new)
+        for name in os.listdir(self.history_dir.name):
+            if name != 'moved':
+                shutil.move(os.path.join(self.history_dir.name, name), new)
+        machine = json.load(open(papers.config.MACHINE_CONFIG_FILE))
+        machine['history-dir'] = new
+        Path(papers.config.MACHINE_CONFIG_FILE).write_text(json.dumps(machine))
+        self.undo_redo_fix(a)
 
     def test_by_checksum(self):
         # deleted outside papers: its checksum in files.json, a copy of the same content in the history

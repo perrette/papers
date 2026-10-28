@@ -165,7 +165,9 @@ def _absolute_ops(ops, config):
 
 
 def _deleted_refs(ops):
-    return sorted({op['checksum'] for op in ops if op['op'] == 'trashed' and op.get('checksum')})
+    "the file objects a state needs: the files its command deleted, and those it copied from the history"
+    return sorted({op['checksum'] for op in ops if op.get('checksum') and (
+        op['op'] == 'trashed' or op['op'] == 'copied' and history.is_file_object(op['src']))})
 
 
 # recording
@@ -558,7 +560,7 @@ def pool_steps(config, project, steps, undo):
                     continue
                 pools[id] = pool
             pool = pools[id]
-            n = link['state']
+            n = pool.project.upgraded(link['state'])  # a number: a link of an earlier version to another store
             # the pool's state before the command (several saves of the pool: before the first one)
             parent = link.get('base', (pool.project.state(n) or {}).get('parent'))
             if pool.project.state(n) is None or parent is None or pool.project.state(parent) is None:

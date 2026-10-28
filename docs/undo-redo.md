@@ -97,7 +97,8 @@ undo: papers.bib restored to 4f1c9a2e papers add paper.pdf (2026-10-22 14:03)
 
 The history keeps up to 500 MB (the `history-size` setting). Beyond that,
 the oldest steps are dropped first, and the deleted files that only they
-needed go to the trash of the system. Before a command that deletes more
+needed go to the trash of the system (a step that brought a file back from
+the history, `papers file fix` or `papers history --revert`, needs it too). Before a command that deletes more
 than the history keeps, or so much that recent steps would be dropped,
 papers asks first (`-y` answers yes; without a terminal, the files are
 kept):

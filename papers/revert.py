@@ -234,6 +234,10 @@ def pool_lines(config, project, n):
             continue
         pool_config = papers.config.Config.load(file, machine=config.machine)
         shown = backup._shown(config, pool_config)
-        lines.append(f'step {short(n)} also changed pool {shown} (its step {short(link["state"])}): '
-                     f'`papers -C {shown} history --revert {short(link["state"])}` takes it back there')
+        state = link['state']
+        if isinstance(state, int):  # a link of an earlier version to another store (see history.Store.upgrade)
+            pool_project, _ = backup.project_of(pool_config, create=False)
+            state = pool_project.upgraded(state) if pool_project else state
+        lines.append(f'step {short(n)} also changed pool {shown} (its step {short(state)}): '
+                     f'`papers -C {shown} history --revert {short(state)}` takes it back there')
     return lines

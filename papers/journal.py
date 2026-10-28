@@ -21,7 +21,7 @@ import shutil
 from contextlib import contextmanager
 
 import papers.config
-from papers import logger
+from papers import history, logger
 from papers.utils import checksum
 
 _ops = []
@@ -292,6 +292,12 @@ def restore(current, target, ops, undo, hashes=None, pool_dirs=(), find_deleted=
             digests[path] = _checksum(path) if os.path.isfile(path) else None
         return digests[path]
 
+    def copied_from(op):
+        "the source of a copy; a copy from the history: found by its checksum (the history may have moved)"
+        if find_deleted and history.is_file_object(op['src']) and not os.path.isfile(op['src']):
+            return find_deleted(op.get('checksum')) or op['src']
+        return op['src']
+
     def partners(path):
         "the other ends of the moves and copies of `path`, the last command first, with the operation"
         for op in reversed(moves):
@@ -388,12 +394,13 @@ def restore(current, target, ops, undo, hashes=None, pool_dirs=(), find_deleted=
         if op['op'] != 'copied' or not path or path not in current or path not in target or path in reported:
             continue
         reported.add(path)
-        if undo and os.path.isfile(path) and digest(path) == op.get('checksum') and os.path.isfile(op['src']):
-            record('removed', path, op['src'], digest(path))
+        src = copied_from(op)
+        if undo and os.path.isfile(path) and digest(path) == op.get('checksum') and os.path.isfile(src):
+            record('removed', path, src, digest(path))
             os.remove(path)
-            lines.append(f'    {_show(path)}: removed (a copy of {_show(op["src"])})')
-        elif not undo and not os.path.lexists(path) and os.path.isfile(op['src']):
-            place(path, op['src'], True, 'copied to')
+            lines.append(f'    {_show(path)}: removed (a copy of {_show(src)})')
+        elif not undo and not os.path.lexists(path) and os.path.isfile(src):
+            place(path, src, True, 'copied to')
 
     # the files that the commands put in place, and that the restored state does not link
     for path in sorted((current | mentioned) - target):
@@ -412,10 +419,11 @@ def restore(current, target, ops, undo, hashes=None, pool_dirs=(), find_deleted=
                 break
             else:
                 copied = next((op for op in reversed(moves) if op['op'] == 'copied' and op['dst'] == path), None)
-                if copied and os.path.isfile(copied['src']) and digest(copied['src']) == digest(path):
-                    record('removed', path, copied['src'], digest(path))
+                src = copied_from(copied) if copied else None
+                if src and os.path.isfile(src) and digest(src) == digest(path):
+                    record('removed', path, src, digest(path))
                     os.remove(path)
-                    lines.append(f'    {_show(path)}: removed (a copy of {_show(copied["src"])})')
+                    lines.append(f'    {_show(path)}: removed (a copy of {_show(src)})')
         else:
             deleted = next((op for op in reversed(ops) if op['src'] == path
                             and op['op'] in ('trashed', 'removed', 'moved')), None)

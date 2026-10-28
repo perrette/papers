@@ -438,3 +438,50 @@ class TestSeveralSavesOfThePool(UndoPoolTest):
         self.assertEqual(self.keywords('mine2022', 'pool'), pool_before['mine2022']['keywords'])
         self.lib('redo')
         self.assertEqual(self.keywords('mine2022', 'pool'), 'y')
+
+
+class TestNumberedStatesOfTwoStores(UndoPoolTest):
+    """history-separate: the library and its pool in two stores, with the
+    numbered states of papers up to 3.0.0b5. The link of a library step to
+    its pool's step keeps a number; the pool's store maps it once upgraded."""
+
+    def as_numbered(self):
+        "write the states of both histories as an earlier version did (000001.json, ...)"
+        import json
+        projects = [self.project(where)[0] for where in ('lib', 'pool')]
+        numbers = {}
+        for project in projects:
+            order = sorted(project.states(), key=lambda n: project.state(n)['time'])
+            numbers[project.id] = {n: i + 1 for i, n in enumerate(order)}
+        for project in projects:
+            ids = numbers[project.id]
+            for n, state in project.states().items():
+                state = dict(state, parent=ids.get(state.get('parent')))
+                if state.get('pools'):
+                    state['pools'] = {p: dict(link, state=numbers[p][link['state']])
+                                      for p, link in state['pools'].items()}
+                Path(project.states_dir, f'{ids[n]:06d}.json').write_text(json.dumps(state))
+                os.remove(project._path(n))
+            heads = json.loads(Path(project.dir, 'heads.json').read_text())
+            for head in heads.values():
+                head['state'] = ids[head['state']]
+                head['redo'] = [ids[r] for r in head.get('redo') or []]
+            Path(project.dir, 'heads.json').write_text(json.dumps(heads))
+
+    def check_undo_redo(self, first):
+        self.lib('config history-separate true')
+        self.lib('add ../new.bib')
+        lib, pool = (self.project(where)[0] for where in ('lib', 'pool'))
+        self.assertNotEqual(lib.store.root, pool.store.root)
+        self.as_numbered()
+        self.project(first)[0].states()  # this store is upgraded first
+        self.assertIn('pool ../pool: also undone', self.out('undo'))
+        self.assertNotIn('mine2022', self.entries('pool'))
+        self.assertIn('pool ../pool: also redone', self.out('redo'))
+        self.assertIn('mine2022', self.entries('pool'))
+
+    def test_library_upgraded_first(self):
+        self.check_undo_redo('lib')
+
+    def test_pool_upgraded_first(self):
+        self.check_undo_redo('pool')

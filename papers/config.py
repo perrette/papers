@@ -420,8 +420,8 @@ class MachineConfig:
     def __init__(self, file=None, data=None):
         self.file = file
         self.data = data if data is not None else {}
-        # pool names of earlier v3 builds (`pools.NAME PATH`): only read, so
-        # that their libraries keep finding their pool
+        # pool names of earlier v3 builds (`pools.NAME PATH`): not a setting,
+        # but written back by save, so that their libraries keep finding their pool
         self.pool_names = {}
         names = self.data.pop('pools', None)
         if isinstance(names, dict):
@@ -470,8 +470,10 @@ class MachineConfig:
     def save(self):
         os.makedirs(os.path.dirname(self.file), exist_ok=True)
         # through a temporary file (see write_atomic): a crash never leaves half a configuration
-        write_atomic(self.file, json.dumps({**self.data, 'version': CONFIG_VERSION},
-                                           sort_keys=True, indent=2, separators=(',', ': ')))
+        data = {**self.data, 'version': CONFIG_VERSION}
+        if self.pool_names:
+            data['pools'] = self.pool_names
+        write_atomic(self.file, json.dumps(data, sort_keys=True, indent=2, separators=(',', ': ')))
 
 
 def _read_earlier_v3(js, machine, file):
