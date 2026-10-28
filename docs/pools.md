@@ -82,7 +82,11 @@ side changed a field. A removed field counts as a change:
 | removed on both sides | removed |
 
 Conflicts are decided in the dialogue or with `--on-duplicate` (see
-[`papers pull`](#papers-pull) and [`papers push`](#papers-push)). An entry
+[`papers pull`](#papers-pull) and [`papers push`](#papers-push)). `keep`
+keeps the values of the side that receives the changes, and `update` takes
+those of the side they come from: in `pull`, `keep` keeps the library's
+values; in `push`, it keeps the pool's. `papers sync` runs a pull, then a
+push, each with this rule. An entry
 without origin copy has no base: each field that differs is a conflict. The
 first exchange of such an entry (e.g. the first `sync` with a library given
 with `--pool PATH` that has papers of the library) asks about these
