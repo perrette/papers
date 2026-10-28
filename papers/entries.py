@@ -111,10 +111,14 @@ def lowercase_fields(library):
     return library
 
 
-def parse_string(bibtex_str):
-    """Parse a BibTeX string; returns Library. Handles empty string."""
+def parse_string(bibtex_str, cache=None):
+    """Parse a BibTeX string; returns Library. Handles empty string. cache:
+    a papers.parsecache.Cache, whose pieces seen before are not parsed again"""
     if not bibtex_str or not bibtex_str.strip():
         return Library()
+    if cache is not None:
+        from papers.parsecache import parse  # papers.parsecache imports bibtexparser only
+        return lowercase_fields(parse(bibtex_str, cache))
     return lowercase_fields(bibtexparser.parse_string(bibtex_str))
 
 
