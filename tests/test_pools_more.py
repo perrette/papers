@@ -319,7 +319,7 @@ class TestPoolIdentifier(ConfigTest):
     def test_library_moved(self):
         import shutil
         self.papers('init pool')
-        self.papers('init lib --pool ../pool')
+        self.papers('init lib --pool pool')
         Path(self.path('new.bib')).write_text('@article{mine2022,\n author = {Mine, Me},\n title = {Mine},\n'
                                               ' year = {2022}\n}\n')
         self.papers('add ../new.bib', cwd=self.path('lib'))
@@ -343,7 +343,7 @@ class TestPoolIdentifier(ConfigTest):
 
     def test_file_named_after_the_pool_folder(self):
         self.papers('init sealevel')
-        self.papers('init lib --pool ../sealevel')
+        self.papers('init lib --pool sealevel')
         Path(self.path('new.bib')).write_text('@article{mine2022,\n title = {Mine},\n year = {2022}\n}\n')
         self.papers('add ../new.bib', cwd=self.path('lib'))
         self.papers('pull', cwd=self.path('lib'))

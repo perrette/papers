@@ -155,16 +155,19 @@ def _export_formats(value):
 # =============================================================================
 
 _EXCHANGE_HELP = '''what to do with an entry changed on both
-    sides since the last pull or push: ask (dialogue; the default in a terminal), keep (the
-    {receiving} values are kept), update (the {incoming} values are taken), skip (the entry is
+    sides since the last pull or push: ask (dialogue; the default in a terminal), keep (the values
+    of the side that receives the changes are kept: {keep}), update (the values of the side they
+    come from are taken: {update}), skip (the entry is
     left as it is, and comes again next time), error (stop before saving; the default
     without a terminal). Fields changed on one side only need no decision.'''
+_SYNC_KEEP = "the library's in a pull, the pool's in a push"
+_SYNC_UPDATE = "the pool's in a pull, the library's in a push"
 
 
-def _on_duplicate_option(p, receiving, incoming):
+def _on_duplicate_option(p, keep, update):
     "--on-duplicate of pull, push and sync (and of their list actions)"
     p.add_argument('--on-duplicate', choices=ON_DUPLICATE,
-        help=_EXCHANGE_HELP.format(receiving=receiving, incoming=incoming))
+        help=_EXCHANGE_HELP.format(keep=keep, update=update))
 
 
 def _export_options(p, format='--format', files='--files'):
@@ -239,7 +242,7 @@ def get_parser(config=None):
         help='output for programs (as git\'s): the standard output has only the entries that the command '
              'added, modified, renamed or removed, or found already in the library, one per line: "added KEY", '
              '"modified KEY", "renamed OLD NEW", "removed KEY", "existing KEY"; every other message goes to the '
-             'standard error')
+             'standard error (except the listing of papers list, which stays on the standard output)')
 
     cfg = argparse.ArgumentParser(add_help=False, parents=[loggingp])
     grp = cfg.add_argument_group('config')
@@ -282,15 +285,15 @@ def get_parser(config=None):
         'or built in), the options below override them, and later changes go through `papers config`.',
         parents=[loggingp, namefmt, keyfmt])
     initp.add_argument('dir', nargs='?', metavar='DIR',
-        help='directory of the library (default: the current directory); --bibtex and '
-             '--filesdir are relative to it')
+        help='directory of the library (default: the current directory); like DIR, the paths of '
+             '--bibtex, --filesdir and --pool are relative to the current directory')
     initp.add_argument('--bibtex', type=file_uri_to_path,
         help='bibtex file (default: papers.bib, or the first .bib file of the directory)')
     initp.add_argument('--filesdir', type=file_uri_to_path,
         help='files directory (default: files, or an existing pdfs/, papers/... folder)')
     initp.add_argument('--pool', metavar='PATH',
-        help='a shallow library that uses the library PATH as pool (a path relative to the library; '
-             'PATH must be a library without pool): `papers add` looks in PATH first and adds the new '
+        help='a shallow library that uses the library PATH as pool (PATH must be a library without '
+             'pool; a relative PATH is stored relative to the library): `papers add` looks in PATH first and adds the new '
              'entries and their files to it, and the library links to the files of PATH. Default: no '
              'pool, a self-contained library')
     initp.add_argument('--shallow', action='store_true',
@@ -313,7 +316,7 @@ def get_parser(config=None):
                     'settings and where each comes from (library, global or default); with KEY, '
                     'print its value; with KEY VALUE..., set it in the library configuration',
         epilog='settings: ' + ', '.join(SETTINGS) + '; with --global, also default (the default library: '
-               'PATH or none). pool PATH (a library without pool) makes the library shallow: it links to the '
+               'PATH or none). pool PATH (a library without pool, not the library itself) makes the library shallow: it links to the '
                'pool\'s copies of its PDFs, and its own copies are deleted; each PDF must be in the pool entry '
                'already, otherwise nothing changes and papers names the entries to push first (`papers push '
                '--pool PATH KEY...`). pool none makes a shallow library self-contained: the pool files that it '
@@ -411,7 +414,8 @@ def get_parser(config=None):
     grp.add_argument('--on-duplicate', choices=ON_DUPLICATE,
         help='''what to do when the added entry is in the library, with conflicting
         values or fields to add: ask (dialogue; the default in a terminal), keep (merge,
-        conflicts keep the library value), update (merge, conflicts take the added value),
+        conflicts keep the library's value: the library receives the entry), update (merge,
+        conflicts take the value of the added entry),
         skip (leave the library entry untouched, do not add), error (stop before saving;
         the default without a terminal)''')
     grp.add_argument('--no-check-duplicate', action='store_true',
@@ -782,7 +786,7 @@ def get_parser(config=None):
         help='with --push, --pull, --sync: the library to exchange with instead of the pool, as their --pool; '
              'with --fix-files: also look for the files of the broken links in the library PATH, as '
              '`papers file fix --pool PATH` (can be repeated)')
-    _on_duplicate_option(grp, receiving='receiving side', incoming='other side')
+    _on_duplicate_option(grp, keep=_SYNC_KEEP, update=_SYNC_UPDATE)
     grp.add_argument('--export', metavar='DIR',
         help='write the listed entries as a new library in DIR, as `papers export DIR KEY...`')
     _export_options(grp, format='--export-format', files='--export-files')
@@ -872,7 +876,7 @@ def get_parser(config=None):
     pullp.add_argument('--pool', metavar='PATH', help=_pool_help.format(what='pull from'))
     pullp.add_argument('--all', action='store_true',
         help='all entries of the library, and every entry of the pool that the library does not have is added')
-    _on_duplicate_option(pullp, receiving='library', incoming='pool')
+    _on_duplicate_option(pullp, keep="the library's", update="the pool's")
     pullp.add_argument('--check', action='store_true',
         help='only report: whether the pool changed since the last pull, and the entries changed in it')
     pullp.set_defaults(mode=None, yes=False)
@@ -893,7 +897,7 @@ def get_parser(config=None):
     pushp.add_argument('--all', action='store_true',
         help='push every entry of the library, adding to the pool those it does not have')
     pushp.add_argument('--pool', metavar='PATH', help=_pool_help.format(what='push to'))
-    _on_duplicate_option(pushp, receiving='pool', incoming='library')
+    _on_duplicate_option(pushp, keep="the pool's", update="the library's")
     pushp.set_defaults(mode=None, yes=False)
     _command(pushp, pushcmd, library=True)
 
@@ -908,7 +912,7 @@ def get_parser(config=None):
     syncp.add_argument('--all', action='store_true',
         help='also add to each side the entries it does not have (pull --all, push --all)')
     syncp.add_argument('--pool', metavar='PATH', help=_pool_help.format(what='sync with'))
-    _on_duplicate_option(syncp, receiving='receiving side', incoming='other side')
+    _on_duplicate_option(syncp, keep=_SYNC_KEEP, update=_SYNC_UPDATE)
     syncp.set_defaults(mode=None, yes=False)
     _command(syncp, synccmd, library=True)
 
@@ -1029,8 +1033,8 @@ def get_parser(config=None):
                  '(a conflict, as in pull); the files of the step go back as undo moves them')
         historyp.add_argument('--on-duplicate', choices=ON_DUPLICATE,
             help='with --revert: what to do with an entry that changed since the step too: ask (dialogue; the '
-                 'default in a terminal), keep (its values now are kept), update (the values before the step '
-                 'are taken), skip (the entry is left as it is), error (stop before saving; the default '
+                 'default in a terminal), keep (the values of the entry now are kept), update (the values '
+                 'before the step are taken), skip (the entry is left as it is), error (stop before saving; the default '
                  'without a terminal)')
         historyp.set_defaults(mode=None)
         historyp.add_argument('-n', type=int, default=20, help='number of steps to show (default: 20; 0: all)')

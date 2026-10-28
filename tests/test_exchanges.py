@@ -72,7 +72,7 @@ class TestAddPool(OtherTest):
 
     def test_shallow(self):
         # a shallow library: the entry taken from ../other goes to its pool too, with a copy of the PDF
-        self.papers('init shallow --pool ../pool')
+        self.papers('init shallow --pool pool')
         self.papers('config files copy', cwd=self.path('shallow'))
         out = self.add_jones('shallow')
         self.assertRegex(out, r'Added -> jones2019: .* \[from pool ../other; also added to pool ../pool\]')
@@ -87,7 +87,7 @@ class TestAddPool(OtherTest):
     def test_errors(self):
         with self.assertRaisesRegex(PapersExit, '--pool PATH and --no-pool exclude each other'):
             self.add_jones(options='--no-pool')
-        self.papers('init shallow --pool ../pool')
+        self.papers('init shallow --pool pool')
         with self.assertRaisesRegex(PapersExit, r'\S+/shallow has a pool itself \(../pool\): give a library '
                                                 'without pool'):
             self.papers('add --pool ../shallow --doi 10.1000/jones', cwd=self.path('lib'))
@@ -105,7 +105,7 @@ class TestShallowWithOther(OtherTest):
 
     def setUp(self):
         super().setUp()
-        self.papers('init shallow --pool ../pool')
+        self.papers('init shallow --pool pool')
         self.papers('config files copy', cwd=self.path('shallow'))
 
     def shallow(self, cmd):
@@ -147,7 +147,7 @@ class TestShallowWithOther(OtherTest):
         return Origin.load(self.path(where, ORIGIN_DIR))
 
     def test_other_must_have_no_pool(self):
-        self.papers('init third --pool ../other')
+        self.papers('init third --pool other')
         for cmd in ['pull --all', 'push --all', 'sync --all', 'pull --check']:
             with self.assertRaisesRegex(PapersExit, 'has a pool itself'):
                 self.shallow(cmd + ' --pool ../third')

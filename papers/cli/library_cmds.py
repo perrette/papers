@@ -10,7 +10,7 @@ from papers.config import (CONFIG_FILE_LOCAL, Config, DEFAULT_LIBRARY, LIBRARY_O
                            REMOVED_SETTINGS, library_config_file,
                            SETTINGS, format_value, json_get, parse_value, pool_setting, short_home)
 from papers.files import broken_links, delete_files, is_inside
-from papers.install import DefaultAsker, InputAsker, apply_install, resolve_install
+from papers.install import RESET_WORDS, DefaultAsker, InputAsker, apply_install, resolve_install
 from papers.library import convert_file_links, find_config, get_biblio
 from papers.migrate import migrate_folders, migrate_library_config, migrate_v2_global
 from papers.pools import Exchange, Pools, library_without_pool
@@ -48,15 +48,22 @@ def initcmd(parser, o, config):
             raise PapersExit('--shallow is --pool with the default library: give one of them')
         if machine.default is None:
             raise PapersExit(NO_DEFAULT)
-        o.pool = machine.default
+        o.pool = machine.default_path()
     if o.is_global and o.pool not in (None, NO_POOL):
         raise PapersExit('--global: the default library has no pool (no --pool or --shallow)')
     libdir = os.path.abspath(o.dir or '.')
+    # the paths of the command line are relative to the current directory, not to DIR
+    for name in ('bibtex', 'filesdir'):
+        value = getattr(o, name)
+        if value and value.lower() not in RESET_WORDS:
+            setattr(o, name, os.path.abspath(value))
     if o.pool not in (None, NO_POOL):
-        path = os.path.abspath(os.path.join(libdir, os.path.expanduser(o.pool)))
+        given = machine.default if o.shallow else o.pool
+        path = os.path.abspath(os.path.expanduser(o.pool))
         if os.path.realpath(path) == os.path.realpath(libdir):
-            raise PapersExit(f'--pool {o.pool}: this is the library itself (nothing was changed)')
-        library_without_pool(path, machine, f'--pool {o.pool}:')
+            raise PapersExit(f'--pool {given}: this is the library itself (nothing was changed)')
+        library_without_pool(path, machine, f'--pool {given}:')
+        o.pool = pool_setting(o.pool, libdir, base=os.getcwd())  # as the pool setting writes it
     if o.dir is None:
         _initcmd(parser, o, config)
     else:
@@ -407,6 +414,8 @@ def _set_pool(o, config):
         changes = {'pool': pool_setting(value, str(config.configdir), base=os.getcwd())}
     for key, value in changes.items():
         new.unset(key) if value is None else new.set(key, value)
+    if new.is_pool_library():
+        raise PapersExit(f'pool {o.values[0]}: this is the library itself (nothing was changed)')
     if new.has_pool():
         library_without_pool(new.pool_path(), config.machine, f'pool {o.values[0]}:')
 
@@ -513,6 +522,8 @@ def machine_configcmd(parser, o, machine, name):
             value = short_home(path)
     else:
         value = _parse_setting(name, o.values)
+        if name == 'history-dir':
+            value = short_home(os.path.abspath(os.path.expanduser(value)))  # relative to the current directory
     machine.set(name, value)
     if papers.config.DRYRUN:
         print(f"DRYRUN: {machine.file} not saved")

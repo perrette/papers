@@ -68,7 +68,7 @@ class TestInit(ConfigTest):
     def test_pool_that_is_not_a_library(self):
         os.makedirs(self.path('pool'))
         with self.assertRaisesRegex(PapersExit, r'not a library \(no \.papers/config\.json\)'):
-            self.papers('init lib --pool ../pool')
+            self.papers('init lib --pool pool')
 
 
 class V2LibraryTest(FileTest):

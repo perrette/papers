@@ -19,7 +19,8 @@ papers init [DIR] --pool PATH
 ```
 
 creates a shallow library that uses the library PATH as pool. PATH must be
-an existing library without pool of its own (a self-contained library):
+an existing library without pool of its own (a self-contained library),
+and not the library itself:
 `papers init --pool PATH` and `papers config pool PATH` stop with an error
 otherwise, and nothing is created or changed:
 
@@ -28,10 +29,12 @@ $ papers init ~/projects/x --pool ~/projects/thesis
 papers: error: --pool ~/projects/thesis: ~/projects/thesis has a pool itself (~/Documents/papers/sealevel): give a library without pool (nothing was changed)
 ```
 
-The pool path is written in the configuration relative to the library when
-it is given relative, or when it is under the library (e.g.
-`../sealevel`); another path is written with `~` for the home directory,
-or absolute. `papers init --shallow` uses the default library as pool (see
+PATH is relative to the current directory, as DIR is: `papers init
+projects/x --pool projects/thesis`, run from the home directory, makes
+`~/projects/thesis` the pool of `~/projects/x`. The pool path is written
+in the configuration relative to the library when it is given relative, or
+when it is under the library (here `../thesis`); another path is written
+with `~` for the home directory, or absolute. `papers init --shallow` uses the default library as pool (see
 [A global shared library](global-library.md)).
 
 A shallow library has no files directory of its own: `papers init --pool

@@ -226,6 +226,11 @@ entry across these can match it by DOI). Every other message
 (questions, warnings, the files moved) goes to the standard error. An error
 exits with status 1.
 
+`papers list` without action prints no such lines: its listing is its
+output, and goes to the standard output with `--porcelain` too (`papers
+list -K --porcelain` prints the keys). With an action (`--add-tag`,
+`--edit`...), it prints the lines of the command the action stands for.
+
 ## Actions on the listed entries
 
 `papers list` can run a command on the entries it lists: list the entries,

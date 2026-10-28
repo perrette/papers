@@ -41,7 +41,7 @@ class UndoPoolTest(ConfigTest):
     def setUp(self):
         super().setUp()
         self.papers('init pool')
-        self.papers('init lib --pool ../pool')
+        self.papers('init lib --pool pool')
         if self.auto_push:
             self.lib('config auto-push true')
         Path(self.path('new.bib')).write_text(NEW_BIB)

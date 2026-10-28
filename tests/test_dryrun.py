@@ -45,7 +45,7 @@ class TestShallowDryRun(DryRunTest):
     def setUp(self):
         super().setUp()
         self.papers('init pool')
-        self.papers('init lib --pool ../pool')
+        self.papers('init lib --pool pool')
         Path(self.path('new.bib')).write_text(NEW_BIB)
         Path(self.path('mine.pdf')).write_text('mine')
 

@@ -2,6 +2,7 @@
 export, status, shallow libraries, and the conversions of `papers config
 pool`"""
 import json
+import re
 import os
 import shutil
 import unittest
@@ -230,7 +231,7 @@ class TestResolution(PoolTest):
             with self.assertRaisesRegex(PapersExit, missing):
                 self.lib(cmd)
         with self.assertRaisesRegex(PapersExit, missing):
-            self.papers('init other --pool ../no/such/pool')
+            self.papers('init other --pool no/such/pool')
         self.assertFalse(os.path.exists(self.path('no')))
         self.assertFalse(os.path.exists(self.path('other')))
         self.assertEqual(self.json('lib'), lib_json)
@@ -1083,7 +1084,7 @@ class TestStatus(PoolTest):
         elif config:
             self.lib(config)
         self.take_smith()
-        self.papers('init b' + (' --pool ../pool' if shallow else ''))
+        self.papers('init b' + (' --pool pool' if shallow else ''))
         option = '' if shallow else ' --pool ../pool'
         b = lambda cmd: self.papers(cmd + (option if cmd.split()[0] in EXCHANGES else ''), cwd=self.path('b'))
         if config and not shallow:
@@ -1129,7 +1130,7 @@ class TestStatus(PoolTest):
 
     def test_after_add_to_the_pool(self):
         # a shallow library: add places the entry in the pool
-        self.papers('init other --pool ../pool')
+        self.papers('init other --pool pool')
         Path(self.path('new.bib')).write_text(NEW_BIB)
         Path(self.path('mine.pdf')).write_text('mine')
         self.papers('add ../new.bib', cwd=self.path('other'))
@@ -1307,11 +1308,36 @@ class TestConfigPoolSelfContained(OwnFilesTest):
         os.makedirs(self.path('notalib'))
         with self.assertRaisesRegex(PapersExit, 'is not a library'):
             self.lib('config pool ../notalib -y')
-        self.papers('init shallow --pool ../pool')
+        self.papers('init shallow --pool pool')
         with self.assertRaisesRegex(PapersExit, r'pool ../shallow: \S+/shallow has a pool itself \(../pool\): '
                                                 r'give a library without pool \(nothing was changed\)'):
             self.lib('config pool ../shallow -y')
         self.assertEqual(self.json('lib'), lib_json)
+
+    def test_config_pool_not_the_library_itself(self):
+        lib_json = self.json('lib')
+        for pool in ('.', self.path('lib'), '../lib'):
+            with self.subTest(pool=pool):
+                with self.assertRaisesRegex(PapersExit, f'pool {re.escape(pool)}: this is the library itself '
+                                                        r'\(nothing was changed\)'):
+                    self.lib(f'config pool {pool} -y')
+        self.assertEqual(self.json('lib'), lib_json)
+        # a configuration that has it already is read as no pool
+        Path(self.path('lib', CONFIG_FILE_LOCAL)).write_text(json.dumps({**lib_json, 'pool': '.'}))
+        self.assertNotIn('pool', self.out('status'))
+
+    def test_configured_pool_that_takes_a_pool(self):
+        # the pool takes a pool after the setting was made: the exchanges stop, as with --pool PATH
+        self.papers('init other --pool pool')
+        self.papers('init top')
+        pool_json = self.json('pool')
+        pool_json['pool'] = '../top'
+        Path(self.path('pool', CONFIG_FILE_LOCAL)).write_text(json.dumps(pool_json))
+        for cmd in ('pull', 'push', 'sync'):
+            with self.subTest(cmd=cmd):
+                with self.assertRaisesRegex(PapersExit, r'\.\./pool has a pool itself \(\.\./top\)'):
+                    self.papers(cmd, cwd=self.path('other'))
+        self.papers('status', cwd=self.path('other'))  # a command that only reads the pool goes on
 
     def test_local_is_gone(self):
         with self.assertRaisesRegex(PapersExit, 'unknown setting: local'):
@@ -1320,7 +1346,7 @@ class TestConfigPoolSelfContained(OwnFilesTest):
             self.papers('init other --local')
 
     def test_init_shallow(self):
-        out = self.papers('init other --pool ../pool', sp_cmd='check_output')
+        out = self.papers('init other --pool pool', sp_cmd='check_output')
         self.assertIn('* files:   in the pool (shallow library)\n* pool:    ../pool\n', out)
         self.assertEqual(self.json('other')['pool'], '../pool')
         self.assertNotIn('local', self.json('other'))
@@ -1330,20 +1356,20 @@ class TestConfigPoolSelfContained(OwnFilesTest):
         self.assertEqual(self.json('fourth')['pool'], 'none')
 
     def test_init_pool_must_be_a_library_without_pool(self):
-        for pool, error in [('../missing', 'does not exist'), ('../lib/files', 'is not a library'),
-                            ('.', 'this is the library itself')]:
+        for pool, error in [('missing', 'does not exist'), ('lib/files', 'is not a library'),
+                            ('other', 'this is the library itself')]:
             with self.subTest(pool=pool):
                 with self.assertRaisesRegex(PapersExit, error):
                     self.papers(f'init other --pool {pool}')
                 self.assertFalse(os.path.exists(self.path('other')))  # nothing created
-        self.papers('init shallow --pool ../pool')
+        self.papers('init shallow --pool pool')
         with self.assertRaisesRegex(PapersExit, 'has a pool itself'):
-            self.papers('init other --pool ../shallow')
+            self.papers('init other --pool shallow')
         self.assertFalse(os.path.exists(self.path('other')))
 
     def test_init_shallow_has_no_files_directory(self):
         # the files go to the pool: the files directory is created when needed
-        self.papers('init other --pool ../pool')
+        self.papers('init other --pool pool')
         self.assertFalse(os.path.exists(self.path('other', 'files')))
         out = self.papers('status', cwd=self.path('other'), sp_cmd='check_output')
         self.assertIn(f'* files:  in the pool, {self.path("pool", "files")}\n', out)

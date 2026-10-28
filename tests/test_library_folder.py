@@ -47,13 +47,13 @@ class LibraryFolderTest(ConfigTest):
 
     def test_origin_in_library_folder(self):
         self.papers('init pool')
-        self.papers('init lib --pool ../pool --bibtex bib/papers.bib')
+        self.papers('init lib --pool pool --bibtex lib/bib/papers.bib')
         self.lib('add ../new.bib')
         self.assertTrue(os.listdir(self.path('lib', ORIGIN_DIR)))
         self.assertFalse(os.path.exists(self.path('lib', 'bib', '.papers')))
 
     def test_distinct_in_library_folder(self):
-        self.papers('init lib --bibtex bib/papers.bib')
+        self.papers('init lib --bibtex lib/bib/papers.bib')
         self.lib('add ../new.bib')
         self.lib('add ../dup.bib --on-duplicate ask', answers=['n'])
         self.assertTrue(os.path.isfile(self.path('lib', DISTINCT_FILE)))
@@ -65,7 +65,7 @@ class LibraryFolderTest(ConfigTest):
         self.assertTrue(os.path.isfile(self.path('lib', DISTINCT_FILE)))
 
     def test_move_from_bibtex_folder(self):
-        self.papers('init lib --bibtex bib/papers.bib')
+        self.papers('init lib --bibtex lib/bib/papers.bib')
         old = self.path('lib', 'bib', '.papers')
         os.makedirs(os.path.join(old, 'origin'))
         Path(old, 'distinct.json').write_text(DISTINCT)
@@ -79,7 +79,7 @@ class LibraryFolderTest(ConfigTest):
         self.assertFalse(os.path.exists(os.path.join(old, 'origin')))
 
     def test_no_move_over_existing_file(self):
-        self.papers('init lib --bibtex bib/papers.bib')
+        self.papers('init lib --bibtex lib/bib/papers.bib')
         os.makedirs(self.path('lib', 'bib', '.papers'))
         Path(self.path('lib', 'bib', DISTINCT_FILE)).write_text('{"distinct": [[{}, {}]]}\n')
         Path(self.path('lib', DISTINCT_FILE)).write_text(DISTINCT)
@@ -88,7 +88,7 @@ class LibraryFolderTest(ConfigTest):
         self.assertTrue(os.path.exists(self.path('lib', 'bib', DISTINCT_FILE)))
 
     def test_undo_across_the_move(self):
-        self.papers('init lib --bibtex bib/papers.bib')
+        self.papers('init lib --bibtex lib/bib/papers.bib')
         self.lib('add ../new.bib')
         # a step recorded by an earlier build: distinct.json next to the bibtex
         bibdir = self.path('lib', 'bib')
