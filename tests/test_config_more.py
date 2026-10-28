@@ -56,6 +56,18 @@ class TestMachineConfig(unittest.TestCase):
         self.assertNotIn('pools', machine.data)
         self.assertIsNone(machine.default)  # not the default library
 
+    def test_pool_names_kept_on_save(self):
+        # a save of the machine configuration keeps the names: an unsaved
+        # earlier-v3 library still finds its pool afterwards
+        with open(self.file, 'w') as f:
+            json.dump({'pools': {'x': '/b'}, 'editor': 'vi'}, f)
+        machine = MachineConfig.load(self.file)
+        machine.set('editor', 'vim')
+        machine.save()
+        self.assertEqual(MachineConfig.load(self.file).pool_names, {'x': '/b'})
+        MachineConfig(self.file, {}).save()  # no names: none written
+        self.assertNotIn('pools', json.load(open(self.file)))
+
     def test_default_library(self):
         machine = MachineConfig(self.file, {'default': '~/lib'})
         self.assertEqual(machine.default, '~/lib')
