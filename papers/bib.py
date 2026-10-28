@@ -798,6 +798,18 @@ class Biblio:
         self.relative_to = relative_to
         return updates
 
+    def relative_links(self):
+        """the absolute links of a library with relative links rewritten
+        relative to the bibtex directory (a link to another drive on Windows
+        stays absolute). Return the [(old, new)] file fields that changed."""
+        updates = []
+        for e in self.entries:
+            if any(os.path.isabs(f) for f in parse_file(get_entry_val(e, 'file', ''))):
+                update = update_file_path(e, self.relative_to, self.relative_to)
+                if update is not None:
+                    updates.append(update)
+        return updates
+
 
 
     def check_duplicates(self, on_duplicate='error'):

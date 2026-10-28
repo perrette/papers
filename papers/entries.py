@@ -320,6 +320,14 @@ def update_file_path(entry, from_relative_to, to_relative_to, check=False):
             return (old_file, new_file)
 
 
+def _relative_link(path, relative_to):
+    "path relative to `relative_to`, or absolute when it cannot be (another drive on Windows)"
+    try:
+        return os.path.normpath(os.path.relpath(path, relative_to))
+    except ValueError:
+        return os.path.abspath(path)
+
+
 def format_file(files, relative_to=None):
     # make sure the path is right
     if relative_to is not None:
@@ -327,7 +335,7 @@ def format_file(files, relative_to=None):
         if relative_to == os.path.sep:
             files = [os.path.abspath(p) for p in files]
         else:
-            files = [os.path.normpath(os.path.relpath(p, relative_to)) for p in files]
+            files = [_relative_link(p, relative_to) for p in files]
         msg += f" => {', '.join(files)}"
         logger.debug(msg)
     return ';'.join([_format_file(f) for f in files])

@@ -239,6 +239,12 @@ so that a library folder can be moved or shared with its files. Set
 `papers config paths absolute` to store absolute paths instead, e.g. for a
 bibtex that links to files in a central folder.
 
+papers rewrites the links to the setting when it reads the bibtex: with
+`absolute`, all links; with `relative`, the absolute links (for example
+written by another program). The bibtex is written with them at the next
+command that saves it. On Windows, a link to a file on another drive than the
+bibtex stays absolute.
+
 The options `--relative-paths` and `--absolute-paths` of the commands still
 override the setting for one command, with a deprecation warning.
 
