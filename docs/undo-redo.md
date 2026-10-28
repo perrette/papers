@@ -66,6 +66,14 @@ kept):
 Proceed? [y/N]
 ```
 
+`papers history` shows the size of the files each step keeps
+(`[3.2 MB of deleted files]`). `papers history --drop-files N` removes from
+the history the files that step N deleted, and `--drop-files PATH` the file
+deleted from PATH (by any step): they go to the trash of the system, the
+steps stay, and undo says the files are no longer in the history. `papers
+history --remove` removes the whole history of the library. Both ask
+first (`-y` does not).
+
 If you would rather not keep deleted files at all (you have your own
 backups, or no space to spare): `papers config --global keep-deleted-files
 false`. Deleted files then go straight to the trash of the system, and undo

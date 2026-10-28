@@ -498,6 +498,60 @@ def restore(config, n=None):
     return project, target, lines
 
 
+# the files kept by the history
+# =============================
+
+def kept_size(project, n):
+    "bytes of the files that the state n keeps (the files its command deleted, still in the history)"
+    total = 0
+    for digest in project.state(n).get('deleted') or []:
+        path = project.store.file_object(digest)
+        if path:
+            total += os.path.getsize(path)
+    return total
+
+
+def files_to_drop(config, project, target):
+    """the files kept by the history that `target` names: a step number (the
+    files its command deleted), or a path (the file deleted from that place,
+    by any step). Return {checksum: (path before the deletion, bytes)}."""
+    found = {}
+    states = project.states()
+    if target.isdigit():
+        if int(target) not in states:
+            raise PapersExit(f'no step {target} in the history of the library (see `papers history`)')
+        chosen, path = [int(target)], None
+    else:
+        chosen, path = list(states), os.path.abspath(os.path.expanduser(target))
+    for n in chosen:
+        for op in _absolute_ops(states[n].get('ops') or [], config):
+            digest = op.get('checksum')
+            if op['op'] != 'trashed' or digest not in (states[n].get('deleted') or []):
+                continue
+            if path is not None and os.path.normpath(op['src']) != os.path.normpath(path):
+                continue
+            stored = project.store.file_object(digest)
+            if stored:
+                found[digest] = (op['src'], os.path.getsize(stored))
+    return found
+
+
+def drop_files(project, digests):
+    """remove files from the history: no state refers to them any more (their
+    steps stay: undo says they are no longer in the history), and they go to
+    the trash of the system, unless another library of the store keeps them"""
+    for n, state in project.states().items():
+        kept = [d for d in state.get('deleted') or [] if d not in digests]
+        if kept != (state.get('deleted') or []):
+            project.update(n, dict(state, deleted=kept))
+    used = {d for id in project.store.project_ids() for s in project.store.project(id).states().values()
+            for d in s.get('deleted') or []}
+    for digest in digests:
+        path = project.store.file_object(digest)
+        if path and digest not in used:
+            journal.to_system_trash(path)
+
+
 # the old backups
 # ===============
 
