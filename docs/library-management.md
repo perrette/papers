@@ -165,7 +165,7 @@ after 30 seconds with an error; nothing is written. Commands that only read
 (`list` without an action, `status`, `export`, `file check`, `history`) do
 not wait.
 
-The holder rewrites the lock every 2 seconds. A lock that nobody rewrote
+The holder touches the lock every 2 seconds. A lock that nobody touched
 for 10 seconds, or that names a process of this computer that no longer
 exists (e.g. after a crash), is stale: the next command takes it over. A
 command that lost its lock (e.g. the computer was asleep) stops before it

@@ -108,11 +108,34 @@ class TestLock(LockTest):
     def test_refresh(self):
         with patch('papers.lock.REFRESH', 0.05):
             papers.lock.acquire(self.config)
-            before = os.stat(self.lockfile).st_ino, os.stat(self.lockfile).st_mtime_ns
+            ino, before = os.stat(self.lockfile).st_ino, os.stat(self.lockfile).st_mtime_ns
             time.sleep(0.5)
-            after = os.stat(self.lockfile).st_ino, os.stat(self.lockfile).st_mtime_ns
-        self.assertNotEqual(before, after)
+            after = os.stat(self.lockfile).st_mtime_ns
+        self.assertNotEqual(before, after)  # touched
+        self.assertEqual(os.stat(self.lockfile).st_ino, ino)  # not rewritten
         papers.lock.check(self.config)
+
+    def test_take_over_only_the_stale_file(self):
+        # another waiting command took the stale lock over first: its fresh lock stays
+        self.other_lock(host='elsewhere', pid=1)
+        stale = papers.lock._signature(self.lockfile)
+        os.remove(self.lockfile)
+        self.other_lock(host='faster', pid=2)
+        papers.lock._take_over(self.lockfile, stale)
+        self.assertEqual(json.loads(Path(self.lockfile).read_text())['host'], 'faster')
+        self.assertEqual([f for f in os.listdir(os.path.dirname(self.lockfile)) if 'stale' in f], [])
+
+    def test_take_over(self):
+        self.other_lock(host='elsewhere', pid=1)
+        papers.lock._take_over(self.lockfile, papers.lock._signature(self.lockfile))
+        self.assertFalse(os.path.exists(self.lockfile))
+
+    def test_refresh_does_not_rewrite(self):
+        with patch('papers.lock.REFRESH', 0.05):
+            papers.lock.acquire(self.config)
+            self.other_lock()  # taken over: the refresh of this process leaves it alone
+            time.sleep(0.3)
+        self.assertEqual(json.loads(Path(self.lockfile).read_text())['token'], 'other')
 
     def test_lost(self):
         papers.lock.acquire(self.config)
