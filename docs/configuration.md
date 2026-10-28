@@ -14,7 +14,6 @@ $> papers init
 created the library ~/projects/sealevel
 * bibtex:  papers.bib
 * files:   files (the files directory of the library)
-* history: undo and redo (`papers history`)
 `papers config` lists and sets the settings
 ```
 
@@ -50,8 +49,8 @@ configuration sets one (see [A global shared library](global-library.md)),
 and otherwise fail: `no library found here: papers init`.
 
 Type `papers status` to see which library a command acts on: where its
-bibtex and its files are, its pool and its history. `papers status -v` also
-shows where the history is, the configuration file, the cache directory and
+bibtex and its files are, and how it stands with its pool. `papers status -v` also
+shows the number of steps of its history, the configuration file, the cache directory and
 the version. `papers config` lists the settings and where each one comes from.
 
 ## Settings
@@ -189,10 +188,23 @@ papers init --shallow          # shallow: the pool is the default library
 
 `papers status` shows where the files of the library are: its files
 directory (self-contained library), or in the pool (shallow library). For
-a shallow library, it also shows the pool: its path, whether it is
-missing or is not a library, whether it changed since the last exchange
-with it, and the `auto-push` setting, e.g.
-`* pool:   ../sealevel (up to date, auto-push: off)`.
+a shallow library, it also shows the pool: its path, and how the library
+stands with it:
+
+- `in sync`: the entries exchanged with the pool are the same on both
+  sides;
+- `pool changed`: the pool has changes to take, and the last line of
+  `papers status` says how: `` `papers pull --dry-run` shows the changes,
+  `papers pull` takes them ``;
+- `library changed`: the library has changes to send (`papers push`), e.g.
+  made in an editor, or with `auto-push` off;
+- `both changed`: both (`papers sync`);
+- `not pulled from yet`, `missing`, `not a library`.
+
+papers compares the entries, not only the files: a pool that changed in
+entries the library does not have, or the same change made on both sides,
+is in sync. `papers status -v` also shows the number of steps of the
+history of the library (see [Undo and redo](undo-redo.md)).
 
 ## Relative versus absolute paths
 

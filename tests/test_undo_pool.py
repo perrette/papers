@@ -136,7 +136,7 @@ class UndoInLibrary:
         self.assertEqual(self.record('mine2022').entry['keywords'], 'a')
         # the pool still has the tag: it changed since the restored state
         self.assertEqual(self.keywords('mine2022', 'pool'), 'a, foo')
-        self.assertIn('(changed since last pull or push, auto-push: ', self.out('status'))
+        self.assertIn('../pool (pool changed)', self.out('status'))
         self.assertIn('mine2022: changed in pool ../pool: keywords\n', self.out('pull --check') + '\n')
 
         # the push does not send the undone state back to the pool
@@ -146,7 +146,7 @@ class UndoInLibrary:
         out = self.out('pull')
         self.assertIn('Modified -> mine2022', out)
         self.assertEqual(self.keywords('mine2022'), 'a, foo')
-        self.assertIn('(up to date, auto-push: ', self.out('status'))
+        self.assertIn('../pool (in sync)', self.out('status'))
 
     def test_undo_after_pull(self):
         self.lib('add ../new.bib')
@@ -161,7 +161,7 @@ class UndoInLibrary:
         self.assertEqual(self.keywords('mine2022'), 'a')
         self.assertEqual(self.origin_files(), origin)
         self.assertEqual(self.record('mine2022').entry['keywords'], 'a')
-        self.assertIn('(changed since last pull or push, auto-push: ', self.out('status'))
+        self.assertIn('../pool (pool changed)', self.out('status'))
 
         # the push does not revert the pool's change
         self.assertNotIn('Modified', self.out('push'))
@@ -208,11 +208,11 @@ class TestUndoPool(UndoPoolTest, UndoInLibrary):
         self.assertEqual(self.keywords('mine2022', 'pool'), 'a')
         # the record has the newer version: the pool changed relative to it
         self.assertEqual(self.record('mine2022').entry['keywords'], 'a, foo')
-        self.assertIn('(changed since last pull or push, auto-push: ', self.out('status'))
+        self.assertIn('../pool (pool changed)', self.out('status'))
         # the library did not change the entry since: the pull takes the older value
         self.assertIn('Modified -> mine2022', self.out('pull'))
         self.assertEqual(self.keywords('mine2022'), 'a')
-        self.assertIn('(up to date, auto-push: ', self.out('status'))
+        self.assertIn('../pool (in sync)', self.out('status'))
         self.assertNotIn('Modified', self.out('push'))
         self.assertEqual(self.keywords('mine2022', 'pool'), 'a')
 

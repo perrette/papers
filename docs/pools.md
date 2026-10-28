@@ -35,9 +35,11 @@ What a library does with its pool, or with the library of `--pool PATH`:
 - `papers push` updates the entries shared with the pool, and adds the
   entries named, or all of them with `--all`;
 - `papers sync` does both;
-- `papers status` (pool of a shallow library) and `papers pull --check`
-  tell whether the pool changed since the last exchange with it: `up to
-  date`, or `changed since last pull or push`;
+- `papers status` (shallow library) tells how the library stands with its
+  pool: `in sync`, `pool changed`, `library changed` or `both changed`, and
+  which command shows and exchanges the changes (see
+  [Configuration](configuration.md#pools));
+  `papers pull --check` lists the entries that the pool changed;
 - `papers file fix` relinks the broken links to the files of the pool entry
   of the same paper (`papers file fix --pool PATH` also looks in PATH, which
   may have a pool itself; nothing changes in PATH and no origin copy is

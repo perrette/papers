@@ -105,7 +105,7 @@ def _initcmd(parser, o, config):
 
 def init_summary(config):
     """what `papers init` prints: the library created, its bibtex, where its
-    files go, its pool and its history"""
+    files go and its pool"""
     lines = [f'created the library {short_home(str(config.configdir))}',
              f'* bibtex:  {_show(config.bibtex) if config.bibtex else "none"}']
     if not config.has_pool():
@@ -115,8 +115,7 @@ def init_summary(config):
     else:
         lines.extend(['* files:   in the pool (shallow library)',
                       f'* pool:    {config.pool_label()}'])
-    return lines + ['* history: undo and redo (`papers history`)',
-                    '`papers config` lists and sets the settings']
+    return lines + ['`papers config` lists and sets the settings']
 
 
 def installcmd(parser, o, config):
