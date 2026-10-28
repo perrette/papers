@@ -229,16 +229,17 @@ def start(config, cmd):
         logger.debug(f'the library before the command is not kept: {error}')
 
 
-def record(config, message=None):
+def record(config, message=None, ops=None):
     """after the save of the library: its state, with the file operations of
-    the command; return the number of the state, or None"""
+    the command (ops: those given, instead of those of the journal); return
+    the number of the state, or None"""
     project, place = project_of(config)
     if project is None or papers.config.DRYRUN:
         return None
     head = project.head(place)
     # the library had no state (e.g. its bibtex created by the command): the command is its first state
     parent = head['state'] if head else None
-    ops = _relative_ops(journal.take(config.bibtex), config)
+    ops = _relative_ops(journal.take(config.bibtex) if ops is None else ops, config)
     snap = _snapshot(config, project.store)
     previous = project.state(parent) if parent is not None else None
     if previous and not ops and previous['bibtex'] == snap['bibtex'] and previous.get('files') == snap['files']:
