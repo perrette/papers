@@ -16,7 +16,8 @@ is stale:
 To take it over, the waiting command renames the stale file to a name of
 its own (one step: two waiting commands cannot both get it) and checks that
 the file it renamed is the one it found stale; a fresh lock taken by a
-faster command meanwhile is put back.
+faster command meanwhile is put back (a hard link, or a copy with the same
+token on a file system without hard links).
 
 Before writing the library, the holder checks that the lock still has its
 token (see `check`): a holder that could not refresh it in time (e.g. the
@@ -97,7 +98,8 @@ def _signature(path):
 def _take_over(path, signature):
     """remove the stale lock file whose signature is `signature`: renamed
     first (one step), then removed if it is that file; a fresh lock found
-    there instead is put back (unless another lock was created meanwhile)"""
+    there instead is put back (unless another lock was created meanwhile),
+    as a copy on a file system without hard links"""
     aside = f'{path}.{uuid.uuid4().hex}.stale'
     try:
         os.rename(path, aside)
@@ -108,8 +110,14 @@ def _take_over(path, signature):
         return
     try:
         os.link(aside, path)  # put back: only if no lock was created meanwhile
-    except OSError:
-        pass
+    except FileExistsError:
+        pass  # its holder finds another token at its check and stops
+    except OSError:  # no hard links (some network or FAT drives): put back as a copy, same token
+        content = _read(aside)
+        if not content:  # still being written by its holder
+            time.sleep(POLL)
+            content = _read(aside)
+        _create(path, content or {})
     os.remove(aside)
 
 
