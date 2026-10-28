@@ -190,10 +190,13 @@ def follow_renamed_keys(biblio, config):
     renamed = biblio.renamed_keys()
     if not renamed:
         return
+    for old, new in renamed:
+        biblio.rekey_references(old, new)
+    if getattr(biblio, 'origin_rekeyed', False):  # by the exchange of the command (save_entries)
+        return
     from papers.pools import Origin  # papers.pools imports this module
     origin = Origin.for_library(config.libdir)
     for old, new in renamed:
-        biblio.rekey_references(old, new)
         origin.rekey(old, new)
     origin.save()
 

@@ -464,7 +464,7 @@ Tests: tests/test_pools.py::TestPull::test_key_changed,
 tests/test_pools.py::TestPull::test_rename_onto_a_leftover_record,
 tests/test_auto_push.py::TestAutoPush::test_edit_key,
 tests/test_spec_exchange.py::TestRenamedKeys::test_replaced_in_every_pool,
-tests/test_spec_exchange.py::TestRenamedKeys::test_shallow_library (expected failure: a bug, see the test)
+tests/test_spec_exchange.py::TestRenamedKeys::test_shallow_library
 
 ### 3.8 Legacy file `.papers/origin.bib` (contract for reading)
 

@@ -5,7 +5,6 @@ import json
 import os
 import re
 import shutil
-import unittest
 from pathlib import Path
 from unittest.mock import patch
 
@@ -463,12 +462,8 @@ class TestRenamedKeys(SpecTest):
                 record = origin.get(self.entry('smith2020'), pool)
                 self.assertEqual((record.key, record.pool_key), ('smith2020', pool_key))
 
-    @unittest.expectedFailure
     def test_shallow_library(self):
         "exchange.md 3.7: in a shallow library too, the record follows the renamed key"
-        # bug: save_entries (papers/cli/common.py) rekeys the records and saves them, then savebib
-        # (follow_renamed_keys, papers/library.py) rekeys them again on disk: the old key has no
-        # record any more, so Origin.rekey drops the record under the new key as a leftover
         self.lib('config pool ../pool -y')
         self.take_smith()
         self.lib('edit smith2020climate --key smith2020')

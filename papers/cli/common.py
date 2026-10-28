@@ -333,6 +333,7 @@ def save_entries(config, biblio, exchange=None):
         exchange = Exchange(config, biblio)
     for old, new in biblio.renamed_keys():  # the records follow the key, before the push looks them up
         exchange.origin.rekey(old, new)
+    biblio.origin_rekeyed = True  # not again at save: see follow_renamed_keys
     notes = push_notes(push_changed(exchange))
     save_exchange(exchange)
     return notes
