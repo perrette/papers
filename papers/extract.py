@@ -51,7 +51,7 @@ def readpdf_poputils(pdf, first=None, last=None, pages=None):
         if first is not None: cmd.extend(['-f', str(first)])
         if last is not None: cmd.extend(['-l', str(last)])
         cmd.extend([pdf, tmptxt])
-        logger.info(' '.join(cmd))
+        logger.debug(' '.join(cmd))
         sp.check_call(cmd)
         return open(tmptxt).read()
 
@@ -81,12 +81,12 @@ def readpdf_image(pdf, first=None, last=None):
         if first is not None: cmd.extend(['-f', str(first)])
         if last is not None: cmd.extend(['-l', str(last)])
         cmd.extend([pdf, tmpbase])
-        logger.info(' '.join(cmd))
+        logger.debug(' '.join(cmd))
         sp.check_call(cmd)
 
         # 2nd extract text from .png using tesseract
         cmd = ["tesseract", tmppng, tmpbase, "-l", "eng", "quiet"]
-        logger.info(' '.join(cmd))
+        logger.debug(' '.join(cmd))
         sp.check_call(cmd)
 
         return open(tmptxt).read()
@@ -574,7 +574,8 @@ def prefetch_pdf_metadata(pdfs, workers=3, search_doi=True, search_fulltext=True
 
     logger.info(f'fetch the metadata of {len(contents)} PDFs')
     level = logger.level
-    logger.setLevel(logging.CRITICAL)  # the second pass logs
+    if logger.getEffectiveLevel() > logging.DEBUG:
+        logger.setLevel(logging.CRITICAL)  # the second pass logs (with --debug, both do)
     try:
         with ThreadPoolExecutor(workers) as executor:
             list(executor.map(fetch, contents))

@@ -97,7 +97,7 @@ def _initcmd(parser, o, config):
         raise PapersExit(f"a library already exists here ({existing}): "
                          f"change its settings with `papers config`{hint}")
     if config.origin == 'library':
-        logger.info(f"the new library is inside the library of {config.file}")
+        logger.warning(f"the new library is inside the library of {config.file}")
     o.reset = False
     config = _install(o, Config(machine=config.machine), DefaultAsker(), target=CONFIG_FILE_LOCAL)
     print('\n'.join(init_summary(config)))

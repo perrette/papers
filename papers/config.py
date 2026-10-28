@@ -632,7 +632,7 @@ class Config:
         (.papersconfig.json) is moved to .papers/config.json first. With
         --dry-run, nothing is written."""
         if DRYRUN:
-            logger.info(f'DRYRUN: {self.file} not saved')
+            print(f'DRYRUN: {self.file} not saved')
             return
         if self.is_library and is_v2_config_name(self.file):
             self.file = move_v2_config(self.file)

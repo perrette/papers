@@ -138,6 +138,6 @@ class TestOtherCommands(ConfigTest):
     def test_init_in_a_library(self):
         self.papers('init')
         os.makedirs(self.path('sub'))
-        with self.assertLogs('papers', level='INFO') as logs:
-            self.papers('init --info', cwd=self.path('sub'))
+        with self.assertLogs('papers', level='WARNING') as logs:
+            self.papers('init', cwd=self.path('sub'))
         self.assertIn('inside the library', '\n'.join(logs.output))

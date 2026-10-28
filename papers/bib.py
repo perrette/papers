@@ -420,7 +420,7 @@ class Biblio:
             None,
         )
         if existing_same_key is not None:
-            logger.info('key duplicate: '+self.key(existing_same_key))
+            logger.debug('key duplicate: '+self.key(existing_same_key))
 
             if free_key:
                 newkey = self.append_abc_to_key(entry)

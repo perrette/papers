@@ -15,6 +15,7 @@ from unittest import mock
 import papers.cli
 from papers.bib import Biblio
 from papers.cli import main, main_clean_exit
+from papers.cli.parser import get_parser
 from papers.cli.common import (_delete_files_option, _key_option_entries, _one_entry, check_install,
                                edit_entries, edit_selected, files_mode, print_kept_files, stdin_is_terminal,
                                view_entry_files)
@@ -94,6 +95,40 @@ class TestMainCleanExit(unittest.TestCase):
                 mock.patch.object(papers.cli.logger, 'getEffectiveLevel', return_value=logging.DEBUG):
             with self.assertRaises(EOFError):
                 main_clean_exit([])
+
+
+
+class TestLoggingOptions(unittest.TestCase):
+    "-v/--verbose and --debug, and the former --info, --warn and --error (hidden, still accepted)"
+
+    def setUp(self):
+        self.addCleanup(papers.cli.logger.setLevel, papers.cli.logger.level)
+        papers.cli.logger.setLevel(logging.WARNING)
+        self.parser, self.subparsers = get_parser()
+
+    def level(self, *args):
+        papers.cli.handle_logging(self.parser.parse_args(['status', *args]))
+        return papers.cli.logger.level
+
+    def test_levels(self):
+        for args, level in [((), logging.WARNING), (('-v',), logging.INFO), (('--verbose',), logging.INFO),
+                            (('--debug',), logging.DEBUG), (('-v', '--debug'), logging.DEBUG),
+                            (('--warn',), logging.WARNING), (('--error',), logging.ERROR)]:
+            with self.subTest(args=args):
+                papers.cli.logger.setLevel(logging.WARNING)
+                self.assertEqual(self.level(*args), level)
+
+    def test_info(self):
+        with self.assertLogs('papers', level='WARNING') as logs:
+            self.assertEqual(self.level('--info'), logging.INFO)
+        self.assertIn('--info is deprecated: use -v', '\n'.join(logs.output))
+
+    def test_help(self):
+        text = self.subparsers.choices['add'].format_help()
+        self.assertIn('-v, --verbose', text)
+        self.assertIn('--debug', text)
+        for option in ['--info', '--warn', '--error']:
+            self.assertNotIn(option, text)
 
 
 class TestCheckInstall(ConfigTest):

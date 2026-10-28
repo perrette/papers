@@ -62,7 +62,7 @@ change the projects created before. Without a default library,
 
 ```
 $ papers init --shallow
-ERROR:papers:no default library: `papers init PATH --global` or `papers config --global default PATH`
+papers: error: no default library: `papers init PATH --global` or `papers config --global default PATH`
 ```
 
 See [Shallow libraries](shallow-libraries.md) for what a shallow library does with its pool: `add`
@@ -99,7 +99,7 @@ Without a default library, a command outside of any library stops:
 ```
 $ papers config --global default none
 $ papers list
-ERROR:papers:no library found here: `papers init`, or pass --bibtex
+papers: error: no library found here: `papers init`, or pass --bibtex
 $ papers status
 papers library: (no library found: create one with `papers init`)
 * default library:    none

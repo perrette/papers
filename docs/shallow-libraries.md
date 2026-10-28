@@ -25,7 +25,7 @@ otherwise, and nothing is created or changed:
 
 ```
 $ papers init ~/projects/x --pool ~/projects/thesis
-ERROR:papers:--pool ~/projects/thesis: ~/projects/thesis has a pool itself (~/Documents/papers/sealevel): give a library without pool (nothing was changed)
+papers: error: --pool ~/projects/thesis: ~/projects/thesis has a pool itself (~/Documents/papers/sealevel): give a library without pool (nothing was changed)
 ```
 
 The pool path is written in the configuration relative to the library when
@@ -91,7 +91,7 @@ What the commands do in a shallow library:
 
     ```
     $ papers rm perrette_yool2011 --delete-files
-    ERROR:papers:--delete-files: the files of a shallow library are the pool's: remove them with `papers file rm FILE`
+    papers: error: --delete-files: the files of a shallow library are the pool's: remove them with `papers file rm FILE`
     ```
 
 - `pull` and `sync` with the pool link to the pool's files instead of
@@ -171,7 +171,7 @@ For a project with one PDF and the library `~/Documents/papers/arctic`:
 
 ```
 $ papers config pool ~/Documents/papers/arctic
-ERROR:papers:pool ~/Documents/papers/arctic: 1 entry links to PDFs that the pool ~/Documents/papers/arctic does not have (nothing was changed): perrette_landerer2013
+papers: error: pool ~/Documents/papers/arctic: 1 entry links to PDFs that the pool ~/Documents/papers/arctic does not have (nothing was changed): perrette_landerer2013
 Copy them to the pool first: `papers push --pool ~/Documents/papers/arctic perrette_landerer2013`
 Then run `papers config pool ~/Documents/papers/arctic` again.
 $ papers push --pool ~/Documents/papers/arctic --all
