@@ -166,6 +166,65 @@ class TestTag(EntryTest):
         self.assertEqual(self.tags('three2000'), ['kiwi'])
 
 
+class TestNestedTags(EntryTest):
+    "a tag with / is under another tag (#128)"
+
+    def setUp(self):
+        super().setUp()
+        self.bib(tagged('one2000', 'climate, climate/amoc'), tagged('two2000', 'climate/amoc/tipping, kiwi'),
+                 tagged('three2000', 'climate-review, climatex'), tagged('four2000', 'ocean/amoc, Climate/Arctic'))
+
+    def tags(self, key):
+        return parse_keywords(self.entry(key))
+
+    def listed(self, args):
+        return sorted(self.out('list -K ' + args).split())
+
+    def test_list_tag(self):
+        self.assertEqual(self.listed('--tag climate'), ['four2000', 'one2000', 'two2000'])
+        self.assertEqual(self.listed('--tag climate/amoc'), ['one2000', 'two2000'])
+        self.assertEqual(self.listed('--tag climate/amoc/'), ['one2000', 'two2000'])
+        self.assertEqual(self.listed('--tag CLIMATE/AMOC/tipping'), ['two2000'])
+        self.assertEqual(self.listed('--tag climate/amoc/tip'), [])
+        self.assertEqual(self.listed('--tag "climate/*"'), ['four2000', 'one2000', 'two2000'])
+        self.assertEqual(self.listed('--tag "*/amoc"'), ['four2000', 'one2000', 'two2000'])
+        self.assertEqual(self.listed('--tag "climate*"'), ['four2000', 'one2000', 'three2000', 'two2000'])
+        self.assertEqual(self.listed('--tag climate kiwi'), ['two2000'])
+
+    def test_rename(self):
+        out = self.out('tag --rename climate ocean')
+        self.assertIn('2 entries', out)
+        self.assertEqual(self.tags('one2000'), ['ocean', 'ocean/amoc'])
+        self.assertEqual(self.tags('two2000'), ['ocean/amoc/tipping', 'kiwi'])
+        self.assertEqual(self.tags('three2000'), ['climate-review', 'climatex'])
+        self.assertEqual(self.tags('four2000'), ['ocean/amoc', 'Climate/Arctic'])
+
+    def test_rename_nested(self):
+        self.lib('tag --rename climate/amoc ocean')
+        self.assertEqual(self.tags('one2000'), ['climate', 'ocean'])
+        self.assertEqual(self.tags('two2000'), ['ocean/tipping', 'kiwi'])
+
+    def test_rename_merges(self):
+        self.lib('tag --rename climate/amoc/tipping ocean/amoc')
+        self.lib('tag two2000 --add ocean/amoc/x')
+        self.lib('tag --rename ocean/amoc/x ocean/amoc')
+        self.assertEqual(self.tags('two2000'), ['ocean/amoc', 'kiwi'])
+
+    def test_list_tree(self):
+        self.assertEqual(self.out('tag').splitlines(), [
+            'climate (2)',
+            '  amoc (2)',
+            '    tipping (1)',
+            'Climate (1)',
+            '  Arctic (1)',
+            'climate-review (1)',
+            'climatex (1)',
+            'kiwi (1)',
+            'ocean (1)',
+            '  amoc (1)',
+        ])
+
+
 class TestEdit(EntryTest):
 
     def setUp(self):

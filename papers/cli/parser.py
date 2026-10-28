@@ -701,7 +701,8 @@ def get_parser(config=None):
     grp.add_argument('--abstract', help='abstract', nargs="+")
     grp.add_argument('-k', '--key', '--id', nargs='+', help='entry key')
     grp.add_argument('--doi', nargs='+', help='DOI')
-    grp.add_argument('--keywords', '--tag', nargs='+', help="keywords (tags): whole tags, case-insensitive, with * patterns (--tag 'ice*')")
+    grp.add_argument('--keywords', '--tag', nargs='+', help="keywords (tags): whole tags, case-insensitive, with * patterns (--tag 'ice*'); "
+                          "a tag also finds the tags under it (--tag climate: climate/amoc)")
 
 
     grp = listp.add_argument_group('check')
@@ -825,13 +826,15 @@ def get_parser(config=None):
     _command(rmp, rmcmd, library=True)
 
     tagp = subparsers.add_parser('tag', parents=[cfg],
-        description='tags are the keywords field of the entries (comma-separated). Without option, list '
-                    'the tags of the library (or of the entries KEY...) with the number of entries.')
+        description='tags are the keywords field of the entries (comma-separated). A tag with / is under '
+                    'another tag: climate/amoc is under climate. Without option, list the tags of the '
+                    'library (or of the entries KEY...) with the number of entries, the nested tags '
+                    'indented under their parent, which counts the entries under it.')
     tagp.add_argument('entries', nargs='*', metavar='KEY',
         help=_selection_help)
     tagp.add_argument('--add', nargs='+', metavar='TAG', help='add tags to the entries')
     tagp.add_argument('--rm', nargs='+', metavar='TAG', help='remove tags from the entries')
-    tagp.add_argument('--rename', nargs=2, metavar=('OLD', 'NEW'), help='rename a tag in the whole library')
+    tagp.add_argument('--rename', nargs=2, metavar=('OLD', 'NEW'), help='rename a tag in the whole library, and the tags under it (climate/amoc -> NEW/amoc)')
     _command(tagp, tagcmd, library=True)
 
     # pull, push, sync, export

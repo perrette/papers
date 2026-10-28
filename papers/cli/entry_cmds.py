@@ -334,12 +334,45 @@ def remove_entries(biblio, entries, config, delete_files=None, ask=True):
     return []
 
 
+def tag_parents(tag):
+    "the tags above a nested tag: climate/amoc/tipping -> climate, climate/amoc"
+    parts = tag.split('/')
+    return ['/'.join(parts[:i]) for i in range(1, len(parts)) if parts[i-1]]
+
+
+def tag_matches(tag, pattern):
+    """`--tag PATTERN`: the whole tag, whatever its case, with * patterns;
+    a tag also finds the tags under it (climate: climate/amoc)"""
+    tag, pattern = tag.lower(), pattern.lower().rstrip('/')
+    return fnmatch.fnmatchcase(tag, pattern) or fnmatch.fnmatchcase(tag, pattern + '/*')
+
+
 def tag_counts(entries):
+    "the number of entries of each tag; a tag above nested tags counts the entries under it"
     counts = {}
     for e in entries:
+        tags = set()
         for tag in parse_keywords(e):
+            tags.add(tag)
+            tags.update(tag_parents(tag))
+        for tag in tags:
             counts[tag] = counts.get(tag, 0) + 1
     return counts
+
+
+def print_tag_tree(counts):
+    "the tags with their number of entries, the nested tags indented under their parent"
+    children = {}
+    for tag in counts:
+        parents = tag_parents(tag)
+        children.setdefault(parents[-1] if parents else None, []).append(tag)
+
+    def show(parent, depth):
+        for tag in sorted(children.get(parent, []), key=lambda t: (-counts[t], t.lower())):
+            name = tag[len(parent)+1:] if parent else tag
+            print(f"{'  '*depth}{name} ({counts[tag]})")
+            show(tag, depth+1)
+    show(None, 0)
 
 
 def set_tags(e, tags):
@@ -367,15 +400,21 @@ def remove_tags(entries, tags):
 
 
 def rename_tag(entries, old, new):
-    "rename a tag in all entries; return the number of entries changed"
+    """rename a tag in all entries, and the tags under it (climate/amoc ->
+    ocean/amoc); return the number of entries changed"""
+    def rename(t):
+        if t == old:
+            return new
+        if t.startswith(old + '/'):
+            return new + t[len(old):]
+        return t
     count = 0
     for e in entries:
         tags = parse_keywords(e)
-        if old not in tags:
+        if all(rename(t) == t for t in tags):
             continue
         renamed = []
-        for t in tags:
-            t = new if t == old else t
+        for t in map(rename, tags):
             if t not in renamed:
                 renamed.append(t)
         set_tags(e, renamed)
@@ -480,9 +519,7 @@ def tagcmd(parser, o, config):
         return
 
     entries = select_entries(biblio, o.entries) if o.entries else biblio.entries
-    counts = tag_counts(entries)
-    for tag, count in sorted(counts.items(), key=lambda kv: (-kv[1], kv[0].lower())):
-        print(f"{tag} ({count})")
+    print_tag_tree(tag_counts(entries))
 
 
 def groups_by_field(entries, field):
@@ -622,9 +659,10 @@ def listcmd(parser, o, config):
         if o.fuzzy:
             entries = [e for e in entries if 'keywords' in e and _longmatch(e['keywords'], o.keywords)]
         else:
-            # whole tags, not part of the keywords field: --tag ice does not find ice-review (ice* does)
+            # whole tags, not part of the keywords field: --tag ice does not find ice-review (ice* does),
+            # and the tags under it: --tag ice finds ice/sheet
             def _has_tag(e, target):
-                return any(fnmatch.fnmatch(tag.lower(), target.lower()) for tag in parse_keywords(e))
+                return any(tag_matches(tag, target) for tag in parse_keywords(e))
             entries = [e for e in entries
                        if (any if o.any else all)(_has_tag(e, target) for target in o.keywords)]
     if o.fullsearch:
