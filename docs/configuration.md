@@ -85,7 +85,9 @@ value is the global or default one; the other settings follow the global
 configuration. `papers config --unset NAME` removes a setting from the
 file, and the library then follows the global configuration again.
 `papers config --prune` removes all the values equal to the global or
-default value (`pool` stays).
+default value (`pool` stays). Keys of the file that papers does not know
+(for example the settings of a newer version) are kept as they are when
+papers writes the file.
 
 | Setting | Values |
 |---|---|

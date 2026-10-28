@@ -91,6 +91,21 @@ class TestLibraryId(unittest.TestCase):
         self.assertNotIn('history-dir', js)
         self.assertNotIn('keep-deleted-files', js)
 
+    def test_unknown_keys_kept(self):
+        # e.g. the settings of a newer papers: kept as they are when papers saves the file
+        json.dump({'bibtex': 'lib.bib', 'version': 3, 'editor': 'vim', 'pools': ['old'], 'future': {'a': [1]},
+                   'nameformat': {'template': '{author}', 'future-field': 2}}, open(self.file, 'w'))
+        config = Config.load(self.file, machine=self.machine)
+        config.unset('editor')
+        config.set('name.template', '{year}')
+        config.save()
+        js = json.load(open(self.file))
+        self.assertEqual(js['future'], {'a': [1]})
+        self.assertEqual(js['nameformat'], {'template': '{year}', 'future-field': 2})
+        # the known settings are those of papers: unset, or read and no longer written
+        self.assertNotIn('editor', js)
+        self.assertNotIn('pools', js)
+
 
 class TestPathsOfSettings(unittest.TestCase):
     "~ is the home directory in every path setting; a relative path of the global configuration is relative to its folder"
