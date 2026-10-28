@@ -127,15 +127,11 @@ def _texts(config):
     return _bibtex_text(config), {name: _read(os.path.join(config.libdir, name)) for name in _library_names(config)}
 
 
-def _snapshot(config, st, files=None, texts=None):
-    """the bibtex and the files of .papers/, stored; files: those of another
-    state (the files of .papers/ are not read); texts: the texts to store
-    (see _texts), instead of those on disk"""
-    text, others = texts or (_bibtex_text(config), None)
-    if files is None:
-        if others is None:
-            others = _texts(config)[1]
-        files = {name: st.put_text(content) for name, content in others.items()}
+def _snapshot(config, st, texts=None):
+    """the bibtex and the files of .papers/, stored; texts: the texts to
+    store (see _texts), instead of those on disk"""
+    text, others = texts or _texts(config)
+    files = {name: st.put_text(content) for name, content in others.items()}
     return {'bibtex': {'pieces': st.put_text(text), 'sha': history.sha256(text.encode('utf-8'))},
             'files': files}
 
@@ -204,21 +200,19 @@ def sync_head(config, project=None, place=None):
             head = project.head(place)
     if head is not None and project.state(head['state'])['bibtex'].get('sha') == sha:
         return head['state']
-    texts = None
+    # the library at the start of the command, if kept (see start): the bibtex and the files of
+    # .papers/ that the command may have written before its save; else as they are on disk
+    texts = _before.pop(place, None)
     if head is None:
-        kind, message, files = 'start', 'the library before its first recorded command', None
-        texts = _before.get(place)  # the library before the command (see start)
-        if texts is not None:
-            sha = history.sha256(texts[0].encode('utf-8'))
+        kind, message = 'start', 'the library before its first recorded command'
     else:
         kind, message = 'outside', 'changed outside papers'
-        files = project.state(head['state']).get('files')
         logger.info(f'{os.path.basename(config.bibtex)} changed outside papers since its last state: recorded')
     state = dict(parent=head['state'] if head else None, time=time.time(), kind=kind, message=message,
-                 ops=[], deleted=[], **_snapshot(config, project.store, files=files, texts=texts))
+                 ops=[], deleted=[], **_snapshot(config, project.store, texts=texts))
     n = project.add(state)
     project.set_head(place, n)
-    if head is None and texts is not None and texts[0] != text:
+    if texts is not None and texts[0] != text:
         return sync_head(config, project, place)  # changed by the command before its save: recorded after
     return n
 
@@ -228,7 +222,7 @@ _NO_START = {'status', 'config', 'init', 'install', 'uninstall', 'migrate', 'his
              'undo', 'redo', 'restore', 'restore-backup'}
 
 
-# the library before the command, for its first state: {place: texts (see _texts)}
+# the library before the command, for the state before it (see start): {place: texts (see _texts)}
 _before = {}
 
 # fields of the next state of a library, {place: fields} (e.g. reverts: the steps a revert takes back)
@@ -241,9 +235,11 @@ _linked = {}
 
 def start(config, cmd):
     """at the start of a command: the library as it is before it, kept in
-    memory, for its first state if it has no history yet (the command may
-    write the files of .papers/ before it saves the bibtex; see sync_head).
-    Nothing is written: a command that changes nothing leaves no trace."""
+    memory, for the state that sync_head records before the save of the
+    command (the command may write the files of .papers/ before it saves
+    the bibtex): when the library has no history yet, or its bibtex changed
+    outside papers since its current state. Nothing is written: a command
+    that changes nothing leaves no trace."""
     _before.clear()
     _linked.clear()
     _fields.clear()
@@ -251,7 +247,9 @@ def start(config, cmd):
         return
     try:
         project, place = project_of(config, create=False)
-        if project is None or project.head(place) is None:
+        head = project.head(place) if project is not None else None
+        if head is None or project.state(head['state'])['bibtex'].get('sha') != history.sha256(
+                _bibtex_text(config).encode('utf-8')):
             _before[os.path.realpath(config.bibtex)] = _texts(config)
     except Exception as error:
         logger.debug(f'the library before the command is not kept: {error}')
