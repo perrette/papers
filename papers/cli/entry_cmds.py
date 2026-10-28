@@ -765,7 +765,8 @@ def listcmd(parser, o, config):
         out = papers.utils.PORCELAIN or sys.stdout
         if o.field:
             for e in entries:
-                print(format_key(e, no_key=o.no_key),*[get_entry_val(e, k, "") for k in o.field], file=out)
+                values = [get_entry_val(e, k, "") for k in o.field]
+                print(*values if o.no_key else [format_key(e), *values], file=out)
         elif o.format == 'key':
             for e in entries:
                 print(get_entry_val(e, 'ID', ''), file=out)

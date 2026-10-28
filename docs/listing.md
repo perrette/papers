@@ -87,8 +87,10 @@ to-read (2)
 - `--format key`: the keys only, one per line (also `-K`, `--key-only`),
   to pipe into other commands (below).
 
-`--field FIELD...` prints the key and the given fields of each entry
-(`--no-key` leaves the key out). `-f` is a deprecated alias of `--field`: in
+`--field FIELD...` prints one line per entry: `KEY:` and the values of the
+given fields, separated by spaces (an empty value for a missing field).
+`--no-key` leaves the key out: the line starts with the first value. The
+key is coloured only when colours are on (see `--color`). `-f` is a deprecated alias of `--field`: in
 v4, `-f` is no longer `--field` (it means `--force` in other commands).
 
 ## Duplicates

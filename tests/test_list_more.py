@@ -68,6 +68,9 @@ class TestListFilters(FileTest):
 
     def test_field(self):
         self.assertEqual(self.out('list --key one2000 --field doi year --no-key').split(), ['10.1000/one', '2000'])
+        # without the key: the values only, no leading space
+        self.assertEqual(self.out('list --key one2000 --field doi year --no-key'), '10.1000/one 2000\n')
+        self.assertEqual(self.out('list --key one2000 --field doi year'), 'one2000: 10.1000/one 2000\n')
 
     def test_by_and_fuzzy(self):
         with self.assertRaises(SystemExit):
