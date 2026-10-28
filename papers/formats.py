@@ -244,7 +244,17 @@ def _date_parts(text):
     m = re.match(r'\s*(\d{4})(?:[-/](\d{1,2}))?(?:[-/](\d{1,2}))?', str(text or ''))
     if not m:
         return []
-    return [int(x) for x in m.groups() if x and int(x) > 0]
+    return _leading_parts(m.groups())
+
+
+def _leading_parts(parts):
+    "the numbers of date parts up to the first missing or zero one: 2013-00-05 is the year 2013 only"
+    numbers = []
+    for x in parts:
+        if x is None or not str(x).strip() or int(x) <= 0:
+            break
+        numbers.append(int(x))
+    return numbers
 
 
 def _entry_date_parts(e):
@@ -481,7 +491,7 @@ def _csl_date(value):
         dp = value.get('date-parts')
         if dp and dp[0]:
             try:
-                return [int(x) for x in dp[0] if str(x).strip()]
+                return _leading_parts(dp[0])
             except (TypeError, ValueError):
                 pass
         return _date_parts(value.get('raw') or value.get('literal') or '')

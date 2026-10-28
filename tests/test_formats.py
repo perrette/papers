@@ -167,6 +167,19 @@ class TestNames(unittest.TestCase):
                          'van Beethoven, Ludwig and {IPCC} and Müller, Jr, Jörg')
 
 
+class TestDates(unittest.TestCase):
+
+    def test_zero_or_missing_part_ends_the_date(self):
+        # the positions count: the day of 2013-00-05 is not a month
+        self.assertEqual(formats._date_parts('2013-00-05'), [2013])
+        self.assertEqual(formats._date_parts('2013-05-00'), [2013, 5])
+        self.assertEqual(formats._date_parts('2013/05/02/'), [2013, 5, 2])
+        self.assertEqual(formats._csl_date({'date-parts': [[2013, 0, 5]]}), [2013])
+        self.assertEqual(formats._csl_date({'date-parts': [['2013', '', '5']]}), [2013])
+        self.assertEqual(fields(csl_to_entry({'type': 'book', 'title': 'T', 'issued': {'raw': '2013-00-05'}})),
+                         {'title': 'T', 'year': '2013'})
+
+
 class TestCSL(unittest.TestCase):
 
     def test_article(self):
