@@ -1,4 +1,4 @@
-import os, json
+import os, json, re
 import copy
 from pathlib import Path
 import platformdirs
@@ -663,7 +663,8 @@ class Config:
         _read_earlier_v3(js, machine, the_file)
         cfg = cls(file=the_file, is_library=is_library, machine=machine,
                   bibtex=js.get('bibtex'), filesdir=js.get('filesdir'))
-        if is_library and isinstance(js.get('id'), str):
+        # an identifier that papers did not write (e.g. a path, in a library received from someone) is ignored
+        if is_library and isinstance(js.get('id'), str) and re.fullmatch(r'[0-9a-f]{32}', js['id']):
             cfg.id = js['id']
         if not is_library and json_get(js, 'paths') is None:  # v2 compatibility, remove with migrate
             js['paths'] = 'absolute'  # default of v2 for a global configuration

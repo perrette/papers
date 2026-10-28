@@ -63,6 +63,13 @@ class TestLibraryId(unittest.TestCase):
         self.assertEqual(json.load(open(self.file))['id'], id)
         self.assertEqual(Config.load(self.file, machine=self.machine).library_id(), id)
 
+    def test_invalid_id_ignored(self):
+        for bad in ('../../somewhere', 'a/b', '', 12):
+            json.dump({'bibtex': 'lib.bib', 'version': 3, 'id': bad}, open(self.file, 'w'))
+            config = Config.load(self.file, machine=self.machine)
+            self.assertIsNone(config.library_id(create=False))
+            self.assertRegex(config.library_id(), r'^[0-9a-f]{32}$')  # a new one, written over it
+
     def test_only_the_id_is_written(self):
         # the settings in memory may be those of the command (e.g. the files directory of a pool)
         json.dump({'bibtex': 'lib.bib', 'version': 3}, open(self.file, 'w'))
