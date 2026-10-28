@@ -317,9 +317,16 @@ class Biblio:
             raise PapersExit(f'{new}: another entry of the library has this key')
         old = e.key
         set_entry_key(e, new)
-        if keep_old:
-            ids = [i.strip() for i in get_entry_val(e, 'ids', '').split(',') if i.strip()]
-            e['ids'] = ', '.join([i for i in ids if i.lower() != new.lower()] + [old])
+        # ids: never the key itself, and each former key once
+        ids = [i.strip() for i in get_entry_val(e, 'ids', '').split(',') if i.strip()]
+        kept = [i for i in ids if i.lower() != new.lower()]
+        if keep_old and old.lower() not in {i.lower() for i in kept} | {new.lower()}:
+            kept.append(old)
+        if kept != ids:
+            if kept:
+                e['ids'] = ', '.join(kept)
+            else:
+                del e['ids']
 
     @property
     def loaded(self):

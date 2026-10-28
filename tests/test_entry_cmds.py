@@ -457,6 +457,18 @@ class TestEditSet(EntryTest):
         self.lib('edit one2000 --set note=found')  # the old key still selects it
         self.assertEqual(self.entry('perrette2013')['note'], 'found')
 
+    def test_keep_old_key_once(self):
+        # back and forth: each former key once in ids, never the key itself
+        self.lib('edit one2000 --key perrette2013 --keep-old-key')
+        self.lib('edit perrette2013 --key one2000 --keep-old-key')
+        self.assertEqual(self.entry('one2000')['ids'], 'perrette2013')
+        self.lib('edit one2000 --key perrette2013 --keep-old-key')
+        self.assertEqual(self.entry('perrette2013')['ids'], 'one2000')
+        self.lib('edit perrette2013 --key one2000')  # without --keep-old-key
+        self.assertNotIn('ids', self.entry('one2000'))
+        self.lib('edit one2000 --key One2000 --keep-old-key')  # the same key, by case
+        self.assertNotIn('ids', self.entry('One2000'))
+
     def test_key_refused(self):
         with self.assertRaisesRegex(PapersExit, 'another entry'):
             self.lib('edit one2000 --key two2000')

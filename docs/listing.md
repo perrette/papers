@@ -194,8 +194,10 @@ The `crossref` fields of other entries that name the old key, and the
 records of the exchanges with pools (see [Pools](pools.md)), follow the new
 key; LaTeX documents that cite the old key do not. With `--keep-old-key`,
 the old key goes to the `ids` field of the entry: papers (e.g.
-`papers edit OLD`) and biblatex still find the entry by it. A key that
-another entry has is refused. `papers check --fix-key` changes keys the
+`papers edit OLD`) and biblatex still find the entry by it (once: a key
+already in `ids` is not added again). The new key itself is taken out of
+`ids`, with or without `--keep-old-key`. A key that another entry has is
+refused. `papers check --fix-key` changes keys the
 same way.
 
 An edit that does not parse, has a malformed field name, or gives the entry
