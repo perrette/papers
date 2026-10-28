@@ -532,7 +532,7 @@ class Dialogue:
         for r in rows:
             lines.append('  ' + '  '.join(c.ljust(w) for c, w in zip(r, widths) if w).rstrip())
         if m.three_way:
-            lines.append('     origin = the pool version at the last pull or push')
+            lines.append('     origin = the entry as last exchanged (add, pull or push)')
         return '\n'.join(lines)
 
     def entry_lines(self):

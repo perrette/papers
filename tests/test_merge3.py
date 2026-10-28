@@ -177,7 +177,7 @@ class TestThreeWayDialogue(unittest.TestCase):
     def test_screen(self):
         text = Dialogue(self.merge(), 'pull', 'pool default').screen()
         self.assertIn('smith2020climate  <-  pool default (Smith_2020)', text)
-        self.assertIn('origin = the pool version at the last pull or push', text)
+        self.assertIn('origin = the entry as last exchanged (add, pull or push)', text)
         self.assertIn('changed in library, kept', text)
         self.assertIn('added in pool', text)
         self.assertIn('changed on both sides', text)
