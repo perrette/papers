@@ -14,7 +14,11 @@ papers 3 adds the following new functionalities:
 - **speed**: on a library of 10,000 entries, common commands take about
   half the time (`papers list` 1.5 s → 0.7 s, `papers add` 2.3 s → 1.2 s),
   and the duplicate checks are two orders of magnitude faster
-  (`papers list --duplicates` on 1,000 entries: 30 s → 0.2 s);
+  (`papers list --duplicates` on 1,000 entries: 30 s → 0.2 s). Since
+  3.0.0b4, the parsed bibtex is also cached piece by piece, which takes
+  about 40% more off the commands that read a large library (`papers
+  list` 0.38 s → 0.23 s, `papers status` 0.31 s → 0.17 s, on another
+  machine than the figures above);
 - **a review of the commands**: `papers init` and `papers config` replace
   `papers install`, the commands on attached files are grouped under
   `papers file`, `papers list` has more actions, and older forms are
@@ -22,10 +26,21 @@ papers 3 adds the following new functionalities:
 - **RIS, CSL-JSON and BibJSON**: `papers add refs.ris` (or `.json`, `.bib.json`) imports them,
   `papers list --format` and `papers export` write them (see
   [Export](export.md));
-- **undo without git**: `papers undo` takes back any command, with the
-  files it moved, renamed or deleted, without git or git-lfs (see
+- **a history of each library, without git**: every command is a step;
+  `papers undo` and `papers redo` take back any command with the files it
+  moved, renamed or deleted (also outside the library, e.g. a PDF taken
+  from `~/Downloads`), a change made outside papers is recorded as a step
+  of its own, and `papers history` lists the steps. The history is kept on
+  the computer, and git and git-lfs are no longer needed (see
   [Undo and redo](undo-redo.md)). The git backup of papers 2 is no longer
-  used (see [Backups of earlier versions](git.md#backups-of-earlier-versions)).
+  used (see [Backups of earlier versions](git.md#backups-of-earlier-versions));
+- **`papers status` and the pool**: a shallow library says whether it is
+  `in sync` with its pool, or which side changed, and which command shows
+  and exchanges the changes (see [Configuration](configuration.md#pools));
+- **for programs**: `--porcelain` lists the entries a command added,
+  modified, renamed or removed, and `papers edit KEY --from FILE`, `--set`,
+  `--unset` and `--key` change an entry without an editor (used by
+  [Papers Desktop](https://github.com/mathesislab/papers-desktop)).
 
 ## What changes for an existing setup
 
