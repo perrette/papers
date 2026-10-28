@@ -383,10 +383,16 @@ class MachineConfig:
         return self.data.get(DEFAULT_LIBRARY) or None
 
     def default_path(self):
-        "absolute path of the default library, or None"
+        "absolute path of the default library, or None (a relative path is relative to the folder of this file)"
         if self.default is None:
             return None
-        return os.path.abspath(os.path.expanduser(self.default))
+        return self.absolute(self.default)
+
+    def absolute(self, path):
+        "a path of this configuration: ~ expanded, relative to the folder of the file"
+        path = os.path.expanduser(path)
+        base = os.path.dirname(os.path.abspath(self.file)) if self.file else os.getcwd()
+        return os.path.normpath(os.path.join(base, path))
 
     def save(self):
         os.makedirs(os.path.dirname(self.file), exist_ok=True)
@@ -605,8 +611,8 @@ class Config:
         if p is None: return p
         if not self.is_library:  # v2 compatibility, remove with migrate
             return str(Path(p).resolve())  # abspath
-        # normpath, not resolve: '..' is removed, the symbolic links are kept
-        return os.path.normpath((Path(root).resolve() if root is not None else self.configdir) / p)
+        # normpath, not resolve: '..' is removed, the symbolic links are kept; ~ is the home directory
+        return os.path.normpath((Path(root).resolve() if root is not None else self.configdir) / os.path.expanduser(p))
 
 
     def tojson(self):

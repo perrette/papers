@@ -90,3 +90,25 @@ class TestLibraryId(unittest.TestCase):
         js = config.tojson()
         self.assertNotIn('history-dir', js)
         self.assertNotIn('keep-deleted-files', js)
+
+
+class TestPathsOfSettings(unittest.TestCase):
+    "~ is the home directory in every path setting; a relative path of the global configuration is relative to its folder"
+
+    def test_home_in_bibtex_and_filesdir(self):
+        from papers.config import Config, MachineConfig
+        with tempfile.TemporaryDirectory() as d:
+            os.makedirs(os.path.join(d, '.papers'))
+            file = os.path.join(d, '.papers', 'config.json')
+            with open(file, 'w') as f:
+                json.dump({'bibtex': '~/refs.bib', 'filesdir': '~/pdfs', 'version': 3}, f)
+            config = Config.load(file, machine=MachineConfig(os.path.join(d, 'machine.json')))
+            self.assertEqual(config.bibtex, os.path.join(os.path.expanduser('~'), 'refs.bib'))
+            self.assertEqual(config.filesdir, os.path.join(os.path.expanduser('~'), 'pdfs'))
+
+    def test_relative_to_the_global_configuration(self):
+        from papers.config import MachineConfig
+        machine = MachineConfig('/etc/papers/config.json', {'default': 'library', 'history-dir': '../history'})
+        self.assertEqual(machine.default_path(), '/etc/papers/library')
+        self.assertEqual(machine.absolute('../history'), '/etc/history')
+        self.assertEqual(machine.absolute('~/h'), os.path.join(os.path.expanduser('~'), 'h'))

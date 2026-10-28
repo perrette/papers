@@ -42,7 +42,10 @@ PRUNE_EVERY = 50
 
 def history_root(config):
     "the folder of the history of the machine (the history-dir setting)"
-    return os.path.expanduser(config.history_dir or papers.config.HISTORY_DIR)
+    if not config.history_dir:
+        return papers.config.HISTORY_DIR
+    # a relative path is relative to the folder of the global configuration (where history-dir is set)
+    return config.machine.absolute(config.history_dir)
 
 
 def store(config, id=None):
