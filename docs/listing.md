@@ -49,6 +49,22 @@ Perrette2013: A scaling approach to project regional sea level rise and it... (d
 `ice-review`, `--tag 'ice*'` does. With several tags, an entry needs all of
 them (`--any`: one of them).
 
+A tag with `/` is under another tag: `climate/amoc` is under `climate`.
+`--tag climate` also finds `climate/amoc` and `climate/amoc/tipping` (not
+`climate-review`), `--tag climate/amoc` finds that tag and the ones under it.
+`papers tag --rename climate ocean` also renames `climate/amoc` to
+`ocean/amoc`. `papers tag` shows the nested tags indented under their
+parent, which counts the entries that have it or a tag under it:
+
+```
+$> papers tag
+climate (5)
+  amoc (3)
+    tipping (1)
+  arctic (1)
+to-read (2)
+```
+
 `papers list ... --add-tag TAG...` adds tags to the listed entries.
 
 ## Output formats
