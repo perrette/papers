@@ -227,6 +227,13 @@ The entries are added as those of a bibtex file:
   LaTeX (`\&`...), except in `url`, `doi`, `file`, `eprint`, `isbn`,
   `issn`, `keywords` and `urldate`; BibJSON values are read as they are,
   since they are bibtex values;
+- keywords (RIS `KW`, CSL-JSON `keyword`) are split on `,` and `;` and
+  joined with `, ` (export splits the `keywords` field on `,` only);
+- the CSL-JSON `container-title` is the `booktitle` of a chapter or a
+  conference paper (`incollection`, `inproceedings`), the `journal` of any
+  other type;
+- a date part that is zero or missing ends the date: `2013-00-05` is the
+  year 2013 only;
 - in a shallow library, the new entries go to the pool too;
 - a directory scan (`-R`) reads PDFs and bibtex files only.
 
@@ -234,7 +241,9 @@ The fields are converted as `papers export --format` writes them (see
 [How the fields are converted](export.md#how-the-fields-are-converted)); a
 few more are read: `T1`, `JO`, `JF` (title, journal), `A2` (editors of a
 chapter, in EndNote exports), `N2` (abstract), `M3` (type of a report); and
-in CSL-JSON, `genre` (the type of a report or thesis). Other fields are ignored.
+in CSL-JSON, `genre` (the type of a report or thesis). A thesis whose type
+(RIS `M3`, CSL-JSON `genre`) contains `master` is a `mastersthesis`, any
+other a `phdthesis`. Other fields are ignored.
 
 ## Add an entry from its DOI
 

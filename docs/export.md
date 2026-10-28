@@ -128,6 +128,10 @@ left out.
 CSL-JSON has no field for files: the links are written in its `custom`
 object, `"custom": {"file": [...]}`, which other programs ignore.
 
+A `mastersthesis` is a `thesis` of genre `Master's thesis` in CSL-JSON,
+and a `THES` record with `M3  - Master's thesis` in RIS (unless the entry
+has a `type` field), so that it is read back as a `mastersthesis`.
+
 | bibtex | CSL-JSON | RIS |
 |---|---|---|
 | `article` | `article-journal` | `JOUR` |
@@ -195,4 +199,5 @@ $ papers list perrette --format bibjson
 `papers add refs.bib.json` reads a collection (`{"records": [...]}`), a
 list of records or one record. It also reads the DOI of BibJSON
 identifiers (`"identifier": [{"type": "doi", "id": ...}]`), and joins the
-lists of strings (e.g. keywords) with commas.
+lists of strings (e.g. keywords) with commas, leaving out `null` items.
+Numbers are kept as written in the file (`0.0000001`, `2000.0`).
