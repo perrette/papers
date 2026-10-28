@@ -75,13 +75,13 @@ and the `name.*` settings are marked `not used: shallow library`: the
 files are in the pool, named with the pool's template (`filesdir` is where
 `papers config pool none` copies them).
 
-The library configuration keeps only the settings that differ from the
-global or default value: setting one to that value removes it from the
-file, and the library then follows the global configuration. `pool` is
-the exception: once set, even to `none`, it stays until
-`papers config --unset pool`. `papers config --prune` removes the values
-equal to the global or default value from a file written by an earlier
-version (papers also leaves them out each time it saves the file).
+The library configuration keeps the settings given to the library
+(`papers init --paths absolute`, `papers config NAME VALUE`), even when the
+value is the global or default one; the other settings follow the global
+configuration. `papers config --unset NAME` removes a setting from the
+file, and the library then follows the global configuration again.
+`papers config --prune` removes all the values equal to the global or
+default value (`pool` stays).
 
 | Setting | Values |
 |---|---|
