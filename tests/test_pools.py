@@ -692,13 +692,13 @@ class TestPull(PoolTest):
         self.assertRegex(out, r'^Not found -> smith2020climate: .* \[not in pool ../pool\]$')
 
     def test_distinct_merged(self):
-        pool_distinct = Distinct.for_bibtex(self.path('pool', 'papers.bib'))
+        pool_distinct = Distinct.for_library(self.path('pool'))
         pool_distinct.pairs.append([{'doi': '10.1/a'}, {'doi': '10.1/b'}])
         pool_distinct.changed = True
         pool_distinct.save()
         self.lib('pull')
         self.assertIn([{'doi': '10.1/a'}, {'doi': '10.1/b'}],
-                      Distinct.for_bibtex(self.path('lib', 'papers.bib')).pairs)
+                      Distinct.for_library(self.path('lib')).pairs)
 
     def test_check_and_status(self):
         self.lib('pull')
@@ -835,13 +835,13 @@ class TestPush(PoolTest):
         self.assertEqual(self.entry('mine2022')['title'], 'My own paper (pool)')
 
     def test_distinct_merged(self):
-        lib = Distinct.for_bibtex(self.path('lib', 'papers.bib'))
+        lib = Distinct.for_library(self.path('lib'))
         lib.pairs.append([{'doi': '10.1/a'}, {'doi': '10.1/b'}])
         lib.changed = True
         lib.save()
         self.lib('push --all')
         self.assertIn([{'doi': '10.1/a'}, {'doi': '10.1/b'}],
-                      Distinct.for_bibtex(self.path('pool', 'papers.bib')).pairs)
+                      Distinct.for_library(self.path('pool')).pairs)
 
     def test_status_after_push(self):
         self.lib('pull')

@@ -165,14 +165,14 @@ class TestDistinct(unittest.TestCase):
     def test_recorded_and_honoured(self):
         a = entry('a', **SMITH)
         b = entry('b', **SMITH)
-        d = Distinct.for_bibtex(self.bibtex)
+        d = Distinct.for_library(os.path.dirname(self.bibtex))
         self.assertEqual(kind(a, b, d), SAME)
         d.add(a, b)
         d.save()
         path = os.path.join(self.tmp.name, '.papers', 'distinct.json')
         self.assertEqual(json.load(open(path))['distinct'],
                          [[{'authortitle': 'smith doe|climate sensitivity revisited'}] * 2])
-        d2 = Distinct.for_bibtex(self.bibtex)
+        d2 = Distinct.for_library(os.path.dirname(self.bibtex))
         self.assertEqual(kind(a, b, d2), DIFFERENT)
         self.assertEqual(kind(b, a, d2), DIFFERENT)
 
@@ -731,7 +731,7 @@ class TestListDuplicates(LibraryTest):
         self.assertEqual(sorted(self.keys('list --duplicates --invert')), ['brown2021', 'smith2019preprint'])
 
     def test_distinct(self):
-        d = Distinct.for_bibtex(self.bibtex)
+        d = Distinct.for_library(os.path.dirname(self.bibtex))
         entries = self.entries()
         d.add(entries['handbook'], entries['chapter'])
         d.save()

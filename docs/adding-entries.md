@@ -321,7 +321,7 @@ dataset "Data for: X" deposited under the DOI of the article "X". Without a
 terminal, such a pair is never merged.
 
 When you answer that two entries are not the same paper (`n`, below), papers
-records it in `.papers/distinct.json`, next to the bibtex, and does not ask
+records it in `.papers/distinct.json` of the library, and does not ask
 about them again. The file records the identifiers of both entries (DOI,
 arXiv id, ISBN, authors and title), not their keys.
 

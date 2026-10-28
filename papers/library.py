@@ -11,6 +11,7 @@ import papers.config
 from papers import journal, lock, logger
 import papers.backup
 from papers.bib import Biblio, BibtexChanged
+from papers.duplicate import Distinct
 from papers.entries import get_entry_val
 from papers.config import (Config, MachineConfig, CONFIG_FILE, CONFIG_FILE_LEGACY, CONFIG_FILE_LEGACY_XDG,
                            find_library_config, library_config_file)
@@ -92,11 +93,13 @@ def get_biblio(config):
         raise ValueError('bibtex is not initialized')
     relative_to = os.path.sep if config.absolute_paths else os.path.dirname(config.bibtex)
     if os.path.exists(config.bibtex):
-        biblio = Biblio.load(config.bibtex, config.filesdir, nameformat=config.nameformat, keyformat=config.keyformat)
+        biblio = Biblio.load(config.bibtex, config.filesdir, nameformat=config.nameformat, keyformat=config.keyformat,
+                             distinct=Distinct.for_library(config.libdir))
         if biblio.relative_to != relative_to and biblio.update_file_path(relative_to):
             biblio.load_changes = True
     else:
-        biblio = Biblio.newbib(config.bibtex, config.filesdir, relative_to=relative_to, nameformat=config.nameformat, keyformat=config.keyformat)
+        biblio = Biblio.newbib(config.bibtex, config.filesdir, relative_to=relative_to, nameformat=config.nameformat,
+                               keyformat=config.keyformat, distinct=Distinct.for_library(config.libdir))
     if config.shallow:
         _repair_pool_links(biblio, config)
         if getattr(biblio, 'repaired_links', None):
@@ -184,7 +187,7 @@ def follow_renamed_keys(biblio, config):
     if not renamed:
         return
     from papers.pools import Origin  # papers.pools imports this module
-    origin = Origin.for_bibtex(config.bibtex)
+    origin = Origin.for_library(config.libdir)
     for old, new in renamed:
         biblio.rekey_references(old, new)
         origin.rekey(old, new)

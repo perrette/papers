@@ -112,7 +112,7 @@ def load_biblio(config):
         return get_biblio(config)
     relative_to = os.path.sep if config.absolute_paths else os.path.dirname(config.bibtex)
     return Biblio(filesdir=config.filesdir, nameformat=config.nameformat, keyformat=config.keyformat,
-                  relative_to=relative_to, distinct=Distinct.for_bibtex(config.bibtex))
+                  relative_to=relative_to, distinct=Distinct.for_library(config.libdir))
 
 
 def entry_for(entry, source, target, key=None):
@@ -552,8 +552,9 @@ class Origin:
         self.stale = set()  # files to remove at the save (the records of a pool that moved to another id)
 
     @classmethod
-    def for_bibtex(cls, bibtex):
-        return cls.load(os.path.join(os.path.dirname(os.path.abspath(bibtex)), ORIGIN_DIR))
+    def for_library(cls, libdir):
+        "the records of the library in the folder `libdir` (see papers.config.library_dir)"
+        return cls.load(os.path.join(libdir, ORIGIN_DIR))
 
     @classmethod
     def load(cls, dir):
@@ -790,7 +791,7 @@ class Exchange:
         self.config = config
         self.biblio = biblio
         self.pools = pools or Pools(config)
-        self.origin = origin if origin is not None else Origin.for_bibtex(config.bibtex)
+        self.origin = origin if origin is not None else Origin.for_library(config.libdir)
         self.pools.renamed = self.origin.rename_pool
         self.pools.located = self.origin.locate
         self.pools.set_known_ids(set(self.origin.entries) | set(self.origin.pulls))
@@ -1592,7 +1593,7 @@ def export(biblio, config, entries, dest, files='copy', library=True):
             # the export writes no backup of it (.papers.bib.backup)
             os.remove(new.bibtex)
         target = Biblio(filesdir=new.filesdir, nameformat=new.nameformat, keyformat=new.keyformat,
-                        relative_to=os.path.dirname(new.bibtex), distinct=Distinct.for_bibtex(new.bibtex))
+                        relative_to=os.path.dirname(new.bibtex), distinct=Distinct.for_library(new.libdir))
         current = new.file
     else:
         new, current = None, None
@@ -1724,7 +1725,7 @@ def exchange_state(config, pools, path):
     the same change on both sides, or entries of other libraries) is in
     sync. Nothing of the library is written (its origin records stay as
     they are): only the pieces found in sync, on the machine (see _Pieces)."""
-    origin = Origin.for_bibtex(config.bibtex) if config.bibtex else Origin()
+    origin = Origin.for_library(config.libdir) if config.bibtex else Origin()
     pools.set_known_ids(set(origin.entries) | set(origin.pulls))
     pool = pools.resolve(path)
     first = pool_state(origin, pool)

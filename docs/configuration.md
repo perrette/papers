@@ -5,9 +5,12 @@
 A library is a bibtex file, a files directory, and a configuration file
 `.papers/config.json` in the library directory. The `.papers/` folder also
 holds the origin copies of the entries exchanged with pools and the pairs
-recorded as not the same paper. `papers init` creates a library in the
-current directory, and `papers init DIR` in the directory `DIR` (created if
-missing, with its parents):
+recorded as not the same paper, also when the bibtex is in another folder.
+Versions up to 3.0.0b5 wrote these two next to the bibtex: papers moves
+them to the `.papers/` of the library when it opens the library, unless the
+folder of the bibtex is a library of its own. `papers init` creates a
+library in the current directory, and `papers init DIR` in the directory
+`DIR` (created if missing, with its parents):
 
 ```
 $> papers init
