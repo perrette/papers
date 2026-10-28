@@ -456,6 +456,26 @@ class TestGuard(JournalTest):
         self.assertIn('restored from the history', self.out('undo'))
 
 
+class TestCyclicalRemoval(JournalTest):
+    """with a history of 3 MB, deleting five files of 1 MB one after the
+    other keeps the last three: the oldest steps go first, with their files"""
+
+    def test_last_three_kept(self):
+        self.lib('config --global history-size 3')
+        paths = []
+        for i in range(5):
+            paths.append(self.write('src', f'p{i}.pdf', content=''))
+            Path(paths[-1]).write_bytes(b'%PDF' + bytes([48 + i]) * (journal.MB - 100))
+        self.bib(*[entry(f'p{i}2000', p) for i, p in enumerate(paths)])
+        for i in range(5):
+            self.lib(f'rm p{i}2000 --delete-files --yes')
+            self.assertLessEqual(papers.backup.store(self.config()).size(), 3 * journal.MB + 100 * 1024)
+        self.assertIn('restored from the history', self.out('undo'))
+        self.assertIn('restored from the history', self.out('undo'))
+        self.assertTrue(os.path.exists(paths[4]) and os.path.exists(paths[3]))
+        self.assertFalse(os.path.exists(paths[0]))
+
+
 class TestRefusedSave(JournalTest):
     """another program wrote the bibtex while the command ran: papers does
     not write it (#119), and puts back the files that the command moved"""
