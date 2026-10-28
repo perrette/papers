@@ -44,7 +44,8 @@ undo starts a new line of history; the undone steps are not lost, and
 
 A file that a command deletes (`papers rm --delete-files`, `papers file
 rm`, `papers file clean`...) is kept by the history, and `papers undo` puts
-it back:
+it back, also when no entry linked to it, or when the command was stopped
+(an error, Ctrl-C) after deleting it:
 
 ```
 undo: papers.bib restored to 12 papers add paper.pdf (2026-10-22 14:03)

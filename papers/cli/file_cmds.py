@@ -438,6 +438,10 @@ def check_entries_files(o, config, fix, pools, biblio, entries, nameformat):
 
 
 def file_cleancmd(parser, o, config):
+    if config.shallow:
+        # its filesdir setting is not used: the files are those of the pool, which other libraries link to too
+        raise PapersExit(f'the files of a shallow library are in its pool: clean them there, with all the entries '
+                         f'of the pool (`papers -C {config.pool_label()} file clean`)')
     biblio = get_biblio(config)
     if config.filesdir is None:
         raise PapersExit('the library has no files directory')

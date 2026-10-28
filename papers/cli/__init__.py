@@ -140,8 +140,10 @@ def _run(o, parser, subparsers, config):
     papers.journal.start(config.bibtex, papers.backup.Deleted(config) if config.bibtex else None)
     papers.journal.ASSUME_YES = bool(getattr(o, 'yes', False))
     papers.backup.start(config, o.cmd)
-    o.func(o.command_parser, o, config)
-    finish_journal()
+    try:
+        o.func(o.command_parser, o, config)
+    finally:
+        finish_journal(config)  # what the command did to the files, also when it stopped early
 
 
 class _LogFormatter(logging.Formatter):
@@ -171,6 +173,13 @@ def main_clean_exit(args=None):
                      'run the command in a terminal, or answer with its options '
                      '(e.g. --on-duplicate for duplicates, -y/--yes)')
         sys.exit(1)
+    except KeyboardInterrupt:
+        # Ctrl-C (e.g. at a question): no traceback; what was done is in the history (papers undo)
+        if logger.getEffectiveLevel() == logging.DEBUG:
+            raise
+        print(file=sys.stderr)
+        logger.error('interrupted')
+        sys.exit(130)
     except BrokenPipeError:
         # the output was closed before the end (papers list | head): no traceback,
         # and nothing more written to it (the recipe of the Python docs, signal module)

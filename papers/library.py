@@ -188,15 +188,25 @@ def follow_renamed_keys(biblio, config):
     origin.save()
 
 
-def finish_journal():
-    """at the end of a command: the file operations done after the last
-    snapshot of its library (e.g. the files deleted by papers rm, once the
-    library is saved) join that snapshot, for undo (see papers.journal)"""
+def finish_journal(config=None):
+    """at the end of a command (also one stopped by an error or Ctrl-C):
+    the file operations done after the last state of its library (e.g. the
+    files deleted by papers rm, once the library is saved) join that state;
+    those of a command that did not save the library (e.g. papers file
+    clean) make a state of their own, so that undo brings the files back
+    (see papers.journal)"""
     ops, where = journal.leftover()
-    if not ops or where is None or papers.config.DRYRUN:
+    if not ops or papers.config.DRYRUN:
         return
-    config, n = where
-    papers.backup.add_operations(config, n, ops)
+    if where is not None:
+        saved, n = where
+        papers.backup.add_operations(saved, n, ops)
+    elif config is not None and journal.is_owner(config.bibtex):
+        try:
+            papers.backup.sync_head(config)
+            papers.backup.record(config, ops=ops)
+        except Exception as error:
+            logger.error(f'{len(ops)} file operation(s) not recorded for undo: {error}')
 
 
 def convert_file_links(config):

@@ -448,3 +448,51 @@ class TestRefusedSave(JournalTest):
         self.assertTrue(os.path.exists(self.a))
         self.assertEqual(len(lines), 2)
         self.assertEqual(journal.pending(self.path('lib', 'papers.bib')), [])
+
+
+class TestCommandsThatDoNotSave(JournalTest):
+    """a command that changes files but not the bibtex (papers file clean),
+    or that stops early (an error, Ctrl-C): what it did to the files is a
+    step of the history, and undo brings the files back"""
+
+    def stray(self, name, content='stray'):
+        return self.write('lib', 'files', name, content=content)
+
+    def test_file_clean_undo(self):
+        a, b = self.stray('a.pdf', 'a'), self.stray('b.pdf', 'b')
+        self.lib('file clean --yes')
+        self.assertFalse(os.path.exists(a) or os.path.exists(b))
+        self.assertIn('restored from the history', self.out('undo'))
+        self.assertEqual(Path(a).read_text(), 'a')
+        self.assertEqual(Path(b).read_text(), 'b')
+        self.assertIn('deleted again', self.out('redo'))
+        self.assertFalse(os.path.exists(a) or os.path.exists(b))
+
+    def test_interrupted(self):
+        a, b = self.stray('a.pdf', 'a'), self.stray('b.pdf', 'b')
+        with patch('builtins.input', side_effect=['y', KeyboardInterrupt]), self.assertRaises(KeyboardInterrupt):
+            self.lib('file clean')
+        self.assertFalse(os.path.exists(a))  # removed before Ctrl-C
+        self.assertTrue(os.path.exists(b))
+        self.lib('undo')
+        self.assertEqual(Path(a).read_text(), 'a')
+
+    def test_question(self):
+        self.stray('a.pdf')
+        with patch('builtins.input', return_value='n') as ask:
+            self.lib('file clean')
+        self.assertIn('[y: yes, n: no, Y: all, N: none]', ask.call_args[0][0])
+
+
+class TestShallowClean(FileTest):
+    "the filesdir setting of a shallow library is not used: file clean does not clean it"
+
+    def test_refused(self):
+        self.papers('init pool')
+        os.makedirs(self.path('other'))
+        other = self.write('other', 'not-mine.pdf', content='a file of another library')
+        self.lib('config filesdir ../other')
+        self.lib('config pool ../pool -y')
+        with self.assertRaisesRegex(Exception, r'in its pool: clean them there.*papers -C \.\./pool file clean'):
+            self.lib('file clean --yes')
+        self.assertTrue(os.path.exists(other))

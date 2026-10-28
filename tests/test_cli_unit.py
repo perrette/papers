@@ -10,6 +10,9 @@ import tempfile
 import unittest
 from contextlib import redirect_stdout
 from pathlib import Path
+from unittest.mock import patch
+
+from papers import logger
 from unittest import mock
 
 import papers.cli
@@ -272,3 +275,17 @@ class TestBrokenPipe(unittest.TestCase):
                              env={**os.environ, 'PYTHONPATH': os.getcwd()})
         self.assertEqual(res.returncode, 1)
         self.assertNotIn('Traceback', res.stderr)
+
+
+class TestInterrupt(unittest.TestCase):
+
+    def test_ctrl_c(self):
+        import io
+        from contextlib import redirect_stderr
+        from papers.cli import main_clean_exit
+        err = io.StringIO()
+        with patch('papers.cli.main', side_effect=KeyboardInterrupt), redirect_stderr(err), \
+                patch.object(logger, 'getEffectiveLevel', return_value=30), self.assertRaises(SystemExit) as cm:
+            main_clean_exit([])
+        self.assertEqual(cm.exception.code, 130)
+        self.assertNotIn('Traceback', err.getvalue())

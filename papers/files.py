@@ -946,7 +946,7 @@ def clean_filesdir(biblio, interactive=True, ignore_files=None, ignore_folders=N
                 name = os.path.relpath(path, biblio.filesdir)
                 if interactive:
                     if ANS is None:
-                        ans = input(f"File: {name} not in library. Remove ? [Y/n/Y/N] ")
+                        ans = input(f"File: {name} not in library. Remove? [y: yes, n: no, Y: all, N: none] ")
                     else:
                         ans = ANS
                     if ans in ['Y', 'N']:

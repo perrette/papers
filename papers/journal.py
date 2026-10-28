@@ -323,6 +323,25 @@ def restore(current, target, ops, undo, hashes=None, pool_dirs=(), find_deleted=
         elif deleted or want:
             lines.append(f'    {_show(path)}: deleted by the command, not restored')
 
+    # the files that no entry links to, deleted by the commands (e.g. papers file clean):
+    # brought back by undo, deleted again by redo
+    for op in (reversed(ops) if undo else ops):
+        path = op['src']
+        if op['op'] != 'trashed' or path in current or path in target or path in reported:
+            continue
+        reported.add(path)
+        if undo and not os.path.lexists(path):
+            found = find_deleted(op.get('checksum')) if find_deleted else None
+            if found:
+                _place(found, path, copy=True)
+                lines.append(f'    {_show(path)}: restored from the history')
+            else:
+                lines.append(f'    {_show(path)}: no longer in the history (see the history-size setting), '
+                             'not restored')
+        elif not undo and os.path.isfile(path) and digest(path) == op.get('checksum'):
+            remove(path)
+            lines.append(f'    {_show(path)}: deleted again (kept in the history)')
+
     # the files that the commands put in place, and that the restored state does not link
     for path in sorted((current | mentioned) - target):
         if path in reported or not os.path.isfile(path):
