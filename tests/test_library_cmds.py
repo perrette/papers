@@ -34,6 +34,11 @@ class TestConfigCmd(FileTest):
         self.lib('config history-size 10')
         self.assertEqual(self.out('config history-size').strip(), '10')
 
+    def test_global_path_relative_to_current_directory(self):
+        # stored absolute: a relative value would be read from the folder of the global configuration
+        self.lib('config --global history-dir hist')
+        self.assertEqual(self.out('config --global history-dir').strip(), self.path('lib', 'hist'))
+
     def test_filesdir_that_does_not_exist(self):
         with self.assertLogs('papers', level='WARNING') as logs:
             self.lib('config filesdir other')
@@ -90,7 +95,7 @@ class TestInitSummary(ConfigTest):
 
     def test_shallow(self):
         self.papers('init pool')
-        out = self.papers('init lib --pool ../pool', sp_cmd='check_output')
+        out = self.papers('init lib --pool pool', sp_cmd='check_output')
         self.assertIn('* files:   in the pool (shallow library)\n* pool:    ../pool\n', out)
         self.assertNotIn('* history:', out)
         self.assertEqual(self.json('lib')['pool'], '../pool')

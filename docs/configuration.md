@@ -29,8 +29,9 @@ files directory is `files` (or an existing `pdfs`, `pdf`, `papers` or
 `--paths relative|absolute`, `--editor`
 and the name and key format options (see
 [Renaming files and keys](renaming.md)).
-With `DIR`, the paths given to `--bibtex` and `--filesdir` are relative to
-`DIR`.
+With `DIR`, the paths given to `--bibtex`, `--filesdir` and `--pool` are
+relative to the current directory, as `DIR` is (`papers init lib --bibtex
+lib/refs.bib`).
 `papers init` does not prompt, and fails if the directory already has a
 library configuration: change the settings of an existing library with
 `papers config`.
@@ -110,8 +111,16 @@ them for one command.
 Paths in the library configuration are stored relative to its directory, so
 that the library can be moved or shared as a whole. `papers config bibtex`,
 `papers config filesdir` and the list of `papers config` show them as
-absolute paths. A relative path given to set them is relative to the current
-directory.
+absolute paths.
+
+A path given on the command line is relative to the current directory, as
+for any other command: `papers config bibtex`, `papers config filesdir`,
+`papers config pool`, `papers config --global default` and `papers config
+--global history-dir`, and `papers init DIR --bibtex FILE --filesdir FOLDER
+--pool PATH` (relative to the current directory, not to DIR). papers then
+stores it as the setting is written: relative to the library for `bibtex`
+and `filesdir`, as described below for `pool`, and absolute (with `~` for
+the home directory) for `default` and `history-dir`.
 
 `history-dir` and `keep-deleted-files` can only be set in the global
 configuration (`papers config --global`): a library you receive from

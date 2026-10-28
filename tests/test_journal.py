@@ -294,7 +294,7 @@ class TestShallow(FileTest):
 
     def add(self):
         self.papers('init pool')
-        self.papers('init shallow --pool ../pool')
+        self.papers('init shallow --pool pool')
         a = self.write('src', 'a.pdf', content='pdf a')
         Path(self.path('src', 'a.bib')).write_text(entry('one2000', a))
         self.papers('add ../src/a.bib --move', cwd=self.path('shallow'))

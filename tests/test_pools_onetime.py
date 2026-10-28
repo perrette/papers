@@ -100,12 +100,12 @@ class TestSetting(OneTimeTest):
             self.lib('config pool ../pool ../other')
 
     def test_init(self):
-        out = self.papers('init third --pool ../pool', sp_cmd='check_output')
+        out = self.papers('init third --pool pool', sp_cmd='check_output')
         self.assertIn('* files:   in the pool (shallow library)\n* pool:    ../pool\n', out)
         self.assertEqual(self.json('third')['pool'], '../pool')
 
     def test_status(self):
-        self.papers('init third --pool ../pool')
+        self.papers('init third --pool pool')
         self.assertIn('* pool:   ../pool (not pulled from yet)\n', self.out('status', cwd='third'))
 
 

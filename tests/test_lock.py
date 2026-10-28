@@ -181,7 +181,7 @@ class TestUndoLocksPool(LockTest):
 
     def test_undo_waits_for_the_pool(self):
         self.papers('init pool')
-        self.papers('init shallow --pool ../pool')
+        self.papers('init shallow --pool pool')
         self.papers('add ../new.bib', cwd=self.path('shallow'))
         Path(self.path('pool', '.papers', 'lock')).write_text(json.dumps({
             'token': 'other', 'pid': self.sleeper.pid, 'host': socket.gethostname(), 'command': 'papers edit'}))
@@ -201,7 +201,7 @@ class TestPoolStepFrom(ConfigTest):
 
     def test_history_of_the_pool(self):
         self.papers('init pool')
-        self.papers('init lib --pool ../pool')
+        self.papers('init lib --pool pool')
         Path(self.path('new.bib')).write_text(BIB)
         self.papers('add ../new.bib', cwd=self.path('lib'))
         out = self.papers('history', cwd=self.path('pool'), sp_cmd='check_output')

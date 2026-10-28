@@ -282,15 +282,15 @@ def get_parser(config=None):
         'or built in), the options below override them, and later changes go through `papers config`.',
         parents=[loggingp, namefmt, keyfmt])
     initp.add_argument('dir', nargs='?', metavar='DIR',
-        help='directory of the library (default: the current directory); --bibtex and '
-             '--filesdir are relative to it')
+        help='directory of the library (default: the current directory); like DIR, the paths of '
+             '--bibtex, --filesdir and --pool are relative to the current directory')
     initp.add_argument('--bibtex', type=file_uri_to_path,
         help='bibtex file (default: papers.bib, or the first .bib file of the directory)')
     initp.add_argument('--filesdir', type=file_uri_to_path,
         help='files directory (default: files, or an existing pdfs/, papers/... folder)')
     initp.add_argument('--pool', metavar='PATH',
-        help='a shallow library that uses the library PATH as pool (a path relative to the library; '
-             'PATH must be a library without pool): `papers add` looks in PATH first and adds the new '
+        help='a shallow library that uses the library PATH as pool (PATH must be a library without '
+             'pool; a relative PATH is stored relative to the library): `papers add` looks in PATH first and adds the new '
              'entries and their files to it, and the library links to the files of PATH. Default: no '
              'pool, a self-contained library')
     initp.add_argument('--shallow', action='store_true',
