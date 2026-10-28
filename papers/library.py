@@ -8,7 +8,7 @@ import shutil
 
 import papers.checksums
 import papers.config
-from papers import journal, logger
+from papers import journal, lock, logger
 import papers.backup
 from papers.bib import Biblio, BibtexChanged
 from papers.entries import get_entry_val
@@ -147,6 +147,9 @@ def savebib(biblio, config, other_changes=False):
         logger.info(f'{config.bibtex}: nothing changed, not saved')
         return
     logger.info(f'Saving {config.bibtex}')
+    # a library written by a command that did not lock it beforehand (e.g. links repaired by papers list)
+    lock.acquire(config)
+    lock.check(config)
     if isinstance(biblio, Biblio):
         follow_renamed_keys(biblio, config)
     # the bibtex as it was before the command, if papers did not write it (see papers.backup.sync_head)

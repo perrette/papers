@@ -76,6 +76,10 @@ _NO_GIT_LFS = 'papers keeps the files that its commands delete in its history (s
 DEPRECATED_COMMANDS = ('install', 'uninstall', 'filecheck', 'doi', 'restore-backup', 'backup', 'git')
 
 
+# the actions of papers list that write the library (the others list, open or export)
+_LIST_ACTIONS = ('delete', 'edit', 'add_keywords', 'rename', 'attach', 'rm_tag', 'detach', 'detach_broken',
+                 'fix_files', 'push', 'pull', 'sync', 'fetch', 'add_files')
+
 def _hide_commands(subparsers, names):
     """leave the commands `names` out of the usage, the list of commands of
     the help, and the error of an unknown command (see _Parser)"""
@@ -197,11 +201,14 @@ def get_parser(config=None):
     _selection_help = (f'KEY: {ENTRY_IDS} (a former key in the ids field works too); '
                        '- reads them from the standard input, one per line')
 
-    def _command(p, func, library=False, bibtex_must_exist=True):
+    def _command(p, func, library=False, bibtex_must_exist=True, writes=True):
         """the function of a command, called as func(p, o, config) by
         papers.cli.main; with library=True, config is the library of the
-        command line (see papers.cli.common.check_install)"""
-        p.set_defaults(func=func, library=library, bibtex_must_exist=bibtex_must_exist, command_parser=p)
+        command line (see papers.cli.common.check_install), locked while
+        the command runs (see papers.lock) unless writes is False, or a
+        function of the parsed arguments that says False"""
+        p.set_defaults(func=func, library=library, bibtex_must_exist=bibtex_must_exist, command_parser=p,
+                       writes=writes)
 
     def _files_mode_options(grp, add=False):
         "the files mode options of add (with its aliases -r/--rename and -c), file attach and file rename"
@@ -608,7 +615,7 @@ def get_parser(config=None):
     p.add_argument('--metadata', action='store_true', help='also compare the DOI of the PDFs with the entry (parses the PDFs)')
     p.add_argument('--pool', action='append', metavar='PATH', help=_pool_help)
     p.add_argument('--search', action='append', metavar='DIR', help=_search_help)
-    _command(p, file_checkcmd, library=True)
+    _command(p, file_checkcmd, library=True, writes=False)
 
     p = filesub.add_parser('fix', parents=[cfg],
         help='repair the file links that `papers file check` reports',
@@ -782,7 +789,8 @@ def get_parser(config=None):
     grp.add_argument('--add-files', nargs='+', type=file_uri_to_path, metavar='FILE',
         help=argparse.SUPPRESS)  # deprecated: --attach
     grp.add_argument('--copy', action='store_true', help=argparse.SUPPRESS)  # deprecated: --rename --keep-source
-    _command(listp, listcmd, library=True)
+    _command(listp, listcmd, library=True, writes=lambda o: any(
+        getattr(o, action, None) not in (None, False) for action in _LIST_ACTIONS))
 
     # edit, rm, tag
     # =============
@@ -912,7 +920,7 @@ def get_parser(config=None):
     exportp.add_argument('dir', metavar='DIR', help='directory of the new library (must not exist, or be empty)')
     exportp.add_argument('entries', nargs='*', metavar='KEY', help=_selection_help + ' (default: all entries)')
     _export_options(exportp)
-    _command(exportp, exportcmd, library=True)
+    _command(exportp, exportcmd, library=True, writes=False)
 
     # open
     # ====

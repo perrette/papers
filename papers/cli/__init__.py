@@ -6,6 +6,7 @@ import sys
 import papers.backup
 import papers.config
 import papers.journal
+import papers.lock
 import papers.utils
 from papers import __version__, logger
 from papers.config import CONFIG_FILE
@@ -140,10 +141,16 @@ def _run(o, parser, subparsers, config):
     papers.journal.start(config.bibtex, papers.backup.Deleted(config) if config.bibtex else None)
     papers.journal.ASSUME_YES = bool(getattr(o, 'yes', False))
     papers.backup.start(config, o.cmd)
+    writes = o.writes(o) if callable(o.writes) else o.writes
     try:
+        if o.library and writes:
+            papers.lock.acquire(config)
         o.func(o.command_parser, o, config)
     finally:
-        finish_journal(config)  # what the command did to the files, also when it stopped early
+        try:
+            finish_journal(config)  # what the command did to the files, also when it stopped early
+        finally:
+            papers.lock.release_all()
 
 
 class _LogFormatter(logging.Formatter):

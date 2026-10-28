@@ -130,7 +130,14 @@ library also records the step of the pool.
   the pool.
 - `papers undo --library-only` (and `redo --library-only`) leave the pool
   as it is: the files that the command moved to the pool are copied back.
-- `papers -C POOL undo` and `papers -C POOL redo` change the pool only.
+- `papers -C POOL undo` and `papers -C POOL redo` change the pool only:
+  they undo the last change of the pool, whichever library made it. In the
+  history of the pool, a step made from a library names it:
+  `31 papers add ../new.bib (2026-10-28 10:09, from ~/papers/paper2)`.
+- The library and the pool are locked during the undo (see
+  [Two commands at the same time](library-management.md#two-commands-at-the-same-time)):
+  no other command changes the pool between the moment undo looks where the
+  pool is and the moment it writes it.
 
 ```
 $ papers add ~/Downloads/esd-4-11-2013.pdf --move

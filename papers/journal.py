@@ -134,6 +134,11 @@ def rollback(bibtex, find_deleted=None):
     return lines
 
 
+def owner():
+    "the real path of the bibtex of the library of the command, or None"
+    return _owner
+
+
 def is_owner(bibtex):
     "the library of this bibtex is the library of the command"
     return bool(bibtex) and _owner == os.path.realpath(bibtex)
