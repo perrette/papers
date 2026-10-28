@@ -25,6 +25,13 @@ class TestBibtexFileEntry(unittest.TestCase):
         files = parse_file(':/path/to/file1.pdf:pdf;:/path/to/file2.pdf:pdf')
         self.assertEqual(files, ['/path/to/file1.pdf','/path/to/file2.pdf'])
 
+    def test_parse_files_trimmed(self):
+        # each path is trimmed: `a.pdf; b.pdf` (no escaping, see docs/files.md)
+        self.assertEqual(parse_file('a.pdf; b.pdf'), ['a.pdf', 'b.pdf'])
+        self.assertEqual(parse_file(':a.pdf :pdf; :b.pdf:pdf'), ['a.pdf', 'b.pdf'])
+        self.assertEqual(parse_file(r':C:\x.pdf:pdf'), [r'C:\x.pdf'])
+        self.assertEqual(parse_file(r'C:\x.pdf'), ['C'])
+
     def test_parse_file_colon_in_path(self):
         # issue #95: the path itself may contain colons (e.g. journal names)
         file = parse_file(':/path/to/American Economic Journal: Applied Economics.pdf:pdf')

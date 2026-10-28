@@ -6,6 +6,15 @@ An entry links to its files (the PDF, supplementary material...) in its
 [Renaming files and keys](renaming.md)), but an entry can link to a file
 anywhere.
 
+The `file` field holds the links separated by `;`. Each link is `path`,
+`path:type` or `description:path:type`; papers writes `:path:type`
+(`:files/x.pdf:pdf`), as JabRef and Zotero do. In the three-part form, the
+path is everything between the first and the last `:`, so it may contain
+`:` (`:C:\x.pdf:pdf`). Spaces around each path are removed. There is no
+escaping: a path that contains `;` cannot be linked, JabRef's `\:` and `\;`
+are read as they are, and a Windows path written alone (`C:\x.pdf`) is
+read as the path `C` with type `\x.pdf`.
+
 ## What `add` does with a file
 
 The `files` setting says what `papers add` does with the PDF it adds, with

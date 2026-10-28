@@ -293,7 +293,7 @@ def parse_file(file, relative_to=None):
     for f in file.split(';'):
         if not f.strip():
             continue
-        path = _parse_file(f)
+        path = _parse_file(f).strip()
         if not path:
             # joining an empty path to relative_to would point at a directory
             logger.warning(f'empty file path in file field (ignored): {f!r}')
