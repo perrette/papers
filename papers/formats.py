@@ -325,8 +325,22 @@ def _file_paths(value):
     return paths
 
 
-def _entry(entry_type, key, fields, files=()):
+_RAW_FIELDS = ('url', 'doi', 'file', 'eprint', 'isbn', 'issn')
+
+# & % # _ are commands or errors for LaTeX; RIS and CSL-JSON hold plain text
+_LATEX_SPECIAL = re.compile(r'(?<!\\)([&%#_])')
+
+
+def _latex_escaped(fields):
+    "the text fields with & % # _ escaped (urls, DOIs, keywords and dates as they are)"
+    raw = _RAW_FIELDS + ('keywords', 'urldate')
+    return {k: (v if k in raw else _LATEX_SPECIAL.sub(r'\\\1', str(v))) for k, v in fields.items()}
+
+
+def _entry(entry_type, key, fields, files=(), escape=False):
     fields = {k: v for k, v in fields.items() if v not in (None, '')}
+    if escape:
+        fields = _latex_escaped(fields)
     if files:
         fields['file'] = format_file(list(files))
     return Entry(entry_type=entry_type, key=key, fields=[Field(k, str(v)) for k, v in fields.items()])
@@ -334,8 +348,7 @@ def _entry(entry_type, key, fields, files=()):
 
 def _unicode_fields(e):
     "the fields of an entry, as unicode text (urls, DOIs and files as they are)"
-    raw = ('url', 'doi', 'file', 'eprint', 'isbn', 'issn')
-    return {f.key.lower(): (f.value if f.key.lower() in raw else _latex_to_unicode(f.value))
+    return {f.key.lower(): (f.value if f.key.lower() in _RAW_FIELDS else _latex_to_unicode(f.value))
             for f in e.fields if f.value not in (None, '')}
 
 
@@ -520,7 +533,7 @@ def csl_to_entry(item):
         fields['urldate'] = '-'.join(f'{x:02d}' for x in accessed)
     files = _file_paths(item.get('file')) + _file_paths((item.get('custom') or {}).get('file'))
     key = usable_key(item.get('citation-key')) or usable_key(item.get('id'))
-    return _entry(entry_type, key, fields, files)
+    return _entry(entry_type, key, fields, files, escape=True)
 
 
 def dumps_csl(entries, files=lambda e: ()):
@@ -770,7 +783,7 @@ def ris_to_entry(ref):
     if entry_type in ('techreport', 'phdthesis'):
         fields['type'] = _first(ref, 'type_of_work')
     files = _file_paths(_as_list(ref.get('file_attachments1')))
-    return _entry(entry_type, usable_key(_first(ref, 'id')), fields, files)
+    return _entry(entry_type, usable_key(_first(ref, 'id')), fields, files, escape=True)
 
 
 def dumps_ris(entries, files=lambda e: (), rispy=None):

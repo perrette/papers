@@ -194,6 +194,20 @@ class TestCSL(unittest.TestCase):
                     for k, v in expected.items()}
         self.assertEqual({k: v for k, v in fields(back).items() if k in MAIN}, expected, e.key)
 
+    def test_latex_special_characters(self):
+        # CSL-JSON holds plain text: & % # _ are escaped for LaTeX, urls and DOIs kept
+        e = csl_to_entry({'id': 'x', 'type': 'article-journal', 'title': 'R&D: 5% of #1 in a_b',
+                          'container-title': 'Science & Policy', 'URL': 'https://example.org/a_b?x=1&y=2',
+                          'DOI': '10.1000/a_b', 'keyword': 'sea_level'})
+        self.assertEqual(e['title'], r'R\&D: 5\% of \#1 in a\_b')
+        self.assertEqual(e['journal'], r'Science \& Policy')
+        self.assertEqual(e['url'], 'https://example.org/a_b?x=1&y=2')
+        self.assertEqual(e['doi'], '10.1000/a_b')
+        self.assertEqual(e['keywords'], 'sea_level')
+        # an escaped character stays as it is, and the export gives the text back
+        self.assertEqual(csl_to_entry({'id': 'x', 'type': 'book', 'title': r'R\&D'})['title'], r'R\&D')
+        self.assertEqual(entry_to_csl(e)['title'], 'R&D: 5% of #1 in a_b')
+
     def test_file_key(self):
         # a non-standard file key (a text separated by ; or a list) is read too
         e = csl_to_entry({'id': 'x', 'type': 'book', 'title': 'T', 'file': 'a.pdf;/abs/b.pdf'})
@@ -412,6 +426,13 @@ class TestRIS(unittest.TestCase):
         e = ris_to_entry({'type_of_reference': 'JOUR', 'title': 'T',
                           'file_attachments1': ['files/a.pdf', 'file:///abs/b.pdf']})
         self.assertEqual(links(e), ['files/a.pdf', '/abs/b.pdf'])
+
+    def test_latex_special_characters(self):
+        e = ris_to_entry({'type_of_reference': 'JOUR', 'title': 'Ice & sea_level', 'authors': ['AT&T'],
+                          'urls': ['https://example.org/a_b']})
+        self.assertEqual(e['title'], r'Ice \& sea\_level')
+        self.assertEqual(e['author'], r'AT\&T')
+        self.assertEqual(e['url'], 'https://example.org/a_b')
 
     def test_doi_from_a_url_next_to_another(self):
         # no DO line: the DOI of the doi.org link, also when another URL is there

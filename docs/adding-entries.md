@@ -223,6 +223,10 @@ The entries are added as those of a bibtex file:
   read relative to the added file and attached as for a bibtex file; links
   that are not local files (`http://`, EndNote's `internal-pdf://`) are left
   out with a warning;
+- RIS and CSL-JSON hold plain text: `&`, `%`, `#` and `_` are escaped for
+  LaTeX (`\&`...), except in `url`, `doi`, `file`, `eprint`, `isbn`,
+  `issn`, `keywords` and `urldate`; BibJSON values are read as they are,
+  since they are bibtex values;
 - in a shallow library, the new entries go to the pool too;
 - a directory scan (`-R`) reads PDFs and bibtex files only.
 
