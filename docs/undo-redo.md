@@ -98,8 +98,7 @@ kept):
 
 ```
 3 files to delete, 812 MB: more than the history keeps (history-size: 500 MB).
-- This command cannot be undone: the files go to the trash of the system, not to the history.
-- The history of the libraries is dropped: no undo before this point.
+- This command cannot be undone: the files go to the trash of the system, not to the history (the history keeps its steps).
 Proceed? [y/N]
 ```
 

@@ -345,6 +345,28 @@ class TestDeleted(JournalTest):
         # nothing of the history in the library
         self.assertFalse(os.path.exists(self.path('lib', '.papers', 'backup')))
 
+    def test_operations_after_a_save_without_state(self):
+        # a save that adds no state (nothing changed), then a file deleted: a state of its own,
+        # not added to the state of the previous command
+        from papers.library import finish_journal
+        self.lib('tag one2000 --add x')  # a first state
+        config = self.config()
+        project, place = self.project()
+        before = project.head(place)['state']
+        previous_ops = list(project.state(before).get('ops') or [])
+        journal.start(config.bibtex, papers.backup.Deleted(config))
+        papers.backup.record(config)  # nothing changed: no state
+        pdf = self.write('lib', 'files', 'stray.pdf', content='pdf a')  # a file no entry links to
+        journal.remove(pdf)
+        finish_journal(config)
+        project, place = self.project()
+        after = project.head(place)['state']
+        self.assertNotEqual(after, before)
+        self.assertEqual(project.state(before).get('ops') or [], previous_ops)
+        self.assertEqual([op['op'] for op in project.state(after)['ops']], ['trashed'])
+        self.lib('undo')
+        self.assertEqual(Path(pdf).read_text(), 'pdf a')
+
     def test_keep_deleted_files_false(self):
         self.lib('config --global keep-deleted-files false')
         self.lib('rm one2000 --delete-files')
