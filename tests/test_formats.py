@@ -507,6 +507,21 @@ class TestRIS(unittest.TestCase):
         self.assertEqual(second['keywords'], 'b')
         self.assertEqual(second['author'], 'Smith, J')
 
+    def test_tag_without_space_after_dash(self):
+        # a tag line as the reader takes it (the 6th character is the separator), also right after TY
+        [e] = formats.loads_ris('TY  - JOUR\nTI  -xA title\nAU  - Smith, J\nER  - \n')
+        self.assertEqual((e['title'], e['author']), ('A title', 'Smith, J'))
+
+    def test_mastersthesis(self):
+        e = parse_string('@mastersthesis{x,\n title = {T},\n school = {ETH},\n year = {2020}\n}\n').entries[0]
+        text = formats.dumps_ris([e])
+        self.assertIn("M3  - Master's thesis\n", text)
+        [back] = formats.loads_ris(text)
+        self.assertEqual((back.entry_type, fields(back)), ('mastersthesis', {'title': 'T', 'school': 'ETH',
+                                                                            'year': '2020'}))
+        phd = formats.loads_ris(text.replace("M3  - Master's thesis\n", ''))[0]
+        self.assertEqual(phd.entry_type, 'phdthesis')
+
     def test_last_record_without_er(self):
         first, second = formats.loads_ris('TY  - JOUR\nTI  - First\nER  - \n\nTY  - JOUR\nTI  - Second\n\n')
         self.assertEqual((first['title'], second['title']), ('First', 'Second'))

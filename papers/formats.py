@@ -717,6 +717,8 @@ def entry_to_ris(e, files=()):
         ref['language'] = f['language']
     if f.get('type') and entry_type in ('techreport', 'report', 'phdthesis', 'mastersthesis', 'thesis'):
         ref['type_of_work'] = f['type']
+    elif entry_type == 'mastersthesis':
+        ref['type_of_work'] = "Master's thesis"  # M3: read back as a mastersthesis
     if files:
         ref['file_attachments1'] = list(files)
     return ref
@@ -740,6 +742,8 @@ def ris_to_entry(ref):
     "a bibtex entry of a RIS record (as rispy reads it, see _ris_options)"
     ris_type = str(ref.get('type_of_reference', 'GEN')).strip().upper()
     entry_type = RIS_TO_BIBTEX_TYPE.get(ris_type, 'misc')
+    if ris_type == 'THES' and 'master' in _first(ref, 'type_of_work').lower():
+        entry_type = 'mastersthesis'
     fields = {}
     authors = _as_list(ref.get('authors')) + _as_list(ref.get('first_authors'))
     if authors:
@@ -786,7 +790,8 @@ def ris_to_entry(ref):
             fields[name] = sn.strip()
     publisher = _first(ref, 'publisher')
     if publisher:
-        fields[{'phdthesis': 'school', 'techreport': 'institution'}.get(entry_type, 'publisher')] = publisher
+        name = {'phdthesis': 'school', 'mastersthesis': 'school', 'techreport': 'institution'}.get(entry_type)
+        fields[name or 'publisher'] = publisher
     fields['address'] = _first(ref, 'place_published')
     fields['abstract'] = _first(ref, 'abstract', 'notes_abstract')
     keywords = []
@@ -817,8 +822,8 @@ def dumps_ris(entries, files=lambda e: (), rispy=None):
     return rispy.dumps(refs, implementation=Writer, **_ris_options(rispy))
 
 
-# a line of a RIS tag: two characters, two spaces, a dash (and a space and the value)
-_RIS_TAG = re.compile(r'^[A-Z][A-Z0-9]  -( |$)')
+# a line of a RIS tag: two characters, two spaces, a dash (then a separator and the value), as rispy reads it
+_RIS_TAG = re.compile(r'^[A-Z][A-Z0-9]  -')
 
 
 def _ris_without_stray_lines(text):
