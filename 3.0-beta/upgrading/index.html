@@ -913,7 +913,7 @@
   <span class="md-ellipsis">
     
   
-    Git integration
+    Using git
   
 
     
@@ -1009,7 +1009,11 @@
   deprecated (see <a href="#what-else-changed">What else changed</a>);</li>
 <li><strong>RIS, CSL-JSON and BibJSON</strong>: <code>papers add refs.ris</code> (or <code>.json</code>, <code>.bib.json</code>) imports them,
   <code>papers list --format</code> and <code>papers export</code> write them (see
-  <a href="../export/">Export</a>).</li>
+  <a href="../export/">Export</a>);</li>
+<li><strong>undo without git</strong>: <code>papers undo</code> takes back any command, with the
+  files it moved, renamed or deleted, without git or git-lfs (see
+  <a href="../undo-redo/">Undo and redo</a>). The git backup of papers 2 is no longer
+  used (see <a href="../git/#backups-of-earlier-versions">Backups of earlier versions</a>).</li>
 </ul>
 <h2 id="what-changes-for-an-existing-setup">What changes for an existing setup<a class="headerlink" href="#what-changes-for-an-existing-setup" title="Permanent link">&para;</a></h2>
 <p>The bibtex files do not change format, and stay readable by papers 2 and
@@ -1070,6 +1074,14 @@ by other tools. What changes:</p>
 <td><code>papers restore</code></td>
 </tr>
 <tr>
+<td><code>papers backup</code></td>
+<td><code>papers history</code></td>
+</tr>
+<tr>
+<td><code>papers uninstall</code></td>
+<td><code>rm -r .papers</code>, and <code>papers history --remove</code></td>
+</tr>
+<tr>
 <td><code>--attachment</code></td>
 <td><code>--attach</code></td>
 </tr>
@@ -1083,7 +1095,10 @@ by other tools. What changes:</p>
 </tr>
 </tbody>
 </table>
-<p><code>papers install --global</code> is removed: it stops with an error, and
+<p><code>papers git</code> is removed, and the options <code>--git</code>, <code>--no-git</code>,
+<code>--git-lfs</code> and <code>--restore-files</code> are ignored (papers keeps its
+history without git, see <a href="../undo-redo/">Undo and redo</a>).
+<code>papers install --global</code> is removed: it stops with an error, and
 changes nothing. <code>papers init PATH --global</code> creates the default
 library, and <code>papers config --global default PATH</code> registers an
 existing one.</p>
@@ -1152,8 +1167,8 @@ papers 2 is <code>~/bibliography/papers.bib</code>:</p>
   configuration of papers 3 already sets another one: commands run
   outside of any project act on it (see
   <a href="../global-library/">A global shared library</a>).</li>
-<li>The bibtex and the PDFs stay where they are. The git backup moves into
-  the library, <code>.papers/backup</code> (see
+<li>The bibtex and the PDFs stay where they are. The git backup of papers 2
+  is no longer used, and stays where it is until you delete it (see
   <a href="../git/#backups-of-earlier-versions">Backups of earlier versions</a>). File links
   stay absolute, as they were; <code>papers migrate --relative</code> makes them
   relative to the bibtex.</li>

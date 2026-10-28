@@ -27,7 +27,7 @@
     
     
       
-        <title>Git integration - papers</title>
+        <title>Using git - papers</title>
       
     
     
@@ -80,7 +80,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#git-integration" class="md-skip">
+        <a href="#using-git" class="md-skip">
           Skip to content
         </a>
       
@@ -120,7 +120,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Git integration
+              Using git
             
           </span>
         </div>
@@ -792,7 +792,7 @@
   <span class="md-ellipsis">
     
   
-    Git integration
+    Using git
   
 
     
@@ -810,7 +810,7 @@
   <span class="md-ellipsis">
     
   
-    Git integration
+    Using git
   
 
     
@@ -836,65 +836,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#turning-the-backup-on-and-off" class="md-nav__link">
+  <a href="#the-folder-papers" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Turning the backup on and off
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#what-is-backed-up" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        What is backed up
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#where" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Where
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#papers-git" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        papers git
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#git-lfs" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        git-lfs
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#pools-and-shallow-libraries" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Pools and shallow libraries
+        The folder .papers/
       
     </span>
   </a>
@@ -981,170 +926,75 @@
   
 
 
-<h1 id="git-integration">Git integration<a class="headerlink" href="#git-integration" title="Permanent link">&para;</a></h1>
-<p>papers can keep the history of a library in a git repository of its own,
-the backup folder (<code>.papers/backup</code>, see <a href="#where">Where</a>). Every command that writes the bibtex then commits a
-snapshot there. This history is what <code>papers undo</code>, <code>papers redo</code> and
-<code>papers restore</code> use (see <a href="../undo-redo/">Undo and redo</a>).</p>
-<h2 id="turning-the-backup-on-and-off">Turning the backup on and off<a class="headerlink" href="#turning-the-backup-on-and-off" title="Permanent link">&para;</a></h2>
-<p><code>papers init</code> turns the backup on when the <code>git</code> program is installed
-(unless the global configuration sets <code>git</code>, see
-<a href="../configuration/#global-configuration">Global configuration</a>).
-<code>--git</code> and <code>--no-git</code> choose explicitly, and <code>--git-lfs</code> also backs up the
-attached files (see <a href="#git-lfs">git-lfs</a>):</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>$&gt; papers init --bibtex papers.bib --filesdir files [ --no-git | --git-lfs ]
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>created the library ~/projects/sealevel
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>* bibtex:  papers.bib
-<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>* files:   files (the files directory of the library)
-<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>* backup:  bibtex and files history (git + git-lfs)
-<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>`papers config` lists and sets the settings
+<h1 id="using-git">Using git<a class="headerlink" href="#using-git" title="Permanent link">&para;</a></h1>
+<p>papers does not use git: it keeps its own history of each library for undo
+and redo (see <a href="../undo-redo/">Undo and redo</a>), on your computer, outside the
+library. That history is a way to repair mistakes, not a record of your
+work: it is not synced, and it keeps a limited size.</p>
+<p>If you want the history of your bibliography and PDFs, or to share them,
+put the library folder under git yourself, like any other project:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>cd ~/projects/sealevel
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>git init
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>git add papers.bib files .papers
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>git commit -m "my library"
 </code></pre></div>
-<p>The <code>* backup:</code> line says <code>bibtex history (git)</code>,
-<code>bibtex and files history (git + git-lfs)</code>, or
-<code>previous bibtex only (git off: one undo step)</code>. With <code>--git</code>
-or <code>--git-lfs</code>, <code>papers init</code> stops with an error before creating the
-library when git (or git-lfs) is not installed; so does
-<code>papers config git true</code>.</p>
-<p>The setting can be changed at any time:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>papers config git true        # start the backup (first snapshot: the current bibtex)
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>papers config git false       # stop committing (the backup folder stays)
-<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>papers config git-lfs true    # also back up the files (sets git true)
+<p>papers never commits to that repository, and leaves it alone.</p>
+<h2 id="the-folder-papers">The folder <code>.papers/</code><a class="headerlink" href="#the-folder-papers" title="Permanent link">&para;</a></h2>
+<p>The bibtex and the PDFs are your work. The folder <code>.papers/</code> holds the
+internals of papers: what it keeps to manage them, which may change from
+one version to the next. papers writes <code>.papers/.gitignore</code> (with <code>*</code>), so
+that git leaves the folder out. A colleague who clones the repository runs
+<code>papers init</code> to make it a library on their side.</p>
+<p>As git does with its own <code>.git/config</code>, each copy of a library has its own
+settings. To commit the configuration nonetheless (so that a clone is a
+library right away), make <code>.papers/.gitignore</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>*
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>!.gitignore
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>!config.json
 </code></pre></div>
-<p><code>papers config git false</code> also sets <code>git-lfs</code> to false. Libraries made by
-older papers versions keep their saved setting. The <code>--no-git</code> option of a
-command skips the commit of that command.</p>
-<h2 id="what-is-backed-up">What is backed up<a class="headerlink" href="#what-is-backed-up" title="Permanent link">&para;</a></h2>
-<p>Each save commits, in the backup folder:</p>
-<ul>
-<li>a copy of the bibtex, under its own name (e.g. <code>papers.bib</code>);</li>
-<li>the origin copies of the entries exchanged with a pool,
-  <code>.papers/origin/*.bib</code> (one file per pool, see
-  <a href="../pools/#origin-copies">Pools</a>);</li>
-<li><code>.papers/distinct.json</code>, the pairs recorded as not the same paper;</li>
-<li><code>.papers/files.json</code>, the checksums of the files (see
-  <a href="../undo-redo/#checksums">Checksums</a>);</li>
-<li><code>files-journal.json</code>, the files that the command moved, copied or
-  deleted (see <a href="../undo-redo/#files">Files</a>);</li>
-<li>with git-lfs only: the attached files and <code>backup_clean.bib</code> (see
-  <a href="#git-lfs">git-lfs</a>).</li>
-</ul>
-<p>A command that changes no entry and no file of <code>.papers/</code> (e.g. <code>papers
-check</code> that finds nothing, <code>papers add</code> of a duplicate that is skipped, a
-<code>pull</code> with nothing to take) does not write the bibtex and commits
-nothing.</p>
-<p>The commit message is the command, e.g. <code>papers add paper.pdf</code>. A library
-file of <code>.papers/</code> that was removed from the library is removed from the
-next snapshot. The library configuration, <code>.papers/config.json</code>, is not
-backed up: <code>papers restore</code>, <code>undo</code> and <code>redo</code> leave it as it is.</p>
-<p><code>papers restore</code>, <code>undo</code> and <code>redo</code> restore the bibtex and the files of
-<code>.papers/</code> together. <code>undo</code>, <code>redo</code> and <code>restore --ref COMMIT</code> also remove
-the files of <code>.papers/</code> that the restored snapshot does not have. Without
-the backup, <code>papers undo</code> only swaps the bibtex with its previous version
-(<code>.papers/backup/previous.bib</code>), and <code>papers restore</code> is an
-error.</p>
-<p>A commit that fails (e.g. refused by a git hook) prints a warning: the
-bibtex is saved anyway.</p>
-<p>Each commit stores the whole bibtex; once the backup folder has 150
-such objects (about 50 commits), the command that commits packs them with
-<code>git repack</code>, which keeps only the differences between versions (about 2 s
-for a library of 10000 entries, 9 s for 30000).</p>
-<h2 id="where">Where<a class="headerlink" href="#where" title="Permanent link">&para;</a></h2>
-<p>The backup is in the library, in <code>.papers/backup</code> (next to
-<code>.papers/config.json</code>), so that moving or copying the folder of the library
-takes its history along. A copy of the library has its own history from
-then on. <code>papers status -v</code> shows it:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>* backup:             bibtex history (git)
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>* backup folder:      ~/projects/sealevel/.papers/backup
-</code></pre></div>
-<p>The backup folder also holds what git does not track: the trash of the
-deleted files (see <a href="../undo-redo/#the-trash">The trash</a>), and without git
-the previous version of the bibtex (<code>previous.bib</code>) with the file
-operations of the last command.</p>
-<p>A library in a folder under git (e.g. the folder of a project) does not
-track its backup: papers writes <code>.papers/.gitignore</code> with the line
-<code>backup/</code>. The other files of <code>.papers/</code> (the configuration, the origin
-copies, <code>distinct.json</code>) can be committed with the project. In a folder
-synchronized between machines (Dropbox, Nextcloud), the backup is
-synchronized too: use it from one machine at a time.</p>
-<p>A bibtex without library configuration (e.g. <code>papers add --bibtex
-other.bib</code> where <code>other.bib</code> is not the bibtex of a library) has a backup
-folder of its own next to it, <code>.papers/backup-other.bib</code>.</p>
-<p><code>papers uninstall --remove-backup</code> removes the backup folder of the library
-with its configuration.</p>
-<h2 id="papers-git"><code>papers git</code><a class="headerlink" href="#papers-git" title="Permanent link">&para;</a></h2>
-<p><code>papers git ARGS...</code> runs <code>git ARGS...</code> in the backup folder of the
-library, e.g.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>papers git log --oneline
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>papers git remote add origin REMOTE-URL
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>papers git push -u origin main
-</code></pre></div>
-<p>The branch of the backup is <code>main</code>. When git fails, it prints its own error
-message, and papers exits with git's exit code. <code>papers git</code> needs a
-library whose backup folder exists.</p>
-<p>The backup is separate from any git repository the library is in: papers
-never commits to the repository of a project, and <code>papers git</code> does not run
-in it. The backup history is still the basis of <code>papers undo</code> and
-<code>papers redo</code> in such a library. To commit only the configuration of a
-library to the repository of a project, see
-<a href="../configuration/#relative-versus-absolute-paths">Configuration</a> for the
-<code>.gitignore</code> lines.</p>
-<h2 id="git-lfs">git-lfs<a class="headerlink" href="#git-lfs" title="Permanent link">&para;</a></h2>
-<p>With <code>git-lfs</code> set, the attached files are also backed up. They are
-hard-linked into the <code>files/</code> folder of the backup folder, which git-lfs
-tracks, and <code>backup_clean.bib</code>, a copy of the bibtex whose file links point
-into <code>files/</code>, is committed with them, so that the backup is
-self-contained. Background in
-<a href="https://github.com/perrette/papers/issues/51">issue 51</a>.</p>
-<ul>
-<li>Since the file in the backup folder is a hard link, a file edited in
-  place in the library is also edited there, until the next save commits
-  it. The git store of the backup (<code>.git/lfs</code>) keeps its own copy of each
-  committed version of a file.</li>
-<li><code>papers restore</code>, <code>undo</code> and <code>redo</code> first reset the backup folder to
-  the committed snapshot, so they restore the committed version of the
-  files. A link of the restored bibtex to a file that no longer exists
-  points to the copy in the backup folder, unless <code>--restore-files</code> is
-  passed: then the file is copied back to where the bibtex links to it.</li>
-</ul>
-<h2 id="pools-and-shallow-libraries">Pools and shallow libraries<a class="headerlink" href="#pools-and-shallow-libraries" title="Permanent link">&para;</a></h2>
-<p>A pool is a library, with its own backup. A command that writes both a
-library and its pool (<code>add</code> in a shallow library, <code>push</code>, <code>pull</code>, <code>sync</code>,
-a command with auto-push) commits a snapshot in each backup, each with its
-own setting: the pool's commit is in the pool's backup folder.
-<code>papers undo</code> in the library undoes the change of the library only;
-<code>papers -C POOL undo</code> undoes the change of the pool (see
-<a href="../pools/#undo-in-a-pool">Undo in a pool</a> and
-<a href="../undo-redo/#undo-in-a-library-that-has-a-pool">Undo in a library that has a pool</a>).</p>
-<p>A shallow library links to the files of its pool. With <code>git-lfs</code> set in
-the shallow library, its backup hard-links and commits the pool files that
-its entries link to, the same way as the files of a self-contained library:
-a file shared with the pool is then in both backups if the pool also has
-<code>git-lfs</code>.</p>
+<p>papers does not rewrite a <code>.gitignore</code> you changed. What is in the folder:</p>
+<table>
+<thead>
+<tr>
+<th>file</th>
+<th>what it is</th>
+<th>without it</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>config.json</code></td>
+<td>the settings of the library: where its bibtex and files are, its pool, the name formats, its identifier</td>
+<td>set them again (<code>papers init</code>, <code>papers config</code>)</td>
+</tr>
+<tr>
+<td><code>origin/</code></td>
+<td>with a pool only: each entry as it was at the last <code>pull</code> or <code>push</code>, to tell who changed what since</td>
+<td>the next <code>pull</code> asks about more differences</td>
+</tr>
+<tr>
+<td><code>distinct.json</code></td>
+<td>the pairs of entries you said are not the same paper</td>
+<td>papers asks about them again</td>
+</tr>
+<tr>
+<td><code>files.json</code></td>
+<td>the checksums of the files, for undo</td>
+<td>nothing: <code>papers file checksum</code> writes them again</td>
+</tr>
+</tbody>
+</table>
 <h2 id="backups-of-earlier-versions">Backups of earlier versions<a class="headerlink" href="#backups-of-earlier-versions" title="Permanent link">&para;</a></h2>
-<ul>
-<li>Papers 3.0.0b2 and earlier kept the backup in a folder of the machine,
-  <code>~/.local/share/papers/backups</code> on Linux (the platform's user data
-  directory elsewhere). The first command in a library moves its backup
-  (the history, and the trash) to <code>.papers/backup</code>, with a warning, and
-  removes its name from the library configuration (<code>"gitdir"</code>). Without
-  git, the previous version of the bibtex moves from <code>.papers.bib.backup</code>,
-  next to the bibtex, to <code>.papers/backup/previous.bib</code>.</li>
-<li><code>papers backup list</code> shows the backup folder of the library, and the
-  backups of papers 3.0.0b2 and earlier that are still in the folder of the
-  machine: those of libraries not used since (e.g. deleted ones).
-  <code>papers backup remove NAME...</code> removes them; <code>NAME</code> can be a glob pattern
-  (<code>papers backup remove 'old-*'</code>). It asks before removing each folder,
-  unless <code>-y/--yes</code> is passed (<code>-f/--force</code> is the deprecated form of
-  <code>-y</code>).</li>
-<li>The libraries of papers 2.2 to 2.4 kept their backup in <code>.papers/</code> itself,
-  the folder of <code>config.json</code>, <code>origin/</code> and <code>distinct.json</code> since papers</li>
-<li>The first command moves that repository (its history and the files it
-  tracks) to <code>.papers/backup</code>, with a warning.</li>
-<li>Backups made with git-lfs by earlier papers versions tracked <code>files/</code>, a
-  pattern that git-lfs does not apply to the files in that folder (they were stored as
-  plain git files). The next save adds <code>files/**</code> to <code>.gitattributes</code>
-  and stores the files with git-lfs from then on.</li>
-</ul>
+<p>Earlier versions of papers kept a git backup of each library: in the
+library, <code>.papers/backup</code> (the v3 branch before 3.0.0b4), or in a folder of
+the computer, <code>~/.local/share/papers/backups</code> (papers 3.0.0b2 and earlier).
+papers no longer uses them, and does not delete them: <code>papers history</code>
+lists those it finds, with their size, and the command that deletes them:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>stale: ~/projects/sealevel/.papers/backup (backup of an earlier papers, 641 MB, no longer used) — delete with: rm -rf ~/projects/sealevel/.papers/backup
+</code></pre></div>
+<p>Their history does not carry over: undo starts with the first command made
+with this version. The settings <code>git</code> and <code>git-lfs</code>, <code>papers init --git</code>,
+<code>--git-lfs</code> and <code>papers git</code> are no longer used.</p>
 
 
 

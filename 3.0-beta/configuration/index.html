@@ -941,7 +941,7 @@
   <span class="md-ellipsis">
     
   
-    Git integration
+    Using git
   
 
     
@@ -1027,7 +1027,7 @@ missing, with its parents):</p>
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>created the library ~/projects/sealevel
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>* bibtex:  papers.bib
 <a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>* files:   files (the files directory of the library)
-<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>* backup:  bibtex history (git)
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>* history: undo and redo (`papers history`)
 <a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>`papers config` lists and sets the settings
 </code></pre></div>
 <p>By default the library is self-contained (no pool), the bibtex is
@@ -1036,7 +1036,7 @@ files directory is <code>files</code> (or an existing <code>pdfs</code>, <code>p
 <code>bibliography</code> folder). The options of <code>papers init</code> are <code>--bibtex</code>,
 <code>--filesdir</code>, <code>--pool PATH</code> and <code>--shallow</code> (see <a href="#pools">Pools</a>),
 <code>--global</code> (see <a href="#global-configuration">Global configuration</a>),
-<code>--paths relative|absolute</code>, <code>--git</code>/<code>--no-git</code>, <code>--git-lfs</code>, <code>--editor</code>
+<code>--paths relative|absolute</code>, <code>--editor</code>
 and the name and key format options (see
 <a href="../renaming/">Renaming files and keys</a>).
 With <code>DIR</code>, the paths given to <code>--bibtex</code> and <code>--filesdir</code> are relative to
@@ -1056,8 +1056,8 @@ file in its directory or above), the settings of that library apply.</p>
 configuration sets one (see <a href="../global-library/">A global shared library</a>),
 and otherwise fail: <code>no library found here: papers init</code>.</p>
 <p>Type <code>papers status</code> to see which library a command acts on: where its
-bibtex and its files are, its pool and its backup. <code>papers status -v</code> also
-shows the backup folder (<code>.papers/backup</code>), the configuration file, the cache directory and
+bibtex and its files are, its pool and its history. <code>papers status -v</code> also
+shows where the history is, the configuration file, the cache directory and
 the version. <code>papers config</code> lists the settings and where each one comes from.</p>
 <h2 id="settings">Settings<a class="headerlink" href="#settings" title="Permanent link">&para;</a></h2>
 <p><code>papers config</code> gets and sets the settings, in the style of <code>git config</code>:</p>
@@ -1116,28 +1116,28 @@ version (papers also leaves them out each time it saves the file).</p>
 <td><code>false</code> (default) or <code>true</code>: in a shallow library, the commands that change entries push them to the pool (the entries shared with it, and new ones), see <a href="../shallow-libraries/#auto-push">Auto-push</a>; no effect in a self-contained library</td>
 </tr>
 <tr>
-<td><code>git</code></td>
-<td><code>true</code> or <code>false</code>: back up the bibtex with git (see <a href="../git/">Git integration</a>)</td>
-</tr>
-<tr>
-<td><code>git-lfs</code></td>
-<td><code>true</code> or <code>false</code>: also back up the files with git-lfs</td>
-</tr>
-<tr>
-<td><code>trash-days</code></td>
-<td><code>30</code> (default): the days a file deleted by a command stays in the trash of the library, for undo (see <a href="../undo-redo/#files">Undo and redo</a>)</td>
-</tr>
-<tr>
-<td><code>trash-size</code></td>
-<td><code>100</code> (default): the size of the trash of the library, in MB; papers asks before deleting more than that at once</td>
-</tr>
-<tr>
 <td><code>checksums</code></td>
 <td><code>true</code> (default): the commands write the checksum of the files they move, copy, add or link in <code>.papers/files.json</code>, for undo (see <a href="../undo-redo/#checksums">Checksums</a>)</td>
 </tr>
 <tr>
 <td><code>editor</code></td>
 <td>command that opens a text editor, e.g. <code>vim</code> or <code>subl -w</code> (it wins over <code>$VISUAL</code> and <code>$EDITOR</code>, which are used without it)</td>
+</tr>
+<tr>
+<td><code>history-size</code></td>
+<td><code>500</code> (default): the size of the history (see <a href="../undo-redo/#deleted-files">Undo and redo</a>), in MB, <code>0</code> for no limit; papers asks before a command that deletes more. In the global configuration: the history shared by the libraries; in a library: its own history, with <code>history-separate</code></td>
+</tr>
+<tr>
+<td><code>history-separate</code></td>
+<td><code>false</code> (default) or <code>true</code>: the library keeps its history in a store of its own (see <a href="../undo-redo/#where-the-history-is">Where the history is</a>)</td>
+</tr>
+<tr>
+<td><code>history-dir</code></td>
+<td>global only: the folder of the history (default: <code>~/.local/share/papers/history</code> on Linux)</td>
+</tr>
+<tr>
+<td><code>keep-deleted-files</code></td>
+<td>global only: <code>true</code> (default) or <code>false</code>: the files that the commands delete are kept by the history, for undo; with <code>false</code>, they go to the trash of the system</td>
 </tr>
 <tr>
 <td><code>name.template</code>, <code>name.author-num</code>, <code>name.author-sep</code>, <code>name.title-word-num</code>, <code>name.title-word-size</code>, <code>name.title-length</code>, <code>name.title-sep</code>, <code>name.unknown-template</code>, <code>name.unknown-strict</code></td>
@@ -1157,8 +1157,10 @@ that the library can be moved or shared as a whole. <code>papers config bibtex</
 <code>papers config filesdir</code> and the list of <code>papers config</code> show them as
 absolute paths. A relative path given to set them is relative to the current
 directory.</p>
-<p>Setting <code>git</code> to <code>true</code> initializes the backup folder and records the
-current bibtex. Setting <code>paths</code> rewrites the file links of the bibtex.
+<p><code>history-dir</code> and <code>keep-deleted-files</code> can only be set in the global
+configuration (<code>papers config --global</code>): a library you receive from
+someone cannot choose where your history goes, or what it keeps.</p>
+<p>Setting <code>paths</code> rewrites the file links of the bibtex.
 Setting <code>pool</code> changes where the library links its files: <code>pool PATH</code> (an
 existing library without pool) links to the copies of the library's PDFs
 in PATH, and requires PATH to have them already (<code>papers push --pool PATH</code>
@@ -1186,7 +1188,7 @@ self-contained library at <code>PATH</code> and sets it as the default library
 (<code>papers init . --global</code> for the current directory). <code>papers migrate</code> sets
 the global library of papers v2 as the default library. See
 <a href="../global-library/">A global shared library</a>.</p>
-<p><code>papers init</code> stores <code>pool</code>, <code>paths</code>, <code>git</code> and <code>git-lfs</code> in the new
+<p><code>papers init</code> stores <code>pool</code> and <code>paths</code> in the new
 library, taking their values from the global configuration when it sets
 them. The other settings are only stored in the library when you set them.
 Changing the default library later does not change the libraries created
@@ -1230,11 +1232,8 @@ so that a library folder can be moved or shared with its files. Set
 bibtex that links to files in a central folder.</p>
 <p>The options <code>--relative-paths</code> and <code>--absolute-paths</code> of the commands still
 override the setting for one command, with a deprecation warning.</p>
-<p>To commit only the configuration of a library that is in the git
-repository of a project, add to the <code>.gitignore</code> of the project:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>.papers/*
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>!.papers/config.json
-</code></pre></div>
+<p>A library in the git repository of a project leaves <code>.papers/</code> out of it
+(papers writes <code>.papers/.gitignore</code>): see <a href="../git/">Using git</a>.</p>
 <h2 id="migrating-from-papers-2">Migrating from papers 2<a class="headerlink" href="#migrating-from-papers-2" title="Permanent link">&para;</a></h2>
 <p><a href="../upgrading/">Upgrading from papers 2</a> gives an overview. <code>papers migrate</code>
 performs the one-time upgrades from version 2:</p>
@@ -1246,7 +1245,7 @@ performs the one-time upgrades from version 2:</p>
   no pool), registers the directory of that bibtex as the default library
   in the global configuration (unless another default library is set
   there), and renames the old file to <code>papersconfig.json.v2.bak</code>.
-  The bibtex, files and backup stay where they are. File links stay
+  The bibtex and files stay where they are. File links stay
   absolute, as they were, unless <code>--relative</code> is passed. Running
   <code>papers migrate</code> again does nothing. Until then, papers prints a warning
   and keeps using the global configuration outside of libraries.</li>
@@ -1266,7 +1265,7 @@ file with a higher version was written by a newer papers, and papers stops
 with an error.</p>
 <h3 id="papers-install"><code>papers install</code><a class="headerlink" href="#papers-install" title="Permanent link">&para;</a></h3>
 <p><code>papers install</code> is a deprecated alias of <code>papers init</code> that asks for the
-bibtex, the files directory and git (<code>-y/--yes</code> accepts the defaults;
+bibtex and the files directory (<code>-y/--yes</code> accepts the defaults;
 <code>--no-prompt</code> and <code>--force</code> are its deprecated forms). On
 an existing library it updates the library configuration, as in version 2,
 with a deprecation warning: use <code>papers config</code> instead (<code>--edit</code> and
@@ -1276,11 +1275,12 @@ with <code>papers init PATH --global</code> (for example <code>papers init
 ~/Documents/papers/default --global</code>), or register an existing library
 with <code>papers config --global default PATH</code>. <code>--local</code> is ignored.</p>
 <h2 id="uninstall">Uninstall<a class="headerlink" href="#uninstall" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>papers uninstall
-</code></pre></div>
-<p>removes the library configuration and reports what it leaves behind (the
-bibtex file, the files directory, and the backup folder <code>.papers/backup</code> if
-any). Pass <code>--remove-backup</code> to also remove the backup folder. It never removes the
+<p><code>papers uninstall</code> is deprecated: <code>rm -r .papers</code> removes the configuration
+of a library, and <code>papers history --remove</code> its history.
+<code>papers uninstall</code> removes the library configuration and reports what it
+leaves behind (the bibtex file, the files directory, the history).
+<code>--remove-history</code> (or its older name <code>--remove-backup</code>) also removes the
+history. It never removes the
 global configuration. From outside of any library it does not remove
 the default library's configuration: run <code>papers -C DIR uninstall</code> for that.</p>
 <p><code>papers uninstall --recursive</code> is deprecated and ignored (there is no global

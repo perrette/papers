@@ -996,7 +996,7 @@
   <span class="md-ellipsis">
     
   
-    Git integration
+    Using git
   
 
     
@@ -1378,8 +1378,9 @@ entries that skipped no conflict, or a push or an add when the pool had
 not changed since the previous exchange (or when it is the first
 exchange). A push that leaves the pool entry with fields or files that the
 library entry does not have does not count: <code>papers status</code> then shows the
-pool as changed until the next pull. The files are part of the git backup
-of the library (see <a href="../git/">Git integration</a>).</p>
+pool as changed until the next pull. The files are part of the history of
+the library (see <a href="../undo-redo/">Undo and redo</a>), which <code>papers undo</code>
+restores with its bibtex.</p>
 <p>The files of all pools are kept: after <code>papers config pool PATH</code>, the
 library uses the file of PATH (with the origin copies of the exchanges
 with <code>--pool PATH</code>, if any), and setting the pool back to an earlier one
@@ -1489,8 +1490,8 @@ until the entry is fixed in the pool's bibtex. Reading from the pool
 but a <code>pull</code> can change journal abbreviations and other fields that the
 paper was written with. Leave <code>auto-push</code> off there, and do not pull.</p>
 <h2 id="undo-in-a-pool">Undo in a pool<a class="headerlink" href="#undo-in-a-pool" title="Permanent link">&para;</a></h2>
-<p>A pool is a library with its own backup history (see
-<a href="../git/#pools-and-shallow-libraries">Git integration</a>). <code>papers undo</code> in a
+<p>A pool is a library with its own history (see
+<a href="../undo-redo/">Undo and redo</a>). <code>papers undo</code> in a
 library undoes a change of that library only: an entry that <code>add</code> also
 added to the pool stays in the pool. To undo a change in the pool, run the
 command in the pool, e.g. <code>papers -C ../sealevel undo</code>. The origin copies
