@@ -447,6 +447,9 @@ def entry_to_csl(e, files=()):
         names = parse_bibtex_names(get_entry_val(e, name, ''))
         if names:
             item[name] = names
+    if not f.get('publisher'):
+        # at the position of publisher in the item
+        f['publisher'] = next((f[name] for name in ('school', 'institution', 'organization') if f.get(name)), '')
     for bib, csl in _CSL_SIMPLE.items():
         if f.get(bib):
             item[csl] = f[bib]
@@ -460,11 +463,6 @@ def entry_to_csl(e, files=()):
         item['issue' if csl_type == 'article-journal' or f.get('issue') else 'number'] = number
     if f.get('pages'):
         item['page'] = _pages_to_bibtex(f['pages']).replace('--', '-')
-    if not f.get('publisher'):
-        for name in ('school', 'institution', 'organization'):
-            if f.get(name):
-                item['publisher'] = f[name]
-                break
     if entry_type == 'phdthesis':
         item['genre'] = 'PhD thesis'
     elif entry_type == 'mastersthesis':
@@ -521,7 +519,7 @@ def csl_to_entry(item):
         fields['doi'] = _clean_doi(fields['doi'])
     container = _csl_text(item.get('container-title'))
     if container:
-        fields['journal' if entry_type in ('article', 'misc', 'online') else 'booktitle'] = container
+        fields['booktitle' if entry_type in ('incollection', 'inproceedings') else 'journal'] = container
     number = item.get('issue') or item.get('number')
     if number not in (None, ''):
         fields['number'] = _csl_text(number)

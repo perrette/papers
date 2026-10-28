@@ -217,6 +217,23 @@ class TestCSL(unittest.TestCase):
                     for k, v in expected.items()}
         self.assertEqual({k: v for k, v in fields(back).items() if k in MAIN}, expected, e.key)
 
+    def test_container_title(self):
+        # booktitle for the parts of a book or proceedings, journal for any other type
+        for csl_type, name in [('chapter', 'booktitle'), ('paper-conference', 'booktitle'),
+                               ('entry-encyclopedia', 'booktitle'), ('article-journal', 'journal'),
+                               ('book', 'journal'), ('dataset', 'journal'), ('report', 'journal'),
+                               ('manuscript', 'journal')]:
+            e = csl_to_entry({'type': csl_type, 'title': 'T', 'container-title': 'C'})
+            self.assertEqual(fields(e).get(name), 'C', csl_type)
+
+    def test_publisher_position(self):
+        # publisher from school, institution or organization: at the position of publisher
+        e = parse_string('@phdthesis{x,\n title = {T},\n school = {ETH},\n pages = {1--2},\n'
+                         ' address = {Zurich}\n}\n').entries[0]
+        keys = list(entry_to_csl(e))
+        self.assertEqual(keys[keys.index('publisher') + 1], 'publisher-place')
+        self.assertEqual(entry_to_csl(e)['publisher'], 'ETH')
+
     def test_latex_special_characters(self):
         # CSL-JSON holds plain text: & % # _ are escaped for LaTeX, urls and DOIs kept
         e = csl_to_entry({'id': 'x', 'type': 'article-journal', 'title': 'R&D: 5% of #1 in a_b',
