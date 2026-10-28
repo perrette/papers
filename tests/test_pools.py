@@ -933,6 +933,15 @@ class TestExport(PoolTest):
 
 class TestStatus(PoolTest):
 
+    def test_status_not_pulled_in_full(self):
+        # entries exchanged, but no pull of the whole pool yet
+        self.lib('pull Smith_2020')
+        self.assertIn('not pulled in full yet', self.state())
+        self.lib('config pool ../pool -y')
+        out = self.out('status')
+        self.assertIn('* pool:   ../pool (not pulled in full yet)', out)
+        self.assertTrue(out.endswith('`papers pull` takes the changes of the pool'))
+
     def test_status(self):
         out = self.out('status')
         self.assertIn('* files:  files (the files directory of the library', out)
@@ -1700,6 +1709,15 @@ class TestShallow(OwnFilesTest):
         new = self.rename_in_pool()
         self.lib('tag smith2020climate --add x')  # any command that writes
         self.assertEqual(self.files('smith2020climate'), [new])
+
+    def test_status_sees_repaired_links(self):
+        # status repairs the links as pull does, in memory only
+        self.rename_in_pool()
+        before = Path(self.path('lib', 'papers.bib')).read_text()
+        out = self.out('status')
+        self.assertIn('in sync', out)
+        self.assertIn('nothing to pull', self.out('pull --dry-run'))
+        self.assertEqual(Path(self.path('lib', 'papers.bib')).read_text(), before)
 
     def test_file_check_fix(self):
         new = self.rename_in_pool()

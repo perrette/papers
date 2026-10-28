@@ -1420,7 +1420,7 @@ def pool_state(origin, pool):
     pulled = origin.pulled(pool.id)
     current = pool.bibtex_mtime()
     if pulled is None:
-        return 'never pulled' if origin.records(pool.id) else 'not pulled from yet'
+        return 'not pulled in full yet' if origin.records(pool.id) else 'not pulled from yet'
     if current != pulled:
         return 'changed since last pull or push'
     return 'up to date'
@@ -1656,7 +1656,7 @@ _HINTS = {
     'library changed': '`papers push --dry-run` shows the changes, `papers push` sends them',
     'both changed': '`papers sync --dry-run` shows the changes, `papers sync` exchanges them',
     'not pulled from yet': '`papers pull` takes the entries shared with the pool',
-    'never pulled': '`papers pull` takes the changes of the pool',
+    'not pulled in full yet': '`papers pull` takes the changes of the pool',
 }
 
 
@@ -1732,7 +1732,7 @@ def exchange_state(config, pools, path):
     pools.set_known_ids(set(origin.entries) | set(origin.pulls))
     pool = pools.resolve(path)
     first = pool_state(origin, pool)
-    if first in ('not pulled from yet', 'never pulled'):
+    if first in ('not pulled from yet', 'not pulled in full yet'):
         return first, _HINTS[first]
     if not config.bibtex or not os.path.exists(config.bibtex):
         return 'in sync', None
@@ -1742,7 +1742,7 @@ def exchange_state(config, pools, path):
     changed = pieces.changed()
     if changed == (set(), set()):  # no piece changed on any side since status found them in sync
         return 'in sync', None
-    biblio = Biblio.load(config.bibtex, config.filesdir)
+    biblio = get_biblio(config)  # with the links repaired as pull finds them (in memory)
     exchange = Exchange(config, biblio, pools, origin=origin)
     pool_changed = library_changed = False
     for e in biblio.entries:
