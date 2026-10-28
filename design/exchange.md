@@ -49,6 +49,8 @@ A section that says neither is contract.
   an other library). Its file links are those of the pool entries
   (section 15).
 
+Tests: none (definitions).
+
 ## 2. The pools of a command
 
 ### 2.1 Which pool
@@ -62,6 +64,14 @@ A section that says neither is contract.
   `--no-pool` together are an error.
 - The automatic pushes (section 12) always go to the pool of the library.
 
+Tests: tests/test_pools.py::TestResolution::test_no_pool_setting,
+tests/test_pools_more.py::TestPullEntries::test_no_pool,
+tests/test_pools_more.py::TestPullEntries::test_other_pool,
+tests/test_pools.py::TestAdd::test_no_pool,
+tests/test_exchanges.py::TestAddPool::test_errors,
+tests/test_exchanges.py::TestAddPool::test_new_entry_is_not_sent,
+tests/test_exchanges.py::TestShallowWithOther::test_pull
+
 ### 2.2 Rules on a pool (contract for the conditions)
 
 - A pool is a directory with a library configuration (`library.md`). A
@@ -71,10 +81,16 @@ A section that says neither is contract.
   is changed.
 - An exchange goes one level: the other library of `--pool PATH` must have
   no pool itself (`PATH has a pool itself (...)`). The pool of the library
-  is checked when the `pool` setting is set (`library.md`).
+  is checked when the `pool` setting is set (`library.md`), and again by
+  each command that exchanges with it: `pull`, `push`, `sync` and the
+  commands that add entries or files to it stop with the same error; the
+  automatic push after a command warns instead (section 12.1). Commands
+  that only read the pool (`status`, the repair of links) do not check.
 - A library is never its own pool: a pool path that resolves (real path)
   to the library directory is an error `pool X: this is the library
-  itself` for `--pool`, and means "no pool" for the setting (`library.md`).
+  itself` for `--pool`, `papers config pool` and `papers init --pool`. A
+  `pool` setting that already names the library itself means "no pool"
+  (`library.md`).
 - A `--pool PATH` that resolves to the pool of the library is the pool of
   the library: same records, same file links (section 2.3).
 - A pool with entries that could not be parsed (failed blocks, `bibtex.md`
@@ -84,6 +100,22 @@ A section that says neither is contract.
   Reading from it (`pull`, `add`) works.
 - A command that holds the lock of its library also takes the lock of
   each pool it resolves, before reading it (lock protocol: `library.md`).
+
+Tests: tests/test_pools.py::TestResolution::test_errors,
+tests/test_pools.py::TestConfigPoolSelfContained::test_init_pool_must_be_a_library_without_pool,
+tests/test_pools.py::TestResolution::test_never_itself,
+tests/test_pools.py::TestResolution::test_missing_library_is_never_created,
+tests/test_pools.py::TestResolution::test_push_to_missing_pool,
+tests/test_pools.py::TestPull::test_missing_pool,
+tests/test_exchanges.py::TestShallowWithOther::test_other_must_have_no_pool,
+tests/test_pools.py::TestConfigPoolSelfContained::test_configured_pool_that_takes_a_pool,
+tests/test_pools.py::TestConfigPoolSelfContained::test_config_pool_not_the_library_itself,
+tests/test_pools_onetime.py::TestOneTime::test_pool_option_with_the_pool_of_the_library,
+tests/test_unreadable.py::TestUnreadable::test_push_refused,
+tests/test_unreadable.py::TestUnreadable::test_pull_allowed,
+tests/test_lock.py::TestCommands::test_pool_locked_too,
+tests/test_spec_exchange.py::TestPoolRules::test_configured_pool_with_a_pool_auto_push_warns,
+tests/test_spec_exchange.py::TestPoolRules::test_unreadable_pool_stops_the_automatic_push
 
 ### 2.3 The pool id (contract)
 
@@ -108,12 +140,12 @@ directory.
 
 The pool id of a pool, in this order:
 
-1. With a library identifier: the identifier. If one of the path ids
-   already present in `.papers/origin/` (in the `papers-pool` comments,
-   and in the `papers-pulled` entries of the legacy file) designates the
-   pool, its records move to the identifier (section 3.9). `papers status`
-   does not move them: it uses the path id until an exchange has moved
-   them.
+1. With a library identifier: the identifier. The records of every path
+   id already present in `.papers/origin/` (in the `papers-pool`
+   comments, and in the `papers-pulled` entries of the legacy file) that
+   designates the pool move to the identifier (section 3.9). `papers
+   status` does not write the move: on disk the records stay under the
+   path id until an exchange has moved them.
 2. Without identifier: the first path id present in `.papers/origin/` that
    designates the pool, the ids tried in sorted order (plain string
    order).
@@ -128,6 +160,18 @@ A pool without identifier gets one when a command first records a step in
 its history (a push records one, `history.md`); the next exchange then
 moves its records from the path id to the identifier.
 
+Tests: tests/test_pools.py::TestResolution::test_path_and_cache,
+tests/test_pools_more.py::TestPoolLookups::test_pool_path_given_as_in_setting,
+tests/test_pools_more.py::TestPoolLookups::test_repr_and_label,
+tests/test_pools_more.py::TestPoolLookups::test_label_of_the_pool_option,
+tests/test_pools_more.py::TestPoolIdentifier::test_library_moved,
+tests/test_pools_more.py::TestPoolIdentifier::test_two_path_ids_move_together,
+tests/test_pools_onetime.py::TestOneTime::test_config_pool_finds_the_records,
+tests/test_spec_exchange.py::TestPoolId::test_identifier_format,
+tests/test_spec_exchange.py::TestPoolId::test_other_library_relative_id,
+tests/test_spec_exchange.py::TestPoolId::test_path_ids_in_sorted_order,
+tests/test_spec_exchange.py::TestPoolId::test_identifier_after_first_step
+
 The name shown in messages (`pool ../pool`) is free: papers shows the pool
 of the library as its setting writes it, and `--pool PATH` as given on the
 command line (an absolute path with `~` for the home directory).
@@ -136,8 +180,8 @@ command line (an absolute path with `~` for the home directory).
 
 ### 3.1 Files (contract)
 
-`.papers/origin/` in the directory of the bibtex (`library.md`, Layout)
-holds one bibtex file per pool:
+`.papers/origin/` in the library directory (`library.md`, Layout; also
+when the bibtex is in another directory) holds one bibtex file per pool:
 
 ```
 .papers/origin/<name>-<hash>.bib
@@ -151,7 +195,10 @@ holds one bibtex file per pool:
   templates); `pool` if the slug is empty. The path is the
   `papers-pool-path` of the file (section 3.2, with a leading `~`
   expanded) when it has one; else the pool id if it is a path id; else
-  there is none and the name is `pool`.
+  there is none and the name is `pool`. Since every exchange with a pool
+  named by its identifier writes `papers-pool-path` (3.2), its file is
+  named after the pool folder; `pool-<hash>.bib` remains for a file
+  without `papers-pool-path` (written by earlier versions).
 
 Examples: pool id `7e5754a0ccd246968e910bcd2a16dcf2` with
 `papers-pool-path ~/papers/shared-with-bob` gives
@@ -166,6 +213,13 @@ The files of earlier pools stay. Setting the pool back to one of them, or
 exchanging with it again, finds its records again (through the pool id,
 section 2.3).
 
+Tests: tests/test_pools.py::TestOrigin::test_file_names,
+tests/test_pools_more.py::TestPoolIdentifier::test_file_named_after_the_pool_folder,
+tests/test_library_folder.py::LibraryFolderTest::test_origin_in_library_folder,
+tests/test_pools_onetime.py::TestOneTime::test_config_pool_finds_the_records,
+tests/test_spec_exchange.py::TestOriginFiles::test_file_name_examples,
+tests/test_spec_exchange.py::TestOriginFiles::test_identifier_file_named_after_the_folder
+
 ### 3.2 Format (contract)
 
 A file is a bibtex file written as the library writes its bibtex
@@ -177,13 +231,16 @@ platform). Its blocks, in order:
 2. `@comment{papers-pulled <mtime>}`: the modification time of the pool's
    bibtex, in integer nanoseconds since the epoch, at the last exchange
    that counts (section 3.6). Absent if none.
-3. `@comment{papers-pool-path <path>}`: where the pool was when its
-   records moved from a path id to its library identifier (section 3.9):
-   the absolute path of the pool directory, with `~` for the home
-   directory. Kept as read when the file is written again; not updated
-   when the pool moves later. Absent if the records never moved (see the
-   open questions). It is information for the reader and gives the file
-   name (3.1); papers does not use it to find the pool.
+3. `@comment{papers-pool-path <path>}`: for a pool id that is a library
+   identifier, where the pool was at the last exchange: the absolute path
+   of the pool directory (as resolved, not the real path), with `~` for
+   the home directory. Every exchange with the pool sets it (also the
+   move of records from a path id, section 3.9); when it changes (the
+   pool moved), the file is written again, under the new name (3.1), and
+   the file of the former name is removed. Absent for a path id, and in
+   files of earlier versions until the next exchange. It is information
+   for the reader and gives the file name (3.1); papers does not use it
+   to find the pool.
 4. One entry per record, sorted by lower-case library key.
 
 Example, in a shallow library whose pool is `../pool`:
@@ -219,6 +276,11 @@ Example, in a shallow library whose pool is `../pool`:
 The same record in a self-contained library, or for an other library, has
 no `file` field.
 
+Tests: tests/test_pools.py::TestOrigin::test_one_file_per_pool,
+tests/test_pools_more.py::TestPoolIdentifier::test_library_moved,
+tests/test_spec_exchange.py::TestOriginFormat::test_exact_text,
+tests/test_spec_exchange.py::TestOriginFormat::test_pool_path_follows_the_pool
+
 ### 3.3 What a record holds (contract)
 
 Each entry of the file is the record of one library entry for that pool:
@@ -229,17 +291,20 @@ Each entry of the file is the record of one library entry for that pool:
 | entry type and the ordinary fields | the base: the entry as last exchanged (below) |
 | `papers-pool-key` | the key of the entry in the pool |
 | `papers-time` | when the record was last written: local time, ISO 8601 with the UTC offset, to the second (`2026-10-28T13:11:33+01:00`) |
-| `file` | only when the library shares links with this pool: the file links of the pool entry after the exchange, written as the library writes its links (relative to the library's bibtex directory, or absolute, per its `paths` setting). Present and empty (`file = {}`) when the pool entry has no file. Not part of the base |
+| `file` | only when the library shares links with this pool: the file links of the pool entry after the exchange, written as the library writes its links (relative to the library's bibtex directory, or absolute, per its `paths` setting). Present and empty (`file = {}`) when the pool entry has no file: the pool entry had no links, while a record without the field (e.g. written before the library was shallow) says nothing about them. Not part of the base |
 | `papers-pool` | only in the legacy file (section 3.8); not in the per-pool files |
 | `papers-files` | written by development builds; ignored when read, removed when the record's file links are next set |
 
-The base is the version of the side that **sent** the entry, as sent:
+The base is the version of the side that **sent** the entry, as sent,
+without `ids` (each side keeps its own former keys):
 
-- `pull` and `add` from the pool: the pool entry (with its fields as in
-  the pool; see the open questions about `ids`);
+- `pull` and `add` from the pool: the pool entry, its fields as in the
+  pool;
 - `push` of an entry the pool has: the library entry as sent to the pool
-  (without `file` and `ids`);
-- `push` of an entry new to the pool: the new pool entry as inserted.
+  (without `file` and `ids`, and without the links that the pool removed,
+  15.2);
+- `push` of an entry new to the pool: the new pool entry as inserted,
+  which has the fields of the library entry as sent (7.3).
 
 The receiving side has taken all of the base into account (taken, kept or
 declined). What it has beyond the base shows as its own change at the next
@@ -248,8 +313,21 @@ come with the next pull; after a pull, the fields the library kept go to
 the pool with the next push.
 
 When reading a record as a base, the fields `papers-pool`,
-`papers-pool-key`, `papers-time`, `papers-files` and `file` are removed;
-the key is not used by the merge.
+`papers-pool-key`, `papers-time`, `papers-files`, `file` and `ids` are
+removed; the key is not used by the merge.
+
+Tests: tests/test_pools.py::TestOrigin::test_roundtrip,
+tests/test_pools.py::TestPull::test_record_without_the_pool_ids,
+tests/test_pools.py::TestPull::test_pool_change_taken_library_change_kept,
+tests/test_pools.py::TestPush::test_pool_only_fields_come_with_the_next_pull,
+tests/test_pools.py::TestPush::test_push_keeps_a_pool_change,
+tests/test_auto_push.py::TestShallowSharedLinks::test_record_keeps_the_file_field,
+tests/test_auto_push.py::TestShallowSharedLinks::test_record_of_development_builds,
+tests/test_exchanges.py::TestAddPool::test_self_contained,
+tests/test_spec_exchange.py::TestRecordContent::test_time_format,
+tests/test_pools.py::TestShallow::test_link_removed_in_pool,
+tests/test_spec_exchange.py::TestRecordContent::test_push_of_a_new_entry,
+tests/test_spec_exchange.py::TestRecordContent::test_record_ids_ignored_as_base
 
 ### 3.4 Reading (contract)
 
@@ -261,12 +339,21 @@ the key is not used by the merge.
   (trimmed). `papers-pool <id>` gives the id; `papers-pulled <digits>`
   gives the time (anything else than digits is ignored);
   `papers-pool-path <path>` gives the path.
-- Records are indexed by pool id and lower-case library key. Two records
-  of the same key for the same pool (in one file or in two files of the
-  same id): the last read wins.
+- Records are indexed by pool id and lower-case library key. The files
+  of one pool id are merged: two records of the same key for the same
+  pool (in one file or in two files of the same id): the last read wins.
 - The record of a library entry for a pool is the record of its key, else
   of one of its former keys (its `ids` field, `bibtex.md` section 7.1),
   without case.
+- The files are read as UTF-8; a byte order mark is dropped.
+
+Tests: tests/test_pools.py::TestOrigin::test_roundtrip,
+tests/test_pools.py::TestOrigin::test_one_file_per_pool,
+tests/test_pools.py::TestOrigin::test_two_files_of_one_pool,
+tests/test_spec_exchange.py::TestOriginReading::test_comments,
+tests/test_spec_exchange.py::TestOriginReading::test_files_ignored,
+tests/test_spec_exchange.py::TestOriginReading::test_keys_without_case,
+tests/test_spec_exchange.py::TestOriginReading::test_utf8_with_bom
 
 ### 3.5 Writing (contract for the content; free for the timing)
 
@@ -290,13 +377,26 @@ Records are written:
 - A file is written only for the pools whose records or time changed, in
   full, atomically, and only if its content differs from the file on
   disk. The directory is created when needed.
-- When the file of a pool is written under its name (3.1), the file its
-  records were read from (the last one read for that id), if it has
-  another name, is removed. So is the file of a path id whose records
-  moved to an identifier (3.9).
+- When the file of a pool is written under its name (3.1), every other
+  file its records were read from (another name, a copy) is removed. So
+  is the file of a path id whose records moved to an identifier (3.9).
 - The records are saved before the library's bibtex, so that the history
   step of the library includes them (`history.md`). With `--dry-run`
   nothing is written.
+
+Tests: tests/test_pools.py::TestOrigin::test_roundtrip,
+tests/test_pools.py::TestOrigin::test_two_files_of_one_pool,
+tests/test_pools.py::TestOrigin::test_history,
+tests/test_pools.py::TestPull::test_nothing_to_pull_is_not_saved,
+tests/test_pools.py::TestPull::test_conflict_skip,
+tests/test_pools.py::TestPull::test_entry_not_in_the_pool,
+tests/test_pools.py::TestAdd::test_new_entry_not_in_pool,
+tests/test_pools.py::TestShallow::test_push_never_writes_empty_entry,
+tests/test_pools_more.py::TestPoolIdentifier::test_two_path_ids_move_together,
+tests/test_spec_exchange.py::TestOriginWriting::test_same_record_keeps_its_time,
+tests/test_spec_exchange.py::TestOriginWriting::test_unchanged_file_not_written,
+tests/test_spec_exchange.py::TestOriginWriting::test_dry_run_writes_nothing,
+tests/test_spec_exchange.py::TestOriginWriting::test_add_keeps_an_existing_record
 
 ### 3.6 The exchange time `papers-pulled` (contract)
 
@@ -320,22 +420,51 @@ bibtex (integer nanoseconds):
 - **link updates** (section 12.3) count as a push only when the pool had
   not changed since the last exchange.
 - **add** from the pool (section 13): when this is the first exchange with
-  the pool and the command pushed nothing to it, the pool's time.
-- **status** (section 14): when it finds the library in sync with a pool
-  whose bibtex changed, the current time.
+  the pool and the command pushed nothing to it, the pool's time. A later
+  `add` leaves the recorded time: if the pool did not change since, it is
+  the pool's time already; if it did, its other changes are still to
+  pull.
+
+`papers status` never sets it (it writes nothing in the library,
+section 14.3).
 
 In `sync`, the pull sets the time first, so the push that follows sees an
 unchanged pool.
+
+Tests: tests/test_pools.py::TestPull::test_select,
+tests/test_pools.py::TestPull::test_conflict_skip,
+tests/test_pools.py::TestPull::test_check_and_status,
+tests/test_pools.py::TestPush::test_status_after_push,
+tests/test_pools.py::TestPush::test_pool_only_fields_come_with_the_next_pull,
+tests/test_pools.py::TestStatus::test_after_add_from_pool,
+tests/test_pools.py::TestStatus::test_partial_pull_is_not_an_exchange,
+tests/test_pools.py::TestStatus::test_same_change_on_both_sides,
+tests/test_pools.py::TestStatus::test_no_change_no_flip,
+tests/test_pools.py::TestStatus::test_no_change_no_flip_shallow,
+tests/test_pools.py::TestStatus::test_after_add_to_the_pool,
+tests/test_spec_exchange.py::TestExchangeTime::test_value_is_the_pool_mtime,
+tests/test_spec_exchange.py::TestExchangeTime::test_push_after_a_pool_change,
+tests/test_spec_exchange.py::TestExchangeTime::test_link_update,
+tests/test_spec_exchange.py::TestExchangeTime::test_later_add_keeps_the_time,
+tests/test_spec_exchange.py::TestExchangeTime::test_quit_does_not_set_it
 
 ### 3.7 Renamed keys (contract)
 
 When a command changes the key of a library entry (`edit --key`, `check
 --fix-key`, ...; the same entry, its old key no longer in the library, its
 new key not in it when loaded), its records in every pool file follow:
-the record is moved to the new key (an existing record under the new key
-is replaced). The pool key is unchanged. This happens when the library is
-saved, and before the automatic push of a shallow library looks the
-records up.
+the record is moved to the new key. A record under the new key (left by
+a removed entry: another paper's) is replaced by the entry's record, and
+dropped in the pools where the entry has no record, so that the entry is
+not taken for the removed paper. The pool key is unchanged. This happens
+when the library is saved, and before the automatic push of a shallow
+library looks the records up.
+
+Tests: tests/test_pools.py::TestPull::test_key_changed,
+tests/test_pools.py::TestPull::test_rename_onto_a_leftover_record,
+tests/test_auto_push.py::TestAutoPush::test_edit_key,
+tests/test_spec_exchange.py::TestRenamedKeys::test_replaced_in_every_pool,
+tests/test_spec_exchange.py::TestRenamedKeys::test_shallow_library (expected failure: a bug, see the test)
 
 ### 3.8 Legacy file `.papers/origin.bib` (contract for reading)
 
@@ -350,6 +479,10 @@ added where `origin/` has none for that pool and key. Then all pools are
 written as per-pool files (without `papers-pool` fields) and the legacy
 file is removed (not with `--dry-run`).
 
+Tests: tests/test_pools.py::TestOrigin::test_migration,
+tests/test_spec_exchange.py::TestLegacyOrigin::test_origin_dir_wins,
+tests/test_spec_exchange.py::TestLegacyOrigin::test_dry_run_keeps_it
+
 ### 3.9 Records under a path id (contract)
 
 When the pool id of a pool is its library identifier and a path id of
@@ -358,7 +491,9 @@ id move to the identifier:
 
 - each record of the path id is added under the identifier, unless the
   identifier has a record of the same lower-case library key (that one
-  stays);
+  stays). When several path ids designate the pool, all move in the same
+  exchange, in sorted order (a record of an earlier one wins over a later
+  one);
 - the exchange time of the path id becomes that of the identifier, unless
   the identifier has one;
 - `papers-pool-path` is set to the pool directory (3.2);
@@ -368,8 +503,14 @@ id move to the identifier:
 This happens in every command that exchanges with the pool (pull, push,
 sync, the automatic pushes, `add` from the pool, the link updates), and
 is saved with the command's other records (not with `--dry-run`). `papers
-status` does not move records. A path id that does not designate the pool
-of the command (an earlier pool, a pool not found) stays.
+status` does not write the move. A path id that does not designate the
+pool of the command (an earlier pool, a pool not found) stays.
+
+Tests: tests/test_pools_more.py::TestPoolIdentifier::test_library_moved,
+tests/test_pools_more.py::TestPoolIdentifier::test_two_path_ids_move_together,
+tests/test_spec_exchange.py::TestPathIdRecords::test_move,
+tests/test_spec_exchange.py::TestPathIdRecords::test_status_writes_nothing,
+tests/test_spec_exchange.py::TestPathIdRecords::test_other_path_id_stays
 
 ## 4. Matching entries
 
@@ -387,14 +528,28 @@ pairs of both `distinct.json` files (`bibtex.md` section 9.4):
    3. else the first that is the same paper as the library entry;
    4. else the pool entry of the record's pool key, if no identifier of it
       contradicts the base (different DOIs, arXiv ids or ISBNs; the pairs
-      of `D` are not consulted). This finds an entry without DOI whose
-      title changed on both sides.
+      of `D` are not consulted) and it has the same authors (the
+      normalized family names, the author identifier of `bibtex.md`
+      section 9.2) and the same `year` (trimmed) as the base. This finds an
+      entry without DOI whose title changed on both sides, and not another
+      paper put under a reused pool key.
 2. Without record: the first pool entry that is the same paper as the
    library entry.
 
 Only `same` verdicts match; an `ask` verdict (title guard) is no match.
 When the pool has the same paper twice, the entry of the record's pool key
 is the one exchanged.
+
+Tests: tests/test_pools.py::TestPull::test_recorded_pool_entry_among_same_papers,
+tests/test_pools.py::TestPull::test_pool_key_of_another_paper,
+tests/test_pools.py::TestPull::test_key_never_changes,
+tests/test_pools.py::TestPull::test_entry_without_origin_is_shared,
+tests/test_pools_more.py::TestPoolLookups::test_by_key,
+tests/test_spec_exchange.py::TestPoolEntry::test_record_key_by_identity_of_the_entry,
+tests/test_spec_exchange.py::TestPoolEntry::test_titles_changed_on_both_sides,
+tests/test_spec_exchange.py::TestPoolEntry::test_reused_pool_key,
+tests/test_spec_exchange.py::TestPoolEntry::test_distinct_pairs_of_both_sides,
+tests/test_spec_exchange.py::TestPoolEntry::test_ask_verdict_is_no_match
 
 ### 4.2 The library entry of a pool entry (contract)
 
@@ -405,6 +560,12 @@ Used by `pull KEY` (a KEY found in the pool) and `pull --all`:
 2. else the first library entry that is the same paper (with `D`).
 
 A pool entry without library entry is **missing** from the library.
+
+Tests: tests/test_pools_more.py::TestPullEntries::test_pull_pool_key,
+tests/test_pools_more.py::TestPullEntries::test_same_paper_in_library,
+tests/test_pools_more.py::TestPullEntries::test_all,
+tests/test_pools_more.py::TestPullEntries::test_key_taken,
+tests/test_spec_exchange.py::TestLibraryEntry::test_record_of_the_pool_key_first
 
 ### 4.3 Shared, removed, without record
 
@@ -432,6 +593,18 @@ and `push --all` add it to the pool again; `pull KEY` reports it
 No exchange removes an entry: `rm` in the library does not remove it from
 the pool, and an entry removed from the pool stays in the library.
 
+Tests: tests/test_pools.py::TestPull::test_entry_not_in_the_pool,
+tests/test_pools.py::TestPull::test_entry_without_origin_is_shared,
+tests/test_pools_more.py::TestPullCheck::test_not_found_in_pool,
+tests/test_pools_more.py::TestSync::test_not_found_only_for_keys_given,
+tests/test_auto_push.py::TestRemovedFromThePool::test_push,
+tests/test_auto_push.py::TestRemovedFromThePool::test_sync,
+tests/test_auto_push.py::TestRemovedFromThePool::test_push_key_adds_it_back,
+tests/test_auto_push.py::TestRemovedFromThePool::test_push_key_after_the_note,
+tests/test_auto_push.py::TestRemovedFromThePool::test_auto_push,
+tests/test_auto_push.py::TestAutoPush::test_rm_is_not_pushed,
+tests/test_auto_push.py::TestSharedWithoutRecord::test_push
+
 ## 5. The merge of an exchange
 
 ### 5.1 Sides (contract)
@@ -448,6 +621,12 @@ The incoming entry is a copy without `ids`, its file links written for
 the target's library (resolved, then written with the target library's
 path rules).
 
+Tests: tests/test_auto_push.py::TestOwnFields::test_push_keeps_the_library_ids,
+tests/test_auto_push.py::TestOwnFields::test_pull_keeps_the_pool_ids,
+tests/test_pools.py::TestPull::test_pool_change_taken_library_change_kept,
+tests/test_pools.py::TestPush::test_changes,
+tests/test_spec_exchange.py::TestSides::test_links_written_for_the_target
+
 ### 5.2 Fields each side keeps (contract)
 
 - the key: the key of the target is kept. `pull` and `push` never change a
@@ -463,6 +642,17 @@ path rules).
 All other fields, and the entry type (compared in lower case), are merged
 one by one.
 
+Tests: tests/test_pools.py::TestPull::test_key_never_changes,
+tests/test_pools.py::TestPush::test_conflict_update,
+tests/test_auto_push.py::TestOwnFields::test_push_keeps_the_library_ids,
+tests/test_auto_push.py::TestOwnFields::test_pull_keeps_the_pool_ids,
+tests/test_auto_push.py::TestOwnFields::test_pull_keeps_the_library_ids,
+tests/test_merge3.py::TestThreeWay::test_ids_of_the_target_only,
+tests/test_merge3.py::TestThreeWay::test_exchange_ids_of_the_target_only_without_base,
+tests/test_pools.py::TestPull::test_new_pool_file,
+tests/test_auto_push.py::TestShallowSharedLinks::test_pull_adds_the_links_the_pool_added,
+tests/test_spec_exchange.py::TestThreeWayRule::test_entry_type
+
 ### 5.3 The three-way rule (contract)
 
 For a field, with `t` the target's value, `o` the incoming value and `b`
@@ -471,6 +661,7 @@ the base's value (an empty or whitespace-only value counts as absent;
 
 | Case | Status | Result |
 |---|---|---|
+| `b` present, `t` identical to `b` (as written), `o` present, not identical to `t` but equal to it | addition (an equivalent change of the incoming entry) | `o` |
 | `t` and `o` both present and equal | same | the preferred value (`bibtex.md` 10.3: the target's spelling; for `author`/`editor` the fuller given names) |
 | `b` absent, `o` absent | same (added in the target) | `t` |
 | `b` absent, `t` absent | addition (`+`) | `o` |
@@ -482,9 +673,32 @@ A field absent from `t` and `o` is not in the result, whatever `b` has
 (removed on both sides). A field changed on both sides to equal values is
 not a conflict.
 
-A change to an equivalent value (case, braces, accents, initials) is
-"same": it is not sent by itself. When the entry is rewritten for another
-reason, each field gets the preferred value (see the open questions).
+The rows are tried in order. A change to an equivalent value (case,
+braces, accents, initials to full names: `CO2` to `{CO2}`) is taken when
+the target has the base's value exactly (first row). Otherwise (the target
+changed the field too, or there is no base) equivalent values are "same":
+the target keeps its spelling (for names, the fuller form of the two).
+
+Tests: tests/test_merge3.py::TestThreeWay::test_unchanged,
+tests/test_merge3.py::TestThreeWay::test_changed_in_pool_only_is_offered,
+tests/test_merge3.py::TestThreeWay::test_changed_in_library_only_is_kept,
+tests/test_merge3.py::TestThreeWay::test_changed_on_both_sides,
+tests/test_merge3.py::TestThreeWay::test_same_change_on_both_sides,
+tests/test_merge3.py::TestThreeWay::test_equivalent_change_in_pool_only_is_offered,
+tests/test_merge3.py::TestThreeWay::test_equivalent_values_without_change_of_target,
+tests/test_merge3.py::TestThreeWay::test_removed_in_pool_is_offered,
+tests/test_merge3.py::TestThreeWay::test_removed_in_pool_changed_in_library_is_a_conflict,
+tests/test_merge3.py::TestThreeWay::test_removed_in_library_changed_in_pool_is_a_conflict,
+tests/test_merge3.py::TestThreeWay::test_removed_on_both_sides,
+tests/test_merge3.py::TestThreeWay::test_removed_in_library_stays_removed,
+tests/test_merge3.py::TestThreeWay::test_added_differently_on_both_sides,
+tests/test_pools.py::TestPush::test_brace_fix_is_sent,
+tests/test_auto_push.py::TestRemovals::test_removed_in_the_pool,
+tests/test_auto_push.py::TestRemovals::test_removed_in_the_library,
+tests/test_auto_push.py::TestRemovals::test_removed_on_both_sides,
+tests/test_auto_push.py::TestRemovals::test_removed_on_one_side_changed_on_the_other,
+tests/test_spec_exchange.py::TestThreeWayRule::test_table,
+tests/test_spec_exchange.py::TestThreeWayRule::test_entry_type
 
 ### 5.4 Without base (contract)
 
@@ -497,6 +711,13 @@ two-way, with the fields of 5.2 kept by each side:
 | target only | same | `t` |
 | incoming only | addition | `o` |
 | different values | conflict | decided (5.6) |
+
+Tests: tests/test_merge3.py::TestThreeWay::test_no_base_one_side_only_is_an_addition,
+tests/test_merge3.py::TestThreeWay::test_two_way_equivalent_values_unchanged,
+tests/test_auto_push.py::TestOwnFields::test_first_exchange_does_not_merge_ids,
+tests/test_pools.py::TestPull::test_entry_without_origin_is_shared,
+tests/test_pools.py::TestPush::test_existing_pool_entry,
+tests/test_spec_exchange.py::TestWithoutBase::test_table
 
 ### 5.5 Outcome (contract)
 
@@ -512,6 +733,14 @@ two-way, with the fields of 5.2 kept by each side:
 Applying the result replaces the target's type and fields by those of the
 result: the merged fields with a value, `file` (the union) and `ids` (the
 target's).
+
+Tests: tests/test_pools.py::TestPull::test_nothing_changed,
+tests/test_pools.py::TestPull::test_nothing_to_pull_is_not_saved,
+tests/test_pools.py::TestPull::test_entry_without_origin_is_linked,
+tests/test_pools.py::TestPull::test_conflict_skip,
+tests/test_pools.py::TestStatus::test_no_change_no_flip,
+tests/test_spec_exchange.py::TestOutcome::test_linked_writes_a_record_only,
+tests/test_spec_exchange.py::TestOutcome::test_skip_comes_again
 
 ### 5.6 `--on-duplicate` (contract for the decisions; free for the dialogue)
 
@@ -535,6 +764,23 @@ target's).
   (push), then `Pass --on-duplicate with one of: ask, keep, update, skip
   (ask is the default in a terminal), see `papers pull --help`.`
 
+Tests: tests/test_pools.py::TestPull::test_conflict_error,
+tests/test_pools.py::TestPull::test_conflict_keep,
+tests/test_pools.py::TestPull::test_conflict_update,
+tests/test_pools.py::TestPull::test_conflict_skip,
+tests/test_pools.py::TestPull::test_conflict_ask,
+tests/test_pools.py::TestPush::test_conflict_keep,
+tests/test_pools.py::TestPush::test_conflict_update,
+tests/test_pools.py::TestPush::test_conflict_error,
+tests/test_pools_more.py::TestPushConflict::test_skip,
+tests/test_pools_more.py::TestPushConflict::test_update,
+tests/test_pools_more.py::TestSync::test_conflict_stops_before_push,
+tests/test_auto_push.py::TestAutoPush::test_conflict_does_not_stop_the_command,
+tests/test_merge3.py::TestThreeWay::test_decline_addition,
+tests/test_spec_exchange.py::TestOnDuplicate::test_sync_keep_and_update,
+tests/test_spec_exchange.py::TestOnDuplicate::test_update_takes_a_removal,
+tests/test_spec_exchange.py::TestOnDuplicate::test_additions_in_every_mode
+
 ### 5.7 The dialogue (free; outline)
 
 The dialogue is that of duplicates (`bibtex.md` section 10.6), with labels
@@ -548,6 +794,9 @@ merged entry, `s` skip, `q` quit (skip this entry and every remaining
 one), `?` help. "Not the same paper" is not offered. After `q`, the
 command stops processing entries; the pull then does not set
 `papers-pulled`, and `sync` does not push.
+
+Tests: none (free). The effect of `q` on `papers-pulled` (contract, 3.6):
+tests/test_spec_exchange.py::TestExchangeTime::test_quit_does_not_set_it.
 
 ## 6. `papers pull`
 
@@ -572,6 +821,15 @@ papers pull [KEY...|-] [--all] [--pool PATH] [--on-duplicate MODE] [--check]
 4. `papers list ... --pull`: the listed entries, no new entries, no
    shared filter.
 
+Tests: tests/test_pools.py::TestPull::test_select,
+tests/test_pools.py::TestPull::test_entry_not_in_the_pool,
+tests/test_pools_more.py::TestPullEntries::test_pull_pool_key,
+tests/test_pools_more.py::TestPullEntries::test_pull_by_doi,
+tests/test_pools_more.py::TestPullEntries::test_same_paper_in_library,
+tests/test_pools_more.py::TestPullEntries::test_unknown,
+tests/test_pools_more.py::TestPullEntries::test_all,
+tests/test_spec_exchange.py::TestPullSelection::test_list_pull
+
 ### 6.2 Steps
 
 1. The pairs of both `distinct.json` files are united, both ways (each
@@ -588,6 +846,16 @@ papers pull [KEY...|-] [--all] [--pool PATH] [--on-duplicate MODE] [--check]
    entries to its own pool (section 12, as after `add`).
 6. Save: the pools written, the origin records, then the library.
 
+The order of the steps is free where the result is the same.
+
+Tests: tests/test_pools.py::TestPull::test_distinct_merged,
+tests/test_pools.py::TestPush::test_distinct_merged,
+tests/test_pools.py::TestPull::test_entry_not_in_the_pool,
+tests/test_pools_more.py::TestSync::test_not_found_only_for_keys_given,
+tests/test_pools.py::TestShallow::test_pull_links_to_pool_files,
+tests/test_exchanges.py::TestShallowWithOther::test_pull,
+tests/test_spec_exchange.py::TestPullSteps::test_repair_before_the_merge
+
 ### 6.3 New entries (contract)
 
 - Key: the pool key; if the library has it already (without case), the
@@ -597,6 +865,12 @@ papers pull [KEY...|-] [--all] [--pool PATH] [--on-duplicate MODE] [--check]
   the library.
 - Files: placed as in 6.4.
 - Record: the pool entry.
+
+Tests: tests/test_pools_more.py::TestPullEntries::test_key_taken,
+tests/test_pools_more.py::TestPullEntries::test_pull_pool_key,
+tests/test_pools_more.py::TestPullEntries::test_copy_mode,
+tests/test_spec_exchange.py::TestPullNew::test_fields_without_ids,
+tests/test_spec_exchange.py::TestPullNew::test_suffix_without_case
 
 ### 6.4 Files of a pull
 
@@ -613,6 +887,16 @@ papers pull [KEY...|-] [--all] [--pool PATH] [--on-duplicate MODE] [--check]
   pool's files directory, named with its pool's name template (as `add`
   does, 15.1).
 
+Tests: tests/test_pools.py::TestPull::test_new_pool_file,
+tests/test_pools_more.py::TestPullEntries::test_copy_mode,
+tests/test_pools_more.py::TestPullEntries::test_shallow_links,
+tests/test_pools.py::TestShallow::test_pull_links_to_pool_files,
+tests/test_auto_push.py::TestShallowSharedLinks::test_pull_removes_the_links_the_pool_removed,
+tests/test_exchanges.py::TestShallowWithOther::test_pull,
+tests/test_spec_exchange.py::TestPullFiles::test_files_kept_where_they_are,
+tests/test_spec_exchange.py::TestPullFiles::test_move_mode_copies,
+tests/test_spec_exchange.py::TestPullFiles::test_without_files_directory
+
 ## 7. `papers push`
 
 ```
@@ -628,6 +912,14 @@ papers push [KEY...|-] [--all] [--pool PATH] [--on-duplicate MODE]
 - KEY...: the entries named (in the library only).
 - `--all`: every library entry, including those removed from the pool.
 - `list ... --push`: the listed entries.
+
+Tests: tests/test_pools.py::TestPush::test_shared_entries_only,
+tests/test_pools.py::TestPush::test_new_entry,
+tests/test_auto_push.py::TestRemovedFromThePool::test_push,
+tests/test_auto_push.py::TestRemovedFromThePool::test_push_key_adds_it_back,
+tests/test_auto_push.py::TestSharedWithoutRecord::test_push,
+tests/test_spec_exchange.py::TestPushSelection::test_all_adds_back_removed,
+tests/test_spec_exchange.py::TestPushSelection::test_list_push
 
 ### 7.2 Steps
 
@@ -650,6 +942,16 @@ papers push [KEY...|-] [--all] [--pool PATH] [--on-duplicate MODE]
 
 A push does not change the library entries.
 
+Tests: tests/test_pools.py::TestPush::test_changes,
+tests/test_pools.py::TestPush::test_push_keeps_a_pool_change,
+tests/test_pools.py::TestPush::test_existing_pool_entry,
+tests/test_pools.py::TestPush::test_pool_only_fields_come_with_the_next_pull,
+tests/test_pools.py::TestPush::test_distinct_merged,
+tests/test_unreadable.py::TestUnreadable::test_push_refused,
+tests/test_auto_push.py::TestShallowSharedLinks::test_push_does_not_add_back_the_links_the_pool_removed,
+tests/test_exchanges.py::TestShallowWithOther::test_push,
+tests/test_spec_exchange.py::TestPushSteps::test_new_file_copied_into_the_pool
+
 ### 7.3 Entries new to the pool (contract)
 
 - An entry with no field other than `file` and `ids` is not pushed
@@ -664,6 +966,15 @@ A push does not change the library entries.
   the links that the command added are linked where they are, and files
   already in the pool's files directory are linked there.
 - Record: the new pool entry.
+
+Tests: tests/test_pools.py::TestPush::test_new_entry,
+tests/test_pools.py::TestPush::test_pool_name_template,
+tests/test_pools.py::TestShallow::test_push_never_writes_empty_entry,
+tests/test_auto_push.py::TestShallowSharedLinks::test_add_link_mode_entry_new_to_the_pool,
+tests/test_spec_exchange.py::TestPushNew::test_empty_entry,
+tests/test_spec_exchange.py::TestPushNew::test_key_suffix_in_the_pool,
+tests/test_spec_exchange.py::TestPushNew::test_no_key_template_key,
+tests/test_spec_exchange.py::TestPushNew::test_fields_without_ids
 
 ## 8. `papers sync`
 
@@ -683,6 +994,13 @@ papers sync [KEY...|-] [--all] [--pool PATH] [--on-duplicate MODE]
    library is added to the pool), with `--all` every library entry.
 4. Report (section 11.3).
 
+Tests: tests/test_pools_more.py::TestSync::test_pull_then_push,
+tests/test_pools_more.py::TestSync::test_nothing_shared,
+tests/test_pools_more.py::TestSync::test_not_found_only_for_keys_given,
+tests/test_pools_more.py::TestSync::test_conflict_stops_before_push,
+tests/test_pools_more.py::TestSync::test_selection,
+tests/test_spec_exchange.py::TestSync::test_conflict_exit_status
+
 ## 9. `papers pull --check`
 
 Reports only; nothing is merged or written.
@@ -691,8 +1009,8 @@ Reports only; nothing is merged or written.
   entries and the entries removed from the pool; no record is dropped.
 - Lines, in order:
   - without KEY: `pool ../pool: <state>` with the state of 14.2 (`up to
-    date`, `changed since last pull or push`, `never pulled`, `not pulled
-    from yet`);
+    date`, `changed since last pull or push`, `not pulled in full yet`,
+    `not pulled from yet`);
   - an entry removed from the pool: the note of 4.3;
   - an entry without record whose pool entry differs (a conflict, an
     addition or a new file): `KEY: in pool ../pool as POOLKEY, not pulled
@@ -703,6 +1021,17 @@ Reports only; nothing is merged or written.
     `Smith2020: changed in pool ../pool: journal, note, year`, with
     ` (1 conflict)` / ` (2 conflicts)` when there are conflicts.
 - No line: `nothing to pull`.
+
+Tests: tests/test_pools.py::TestPull::test_check_and_status,
+tests/test_pools_more.py::TestPullCheck::test_not_found_in_pool,
+tests/test_pools_more.py::TestPullCheck::test_not_pulled_yet,
+tests/test_pools_more.py::TestPullCheck::test_new_pool_file,
+tests/test_pools_more.py::TestPullCheck::test_conflict_count,
+tests/test_auto_push.py::TestRemovals::test_pull_check_lists_a_removal,
+tests/test_auto_push.py::TestSharedWithoutRecord::test_pull_check,
+tests/test_spec_exchange.py::TestPullCheck::test_nothing_written,
+tests/test_spec_exchange.py::TestPullCheck::test_fields_sorted_and_conflicts,
+tests/test_spec_exchange.py::TestPullCheck::test_nothing_to_pull
 
 ## 10. One-time exchanges: `--pool PATH`
 
@@ -719,7 +1048,18 @@ Reports only; nothing is merged or written.
   go to its own pool with `push`, or with auto-push.
 - Nothing is pushed to the other library automatically.
 
+Tests: tests/test_pools_onetime.py::TestOneTime::test_records_for_each_library,
+tests/test_pools_more.py::TestPullEntries::test_other_pool,
+tests/test_exchanges.py::TestAddPool::test_self_contained,
+tests/test_exchanges.py::TestAddPool::test_new_entry_is_not_sent,
+tests/test_exchanges.py::TestAddPool::test_shallow,
+tests/test_exchanges.py::TestShallowWithOther::test_pull,
+tests/test_exchanges.py::TestShallowWithOther::test_push,
+tests/test_pools.py::TestAdd::test_auto_push_ignored_without_pool
+
 ## 11. Reports (free, but the words are used by the documentation)
+
+Tests: none (free). The lines are checked by the tests of sections 6 to 9.
 
 ### 11.1 Entry lines
 
@@ -774,8 +1114,10 @@ undo/redo with auto-push, see `history.md`), before the library is saved:
 1. **New entries** (not in the library when it was loaded, by key or
    former key): always pushed, as `push KEY` (added to the pool, or merged
    if the pool has the paper).
-2. **Modified entries** (changed since loaded; an entry renamed in the
-   command, or found by a former key in its `ids`, is modified): with `auto-push true`, those shared
+2. **Modified entries** (fields or entry type changed since loaded; an
+   entry renamed in the command, or found by a former key in its `ids`, is
+   not new: it is matched to its state when loaded, and modified if that
+   changed): with `auto-push true`, those shared
    with the pool are pushed. Those removed from the pool get the note and
    lose their record (4.3).
 3. **File links**: the new or modified entries whose set of links (real
@@ -787,10 +1129,34 @@ Removed entries are never pushed (`rm` does not reach the pool). The
 pushes use `--on-duplicate skip`: an entry changed in the pool too (a
 conflict) is saved in the library, not pushed, and gets the note
 `not pushed: changed in the pool too; papers sync decides`. When the pool
-cannot be used, the command warns `not pushed to the pool: <reason>` and
-saves the library.
+cannot be used (missing, not a library, or with a pool of its own, 2.2),
+the command warns `not pushed to the pool: <reason>` and saves the
+library. A pool with entries that could not be parsed stops the command
+with the error of 2.2, before anything is saved.
 
-### 12.2 Notes
+Tests: tests/test_auto_push.py::TestAutoPush::test_tag,
+tests/test_auto_push.py::TestAutoPush::test_list_add_tag,
+tests/test_auto_push.py::TestAutoPush::test_edit,
+tests/test_auto_push.py::TestAutoPush::test_edit_key,
+tests/test_auto_push.py::TestAutoPush::test_check_duplicates,
+tests/test_auto_push.py::TestAutoPush::test_add_new_entry,
+tests/test_auto_push.py::TestAutoPush::test_file_attach_and_detach,
+tests/test_auto_push.py::TestAutoPush::test_only_the_entries_changed,
+tests/test_auto_push.py::TestAutoPush::test_entry_not_shared_is_not_pushed,
+tests/test_auto_push.py::TestAutoPush::test_rm_is_not_pushed,
+tests/test_auto_push.py::TestAutoPush::test_conflict_does_not_stop_the_command,
+tests/test_auto_push.py::TestAutoPushOff::test_nothing_pushed,
+tests/test_auto_push.py::TestShallowAutoPush::test_add_new_entry_goes_to_the_pool,
+tests/test_auto_push.py::TestShallowAutoPush::test_changes_not_pushed,
+tests/test_auto_push.py::TestShallowAutoPush::test_changes_pushed_with_auto_push,
+tests/test_auto_push.py::TestRemovedFromThePool::test_auto_push,
+tests/test_pools.py::TestAdd::test_auto_push_ignored_without_pool,
+tests/test_undo_pool.py::TestUndoPoolAutoPush::test_undo_pushes_what_a_step_did_not,
+tests/test_spec_exchange.py::TestPoolRules::test_configured_pool_with_a_pool_auto_push_warns,
+tests/test_spec_exchange.py::TestAutoPush::test_pool_unusable_warns,
+tests/test_spec_exchange.py::TestAutoPush::test_renamed_entry_is_not_new
+
+### 12.2 Notes (free)
 
 The line of each entry in the command's report gets a note in brackets
 (several joined by `; `):
@@ -812,6 +1178,8 @@ of the push are logged at info level: `push to pool ../pool: 1 with file
 links updated`. With `--porcelain`, the notes are not printed
 (`formats.md` section 7).
 
+Tests: none (free).
+
 ### 12.3 Link updates (contract)
 
 For an entry whose links changed in the command, with `before` its links
@@ -830,6 +1198,20 @@ record). An entry that the pool does not have, with links to send, is
 pushed (added to the pool, 7.3). A link that the entry had when loaded,
 outside the pool's files directory, is not sent: `push` sends it with the
 other fields.
+
+Tests: tests/test_auto_push.py::TestShallowFileLinks::test_attach,
+tests/test_auto_push.py::TestShallowFileLinks::test_rename,
+tests/test_auto_push.py::TestShallowFileLinks::test_detach,
+tests/test_auto_push.py::TestShallowFileLinks::test_rm,
+tests/test_auto_push.py::TestShallowFileLinks::test_mv,
+tests/test_auto_push.py::TestShallowFileLinks::test_check_fix,
+tests/test_auto_push.py::TestShallowFileLinks::test_entry_not_shared_in_the_pool,
+tests/test_auto_push.py::TestShallowFileLinks::test_entry_not_in_the_pool,
+tests/test_auto_push.py::TestShallowFileLinks::test_local_library_is_unaffected,
+tests/test_auto_push.py::TestShallowSharedLinks::test_attach_link_mode,
+tests/test_auto_push.py::TestShallowSharedLinks::test_attach_move_mode,
+tests/test_auto_push.py::TestShallowSharedLinks::test_loaded_link_not_sent,
+tests/test_spec_exchange.py::TestLinkUpdates::test_record_file_field
 
 ## 13. `add` looks in the pool first
 
@@ -872,6 +1254,26 @@ the pool's files directory or another entry links to it.
 `nothing to add: no file, identifier or bibtex given, and no entry KEY in
 pool X`.
 
+Tests: tests/test_pools.py::TestAdd::test_bibtex,
+tests/test_pools.py::TestAdd::test_doi,
+tests/test_pools.py::TestAdd::test_doi_with_fields,
+tests/test_pools.py::TestAdd::test_key,
+tests/test_pools.py::TestAdd::test_key_not_found,
+tests/test_pools.py::TestAdd::test_no_empty_entry,
+tests/test_pools.py::TestAdd::test_pdf_same_content,
+tests/test_pools.py::TestAdd::test_pdf_same_content_move_mode,
+tests/test_pools.py::TestAdd::test_attachment_different_content_move_mode,
+tests/test_pools.py::TestAdd::test_pdf_doi_in_text,
+tests/test_pools.py::TestAdd::test_copy_mode,
+tests/test_pools.py::TestAdd::test_move_mode_never_moves_pool_files,
+tests/test_pools.py::TestAdd::test_library_name_template,
+tests/test_pools.py::TestAdd::test_no_pool,
+tests/test_pools.py::TestShallow::test_add_from_pool_links_to_pool_file,
+tests/test_auto_push.py::TestOwnFields::test_add_from_the_pool_without_its_ids,
+tests/test_exchanges.py::TestAddPool::test_self_contained,
+tests/test_spec_exchange.py::TestAddLookup::test_bibtex_entry_keeps_its_key_and_fields,
+tests/test_spec_exchange.py::TestAddLookup::test_pdf_metadata_doi
+
 ### 13.2 After the lookup
 
 - In a shallow library, the new entries are pushed to its own pool
@@ -879,6 +1281,12 @@ pool X`.
   Nothing new is sent to the other library.
 - The first exchange with the pool records `papers-pulled` (3.6).
 - The report line of an entry taken says `[from pool X]`.
+
+Tests: tests/test_auto_push.py::TestShallowAutoPush::test_add_new_entry_goes_to_the_pool,
+tests/test_exchanges.py::TestAddPool::test_shallow,
+tests/test_exchanges.py::TestAddPool::test_new_entry_is_not_sent,
+tests/test_pools.py::TestStatus::test_after_add_from_pool,
+tests/test_pools.py::TestAdd::test_key
 
 ## 14. `papers status`
 
@@ -893,7 +1301,7 @@ A library without pool (or that is its own pool) has no pool line.
 | `missing` | the pool directory does not exist | |
 | `not a library` | the directory has no library configuration | |
 | `not pulled from yet` | no `papers-pulled` and no record for the pool | `` `papers pull` takes the entries shared with the pool `` |
-| `never pulled` | no `papers-pulled`, but records | `` `papers pull` takes the changes of the pool `` |
+| `not pulled in full yet` | no `papers-pulled`, but records (only `pull KEY`, a pull that skipped a conflict, or a push that left the pool with something the library does not have) | `` `papers pull` takes the changes of the pool `` |
 | `in sync` | 14.3 finds no difference (or the library has no bibtex) | |
 | `pool changed` | 14.3 | `` `papers pull --dry-run` shows the changes, `papers pull` takes them `` |
 | `library changed` | 14.3 | `` `papers push --dry-run` shows the changes, `papers push` sends them `` |
@@ -902,11 +1310,25 @@ A library without pool (or that is its own pool) has no pool line.
 The state words are free text, but the Desktop application and the
 documentation use them; keep them.
 
+Tests: tests/test_pools.py::TestStatus::test_status,
+tests/test_pools.py::TestStatus::test_status_not_pulled_in_full,
+tests/test_pools.py::TestStatus::test_pool_changed,
+tests/test_pools.py::TestStatus::test_library_changed,
+tests/test_pools.py::TestStatus::test_both_changed,
+tests/test_pools.py::TestStatus::test_missing_pool,
+tests/test_pools.py::TestConfigPoolSelfContained::test_config_pool_not_the_library_itself,
+tests/test_spec_exchange.py::TestStatusLine::test_not_a_library
+
 ### 14.2 The time check (`pull --check`)
 
-`pull --check` uses the recorded time only: `never pulled` / `not pulled
-from yet` as above; `changed since last pull or push` when the pool's
-bibtex time differs from `papers-pulled`; else `up to date`.
+`pull --check` uses the recorded time only: `not pulled in full yet` /
+`not pulled from yet` as above; `changed since last pull or push` when the
+pool's bibtex time differs from `papers-pulled`; else `up to date`.
+
+Tests: tests/test_pools.py::TestPull::test_check_and_status,
+tests/test_pools.py::TestStatus::test_status_not_pulled_in_full,
+tests/test_pools.py::TestStatus::test_after_add_from_pool,
+tests/test_spec_exchange.py::TestPullCheck::test_not_pulled_from_yet
 
 ### 14.3 The content comparison (contract for the result)
 
@@ -914,10 +1336,11 @@ bibtex time differs from `papers-pulled`; else `up to date`.
 pull and push would find it:
 
 1. Entries without record are not considered.
-2. If the pool's bibtex time equals `papers-pulled` and the entry's fields
-   equal the base's fields, the entry is skipped. Fields here: names in
-   lower case, values as written, without `file`, `ids` and the
-   `papers-*` fields; the entry type and the key are not compared.
+2. If the pool's bibtex time equals `papers-pulled`, the entry's fields
+   equal the base's fields and its entry type equals the base's (lower
+   case), the entry is skipped. Fields here: names in lower case, values
+   as written, without `file`, `ids` and the `papers-*` fields; the key
+   is not compared.
 3. Else find the pool entry (4.1). None: **pool changed** (removed from
    the pool).
 4. The pull merge (5.1, library as target, base the record): a conflict
@@ -928,12 +1351,34 @@ pull and push would find it:
    or a new file means **library changed**.
 6. Stop when both are found.
 
-The library is read as on disk, without the repair of links (15.3).
+The library is read with the repair of links of 15.3 done in memory, as
+`pull` finds it (a file the pool renamed is no difference).
 
-When nothing differs and the pool's bibtex changed since `papers-pulled`
-(other entries of the pool changed, or the same change was made on both
-sides), status records the current time in the origin file, as a pull
-would (not with `--dry-run`).
+`status` writes nothing in the library: no origin file, no bibtex, no
+history step, also when it repaired links or when the pool's bibtex
+changed since `papers-pulled` without a difference for the library (other
+entries of the pool changed, or the same change was made on both sides).
+The state is then `in sync`, and `pull --check` still says `changed since
+last pull or push`. It may write `exchanges.json` (14.4), which is on the
+machine, not in the library.
+
+`status` compares only the entries exchanged before (with a record): an
+entry that the library and the pool both have but never exchanged is not
+compared; `papers pull --dry-run` finds it.
+
+Tests: tests/test_pools.py::TestStatus::test_pool_changed,
+tests/test_pools.py::TestStatus::test_library_changed,
+tests/test_pools.py::TestStatus::test_both_changed,
+tests/test_pools.py::TestStatus::test_same_change_on_both_sides,
+tests/test_pools.py::TestStatus::test_fast_path_after_a_touch,
+tests/test_pools.py::TestStatus::test_entry_type_changed,
+tests/test_pools.py::TestStatus::test_entry_removed_from_the_pool,
+tests/test_pools.py::TestStatus::test_other_entries_of_the_pool,
+tests/test_pools.py::TestPull::test_conflict_skip,
+tests/test_pools.py::TestShallow::test_status_sees_repaired_links,
+tests/test_spec_exchange.py::TestStatusComparison::test_entry_without_record_not_compared,
+tests/test_spec_exchange.py::TestStatusComparison::test_link_removed_by_the_pool,
+tests/test_spec_exchange.py::TestStatusComparison::test_writes_nothing_in_the_library
 
 ### 14.4 The fast comparison by pieces (free; contract for the file if written)
 
@@ -954,20 +1399,30 @@ pool's bibtex and the library's origin file for that pool.
   form: separators `, ` and `: `, no indentation, no final newline, non-ASCII characters escaped as `\uXXXX`.
   A library without id has no such file. A file or an entry that cannot
   be read means "not known".
+- The origin file is the file the records of the pool were read from
+  (the last one read for its id), else the file named as 3.1 says.
 - Use: the pieces of each text now that are not in the stored list are
   new. The keys of the entries in the new pieces (`@type{key,` at the
   start of a line, not `@comment`, `@string`, `@preamble`), in lower
   case: library and origin pieces give library keys, pool pieces give
-  pool keys. If there is no new piece anywhere, the state is `in sync`
-  without reading the entries. Else only the entries whose library key,
-  or record pool key, is among those keys are compared (14.3).
-- Written: after 14.3 finds `in sync` (the origin pieces taken after the
-  origin file was updated), and after the fast path when it updated the
-  time. Not with `--dry-run`.
+  pool keys. If a stored pool piece is no longer in the pool's text (an
+  entry may have been removed), the stored lists are not used: every
+  entry is compared. Else, if there is no new piece anywhere, the state is
+  `in sync` without reading the entries. Else only the entries whose
+  library key, or record pool key, is among those keys are compared
+  (14.3).
+- Written: after 14.3 finds `in sync`, for that pool (the other pools of
+  the file are kept). Not with `--dry-run`.
 
 An implementation may skip this cache and compare every entry. If it
 writes `exchanges.json`, it must write exactly this content: papers trusts
 it.
+
+Tests: tests/test_pools.py::TestStatus::test_fast_path,
+tests/test_pools.py::TestStatus::test_fast_path_after_a_touch,
+tests/test_pools.py::TestStatus::test_entry_removed_from_the_pool,
+tests/test_spec_exchange.py::TestExchangesJson::test_exact_content,
+tests/test_spec_exchange.py::TestExchangesJson::test_unreadable_file_means_not_known
 
 ## 15. Shallow libraries and the files of the pool
 
@@ -983,20 +1438,34 @@ pool's name template, never renaming a file already there) is in
 applies also to
 `pull`/`sync`/`add` with an other library.
 
+Tests: tests/test_pools.py::TestShallow::test_add_places_files_in_pool,
+tests/test_pools.py::TestShallow::test_file_attach_places_files_in_pool,
+tests/test_pools.py::TestShallow::test_file_rename_places_files_in_pool,
+tests/test_exchanges.py::TestShallowWithOther::test_pull,
+tests/test_exchanges.py::TestAddPool::test_shallow
+
 ### 15.2 Links that the pool removed (contract)
 
 In a library that shares links with its pool, a pull of an entry with a
 record that has a `file` field removes from the library entry the links
 (by real path) that the record has and the pool entry no longer has. A
 link the pool entry never had stays. A record without `file` field removes
-nothing. No file is deleted. (The library entry may be left with an empty
-`file = {}` field; see the open questions.)
+nothing. No file is deleted. A library entry whose last link is removed
+this way has no `file` field.
 
 A push sends the library entry without these links (7.2), so the pool
 entry does not get them back. The record written by that push keeps them
 in its `file` field (the pool entry's links, then these), so that the next
 pull still removes them from the library. `papers status` compares the same
 way (14.3): such a link makes `pool changed`, not `both changed`.
+
+Tests: tests/test_auto_push.py::TestShallowSharedLinks::test_pull_removes_the_links_the_pool_removed,
+tests/test_auto_push.py::TestShallowSharedLinks::test_push_does_not_add_back_the_links_the_pool_removed,
+tests/test_auto_push.py::TestShallowSharedLinks::test_sync_removes_the_links_the_pool_removed,
+tests/test_auto_push.py::TestShallowSharedLinks::test_pull_without_recorded_links_removes_nothing,
+tests/test_auto_push.py::TestShallowSharedLinks::test_record_of_development_builds,
+tests/test_pools.py::TestShallow::test_link_removed_in_pool,
+tests/test_spec_exchange.py::TestStatusComparison::test_link_removed_by_the_pool
 
 ### 15.3 Repair of broken links to pool files (contract for the choice)
 
@@ -1027,7 +1496,19 @@ When:
 - by `papers file fix`, and before `papers config pool none` copies the
   pool files.
 
-`papers status` does not repair (14.3).
+`papers status` repairs in memory only (14.3).
+
+Tests: tests/test_pools.py::TestShallow::test_broken_link_repaired_on_load,
+tests/test_pools.py::TestShallow::test_status_sees_repaired_links,
+tests/test_pools.py::TestShallow::test_file_check_fix,
+tests/test_pools_more.py::TestExchange::test_repair_links_without_pool_entry_or_file,
+tests/test_file_relink.py::TestPoolRelink::test_same_name,
+tests/test_file_relink.py::TestPoolRelink::test_label_then_pair,
+tests/test_file_relink.py::TestPoolRelink::test_pairing_ambiguous,
+tests/test_file_relink.py::TestPoolRelink::test_label_ambiguous,
+tests/test_file_relink.py::TestPoolRelink::test_no_guess,
+tests/test_spec_exchange.py::TestRepair::test_first_link_takes_the_rest,
+tests/test_spec_exchange.py::TestRepair::test_saved_at_the_next_save
 
 ### 15.4 Changing the pool
 
@@ -1035,6 +1516,12 @@ When:
 into the library, or relinking to the pool's copies): `library.md`, Files
 of a shallow library. The records of PATH, if any, are found again through
 its pool id (2.3).
+
+Tests: tests/test_pools.py::TestConfigPool::test_pool_none,
+tests/test_pools.py::TestConfigPool::test_other_pool,
+tests/test_pools.py::TestConfigPoolSelfContained::test_becomes_shallow,
+tests/test_pools_onetime.py::TestOneTime::test_config_pool_finds_the_records,
+tests/test_pools_more.py::TestPoolIdentifier::test_library_moved
 
 ## 16. The history (outline)
 
@@ -1050,6 +1537,8 @@ Details are in `history.md`.
   its configuration). Undo in the library takes the pool's step back when
   the pool is still where the command left it, and otherwise reverts that
   step as a new step of the pool; `undo --library-only` leaves the pool.
+- A command that saves the pool several times: undo in the library takes
+  the pool back to before the first save.
 - Redo after an undo that took the pool's step back, when the pool changed
   since, does the step again in the pool, as a new step of the pool.
 - After undo or redo in a shallow library with auto-push, the shared
@@ -1059,94 +1548,68 @@ Details are in `history.md`.
 - `exchanges.json` (14.4) lives in the library's history folder but is
   not part of the states.
 
+Tests: tests/test_pools.py::TestOrigin::test_history,
+tests/test_undo_pool.py::TestUndoPool::test_add_then_undo_redo,
+tests/test_undo_pool.py::TestUndoPool::test_add_then_undo_library_only,
+tests/test_undo_pool.py::TestUndoPool::test_pool_changed_since,
+tests/test_undo_pool.py::TestUndoPool::test_redo_after_the_pool_moved_on,
+tests/test_undo_pool.py::TestUndoPool::test_undo_after_push,
+tests/test_undo_pool.py::TestUndoPool::test_undo_after_pull,
+tests/test_undo_pool.py::TestUndoPool::test_undo_restores_distinct,
+tests/test_undo_pool.py::TestUndoPoolAutoPush::test_undo_pushes_what_a_step_did_not,
+tests/test_undo_pool.py::TestSeveralSavesOfThePool::test_undo
+(the rules themselves: history.md).
+
 ## Open questions
 
-1. **Status ignores a change of entry type.** When the pool's bibtex time
-   is unchanged, an entry whose fields equal its base is skipped without
-   comparing the entry type, so a library entry changed from `@article`
-   to `@book` shows `in sync`, while `push` would send it.
-   `papers/pools.py:1552` (`_fields`), `papers/pools.py:1644`.
-2. **Status reads the library without repairing pool links.** A file the
-   pool renamed makes `status` say `both changed`, while `pull` repairs
-   the link at load and reports `nothing to pull`.
-   `papers/pools.py:1635`; repair at load in `papers/library.py:100`.
-3. **Empty `file` fields.** Records of a shallow library store `file = {}`
-   for a pool entry without files (`papers/pools.py:758`), and the removal
-   of links in a pull can leave `file = {}` in the library bibtex
-   (`papers/pools.py:918`). Is an empty field intended, or should it be
-   absent?
-4. **The base of a pull keeps the pool's `ids`.** The record of `pull` and
-   `add` is the pool entry with only `file` and the `papers-*` fields
-   removed, so it may hold the pool's `ids` (former pool keys), which the
-   merge ignores. `papers/pools.py:605`.
-5. **The base of a push of a new entry is the pool entry as inserted**,
-   not the library entry as sent, unlike the other pushes.
-   `papers/pools.py:1035`.
-6. **The piece cache can miss an entry removed from the pool** when its
-   piece disappears without a new piece appearing (a piece made of that
-   entry alone). `status` then says `in sync`, while `pull` would print
-   the removal note. `papers/pools.py:1587-1596`.
-7. **`status` writes without lock or history step.** It may rewrite the
-   origin file (`papers-pulled`) and `exchanges.json`, outside a command
-   that locks the library and without a state in the history.
-   `papers/pools.py:1631-1633`, `papers/pools.py:1668-1671`.
-8. **`status` ignores shared entries without record.** An entry matched by
-   the same-paper rule but never exchanged is not compared, although
-   `pull` would link or merge it. `papers/pools.py:1640`.
-9. **`never pulled` versus `not pulled from yet`.** The names do not say
-   the difference (records without exchange time, versus no record).
-   `papers/pools.py:1306-1312`.
-10. **Origin files under another name.** Every `.bib` file of
-    `.papers/origin/` is read, but a pool is always written to its
-    computed name, and only the last file read for its id is removed then
-    (3.5). A second file of the same `papers-pool` id (copied, or named by
-    another implementation) whose name sorts before the computed file's is
-    never rewritten nor removed: its records lose to the computed file's,
-    but a record that the computed file no longer has (dropped by an
-    exchange) comes back from it. `papers/pools.py:555-593`,
-    `papers/pools.py:740-747`.
-11. **Two path ids for one pool.** If two path ids designate the same pool,
-    one exchange moves only the first in sorted order to the identifier
-    (or, without identifier, uses it); the records of the other are
-    ignored until the next exchange moves them, where the records already
-    under the identifier win. `papers/pools.py:350-351`.
-12. **Record lookup by key under a reused pool key.** Step 4 of 4.1 takes
-    the pool entry of the record's pool key when no identifier
-    contradicts the base: an entry without DOI, arXiv id or ISBN that the
-    pool replaced by another paper under the same key is matched.
-    `papers/pools.py:260-270`, `papers/pools.py:737`.
-13. **Equivalent changes are not sent.** A change to an equivalent value
-    (case, braces, initials to full names) is not exchanged by itself;
-    when the entry is rewritten for another reason, the names take the
-    fuller form, which may be either side's. `papers/merge.py:157-160`,
-    `papers/pools.py:907-909`.
+All the questions of this file are resolved. Each item says what was
+decided.
+
+1. **Status ignores a change of entry type.** Resolved: status compares
+   the entry type too (14.3, step 2), #162.
+2. **Status reads the library without repairing pool links.** Resolved:
+   status repairs the links in memory, as pull does (14.3, 15.3).
+3. **Empty `file` fields.** Resolved, kept and documented: a record's
+   `file = {}` says the pool entry had no links (3.3); a library entry
+   whose last link a pull removed has no `file` field (15.2).
+4. **The base of a pull keeps the pool's `ids`.** Resolved: no record
+   keeps `ids` (3.3).
+5. **The base of a push of a new entry is the pool entry as inserted.**
+   Resolved, kept: that entry has the fields of the library entry as sent,
+   as for the other pushes; the spec text is corrected (3.3).
+6. **The piece cache can miss an entry removed from the pool.** Resolved:
+   a stored pool piece gone from the pool means "compare every entry"
+   (14.4), #162.
+7. **`status` writes without lock or history step.** Resolved: status
+   writes nothing in the library (14.3), #162.
+8. **`status` ignores shared entries without record.** Resolved, kept and
+   documented: `papers pull --dry-run` finds them (14.3).
+9. **`never pulled` versus `not pulled from yet`.** Resolved: the state is
+   named `not pulled in full yet` (14.1).
+10. **Origin files under another name.** Resolved: every file of a pool id
+    is merged, and the others are removed when the pool's file is written
+    (3.4, 3.5).
+11. **Two path ids for one pool.** Resolved: all move to the identifier in
+    one exchange (3.9).
+12. **Record lookup by key under a reused pool key.** Resolved: step 4 of
+    4.1 also requires the same authors and year as the base.
+13. **Equivalent changes are not sent.** Resolved: an equivalent change is
+    taken when the target has the base exactly (5.3).
 14. **`add` from a pool sets the exchange time on the first exchange
-    only.** A later `add --pool PATH` from an unchanged other library does
-    not update `papers-pulled`. `papers/pools.py:1007-1011`.
-15. **The dialogue says the origin is the pool version** (`origin = the
-    pool version at the last pull or push`), also after a push, where
-    the base is the library's version. `papers/merge.py:506`.
-16. **`keep` and `update` mean opposite sides in pull and push.** `keep`
-    keeps the target (library in pull, pool in push). In `sync` the same
-    word is used for both steps. Is that the intended reading of the
-    option? `papers/merge.py:823`, `papers/cli/pool_cmds.py:200-215`.
-17. **Rekey overwrites.** When a key is renamed to a key that already has
-    a record for a pool (a record left by a removed entry), that record is
-    replaced silently. `papers/pools.py:637-644`.
-18. **`papers-pool-path` is written only when records move.** A pool
-    whose library has its identifier at the first exchange gets no
-    `papers-pool-path` line, so its origin file is named `pool-<hash>.bib`
-    whatever its folder, while `docs/pools.md` says the file is named
-    after the pool folder and records where the pool was. Should the path
-    be written at every exchange? `papers/pools.py:697`,
-    `papers/pools.py:730-736`.
-19. **`status` names the origin file without `papers-pool-path`.** For the
-    fast comparison (14.4), `status` reads the origin file under the name
-    computed from the pool id alone: a file named after the pool folder
-    is not found, its pieces are those of the empty text, and a change of
-    the records alone is not seen. `papers/pools.py:1710`.
-20. **Origin files are read with the platform encoding.** They are written
-    as UTF-8, but read with the platform's default encoding, without
-    dropping a byte order mark, unlike the bibtex; the same holds for the
-    pool's configuration when its identifier is read.
-    `papers/pools.py:480`, `papers/pools.py:570`.
+    only.** Resolved, kept and documented (3.6).
+15. **The dialogue says the origin is the pool version.** Resolved: it says
+    `origin = the entry as last exchanged (add, pull or push)`.
+16. **`keep` and `update` mean opposite sides in pull and push.**
+    Resolved, kept: `keep` keeps the receiving side's values, `update`
+    takes the incoming side's; the help says which side for each command
+    (5.6), #170.
+17. **Rekey overwrites.** Resolved: a leftover record under the new key is
+    replaced by the entry's own record, or dropped (3.7).
+18. **`papers-pool-path` is written only when records move.** Resolved:
+    every exchange writes it, and the file is named after the pool folder
+    (3.1, 3.2), #162.
+19. **`status` names the origin file without `papers-pool-path`.**
+    Resolved: status uses the file the records were read from (14.4),
+    #162.
+20. **Origin files are read with the platform encoding.** Resolved: they
+    are read as UTF-8, a byte order mark dropped (3.4), #162.
