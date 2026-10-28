@@ -1,15 +1,15 @@
 """undo, redo and restore bring the files back and forth with the bibtex
 (papers.journal.restore): the safety rules (never overwrite, a file changed
 since stays, an external file only unlinked is never deleted, the pool keeps
-its files), and the places a file is found (the journal, the checksums, the
-trash, the git-lfs store)"""
+its files), and the places a file is found (the operations of the commands,
+the checksums, the files kept by the history)"""
 import json
 import os
 import shutil
-import time
 from pathlib import Path
 from unittest.mock import patch
 
+import papers.backup
 from papers import journal
 from papers.checksums import FILES_JSON
 from papers.config import Config, CONFIG_FILE_LOCAL
@@ -20,8 +20,8 @@ from tests.common import FileTest, entry
 
 
 class JournalTest(FileTest):
-    """a library in lib/ (git off), with an entry that links to a file
-    outside of it, src/a.pdf (e.g. a folder of the project)"""
+    """a library in lib/, with an entry that links to a file outside of
+    it, src/a.pdf (e.g. a folder of the project)"""
 
     def setUp(self):
         super().setUp()
@@ -34,8 +34,20 @@ class JournalTest(FileTest):
         self.assertEqual(len(files), 1, files)
         return self.path('lib', 'files', files[0])
 
+    def config(self):
+        return Config.load(self.path('lib', CONFIG_FILE_LOCAL))
 
-class TestWithoutGit(JournalTest):
+    def project(self):
+        "the history of the library, and its place"
+        return papers.backup.project_of(self.config(), create=False)
+
+    def head(self):
+        "the current state of the library"
+        project, place = self.project()
+        return project.state(project.head(place)['state'])
+
+
+class TestOneStep(JournalTest):
 
     def test_rename_undo_redo(self):
         self.lib('file rename --move')
@@ -104,20 +116,15 @@ class TestWithoutGit(JournalTest):
     def test_deleted_file_reported(self):
         self.lib('rm one2000 --delete-files')
         out = self.out('undo')
-        self.assertIn('restored from the trash', out)
+        self.assertIn('restored from the history', out)
 
 
-class TestWithGit(JournalTest):
-
-    def setUp(self):
-        super().setUp()
-        self.lib('config git true')
+class TestSeveralSteps(JournalTest):
 
     def test_one_step_at_a_time(self):
         # the case of the issue: a rename that moved the files of a project folder
         b = self.write('src', 'b.pdf', content='pdf b')
         self.bib(entry('one2000', self.a), entry('two2000', b))
-        self.lib('config git true')
         self.lib('file rename one2000 --move')
         self.lib('file rename two2000 --move')
         self.assertFalse(os.path.exists(self.a) or os.path.exists(b))
@@ -154,11 +161,10 @@ class TestWithGit(JournalTest):
         self.assertEqual(self.libfiles(), ['renamed.pdf'])
         self.assertFalse(os.path.exists(self.a))
 
-    def test_restore_ref(self):
-        first = self.lib('git rev-list --max-parents=0 HEAD', sp_cmd='check_output').strip()
-        self.lib('file rename --move')
+    def test_restore_state(self):
+        self.lib('file rename --move')  # state 1: the library before it
         self.lib('tag one2000 --add x')
-        out = self.out(f'restore --ref {first}')
+        out = self.out('restore 1')
         self.assertIn(' --> moved back to ', out)
         self.assertEqual(Path(self.a).read_text(), 'pdf a')
         self.assertEqual(self.files('one2000'), [self.a])
@@ -195,12 +201,12 @@ class TestWithGit(JournalTest):
         self.lib('add ../downloads/b.bib --move')
         self.lib('rm two2000 --delete-files')
         out = self.out('undo -n 2')
-        self.assertIn('restored from the trash', out)
+        self.assertIn('restored from the history', out)
         self.assertIn(' --> moved back to ', out)
         self.assertEqual(Path(b).read_text(), 'pdf b')
         self.assertEqual(self.libfiles(), [])
         out = self.out('redo -n 2')
-        self.assertIn('deleted again (to the trash)', out)
+        self.assertIn('deleted again (kept in the history)', out)
         self.assertFalse(os.path.exists(b))
         self.assertEqual(self.libfiles(), [])
 
@@ -214,21 +220,17 @@ class TestWithGit(JournalTest):
         self.assertEqual(len(self.libfiles()), 1)
         self.assertEqual(Path(b).read_text(), 'pdf b')
 
-    def test_journal_is_committed(self):
+    def test_operations_in_the_state(self):
         self.lib('file rename --move')
-        out = self.lib('git show --stat HEAD', sp_cmd='check_output')
-        self.assertIn('files-journal.json', out)
+        ops = self.head()['ops']
+        self.assertEqual([(op['op'], op['src'], op['dst']) for op in ops],
+                         [('moved', self.a, os.path.join('files', self.libfiles()[0]))])  # in the library: relative
         self.lib('tag one2000 --add x')
-        out = self.lib('git show --stat HEAD', sp_cmd='check_output')
-        self.assertIn('files-journal.json', out)  # removed: that command moved nothing
+        self.assertEqual(self.head()['ops'], [])  # that command moved nothing
 
 
 class TestChecksums(JournalTest):
     "the checksums of the files, .papers/files.json"
-
-    def setUp(self):
-        super().setUp()
-        self.lib('config git true')
 
     def hashes(self):
         path = self.path('lib', FILES_JSON)
@@ -238,7 +240,7 @@ class TestChecksums(JournalTest):
         self.lib('file rename --move')
         moved = self.moved()
         self.assertEqual(self.hashes(), {os.path.relpath(moved, self.path('lib')): checksum(moved).hex()})
-        self.assertIn(FILES_JSON, self.lib('git ls-files', sp_cmd='check_output'))  # backed up
+        self.assertIn(FILES_JSON, self.head()['files'])  # in the history
         self.lib('rm one2000')
         self.assertEqual(self.hashes(), {})  # no entry links the file
 
@@ -267,10 +269,9 @@ class TestChecksums(JournalTest):
         self.lib('file checksum')
         self.lib('file rename --move')
         moved = self.moved()
-        commit = self.lib('git rev-parse HEAD', sp_cmd='check_output').strip()
-        self.lib('git rm -q files-journal.json')
-        self.lib('git commit -q --amend --no-edit')
-        self.assertNotEqual(self.lib('git rev-parse HEAD', sp_cmd='check_output').strip(), commit)
+        project, place = self.project()
+        n = project.head(place)['state']
+        project.update(n, dict(project.state(n), ops=[]))
         out = self.out('undo')
         self.assertIn('moved back to', out)
         self.assertEqual(Path(self.a).read_text(), 'pdf a')
@@ -281,8 +282,8 @@ class TestShallow(FileTest):
     "a file added to a shallow library goes to the pool: undo in the library copies it back, the pool keeps it"
 
     def test_copied_back(self):
-        self.papers('init pool --no-git')
-        self.papers('init shallow --no-git --pool ../pool')
+        self.papers('init pool')
+        self.papers('init shallow --pool ../pool')
         a = self.write('src', 'a.pdf', content='pdf a')
         Path(self.path('src', 'a.bib')).write_text(entry('one2000', a))
         self.papers('add ../src/a.bib --move', cwd=self.path('shallow'))
@@ -297,94 +298,153 @@ class TestShallow(FileTest):
         self.assertEqual(os.listdir(self.path('pool', 'files')), pool_files)
 
 
-class TestTrash(JournalTest):
+class TestDeleted(JournalTest):
+    "the files that the commands delete: kept in the history, unless keep-deleted-files is false"
 
-    def setUp(self):
-        super().setUp()
-        self.lib('config git true')
+    def store(self):
+        return papers.backup.store(self.config())
 
-    def trash(self):
-        config = Config.load(self.path('lib', CONFIG_FILE_LOCAL))
-        return config.trash()[0]
+    def kept(self):
+        "the files kept by the history"
+        root = self.store().file_objects
+        return [f for _, _, files in os.walk(root) for f in files] if os.path.isdir(root) else []
 
-    def test_rm_undo_restores_from_the_trash(self):
+    def test_rm_undo_restores_from_the_history(self):
         self.lib('rm one2000 --delete-files')
         self.assertFalse(os.path.exists(self.a))
-        self.assertEqual(len(os.listdir(self.trash())), 1)
+        self.assertEqual(self.kept(), [self.head()['deleted'][0] + '.pdf'])
         out = self.out('undo')
-        self.assertIn('restored from the trash', out)
+        self.assertIn('restored from the history', out)
         self.assertEqual(Path(self.a).read_text(), 'pdf a')
         self.assertEqual(self.files('one2000'), [self.a])
         out = self.out('redo')
-        self.assertIn('deleted again (to the trash)', out)
+        self.assertIn('deleted again (kept in the history)', out)
         self.assertFalse(os.path.exists(self.a))
-        # the trash is not backed up
-        self.assertNotIn('trash', self.lib('git status --short', sp_cmd='check_output'))
+        # nothing of the history in the library
+        self.assertFalse(os.path.exists(self.path('lib', '.papers', 'backup')))
 
-    def test_larger_than_the_trash_is_kept_without_terminal(self):
-        self.lib('config trash-size 0')
-        with patch('papers.files.stdin_is_terminal', return_value=False), \
-                self.assertLogs('papers', level='WARNING') as logs:
-            self.lib('rm one2000 --delete-files')
-        self.assertIn('more than the trash holds (0 MB, the trash-size setting)', '\n'.join(logs.output))
-        self.assertTrue(os.path.exists(self.a))  # kept
-
-    def test_larger_than_the_trash_confirmed(self):
-        self.lib('config trash-size 0')
-        with patch('papers.files.stdin_is_terminal', return_value=True), \
-                patch('builtins.input', return_value='y'):
-            self.lib('rm one2000 --delete-files')
+    def test_keep_deleted_files_false(self):
+        self.lib('config --global keep-deleted-files false')
+        self.lib('rm one2000 --delete-files')
         self.assertFalse(os.path.exists(self.a))
-        self.assertFalse(os.path.isdir(self.trash()) and os.listdir(self.trash()))
+        self.assertEqual(self.kept(), [])
         self.assertIn('deleted by the command, not restored', self.out('undo'))
 
-    def test_trash_emptied(self):
+    def test_history_emptied(self):
         self.lib('rm one2000 --delete-files')
-        shutil.rmtree(self.trash())
-        self.assertIn('no longer in the trash', self.out('undo'))
+        shutil.rmtree(self.store().file_objects)
+        self.assertIn('no longer in the history', self.out('undo'))
         self.assertFalse(os.path.exists(self.a))
 
-    def test_git_lfs_store(self):
-        # the git-lfs copies of the backups of earlier versions: undo finds a file there by its checksum
-        digest = checksum(self.a).hex()
-        self.lib('rm one2000 --delete-files')
-        shutil.rmtree(self.trash())
-        gitdir = os.path.dirname(self.trash())
-        lfs = os.path.join(gitdir, '.git', 'lfs', 'objects', digest[:2], digest[2:4])
-        os.makedirs(lfs)
-        Path(lfs, digest).write_text('pdf a')
-        self.assertIn('restored from the git-lfs copy', self.out('undo'))
-        self.assertEqual(Path(self.a).read_text(), 'pdf a')
-
-    def test_old_files_leave_the_trash(self):
-        trash = self.trash()
-        os.makedirs(trash)
-        old = self.write(trash, 'old.pdf')
-        os.utime(old, (0, 0))
-        recent = self.write(trash, 'recent.pdf')
-        with patch('send2trash.send2trash') as system_trash:
-            journal.empty_trash(trash, days=30, megabytes=100)
-        system_trash.assert_called_once_with(old)  # to the trash of the system
-        os.remove(old)
-        old = self.write(trash, 'old.pdf')
-        self.assertEqual(sorted(os.listdir(trash)), ['old.pdf', 'recent.pdf'])
-        # beyond the size: the oldest go first
-        Path(old).write_bytes(b'x' * journal.MB)
-        os.utime(old, (time.time() - 10, time.time() - 10))
-        journal.empty_trash(trash, days=30, megabytes=1)
-        self.assertEqual(sorted(os.listdir(trash)), ['recent.pdf'])
-        self.assertTrue(os.path.exists(recent))
-
-    def test_identical_copy_not_trashed(self):
+    def test_identical_copy_not_kept(self):
         # e.g. papers config pool: the library's copy is deleted, the pool has the same file
         copy = self.write('pool', 'a.pdf', content='pdf a')
-        journal.start(self.path('lib', 'papers.bib'), (self.trash(), 30, 100))
+        journal.start(self.path('lib', 'papers.bib'), papers.backup.Deleted(self.config()))
         delete_files([self.a], same={self.a: copy})
         self.assertFalse(os.path.exists(self.a))
-        self.assertFalse(os.path.isdir(self.trash()))
+        self.assertEqual(self.kept(), [])
         ops, _ = journal.leftover()
         self.assertEqual([(op['op'], op['dst']) for op in ops], [('removed', copy)])
         lines = journal.restore({copy}, {self.a}, ops, undo=True)
         self.assertIn('restored (a copy of', '\n'.join(lines))
         self.assertTrue(os.path.exists(copy))  # the pool keeps it
         self.assertEqual(Path(self.a).read_text(), 'pdf a')
+
+
+class TestGuard(JournalTest):
+    """before deleting more than the history keeps (history-size), or enough
+    to drop a large part of it, papers asks"""
+
+    def setUp(self):
+        super().setUp()
+        Path(self.a).write_bytes(b'%PDF' + b'x' * (2 * journal.MB))  # 2 MB
+        self.lib('config --global history-size 1')
+
+    def test_more_than_the_history_keeps_without_terminal(self):
+        with patch('papers.backup.stdin_is_terminal', return_value=False), \
+                self.assertLogs('papers', level='WARNING') as logs:
+            out = self.out('rm one2000 --delete-files')
+        self.assertIn('more than the history keeps (history-size: 1 MB)', out)
+        self.assertIn('cannot be undone', out)
+        self.assertIn('no terminal to confirm', '\n'.join(logs.output))
+        self.assertTrue(os.path.exists(self.a))  # kept
+        self.assertIn('kept ', out)
+
+    def test_more_than_the_history_keeps_confirmed(self):
+        with patch('papers.backup.stdin_is_terminal', return_value=True), \
+                patch('builtins.input', return_value='y'):
+            self.lib('rm one2000 --delete-files')
+        self.assertFalse(os.path.exists(self.a))
+        self.assertFalse(os.path.isdir(papers.backup.store(self.config()).file_objects))  # to the system trash
+        self.assertIn('deleted by the command, not restored', self.out('undo'))  # to the system trash
+
+    def test_answer_no(self):
+        with patch('papers.backup.stdin_is_terminal', return_value=True), \
+                patch('builtins.input', return_value='n'):
+            self.lib('rm one2000 --delete-files')
+        self.assertTrue(os.path.exists(self.a))
+
+    def test_yes(self):
+        with patch('builtins.input', side_effect=AssertionError('no question expected')):
+            self.lib('rm one2000 --delete-files --yes')
+        self.assertFalse(os.path.exists(self.a))
+
+    def test_lesser_case_recent_states(self):
+        # 0.6 MB, within the limit, but the history must drop states of the last day to keep it
+        self.lib('config --global history-size 3')
+        b = self.write('src', 'b.pdf', content='')
+        Path(b).write_bytes(b'%PDF' + b'y' * (2 * journal.MB))
+        self.bib(entry('one2000', self.a), entry('two2000', b))
+        self.lib('rm one2000 --delete-files --yes')
+        with patch('papers.backup.stdin_is_terminal', return_value=True), \
+                patch('builtins.input', return_value='n') as answer:
+            out = self.out('rm two2000 --delete-files')
+        answer.assert_called_once()
+        self.assertIn('of them from the last day', out)
+        self.assertTrue(os.path.exists(b))
+
+    def test_no_limit(self):
+        self.lib('config --global history-size 0')
+        with patch('builtins.input', side_effect=AssertionError('no question expected')):
+            self.lib('rm one2000 --delete-files')
+        self.assertIn('restored from the history', self.out('undo'))
+
+
+class TestRefusedSave(JournalTest):
+    """another program wrote the bibtex while the command ran: papers does
+    not write it (#119), and puts back the files that the command moved"""
+
+    def other_program(self, *args, **kwargs):
+        Path(self.path('lib', 'papers.bib')).write_text(entry('other2001'))
+
+    def test_files_put_back(self):
+        with patch('papers.checksums.update', side_effect=self.other_program), \
+                self.assertRaisesRegex(Exception, 'put back the files'):
+            self.out('file rename --move')
+        self.assertEqual(Path(self.a).read_text(), 'pdf a')
+        self.assertEqual(self.libfiles(), [])
+        self.assertIn('other2001', Path(self.path('lib', 'papers.bib')).read_text())  # not overwritten
+
+    def test_deleted_files_put_back(self):
+        with patch('papers.checksums.update', side_effect=self.other_program), \
+                self.assertRaises(Exception):
+            self.out('rm one2000 --delete-files')
+        # rm deletes the files after the save: nothing was deleted
+        self.assertEqual(Path(self.a).read_text(), 'pdf a')
+
+    def test_rollback(self):
+        b = self.write('src', 'b.pdf', content='pdf b')
+        moved = self.path('lib', 'files', 'b.pdf')
+        journal.start(self.path('lib', 'papers.bib'))
+        os.makedirs(os.path.dirname(moved), exist_ok=True)
+        shutil.move(b, moved)
+        journal.record('moved', b, moved)
+        copy = self.path('lib', 'files', 'a.pdf')
+        shutil.copy(self.a, copy)
+        journal.record('copied', self.a, copy)
+        lines = journal.rollback(self.path('lib', 'papers.bib'))
+        self.assertEqual(Path(b).read_text(), 'pdf b')
+        self.assertFalse(os.path.exists(copy))
+        self.assertTrue(os.path.exists(self.a))
+        self.assertEqual(len(lines), 2)
+        self.assertEqual(journal.pending(self.path('lib', 'papers.bib')), [])

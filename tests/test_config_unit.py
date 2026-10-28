@@ -1,11 +1,11 @@
 """Unit tests for papers.config (pure logic, no install)"""
+import json
 import os
 import tempfile
 import unittest
 from unittest import mock
-from pathlib import Path
 
-from papers.config import Config, CONFIG_FILE_LOCAL
+from papers.config import Config, CONFIG_FILE_LOCAL, MachineConfig
 
 
 class TestConfigRelpath(unittest.TestCase):
@@ -42,14 +42,44 @@ class TestConfigEditor(unittest.TestCase):
             self.assertEqual(os.environ.get("EDITOR"), "nano")
 
 
-class TestConfigBackupFiles(unittest.TestCase):
+class TestLibraryId(unittest.TestCase):
+    "the identifier of a library names its history (see papers.backup)"
 
-    def test_backupfile_properties(self):
-        cfg = Config(is_library=True, bibtex="/tmp/x.bib", gitdir="/tmp/git")
-        self.assertIn("backup_clean.bib", str(cfg.backupfile_clean))
-        # the tracked backup copy is named after the bibtex itself
-        self.assertEqual("x.bib", Path(cfg.backupfile).name)
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.file = os.path.join(self.tmp.name, CONFIG_FILE_LOCAL)
+        os.makedirs(os.path.dirname(self.file))
+        self.machine = MachineConfig(os.path.join(self.tmp.name, 'machine.json'))
 
-    def test_backupfile_reserved_names(self):
-        cfg = Config(is_library=True, bibtex="/tmp/backup_clean.bib", gitdir="/tmp/git")
-        self.assertNotEqual(Path(cfg.backupfile).name, Path(cfg.backupfile_clean).name)
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def test_created_once_and_kept(self):
+        json.dump({'bibtex': 'lib.bib', 'version': 3}, open(self.file, 'w'))
+        config = Config.load(self.file, machine=self.machine)
+        self.assertIsNone(config.library_id(create=False))
+        id = config.library_id()
+        self.assertRegex(id, r'^[0-9a-f]{32}$')
+        self.assertEqual(json.load(open(self.file))['id'], id)
+        self.assertEqual(Config.load(self.file, machine=self.machine).library_id(), id)
+
+    def test_only_the_id_is_written(self):
+        # the settings in memory may be those of the command (e.g. the files directory of a pool)
+        json.dump({'bibtex': 'lib.bib', 'version': 3}, open(self.file, 'w'))
+        config = Config.load(self.file, machine=self.machine)
+        config.filesdir = '/somewhere/else'
+        config.library_id()
+        self.assertEqual(set(json.load(open(self.file))), {'bibtex', 'version', 'id'})
+
+    def test_machine_settings_not_read_from_a_library(self):
+        json.dump({'bibtex': 'lib.bib', 'version': 3, 'history-dir': '/tmp/evil', 'keep-deleted-files': False,
+                   'history-separate': True, 'history-size': 7}, open(self.file, 'w'))
+        config = Config.load(self.file, machine=self.machine)
+        self.assertIsNone(config.history_dir)
+        self.assertTrue(config.keep_deleted_files)
+        # a library may keep a history of its own, of its own size
+        self.assertTrue(config.history_separate)
+        self.assertEqual(config.history_size, 7)
+        js = config.tojson()
+        self.assertNotIn('history-dir', js)
+        self.assertNotIn('keep-deleted-files', js)

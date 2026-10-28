@@ -234,7 +234,7 @@ $ papers init ~/Documents/papers/sealevel
 created the library ~/Documents/papers/sealevel
 * bibtex:  papers.bib
 * files:   files (the files directory of the library)
-* backup:  bibtex history (git)
+* history: undo and redo (`papers history`)
 `papers config` lists and sets the settings
 $ papers init ~/Documents/papers/arctic
 created the library ~/Documents/papers/arctic
@@ -244,7 +244,7 @@ created the library ~/projects/thesis
 * bibtex:  papers.bib
 * files:   in the pool (shallow library)
 * pool:    ~/Documents/papers/sealevel
-* backup:  bibtex history (git)
+* history: undo and redo (`papers history`)
 `papers config` lists and sets the settings
 $ papers init ~/projects/arctic-paper --pool ~/Documents/papers/arctic
 created the library ~/projects/arctic-paper

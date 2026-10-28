@@ -15,14 +15,11 @@ options you pass change, everything else is kept (this is the deprecated
 to discard it and start over from defaults.
 """
 import os
-import shutil
 from dataclasses import dataclass, field
 from pathlib import Path
 
 from papers import logger
-from papers.backup import check_git_available, init_backup
 from papers.config import Config, CONFIG_FILE_LOCAL, NO_POOL, pool_setting
-from papers.library import snapshot_backup
 
 # words that clear a value at a prompt or on the command line
 RESET_WORDS = ('none', 'null', 'unset', 'undefined', 'reset', 'delete')
@@ -72,8 +69,6 @@ class InstallPlan:
     create_bibtex: bool = False
     create_filesdir: bool = False
     remove_config_files: list = field(default_factory=list)
-    init_git: bool = False
-    snapshot: bool = False
 
 
 def _ask_path(asker, what, default, current=None):
@@ -88,13 +83,6 @@ def _ask_path(asker, what, default, current=None):
     if low in RESET_WORDS:
         return None
     return ans
-
-
-def _ask_bool(asker, question, default):
-    ans = asker.ask(f"{question} [Enter: {default}/Yes/No]: ", default=default).strip()
-    if ans == '':
-        return default
-    return ans.lower() in ('y', 'yes')
 
 
 def resolve_install(config, o, probe=None, asker=None, target=None):
@@ -181,26 +169,6 @@ def resolve_install(config, o, probe=None, asker=None, target=None):
     if o.editor:
         config.set('editor', o.editor)
 
-    # --- git tracking ---
-    git = True if o.git_lfs else o.git
-    if git is None:
-        if fresh and config.source('git') == 'default':
-            # fresh installs default to git-tracking when git is available
-            default_git = shutil.which('git') is not None
-        else:
-            default_git = bool(config.git)
-        git = _ask_bool(asker, "Use git to back-up the bibtex file ?", default_git)
-    config.set('git', bool(git))
-
-    gitlfs = o.git_lfs
-    if not config.git:
-        gitlfs = False
-    if gitlfs is None:
-        gitlfs = _ask_bool(asker, "Use git-lfs to back-up associated files ?", bool(config.gitlfs))
-    config.set('git-lfs', bool(gitlfs))
-    if config.git:
-        check_git_available(gitlfs=config.gitlfs)
-
     return InstallPlan(
         config=config,
         create_bibtex=bool(config.bibtex) and not os.path.exists(config.bibtex),
@@ -209,8 +177,6 @@ def resolve_install(config, o, probe=None, asker=None, target=None):
         create_filesdir=bool(config.filesdir) and not os.path.exists(config.filesdir)
                         and not config.has_pool(),
         remove_config_files=remove_config_files,
-        init_git=config.git,
-        snapshot=config.git and bool(config.bibtex),
     )
 
 
@@ -247,11 +213,4 @@ def apply_install(plan):
         # typically is current dir = ""
         os.makedirs(os.path.dirname(config.file), exist_ok=True)
     config.save()
-
-    if plan.init_git:
-        init_backup(config)
-
-    if plan.snapshot:
-        snapshot_backup(config)
-
     return config

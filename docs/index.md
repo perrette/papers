@@ -41,7 +41,7 @@ papers list
 - [Export](export.md)
 - [A global shared library](global-library.md)
 - [Managing your library](library-management.md)
-- [Git integration](git.md)
+- [Using git](git.md)
 - [Undo and redo](undo-redo.md)
 
 ## From the same author

@@ -83,13 +83,14 @@ class TestResolution(unittest.TestCase):
                   open(self.file, 'w'))
         config = Config.load(self.file, machine=self.machine)
         self.assertEqual(config.get('paths'), 'absolute')
-        self.assertTrue(config.gitlfs)
         self.assertEqual(config.nameformat.author_num, 3)
         config.save()
         js = json.load(open(self.file))
         self.assertEqual(js['paths'], 'absolute')
         self.assertNotIn('absolute_paths', js)
-        self.assertTrue(js['gitlfs'])
+        # the git backup is gone: its settings are not kept
+        self.assertNotIn('gitlfs', js)
+        self.assertNotIn('git', js)
         self.assertEqual(js['version'], 3)
 
 
@@ -129,11 +130,9 @@ class TestFormatVersion(unittest.TestCase):
         self.assertNotIn('local', config.tojson())
         self.assertTrue(config.is_library)
         self.assertEqual(config.get('paths'), 'relative')
-        self.assertFalse(config.gitlfs)
         self.write({'bibtex': 'lib.bib', 'absolute_paths': True, 'backup_files': True, 'local': True})
         config = Config.load(self.file, machine=self.machine)
         self.assertEqual(config.get('paths'), 'absolute')
-        self.assertTrue(config.gitlfs)
         self.assertIsNone(config.pool_path())  # a library of v2: self-contained
         self.assertFalse(config.shallow)
 
@@ -171,7 +170,7 @@ class TestFormatVersion(unittest.TestCase):
 class TestInit(ConfigTest):
 
     def test_init(self):
-        self.papers('init --no-git')
+        self.papers('init')
         js = self.json()
         self.assertEqual(js['bibtex'], 'papers.bib')
         self.assertEqual(js['filesdir'], 'files')
@@ -185,8 +184,8 @@ class TestInit(ConfigTest):
         self.assertTrue(os.path.isdir(self.path('files')))
 
     def test_init_options(self):
-        self.papers('init shared --no-git')
-        self.papers('init lib --no-git --bibtex refs.bib --filesdir pdfs --pool ../shared '
+        self.papers('init shared')
+        self.papers('init lib --bibtex refs.bib --filesdir pdfs --pool ../shared '
                     '--paths absolute --name-template "{author}_{year}" --key-author-num 1')
         js = self.json('lib')
         self.assertEqual(js['bibtex'], 'refs.bib')
@@ -196,47 +195,47 @@ class TestInit(ConfigTest):
         self.assertEqual(js['nameformat'], {'template': '{author}_{year}'})
         self.assertEqual(js['keyformat'], {'author_num': 1})
 
-    def test_init_git(self):
-        self.papers('init --git')
-        config = Config.load(self.path(CONFIG_FILE_LOCAL))
-        self.assertTrue(config.git)
-        self.assertTrue(os.path.isdir(os.path.join(config.gitdir, '.git')))
+    def test_init_git_ignored(self):
+        with self.assertLogs('papers', level='WARNING') as logs:
+            self.papers('init --git')
+        self.assertIn('--git is ignored', '\n'.join(logs.output))
+        self.assertNotIn('git', self.json())
 
     def test_init_machine_defaults(self):
-        self.papers('config --global git false')
+        self.papers('config --global checksums false')
         self.papers('config --global paths absolute')
         self.papers('init')
         js = self.json()
         # the values of the global configuration are not saved: the library inherits them
-        self.assertNotIn('git', js)
+        self.assertNotIn('checksums', js)
         self.assertNotIn('paths', js)
         config = Config.load(self.path(CONFIG_FILE_LOCAL))
-        self.assertFalse(config.git)
+        self.assertFalse(config.checksums)
         self.assertEqual(config.get('paths'), 'absolute')
 
     def test_init_existing(self):
-        self.papers('init --no-git')
+        self.papers('init')
         with self.assertRaises(PapersExit):
-            self.papers('init --no-git')
+            self.papers('init')
 
     def test_init_dir(self):
         cwd = os.getcwd()
-        self.papers('init --no-git lib/sub')
+        self.papers('init lib/sub')
         self.assertEqual(os.getcwd(), cwd)
         self.assertEqual(self.json('lib', 'sub')['bibtex'], 'papers.bib')
         self.assertTrue(os.path.isfile(self.path('lib', 'sub', 'papers.bib')))
         self.assertTrue(os.path.isdir(self.path('lib', 'sub', 'files')))
         self.assertFalse(os.path.exists(self.path(CONFIG_FILE_LOCAL)))
         with self.assertRaises(PapersExit):
-            self.papers('init --no-git lib/sub')
+            self.papers('init lib/sub')
         # an existing directory; --bibtex and --filesdir are relative to it
-        self.papers('init --no-git lib --bibtex refs.bib --filesdir pdfs')
+        self.papers('init lib --bibtex refs.bib --filesdir pdfs')
         js = self.json('lib')
         self.assertEqual((js['bibtex'], js['filesdir']), ('refs.bib', 'pdfs'))
         self.assertTrue(os.path.isfile(self.path('lib', 'refs.bib')))
 
     def test_relative_paths_by_default(self):
-        self.papers('init --no-git')
+        self.papers('init')
         Path(self.path('a.pdf')).write_text('pdf')
         Path(self.path('a.bib')).write_text(ENTRY.replace('year', f'file = {{:{self.path("a.pdf")}:pdf}},\n year'))
         self.papers('add a.bib')
@@ -249,7 +248,7 @@ class TestDirectoryOption(ConfigTest):
     def test_C(self):
         os.makedirs(self.path('lib'))
         cwd = os.getcwd()
-        self.papers(f'-C {self.path("lib")} init --no-git', cwd=cwd)
+        self.papers(f'-C {self.path("lib")} init', cwd=cwd)
         self.assertEqual(os.getcwd(), cwd)
         self.assertTrue(os.path.exists(self.path('lib', CONFIG_FILE_LOCAL)))
         out = self.papers('-C lib config bibtex', sp_cmd='check_output')
@@ -268,7 +267,7 @@ class TestDefaultLibrary(ConfigTest):
     "the default library: init PATH --global, init --shallow, config --global default, outside of any library"
 
     def test_outside_library(self):
-        self.papers(f'init {TEST_DEFAULT_LIBRARY} --global --no-git')
+        self.papers(f'init {TEST_DEFAULT_LIBRARY} --global')
         Path(self.path('a.bib')).write_text(ENTRY)
         self.papers('add a.bib')
         self.assertFalse(os.path.exists(self.path('papers.bib')))
@@ -290,7 +289,7 @@ class TestDefaultLibrary(ConfigTest):
         self.assertIn('(no library found: create one with `papers init`)', out)
         self.assertIn('* default library: none', out)
         # a default library that is not a library (any more)
-        self.papers(f'init {TEST_DEFAULT_LIBRARY} --global --no-git')
+        self.papers(f'init {TEST_DEFAULT_LIBRARY} --global')
         os.remove(os.path.join(TEST_DEFAULT_LIBRARY, CONFIG_FILE_LOCAL))
         with self.assertRaisesRegex(PapersExit, r'^no library found here \(the default library ~/Documents/papers '
                                                 r'is not a library\): `papers init`'):
@@ -299,7 +298,7 @@ class TestDefaultLibrary(ConfigTest):
                       self.papers('status', sp_cmd='check_output'))
 
     def test_init_global(self):
-        out = self.papers('init lib --global --no-git', sp_cmd='check_output')
+        out = self.papers('init lib --global', sp_cmd='check_output')
         self.assertIn('* files:   files (the files directory of the library)\n', out)
         self.assertNotIn('* pool:', out)
         self.assertIn(f'registered {papers.config.short_home(self.path("lib"))} as the default library', out)
@@ -308,36 +307,36 @@ class TestDefaultLibrary(ConfigTest):
                          papers.config.short_home(self.path('lib')))
         # the current directory: `papers init . --global`
         os.makedirs(self.path('here'))
-        self.papers('init . --global --no-git', cwd=self.path('here'))
+        self.papers('init . --global', cwd=self.path('here'))
         self.assertEqual(MachineConfig.load().default_path(), self.path('here'))
 
     def test_init_global_errors(self):
-        self.papers('init pool --no-git')
+        self.papers('init pool')
         for cmd, error in [('init --global', r'--global needs the directory of the library: `papers init PATH '
                                              r'--global` \(`papers init \. --global` for the current directory\)'),
                            ('init lib --global --pool ../pool', '--global: the default library has no pool'),
                            ('init pool --global', 'a library already exists here .*`papers config --global default '
                                                   'PATH` registers an existing library')]:
             with self.assertRaisesRegex(PapersExit, error, msg=cmd):
-                self.papers(cmd + ' --no-git')
+                self.papers(cmd + '')
         self.assertFalse(os.path.exists(self.path('lib')))
         self.assertIsNone(MachineConfig.load().default)
 
     def test_init_shallow(self):
         with self.assertRaisesRegex(PapersExit, r'^no default library: `papers init PATH --global` or '
                                                 r'`papers config --global default PATH`$'):
-            self.papers('init lib --shallow --no-git')
+            self.papers('init lib --shallow')
         self.assertFalse(os.path.exists(self.path('lib')))
-        self.papers(f'init {TEST_DEFAULT_LIBRARY} --global --no-git')
-        out = self.papers('init lib --shallow --no-git', sp_cmd='check_output')
+        self.papers(f'init {TEST_DEFAULT_LIBRARY} --global')
+        out = self.papers('init lib --shallow', sp_cmd='check_output')
         self.assertIn('* files:   in the pool (shallow library)\n* pool:    ~/Documents/papers\n', out)
         self.assertEqual(self.json('lib')['pool'], '~/Documents/papers')  # written with ~
         with self.assertRaisesRegex(PapersExit, '--shallow is --pool with the default library'):
-            self.papers('init other --shallow --pool ../lib --no-git')
+            self.papers('init other --shallow --pool ../lib')
 
     def test_config_global_default(self):
-        self.papers('init pool --no-git')
-        self.papers('init shallow --no-git --pool ../pool')
+        self.papers('init pool')
+        self.papers('init shallow --pool ../pool')
         self.papers(f'config --global default {self.path("pool")}')
         self.assertEqual(MachineConfig.load().default_path(), self.path('pool'))
         self.assertIn(f'default = {papers.config.short_home(self.path("pool"))}', self.papers(
@@ -364,8 +363,8 @@ class TestDefaultLibrary(ConfigTest):
         self.assertFalse(Config(machine=machine).shallow)
 
     def test_library_takes_precedence(self):
-        self.papers(f'init {TEST_DEFAULT_LIBRARY} --global --no-git')
-        self.papers('init --no-git --bibtex here.bib')
+        self.papers(f'init {TEST_DEFAULT_LIBRARY} --global')
+        self.papers('init --bibtex here.bib')
         Path(self.path('a.bib')).write_text(ENTRY)
         self.papers('add a.bib')
         self.assertEqual(len(Biblio.load(self.path('here.bib'), '').entries), 1)
@@ -376,7 +375,7 @@ class TestConfigCommand(ConfigTest):
 
     def setUp(self):
         super().setUp()
-        self.papers('init --no-git')
+        self.papers('init')
 
     def get(self, cmd):
         return self.papers('config ' + cmd, sp_cmd='check_output')
@@ -391,11 +390,13 @@ class TestConfigCommand(ConfigTest):
     def test_prune(self):
         # a file that holds default values (written by earlier builds)
         js = self.json()
-        js['git'] = False
+        js['git'] = False  # a setting of papers before the history
+        js['checksums'] = True
         js['keyformat'] = {'author_num': papers.filename.KEYFORMAT.author_num, 'template': '{author}'}
         Path(self.path(CONFIG_FILE_LOCAL)).write_text(json.dumps(js))
-        self.assertRegex(self.get(''), r'\ngit += false  \(default\)\n')
+        self.assertRegex(self.get(''), r'\nchecksums += true  \(default\)\n')
         out = self.get('--prune')
+        self.assertIn('checksums', out)
         self.assertIn('key.author-num', out)
         self.assertIn('git', out)
         js = self.json()
@@ -423,7 +424,7 @@ class TestConfigCommand(ConfigTest):
         self.assertEqual(self.json()['nameformat'], {'author_num': 3})
         self.papers('config paths absolute')
         self.assertEqual(self.json()['paths'], 'absolute')
-        self.papers('init shared --no-git')
+        self.papers('init shared')
         self.papers('config pool shared')  # no PDF: nothing moves
         self.assertEqual(self.json()['pool'], './shared')
         self.assertEqual(self.get('pool'), './shared')
@@ -484,15 +485,13 @@ class TestConfigCommand(ConfigTest):
         with self.assertRaises(SystemExit):  # --machine was the name on the v3 branch only
             self.papers('config --machine editor vim')
 
-    def test_git(self):
-        self.papers('config git true')
-        config = Config.load(self.path(CONFIG_FILE_LOCAL))
-        self.assertTrue(config.git)
-        self.assertTrue(os.path.isdir(os.path.join(config.gitdir, '.git')))
-        count = self.papers('git rev-list --all --count', sp_cmd='check_output')
-        self.assertEqual(count, '1')
-        self.papers('config git false')
-        self.assertNotIn('git', self.json())  # the default
+    def test_git_removed(self):
+        with self.assertRaises(PapersExit) as cm:
+            self.papers('config git true')
+        self.assertIn('no longer used', str(cm.exception))
+        with self.assertRaises(PapersExit) as cm:
+            self.papers('git log')
+        self.assertIn('`papers git` is removed', str(cm.exception))
 
 
 class TestMigrateV2Global(ConfigTest):
@@ -553,7 +552,7 @@ class TestMigrateV2Global(ConfigTest):
         self.assertEqual(biblio.entries[0]['file'], ':a.pdf:pdf')
 
     def test_existing_library_config_is_kept(self):
-        self.papers('init --no-git --bibtex lib.bib', cwd=self.path('lib'))
+        self.papers('init --bibtex lib.bib', cwd=self.path('lib'))
         js = self.json('lib')
         out = self.papers('migrate', sp_cmd='check_output')
         self.assertIn('already exists', out)
@@ -561,7 +560,7 @@ class TestMigrateV2Global(ConfigTest):
         self.assertFalse(os.path.exists(CONFIG_FILE))
 
     def test_other_default_library_is_kept(self):
-        self.papers('init other --no-git')
+        self.papers('init other')
         self.papers(f'config --global default {self.path("other")}')
         out = self.papers('migrate', sp_cmd='check_output')
         self.assertIn('the default library is already', out)
@@ -572,7 +571,7 @@ class TestMigrateV2Global(ConfigTest):
         # install --global changes nothing: neither the v2 configuration nor the default library
         default = MachineConfig.load().default_path()
         with self.assertRaises(PapersExit) as cm:
-            self.papers('install --global -y --no-git', cwd=self.path('elsewhere'))
+            self.papers('install --global -y', cwd=self.path('elsewhere'))
         self.assertIn('`papers init PATH --global`', str(cm.exception))
         self.assertIn('`papers config --global default PATH`', str(cm.exception))
         self.assertTrue(os.path.exists(CONFIG_FILE))
@@ -584,7 +583,7 @@ class TestMigrateV2Global(ConfigTest):
 class TestMigrateFolders(ConfigTest):
 
     def test_folders(self):
-        self.papers('init --no-git')
+        self.papers('init')
         biblio = Biblio(filesdir=self.path('files'))
         name = biblio.nameformat(Biblio.load(self._entry_bib(), '').entries[0])
         folder = self.path('files', name)
@@ -616,7 +615,7 @@ class TestFormatOptions(ConfigTest):
 
     def setUp(self):
         super().setUp()
-        self.papers('init --no-git')
+        self.papers('init')
 
     def keys(self):
         return [e.key for e in Biblio.load(self.path('papers.bib'), '').entries]

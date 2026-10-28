@@ -269,14 +269,6 @@ class InitTest(BaseTest):
         return Config.load(self._path(CONFIG_FILE_LOCAL))
 
 
-class GitInitTest(InitTest):
-    init_options = '--git'
-
-
-class GitLFSInitTest(InitTest):
-    init_options = '--git-lfs'
-
-
 class ConfigTest(BibTest):
     """a temporary directory, as current directory of the commands"""
 
@@ -284,9 +276,15 @@ class ConfigTest(BibTest):
         self.temp_dir = tempfile.TemporaryDirectory()
         self.dir = os.path.realpath(self.temp_dir.name)
         self.machine_config = open(papers.config.MACHINE_CONFIG_FILE).read()
+        # a history of its own (see papers.backup): the files kept by another test are not found
+        self.history_dir = tempfile.TemporaryDirectory()
+        machine = json.loads(self.machine_config)
+        machine['history-dir'] = self.history_dir.name
+        open(papers.config.MACHINE_CONFIG_FILE, 'w').write(json.dumps(machine))
 
     def tearDown(self):
         self.temp_dir.cleanup()
+        self.history_dir.cleanup()
         shutil.rmtree(TEST_DEFAULT_LIBRARY, ignore_errors=True)
         open(papers.config.MACHINE_CONFIG_FILE, 'w').write(self.machine_config)
 
@@ -315,7 +313,7 @@ class FileTest(ConfigTest):
     def setUp(self):
         super().setUp()
         os.makedirs(self.path('lib'))
-        self.lib('init --no-git')
+        self.lib('init')
         os.makedirs(self.path('lib', 'files'), exist_ok=True)
 
     def lib(self, cmd, **kw):
@@ -375,7 +373,7 @@ class LibraryTest(unittest.TestCase):
         env = {'EDITOR': editor} if editor else {}
         with patch('builtins.input', side_effect=list(answers or [])), patch.dict(os.environ, env), \
                 redirect_stdout(out):
-            paperscmd(f'{cmd} --bibtex {self.bibtex} --no-git', cwd=self.dir)
+            paperscmd(f'{cmd} --bibtex {self.bibtex}', cwd=self.dir)
         return out.getvalue()
 
     def entries(self):

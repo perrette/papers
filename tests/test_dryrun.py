@@ -44,8 +44,8 @@ class TestShallowDryRun(DryRunTest):
 
     def setUp(self):
         super().setUp()
-        self.papers('init pool --git')
-        self.papers('init lib --git --pool ../pool')
+        self.papers('init pool')
+        self.papers('init lib --pool ../pool')
         Path(self.path('new.bib')).write_text(NEW_BIB)
         Path(self.path('mine.pdf')).write_text('mine')
 
@@ -63,7 +63,7 @@ class TestShallowDryRun(DryRunTest):
         self.lib('add ../new.bib')
         self.assertIn('mine2022', Path(self.path('pool', 'papers.bib')).read_text())
         Path(self.path('mine.pdf')).write_text('mine')
-        self.papers('init other --no-git')
+        self.papers('init other')
         for cmd in ['add ../new.bib --on-duplicate update', 'tag mine2022 --add x', 'rm mine2022 --keep-files',
                     'check -y', 'pull', 'push', 'sync', 'undo', 'restore', 'push --pool ../other --all',
                     'pull --pool ../pool --all', 'config pool none', 'install --edit']:
@@ -82,7 +82,7 @@ class TestShallowDryRun(DryRunTest):
 class TestSelfContainedDryRun(DryRunTest):
 
     def test_undo_without_git(self):
-        self.papers('init lib --no-git')
+        self.papers('init lib')
         Path(self.path('new.bib')).write_text(NEW_BIB)
         Path(self.path('mine.pdf')).write_text('mine')
         self.lib('add ../new.bib')

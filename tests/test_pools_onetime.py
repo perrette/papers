@@ -81,7 +81,7 @@ class OneTimeTest(PoolTest):
 
     def setUp(self):
         super().setUp()
-        self.papers('init other --no-git --pool none')
+        self.papers('init other --pool none')
         Path(self.path('other', 'papers.bib')).write_text(OTHER_BIB)
 
     def keys(self, where):
@@ -100,13 +100,13 @@ class TestSetting(OneTimeTest):
             self.lib('config pool ../pool ../other')
 
     def test_init(self):
-        out = self.papers('init third --no-git --pool ../pool', sp_cmd='check_output')
+        out = self.papers('init third --pool ../pool', sp_cmd='check_output')
         self.assertIn('* files:   in the pool (shallow library)\n* pool:    ../pool\n', out)
         self.assertEqual(self.json('third')['pool'], '../pool')
 
     def test_status(self):
-        self.papers('init third --no-git --pool ../pool')
-        self.assertIn('* pool:   ../pool (not pulled from yet, auto-push: off)\n', self.out('status', cwd='third'))
+        self.papers('init third --pool ../pool')
+        self.assertIn('* pool:    ../pool (not pulled from yet, auto-push: off)\n', self.out('status', cwd='third'))
 
 
 class TestOneTime(OneTimeTest):
@@ -233,7 +233,7 @@ class TestSmallFixes(PoolTest):
     def test_config_pool_path_with_home(self):
         home_lib = os.path.join(os.environ['HOME'], 'homelib')
         try:
-            paperscmd('init homelib --no-git', cwd=os.environ['HOME'])
+            paperscmd('init homelib', cwd=os.environ['HOME'])
             out = paperscmd('config pool none', cwd=home_lib, sp_cmd='check_output')
             self.assertEqual(out, 'pool = none (in ~/homelib/.papers/config.json)')
         finally:

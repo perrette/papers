@@ -10,7 +10,7 @@ from papers.formats import FILENAMES, FORMATS, extensions_help
 from papers.identifiers import ACCEPTED as ENTRY_IDS
 from papers.merge import ON_DUPLICATE
 from papers.utils import file_uri_to_path
-from papers.cli.backup_cmds import undocmd, redocmd, restorecmd, backupcmd, gitcmd
+from papers.cli.backup_cmds import undocmd, redocmd, restorecmd, historycmd, gitcmd
 from papers.cli.entry_cmds import addcmd, checkcmd, listcmd, editcmd, rmcmd, tagcmd, opencmd
 from papers.cli.fetch_cmds import doicmd, fetchcmd, extractcmd
 from papers.cli.file_cmds import (filecheckcmd, file_renamecmd, file_mvcmd, file_attachcmd, file_detachcmd, file_rmcmd,
@@ -51,6 +51,26 @@ class _Deprecated(argparse.Action):
             warned.add(option_string)
             logger.warning(f'{option_string} is deprecated: use {self.new}')
         setattr(namespace, self.dest, self.const if self.nargs == 0 else values)
+
+
+class _Ignored(argparse.Action):
+    """an option of papers before the history (see design/history.md): it
+    does nothing, and says so once per parser"""
+
+    def __init__(self, option_strings, dest, why, nargs=0, help=None, **kw):
+        super().__init__(option_strings, argparse.SUPPRESS, nargs=nargs, default=argparse.SUPPRESS,
+                         help=argparse.SUPPRESS, **kw)
+        self.why = why
+
+    def __call__(self, parser, namespace, values, option_string=None):
+        warned = parser.__dict__.setdefault('_deprecated_warned', set())
+        if option_string not in warned:
+            warned.add(option_string)
+            logger.warning(f'{option_string} is ignored: {self.why}')
+
+
+_NO_GIT = 'papers keeps the history of the libraries without git (see `papers history`)'
+_NO_GIT_LFS = 'papers keeps the files that its commands delete in its history (see `papers history`)'
 
 
 def _default(value):
@@ -201,7 +221,7 @@ def get_parser(config=None):
         help='store file paths relative to the bibtex file (deprecated: `papers config paths relative`)')
     grp.add_argument('--absolute-paths', action="store_true", default=None,
         help='store absolute file paths (deprecated: `papers config paths absolute`)')
-    grp.add_argument('--no-git', action='store_false', dest='git', default=None, help="""Do not commit the current action, whatever happens""")
+    grp.add_argument('--no-git', action=_Ignored, why=_NO_GIT)
 
     # the format options default to None: the configured values apply
     keyfmt = _format_parser('key', 'bibtex key format', 'key', config.keyformat,
@@ -249,10 +269,8 @@ def get_parser(config=None):
     initp.add_argument('--paths', choices=['relative', 'absolute'],
         help='file links in the bibtex relative to the bibtex directory, or absolute '
              f'(default: {config.inherited("paths")})')
-    initp.add_argument('--git', action='store_true', default=None,
-        help='back up the bibtex with git (default: true when git is installed)')
-    initp.add_argument('--no-git', action='store_false', dest='git', default=None, help='no git backup')
-    initp.add_argument('--git-lfs', action='store_true', default=None, help='also back up the files with git-lfs (implies --git)')
+    initp.add_argument('--git', '--no-git', action=_Ignored, why=_NO_GIT)
+    initp.add_argument('--git-lfs', action=_Ignored, why=_NO_GIT_LFS)
     initp.add_argument('--editor', help='command to open a text editor; it must wait until the editor is closed, e.g. vim or "subl -w"')
     _command(initp, initcmd)
 
@@ -317,11 +335,8 @@ def get_parser(config=None):
         help="no longer supported: an error that changes nothing (`papers init PATH --global` creates the "
              "default library, `papers config --global default PATH` registers an existing one)")
 
-    installp.add_argument('--git', action='store_true', default=None, help='back up the bibtex with git')
-    installp.add_argument('--backup', action=_Deprecated, dest='git', new='--git (or `papers config git true`)')
-    installp.add_argument('--git-lfs', action='store_true', default=None, help='also back up the files with git-lfs (implies --git)')
-    installp.add_argument('--backup-files', action=_Deprecated, dest='git_lfs',
-                          new='--git-lfs (or `papers config git-lfs true`)')
+    installp.add_argument('--git', '--backup', action=_Ignored, why=_NO_GIT)
+    installp.add_argument('--git-lfs', '--backup-files', action=_Ignored, why=_NO_GIT_LFS)
     installp.add_argument('--editor', help="""Set command to open text editor. Need to wait until closing ! E.g. vim or subl -w""")
     installp.add_argument('--pool', metavar='PATH|none', help=argparse.SUPPRESS)
 
@@ -332,10 +347,12 @@ def get_parser(config=None):
 
     # uninstall
     # =======
-    uninstallp = subparsers.add_parser('uninstall', description='remove the library configuration',
+    uninstallp = subparsers.add_parser('uninstall', description='deprecated: remove the library configuration '
+        '(`rm -r .papers`); its history: `papers history --remove`',
         parents=[loggingp])
     uninstallp.add_argument("--recursive", action="store_true", help="deprecated and ignored: only the configuration of the library is removed")
-    uninstallp.add_argument("--remove-backup", action="store_true", help="also remove the backup directory of the uninstalled configuration(s)")
+    uninstallp.add_argument("--remove-backup", "--remove-history", action="store_true", dest='remove_history',
+        help="also remove the history of the library (`papers history --remove`)")
     _command(uninstallp, uninstallcmd)
 
 
@@ -532,6 +549,8 @@ def get_parser(config=None):
                     '--broken, remove the broken links. The files are never deleted (`papers file rm` does that).')
     p.add_argument('files', nargs='*', metavar='FILE', type=file_uri_to_path)
     p.add_argument('-k', '--key', nargs='+', action='extend', metavar='KEY', help=_key_help)
+    p.add_argument('-y', '--yes', action='store_true',
+        help='do not ask before deleting more files than the history keeps (the history-size setting)')
     p.add_argument('-r', action='store_true', dest='recursive', help='FILE can be a folder: the links to the files inside it')
     p.add_argument('--broken', action='store_true', help='remove the broken links (of all entries without --key)')
     _command(p, file_detachcmd, library=True)
@@ -778,6 +797,8 @@ def get_parser(config=None):
         help='also delete the files of the entries that no other entry links to, without asking '
              '(also those outside the files directory); an error in a shallow library')
     rmp.add_argument('--keep-files', action='store_true', help='keep the files, without asking')
+    rmp.add_argument('-y', '--yes', action='store_true',
+        help='do not ask before deleting more files than the history keeps (the history-size setting)')
     _command(rmp, rmcmd, library=True)
 
     tagp = subparsers.add_parser('tag', parents=[cfg],
@@ -905,50 +926,60 @@ def get_parser(config=None):
     # undo
     # ====
     _restorep = argparse.ArgumentParser(add_help=False)
-    _restorep.add_argument('--restore-files', action='store_true',
-        help='with the git-lfs setting: copy back from the backup the files that no longer exist where the '
-             'restored bibtex links to them (by default, these links point to the copy in the backup '
-             'directory). No effect without git-lfs.')
+    _restorep.add_argument('--restore-files', action=_Ignored,
+        why='undo, redo and restore bring the files back (see `papers history`)')
 
     _stepsp = argparse.ArgumentParser(add_help=False)
     _stepsp.add_argument('-n', '--steps', type=int, default=1, help='number of steps to undo or redo')
 
-    _undo_help = ('undo the last change of the bibtex. With the git setting (`papers config git true`), '
-                  'each change is a step of the backup history; without it, undo swaps the bibtex with its '
-                  'previous version (one step back and forth). With git-lfs, a link to a file that no '
-                  'longer exists points to its copy in the backup, unless --restore-files.')
+    _undo_help = ('undo the last change of the library: the bibtex and the files (moved back, deleted files '
+                  'restored from the history). Each command that changes the library is a step of its '
+                  'history (`papers history`); a change made outside papers (an editor, another program) is '
+                  'recorded as a step of its own when papers next writes the library')
     undop = subparsers.add_parser('undo', parents=[cfg, _restorep, _stepsp], help=_undo_help, description=_undo_help)
     _command(undop, undocmd, library=True)
-    _redo_help = ('redo a change undone by `papers undo` (without the git setting, the same as papers undo: '
-                  'it swaps the bibtex with its previous version)')
+    _redo_help = 'redo a change undone by `papers undo`'
     redop = subparsers.add_parser('redo', parents=[cfg, _restorep, _stepsp], help=_redo_help, description=_redo_help)
     _command(redop, redocmd, library=True)
-    _restore_help = ('restore the bibtex from the git backup (the git setting: `papers config git true`): its '
-                     'last version, or the version of --ref (see --restore-files for the files)')
+    _restore_help = ('bring the library to the step N of its history (see `papers history`), with its files; '
+                     'without N, to its last step: the changes made outside papers since are undone '
+                     '(and recorded: `papers redo` brings them back)')
     for name in ('restore', 'restore-backup'):
         restorep = subparsers.add_parser(name, parents=[cfg, _restorep],
             help=_restore_help if name == 'restore' else 'deprecated: use `papers restore`',
             description=_restore_help if name == 'restore' else 'deprecated: use `papers restore`')
-        restorep.add_argument('--ref', help='restore this commit of the backup (see `papers git log`)')
+        restorep.add_argument('state', nargs='?', type=int, metavar='N', help='the number of the step')
+        restorep.add_argument('--ref', type=int, metavar='N', help='same as N')
         _command(restorep, restorecmd, library=True, bibtex_must_exist=False)
 
     # git
     # ===
-    gitp = subparsers.add_parser('git', description='git subcommand')
+    gitp = subparsers.add_parser('git', help=argparse.SUPPRESS,
+        description=f'removed: {_NO_GIT}; to keep the library under git, run git in its folder')
     gitp.add_argument('gitargs', nargs=argparse.REMAINDER)
     _command(gitp, gitcmd)
 
-    # backup
-    # ======
-    backupp = subparsers.add_parser('backup', parents=[loggingp],
-        description='where the backup of the library is (.papers/backup), and the backup folders that papers '
-                    '3.0.0b2 and earlier kept in a folder of the machine, for libraries not used since')
-    backupp.add_argument('action', nargs='?', choices=['list', 'remove'], default='list',
-        help='list (default) the backup folders of papers 3.0.0b2 and earlier, or remove them')
-    backupp.add_argument('patterns', nargs='*', metavar='name',
-        help='folder name(s), glob patterns allowed (filter for list, required for remove)')
-    backupp.add_argument('-y', '--yes', action='store_true', help='remove without confirmation')
-    backupp.add_argument('-f', '--force', action=_Deprecated, dest='yes', new='-y/--yes')
-    _command(backupp, backupcmd)
+    # history
+    # =======
+    _history_help = ('the steps of the library (number, command, time; > marks where the library is), '
+                     'the history of the machine (where, its size: the history-size setting), and the backups '
+                     'of earlier versions of papers that are no longer used. The history is in a folder of '
+                     'the machine (the history-dir setting), not in the library: it is not synced or shared '
+                     'with it')
+    for name in ('history', 'backup'):
+        historyp = subparsers.add_parser(name, parents=[cfg],
+            help=_history_help if name == 'history' else 'deprecated: use `papers history`',
+            description=_history_help if name == 'history' else 'deprecated: use `papers history`')
+        historyp.add_argument('--all', action='store_true',
+            help='the histories of all the libraries: identifier, last folder, steps, space used by it only')
+        historyp.add_argument('--remove', nargs='?', const='', metavar='ID',
+            help='remove the history of this library (of this folder; the history itself when no other '
+                 'folder uses it), or of the library ID (see --all)')
+        historyp.add_argument('-n', type=int, default=20, help='number of steps to show (default: 20; 0: all)')
+        historyp.add_argument('-y', '--yes', action='store_true', help='remove without confirmation')
+        if name == 'backup':
+            historyp.add_argument('action', nargs='?', help=argparse.SUPPRESS)
+            historyp.add_argument('patterns', nargs='*', help=argparse.SUPPRESS)
+        _command(historyp, historycmd)
 
     return parser, subparsers

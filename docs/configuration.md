@@ -14,7 +14,7 @@ $> papers init
 created the library ~/projects/sealevel
 * bibtex:  papers.bib
 * files:   files (the files directory of the library)
-* backup:  bibtex history (git)
+* history: undo and redo (`papers history`)
 `papers config` lists and sets the settings
 ```
 
@@ -24,7 +24,7 @@ files directory is `files` (or an existing `pdfs`, `pdf`, `papers` or
 `bibliography` folder). The options of `papers init` are `--bibtex`,
 `--filesdir`, `--pool PATH` and `--shallow` (see [Pools](#pools)),
 `--global` (see [Global configuration](#global-configuration)),
-`--paths relative|absolute`, `--git`/`--no-git`, `--git-lfs`, `--editor`
+`--paths relative|absolute`, `--editor`
 and the name and key format options (see
 [Renaming files and keys](renaming.md)).
 With `DIR`, the paths given to `--bibtex` and `--filesdir` are relative to
@@ -50,8 +50,8 @@ configuration sets one (see [A global shared library](global-library.md)),
 and otherwise fail: `no library found here: papers init`.
 
 Type `papers status` to see which library a command acts on: where its
-bibtex and its files are, its pool and its backup. `papers status -v` also
-shows the backup folder (`.papers/backup`), the configuration file, the cache directory and
+bibtex and its files are, its pool and its history. `papers status -v` also
+shows where the history is, the configuration file, the cache directory and
 the version. `papers config` lists the settings and where each one comes from.
 
 ## Settings
@@ -92,12 +92,12 @@ version (papers also leaves them out each time it saves the file).
 | `paths` | `relative` (default) or `absolute`: how file links are written in the bibtex |
 | `files` | `move` (default), `copy`, `link` or `ask`: what `papers add`, `file attach` and `file rename` do with a file outside the files directory (see [Files](files.md#what-add-does-with-a-file)); in a shallow library, how the file gets to the pool: moved or copied into its files directory, or linked where it is by the library and the pool entry |
 | `auto-push` | `false` (default) or `true`: in a shallow library, the commands that change entries push them to the pool (the entries shared with it, and new ones), see [Auto-push](shallow-libraries.md#auto-push); no effect in a self-contained library |
-| `git` | `true` or `false`: back up the bibtex with git (see [Git integration](git.md)) |
-| `git-lfs` | `true` or `false`: also back up the files with git-lfs |
-| `trash-days` | `30` (default): the days a file deleted by a command stays in the trash of the library, for undo (see [Undo and redo](undo-redo.md#files)) |
-| `trash-size` | `100` (default): the size of the trash of the library, in MB; papers asks before deleting more than that at once |
 | `checksums` | `true` (default): the commands write the checksum of the files they move, copy, add or link in `.papers/files.json`, for undo (see [Checksums](undo-redo.md#checksums)) |
 | `editor` | command that opens a text editor, e.g. `vim` or `subl -w` (it wins over `$VISUAL` and `$EDITOR`, which are used without it) |
+| `history-size` | `500` (default): the size of the history (see [Undo and redo](undo-redo.md#deleted-files)), in MB, `0` for no limit; papers asks before a command that deletes more. In the global configuration: the history shared by the libraries; in a library: its own history, with `history-separate` |
+| `history-separate` | `false` (default) or `true`: the library keeps its history in a store of its own (see [Where the history is](undo-redo.md#where-the-history-is)) |
+| `history-dir` | global only: the folder of the history (default: `~/.local/share/papers/history` on Linux) |
+| `keep-deleted-files` | global only: `true` (default) or `false`: the files that the commands delete are kept by the history, for undo; with `false`, they go to the trash of the system |
 | `name.template`, `name.author-num`, `name.author-sep`, `name.title-word-num`, `name.title-word-size`, `name.title-length`, `name.title-sep`, `name.unknown-template`, `name.unknown-strict` | file name format |
 | `key.template`, `key.author-num`, `key.author-sep`, `key.title-word-num`, `key.title-word-size`, `key.title-length`, `key.title-sep`, `key.unknown-template`, `key.unknown-strict` | bibtex key format |
 
@@ -111,8 +111,11 @@ that the library can be moved or shared as a whole. `papers config bibtex`,
 absolute paths. A relative path given to set them is relative to the current
 directory.
 
-Setting `git` to `true` initializes the backup folder and records the
-current bibtex. Setting `paths` rewrites the file links of the bibtex.
+`history-dir` and `keep-deleted-files` can only be set in the global
+configuration (`papers config --global`): a library you receive from
+someone cannot choose where your history goes, or what it keeps.
+
+Setting `paths` rewrites the file links of the bibtex.
 Setting `pool` changes where the library links its files: `pool PATH` (an
 existing library without pool) links to the copies of the library's PDFs
 in PATH, and requires PATH to have them already (`papers push --pool PATH`
@@ -146,7 +149,7 @@ self-contained library at `PATH` and sets it as the default library
 the global library of papers v2 as the default library. See
 [A global shared library](global-library.md).
 
-`papers init` stores `pool`, `paths`, `git` and `git-lfs` in the new
+`papers init` stores `pool` and `paths` in the new
 library, taking their values from the global configuration when it sets
 them. The other settings are only stored in the library when you set them.
 Changing the default library later does not change the libraries created
@@ -201,13 +204,8 @@ bibtex that links to files in a central folder.
 The options `--relative-paths` and `--absolute-paths` of the commands still
 override the setting for one command, with a deprecation warning.
 
-To commit only the configuration of a library that is in the git
-repository of a project, add to the `.gitignore` of the project:
-
-```
-.papers/*
-!.papers/config.json
-```
+A library in the git repository of a project leaves `.papers/` out of it
+(papers writes `.papers/.gitignore`): see [Using git](git.md).
 
 ## Migrating from papers 2
 
@@ -221,7 +219,7 @@ performs the one-time upgrades from version 2:
   no pool), registers the directory of that bibtex as the default library
   in the global configuration (unless another default library is set
   there), and renames the old file to `papersconfig.json.v2.bak`.
-  The bibtex, files and backup stay where they are. File links stay
+  The bibtex and files stay where they are. File links stay
   absolute, as they were, unless `--relative` is passed. Running
   `papers migrate` again does nothing. Until then, papers prints a warning
   and keeps using the global configuration outside of libraries.
@@ -243,7 +241,7 @@ with an error.
 ### `papers install`
 
 `papers install` is a deprecated alias of `papers init` that asks for the
-bibtex, the files directory and git (`-y/--yes` accepts the defaults;
+bibtex and the files directory (`-y/--yes` accepts the defaults;
 `--no-prompt` and `--force` are its deprecated forms). On
 an existing library it updates the library configuration, as in version 2,
 with a deprecation warning: use `papers config` instead (`--edit` and
@@ -255,13 +253,12 @@ with `papers config --global default PATH`. `--local` is ignored.
 
 ## Uninstall
 
-```
-papers uninstall
-```
-
-removes the library configuration and reports what it leaves behind (the
-bibtex file, the files directory, and the backup folder `.papers/backup` if
-any). Pass `--remove-backup` to also remove the backup folder. It never removes the
+`papers uninstall` is deprecated: `rm -r .papers` removes the configuration
+of a library, and `papers history --remove` its history.
+`papers uninstall` removes the library configuration and reports what it
+leaves behind (the bibtex file, the files directory, the history).
+`--remove-history` (or its older name `--remove-backup`) also removes the
+history. It never removes the
 global configuration. From outside of any library it does not remove
 the default library's configuration: run `papers -C DIR uninstall` for that.
 

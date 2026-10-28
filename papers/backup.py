@@ -1,663 +1,345 @@
-"""Git-based backup of the bibliography, and the undo/redo machinery built on it.
+"""The history of a library: its states in the history of the machine (see
+papers.history and design/history.md), for undo, redo and restore.
 
-With the git setting (`papers config git true`), every save of the bibtex file is
-mirrored to a git repository in the library, ``.papers/backup``
-(``config.gitdir``):
+The project of a library is named by the identifier of its configuration
+(see Config.library_id); its place is the real path of its bibtex. Before
+a command writes the bibtex, `sync_head` records what is on disk if it is
+not the current state (changed outside papers); after, `record` adds the
+state of the command, with its file operations (see papers.journal).
+`go_to` brings the library to another state: the bibtex, the files of
+.papers/ (origin records, distinct.json, files.json) and the files.
 
-- a verbatim copy of the bibtex file, tracked under its own name
-  (e.g. ``papers.bib``)
-- with --git-lfs only: ``backup_clean.bib``, a derived copy with file paths
-  expressed relative to the backup directory, plus the attached files
-  hard-linked into a ``files/`` subdirectory so they are backed up too
-
-(Older versions tracked the verbatim copy as ``backup_copy.bib`` and wrote
-``backup_clean.bib`` unconditionally; the next snapshot drops the legacy
-names, and restore still understands them when materializing old snapshots.)
-
-Each save is committed on a single ``main`` branch, and history is
-append-only: nothing is ever reset away. Undo, redo and
-``restore --ref`` append a *restore commit* whose tree is the older
-state, marked with a ``Papers-Restores: <commit>`` trailer naming the state
-it represents. That trailer doubles as the cursor: a consecutive undo walks
-back from the restored state rather than from the tip, and redo walks the
-first-parent chain forward again, skipping restore commits. Making a new
-change while undone simply appends on top; the states that were still
-redoable remain in history and can be recovered with further undos or
-``restore --ref``.
-
-Repositories last written by the pre-append-only model (which moved a
-``history`` branch around with ``git reset --hard``) are adopted on first
-use: their checked-out state is recorded onto ``main`` as a restore commit.
-
-The backup folder also holds what is not tracked (see `exclude`): the trash
-of the deleted files (papers.journal), and without git the previous version
-of the bibtex and the file operations of the last command. Papers 3.0.0b2
-and earlier kept the backup in a folder of the machine
-(``~/.local/share/papers/backups``): `adopt_central_backup` moves it to the
-library.
+The old backups (the git repository .papers/backup of the v3 branch, the
+folders of ~/.local/share/papers/backups of earlier versions) are no
+longer used: `stale_backups` lists them.
 """
-import copy
-import hashlib
-import json
-import logging
 import os
-import shlex
-import shutil
-import subprocess as sp
 import sys
-from pathlib import Path
-
-from slugify import slugify
+import time
 
 import papers.checksums
 import papers.config
-from papers import journal, logger
-from papers.bib import Biblio
+import papers.utils
+from papers import history, journal, logger
 from papers.checksums import FILES_JSON
-from papers.config import BACKUP_DIR, BACKUP_DIR_LEGACY
 from papers.duplicate import DISTINCT_FILE
-from papers.entries import get_entry_val
-from papers.files import clean_filesdir
-from papers.utils import checksum, move, PapersExit
+from papers.utils import PapersExit, stdin_is_terminal
 
-# the files of the backup folder that git does not track
-UNTRACKED = [journal.TRASH_DIR + '/', 'previous.bib', 'previous-files.json', 'manifest.json']
-
-
-def git_env(gitdir, env=None):
-    """the environment of a git command in the backup repository `gitdir`:
-    git does not look for a repository above `gitdir`, so that a backup
-    directory without .git never reaches an enclosing repository (e.g. a
-    home directory under git)"""
-    env = dict(os.environ if env is None else env)
-    env['GIT_CEILING_DIRECTORIES'] = os.path.dirname(os.path.abspath(gitdir))
-    return env
+MB = 1024 * 1024
+DAY = 86400
+# without files deleted, the store is pruned every PRUNE_EVERY states
+PRUNE_EVERY = 50
 
 
-def run_git(gitdir, cmd, check=True):
-    """Run a git command in the backup repository.
-
-    ``cmd`` may be a string (split into arguments like a shell would,
-    but without going through a shell) or a list of arguments.
-    Output is captured; on failure git's stderr is logged, and a
-    ``CalledProcessError`` is raised if ``check`` is true.
-    """
-    args = shlex.split(cmd) if isinstance(cmd, str) else [str(a) for a in cmd]
-    logger.debug(f"git -C {gitdir} {' '.join(args)}")
-    env = _identity_env(gitdir) if args[:1] in (['commit'], ['commit-tree']) else None
-    res = sp.run(['git'] + args, cwd=gitdir, capture_output=True, text=True, env=git_env(gitdir, env))
-    if res.returncode != 0:
-        message = f"Command failed: 'git {' '.join(args)}': {res.stderr.strip()}"
-        if check:
-            logger.error(message)
-            raise sp.CalledProcessError(res.returncode, ['git'] + args, res.stdout, res.stderr)
-        logger.debug(message)
-    return res
+def history_root(config):
+    "the folder of the history of the machine (the history-dir setting)"
+    return os.path.expanduser(config.history_dir or papers.config.HISTORY_DIR)
 
 
-# the author of the backup commits when git has no user name and email
-# (fresh install, CI, containers): the backup repositories are private to papers
-FALLBACK_IDENTITY = ('papers', 'papers@localhost')
+def store(config, id=None):
+    """the store of the library `id`: the store shared by the libraries, or
+    with the history-separate setting, a store of its own"""
+    root = history_root(config)
+    if config.history_separate and id:
+        root = os.path.join(root, 'separate', id)
+    return history.Store(root)
 
 
-def _identity_env(gitdir):
-    """the environment of a commit in a backup repository: unchanged (None)
-    if git knows who commits (user.name and user.email, or the GIT_AUTHOR_*
-    and GIT_COMMITTER_* variables), else with the fallback identity for what
-    is missing"""
-    def git(*args):
-        return sp.run(['git'] + list(args), cwd=gitdir, capture_output=True, text=True, env=git_env(gitdir))
-
-    env = None
-    for role in ('AUTHOR', 'COMMITTER'):
-        if git('var', f'GIT_{role}_IDENT').returncode == 0:
-            continue
-        env = env or dict(os.environ)
-        for var, key, value in zip(('NAME', 'EMAIL'), ('user.name', 'user.email'), FALLBACK_IDENTITY):
-            if not git('config', key).stdout.strip():
-                env.setdefault(f'GIT_{role}_{var}', value)
-    return env
+def all_stores(config):
+    "the shared store and the separate ones"
+    root = history_root(config)
+    stores = [history.Store(root)]
+    separate = os.path.join(root, 'separate')
+    if os.path.isdir(separate):
+        stores += [history.Store(os.path.join(separate, d)) for d in sorted(os.listdir(separate))]
+    return stores
 
 
-def check_git_available(gitlfs=False):
-    "raise PapersExit if git (or with gitlfs, git-lfs) is not installed"
-    if shutil.which('git') is None:
-        raise PapersExit('the git backup needs git, which is not installed (nothing was changed; '
-                         '--no-git or `papers config git false` turns the backup off)')
-    if gitlfs and sp.run(['git', 'lfs', 'version'], capture_output=True).returncode != 0:
-        raise PapersExit('the git-lfs setting needs git-lfs, which is not installed (nothing was changed)')
+def history_size(config, st=None):
+    """history-size in megabytes (0: no limit) of the store st (by default,
+    that of the library): that of the library for a store of its own (the
+    history-separate setting), that of the machine for the shared store"""
+    separate = config.history_separate if st is None else os.path.basename(
+        os.path.dirname(st.root)) == 'separate'
+    value = config.history_size if separate else config.machine.get('history-size')
+    if value is None:
+        value = papers.config.default_value('history-size')
+    return max(0, int(value or 0))
 
 
-def git_init(gitdir):
-    "create a backup repository whose branch is main, whatever git's init.defaultBranch"
-    run_git(gitdir, ["init"])
-    run_git(gitdir, ["symbolic-ref", "HEAD", "refs/heads/main"])
-
-# the backup of papers 3.0.0b2 and earlier, in a folder of the machine
-# =====================================================================
-
-def _central_gitdirs(config):
-    """the folders where papers 3.0.0b2 and earlier may have kept the backup
-    of the library: the one its configuration named, and those named after
-    the path of its bibtex"""
-    found = [config.legacy_gitdir] if config.legacy_gitdir else []
-    if config.bibtex:
-        path = Path(config.bibtex).resolve()
-        stem = path.stem or "library"
-        digest = hashlib.sha256(str(path).encode("utf-8")).hexdigest()[:8]
-        label = slugify(f"{path.parent.name} {stem}") if path.parent.name else slugify(stem)
-        for root in dict.fromkeys([BACKUP_DIR, BACKUP_DIR_LEGACY]):
-            found.append(os.path.join(root, f"{label}-{digest}"))
-            for bibtex in (str(config.bibtex), str(path)):
-                found.append(os.path.join(root, slugify(bibtex[:-len(".bib")] if bibtex.endswith(".bib") else bibtex)))
-    return list(dict.fromkeys(found))
+def _limit(config, st=None):
+    return history_size(config, st) * MB
 
 
-def _belongs_to(gitdir, bibtex):
-    "the manifest of a backup folder of papers 3.0.0b2 or earlier does not name another bibtex"
-    try:
-        manifest = json.loads((Path(gitdir) / "manifest.json").read_text())
-    except (OSError, ValueError):
-        return True
-    return Path(manifest.get("bibtex", "")) == Path(bibtex).resolve()
-
-
-def adopt_central_backup(config):
-    """move the backup of papers 3.0.0b2 and earlier to the library
-    (.papers/backup): the git repository of a folder of the machine (or of
-    .papers itself, in papers 2.2 to 2.4), and the previous version of the
-    bibtex without git (.<bibtex>.backup, next to it)"""
-    if papers.config.DRYRUN or not config.bibtex or not config.file or not config.is_library:
-        return
-    target = Path(config.gitdir)
-    old_previous = Path(config.bibtex).parent / ('.' + Path(config.bibtex).name + '.backup')
-    old_journal = Path(config.bibtex).parent / ('.' + Path(config.bibtex).name + '.files.json')
-    for old, new in [(old_previous, target / 'previous.bib'), (old_journal, target / 'previous-files.json')]:
-        if old.is_file():
-            ensure_backupdir(config)
-            if not new.exists():
-                shutil.move(old, new)
-            else:
-                old.unlink()
-
-    if not (target / ".git").exists():
-        for old in _central_gitdirs(config):
-            old = Path(old)
-            if not (old / ".git").is_dir() or old.resolve() == target.resolve():
-                continue
-            if str(old) != str(config.legacy_gitdir) and not _belongs_to(old, config.bibtex):
-                continue
-            ensure_backupdir(config)
-            if old.resolve() == target.parent.resolve():
-                # papers 2.2 to 2.4: .papers was the backup; its config.json is the library's
-                for name in [f for f in run_git(old, ["ls-files", "-z"]).stdout.split("\0") if f] + [".git"]:
-                    if os.path.normpath(name) != 'config.json' and (old / name).exists():
-                        (target / name).parent.mkdir(parents=True, exist_ok=True)
-                        shutil.move(old / name, target / name)
-            else:
-                for item in old.iterdir():
-                    if (target / item.name).exists():
-                        logger.warning(f"{item}: not moved to {target}, which has {item.name}")
-                        continue
-                    shutil.move(item, target / item.name)
-                if not any(old.iterdir()):
-                    old.rmdir()
-            (target / "manifest.json").unlink(missing_ok=True)
-            exclude(target)
-            logger.warning(f"the backup of the library moved from {papers.config.short_home(str(old))} "
-                           f"to {papers.config.short_home(str(target))} (papers keeps it in the library)")
-            break
-
-    if config.legacy_gitdir is not None:
-        config.legacy_gitdir = None
-        if os.path.exists(config.file):
-            config.save()  # without the gitdir it named
-
-
-# the backup folder
-# =================
-
-def ensure_backupdir(config):
-    """create the backup folder of the library; a library under git (e.g. the
-    folder of a project) does not track it: .papers/.gitignore"""
-    target = Path(config.gitdir)
-    target.mkdir(parents=True, exist_ok=True)
-    ignore = target.parent / ".gitignore"
-    line = target.name + "/"
-    lines = ignore.read_text().splitlines() if ignore.exists() else []
-    if line not in lines:
-        ignore.write_text("\n".join(lines + [line]) + "\n")
-
-
-def exclude(gitdir):
-    """git does not track the untracked files of the backup folder (UNTRACKED),
-    nor removes them (`git clean -f`): .git/info/exclude (a .gitignore would
-    itself be untracked)"""
-    path = Path(gitdir) / ".git" / "info" / "exclude"
-    if not path.parent.is_dir():
-        return
-    lines = path.read_text().splitlines() if path.exists() else []
-    missing = [name for name in UNTRACKED if name not in lines]
-    if missing:
-        path.write_text("\n".join(lines + missing) + "\n")
-
-
-def init_backup(config):
-    """Set up the git backup of a library: initialize its backup repository
-    (an existing one is kept). Used by install and by `papers config git
-    true`, followed by a first snapshot (papers.library.snapshot_backup)."""
-    adopt_central_backup(config)
-    ensure_backupdir(config)
-    if (Path(config.gitdir)/'.git').exists():
-        logger.info(f'{config.gitdir} is already initialized')
+def project_of(config, create=True):
+    """the project and the place of the library (None, None without bibtex,
+    or without identifier when create is False)"""
+    if not config.bibtex:
+        return None, None
+    place = os.path.realpath(config.bibtex)
+    if config.file and config.is_library:
+        id = config.library_id(create=create and not papers.config.DRYRUN)
+        if id is None:
+            return None, None
     else:
-        git_init(config.gitdir)
-    exclude(config.gitdir)
-
-    if config.gitlfs:
-        # staged only: the first snapshot commits it with the bibtex, so that
-        # no state of the history is without the bibtex (undo would remove it)
-        # files/** (not files/: a directory pattern does not apply to its content)
-        run_git(config.gitdir, 'lfs track "files/**"')
-        run_git(config.gitdir, 'add .gitattributes')
+        id = history.sha256(place.encode())[:32]  # a bibtex without library: by its path
+    return store(config, id).project(id), place
 
 
-def backup_bib(biblio, config, message=None):
-    if not config.git:
-        raise PapersExit('cannot backup without --git enabled')
-    adopt_central_backup(config)
-    ensure_backupdir(config)
-    backupdir = Path(config.gitdir)
+# the files of the library in a state
+# ===================================
 
-    # a backup repository that was never initialized (or removed since)
-    if not (backupdir / ".git").exists():
-        logger.info(f"initialize backup repository: {backupdir}")
-        git_init(config.gitdir)
-    exclude(config.gitdir)
-
-    # a snapshot made while undone must append to the full history
-    adopt_legacy_undone_state(config.gitdir)
-
-    # stop tracking files under their pre-layout-2 names; restore still
-    # understands them when materializing old snapshots
-    legacy_names = ["backup_copy.bib"] + ([] if config.gitlfs else ["backup_clean.bib"])
-    for legacy in legacy_names:
-        if legacy != config.backupfile.name and (backupdir/legacy).exists():
-            (backupdir/legacy).unlink()
-            run_git(config.gitdir, ["rm", "--cached", "--ignore-unmatch", "--quiet", legacy], check=False)
-
-    # remove if exists
-    config.backupfile.unlink(missing_ok=True)
-
-    logger.debug(f'BACKUP: cp {config.bibtex} {config.backupfile}')
-    shutil.copy(config.bibtex, config.backupfile)
-    run_git(config.gitdir, ["add", config.backupfile.name])
-
-    # the files of the library next to its bibtex: the origin copies of the
-    # entries exchanged with pools (one file per pool), and the pairs that
-    # are not the same paper; a file removed from the library leaves the backup
+def _library_names(config):
+    "the files of .papers/ that belong to the states of the library (relative to the folder of the bibtex)"
     from papers.pools import ORIGIN_DIR, LEGACY_ORIGIN_FILE  # papers.pools imports this module
-    libdir = Path(config.bibtex).parent
+    libdir = os.path.dirname(os.path.abspath(config.bibtex))
     names = {DISTINCT_FILE, LEGACY_ORIGIN_FILE, FILES_JSON}
-    for d in (libdir / ORIGIN_DIR, backupdir / ORIGIN_DIR):
-        if d.is_dir():
-            names.update(os.path.join(ORIGIN_DIR, f.name) for f in d.iterdir() if f.suffix == '.bib')
-    for name in sorted(names):
-        source = libdir / name
-        if source.exists():
-            (backupdir / name).parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy(source, backupdir / name)
-            run_git(config.gitdir, ["add", name])
-        elif (backupdir / name).exists():
-            (backupdir / name).unlink()
-            run_git(config.gitdir, ["rm", "--cached", "--ignore-unmatch", "--quiet", name], check=False)
+    origin = os.path.join(libdir, ORIGIN_DIR)
+    if os.path.isdir(origin):
+        names.update(os.path.join(ORIGIN_DIR, f) for f in os.listdir(origin) if f.endswith('.bib'))
+    return sorted(n for n in names if os.path.isfile(os.path.join(libdir, n)))
 
-    # the file operations of the command, reversed by undo (see papers.journal)
-    ops = journal.take(config.bibtex)
-    journal_path = backupdir / journal.JOURNAL_FILE
-    if ops:
-        journal_path.write_text(json.dumps(ops, indent=1))
-        run_git(config.gitdir, ["add", journal.JOURNAL_FILE])
-    elif journal_path.exists():
-        journal_path.unlink()
-        run_git(config.gitdir, ["rm", "--cached", "--ignore-unmatch", "--quiet", journal.JOURNAL_FILE], check=False)
 
-    if config.gitlfs:
-        logger.info('backup bibliography with files')
-        config.backupfile_clean.unlink(missing_ok=True)
-        biblio = copy.deepcopy(biblio)
-        backupfilesdir = backupdir/"files"
-        backupfilesdir.mkdir(exist_ok=True)
-        biblio.filesdir = str(backupfilesdir)
-        with journal.paused():  # the copies of the backup are not the command's
-            biblio.rename_entries_files(copy=True, relative_to=backupdir, hardlink=True)
-        biblio.save(config.backupfile_clean)
-        run_git(config.gitdir, ["add", config.backupfile_clean.name])
+def _read(path):
+    with open(path, encoding='utf-8', newline='') as f:
+        return f.read()
 
-        # Remove unlinked files
-        with journal.paused():
-            clean_filesdir(biblio, interactive=False, ignore_files=[config.backupfile, config.backupfile_clean])
-        run_git(config.gitdir, ["add", "files"])
-        attributes = backupdir / ".gitattributes"
-        text = attributes.read_text() if attributes.exists() else ""
-        if "files/**" not in text:
-            # backups made before papers 3 tracked "files/", which git-lfs
-            # does not apply to the files in it: store them with git-lfs now
-            attributes.write_text(text + ("" if not text or text.endswith("\n") else "\n")
-                                  + "files/** filter=lfs diff=lfs merge=lfs -text\n")
-            run_git(config.gitdir, ["add", ".gitattributes"])
-            run_git(config.gitdir, ["add", "--renormalize", "files"])
 
+def _bibtex_text(config):
+    return _read(config.bibtex) if os.path.exists(config.bibtex) else ''
+
+
+def _texts(config):
+    "the text of the bibtex and of the files of .papers/, as they are on disk"
+    libdir = os.path.dirname(os.path.abspath(config.bibtex))
+    return _bibtex_text(config), {name: _read(os.path.join(libdir, name)) for name in _library_names(config)}
+
+
+def _snapshot(config, st, files=None, texts=None):
+    """the bibtex and the files of .papers/, stored; files: those of another
+    state (the files of .papers/ are not read); texts: the texts to store
+    (see _texts), instead of those on disk"""
+    text, others = texts or (_bibtex_text(config), None)
+    if files is None:
+        if others is None:
+            others = _texts(config)[1]
+        files = {name: st.put_text(content) for name, content in others.items()}
+    return {'bibtex': {'pieces': st.put_text(text), 'sha': history.sha256(text.encode('utf-8'))},
+            'files': files}
+
+
+def _relative_ops(ops, config):
+    """the paths of the operations as the library writes its links: relative
+    to the folder of the bibtex for a file in it (relative paths), else absolute"""
+    if config.absolute_paths:
+        return ops
+    root = os.path.dirname(os.path.abspath(config.bibtex))
+
+    def rel(path):
+        if path and os.path.isabs(path):
+            r = os.path.relpath(path, root)
+            if r != '..' and not r.startswith('..' + os.sep):
+                return r
+        return path
+    return [dict(op, src=rel(op['src']), dst=rel(op.get('dst'))) for op in ops]
+
+
+def _absolute_ops(ops, config):
+    root = os.path.dirname(os.path.abspath(config.bibtex))
+
+    def ab(path):
+        return os.path.normpath(os.path.join(root, path)) if path and not os.path.isabs(path) else path
+    return [dict(op, src=ab(op['src']), dst=ab(op.get('dst'))) for op in ops]
+
+
+def _deleted_refs(ops):
+    return sorted({op['checksum'] for op in ops if op['op'] == 'trashed' and op.get('checksum')})
+
+
+# recording
+# =========
+
+def _message():
+    return 'papers ' + ' '.join(sys.argv[1:])
+
+
+def sync_head(config, project=None, place=None):
+    """the current state of the library, before a command writes it: the
+    state of its place; a new place starts from the state that has its
+    bibtex (a moved or copied library). If the bibtex on disk is not that
+    state, it is recorded first: changed outside papers (or, without
+    history yet, the library before its first command). Return the number
+    of the state, or None (no bibtex, dry run)."""
+    if project is None:
+        project, place = project_of(config)
+    if project is None or papers.config.DRYRUN:
+        return None
+    text = _bibtex_text(config)
+    sha = history.sha256(text.encode('utf-8'))
+    head = project.head(place)
+    if head is None:
+        project.forget_missing_places()
+        n = project.start_state(sha)
+        if n is not None:
+            project.set_head(place, n)
+            head = project.head(place)
+    if head is not None and project.state(head['state'])['bibtex'].get('sha') == sha:
+        return head['state']
+    texts = None
+    if head is None:
+        kind, message, files = 'start', 'the library before its first recorded command', None
+        texts = _before.get(place)  # the library before the command (see start)
+        if texts is not None:
+            sha = history.sha256(texts[0].encode('utf-8'))
     else:
-        logger.info('backup bibliography only (without files)')
-
-    message = message or 'papers ' + ' '.join(sys.argv[1:])
-    res = run_git(config.gitdir, ["commit", "-m", message], check=False)
-    if res.returncode != 0 and 'nothing to commit' not in res.stdout + res.stderr \
-            and 'nothing added to commit' not in res.stdout + res.stderr:
-        logger.warning(f"the git backup could not commit in {config.gitdir}: "
-                       f"{(res.stderr or res.stdout).strip()}")
-    compact_backup(config.gitdir)
-    # work on "main" branch for comitting (out of history branch)
-    run_git(config.gitdir, ["checkout", "-B", "main"])
-    run_git(config.gitdir, ["clean", "-f"])
-    if journal.is_owner(config.bibtex):
-        # the operations done after it join this snapshot (see papers.library.finish_journal)
-        journal.saved(('git', config.gitdir, run_git(config.gitdir, ["rev-parse", "HEAD"]).stdout.strip()))
+        kind, message = 'outside', 'changed outside papers'
+        files = project.state(head['state']).get('files')
+        logger.info(f'{os.path.basename(config.bibtex)} changed outside papers since its last state: recorded')
+    state = dict(parent=head['state'] if head else None, time=time.time(), kind=kind, message=message,
+                 ops=[], deleted=[], **_snapshot(config, project.store, files=files, texts=texts))
+    n = project.add(state)
+    project.set_head(place, n)
+    if head is None and texts is not None and texts[0] != text:
+        return sync_head(config, project, place)  # changed by the command before its save: recorded after
+    return n
 
 
-def amend_journal(gitdir, commit, ops):
-    """add operations to the journal of the snapshot `commit`, if it is
-    still the last one (see papers.library.finish_journal)"""
-    if run_git(gitdir, ["rev-parse", "HEAD"], check=False).stdout.strip() != commit:
-        logger.warning(f'{len(ops)} file operation(s) not recorded for undo: the backup changed since')
+# the commands that do not change a library, or that move in its history themselves
+_NO_START = {'status', 'config', 'init', 'install', 'uninstall', 'migrate', 'history', 'backup', 'git',
+             'undo', 'redo', 'restore', 'restore-backup'}
+
+
+# the library before the command, for its first state: {place: texts (see _texts)}
+_before = {}
+
+
+def start(config, cmd):
+    """at the start of a command: the library as it is before it, kept in
+    memory, for its first state if it has no history yet (the command may
+    write the files of .papers/ before it saves the bibtex; see sync_head).
+    Nothing is written: a command that changes nothing leaves no trace."""
+    _before.clear()
+    if cmd in _NO_START or papers.config.DRYRUN or not config.bibtex or not os.path.exists(config.bibtex):
         return
-    path = Path(gitdir) / journal.JOURNAL_FILE
-    ops = (json.loads(path.read_text()) if path.exists() else []) + ops
-    path.write_text(json.dumps(ops, indent=1))
-    run_git(gitdir, ["add", journal.JOURNAL_FILE])
-    run_git(gitdir, ["commit", "--amend", "--no-edit", "--quiet"])
-    journal.saved(('git', gitdir, run_git(gitdir, ["rev-parse", "HEAD"]).stdout.strip()))
-
-
-# the number of loose objects of a backup repository from which they are packed (see compact_backup)
-LOOSE_OBJECTS_LIMIT = 150
-
-
-def compact_backup(gitdir):
-    """pack the loose objects of a backup repository once it has
-    LOOSE_OBJECTS_LIMIT of them (about 50 commits). Each commit stores the
-    whole bibtex, compressed (1.6 MB for 10000 entries), and git's automatic
-    gc waits for about 6700 loose objects; a pack stores the differences
-    between versions (50 commits of 10000 entries: 82 MB loose, 4 MB packed;
-    `git repack` takes 2 s, 9 s for 30000 entries). git count-objects, run
-    after each commit, takes a few milliseconds."""
-    res = run_git(gitdir, ["count-objects", "-v"], check=False)
-    count = next((int(line.split(':')[1]) for line in res.stdout.splitlines() if line.startswith('count:')), 0)
-    if count < LOOSE_OBJECTS_LIMIT:
-        return
-    logger.info(f"pack the {count} loose objects of the backup repository {gitdir}")
-    run_git(gitdir, ["repack", "-d", "-q"], check=False)
-
-
-def silent_backup_bib(biblio, config, level=logging.WARNING, *args, **kwargs):
-    " this is useful when passing --info to avoid having too many outputs"
-    level0 = logger.getEffectiveLevel()
-    if level0 > logging.DEBUG: # if DEBUG, also show back debug logs
-        logger.setLevel(level)
     try:
-        backup_bib(biblio, config, *args, **kwargs)
-    finally:
-        logger.setLevel(level0)
-
-
-def _tracked_backupfile(config):
-    """The verbatim bibtex copy in the backup worktree.
-
-    Named after the bibtex itself; falls back to the pre-layout-2 name
-    'backup_copy.bib' when materializing snapshots recorded by older versions.
-    """
-    if not config.backupfile.exists():
-        legacy = Path(config.gitdir) / "backup_copy.bib"
-        if legacy.exists():
-            return legacy
-    return config.backupfile
-
-
-def _dryrun_restore(config, target, kind):
-    "with --dry-run: print the state that undo, redo or restore would bring back, and return True"
-    if not papers.config.DRYRUN:
-        return False
-    info = run_git(config.gitdir, ["log", "-1", "--pretty=%h %s", target]).stdout.strip()
-    print(f"DRYRUN: {kind}: {config.bibtex} not restored to {info}")
-    return True
-
-
-def restore_from_backupdir(config, restore_files=False, previous=None):
-    """Restore the library from the backup worktree (HEAD): the bibtex and
-    the library files of .papers/ (origin records, distinct.json). previous:
-    the commit of the state left (undo, redo, restore --ref); the library
-    files it tracked that HEAD does not are removed."""
-    if _dryrun_restore(config, "HEAD", "restore"):
-        return
-    adopt_central_backup(config)
-    restore_cmd = f"papers add {config.backupfile_clean} --rename --copy" if config.gitlfs else f"cp {_tracked_backupfile(config)} {config.bibtex}"
-    repair_message = f"papers backup broken :: cannot repair file links :: try to recover manually with `{restore_cmd}`"
-    try:
-        return _restore_from_backupdir(config, restore_files=restore_files, previous=previous)
+        project, place = project_of(config, create=False)
+        if project is None or project.head(place) is None:
+            _before[os.path.realpath(config.bibtex)] = _texts(config)
     except Exception as error:
-        raise PapersExit(f'{error}\n{repair_message}') from error
+        logger.debug(f'the library before the command is not kept: {error}')
 
 
-def _library_files(gitdir, rev):
-    """the library files of .papers/ that the backup commit `rev` tracks
-    (see backup_bib): the origin records, distinct.json and files.json"""
-    from papers.pools import ORIGIN_DIR, LEGACY_ORIGIN_FILE  # papers.pools imports this module
-    out = run_git(gitdir, ["ls-tree", "-r", "-z", "--name-only", rev, "--", ".papers"]).stdout
-    names = set()
-    for name in out.split("\0"):
-        name = os.path.normpath(name) if name else ""
-        if name in (DISTINCT_FILE, LEGACY_ORIGIN_FILE, FILES_JSON) or (
-                os.path.dirname(name) == ORIGIN_DIR and name.endswith(".bib")):
-            names.add(name)
-    return names
-
-
-def _restore_library_files(config, previous=None):
-    """copy the library files of .papers/ of the backup worktree (HEAD) to
-    the library, and remove those that `previous` tracked and HEAD does not
-    (a file the backup never had is left alone)"""
-    libdir = Path(config.bibtex).parent
-    backupdir = Path(config.gitdir)
-    names = _library_files(config.gitdir, "HEAD")
-    for name in sorted(names):
-        (libdir / name).parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy(backupdir / name, libdir / name)
-    if previous is not None:
-        for name in sorted(_library_files(config.gitdir, previous) - names):
-            if (libdir / name).exists():
-                logger.info(f"remove {libdir / name}: not in the restored state")
-                (libdir / name).unlink()
-
-
-def _restore_from_backupdir(config, restore_files=False, previous=None):
-    current = run_git(config.gitdir, ["rev-parse", "HEAD"]).stdout.strip()
-    message = run_git(config.gitdir, ["log", current, "--pretty=format:%C(auto)%h %s (%ad)", "-1"]).stdout.strip()
-    logger.info(f'restore bibliography to {message}')
-
-    # read the snapshot, not the work tree: with git-lfs, the files of the
-    # work tree are hard links of the library files, so a library file
-    # edited in place is edited there too (git replaces the files it
-    # restores, which breaks the link and leaves the library file as it is)
-    run_git(config.gitdir, ["reset", "--hard", "--quiet", "HEAD"])
-
-    tracked = _tracked_backupfile(config)
-    if not tracked.exists():
-        raise PapersExit(f"the backup state {message} has no copy of the bibtex: {config.bibtex} is left as it is")
-    if os.path.exists(config.bibtex):
-        os.remove(config.bibtex)
-    shutil.copy(tracked, config.bibtex)
-    _restore_library_files(config, previous=previous)
-
-    # Re-name the file according to back-up bibtex
-    if not config.gitlfs:
-        return
-
-    biblio = Biblio.load(config.bibtex, config.filesdir)
-    biblio_clean = Biblio.load(config.backupfile_clean, config.filesdir)
-
-    assert len(biblio.entries) == len(biblio_clean.entries)
-
-    for e, e_clean in zip(biblio.entries, biblio_clean.entries):
-        assert get_entry_val(e, 'ID', '') == get_entry_val(e_clean, 'ID', ''), f"{get_entry_val(e, 'ID', '')} != {get_entry_val(e_clean, 'ID', '')})"
-        files = biblio.get_files(e)
-        files_clean = biblio_clean.get_files(e_clean)
-        assert len(files) == len(files_clean), f"{get_entry_val(e, 'ID', '')} :: files {len(files)} != {len(files_clean)})"
-
-        new_files = []
-
-        for f, f_clean in zip(files, files_clean):
-            # broken link in the backup
-            if not os.path.exists(f_clean):
-                logger.debug(f"BACKUP FILE DOES NOT EXISTS: {f_clean} ")
-                logger.debug(f"BACKUP ENTRY: {e_clean['file']} ")
-                logger.debug(f"BROKEN ENTRY: {e['file']} ")
-                logger.warning(f"{get_entry_val(e, 'ID', '')} :: file link broken => {f} ")
-                new_files.append(f)
-                continue
-
-            # backup file is fine
-
-            # original bibtex link matches something on disk
-            if os.path.exists(f):
-
-                # same file: nothing to do
-                if os.path.samefile(f, f_clean) or checksum(f_clean) == checksum(f):
-                    new_files.append(f)
-
-                else:
-                    logger.warning(f"{get_entry_val(e, 'ID', '')} :: file found but does not match backup (keep pointer to backup): {f} != {f_clean}")
-                    new_files.append(f_clean)
-
-            # original bibtex link is broken, --restore-file is active
-            elif restore_files:
-                try:
-                    move(f_clean, f, copy=True, interactive=False)
-                    new_files.append(f)
-
-                except Exception as error:
-                    logger.error(f"{error}")
-                    logger.error(f"{get_entry_val(e, 'ID', '')} :: failed to restore file (keep pointer to backup)")
-                    new_files.append(f_clean)
-
-            # original bibtex link is broken, default without --restore-file : do not do anything
-            else:
-                new_files.append(f_clean)
-
-        biblio.set_files(e, new_files)
-
-    biblio.save(config.bibtex)
-
-
-RESTORES_TRAILER = "Papers-Restores"
-
-
-def _restores_target(message_body):
-    """Return the commit named by the Papers-Restores trailer, or None."""
-    for line in reversed(message_body.strip().splitlines()):
-        if line.startswith(RESTORES_TRAILER + ":"):
-            return line.split(":", 1)[1].strip()
-    return None
-
-
-def cursor_commit(gitdir):
-    """The commit representing the current library state.
-
-    The tip itself, unless the tip is a restore commit, in which case the
-    commit its Papers-Restores trailer points to.
-    """
-    body = run_git(gitdir, ["log", "-1", "--pretty=%B"]).stdout
-    return _restores_target(body) or run_git(gitdir, ["rev-parse", "HEAD"]).stdout.strip()
-
-
-def _append_restore_commit(config, target, kind):
-    """Append a commit on HEAD with `target`'s tree and move branch + worktree
-    to it; return the former HEAD"""
-    gitdir = config.gitdir
-    previous = run_git(gitdir, ["rev-parse", "HEAD"]).stdout.strip()
-    target_info = run_git(gitdir, ["log", "-1", "--pretty=%h %s", target]).stdout.strip()
-    message = f"papers {kind}: back to {target_info}\n\n{RESTORES_TRAILER}: {target}"
-    tree = run_git(gitdir, ["rev-parse", f"{target}^{{tree}}"]).stdout.strip()
-    new = run_git(gitdir, ["commit-tree", tree, "-p", "HEAD", "-m", message]).stdout.strip()
-    # the new commit has HEAD as parent, so this discards nothing;
-    # it moves the branch forward and updates the working tree
-    run_git(gitdir, ["reset", "--hard", new])
-    return previous
-
-
-def adopt_legacy_undone_state(gitdir):
-    """Linearize an old-model undone state (HEAD on 'history' behind 'main') onto main."""
-    res = run_git(gitdir, ["rev-parse", "--abbrev-ref", "HEAD"], check=False)
-    if res.returncode != 0 or res.stdout.strip() != "history":
-        return
-    if run_git(gitdir, ["rev-parse", "--verify", "--quiet", "main"], check=False).returncode != 0:
-        return
-    head = run_git(gitdir, ["rev-parse", "HEAD"]).stdout.strip()
-    main = run_git(gitdir, ["rev-parse", "main"]).stdout.strip()
-    if head == main:
-        run_git(gitdir, ["checkout", "main"])
-        run_git(gitdir, ["branch", "-D", "history"], check=False)
-        return
-    logger.info("adopt pre-append-only undone state into linear history")
-    head_info = run_git(gitdir, ["log", "-1", "--pretty=%h %s", head]).stdout.strip()
-    message = f"papers: adopt undone state {head_info}\n\n{RESTORES_TRAILER}: {head}"
-    tree = run_git(gitdir, ["rev-parse", f"{head}^{{tree}}"]).stdout.strip()
-    new = run_git(gitdir, ["commit-tree", tree, "-p", main, "-m", message]).stdout.strip()
-    run_git(gitdir, ["checkout", "-B", "main", new])
-    run_git(gitdir, ["branch", "-D", "history"], check=False)
-
-
-def _require_history(gitdir):
-    if run_git(gitdir, ["rev-parse", "--verify", "--quiet", "HEAD"], check=False).returncode != 0:
-        raise PapersExit("no backup history (no snapshot recorded yet)")
-
-
-def git_restore_state(config, ref, restore_files=False, kind="restore-backup", file_lines=None):
-    """Append a restore commit for `ref` and restore the bibtex from it, and
-    the files (see _restore_files), whose report goes to file_lines."""
-    if not papers.config.DRYRUN:
-        adopt_central_backup(config)
-    _require_history(config.gitdir)
-    res = run_git(config.gitdir, ["rev-parse", "--verify", "--quiet", f"{ref}^{{commit}}"], check=False)
-    if res.returncode != 0:
-        raise PapersExit(f"unknown git reference: {ref}")
-    target = res.stdout.strip()
-    if _dryrun_restore(config, target, "restore"):
-        return
-    cur = cursor_commit(config.gitdir)
-    if _is_ancestor(config.gitdir, target, cur):
-        older, newer, undo = target, cur, True
-    elif _is_ancestor(config.gitdir, cur, target):
-        older, newer, undo = cur, target, False
+def record(config, message=None):
+    """after the save of the library: its state, with the file operations of
+    the command; return the number of the state, or None"""
+    project, place = project_of(config)
+    if project is None or papers.config.DRYRUN:
+        return None
+    head = project.head(place)
+    # the library had no state (e.g. its bibtex created by the command): the command is its first state
+    parent = head['state'] if head else None
+    ops = _relative_ops(journal.take(config.bibtex), config)
+    snap = _snapshot(config, project.store)
+    previous = project.state(parent) if parent is not None else None
+    if previous and not ops and previous['bibtex'] == snap['bibtex'] and previous.get('files') == snap['files']:
+        n = parent
     else:
-        older, newer, undo = None, None, True  # not on one line: no operations, the checksums only
-    lines = _restore_files(config, target, older, newer, undo)
-    if file_lines is not None:
-        file_lines.extend(lines)
-    previous = _append_restore_commit(config, target, kind=kind)
-    restore_from_backupdir(config, restore_files=restore_files, previous=previous)
+        n = project.add(dict(parent=parent, time=time.time(), kind='command', message=message or _message(),
+                             ops=ops, deleted=_deleted_refs(ops), **snap))
+        project.set_head(place, n)
+    if journal.is_owner(config.bibtex):
+        journal.saved((config, n))
+    if any(op['op'] == 'trashed' for op in ops) or n % PRUNE_EVERY == 0:
+        prune(config, project.store)
+    return n
 
 
-def _journal_of(gitdir, commit):
-    "the file operations of the command of a commit (see papers.journal)"
-    res = run_git(gitdir, ["show", f"{commit}:{journal.JOURNAL_FILE}"], check=False)
-    if res.returncode != 0:
-        return []
-    try:
-        return json.loads(res.stdout)
-    except ValueError:
-        return []
+def add_operations(config, n, ops):
+    "the operations done after the save of the library join its state n, if it is still current"
+    project, place = project_of(config)
+    head = project.head(place) if project else None
+    if head is None or head['state'] != n:
+        logger.warning(f'{len(ops)} file operation(s) not recorded for undo: the library changed since')
+        return
+    state = dict(project.state(n))
+    state['ops'] = state.get('ops', []) + _relative_ops(ops, config)
+    state['deleted'] = _deleted_refs(state['ops'])
+    project.update(n, state)
+    if state['deleted']:
+        prune(config, project.store)
 
+
+def prune(config, st):
+    limit = _limit(config, st)
+    if not limit:
+        return
+    dropped = st.prune(limit, discard=journal.to_system_trash)
+    if dropped:
+        logger.info(f'{len(dropped)} old step(s) dropped from the history '
+                    f'(history-size: {history_size(config, st)} MB)')
+
+
+# the files that a command deletes
+# ================================
+
+class Deleted:
+    """where the files that a command deletes go (see papers.journal.remove):
+    the store, unless the keep-deleted-files setting is off; and the
+    question before deleting more than the history keeps"""
+    def __init__(self, config):
+        self.config = config
+        self.keep = bool(config.keep_deleted_files)
+        self._store = None
+
+    @property
+    def store(self):
+        "the store of the library (its identifier is made when it deletes a file, not before)"
+        if self._store is None:
+            project, _ = project_of(self.config)
+            self._store = project.store if project else store(self.config)
+        return self._store
+
+    def guard(self, total, count):
+        if not self.keep:
+            return False
+        limit = _limit(self.config, self.store)
+        size = history_size(self.config, self.store)
+        if not limit:
+            return True
+        what = f'{count} file{"s" if count > 1 else ""} to delete, {total / MB:.0f} MB'
+        if total > limit:
+            question = (f'{what}: more than the history keeps (history-size: {size} MB).\n'
+                        f'- This command cannot be undone: the files go to the trash of the system, '
+                        f'not to the history.\n'
+                        f'- The history of the libraries is dropped: no undo before this point.')
+            return False if _ask(question) else None
+        dropped = self.store.prune(limit, extra=total, dry=True)
+        if not dropped:
+            return True
+        now = time.time()
+        recent = sum(1 for _, _, s in dropped if now - s.get('time', 0) < DAY)
+        count_all = sum(len(self.store.project(id).states()) for id in self.store.project_ids())
+        if recent or 2 * len(dropped) > count_all:
+            question = (f'{what}: to keep them for undo, the history drops {len(dropped)} of its '
+                        f'{count_all} steps' + (f', {recent} of them from the last day' if recent else '')
+                        + f' (history-size: {size} MB).')
+            return True if _ask(question) else None
+        return True
+
+
+def _ask(question):
+    "True to proceed: -y/--yes, or the answer of the user; without a terminal, False"
+    if journal.ASSUME_YES:
+        return True
+    print(question)
+    if not stdin_is_terminal():
+        logger.warning('no terminal to confirm: the files are kept (-y/--yes proceeds)')
+        return False
+    return input('Proceed? [y/N] ').strip().lower() in ('y', 'yes')
+
+
+# going to another state
+# ======================
 
 def _pool_dirs(config):
     "the files directory of the pool of a shallow library: a file moved there is copied back by undo"
@@ -667,120 +349,176 @@ def _pool_dirs(config):
     return [pool_files_dir(config)]
 
 
-def _is_ancestor(gitdir, a, b):
-    return run_git(gitdir, ["merge-base", "--is-ancestor", a, b], check=False).returncode == 0
+def describe(project, n):
+    "the line of a state: number, command, time"
+    state = project.state(n)
+    when = time.strftime('%Y-%m-%d %H:%M', time.localtime(state.get('time', 0)))
+    return f'{n} {state.get("message", "")} ({when})'
 
 
-def _steps_between(gitdir, older, newer):
-    """the commits of the commands from the state `older` to the state
-    `newer` that moved, copied or deleted files, oldest first, with their
-    operations (a restore commit has none of its own)"""
-    out = run_git(gitdir, ["log", "--first-parent", "--reverse", "-z", "--pretty=format:%H %B",
-                           f"{older}..{newer}"]).stdout
-    steps = []
-    for record in out.split("\x00"):
-        sha, _, body = record.strip().partition(" ")
-        if sha and _restores_target(body) is None:
-            ops = _journal_of(gitdir, sha)
-            if ops:
-                steps.append((sha, ops))
-    return steps
-
-
-def _show_file(gitdir, rev, name):
-    "the content of a file of a backup commit, or None"
-    res = run_git(gitdir, ["show", f"{rev}:{name}"], check=False)
-    return res.stdout if res.returncode == 0 else None
-
-
-def _restore_files(config, target, older, newer, undo):
-    """bring the files from the links of the bibtex to those of the state
-    `target` (see papers.journal.restore): command by command, for the
-    commands between the states `older` and `newer` that moved, copied or
-    deleted files (the last one first for undo), then from the links of the
-    bibtex to those of `target`, by checksum. Return the lines of the report."""
+def go_to(config, project, cur, target):
+    """bring the library from the state `cur` to the state `target`: the
+    files (command by command, then by checksum), the bibtex and the files
+    of .papers/. Return the lines of the report on the files."""
     from bibtexparser import parse_string
+    st = project.store
     relative_to = os.path.dirname(os.path.abspath(config.bibtex))
-    links = {}
+    texts = {}
 
-    def links_of(rev):
-        if rev not in links:
-            text = _show_file(config.gitdir, rev, config.backupfile.name)
-            if text is None:
-                text = _show_file(config.gitdir, rev, "backup_copy.bib") or ""
-            links[rev] = papers.checksums.entry_links(parse_string(text).entries, relative_to)
-        return links[rev]
+    def text(n):
+        if n not in texts:
+            try:
+                texts[n] = st.text(project.state(n)['bibtex']['pieces'])
+            except KeyError as error:
+                raise PapersExit(f'the history of the library is damaged: {error}')
+        return texts[n]
 
-    def hashes_of(rev):
-        return papers.checksums.parse(_show_file(config.gitdir, rev, FILES_JSON) or "{}", config)
+    def links(n):
+        return papers.checksums.entry_links(parse_string(text(n)).entries, relative_to)
 
-    trash = config.trash()
-    kw = dict(pool_dirs=_pool_dirs(config), trash_dir=trash[0] if trash else None, gitdir=config.gitdir)
+    def hashes(n):
+        pieces = (project.state(n).get('files') or {}).get(FILES_JSON)
+        return papers.checksums.parse(st.text(pieces) if pieces else '{}', config)
+
+    def ops(n):
+        return _absolute_ops(project.state(n).get('ops') or [], config)
+
+    kw = dict(pool_dirs=_pool_dirs(config), find_deleted=st.file_object)
+    back, forward = project.path(cur, target)
     lines = []
-    steps = _steps_between(config.gitdir, older, newer) if older else []
-    for sha, ops in (reversed(steps) if undo else steps):
-        before, after = f"{sha}^", sha
-        if undo:
-            lines += journal.restore(links_of(after), links_of(before), ops, True, hashes=hashes_of(before), **kw)
-        else:
-            lines += journal.restore(links_of(before), links_of(after), ops, False, hashes=hashes_of(after), **kw)
+    for n in back:
+        parent = project.state(n).get('parent')
+        if parent is None or project.state(parent) is None:
+            break
+        if ops(n):
+            lines += journal.restore(links(n), links(parent), ops(n), True, hashes=hashes(parent), **kw)
+    for n in forward:
+        parent = project.state(n).get('parent')
+        if ops(n) and parent is not None and project.state(parent) is not None:
+            lines += journal.restore(links(parent), links(n), ops(n), False, hashes=hashes(n), **kw)
     current = papers.checksums.bibtex_links(config.bibtex, relative_to)
-    lines += journal.restore(current, links_of(target), [], undo, hashes=hashes_of(target), **kw)
+    lines += journal.restore(current, links(target), [], not forward, hashes=hashes(target), **kw)
+
+    papers.utils.write_atomic(config.bibtex, text(target))
+    _write_library_files(config, project, cur, target)
     return lines
 
 
-def git_undo(config, restore_files=False, steps=1, file_lines=None):
-    """go back `steps` states; return the commit of the state restored (None
-    with --dry-run). The files follow (see _restore_files), their report
-    goes to file_lines."""
-    if not papers.config.DRYRUN:
-        adopt_central_backup(config)
-    _require_history(config.gitdir)
-    if not papers.config.DRYRUN:
-        adopt_legacy_undone_state(config.gitdir)
-    cur = cursor_commit(config.gitdir)
-    res = run_git(config.gitdir, ["rev-parse", "--verify", "--quiet", f"{cur}~{steps}"], check=False)
-    if res.returncode != 0:
-        raise PapersExit("nothing to undo")
-    if _dryrun_restore(config, res.stdout.strip(), "undo"):
-        return None
-    target = res.stdout.strip()
-    # the files first: the links of the restored bibtex find them
-    lines = _restore_files(config, target, target, cur, undo=True)
-    if file_lines is not None:
-        file_lines.extend(lines)
-    previous = _append_restore_commit(config, target, kind="undo")
-    restore_from_backupdir(config, restore_files=restore_files, previous=previous)
-    return res.stdout.strip()
+def _write_library_files(config, project, cur, target):
+    """the files of .papers/ of the state `target`; those of the state `cur`
+    that `target` has not are removed (a file no state had is left alone)"""
+    libdir = os.path.dirname(os.path.abspath(config.bibtex))
+
+    def inside(name):
+        return not os.path.relpath(os.path.join(libdir, name), libdir).startswith('..')
+
+    files = project.state(target).get('files') or {}
+    for name, pieces in files.items():
+        if inside(name):
+            path = os.path.join(libdir, name)
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            papers.utils.write_atomic(path, project.store.text(pieces))
+    for name in (project.state(cur).get('files') or {}):
+        path = os.path.join(libdir, name)
+        if name not in files and inside(name) and os.path.isfile(path):
+            logger.info(f'remove {path}: not in the restored state')
+            os.remove(path)
 
 
-def git_redo(config, restore_files=False, steps=1, file_lines=None):
-    """go forward `steps` states; return the commit of the state restored
-    (None with --dry-run). The files follow (see _restore_files), their
-    report goes to file_lines."""
-    if not papers.config.DRYRUN:
-        adopt_central_backup(config)
-    _require_history(config.gitdir)
-    if not papers.config.DRYRUN:
-        adopt_legacy_undone_state(config.gitdir)
-    cur = cursor_commit(config.gitdir)
-    out = run_git(config.gitdir, ["log", "--first-parent", "--reverse", "-z",
-                                  "--pretty=format:%H %B", f"{cur}..HEAD"]).stdout
-    # oldest first; skip restore commits, which do not introduce new states
-    futures = []
-    for record in out.split("\x00"):
-        if not record.strip():
-            continue
-        sha, _, body = record.partition(" ")
-        if _restores_target(body) is None:
-            futures.append(sha)
-    if len(futures) < steps:
-        raise PapersExit("nothing to redo")
-    if _dryrun_restore(config, futures[steps-1], "redo"):
-        return None
-    lines = _restore_files(config, futures[steps-1], cur, futures[steps-1], undo=False)
-    if file_lines is not None:
-        file_lines.extend(lines)
-    previous = _append_restore_commit(config, futures[steps-1], kind="redo")
-    restore_from_backupdir(config, restore_files=restore_files, previous=previous)
-    return futures[steps-1]
+def _require(config):
+    project, place = project_of(config)
+    if project is None:
+        raise PapersExit('no history: the library has no bibtex')
+    return project, place
+
+
+def undo(config, steps=1):
+    """go back `steps` states; return (project, state restored, report on
+    the files; None with --dry-run)"""
+    project, place = _require(config)
+    if papers.config.DRYRUN:
+        cur = (project.head(place) or {}).get('state')
+    else:
+        cur = sync_head(config, project, place)
+    line = project.line(cur) if cur is not None else []
+    if len(line) <= steps:
+        raise PapersExit('nothing to undo' if len(line) <= 1 else f'only {len(line) - 1} step(s) to undo')
+    target = line[steps]
+    if papers.config.DRYRUN:
+        return project, target, None
+    redo = list(reversed(line[:steps])) + project.head(place)['redo']
+    lines = go_to(config, project, cur, target)
+    project.set_head(place, target, redo)
+    return project, target, lines
+
+
+def redo(config, steps=1):
+    "go forward `steps` states (see undo)"
+    project, place = _require(config)
+    head = project.head(place)
+    if head is None or not head['redo']:
+        raise PapersExit('nothing to redo')
+    cur = head['state']
+    if not papers.config.DRYRUN and sync_head(config, project, place) != cur:
+        raise PapersExit('nothing to redo: the library changed outside papers since the undo (recorded: '
+                         '`papers undo` goes back before that change)')
+    if len(head['redo']) < steps:
+        raise PapersExit(f'only {len(head["redo"])} step(s) to redo')
+    target = head['redo'][steps - 1]
+    if papers.config.DRYRUN:
+        return project, target, None
+    lines = go_to(config, project, cur, target)
+    project.set_head(place, target, head['redo'][steps:])
+    return project, target, lines
+
+
+def restore(config, n=None):
+    """go to the state n of the project of the library; without n, to the
+    current state (the changes made outside papers since are undone, and
+    recorded: `papers redo` brings them back). Return as undo."""
+    project, place = _require(config)
+    head = project.head(place)
+    if n is None:
+        if head is None:
+            raise PapersExit('no history: nothing to restore')
+        target = head['state']
+    elif project.state(n) is None:
+        raise PapersExit(f'no step {n} in the history of the library (see `papers history`)')
+    else:
+        target = n
+    if papers.config.DRYRUN:
+        return project, target, None
+    cur = sync_head(config, project, place)
+    if cur == target:
+        raise PapersExit(f'nothing to restore: {os.path.basename(config.bibtex)} is step {target}')
+    lines = go_to(config, project, cur, target)
+    back, forward = project.path(cur, target)
+    project.set_head(place, target, list(reversed(back)) if not forward else [])
+    return project, target, lines
+
+
+# the old backups
+# ===============
+
+def _size(path):
+    total = 0
+    for root, dirs, files in os.walk(path):
+        for f in files:
+            try:
+                total += os.lstat(os.path.join(root, f)).st_size
+            except OSError:
+                pass
+    return total
+
+
+def stale_backups(config):
+    """the backups of earlier versions that papers no longer uses: [(path, bytes)]"""
+    found = []
+    if config.file and config.is_library:
+        local = os.path.join(papers.config.config_root(config.file), papers.config.BACKUP_DIR_LOCAL)
+        if os.path.isdir(local):
+            found.append(local)
+    for root in dict.fromkeys([papers.config.BACKUP_DIR, papers.config.BACKUP_DIR_LEGACY]):
+        if os.path.isdir(root):
+            found.append(root)
+    return [(path, _size(path)) for path in found]

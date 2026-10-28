@@ -3,8 +3,8 @@
 case of DOIs in fetch, the exit code of papers git, and the error of an
 unknown option"""
 import io
-import os
 from contextlib import redirect_stderr
+from pathlib import Path
 from unittest.mock import patch
 
 from papers.utils import PapersExit
@@ -30,12 +30,12 @@ class TestOptions(FileTest):
             self.lib('check one2000')
         self.assertTrue(fix.call_args.kwargs['interactive'])
 
-    def test_backup_remove_yes(self):
-        from papers.config import BACKUP_DIR
-        os.makedirs(os.path.join(BACKUP_DIR, 'backup-x'))
+    def test_history_remove_yes(self):
+        Path(self.path('lib', 'papers.bib')).write_text('@article{a,\n title = {A}\n}\n')
+        self.lib('edit a --set year=2000')
         with patch('builtins.input', no_question):
-            self.lib('backup remove backup-x --yes')
-        self.assertFalse(os.path.exists(os.path.join(BACKUP_DIR, 'backup-x')))
+            self.lib('history --remove --yes')
+        self.assertIn('no history yet', self.out('history'))
 
     def test_extract_doi_only(self):
         with patch('papers.cli.fetch_cmds.extract_pdf_doi', return_value='10.1000/x') as doi, \
@@ -55,11 +55,12 @@ class TestOptions(FileTest):
         scan.assert_called_once()
 
     def test_restore(self):
-        self.lib('config git true')
-        with patch('papers.cli.backup_cmds.restore_from_backupdir') as restore, \
+        with patch('papers.cli.backup_cmds.backup.restore', return_value=(None, None, None)) as restore, \
+                patch('papers.cli.backup_cmds.backup.describe', return_value=''), \
                 patch('papers.cli.backup_cmds.logger.warning') as warning:
-            self.lib('restore')
+            self.lib('restore 3')
         restore.assert_called_once()
+        self.assertEqual(restore.call_args[0][1], 3)
         warning.assert_not_called()
 
 
@@ -108,18 +109,8 @@ class TestFetchKeepsCase(FileTest):
 
 class TestGitCommand(FileTest):
 
-    def test_git_error_exit_code(self):
-        self.lib('config git true')
-        with self.assertRaises(SystemExit) as cm:
-            self.lib('git log no-such-ref')
-        self.assertEqual(cm.exception.code, 128)  # git's own exit code
-
-    def test_git_output(self):
-        self.lib('config git true')
-        self.assertEqual(self.out('git rev-list --all --count').strip(), '1')
-
-    def test_no_backup(self):
-        with self.assertRaisesRegex(PapersExit, 'papers config git true'):
+    def test_removed(self):
+        with self.assertRaisesRegex(PapersExit, '`papers git` is removed'):
             self.lib('git status')
 
 
@@ -138,8 +129,8 @@ class TestUnknownOptions(FileTest):
 
     def test_command_does_not_run(self):
         with patch('papers.cli.parser.rmcmd') as remove:
-            self.assertEqual(self.error('rm -y one2000'), 'papers rm: error: unrecognized arguments: -y')
-            self.assertEqual(self.error('rm one2000 -y'), 'papers rm: error: unrecognized arguments: -y')
+            self.assertEqual(self.error('rm -z one2000'), 'papers rm: error: unrecognized arguments: -z')
+            self.assertEqual(self.error('rm one2000 -z'), 'papers rm: error: unrecognized arguments: -z')
         remove.assert_not_called()
         self.assertEqual(self.error('check --all'), 'papers check: error: unrecognized arguments: --all')
 

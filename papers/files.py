@@ -743,42 +743,34 @@ def describe_file(file):
 
 
 def delete_files(files, dryrun=False, same=None):
-    """delete the files, to the trash of the library (see papers.journal.remove).
-    same: {file: its identical copy that stays}: such a file is not put in
-    the trash, undo copies it back from its copy. More than the trash holds:
-    papers asks first (without a terminal, the files are kept), and they are
-    deleted for good."""
+    """delete the files: they are kept in the history (see
+    papers.journal.remove), unless the keep-deleted-files setting is off.
+    same: {file: its identical copy that stays}: such a file is not kept,
+    undo copies it back from its copy. More than the history keeps, or
+    enough to drop a large part of it: papers asks first (without a
+    terminal, the files are kept; see papers.backup.Deleted.guard)."""
     files = [f for f in files if os.path.isfile(f)]
     same = {f: copy for f, copy in (same or {}).items()
             if f in files and os.path.isfile(copy) and checksum(copy) == checksum(f)}
     total = sum(os.path.getsize(f) for f in files if f not in same)
-    capacity = journal.trash_capacity()
-    trash = capacity is None or total <= capacity * journal.MB
-    if not trash and not dryrun:
-        what = (f'{len(files)} file{"s" if len(files) > 1 else ""} to delete, {total / journal.MB:.0f} MB: more than '
-                f'the trash holds ({capacity} MB, the trash-size setting), undo could not bring them back')
-        if not stdin_is_terminal():
-            logger.warning(f'{what}: kept (no terminal to confirm)')
-            for file in files:
-                print(f'kept {file}')
-            return
-        if input(f'{what}. Delete them for good? [y/N] ').strip().lower() not in ('y', 'yes'):
-            for file in files:
-                print(f'kept {file}')
-            return
+    keep = journal.guard(total, len(files) - len(same)) if total and not dryrun else True
+    if keep is None:
+        for file in files:
+            print(f'kept {file}')
+        return
     for file in files:
         note = ' (hard link: the other links remain)' if is_hard_link(file) else ''
-        if trash and capacity is not None and file not in same:
-            note += ' (to the trash: undo restores it)'
+        if keep and file not in same and journal.keeps_deleted():
+            note += ' (kept in the history: undo restores it)'
         print(f'{"DRYRUN: " if dryrun else ""}delete {file}{note}')
         if dryrun:
             continue
         if file in same:
             journal.record('removed', file, same[file], digest=checksum(file))
-            with journal.paused():  # recorded with its copy: not to the trash
+            with journal.paused():  # recorded with its copy: not kept
                 journal.remove(file)
         else:
-            journal.remove(file, trash=trash)  # to the trash of the library
+            journal.remove(file, trash=keep)
 
 
 # papers file check

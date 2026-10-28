@@ -252,8 +252,8 @@ Notes on the options:
   `--fix-files`) is an error.
 
 The action runs in the same process as the listing: papers can ask
-questions and open the editor, and the library is saved once (one backup
-snapshot, undone by one `papers undo`). One action at a time: two actions
+questions and open the editor, and the library is saved once (one step of the history,
+undone by one `papers undo`). One action at a time: two actions
 in the same command are an error, and nothing changes.
 
 (`papers check --duplicates` merges duplicates, see [Managing your

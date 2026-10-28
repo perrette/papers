@@ -3,16 +3,15 @@ import copy
 import json
 import os
 from pathlib import Path
-import shutil
 
 import papers.config
 from papers import logger
-from papers.backup import check_git_available, init_backup
-from papers.config import (CONFIG_FILE_LOCAL, Config, DEFAULT_LIBRARY, LIBRARY_ONLY, NO_POOL, library_config_file,
+from papers.config import (CONFIG_FILE_LOCAL, Config, DEFAULT_LIBRARY, LIBRARY_ONLY, MACHINE_ONLY, NO_POOL,
+                           REMOVED_SETTINGS, library_config_file,
                            SETTINGS, format_value, json_get, parse_value, pool_setting, short_home)
 from papers.files import broken_links, delete_files, is_inside
 from papers.install import DefaultAsker, InputAsker, apply_install, resolve_install
-from papers.library import convert_file_links, find_config, get_biblio, snapshot_backup
+from papers.library import convert_file_links, find_config, get_biblio
 from papers.migrate import migrate_folders, migrate_library_config, migrate_v2_global
 from papers.pools import Exchange, Pools, library_without_pool
 from papers.utils import PapersExit, set_directory
@@ -106,7 +105,7 @@ def _initcmd(parser, o, config):
 
 def init_summary(config):
     """what `papers init` prints: the library created, its bibtex, where its
-    files go, its pool and its backup"""
+    files go, its pool and its history"""
     lines = [f'created the library {short_home(str(config.configdir))}',
              f'* bibtex:  {_show(config.bibtex) if config.bibtex else "none"}']
     if not config.has_pool():
@@ -116,7 +115,7 @@ def init_summary(config):
     else:
         lines.extend(['* files:   in the pool (shallow library)',
                       f'* pool:    {config.pool_label()}'])
-    return lines + ['* backup:  ' + config.backup_summary(),
+    return lines + ['* history: undo and redo (`papers history`)',
                     '`papers config` lists and sets the settings']
 
 
@@ -161,6 +160,8 @@ INSTALL_GLOBAL_REMOVED = ("`papers install --global` is no longer supported (not
 def uninstallcmd(parser, o, config):
     if config.file is None:
         parser.error('no library configuration was found')
+    logger.warning('`papers uninstall` is deprecated: `rm -r .papers` removes the configuration of the library, '
+                   '`papers history --remove` its history')
     if o.recursive:
         logger.warning("uninstall --recursive is deprecated and ignored: there is no global configuration to "
                        "remove in v3, only the configuration of this library is removed")
@@ -185,13 +186,11 @@ def _uninstall(parser, o, config):
         print(f"the bibliography remains: {config.bibtex}")
     if config.filesdir and os.path.exists(config.filesdir):
         print(f"the files directory remains: {config.filesdir}")
-    if config.gitdir and os.path.isdir(config.gitdir):
-        if o.remove_backup:
-            shutil.rmtree(config.gitdir)
-            print(f"removed backup directory: {config.gitdir}")
-        else:
-            print(f"the backup directory remains: {config.gitdir}")
-            print(f"  remove it with `rm -r {config.gitdir}`, or `papers uninstall --remove-backup`")
+    if o.remove_history:
+        from papers.cli.backup_cmds import remove_history
+        remove_history(config, yes=True)
+    else:
+        print("the history of the library remains: `papers history --remove` removes it")
 
 
 def _check_setting_name(name, is_global):
@@ -200,6 +199,8 @@ def _check_setting_name(name, is_global):
             raise PapersExit(f"{DEFAULT_LIBRARY} is a setting of the global configuration: "
                              f"`papers config --global {DEFAULT_LIBRARY} PATH|none`")
         return
+    if name in REMOVED_SETTINGS:
+        raise PapersExit(f"the {name} setting is no longer used: {REMOVED_SETTINGS[name]}")
     if name not in SETTINGS:
         raise PapersExit(f"unknown setting: {name}. Settings: {', '.join(SETTINGS)}"
                          + (f" (and with --global: {DEFAULT_LIBRARY})" if is_global else ""))
@@ -207,6 +208,9 @@ def _check_setting_name(name, is_global):
         raise PapersExit("the global configuration has no pool: `papers config pool PATH` sets the pool of a "
                          "library, and `papers config --global default PATH` the default library "
                          "(`papers init --shallow` uses it as pool)")
+    if not is_global and name in MACHINE_ONLY:
+        raise PapersExit(f"{name} is a setting of the machine, not of a library (a library received from "
+                         f"someone cannot set it): `papers config --global {name} VALUE`")
     if is_global and name in LIBRARY_ONLY:
         raise PapersExit(f"{name} is a setting of a library: the global configuration holds the default library "
                          "and the default settings of the libraries (the global library of papers v2 is now the "
@@ -257,8 +261,6 @@ def configcmd(parser, o, config):
 
     if o.unset:
         config.unset(name)
-        if name == 'git' and not config.git:
-            config.set('git-lfs', False)
     else:
         value = _parse_setting(name, o.values)
         if name in ('bibtex', 'filesdir'):
@@ -266,22 +268,12 @@ def configcmd(parser, o, config):
                 logger.warning(f"{value} does not exist")
             value = os.path.abspath(value)
         config.set(name, value)
-        if name == 'git-lfs' and value:
-            config.set('git', True)
-        if name == 'git' and not value and config.gitlfs:
-            config.set('git-lfs', False)
-    if name in ('git', 'git-lfs') and config.git:
-        check_git_available(gitlfs=config.gitlfs)
 
     if papers.config.DRYRUN:
         print(f"DRYRUN: {name} = {format_value(config.get(name))} not saved to {config.file}")
         return
     config.save()
 
-    if name in ('git', 'git-lfs') and config.git:
-        init_backup(config)
-        if config.bibtex and os.path.exists(config.bibtex):
-            snapshot_backup(config)
     if name == 'paths' and config.bibtex and os.path.exists(config.bibtex):
         convert_file_links(config)
     if name == 'checksums':
@@ -370,6 +362,9 @@ def _prune(config):
     before = json.load(open(config.file))
     after = config.tojson()
     removed = [name for name in SETTINGS if json_get(before, name) is not None and json_get(after, name) is None]
+    # the settings of papers before the history (git, git-lfs, trash-days...), no longer used
+    removed += [name for name in ('git', 'gitlfs', 'backup_files', 'gitdir', 'trash-days', 'trash-size')
+                if name in before]
     if not removed:
         print(f'nothing to remove from {short_home(config.file)}')
         return

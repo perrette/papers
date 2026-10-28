@@ -57,13 +57,11 @@ def migrate_v2_global(machine, relative=False, dryrun=False):
                 print(f"  a library configuration already exists: {existing} (kept as is)")
             else:
                 new = Config(file=target, is_library=True, machine=machine,
-                             bibtex=old.bibtex, filesdir=old.filesdir, gitdir=old.gitdir)
+                             bibtex=old.bibtex, filesdir=old.filesdir)
                 for name in LIBRARY_SETTINGS:
                     if name in old.explicit:
                         new.set(name, old.get(name))
                 new.set('pool', NO_POOL)  # self-contained
-                new.set('git', old.get('git'))
-                new.set('git-lfs', old.get('git-lfs'))
                 new.set('paths', 'relative' if relative else old.get('paths'))
                 print(f"  {prefix}create the library configuration {target} (paths: {new.get('paths')})")
                 if not dryrun:

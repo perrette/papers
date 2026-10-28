@@ -311,8 +311,9 @@ entries that skipped no conflict, or a push or an add when the pool had
 not changed since the previous exchange (or when it is the first
 exchange). A push that leaves the pool entry with fields or files that the
 library entry does not have does not count: `papers status` then shows the
-pool as changed until the next pull. The files are part of the git backup
-of the library (see [Git integration](git.md)).
+pool as changed until the next pull. The files are part of the history of
+the library (see [Undo and redo](undo-redo.md)), which `papers undo`
+restores with its bibtex.
 
 The files of all pools are kept: after `papers config pool PATH`, the
 library uses the file of PATH (with the origin copies of the exchanges
@@ -446,8 +447,8 @@ paper was written with. Leave `auto-push` off there, and do not pull.
 
 ## Undo in a pool
 
-A pool is a library with its own backup history (see
-[Git integration](git.md#pools-and-shallow-libraries)). `papers undo` in a
+A pool is a library with its own history (see
+[Undo and redo](undo-redo.md)). `papers undo` in a
 library undoes a change of that library only: an entry that `add` also
 added to the pool stays in the pool. To undo a change in the pool, run the
 command in the pool, e.g. `papers -C ../sealevel undo`. The origin copies

@@ -221,7 +221,7 @@ class TestPullEntries(PoolTest):
         self.assertEqual(sorted(self.bib()[1]), ['Brown_2021', 'smith2020climate'])
 
     def test_other_pool(self):
-        self.papers('init other --no-git')
+        self.papers('init other')
         Path(self.path('other', 'papers.bib')).write_text(NEW_BIB.replace(' file = {:mine.pdf:pdf},\n', ''))
         self.lib('pull --pool ../other mine2022')
         record = self.origin().get(self.entry('mine2022'), '../other')  # recorded for ../other
@@ -271,7 +271,7 @@ class TestSync(PoolTest):
         self.assertEqual(self.out('sync'), 'nothing to sync with pool ../pool')
 
     def test_nothing_shared(self):
-        self.papers('init other --no-git')
+        self.papers('init other')
         out = self.out('sync --pool ../other')
         self.assertEqual(out, 'nothing to sync with pool ../other: no entries shared with it '
                               '(`papers sync --pool ../other --all` adds the entries missing on each side)')

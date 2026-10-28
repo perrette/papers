@@ -24,7 +24,10 @@ CONFIG_FILE_LOCAL_V2 = '.papersconfig.json'
 LIBRARY_CONFIG_FILES = [CONFIG_FILE_LOCAL, CONFIG_FILE_LOCAL_V2]
 
 DATA_DIR = platformdirs.user_data_dir('papers')
+# the backups of papers 3.0.0b2 and earlier (no longer used, see papers.backup.stale_backups)
 BACKUP_DIR = os.path.join(DATA_DIR, 'backups')
+# the history of the libraries (see papers.history), unless the history-dir setting says otherwise
+HISTORY_DIR = os.path.join(DATA_DIR, 'history')
 CACHE_DIR = platformdirs.user_cache_dir('papers')
 
 # locations used by previous versions (XDG conventions on every platform),
@@ -93,12 +96,12 @@ SETTINGS = {
     'paths': ('relative', 'absolute'),
     'files': ('ask', 'move', 'copy', 'link'),
     'auto-push': 'bool',
-    'git': 'bool',
-    'git-lfs': 'bool',
     'editor': 'str',
-    'trash-days': 'int',
-    'trash-size': 'int',
     'checksums': 'bool',
+    'history-dir': 'str',
+    'history-size': 'int',
+    'history-separate': 'bool',
+    'keep-deleted-files': 'bool',
 }
 for _kind in ('name', 'key'):
     for _field in _FORMAT_FIELDS:
@@ -107,9 +110,22 @@ for _kind in ('name', 'key'):
 
 # settings that only make sense for a library
 LIBRARY_ONLY = ('bibtex', 'filesdir')
+# settings of the machine only: a library does not set them (a library
+# received from someone cannot choose where the history goes, or what it keeps;
+# history-separate and history-size may be set by a library: its own store,
+# in the folder of the machine, see papers.backup.store)
+MACHINE_ONLY = ('history-dir', 'keep-deleted-files')
 # settings of a library other than its paths: when the library does not set
 # one, the global configuration applies, except for pool (see Config.inherited)
-LIBRARY_SETTINGS = [name for name in SETTINGS if name not in LIBRARY_ONLY]
+LIBRARY_SETTINGS = [name for name in SETTINGS if name not in LIBRARY_ONLY + MACHINE_ONLY]
+# settings of papers before the history (see design/history.md): ignored
+REMOVED_SETTINGS = {
+    'git': 'papers keeps the history of the libraries without git (see `papers history`)',
+    'git-lfs': 'papers keeps the files that its commands delete in its history, without git-lfs '
+               '(see `papers history`)',
+    'trash-days': 'the history-size setting (global) limits the history, with the files it keeps',
+    'trash-size': 'the history-size setting (global) limits the history, with the files it keeps',
+}
 
 
 def default_value(name):
@@ -118,8 +134,8 @@ def default_value(name):
         return getattr(NAMEFORMAT, _attr(name))
     if name.startswith('key.'):
         return getattr(KEYFORMAT, _attr(name))
-    return {'paths': 'relative', 'files': 'move', 'auto-push': False, 'trash-days': 30, 'trash-size': 100,
-            'checksums': True, 'git': False, 'git-lfs': False, 'editor': None}.get(name)
+    return {'paths': 'relative', 'files': 'move', 'auto-push': False, 'history-size': 500,
+            'history-separate': False, 'keep-deleted-files': True, 'checksums': True, 'editor': None, 'history-dir': None}.get(name)
 
 
 def _attr(name):
@@ -142,8 +158,6 @@ def json_get(js, name):
         if js.get('absolute_paths') is not None:  # files of v2 (v2 compatibility, remove with migrate)
             return 'absolute' if js['absolute_paths'] else 'relative'
         return None
-    if name == 'git-lfs':
-        return js.get('gitlfs', js.get('backup_files'))
     return js.get(name)
 
 
@@ -160,9 +174,6 @@ def json_set(js, name, value):
         return
     if name == 'paths':
         js.pop('absolute_paths', None)
-    if name == 'git-lfs':
-        js.pop('backup_files', None)
-        name = 'gitlfs'
     if value is None:
         js.pop(name, None)
     else:
@@ -214,15 +225,25 @@ def short_home(path):
 BACKUP_DIR_LOCAL = os.path.join('.papers', 'backup')
 
 
-def gitdir_from_json(value, root):
-    """the backup directory that a library configuration of papers 3.0.0b2 or
-    earlier named (a name: a directory of the machine's backup folder; a
-    path: relative to the library), for papers.backup.adopt_central_backup"""
-    if value is None:
-        return None
-    if is_backup_name(value):
-        return os.path.join(BACKUP_DIR, value)
-    return str(Path(root).resolve() / value)
+# .papers/.gitignore: the folder holds the internals of papers, which a
+# library under git does not track (they may change between versions)
+GITIGNORE = '*\n'
+# the .gitignore that papers wrote before (the git backup in the library)
+_LEGACY_GITIGNORES = ('backup/\n',)
+
+
+def ignore_papers_folder(folder):
+    """write .papers/.gitignore (everything ignored), unless the user wrote
+    one; the one that earlier versions wrote is replaced"""
+    if os.path.basename(os.path.normpath(folder)) != '.papers':
+        return
+    path = os.path.join(folder, '.gitignore')
+    try:
+        current = open(path).read() if os.path.exists(path) else None
+        if current is None or current in _LEGACY_GITIGNORES:
+            write_atomic(path, GITIGNORE)
+    except OSError as error:
+        logger.debug(f'{path}: not written ({error})')
 
 
 def config_root(file):
@@ -414,7 +435,7 @@ class Config:
         keyformat=None,
         nameformat=None,
         editor=None,
-        gitdir=None, git=None, gitlfs=None, is_library=None, absolute_paths=None,
+        is_library=None, absolute_paths=None,
         pool=None, files=None, auto_push=None, machine=None):
         self.file = file
         # False for the global configuration of v2 (v2 compatibility, remove with migrate)
@@ -425,19 +446,14 @@ class Config:
         self.explicit = set()
         self.filesdir = filesdir
         self.bibtex = bibtex
-        # the backup directory, if not the default (see the gitdir property)
-        self._gitdir = gitdir
-        # the backup directory that the configuration file named (papers 3.0.0b2 or
-        # earlier), moved to the library by papers.backup.adopt_central_backup
-        self.legacy_gitdir = None
+        # the identifier of the library: its history (see library_id)
+        self.id = None
         self.keyformat = copy.deepcopy(keyformat) if keyformat is not None else self._inherited_format('key')
         self.nameformat = copy.deepcopy(nameformat) if nameformat is not None else self._inherited_format('name')
         self.editor = editor if editor is not None else self.inherited('editor')
         if absolute_paths is None:
             absolute_paths = self.inherited('paths') == 'absolute'
         self.absolute_paths = absolute_paths
-        self.git = git if git is not None else self.inherited('git')
-        self.gitlfs = gitlfs if gitlfs is not None else self.inherited('git-lfs')
         # the pool: a path (relative to the library), or none
         self.pool = pool if pool is not None else NO_POOL
         # what `add` does with a file: move or copy it into the files
@@ -447,39 +463,29 @@ class Config:
         # (those shared with it, and new ones; see papers.cli.common.save_entries),
         # in a shallow library only
         self.auto_push = auto_push if auto_push is not None else self.inherited('auto-push')
-        # the trash of the deleted files (see papers.journal.remove): days, megabytes
-        self.trash_days = self.inherited('trash-days')
-        self.trash_size = self.inherited('trash-size')
+        # the history of the machine (see papers.backup): where, how large, and
+        # whether it keeps the files that the commands delete
+        self.history_dir = self.inherited('history-dir')
+        self.history_size = self.inherited('history-size')
+        self.history_separate = self.inherited('history-separate')
+        self.keep_deleted_files = self.inherited('keep-deleted-files')
         # the checksums of the files that the commands touch (see papers.checksums)
         self.checksums = self.inherited('checksums')
 
-    @property
-    def gitdir(self):
-        """the backup directory: .papers/backup in the library; for a bibtex
-        without library, .papers/backup-<name of the bibtex> next to it"""
-        if self._gitdir is not None:
-            return self._gitdir
-        if self.file and self.is_library:
-            return os.path.abspath(os.path.join(config_root(self.file), BACKUP_DIR_LOCAL))
-        if self.bibtex:
-            return os.path.join(os.path.dirname(os.path.abspath(self.bibtex)),
-                                BACKUP_DIR_LOCAL + '-' + os.path.basename(self.bibtex))
-        return None
-
-    @gitdir.setter
-    def gitdir(self, value):
-        self._gitdir = value
-
-    @property
-    def previous_bibtex(self):
-        "the previous version of the bibtex, for undo without git (see papers.cli.backup_cmds.undocmd)"
-        return os.path.join(self.gitdir, 'previous.bib')
-
-    def trash(self):
-        "(directory, days, megabytes) of the trash of the library (see papers.journal), or None"
-        if not self.is_library or not self.gitdir:
-            return None
-        return os.path.join(self.gitdir, 'trash'), self.trash_days, self.trash_size  # papers.journal.TRASH_DIR
+    def library_id(self, create=True):
+        """the identifier of the library, which names its history (see
+        papers.backup); a library without one gets one (saved), unless
+        create is False"""
+        if self.id is None and create and self.file and self.is_library:
+            from papers.history import new_id  # papers.history is self-contained
+            self.id = new_id()
+            if os.path.exists(self.file) and not DRYRUN:
+                # the identifier only: the settings in memory may be those of the command
+                # (e.g. the files directory of the pool, see papers.pools.use_pool_files)
+                js = json.load(open(self.file))
+                js['id'] = self.id
+                write_atomic(self.file, json.dumps(js, sort_keys=True, indent=2, separators=(',', ': ')))
+        return self.id
 
 
     # settings by name (see SETTINGS)
@@ -508,10 +514,6 @@ class Config:
             return getattr(self.keyformat, _attr(name))
         if name == 'paths':
             return 'absolute' if self.absolute_paths else 'relative'
-        if name == 'git-lfs':
-            return bool(self.gitlfs)
-        if name == 'git':
-            return bool(self.git)
         return getattr(self, name.replace('-', '_'))
 
     def set(self, name, value):
@@ -522,8 +524,6 @@ class Config:
             setattr(self.keyformat, _attr(name), value)
         elif name == 'paths':
             self.absolute_paths = value == 'absolute'
-        elif name == 'git-lfs':
-            self.gitlfs = value
         else:
             setattr(self, name.replace('-', '_'), value)
         self.explicit.add(name)
@@ -542,6 +542,8 @@ class Config:
             return getattr(self, name) is not None
         if name == 'pool' and name in self.explicit:
             return True
+        if name in MACHINE_ONLY:
+            return False
         return self.get(name) != self.inherited(name)
 
     def source(self, name):
@@ -578,21 +580,6 @@ class Config:
         """a library with a pool: its entries link to the files of the pool
         entries, and its new entries go to the pool (see papers.pools)"""
         return bool(self.file) and self.has_pool()
-
-    @property
-    def backupfile_clean(self):
-        "copy of the bibtex with file paths relative to the backup directory (--git-lfs mode)"
-        return Path(self.gitdir)/'backup_clean.bib'
-
-    @property
-    def backupfile(self):
-        "tracked verbatim copy of the bibtex, named after it"
-        name = Path(self.bibtex).name if self.bibtex else 'library.bib'
-        if name in ('backup_clean.bib', 'previous.bib'):
-            # avoid clashing with the backup directory's own files
-            name = 'backup_' + name
-        return Path(self.gitdir)/name
-
 
     @property
     def configdir(self):
@@ -632,6 +619,8 @@ class Config:
         for name in LIBRARY_SETTINGS:
             if self.is_set(name):
                 json_set(js, name, self.get(name))
+        if self.is_library and self.id:
+            js["id"] = self.id
         if self.is_library:
             js["version"] = CONFIG_VERSION
         else:  # v2 compatibility, remove with migrate
@@ -650,6 +639,8 @@ class Config:
         if os.path.dirname(self.file):
             os.makedirs(os.path.dirname(self.file), exist_ok=True)
         write_atomic(self.file, json.dumps(self.tojson(), sort_keys=True, indent=2, separators=(',', ': ')))
+        if self.is_library:
+            ignore_papers_folder(os.path.dirname(self.file))
 
 
     @classmethod
@@ -670,16 +661,10 @@ class Config:
             is_library = os.path.basename(the_file) != os.path.basename(CONFIG_FILE)
         machine = machine if machine is not None else MachineConfig.load()
         _read_earlier_v3(js, machine, the_file)
-        gitdir = js.get('gitdir')
-        if gitdir is not None and is_library:
-            if version < 3:
-                # a path in v2 (".papers" in v2.2 to v2.4), never a name
-                gitdir = str(config_root(the_file).resolve() / gitdir)
-            else:
-                gitdir = gitdir_from_json(gitdir, config_root(the_file))
         cfg = cls(file=the_file, is_library=is_library, machine=machine,
                   bibtex=js.get('bibtex'), filesdir=js.get('filesdir'))
-        cfg.legacy_gitdir = gitdir
+        if is_library and isinstance(js.get('id'), str):
+            cfg.id = js['id']
         if not is_library and json_get(js, 'paths') is None:  # v2 compatibility, remove with migrate
             js['paths'] = 'absolute'  # default of v2 for a global configuration
         for name in LIBRARY_SETTINGS:
@@ -746,14 +731,7 @@ class Config:
             if self.file and self.shallow:
                 from papers.pools import status_line  # papers.pools imports this module
                 items.append(('pool', status_line(self, notes=[f'auto-push: {"on" if self.auto_push else "off"}'])))
-            items.append(('backup', self.backup_summary()))
-            if verbose:
-                items.append(('backup folder', short_home(str(self.gitdir))))
-            if verbose and self.trash():
-                from papers.journal import MB, trash_size  # papers.journal imports this module
-                count, size = trash_size(self.trash()[0])
-                items.append(('trash', f'{count} file{"" if count == 1 else "s"}, {size / MB:.1f} MB (kept '
-                              f'{self.trash_days} days, up to {self.trash_size} MB: undo restores them)'))
+            items.append(('history', self.history_summary(verbose)))
         if verbose:
             items.append(('configuration file', _fmt_path(self.file) if self.file and os.path.exists(self.file)
                           else bcolors.WARNING+'none'+bcolors.ENDC))
@@ -766,13 +744,15 @@ class Config:
             lines.append('`papers config` lists and sets the settings')
         return '\n'.join(lines)
 
-    def backup_summary(self):
-        "what the backup keeps (see papers.backup)"
-        if not self.git:
-            return 'previous bibtex only (git off: one undo step)'
-        if self.gitlfs:
-            return 'bibtex and files history (git + git-lfs)'
-        return 'bibtex history (git)'
+    def history_summary(self, verbose=False):
+        "the history of the library (see papers.backup), for papers status"
+        from papers.backup import project_of  # papers.backup imports this module
+        project, place = project_of(self, create=False)
+        states = len(project.states()) if project is not None else 0
+        text = f'{states} step{"" if states == 1 else "s"} (`papers history`)'
+        if verbose:
+            text += f', in {short_home(project.store.root if project else (self.history_dir or HISTORY_DIR))}'
+        return text
 
     def _files_status(self, check_files, _fmt_path):
         "where the files of the library are"

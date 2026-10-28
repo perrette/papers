@@ -1,18 +1,15 @@
-"""papers undo, redo, restore (restore-backup: deprecated), backup, git"""
-import fnmatch
+"""papers undo, redo, restore (restore-backup: deprecated), history (backup: deprecated), git (removed)"""
 import os
-import shutil
-import subprocess as sp
-import sys
+import time
 
-import papers.checksums
 import papers.config
-from papers import journal, logger
-from papers.backup import git_env, git_redo, git_restore_state, git_undo, restore_from_backupdir, run_git, _pool_dirs
+import papers.history
+from papers import backup, logger
 from papers.bib import Biblio
-from papers.config import BACKUP_DIR, BACKUP_DIR_LEGACY
 from papers.files import is_inside
-from papers.utils import PapersExit
+from papers.utils import PapersExit, stdin_is_terminal
+
+MB = backup.MB
 
 
 def _linked_files(config):
@@ -23,17 +20,15 @@ def _linked_files(config):
     return {os.path.realpath(f) for e in biblio.entries for f in biblio.get_files(e)}
 
 
-def _time_travel(config, kind, func, o):
-    """undo or redo with the git backup: say which state is restored, and
-    which files of the files directory no entry links to any more"""
+def _time_travel(config, kind, func, *args):
+    """undo, redo or restore: say which state is restored, the files that
+    moved, and which files of the files directory no entry links to any more"""
     before = _linked_files(config)
-    file_lines = []
-    target = func(config, restore_files=o.restore_files, steps=o.steps, file_lines=file_lines)
-    if target is None:  # --dry-run
+    project, target, file_lines = func(config, *args)
+    if file_lines is None:  # --dry-run
+        print(f'DRYRUN: {kind}: {config.bibtex} not restored to {backup.describe(project, target)}')
         return
-    info = run_git(config.gitdir, ["log", "-1", "--date=format:%Y-%m-%d %H:%M", "--pretty=%h %s (%ad)",
-                                   target]).stdout.strip()
-    print(f'{kind}: {os.path.basename(config.bibtex)} restored to {info}')
+    print(f'{kind}: {os.path.basename(config.bibtex)} restored to {backup.describe(project, target)}')
     if file_lines:
         print('\n'.join(file_lines))
     after = _linked_files(config)
@@ -46,103 +41,122 @@ def _time_travel(config, kind, func, o):
             print(f'  {f}')
 
 
-def redocmd(parser, o, config):
-    if config.git:
-        return _time_travel(config, 'redo', git_redo, o)
-    else:
-        undocmd(parser, o, config)
-
-
 def undocmd(parser, o, config):
-    if config.git:
-        return _time_travel(config, 'undo', git_undo, o)
+    _time_travel(config, 'undo', backup.undo, o.steps)
 
-    logger.warning("the git backup is off (`papers config git true` enables it): "
-                   "undo / redo is limited to 1 step back and forth")
-    back = config.previous_bibtex
-    if not os.path.exists(back):
-        raise PapersExit(f"nothing to {o.cmd}: no previous version of {os.path.basename(config.bibtex)} ({back})")
-    if papers.config.DRYRUN:
-        print(f'DRYRUN: {config.bibtex} not swapped with {back}')
-        return
-    # the files of the last command: moved back, or again (see papers.journal)
-    relative_to = os.path.dirname(os.path.abspath(config.bibtex))
-    file_lines, files_journal = journal.swap_last(
-        config.bibtex, config.gitdir, papers.checksums.bibtex_links(config.bibtex, relative_to),
-        papers.checksums.bibtex_links(back, relative_to), _pool_dirs(config))
-    tmp = config.bibtex + '.tmp'
-    logger.info(config.bibtex+' <==> '+back)
-    shutil.copy(config.bibtex, tmp)
-    shutil.move(back, config.bibtex)
-    shutil.move(tmp, back)
-    if files_journal is not None:
-        journal.save_swapped(config.bibtex, config.gitdir, files_journal)
-    print(f'{o.cmd}: {os.path.basename(config.bibtex)} swapped with its previous version ({back})')
-    if file_lines:
-        print('\n'.join(file_lines))
+
+def redocmd(parser, o, config):
+    _time_travel(config, 'redo', backup.redo, o.steps)
 
 
 def restorecmd(parser, o, config):
     if o.cmd == 'restore-backup':
         logger.warning('`papers restore-backup` is deprecated: use `papers restore`')
-    if not config.git:
-        raise PapersExit('restore needs the git backup: enable it with `papers config git true`')
-    if o.ref:
-        file_lines = []
-        git_restore_state(config, o.ref, restore_files=o.restore_files, file_lines=file_lines)
-        if file_lines:
-            print('\n'.join(file_lines))
-    else:
-        restore_from_backupdir(config, restore_files=o.restore_files)
+    n = o.state if o.state is not None else o.ref
+    _time_travel(config, 'restore', backup.restore, n)
 
 
-def backupcmd(parser, o, config):
-    """where the backup of the library is, and the backup folders of papers
-    3.0.0b2 and earlier that no library took (see papers.backup.adopt_central_backup)"""
-    if config.bibtex:
-        state = 'git' if config.git else 'git off: previous bibtex only'
-        print(f"backup of {papers.config.short_home(config.bibtex)}: "
-              f"{papers.config.short_home(str(config.gitdir))} ({state})")
-    left = []
-    for root in dict.fromkeys([BACKUP_DIR, BACKUP_DIR_LEGACY]):
-        if os.path.isdir(root):
-            left += [os.path.join(root, d) for d in sorted(os.listdir(root)) if os.path.isdir(os.path.join(root, d))]
-    if o.patterns:
-        left = [d for d in left if any(fnmatch.fnmatch(os.path.basename(d), p) for p in o.patterns)]
-    if o.action == 'remove' and not o.patterns:
-        parser.error('backup remove requires folder name(s) -- see `papers backup list`')
-    if not left:
+# papers history
+# ==============
+
+def _when(t):
+    return time.strftime('%Y-%m-%d %H:%M', time.localtime(t or 0))
+
+
+def _mb(size):
+    return f'{size / MB:.1f} MB'
+
+
+def remove_history(config, yes=False, id=None):
+    """remove the history of this place (and of the library, when no other
+    place uses it), or of the library `id`"""
+    if id:
+        found = [st for st in backup.all_stores(config) if id in st.project_ids()]
+        if not found:
+            raise PapersExit(f'no history of a library {id} (see `papers history --all`)')
+        project = found[0].project(id)
+        what = f'the history of the library {id} ({len(project.states())} steps)'
+        if not yes and not _confirm(f'remove {what}?'):
+            return
+        project.remove()
+        print(f'removed {what}')
+        backup.prune(config, found[0])
         return
-    if o.action == 'list':
-        print("backups of papers 3.0.0b2 and earlier (each library moves its own to .papers/backup when papers "
-              "uses it: these belong to libraries not used since; `papers backup remove NAME` removes one):")
-    for d in left:
-        print(f"* {os.path.basename(d)}: {papers.config.short_home(d)}")
-        if o.action != 'remove':
+    project, place = backup.project_of(config, create=False)
+    if project is None or not project.exists():
+        print('the library has no history')
+        return
+    others = [p for p in project.heads() if p != place]
+    if others:
+        project.remove_head(place)
+        print(f'removed the history of {papers.config.short_home(place)}; the history of the library stays '
+              f'for the other folder(s) that use it: {", ".join(papers.config.short_home(p) for p in others)}')
+        return
+    what = f'the history of the library ({len(project.states())} steps)'
+    if not yes and not _confirm(f'remove {what}?'):
+        return
+    project.remove()
+    print(f'removed {what}')
+
+
+def _confirm(question):
+    if not stdin_is_terminal():
+        raise PapersExit(f'{question} no terminal to confirm: -y/--yes removes without asking')
+    return input(f'{question} [y/N] ').strip().lower() in ('y', 'yes')
+
+
+def _show_all(config):
+    for st in backup.all_stores(config):
+        ids = st.project_ids()
+        if not ids:
             continue
-        if not o.yes and input(f"remove {d} ? [y/N] ").lower() != 'y':
-            continue
-        shutil.rmtree(d)
-        print(f"removed {d}")
+        sizes = st._sizes()
+        refs = {}
+        for id in ids:
+            for state in st.project(id).states().values():
+                for ref in papers.history._refs(state):
+                    refs.setdefault(ref, set()).add(id)
+        print(f'{papers.config.short_home(st.root)}: {_mb(st.size())}')
+        for id in ids:
+            project = st.project(id)
+            own = sum(sizes[r][1] for r, users in refs.items() if users == {id} and r in sizes)
+            heads = project.heads()
+            last = max(heads.items(), key=lambda h: h[1].get('time', 0))[0] if heads else None
+            print(f'* {id}: {len(project.states())} steps, {_mb(own)} of its own'
+                  + (f', last used at {papers.config.short_home(last)}' if last else ''))
+
+
+def historycmd(parser, o, config):
+    if o.cmd == 'backup':
+        logger.warning('`papers backup` is deprecated: use `papers history`')
+    if o.remove is not None:
+        return remove_history(config, yes=o.yes, id=o.remove or None)
+    if o.all:
+        return _show_all(config)
+    project, place = backup.project_of(config, create=False) if config.bibtex else (None, None)
+    head = project.head(place) if project else None
+    if head is None:
+        print('no history yet: each command that changes the library records a step'
+              if config.bibtex else 'no library: `papers history --all` lists the histories of the machine')
+    else:
+        line = project.line(head['state'])
+        shown = line if not o.n else line[:o.n]
+        for n in reversed(head['redo']):
+            print(f'  {backup.describe(project, n)}  (undone: `papers redo`)')
+        for n in shown:
+            print(f'{">" if n == head["state"] else " "} {backup.describe(project, n)}')
+        if len(line) > len(shown):
+            print(f'  ... {len(line) - len(shown)} older step(s) (-n 0 shows them all)')
+    st = project.store if project else backup.store(config)
+    size = backup.history_size(config, st)
+    limit = f'up to {size} MB' if size else 'no limit'
+    print(f'history: {papers.config.short_home(st.root)}, {_mb(st.size())} ({limit}: the history-size setting; '
+          f'deleted files {"kept" if config.keep_deleted_files else "not kept: keep-deleted-files false"})')
+    for path, size in backup.stale_backups(config):
+        print(f'stale: {papers.config.short_home(path)} (backup of an earlier papers, {_mb(size)}, '
+              f'no longer used) — delete with: rm -rf {papers.config.short_home(path)}')
 
 
 def gitcmd(parser, o, config):
-    """run git in the backup directory. git prints its own errors (on the
-    standard error), and papers exits with git's exit code"""
-    if config.file is None:
-        raise PapersExit('papers git runs git in the backup directory of a library, and no library was found')
-    if not config.gitdir or not os.path.isdir(config.gitdir):
-        raise PapersExit('the library has no git backup: enable it with `papers config git true`')
-    try:
-        result = sp.run(['git']+o.gitargs, cwd=config.gitdir, stdout=sp.PIPE, env=git_env(config.gitdir))
-    except OSError as error:
-        raise PapersExit(f'failed to run git: {error}')
-    # git's output as is: it may be binary (e.g. `papers git show HEAD:files/a.pdf`)
-    if hasattr(sys.stdout, 'buffer'):
-        sys.stdout.flush()
-        sys.stdout.buffer.write(result.stdout)
-        sys.stdout.buffer.flush()
-    else:
-        print(result.stdout.decode(errors='replace'), end='')
-    if result.returncode != 0:
-        raise SystemExit(result.returncode)
+    raise PapersExit('`papers git` is removed: papers keeps the history of the libraries without git '
+                     '(`papers history`); to keep a library under git, run git in its folder')

@@ -433,7 +433,7 @@ class TestReviewRequiredKeepsDoi(BibTest):
  doi = {not a doi}
 }
 """)
-            paperscmd(f'list --review-required --add-keywords checked --bibtex {bib} --no-git')
+            paperscmd(f'list --review-required --add-keywords checked --bibtex {bib}')
             text = open(bib).read()
         self.assertIn('doi = {not a doi}', text)
         self.assertIn('checked', text)
