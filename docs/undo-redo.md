@@ -62,7 +62,9 @@ after it, and now:
 
 - an entry that the step added is removed, unless it changed since (it is
   kept, and a line says so);
-- an entry that the step removed comes back as it was;
+- an entry that the step removed comes back as it was, unless the library
+  has an entry with its key now (or with its key among its former keys):
+  that entry stays, and a line says so when it is not the removed one;
 - a field that the step changed goes back to its value before the step,
   unless it changed since: then it is a conflict, decided as for
   [`papers pull`](pools.md#papers-pull), with `--on-duplicate` (`keep`: the

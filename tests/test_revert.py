@@ -121,6 +121,16 @@ class TestRevertEntries(RevertTest):
         self.assertIn('two2001', self.entries())
         self.assertEqual(self.field('one2000', 'keywords'), 'later')
 
+    def test_removed_entry_whose_key_is_taken(self):
+        self.lib('rm two2001')
+        n = self.step()
+        Path(self.path('b.bib')).write_text(entry('two2001').replace('Title of two2001', 'Another paper'))
+        self.lib('add ../b.bib')
+        out = self.out(f'history --revert {n}')
+        self.assertIn('two2001: removed by step', out)
+        self.assertIn('has its key now: not added', out)
+        self.assertEqual(self.field('two2001', 'title'), 'Another paper')
+
     def test_key(self):
         self.lib('edit one2000 --key first2000 --keep-old-key')
         n = self.step()
