@@ -77,9 +77,21 @@ DEPRECATED_COMMANDS = ('install', 'uninstall', 'filecheck', 'doi', 'restore-back
 
 
 def _hide_commands(subparsers, names):
-    "leave the commands `names` out of the usage and the list of commands of the help"
-    subparsers.metavar = '{' + ','.join(n for n in subparsers.choices if n not in names) + '}'
+    """leave the commands `names` out of the usage, the list of commands of
+    the help, and the error of an unknown command (see _Parser)"""
+    subparsers.visible = [n for n in subparsers.choices if n not in names]
+    subparsers.metavar = '{' + ','.join(subparsers.visible) + '}'
     subparsers._choices_actions = [a for a in subparsers._choices_actions if a.dest not in names]
+
+
+class _Parser(argparse.ArgumentParser):
+    "an unknown command is an error that names the commands of the help only (see _hide_commands)"
+
+    def _check_value(self, action, value):
+        visible = getattr(action, 'visible', None)
+        if visible is not None and value not in action.choices:
+            raise argparse.ArgumentError(None, f'unknown command {value!r} (commands: {", ".join(visible)})')
+        super()._check_value(action, value)
 
 
 def _default(value):
@@ -174,7 +186,7 @@ def get_parser(config=None):
     if config is None:
         config = papers.config.Config()
 
-    parser = argparse.ArgumentParser(prog='papers', description='library management tool')
+    parser = _Parser(prog='papers', description='library management tool')
     parser.add_argument('--version', action='store_true', help='Print version string and exit.')
     parser.add_argument('-C', metavar='DIR', dest='directory',
         help='run as if papers was started in DIR (before the command name)')
@@ -990,4 +1002,5 @@ def get_parser(config=None):
         _command(historyp, historycmd)
 
     _hide_commands(subparsers, DEPRECATED_COMMANDS)
+    _hide_commands(filesub, ())  # the same error for an unknown subcommand
     return parser, subparsers

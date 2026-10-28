@@ -4,8 +4,10 @@ of add, the list options replaced by --duplicates --by, and the options and
 commands renamed in v3 (-a of add, -f of list, -f/--force of check and
 backup, --no-prompt/--force of install, restore-backup, doi). To remove with
 them in v4 (the tests of papers install are in test_install.py)."""
+import io
 import os
 import unittest
+from contextlib import redirect_stderr
 import shutil
 import tempfile
 from pathlib import Path
@@ -355,6 +357,18 @@ class TestHiddenFromTheHelp(unittest.TestCase):
         self.assertIn('undo', usage)
         # still commands: their own help says what to use instead
         self.assertIn('deprecated', self.help('doi'))
+
+    def test_unknown_command(self):
+        from papers.cli.parser import DEPRECATED_COMMANDS, get_parser
+        from papers.config import Config
+        parser, _ = get_parser(Config())
+        err = io.StringIO()
+        with redirect_stderr(err), self.assertRaises(SystemExit):
+            parser.parse_args(['pool'])
+        message = err.getvalue().strip().splitlines()[-1]
+        self.assertRegex(message, r"^papers: error: unknown command 'pool' \(commands: status, init, ")
+        for name in DEPRECATED_COMMANDS:
+            self.assertNotRegex(message, rf'\b{name}\b')
 
     def test_options(self):
         for cmd, options in [('add', ['--attachment', '--mode', '--no-merge-files', '--relative-paths', '--no-git']),
