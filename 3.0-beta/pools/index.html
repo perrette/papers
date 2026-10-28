@@ -1102,9 +1102,11 @@ shared with a coauthor (see
 <li><code>papers push</code> updates the entries shared with the pool, and adds the
   entries named, or all of them with <code>--all</code>;</li>
 <li><code>papers sync</code> does both;</li>
-<li><code>papers status</code> (pool of a shallow library) and <code>papers pull --check</code>
-  tell whether the pool changed since the last exchange with it: <code>up to
-  date</code>, or <code>changed since last pull or push</code>;</li>
+<li><code>papers status</code> (shallow library) tells how the library stands with its
+  pool: <code>in sync</code>, <code>pool changed</code>, <code>library changed</code> or <code>both changed</code>, and
+  which command shows and exchanges the changes (see
+  <a href="../configuration/#pools">Configuration</a>);
+  <code>papers pull --check</code> lists the entries that the pool changed;</li>
 <li><code>papers file fix</code> relinks the broken links to the files of the pool entry
   of the same paper (<code>papers file fix --pool PATH</code> also looks in PATH, which
   may have a pool itself; nothing changes in PATH and no origin copy is

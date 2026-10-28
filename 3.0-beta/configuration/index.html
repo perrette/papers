@@ -1027,8 +1027,7 @@ missing, with its parents):</p>
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>created the library ~/projects/sealevel
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>* bibtex:  papers.bib
 <a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>* files:   files (the files directory of the library)
-<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>* history: undo and redo (`papers history`)
-<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>`papers config` lists and sets the settings
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>`papers config` lists and sets the settings
 </code></pre></div>
 <p>By default the library is self-contained (no pool), the bibtex is
 <code>papers.bib</code> (or the first <code>.bib</code> file present in the directory) and the
@@ -1056,8 +1055,8 @@ file in its directory or above), the settings of that library apply.</p>
 configuration sets one (see <a href="../global-library/">A global shared library</a>),
 and otherwise fail: <code>no library found here: papers init</code>.</p>
 <p>Type <code>papers status</code> to see which library a command acts on: where its
-bibtex and its files are, its pool and its history. <code>papers status -v</code> also
-shows where the history is, the configuration file, the cache directory and
+bibtex and its files are, and how it stands with its pool. <code>papers status -v</code> also
+shows the number of steps of its history, the configuration file, the cache directory and
 the version. <code>papers config</code> lists the settings and where each one comes from.</p>
 <h2 id="settings">Settings<a class="headerlink" href="#settings" title="Permanent link">&para;</a></h2>
 <p><code>papers config</code> gets and sets the settings, in the style of <code>git config</code>:</p>
@@ -1221,10 +1220,23 @@ links of a shallow library point into your own pool.</p>
 </code></pre></div>
 <p><code>papers status</code> shows where the files of the library are: its files
 directory (self-contained library), or in the pool (shallow library). For
-a shallow library, it also shows the pool: its path, whether it is
-missing or is not a library, whether it changed since the last exchange
-with it, and the <code>auto-push</code> setting, e.g.
-<code>* pool:   ../sealevel (up to date, auto-push: off)</code>.</p>
+a shallow library, it also shows the pool: its path, and how the library
+stands with it:</p>
+<ul>
+<li><code>in sync</code>: the entries exchanged with the pool are the same on both
+  sides;</li>
+<li><code>pool changed</code>: the pool has changes to take, and the last line of
+  <code>papers status</code> says how: <code>`papers pull --dry-run` shows the changes,
+  `papers pull` takes them</code>;</li>
+<li><code>library changed</code>: the library has changes to send (<code>papers push</code>), e.g.
+  made in an editor, or with <code>auto-push</code> off;</li>
+<li><code>both changed</code>: both (<code>papers sync</code>);</li>
+<li><code>not pulled from yet</code>, <code>missing</code>, <code>not a library</code>.</li>
+</ul>
+<p>papers compares the entries, not only the files: a pool that changed in
+entries the library does not have, or the same change made on both sides,
+is in sync. <code>papers status -v</code> also shows the number of steps of the
+history of the library (see <a href="../undo-redo/">Undo and redo</a>).</p>
 <h2 id="relative-versus-absolute-paths">Relative versus absolute paths<a class="headerlink" href="#relative-versus-absolute-paths" title="Permanent link">&para;</a></h2>
 <p>The file links in the bibtex are relative to the bibtex directory by default,
 so that a library folder can be moved or shared with its files. Set
