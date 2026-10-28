@@ -323,7 +323,8 @@ def get_parser(config=None):
     configp.add_argument('--unset', metavar='KEY', help='remove the setting: the global or default value applies again (pool: none)')
     configp.add_argument('--prune', action='store_true',
         help='remove from the library configuration file the settings equal to their global or default value '
-             '(papers also leaves them out each time it saves the file)')
+             '(they follow it from then on); a setting given explicitly (`papers init`, `papers config NAME '
+             'VALUE`) is kept in the file, even with the default value')
     configp.add_argument('--global', action='store_true', dest='is_global',
         help=f'the global configuration, per user ({_default(papers.config.MACHINE_CONFIG_FILE)}), instead of '
              'the library\'s: the default library, and the default settings of the libraries')

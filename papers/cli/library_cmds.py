@@ -359,8 +359,10 @@ def _prune(config):
     if config.origin == 'v2-global':
         raise PapersExit(f"{config.file} is the global configuration of papers v2: run `papers migrate` first")
     before = json.load(open(config.file))
-    after = config.tojson()
-    removed = [name for name in SETTINGS if json_get(before, name) is not None and json_get(after, name) is None]
+    removed = [name for name in SETTINGS if name not in ('bibtex', 'filesdir', 'pool')
+               and json_get(before, name) is not None and config.get(name) == config.inherited(name)]
+    for name in removed:
+        config.unset(name)
     # the settings of papers before the history (git, git-lfs, trash-days...), no longer used
     removed += [name for name in ('git', 'gitlfs', 'backup_files', 'gitdir', 'trash-days', 'trash-size')
                 if name in before]

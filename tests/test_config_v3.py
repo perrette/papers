@@ -177,7 +177,7 @@ class TestInit(ConfigTest):
         self.assertEqual(js['pool'], 'none')  # self-contained
         self.assertNotIn('local', js)
         # the default values are not saved
-        self.assertNotIn('paths', js)
+        self.assertEqual(js['paths'], 'relative')  # set by init: the library keeps its links as they are
         self.assertNotIn('git', js)
         self.assertNotIn('nameformat', js)
         self.assertTrue(os.path.isfile(self.path('papers.bib')))
@@ -208,7 +208,7 @@ class TestInit(ConfigTest):
         js = self.json()
         # the values of the global configuration are not saved: the library inherits them
         self.assertNotIn('checksums', js)
-        self.assertNotIn('paths', js)
+        self.assertEqual(js['paths'], 'absolute')  # set by init, from the global setting
         config = Config.load(self.path(CONFIG_FILE_LOCAL))
         self.assertFalse(config.checksums)
         self.assertEqual(config.get('paths'), 'absolute')
@@ -380,12 +380,16 @@ class TestConfigCommand(ConfigTest):
     def get(self, cmd):
         return self.papers('config ' + cmd, sp_cmd='check_output')
 
-    def test_default_values_not_saved(self):
-        self.papers('config name.template "{author}_{year}"')
+    def test_explicit_values_saved(self):
+        # a value given explicitly is saved, even the default one; --unset makes it inherited again
         self.papers(f'config name.template "{papers.filename.NAMEFORMAT.template}"')
+        self.assertEqual(self.json()['nameformat'], {'template': papers.filename.NAMEFORMAT.template})
+        self.papers('config --unset name.template')
         self.assertNotIn('nameformat', self.json())
-        self.papers('config paths relative')
+        self.papers('config --unset paths')
         self.assertNotIn('paths', self.json())
+        self.papers('config paths relative')
+        self.assertEqual(self.json()['paths'], 'relative')
 
     def test_prune(self):
         # a file that holds default values (written by earlier builds)
@@ -394,7 +398,7 @@ class TestConfigCommand(ConfigTest):
         js['checksums'] = True
         js['keyformat'] = {'author_num': papers.filename.KEYFORMAT.author_num, 'template': '{author}'}
         Path(self.path(CONFIG_FILE_LOCAL)).write_text(json.dumps(js))
-        self.assertRegex(self.get(''), r'\nchecksums += true  \(default\)\n')
+        self.assertRegex(self.get(''), r'\nchecksums += true  \(library\)\n')
         out = self.get('--prune')
         self.assertIn('checksums', out)
         self.assertIn('key.author-num', out)
@@ -547,7 +551,7 @@ class TestMigrateV2Global(ConfigTest):
 
     def test_migrate_relative(self):
         self.papers('migrate --relative')
-        self.assertNotIn('paths', self.json('lib'))  # relative, the default
+        self.assertEqual(self.json('lib')['paths'], 'relative')
         biblio = Biblio.load(self.path('lib', 'lib.bib'), '')
         self.assertEqual(biblio.entries[0]['file'], ':a.pdf:pdf')
 
