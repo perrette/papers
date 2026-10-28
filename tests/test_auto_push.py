@@ -234,7 +234,7 @@ class TestShallowAutoPush(ExchangeTest):
         self.lib('config pool ../pool -y')
 
     def test_status(self):
-        self.assertIn('* pool:    ../pool (up to date, auto-push: off)', self.out('status'))
+        self.assertIn('* pool:   ../pool (in sync)', self.out('status'))
 
     def test_add_new_entry_goes_to_the_pool(self):
         # files mode link: the PDF stays where it is, the library and the pool entry link it there
@@ -419,7 +419,7 @@ class TestShallowSharedLinks(ExchangeTest):
         return sorted(os.listdir(self.path('pool', 'files')))
 
     def test_status(self):
-        self.assertIn('* files:   in the pool, ', self.out('status'))
+        self.assertIn('* files:  in the pool, ', self.out('status'))
         self.assertEqual(self.out('config files').strip(), 'link')
 
     def test_add_link_mode_entry_new_to_the_pool(self):

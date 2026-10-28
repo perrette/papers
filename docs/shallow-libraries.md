@@ -234,7 +234,6 @@ $ papers init ~/Documents/papers/sealevel
 created the library ~/Documents/papers/sealevel
 * bibtex:  papers.bib
 * files:   files (the files directory of the library)
-* history: undo and redo (`papers history`)
 `papers config` lists and sets the settings
 $ papers init ~/Documents/papers/arctic
 created the library ~/Documents/papers/arctic
@@ -244,7 +243,6 @@ created the library ~/projects/thesis
 * bibtex:  papers.bib
 * files:   in the pool (shallow library)
 * pool:    ~/Documents/papers/sealevel
-* history: undo and redo (`papers history`)
 `papers config` lists and sets the settings
 $ papers init ~/projects/arctic-paper --pool ~/Documents/papers/arctic
 created the library ~/projects/arctic-paper
@@ -306,8 +304,8 @@ The paper project gets the change from its own pool:
 $ cd ~/projects/arctic-paper
 $ papers status
 ...
-* pool:               ~/Documents/papers/arctic (changed since last pull or push)
-...
+* pool:    ~/Documents/papers/arctic (pool changed)
+`papers pull --dry-run` shows the changes, `papers pull` takes them
 $ papers pull
 Modified -> perrette_yool2011: Near-ubiquity of ice-edge blooms in the Arctic (doi:10.5194/bg-8-515-2011, file:1, blooms) [from pool ~/Documents/papers/arctic]
 ```

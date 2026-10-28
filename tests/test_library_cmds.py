@@ -84,7 +84,6 @@ class TestInitSummary(ConfigTest):
             f'created the library {papers.config.short_home(self.path("lib"))}',
             '* bibtex:  papers.bib',
             '* files:   files (the files directory of the library)',
-            '* history: undo and redo (`papers history`)',
             '`papers config` lists and sets the settings'])
         self.assertEqual(self.json('lib')['pool'], 'none')
         self.assertNotIn('local', self.json('lib'))
@@ -93,7 +92,7 @@ class TestInitSummary(ConfigTest):
         self.papers('init pool')
         out = self.papers('init lib --pool ../pool', sp_cmd='check_output')
         self.assertIn('* files:   in the pool (shallow library)\n* pool:    ../pool\n', out)
-        self.assertIn('* history: undo and redo', out)
+        self.assertNotIn('* history:', out)
         self.assertEqual(self.json('lib')['pool'], '../pool')
         self.assertNotIn('local', self.json('lib'))
 

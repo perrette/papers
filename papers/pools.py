@@ -1513,26 +1513,92 @@ def pool_files_dir(config):
     return pool.filesdir if pool is not None else None
 
 
-def status_line(config, notes=()):
-    """the pool of a library in `papers status`: its path (or none: the
-    library is self-contained), whether it exists, and changed since the
-    last exchange; then `notes`"""
+def status_line(config):
+    """the pool of a library in `papers status`: its path, and how it stands
+    with the library (see exchange_state); and the hint for the last line
+    of `papers status`, or None"""
     path = config.pool_path()
     if path is None:
-        return 'none'
+        return 'none', None
     pools = Pools(config)
     text = config.pool_label()
-    extra, notes = list(notes), []
+    hint = None
     if pools._is_self(path):
-        notes.append('this library: it has no pool')
+        note = 'this library: it has no pool'
     elif not os.path.exists(path):
-        notes.append(bcolors.WARNING + 'missing' + bcolors.ENDC)
+        note = bcolors.WARNING + 'missing' + bcolors.ENDC
     else:
         try:
-            origin = Origin.for_bibtex(config.bibtex) if config.bibtex else Origin()
-            pools.set_known_ids(set(origin.entries) | set(origin.pulls))
-            notes.append(pool_state(origin, pools.resolve(path)))
+            note, hint = exchange_state(config, pools, path)
         except PoolError:
-            notes.append(bcolors.WARNING + 'not a library' + bcolors.ENDC)
-    notes.extend(extra)
-    return text + (f' ({", ".join(notes)})' if notes else '')
+            note = bcolors.WARNING + 'not a library' + bcolors.ENDC
+    return f'{text} ({note})', hint
+
+
+# the hint of `papers status` for each state of a library and its pool
+_HINTS = {
+    'pool changed': '`papers pull --dry-run` shows the changes, `papers pull` takes them',
+    'library changed': '`papers push --dry-run` shows the changes, `papers push` sends them',
+    'both changed': '`papers sync --dry-run` shows the changes, `papers sync` exchanges them',
+    'not pulled from yet': '`papers pull` takes the entries shared with the pool',
+    'never pulled': '`papers pull` takes the changes of the pool',
+}
+
+
+def _fields(e):
+    "the fields of an entry that an exchange compares (not the file links, nor the records of papers)"
+    return {k.lower(): v.value for k, v in e.fields_dict.items()
+            if k.lower() not in ('file', 'ids') and not k.lower().startswith('papers-')}
+
+
+def exchange_state(config, pools, path):
+    """how a library stands with its pool, for `papers status`: 'in sync',
+    'pool changed', 'library changed' or 'both changed' (an entry exchanged
+    with the pool differs from its origin copy on that side, as a pull or a
+    push would find it), or not exchanged yet; and the hint of the state.
+    A pool whose file changed without any difference for the library (e.g.
+    the same change on both sides, or entries of other libraries) is in
+    sync: its modification time is recorded, as by a pull."""
+    origin = Origin.for_bibtex(config.bibtex) if config.bibtex else Origin()
+    pools.set_known_ids(set(origin.entries) | set(origin.pulls))
+    pool = pools.resolve(path)
+    first = pool_state(origin, pool)
+    if first in ('not pulled from yet', 'never pulled'):
+        return first, _HINTS[first]
+    if not config.bibtex or not os.path.exists(config.bibtex):
+        return 'in sync', None
+    biblio = Biblio.load(config.bibtex, config.filesdir)
+    moved = origin.pulled(pool.id) != pool.bibtex_mtime()
+    exchange = Exchange(config, biblio, pools, origin=origin)
+    pool_changed = library_changed = False
+    for e in biblio.entries:
+        record = origin.get(e, pool.id)
+        if record is None:
+            continue
+        if not moved and _fields(e) == _fields(record.entry):
+            continue  # neither side changed (the pool file did not change)
+        pe, record = exchange.pool_entry(e, pool)
+        if pe is None:
+            pool_changed = True  # removed from the pool
+            continue
+        incoming = exchange_copy(pe, pool.biblio, biblio)
+        pulled = Merge([e, incoming], relative_to=biblio.relative_to, exchange=True, base=record.entry)
+        if pulled.conflicts:
+            pool_changed = library_changed = True
+        elif pulled.additions or pulled.new_files or exchange.pool_removed(e, pe, record, pool):
+            pool_changed = True
+        outgoing = exchange_copy(e, biblio, pool.biblio, key=pe.key)
+        pushed = Merge([pe, outgoing], relative_to=pool.biblio.relative_to, exchange=True,
+                       base=_rekey(record.entry, pe.key))
+        if pushed.conflicts or pushed.additions or pushed.new_files:
+            library_changed = True
+        if pool_changed and library_changed:
+            break
+    if pool_changed or library_changed:
+        state = 'both changed' if pool_changed and library_changed else (
+            'pool changed' if pool_changed else 'library changed')
+        return state, _HINTS[state]
+    if moved and not papers.config.DRYRUN:
+        origin.set_pulled(pool.id, pool.bibtex_mtime())
+        origin.save()
+    return 'in sync', None

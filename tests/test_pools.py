@@ -190,7 +190,7 @@ class TestResolution(PoolTest):
         self.assertEqual(self.out('config pool'), 'none')
         self.assertRegex(self.out('config'), r'\npool += none  \(default\)\n')
         out = self.out('status')
-        self.assertIn('* files:   files (the files directory of the library', out)
+        self.assertIn('* files:  files (the files directory of the library', out)
         self.assertNotIn('* pool:', out)  # self-contained: no pool line
         self.assertNotIn('* pool:', self.out('status -v'))
         # no lookups in the default library: the entry is added as it is, not taken from there
@@ -588,7 +588,9 @@ class TestPull(PoolTest):
         self.assertIn('changed since last pull or push', self.state())  # the skip is not a pull
         # a shallow library: status says it too
         self.lib('config pool ../pool -y')
-        self.assertIn('changed since last pull or push', self.out('status'))
+        out = self.out('status')
+        self.assertIn('../pool (both changed)', out)  # the conflict: changed on both sides
+        self.assertIn('`papers sync --dry-run` shows the changes', out)
 
     def test_conflict_ask(self):
         self.conflict()
@@ -931,7 +933,7 @@ class TestStatus(PoolTest):
 
     def test_status(self):
         out = self.out('status')
-        self.assertIn('* files:   files (the files directory of the library', out)
+        self.assertIn('* files:  files (the files directory of the library', out)
         self.assertNotIn('* pool:', out)
         self.assertNotIn('* library:', out)
         self.assertNotIn('* pool:', self.out('status -v'))
@@ -940,11 +942,12 @@ class TestStatus(PoolTest):
         self.lib('config pool ../pool -y')
         out = self.out('status')
         self.assertNotIn('* library:', out)
-        self.assertIn('* pool:    ../pool (not pulled from yet, auto-push: off)', out)
-        self.assertIn(f'* files:   in the pool, {self.path("pool", "files")}\n', out)
+        self.assertIn('* pool:   ../pool (not pulled from yet)', out)
+        self.assertIn(f'* files:  in the pool, {self.path("pool", "files")}\n', out)
         self.assertNotIn('files mode', out)  # a setting: `papers config`
+        self.assertTrue(out.endswith('`papers pull` takes the entries shared with the pool'))
         self.lib('config auto-push true')
-        self.assertIn('* pool:    ../pool (not pulled from yet, auto-push: on)', self.out('status'))
+        self.assertNotIn('auto-push', self.out('status'))  # a setting: `papers config`
         self.lib('config pool none')
         out = self.out('status')
         self.assertNotIn('* pool:', out)
@@ -955,6 +958,58 @@ class TestStatus(PoolTest):
                          ['* bibtex', '* files', '* history', '* configuration file', '* cache directory',
                           '* version'])
         self.assertEqual(lines[-1], '`papers config` lists and sets the settings')
+
+    def shallow_with_smith(self):
+        "a shallow library that took smith2020climate from its pool, auto-push off"
+        self.lib('config pool ../pool -y')
+        self.take_smith()
+        self.assertIn('../pool (in sync)', self.out('status'))
+
+    def pool_line(self):
+        out = self.out('status')
+        return next(line for line in out.splitlines() if line.startswith('* pool:')), out.splitlines()[-1]
+
+    def test_pool_changed(self):
+        self.shallow_with_smith()
+        self.edit_pool('journal = {Nat.}', 'journal = {Nature}')
+        line, hint = self.pool_line()
+        self.assertTrue(line.endswith('../pool (pool changed)'), line)
+        self.assertEqual(hint, '`papers pull --dry-run` shows the changes, `papers pull` takes them')
+        self.lib('pull')
+        self.assertTrue(self.pool_line()[0].endswith('(in sync)'))
+
+    def test_library_changed(self):
+        self.shallow_with_smith()
+        self.edit_lib('journal = {Nat.}', 'journal = {Nature}')  # e.g. in an editor
+        line, hint = self.pool_line()
+        self.assertTrue(line.endswith('../pool (library changed)'), line)
+        self.assertEqual(hint, '`papers push --dry-run` shows the changes, `papers push` sends them')
+        self.lib('push')
+        self.assertTrue(self.pool_line()[0].endswith('(in sync)'))
+
+    def test_both_changed(self):
+        self.shallow_with_smith()
+        self.edit_lib('journal = {Nat.}', 'journal = {Nature}')
+        self.edit_pool('title = {Climate sensitivity revisited}', 'title = {Climate sensitivity, revisited}')
+        line, hint = self.pool_line()
+        self.assertTrue(line.endswith('../pool (both changed)'), line)
+        self.assertEqual(hint, '`papers sync --dry-run` shows the changes, `papers sync` exchanges them')
+
+    def test_same_change_on_both_sides(self):
+        # the pool file changed, but the entry is the same on both sides: in sync, and recorded silently
+        self.shallow_with_smith()
+        self.edit_lib('journal = {Nat.}', 'journal = {Nature}')
+        self.edit_pool('journal = {Nat.}', 'journal = {Nature}')
+        line, hint = self.pool_line()
+        self.assertTrue(line.endswith('../pool (in sync)'), line)
+        self.assertEqual(hint, '`papers config` lists and sets the settings')
+        self.assertIn('up to date', self.state())  # the modification time of the pool is recorded
+
+    def test_other_entries_of_the_pool(self):
+        # a change of the pool that does not concern the library
+        self.shallow_with_smith()
+        self.edit_pool('@article{', '@article{other2024,\n title = {Another}\n}\n\n@article{', )
+        self.assertTrue(self.pool_line()[0].endswith('(in sync)'))
 
     def test_after_add_from_pool(self):
         # the first exchange with the pool counts as a pull
@@ -1031,7 +1086,7 @@ class TestStatus(PoolTest):
         Path(self.path('mine.pdf')).write_text('mine')
         self.papers('add ../new.bib', cwd=self.path('other'))
         out = self.papers('status', cwd=self.path('other'), sp_cmd='check_output')
-        self.assertIn('* pool:    ../pool (up to date, auto-push: off)', out)
+        self.assertIn('* pool:   ../pool (in sync)', out)
 
     def test_missing_pool(self):
         self.lib('config pool ../pool -y')
@@ -1107,7 +1162,7 @@ class TestConfigPoolSelfContained(OwnFilesTest):
         self.assertEqual(os.listdir(self.path('lib', 'files')), [])
         self.assertEqual(Path(self.path('pool', 'papers.bib')).read_text(), pool_text)
         self.assertIn('the library is now shallow', out)
-        self.assertIn(f'* files:   in the pool, {self.path("pool", "files")}\n', self.out('status'))
+        self.assertIn(f'* files:  in the pool, {self.path("pool", "files")}\n', self.out('status'))
         # the origin records of the exchanges with --pool ../pool are those of the pool
         self.assertIn('nothing to push to pool ../pool', self.out('push'))
 
@@ -1243,11 +1298,11 @@ class TestConfigPoolSelfContained(OwnFilesTest):
         self.papers('init other --pool ../pool')
         self.assertFalse(os.path.exists(self.path('other', 'files')))
         out = self.papers('status', cwd=self.path('other'), sp_cmd='check_output')
-        self.assertIn(f'* files:   in the pool, {self.path("pool", "files")}\n', out)
+        self.assertIn(f'* files:  in the pool, {self.path("pool", "files")}\n', out)
         self.assertNotIn('files directory', out)
         self.papers('init fourth')
         self.assertTrue(os.path.isdir(self.path('fourth', 'files')))
-        self.assertIn('* files:   files (the files directory of the library, empty)',
+        self.assertIn('* files:  files (the files directory of the library, empty)',
                       self.papers('status', cwd=self.path('fourth'), sp_cmd='check_output'))
         # the files of the pool are copied into it when the library becomes self-contained
         Path(self.path('smith.bib')).write_text(SMITH_BIB)

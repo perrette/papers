@@ -706,9 +706,9 @@ class Config:
 
     def status(self, check_files=False, verbose=False):
         """`papers status`: where the library, its bibtex and its files are,
-        its pool and its backup (-v: also the backup folder, the
-        configuration file, the cache and the version). `papers config` lists the
-        settings."""
+        and how it stands with its pool, with a hint of what to do about it
+        on the last line (-v: also its history, the configuration file, the
+        cache and the version). `papers config` lists the settings."""
 
         def _fmt_path(p):
             if self.is_library:
@@ -726,13 +726,16 @@ class Config:
             status = bcolors.WARNING+"(no library found: create one with `papers init`)"+bcolors.ENDC
         header = [bcolors.BOLD+f'papers library: {status}'.rstrip()+bcolors.ENDC]
         items = []  # (label, value), aligned
+        hint = None
         if self.file is not None or self.bibtex is not None:
             items.append(('bibtex', self._bibtex_status(check_files, _fmt_path)))
             items.append(('files', self._files_status(check_files, _fmt_path)))
             if self.file and self.shallow:
                 from papers.pools import status_line  # papers.pools imports this module
-                items.append(('pool', status_line(self, notes=[f'auto-push: {"on" if self.auto_push else "off"}'])))
-            items.append(('history', self.history_summary(verbose)))
+                pool, hint = status_line(self)
+                items.append(('pool', pool))
+            if verbose:
+                items.append(('history', self.history_summary()))
         if verbose:
             items.append(('configuration file', _fmt_path(self.file) if self.file and os.path.exists(self.file)
                           else bcolors.WARNING+'none'+bcolors.ENDC))
@@ -741,19 +744,18 @@ class Config:
 
         width = max(len(label) for label, _ in items) + 1 if items else 0
         lines = header + [f'* {(label + ":").ljust(width)} {value}' for label, value in items]
-        if self.file:
+        if hint:
+            lines.append(hint)
+        elif self.file:
             lines.append('`papers config` lists and sets the settings')
         return '\n'.join(lines)
 
-    def history_summary(self, verbose=False):
-        "the history of the library (see papers.backup), for papers status"
+    def history_summary(self):
+        "the history of the library (see papers.backup), for papers status -v: `papers history` tells more"
         from papers.backup import project_of  # papers.backup imports this module
         project, place = project_of(self, create=False)
-        states = len(project.states()) if project is not None else 0
-        text = f'{states} step{"" if states == 1 else "s"} (`papers history`)'
-        if verbose:
-            text += f', in {short_home(project.store.root if project else (self.history_dir or HISTORY_DIR))}'
-        return text
+        steps = len(project.states()) if project is not None else 0
+        return f'{steps} step{"" if steps == 1 else "s"} (`papers history`)'
 
     def _files_status(self, check_files, _fmt_path):
         "where the files of the library are"
