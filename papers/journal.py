@@ -58,6 +58,18 @@ def unrecorded():
 
 
 @contextmanager
+def captured():
+    """the operations recorded inside, collected in the list it gives and
+    taken out of those of the command (e.g. those of a pool, for its own state)"""
+    start, got = len(_ops), []
+    try:
+        yield got
+    finally:
+        got.extend(_ops[start:])
+        del _ops[start:]
+
+
+@contextmanager
 def paused():
     "file operations that are not the command's"
     global _paused

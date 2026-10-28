@@ -490,6 +490,7 @@ class _Pool:
         self.at = head['state']  # where the pool is, once the steps taken so far are
         self.taken = []  # the steps undone (redone) in the pool
         self.reverts = []  # the steps reverted in the pool (it moved on since)
+        self.again = []  # the steps done again in the pool (redo: it moved on since the undo of the step)
 
 
 def _shown(config, pool_config):
@@ -522,8 +523,9 @@ def pool_steps(config, project, steps, undo):
     (undo) or redone, `steps` in the order they are taken. A pool still at
     the step linked to a library step (for redo: where the undo left it)
     takes it back (does it again); once it moved on, the linked steps are
-    reverted (for redo: the reverts made by the undo are reverted). Return
-    ([_Pool], the lines of the pools not found)."""
+    reverted (for redo: the reverts made by the undo are reverted, and the
+    steps that the undo took back are done again, see papers.revert).
+    Return ([_Pool], the lines of the pools not found)."""
     pools, lines, gone = {}, [], set()
     for s in steps:
         for id, link in (project.state(s).get('pools') or {}).items():
@@ -554,7 +556,9 @@ def pool_steps(config, project, steps, undo):
                 revert = next((r for r in line if n in (pool.project.state(r).get('reverts') or [])), None)
                 if revert is not None:
                     pool.reverts.append(revert)
-    return [p for p in pools.values() if p.taken or p.reverts], lines
+                else:  # the undo took step n back there, and the pool moved on since: done again
+                    pool.again.append(n)
+    return [p for p in pools.values() if p.taken or p.reverts or p.again], lines
 
 
 def _move_pools(config, pools, undo, kind):
@@ -573,28 +577,34 @@ def _move_pools(config, pools, undo, kind):
             pool.project.set_head(pool.place, pool.at, redo)
             lines.append(f'pool {pool.shown}: also {kind}, restored to {describe(pool.project, pool.at)}')
             lines += file_lines
-        if pool.reverts:
+        if pool.reverts or pool.again:
             # a conflict (an entry changed in the pool since) is asked in a terminal, else left as it is
             resolver = Resolver('ask' if stdin_is_terminal() else 'skip')
             biblio = get_biblio(pool.config)
             before = pool.project.head(pool.place)['state']
             revert_lines = []
-            with journal.unrecorded():  # the files of the pool: not a step of the library
+            with journal.captured() as ops:  # the files of the pool: in its state, not in a step of the library
                 for n in pool.reverts:
-                    revert_lines += papers.revert.revert(pool.config, biblio, n, resolver)
-                steps = ', '.join(str(n) for n in pool.reverts)
-                mark(pool.config, reverts=list(pool.reverts),
-                     message=f'{_message()}: revert of step{"s" if len(pool.reverts) > 1 else ""} {steps}')
+                    revert_lines += papers.revert.revert(pool.config, biblio, n, resolver, anywhere=True)
+                for n in pool.again:
+                    revert_lines += papers.revert.revert(pool.config, biblio, n, resolver, forward=True,
+                                                         anywhere=True)
+                plural = lambda numbers: f'step{"s" if len(numbers) > 1 else ""} {", ".join(map(str, numbers))}'
+                what = ([f'revert of {plural(pool.reverts)}'] if pool.reverts else []) + (
+                    [f'{plural(pool.again)} again'] if pool.again else [])
+                mark(pool.config, reverts=list(pool.reverts), message=f'{_message()}: {", ".join(what)}')
                 savebib(biblio, pool.config)
             pool.project = pool.project.store.project(pool.project.id)  # with the state of the revert
             head = pool.project.head(pool.place)['state']
-            steps = f'step{"s" if len(pool.reverts) > 1 else ""} {", ".join(str(n) for n in pool.reverts)}'
+            if ops and head != before:
+                add_operations(pool.config, head, ops)
+            done = ' and '.join(([f'{plural(pool.reverts)} reverted'] if pool.reverts else [])
+                                + ([f'{plural(pool.again)} done again'] if pool.again else []))
             if head != before:
-                lines.append(f'pool {pool.shown}: changed since, so {steps} reverted there: '
-                             f'{describe(pool.project, head)}')
+                lines.append(f'pool {pool.shown}: changed since, so {done} there: {describe(pool.project, head)}')
             else:
-                lines.append(f'pool {pool.shown}: changed since; {steps} not reverted there (nothing to take '
-                             f'back without changing what was done since)')
+                lines.append(f'pool {pool.shown}: changed since; nothing changed there for {", ".join(what)} '
+                             f'(the entries changed since are left as they are)')
             lines += ['    ' + line for line in revert_lines]
     return lines
 

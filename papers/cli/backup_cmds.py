@@ -26,8 +26,8 @@ def _auto_push(config):
     entries that differ from their origin copy are pushed, as after any
     command (an entry changed in the pool too is left to `papers sync`).
     Nothing to push in general: undo and redo restore the origin copies
-    with the bibtex. A push is a step of the library (its origin copies);
-    the steps that redo brings back stay."""
+    with the bibtex. A push is a new step of the library (its origin
+    copies), after which there is nothing to redo, as after any command."""
     from papers.cli.common import print_push_notes, push_notes, save_exchange
     from papers.library import get_biblio
     from papers.merge import Resolver
@@ -45,10 +45,11 @@ def _auto_push(config):
     report = exchange.push(shared, pool, Resolver('skip'), include_new=False)
     if any(what == 'updated' for _, _, what in report):
         project, place = backup.project_of(config)
-        redo = project.head(place)['redo']
+        undone = project.head(place)['redo']
         save_exchange(exchange)
-        project = project.store.project(project.id)
-        project.set_head(place, project.head(place)['state'], redo)
+        if undone:
+            print(f'the push is a new step: nothing to redo now (`papers restore {undone[0]}` '
+                  f'goes back to the steps undone)')
     print_push_notes(biblio, push_notes(report))
 
 
