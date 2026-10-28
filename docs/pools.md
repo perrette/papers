@@ -277,7 +277,7 @@ origin copy is the one exchanged.
 
 ## Origin copies
 
-`.papers/origin/`, next to the bibtex of the library, holds one file per
+`.papers/origin/` of the library holds one file per
 pool: the pool of the library, and each library exchanged with through
 `--pool PATH`. The pool is named by its library identifier (the `id` of
 its `.papers/config.json`), which does not change when the library or the

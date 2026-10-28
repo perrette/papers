@@ -103,9 +103,9 @@ def project_of(config, create=True):
 # ===================================
 
 def _library_names(config):
-    "the files of .papers/ that belong to the states of the library (relative to the folder of the bibtex)"
+    "the files of .papers/ that belong to the states of the library (relative to the library folder)"
     from papers.pools import ORIGIN_DIR, LEGACY_ORIGIN_FILE  # papers.pools imports this module
-    libdir = os.path.dirname(os.path.abspath(config.bibtex))
+    libdir = config.libdir
     names = {DISTINCT_FILE, LEGACY_ORIGIN_FILE, FILES_JSON}
     origin = os.path.join(libdir, ORIGIN_DIR)
     if os.path.isdir(origin):
@@ -124,8 +124,7 @@ def _bibtex_text(config):
 
 def _texts(config):
     "the text of the bibtex and of the files of .papers/, as they are on disk"
-    libdir = os.path.dirname(os.path.abspath(config.bibtex))
-    return _bibtex_text(config), {name: _read(os.path.join(libdir, name)) for name in _library_names(config)}
+    return _bibtex_text(config), {name: _read(os.path.join(config.libdir, name)) for name in _library_names(config)}
 
 
 def _snapshot(config, st, files=None, texts=None):
@@ -477,7 +476,7 @@ def go_to(config, project, cur, target, pool_dirs=None, shared=()):
 def _write_library_files(config, project, cur, target):
     """the files of .papers/ of the state `target`; those of the state `cur`
     that `target` has not are removed (a file no state had is left alone)"""
-    libdir = os.path.dirname(os.path.abspath(config.bibtex))
+    libdir = config.libdir
 
     def inside(name):
         return not os.path.relpath(os.path.join(libdir, name), libdir).startswith('..')

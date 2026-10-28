@@ -302,7 +302,7 @@ def _side_matches(recorded, ident):
 class Distinct:
     """Pairs of entries that are not the same paper, recorded by identity
     (see `identity`), not by key, so that the file means the same in every
-    library. Stored in .papers/distinct.json next to the bibtex:
+    library. Stored in .papers/distinct.json of the library folder:
 
         {"distinct": [[{"doi": "10.1000/a", "authortitle": "..."}, {...}], ...]}
     """
@@ -313,10 +313,9 @@ class Distinct:
         self.changed = False
 
     @classmethod
-    def for_bibtex(cls, bibtex):
-        "the pairs recorded for the library of this bibtex file"
-        path = os.path.join(os.path.dirname(os.path.abspath(bibtex)), DISTINCT_FILE)
-        return cls.load(path)
+    def for_library(cls, libdir):
+        "the pairs recorded for the library in the folder `libdir` (see papers.config.library_dir)"
+        return cls.load(os.path.join(libdir, DISTINCT_FILE))
 
     @classmethod
     def load(cls, path):

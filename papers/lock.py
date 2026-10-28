@@ -59,7 +59,7 @@ def lock_path(config):
     "the lock file of a library (.papers/lock), or None (a bibtex without library)"
     if not config.file or not config.is_library:
         return None
-    return os.path.join(papers.config.config_root(config.file), '.papers', LOCK_FILE)
+    return os.path.join(config.libdir, '.papers', LOCK_FILE)
 
 
 # the locks held by this process: {real path of the lock file: content}

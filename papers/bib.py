@@ -241,7 +241,7 @@ class Biblio:
     def load(cls, bibtex, filesdir, relative_to=None, **kw):
         with open(bibtex, encoding='utf-8-sig') as f:  # UTF-8, without a byte order mark (see read_text)
             bibtexs = f.read()
-        kw.setdefault('distinct', Distinct.for_bibtex(bibtex))
+        kw.setdefault('distinct', Distinct.for_library(papers.config.library_dir(bibtex)))
         db = parse_string(bibtexs, cache=parse_cache())
         loaded_bib = cls(db, filesdir, relative_to=relative_to if relative_to is not None else os.path.dirname(bibtex), **kw)
         loaded_bib._remember(bibtex, bibtexs)
@@ -770,7 +770,7 @@ class Biblio:
         self._remember(bibtex, s)
         if self.distinct.changed:
             if self.distinct.path is None:
-                ondisk = Distinct.for_bibtex(bibtex)
+                ondisk = Distinct.for_library(papers.config.library_dir(bibtex))
                 ondisk.update(self.distinct)
                 self.distinct = ondisk
             self.distinct.save()

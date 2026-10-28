@@ -1,4 +1,4 @@
-import os, json, re
+import os, json, re, shutil
 import copy
 from pathlib import Path
 import platformdirs
@@ -255,6 +255,44 @@ def config_root(file):
     if p.name == 'config.json' and p.parent.name == '.papers':
         return p.parent.parent
     return p.parent
+
+
+def library_dir(bibtex, file=None):
+    """the folder whose .papers/ holds the files of the library of `bibtex`
+    (distinct.json, origin/, files.json, lock): that of its library
+    configuration file `file` (see config_root), else the folder of the
+    bibtex (a bibtex without library)"""
+    return os.path.abspath(config_root(file) if file else os.path.dirname(os.path.abspath(bibtex)))
+
+
+# the files of .papers/ that earlier v3 builds wrote next to the bibtex, not in the library folder
+_PAPERS_FILES_NEXT_TO_BIBTEX = ('distinct.json', 'origin', 'origin.bib')
+
+
+def move_papers_files(config):
+    """move distinct.json and origin/ (origin.bib) from the .papers/ next to
+    the bibtex, where earlier v3 builds wrote them, to the .papers/ of the
+    library folder: when the two folders differ, for a file the library
+    folder has not, and unless the folder of the bibtex is another library"""
+    if DRYRUN or not (config.file and config.is_library and config.bibtex):
+        return
+    old = os.path.join(os.path.dirname(os.path.abspath(config.bibtex)), '.papers')
+    new = os.path.join(config.libdir, '.papers')
+    if (os.path.realpath(old) == os.path.realpath(new) or not os.path.isdir(old)
+            or os.path.exists(os.path.join(old, 'config.json'))):
+        return
+    moved = []
+    for name in _PAPERS_FILES_NEXT_TO_BIBTEX:
+        src, dst = os.path.join(old, name), os.path.join(new, name)
+        if os.path.exists(src) and not os.path.exists(dst):
+            try:
+                os.makedirs(new, exist_ok=True)
+                shutil.move(src, dst)
+                moved.append(name)
+            except OSError as error:
+                logger.warning(f'{src}: not moved to {dst} ({error})')
+    if moved:
+        logger.info(f"moved {', '.join(moved)} from {short_home(old)} to {short_home(new)}")
 
 
 def library_config_file(path):
@@ -592,6 +630,11 @@ class Config:
         "directory that relative paths of a local configuration file refer to"
         return config_root(self.file).resolve() if self.file else Path.cwd()
 
+    @property
+    def libdir(self):
+        "the folder whose .papers/ holds the files of the library (see library_dir)"
+        return library_dir(self.bibtex, self.file if self.is_library else None)
+
     def _relpath(self, p):
         if p is None: return p
         if not self.is_library:  # v2 compatibility, remove with migrate
@@ -679,6 +722,7 @@ class Config:
             if value is not None:
                 cfg.set(name, value)
         cfg._update_paths_to_absolute()
+        move_papers_files(cfg)
         return cfg
 
 

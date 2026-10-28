@@ -272,7 +272,7 @@ class TestBiblio(unittest.TestCase):
         biblio.distinct.add(a, parse_string(ENTRY.replace('10.1000/a', '10.1000/b')).entries[0])
         biblio.save(bibtex, backup=os.path.join(self.dir, 'previous.bib'))
         self.assertTrue(os.path.exists(os.path.join(self.dir, 'previous.bib')))
-        self.assertTrue(Distinct.for_bibtex(bibtex).pairs)
+        self.assertTrue(Distinct.for_library(os.path.dirname(bibtex)).pairs)
 
     def test_save_without_change_does_not_write(self):
         bibtex = os.path.join(self.dir, 'papers.bib')
