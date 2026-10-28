@@ -1020,9 +1020,12 @@
 <p>A library is a bibtex file, a files directory, and a configuration file
 <code>.papers/config.json</code> in the library directory. The <code>.papers/</code> folder also
 holds the origin copies of the entries exchanged with pools and the pairs
-recorded as not the same paper. <code>papers init</code> creates a library in the
-current directory, and <code>papers init DIR</code> in the directory <code>DIR</code> (created if
-missing, with its parents):</p>
+recorded as not the same paper, also when the bibtex is in another folder.
+Versions up to 3.0.0b5 wrote these two next to the bibtex: papers moves
+them to the <code>.papers/</code> of the library when it opens the library, unless the
+folder of the bibtex is a library of its own. <code>papers init</code> creates a
+library in the current directory, and <code>papers init DIR</code> in the directory
+<code>DIR</code> (created if missing, with its parents):</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>$&gt; papers init
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>created the library ~/projects/sealevel
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>* bibtex:  papers.bib

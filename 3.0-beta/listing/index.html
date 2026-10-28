@@ -1138,7 +1138,9 @@ without opening an editor (for scripts and other programs). The entry keeps
 its key, and its <code>file</code> and <code>keywords</code> fields when FILE has none; its other
 fields are those of FILE (a field that FILE does not have is removed). FILE
 is bibtex, or RIS (<code>.ris</code>), CSL-JSON (<code>.json</code>) or BibJSON (<code>.bib.json</code>),
-or the format given with <code>--format</code>. <code>--from -</code> reads the entry from the standard input:</p>
+or the format given with <code>--format</code>. The file links of FILE are relative to
+the directory of FILE, as with <code>papers add FILE</code>. <code>--from -</code> reads the entry
+from the standard input:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>papers extract paper.pdf | papers edit perrette2013 --from -
 <a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>papers fetch 10.5194/esd-4-11-2013 | papers edit perrette2013 --from -
 </code></pre></div>

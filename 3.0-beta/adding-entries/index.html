@@ -1304,8 +1304,7 @@ RIS needs the <a href="https://pypi.org/project/rispy/">rispy</a> package (see
 <a href="../export/#how-the-fields-are-converted">How the fields are converted</a>); a
 few more are read: <code>T1</code>, <code>JO</code>, <code>JF</code> (title, journal), <code>A2</code> (editors of a
 chapter, in EndNote exports), <code>N2</code> (abstract), <code>M3</code> (type of a report); and
-in CSL-JSON, <code>accessed</code> (<code>urldate</code>), <code>genre</code> (the type of a report or
-thesis). Other fields are ignored.</p>
+in CSL-JSON, <code>genre</code> (the type of a report or thesis). Other fields are ignored.</p>
 <h2 id="add-an-entry-from-its-doi">Add an entry from its DOI<a class="headerlink" href="#add-an-entry-from-its-doi" title="Permanent link">&para;</a></h2>
 <p>If you already know the DOI of a PDF, and don't want to gamble the fulltext
 search and match, you can indicate it via <code>--doi</code>:</p>
@@ -1375,7 +1374,7 @@ merging. This happens with a chapter exported with the DOI of its book, or a
 dataset "Data for: X" deposited under the DOI of the article "X". Without a
 terminal, such a pair is never merged.</p>
 <p>When you answer that two entries are not the same paper (<code>n</code>, below), papers
-records it in <code>.papers/distinct.json</code>, next to the bibtex, and does not ask
+records it in <code>.papers/distinct.json</code> of the library, and does not ask
 about them again. The file records the identifiers of both entries (DOI,
 arXiv id, ISBN, authors and title), not their keys.</p>
 <h3 id="what-a-merge-does">What a merge does<a class="headerlink" href="#what-a-merge-does" title="Permanent link">&para;</a></h3>
