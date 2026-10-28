@@ -61,6 +61,31 @@ class TestThreeWay(unittest.TestCase):
         m = three(lib={'journal': 'Nature'}, pool={'journal': 'nature'})
         self.assertTrue(m.is_exact())
 
+    def test_equivalent_change_in_pool_only_is_offered(self):
+        # a case or brace fix of one side is sent: the target is the base exactly
+        m = three(pool={'title': 'Climate sensitivity revisited: {CO2}'},
+                  lib={'title': 'Climate sensitivity revisited: CO2'}, base={'title': 'Climate sensitivity revisited: CO2'})
+        self.assertEqual(self.status(m)['title'], (ADDED, CHANGED_OTHER))
+        self.assertEqual(m.conflicts, [])
+        self.assertEqual(m.result()['title'], 'Climate sensitivity revisited: {CO2}')
+        m = three(pool={'journal': 'nat.'})
+        self.assertEqual(m.result()['journal'], 'nat.')
+
+    def test_equivalent_values_without_change_of_target(self):
+        # the target changed (not the base exactly): equivalent values keep the target's
+        m = three(lib={'journal': 'NAT.'}, pool={'journal': 'nat.'})
+        self.assertTrue(m.is_exact())
+        self.assertEqual(m.result()['journal'], 'NAT.')
+        m = three(lib={'journal': 'nat.'})  # changed in the target only
+        self.assertTrue(m.is_exact())
+        self.assertEqual(m.result()['journal'], 'nat.')
+
+    def test_two_way_equivalent_values_unchanged(self):
+        # a merge without base (add): equivalent values are the same, the target's kept
+        m = Merge([entry('a', **BASE), entry('b', **{**BASE, 'journal': 'nat.', 'title': '{Climate} sensitivity revisited'})])
+        self.assertTrue(m.is_exact())
+        self.assertEqual((m.result()['journal'], m.result()['title']), ('Nat.', 'Climate sensitivity revisited'))
+
     def test_removed_in_pool_is_offered(self):
         m = Merge([entry('a', **BASE), entry('b', **{k: v for k, v in BASE.items() if k != 'keywords'})],
                   base=entry('a', **BASE))

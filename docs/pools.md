@@ -81,6 +81,13 @@ side changed a field. A removed field counts as a change:
 | changed on both sides to different values, or removed on one side and changed on the other | a conflict |
 | removed on both sides | removed |
 
+Values that differ only by case, braces or the form of the names (`J.
+Smith` and `John Smith`) are equivalent. A change to an equivalent value
+(e.g. `CO2` to `{CO2}`) is taken when the side that receives has the
+value of the origin copy exactly. Otherwise, and for an entry without
+origin copy, equivalent values are not a difference: the side that
+receives keeps its value (for names, the fuller form of the two).
+
 Conflicts are decided in the dialogue or with `--on-duplicate` (see
 [`papers pull`](#papers-pull) and [`papers push`](#papers-push)). `keep`
 keeps the values of the side that receives the changes, and `update` takes

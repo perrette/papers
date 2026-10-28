@@ -22,7 +22,8 @@ Exchange mode (`pull`, `push`: Merge with exchange=True): the fields of
 EXCHANGE_OWN are not merged, each side keeps its own (see there). With a
 `base` (the origin copy of the entry, the entry as last exchanged), the
 merge is three-way: whatever one side changed since the base wins, and a
-field changed on both sides is a conflict. A removal is a change: a field
+field changed on both sides is a conflict. An equivalent change (case,
+braces) of the other entry wins only when the target has the base exactly. A removal is a change: a field
 removed in the other entry, that the target has as in the base, is removed
 (`+`, shown as `(removed)`); removed on one side and changed on the other
 is a conflict; removed on both sides, it is removed. Without a base (first
@@ -136,7 +137,10 @@ class FieldMerge:
 
     In three-way mode (`three_way`, with `base` the value of the origin
     copy), `changed` says which side changed the field since the base:
-    CHANGED_TARGET, CHANGED_OTHER, CHANGED_BOTH, or None."""
+    CHANGED_TARGET, CHANGED_OTHER, CHANGED_BOTH, or None. Equivalent values
+    are the same, except when the target has the base exactly and the
+    other entry another (equivalent) value: that change (case, braces,
+    fuller names) is offered."""
 
     def __init__(self, name, values, base=None, three_way=False):
         self.name = name
@@ -156,7 +160,14 @@ class FieldMerge:
             self.status = SAME
             return
         self.choice = 0 if target is not None else next(i for i, v in enumerate(values) if v is not None)
-        if all(equivalent(name, present[0], v) for v in present[1:]) and not (three_way and None in values):
+        if three_way and self.base is not None and target == self.base and values[1] != target \
+                and values[1] is not None and equivalent(name, target, values[1]):
+            # an equivalent change of the other side only (case, braces): offered
+            self.status = ADDED
+            self._value = values[1]
+            self.choice = 1
+            self.changed = CHANGED_OTHER
+        elif all(equivalent(name, present[0], v) for v in present[1:]) and not (three_way and None in values):
             self._value = preferred(name, present)
             self.status = SAME if target is not None else ADDED
         elif three_way:

@@ -799,6 +799,13 @@ class TestPush(PoolTest):
         self.assertEqual(pool['Smith_2020']['volume'], '10')
         self.assertEqual(pool['Smith_2020']['doi'], '10.1000/abc123')
 
+    def test_brace_fix_is_sent(self):
+        self.lib('pull Smith_2020')
+        self.edit_lib('title = {Climate sensitivity revisited}', 'title = {{Climate} sensitivity revisited}')
+        self.lib('push Smith_2020')
+        self.assertEqual(self.entry('Smith_2020', 'pool')['title'], '{Climate} sensitivity revisited')
+        self.assertIn('nothing to pull from pool ../pool', self.out('pull'))
+
     def test_pool_only_fields_come_with_the_next_pull(self):
         # the same paper on both sides, without origin record: each has a field of its own
         self.edit_pool('journal = {Nat.},', 'abstract = {From the pool.},\n journal = {Nat.},')
@@ -813,10 +820,12 @@ class TestPush(PoolTest):
         self.assertNotIn('abstract', self.origin().get(self.entry('smith2020climate')).entry)
         self.assertIn('changed since last pull or push', self.state())
         out = self.out('pull --check')
-        self.assertIn('smith2020climate: changed in pool ../pool: abstract, file, journal', out)
+        # the pool kept its form of the DOI at the push (equivalent): it comes with the pull
+        self.assertIn('smith2020climate: changed in pool ../pool: abstract, doi, file, journal', out)
         self.lib('pull')
         e = self.entry('smith2020climate')
-        self.assertEqual((e['abstract'], e['journal'], e['keywords']), ('From the pool.', 'Nat.', 'mine'))
+        self.assertEqual((e['abstract'], e['journal'], e['keywords'], e['doi']),
+                         ('From the pool.', 'Nat.', 'mine', '10.1000/abc123'))
         self.assertIn('up to date', self.state())
         self.assertIn('nothing to pull from pool ../pool', self.out('pull'))
         self.assertIn('nothing to push to pool ../pool', self.out('push smith2020climate'))
