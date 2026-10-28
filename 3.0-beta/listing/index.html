@@ -1082,8 +1082,10 @@ parent, which counts the entries that have it or a tag under it:</p>
 <li><code>--format key</code>: the keys only, one per line (also <code>-K</code>, <code>--key-only</code>),
   to pipe into other commands (below).</li>
 </ul>
-<p><code>--field FIELD...</code> prints the key and the given fields of each entry
-(<code>--no-key</code> leaves the key out). <code>-f</code> is a deprecated alias of <code>--field</code>: in
+<p><code>--field FIELD...</code> prints one line per entry: <code>KEY:</code> and the values of the
+given fields, separated by spaces (an empty value for a missing field).
+<code>--no-key</code> leaves the key out: the line starts with the first value. The
+key is coloured only when colours are on (see <code>--color</code>). <code>-f</code> is a deprecated alias of <code>--field</code>: in
 v4, <code>-f</code> is no longer <code>--field</code> (it means <code>--force</code> in other commands).</p>
 <h2 id="duplicates">Duplicates<a class="headerlink" href="#duplicates" title="Permanent link">&para;</a></h2>
 <p><code>papers list --duplicates</code> lists the entries that are the same paper, by the

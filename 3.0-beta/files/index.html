@@ -993,6 +993,14 @@
 (the <code>filesdir</code> setting), named after the name template (see
 <a href="../renaming/">Renaming files and keys</a>), but an entry can link to a file
 anywhere.</p>
+<p>The <code>file</code> field holds the links separated by <code>;</code>. Each link is <code>path</code>,
+<code>path:type</code> or <code>description:path:type</code>; papers writes <code>:path:type</code>
+(<code>:files/x.pdf:pdf</code>), as JabRef and Zotero do. In the three-part form, the
+path is everything between the first and the last <code>:</code>, so it may contain
+<code>:</code> (<code>:C:\x.pdf:pdf</code>). Spaces around each path are removed. There is no
+escaping: a path that contains <code>;</code> cannot be linked, JabRef's <code>\:</code> and <code>\;</code>
+are read as they are, and a Windows path written alone (<code>C:\x.pdf</code>) is
+read as the path <code>C</code> with type <code>\x.pdf</code>.</p>
 <h2 id="what-add-does-with-a-file">What <code>add</code> does with a file<a class="headerlink" href="#what-add-does-with-a-file" title="Permanent link">&para;</a></h2>
 <p>The <code>files</code> setting says what <code>papers add</code> does with the PDF it adds, with
 the files of the entries of an added bibtex (<code>papers add other.bib</code>), with

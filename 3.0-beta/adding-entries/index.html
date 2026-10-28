@@ -1297,6 +1297,13 @@ RIS needs the <a href="https://pypi.org/project/rispy/">rispy</a> package (see
   LaTeX (<code>\&amp;</code>...), except in <code>url</code>, <code>doi</code>, <code>file</code>, <code>eprint</code>, <code>isbn</code>,
   <code>issn</code>, <code>keywords</code> and <code>urldate</code>; BibJSON values are read as they are,
   since they are bibtex values;</li>
+<li>keywords (RIS <code>KW</code>, CSL-JSON <code>keyword</code>) are split on <code>,</code> and <code>;</code> and
+  joined with <code>,</code> (export splits the <code>keywords</code> field on <code>,</code> only);</li>
+<li>the CSL-JSON <code>container-title</code> is the <code>booktitle</code> of a chapter or a
+  conference paper (<code>incollection</code>, <code>inproceedings</code>), the <code>journal</code> of any
+  other type;</li>
+<li>a date part that is zero or missing ends the date: <code>2013-00-05</code> is the
+  year 2013 only;</li>
 <li>in a shallow library, the new entries go to the pool too;</li>
 <li>a directory scan (<code>-R</code>) reads PDFs and bibtex files only.</li>
 </ul>
@@ -1304,7 +1311,9 @@ RIS needs the <a href="https://pypi.org/project/rispy/">rispy</a> package (see
 <a href="../export/#how-the-fields-are-converted">How the fields are converted</a>); a
 few more are read: <code>T1</code>, <code>JO</code>, <code>JF</code> (title, journal), <code>A2</code> (editors of a
 chapter, in EndNote exports), <code>N2</code> (abstract), <code>M3</code> (type of a report); and
-in CSL-JSON, <code>genre</code> (the type of a report or thesis). Other fields are ignored.</p>
+in CSL-JSON, <code>genre</code> (the type of a report or thesis). A thesis whose type
+(RIS <code>M3</code>, CSL-JSON <code>genre</code>) contains <code>master</code> is a <code>mastersthesis</code>, any
+other a <code>phdthesis</code>. Other fields are ignored.</p>
 <h2 id="add-an-entry-from-its-doi">Add an entry from its DOI<a class="headerlink" href="#add-an-entry-from-its-doi" title="Permanent link">&para;</a></h2>
 <p>If you already know the DOI of a PDF, and don't want to gamble the fulltext
 search and match, you can indicate it via <code>--doi</code>:</p>

@@ -1028,11 +1028,14 @@ later (see <a href="../pools/#exchanges-with-any-library">Exchanges with any lib
 </tr>
 </tbody>
 </table>
+<p>The files are written in UTF-8 with <code>\n</code> line ends on every platform, as
+the bibtex.</p>
 <p>Repeat the option or separate the formats with commas
 (<code>--format bib,ris</code>). The file links of each file point to the copies in
 <code>DIR/files</code>, relative to <code>DIR</code> (with <code>--files link</code>, to the files where
 they are). Without <code>bib</code>, <code>DIR</code> is not a papers library (it has no
-<code>.papers/config.json</code>), and papers says so:</p>
+<code>.papers/config.json</code> and no bibtex, which would be named as the bibtex of
+the library), and papers says so:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>$ papers export ~/export-test --format all
 <a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>create the library ~/export-test
 <a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>exported 1 entries to ~/export-test (papers.bib, papers.ris, papers.json, papers.bib.json; files: copy)
@@ -1170,6 +1173,9 @@ left out.</p>
 </table>
 <p>CSL-JSON has no field for files: the links are written in its <code>custom</code>
 object, <code>"custom": {"file": [...]}</code>, which other programs ignore.</p>
+<p>A <code>mastersthesis</code> is a <code>thesis</code> of genre <code>Master's thesis</code> in CSL-JSON,
+and a <code>THES</code> record with <code>M3  - Master's thesis</code> in RIS (unless the entry
+has a <code>type</code> field), so that it is read back as a <code>mastersthesis</code>.</p>
 <table>
 <thead>
 <tr>
@@ -1286,7 +1292,8 @@ a program can read the whole library:</p>
 <p><code>papers add refs.bib.json</code> reads a collection (<code>{"records": [...]}</code>), a
 list of records or one record. It also reads the DOI of BibJSON
 identifiers (<code>"identifier": [{"type": "doi", "id": ...}]</code>), and joins the
-lists of strings (e.g. keywords) with commas.</p>
+lists of strings (e.g. keywords) with commas, leaving out <code>null</code> items.
+Numbers are kept as written in the file (<code>0.0000001</code>, <code>2000.0</code>).</p>
 
 
 
