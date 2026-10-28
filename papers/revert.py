@@ -47,7 +47,7 @@ def _state_entries(project, n):
 
 def _distinct_pairs(project, n):
     "the pairs of distinct.json of the state n"
-    pieces = (project.state(n).get('files') or {}).get(DISTINCT_FILE)
+    pieces = backup.state_files(project.state(n)).get(DISTINCT_FILE)
     if not pieces:
         return []
     try:
@@ -158,10 +158,11 @@ def revert(config, biblio, n, resolver, forward=False, anywhere=False, parent=No
                 lines.append(f'{now.key}: {added} by step {short(n)} and changed since: kept (`papers rm {now.key}` '
                              'removes it)')
         elif e is None:  # removed by N
-            if _current(biblio, p) is not None:
-                continue
-            if any(x.key.lower() == p.key.lower() for x in biblio.entries):
-                lines.append(f'{p.key}: {removed} by step {short(n)}; another entry has its key now: not added')
+            now = _current(biblio, p)
+            if now is not None:  # back already, or another entry has its key now
+                if not entry_content_equal(now, p, skip_keys=('file',)):
+                    lines.append(f'{p.key}: {removed} by step {short(n)}; the entry {now.key} has its key now: '
+                                 'not added')
                 continue
             back = entry_copy(p)
             files = biblio.get_files(p, relative_to=libdir)

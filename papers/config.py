@@ -128,6 +128,11 @@ REMOVED_SETTINGS = {
 }
 
 
+# the keys of a library configuration file that papers reads, or read in earlier versions; the
+# file keeps the others as they are (e.g. the settings of a newer papers, see Config.tojson)
+_KNOWN_KEYS = {*SETTINGS, *REMOVED_SETTINGS, *_V2_KEYS, 'id', 'version', 'local', 'pools', 'light', 'sync'}
+
+
 def default_value(name):
     "built-in default of a setting"
     if name.startswith('name.'):
@@ -530,6 +535,8 @@ class Config:
         self.bibtex = bibtex
         # the identifier of the library: its history (see library_id)
         self.id = None
+        # the content of the configuration file, for the keys that papers does not know (see tojson)
+        self.raw = {}
         self.keyformat = copy.deepcopy(keyformat) if keyformat is not None else self._inherited_format('key')
         self.nameformat = copy.deepcopy(nameformat) if nameformat is not None else self._inherited_format('name')
         self.editor = editor if editor is not None else self.inherited('editor')
@@ -562,6 +569,8 @@ class Config:
             from papers.history import new_id  # papers.history is self-contained
             self.id = new_id()
             if os.path.exists(self.file) and not DRYRUN:
+                if is_v2_config_name(self.file):
+                    self.file = move_v2_config(self.file)  # as any save does
                 # the identifier only: the settings in memory may be those of the command
                 # (e.g. the files directory of the pool, see papers.pools.use_pool_files)
                 js = json.load(open(self.file, encoding='utf-8-sig'))
@@ -697,14 +706,14 @@ class Config:
 
     def tojson(self):
         """content of the configuration file: the paths, and the settings that
-        the library sets (the others come from the global configuration when loaded)"""
-        js = {
-            "filesdir": self._relpath(self.filesdir),
-            "bibtex": self._relpath(self.bibtex),
-        }
+        the library sets (the others come from the global configuration when
+        loaded), over the keys of the file that papers does not know (kept as
+        they are, also in nameformat and keyformat)"""
+        js = {key: copy.deepcopy(value) for key, value in self.raw.items() if key not in _KNOWN_KEYS}
+        js["filesdir"] = self._relpath(self.filesdir)
+        js["bibtex"] = self._relpath(self.bibtex)
         for name in LIBRARY_SETTINGS:
-            if self.is_set(name):
-                json_set(js, name, self.get(name))
+            json_set(js, name, self.get(name) if self.is_set(name) else None)
         if self.is_library and self.id:
             js["id"] = self.id
         if self.is_library:
@@ -734,6 +743,7 @@ class Config:
         """is_library=False for a global configuration of v2 (the default
         tells them apart by the file content or name)"""
         js = read_config_file(the_file)
+        raw = copy.deepcopy(js)
         version = file_version(js, the_file)
         if is_library is None and version >= 3:
             is_library = True  # v3 has no global configuration
@@ -750,6 +760,7 @@ class Config:
         check_settings(js, the_file)
         cfg = cls(file=the_file, is_library=is_library, machine=machine,
                   bibtex=js.get('bibtex'), filesdir=js.get('filesdir'))
+        cfg.raw = raw
         # an identifier that papers did not write (e.g. a path, in a library received from someone) is ignored
         if is_library and isinstance(js.get('id'), str) and re.fullmatch(r'[0-9a-f]{32}', js['id']):
             cfg.id = js['id']

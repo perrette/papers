@@ -48,7 +48,8 @@ by other tools. What changes:
 - The configuration files:
     - the configuration of a project library moves from
       `.papersconfig.json` to `.papers/config.json` the next time papers
-      saves it. In a project repository, git shows the old file as
+      writes it (also the first command that changes the library, which
+      adds the `id` of its history). In a project repository, git shows the old file as
       deleted; scripts that read it need the new path;
     - `papers migrate` turns the global configuration of papers 2
       (`~/.config/papersconfig.json` on Linux) into the configuration of
@@ -159,8 +160,10 @@ self-contained library (no pool): its PDFs stay in its own files
 directory, and it works as in papers 2.
 
 Its configuration file, `.papersconfig.json` in papers 2, is
-`.papers/config.json` in papers 3. papers moves it the next time it saves
-the configuration (e.g. `papers config`), and prints a line that says so:
+`.papers/config.json` in papers 3. papers moves it the next time it writes
+the configuration (e.g. `papers config`, or the first command that changes
+the library, which adds the `id` of its history), and prints a line that
+says so:
 
 ```
 $ papers config editor vim

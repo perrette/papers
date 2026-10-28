@@ -62,7 +62,9 @@ after it, and now:
 
 - an entry that the step added is removed, unless it changed since (it is
   kept, and a line says so);
-- an entry that the step removed comes back as it was;
+- an entry that the step removed comes back as it was, unless the library
+  has an entry with its key now (or with its key among its former keys):
+  that entry stays, and a line says so when it is not the removed one;
 - a field that the step changed goes back to its value before the step,
   unless it changed since: then it is a conflict, decided as for
   [`papers pull`](pools.md#papers-pull), with `--on-duplicate` (`keep`: the
@@ -129,6 +131,14 @@ or on another computer that syncs the library), papers notices it at its
 next command and records your change as a step of its own, "changed outside
 papers". `papers undo` never drops it silently: undoing a papers command
 goes back to what was on disk just before it, your change included.
+
+The step of your change also has the files of `.papers/` (the origin
+records of a library with a pool, `distinct.json`, `files.json`) as they
+were on disk, so a synced folder that brought a new bibtex and new origin
+records together gives one consistent step. papers notices a change by the
+bibtex only: a change made outside papers to the files of `.papers/` alone
+is not a step of its own, it becomes part of the next command's step (and
+undoing that command takes it back too).
 
 Running `papers undo` right after your own edit undoes that edit (`papers
 redo` brings it back). `papers restore` without a step number does the

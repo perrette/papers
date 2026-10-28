@@ -72,8 +72,8 @@ def history_size(config, st=None):
     """history-size in megabytes (0: no limit) of the store st (by default,
     that of the library): that of the library for a store of its own (the
     history-separate setting), that of the machine for the shared store"""
-    separate = config.history_separate if st is None else os.path.basename(
-        os.path.dirname(st.root)) == 'separate'
+    separate = config.history_separate if st is None else (
+        os.path.realpath(st.root) != os.path.realpath(history_root(config)))
     value = config.history_size if separate else config.machine.get('history-size')
     if value is None:
         value = papers.config.default_value('history-size')
@@ -113,6 +113,22 @@ def _library_names(config):
     return sorted(n for n in names if os.path.isfile(os.path.join(libdir, n)))
 
 
+# the names of the files of .papers/ and the paths of the operations are stored with /, on any
+# system (a state has the same identifier everywhere, see history.state_id); read with its separator
+
+def _stored(path):
+    return path.replace(os.sep, '/') if path and os.sep != '/' else path
+
+
+def _native(path):
+    return path.replace('/', os.sep) if path and os.sep != '/' else path
+
+
+def state_files(state):
+    "the files of .papers/ of a state: {name, with the separator of the system: pieces}"
+    return {_native(name): pieces for name, pieces in (state.get('files') or {}).items()}
+
+
 def _read(path):
     with open(path, encoding='utf-8', newline='') as f:
         return f.read()
@@ -127,15 +143,11 @@ def _texts(config):
     return _bibtex_text(config), {name: _read(os.path.join(config.libdir, name)) for name in _library_names(config)}
 
 
-def _snapshot(config, st, files=None, texts=None):
-    """the bibtex and the files of .papers/, stored; files: those of another
-    state (the files of .papers/ are not read); texts: the texts to store
-    (see _texts), instead of those on disk"""
-    text, others = texts or (_bibtex_text(config), None)
-    if files is None:
-        if others is None:
-            others = _texts(config)[1]
-        files = {name: st.put_text(content) for name, content in others.items()}
+def _snapshot(config, st, texts=None):
+    """the bibtex and the files of .papers/, stored; texts: the texts to
+    store (see _texts), instead of those on disk"""
+    text, others = texts or _texts(config)
+    files = {_stored(name): st.put_text(content) for name, content in others.items()}
     return {'bibtex': {'pieces': st.put_text(text), 'sha': history.sha256(text.encode('utf-8'))},
             'files': files}
 
@@ -143,16 +155,14 @@ def _snapshot(config, st, files=None, texts=None):
 def _relative_ops(ops, config):
     """the paths of the operations as the library writes its links: relative
     to the folder of the bibtex for a file in it (relative paths), else absolute"""
-    if config.absolute_paths:
-        return ops
     root = os.path.dirname(os.path.abspath(config.bibtex))
 
     def rel(path):
-        if path and os.path.isabs(path):
+        if path and os.path.isabs(path) and not config.absolute_paths:
             r = os.path.relpath(path, root)
             if r != '..' and not r.startswith('..' + os.sep):
-                return r
-        return path
+                return _stored(r)
+        return _stored(path)
     return [dict(op, src=rel(op['src']), dst=rel(op.get('dst'))) for op in ops]
 
 
@@ -160,6 +170,7 @@ def _absolute_ops(ops, config):
     root = os.path.dirname(os.path.abspath(config.bibtex))
 
     def ab(path):
+        path = _native(path)
         return os.path.normpath(os.path.join(root, path)) if path and not os.path.isabs(path) else path
     return [dict(op, src=ab(op['src']), dst=ab(op.get('dst'))) for op in ops]
 
@@ -204,21 +215,19 @@ def sync_head(config, project=None, place=None):
             head = project.head(place)
     if head is not None and project.state(head['state'])['bibtex'].get('sha') == sha:
         return head['state']
-    texts = None
+    # the library at the start of the command, if kept (see start): the bibtex and the files of
+    # .papers/ that the command may have written before its save; else as they are on disk
+    texts = _before.pop(place, None)
     if head is None:
-        kind, message, files = 'start', 'the library before its first recorded command', None
-        texts = _before.get(place)  # the library before the command (see start)
-        if texts is not None:
-            sha = history.sha256(texts[0].encode('utf-8'))
+        kind, message = 'start', 'the library before its first recorded command'
     else:
         kind, message = 'outside', 'changed outside papers'
-        files = project.state(head['state']).get('files')
         logger.info(f'{os.path.basename(config.bibtex)} changed outside papers since its last state: recorded')
     state = dict(parent=head['state'] if head else None, time=time.time(), kind=kind, message=message,
-                 ops=[], deleted=[], **_snapshot(config, project.store, files=files, texts=texts))
+                 ops=[], deleted=[], **_snapshot(config, project.store, texts=texts))
     n = project.add(state)
     project.set_head(place, n)
-    if head is None and texts is not None and texts[0] != text:
+    if texts is not None and texts[0] != text:
         return sync_head(config, project, place)  # changed by the command before its save: recorded after
     return n
 
@@ -228,7 +237,7 @@ _NO_START = {'status', 'config', 'init', 'install', 'uninstall', 'migrate', 'his
              'undo', 'redo', 'restore', 'restore-backup'}
 
 
-# the library before the command, for its first state: {place: texts (see _texts)}
+# the library before the command, for the state before it (see start): {place: texts (see _texts)}
 _before = {}
 
 # fields of the next state of a library, {place: fields} (e.g. reverts: the steps a revert takes back)
@@ -241,9 +250,11 @@ _linked = {}
 
 def start(config, cmd):
     """at the start of a command: the library as it is before it, kept in
-    memory, for its first state if it has no history yet (the command may
-    write the files of .papers/ before it saves the bibtex; see sync_head).
-    Nothing is written: a command that changes nothing leaves no trace."""
+    memory, for the state that sync_head records before the save of the
+    command (the command may write the files of .papers/ before it saves
+    the bibtex): when the library has no history yet, or its bibtex changed
+    outside papers since its current state. Nothing is written: a command
+    that changes nothing leaves no trace."""
     _before.clear()
     _linked.clear()
     _fields.clear()
@@ -251,7 +262,9 @@ def start(config, cmd):
         return
     try:
         project, place = project_of(config, create=False)
-        if project is None or project.head(place) is None:
+        head = project.head(place) if project is not None else None
+        if head is None or project.state(head['state'])['bibtex'].get('sha') != history.sha256(
+                _bibtex_text(config).encode('utf-8')):
             _before[os.path.realpath(config.bibtex)] = _texts(config)
     except Exception as error:
         logger.debug(f'the library before the command is not kept: {error}')
@@ -275,7 +288,7 @@ def record(config, message=None, ops=None):
     linked = dict(_linked) if own else {}
     previous = project.state(parent) if parent is not None else None
     if (previous and not ops and not linked and previous['bibtex'] == snap['bibtex']
-            and previous.get('files') == snap['files']):
+            and state_files(previous) == state_files(snap)):
         n = parent
     else:
         state = dict(parent=parent, time=time.time(), kind='command', message=message or _message(),
@@ -417,7 +430,7 @@ def resolve(project, ref):
 
 def state_hashes(config, project, n):
     "the checksums of the files of the state n ({path: sha256}, from its files.json)"
-    pieces = (project.state(n).get('files') or {}).get(FILES_JSON)
+    pieces = state_files(project.state(n)).get(FILES_JSON)
     return papers.checksums.parse(project.store.text(pieces) if pieces else '{}', config)
 
 
@@ -483,13 +496,13 @@ def _write_library_files(config, project, cur, target):
     def inside(name):
         return not os.path.relpath(os.path.join(libdir, name), libdir).startswith('..')
 
-    files = project.state(target).get('files') or {}
+    files = state_files(project.state(target))
     for name, pieces in files.items():
         if inside(name):
             path = os.path.join(libdir, name)
             os.makedirs(os.path.dirname(path), exist_ok=True)
             papers.utils.write_atomic(path, project.store.text(pieces))
-    for name in (project.state(cur).get('files') or {}):
+    for name in state_files(project.state(cur)):
         path = os.path.join(libdir, name)
         if name not in files and inside(name) and os.path.isfile(path):
             logger.info(f'remove {path}: not in the restored state')

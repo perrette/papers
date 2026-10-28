@@ -85,7 +85,9 @@ value is the global or default one; the other settings follow the global
 configuration. `papers config --unset NAME` removes a setting from the
 file, and the library then follows the global configuration again.
 `papers config --prune` removes all the values equal to the global or
-default value (`pool` stays).
+default value (`pool` stays). Keys of the file that papers does not know
+(for example the settings of a newer version) are kept as they are when
+papers writes the file.
 
 | Setting | Values |
 |---|---|
@@ -269,7 +271,8 @@ performs the one-time upgrades from version 2:
 Library configurations of version 2 keep working without migration: they
 are read as self-contained libraries (their files are their own, no pool),
 as in version 2. Their file is moved to `.papers/config.json` the next
-time papers saves the configuration (e.g. `papers config`), or by
+time papers writes the configuration (e.g. `papers config`, or the first
+command that changes the library, which adds the `id` of its history), or by
 `papers migrate` run in the library (see
 [Upgrading from papers 2](upgrading.md#project-libraries)). The configuration files written by version 3 carry
 `"version": 3`; a file without `version` is read as a file of version 2. A

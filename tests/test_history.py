@@ -8,6 +8,8 @@ import tempfile
 import time
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import patch
 
 import papers.backup
 import papers.config
@@ -323,6 +325,13 @@ class TestPlaces(LibraryTest):
         self.lib('config files move')
         self.assertEqual(Path(ignore).read_text(), 'files.json\n')
 
+    def test_gitignore_without_a_save_of_the_configuration(self):
+        # e.g. a configuration written by hand: the first command that writes the library writes it
+        ignore = self.path('lib', '.papers', '.gitignore')
+        os.remove(ignore)
+        self.add('one2000')
+        self.assertEqual(Path(ignore).read_text(), '*\n')
+
     def test_moved_library_continues(self):
         self.add('one2000')
         self.add('two2000')
@@ -412,6 +421,34 @@ class TestHistoryCommand(LibraryTest):
             self.lib('history --remove')
 
 
+class TestStoredNames(LibraryTest):
+    "the names of the files of .papers/ and the paths of the operations are stored with /"
+
+    def test_known_state_id(self):
+        # the identifier of a state does not change (it names the files of .papers/)
+        Path(self.path('lib', 'papers.bib')).write_text(entry('one2000'))
+        os.makedirs(self.path('lib', '.papers', 'origin'))
+        Path(self.path('lib', '.papers', 'origin', 'pool.bib')).write_text(entry('one2000'))
+        Path(self.path('lib', '.papers', 'distinct.json')).write_text('{"distinct": []}\n')
+        Path(self.path('lib', '.papers', 'files.json')).write_text('{"files": {}}\n')
+        config = self.config()
+        snap = papers.backup._snapshot(config, papers.backup.store(config))
+        self.assertEqual(sorted(snap['files']), ['.papers/distinct.json', '.papers/files.json',
+                                                 '.papers/origin/pool.bib'])
+        state = dict(parent=None, time=1700000000.25, **snap)
+        self.assertEqual(history.state_id(state), 'c56b8e5014c28ea6944a45a1c5b0907e29dac4d2ace3e73d64f0305c598e1262')
+
+    def test_windows_separators(self):
+        # as on Windows: stored with /, read back with \\
+        config = SimpleNamespace(absolute_paths=True, bibtex='/lib/papers.bib')
+        op = {'op': 'moved', 'src': 'C:\\lib\\a.pdf', 'dst': 'C:\\lib\\files\\a.pdf'}
+        with patch.object(os, 'sep', '\\'):
+            [stored] = papers.backup._relative_ops([op], config)
+            self.assertEqual((stored['src'], stored['dst']), ('C:/lib/a.pdf', 'C:/lib/files/a.pdf'))
+            state = {'files': {'.papers/origin/pool.bib': ['ab']}}
+            self.assertEqual(papers.backup.state_files(state), {'.papers\\origin\\pool.bib': ['ab']})
+
+
 class TestSeparate(LibraryTest):
     "history-separate: a library keeps its history in a store of its own"
 
@@ -433,6 +470,13 @@ class TestSeparate(LibraryTest):
         self.assertIn('up to 7 MB', self.out('history'))
         # without history-separate, the size of the library does not apply
         self.lib('config history-separate false')
+        self.assertIn('up to 500 MB', self.out('history'))
+
+    def test_shared_store_in_a_folder_named_separate(self):
+        # the shared store is told from a store of its own by its place, not by the name of its folder
+        self.lib(f'config --global history-dir {self.path("separate", "history")}')
+        self.lib('config history-size 7')
+        self.add('one2000')
         self.assertIn('up to 500 MB', self.out('history'))
 
     def test_dry_run_writes_nothing(self):

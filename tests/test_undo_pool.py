@@ -346,6 +346,25 @@ class TestUndoPool(UndoPoolTest, UndoInLibrary):
         self.lib('redo')
         self.assertEqual(Path(distinct).read_text(), '{"distinct": []}\n')
 
+    def test_undo_across_an_outside_change_of_the_origin_records(self):
+        # e.g. a synced folder: the bibtex and the origin records changed together outside papers
+        # are one state, as they are on disk
+        self.lib('add ../new.bib')
+        bib = Path(self.path('lib', 'papers.bib'))
+        [name] = self.origin_files()
+        origin = Path(self.path('lib', ORIGIN_DIR, name))
+        before = bib.read_text(), origin.read_text()
+        bib.write_text(before[0].replace('My own paper', 'My paper'))
+        origin.write_text(before[1].replace('My own paper', 'My paper'))
+        outside = bib.read_text(), origin.read_text()
+        self.lib('list -k mine2022 --add-tag foo')
+        self.lib('undo')  # to the state changed outside papers
+        self.assertEqual((bib.read_text(), origin.read_text()), outside)
+        self.lib('undo')
+        self.assertEqual((bib.read_text(), origin.read_text()), before)
+        self.lib('redo')
+        self.assertEqual((bib.read_text(), origin.read_text()), outside)
+
 
 class TestUndoPoolAutoPush(UndoPoolTest, UndoInLibrary):
     "a shallow library, with auto-push"

@@ -195,8 +195,20 @@ class TestUndoAfterMove(V2LibraryTest):
         self.assertFalse(os.path.exists(self.old()))
         self.assertEqual(Config.load(self.new()).files, 'copy')
 
+    def test_the_identifier_moves_it(self):
+        # the first command that changes the library writes its identifier: in .papers/config.json
+        self.write('a.bib', content=entry('a2000'))
+        self.lib(f'add {self.path("a.bib")}')
+        self.assertFalse(os.path.exists(self.old()))
+        self.assertIn('id', json.load(open(self.new())))
+        self.lib('undo')
+        self.assertNotIn('a2000', self.bibtex())
+
     def test_undo_of_a_state_made_before_the_move(self):
-        # states recorded by the library under its papers 2 name
+        # states recorded by the library under its papers 2 name (its identifier written there by an
+        # earlier v3 build)
+        js = json.load(open(self.old()))
+        json.dump(dict(js, id='0123456789abcdef0123456789abcdef'), open(self.old(), 'w'))
         self.write('a.bib', content=entry('a2000'))
         self.lib(f'add {self.path("a.bib")}')
         self.assertTrue(os.path.exists(self.old()))  # the add does not save the configuration
