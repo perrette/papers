@@ -304,6 +304,13 @@ def state_id(state):
     return sha256(('\n'.join(lines) + '\n').encode('utf-8'))
 
 
+def is_file_object(path):
+    "a file of the files deleted by the commands (file-objects/ab/ab12….pdf), in any store"
+    folder = os.path.dirname(path)
+    return os.path.basename(os.path.dirname(folder)) == 'file-objects' \
+        and os.path.basename(path).startswith(os.path.basename(folder))
+
+
 def short(n):
     "the identifier of a state as the messages show it"
     return n[:SHORT] if isinstance(n, str) else n
