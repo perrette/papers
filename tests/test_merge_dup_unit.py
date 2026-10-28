@@ -152,3 +152,12 @@ def test_bare_value_stays_bare():
     from papers.merge import apply_entry
     apply_entry(b, Merge([b, a]).result())
     assert ' month = jan,' in format_library(library_from_entries([b]))
+
+
+def test_empty_field_not_added():
+    # an empty field of the added entry is not added; an empty field of the target stays
+    from papers.merge import Merge
+    a, b = parse_string('@article{a, note = {}, title = {T}}\n@article{b, pages = {}, title = {T}}').entries
+    result = Merge([a, b]).result()
+    assert 'pages' not in result, dict(result.items())
+    assert result['note'] == ''

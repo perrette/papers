@@ -152,7 +152,7 @@ class FieldMerge:
         self._value = None
         if not present:
             self.choice = 0
-            self._value = original[0] if original[0] is not None else ''
+            self._value = original[0]  # an empty field of the target is kept, of another entry not added
             self.status = SAME
             return
         self.choice = 0 if target is not None else next(i for i, v in enumerate(values) if v is not None)

@@ -334,7 +334,8 @@ arXiv id, ISBN, authors and title), not their keys.
 The entry already in the library (entry 1) is the target:
 
 - it keeps its key;
-- fields that only the added entry has are added;
+- fields that only the added entry has are added (except empty ones, such
+  as `pages = {}`);
 - the file links of both entries are kept (a file linked twice, or two
   copies with the same content, once);
 - values that differ only by case, braces, spaces, or the case of a DOI are
