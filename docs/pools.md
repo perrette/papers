@@ -105,7 +105,11 @@ exchanges merge three-way.
 An entry is never removed by an exchange:
 
 - `papers rm KEY` removes the entry from the library only. `push` and
-  `sync` do not remove it from the pool.
+  `sync` do not remove it from the pool. Its origin copies stay. An entry
+  that later gets KEY by a change of key (`papers edit --key`, a rename)
+  does not take them: its own origin copies replace them, and where it
+  has none they are dropped, so that it is not taken for the removed
+  paper.
 - An entry removed from the pool stays in the libraries that have it. It
   is no longer shared: `pull`, `push` and `sync` without KEY or `--all`
   (and the auto-push of a shallow library) leave it out, and note it once:
@@ -322,7 +326,11 @@ pool (`papers-pool-key`) and the time (`papers-time`). In a shallow
 library, the origin copy for its pool also keeps its `file` field, the
 file links of the pool entry after the exchange, so that a pull can tell a
 link that the pool entry removed from one it never had (the origin copies
-for other libraries have no `file` field). The file links are not part of
+for other libraries have no `file` field). For a pool entry without file
+links, the field is there and empty (`file = {}`): the pool entry had no
+links, while an origin copy without the field (e.g. recorded before the
+library was shallow) says nothing about them. In the library bibtex, an
+entry whose last link a pull removed has no `file` field. The file links are not part of
 the three-way merge. The modification time is recorded at a pull of all
 entries that skipped no conflict, or a push or an add when the pool had
 not changed since the previous exchange (or when it is the first
@@ -355,7 +363,8 @@ one.
 
 The origin copy is the third version of a three-way merge. It is the
 version of the side that sent the entry, as it was sent: the pool entry
-after `add` and `pull`, the library entry after `push`. What the receiving
+after `add` and `pull`, the library entry after `push`, without the
+former keys (`ids`), which each side keeps for itself. What the receiving
 side has beyond it is a change of that side, for the next exchange the
 other way: a field that only the pool entry has comes with the next
 `pull`; a field that only the library entry has goes to the pool with the

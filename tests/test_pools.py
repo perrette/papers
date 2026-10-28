@@ -544,6 +544,26 @@ class TestPull(PoolTest):
         out = self.out('pull')
         self.assertIn('nothing to pull from pool ../pool', out)
 
+    def test_rename_onto_a_leftover_record(self):
+        # a record left by a removed entry is not taken by an entry renamed to its key
+        self.lib('rm smith2020climate --keep-files')
+        self.assertIsNotNone(self.origin().entries['../pool'].get('smith2020climate'))  # left over
+        Path(self.path('new.bib')).write_text(NEW_BIB.replace('mine.pdf', 'none.pdf'))
+        self.lib('add ../new.bib --no-pool')
+        self.lib('edit mine2022 --key smith2020climate')
+        self.assertIsNone(self.origin().get(self.entry('smith2020climate')))
+        self.lib('push smith2020climate')  # not sent onto the pool entry of the leftover record
+        self.assertEqual(self.entry('Smith_2020', 'pool')['title'], 'Climate sensitivity revisited')
+
+    def test_record_without_the_pool_ids(self):
+        # the former keys of the pool entry are not part of the origin copy (as after a push)
+        self.edit_pool('journal = {Nat.}', 'ids = {smith_old},\n journal = {Nature}')
+        self.lib('pull')
+        self.assertEqual(self.entry('smith2020climate')['journal'], 'Nature')
+        self.assertNotIn('ids', self.origin().get(self.entry('smith2020climate')).entry)
+        self.assertNotIn('smith_old', ''.join(Path(self.path('lib', ORIGIN_DIR), n).read_text()
+                                              for n in os.listdir(self.path('lib', ORIGIN_DIR))))
+
     def test_key_changed(self):
         # the record of the exchange follows the key (papers edit --key)
         self.lib('edit smith2020climate --key smith2020')
@@ -1738,6 +1758,18 @@ class TestShallow(OwnFilesTest):
         new = self.rename_in_pool()
         self.lib('tag smith2020climate --add x')  # any command that writes
         self.assertEqual(self.files('smith2020climate'), [new])
+
+    def test_link_removed_in_pool(self):
+        # the library entry loses its field; the record keeps an empty one: the pool entry has no links
+        self.edit_pool('journal = {Nat.}', 'journal = {Nature}')
+        self.lib('pull')  # records the links of the pool entry
+        self.assertEqual(self.origin().get(self.entry('smith2020climate')).files, ':../pool/files/smith.pdf:pdf')
+        self.edit_pool(' file = {:files/smith.pdf:pdf},\n', '')
+        self.lib('pull')
+        self.assertNotIn('file', self.entry('smith2020climate'))
+        self.assertEqual(self.origin().get(self.entry('smith2020climate')).files, '')
+        origin_dir = self.path('lib', ORIGIN_DIR)
+        self.assertIn(' file = {},', ''.join(Path(origin_dir, n).read_text() for n in os.listdir(origin_dir)))
 
     def test_status_sees_repaired_links(self):
         # status repairs the links as pull does, in memory only

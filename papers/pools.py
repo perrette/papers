@@ -24,7 +24,7 @@ files are copied rather than linked.
   keeps its `file` field: the file links of the pool entry after the
   exchange (the library entry has the same links); otherwise it has no
   `file` field. The file links are not part of the base of the merge
-  (papers.merge.EXCHANGE_OWN). The base is the version
+  (papers.merge.EXCHANGE_OWN), and the record has no `ids` (former keys). The base is the version
   of the side that sent the entry, as sent: the pool entry for `add` and
   `pull`, the library entry for `push`. The receiving side has taken all of it into account (taken,
   kept or declined), so that what it has beyond it shows as its own change
@@ -476,7 +476,8 @@ TIME_FIELD = 'papers-time'
 FILE_FIELD = 'file'
 _DEV_FILES_FIELD = 'papers-files'
 _ORIGIN_FIELDS = (POOL_FIELD, POOL_KEY_FIELD, TIME_FIELD, _DEV_FILES_FIELD)
-_RECORD_EXTRA = _ORIGIN_FIELDS + (FILE_FIELD,)  # not part of the base entry
+# not part of the base entry; `ids`, the former keys of the side that sent it, are not exchanged
+_RECORD_EXTRA = _ORIGIN_FIELDS + (FILE_FIELD, 'ids')
 # the first comments of a file: @comment{papers-pool <pool id>} and
 # @comment{papers-pulled <pool bibtex mtime in ns>}
 _POOL_COMMENT = 'papers-pool'
@@ -513,7 +514,7 @@ def origin_file_name(pool, path=None):
 class Record:
     """the origin record of a library entry for a pool: `entry` is the base
     version (see the module documentation; under the library key, without
-    the papers-* fields and file links). `files`: the `file` field of the
+    the papers-* fields, file links and ids). `files`: the `file` field of the
     record, in a shallow library the file links of the pool entry after
     the last exchange (as written in the library's bibtex), or None if not
     recorded."""
@@ -690,12 +691,17 @@ class Origin:
             self.changed.add(pool)
 
     def rekey(self, old, new):
-        "the records of a library entry whose key changed from `old` to `new`, in every pool"
+        """the records of a library entry whose key changed from `old` to
+        `new` (a key no entry had), in every pool. A record left under `new`
+        by a removed entry is another paper's: replaced, or dropped where
+        the entry has no record."""
         for pool, records in self.entries.items():
             record = records.pop(old.lower(), None)
             if record is not None:
                 set_entry_key(record, new)
                 records[new.lower()] = record
+                self.changed.add(pool)
+            elif records.pop(new.lower(), None) is not None:
                 self.changed.add(pool)
 
     def file_of(self, pool):
@@ -1125,7 +1131,10 @@ class Exchange:
 
     def after_take(self, pool):
         """after `add` took entries from the pool (not saved): the first
-        exchange with the pool records its modification time, as a pull"""
+        exchange with the pool records its modification time, as a pull.
+        A later take leaves the recorded time: if the pool did not change
+        since, it is the pool's time already; if it did, its other changes
+        are still to pull."""
         if self.origin.first_exchange(pool.id) and self.origin.records(pool.id):
             self.origin.set_pulled(pool.id, pool.bibtex_mtime())
 
