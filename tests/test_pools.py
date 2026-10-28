@@ -310,6 +310,26 @@ class TestOrigin(PoolTest):
         self.assertEqual((origin.pulled('~/Documents/papers'), origin.pulled('../pool')), (12345, None))
         self.assertEqual(len(origin), 2)
 
+    def test_two_files_of_one_pool(self):
+        # a second file of the same pool id (copied, or named by another
+        # implementation): its records are read, and it is removed when the pool is written
+        path = self.path('lib', ORIGIN_DIR)
+        origin = Origin(path)
+        smith, brown = parse_string(POOL_BIB).entries
+        origin.set('smith2020climate', '../pool', smith)
+        origin.save()
+        name = origin_file_name('../pool')
+        Path(path, 'a-copy.bib').write_text('@comment{papers-pool ../pool}\n\n'
+                                            '@article{brown2021,\n papers-pool-key = {Brown_2021},\n title = {Ocean heat}\n}\n')
+        origin = Origin.load(path)
+        self.assertEqual(sorted(r.key for r in origin.records('../pool')), ['brown2021', 'smith2020climate'])
+        self.assertEqual(origin.file_of('../pool'), os.path.join(path, name))
+        origin.set('smith2020climate', '../pool', brown)
+        origin.save()
+        self.assertEqual(os.listdir(path), [name])
+        origin = Origin.load(path)
+        self.assertEqual(sorted(r.key for r in origin.records('../pool')), ['brown2021', 'smith2020climate'])
+
     def test_migration(self):
         # earlier v3 builds: one file, .papers/origin.bib, with a papers-pool
         # field and papers-pull comments

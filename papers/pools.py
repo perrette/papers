@@ -547,7 +547,10 @@ class Origin:
     origin_file_name), with the pool id and the time of the last exchange
     in its first comments, and the records of the entries exchanged with
     the pool (see the module documentation). An entry can have records in
-    several files, from earlier pools of the library."""
+    several files, from earlier pools of the library. Every .bib file of
+    the folder is read: the files of one pool id (e.g. a copy) are merged,
+    in name order (a record read later wins), and when the pool is written,
+    the files other than its own are removed."""
 
     def __init__(self, dir=None):
         self.dir = dir
@@ -556,7 +559,7 @@ class Origin:
         self.changed = set()  # the pools whose file is to be written
         self.known = set()  # the pools that have records when loaded
         self.paths = {}  # pool id -> where the pool was (see _PATH_COMMENT)
-        self.read_from = {}  # pool id -> the file its records were read from
+        self.read_from = {}  # pool id -> the files its records were read from (in the order read)
         self.stale = set()  # files to remove at the save (the records of a pool that moved to another id)
 
     @classmethod
@@ -600,7 +603,7 @@ class Origin:
         where = next((w[1].strip() for w in words if len(w) == 2 and w[0] == _PATH_COMMENT), None)
         if where:
             self.paths[pool] = where
-        self.read_from[pool] = path
+        self.read_from.setdefault(pool, []).append(path)  # several files of one pool id: merged
         records = self.entries.setdefault(pool, {})
         for e in lib.entries:
             records[e.key.lower()] = e
@@ -699,8 +702,8 @@ class Origin:
         "the origin file of the pool id `pool` (see origin_file_name), or None without origin folder"
         if self.dir is None:
             return None
-        if pool in self.read_from:
-            return self.read_from[pool]
+        if self.read_from.get(pool):
+            return self.read_from[pool][-1]
         where = self.paths.get(pool)
         return os.path.join(self.dir, origin_file_name(pool, os.path.expanduser(where) if where else None))
 
@@ -727,7 +730,7 @@ class Origin:
         if path is not None:
             self.paths[new] = short_home(path)
         if old in self.read_from:
-            self.stale.add(self.read_from.pop(old))
+            self.stale.update(self.read_from.pop(old))
         self.changed.discard(old)
         self.changed.add(new)
         logger.info(f'origin records of {old}: now under the identifier of the pool library, {new}')
@@ -769,9 +772,9 @@ class Origin:
             if read_text(path) != text:  # a file that has this content already is not written
                 write_atomic(path, text)
             written.add(os.path.realpath(path))
-            if pool in self.read_from and os.path.realpath(self.read_from[pool]) != os.path.realpath(path):
-                self.stale.add(self.read_from[pool])  # the file of an earlier name
-            self.read_from[pool] = path
+            # the files of an earlier name, and other files of the pool id
+            self.stale.update(f for f in self.read_from.get(pool, []) if os.path.realpath(f) != os.path.realpath(path))
+            self.read_from[pool] = [path]
         for path in self.stale:
             if os.path.realpath(path) not in written and os.path.isfile(path):
                 os.remove(path)

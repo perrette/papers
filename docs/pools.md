@@ -332,6 +332,11 @@ pool as changed until the next pull. The files are part of the history of
 the library (see [Undo and redo](undo-redo.md)), which `papers undo`
 restores with its bibtex.
 
+papers reads every `.bib` file of `.papers/origin/`. Two files that name
+the same pool (e.g. a copy) are merged, and the next time papers writes
+the origin copies of that pool, it writes them to the file of its own name
+and removes the other.
+
 The files of all pools are kept: after `papers config pool PATH`, the
 library uses the file of PATH (with the origin copies of the exchanges
 with `--pool PATH`, if any), and setting the pool back to an earlier one
