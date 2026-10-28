@@ -1,6 +1,8 @@
 """
 Key and file name formatting
 """
+import os
+import re
 from slugify import slugify
 from papers.encoding import family_names
 from papers.entries import get_entry_val
@@ -44,6 +46,48 @@ def path_safe(value):
     if value and not value.strip('.'):
         value = '-' * len(value)
     return value
+
+# the longest name (in bytes, as UTF-8) of a file or folder that papers names
+# after an entry: 255 is the limit of most file systems, minus room for the
+# -2, -3... suffix of a name already taken
+MAX_NAME_BYTES = 250
+# characters that Windows does not accept in a file name ('/' separates the
+# folders of the template, '\\' is replaced in the values, see path_safe)
+_FORBIDDEN = re.compile(r'[<>:"|?*\x00-\x1f]')
+_RESERVED = {'CON', 'PRN', 'AUX', 'NUL', *(f'COM{i}' for i in range(1, 10)), *(f'LPT{i}' for i in range(1, 10))}
+
+
+def cut_bytes(text, size):
+    "the start of `text` that is at most `size` bytes as UTF-8"
+    return text.encode('utf-8')[:size].decode('utf-8', errors='ignore')
+
+
+def safe_file_name(name):
+    """a file name made from a template, valid on every system: in each
+    folder of it, the characters that Windows forbids replaced with '-', no
+    trailing dot or space, '-' after a reserved name of Windows (CON, NUL...),
+    and at most MAX_NAME_BYTES bytes"""
+    parts = []
+    for part in name.split('/'):
+        if part not in ('', '.', '..'):
+            part = cut_bytes(_FORBIDDEN.sub('-', part), MAX_NAME_BYTES).rstrip('. ') or '-'
+            first, dot, rest = part.partition('.')
+            if first.upper() in _RESERVED:
+                part = cut_bytes(first + '-' + dot + rest, MAX_NAME_BYTES)
+        parts.append(part)
+    return '/'.join(parts)
+
+
+def fit_name(path):
+    """`path` with its file name (extension included) cut to MAX_NAME_BYTES
+    bytes, keeping the extension"""
+    head, name = os.path.split(path)
+    stem, ext = os.path.splitext(name)
+    if len(name.encode('utf-8')) <= MAX_NAME_BYTES:
+        return path
+    stem = cut_bytes(stem, MAX_NAME_BYTES - len(ext.encode('utf-8'))).rstrip('. ') or '-'
+    return os.path.join(head, stem + ext)
+
 
 def make_template_fields(
     entry,
@@ -181,9 +225,10 @@ class Format:
         fields = make_template_fields(entry, **vars(self))
 
         if self.unknown_template and self.is_unknown(entry):
-            return format_template(self.unknown_template, fields, self.kind + ' unknown')
-
-        return format_template(self.template, fields, self.kind)
+            name = format_template(self.unknown_template, fields, self.kind + ' unknown')
+        else:
+            name = format_template(self.template, fields, self.kind)
+        return safe_file_name(name) if self.kind == 'name' else name
 
     def __call__(self, entry):
         # Support both dict and bibtexparser v2 Entry (convert to dict for ** unpacking)

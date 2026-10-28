@@ -86,3 +86,38 @@ class TestPlaceholders(unittest.TestCase):
             Format(template="{}")(ENTRY)
         with self.assertRaisesRegex(TemplateError, 'invalid name template'):
             Format(template="{year")(ENTRY)
+
+
+class TestSafeFileNames(unittest.TestCase):
+
+    def test_windows_characters(self):
+        fmt = Format(template='{journal}/{author}_{year}')
+        name = fmt({'author': 'Doe, J.', 'year': '2000', 'journal': 'Nature: "A|B" <x>?*\x01. '})
+        self.assertEqual(name, 'Nature- -A-B- -x----/doe_2000')
+
+    def test_reserved_names(self):
+        fmt = Format(template='{journal}/{author}')
+        self.assertEqual(fmt({'author': 'Nul', 'journal': 'con.x'}), 'con-.x/nul-')
+
+    def test_keys_unchanged(self):
+        fmt = Format(template='{journal}', kind='key')
+        self.assertEqual(fmt({'journal': 'a:b'}), 'a:b')
+
+    def test_length(self):
+        from papers.filename import MAX_NAME_BYTES, fit_name
+        fmt = Format(template='{journal}/{author}', author_num=200)
+        name = fmt({'author': ' and '.join(['Müller'] * 200), 'journal': 'é' * 300})
+        folder, base = name.split('/')
+        self.assertLessEqual(len(folder.encode()), MAX_NAME_BYTES)
+        self.assertEqual(fit_name(name + '.pdf')[-4:], '.pdf')
+        self.assertEqual(len(fit_name(name + '.pdf').split('/')[1].encode()), MAX_NAME_BYTES)
+
+    def test_attachments_fit(self):
+        from papers.files import attachment_names
+        from papers.filename import MAX_NAME_BYTES
+        target = 'files/' + 'a' * 240
+        names = attachment_names(['x.pdf', 'a/supplement.pdf', 'b/supplement.pdf'], target)
+        self.assertEqual(names[0], target + '.pdf')
+        for name in names:
+            self.assertLessEqual(len(name.split('/')[1].encode()), MAX_NAME_BYTES + 2)
+        self.assertEqual(len(set(names)), 3)

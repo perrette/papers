@@ -122,6 +122,12 @@ stores it as the setting is written: relative to the library for `bibtex`
 and `filesdir`, as described below for `pool`, and absolute (with `~` for
 the home directory) for `default` and `history-dir`.
 
+A configuration file (of a library or the global one) that is not valid
+JSON, or that gives a setting a value of the wrong type (for example
+`"auto-push": "no"` instead of `false`, or a number for `pool`), is an
+error: papers names the file and the setting and does nothing until the
+file is corrected.
+
 `history-dir` and `keep-deleted-files` can only be set in the global
 configuration (`papers config --global`): a library you receive from
 someone cannot choose where your history goes, or what it keeps.

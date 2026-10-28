@@ -44,10 +44,27 @@ class TestMachineConfig(unittest.TestCase):
         self.tmp.cleanup()
 
     def test_unreadable(self):
+        # an error, as for a library configuration: saving the global
+        # configuration would otherwise replace the file
         with open(self.file, 'w') as f:
             f.write('{not json')
-        with self.assertLogs('papers', level='WARNING'):
-            self.assertEqual(MachineConfig.load(self.file).data, {})
+        with self.assertRaisesRegex(PapersExit, 'config.json'):
+            MachineConfig.load(self.file)
+
+    def test_wrong_type(self):
+        for js, name in [({'auto-push': 'no'}, 'auto-push'), ({'default': 3}, 'default'),
+                         ({'history-size': True}, 'history-size'), ({'files': 'keep'}, 'files'),
+                         ({'nameformat': {'title_length': '10'}}, 'name.title-length')]:
+            with open(self.file, 'w') as f:
+                json.dump(js, f)
+            with self.assertRaisesRegex(PapersExit, f'config.json: invalid value .* for the setting {name} '):
+                MachineConfig.load(self.file)
+
+    def test_right_types(self):
+        with open(self.file, 'w') as f:
+            json.dump({'auto-push': False, 'default': '~/lib', 'history-size': 10, 'files': 'copy',
+                       'editor': None, 'nameformat': {'title_length': 10, 'unknown_strict': True}}, f)
+        self.assertEqual(MachineConfig.load(self.file).get('history-size'), 10)
 
     def test_pool_names_of_earlier_v3(self):
         # the pool names of earlier v3 builds: read for the libraries that name their pool
@@ -86,6 +103,23 @@ class TestConfig(unittest.TestCase):
         config = Config.load(file, is_library=False)
         self.assertTrue(config.absolute_paths)
         self.assertIs(config.tojson()['local'], False)
+
+    def test_wrong_type(self):
+        file = os.path.join(self.dir, CONFIG_FILE_LOCAL)
+        os.makedirs(os.path.dirname(file))
+        machine = MachineConfig(os.path.join(self.dir, 'machine.json'))
+        for js, name in [({'auto-push': 'no'}, 'auto-push'), ({'pool': 3}, 'pool'),
+                         ({'bibtex': ['a.bib']}, 'bibtex'), ({'paths': 'relativ'}, 'paths'),
+                         ({'keyformat': {'author_num': 2.5}}, 'key.author-num')]:
+            with open(file, 'w') as f:
+                json.dump({'version': 3, **js}, f)
+            with self.assertRaisesRegex(PapersExit, f'config.json: invalid value .* for the setting {name} '):
+                Config.load(file, machine=machine)
+        for text in ('{not json', '[]'):
+            with open(file, 'w') as f:
+                f.write(text)
+            with self.assertRaisesRegex(PapersExit, 'config.json'):
+                Config.load(file, machine=machine)
 
     def test_update_paths_without_file(self):
         with self.assertLogs('papers', level='WARNING'):

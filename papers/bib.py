@@ -144,20 +144,22 @@ def unreadable_blocks(db):
     for block in getattr(db, 'failed_blocks', []):
         if type(block).__name__ == 'DuplicateFieldKeyBlock':
             reason = str(block.error).split('. Note')[0].replace('Duplicate field keys on entry', 'a field given twice')
+        elif type(block).__name__ == 'DuplicateBlockKeyBlock':
+            reason = f"a key given twice (keys ignore case): '{block.key}'"
         else:
             reason = 'syntax error'
         found.append(((block.start_line or 0) + 1, reason))
     return found
 
 
-def unreadable_message(bibtex, unreadable):
+def unreadable_message(bibtex, unreadable, outcome='papers ignores them until they are fixed'):
     lines = '; '.join(f'line {line}: {reason}' for line, reason in unreadable)
     n = len(unreadable)
     home = os.path.expanduser('~')
     if bibtex.startswith(home + os.sep):
         bibtex = '~' + bibtex[len(home):]
     return (f'{bibtex}: {n} entr{"ies" if n > 1 else "y"} could not be read ({lines}): '
-            'papers ignores them until they are fixed')
+            + outcome)
 
 
 class Biblio:
@@ -524,6 +526,9 @@ class Biblio:
 
     def add_bibtex(self, bibtex, relative_to=None, attachments=None, convert_to_unicode=False, **kw):
         bib = parse_string(bibtex)
+        unreadable = unreadable_blocks(bib)
+        if unreadable:
+            logger.warning(unreadable_message('the added bibtex', unreadable, 'they are not added'))
         if convert_to_unicode:
             bib = latex_to_unicode_library(bib)
         return self.add_entries(bib.entries, relative_to=relative_to, attachments=attachments, **kw)

@@ -446,7 +446,9 @@ to PATH. This is not `papers -C PATH add`, which adds to the library PATH.
 
 An entry that the bibtex parser cannot read, such as one with a field
 given twice or a missing brace, is kept in the file as it is, but papers
-does not see it. Every command that loads that bibtex warns about it, with
+does not see it. As in BibTeX, field names and keys ignore case: `Title`
+and `title` in one entry are a field given twice, and an entry `smith2000`
+after an entry `Smith2000` is a key given twice (the first one is read). Every command that loads that bibtex warns about it, with
 its line. Papers does not write to a pool that has such an entry: it would
 not find that paper there, and would add it again. `push`, `sync` and the
 commands that add to the pool stop with an error, and nothing is changed,

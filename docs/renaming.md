@@ -88,6 +88,23 @@ name-template should be
 `--name-template {year}/{Author}{year}-{Title} --name-title-sep ''`
 (note the case).
 
+The names made from the template are valid on every system. In each part
+of the name (the folders and the file name), papers:
+
+- replaces the characters that Windows does not accept (`<>:"|?*` and
+  control characters) with `-` (`/` and `\` in the field values are
+  replaced with `-` too, so a field cannot add a folder),
+- removes trailing dots and spaces,
+- adds `-` after a name that Windows reserves (`CON`, `PRN`, `AUX`, `NUL`,
+  `COM1` to `COM9`, `LPT1` to `LPT9`),
+- cuts the name to 250 bytes (UTF-8), extension included (a `-2` suffix
+  for a name already taken can follow).
+
+This applies only to the names papers makes from the template: a file
+linked where it is keeps its name, and a file named before this rule keeps
+its name until the entry is renamed (`papers file rename`, `papers list
+--rename`).
+
 ## Case-sensitive fields
 
 Entries are case-sensitive, and a few more fields are added, so that:

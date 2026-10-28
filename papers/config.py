@@ -180,6 +180,43 @@ def json_set(js, name, value):
         js[name] = value
 
 
+# the JSON type of each kind of setting in a configuration file
+_JSON_TYPES = {'path': (str, 'a text'), 'pool': (str, 'a text'), 'str': (str, 'a text'),
+               'bool': (bool, 'true or false'), 'int': (int, 'an integer')}
+
+
+def check_settings(js, file, names=SETTINGS):
+    """raise PapersExit if a setting of the json of a configuration file has
+    a value of the wrong type (None is unset)"""
+    for group in ('nameformat', 'keyformat'):
+        if js.get(group) is not None and not isinstance(js[group], dict):
+            raise PapersExit(f"{file}: invalid {group} {js[group]!r} (expected an object): correct the file")
+    for name in names:
+        value = json_get(js, name)
+        if value is None:
+            continue
+        kind = SETTINGS.get(name, 'str')
+        if isinstance(kind, tuple):
+            ok, expected = value in kind, 'one of ' + ', '.join(kind)
+        else:
+            types, expected = _JSON_TYPES[kind]
+            ok = isinstance(value, types) and (kind == 'bool' or not isinstance(value, bool))
+        if not ok:
+            raise PapersExit(f"{file}: invalid value {json.dumps(value)} for the setting {name} "
+                             f"(expected {expected}): correct the file")
+
+
+def read_config_file(file):
+    "the json of a configuration file; raise PapersExit if it is not a JSON object"
+    try:
+        js = json.load(open(file, encoding='utf-8-sig'))
+    except (json.JSONDecodeError, OSError) as error:
+        raise PapersExit(f"{file} could not be read ({error}): correct the file")
+    if not isinstance(js, dict):
+        raise PapersExit(f"{file} is not a JSON object: correct the file")
+    return js
+
+
 def parse_value(name, values):
     """check and convert the command-line value(s) of a setting; raise ValueError"""
     kind = SETTINGS[name]
@@ -395,15 +432,13 @@ class MachineConfig:
         file = file or MACHINE_CONFIG_FILE
         data = {}
         if os.path.exists(file):
-            try:
-                data = json.load(open(file, encoding='utf-8-sig'))
-            except (json.JSONDecodeError, OSError) as error:
-                logger.warning(f"unreadable global configuration {file}: {error} -- ignored")
+            data = read_config_file(file)
         file_version(data, file)
         data.pop('version', None)
         if data.pop('pool', None) not in (None, NO_POOL):
             logger.warning(f"{file}: the global pool setting is no longer used (ignored); "
                            "`papers config --global default PATH` sets a default library")
+        check_settings(data, file, [*SETTINGS, DEFAULT_LIBRARY])
         return cls(file, data)
 
     def exists(self):
@@ -696,7 +731,7 @@ class Config:
     def load(cls, the_file, machine=None, is_library=None):
         """is_library=False for a global configuration of v2 (the default
         tells them apart by the file content or name)"""
-        js = json.load(open(the_file, encoding='utf-8-sig'))
+        js = read_config_file(the_file)
         version = file_version(js, the_file)
         if is_library is None and version >= 3:
             is_library = True  # v3 has no global configuration
@@ -710,6 +745,7 @@ class Config:
             is_library = os.path.basename(the_file) != os.path.basename(CONFIG_FILE)
         machine = machine if machine is not None else MachineConfig.load()
         _read_earlier_v3(js, machine, the_file)
+        check_settings(js, the_file)
         cfg = cls(file=the_file, is_library=is_library, machine=machine,
                   bibtex=js.get('bibtex'), filesdir=js.get('filesdir'))
         # an identifier that papers did not write (e.g. a path, in a library received from someone) is ignored

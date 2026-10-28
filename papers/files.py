@@ -16,6 +16,7 @@ from papers import journal, logger
 from papers.config import Config, config_root, find_library_config
 from papers.entries import get_entry_val, parse_string, parse_file, format_file
 from papers.extract import extract_pdf_doi, isvaliddoi
+from papers.filename import fit_name
 from papers.latexenc import latex_to_unicode
 from papers.utils import checksum, stdin_is_terminal, PapersExit
 
@@ -311,18 +312,20 @@ def attachment_label(file, prefixes=()):
 def attachment_names(files, target):
     """new paths of an entry's files: target.<ext> for the first one,
     target--<label>.<ext> for the others (see `attachment_label`),
-    with a -2, -3... suffix if two labels coincide"""
-    newfiles = [target + os.path.splitext(files[0])[1]]
+    with a -2, -3... suffix if two labels coincide; the names are cut to
+    MAX_NAME_BYTES (see `fit_name`)"""
+    newfiles = [fit_name(target + os.path.splitext(files[0])[1])]
     # prefixes of a previous rename: the current name of the first file, the target name
     prefixes = [os.path.splitext(os.path.basename(files[0]))[0], os.path.basename(target)]
     taken = {os.path.normcase(newfiles[0])}
     for file in files[1:]:
         ext = os.path.splitext(file)[1]
         label = attachment_label(file, prefixes)
-        newfile = target + ATTACHMENT_SEP + label + ext
+        newfile = fit_name(target + ATTACHMENT_SEP + label + ext)
+        stem = newfile[:len(newfile) - len(ext)]
         i = 2
         while os.path.normcase(newfile) in taken:
-            newfile = f'{target}{ATTACHMENT_SEP}{label}-{i}{ext}'
+            newfile = f'{stem}-{i}{ext}'
             i += 1
         taken.add(os.path.normcase(newfile))
         newfiles.append(newfile)
