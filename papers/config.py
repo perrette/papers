@@ -569,6 +569,8 @@ class Config:
             from papers.history import new_id  # papers.history is self-contained
             self.id = new_id()
             if os.path.exists(self.file) and not DRYRUN:
+                if is_v2_config_name(self.file):
+                    self.file = move_v2_config(self.file)  # as any save does
                 # the identifier only: the settings in memory may be those of the command
                 # (e.g. the files directory of the pool, see papers.pools.use_pool_files)
                 js = json.load(open(self.file, encoding='utf-8-sig'))

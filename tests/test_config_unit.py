@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from unittest import mock
 
-from papers.config import Config, CONFIG_FILE_LOCAL, MachineConfig
+from papers.config import Config, CONFIG_FILE_LOCAL, CONFIG_FILE_LOCAL_V2, MachineConfig
 
 
 class TestConfigRelpath(unittest.TestCase):
@@ -77,6 +77,17 @@ class TestLibraryId(unittest.TestCase):
         config.filesdir = '/somewhere/else'
         config.library_id()
         self.assertEqual(set(json.load(open(self.file))), {'bibtex', 'version', 'id'})
+
+    def test_written_to_papers_config_json(self):
+        # a library configuration of papers 2 is moved first, as by any save
+        v2 = os.path.join(self.tmp.name, CONFIG_FILE_LOCAL_V2)
+        os.rmdir(os.path.dirname(self.file))
+        json.dump({'bibtex': 'lib.bib', 'version': 3}, open(v2, 'w'))
+        config = Config.load(v2, machine=self.machine)
+        id = config.library_id()
+        self.assertFalse(os.path.exists(v2))
+        self.assertEqual(config.file, self.file)
+        self.assertEqual(json.load(open(self.file)), {'bibtex': 'lib.bib', 'version': 3, 'id': id})
 
     def test_machine_settings_not_read_from_a_library(self):
         json.dump({'bibtex': 'lib.bib', 'version': 3, 'history-dir': '/tmp/evil', 'keep-deleted-files': False,
