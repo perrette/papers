@@ -196,6 +196,35 @@ class TestPrune(StoreTest):
         self.store.prune(1, now=time.time() + history.GRACE + 1)
         self.assertEqual(self.objects(), [])
 
+    def test_objects_of_dropped_states(self):
+        # the objects of a dropped state go at once, also when recent
+        p = self.store.project('p')
+        old = p.add(self.state('@article{old,\n}\n', t=time.time() - 10))
+        p.set_head('/lib.bib', p.add(self.state('@article{new,\n}\n', parent=old)))
+        self.store.prune(1)
+        self.assertEqual(len(self.objects()), 1)
+
+    def test_object_used_again_kept(self):
+        # an object that a command stores again after the dropped state: kept (its state is to come)
+        p = self.store.project('p')
+        old = p.add(self.state('@article{old,\n}\n', t=time.time() - 10))
+        p.set_head('/lib.bib', p.add(self.state('@article{new,\n}\n', parent=old)))
+        future = time.time() + 5
+        self.store.put_text('@article{old,\n}\n')
+        for root, _, files in os.walk(self.store.objects):
+            for f in files:
+                os.utime(os.path.join(root, f), (future, future))
+        self.store.prune(1)
+        self.assertEqual(len(self.objects()), 2)
+
+    def test_recent_orphans_do_not_push_states_out(self):
+        p = self.store.project('p')
+        old = p.add(self.state('@article{old,\n}\n', t=time.time() - 10))
+        p.set_head('/lib.bib', p.add(self.state('@article{new,\n}\n', parent=old)))
+        size = self.store.size()
+        self.store.put_text('@article{orphan,\n}\n' + 'x' * 1000)  # a command storing its state
+        self.assertEqual(self.store.prune(size), [])
+
     def test_files_to_the_discard(self):
         p = self.store.project('p')
         path = os.path.join(self.tmp.name, 'a.pdf')

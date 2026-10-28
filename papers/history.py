@@ -245,30 +245,43 @@ class Store:
         """drop the oldest states of all projects until the store holds no
         more than `limit` bytes (counting `extra` bytes about to be stored),
         then remove the pieces and files that no state refers to (not those
-        younger than GRACE). The current states of the places are kept.
+        younger than GRACE, unless they belonged to a dropped state and
+        were not used again since). The current states of the places are kept.
         A removed file goes through `discard` (e.g. the system trash).
         dry: change nothing. Return the dropped states: [(project id, number, state)]."""
         now = time.time() if now is None else now
         sizes = self._sizes()
         refs = {}
+        latest = {}  # when the latest state that refers to it was written
         states = []
         for id in self.project_ids():
             project = self.project(id)
             heads = {h['state'] for h in project.heads().values()}
             for n, state in project.states().items():
+                try:  # the state is written (and its deleted files added) after its objects
+                    written = os.path.getmtime(project._path(n))
+                except OSError:
+                    written = state.get('time', 0)
                 for ref in _refs(state):
                     refs[ref] = refs.get(ref, 0) + 1
+                    latest[ref] = max(latest.get(ref, 0), written)
                 if n not in heads:
                     states.append((state.get('time', 0), id, n, state))
         states.sort(key=lambda s: (s[0], s[2]))
 
         def removable(ref):
+            # a recent object may be one that a command is storing (or uses
+            # again) before it writes its state: kept, unless no command
+            # touched it since the states that referred to it
             item = sizes.get(ref)
-            return item is not None and refs.get(ref, 0) == 0 and now - item[2] >= GRACE
+            return (item is not None and refs.get(ref, 0) == 0
+                    and (now - item[2] >= GRACE or item[2] <= latest.get(ref, 0)))
 
         total = sum(size for _, size, _ in sizes.values()) + extra
         freed = {ref for ref in sizes if removable(ref)}
-        total -= sum(sizes[ref][1] for ref in freed)
+        # the recent objects that no state refers to yet are not counted:
+        # dropping old states would not make room for them
+        total -= sum(size for ref, (_, size, _) in sizes.items() if ref in freed or not refs.get(ref, 0))
         dropped = []
         for _, id, n, state in states:
             if not limit or total <= limit:
