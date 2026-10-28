@@ -115,9 +115,10 @@ def _same_content(file, files):
 
 
 def read_text(file):
-    "the content of a text file (as `open(file, 'w').write` was given it), or None if it cannot be read"
+    """the content of a text file (UTF-8, as `write_atomic` writes it; without the byte order mark
+    that some editors write first), or None if it cannot be read"""
     try:
-        with open(file) as f:
+        with open(file, encoding='utf-8-sig') as f:
             return f.read()
     except (OSError, UnicodeDecodeError):
         return None
@@ -238,7 +239,8 @@ class Biblio:
 
     @classmethod
     def load(cls, bibtex, filesdir, relative_to=None, **kw):
-        bibtexs = open(bibtex).read()
+        with open(bibtex, encoding='utf-8-sig') as f:  # UTF-8, without a byte order mark (see read_text)
+            bibtexs = f.read()
         kw.setdefault('distinct', Distinct.for_bibtex(bibtex))
         db = parse_string(bibtexs, cache=parse_cache())
         loaded_bib = cls(db, filesdir, relative_to=relative_to if relative_to is not None else os.path.dirname(bibtex), **kw)
@@ -565,7 +567,8 @@ class Biblio:
 
 
     def add_bibtex_file(self, file, **kw):
-        bibtex = open(file).read()
+        with open(file, encoding='utf-8-sig') as f:
+            bibtex = f.read()
         # file links in the added bibtex are relative to its own directory
         # (the absolute path matters: dirname('papers.bib') is '')
         return self.add_bibtex(bibtex, relative_to=os.path.dirname(os.path.abspath(file)), **kw)
