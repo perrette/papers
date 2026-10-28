@@ -1039,7 +1039,8 @@ undo starts a new line of history; the undone steps are not lost, and
 <h2 id="deleted-files">Deleted files<a class="headerlink" href="#deleted-files" title="Permanent link">&para;</a></h2>
 <p>A file that a command deletes (<code>papers rm --delete-files</code>, <code>papers file
 rm</code>, <code>papers file clean</code>...) is kept by the history, and <code>papers undo</code> puts
-it back:</p>
+it back, also when no entry linked to it, or when the command was stopped
+(an error, Ctrl-C) after deleting it:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>undo: papers.bib restored to 12 papers add paper.pdf (2026-10-22 14:03)
 <a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>    files/perrette_2013_a-scaling-approach.pdf: restored from the history
 </code></pre></div>
