@@ -285,7 +285,9 @@ def record(config, message=None, ops=None):
         project.set_head(place, n)
         if not own and config.file and config.is_library:
             _linked[project.id] = {'state': n, 'config': os.path.abspath(config.file)}
-    if own:
+    if own and n != parent:
+        # the operations done after the save join this state; after a save that added none, they
+        # make a state of their own at the end of the command (not that of the previous command)
         journal.saved((config, n))
     if any(op['op'] == 'trashed' for op in ops) or n % PRUNE_EVERY == 0:
         prune(config, project.store)
@@ -348,8 +350,7 @@ class Deleted:
         if total > limit:
             question = (f'{what}: more than the history keeps (history-size: {size} MB).\n'
                         f'- This command cannot be undone: the files go to the trash of the system, '
-                        f'not to the history.\n'
-                        f'- The history of the libraries is dropped: no undo before this point.')
+                        f'not to the history (the history keeps its steps).')
             return False if _ask(question) else None
         dropped = self.store.prune(limit, extra=total, dry=True)
         if not dropped:
