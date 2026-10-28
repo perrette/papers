@@ -497,8 +497,9 @@ class Biblio:
 
 
     def generate_key(self, entry):
-        " generate a unique key not yet present in the record "
-        keys = {self.key(e) for e in self.db.entries}
+        """the key of the key template for the entry, with a letter suffix if
+        another entry of the library has it (the entry's own key is not taken)"""
+        keys = {self.key(e) for e in self.db.entries if e is not entry}
         key = self.keyformat(entry)
         if key.lower() in keys:
             key = append_abc(key, keys)
