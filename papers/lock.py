@@ -3,13 +3,20 @@ lock, .papers/lock, so that two commands (or papers and another program
 that follows the same rules) do not write it at the same time.
 
 A lock is a lease: a file created only if it does not exist, with a JSON
-object {token, pid, host, command}. Its holder rewrites it every REFRESH
-seconds (a thread), as long as the command runs. A waiting command takes
-the lock over when it is stale:
+object {token, pid, host, command}. Its holder touches it (its modification
+time) every REFRESH seconds (a thread), as long as the command runs; the
+file is never rewritten, so a holder that lost its lock cannot overwrite
+the lock of another command. A waiting command takes the lock over when it
+is stale:
 
 - the file did not change for LIFETIME seconds, measured on the clock of
   the waiting command (the clocks of two computers are never compared);
 - or it names this computer and a process that no longer exists.
+
+To take it over, the waiting command renames the stale file to a name of
+its own (one step: two waiting commands cannot both get it) and checks that
+the file it renamed is the one it found stale; a fresh lock taken by a
+faster command meanwhile is put back.
 
 Before writing the library, the holder checks that the lock still has its
 token (see `check`): a holder that could not refresh it in time (e.g. the
@@ -79,7 +86,7 @@ def _read(path):
 
 
 def _signature(path):
-    "what changes when the lock file is rewritten (None: no file)"
+    "what changes when the lock file is refreshed or replaced (None: no file)"
     try:
         st = os.stat(path)
     except FileNotFoundError:
@@ -87,12 +94,23 @@ def _signature(path):
     return st.st_mtime_ns, st.st_size, st.st_ino
 
 
-def _write(path, content):
-    "rewrite the lock (a refresh): through a temporary file, so that a reader never sees half of it"
-    tmp = f'{path}.{os.getpid()}.tmp'
-    with open(tmp, 'w') as f:
-        json.dump(content, f)
-    os.replace(tmp, path)
+def _take_over(path, signature):
+    """remove the stale lock file whose signature is `signature`: renamed
+    first (one step), then removed if it is that file; a fresh lock found
+    there instead is put back (unless another lock was created meanwhile)"""
+    aside = f'{path}.{uuid.uuid4().hex}.stale'
+    try:
+        os.rename(path, aside)
+    except FileNotFoundError:
+        return
+    if _signature(aside) == signature:
+        os.remove(aside)
+        return
+    try:
+        os.link(aside, path)  # put back: only if no lock was created meanwhile
+    except OSError:
+        pass
+    os.remove(aside)
 
 
 def _create(path, content):
@@ -153,10 +171,7 @@ def acquire(config, command=None, wait=None):
         stale = signature is not None and (now - since >= LIFETIME or (other and _process_gone(other)))
         if stale:
             logger.info(f'{papers.config.short_home(path)}: stale lock of {_describe(other)}, taken over')
-            try:
-                os.remove(path)
-            except FileNotFoundError:
-                pass
+            _take_over(path, signature)
             seen = None
             continue
         if now - start >= wait:
@@ -221,7 +236,7 @@ def _refresh():
         for path, content in held:
             try:
                 if (_read(path) or {}).get('token') == content['token']:
-                    _write(path, content)
+                    os.utime(path)
             except OSError as error:
                 logger.debug(f'{path}: lock not refreshed: {error}')
 
