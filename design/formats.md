@@ -68,7 +68,9 @@ Used by `papers add FILE` and `papers edit --from FILE`.
 - Reading: the file is decoded as UTF-8; a leading byte-order mark is
   dropped. For RIS, `\r\n` is also replaced by `\n` before parsing (a lone
   `\r` is not). **Contract.**
-- Writing: UTF-8, no byte-order mark, `\n` line ends. **Contract.**
+- Writing: UTF-8, no byte-order mark, `\n` line ends. **Contract.** (The
+  Python version writes the export files of RIS, CSL-JSON and BibJSON
+  with the line ends of the platform, see Open questions.)
 
 ### 1.4 RIS dependency (Python only)
 
@@ -423,26 +425,36 @@ RIS is a line format: one record per reference, one tag per line.
 **Contract** (it determines which entries are imported):
 
 1. Lines are separated by `\n`.
-2. Skip lines until one that starts with `TY`; its value is the record
+2. Stray lines are dropped first. For this step a tag line is two
+   characters `[A-Z][A-Z0-9]`, two spaces, `-`, then a space or the end
+   of the line. A record starts at a `TY` tag line and ends at an `ER` tag
+   line. Inside a record, these lines are dropped: a blank line (empty or
+   only white space), and any line that is not a tag line and comes before
+   the first tag line after `TY`. Lines outside records are kept (step 3
+   skips them).
+3. Skip lines until one that starts with `TY`; its value is the record
    type. This starts a record.
-3. In a record, for each line:
-   - tag line `ER`: the record is complete; go to 2.
+4. In a record, for each line:
+   - tag line `ER`: the record is complete; go to 3.
    - other tag line: add the value to the tag (below), remember the tag.
-   - continuation line: add its text to the last tag line seen before it
-     (`ER` and `TY` lines do not count): for a list tag, as a new item; for
-     a single tag, appended to the value with one space between. In the
-     first record, a continuation line before any tag line is ignored. In
-     a later record, the "last tag" is still the last tag of an earlier
-     record: if it is a single tag the current record does not have, the
-     read fails (see Open questions); if it is a list tag, the text
-     becomes a value of that tag in the current record.
-4. At the end of the text, a record without `ER` is dropped.
-5. Unknown tags are ignored.
-6. Single tags keep their first value; later values of the same tag are
+   - continuation line: add its text to the last tag line of the record
+     before it: for a list tag, as a new item; for a single tag, appended
+     to the value with one space between. After step 2, a continuation
+     line always follows a tag line of its own record.
+5. At the end of the text, a record without `ER` is dropped.
+6. Unknown tags are ignored.
+7. Single tags keep their first value; later values of the same tag are
    ignored. List tags collect every value: `A1 A2 A3 A4 AU KW N1 UR ED L1
    SN`. The value of `UR` is also split on `;` (each item trimmed).
-7. If the text is not blank and no record was found: error
+8. If the text is not blank and no record was found: error
    `not a RIS file: no record found (a record starts with TY  - )`.
+
+Step 2 is there because the RIS reader of the Python version (rispy
+0.10) reads such lines as the continuation of the last tag of the
+previous record: an internal error for a single tag such as `TI`, an
+empty keyword for `KW` (reported upstream as MrTango/rispy#77). The
+result of steps 1 to 8 is the contract; an implementation with its own
+reader may get it another way (**Free**).
 
 ### 4.3 Writing
 
@@ -594,7 +606,8 @@ the tags in that order (all values of a list tag).
 | `number` | `IS` |
 | `pages` | `SP` and `EP` both set and different: `SP--EP`; else `SP` normalised (2.5); `EP` alone is dropped |
 | `doi` | `DO`, cleaned |
-| `url` | the first `UR` value that is not a DOI URL (2.6 prefixes). If there is none and `doi` is empty, `doi` = the first `UR` value, cleaned |
+| `url` | the first `UR` value that is not a DOI URL (2.6 prefixes) |
+| `doi` (no `DO`) | when `DO` gives no `doi`: the first `UR` value that is a DOI URL, cleaned, also when another `UR` value is the `url` |
 | `issn`, `isbn` | each `SN`: take its first white-space-separated word, keep only digits and `X`/`x`; 8 characters → `issn`, else `isbn`. The first value of each kind is kept, as written (trimmed) |
 | `publisher`; `school` (phdthesis); `institution` (techreport) | first `PB` |
 | `address` | `CY` |
@@ -639,11 +652,17 @@ A JSON object:
 ```
 {
   "metadata": {
-    "records": <number of records>
+    "records": <number of records>,
+    "namespace": {
+      "bibtex": "https://www.bibtex.org/Format/"
+    }
   },
   "records": [ <record>, ... ]
 }
 ```
+
+`namespace` is written only when a record has a key that starts with
+`bibtex:` (step 3 below); otherwise `metadata` has `records` only.
 
 A record is built in this key order (**contract**):
 
@@ -655,9 +674,12 @@ A record is built in this key order (**contract**):
    - `author`, `editor` (exact lower-case names): an array of
      `{"name": <name>}`, the names split as in 2.2 (raw, braces kept);
    - `journal`: `{"name": <value>}`;
-   - any other: the raw value as a string. A field whose name is `type`
-     or `id` replaces the value of step 1 or 2 in place (see Open
-     questions);
+   - a field named `type`, `id`, `cid`, `collection`, `identifier`,
+     `link` or `license` (the keys BibJSON gives a meaning; exact
+     lower-case names): the raw value as a string under the key
+     `bibtex:<name>` (`"bibtex:type": "Working paper"`), so that the
+     record's `type` and `id` stay the entry type and key;
+   - any other: the raw value as a string;
 4. `"file"`: array of the file link paths, when there are any.
 
 A month macro (`month = may`) is written as `"may"`, like a braced value.
@@ -673,23 +695,28 @@ For each record:
 
 - entry type: `type` as text, lower-cased; `misc` when missing or empty;
 - key: `id`, else `cid` (2.7);
+- a key `bibtex:<name>`: the bibtex field `<name>` (any name; the
+  `namespace` of the metadata is not checked);
 - skipped keys: names starting with `_`, and `type`, `id`, `cid`,
   `collection`, `file`, `identifier`, `link`, `license`;
+- a JSON `null` value: no field;
 - `author` or `editor` given as an array: each element as text (below),
   joined with ` and `;
 - any other key: the value as text: an object gives the text of its
   `name` (empty if none); an array gives its elements as text joined with
-  `, `; other values their JSON-to-string text (`2013` → `2013`, `true` →
-  `True`, `null` → `None`, see Open questions);
+  `, `; `true` and `false` give `true` and `false`; an integer, or a
+  number with no fraction (`2000.0`), gives its decimal integer text
+  (`2000`); other numbers and strings their text (see Open questions for
+  non-integer numbers and `null` inside an array);
 - `doi`: when there is no `doi` key, the `id` of the first element of
   `identifier` whose `type` is `doi` (any case), cleaned;
 - `file`: the `file` key (2.8).
 
 ### 5.3 What is lost
 
-Nothing for ordinary fields. A bibtex field named `type`, `id`, `cid`,
-`collection`, `identifier`, `link`, `license`, or starting with `_`, does
-not survive a round trip. The distinction between a month macro and a
+Nothing for ordinary fields, nor for the fields written as
+`bibtex:<name>`. A bibtex field whose name starts with `_` does not
+survive a round trip. The distinction between a month macro and a
 braced value is lost (`may` comes back as `{may}`).
 
 ## 6. `papers list` output
@@ -916,74 +943,70 @@ names are those written, in order. The wording is **free**.
 
 ## Open questions
 
-1. **BibJSON: a `type` or `id` field overwrites the entry type or key.**
-   papers/formats.py:833–842. A `techreport` with `type = {Working paper}`
-   is exported as `"type": "Working paper"`; read back it becomes the
-   entry type `working paper`, written as `@working paper{...}`
-   (invalid bibtex). Same for a field `id` and the key.
-2. **BibJSON import writes `None`, `True`, `1.0` for JSON null, booleans,
-   floats.** papers/formats.py:848–854, 865: the text of a value is the
-   Python string of it; `"note": null` becomes `note = {None}`. Only the
-   empty string and missing values are dropped (formats.py:351).
-3. **Imported values are not escaped for LaTeX.** formats.py:350–354
+1. **Imported values are not escaped for LaTeX.** formats.py:328–332
    (CSL and RIS): unicode text with `&`, `%`, `#`, `_` goes into the bibtex
    as it is (`title = {... & ... 50% ...}`), which LaTeX rejects. Export
    decodes LaTeX, import does not encode it back.
-4. **The LaTeX-to-unicode conversion is that of a third-party decoder.**
+2. **The LaTeX-to-unicode conversion is that of a third-party decoder.**
    formats.py:123–140. Its full table (which macros, how unknown macros,
    `\cite` → `<cit.>`, `~` → U+00A0 next to a kept space) is not specified
    here; bibtex.md may define a shared table. Byte-identical exports
    depend on it.
-5. **RIS: a final record without `ER` is dropped silently.** Behaviour of
-   the RIS reader used by formats.py:812; no warning, and the "no record
+3. **RIS: a final record without `ER` is dropped silently.** Behaviour of
+   the RIS reader used by formats.py:815; no warning, and the "no record
    found" error only triggers when no record at all was found.
-6. **RIS: a continuation line right after `TY` reuses the last tag of the
-   previous record.** Reader behaviour behind formats.py:812. With a single
-   tag (`TI`) it fails with an internal error (`papers add` reports
-   `papers: error: 'title'`); with a list tag (`KW`) the text is added as a
-   keyword of the new record. Blank lines between `TY` and the first tag
-   in a later record trigger it too.
-7. **RIS: the DOI is lost when `UR` has both a DOI URL and another URL and
-   there is no `DO`.** formats.py:766–770: the DOI URL is only used when
-   no other URL exists.
-8. **RIS: `urldate` and `translator` are not exported** (formats.py:654–716),
+4. **RIS: `urldate` and `translator` are not exported** (formats.py:632–694),
    although CSL exports both (`accessed`, `translator`). `Y2` (access
    date) is not read either.
-9. **Keywords: export splits on `,` only, import splits on `,` and `;`.**
-   formats.py:472, 538, 705, 783. `ice; amoc` exported as one keyword
+5. **Keywords: export splits on `,` only, import splits on `,` and `;`.**
+   formats.py:450, 516, 683, 761. `ice; amoc` exported as one keyword
    comes back as two.
-10. **Date text drops zeros before assigning positions.** formats.py:267:
+6. **Date text drops zeros before assigning positions.** formats.py:245:
    `2013-00-05` gives year 2013, month 5 (the day becomes the month).
-11. **Names with 4 or more comma parts lose the middle parts.**
-    formats.py:206–208: `Doe, Jr, Jane, X` → family Doe, given X.
-12. **`family, suffix, ` with an empty given name.** formats.py:240–241
-    writes a trailing `, ` when a CSL name has a suffix and no given.
-13. **CSL import: `container-title` becomes `booktitle` for `book`,
-    `dataset`, `software`, `patent`, `unpublished`, ...**
-    formats.py:521: only `article`, `misc`, `online` get `journal`.
-14. **CSL export: `publisher` from school/institution/organization is
-    placed after `page`, not at the `publisher` position.** formats.py:447–464.
+7. **Names with 4 or more comma parts lose the middle parts.**
+   formats.py:184–186: `Doe, Jr, Jane, X` → family Doe, given X.
+8. **`family, suffix, ` with an empty given name.** formats.py:218–219
+   writes a trailing `, ` when a CSL name has a suffix and no given.
+9. **CSL import: `container-title` becomes `booktitle` for `book`,
+   `dataset`, `software`, `patent`, `unpublished`, ...**
+   formats.py:499: only `article`, `misc`, `online` get `journal`.
+10. **CSL export: `publisher` from school/institution/organization is
+    placed after `page`, not at the `publisher` position.** formats.py:425–442.
     Harmless for JSON readers, but part of the byte-level contract.
-15. **`edit --from FILE` (RIS/CSL/BibJSON) keeps relative file paths as
+11. **`edit --from FILE` (RIS/CSL/BibJSON) keeps relative file paths as
     given, relative to the library**, while `add FILE` resolves them
     against the directory of FILE. papers/cli/entry_cmds.py:425–444 versus
     papers/bib.py:573–577.
-16. **`papers list --porcelain` sends the listing to standard error.**
+12. **`papers list --porcelain` sends the listing to standard error.**
     papers/utils.py:302–313 redirects all of standard output; `papers list
     -K --porcelain` prints the keys on standard error and nothing on
     standard output. The option help (parser.py:238) says the standard
     output has "only the entries that the command added, modified...",
     which is consistent but makes `--porcelain` unusable with `list`.
-17. **Export message names `papers.bib` even when the library's bibtex has
+13. **Export message names `papers.bib` even when the library's bibtex has
     another name.** papers/cli/pool_cmds.py:277 uses the fixed name, while
     the bibtex written is named after the source library
     (papers/pools.py:1475).
-18. **`papers add DIR --recursive` ignores `.ris`, `.json` and `.bib.json`
-    files** (papers/bib.py:727–730), although the export help says
-    `papers add DIR --recursive` adds an exported library back; an export
-    without bibtex cannot be added back that way.
-19. **RIS `mastersthesis` round trip**: export writes `THES`, import always
-    gives `phdthesis` (formats.py:609); CSL keeps it through `genre`.
-20. **`--field` output keeps colour codes on `KEY:`** when colours are on
+14. **RIS `mastersthesis` round trip**: export writes `THES`, import always
+    gives `phdthesis` (formats.py:587); CSL keeps it through `genre`.
+15. **`--field` output keeps colour codes on `KEY:`** when colours are on
     (papers/encoding.py:36–42), and prints a leading space with
     `--no-key`; not clearly meant as a machine format.
+16. **Export files other than bibtex follow the platform's line ends.**
+    papers/cli/pool_cmds.py:272 writes `papers.ris`, `papers.json` and
+    `papers.bib.json` in text mode without a fixed line end, so on Windows
+    they get `\r\n`, unlike the bibtex, `distinct.json` and the history
+    (always `\n`). Section 1.3 says `\n`.
+17. **BibJSON import: `null` inside an array, and non-integer numbers.**
+    formats.py:858–868: an array element `null` gives the text `None`
+    (`"keywords": ["a", null]` → `a, None`), unlike a `null` value, which
+    gives no field; a number with a fraction gives the Python text of the
+    number (`1e-07`, not `0.0000001`). Pin the number text, and drop
+    `null` elements?
+18. **RIS: the stray-line step and the reader do not test tag lines the
+    same way.** formats.py:789 wants a space or the end of the line after
+    `-`; the reader (4.1) accepts any character there. A line `TI  -x`
+    right after `TY` is dropped by step 2 of 4.2, while the reader would
+    take it as a tag. The step works around rispy 0.10
+    (MrTango/rispy#77); it can go when the reader is fixed, if the
+    contract of 4.2 stays.

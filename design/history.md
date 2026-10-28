@@ -53,7 +53,8 @@ library asks for a store of its own, see 2.6). In a store:
   of one project; their states branch from the copy on;
 - a **state** (a "step" in the messages) is one snapshot: the bibtex, some
   files of `.papers/`, and the file operations of the command that made
-  it. States form a tree (each names its parent);
+  it. A state is named by its **identifier**, a sha256 of what it is
+  (2.5). States form a tree (each names its parent);
 - a **head** is the current state of a place, with its redo list.
 
 ## 2. The store on disk
@@ -74,7 +75,7 @@ Rules:
 - `history-dir` is read from the machine configuration only; a library
   cannot set it (see `library.md`, settings table). A leading `~` is
   expanded. A relative value is resolved against the current directory
-  (see `library.md`, open question 14).
+  (see `library.md`, open question 9).
 - The folders are created when first written. Nothing is created by a
   command that changes nothing.
 
@@ -94,8 +95,8 @@ An implementation must find the same folder on the same computer
       heads.json                the heads of the places of the project
       exchanges.json            not part of the history: the pieces of `papers status` (see exchange.md 14.4)
       states/
-        000001.json             one state per file
-        000002.json
+        4f1c9a2e…07.json        one state per file, named by its identifier (2.5)
+        b7e30d51…c3.json
   separate/
     <id>/                       a store of its own for the library <id> (history-separate), same layout
 ```
@@ -155,7 +156,9 @@ holds the comment and `k0`…`k30` (32 segments), the second `k31`…`k39`.
   than one hour (2.8, section 9); refreshing the time protects an object
   that a state about to be written refers to. Contract.
 
-A text is UTF-8. A missing or unreadable piece makes the state unusable:
+A text is UTF-8, read without line-ending translation: the stored text
+is the bytes of the file (a byte order mark and `\r\n` included). A
+missing or unreadable piece makes the state unusable:
 undo, redo and restore stop with `the history of the library is damaged:
 piece <sha256> is missing from the history`.
 
@@ -179,28 +182,83 @@ undo can bring it back.
   two libraries is stored once. Undo finds a file by checksum in the whole
   store, not only among the files of its project.
 
-### 2.5 States and their numbers
+### 2.5 States and their identifiers
 
-A state is a JSON file `projects/<id>/states/NNNNNN.json`, where `NNNNNN`
-is the state number written with at least six digits, zero-padded
-(`000042.json`; `1234567.json` after 999999). A reader takes every file
-whose name is digits followed by `.json` and whose content is a JSON
-object; other files are ignored.
+A state is a JSON file `projects/<id>/states/<state id>.json`, where
+`<state id>` is the identifier of the state: 64 lowercase hexadecimal
+characters. A reader takes every file whose name is such an identifier
+followed by `.json` and whose content is a JSON object; other files are
+ignored (but see "Numbered states" below).
 
-Allocating a number (contract):
+**The identifier** (contract) is the sha256 of the UTF-8 bytes of these
+lines, each ending with `\n`:
 
-1. `n` = the largest number present in `states/` + 1 (1 for an empty
-   project).
-2. Create `states/<n>.json` exclusively (fail if it exists). If it exists,
-   `n` = `n` + 1 and try again.
-3. Write the JSON into the created file.
+```
+papers-state 1
+parent <the identifier of the parent, or - when parent is null>
+time <the time of the state, written with six decimals, as printf %.6f>
+bibtex <bibtex.sha>
+file <name> <the pieces of the file, joined by ,>
+```
 
-The exclusive create lets two commands (and two implementations) add
-states to one project at once without losing one. A state is written once
-and not changed afterwards, with two exceptions that rewrite the file
-through a temporary file and a rename: the file operations done after the
-save (5.5) and `--drop-files` (9.4). The writer uses one-space
-indentation; the layout is free.
+with one `file` line per entry of `files` (3.3), sorted by name in
+code-point order (the name as stored, with the separator of the
+operating system, see open question 9), and none when `files` is empty. The identifier does not
+depend on `ops`, `deleted`, `message`, `kind`, `pools`, `from` or
+`reverts`, which a later rewrite may change (5.5, 9.4) or which only
+label the state. Two states with the same parent, time to the
+microsecond, bibtex and kept files have one identifier.
+
+Writing a state (contract):
+
+1. compute its identifier;
+2. create `states/<state id>.json` exclusively (fail if it exists). If it
+   exists, the same state was written already (same parent, time and
+   content): it is not written again;
+3. write the JSON into the created file, as UTF-8 with `\n` line endings
+   on every platform.
+
+A state is written once and not changed afterwards, with two exceptions
+that rewrite the file through a temporary file and a rename, under the
+same name: the file operations done after the save (5.5) and
+`--drop-files` (9.4). The writer uses one-space indentation; the layout
+is free.
+
+**Naming a state in a command** (`restore`, `history --revert`,
+`history --drop-files`): the identifier, or its start, 4 characters or
+more, compared without case (leading and trailing spaces dropped). A
+start that more than one state has is refused: `<start> names several
+steps: <short ids>`. No match, or a value shorter than 4 characters or
+not hexadecimal: ``no step <value> in the history of the library (see
+`papers history`)``. The messages show the first 8 characters of an
+identifier (free).
+
+**Numbered states** (papers 3.0.0b5 and earlier). Earlier versions named
+a state by a number, `states/NNNNNN.json` (at least six digits,
+zero-padded), with integers in `parent`, `reverts`, the `state` of
+`pools` links, and the `state` and `redo` of `heads.json`. When papers
+reads the states of a project and finds a file whose name is digits
+followed by `.json`, it upgrades every project of the store at once (a
+state names the states of its pools, in other projects of the store):
+
+1. for each project, read its numbered states and take them in number
+   order (a parent has a smaller number than its children). Replace
+   `parent` by the identifier given to it (`null` when the parent no
+   longer exists) and each number of `reverts` by its identifier (a
+   number that no longer exists is dropped); then compute the state's
+   identifier;
+2. for each state, replace the `state` of each `pools` link by the
+   identifier of that state in the project of the link, when that
+   project was upgraded and has the number; otherwise the value stays
+   (see open question 13). Write the state as `states/<state id>.json`
+   (temporary file and rename);
+3. rewrite `heads.json`: `state` and each element of `redo` replaced by
+   its identifier (a number not found stays, and is then skipped as a
+   state that no longer exists, 2.7);
+4. remove the numbered files.
+
+The result does not depend on who does it: two commands (or two
+implementations) upgrading at the same time write the same files.
 
 ### 2.6 Separate stores
 
@@ -223,29 +281,31 @@ libraries, and its retention is counted alone.
 ```json
 {
  "/home/u/papers/papers.bib": {
-  "state": 12,
-  "redo": [13, 14],
+  "state": "4f1c9a2e…",
+  "redo": ["b7e30d51…", "0c8d2f6a…"],
   "time": 1793189499.4354224
  },
  "/home/u/copy-of-papers/papers.bib": {
-  "state": 9,
+  "state": "92ad6c07…",
   "redo": [],
   "time": 1793189520.750887
  }
 }
 ```
 
+(identifiers shortened here; the file holds all 64 characters.)
+
 | Key | Type | Meaning |
 |---|---|---|
 | place (object key) | string | real path of the bibtex of the place |
-| `state` | integer | the current state of the place |
-| `redo` | list of integers | the states that `redo` goes to, the next one first |
+| `state` | string | the identifier of the current state of the place |
+| `redo` | list of strings | the identifiers of the states that `redo` goes to, the next one first |
 | `time` | number | Unix time (seconds, fractional) of the last change of this head |
 
 Rules:
 
-- A head whose `state` no longer exists is treated as absent. Numbers in
-  `redo` that no longer exist are skipped when read.
+- A head whose `state` no longer exists is treated as absent. Identifiers
+  in `redo` that no longer exist are skipped when read.
 - The file is rewritten whole (temporary file and rename) each time a
   head changes: read, modify, write.
 - A missing or unreadable file means no heads.
@@ -265,7 +325,7 @@ state refers to:
 
 | Key | Type | Present | Meaning |
 |---|---|---|---|
-| `parent` | integer or `null` | always | the state before; `null` for the first state of a project |
+| `parent` | string or `null` | always | the identifier of the state before; `null` for the first state of a project |
 | `time` | number | always | Unix time (seconds, fractional) when the state was made |
 | `kind` | string | always | `command`, `outside` or `start` (3.2) |
 | `message` | string | always | the command line, or a description (3.2) |
@@ -273,9 +333,9 @@ state refers to:
 | `deleted` | list of strings | always | the sha256 of the file objects the state keeps (3.4) |
 | `bibtex` | object | always | `{"pieces": [sha256…], "sha": sha256}` |
 | `files` | object | always | `{name: [sha256…]}`: the kept `.papers/` files (3.3) |
-| `pools` | object | when the command wrote a pool | `{pool project id: {"state": n, "config": path}}` (section 7) |
+| `pools` | object | when the command wrote a pool | `{pool project id: {"state": state id, "config": path}}` (section 7) |
 | `from` | string | in a pool's state made by a command of another library | real path of the directory of the bibtex of the library of that command |
-| `reverts` | list of integers | in a state made by `--revert`, or by an undo/redo that reverted a pool step | the states it takes back (sections 7, 8) |
+| `reverts` | list of strings | in a state made by `--revert`, or by an undo/redo that reverted a pool step | the identifiers of the states it takes back (sections 7, 8) |
 
 `bibtex.sha` is the sha256 of the whole bibtex text as UTF-8; the pieces
 are those of 2.3. A bibtex that does not exist is stored as the empty
@@ -295,10 +355,11 @@ a state (5.5, 9.4) keeps them.
 | `outside` | the bibtex on disk is not the head's (changed by an editor, another program, a sync) | `changed outside papers` |
 | `command` | a command changed the library | `papers ` followed by the arguments of the command line, joined by spaces (`papers add paper.pdf --move`) |
 
-A pool step reverted by undo or redo has the message of the command
-followed by `: revert of step N` or `: revert of steps N, M`
-(`papers undo: revert of step 3`). The text of `message` is free; it is
-for display.
+A pool step made by undo or redo (7.3) has the message of the command
+followed by `: revert of step A` (or `steps A, B`), `: step A again` (or
+`steps A, B again`), or both joined by `, ` (`papers undo: revert of step
+3c5e0b7a`), with the identifiers shortened to 8 characters. The text of
+`message` is free; it is for display.
 
 ### 3.3 The kept `.papers/` files
 
@@ -330,6 +391,9 @@ from `deleted` and leaves `ops` unchanged (9.4).
 
 ### 3.5 Examples
 
+State identifiers, and some digests, are shortened with `…` here; the
+files hold all 64 characters.
+
 A first state, before the bibtex existed:
 
 ```json
@@ -352,7 +416,7 @@ A command that moved a file into the library (relative paths):
 
 ```json
 {
- "parent": 2,
+ "parent": "e0d1b2c4…",
  "time": 1793189488.0984843,
  "kind": "command",
  "message": "papers file attach a2000 dl/x.pdf",
@@ -375,12 +439,11 @@ A command that moved a file into the library (relative paths):
 }
 ```
 
-A command that deleted a file, kept in the store (the `bibtex` digests
-shortened here):
+A command that deleted a file, kept in the store:
 
 ```json
 {
- "parent": 7,
+ "parent": "92ad6c07…",
  "time": 1793189508.0299218,
  "kind": "command",
  "message": "papers rm a2000 --delete-files",
@@ -399,7 +462,7 @@ keys of interest shown; `time`, `deleted`, `bibtex`, `files` as above):
 
 ```json
 {
- "parent": 2,
+ "parent": "e0d1b2c4…",
  "kind": "command",
  "message": "papers file attach a2000 /home/u/dl/x.pdf --move",
  "ops": [
@@ -407,16 +470,16 @@ keys of interest shown; `time`, `deleted`, `bibtex`, `files` as above):
    "checksum": "c0d475902344dc07282e196c6a17d49906f2700de4281fbda2cd8b7e34b65569"}
  ],
  "pools": {
-  "cdfdf43306914db9a871d85cd252ae71": {"state": 3, "config": "/home/u/pool/.papers/config.json"}
+  "cdfdf43306914db9a871d85cd252ae71": {"state": "3c5e0b7a…", "config": "/home/u/pool/.papers/config.json"}
  }
 }
 ```
 
-The pool's step made by that command:
+The pool's step `3c5e0b7a…` made by that command:
 
 ```json
 {
- "parent": 2,
+ "parent": "71fa09d3…",
  "kind": "command",
  "message": "papers file attach a2000 /home/u/dl/x.pdf --move",
  "ops": [],
@@ -425,15 +488,15 @@ The pool's step made by that command:
 ```
 
 The revert of that pool step by a later undo in the library, after the
-pool moved on to step 4:
+pool moved on to step `d48b6e15…`:
 
 ```json
 {
- "parent": 4,
+ "parent": "d48b6e15…",
  "kind": "command",
- "message": "papers undo: revert of step 3",
+ "message": "papers undo: revert of step 3c5e0b7a",
  "ops": [],
- "reverts": [3],
+ "reverts": ["3c5e0b7a…"],
  "from": "/home/u/lib"
 }
 ```
@@ -466,11 +529,15 @@ operation is part of each command's behaviour):
 - the files deleted by `rm --delete-files`, `file rm`, `file clean`, or
   replaced by a forced move (`trashed`, or `removed` when not kept);
 - a file of a library deleted because its pool has the same content
-  (`removed` with `dst`: the pool's copy).
+  (`removed` with `dst`: the pool's copy);
+- the file a `papers file check` or `fix` brings back from the history
+  (6.6): `copied`, from the file object in the store to the place of the
+  link.
 
 Not recorded: the operations of undo, redo and restore (they move in the
-history and are not a step of it); downloads; the writes of the bibtex
-and of the `.papers/` files (they are in the state itself).
+history and are not a step of it), except those of the revert of a pool
+step, which are in the pool's step (7.3); downloads; the writes of the
+bibtex and of the `.papers/` files (they are in the state itself).
 
 **Paths** (contract). The operations are recorded with absolute
 normalized paths, then written into the state (unlike the file links of
@@ -518,8 +585,9 @@ brought up to date (contract):
    1. remove from `heads.json` the places whose bibtex no longer exists;
    2. if the project has states, choose the **start state**: among the
       states whose `bibtex.sha` equals the sha on disk, the one with the
-      largest `time` (then the largest number); if none matches, the
-      state with the largest `time` (then number) of the project. Set the
+      largest `time` (then the largest identifier, as text); if none
+      matches, the state with the largest `time` (then identifier) of the
+      project. Set the
       head of the place to it, with an empty redo list.
 
    A moved library thus continues its history; a copy branches from the
@@ -597,10 +665,11 @@ origin records or `files.json`):
      (`--revert`, the revert of a pool step).
 6. **No state is added** when there is a parent, `ops` is empty, there is
    no `pools`, and `bibtex` (pieces and sha) and `files` equal those of
-   the parent. The head stays.
+   the parent. The head stays, and the operations done after this save do
+   not join the parent (5.5).
 7. Otherwise write the state and set the head of the place to it, with an
    empty redo list (a command after an undo starts a branch; the undone
-   states stay in the tree, reachable with `papers restore N`).
+   states stay in the tree, reachable with `papers restore STEP`).
 
 A save of a library whose entries did not change since they were loaded,
 without other changes, is skipped entirely (no lock, no state).
@@ -614,17 +683,18 @@ Some operations happen after the save (for example `rm --delete-files`
 deletes the files once the bibtex no longer links them). At the end of the
 command, also after an error or an interrupt:
 
-- if the library of the command recorded a state in this command: the
+- if the library of the command added a state in this command: the
   operations done since join that state, if it is still the head of the
   place. The state file is rewritten (temporary file, rename) with `ops`
   extended and `deleted` recomputed. If the head moved on, the operations
   are not recorded and papers warns:
   `N file operation(s) not recorded for undo: the library changed since`;
-- if the command recorded no state (for example `file clean`, which
-  deletes files without changing the bibtex): the head is brought up to
-  date (5.2), then a state is added with these operations and the bibtex
-  and `.papers/` files on disk, as in 5.4 (never skipped by rule 6, since
-  `ops` is not empty).
+- if the command added no state (for example `file clean`, which deletes
+  files without changing the bibtex, or a command whose save added none
+  by rule 6 of 5.4): the head is brought up to date (5.2), then a state is
+  added with these operations and the bibtex and `.papers/` files on
+  disk, as in 5.4 (never skipped by rule 6, since `ops` is not empty).
+  The operations never join the state of an earlier command.
 
 ### 5.6 Deleted files
 
@@ -648,13 +718,13 @@ store (section 9):
 
    ```
    N files to delete, X MB: more than the history keeps (history-size: S MB).
-   - This command cannot be undone: the files go to the trash of the system, not to the history.
-   - The history of the libraries is dropped: no undo before this point.
+   - This command cannot be undone: the files go to the trash of the system, not to the history (the history keeps its steps).
    Proceed? [y/N]
    ```
 
-   Yes: the files go to the system trash (not to the store). No: no file
-   is deleted (`kept <file>` for each).
+   Yes: the files go to the system trash (not to the store); nothing is
+   pruned, the history keeps its states. No: no file is deleted (`kept
+   <file>` for each).
 3. Otherwise compute, without changing anything, the states the retention
    would drop with T more bytes (9.2). If it drops any state younger than
    one day, or more than half of all the states of the store, papers asks
@@ -678,7 +748,8 @@ not deleted) are the behaviour users rely on.
 | bibtex changed outside papers, then a command | `outside`, then the command's state |
 | bibtex changed outside, then undo, redo, restore or `--revert` | `outside` (then, for `--revert`, the revert) |
 | a command that writes a pool from a shallow library | a state in the pool's project (`from`), then one in the library's (`pools`) |
-| undo, redo, restore | none in the library; a revert state in a pool when its step is reverted (section 7) |
+| undo, redo, restore | none in the library; a state in a pool when its step is reverted or done again (7.3) |
+| undo, redo with `auto-push` that sends something | a push: a pool state, then a library state (7.6) |
 | `--dry-run` | none |
 
 ## 6. Undo, redo, restore
@@ -734,16 +805,17 @@ edit.
    the end.
 6. Unless `--library-only`: the pool steps (section 7), after the library.
 
-**`papers restore [N]`** (`--ref N` is the same; `restore-backup` is a
-deprecated name; the bibtex need not exist):
+**`papers restore [STEP]`** (`--ref STEP` is the same; `restore-backup`
+is a deprecated name; the bibtex need not exist):
 
-1. Without N: target = the head (as read before step 2 of 5.2). This
+1. Without STEP: target = the head (as read before step 2 of 5.2). This
    undoes a change made outside papers: it is recorded first, and redo
    brings it back. No head: `no history: nothing to restore`.
-2. With N: the state N of the project, on any branch. Missing:
-   ``no step N in the history of the library (see `papers history`)``.
+2. With STEP: the state of the project that STEP names (2.5: its
+   identifier or a unique start of it), on any branch. None, or several:
+   the errors of 2.5.
 3. If the current state (after 5.2) is the target:
-   `nothing to restore: <bibtex name> is step N`.
+   `nothing to restore: <bibtex name> is step <short id>`.
 4. Go to the target (6.3). Head: the target; redo list: `back` (6.1)
    reversed when `forward` is empty (the target is an ancestor: redo goes
    back to where the library was), else empty.
@@ -772,9 +844,11 @@ From the current state C to the target T (contract for the result):
    `target` = the links of T, no operations, undo = true when `forward`
    is empty, checksums = `files.json` of T. This brings back files that
    no operation explains (found by checksum or among the deleted files).
-6. Write the bibtex of T (through a temporary file and a rename).
-7. Write the kept `.papers/` files of T (their names resolved against the
-   directory of the bibtex; a name that resolves outside that directory
+6. Write the bibtex of T (through a temporary file and a rename), as
+   UTF-8, byte for byte the stored text: no line ending is translated, on
+   any platform.
+7. Write the kept `.papers/` files of T, likewise (their names resolved
+   against the directory of the bibtex; a name that resolves outside that directory
    is skipped). Remove each kept file of C that T does not have, if it
    exists (`remove <path>: not in the restored state`, info level). A
    file that neither state has is left alone.
@@ -859,10 +933,12 @@ now.** For each path of `target` − `current`, sorted:
    restored`; else if there is one, or `want` is set, report
    `<path>: deleted by the command, not restored`.
 
-**Pass 2: deleted files that no entry links** (for example `file clean`).
-For each `trashed` operation, the last first when undo, the first first
-otherwise, whose `src` is in neither `current` nor `target` nor
-`reported`: add `src` to `reported`, then
+**Pass 2: deleted files whose link did not change**: no entry links them
+(for example `file clean`), or they are linked in both states (a file
+deleted while its link stays). For each `trashed` operation, the last
+first when undo, the first first otherwise, whose `src` is in both
+`current` and `target` or in neither, and not in `reported`: add `src` to
+`reported`, then
 
 - undo, and nothing exists at `src`: copy the file object of its checksum
   to `src` (`<src>: restored from the history`); if there is none:
@@ -873,7 +949,19 @@ otherwise, whose `src` is in neither `current` nor `target` nor
   system trash; the guard is not asked); report
   `<src>: deleted again (kept in the history)`.
 
-**Pass 3: the files the commands put in place that the restored state
+**Pass 3: files copied to a place linked in both states** (for example
+`papers file fix` bringing a file back from the history, 6.6). For each
+`copied` operation, the last first when undo, the first first otherwise,
+whose `dst` is in both `current` and `target` and not in `reported`: add
+`dst` to `reported`, then
+
+- undo, `dst` is a file whose `digest` is the operation's checksum, and
+  `src` is a file: delete `dst` (not to the store: `src` stays); report
+  `<dst>: removed (a copy of <src>)`;
+- redo, nothing exists at `dst`, and `src` is a file: copy `src` to
+  `dst`; report `<src> --> copied to <dst>`.
+
+**Pass 4: the files the commands put in place that the restored state
 does not link.** For each path of (`current` ∪ `mentioned`) − `target`,
 sorted, that is not in `reported` and is a file:
 
@@ -925,18 +1013,46 @@ directory; each line is indented by four spaces (free).
 Free. papers prints:
 
 ```
-undo: papers.bib restored to 12 papers add ~/Downloads/x.pdf --move (2026-10-22 14:03)
+undo: papers.bib restored to 4f1c9a2e papers add ~/Downloads/x.pdf --move (2026-10-22 14:03)
     files/doe_2013_a.pdf --> moved back to ~/Downloads/x.pdf
-pool ../sealevel: also undone, restored to 31 papers push (2026-10-28 10:09, from ~/papers/lib)
+pool ../sealevel: also undone, restored to 3c5e0b7a papers push (2026-10-28 10:09, from ~/papers/lib)
 2 file(s) of the files directory are linked by no entry now (`papers file clean` removes them):
   /home/u/papers/files/a.pdf
 ```
 
 The first word is `undo`, `redo` or `restore`. A state is described as
-`<number> <message> (<local time YYYY-MM-DD HH:MM>[, from <from>])`. The
+`<short id> <message> (<local time YYYY-MM-DD HH:MM>[, from <from>])`,
+the short id being the first 8 characters of the identifier. The
 last block lists the files of the files directory that the entries linked
 before and no longer link. With `--dry-run`:
 `DRYRUN: undo: papers.bib not restored to <state>`.
+
+### 6.6 Files brought back by `papers file check` and `fix`
+
+`papers file check` and `papers file fix` look for the file of a broken
+link in the pool, the `--search` folders and so on (see `docs/files.md`),
+and last in the history. A broken link that none of the earlier sources
+resolved (or left unclear) is looked up in the history of the library's
+project (none is created):
+
+1. the states of the project, the most recent `time` first (any branch):
+   the first `trashed` operation whose `src` (made absolute as in
+   section 4, normalized) is the path of the link, that has a checksum,
+   and whose file object exists in the store (2.4). Found: that file
+   object, "deleted by step <short id>";
+2. else the checksum of the path in the `.papers/files.json` on disk now
+   (section 10), if the store has a file object with it: that file
+   object, with no step.
+
+With `file fix` (not `--dry-run`), the file object is copied to the place
+of the link (parent folders created); the link is not changed. The copy
+is recorded as a `copied` operation from the file object to the link
+(section 4), so it is in the command's state (5.5: a state of its own when
+the bibtex does not change), and undo removes the copy again (6.4, pass
+3). Lines (free): `<key>: <link>: restored from the history (deleted by
+step <short id>)` (or `(deleted, its checksum known)` in case 2); with
+`--dry-run`, `DRYRUN: <key>: restore <link> from the history (…)`; with
+`file check`, `<key>: broken link: <link> -> in the history (…)`.
 
 ## 7. Undo and redo with a pool
 
@@ -954,7 +1070,7 @@ then records, in its own next state, `pools`:
 ```
 
 - key: the project id of the other library;
-- `state`: the number of its state just made;
+- `state`: the identifier of its state just made;
 - `config`: the absolute path of the other library's configuration file.
 
 There is one entry per project id: if the command saved the same other
@@ -976,15 +1092,15 @@ redone, oldest first. For each step S, for each entry (id, link) of its
       it until the end of the undo;
    3. if the configuration is missing, its project id is not `id`, or the
       pool's place has no head: the line
-      `the pool of step <link.state> is not found (at <config>): the library only`;
+      `the pool of step <short link.state> is not found (at <config>): the library only`;
       this id is ignored for the rest of the command;
    4. if the sha of the pool's bibtex on disk is not that of the pool's
       head: the line
       `pool <name>: changed outside papers since its last step: the library only`;
       ignored likewise. The outside change is not recorded.
 
-   The pool's position `at` starts at its head; its lists `taken` and
-   `reverts` start empty.
+   The pool's position `at` starts at its head; its lists `taken`,
+   `reverts` and `again` start empty.
 2. Let `n` = `link.state` and `p` = the parent of the pool's state `n`. If
    the pool's state `n` no longer exists, or `p` is `null`: skip.
 3. `before`, `after` = (`n`, `p`) for undo, (`p`, `n`) for redo.
@@ -996,8 +1112,9 @@ redone, oldest first. For each step S, for each entry (id, link) of its
    is reverted, section 8).
 7. Else, for redo: in the line of the pool's `at`, the first (newest)
    state whose `reverts` contains `n`; if found, append it to `reverts`
-   (the revert made by the undo is itself reverted). If not found,
-   nothing.
+   (the revert made by the undo is itself reverted). If not found (the
+   undo took step `n` back in the pool, and the pool moved on since),
+   append `n` to `again`: the step is done again (8.5).
 
 Once a step of a pool is reverted, its later steps are reverted too
 (rule 5 requires `reverts` to be empty).
@@ -1016,15 +1133,20 @@ For each pool with steps:
   states of `taken`. Line:
   `pool <name>: also undone, restored to <state>` (or `also redone`),
   followed by the file lines.
-- `reverts` not empty: load the pool, revert each state of `reverts` in
-  order (section 8) with conflicts decided by asking in a terminal, else
-  `skip`. These reverts record no file operations. Save the pool with
-  `reverts` = the list and the message `<command>: revert of step(s) …`.
-  The pool's state has `from`. Lines:
+- `reverts` or `again` not empty: load the pool; revert each state of
+  `reverts` in order (section 8), then do each state of `again` again in
+  order (8.5), both without requiring the step to be in the line of the
+  pool's head; conflicts are decided by asking in a terminal, else
+  `skip`. Save the pool with `reverts` = the list `reverts` (the steps of
+  `again` are not listed) and the message of 3.2. The pool's state has
+  `from`. The file operations of these reverts are taken out of the
+  command's operations and join the pool's new state, as the operations
+  after a save join a state (5.5: rewritten, if it is still the pool's
+  head); they are not in a step of the library. Lines (free):
   - a state was added:
-    `pool <name>: changed since, so step(s) N reverted there: <state>`;
+    `pool <name>: changed since, so step(s) A reverted [and step(s) B done again] there: <state>`;
   - nothing changed:
-    `pool <name>: changed since; step(s) N not reverted there (nothing to take back without changing what was done since)`;
+    `pool <name>: changed since; nothing changed there for <revert of step(s) A, step(s) B again> (the entries changed since are left as they are)`;
 
   followed by the lines of the revert, indented by four spaces.
 
@@ -1044,7 +1166,9 @@ For each pool with steps:
 
 The operations of such a command are in the library's state only, so the
 library's undo moves the files, and the pool's undo only changes its
-bibtex and `.papers/` files.
+bibtex and `.papers/` files. The exception is a pool state made by
+undo or redo (7.3): its file operations are its own, so
+`papers -C POOL undo` of it moves its files back.
 
 ### 7.5 `--library-only`, and commands run in the pool
 
@@ -1062,22 +1186,28 @@ After an undo or redo without `--library-only`, in a shallow library with
 `auto-push` (not with `--dry-run`): the entries shared with the pool that
 differ from their origin record are pushed (conflicts: `skip`; new
 entries are not pushed). If the push updated an entry, the exchange is
-saved (a pool state, then a library state with `pools`), and the library's
-redo list from before the push is put back on its new head. In general
-there is nothing to push: the undo restored the origin records with the
-bibtex.
+saved as any command's (a pool state, then a library state with `pools`):
+the push is a new step, and the library's redo list is empty, as after
+any command. When the redo list was not empty before the push, papers
+prints ``the push is a new step: nothing to redo now (`papers restore
+<short id>` goes back to the steps undone)``, naming the first state of
+that list (free). In general there is nothing to push: the undo
+restored the origin records with the bibtex.
 
-## 8. Revert: `papers history --revert N`
+## 8. Revert: `papers history --revert STEP`
 
-Takes back the changes of step N alone, as a new step; the later steps
-stay. The library is locked, its head brought up to date (5.2).
+Takes back the changes of one step alone, as a new step; the later steps
+stay. STEP names the step as in 2.5 (its identifier or a unique start of
+it); below, N is that step, and the messages show its first 8
+characters. The library is locked, its head brought up to date (5.2).
 
 Errors (nothing changes):
 
 - no bibtex: `no library: --revert takes back a step of the history of a library`;
-- no state N: ``no step N in the history of the library (see `papers history`)``;
+- no step named STEP, or several: the errors of 2.5;
 - N not in the line of the head: ``step N is not in the current history of
-  the library: `papers restore N` goes there``;
+  the library: `papers restore N` goes there`` (not checked for the
+  reverts of a pool's steps made by undo and redo, 7.3);
 - N has no parent (or it was dropped): `step N is the first step of the
   history: nothing before it to go back to`.
 
@@ -1109,7 +1239,7 @@ X's key; else the entry whose `ids` contains X's key.
   copy of B is added, with B's file links (resolved against the directory
   of the bibtex, then written as the `paths` setting says).
 - **Modified by N** (B, E): no entry now: the line
-  `<key>: changed by step N and removed since: not added back`.
+  `<key>: changed by step N and removed since: not added`.
   Otherwise, with W = the entry now:
   1. A three-way merge of the fields, as pull does (see `exchange.md`):
      target W, other side B, base E, the tags (`keywords`) left out of
@@ -1132,8 +1262,8 @@ X's key; else the entry whose `ids` contains X's key.
      when there are none. Tags added since stay, without conflict.
   5. Key: if N changed the key (B's ≠ E's) and W still has E's key: W
      gets B's key back, unless another entry has B's key now (then the
-     line `<key>: renamed by step N from <B key>, now another entry's key:
-     the key stays`). B's key is removed from W's `ids` (the field removed
+     line `<key>: renamed by step N (key <B key> before), now another
+     entry's key: the key stays`). B's key is removed from W's `ids` (the field removed
      when empty). The rename is followed as any rename is (crossref
      fields, the keys in the origin records, see `exchange.md`).
 
@@ -1165,6 +1295,20 @@ If step N also wrote a pool, the pool is not reverted. For each entry of
 N's `pools` whose configuration file exists, papers prints:
 ``step N also changed pool <name> (its step M): `papers -C <name> history --revert M` takes it back there``.
 
+### 8.5 Doing a step again
+
+Redo in a pool whose step N the undo took back, and that changed since
+(7.2, rule 7), does step N again in the pool: the rules of 8.1 to 8.3
+apply with P and N swapped. **before** is the bibtex of N, **after** that
+of P; an entry that N added is treated as removed (added back if absent
+now), an entry that N removed as added (removed if unchanged since); a
+field N changed goes to its value in N unless it changed since.
+`distinct.json`: the pairs in P's file and not in N's are removed, those
+in N's and not in P's added. The files: restored as redo does (6.4) with
+the operations of N, undo = false, checksums = `files.json` of N. The
+lines say `added`/`removed` as the step did them, from the side of the
+redo (free). The result is a new state of the pool (7.3).
+
 ## 9. Retention
 
 ### 9.1 The limit
@@ -1193,8 +1337,8 @@ Contract for what may be removed; when to prune is free.
    file objects of its `deleted`.
 2. **Protected states**: the current state of each place (`state` in
    `heads.json`) of each project. They are never dropped.
-3. **Order**: the other states, sorted by `time`, then by number, oldest
-   first, all projects together.
+3. **Order**: the other states, sorted by `time`, then by identifier
+   (as text), oldest first, all projects together.
 4. **Removable object**: no state refers to it, and its modification time
    is at least `GRACE` = 3600 seconds old.
 5. `total` = the size of the store (+ the extra bytes about to be stored,
@@ -1218,9 +1362,9 @@ Consequences:
 
 When papers prunes (free): after a state whose operations include a
 `trashed` file; after operations added to a state (5.5), when it then has
-`deleted` files; when a new state's number is a multiple of 50 (also when
-no state was added and the head's number is one); after
-`history --remove ID`. Nothing is pruned when the limit is 0. papers
+`deleted` files; after a save of a library whose project then has a
+number of states that is a multiple of 50 (also when the save added no
+state); after `history --remove ID`. Nothing is pruned when the limit is 0. papers
 prints, at info level, `N old step(s) dropped from the history
 (history-size: S MB)`.
 
@@ -1240,17 +1384,20 @@ prints, at info level, `N old step(s) dropped from the history
   stops with an error.
 - No project: `the library has no history`.
 
-### 9.4 `papers history --drop-files N|PATH`
+### 9.4 `papers history --drop-files STEP|PATH`
 
-The files the history keeps for one step, or for one deleted path:
+The files the history keeps for one step, or for one deleted path. The
+value is a path when a file of that name exists, or when it contains `/`,
+the separator of the operating system, or `.`; otherwise it names a step
+(2.5).
 
-1. Find them: for state N (or, with a path, every state of the project),
+1. Find them: for the step (or, with a path, every state of the project),
    each `trashed` operation (paths made absolute as in section 4) whose
    checksum is in the state's `deleted`, whose `src` equals the given path
    (absolute, `~` expanded, normalized) when a path is given, and whose
-   file object exists. No state N: ``no step N in the history of the
-   library (see `papers history`)``. None found: `the history keeps no
-   file deleted by step N` (or `from PATH`).
+   file object exists. No step, or several: the errors of 2.5. None
+   found: `the history keeps no file deleted by step STEP` (or `from
+   PATH`).
 2. List them with their sizes and ask (`-y` skips; without a terminal,
    an error).
 3. Remove their checksums from `deleted` in every state of the project
@@ -1350,14 +1497,16 @@ Contract:
 Free (display), except where it names stored data.
 
 ```
-  13 papers rm smith2020 --delete-files (2026-10-22 14:10)  (undone: `papers redo`)
-> 12 papers add ~/Downloads/x.pdf --move (2026-10-22 14:03)
-  11 papers tag smith2020 --add climate (2026-10-21 09:12)  [3.2 MB of deleted files]
+  b7e30d51 papers rm smith2020 --delete-files (2026-10-22 14:10)  (undone: `papers redo`)
+> 4f1c9a2e papers add ~/Downloads/x.pdf --move (2026-10-22 14:03)
+  92ad6c07 papers tag smith2020 --add climate (2026-10-21 09:12)  [3.2 MB of deleted files]
   ... 4 older step(s) (-n 0 shows them all)
 history: ~/.local/share/papers/history, 3.2 MB (up to 500 MB: the history-size setting; deleted files kept)
 stale: ~/.local/share/papers/backups (backup of an earlier papers, 12.0 MB, no longer used) — delete with: rm -rf ~/.local/share/papers/backups
 ```
 
+- Each state is shown as in 6.5: the first 8 characters of its
+  identifier, the message, the time.
 - The redo list first, the furthest state at the top, marked
   ``(undone: `papers redo`)``; then the line of the head, the head marked
   `>`, at most `-n` states (20 by default, 0: all).
@@ -1390,8 +1539,11 @@ same machine, on the same store. What makes this safe, and what does not:
 - **Objects** are named by content and written by rename: two writers of
   the same object write the same bytes. Temporary files end with `.tmp`
   and have a name of their own per process.
-- **State numbers** are allocated by exclusive create (2.5): no two
-  states get one number.
+- **State identifiers** are computed from the state (2.5) and the file is
+  created exclusively: writers need not agree on a counter, and two
+  states share a name only when they have the same parent, time to the
+  microsecond and content (the second is then not written). The upgrade
+  of numbered states gives the same result whoever does it.
 - **The library** is protected by its lock (see `library.md`): a command
   that writes a library, and undo, redo, restore and revert, hold it;
   undo and redo also lock each pool before reading its head (7.2). Both
@@ -1415,92 +1567,69 @@ same machine, on the same store. What makes this safe, and what does not:
 
 ## Open questions
 
-1. **A state number can be given again.** A new number is the largest
-   present + 1 (papers/history.py:290). If the retention drops the
-   highest-numbered state of a project (a redo-able state of a project
-   not used for a while, papers/history.py:180-206), the next state takes
-   its number. A redo list (papers/history.py:345 keeps the numbers that
-   exist), a `pools` link of a library (papers/backup.py:287) or a
-   `reverts` list that named the dropped state then names an unrelated
-   one.
-2. **"The history of the libraries is dropped" is not done.** The question
-   before deleting more than `history-size` says so
-   (papers/backup.py:349-352), but on yes the files go to the system trash
-   and nothing is pruned (papers/journal.py:189-196,
-   papers/backup.py:290): the history stays.
-3. **A pool step reverted by undo or redo records no file operations.**
-   The revert and the pool's save run without recording
-   (papers/backup.py:582-588), and the pool is not the library of the
-   command, so its state has `ops: []` (papers/backup.py:267) even when
-   the revert moved files. `papers -C POOL undo` of that revert brings no
-   file back.
-4. **Unreachable line in revert.** For an entry removed by step N, an
+1. **Unreachable line in revert.** For an entry removed by step N, an
    entry with its key is found first by the "entry now" lookup, which
-   returns early (papers/revert.py:151-152); the check "another entry has
-   its key now: not added back" (papers/revert.py:153-155) can never
-   apply.
-5. **The outside state does not read `.papers/`.** It copies the files of
+   returns early (papers/revert.py:159-160); the check "another entry has
+   its key now: not added" (papers/revert.py:161-163) can never apply.
+2. **The outside state does not read `.papers/`.** It copies the files of
    the head (papers/backup.py:210), and outside changes are detected on
    the bibtex only (papers/backup.py:200). An edit of `distinct.json` or
    of an origin record made outside papers becomes part of the next
    command's state, and undoing that command takes it back too.
-6. **No state, but the operations after the save still join one.** When
-   rule 6 of 5.4 adds no state, the head (the previous command's state)
-   is still given as where the command's later operations go
-   (papers/backup.py:272-289); operations done after that save then join
-   the previous command's state (papers/backup.py:295-305).
-7. **Several saves of one pool in one command.** `pools` holds one state
+3. **Several saves of one pool in one command.** `pools` holds one state
    per pool id (papers/backup.py:287): if a command saves the same pool
    twice, undo takes back the last pool step only. Can it happen (sync
    with pull and push)?
-8. **Auto-push after undo and redo.** The push state is a child of the
-   restored state, but the old redo list is put back on it
-   (papers/cli/backup_cmds.py:46-52): redo then leaves the push state for
-   a sibling branch, and the push state is in no redo list. Also, a pool
-   revert made by the undo leaves a pending pool link
-   (papers/backup.py:286-287) that this push state then records as its
-   `pools`.
-9. **Restored text is not byte for byte everywhere.** The bibtex and the
-   `.papers/` files are read as UTF-8 without newline translation
-   (papers/backup.py:112-114) but written in text mode with the locale's
-   encoding (papers/utils.py:283, called from papers/backup.py:453 and
-   471). On Windows `\r\n` becomes `\r\r\n`; with a non-UTF-8 locale the
-   encoding changes. A bibtex that is not UTF-8 cannot be recorded
-   (papers/backup.py:113).
-10. **"deleted again (kept in the history)" with keep-deleted-files
-    false.** The line is printed whatever happened to the file
-    (papers/journal.py:369-370, 405-406); with the setting false it went
-    to the system trash.
-11. **`history-size 0` never removes anything.** Pruning returns at once
-    when the limit is 0 (papers/backup.py:312), so objects no state refers
-    to (after `--remove`, after `--drop-files` of a shared file) stay for
-    ever. `--remove` of the last place does not prune at all
-    (papers/cli/backup_cmds.py:122-139).
-12. **Recent unreferenced objects count but cannot be freed.** Objects
-    younger than `GRACE` that no state refers to (for example written by
-    a concurrent command) count in `total` (papers/history.py:198-200)
-    but are never subtracted, so they make the prune drop more states.
-13. **`papers history` ignores a bibtex without library.** The command is
-    not a library command (papers/cli/parser.py:1035), so
-    `papers history --bibtex x.bib` says "no library"
-    (papers/cli/backup_cmds.py:225-229), while `papers undo --bibtex x.bib`
-    works on that bibtex's history.
-14. **Kept `.papers/` files relative to the bibtex directory.** The names
-    are looked up in the directory of the bibtex
-    (papers/backup.py:101-109) while `files.json` is in the library
-    directory (papers/checksums.py:23-27): see `library.md`, open
-    question 1.
-15. **Separators in stored paths.** The names in `files` and the relative
-    paths in `ops` use the separator of the operating system
-    (papers/backup.py:140-153, papers/checksums.py:19), so a store is not
-    portable between Windows and other systems. Should the stored form
-    use `/`?
-16. **Separate store recognised by its folder name.** The retention of a
+4. **"deleted again (kept in the history)" with keep-deleted-files
+   false.** The line is printed whatever happened to the file
+   (papers/journal.py:382, 432); with the setting false it went to the
+   system trash.
+5. **`history-size 0` never removes anything.** Pruning returns at once
+   when the limit is 0 (papers/backup.py:314), so objects no state refers
+   to (after `--remove`, after `--drop-files` of a shared file) stay for
+   ever. `--remove` of the last place does not prune at all
+   (papers/cli/backup_cmds.py:134-139).
+6. **Recent unreferenced objects count but cannot be freed.** Objects
+   younger than `GRACE` that no state refers to (for example written by
+   a concurrent command) count in `total` (papers/history.py:257-259)
+   but are never subtracted, so they make the prune drop more states.
+7. **`papers history` ignores a bibtex without library.** The command is
+   not a library command (papers/cli/parser.py:1040), so
+   `papers history --bibtex x.bib` says "no library"
+   (papers/cli/backup_cmds.py:228-232), while `papers undo --bibtex x.bib`
+   works on that bibtex's history.
+8. **Kept `.papers/` files relative to the bibtex directory.** The names
+   are looked up in the directory of the bibtex
+   (papers/backup.py:101-109) while `files.json` is in the library
+   directory (papers/checksums.py:23-27): see `library.md`, open
+   question 1.
+9. **Separators in stored paths.** The names in `files` and the relative
+   paths in `ops` use the separator of the operating system
+   (papers/backup.py:140-153, papers/checksums.py:61), so a store is not
+   portable between Windows and other systems. The `file` lines of a
+   state identifier contain these names (papers/history.py:288-291), so
+   the same state gets another identifier on Windows. Should the stored
+   form use `/`?
+10. **Separate store recognised by its folder name.** The retention of a
     store uses the library's `history-size` when the store's parent
     folder is named `separate` (papers/backup.py:71-72); a library's own
     `history-size` is ignored in the shared store. Intended?
-17. **The pool step's `from` is the bibtex directory**, not the library
+11. **The pool step's `from` is the bibtex directory**, not the library
     directory (papers/backup.py:283): they differ when the bibtex is in a
     subfolder.
-18. **`kind` is never read.** It is written (papers/backup.py:212, 276)
+12. **`kind` is never read.** It is written (papers/backup.py:212, 276)
     and documented, but nothing uses it. Keep it in the contract?
+13. **The upgrade of numbered states stops at its store.** It rewrites
+    the `pools` links of a state only for the projects of the same store
+    (papers/history.py:167-168, 192). A library with `history-separate`
+    whose pool is in the shared store (or the reverse) keeps a number in
+    its links; the pool's states are named by identifiers once that store
+    is upgraded, so the link names no state and undo and redo leave the
+    pool alone (papers/backup.py:556-557).
+14. **A file brought back by `file fix` depends on the store.** The
+    `copied` operation names the file object in the store as its source
+    (papers/cli/file_cmds.py:420), but the fix's state does not list it in
+    `deleted` (papers/backup.py:165), so the retention may remove it once
+    the step that deleted the file is dropped, and a change of
+    `history-dir` moves it. Undo then leaves the copy in place (6.4,
+    pass 3 requires the source to exist; papers/journal.py:391).

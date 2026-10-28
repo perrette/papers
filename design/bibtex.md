@@ -22,13 +22,18 @@ The reference conformance test for reading and writing is the pair
 
 ## 1. Text encoding and line endings
 
-- **Contract.** The bibtex is read and written as UTF-8. Line endings are
-  read as `\n`, `\r\n` or `\r` (all three become `\n`), and written as
-  `\n`. A file written by papers always uses `\n`.
+- **Contract.** The bibtex is read and written as UTF-8, on every
+  platform and whatever the locale. Line endings are read as `\n`, `\r\n`
+  or `\r` (all three become `\n`), and written as `\n` on every platform.
+  A file written by papers always uses `\n`.
+- A byte order mark at the start of the file (written by some editors) is
+  dropped at reading; papers never writes one. This holds for the library
+  bibtex, for a bibtex file given to `papers add`, and for the text that
+  comes back from the editor of `papers edit`.
 - A file that is not valid UTF-8 cannot be loaded: the command stops with
   an error.
-- A byte order mark at the start of the file is not removed: it becomes a
-  comment block of its own (see section 2.4 and the open questions).
+- `.papers/distinct.json` (section 9.4) is also written as UTF-8 with `\n`
+  line endings.
 
 ## 2. Reading
 
@@ -134,7 +139,12 @@ Rules of the parser that decide where a failed block ends:
   starts a new block: the open block fails and ends just before that
   line. An `@` elsewhere in a value (`LeQua @ {CLEF}`) is text.
 - The raw text of a failed block runs from its `@` to the point where the
-  parser stopped, including trailing newlines it had read.
+  parser stopped. Before it is kept, papers removes from it every line
+  that is a warning line of section 3.2 (after trimming), and the
+  whitespace and blank lines at its end; the kept raw text ends with one
+  `\n`. (Without this, a failed block that runs to the next `@` would
+  take in the warning line and the blank line written after it, one more
+  at each save.)
 - The parser is a single pass and is tolerant: after a failure it goes on
   with the next `@` block. What it makes of malformed text beyond these
   rules (e.g. a `}` that closes an entry too early, after which the rest
@@ -149,7 +159,10 @@ Two consequences of these rules:
   names): the entry is read, with two `title` fields. A lookup of the
   field gives the last one; both are written (see the open questions).
 - The warning line written above a failed block (section 3.2) is removed
-  when the file is read again, so that it is not repeated at each save.
+  when the file is read again, whether it is read as an implicit comment
+  or into the raw text of the failed block before it, so that it is not
+  repeated at each save. A file written by papers is written back
+  unchanged.
 
 ### 2.6 Duplicate keys
 
@@ -232,15 +245,20 @@ entry, not with the other comments.
 - **Explicit comment**: `@comment{` + the trimmed text + `}` and a newline.
 - **Implicit comment**: the kept text and a newline.
 - **Failed block**: the line `% WARNING Parsing failed for the following
-  N lines.`, a newline, the raw text, a newline. N is the number of lines
-  of the raw text. On reading, an implicit comment line that is exactly
-  such a warning line (after trimming) is removed, and the comment block
-  is dropped if nothing else is left.
+  N lines.`, a newline, the raw text (which ends with `\n`, section 2.5),
+  a newline. N is the number of lines of the raw text. So a failed block
+  ends with an empty line. On reading, an implicit comment line that is
+  exactly such a warning line (after trimming) is removed, and the
+  comment block is dropped if nothing else is left; such lines are also
+  removed from the raw text of a failed block (2.5).
 
 Blocks are separated by one empty line: each block ends with `\n`, and a
-`\n` is written between two blocks. The file ends with the `\n` of the
-last block, with no blank line after it. A library with no blocks is
-written as an empty file.
+`\n` is written between two blocks. A failed block, which ends with an
+empty line of its own, is thus followed by two empty lines. The file ends
+with the `\n` of the last block and no blank line after it, except when
+the last block is a failed block: then the file ends with one empty line.
+A library with no blocks is written as an empty file. The reference test
+`tests/sortformat/varied.expected.bib` shows both cases.
 
 ### 3.3 Values
 
@@ -258,9 +276,13 @@ written as an empty file.
   not be read back the same way unenclosed (unbalanced braces, or a comma,
   `=` or newline outside braces and quotes) is written in braces.
 - A value set or changed by papers is no longer bare: it is written in
-  braces (`month = {feb}`). This also happens when an entry is rebuilt by
-  a merge (section 10.7), even if the value is unchanged; see the open
-  questions.
+  braces (`month = {feb}`).
+- A merge (section 10.7, and the three-way merge of exchange.md) keeps a
+  value bare when it is the value, as text, of one of the merged entries
+  where it is bare: the entry whose value was chosen is looked at first,
+  then the entries in order, and the first that has the field with that
+  exact value decides. A value typed in the merge dialogue is written in
+  braces.
 
 Example. Input:
 
@@ -342,12 +364,19 @@ fields only through commands:
 - `check --encoding latex|unicode`: section 4.
 - `check --key-ascii`: the key transliterated to ASCII.
 
-Name formatting (`check --format-name`): the field is split on the exact
-text ` and ` (one space on each side). Each part is trimmed. A part that
-contains a comma is kept. Otherwise it is split at its last space into
-`rest` and `last`, and written `last, rest`; a part without space is kept.
-The parts are joined with ` and `. Braces are not taken into account (see
-the open questions).
+Name formatting (`check --format-name`, also used for the family names of
+the key template, library.md): all splits below are made only at brace
+depth 0, so a `{...}` group is one word whatever it contains.
+
+1. The field is split on `and` with one or more whitespace characters on
+   each side (case-sensitive). Each part is trimmed; empty parts are
+   dropped.
+2. A part that contains a comma at depth 0 is kept as it is.
+3. Otherwise the part is split on whitespace runs into words. A part of
+   one word is kept (`{World Health Organization}` stays whole). Otherwise
+   it is written as the last word, `, `, and the other words joined by
+   one space: `John {van der Berg}` gives `{van der Berg}, John`.
+4. The parts are joined with ` and `.
 
 ## 4. LaTeX and Unicode
 
@@ -553,8 +582,9 @@ open questions).
   - `Author2000` with `author2000` taken: `Author2000b`.
   - `Author2000` with `author2000` and `author2000b` taken: `Author2000c`.
   - `Ab` with `ab` taken: `Abb` (no digit before the last letter).
-- The keys compared include the entry's own key when the entry is in the
-  library already (`check --auto-key`): see the open questions.
+- When the entry is in the library already (`check --auto-key`), its own
+  key is not counted as taken: an entry whose key is already the template
+  key keeps it (`smith2000` stays `smith2000`).
 - Adding an entry whose key is given (not from the template) and already
   used:
   - if the existing entry has the same title (exact text) and is the same
@@ -609,7 +639,9 @@ the exchanges with pools.
   1,3,1,3...; sum divisible by 10) is kept. Invalid ones are ignored. The
   identifier is the set of ISBN-13s.
 - **Authors**: the `author` field split on `and` surrounded by whitespace
-  (case-sensitive, any whitespace). The family name of each name: if it
+  (case-sensitive, any whitespace; also inside braces, unlike the name
+  formatting of section 3.5: see the open questions). The family name of
+  each name: if it
   contains a comma, the text before the first comma; otherwise its last
   word, where a `{...}` group without nested braces counts as one word
   (`Jane {van der Berg}` gives `{van der Berg}`). Each family name is
@@ -789,8 +821,9 @@ in `ids`.
 The merged entry has the target's key, the merged type, the merged fields
 (those with a value, possibly empty), `file` and `ids`. The target in the
 library is replaced by it in place; in `check --duplicates`, the other
-entries of the group are removed. All fields of the rebuilt entry are
-written in braces (section 3.3).
+entries of the group are removed. A bare value stays bare when it is the
+value of one of the entries (section 3.3); the other values are written in
+braces.
 
 ### 10.8 Three-way merge
 
@@ -800,88 +833,77 @@ exchange.md.
 
 ## Open questions
 
-1. **Failed block followed by another failed block grows at each save.**
-   A block with an unbalanced `{` swallows the warning line written above
-   the next failed block (it ends only at an `@` at line start), so that
-   warning line is no longer removed on reading: each save adds one
-   `% WARNING Parsing failed ...` line and the line count grows.
-   papers/entries.py:180-191, 194-208, and the parser rule in 2.5.
-2. **Field names that differ by case give two fields.** `Title` and
+1. **Field names that differ by case give two fields.** `Title` and
    `title` in one entry are not "a field given twice" (the check runs
    before lower-casing): both are kept and written, a lookup gives the
    last one. papers/entries.py:104-111, 114-122.
-3. **Byte order mark moves into the file.** The BOM is read as a comment
-   block attached to the first block, and is written wherever that block
-   sorts, possibly in the middle of the file. papers/bib.py:241
-   (`open(bibtex)` without `utf-8-sig`); `papers edit --from` uses
-   `utf-8-sig` (papers/cli/entry_cmds.py:432).
-4. **Encoding and line endings follow the platform.** Reading
-   (papers/bib.py:241, 568) and writing (papers/utils.py:283) use the
-   locale's default encoding and newline translation; UTF-8 and `\n` hold
-   on Linux and macOS only.
-5. **Bare values lose their bareness on any rebuild.** A merge rebuilds
-   the fields without the "bare" mark, so `month = jan` becomes
-   `month = {jan}` (a macro becomes a literal) even when the value did not
-   change. papers/merge.py:412-416, papers/entries.py:74-79.
-6. **`@string` references are inlined.** A resolved reference is written
+2. **`@string` references are inlined.** A resolved reference is written
    as its value, so `journal = jgr` becomes `journal = {...}` at the first
    save, while the `@string` block is kept. Intended?
-7. **Empty fields are added by a merge.** A field that is empty in the
+3. **Empty fields are added by a merge.** A field that is empty in the
    added entry and absent in the target is added to the target, empty
    (`pages = {}`). papers/merge.py:152-157.
-8. **Given-name compatibility ignores extra words.** Words are compared
+4. **Given-name compatibility ignores extra words.** Words are compared
    with a pairwise zip, so `John` and `John David` are equivalent, and
    `J.` and `John Quincy` too. papers/merge.py:67-79.
-9. **Tag add/remove/rename are case-sensitive, matching is not.**
+5. **Tag add/remove/rename are case-sensitive, matching is not.**
    `--tag climate` finds `Climate`, but `--rm-tag climate` does not
    remove it, and `--add-tag climate` adds it next to `Climate`.
    papers/cli/entry_cmds.py:343-347 versus 385-421.
-10. **`check --auto-key` renames an entry whose key is already the
-    template key.** The keys compared include the entry's own key, so
-    `smith2000` becomes `smith2000b`. papers/bib.py:497-503, 1002-1008.
-11. **Key suffix after an upper-case letter or `z`.** The suffix rule only
-    knows lower-case letters, so `Author2000B` gets `Author2000Bb`; a
-    template key that ends with a digit and `z` (`Author2000z`) has no
-    next letter, and the command fails.
-    papers/bib.py:80-102.
-12. **`--keep-old-key` can repeat a former key.** The old key is appended
-    to `ids` without checking whether it is there already; without
-    `--keep-old-key`, a part of `ids` equal to the new key stays.
-    papers/bib.py:306-308.
-13. **`crossref` to a merged-away key is not updated.** After
-    `check --duplicates`, a `crossref` that names a key that went to
-    `ids` keeps naming it (biblatex may or may not resolve it through
-    `ids`). Fields `xdata`, `related` are never followed.
-    papers/bib.py:275-292, papers/library.py:179-190.
-14. **Absolute links in a relative library are not converted at load.**
-    With `paths` = `absolute` all links are rewritten at load; with
-    `relative`, absolute links stay until the entry's files change.
-    papers/library.py:93-97.
-15. **No escaping in the `file` field.** A path with `;` cannot be
+6. **Key suffix after an upper-case letter or `z`.** The suffix rule only
+   knows lower-case letters, so `Author2000B` gets `Author2000Bb`; a
+   template key that ends with a digit and `z` (`Author2000z`) has no
+   next letter, and the command fails.
+   papers/bib.py:80-102.
+7. **`--keep-old-key` can repeat a former key.** The old key is appended
+   to `ids` without checking whether it is there already; without
+   `--keep-old-key`, a part of `ids` equal to the new key stays.
+   papers/bib.py:308-310.
+8. **`crossref` to a merged-away key is not updated.** After
+   `check --duplicates`, a `crossref` that names a key that went to
+   `ids` keeps naming it (biblatex may or may not resolve it through
+   `ids`). Fields `xdata`, `related` are never followed.
+   papers/bib.py:277-294, papers/library.py:179-190.
+9. **Absolute links in a relative library are not converted at load.**
+   With `paths` = `absolute` all links are rewritten at load; with
+   `relative`, absolute links stay until the entry's files change.
+   papers/library.py:93-97.
+10. **No escaping in the `file` field.** A path with `;` cannot be
     stored; JabRef's `\:` and `\;` are read literally; a two-part link
-    `C:\x.pdf` is read as `C`. Paths are not trimmed. papers/entries.py:214-256.
-16. **The table LaTeX decoder is wrong for some input, and it defines
+    `C:\x.pdf` is read as `C`. Paths are not trimmed. papers/entries.py:246-290.
+11. **The table LaTeX decoder is wrong for some input, and it defines
     identity.** `T\^ete` gives `Tet̂e` (the accent is moved twice), `\url{x}`
     gives `r̆lx`, `\'e` without braces is not decoded. A second
     implementation must copy the algorithm and its tables exactly to give
     the same verdicts. papers/latexenc.py:34-90.
-17. **Transliteration is a third-party table.** Step 3 of the
+12. **Transliteration is a third-party table.** Step 3 of the
     normalization (9.1) is the Unidecode table; a second implementation
     needs the same table, or identities (and `distinct.json`) differ.
     papers/duplicate.py:83-90.
-18. **`check --encoding unicode` and `add` of a PDF use a third-party
+13. **`check --encoding unicode` and `add` of a PDF use a third-party
     LaTeX-to-text converter** (not the table of 4.1), whose exact output
-    is hard to reproduce. papers/encoding.py:21-30, papers/bib.py:694-697.
-19. **Name formatting ignores braces.** `check --format-name` splits a
-    name without comma at its last space: `John {van der Berg}` becomes
-    `Berg}, John {van der`; it also splits on ` and ` with single spaces
-    only, while identity splits on any whitespace. papers/encoding.py:75-85
-    versus papers/duplicate.py:93-95.
-20. **Keys that differ by case are both read.** The parser rejects only
+    is hard to reproduce. papers/encoding.py:21-30, papers/bib.py:698-700.
+14. **Keys that differ by case are both read.** The parser rejects only
     exact duplicate keys; papers compares keys without case elsewhere, so
     a file with `Smith2000` and `smith2000` has two entries that the same
-    selection cannot tell apart. papers/bib.py:259-260.
-21. **"Exact duplicate" on key collision compares raw titles.** When an
+    selection cannot tell apart. papers/bib.py:261-262.
+15. **"Exact duplicate" on key collision compares raw titles.** When an
     added entry has the key of a library entry, it is folded into it only
     if the titles are the same text (not normalized) and the same-paper
-    rule says `same`. papers/bib.py:436-444.
+    rule says `same`. papers/bib.py:438-446.
+16. **`and` inside braces: three different splits.** Name formatting
+    (3.5) splits an author field only at brace depth 0, so
+    `{Barnes and Noble}` is one name. The identity (9.2) and the
+    equivalence of names (10.3) split on `and` inside braces too (two
+    authors, family names `{Barnes` and `Noble}`). The family names of the
+    key template split the formatted text again on ` and ` and on the
+    first comma without regard to braces. Should all three split at depth
+    0? Changing identity changes `distinct.json` matches.
+    papers/duplicate.py:93-95; papers/encoding.py:91-93 versus
+    papers/entries.py:221-241.
+17. **`distinct.json` is read with the platform encoding.** It is written
+    as UTF-8 with non-ASCII characters escaped, so papers' own files read
+    the same everywhere; a file with raw UTF-8 characters (valid JSON,
+    written by another implementation) is misread on Windows or with a
+    non-UTF-8 locale. Should the contract require the `\uXXXX` escapes,
+    or should reading be UTF-8? papers/duplicate.py:326.

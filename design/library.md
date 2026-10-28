@@ -50,7 +50,7 @@ of the contract.
     config.json               the library configuration
     .gitignore                "*\n"
     lock                      present while a command writes the library
-    lock.<pid>.tmp            transient, while the lock is refreshed
+    lock.<hex>.stale          transient, while a stale lock is taken over
     files.json                checksums of the linked files      (see history.md)
     distinct.json             pairs of entries that are not the same paper
     origin/<name>-<hash>.bib  one origin file per pool             (see exchange.md)
@@ -100,8 +100,11 @@ Contract:
 
 - A JSON object, UTF-8.
 - papers writes it with keys sorted, an indent of two spaces, the
-  separators `,` and `: `, and no final newline. Readers must accept any
-  valid JSON formatting.
+  separators `,` and `: `, LF line endings on every platform, and no final
+  newline. Characters outside ASCII are written as `\uXXXX` escapes, so
+  the file papers writes is ASCII. Readers must accept any valid JSON
+  formatting, and UTF-8 text (see [Open questions](#open-questions) for how
+  papers reads it).
 - papers writes it atomically: to a temporary file in the same directory,
   then renamed over the old file. A symbolic link at the path is followed
   (its target is written). The permissions of an existing file are kept.
@@ -173,20 +176,35 @@ section says what papers produces):
 - `bibtex` and `filesdir` are always written, as null when unset.
 - `version` is always written (`3`).
 - `id` is written when the library has one.
-- `pool` is written once it has been set, also to `none`. It is removed
-  only by `papers config --unset pool`. A library that does not set it has
-  no pool.
-- Every other setting is written only when its value differs from the
-  value it would inherit (the machine configuration's value, else the
-  built-in default). Setting a value equal to the inherited one removes it
-  from the file; the library then follows the machine configuration.
-  `nameformat` and `keyformat` hold only their differing members, and are
-  omitted when empty.
-- Keys that papers does not know are dropped when papers saves the file.
+- Every other setting (`pool` included) is written when the library sets
+  it, that is when either:
+  - it was given explicitly: present in the file when papers read it
+    (whatever its value), set by `papers init`, or set by
+    `papers config NAME VALUE`. It is written even when its value equals
+    the value it would inherit (the machine configuration's value, else the
+    built-in default);
+  - or its value differs from the inherited value.
 
-`papers init` writes `pool` (`none` by default). It also tries to store
-`paths`, but the rule above drops it when it equals the inherited value
-(see [Open questions](#open-questions)).
+  The other settings are not written: the library follows the machine
+  configuration for them. A library that does not write `pool` has no
+  pool. `nameformat` and `keyformat` hold only their written members, and
+  are omitted when empty.
+- The machine-only settings and the keys that papers does not know are
+  dropped when papers saves the file.
+
+`papers init` writes `pool` (`none` by default) and `paths` (the value of
+`--paths`, else the inherited value), and the settings given as its
+options (`--editor`, the name and key template options). A new library so
+keeps its link style whatever the machine configuration of the computer
+that opens it later.
+
+`papers config --unset NAME` makes a setting inherited again: it is
+removed from the file (`bibtex` and `filesdir` are written as null;
+without `pool` the library has no pool). `papers config --prune` unsets
+each setting present in the file whose value equals its inherited value,
+except `bibtex`, `filesdir` and `pool`, and removes the keys of the
+settings of papers 2 (`git`, `gitlfs`, `backup_files`, `gitdir`,
+`trash-days`, `trash-size`).
 
 ### Reading
 
@@ -232,6 +250,9 @@ Contract:
   dashes.
 - It names the library's project in the history store (see `history.md`).
   Copies of a library folder share it, and thus share a history.
+- It also names the library as a pool in the origin records of the
+  libraries that exchange with it, so that the records follow the pool
+  when its folder moves (see `exchange.md`, sections 2.3 and 3.9).
 - When a command needs it and the library has none, papers creates one and
   writes it at once: it reads the JSON of the configuration file from
   disk, sets `id`, and writes the file back (same formatting as above).
@@ -378,8 +399,10 @@ Reading: a file that cannot be parsed is ignored with a warning (all
 defaults apply). A missing file means no settings.
 
 Writing (free except for the format): papers writes the
-whole object, keys sorted, indent two spaces, with `version: 3`. papers
-writes it in place (not atomically).
+whole object with `version: 3`, in the format of the library
+configuration (keys sorted, indent two spaces, ASCII with `\uXXXX`
+escapes, LF line endings, no final newline), atomically through a
+temporary file in the same directory.
 
 `default` (contract for the meaning):
 
@@ -636,11 +659,20 @@ Contract:
 - When two files of one entry get the same path, the later ones get
   `-2`, `-3`, … appended to the label: `<name>--<label>-2<ext>`.
   Comparison is case-insensitive on Windows only.
-- Two **different entries** that produce the same name are not told
-  apart: no suffix is added (see [Open questions](#open-questions)). When
-  the destination exists with the same content (or is the same file), the
-  source is removed (move) or nothing is done (copy). When the content
-  differs, papers asks whether to replace it.
+- A file of another entry is never replaced. When the destination path
+  exists (a file, a folder or a symbolic link):
+  - if it is the file itself (same real path), or a file with the same
+    content (same sha256), that path is used: the source is removed (move)
+    or nothing is done (copy), and the entry links to that path. Two
+    entries can so link to one file;
+  - otherwise `-2` is inserted before the extension (the part from the
+    last `.` of the base name), then `-3`, and so on, until a path is free
+    or holds the file itself or the same content:
+    `<name>-2<ext>`, `<name>--<label>-2<ext>`.
+
+  This applies to each file of the entry, after the suffixes between the
+  files of one entry. A rename later finds the file at its suffixed name
+  (the file itself) and leaves it there while the plain name is taken.
 - A case-only rename on a case-insensitive file system renames the file
   in place.
 - Files of the layout of papers before 2.19 (a folder `<name>/` with a
@@ -662,11 +694,14 @@ part of the contract (see [Open questions](#open-questions)).
 Contract. Input: the fields of the entry. A missing `author` is
 `unknown`, a missing `year` is `0000`, a missing `title` is empty.
 
-**Author names.** The `author` field is lowercased, split on ` and `.
-For each author: if it contains a comma, the family name is the text
-before the first comma; else, if it contains a space, the last
-space-separated word; else the whole text. Each family name is
-slugified (see below). Then:
+**Author names.** The `author` field is lowercased and formatted as
+`check --format-name` does (`bibtex.md` section 3.5: split at brace
+depth 0, each name as "family, given"; a name in braces stays whole).
+The result is split on ` and `, and the family name of each author is
+the text before its first comma (`John {van der Berg}` gives
+`{van der berg}`). These two splits do not look at braces (see
+`bibtex.md`, open question 16). Each family name is slugified (see
+below). Then:
 
 | Placeholder | Value |
 |---|---|
@@ -737,7 +772,10 @@ on the length of the whole name; only the title part is limited by
 - The key template gives a key for entries created from a PDF or a DOI,
   for entries without key, and with `--update-key`/`--auto-key`. Entries
   added from a bibtex file keep their key otherwise.
-- Collisions: the letter suffix rule of `bibtex.md` section 8.
+- Collisions: the letter suffix rule of `bibtex.md` section 8. The
+  entry's own key does not count as taken: an entry whose key is already
+  the template's keeps it (`check --auto-key` leaves `smith2000` as it
+  is).
 - The key is not otherwise transformed: the template decides its
   characters (bibtex key validity is in `bibtex.md`).
 
@@ -806,14 +844,25 @@ marked as free.
      waiter always observes for at least `LIFETIME`);
    - or its `host` is this computer's host name, its `pid` is an integer,
      and no process with that pid exists (not checked on Windows).
-4. A stale lock is removed, and the command goes back to step 1.
+4. A stale lock is taken over, then the command goes back to step 1:
+   1. rename `.papers/lock` to `.papers/lock.<hex>.stale`, `<hex>` 32
+      random hexadecimal characters (if the file is gone, nothing to do).
+      The rename is atomic: of two waiters, only one gets the file;
+   2. if the signature of the renamed file is the one judged stale, remove
+      it;
+   3. otherwise the renamed file is a fresh lock that another command
+      created meanwhile: put it back as `.papers/lock` with a hard link
+      (which fails if a lock was created there again meanwhile; the fresh
+      lock is then not put back), and remove the renamed name.
 5. Otherwise wait `POLL` seconds and go back to step 1. After `WAIT`
    seconds the command stops with an error naming the holder.
 
-**Refresh.** While it holds the lock, the holder rewrites it every
-`REFRESH` seconds, if the file still has its token: written to
-`.papers/lock.<pid>.tmp`, then renamed over `.papers/lock` (a reader never
-sees half a file; the rename also changes the signature).
+**Refresh.** While it holds the lock, the holder sets the modification
+time of the file to the current time every `REFRESH` seconds, if the file
+still has its token. The file is never rewritten, so a holder that lost
+its lock cannot overwrite the lock of the command that took it over. (A
+refresh between the token read and the time change can touch a lock just
+taken over: it only keeps that lock fresh.)
 
 **Check before writing.** Before it writes the library, the holder reads
 the lock:
@@ -855,94 +904,90 @@ take no lock. `init`, `config` and `migrate` take no lock at the start;
 
 1. **`.papers/` of the bibtex directory vs of the library directory.**
    `config.json`, `lock` and `files.json` are under the library directory
-   (papers/config.py:249, papers/lock.py:270, papers/checksums.py:23), but
+   (papers/config.py:249, papers/lock.py:62, papers/checksums.py:23-27), but
    `distinct.json` and `origin/` are under the directory of the bibtex
-   (papers/duplicate.py:309, papers/pools.py:516). The history lists the
+   (papers/duplicate.py:318, papers/pools.py:552). The history lists the
    `.papers/` files relative to the bibtex directory
-   (papers/backup.py:99-108), so `files.json` is not recorded when the
+   (papers/backup.py:101-109), so `files.json` is not recorded when the
    bibtex is in a subfolder. Which folder is intended?
-2. **`papers init` does not store `paths`.** papers/install.py:360 sets
-   `paths` for a new library "rather than inheriting it later", but
-   `is_set` (papers/config.py:537-547) drops a value equal to the
-   inherited one, so it is never written unless it differs. The design
-   (design/v3.md:28) and docs/configuration.md say `init` stores it.
-3. **Two entries with the same file name.** No suffix is added; the
-   existing file is replaced after a yes/no prompt (papers/utils.py:165,
-   called with the default `interactive=True` from papers/bib.py:192).
-   If the user answers no, the entry's link is still set to the other
-   entry's file and its own file stays unlinked (papers/bib.py:880-889).
-   Without a terminal the command stops after files were moved.
-4. **`--auto-key` adds a letter to a key that is already right.** The
-   collision check includes the entry's own key (papers/bib.py:497-503),
-   so `fix_entry(auto_key=True)` turns `doe_smith2000` into
-   `doe_smith2000b` (papers/bib.py:1002-1007). Checked by running it.
-5. **`{journal}` of an entry without journal is `None`.**
+2. **`{journal}` of an entry without journal is `None`.**
    papers/filename.py:83 uses `None` as the default, and the formatting
    prints it as the text `None`.
-6. **Template syntax is Python's.** papers/filename.py:131 uses
+3. **Template syntax is Python's.** papers/filename.py:131 uses
    `str.format`, which accepts format specs, conversions and indexing.
    Should the contract be only `{name}`, `{{`, `}}`? The docstring at
    papers/filename.py:157 also claims that other case variants
    (`{AuTHoR}`) read the entry field; they are an unknown-placeholder
    error.
-7. **Slugify transliteration is not pinned.** The names depend on the
+4. **Slugify transliteration is not pinned.** The names depend on the
    transliteration library chosen by python-slugify at run time
    (`text-unidecode` or `Unidecode`), papers/filename.py:4. A Rust
    implementation needs a fixed table.
-8. **No file-name length or character limit.** Only the title part is
+5. **No file-name length or character limit.** Only the title part is
    limited (papers/filename.py:8-17). Path-safe values keep characters
    invalid on Windows (`: * ? " < > |`), papers/filename.py:36-46, for
    example in `{journal}` or `{doi}`.
-9. **Values in config.json are not type-checked.** papers/config.py:671-674
-    sets whatever JSON value is present (`"auto-push": "no"` is true;
-    `"pool": 3` fails later). A library configuration that is not valid
-    JSON is an unhandled error (papers/config.py:650), whereas an invalid
-    machine configuration is ignored with a warning
-    (papers/config.py:360-363).
-10. **Unknown keys are dropped on save.** `tojson` writes only known
-    settings (papers/config.py:612-628). A newer implementation's keys
-    would be lost when papers saves the file. Should unknown keys be kept?
-11. **`~` in `bibtex`/`filesdir` is not expanded**
-    (papers/config.py:604-609), whereas it is in `pool`
-    (papers/config.py:564) and `default` (papers/config.py:389).
-12. **Relative `default` and `history-dir` resolve against the current
-    directory** (papers/config.py:389, papers/backup.py:43), not against
-    the machine configuration's folder.
-13. **The configured pool is not re-checked for a pool of its own.** The
+6. **Values in config.json are not type-checked.**
+   papers/config.py:671-674 sets whatever JSON value is present
+   (`"auto-push": "no"` is true; `"pool": 3` fails later). A library
+   configuration that is not valid JSON is an unhandled error
+   (papers/config.py:650), whereas an invalid machine configuration is
+   ignored with a warning (papers/config.py:360-363).
+7. **Unknown keys are dropped on save.** `tojson` writes only known
+   settings (papers/config.py:612-628). A newer implementation's keys
+   would be lost when papers saves the file. Should unknown keys be kept?
+8. **`~` in `bibtex`/`filesdir` is not expanded**
+   (papers/config.py:604-609), whereas it is in `pool`
+   (papers/config.py:564) and `default` (papers/config.py:389).
+9. **Relative `default` and `history-dir` resolve against the current
+   directory** (papers/config.py:389, papers/backup.py:45), not against
+   the machine configuration's folder.
+10. **The configured pool is not re-checked for a pool of its own.** The
     check is done when the setting is made (papers/pools.py:180-191) and
-    for `--pool PATH` (papers/pools.py:418), but not when the configured
-    pool is resolved (papers/pools.py:361-385, 406-412). A pool that later
-    takes a pool is still used.
-14. **`papers config pool .` is accepted, `papers init --pool .` is
-    refused.** papers/cli/library_cmds.py:408 checks only when the new
+    for `--pool PATH` (papers/pools.py:194-198, 427-431), but not when the
+    configured pool is resolved (papers/pools.py:375-399, 406-419). A pool
+    that later takes a pool is still used.
+11. **`papers config pool .` is accepted, `papers init --pool .` is
+    refused.** papers/cli/library_cmds.py:410 checks only when the new
     value gives a pool; papers/cli/library_cmds.py:57 refuses it.
-15. **Base of a relative pool path differs.** `init --pool` is relative to
+12. **Base of a relative pool path differs.** `init --pool` is relative to
     the library directory (papers/cli/library_cmds.py:56), `config pool`
-    to the current directory (papers/cli/library_cmds.py:405).
-16. **Stale-lock takeover race.** Two waiters that both find the lock
-    stale may each remove it; the second removal can delete the lock just
-    created by the first (papers/lock.py:372-380). The check before writing
-    (papers/lock.py:394-414) catches the loser only if it reads the file
-    after the winner's create. Same for the read-then-write of the refresh
-    (papers/lock.py:442-443).
-17. **Locks of two libraries in opposite orders.** A command in L1 with
-    `--pool L2` and a command in L2 with `--pool L1` each hold one lock and
-    wait for the other; one fails after `WAIT` (papers/pools.py:381-382).
-18. **`.gitignore` only on configuration save.** papers/config.py:642-643:
+    to the current directory (papers/cli/library_cmds.py:407).
+13. **Locks of two libraries in opposite orders.** A command in L1 with
+    `--pool L2` and a command in L2 with `--pool L1` each hold one lock
+    and wait for the other; one fails after `WAIT`
+    (papers/pools.py:395-396).
+14. **`.gitignore` only on configuration save.** papers/config.py:642-643:
     a `.papers/` created by the lock, the `id` or the origin records of a
     library whose configuration papers never saved (for example a
     `.papersconfig.json` library) has no `.gitignore`.
-19. **Machine configuration written in place**, not atomically
-    (papers/config.py:391-394), unlike the library configuration; and it
-    drops the legacy `pools` names (papers/config.py:351), which unsaved
-    earlier-v3 libraries still need.
-20. **Legacy global location comment.** papers/library.py:21 says
+15. **Machine configuration drops the legacy `pools` names.** The names of
+    earlier v3 builds are taken out when the file is read
+    (papers/config.py:351) and not written back
+    (papers/config.py:391-395): the first save of the machine
+    configuration loses them, while unsaved earlier-v3 libraries still
+    need them to find their pool.
+16. **Legacy global location comment.** papers/library.py:21 says
     `~/.local/share/papers/config.json`; the code checks
     `$XDG_DATA_HOME/config.json` (papers/config.py:39), which matches what
     old versions wrote. The docstring or the path is wrong.
-21. **`id` written into `.papersconfig.json`.** The `id` is added to a
+17. **`id` written into `.papersconfig.json`.** The `id` is added to a
     legacy file in place (papers/config.py:482-487), while any other save
     moves it to `.papers/config.json` first (papers/config.py:637-638).
-22. **Install docstring.** papers/install.py:290 says the default target
+18. **Install docstring.** papers/install.py:290 says the default target
     is `.papersconfig.json`; the code uses `.papers/config.json`
     (papers/install.py:304).
+19. **Configuration files are read in the platform's encoding.** papers
+    writes `config.json` (library and machine) and `.gitignore` as UTF-8
+    (ASCII with escapes for the JSON), but reads them without naming an
+    encoding (papers/config.py:242, 361, 486, 650): a file of another
+    implementation with raw UTF-8 characters outside ASCII (a path in
+    `bibtex`, an `editor` command) is misread on Windows with a non-UTF-8
+    locale. Read them as UTF-8?
+20. **A fresh lock renamed aside is lost without hard links.** The
+    takeover puts a fresh lock back with a hard link
+    (papers/lock.py:97-113); on a file system without hard links (some
+    network or FAT drives) the link fails and the fresh lock is removed.
+    Its holder finds no file at its next check and creates it again
+    (papers/lock.py:190), but it may have written files in between, and
+    another waiter may take the lock meanwhile.

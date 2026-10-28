@@ -88,24 +88,45 @@ A section that says neither is contract.
 ### 2.3 The pool id (contract)
 
 The records name each pool by a **pool id**, a text. It is computed once
-per command for each pool, in this order:
+per command for each pool.
 
-1. If one of the pool ids already present in `.papers/origin/` (in the
-   `papers-pool` comments, and in the `papers-pulled` entries of the
-   legacy file) designates this pool, that id is used. An id designates a
-   pool when the id, with a leading `~` expanded to the home directory and
-   joined to the library directory (absolute ids stay absolute), has the
-   same real path as the pool directory. The ids are tried in sorted
-   order (plain string order); the first match wins.
-2. Else, for the pool of the library: the `pool` setting as written in
+**Library identifier.** A pool whose library has an identifier (the `id`
+of its library configuration, 32 lower-case hexadecimal digits,
+`library.md`) has that identifier as pool id
+(`7e5754a0ccd246968e910bcd2a16dcf2`). It stays when the library or the
+pool moves: after a move, `papers config pool NEWPATH` finds the records
+again. A configuration that cannot be read, or an `id` that is not 32
+lower-case hexadecimal digits, counts as no identifier.
+
+**Path ids.** Any other id is a **path id**: the pool's path, as earlier
+versions (up to 3.0.0b5) named every pool, and as papers still names a pool
+whose library has no identifier yet (a library that never recorded a
+history step). A path id **designates** a pool when the id, with a leading
+`~` expanded to the home directory and joined to the library directory
+(absolute ids stay absolute), has the same real path as the pool
+directory.
+
+The pool id of a pool, in this order:
+
+1. With a library identifier: the identifier. If one of the path ids
+   already present in `.papers/origin/` (in the `papers-pool` comments,
+   and in the `papers-pulled` entries of the legacy file) designates the
+   pool, its records move to the identifier (section 3.9). `papers status`
+   does not move them: it uses the path id until an exchange has moved
+   them.
+2. Without identifier: the first path id present in `.papers/origin/` that
+   designates the pool, the ids tried in sorted order (plain string
+   order).
+3. Else, for the pool of the library: the `pool` setting as written in
    the configuration (`../pool`, `~/Documents/papers`).
-3. Else (an other library): the path of the pool relative to the library
+4. Else (an other library): the path of the pool relative to the library
    directory, with `./` prepended when it does not start with `.`
    (`../shared-with-bob`, `./sub`, `../../home/me/Documents/bob`). This is
    relative even when PATH was given absolute or with `~`.
 
-So a pool keeps its id when the `pool` setting is rewritten, or when it is
-given another way on the command line.
+A pool without identifier gets one when a command first records a step in
+its history (a push records one, `history.md`); the next exchange then
+moves its records from the path id to the identifier.
 
 The name shown in messages (`pool ../pool`) is free: papers shows the pool
 of the library as its setting writes it, and `--pool PATH` as given on the
@@ -124,15 +145,22 @@ holds one bibtex file per pool:
 
 - `<hash>`: the first 6 hexadecimal digits (lower case) of the SHA-1 of
   the pool id encoded in UTF-8.
-- `<name>`: the last component of the pool id, after normalizing the path
-  (`../pool/` and `../x/../pool` give `pool`; separators are those of the
-  platform), turned into a slug (the slugify rule of `library.md`, Name
-  and key templates); `pool` if the slug is empty.
+- `<name>`: the last component of a path, after normalizing it (`../pool/`
+  and `../x/../pool` give `pool`; separators are those of the platform),
+  turned into a slug (the slugify rule of `library.md`, Name and key
+  templates); `pool` if the slug is empty. The path is the
+  `papers-pool-path` of the file (section 3.2, with a leading `~`
+  expanded) when it has one; else the pool id if it is a path id; else
+  there is none and the name is `pool`.
 
-Examples: pool id `../pool` gives `pool-615fe0.bib`; `../shared-with-bob`
-gives `shared-with-bob-d15650.bib`; `~/Documents/papers` gives
-`papers-e311da.bib`; `../My Papers` gives `my-papers-94036c.bib`. The
-hash is of the id as written: `../pool/` gives `pool-b6adbc.bib`.
+Examples: pool id `7e5754a0ccd246968e910bcd2a16dcf2` with
+`papers-pool-path ~/papers/shared-with-bob` gives
+`shared-with-bob-569371.bib`, and without `papers-pool-path`
+`pool-569371.bib`. Path ids: `../pool` gives `pool-615fe0.bib`;
+`../shared-with-bob` gives `shared-with-bob-d15650.bib`;
+`~/Documents/papers` gives `papers-e311da.bib`; `../My Papers` gives
+`my-papers-94036c.bib`. The hash is of the id as written: `../pool/` gives
+`pool-b6adbc.bib`.
 
 The files of earlier pools stay. Setting the pool back to one of them, or
 exchanging with it again, finds its records again (through the pool id,
@@ -142,20 +170,30 @@ section 2.3).
 
 A file is a bibtex file written as the library writes its bibtex
 (`bibtex.md` section 3: fields sorted, one space of indentation, values in
-braces, a blank line between blocks). Its blocks, in order:
+braces unless bare (`bibtex.md` section 3.3), a blank line between blocks; UTF-8, LF line endings on every
+platform). Its blocks, in order:
 
 1. `@comment{papers-pool <pool id>}`: always.
 2. `@comment{papers-pulled <mtime>}`: the modification time of the pool's
    bibtex, in integer nanoseconds since the epoch, at the last exchange
    that counts (section 3.6). Absent if none.
-3. One entry per record, sorted by lower-case library key.
+3. `@comment{papers-pool-path <path>}`: where the pool was when its
+   records moved from a path id to its library identifier (section 3.9):
+   the absolute path of the pool directory, with `~` for the home
+   directory. Kept as read when the file is written again; not updated
+   when the pool moves later. Absent if the records never moved (see the
+   open questions). It is information for the reader and gives the file
+   name (3.1); papers does not use it to find the pool.
+4. One entry per record, sorted by lower-case library key.
 
 Example, in a shallow library whose pool is `../pool`:
 
 ```
-@comment{papers-pool ../pool}
+@comment{papers-pool 7e5754a0ccd246968e910bcd2a16dcf2}
 
 @comment{papers-pulled 1793189510108569698}
+
+@comment{papers-pool-path ~/papers/pool}
 
 @article{Other2021,
  author = {Brown, Bob},
@@ -221,7 +259,8 @@ the key is not used by the merge.
   file that cannot be parsed is ignored with a warning.
 - A comment is split on whitespace into a first word and the rest
   (trimmed). `papers-pool <id>` gives the id; `papers-pulled <digits>`
-  gives the time (anything else than digits is ignored).
+  gives the time (anything else than digits is ignored);
+  `papers-pool-path <path>` gives the path.
 - Records are indexed by pool id and lower-case library key. Two records
   of the same key for the same pool (in one file or in two files of the
   same id): the last read wins.
@@ -251,6 +290,10 @@ Records are written:
 - A file is written only for the pools whose records or time changed, in
   full, atomically, and only if its content differs from the file on
   disk. The directory is created when needed.
+- When the file of a pool is written under its name (3.1), the file its
+  records were read from (the last one read for that id), if it has
+  another name, is removed. So is the file of a path id whose records
+  moved to an identifier (3.9).
 - The records are saved before the library's bibtex, so that the history
   step of the library includes them (`history.md`). With `--dry-run`
   nothing is written.
@@ -306,6 +349,27 @@ When it exists, it is read after `origin/`; its records and times are
 added where `origin/` has none for that pool and key. Then all pools are
 written as per-pool files (without `papers-pool` fields) and the legacy
 file is removed (not with `--dry-run`).
+
+### 3.9 Records under a path id (contract)
+
+When the pool id of a pool is its library identifier and a path id of
+`.papers/origin/` designates the same pool (2.3), the records of the path
+id move to the identifier:
+
+- each record of the path id is added under the identifier, unless the
+  identifier has a record of the same lower-case library key (that one
+  stays);
+- the exchange time of the path id becomes that of the identifier, unless
+  the identifier has one;
+- `papers-pool-path` is set to the pool directory (3.2);
+- at the save, the file of the identifier is written (named as 3.1 says)
+  and the file of the path id is removed.
+
+This happens in every command that exchanges with the pool (pull, push,
+sync, the automatic pushes, `add` from the pool, the link updates), and
+is saved with the command's other records (not with `--dry-run`). `papers
+status` does not move records. A path id that does not designate the pool
+of the command (an earlier pool, a pool not found) stays.
 
 ## 4. Matching entries
 
@@ -571,7 +635,9 @@ papers push [KEY...|-] [--all] [--pool PATH] [--on-duplicate MODE]
    united (6.2).
 2. For each entry, in order: find its pool entry (4.1).
    - Found: merge (section 5, the pool entry as target) and apply to the
-     pool entry. Files: the links of the result that the pool entry did
+     pool entry. In a library that shares links with the pool, the
+     incoming entry leaves out the links that the pool removed since the
+     last exchange (15.2): push does not add them back. Files: the links of the result that the pool entry did
      not have are copied (a hard link when possible) into the pool's files
      directory, named with the pool's name template; the pool entry's
      own links stay; in a shallow library, the links that the command
@@ -857,8 +923,9 @@ pull and push would find it:
 4. The pull merge (5.1, library as target, base the record): a conflict
    means **both changed**; an addition, a new file or a link removed by
    the pool (15.2) means **pool changed**.
-5. The push merge (pool as target): a conflict, an addition or a new file
-   means **library changed**.
+5. The push merge (pool as target, the incoming entry as push sends it,
+   without the links that the pool removed, 7.2): a conflict, an addition
+   or a new file means **library changed**.
 6. Stop when both are found.
 
 The library is read as on disk, without the repair of links (15.3).
@@ -925,6 +992,12 @@ link the pool entry never had stays. A record without `file` field removes
 nothing. No file is deleted. (The library entry may be left with an empty
 `file = {}` field; see the open questions.)
 
+A push sends the library entry without these links (7.2), so the pool
+entry does not get them back. The record written by that push keeps them
+in its `file` field (the pool entry's links, then these), so that the next
+pull still removes them from the library. `papers status` compares the same
+way (14.3): such a link makes `pool changed`, not `both changed`.
+
 ### 15.3 Repair of broken links to pool files (contract for the choice)
 
 A link of a library entry is repaired when it is broken (no file at its
@@ -977,8 +1050,12 @@ Details are in `history.md`.
   its configuration). Undo in the library takes the pool's step back when
   the pool is still where the command left it, and otherwise reverts that
   step as a new step of the pool; `undo --library-only` leaves the pool.
+- Redo after an undo that took the pool's step back, when the pool changed
+  since, does the step again in the pool, as a new step of the pool.
 - After undo or redo in a shallow library with auto-push, the shared
   entries that differ from their records are pushed (conflicts skipped).
+  A push that sends something is a new step: the redo list is dropped, as
+  after any command, and a line says so (free).
 - `exchanges.json` (14.4) lives in the library's history folder but is
   not part of the states.
 
@@ -993,71 +1070,83 @@ Details are in `history.md`.
    pool renamed makes `status` say `both changed`, while `pull` repairs
    the link at load and reports `nothing to pull`.
    `papers/pools.py:1635`; repair at load in `papers/library.py:100`.
-3. **A link removed in the pool shows as `both changed`.** The push merge
-   of status sees the library's link as a new file for the pool.
-   `papers/pools.py:1657-1660`. The same holds for a real `push` without
-   a pull before it: the union re-adds to the pool a link the pool removed
-   (`papers/pools.py:1038-1056`).
-4. **Empty `file` fields.** Records of a shallow library store `file = {}`
+3. **Empty `file` fields.** Records of a shallow library store `file = {}`
    for a pool entry without files (`papers/pools.py:758`), and the removal
    of links in a pull can leave `file = {}` in the library bibtex
    (`papers/pools.py:918`). Is an empty field intended, or should it be
    absent?
-5. **The base of a pull keeps the pool's `ids`.** The record of `pull` and
+4. **The base of a pull keeps the pool's `ids`.** The record of `pull` and
    `add` is the pool entry with only `file` and the `papers-*` fields
    removed, so it may hold the pool's `ids` (former pool keys), which the
    merge ignores. `papers/pools.py:605`.
-6. **The base of a push of a new entry is the pool entry as inserted**,
+5. **The base of a push of a new entry is the pool entry as inserted**,
    not the library entry as sent, unlike the other pushes.
    `papers/pools.py:1035`.
-7. **The piece cache can miss an entry removed from the pool** when its
+6. **The piece cache can miss an entry removed from the pool** when its
    piece disappears without a new piece appearing (a piece made of that
    entry alone). `status` then says `in sync`, while `pull` would print
    the removal note. `papers/pools.py:1587-1596`.
-8. **`status` writes without lock or history step.** It may rewrite the
+7. **`status` writes without lock or history step.** It may rewrite the
    origin file (`papers-pulled`) and `exchanges.json`, outside a command
    that locks the library and without a state in the history.
    `papers/pools.py:1631-1633`, `papers/pools.py:1668-1671`.
-9. **`status` ignores shared entries without record.** An entry matched by
+8. **`status` ignores shared entries without record.** An entry matched by
    the same-paper rule but never exchanged is not compared, although
    `pull` would link or merge it. `papers/pools.py:1640`.
-10. **`never pulled` versus `not pulled from yet`.** The names do not say
-    the difference (records without exchange time, versus no record).
-    `papers/pools.py:1306-1312`.
-11. **Origin files under another name.** Every `.bib` file of
+9. **`never pulled` versus `not pulled from yet`.** The names do not say
+   the difference (records without exchange time, versus no record).
+   `papers/pools.py:1306-1312`.
+10. **Origin files under another name.** Every `.bib` file of
     `.papers/origin/` is read, but a pool is always written to its
-    computed name. A second file with the same `papers-pool` id (copied,
-    or named by another implementation) is never rewritten nor removed,
-    and its records win over the computed file's when its name sorts
-    later. `papers/pools.py:513-557`, `papers/pools.py:659-677`.
-12. **Pool ids of other libraries are relative paths**, even when PATH is
-    given absolute or under `~`. Moving the library breaks the match of
-    those ids (the records are then for an unknown pool). The ids are
-    also resolved against the library directory, while the origin
-    directory is next to the bibtex. `papers/pools.py:339-351`.
-13. **Two ids for one pool.** If two origin files have ids that resolve to
-    the same pool, the first in sorted order is used and the other's
-    records are ignored. `papers/pools.py:343`.
-14. **Record lookup by key under a reused pool key.** Step 4 of 4.1 takes
+    computed name, and only the last file read for its id is removed then
+    (3.5). A second file of the same `papers-pool` id (copied, or named by
+    another implementation) whose name sorts before the computed file's is
+    never rewritten nor removed: its records lose to the computed file's,
+    but a record that the computed file no longer has (dropped by an
+    exchange) comes back from it. `papers/pools.py:555-593`,
+    `papers/pools.py:740-747`.
+11. **Two path ids for one pool.** If two path ids designate the same pool,
+    one exchange moves only the first in sorted order to the identifier
+    (or, without identifier, uses it); the records of the other are
+    ignored until the next exchange moves them, where the records already
+    under the identifier win. `papers/pools.py:350-351`.
+12. **Record lookup by key under a reused pool key.** Step 4 of 4.1 takes
     the pool entry of the record's pool key when no identifier
     contradicts the base: an entry without DOI, arXiv id or ISBN that the
     pool replaced by another paper under the same key is matched.
     `papers/pools.py:260-270`, `papers/pools.py:737`.
-15. **Equivalent changes are not sent.** A change to an equivalent value
+13. **Equivalent changes are not sent.** A change to an equivalent value
     (case, braces, initials to full names) is not exchanged by itself;
     when the entry is rewritten for another reason, the names take the
     fuller form, which may be either side's. `papers/merge.py:157-160`,
     `papers/pools.py:907-909`.
-16. **`add` from a pool sets the exchange time on the first exchange
+14. **`add` from a pool sets the exchange time on the first exchange
     only.** A later `add --pool PATH` from an unchanged other library does
     not update `papers-pulled`. `papers/pools.py:1007-1011`.
-17. **The dialogue says the origin is the pool version** (`origin = the
+15. **The dialogue says the origin is the pool version** (`origin = the
     pool version at the last pull or push`), also after a push, where
     the base is the library's version. `papers/merge.py:506`.
-18. **`keep` and `update` mean opposite sides in pull and push.** `keep`
+16. **`keep` and `update` mean opposite sides in pull and push.** `keep`
     keeps the target (library in pull, pool in push). In `sync` the same
     word is used for both steps. Is that the intended reading of the
     option? `papers/merge.py:823`, `papers/cli/pool_cmds.py:200-215`.
-19. **Rekey overwrites.** When a key is renamed to a key that already has
+17. **Rekey overwrites.** When a key is renamed to a key that already has
     a record for a pool (a record left by a removed entry), that record is
     replaced silently. `papers/pools.py:637-644`.
+18. **`papers-pool-path` is written only when records move.** A pool
+    whose library has its identifier at the first exchange gets no
+    `papers-pool-path` line, so its origin file is named `pool-<hash>.bib`
+    whatever its folder, while `docs/pools.md` says the file is named
+    after the pool folder and records where the pool was. Should the path
+    be written at every exchange? `papers/pools.py:697`,
+    `papers/pools.py:730-736`.
+19. **`status` names the origin file without `papers-pool-path`.** For the
+    fast comparison (14.4), `status` reads the origin file under the name
+    computed from the pool id alone: a file named after the pool folder
+    is not found, its pieces are those of the empty text, and a change of
+    the records alone is not seen. `papers/pools.py:1710`.
+20. **Origin files are read with the platform encoding.** They are written
+    as UTF-8, but read with the platform's default encoding, without
+    dropping a byte order mark, unlike the bibtex; the same holds for the
+    pool's configuration when its identifier is read.
+    `papers/pools.py:480`, `papers/pools.py:570`.
