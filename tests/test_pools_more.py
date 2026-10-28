@@ -144,6 +144,16 @@ class TestPoolLookups(PoolTest):
         other.add_bibtex(SMITH_BIB.replace('10.1000/ABC123', '10.1000/different'))
         self.assertIsNone(pool.by_key('smith_2020', other.entries[0]))  # contradicting DOI
         self.assertIs(pool.by_key('smith_2020', smith), smith)
+        # titles changed on both sides: same authors and year, no DOI
+        both = SMITH_BIB.replace(' doi = {10.1000/ABC123},\n', '').replace('revisited', 'reconsidered')
+        other = Biblio()
+        other.add_bibtex(both)
+        self.assertIs(pool.by_key('smith_2020', other.entries[0]), smith)
+        # another paper under the reused key: other authors, or another year
+        for changed in (both.replace('Smith, John and Doe, Jane', 'Brown, Bob'), both.replace('2020', '2019')):
+            other = Biblio()
+            other.add_bibtex(changed)
+            self.assertIsNone(pool.by_key('smith_2020', other.entries[0]), changed)
 
     def test_pool_path_given_as_in_setting(self):
         # a path given on the command line is named as the pool setting writes it
@@ -351,3 +361,31 @@ class TestPoolIdentifier(ConfigTest):
         self.assertEqual(len(names), 1)
         self.assertTrue(names[0].startswith('sealevel-'), names)
         self.assertIn('@comment{papers-pool-path', Path(self.path('lib', '.papers', 'origin', names[0])).read_text())
+
+    def test_two_path_ids_move_together(self):
+        # records under two path ids of one pool move to its identifier in one exchange;
+        # the records already under the identifier win
+        from papers.entries import parse_string
+        from papers.pools import ORIGIN_DIR, Origin, _library_id
+        self.papers('init pool')
+        self.papers('init lib')
+        Path(self.path('pool', 'papers.bib')).write_text(
+            '@article{A_2020,\n title = {A},\n year = {2020}\n}\n\n@article{B_2021,\n title = {B},\n year = {2021}\n}\n')
+        Path(self.path('lib', 'papers.bib')).write_text(
+            '@article{a2020,\n title = {A},\n year = {2020}\n}\n\n@article{b2021,\n title = {B},\n year = {2021}\n}\n')
+        self.papers('edit A_2020 --set note=x', cwd=self.path('pool'))  # a step: the pool gets its identifier
+        own = _library_id(self.path('pool'))
+        self.assertIsNotNone(own)
+        a, b = parse_string(Path(self.path('pool', 'papers.bib')).read_text()).entries
+        origin = Origin(self.path('lib', ORIGIN_DIR))
+        origin.set('a2020', '../pool', a)
+        origin.set('b2021', '../pool/', parse_string('@article{B_2021,\n title = {Old B},\n year = {2021}\n}\n').entries[0])
+        origin.set('b2021', own, b)
+        origin.set_pulled(own, 1)
+        origin.save()
+        self.papers('pull --pool ../pool', cwd=self.path('lib'))
+        origin = Origin.load(self.path('lib', ORIGIN_DIR))
+        self.assertEqual(sorted(origin.entries), [own])
+        self.assertEqual(sorted(origin.entries[own]), ['a2020', 'b2021'])
+        self.assertEqual(origin.entries[own]['b2021']['title'], 'B')
+        self.assertEqual(len(os.listdir(self.path('lib', ORIGIN_DIR))), 1)

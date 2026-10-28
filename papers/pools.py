@@ -65,8 +65,8 @@ from slugify import slugify
 import papers.config
 from papers import history, journal, lock, logger
 from papers.config import Config, CONFIG_FILE_LOCAL, NO_POOL, library_config_file, short_home
-from papers.duplicate import (Distinct, IdentityIndex, contradicts, distinct_union, find_duplicates, same_paper,
-                              SAME, Verdict)
+from papers.duplicate import (Distinct, IdentityIndex, author_id, contradicts, distinct_union, find_duplicates,
+                              same_paper, SAME, Verdict)
 from papers.entries import (get_entry_val, set_entry_key, entry_copy, parse_string, format_library, format_file,
                             parse_file)
 from papers.bib import Biblio, append_abc, read_text
@@ -259,11 +259,15 @@ class Pool:
 
     def by_key(self, key, origin):
         """the pool entry of key `key` (the pool key of an origin record) if
-        its identifiers do not contradict the origin copy: found this way
-        when the title (the only identifier of entries without DOI) changed
-        on both sides"""
+        its identifiers do not contradict the origin copy and it has the same
+        authors (normalized family names) and year: found this way when the
+        title (the only identifier of entries without DOI) changed on both
+        sides; another paper put under a reused key is not taken"""
         pe = self.entry_of_key(key)
         if pe is None or contradicts(pe, origin):
+            return None
+        if author_id(pe) != author_id(origin) or \
+                get_entry_val(pe, 'year', '').strip() != get_entry_val(origin, 'year', '').strip():
             return None
         return pe
 
@@ -343,19 +347,20 @@ class Pools:
     def _id(self, path):
         """how the origin records name the pool in `path`: the identifier of
         the pool library (its `id`, which stays when a library moves); the
-        records under a former id, the pool's path as the library wrote it,
-        move to it (see `renamed`). A pool without identifier (a library of an
+        records under a former id, the pool's path as the library wrote it
+        (every such path, in sorted order), move to it (see `renamed`). A pool without identifier (a library of an
         earlier version that never recorded a step): the id of its records if
         it has some, else for the pool of the library its pool setting, else
         its path relative to the library."""
         own_id = _library_id(path)
-        former = next((id for id in self.known_ids if id != own_id and _is_path_id(id) and
-                       realpath(os.path.join(self.libdir, os.path.expanduser(id))) == realpath(path)), None)
+        formers = [id for id in self.known_ids if id != own_id and _is_path_id(id) and
+                   realpath(os.path.join(self.libdir, os.path.expanduser(id))) == realpath(path)]
+        former = formers[0] if formers else None
         if former is not None and self.renamed is None:
             return former  # the records move at the next exchange (not with `papers status`)
         if own_id:
-            if former is not None:
-                self.renamed(former, own_id, path)
+            for id in formers:  # the records already under the identifier win
+                self.renamed(id, own_id, path)
             if self.located is not None:
                 self.located(own_id, path)
             return own_id
@@ -821,8 +826,8 @@ class Exchange:
         origin record, the pool entry of its pool key if it is the same paper
         as the origin copy or as the entry, else the same paper as the origin
         copy, then as the entry (see Pool.find), else the pool entry of the
-        pool key if its identifiers do not contradict the origin copy (see
-        Pool.by_key); without record, the same paper as the entry (record
+        pool key if its identifiers do not contradict the origin copy and it
+        has the same authors and year (see Pool.by_key); without record, the same paper as the entry (record
         None). (None, record) if the pool does not have it."""
         record = self.origin.get(e, pool.id)
         d = self.biblio.distinct

@@ -275,8 +275,8 @@ origin copy: that pool entry is taken if it is the same paper as the origin
 copy or as the entry. Otherwise, e.g. when the pool key now names another
 paper, the pool entry is found by the rule above (from the origin copy,
 then from the entry), and last under the pool key, if its DOI, arXiv
-identifier and ISBN do not differ from those of the origin copy (both
-titles changed). When the pool has the same paper twice, the entry of the
+identifier and ISBN do not differ from those of the origin copy and it has
+the same authors (family names) and year (both titles changed). When the pool has the same paper twice, the entry of the
 origin copy is the one exchanged.
 
 ## Origin copies
@@ -334,9 +334,12 @@ Earlier v3 beta versions kept all the origin copies in one file,
 `.papers/origin.bib`: papers splits it into these files the first time it
 reads it, and removes it. Versions up to 3.0.0b5 named the pool by its path
 (`@comment{papers-pool ../shared-with-bob}`): at the next exchange with the
-pool, papers moves its origin copies to the pool's identifier (a pool that
-has none yet, a library of an earlier version that never recorded a step,
-keeps its path until it has one).
+pool, papers moves its origin copies to the pool's identifier: those of
+every path that names the pool (e.g. `../shared-with-bob` and
+`~/papers/shared-with-bob`) at once, an origin copy already under the
+identifier being kept. A pool that has no identifier yet (a library of an
+earlier version that never recorded a step) keeps its path until it has
+one.
 
 The origin copy is the third version of a three-way merge. It is the
 version of the side that sent the entry, as it was sent: the pool entry
