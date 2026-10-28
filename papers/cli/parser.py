@@ -215,12 +215,16 @@ def get_parser(config=None):
     # configuration (re-used everywhere)
     # =============
     loggingp = argparse.ArgumentParser(add_help=False)
-    grp = loggingp.add_argument_group('logging level (default warn)')
-    egrp = grp.add_mutually_exclusive_group()
-    egrp.add_argument('--debug', action='store_const', dest='logging_level', const=logging.DEBUG)
-    egrp.add_argument('--info', action='store_const', dest='logging_level', const=logging.INFO)
-    egrp.add_argument('--warn', action='store_const', dest='logging_level', const=logging.WARN)
-    egrp.add_argument('--error', action='store_const', dest='logging_level', const=logging.ERROR)
+    loggingp.add_argument('-v', '--verbose', action='store_true',
+        help='say what papers does, step by step')
+    loggingp.add_argument('--debug', action='store_const', dest='logging_level', const=logging.DEBUG,
+        help='debugging messages, and the traceback of errors')
+    loggingp.add_argument('--info', action=_Deprecated, dest='verbose', new='-v')
+    # former logging levels: --warn is the default, --error hides the warnings
+    loggingp.add_argument('--warn', action='store_const', dest='logging_level', const=logging.WARN,
+        help=argparse.SUPPRESS)
+    loggingp.add_argument('--error', action='store_const', dest='logging_level', const=logging.ERROR,
+        help=argparse.SUPPRESS)
     loggingp.add_argument('--color', choices=['auto', 'always', 'never'], default='auto',
         help='colours and hyperlinks in the output: auto (default) when the output is a terminal and the '
              'NO_COLOR environment variable is not set')
@@ -256,10 +260,10 @@ def get_parser(config=None):
     # status
     # ======
     statusp = subparsers.add_parser('status',
-        description='show the library, its pool and its settings',
+        description='show the library, its pool and its settings (with -v/--verbose: also where '
+                    'each setting comes from)',
         parents=[cfg])
     statusp.add_argument('--no-check-files', action='store_true', help='faster, less info')
-    statusp.add_argument('-v','--verbose', action='store_true', help='also show where each setting comes from')
     _command(statusp, statuscmd)
 
     # init

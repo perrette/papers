@@ -658,7 +658,7 @@ class Origin:
         if not self.changed or self.dir is None:
             return
         if papers.config.DRYRUN:
-            logger.info(f'DRYRUN: not saving {self.dir}')
+            print(f'DRYRUN: {self.dir} not saved')
             return
         os.makedirs(self.dir, exist_ok=True)
         for pool in sorted(self.changed):
@@ -1429,9 +1429,9 @@ class PoolLookup:
             if target is None or os.path.samefile(target, f):
                 continue
             if papers.config.DRYRUN:
-                logger.info(f'DRYRUN: {f} not removed (the same as {target})')
+                print(f'DRYRUN: {f} not removed (the same as {target})')
                 continue
-            logger.info(f'{f}: removed, the same as {target} (files mode move)')
+            print(f'{f}: removed, the same as {target} (files mode move)')
             journal.record('removed', f, target, digest=checksum(f))
             with journal.paused():  # recorded above: undo copies the identical file back
                 journal.remove(f)

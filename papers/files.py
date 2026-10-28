@@ -955,7 +955,8 @@ def clean_filesdir(biblio, interactive=True, ignore_files=None, ignore_folders=N
                         _remove(path)
                         removed_files.append(path)
                 else:
-                    logger.info(f"Remove unlinked file {name}.")
+                    if not papers.config.DRYRUN:
+                        print(f"{name}: removed, not in the library")
                     _remove(path)
                     removed_files.append(path)
 
@@ -979,7 +980,8 @@ def clean_filesdir(biblio, interactive=True, ignore_files=None, ignore_folders=N
                 if interactive:
                     ans = input(f"Folder: {name} not in library. Remove ? [Y/n] ")
                 else:
-                    logger.info(f"Remove folder {name}.")
+                    if not papers.config.DRYRUN:
+                        print(f"{name}: folder removed, not in the library")
                     ans = 'y'
                 if ans.lower() == 'y':
                     # its files, but the hidden .<name>.bib

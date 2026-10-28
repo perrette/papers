@@ -83,8 +83,8 @@ def check_install(parser, o, config, bibtex_must_exist=True):
 
     if bibtex_must_exist and not os.path.exists(config.bibtex):
         raise PapersExit(f'no bibtex file found, do `touch {config.bibtex}` or `papers init --bibtex {config.bibtex}`')
-    logger.info(f'bibtex: {config.bibtex!r}')
-    logger.info(f'filesdir: {config.filesdir!r}')
+    logger.debug(f'bibtex: {config.bibtex!r}')
+    logger.debug(f'filesdir: {config.filesdir!r}')
     return config
 
 

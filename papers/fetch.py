@@ -291,7 +291,7 @@ def fetch_bibtex_by_fulltext_crossref(txt, title=None, author=None, rows=5):
 
     scoretxt = ' '.join(x for x in [query, author] if x)
     result = max(results, key=lambda res: _crossref_score(scoretxt, res))
-    logger.info('score: '+str(_crossref_score(scoretxt, result)))
+    logger.debug('score: '+str(_crossref_score(scoretxt, result)))
 
     # convert to bibtex
     return crossref_to_bibtex(result).strip()

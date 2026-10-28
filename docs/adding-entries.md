@@ -6,11 +6,11 @@ attachment.
 ## Add a PDF (extract metadata automatically)
 
 ```
-$> papers add esd-4-11-2013.pdf --bibtex papers.bib --filesdir files --info
-INFO:papers:found doi:10.5194/esd-4-11-2013
-INFO:papers:new entry: perrette_landerer2013
-INFO:papers:mv /home/perrette/playground/papers/esd-4-11-2013.pdf files/perrette_et_al_2013_a-scaling-approach-to-project-regional-sea-level-rise-and-its-uncertainties.pdf
-INFO:papers:renamed file(s): 1
+$> papers add esd-4-11-2013.pdf --bibtex papers.bib --filesdir files -v
+papers: info: found doi:10.5194/esd-4-11-2013
+papers: info: new entry: perrette_landerer2013
+papers: info: mv /home/perrette/playground/papers/esd-4-11-2013.pdf files/perrette_et_al_2013_a-scaling-approach-to-project-regional-sea-level-rise-and-its-uncertainties.pdf
+papers: info: renamed file(s): 1
 ```
 
 That is equivalent to doing:

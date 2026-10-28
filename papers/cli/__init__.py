@@ -16,9 +16,11 @@ from papers.cli.parser import get_parser
 
 
 def handle_logging(o):
-    # verbosity
-    if getattr(o,'logging_level',None):
-        logger.setLevel(o.logging_level)
+    # verbosity: -v is INFO; of several levels, the most verbose applies
+    levels = [l for l in (getattr(o, 'logging_level', None),
+                          logging.INFO if getattr(o, 'verbose', False) else None) if l]
+    if levels:
+        logger.setLevel(min(levels))
     logger.debug("LOGGER LEVEL: "+logging.getLevelName(logger.getEffectiveLevel()))
 
 
@@ -142,8 +144,17 @@ def _run(o, parser, subparsers, config):
     finish_journal()
 
 
+class _LogFormatter(logging.Formatter):
+    "papers: warning: message (the traceback of an exception follows)"
+
+    def formatMessage(self, record):
+        return f'{record.name}: {record.levelname.lower()}: {record.message}'
+
+
 def main_clean_exit(args=None):
-    logging.basicConfig()
+    handler = logging.StreamHandler()
+    handler.setFormatter(_LogFormatter())
+    logging.basicConfig(handlers=[handler])
     try:
         main(args)
     except PapersExit as error:

@@ -73,7 +73,7 @@ def config_for_bibtex(bibtex, config):
     if configfile is not None:
         other = Config.load(configfile, machine=config.machine)
         if other.bibtex and os.path.realpath(other.bibtex) == os.path.realpath(bibtex):
-            logger.info(f'configuration of {bibtex}: {configfile}')
+            logger.debug(f'configuration of {bibtex}: {configfile}')
             other.origin = 'library'
             return other
 
@@ -141,7 +141,7 @@ def savebib(biblio, config, other_changes=False):
     which the history has too).
     """
     if papers.config.DRYRUN:
-        logger.info(f'DRYRUN: NOT saving {config.bibtex}')
+        print(f'DRYRUN: {config.bibtex} not saved')
         return
     if isinstance(biblio, Biblio) and not other_changes and biblio.unchanged():
         logger.info(f'{config.bibtex}: nothing changed, not saved')

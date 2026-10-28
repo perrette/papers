@@ -104,7 +104,7 @@ of libraries, and prints a warning on every command:
 
 ```
 $ papers list
-WARNING:papers:found the global configuration of papers v2 (~/.config/papersconfig.json): it still applies outside of libraries; `papers migrate` turns it into a library, the default library
+papers: warning: found the global configuration of papers v2 (~/.config/papersconfig.json): it still applies outside of libraries; `papers migrate` turns it into a library, the default library
 perrette_landerer2013: A scaling approach to project regional sea level rise and it... (doi:10.5194/esd-4-11-2013, file:1)
 ```
 

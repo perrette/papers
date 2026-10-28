@@ -51,12 +51,12 @@ files, whatever the setting.
 ## Control fields when renaming files
 
 ```
-$> papers add --move --info --name-template "{AuthorX}{year}-{Title}" --name-title-sep '' --name-author-sep '' esd-4-11-2013
-INFO:papers:found doi:10.5194/esd-4-11-2013
-INFO:papers:new entry: perrette2013scaling
-INFO:papers:create directory: files/2013
-INFO:papers:mv /home/perrette/playground/papers/esd-4-11-2013.pdf files/PerretteEtAl2013-AScalingApproachToProjectRegionalSeaLevelRiseAndItsUncertainties.pdf
-INFO:papers:renamed file(s): 1
+$> papers add --move -v --name-template "{AuthorX}{year}-{Title}" --name-title-sep '' --name-author-sep '' esd-4-11-2013
+papers: info: found doi:10.5194/esd-4-11-2013
+papers: info: new entry: perrette2013scaling
+papers: info: create directory: files/2013
+papers: info: mv /home/perrette/playground/papers/esd-4-11-2013.pdf files/PerretteEtAl2013-AScalingApproachToProjectRegionalSeaLevelRiseAndItsUncertainties.pdf
+papers: info: renamed file(s): 1
 ```
 
 where `--name-template` is a python template (formatted via the `.format()`
