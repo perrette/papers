@@ -1,9 +1,11 @@
 """papers file rename, mv, attach, detach, rm, check, fix, clean, checksum, and filecheck (deprecated)"""
 import os
+import shutil
 
 import papers.checksums
 import papers.config
-from papers import logger
+import papers.history
+from papers import backup, journal, logger
 from papers.entries import get_entry_val
 from papers.config import short_home
 from papers.files import (SearchFolders, attach_files, broken_links, check_entry_files, clean_filesdir,
@@ -402,12 +404,34 @@ def check_entries_files(o, config, fix, pools, biblio, entries, nameformat):
     for e, link, reason in unclear:
         lines.append(f"{e.key}: broken link: {short_home(link)}: {reason} (not relinked)")
 
-    relinked = sum(len(found) for _, found, _ in loaded + plans)
+    # last, the history: a file that a command deleted from the place of the link comes back there
+    found_links = {link for _, found, _ in loaded + plans for link in found} | {link for _, link, _ in unclear}
+    restored, restorable = 0, set()
+    for e in entries:
+        for link in broken_links(biblio, e):
+            kept = None if link in found_links else backup.deleted_file(config, link)
+            if kept is None:
+                continue
+            stored, step = kept
+            when = f'deleted by step {papers.history.short(step)}' if step else 'deleted, its checksum known'
+            if place:
+                os.makedirs(os.path.dirname(link), exist_ok=True)
+                shutil.copy2(stored, link)
+                journal.record('copied', stored, link)  # undo removes it again
+                lines.append(f"{e.key}: {short_home(link)}: restored from the history ({when})")
+            elif fix:
+                lines.append(f"DRYRUN: {e.key}: restore {short_home(link)} from the history ({when})")
+            else:
+                lines.append(f"{e.key}: broken link: {short_home(link)} -> in the history ({when})")
+            restored += 1
+            restorable.add(link)
+
+    relinked = sum(len(found) for _, found, _ in loaded + plans) + restored
     issues = list(lines)
     repairs = []
     skip = {link for _, link, _ in unclear}
     if not place:
-        skip |= {link for _, found, _ in plans for link in found}
+        skip |= {link for _, found, _ in plans for link in found} | restorable
     for e in entries:
         issues.extend(check_entry_files(biblio, e, metadata=metadata, fix=fix, skip=skip, repairs=repairs,
                                         dryrun=dryrun))

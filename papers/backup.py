@@ -706,6 +706,27 @@ def kept_size(project, n):
     return total
 
 
+def deleted_file(config, path):
+    """a file deleted from `path` that the history still keeps: (its copy in
+    the history, the step that deleted it), or None. The checksum is that of
+    the last step that deleted a file there, else that of .papers/files.json."""
+    project, _ = project_of(config, create=False)
+    if project is None:
+        return None
+    path = os.path.normpath(os.path.abspath(path))
+    states = project.states()
+    for n in sorted(states, key=lambda n: states[n].get('time', 0), reverse=True):
+        for op in _absolute_ops(states[n].get('ops') or [], config):
+            if op['op'] == 'trashed' and op.get('checksum') and os.path.normpath(op['src']) == path:
+                stored = project.store.file_object(op['checksum'])
+                if stored:
+                    return stored, n
+    file = papers.checksums.files_json(config)
+    digest = papers.checksums.parse(_read(file), config).get(path) if file and os.path.isfile(file) else None
+    stored = project.store.file_object(digest) if digest else None
+    return (stored, None) if stored else None
+
+
 def is_path(target):
     "a path, not a step: a file that exists, or a name with a folder separator or a dot"
     return os.path.exists(target) or os.sep in target or '/' in target or '.' in target

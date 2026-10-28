@@ -361,11 +361,11 @@ def restore(current, target, ops, undo, hashes=None, pool_dirs=(), find_deleted=
         elif deleted or want:
             lines.append(f'    {_show(path)}: deleted by the command, not restored')
 
-    # the files that no entry links to, deleted by the commands (e.g. papers file clean):
-    # brought back by undo, deleted again by redo
+    # the files deleted by the commands whose link did not change (no entry links to them, e.g. papers
+    # file clean, or the same entry before and after): brought back by undo, deleted again by redo
     for op in (reversed(ops) if undo else ops):
         path = op['src']
-        if op['op'] != 'trashed' or path in current or path in target or path in reported:
+        if op['op'] != 'trashed' or (path in current) != (path in target) or path in reported:
             continue
         reported.add(path)
         if undo and not os.path.lexists(path):
@@ -380,6 +380,20 @@ def restore(current, target, ops, undo, hashes=None, pool_dirs=(), find_deleted=
         elif not undo and os.path.isfile(path) and digest(path) == op.get('checksum'):
             remove(path)
             lines.append(f'    {_show(path)}: deleted again (kept in the history)')
+
+    # the files that the commands copied to a place linked before and after (papers file fix from the
+    # history): removed by undo, copied again by redo
+    for op in (reversed(ops) if undo else ops):
+        path = op.get('dst')
+        if op['op'] != 'copied' or not path or path not in current or path not in target or path in reported:
+            continue
+        reported.add(path)
+        if undo and os.path.isfile(path) and digest(path) == op.get('checksum') and os.path.isfile(op['src']):
+            record('removed', path, op['src'], digest(path))
+            os.remove(path)
+            lines.append(f'    {_show(path)}: removed (a copy of {_show(op["src"])})')
+        elif not undo and not os.path.lexists(path) and os.path.isfile(op['src']):
+            place(path, op['src'], True, 'copied to')
 
     # the files that the commands put in place, and that the restored state does not link
     for path in sorted((current | mentioned) - target):

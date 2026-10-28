@@ -533,3 +533,50 @@ class TestSameFileName(FileTest):
         self.lib('add ../src/a.bib')
         self.lib('add ../src/b.bib --no-check-duplicate')
         self.assertEqual(self.files('one2000'), self.files('other2000'))
+
+
+class TestFixFromHistory(FileTest):
+    "a file that a command deleted, and that an entry still links to: file fix brings it back from the history"
+
+    def config(self):
+        from papers.config import Config
+        return Config.load(self.path('lib', CONFIG_FILE_LOCAL))
+
+    def test_restore(self):
+        import papers.backup
+        from papers import journal
+        from papers.library import finish_journal
+        a = self.write('lib', 'files', 'a.pdf', content='pdf a')
+        self.bib(entry('one2000', a))
+        self.lib('file checksum')  # a first state
+        # a command deleted the file (kept in the history) and left the link
+        config = self.config()
+        journal.start(config.bibtex, papers.backup.Deleted(config))
+        journal.remove(a)
+        finish_journal(config)
+        self.assertFalse(os.path.exists(a))
+        self.assertIn('-> in the history (deleted by step', self.out('file check'))
+        self.assertIn('restored from the history', self.out('file fix'))
+        self.assertEqual(Path(a).read_text(), 'pdf a')
+        self.lib('undo')  # the copy is a step: undo removes it again
+        self.assertFalse(os.path.exists(a))
+        self.lib('redo')
+        self.assertEqual(Path(a).read_text(), 'pdf a')
+        # the deletion itself, its link unchanged: undo brings the file back, redo deletes it again
+        self.lib('undo')
+        self.lib('undo')
+        self.assertEqual(Path(a).read_text(), 'pdf a')
+        self.lib('redo')
+        self.assertFalse(os.path.exists(a))
+
+    def test_by_checksum(self):
+        # deleted outside papers: its checksum in files.json, a copy of the same content in the history
+        import papers.backup
+        from papers.utils import checksum
+        a = self.write('lib', 'files', 'a.pdf', content='pdf a')
+        self.bib(entry('one2000', a))
+        self.lib('file checksum')
+        copy = self.write('copy.pdf', content='pdf a')
+        papers.backup.Deleted(self.config()).store.put_file(copy, checksum(a).hex())
+        os.remove(a)
+        self.assertIn('-> in the history (deleted, its checksum known)', self.out('file check'))
