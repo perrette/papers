@@ -705,6 +705,7 @@ class Exchange:
         self.changed_pools = []  # the pools to save
         self.pushed_pools = []   # the pools pushed to (changed or not): after_push after the save
         self._after = {}  # pool id -> state of the push for after_push
+        self._removed_links = {}  # (id of a library entry, pool id) -> its links the pool removed (see outgoing)
         path = self.pools.path()
         self.pool_id = self.pools._id(path) if path is not None else None
 
@@ -755,7 +756,8 @@ class Exchange:
         a shallow library, for its pool, the file links of the pool entry `pe`"""
         files = None
         if self._shares_links(pool):
-            files = format_file(pool.biblio.get_files(pe), relative_to=self.biblio.relative_to)
+            pending = self._removed_links.pop((id(e), pool.id), [])
+            files = format_file(pool.biblio.get_files(pe) + pending, relative_to=self.biblio.relative_to)
         self.origin.set(e.key, pool.id, base, files=files)
 
     def new_links(self, e, pool):
@@ -779,6 +781,18 @@ class Exchange:
         base = {realpath(f) for f in parse_file(record.files, relative_to=self.biblio.relative_to)}
         now = {realpath(f) for f in pool.biblio.get_files(pe)}
         return {realpath(f) for f in self.biblio.get_files(e)} & (base - now)
+
+    def outgoing(self, e, pool, pe, record):
+        """the library entry as push sends it to the pool entry pe: without
+        the file links that the pool removed since the last exchange (see
+        pool_removed; pull removes them from the library)"""
+        out = exchange_copy(e, self.biblio, pool.biblio, key=pe.key)
+        removed = self.pool_removed(e, pe, record, pool)
+        if removed:
+            pool.biblio.set_files(out, [f for f in pool.biblio.get_files(out) if realpath(f) not in removed])
+            # still in the record after the push: the next pull removes them from the library
+            self._removed_links[(id(e), pool.id)] = [f for f in self.biblio.get_files(e) if realpath(f) in removed]
+        return out
 
     # files
 
@@ -1036,7 +1050,7 @@ class Exchange:
         return 'added'
 
     def _push_one(self, e, pool, pe, record, resolver):
-        outgoing = exchange_copy(e, self.biblio, pool.biblio, key=pe.key)
+        outgoing = self.outgoing(e, pool, pe, record)
         merge = Merge([pe, outgoing], relative_to=pool.biblio.relative_to, exchange=True,
                       base=_rekey(record.entry, pe.key) if record is not None else None)
         if not merge.conflicts and not merge.additions and not merge.new_files:
@@ -1653,7 +1667,7 @@ def exchange_state(config, pools, path):
             pool_changed = library_changed = True
         elif pulled.additions or pulled.new_files or exchange.pool_removed(e, pe, record, pool):
             pool_changed = True
-        outgoing = exchange_copy(e, biblio, pool.biblio, key=pe.key)
+        outgoing = exchange.outgoing(e, pool, pe, record)
         pushed = Merge([pe, outgoing], relative_to=pool.biblio.relative_to, exchange=True,
                        base=_rekey(record.entry, pe.key))
         if pushed.conflicts or pushed.additions or pushed.new_files:
