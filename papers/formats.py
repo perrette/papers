@@ -635,10 +635,10 @@ def _ris_name(name):
     if name.get('literal') and not name.get('family'):
         return name['literal']
     family = ' '.join(x for x in [name.get('non-dropping-particle', ''), name.get('family', '')] if x)
-    parts = [family, name.get('given', '')]
-    if name.get('suffix'):
-        parts.append(name['suffix'])
-    return ', '.join(p for p in parts if p) if parts[1] or len(parts) > 2 else family
+    given, suffix = name.get('given', ''), name.get('suffix', '')
+    if suffix:
+        return f'{family}, {given}, {suffix}'  # an empty given name keeps its place
+    return f'{family}, {given}' if given else family
 
 
 def _bibtex_name_of_ris(name):
@@ -648,7 +648,7 @@ def _bibtex_name_of_ris(name):
         return name if ' ' not in name else '{' + name + '}'
     parts = [p.strip() for p in name.split(',')]
     if len(parts) >= 3 and parts[2]:
-        return f'{parts[0]}, {parts[2]}, {parts[1]}'
+        return f'{parts[0]}, {parts[2]}, {parts[1]}' if parts[1] else f'{parts[0]}, {parts[2]},'
     return f'{parts[0]}, {parts[1]}' if parts[1] else parts[0]
 
 
@@ -760,7 +760,7 @@ def ris_to_entry(ref):
     container = _first(ref, 'secondary_title', 'alternate_title3', 'journal_name', 'alternate_title2',
                        'alternate_title1')
     if container:
-        fields['journal' if entry_type in ('article', 'misc', 'online') else 'booktitle'] = container
+        fields['booktitle' if entry_type in ('incollection', 'inproceedings') else 'journal'] = container
     if ref.get('tertiary_title'):
         fields['series'] = _first(ref, 'tertiary_title')
     parts = _date_parts(_first(ref, 'year', 'publication_year', 'date'))

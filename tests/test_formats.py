@@ -489,6 +489,16 @@ class TestRIS(unittest.TestCase):
         back = formats.loads_ris(text)[0]
         self.assertEqual((back['translator'], back['urldate']), ('Doe, Jane and Roe, R.', '2024-03-01'))
 
+    def test_container_and_suffix(self):
+        # the container of a book or a report is its journal, as in CSL-JSON
+        self.assertEqual(ris_to_entry({'type_of_reference': 'RPRT', 'title': 'T', 'secondary_title': 'S'})['journal'], 'S')
+        self.assertEqual(ris_to_entry({'type_of_reference': 'CHAP', 'title': 'T', 'secondary_title': 'S'})['booktitle'], 'S')
+        # a suffix without given name stays a suffix
+        e = parse_string('@book{x,\n title = {T},\n author = {Doe, Jr,}\n}\n').entries[0]
+        text = formats.dumps_ris([e])
+        self.assertIn('AU  - Doe, , Jr\n', text)
+        self.assertEqual(formats.loads_ris(text)[0]['author'], 'Doe, Jr,')
+
     def test_doi_from_a_url_next_to_another(self):
         # no DO line: the DOI of the doi.org link, also when another URL is there
         e = ris_to_entry({'type_of_reference': 'JOUR', 'title': 'T',

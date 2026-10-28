@@ -229,7 +229,7 @@ The entries are added as those of a bibtex file:
   since they are bibtex values;
 - keywords (RIS `KW`, CSL-JSON `keyword`) are split on `,` and `;` and
   joined with `, ` (export splits the `keywords` field on `,` only);
-- the CSL-JSON `container-title` is the `booktitle` of a chapter or a
+- the CSL-JSON `container-title` (RIS `T2`, `JO`...) is the `booktitle` of a chapter or a
   conference paper (`incollection`, `inproceedings`), the `journal` of any
   other type;
 - a date part that is zero or missing ends the date: `2013-00-05` is the
