@@ -11,14 +11,12 @@ papers 3 adds the following new functionalities:
   library can be a library per topic (`~/Documents/papers/sealevel`), or
   one library for everything, the default library (see
   [A global shared library](global-library.md));
-- **speed**: on a library of 10,000 entries, common commands take about
-  half the time (`papers list` 1.5 s → 0.7 s, `papers add` 2.3 s → 1.2 s),
-  and the duplicate checks are two orders of magnitude faster
-  (`papers list --duplicates` on 1,000 entries: 30 s → 0.2 s). Since
-  3.0.0b4, the parsed bibtex is also cached piece by piece, which takes
-  about 40% more off the commands that read a large library (`papers
-  list` 0.38 s → 0.23 s, `papers status` 0.31 s → 0.17 s, on another
-  machine than the figures above);
+- **speed**: on a library of 10,000 entries, common commands take a third
+  to a half of the time of papers 2 (`papers list` 0.87 s → 0.27 s,
+  `papers add` 1.70 s → 0.69 s), and the duplicate checks are two orders
+  of magnitude faster (`papers list --duplicates` on 1,000 entries:
+  18.6 s → 0.13 s). Measured with papers 2.19.6 and 3.0.0b4 on the same
+  machine and libraries (`scripts/generate_dummy_bib.py`);
 - **a review of the commands**: `papers init` and `papers config` replace
   `papers install`, the commands on attached files are grouped under
   `papers file`, `papers list` has more actions, and older forms are
