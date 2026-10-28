@@ -1049,6 +1049,19 @@ lists them with the number of entries, adds and removes them:</p>
 <p><code>--tag</code> matches whole tags, whatever their case: <code>--tag ice</code> does not find
 <code>ice-review</code>, <code>--tag 'ice*'</code> does. With several tags, an entry needs all of
 them (<code>--any</code>: one of them).</p>
+<p>A tag with <code>/</code> is under another tag: <code>climate/amoc</code> is under <code>climate</code>.
+<code>--tag climate</code> also finds <code>climate/amoc</code> and <code>climate/amoc/tipping</code> (not
+<code>climate-review</code>), <code>--tag climate/amoc</code> finds that tag and the ones under it.
+<code>papers tag --rename climate ocean</code> also renames <code>climate/amoc</code> to
+<code>ocean/amoc</code>. <code>papers tag</code> shows the nested tags indented under their
+parent, which counts the entries that have it or a tag under it:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>$&gt; papers tag
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>climate (5)
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>  amoc (3)
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>    tipping (1)
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>  arctic (1)
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>to-read (2)
+</code></pre></div>
 <p><code>papers list ... --add-tag TAG...</code> adds tags to the listed entries.</p>
 <h2 id="output-formats">Output formats<a class="headerlink" href="#output-formats" title="Permanent link">&para;</a></h2>
 <p><code>papers list</code> supports a number of special flags such as <code>--duplicates</code>,
@@ -1108,10 +1121,10 @@ anything changes.</p>
 <p><code>-</code> reads the identifiers from the standard input, one per line (blank lines
 are ignored). <code>papers list -K</code> prints the keys of the listed entries, one per
 line:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>papers list smith 2020 -K | papers file rename -
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>papers list --tag to-read -K | papers open -
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>papers list --no-file -K | papers check --fetch -
-<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>papers list --review-required -K | papers edit -
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>papers list smith 2020 -K | papers file rename -
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>papers list --tag to-read -K | papers open -
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>papers list --no-file -K | papers check --fetch -
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>papers list --review-required -K | papers edit -
 </code></pre></div>
 <p>These commands take <code>-</code>: <code>edit</code>, <code>rm</code>, <code>tag</code>, <code>open</code>, <code>check</code>, and the
 <code>papers file</code> commands that act on entries (<code>rename</code>, <code>check</code>, and the
@@ -1123,16 +1136,16 @@ its key, and its <code>file</code> and <code>keywords</code> fields when FILE ha
 fields are those of FILE (a field that FILE does not have is removed). FILE
 is bibtex, or RIS (<code>.ris</code>), CSL-JSON (<code>.json</code>) or BibJSON (<code>.bib.json</code>),
 or the format given with <code>--format</code>. <code>--from -</code> reads the entry from the standard input:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>papers extract paper.pdf | papers edit perrette2013 --from -
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>papers fetch 10.5194/esd-4-11-2013 | papers edit perrette2013 --from -
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>papers extract paper.pdf | papers edit perrette2013 --from -
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>papers fetch 10.5194/esd-4-11-2013 | papers edit perrette2013 --from -
 </code></pre></div>
 <p>In a terminal, <code>papers edit KEY --from -</code> waits for the entry: paste it, and
 papers continues when the closing brace of the entry is read (Ctrl-D ends
 the input too, Ctrl-C cancels).</p>
 <p><code>--set</code> and <code>--unset</code> change single fields, of one entry or several:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>papers edit perrette2013 --set journal="Earth System Dynamics" year=2013
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>papers list --journal "Earth Syst. Dyn." -K | papers edit - --set journal="Earth System Dynamics"
-<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>papers edit smith2020 --unset note
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>papers edit perrette2013 --set journal="Earth System Dynamics" year=2013
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>papers list --journal "Earth Syst. Dyn." -K | papers edit - --set journal="Earth System Dynamics"
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>papers edit smith2020 --unset note
 </code></pre></div>
 <p>The value replaces the whole field, written as in bibtex
 (<code>--set author="Smith, John and Doe, Jane"</code>). The key and the file links
@@ -1140,7 +1153,7 @@ are not changed this way: <code>--key</code> (below) changes the key, and
 <code>papers file attach</code> and <code>detach</code> the file links. <code>papers tag</code> adds and
 removes single tags of the <code>keywords</code> field.</p>
 <p><code>--key NEW</code> changes the key of one entry:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>papers edit perrette_landerer2013 --key perrette2013 [--keep-old-key]
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>papers edit perrette_landerer2013 --key perrette2013 [--keep-old-key]
 </code></pre></div>
 <p>The <code>crossref</code> fields of other entries that name the old key, and the
 records of the exchanges with pools (see <a href="../pools/">Pools</a>), follow the new
@@ -1157,11 +1170,11 @@ the key of another entry is not applied, and the command exits with status
 stable for programs: the standard output has only the entries that the
 command added, modified, renamed or removed, or found already in the library
 (<code>papers add</code> of an entry that is there), one per line, without colours:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>$ papers add paper.pdf --porcelain
-<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>added perrette2013
-<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>$ papers tag perrette2013 smith2020 --add to-read --porcelain
-<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>modified perrette2013
-<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>modified smith2020
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>$ papers add paper.pdf --porcelain
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>added perrette2013
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>$ papers tag perrette2013 smith2020 --add to-read --porcelain
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>modified perrette2013
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>modified smith2020
 </code></pre></div>
 <p>The lines are <code>added KEY</code>, <code>modified KEY</code>, <code>renamed OLD NEW</code>, <code>removed KEY</code>
 and <code>existing KEY</code>. <code>renamed OLD NEW</code> is an entry whose key the command
