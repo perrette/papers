@@ -27,7 +27,11 @@ it still has its token.
 
 A command locks the library of the command line first, then its pool
 (see papers.pools.Pools.resolve); a command in the pool locks the pool
-only: two commands never wait for each other. A lock does not help in a
+only. Two commands that lock two libraries in opposite orders (a command
+in L1 with `--pool L2` and a command in L2 with `--pool L1`) each hold one
+lock and wait for the other: the first to wait fails after WAIT seconds
+with a LockError, before it writes anything, and the other then gets the
+lock if it has not waited WAIT seconds as well. A lock does not help in a
 folder synchronized by a service (Dropbox, Nextcloud…): the file reaches
 the other computers seconds or minutes later.
 """
