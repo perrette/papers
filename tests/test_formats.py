@@ -18,7 +18,7 @@ import subprocess
 import sys
 import types
 import unittest
-from contextlib import redirect_stderr
+from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from unittest.mock import patch
 
@@ -629,6 +629,23 @@ class TestExportFormats(LibraryCommands):
         [file] = items[0]['custom']['file']
         self.assertTrue(file.startswith('files/'))
         self.assertTrue(os.path.samefile(self.path('out', file), self.pdf))
+
+    def test_line_ends(self):
+        # \n on every platform, as the bibtex (os.linesep is read at run time by the Python io module)
+        import _pyio
+        with patch('papers.cli.pool_cmds.open', _pyio.open, create=True), patch('os.linesep', '\r\n'):
+            self.lib('export ../out --format csl-json,bibjson')
+        for name in ('papers.json', 'papers.bib.json'):
+            self.assertNotIn(b'\r', Path(self.path('out', name)).read_bytes(), name)
+
+    def test_bibtex_name_in_message(self):
+        os.makedirs(self.path('lib2'))
+        self.papers('init --bibtex refs.bib', cwd=self.path('lib2'))
+        Path(self.path('lib2', 'refs.bib')).write_text(SAMPLE)
+        out = io.StringIO()
+        with redirect_stdout(out):
+            self.papers('export ../out --format csl-json', cwd=self.path('lib2'))
+        self.assertIn('is not a papers library (no refs.bib)', out.getvalue())
 
     @needs_rispy
     def test_repeated_and_comma(self):

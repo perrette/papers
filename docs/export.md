@@ -55,11 +55,15 @@ papers export DIR [KEY...|-] --format bib|ris|csl-json|bibjson|all
 | `bibjson` (or `bib.json`) | `papers.bib.json` | BibJSON: the bibtex fields as they are, in JSON, for programs (see [BibJSON](#bibjson)) |
 | `all` | the four files | |
 
+The files are written in UTF-8 with `\n` line ends on every platform, as
+the bibtex.
+
 Repeat the option or separate the formats with commas
 (`--format bib,ris`). The file links of each file point to the copies in
 `DIR/files`, relative to `DIR` (with `--files link`, to the files where
 they are). Without `bib`, `DIR` is not a papers library (it has no
-`.papers/config.json`), and papers says so:
+`.papers/config.json` and no bibtex, which would be named as the bibtex of
+the library), and papers says so:
 
 ```
 $ papers export ~/export-test --format all

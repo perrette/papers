@@ -1568,6 +1568,11 @@ def use_pool_files(config, pools):
 # EXPORT
 # ======
 
+def export_bibtex_name(config):
+    "the name of the bibtex of an exported library: that of the library"
+    return os.path.basename(config.bibtex) if config.bibtex else 'papers.bib'
+
+
 def export(biblio, config, entries, dest, files='copy', library=True):
     """write the entries (and their files, as `files` says: copy, link or
     none) as a new library in directory `dest`, which must not exist or be
@@ -1585,8 +1590,7 @@ def export(biblio, config, entries, dest, files='copy', library=True):
         raise PapersExit('export does not support --dry-run')
     dest = os.path.abspath(dest)
     if library:
-        name = os.path.basename(config.bibtex) if config.bibtex else 'papers.bib'
-        new = create_library(dest, config.machine, bibtex=name)
+        new = create_library(dest, config.machine, bibtex=export_bibtex_name(config))
         for setting in papers.config.SETTINGS:
             if setting.startswith(('name.', 'key.')) and config.source(setting) == 'library':
                 new.set(setting, config.get(setting))
