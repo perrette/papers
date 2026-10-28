@@ -1313,6 +1313,19 @@ class TestConfigPoolSelfContained(OwnFilesTest):
             self.lib('config pool ../shallow -y')
         self.assertEqual(self.json('lib'), lib_json)
 
+    def test_configured_pool_that_takes_a_pool(self):
+        # the pool takes a pool after the setting was made: the exchanges stop, as with --pool PATH
+        self.papers('init other --pool pool')
+        self.papers('init top')
+        pool_json = self.json('pool')
+        pool_json['pool'] = '../top'
+        Path(self.path('pool', CONFIG_FILE_LOCAL)).write_text(json.dumps(pool_json))
+        for cmd in ('pull', 'push', 'sync'):
+            with self.subTest(cmd=cmd):
+                with self.assertRaisesRegex(PapersExit, r'\.\./pool has a pool itself \(\.\./top\)'):
+                    self.papers(cmd, cwd=self.path('other'))
+        self.papers('status', cwd=self.path('other'))  # a command that only reads the pool goes on
+
     def test_local_is_gone(self):
         with self.assertRaisesRegex(PapersExit, 'unknown setting: local'):
             self.lib('config local true')

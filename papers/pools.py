@@ -422,12 +422,15 @@ class Pools:
             return None
 
     def target(self):
-        """the pool that push and the shallow libraries write to: an error
-        if it is not a library"""
+        """the pool that pull, push and the shallow libraries exchange with:
+        an error if it is not a library, or if it has a pool itself (as
+        --pool PATH)"""
         path = self.path()
         if path is None:
             raise PoolError(NO_POOL_MESSAGE)
-        return self.resolve(path)
+        pool_ = self.resolve(path)
+        check_poolless(pool_)  # it may have taken a pool since the pool setting was made
+        return pool_
 
     def get(self, path):
         """a library given on the command line (--pool PATH): a path relative
