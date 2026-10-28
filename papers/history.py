@@ -294,7 +294,7 @@ class Project:
             except FileExistsError:  # another command of the same project
                 n += 1
                 continue
-            with os.fdopen(fd, 'w') as f:
+            with os.fdopen(fd, 'w', encoding='utf-8', newline='\n') as f:
                 json.dump(state, f, indent=1)
             break
         self.states()[n] = state

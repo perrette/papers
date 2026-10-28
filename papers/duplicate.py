@@ -359,7 +359,7 @@ class Distinct:
         if not self.changed or path is None:
             return
         os.makedirs(os.path.dirname(path), exist_ok=True)
-        with open(path, 'w') as f:
+        with open(path, 'w', encoding='utf-8', newline='\n') as f:
             json.dump({'distinct': self.pairs}, f, indent=1, sort_keys=True)
             f.write('\n')
         self.changed = False
