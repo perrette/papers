@@ -5,6 +5,7 @@ commands renamed in v3 (-a of add, -f of list, -f/--force of check and
 backup, --no-prompt/--force of install, restore-backup, doi). To remove with
 them in v4 (the tests of papers install are in test_install.py)."""
 import os
+import unittest
 import shutil
 import tempfile
 from pathlib import Path
@@ -330,3 +331,37 @@ class TestRenamedOptions(FileTest):
             parser.parse_known_args(['check', '-f', '-f'])
             subparsers.choices['check'].parse_args(['-f'])
         self.assertEqual(len(logs.output), 1)
+
+
+class TestHiddenFromTheHelp(unittest.TestCase):
+    "the deprecated commands and options work, but the help does not show them"
+
+    def help(self, *args):
+        from papers.cli.parser import get_parser
+        from papers.config import Config
+        parser, subparsers = get_parser(Config())
+        if args:
+            parser = subparsers.choices[args[0]]
+        return parser.format_help()
+
+    def test_commands(self):
+        from papers.cli.parser import DEPRECATED_COMMANDS
+        out = self.help()
+        usage = out.split('positional arguments')[0]
+        for name in DEPRECATED_COMMANDS:
+            self.assertNotRegex(usage, rf'[{{,]{name}[,}}]')
+            self.assertNotRegex(out, rf'\n    {name} ')
+        self.assertNotIn('SUPPRESS', out)
+        self.assertIn('undo', usage)
+        # still commands: their own help says what to use instead
+        self.assertIn('deprecated', self.help('doi'))
+
+    def test_options(self):
+        for cmd, options in [('add', ['--attachment', '--mode', '--no-merge-files', '--relative-paths', '--no-git']),
+                             ('list', ['--add-files', '--similarity', '--fetch', '--duplicates-doi', '-f FIELD']),
+                             ('check', ['--force']),
+                             ('undo', ['--restore-files'])]:
+            out = self.help(cmd)
+            for option in options:
+                self.assertNotIn(option, out, f'papers {cmd} --help')
+            self.assertNotIn('deprecated', out)
