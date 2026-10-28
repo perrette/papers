@@ -181,9 +181,10 @@ def parse_bibtex_name(name):
         if particle:
             d['non-dropping-particle'] = ' '.join(particle)
     else:
+        # Last, First or Last, Jr, First; further commas belong to First
         last = parts[0]
-        suffix = parts[1] if len(parts) == 3 else ''
-        given = parts[-1]
+        suffix = parts[1] if len(parts) >= 3 else ''
+        given = ', '.join(parts[2:]) if len(parts) >= 3 else parts[1]
         tokens = split_depth0(last, r'\s+')
         particle = []
         while len(tokens) > 1 and _is_particle(tokens[0]):
@@ -216,7 +217,8 @@ def format_bibtex_name(name):
     given = ' '.join(x for x in [name.get('given', ''), name.get('dropping-particle', '')] if x)
     suffix = name.get('suffix', '')
     if suffix:
-        return f'{family}, {suffix}, {given}'
+        # the last comma stays without given name: it marks the suffix as one
+        return f'{family}, {suffix}, {given}' if given else f'{family}, {suffix},'
     return f'{family}, {given}' if given else family
 
 

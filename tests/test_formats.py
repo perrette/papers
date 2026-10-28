@@ -150,6 +150,16 @@ class TestNames(unittest.TestCase):
         self.assertEqual(parse_bibtex_names('Plato and {Barnes and Noble}'),
                          [{'family': 'Plato'}, {'literal': 'Barnes and Noble'}])
 
+    def test_more_commas(self):
+        # Last, Jr, First: further commas belong to First (nothing is lost)
+        self.assertEqual(parse_bibtex_names('Doe, Jr, Jane, X'), [{'family': 'Doe', 'given': 'Jane, X', 'suffix': 'Jr'}])
+        self.assertEqual(format_bibtex_names(parse_bibtex_names('Doe, Jr, Jane, X')), 'Doe, Jr, Jane, X')
+
+    def test_suffix_without_given(self):
+        self.assertEqual(format_bibtex_names([{'family': 'Doe', 'suffix': 'Jr'}, {'family': 'Roe'}]),
+                         'Doe, Jr, and Roe')
+        self.assertEqual(parse_bibtex_names('Doe, Jr,'), [{'family': 'Doe', 'suffix': 'Jr'}])
+
     def test_format(self):
         self.assertEqual(format_bibtex_names([{'family': 'Beethoven', 'given': 'Ludwig',
                                                'non-dropping-particle': 'van'}, {'literal': 'IPCC'},
