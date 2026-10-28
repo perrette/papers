@@ -1162,7 +1162,11 @@ side changed a field. A removed field counts as a change:</p>
 </tbody>
 </table>
 <p>Conflicts are decided in the dialogue or with <code>--on-duplicate</code> (see
-<a href="#papers-pull"><code>papers pull</code></a> and <a href="#papers-push"><code>papers push</code></a>). An entry
+<a href="#papers-pull"><code>papers pull</code></a> and <a href="#papers-push"><code>papers push</code></a>). <code>keep</code>
+keeps the values of the side that receives the changes, and <code>update</code> takes
+those of the side they come from: in <code>pull</code>, <code>keep</code> keeps the library's
+values; in <code>push</code>, it keeps the pool's. <code>papers sync</code> runs a pull, then a
+push, each with this rule. An entry
 without origin copy has no base: each field that differs is a conflict. The
 first exchange of such an entry (e.g. the first <code>sync</code> with a library given
 with <code>--pool PATH</code> that has papers of the library) asks about these
@@ -1489,7 +1493,9 @@ to PATH. This is not <code>papers -C PATH add</code>, which adds to the library 
 <h2 id="a-pool-with-entries-papers-cannot-read">A pool with entries papers cannot read<a class="headerlink" href="#a-pool-with-entries-papers-cannot-read" title="Permanent link">&para;</a></h2>
 <p>An entry that the bibtex parser cannot read, such as one with a field
 given twice or a missing brace, is kept in the file as it is, but papers
-does not see it. Every command that loads that bibtex warns about it, with
+does not see it. As in BibTeX, field names and keys ignore case: <code>Title</code>
+and <code>title</code> in one entry are a field given twice, and an entry <code>smith2000</code>
+after an entry <code>Smith2000</code> is a key given twice (the first one is read). Every command that loads that bibtex warns about it, with
 its line. Papers does not write to a pool that has such an entry: it would
 not find that paper there, and would add it again. <code>push</code>, <code>sync</code> and the
 commands that add to the pool stop with an error, and nothing is changed,

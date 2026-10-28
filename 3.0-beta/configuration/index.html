@@ -1041,8 +1041,9 @@ files directory is <code>files</code> (or an existing <code>pdfs</code>, <code>p
 <code>--paths relative|absolute</code>, <code>--editor</code>
 and the name and key format options (see
 <a href="../renaming/">Renaming files and keys</a>).
-With <code>DIR</code>, the paths given to <code>--bibtex</code> and <code>--filesdir</code> are relative to
-<code>DIR</code>.
+With <code>DIR</code>, the paths given to <code>--bibtex</code>, <code>--filesdir</code> and <code>--pool</code> are
+relative to the current directory, as <code>DIR</code> is (<code>papers init lib --bibtex
+lib/refs.bib</code>).
 <code>papers init</code> does not prompt, and fails if the directory already has a
 library configuration: change the settings of an existing library with
 <code>papers config</code>.</p>
@@ -1157,8 +1158,20 @@ them for one command.</p>
 <p>Paths in the library configuration are stored relative to its directory, so
 that the library can be moved or shared as a whole. <code>papers config bibtex</code>,
 <code>papers config filesdir</code> and the list of <code>papers config</code> show them as
-absolute paths. A relative path given to set them is relative to the current
-directory.</p>
+absolute paths.</p>
+<p>A path given on the command line is relative to the current directory, as
+for any other command: <code>papers config bibtex</code>, <code>papers config filesdir</code>,
+<code>papers config pool</code>, <code>papers config --global default</code> and <code>papers config
+--global history-dir</code>, and <code>papers init DIR --bibtex FILE --filesdir FOLDER
+--pool PATH</code> (relative to the current directory, not to DIR). papers then
+stores it as the setting is written: relative to the library for <code>bibtex</code>
+and <code>filesdir</code>, as described below for <code>pool</code>, and absolute (with <code>~</code> for
+the home directory) for <code>default</code> and <code>history-dir</code>.</p>
+<p>A configuration file (of a library or the global one) that is not valid
+JSON, or that gives a setting a value of the wrong type (for example
+<code>"auto-push": "no"</code> instead of <code>false</code>, or a number for <code>pool</code>), is an
+error: papers names the file and the setting and does nothing until the
+file is corrected.</p>
 <p><code>history-dir</code> and <code>keep-deleted-files</code> can only be set in the global
 configuration (<code>papers config --global</code>): a library you receive from
 someone cannot choose where your history goes, or what it keeps.</p>
@@ -1203,7 +1216,11 @@ has at most one pool, its <code>pool</code> setting: a path relative to the libr
 (e.g. <code>../shared-with-bob</code>), a path with <code>~</code> or absolute, or <code>none</code>. A
 library that does not set it has no pool. The pool must be an existing
 library without pool: <code>papers init --pool PATH</code> and <code>papers config pool
-PATH</code> check it, and stop otherwise. <code>papers init --shallow</code> writes the
+PATH</code> check it, and stop otherwise. They also refuse a PATH that is the
+library itself (<code>.</code>, or its path written another way). A pool that takes a pool of its own
+later is checked again by <code>pull</code>, <code>push</code>, <code>sync</code> and the commands that add
+entries or files to the pool: they stop with an error (the automatic push
+after a command prints a warning instead). <code>papers init --shallow</code> writes the
 default library of the global configuration as the pool, with <code>~</code> as the
 global configuration writes it, so that a project copied to another
 machine with the same layout finds its pool there.</p>

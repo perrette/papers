@@ -1189,6 +1189,10 @@ and an entry merged into another one is <code>removed</code> (a program that fol
 entry across these can match it by DOI). Every other message
 (questions, warnings, the files moved) goes to the standard error. An error
 exits with status 1.</p>
+<p><code>papers list</code> without action prints no such lines: its listing is its
+output, and goes to the standard output with <code>--porcelain</code> too (<code>papers
+list -K --porcelain</code> prints the keys). With an action (<code>--add-tag</code>,
+<code>--edit</code>...), it prints the lines of the command the action stands for.</p>
 <h2 id="actions-on-the-listed-entries">Actions on the listed entries<a class="headerlink" href="#actions-on-the-listed-entries" title="Permanent link">&para;</a></h2>
 <p><code>papers list</code> can run a command on the entries it lists: list the entries,
 then act on them. Each action calls the same code as the command it stands

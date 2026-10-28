@@ -1093,7 +1093,8 @@ it back, also when no entry linked to it, or when the command was stopped
 </code></pre></div>
 <p>The history keeps up to 500 MB (the <code>history-size</code> setting). Beyond that,
 the oldest steps are dropped first, and the deleted files that only they
-needed go to the trash of the system. Before a command that deletes more
+needed go to the trash of the system (a step that brought a file back from
+the history, <code>papers file fix</code> or <code>papers history --revert</code>, needs it too). Before a command that deletes more
 than the history keeps, or so much that recent steps would be dropped,
 papers asks first (<code>-y</code> answers yes; without a terminal, the files are
 kept):</p>

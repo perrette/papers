@@ -964,6 +964,10 @@ bibtex, it always interprets relative file links as being relative to the
 bibtex file. When saving a bibtex, it will save file links according to the
 <code>paths</code> setting of the library (relative to the bibtex by default, see
 <a href="../configuration/#relative-versus-absolute-paths">Configuration</a>).</p>
+<p>A field that uses an <code>@string</code> abbreviation (<code>journal = jgr</code>, with
+<code>@string{jgr = {J. Geophys. Res.}}</code>) is written with its text
+(<code>journal = {J. Geophys. Res.}</code>) the first time papers saves the bibtex.
+The <code>@string</code> definition itself stays in the file.</p>
 <p>To move the files directory, or some of its files, use <code>papers file mv</code>: it
 updates the links of the entries, and the <code>filesdir</code> setting when the files
 directory itself moves (see <a href="../files/#moving-files">Files</a>):</p>

@@ -1030,6 +1030,22 @@ the entry key, <code>{key}</code> also works.</p>
 name-template should be
 <code>--name-template {year}/{Author}{year}-{Title} --name-title-sep ''</code>
 (note the case).</p>
+<p>The names made from the template are valid on every system. In each part
+of the name (the folders and the file name), papers:</p>
+<ul>
+<li>replaces the characters that Windows does not accept (<code>&lt;&gt;:"|?*</code> and
+  control characters) with <code>-</code> (<code>/</code> and <code>\</code> in the field values are
+  replaced with <code>-</code> too, so a field cannot add a folder),</li>
+<li>removes trailing dots and spaces,</li>
+<li>adds <code>-</code> after a name that Windows reserves (<code>CON</code>, <code>PRN</code>, <code>AUX</code>, <code>NUL</code>,
+  <code>COM1</code> to <code>COM9</code>, <code>LPT1</code> to <code>LPT9</code>),</li>
+<li>cuts the name to 250 bytes (UTF-8), extension included (a <code>-2</code> suffix
+  for a name already taken can follow).</li>
+</ul>
+<p>This applies only to the names papers makes from the template: a file
+linked where it is keeps its name, and a file named before this rule keeps
+its name until the entry is renamed (<code>papers file rename</code>, <code>papers list
+--rename</code>).</p>
 <h2 id="case-sensitive-fields">Case-sensitive fields<a class="headerlink" href="#case-sensitive-fields" title="Permanent link">&para;</a></h2>
 <p>Entries are case-sensitive, and a few more fields are added, so that:</p>
 <ul>

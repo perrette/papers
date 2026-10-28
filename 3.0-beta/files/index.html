@@ -1230,7 +1230,9 @@ looks for each missing file, without parsing any PDF:</p>
    checksum <code>.papers/files.json</code> has, if the history keeps a file with that
    content) is copied back there, and the link stays as it is
    (<code>one2000: files/a.pdf: restored from the history (deleted by step
-   4f1c9a2e)</code>). <code>papers undo</code> removes it again.</li>
+   4f1c9a2e)</code>). <code>papers undo</code> removes it again. The step of <code>papers file
+   fix</code> keeps the file in the history too, so that undo and redo still
+   work once the step that deleted it is dropped.</li>
 </ol>
 <p>The file found in the pool, <code>--pool PATH</code> or a <code>--search</code> folder replaces
 the broken link. It is never moved, whatever the
