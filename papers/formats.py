@@ -895,11 +895,9 @@ def _bibjson_text(value):
     if isinstance(value, dict):
         return _bibjson_text(value.get('name', ''))
     if isinstance(value, list):
-        return ', '.join(_bibjson_text(v) for v in value)
+        return ', '.join(_bibjson_text(v) for v in value if v is not None)
     if isinstance(value, bool):
         return 'true' if value else 'false'
-    if isinstance(value, float) and value.is_integer():
-        return str(int(value))
     return str(value)
 
 
@@ -913,7 +911,7 @@ def bibjson_to_entry(record):
         if value is None:
             continue
         if name in _BIBJSON_NAMES and isinstance(value, list):
-            fields[name] = ' and '.join(_bibjson_text(v) for v in value)
+            fields[name] = ' and '.join(_bibjson_text(v) for v in value if v is not None)
         else:
             fields[name] = _bibjson_text(value)
     if 'doi' not in fields:  # the DOI of BibJSON identifiers: [{"type": "doi", "id": ...}]
@@ -937,7 +935,7 @@ def dumps_bibjson(entries, files=lambda e: ()):
 
 def loads_bibjson(text):
     try:
-        data = json.loads(text)
+        data = json.loads(text, parse_float=str, parse_int=str)  # numbers as written
     except json.JSONDecodeError as error:
         raise ValueError(f'not a BibJSON file: {error}')
     if isinstance(data, dict):

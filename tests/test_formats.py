@@ -363,9 +363,15 @@ class TestBibJSON(unittest.TestCase):
     def test_json_values(self):
         [e] = formats.loads_bibjson(json.dumps({'type': 'misc', 'id': 'x', 'year': 2000.0, 'note': None,
                                                 'peer-reviewed': True}))
-        self.assertEqual(fields(e)['year'], '2000')
+        self.assertEqual(fields(e)['year'], '2000.0')  # numbers as written
         self.assertNotIn('note', fields(e))
         self.assertEqual(fields(e)['peer-reviewed'], 'true')
+
+    def test_numbers_as_written_and_null_items(self):
+        [e] = formats.loads_bibjson('{"type": "misc", "id": "x", "year": 2000, "number": 0.0000001,'
+                                    ' "volume": 1E3, "keywords": ["a", null, "b"], "author": [null, {"name": "Doe, J"}]}')
+        self.assertEqual(fields(e), {'year': '2000', 'number': '0.0000001', 'volume': '1E3', 'keywords': 'a, b',
+                                     'author': 'Doe, J'})
 
     def test_spec_examples(self):
         first, second = read_file(os.path.join(FIXTURES, 'bibjson.json'), 'bibjson')
