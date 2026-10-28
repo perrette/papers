@@ -9,6 +9,7 @@ from papers.entries import (
     format_library,
     update_entry,
     parse_file,
+    split_depth0,
 )
 from papers.utils import ansi_link as link, bcolors
 
@@ -73,15 +74,17 @@ def format_entry(biblio, e, no_key=False, prefix=""):
 # ================
 
 def standard_name(author):
-    """Normalize author string to 'Last, First' per author (e.g. 'John Smith and Jane Doe' -> 'Smith, John and Doe, Jane')."""
-    parts = [s.strip() for s in author.split(" and ")]
+    """Normalize author string to 'Last, First' per author (e.g. 'John Smith and Jane Doe' -> 'Smith, John and Doe, Jane').
+    A part in braces is one word: 'John {van der Berg}' -> '{van der Berg}, John'; '{World Health Organization}' stays."""
     result = []
-    for p in parts:
-        if "," in p:
+    for p in split_depth0(author, r'\s+and\s+'):
+        if not p:
+            continue
+        if len(split_depth0(p, r',')) > 1:
             result.append(p)
         else:
-            tokens = p.rsplit(" ", 1)
-            result.append(tokens[1] + ", " + tokens[0] if len(tokens) == 2 else p)
+            tokens = split_depth0(p, r'\s+')
+            result.append(tokens[-1] + ", " + ' '.join(tokens[:-1]) if len(tokens) > 1 else p)
     return " and ".join(result)
 
 

@@ -208,6 +208,28 @@ def format_library(library):
     return write(Library(blocks=blocks, fail_on_duplicate_key=False), bibtex_format=fmt)
 
 
+def split_depth0(value, sep_regex):
+    "split a bibtex value on a separator outside braces"
+    parts, depth, start = [], 0, 0
+    pattern = re.compile(sep_regex)
+    i = 0
+    while i < len(value):
+        c = value[i]
+        if c == '{':
+            depth += 1
+        elif c == '}':
+            depth -= 1
+        elif depth == 0:
+            m = pattern.match(value, i)
+            if m:
+                parts.append(value[start:i])
+                start = i = m.end()
+                continue
+        i += 1
+    parts.append(value[start:])
+    return [p.strip() for p in parts]
+
+
 # The file field
 # ==============
 

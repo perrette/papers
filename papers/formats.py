@@ -30,7 +30,7 @@ from urllib.parse import unquote, urlparse
 from bibtexparser.model import Entry, Field
 
 from papers import logger
-from papers.entries import get_entry_val, format_file
+from papers.entries import get_entry_val, format_file, split_depth0
 from papers.utils import PapersExit, stdin_is_terminal
 
 FORMATS = ('bibtex', 'ris', 'csl-json', 'bibjson')
@@ -140,28 +140,6 @@ def _latex_to_unicode(value):
         return value.replace('{', '').replace('}', '')
 
 
-def _split_depth0(value, sep_regex):
-    "split a bibtex value on a separator outside braces"
-    parts, depth, start = [], 0, 0
-    pattern = re.compile(sep_regex)
-    i = 0
-    while i < len(value):
-        c = value[i]
-        if c == '{':
-            depth += 1
-        elif c == '}':
-            depth -= 1
-        elif depth == 0:
-            m = pattern.match(value, i)
-            if m:
-                parts.append(value[start:i])
-                start = i = m.end()
-                continue
-        i += 1
-    parts.append(value[start:])
-    return [p.strip() for p in parts]
-
-
 def _is_braced(s):
     "whether the whole string is one braced group, e.g. {World Health Organization}"
     if not (s.startswith('{') and s.endswith('}')):
@@ -188,9 +166,9 @@ def parse_bibtex_name(name):
     name = name.strip()
     if _is_braced(name):
         return {'literal': _latex_to_unicode(name[1:-1])}
-    parts = _split_depth0(name, r',')
+    parts = split_depth0(name, r',')
     if len(parts) == 1:
-        tokens = _split_depth0(name, r'\s+')
+        tokens = split_depth0(name, r'\s+')
         if len(tokens) == 1:
             return {'family': _latex_to_unicode(tokens[0])}
         # First von Last: von is from the first to the last lowercase word before the last word
@@ -206,7 +184,7 @@ def parse_bibtex_name(name):
         last = parts[0]
         suffix = parts[1] if len(parts) == 3 else ''
         given = parts[-1]
-        tokens = _split_depth0(last, r'\s+')
+        tokens = split_depth0(last, r'\s+')
         particle = []
         while len(tokens) > 1 and _is_particle(tokens[0]):
             particle.append(tokens.pop(0))
@@ -222,7 +200,7 @@ def parse_bibtex_names(value):
     "the names of a bibtex author or editor field, as CSL name dicts"
     if not value or not value.strip():
         return []
-    return [parse_bibtex_name(n) for n in _split_depth0(value.strip(), r'\s+and\s+') if n]
+    return [parse_bibtex_name(n) for n in split_depth0(value.strip(), r'\s+and\s+') if n]
 
 
 def format_bibtex_name(name):
@@ -835,7 +813,7 @@ def entry_to_bibjson(e, files=()):
         if field.key == 'file':
             continue
         if field.key in _BIBJSON_NAMES:
-            record[field.key] = [{'name': name} for name in _split_depth0(field.value, r'\s+and\s+')]
+            record[field.key] = [{'name': name} for name in split_depth0(field.value, r'\s+and\s+')]
         elif field.key == 'journal':
             record['journal'] = {'name': field.value}
         else:

@@ -555,7 +555,7 @@ class TestAddFormats(LibraryCommands):
         self.assertEqual(entries['perrette_landerer2013'].fields_dict['language'].value, 'en')
         # the thesis is smith2020 (same authors and title), the others are new, with a key from the key template
         new = sorted(set(entries) - set(before))
-        self.assertEqual(new, ['change2023', 'weiss_van-beethoven2019'])
+        self.assertEqual(new, ['intergovernmental-panel-on-climate-change2023', 'weiss_van-beethoven2019'])
 
     def test_add_json_skip(self):
         self.lib(f'add {os.path.join(FIXTURES, "zotero.json")} --on-duplicate skip --no-pool')
