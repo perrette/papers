@@ -242,7 +242,7 @@ def get_parser(config=None):
         help='output for programs (as git\'s): the standard output has only the entries that the command '
              'added, modified, renamed or removed, or found already in the library, one per line: "added KEY", '
              '"modified KEY", "renamed OLD NEW", "removed KEY", "existing KEY"; every other message goes to the '
-             'standard error')
+             'standard error (except the listing of papers list, which stays on the standard output)')
 
     cfg = argparse.ArgumentParser(add_help=False, parents=[loggingp])
     grp = cfg.add_argument_group('config')

@@ -7,6 +7,7 @@ import sys
 
 import papers.config
 import papers.files
+import papers.utils
 from papers import logger
 from papers.bib import isvalidkey
 from papers.duplicate import FUZZY_RATIO, duplicate_groups, fuzzy_pairs
@@ -760,19 +761,21 @@ def listcmd(parser, o, config):
         return
 
     else:
+        # the listing is the data: on the standard output, with --porcelain too
+        out = papers.utils.PORCELAIN or sys.stdout
         if o.field:
             for e in entries:
-                print(format_key(e, no_key=o.no_key),*[get_entry_val(e, k, "") for k in o.field])
+                print(format_key(e, no_key=o.no_key),*[get_entry_val(e, k, "") for k in o.field], file=out)
         elif o.format == 'key':
             for e in entries:
-                print(get_entry_val(e, 'ID', ''))
+                print(get_entry_val(e, 'ID', ''), file=out)
         elif o.format == 'bibtex':
-            print(format_entries(entries))
+            print(format_entries(entries), file=out)
         elif o.format in FORMATS:
-            sys.stdout.write(dumps(entries, o.format, files=biblio.get_files))
+            out.write(dumps(entries, o.format, files=biblio.get_files))
         else:
             for e in entries:
-                print(format_entry(biblio, e, no_key=o.no_key))
+                print(format_entry(biblio, e, no_key=o.no_key), file=out)
         return  # nothing was changed: no Added/Modified/Removed lines to look for
 
     # report any entry mutations (--attach, --add-tag, --rm-tag, --edit, --fetch,
