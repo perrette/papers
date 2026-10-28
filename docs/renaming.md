@@ -69,7 +69,8 @@ method). Its placeholders are:
 
 - `{author}`, `{Author}`, `{AUTHOR}`, `{authorX}`, `{AuthorX}`: the authors
   (see below)
-- `{year}`, `{journal}`
+- `{year}`, `{journal}` (empty for an entry without journal: a folder of
+  the template that is empty, as in `{journal}/{author}`, is left out)
 - `{title}`, `{Title}`: the title words (see the modifiers below)
 - `{key}` (or `{ID}`): the bibtex key of the entry
 - `{doi}`, `{doi_}` (the doi with `-` in place of `/`, `.` and the other

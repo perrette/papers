@@ -32,7 +32,7 @@ def _cite_author(names):
 
 UNKNOWN_AUTHOR = 'unknown'
 UNKNOWN_YEAR = '0000'
-UNKNOWN_JOURNAL = None
+UNKNOWN_JOURNAL = ''
 UNKNOWN_TITLE = ""
 
 def path_safe(value):
@@ -105,7 +105,7 @@ def make_template_fields(
     - Author : same as author but title case (first letter capitalized)
     - AUTHOR : same as author but upper case
     - authorX: first; first and second; first et al
-    - journal: journal name
+    - journal: journal name ('' without journal)
     (the values of journal, year, key, ID and doi have their path separators
     replaced with '-': see path_safe)
     - title : normalized title in lower case, separated by {title_sep} ('-' by default) with max {title_word_num} words
@@ -198,7 +198,7 @@ class Format:
         'author' generates 'perrette'
         'Author' generates 'Perrette'
         'AUTHOR' generates 'PERRETTE'
-    any other case, like 'AuTHoR', will retrieve the field from 'e' with unaltered case.
+    Any other placeholder, like 'AuTHoR', is a TemplateError.
 
     """
     def __init__(self, template, author_num=2, title_word_num=100, title_word_size=1, title_length=100,
@@ -225,10 +225,16 @@ class Format:
         fields = make_template_fields(entry, **vars(self))
 
         if self.unknown_template and self.is_unknown(entry):
-            name = format_template(self.unknown_template, fields, self.kind + ' unknown')
+            template = self.unknown_template
+            name = format_template(template, fields, self.kind + ' unknown')
         else:
-            name = format_template(self.template, fields, self.kind)
-        return safe_file_name(name) if self.kind == 'name' else name
+            template = self.template
+            name = format_template(template, fields, self.kind)
+        if self.kind != 'name':
+            return name
+        if not template.startswith('/'):  # an empty first folder ({journal}/... without journal) is left out
+            name = name.lstrip('/')
+        return safe_file_name(name)
 
     def __call__(self, entry):
         # Support both dict and bibtexparser v2 Entry (convert to dict for ** unpacking)

@@ -99,6 +99,12 @@ class TestSafeFileNames(unittest.TestCase):
         fmt = Format(template='{journal}/{author}')
         self.assertEqual(fmt({'author': 'Nul', 'journal': 'con.x'}), 'con-.x/nul-')
 
+    def test_no_journal(self):
+        # no 'None' folder: an empty folder of the template is left out
+        fmt = Format(template='{journal}/{author}_{year}')
+        self.assertEqual(fmt({'author': 'Doe, J.', 'year': '2000'}), 'doe_2000')
+        self.assertEqual(Format(template='{author}{journal}', kind='key')({'author': 'Doe, J.'}), 'doe')
+
     def test_keys_unchanged(self):
         fmt = Format(template='{journal}', kind='key')
         self.assertEqual(fmt({'journal': 'a:b'}), 'a:b')
