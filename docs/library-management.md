@@ -18,6 +18,11 @@ bibtex file. When saving a bibtex, it will save file links according to the
 `paths` setting of the library (relative to the bibtex by default, see
 [Configuration](configuration.md#relative-versus-absolute-paths)).
 
+A field that uses an `@string` abbreviation (`journal = jgr`, with
+`@string{jgr = {J. Geophys. Res.}}`) is written with its text
+(`journal = {J. Geophys. Res.}`) the first time papers saves the bibtex.
+The `@string` definition itself stays in the file.
+
 To move the files directory, or some of its files, use `papers file mv`: it
 updates the links of the entries, and the `filesdir` setting when the files
 directory itself moves (see [Files](files.md#moving-files)):
