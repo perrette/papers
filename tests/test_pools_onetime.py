@@ -15,7 +15,7 @@ from papers.config import Config, MachineConfig, CONFIG_FILE_LOCAL
 from papers.pools import origin_file_name
 from papers.utils import PapersExit
 
-from tests.common import paperscmd
+from tests.common import paperscmd, pool_id
 from tests.test_pools import PoolTest
 
 OTHER_BIB = """@article{Brown_2021,
@@ -135,7 +135,7 @@ class TestOneTime(OneTimeTest):
         self.lib('pull --pool ../other Brown_2021 --on-duplicate update')
         self.assertEqual(self.entry('Brown_2021')['title'], 'Ocean heat content')
         self.assertEqual(self.origin().get(self.entry('Brown_2021'), '../pool').entry['title'], 'Ocean heat')
-        self.assertEqual(self.origin().get(self.entry('Brown_2021'), '../other').entry['title'],
+        self.assertEqual(self.origin().get(self.entry('Brown_2021'), pool_id(self.path('other'), '../other')).entry['title'],
                          'Ocean heat content')
         # with a stored base: three-way merge, a field changed on one side only needs no decision
         text = Path(self.path('other', 'papers.bib')).read_text()

@@ -279,18 +279,22 @@ origin copy is the one exchanged.
 
 `.papers/origin/`, next to the bibtex of the library, holds one file per
 pool: the pool of the library, and each library exchanged with through
-`--pool PATH`. A file is named after the folder of the pool and the start
-of a hash of its path as the library names it, e.g.
-`shared-with-bob-d15650.bib` for `../shared-with-bob`, or
-`papers-<hash>.bib` for `~/Documents/papers`. The first lines of the file
-name the pool and give the modification time of its bibtex at the last
-exchange. In a library whose pool is `../shared-with-bob`, after `papers
-pull agnew_farrell1978` and `papers pull`:
+`--pool PATH`. The pool is named by its library identifier (the `id` of
+its `.papers/config.json`), which does not change when the library or the
+pool moves: after a move, `papers config pool NEWPATH` finds its origin
+copies again. A file is named after the folder of the pool and the start of
+a hash of its identifier, e.g. `shared-with-bob-d15650.bib`. The first lines
+of the file name the pool, give the modification time of its bibtex at the
+last exchange, and where the pool was then. In a library whose pool is
+`../shared-with-bob`, after `papers pull agnew_farrell1978` and
+`papers pull`:
 
 ```
-@comment{papers-pool ../shared-with-bob}
+@comment{papers-pool 9b916361b46f4304980306f3dcdce793}
 
 @comment{papers-pulled 1792681264781917448}
+
+@comment{papers-pool-path ~/papers/shared-with-bob}
 
 @article{agnew_farrell1978,
  author = {Agnew, D. C. and Farrell, W. E.},
@@ -324,7 +328,11 @@ finds its origin copies again.
 
 Earlier v3 beta versions kept all the origin copies in one file,
 `.papers/origin.bib`: papers splits it into these files the first time it
-reads it, and removes it.
+reads it, and removes it. Versions up to 3.0.0b5 named the pool by its path
+(`@comment{papers-pool ../shared-with-bob}`): at the next exchange with the
+pool, papers moves its origin copies to the pool's identifier (a pool that
+has none yet, a library of an earlier version that never recorded a step,
+keeps its path until it has one).
 
 The origin copy is the third version of a three-way merge. It is the
 version of the side that sent the entry, as it was sent: the pool entry
