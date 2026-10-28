@@ -198,9 +198,16 @@ looks for each missing file, without parsing any PDF:
    option can be repeated): a file with the same file name as the broken
    link, else a file named as the library's name template names the entry
    (with the extension of the link). When several files match, none is
-   taken, and papers says which.
+   taken, and papers says which;
+4. in the history (see [Undo and redo](undo-redo.md#deleted-files)): a file
+   that a papers command deleted from the place of the link (or whose
+   checksum `.papers/files.json` has, if the history keeps a file with that
+   content) is copied back there, and the link stays as it is
+   (`one2000: files/a.pdf: restored from the history (deleted by step
+   4f1c9a2e)`). `papers undo` removes it again.
 
-The file found replaces the broken link. It is never moved, whatever the
+The file found in the pool, `--pool PATH` or a `--search` folder replaces
+the broken link. It is never moved, whatever the
 `files` setting:
 
 - in a self-contained library, it is copied (a hard link when possible)

@@ -60,7 +60,7 @@ class TestOptions(FileTest):
                 patch('papers.cli.backup_cmds.logger.warning') as warning:
             self.lib('restore 3')
         restore.assert_called_once()
-        self.assertEqual(restore.call_args[0][1], 3)
+        self.assertEqual(restore.call_args[0][1], '3')  # a step: its identifier, or the start of it
         warning.assert_not_called()
 
 

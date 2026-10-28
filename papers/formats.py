@@ -30,7 +30,7 @@ from urllib.parse import unquote, urlparse
 from bibtexparser.model import Entry, Field
 
 from papers import logger
-from papers.entries import get_entry_val, format_file
+from papers.entries import get_entry_val, format_file, split_depth0
 from papers.utils import PapersExit, stdin_is_terminal
 
 FORMATS = ('bibtex', 'ris', 'csl-json', 'bibjson')
@@ -140,28 +140,6 @@ def _latex_to_unicode(value):
         return value.replace('{', '').replace('}', '')
 
 
-def _split_depth0(value, sep_regex):
-    "split a bibtex value on a separator outside braces"
-    parts, depth, start = [], 0, 0
-    pattern = re.compile(sep_regex)
-    i = 0
-    while i < len(value):
-        c = value[i]
-        if c == '{':
-            depth += 1
-        elif c == '}':
-            depth -= 1
-        elif depth == 0:
-            m = pattern.match(value, i)
-            if m:
-                parts.append(value[start:i])
-                start = i = m.end()
-                continue
-        i += 1
-    parts.append(value[start:])
-    return [p.strip() for p in parts]
-
-
 def _is_braced(s):
     "whether the whole string is one braced group, e.g. {World Health Organization}"
     if not (s.startswith('{') and s.endswith('}')):
@@ -188,9 +166,9 @@ def parse_bibtex_name(name):
     name = name.strip()
     if _is_braced(name):
         return {'literal': _latex_to_unicode(name[1:-1])}
-    parts = _split_depth0(name, r',')
+    parts = split_depth0(name, r',')
     if len(parts) == 1:
-        tokens = _split_depth0(name, r'\s+')
+        tokens = split_depth0(name, r'\s+')
         if len(tokens) == 1:
             return {'family': _latex_to_unicode(tokens[0])}
         # First von Last: von is from the first to the last lowercase word before the last word
@@ -206,7 +184,7 @@ def parse_bibtex_name(name):
         last = parts[0]
         suffix = parts[1] if len(parts) == 3 else ''
         given = parts[-1]
-        tokens = _split_depth0(last, r'\s+')
+        tokens = split_depth0(last, r'\s+')
         particle = []
         while len(tokens) > 1 and _is_particle(tokens[0]):
             particle.append(tokens.pop(0))
@@ -222,7 +200,7 @@ def parse_bibtex_names(value):
     "the names of a bibtex author or editor field, as CSL name dicts"
     if not value or not value.strip():
         return []
-    return [parse_bibtex_name(n) for n in _split_depth0(value.strip(), r'\s+and\s+') if n]
+    return [parse_bibtex_name(n) for n in split_depth0(value.strip(), r'\s+and\s+') if n]
 
 
 def format_bibtex_name(name):
@@ -766,8 +744,9 @@ def ris_to_entry(ref):
     urls = [u for u in _as_list(ref.get('urls')) if u.strip() and not _DOI_PREFIX.match(u.strip())]
     if urls:
         fields['url'] = urls[0].strip()
-    elif not fields['doi'] and _as_list(ref.get('urls')):
-        fields['doi'] = _clean_doi(_as_list(ref.get('urls'))[0])
+    doi_urls = [u for u in _as_list(ref.get('urls')) if _DOI_PREFIX.match(u.strip())]
+    if not fields['doi'] and doi_urls:  # no DO line: the DOI of a doi.org link, also next to another URL
+        fields['doi'] = _clean_doi(doi_urls[0])
     for sn in _as_list(ref.get('issn')):
         digits = re.sub(r'[^0-9Xx]', '', sn.split()[0] if sn.split() else '')
         name = 'issn' if len(digits) == 8 else 'isbn'
@@ -806,9 +785,33 @@ def dumps_ris(entries, files=lambda e: (), rispy=None):
     return rispy.dumps(refs, implementation=Writer, **_ris_options(rispy))
 
 
+# a line of a RIS tag: two characters, two spaces, a dash (and a space and the value)
+_RIS_TAG = re.compile(r'^[A-Z][A-Z0-9]  -( |$)')
+
+
+def _ris_without_stray_lines(text):
+    """the RIS text without the blank lines inside a record and the lines
+    without tag between TY and the first tag: rispy (0.10) reads them as
+    the continuation of the last tag of the previous record (an error for a
+    single tag such as TI, an empty keyword for KW)"""
+    lines, inside, tagged = [], False, False
+    for line in text.split('\n'):
+        tag = _RIS_TAG.match(line)
+        if tag and line.startswith('TY  -'):
+            inside, tagged = True, False
+        elif tag:
+            tagged = True
+            if line.startswith('ER  -'):
+                inside = False
+        elif inside and (not line.strip() or not tagged):
+            continue
+        lines.append(line)
+    return '\n'.join(lines)
+
+
 def loads_ris(text, rispy=None):
     rispy = rispy or load_rispy()
-    text = text.lstrip('﻿').replace('\r\n', '\n')
+    text = _ris_without_stray_lines(text.lstrip('﻿').replace('\r\n', '\n'))
     refs = rispy.loads(text, skip_unknown_tags=True, **_ris_options(rispy))
     if not refs and text.strip():
         raise ValueError('not a RIS file: no record found (a record starts with TY  - )')
@@ -827,6 +830,11 @@ def loads_ris(text, rispy=None):
 
 _BIBJSON_NAMES = ('author', 'editor')
 _BIBJSON_SKIPPED = ('type', 'id', 'cid', 'collection', 'file', 'identifier', 'link', 'license')
+# a bibtex field with the name of a key of BibJSON (e.g. the type of a techreport, `type = {Working
+# paper}`) goes in a namespaced key, `bibtex:type`, declared in the metadata of the collection (as the
+# BibJSON convention says for additional keys): the record's own type and id stay the entry type and key
+_BIBJSON_NAMESPACE = 'bibtex'
+_BIBJSON_NAMESPACE_URL = 'https://www.bibtex.org/Format/'
 
 
 def entry_to_bibjson(e, files=()):
@@ -835,9 +843,11 @@ def entry_to_bibjson(e, files=()):
         if field.key == 'file':
             continue
         if field.key in _BIBJSON_NAMES:
-            record[field.key] = [{'name': name} for name in _split_depth0(field.value, r'\s+and\s+')]
+            record[field.key] = [{'name': name} for name in split_depth0(field.value, r'\s+and\s+')]
         elif field.key == 'journal':
             record['journal'] = {'name': field.value}
+        elif field.key in _BIBJSON_SKIPPED:
+            record[f'{_BIBJSON_NAMESPACE}:{field.key}'] = field.value
         else:
             record[field.key] = field.value
     if files:
@@ -851,13 +861,21 @@ def _bibjson_text(value):
         return _bibjson_text(value.get('name', ''))
     if isinstance(value, list):
         return ', '.join(_bibjson_text(v) for v in value)
+    if isinstance(value, bool):
+        return 'true' if value else 'false'
+    if isinstance(value, float) and value.is_integer():
+        return str(int(value))
     return str(value)
 
 
 def bibjson_to_entry(record):
     fields = {}
     for name, value in record.items():
-        if name.startswith('_') or name in _BIBJSON_SKIPPED:
+        if name.startswith(_BIBJSON_NAMESPACE + ':'):
+            name = name[len(_BIBJSON_NAMESPACE) + 1:]  # a bibtex field with the name of a BibJSON key
+        elif name.startswith('_') or name in _BIBJSON_SKIPPED:
+            continue
+        if value is None:
             continue
         if name in _BIBJSON_NAMES and isinstance(value, list):
             fields[name] = ' and '.join(_bibjson_text(v) for v in value)
@@ -874,7 +892,11 @@ def bibjson_to_entry(record):
 
 def dumps_bibjson(entries, files=lambda e: ()):
     records = [entry_to_bibjson(e, files(e)) for e in entries]
-    collection = {'metadata': {'records': len(records)}, 'records': records}
+    metadata = {'records': len(records)}
+    prefix = _BIBJSON_NAMESPACE + ':'
+    if any(name.startswith(prefix) for record in records for name in record):
+        metadata['namespace'] = {_BIBJSON_NAMESPACE: _BIBJSON_NAMESPACE_URL}
+    collection = {'metadata': metadata, 'records': records}
     return json.dumps(collection, indent=2, ensure_ascii=False) + '\n'
 
 

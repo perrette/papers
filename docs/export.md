@@ -31,7 +31,9 @@ papers.bib
 perrette_et_al_2013_a-scaling-approach-to-project-regional-sea-level-rise-and-its-uncertainties.pdf
 ```
 
-`papers add DIR --recursive` adds an exported library to another one, and
+`papers add DIR --recursive` adds an exported library to another one (its
+bibtex and PDFs; the RIS and JSON files of a folder are left out: add one
+with `papers add DIR/papers.ris`), and
 `papers config pool DIR` makes it the pool of the library (the export has
 copies of its PDFs). `papers sync --pool DIR` exchanges entries with it
 later (see [Exchanges with any library](pools.md#exchanges-with-any-library)).
@@ -177,7 +179,13 @@ $ papers list perrette --format bibjson
   `{"name": ...}`, as BibJSON gives them;
 - the other fields are strings, as in the bibtex;
 - `file` is the list of the file links (absolute paths with `papers list`,
-  relative to `DIR` with `papers export`).
+  relative to `DIR` with `papers export`);
+- a bibtex field with the name of a BibJSON key (`type`, `id`, `cid`,
+  `collection`, `identifier`, `link`, `license`), e.g. the `type` of a
+  techreport (`type = {Working paper}`), is written as `bibtex:type`, and
+  the collection's `metadata` declares the namespace
+  (`"namespace": {"bibtex": ...}`), as BibJSON says for additional keys.
+  papers reads it back as the bibtex field.
 
 `papers add refs.bib.json` reads a collection (`{"records": [...]}`), a
 list of records or one record. It also reads the DOI of BibJSON

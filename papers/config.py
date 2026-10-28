@@ -390,8 +390,9 @@ class MachineConfig:
 
     def save(self):
         os.makedirs(os.path.dirname(self.file), exist_ok=True)
-        json.dump({**self.data, 'version': CONFIG_VERSION}, open(self.file, 'w'),
-                  sort_keys=True, indent=2, separators=(',', ': '))
+        # through a temporary file (see write_atomic): a crash never leaves half a configuration
+        write_atomic(self.file, json.dumps({**self.data, 'version': CONFIG_VERSION},
+                                           sort_keys=True, indent=2, separators=(',', ': ')))
 
 
 def _read_earlier_v3(js, machine, file):
@@ -535,16 +536,15 @@ class Config:
         self.explicit.discard(name)
 
     def is_set(self, name):
-        """the library sets this setting: the pool once set (pool none: a
-        self-contained library), the other settings when their value differs
-        from the global or default value (a value equal to it is not saved)"""
+        """the library sets this setting: a setting given explicitly (in its
+        configuration file, by `papers init` or `papers config NAME VALUE`),
+        even with the global or default value, and a setting whose value
+        differs from it; the others are inherited (not saved)"""
         if name in ('bibtex', 'filesdir'):
             return getattr(self, name) is not None
-        if name == 'pool' and name in self.explicit:
-            return True
         if name in MACHINE_ONLY:
             return False
-        return self.get(name) != self.inherited(name)
+        return name in self.explicit or self.get(name) != self.inherited(name)
 
     def source(self, name):
         "where the value of a setting comes from: library, global or default"

@@ -294,6 +294,25 @@ class TestBibJSON(unittest.TestCase):
             self.assertEqual({k: v for k, v in fields(b).items() if k != 'file'},
                              {k: v for k, v in fields(e).items() if k != 'file'}, e.key)
 
+    def test_field_named_as_a_bibjson_key(self):
+        # the type of a techreport and a field `id`: namespaced (bibtex:type), the record's type and id stay
+        [e] = parse_string('@techreport{wp2020,\n id = {X1},\n title = {T},\n type = {Working paper}\n}').entries
+        collection = json.loads(formats.dumps_bibjson([e]))
+        record, = collection['records']
+        self.assertEqual((record['type'], record['id']), ('techreport', 'wp2020'))
+        self.assertEqual((record['bibtex:type'], record['bibtex:id']), ('Working paper', 'X1'))
+        self.assertIn('bibtex', collection['metadata']['namespace'])
+        [back] = formats.loads_bibjson(json.dumps(collection))
+        self.assertEqual((back.key, back.entry_type), ('wp2020', 'techreport'))
+        self.assertEqual((fields(back)['type'], fields(back)['id']), ('Working paper', 'X1'))
+
+    def test_json_values(self):
+        [e] = formats.loads_bibjson(json.dumps({'type': 'misc', 'id': 'x', 'year': 2000.0, 'note': None,
+                                                'peer-reviewed': True}))
+        self.assertEqual(fields(e)['year'], '2000')
+        self.assertNotIn('note', fields(e))
+        self.assertEqual(fields(e)['peer-reviewed'], 'true')
+
     def test_spec_examples(self):
         first, second = read_file(os.path.join(FIXTURES, 'bibjson.json'), 'bibjson')
         self.assertEqual(first.key, '')  # no id: papers makes one
@@ -393,6 +412,24 @@ class TestRIS(unittest.TestCase):
         e = ris_to_entry({'type_of_reference': 'JOUR', 'title': 'T',
                           'file_attachments1': ['files/a.pdf', 'file:///abs/b.pdf']})
         self.assertEqual(links(e), ['files/a.pdf', '/abs/b.pdf'])
+
+    def test_doi_from_a_url_next_to_another(self):
+        # no DO line: the DOI of the doi.org link, also when another URL is there
+        e = ris_to_entry({'type_of_reference': 'JOUR', 'title': 'T',
+                          'urls': ['https://example.org/paper', 'https://doi.org/10.1000/xyz']})
+        self.assertEqual(e['doi'], '10.1000/xyz')
+        self.assertEqual(e['url'], 'https://example.org/paper')
+
+    def test_blank_line_after_ty(self):
+        # rispy reads a blank line (or a line without tag) after TY as the continuation of the last tag
+        # (an error when the last tag of the previous record holds one value, e.g. TI)
+        text = ('TY  - JOUR\nKW  - a\nTI  - First\nER  - \n\n'
+                'TY  - JOUR\n\nTI  - Second\nKW  - b\n\nAU  - Smith, J\nER  - \n\n'
+                'TY  - JOUR\nstray text\nTI  - Third\nER  - \n')
+        first, second, third = formats.loads_ris(text)
+        self.assertEqual((first['title'], second['title'], third['title']), ('First', 'Second', 'Third'))
+        self.assertEqual(second['keywords'], 'b')
+        self.assertEqual(second['author'], 'Smith, J')
 
     def test_not_ris(self):
         with self.assertRaisesRegex(ValueError, 'not a RIS file'):
@@ -555,7 +592,7 @@ class TestAddFormats(LibraryCommands):
         self.assertEqual(entries['perrette_landerer2013'].fields_dict['language'].value, 'en')
         # the thesis is smith2020 (same authors and title), the others are new, with a key from the key template
         new = sorted(set(entries) - set(before))
-        self.assertEqual(new, ['change2023', 'weiss_van-beethoven2019'])
+        self.assertEqual(new, ['intergovernmental-panel-on-climate-change2023', 'weiss_van-beethoven2019'])
 
     def test_add_json_skip(self):
         self.lib(f'add {os.path.join(FIXTURES, "zotero.json")} --on-duplicate skip --no-pool')

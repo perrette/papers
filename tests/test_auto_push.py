@@ -484,6 +484,15 @@ class TestShallowSharedLinks(ExchangeTest):
         self.assertTrue(os.path.exists(self.si))
         self.assertNotIn('smith2020climate', self.out('pull --check'))
 
+    def test_push_does_not_add_back_the_links_the_pool_removed(self):
+        self.out(f'file attach smith2020climate {self.si}')
+        self.papers(f'file detach {self.si}', cwd=self.path('pool'))
+        self.assertIn('../pool (pool changed)', self.out('status'))
+        self.out('push')
+        self.assertEqual(self.pool_files(), [self.pool_pdf])
+        self.out('pull')
+        self.assertEqual(self.files('smith2020climate'), [self.pool_pdf])
+
     def test_pull_adds_the_links_the_pool_added(self):
         self.lib('pull')  # records the links of the pool entry
         self.papers(f'file attach Smith_2020 {self.si} --link', cwd=self.path('pool'))
@@ -530,6 +539,7 @@ class TestShallowSharedLinks(ExchangeTest):
         self.papers(f'file detach {self.si}', cwd=self.path('pool'))
         self.out('pull')
         self.assertIn(self.si, self.files('smith2020climate'))
+        origin = self.origin_file()  # (renamed if the records moved to the pool's identifier)
         self.assertNotIn('papers-files', origin.read_text())
         self.assertIn(' file = ', origin.read_text())
 

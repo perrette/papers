@@ -97,7 +97,8 @@ What the commands do in a shallow library:
 - `pull` and `sync` with the pool link to the pool's files instead of
   copying them, and the library entry follows the pool entry's links: a
   link that the pool entry had at the last exchange and no longer has is
-  removed from the library entry (the file is not deleted). A link that
+  removed from the library entry (the file is not deleted); `push` does
+  not send it back to the pool, and the next `pull` removes it. A link that
   the pool entry never had stays. The origin copy records the pool entry's
   links for this, in its `file` field; an origin copy without it removes
   nothing until the next exchange;

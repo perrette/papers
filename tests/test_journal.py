@@ -162,9 +162,11 @@ class TestSeveralSteps(JournalTest):
         self.assertFalse(os.path.exists(self.a))
 
     def test_restore_state(self):
-        self.lib('file rename --move')  # state 1: the library before it
+        self.lib('file rename --move')  # the first state: the library before it
         self.lib('tag one2000 --add x')
-        out = self.out('restore 1')
+        project, place = self.project()
+        first = project.line(project.head(place)['state'])[-1]
+        out = self.out(f'restore {first[:6]}')  # the start of its identifier
         self.assertIn(' --> moved back to ', out)
         self.assertEqual(Path(self.a).read_text(), 'pdf a')
         self.assertEqual(self.files('one2000'), [self.a])
@@ -344,6 +346,28 @@ class TestDeleted(JournalTest):
         self.assertFalse(os.path.exists(self.a))
         # nothing of the history in the library
         self.assertFalse(os.path.exists(self.path('lib', '.papers', 'backup')))
+
+    def test_operations_after_a_save_without_state(self):
+        # a save that adds no state (nothing changed), then a file deleted: a state of its own,
+        # not added to the state of the previous command
+        from papers.library import finish_journal
+        self.lib('tag one2000 --add x')  # a first state
+        config = self.config()
+        project, place = self.project()
+        before = project.head(place)['state']
+        previous_ops = list(project.state(before).get('ops') or [])
+        journal.start(config.bibtex, papers.backup.Deleted(config))
+        papers.backup.record(config)  # nothing changed: no state
+        pdf = self.write('lib', 'files', 'stray.pdf', content='pdf a')  # a file no entry links to
+        journal.remove(pdf)
+        finish_journal(config)
+        project, place = self.project()
+        after = project.head(place)['state']
+        self.assertNotEqual(after, before)
+        self.assertEqual(project.state(before).get('ops') or [], previous_ops)
+        self.assertEqual([op['op'] for op in project.state(after)['ops']], ['trashed'])
+        self.lib('undo')
+        self.assertEqual(Path(pdf).read_text(), 'pdf a')
 
     def test_keep_deleted_files_false(self):
         self.lib('config --global keep-deleted-files false')
@@ -535,7 +559,7 @@ class TestDropFiles(JournalTest):
         return [f for _, _, files in os.walk(root) for f in files] if os.path.isdir(root) else []
 
     def test_size_in_the_list(self):
-        self.assertRegex(self.out('history'), rf'> {self.step} papers rm one2000 --delete-files .*\[3 KB of deleted files\]')
+        self.assertRegex(self.out('history'), rf'> {self.step[:8]} papers rm one2000 --delete-files .*\[3 KB of deleted files\]')
 
     def test_drop_by_step(self):
         out = self.out(f'history --drop-files {self.step} --yes')

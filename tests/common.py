@@ -385,3 +385,11 @@ class LibraryTest(unittest.TestCase):
     def distinct(self):
         path = self.path('.papers', 'distinct.json')
         return json.load(open(path))['distinct'] if os.path.exists(path) else []
+
+
+def pool_id(path, former):
+    """the id under which a library files the origin records of the pool in
+    `path`: the pool library's identifier, or `former` (its path, as the
+    library wrote it) for a pool without identifier"""
+    from papers.pools import _library_id
+    return _library_id(path) or former

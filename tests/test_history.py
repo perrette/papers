@@ -100,13 +100,53 @@ class TestStates(StoreTest):
         two = p.add(self.state('2', parent=one))
         three = p.add(self.state('3', parent=two))
         branch = p.add(self.state('b', parent=one))
-        self.assertEqual((one, two, three, branch), (1, 2, 3, 4))
-        self.assertEqual(p.line(three), [3, 2, 1])
-        self.assertEqual(p.path(three, branch), ([3, 2], [4]))
-        self.assertEqual(p.path(three, one), ([3, 2], []))
-        self.assertEqual(p.path(one, three), ([], [2, 3]))
+        # a state is named by its identifier: the sha256 of what it is (see state_id)
+        self.assertEqual(len({one, two, three, branch}), 4)
+        self.assertEqual(one, history.state_id(p.state(one)))
+        self.assertRegex(one, r'^[0-9a-f]{64}$')
+        self.assertEqual(p.line(three), [three, two, one])
+        self.assertEqual(p.path(three, branch), ([three, two], [branch]))
+        self.assertEqual(p.path(three, one), ([three, two], []))
+        self.assertEqual(p.path(one, three), ([], [two, three]))
         # read again from disk
-        self.assertEqual(sorted(self.store.project('p').states()), [1, 2, 3, 4])
+        self.assertEqual(sorted(self.store.project('p').states()), sorted([one, two, three, branch]))
+        # a unique prefix names a state
+        self.assertEqual(p.resolve(three[:6]), three)
+        self.assertIsNone(p.resolve(three[:3]))  # too short
+        self.assertIsNone(p.resolve('ffffffff' if not any(n.startswith('ffffffff') for n in p.states()) else 'x'))
+
+    def test_state_identifier(self):
+        # the identifier: parent, time, bibtex, files; not what a later command changes (ops, deleted)
+        state = dict(parent=None, time=1.5, bibtex={'pieces': [], 'sha': 'abc'}, files={'b': ['2'], 'a': ['1']})
+        n = history.state_id(state)
+        self.assertEqual(n, history.sha256(b'papers-state 1\nparent -\ntime 1.500000\nbibtex abc\n'
+                                           b'file a 1\nfile b 2\n'))
+        self.assertEqual(history.state_id(dict(state, ops=[{'op': 'moved'}], deleted=['x'], message='m')), n)
+        self.assertNotEqual(history.state_id(dict(state, time=1.6)), n)
+
+    def test_upgrade_numbered_states(self):
+        # the numbered states of papers up to 3.0.0b5: named by their identifier, references rewritten
+        import json
+        for id, states in (('lib', {1: dict(parent=None, time=1, bibtex={'pieces': [], 'sha': 'a'}),
+                                    2: dict(parent=1, time=2, bibtex={'pieces': [], 'sha': 'b'},
+                                            pools={'pool': {'state': 2, 'config': '/x'}}),
+                                    3: dict(parent=2, time=3, bibtex={'pieces': [], 'sha': 'c'}, reverts=[2])}),
+                           ('pool', {1: dict(parent=None, time=1, bibtex={'pieces': [], 'sha': 'p'}),
+                                     2: dict(parent=1, time=2, bibtex={'pieces': [], 'sha': 'q'})})):
+            folder = os.path.join(self.store.projects, id, 'states')
+            os.makedirs(folder)
+            for n, state in states.items():
+                Path(folder, f'{n:06d}.json').write_text(json.dumps(state))
+            Path(self.store.projects, id, 'heads.json').write_text(json.dumps({'/l.bib': {'state': 2, 'redo': [3]}}))
+        lib, pool = self.store.project('lib'), self.store.project('pool')
+        head = lib.head('/l.bib')
+        two = head['state']
+        three, = head['redo']
+        self.assertEqual(lib.state(three)['parent'], two)
+        self.assertEqual(lib.state(three)['reverts'], [two])
+        self.assertEqual(lib.state(two)['pools']['pool']['state'], pool.head('/l.bib')['state'])
+        self.assertEqual(lib.line(three), [three, two, lib.state(two)['parent']])
+        self.assertFalse(any(name[:-5].isdigit() for name in os.listdir(lib.states_dir)))
 
     def test_places(self):
         p = self.store.project('p')
@@ -115,11 +155,12 @@ class TestStates(StoreTest):
         p.add(self.state('1', parent=two, t=3))  # the same bibtex, later
         place = os.path.join(self.tmp.name, 'lib.bib')
         Path(place).write_text('')
-        p.set_head(place, two, redo=[3])
-        self.assertEqual(p.head(place), dict(p.head(place), state=2, redo=[3]))
+        three = [n for n in p.states() if n not in (one, two)][0]
+        p.set_head(place, two, redo=[three])
+        self.assertEqual(p.head(place), dict(p.head(place), state=two, redo=[three]))
         # a new place starts from the latest state with its bibtex, or else the latest
-        self.assertEqual(p.start_state(history.sha256(b'1')), 3)
-        self.assertEqual(p.start_state(history.sha256(b'unknown')), 3)
+        self.assertEqual(p.start_state(history.sha256(b'1')), three)
+        self.assertEqual(p.start_state(history.sha256(b'unknown')), three)
         p.set_head('/nowhere/lib.bib', one)
         self.assertEqual(p.forget_missing_places(), ['/nowhere/lib.bib'])
         self.assertEqual(list(p.heads()), [place])
@@ -287,9 +328,9 @@ class TestHistoryCommand(LibraryTest):
         self.lib('undo')
         out = self.out('history')
         lines = [line.strip() for line in out.splitlines()]
-        self.assertRegex(lines[0], r'^3 papers add ../two2000.bib .*\(undone: `papers redo`\)$')
-        self.assertRegex(lines[1], r'^> 2 papers add ../one2000.bib')
-        self.assertRegex(lines[2], r'^1 the library before its first recorded command')
+        self.assertRegex(lines[0], r'^[0-9a-f]{8} papers add ../two2000.bib .*\(undone: `papers redo`\)$')
+        self.assertRegex(lines[1], r'^> [0-9a-f]{8} papers add ../one2000.bib')
+        self.assertRegex(lines[2], r'^[0-9a-f]{8} the library before its first recorded command')
         self.assertIn('up to 500 MB', out)
 
     def test_stale_backups(self):

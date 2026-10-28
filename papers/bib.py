@@ -39,8 +39,8 @@ from papers.encoding import standard_name, family_names, format_entries
 from papers.latexenc import string_to_latex
 
 from papers.filename import NAMEFORMAT, KEYFORMAT
-from papers.files import (download_url, read_entry_dir, attachment_names, remove_entry_dir_if_empty, realpath,
-                          scan_dir_items, is_download)
+from papers.files import (download_url, read_entry_dir, attachment_names, free_name, remove_entry_dir_if_empty,
+                          realpath, scan_dir_items, is_download)
 from papers import journal
 from papers.utils import bcolors, checksum, move as _move, write_atomic, PapersExit
 import papers.config
@@ -115,9 +115,10 @@ def _same_content(file, files):
 
 
 def read_text(file):
-    "the content of a text file (as `open(file, 'w').write` was given it), or None if it cannot be read"
+    """the content of a text file (UTF-8, as `write_atomic` writes it; without the byte order mark
+    that some editors write first), or None if it cannot be read"""
     try:
-        with open(file) as f:
+        with open(file, encoding='utf-8-sig') as f:
             return f.read()
     except (OSError, UnicodeDecodeError):
         return None
@@ -238,7 +239,8 @@ class Biblio:
 
     @classmethod
     def load(cls, bibtex, filesdir, relative_to=None, **kw):
-        bibtexs = open(bibtex).read()
+        with open(bibtex, encoding='utf-8-sig') as f:  # UTF-8, without a byte order mark (see read_text)
+            bibtexs = f.read()
         kw.setdefault('distinct', Distinct.for_bibtex(bibtex))
         db = parse_string(bibtexs, cache=parse_cache())
         loaded_bib = cls(db, filesdir, relative_to=relative_to if relative_to is not None else os.path.dirname(bibtex), **kw)
@@ -495,8 +497,9 @@ class Biblio:
 
 
     def generate_key(self, entry):
-        " generate a unique key not yet present in the record "
-        keys = {self.key(e) for e in self.db.entries}
+        """the key of the key template for the entry, with a letter suffix if
+        another entry of the library has it (the entry's own key is not taken)"""
+        keys = {self.key(e) for e in self.db.entries if e is not entry}
         key = self.keyformat(entry)
         if key.lower() in keys:
             key = append_abc(key, keys)
@@ -565,7 +568,8 @@ class Biblio:
 
 
     def add_bibtex_file(self, file, **kw):
-        bibtex = open(file).read()
+        with open(file, encoding='utf-8-sig') as f:
+            bibtex = f.read()
         # file links in the added bibtex are relative to its own directory
         # (the absolute path matters: dirname('papers.bib') is '')
         return self.add_bibtex(bibtex, relative_to=os.path.dirname(os.path.abspath(file)), **kw)
@@ -884,8 +888,10 @@ class Biblio:
                 logger.warning(file+': original file link is broken')
                 newfile = file
             elif file != newfile:
-                self.move(file, newfile, action == 'copy', hardlink=hardlink)
-                count += 1
+                newfile = free_name(newfile, file)  # the name of another entry's file: a suffix
+                if file != newfile:
+                    self.move(file, newfile, action == 'copy', hardlink=hardlink)
+                    count += 1
             newfiles.append(newfile)
         self.set_files(e, newfiles, relative_to=relative_to)
 

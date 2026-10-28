@@ -320,6 +320,8 @@ class Pools:
         self._cache = {}
         # the pool ids of the origin records of the library (see _id)
         self.known_ids = []
+        # called with (former id, new id, path) when the records of a pool move to its library id (see _id)
+        self.renamed = None
 
     @property
     def libdir(self):
@@ -337,12 +339,24 @@ class Pools:
             pool_.id = self._id(pool_.path)
 
     def _id(self, path):
-        """how the origin records name the pool in `path`: the id of its
-        records if it has some (see set_known_ids), else for the pool of the
-        library its pool setting, else its path relative to the library"""
-        for id in self.known_ids:
-            if realpath(os.path.join(self.libdir, os.path.expanduser(id))) == realpath(path):
-                return id
+        """how the origin records name the pool in `path`: the identifier of
+        the pool library (its `id`, which stays when a library moves); the
+        records under a former id, the pool's path as the library wrote it,
+        move to it (see `renamed`). A pool without identifier (a library of an
+        earlier version that never recorded a step): the id of its records if
+        it has some, else for the pool of the library its pool setting, else
+        its path relative to the library."""
+        own_id = _library_id(path)
+        former = next((id for id in self.known_ids if id != own_id and _is_path_id(id) and
+                       realpath(os.path.join(self.libdir, os.path.expanduser(id))) == realpath(path)), None)
+        if former is not None and self.renamed is None:
+            return former  # the records move at the next exchange (not with `papers status`)
+        if own_id:
+            if former is not None:
+                self.renamed(former, own_id, path)
+            return own_id
+        if former is not None:
+            return former
         own = self.path()
         if own is not None and realpath(own) == realpath(path):
             return self.config.pool_label()  # as the pool setting writes it
@@ -455,15 +469,33 @@ _RECORD_EXTRA = _ORIGIN_FIELDS + (FILE_FIELD,)  # not part of the base entry
 # @comment{papers-pulled <pool bibtex mtime in ns>}
 _POOL_COMMENT = 'papers-pool'
 _PULLED_COMMENT = 'papers-pulled'
+_PATH_COMMENT = 'papers-pool-path'  # where the pool was at the last exchange (for the reader, and the file name)
 _LEGACY_PULL_COMMENT = 'papers-pull'  # <mtime> <pool id>, in the legacy file
 
 
-def origin_file_name(pool):
-    """the origin file of a pool: the name of the pool folder and the start
+def _library_id(path):
+    "the identifier of the library in directory `path` (the `id` of its configuration), or None"
+    try:
+        file = library_config_file(path)
+        id = json.load(open(file)).get('id') if file else None
+    except (OSError, ValueError, AttributeError, PapersExit):
+        return None
+    return id if isinstance(id, str) and re.fullmatch(r'[0-9a-f]{32}', id) else None
+
+
+def _is_path_id(id):
+    "a pool id of an earlier version: the pool's path, not a library identifier"
+    return not re.fullmatch(r'[0-9a-f]{32}', id)
+
+
+def origin_file_name(pool, path=None):
+    """the origin file of a pool: the name of the pool folder (path: where
+    the pool is, for a pool id that is a library identifier) and the start
     of the sha1 of the pool id (two pools in folders of the same name get
     different files)"""
-    name = slugify(os.path.basename(os.path.normpath(pool))) or 'pool'
-    return f'{name}-{hashlib.sha1(pool.encode()).hexdigest()[:6]}.bib'
+    folder = path if path is not None else (pool if _is_path_id(pool) else '')
+    name = slugify(os.path.basename(os.path.normpath(folder))) if folder else ''
+    return f'{name or "pool"}-{hashlib.sha1(pool.encode()).hexdigest()[:6]}.bib'
 
 
 class Record:
@@ -511,6 +543,9 @@ class Origin:
         self.pulls = {}    # pool id -> mtime (ns) of the pool bibtex at the last exchange
         self.changed = set()  # the pools whose file is to be written
         self.known = set()  # the pools that have records when loaded
+        self.paths = {}  # pool id -> where the pool was (see _PATH_COMMENT)
+        self.read_from = {}  # pool id -> the file its records were read from
+        self.stale = set()  # files to remove at the save (the records of a pool that moved to another id)
 
     @classmethod
     def for_bibtex(cls, bibtex):
@@ -549,6 +584,10 @@ class Origin:
         pulled = next((w[1].strip() for w in words if len(w) == 2 and w[0] == _PULLED_COMMENT), '')
         if pulled.isdigit():
             self.pulls[pool] = int(pulled)
+        where = next((w[1].strip() for w in words if len(w) == 2 and w[0] == _PATH_COMMENT), None)
+        if where:
+            self.paths[pool] = where
+        self.read_from[pool] = path
         records = self.entries.setdefault(pool, {})
         for e in lib.entries:
             records[e.key.lower()] = e
@@ -643,6 +682,25 @@ class Origin:
                 records[new.lower()] = record
                 self.changed.add(pool)
 
+    def rename_pool(self, old, new, path=None):
+        """the records of the pool `old` move to the id `new` (the pool's
+        library identifier, see Pools._id); path: where the pool is"""
+        if old not in self.entries and old not in self.pulls:
+            return
+        records = self.entries.pop(old, {})
+        self.entries.setdefault(new, {}).update({k: e for k, e in records.items() if k not in self.entries[new]})
+        if old in self.pulls:
+            self.pulls.setdefault(new, self.pulls.pop(old))
+        if old in self.known:
+            self.known.add(new)
+        if path is not None:
+            self.paths[new] = short_home(path)
+        if old in self.read_from:
+            self.stale.add(self.read_from.pop(old))
+        self.changed.discard(old)
+        self.changed.add(new)
+        logger.info(f'origin records of {old}: now under the identifier of the pool library, {new}')
+
     def pulled(self, pool):
         "mtime (ns) of the pool's bibtex at the last exchange (see set_pulled), or None"
         return self.pulls.get(pool)
@@ -663,19 +721,30 @@ class Origin:
             print(f'DRYRUN: {self.dir} not saved')
             return
         os.makedirs(self.dir, exist_ok=True)
+        written = set()
         for pool in sorted(self.changed):
             lib = Library()
             lib.add(ExplicitComment(f'{_POOL_COMMENT} {pool}'))
             if pool in self.pulls:
                 lib.add(ExplicitComment(f'{_PULLED_COMMENT} {self.pulls[pool]}'))
+            if pool in self.paths:
+                lib.add(ExplicitComment(f'{_PATH_COMMENT} {self.paths[pool]}'))
             records = self.entries.get(pool, {})
             for key in sorted(records):
                 lib.add(entry_copy(records[key]))
-            path = os.path.join(self.dir, origin_file_name(pool))
+            where = self.paths.get(pool)
+            path = os.path.join(self.dir, origin_file_name(pool, os.path.expanduser(where) if where else None))
             text = format_library(lib)
             if read_text(path) != text:  # a file that has this content already is not written
                 write_atomic(path, text)
-        self.changed = set()
+            written.add(os.path.realpath(path))
+            if pool in self.read_from and os.path.realpath(self.read_from[pool]) != os.path.realpath(path):
+                self.stale.add(self.read_from[pool])  # the file of an earlier name
+            self.read_from[pool] = path
+        for path in self.stale:
+            if os.path.realpath(path) not in written and os.path.isfile(path):
+                os.remove(path)
+        self.changed, self.stale = set(), set()
 
 
 def _same_fields(a, b):
@@ -700,11 +769,13 @@ class Exchange:
         self.biblio = biblio
         self.pools = pools or Pools(config)
         self.origin = origin if origin is not None else Origin.for_bibtex(config.bibtex)
+        self.pools.renamed = self.origin.rename_pool
         self.pools.set_known_ids(set(self.origin.entries) | set(self.origin.pulls))
         self.same = {}  # file deleted -> its identical copy that stays (see relink, delete_files)
         self.changed_pools = []  # the pools to save
         self.pushed_pools = []   # the pools pushed to (changed or not): after_push after the save
         self._after = {}  # pool id -> state of the push for after_push
+        self._removed_links = {}  # (id of a library entry, pool id) -> its links the pool removed (see outgoing)
         path = self.pools.path()
         self.pool_id = self.pools._id(path) if path is not None else None
 
@@ -755,7 +826,8 @@ class Exchange:
         a shallow library, for its pool, the file links of the pool entry `pe`"""
         files = None
         if self._shares_links(pool):
-            files = format_file(pool.biblio.get_files(pe), relative_to=self.biblio.relative_to)
+            pending = self._removed_links.pop((id(e), pool.id), [])
+            files = format_file(pool.biblio.get_files(pe) + pending, relative_to=self.biblio.relative_to)
         self.origin.set(e.key, pool.id, base, files=files)
 
     def new_links(self, e, pool):
@@ -779,6 +851,18 @@ class Exchange:
         base = {realpath(f) for f in parse_file(record.files, relative_to=self.biblio.relative_to)}
         now = {realpath(f) for f in pool.biblio.get_files(pe)}
         return {realpath(f) for f in self.biblio.get_files(e)} & (base - now)
+
+    def outgoing(self, e, pool, pe, record):
+        """the library entry as push sends it to the pool entry pe: without
+        the file links that the pool removed since the last exchange (see
+        pool_removed; pull removes them from the library)"""
+        out = exchange_copy(e, self.biblio, pool.biblio, key=pe.key)
+        removed = self.pool_removed(e, pe, record, pool)
+        if removed:
+            pool.biblio.set_files(out, [f for f in pool.biblio.get_files(out) if realpath(f) not in removed])
+            # still in the record after the push: the next pull removes them from the library
+            self._removed_links[(id(e), pool.id)] = [f for f in self.biblio.get_files(e) if realpath(f) in removed]
+        return out
 
     # files
 
@@ -1036,7 +1120,7 @@ class Exchange:
         return 'added'
 
     def _push_one(self, e, pool, pe, record, resolver):
-        outgoing = exchange_copy(e, self.biblio, pool.biblio, key=pe.key)
+        outgoing = self.outgoing(e, pool, pe, record)
         merge = Merge([pe, outgoing], relative_to=pool.biblio.relative_to, exchange=True,
                       base=_rekey(record.entry, pe.key) if record is not None else None)
         if not merge.conflicts and not merge.additions and not merge.new_files:
@@ -1653,7 +1737,7 @@ def exchange_state(config, pools, path):
             pool_changed = library_changed = True
         elif pulled.additions or pulled.new_files or exchange.pool_removed(e, pe, record, pool):
             pool_changed = True
-        outgoing = exchange_copy(e, biblio, pool.biblio, key=pe.key)
+        outgoing = exchange.outgoing(e, pool, pe, record)
         pushed = Merge([pe, outgoing], relative_to=pool.biblio.relative_to, exchange=True,
                        base=_rekey(record.entry, pe.key))
         if pushed.conflicts or pushed.additions or pushed.new_files:

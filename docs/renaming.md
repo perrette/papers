@@ -16,6 +16,11 @@ The label after `--` is kept when the entry is renamed again (e.g. after its
 title or year was fixed), so only the part before `--` changes. If two
 attachments have the same original name, the second one gets a `-2` suffix.
 
+Two entries can get the same file name (the same authors, year and title,
+e.g. a preprint and the published paper). A file of another entry is never
+replaced: the second file gets a `-2` suffix (`-3`, ... after that), unless
+it has the same content, in which case both entries link to the same file.
+
 Versions before 2.19 placed the files of an entry with several files in a
 folder named after the entry, with a hidden copy of the entry
 (`files/<name>/.<name>.bib`). Such folders keep working as they are: their

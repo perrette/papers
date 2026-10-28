@@ -18,7 +18,7 @@ from papers.pools import Pools, PoolError, Origin, ORIGIN_DIR, LEGACY_ORIGIN_FIL
 from papers.utils import PapersExit
 
 from tests import TEST_DEFAULT_LIBRARY
-from tests.common import ConfigTest
+from tests.common import ConfigTest, pool_id
 
 
 POOL_BIB = """@article{Smith_2020,
@@ -923,7 +923,8 @@ class TestExport(PoolTest):
         Path(self.path('out', 'papers.bib')).write_text(text.replace('title = {My own paper}', 'title = {My own paper},\n volume = {3}'))
         self.lib('pull --all --on-duplicate update')  # nothing shared yet: --all; differences are conflicts
         self.assertEqual(self.entry('mine2022')['volume'], '3')
-        self.assertEqual(self.origin().get(self.entry('mine2022'), '../out').pool, '../out')
+        out = pool_id(self.path('out'), '../out')
+        self.assertEqual(self.origin().get(self.entry('mine2022'), out).pool, out)
 
 
 # STATUS
@@ -1446,11 +1447,15 @@ class TestConfigPool(OwnFilesTest):
         self.assertEqual(len(os.listdir(self.path('other', 'files'))), 2)
         self.assertEqual(len(self.bib('other')[1]), 2)
         # the origin records: mine2022 was pushed to the new pool, smith2020climate is not shared with it
-        self.assertIsNotNone(self.origin().get(self.entry('mine2022'), '../other'))
-        self.assertIsNone(self.origin().get(self.entry('smith2020climate'), '../other'))
+        # (under the path of the pool, until the next exchange moves them to its identifier, see Pools._id)
+        record = lambda key: (self.origin().get(self.entry(key), pool_id(self.path('other'), '../other'))
+                              or self.origin().get(self.entry(key), '../other'))
+        self.assertIsNotNone(record('mine2022'))
+        self.assertIsNone(record('smith2020climate'))
         # the new pool has the paper of smith2020climate: shared with it, the push records it
         self.assertIn('push to pool ../other: 1 linked', self.out('push'))
-        self.assertIsNotNone(self.origin().get(self.entry('smith2020climate'), '../other'))
+        self.assertIsNotNone(self.origin().get(self.entry('smith2020climate'), pool_id(self.path('other'), '../other')))
+        self.assertIsNotNone(self.origin().get(self.entry('mine2022'), pool_id(self.path('other'), '../other')))
         self.assertIn('nothing to push to pool ../other', self.out('push'))
 
     def test_new_pool_missing(self):

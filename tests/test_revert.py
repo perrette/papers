@@ -207,7 +207,7 @@ class TestRevertShallow(FileTest):
         self.lib('tag one2000 --add later')
         out = self.out(f'history --revert {n}')
         step = next(iter(pool_step.values()))['state']
-        self.assertIn(f'`papers -C ../pool history --revert {step}`', out)
+        self.assertIn(f'`papers -C ../pool history --revert {step[:8]}`', out)
 
 
 if __name__ == '__main__':

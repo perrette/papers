@@ -323,7 +323,8 @@ def get_parser(config=None):
     configp.add_argument('--unset', metavar='KEY', help='remove the setting: the global or default value applies again (pool: none)')
     configp.add_argument('--prune', action='store_true',
         help='remove from the library configuration file the settings equal to their global or default value '
-             '(papers also leaves them out each time it saves the file)')
+             '(they follow it from then on); a setting given explicitly (`papers init`, `papers config NAME '
+             'VALUE`) is kept in the file, even with the default value')
     configp.add_argument('--global', action='store_true', dest='is_global',
         help=f'the global configuration, per user ({_default(papers.config.MACHINE_CONFIG_FILE)}), instead of '
              'the library\'s: the default library, and the default settings of the libraries')
@@ -916,7 +917,9 @@ def get_parser(config=None):
         the bibtex. `papers add DIR --recursive` adds it back; `papers config pool DIR` makes it the
         pool of the library. With --format, the entries are also, or instead, written as RIS
         (DIR/papers.ris) or CSL-JSON (DIR/papers.json), with file links relative to DIR; without
-        bibtex, DIR is not a papers library.''')
+        bibtex, DIR is not a papers library (`papers add DIR/papers.ris` adds the entries of a RIS
+        file; `papers add DIR --recursive` adds the bibtex files of a folder, not the RIS or JSON
+        files).''')
     exportp.add_argument('dir', metavar='DIR', help='directory of the new library (must not exist, or be empty)')
     exportp.add_argument('entries', nargs='*', metavar='KEY', help=_selection_help + ' (default: all entries)')
     _export_options(exportp)
@@ -979,15 +982,16 @@ def get_parser(config=None):
     _redo_help = 'redo a change undone by `papers undo`'
     redop = subparsers.add_parser('redo', parents=[cfg, _restorep, _stepsp], help=_redo_help, description=_redo_help)
     _command(redop, redocmd, library=True)
-    _restore_help = ('bring the library to the step N of its history (see `papers history`), with its files; '
-                     'without N, to its last step: the changes made outside papers since are undone '
+    _restore_help = ('bring the library to the step STEP of its history (see `papers history`), with its files; '
+                     'without STEP, to its last step: the changes made outside papers since are undone '
                      '(and recorded: `papers redo` brings them back)')
     for name in ('restore', 'restore-backup'):
         restorep = subparsers.add_parser(name, parents=[cfg, _restorep],
             help=_restore_help if name == 'restore' else 'deprecated: use `papers restore`',
             description=_restore_help if name == 'restore' else 'deprecated: use `papers restore`')
-        restorep.add_argument('state', nargs='?', type=int, metavar='N', help='the number of the step')
-        restorep.add_argument('--ref', type=int, metavar='N', help='same as N')
+        restorep.add_argument('state', nargs='?', metavar='STEP',
+            help='the step: its identifier in `papers history`, or the start of it (4 characters or more)')
+        restorep.add_argument('--ref', metavar='STEP', help='same as STEP')
         _command(restorep, restorecmd, library=True, bibtex_must_exist=False)
 
     # git
@@ -999,7 +1003,8 @@ def get_parser(config=None):
 
     # history
     # =======
-    _history_help = ('the steps of the library (number, command, time; > marks where the library is), '
+    _history_help = ('the steps of the library (identifier, command, time; > marks where the library is; a step '
+                     'is named by its identifier, or the start of it, 4 characters or more), '
                      'the history of the machine (where, its size: the history-size setting), and the backups '
                      'of earlier versions of papers that are no longer used. The history is in a folder of '
                      'the machine (the history-dir setting), not in the library: it is not synced or shared '
@@ -1013,17 +1018,17 @@ def get_parser(config=None):
         historyp.add_argument('--remove', nargs='?', const='', metavar='ID',
             help='remove the history of this library (of this folder; the history itself when no other '
                  'folder uses it), or of the library ID (see --all)')
-        historyp.add_argument('--drop-files', metavar='N|PATH',
-            help='remove from the history the files that step N deleted, or the file deleted from PATH '
+        historyp.add_argument('--drop-files', metavar='STEP|PATH',
+            help='remove from the history the files that step STEP deleted, or the file deleted from PATH '
                  '(by any step): they go to the trash of the system, and undo no longer brings them back')
-        historyp.add_argument('--revert', type=int, metavar='N',
-            help='take back the changes of step N alone, as a new step (`papers undo` takes the revert back); '
+        historyp.add_argument('--revert', metavar='STEP',
+            help='take back the changes of step STEP alone, as a new step (`papers undo` takes the revert back); '
                  'unlike `papers undo -n N`, which goes back over the last N steps, the later steps are kept. '
-                 'Per entry, a three-way merge: what step N changed goes back, unless it changed since '
-                 '(a conflict, as in pull); the files of step N go back as undo moves them')
+                 'Per entry, a three-way merge: what the step changed goes back, unless it changed since '
+                 '(a conflict, as in pull); the files of the step go back as undo moves them')
         historyp.add_argument('--on-duplicate', choices=ON_DUPLICATE,
-            help='with --revert: what to do with an entry that changed since step N too: ask (dialogue; the '
-                 'default in a terminal), keep (its values now are kept), update (the values before step N '
+            help='with --revert: what to do with an entry that changed since the step too: ask (dialogue; the '
+                 'default in a terminal), keep (its values now are kept), update (the values before the step '
                  'are taken), skip (the entry is left as it is), error (stop before saving; the default '
                  'without a terminal)')
         historyp.set_defaults(mode=None)

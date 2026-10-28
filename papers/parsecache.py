@@ -76,7 +76,7 @@ class Cache:
     def get(self, digest):
         "the blocks of a piece (dicts), or None"
         try:
-            with open(self._path(digest)) as f:
+            with open(self._path(digest), encoding='utf-8') as f:
                 data = json.load(f)
             if data.get('format') != FORMAT:
                 return None
@@ -90,7 +90,7 @@ class Cache:
         try:
             os.makedirs(os.path.dirname(path), exist_ok=True)
             tmp = f'{path}.{os.getpid()}.tmp'
-            with open(tmp, 'w') as f:
+            with open(tmp, 'w', encoding='utf-8') as f:
                 json.dump({'format': FORMAT, 'blocks': blocks}, f)
             os.replace(tmp, path)
         except OSError as error:

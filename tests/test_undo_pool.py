@@ -11,6 +11,7 @@ import papers.backup
 from papers.bib import Biblio
 from papers.config import Config, CONFIG_FILE_LOCAL
 from papers.pools import ORIGIN_DIR, Origin
+from papers.utils import PapersExit
 
 from tests.common import ConfigTest
 
@@ -145,7 +146,7 @@ class UndoInLibrary:
         self.tag('mine2022', 'b', where='pool')
         out = self.out('undo')
         # the pool has a step on top of that of the add, which changed the entry: the revert keeps it
-        self.assertIn('pool ../pool: changed since; step', out)
+        self.assertIn('pool ../pool: changed since; nothing changed there for revert of step', out)
         self.assertIn('mine2022: added by step', out)
         self.assertNotIn('mine2022', self.entries())
         self.assertEqual(self.keywords('mine2022', 'pool'), 'a, b')
@@ -165,6 +166,25 @@ class UndoInLibrary:
         self.assertIn('pool ../pool: changed since, so step', self.out('redo'))
         self.assertIn('mine2022', self.entries('pool'))
         self.assertIn('mine2022', self.entries())
+        self.assertEqual(self.keywords('other2023', 'pool'), 'b')
+
+    def test_redo_after_the_pool_moved_on(self):
+        # undo takes the pool's step back; the pool changes; redo does the step again there (a new step)
+        self.lib('add ../other.bib')
+        self.lib('add ../new.bib')
+        self.lib('undo')
+        self.assertNotIn('mine2022', self.entries('pool'))
+        self.tag('other2023', 'b', where='pool')
+        pool = self.commits('pool')
+        out = self.out('redo')
+        self.assertIn('done again there', out)
+        self.assertIn('mine2022', self.entries('pool'))
+        self.assertIn('mine2022', self.entries())
+        self.assertEqual(self.keywords('other2023', 'pool'), 'b')
+        self.assertEqual(self.commits('pool'), pool + 1)
+        # undo again: the step is reverted there (it is no longer in the pool's history line)
+        self.lib('undo')
+        self.assertNotIn('mine2022', self.entries('pool'))
         self.assertEqual(self.keywords('other2023', 'pool'), 'b')
 
     def test_pool_changed_outside_papers(self):
@@ -343,9 +363,10 @@ class TestUndoPoolAutoPush(UndoPoolTest, UndoInLibrary):
         self.assertEqual(self.keywords('mine2022'), 'a, b')
         self.assertIn('mine2022: also modified in pool ../pool', out)
         self.assertEqual(self.keywords('mine2022', 'pool'), 'a, b')
-        # the step undone can still be redone
-        self.lib('redo')
-        self.assertEqual(self.keywords('mine2022'), 'a, b, c')
+        # the push is a new step: nothing to redo, as after any command; restore reaches the step undone
+        self.assertIn('the push is a new step: nothing to redo now', out)
+        with self.assertRaises(PapersExit):
+            self.lib('redo')
 
     def test_undo_without_anything_to_push(self):
         self.lib('add ../new.bib')

@@ -29,6 +29,7 @@ from bibtexparser import parse_string
 
 import papers.config
 from papers import backup, journal
+from papers.history import short
 from papers.duplicate import DISTINCT_FILE, Verdict, SAME
 from papers.encoding import parse_keywords
 from papers.entries import entry_content_equal, get_entry_val, entry_copy
@@ -116,23 +117,30 @@ def _without_tags(e):
     return e
 
 
-def revert(config, biblio, n, resolver):
+def revert(config, biblio, n, resolver, forward=False, anywhere=False):
     """take back step n in `biblio` (the library, loaded): the entries, the
-    files and distinct.json; not saved. Return the lines of the report (the
+    files and distinct.json; not saved. forward: do step n again instead
+    (the same rules, from the state of step n to its parent swapped: redo
+    in a pool that changed since the undo of its step). anywhere: step n
+    need not be in the current history (a pool, whose step n was undone or
+    done again by another step). Return the lines of the report (the
     entries left as they are and why, the files)."""
     project, place = backup.project_of(config)
     head = backup.sync_head(config, project, place) if not papers.config.DRYRUN else \
         (project.head(place) or {}).get('state')
+    n = backup.resolve(project, n)
     state = project.state(n)
-    if state is None:
-        raise PapersExit(f'no step {n} in the history of the library (see `papers history`)')
-    if head is None or n not in project.line(head):
-        raise PapersExit(f'step {n} is not in the current history of the library: '
-                         f'`papers restore {n}` goes there')
+    if not anywhere and (head is None or n not in project.line(head)):
+        raise PapersExit(f'step {short(n)} is not in the current history of the library: '
+                         f'`papers restore {short(n)}` goes there')
     parent = state.get('parent')
     if parent is None or project.state(parent) is None:
-        raise PapersExit(f'step {n} is the first step of the history: nothing before it to go back to')
+        raise PapersExit(f'step {short(n)} is the first step of the history: nothing before it to go back to')
     before, after = _state_entries(project, parent), _state_entries(project, n)
+    # what step n did, as the lines say it (done again: an entry added by n is taken as removed, and so on)
+    added, removed = ('removed', 'added') if forward else ('added', 'removed')
+    if forward:
+        before, after = after, before
     libdir = os.path.dirname(os.path.abspath(config.bibtex))
     links = lambda: {os.path.normpath(f) for x in biblio.entries for f in biblio.get_files(x)}
     current_links = links()
@@ -145,13 +153,13 @@ def revert(config, biblio, n, resolver):
             if entry_content_equal(now, e, skip_keys=('file',)):
                 biblio.db.remove(now)
             else:
-                lines.append(f'{now.key}: added by step {n} and changed since: kept (`papers rm {now.key}` '
+                lines.append(f'{now.key}: {added} by step {short(n)} and changed since: kept (`papers rm {now.key}` '
                              'removes it)')
         elif e is None:  # removed by N
             if _current(biblio, p) is not None:
                 continue
             if any(x.key.lower() == p.key.lower() for x in biblio.entries):
-                lines.append(f'{p.key}: removed by step {n}; another entry has its key now: not added back')
+                lines.append(f'{p.key}: {removed} by step {short(n)}; another entry has its key now: not added')
                 continue
             back = entry_copy(p)
             files = biblio.get_files(p, relative_to=libdir)
@@ -160,14 +168,14 @@ def revert(config, biblio, n, resolver):
         else:
             now = _current(biblio, e)
             if now is None:
-                lines.append(f'{e.key}: changed by step {n} and removed since: not added back')
+                lines.append(f'{e.key}: changed by step {short(n)} and removed since: not added')
                 continue
             merge = Merge([_without_tags(now), _without_tags(p)], relative_to=biblio.relative_to,
                           exchange=True, base=_without_tags(e))
             if merge.conflicts:
-                decision = resolver.decide(merge, 'revert', Verdict(SAME, f'step {n}'))
+                decision = resolver.decide(merge, 'revert', Verdict(SAME, f'step {short(n)}'))
                 if decision.kind != 'merge':
-                    lines.append(f'{now.key}: changed since step {n} too: left as it is')
+                    lines.append(f'{now.key}: changed since step {short(n)} too: left as it is')
                     continue
                 new = decision.entry
             else:
@@ -181,7 +189,7 @@ def revert(config, biblio, n, resolver):
                 del now['keywords']
             if p.key != e.key and now.key == e.key:
                 if any(x is not now and x.key.lower() == p.key.lower() for x in biblio.entries):
-                    lines.append(f'{now.key}: renamed by step {n} from {p.key}, now another entry\'s key: '
+                    lines.append(f'{now.key}: renamed by step {short(n)} (key {p.key} before), now another entry\'s key: '
                                  'the key stays')
                 else:
                     biblio.set_key(now, p.key)
@@ -191,12 +199,13 @@ def revert(config, biblio, n, resolver):
                         now['ids'] = ', '.join(i.strip() for i in ids)
                     elif 'ids' in now.fields_dict:
                         del now['ids']
-    _revert_distinct(biblio, _distinct_pairs(project, parent), _distinct_pairs(project, n))
+    pairs = _distinct_pairs(project, parent), _distinct_pairs(project, n)
+    _revert_distinct(biblio, *(reversed(pairs) if forward else pairs))
     if papers.config.DRYRUN:
         return lines
     ops = backup._absolute_ops(state.get('ops') or [], config)
-    hashes = backup.state_hashes(config, project, parent)
-    lines += journal.restore(current_links, links(), ops, True, hashes=hashes,
+    hashes = backup.state_hashes(config, project, n if forward else parent)
+    lines += journal.restore(current_links, links(), ops, not forward, hashes=hashes,
                              pool_dirs=backup._pool_dirs(config), find_deleted=project.store.file_object)
     return lines
 
@@ -223,6 +232,6 @@ def pool_lines(config, project, n):
             continue
         pool_config = papers.config.Config.load(file, machine=config.machine)
         shown = backup._shown(config, pool_config)
-        lines.append(f'step {n} also changed pool {shown} (its step {link["state"]}): '
-                     f'`papers -C {shown} history --revert {link["state"]}` takes it back there')
+        lines.append(f'step {short(n)} also changed pool {shown} (its step {short(link["state"])}): '
+                     f'`papers -C {shown} history --revert {short(link["state"])}` takes it back there')
     return lines

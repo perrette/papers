@@ -329,6 +329,22 @@ def attachment_names(files, target):
     return newfiles
 
 
+def free_name(path, source):
+    """the path where the file `source` goes when its name is `path`: path
+    itself if it is free, or source itself, or a file with the same content
+    (the same file); else path with a -2, -3... suffix before the extension:
+    a file of another entry is never replaced"""
+    base, ext = os.path.splitext(path)
+    candidate, i = path, 2
+    while os.path.lexists(candidate):
+        if os.path.realpath(candidate) == os.path.realpath(source) or (
+                os.path.isfile(candidate) and os.path.isfile(source) and checksum(candidate) == checksum(source)):
+            return candidate
+        candidate = f'{base}-{i}{ext}'
+        i += 1
+    return candidate
+
+
 def remove_entry_dir_if_empty(direc):
     """remove a directory of previous versions' layout (<name>/ with a hidden
     .<name>.bib) when nothing but the hidden bibtex is left in it"""

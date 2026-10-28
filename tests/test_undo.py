@@ -156,7 +156,7 @@ class TestUndoMessages(HistoryTest):
         self.assertTrue(attached.startswith(self._path(self.filesdir)))
 
         out = self.out('undo')
-        self.assertRegex(out.splitlines()[0], rf'^undo: {self.mybib} restored to \d+ papers add '
+        self.assertRegex(out.splitlines()[0], rf'^undo: {self.mybib} restored to [0-9a-f]{{8}} papers add '
                                               rf'{self.anotherbib} \(\d{{4}}-\d\d-\d\d \d\d:\d\d\)$')
         # the file is moved back where it was (papers.journal)
         self.assertIn(' --> moved back to si.pdf', out)
@@ -165,7 +165,7 @@ class TestUndoMessages(HistoryTest):
         self.assertEqual(Path(self._path('si.pdf')).read_text(), 'supplement')
 
         out = self.out('redo')
-        self.assertRegex(out, rf'^redo: {self.mybib} restored to \d+ papers file attach')
+        self.assertRegex(out, rf'^redo: {self.mybib} restored to [0-9a-f]{{8}} papers file attach')
         self.assertIn('si.pdf --> moved to ', out)
         self.assertTrue(os.path.exists(attached))
         self.assertFalse(os.path.exists(self._path('si.pdf')))

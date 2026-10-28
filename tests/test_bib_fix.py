@@ -153,6 +153,21 @@ class TestFixEntry(unittest.TestCase):
         biblio.fix_entry(e, auto_key=True)
         self.assertEqual(e.key, 'author2000')
 
+    def test_auto_key_keeps_a_right_key(self):
+        biblio = biblio_of(ENTRY)
+        e = biblio.entries[0]
+        biblio.fix_entry(e, auto_key=True)
+        biblio.fix_entry(e, auto_key=True)  # the key is the template's already: unchanged (was author2000b)
+        self.assertEqual(e.key, 'author2000')
+
+    def test_auto_key_suffix_is_stable(self):
+        biblio = biblio_of(ENTRY + '\n\n' + ENTRY.replace('a2000', 'b2000'))
+        first, second = biblio.entries
+        for _ in range(2):
+            biblio.fix_entry(first, auto_key=True)
+            biblio.fix_entry(second, auto_key=True)
+        self.assertEqual((first.key, second.key), ('author2000', 'author2000b'))
+
     def test_key_ascii(self):
         biblio = biblio_of(ENTRY.replace('a2000', 'müller2000'))
         e = biblio.entries[0]
