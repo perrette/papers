@@ -39,7 +39,6 @@ class TestLayout(ConfigTest):
         self.assertTrue(os.path.isfile(self.path('lib', '.papers', 'files.json')))
         self.assertFalse(os.path.exists(self.path('lib', 'bib', '.papers')))
 
-    @unittest.expectedFailure
     def test_no_move_with_dry_run(self):
         """library.md Layout: the files of the .papers/ next to the bibtex are
         not moved by a dry run"""
@@ -138,7 +137,6 @@ class TestWrittenKeys(ConfigTest):
         self.assertEqual(set(js), {'bibtex', 'filesdir', 'pool', 'paths', 'editor', 'version'})
         self.assertEqual((js['pool'], js['paths'], js['editor']), ('none', 'relative', 'vim'))
 
-    @unittest.expectedFailure
     def test_prune_removes_the_settings_of_papers_2(self):
         """library.md Which keys papers writes: `papers config --prune` removes
         the keys of the settings of papers 2 (git, gitlfs, backup_files,

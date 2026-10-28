@@ -1366,14 +1366,14 @@ Resolved:
 
 Open:
 
-21. **A dry run moves the files of the `.papers/` next to the bibtex.**
+21. **Resolved (library-spec-bugs):** the command line sets the dry run before it loads the library. Was: **A dry run moved the files of the `.papers/` next to the bibtex.**
     `move_papers_files` (papers/config.py:314) skips the move with
     `--dry-run`, but the command line loads the configuration
     (papers/cli/__init__.py:65) before it sets `papers.config.DRYRUN`
     (papers/cli/__init__.py:125), so `papers list --dry-run` moves them.
     Test: `tests/test_spec_library.py::TestLayout::test_no_move_with_dry_run`
     (expected failure).
-22. **`papers config --prune` keeps `gitlfs` and `gitdir`.** The prune
+22. **Resolved (library-spec-bugs):** `gitdir` and `gitlfs` are known keys, dropped at save. Was: **`papers config --prune` kept `gitlfs` and `gitdir`.** The prune
     lists them as removed (papers/cli/library_cmds.py:374), but they are
     not among the known keys (papers/config.py:133), so the save keeps
     them as unknown keys. A `.papers/config.json` of papers 2.2 to 2.4 has
