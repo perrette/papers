@@ -96,7 +96,10 @@ def get_biblio(config):
     if os.path.exists(config.bibtex):
         biblio = Biblio.load(config.bibtex, config.filesdir, nameformat=config.nameformat, keyformat=config.keyformat,
                              distinct=Distinct.for_library(config.libdir))
-        if biblio.relative_to != relative_to and biblio.update_file_path(relative_to):
+        if biblio.relative_to != relative_to:
+            if biblio.update_file_path(relative_to):
+                biblio.load_changes = True
+        elif not config.absolute_paths and biblio.relative_links():
             biblio.load_changes = True
     else:
         biblio = Biblio.newbib(config.bibtex, config.filesdir, relative_to=relative_to, nameformat=config.nameformat,

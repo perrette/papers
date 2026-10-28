@@ -104,6 +104,12 @@ The values are written as unicode (LaTeX accents and commands are
 converted, braces removed). Fields without an equivalent in the format are
 left out.
 
+The conversion from LaTeX to unicode is that of the pylatexenc library
+(through bibtexparser), also used by `papers check --encoding unicode` and
+for the entry fetched for an added PDF or DOI. Its exact text can change
+with the version of the library; papers does not read it back nor compare
+it.
+
 | bibtex | CSL-JSON | RIS |
 |---|---|---|
 | key | `id`, `citation-key` | `ID` |

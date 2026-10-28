@@ -318,7 +318,8 @@ in this order:
 4. otherwise the family names of the authors and the title, compared without
    case, braces, accents and extra spaces. Both entries need authors and a
    title: two entries titled "Editorial" without authors are not the same
-   paper.
+   paper. A name in braces is one name: `and` and commas inside braces
+   (`{Barnes and Noble}`) do not separate names, as in BibTeX.
 
 The first identifier that both entries have decides: equal values make the
 same paper, different values two papers. A preprint and the published
@@ -342,7 +343,8 @@ arXiv id, ISBN, authors and title), not their keys.
 The entry already in the library (entry 1) is the target:
 
 - it keeps its key;
-- fields that only the added entry has are added;
+- fields that only the added entry has are added (except empty ones, such
+  as `pages = {}`);
 - the file links of both entries are kept (a file linked twice, or two
   copies with the same content, once);
 - values that differ only by case, braces, spaces, or the case of a DOI are
@@ -350,7 +352,9 @@ The entry already in the library (entry 1) is the target:
   initials and with full first names (`Smith, J.` and `Smith, John`) are not
   a conflict either: the fuller form is kept, whichever entry it comes
   from. Different first names (`Smith, John` and `Smith, Jane`) are a
-  conflict;
+  conflict. First names are compared word by word up to the shorter one, so
+  a missing middle name is not a conflict (`Smith, J.` and
+  `Smith, John Quincy`);
 - the remaining differences are conflicts.
 
 An added entry that brings nothing new (no conflict, no field to add) is
@@ -370,7 +374,11 @@ fields to add:
 | `skip` | the entry is not added; the library entry, its files and the added file are left as they are |
 | `error` | stop before saving, and exit with status 1 (default without a terminal, e.g. in a script) |
 
-`--no-check-duplicate` adds the entries without looking for duplicates.
+`--no-check-duplicate` adds the entries without looking for duplicates. An
+entry with the key of a library entry is still folded into it (its files
+added) when it is the same paper and the merge has nothing to decide (no
+conflict, no field to add); otherwise the command stops: pass
+`-u/--update-key` or `--key KEY`.
 
 ### The dialogue
 
@@ -432,6 +440,11 @@ fetched from a DOI always get a generated key. `--key KEY` sets the key
 instead, in both cases. Either way, this only
 concerns entries new to the library: an entry merged into a duplicate takes
 the key of the library entry.
+
+A key that another entry has already (ignoring case) gets a letter suffix:
+`Smith2000` becomes `Smith2000b`, then `Smith2000c`. A key that ends with a
+digit and a letter continues from that letter, in its case (`Smith2000B`
+gives `Smith2000C`); after `z`, a second letter is added (`Smith2000za`).
 
 ### Options of earlier versions
 

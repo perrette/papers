@@ -338,6 +338,16 @@ class TestBiblio(unittest.TestCase):
         biblio.add_bibtex(ENTRY)  # the same paper: merged
         self.assertEqual(len(biblio.entries), 1)
 
+    def test_same_key_title_by_case(self):
+        # titles that differ only by case or braces are the same title
+        biblio = biblio_of(ENTRY)
+        biblio.add_bibtex(ENTRY.replace('{One}', '{{ONE}}'))
+        self.assertEqual(len(biblio.entries), 1)
+        self.assertEqual(biblio.entries[0]['title'], 'One')
+        # the same paper with another field value is not folded into it
+        with self.assertRaises(DuplicateKeyError):
+            biblio.add_bibtex(ENTRY.replace('2000}', '2001}'))
+
     def test_update_key_ignores_case(self):
         # keys are compared ignoring case: a key template with capitals used
         # to give the key of another entry (Author2000 for author2000)

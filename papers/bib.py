@@ -85,20 +85,30 @@ def append_abc(key, keys=[]):
     'Author2000c'
     >>> append_abc('Author2000', ['Author2000', 'Author2000b'])
     'Author2000c'
+    >>> append_abc('Author2000B')
+    'Author2000C'
+    >>> append_abc('Author2000z')
+    'Author2000za'
     """
-    letters = 'abcdefghijklmnopqrstuvwxyz'
+    alphabet = 'abcdefghijklmnopqrstuvwxyz'
     keys = {k.lower() for k in keys}  # keys are compared ignoring case
 
-    # a letter after a digit is a suffix of this function (Author2000b)
-    if len(key) > 1 and key[-1] in letters and key[-2].isdigit():
-        letters = letters[letters.index(key[-1])+1:]
-        key = key[:-1]
+    # a letter after a digit is a suffix of this function (Author2000b), in
+    # either case
+    last = key[-1:]
+    if len(key) > 1 and last.lower() in alphabet and key[-2].isdigit():
+        letters = alphabet[alphabet.index(last.lower())+1:]
+        if last.isupper():
+            letters = letters.upper()
+        base = key[:-1]
     else:
-        letters = letters[1:] # start at b
+        letters = alphabet[1:] # start at b
+        base = key
 
-    for l in letters:
-        if (key+l).lower() not in keys:
-            return key+l
+    # no letter left (after z): a second letter (Author2000za)
+    for k in [base + l for l in letters] + [key + l for l in alphabet]:
+        if k.lower() not in keys:
+            return k
     raise ValueError(f'{key}: no free key with a letter suffix')
 
 
@@ -307,9 +317,16 @@ class Biblio:
             raise PapersExit(f'{new}: another entry of the library has this key')
         old = e.key
         set_entry_key(e, new)
-        if keep_old:
-            ids = [i.strip() for i in get_entry_val(e, 'ids', '').split(',') if i.strip()]
-            e['ids'] = ', '.join([i for i in ids if i.lower() != new.lower()] + [old])
+        # ids: never the key itself, and each former key once
+        ids = [i.strip() for i in get_entry_val(e, 'ids', '').split(',') if i.strip()]
+        kept = [i for i in ids if i.lower() != new.lower()]
+        if keep_old and old.lower() not in {i.lower() for i in kept} | {new.lower()}:
+            kept.append(old)
+        if kept != ids:
+            if kept:
+                e['ids'] = ', '.join(kept)
+            else:
+                del e['ids']
 
     @property
     def loaded(self):
@@ -437,8 +454,10 @@ class Biblio:
                 logger.info('key conflict: {} => {}'.format(get_entry_val(entry, 'ID', ''), newkey))
                 set_entry_key(entry, newkey)
 
-            elif get_entry_val(existing_same_key, 'title', '') == get_entry_val(entry, 'title', '') \
-                    and same_paper(existing_same_key, entry, self.distinct).kind == SAME:
+            elif same_paper(existing_same_key, entry, self.distinct).kind == SAME \
+                    and Merge([existing_same_key, entry], relative_to=self.relative_to).is_exact():
+                # the same paper with nothing to decide, as for "already in library" (equivalent
+                # values, such as titles that differ only by case or braces, are no difference)
                 logger.info('exact duplicate')
                 # keep the files of the new entry
                 files = self.get_files(existing_same_key) + self.get_files(entry)
@@ -449,7 +468,7 @@ class Biblio:
 
             else:  # (with update_key, the key generated above is not in the library)
                 raise DuplicateKeyError(f'{get_entry_val(entry, "ID", "")}: this key is already in the library, '
-                                        'for another paper: pass -u/--update-key to generate a new key, '
+                                        'for another paper or another version of it: pass -u/--update-key to generate a new key, '
                                         'or --key KEY')
 
         else:
@@ -796,6 +815,18 @@ class Biblio:
         if len(updates):
             logger.info(f"{len(updates)} entry files were updated")
         self.relative_to = relative_to
+        return updates
+
+    def relative_links(self):
+        """the absolute links of a library with relative links rewritten
+        relative to the bibtex directory (a link to another drive on Windows
+        stays absolute). Return the [(old, new)] file fields that changed."""
+        updates = []
+        for e in self.entries:
+            if any(os.path.isabs(f) for f in parse_file(get_entry_val(e, 'file', ''))):
+                update = update_file_path(e, self.relative_to, self.relative_to)
+                if update is not None:
+                    updates.append(update)
         return updates
 
 

@@ -70,7 +70,8 @@ def _given_tokens(given):
 
 
 def _given_compatible(g1, g2):
-    "John / J. / J. D. / John David: each word equal, or an initial of the other"
+    """John / J. / J. D. / John David: each word equal, or an initial of the
+    other; words beyond the shorter name are not compared (J. and John Quincy)"""
     for x, y in zip(_given_tokens(g1), _given_tokens(g2)):
         if x == y:
             continue
@@ -156,7 +157,7 @@ class FieldMerge:
         self._value = None
         if not present:
             self.choice = 0
-            self._value = original[0] if original[0] is not None else ''
+            self._value = original[0]  # an empty field of the target is kept, of another entry not added
             self.status = SAME
             return
         self.choice = 0 if target is not None else next(i for i, v in enumerate(values) if v is not None)

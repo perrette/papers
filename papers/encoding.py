@@ -89,5 +89,6 @@ def standard_name(author):
 
 
 def family_names(author_field):
-    authors = standard_name(author_field).split(' and ')
-    return [nm.split(',')[0] for nm in authors]
+    "the family names of an author field (names and commas inside braces are not split)"
+    authors = split_depth0(standard_name(author_field), r'\s+and\s+')
+    return [split_depth0(nm, r',')[0] for nm in authors]

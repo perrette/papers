@@ -99,6 +99,12 @@ class TestSafeFileNames(unittest.TestCase):
         fmt = Format(template='{journal}/{author}')
         self.assertEqual(fmt({'author': 'Nul', 'journal': 'con.x'}), 'con-.x/nul-')
 
+    def test_no_journal(self):
+        # no 'None' folder: an empty folder of the template is left out
+        fmt = Format(template='{journal}/{author}_{year}')
+        self.assertEqual(fmt({'author': 'Doe, J.', 'year': '2000'}), 'doe_2000')
+        self.assertEqual(Format(template='{author}{journal}', kind='key')({'author': 'Doe, J.'}), 'doe')
+
     def test_keys_unchanged(self):
         fmt = Format(template='{journal}', kind='key')
         self.assertEqual(fmt({'journal': 'a:b'}), 'a:b')
@@ -121,3 +127,18 @@ class TestSafeFileNames(unittest.TestCase):
         for name in names:
             self.assertLessEqual(len(name.split('/')[1].encode()), MAX_NAME_BYTES + 2)
         self.assertEqual(len(set(names)), 3)
+
+
+class TestSlugTable(unittest.TestCase):
+
+    def test_unidecode_whatever_the_slugify_backend(self):
+        # python-slugify takes text-unidecode when it cannot import Unidecode
+        # (another slug for some characters: x-x for x˯x); papers always uses Unidecode
+        import sys
+        from unittest import mock
+        from papers.filename import make_template_fields, slugify
+        with mock.patch.dict(sys.modules, {'unidecode': None}):
+            self.assertEqual(make_template_fields({'title': 'x˯x', 'author': 'D˯e'})['title'], 'xx')
+            self.assertEqual(make_template_fields({'title': 'x˯x', 'author': 'D˯e'})['author'], 'de')
+        # the slug of python-slugify with Unidecode, apostrophes included
+        self.assertEqual(slugify("l'objet Объект Хрущёв µm"), 'l-objet-obekt-khrushchev-mm')
