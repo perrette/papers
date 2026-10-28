@@ -316,9 +316,10 @@ def add_operations(config, n, ops):
 
 
 def prune(config, st):
+    """drop the oldest steps beyond history-size, and remove the pieces and
+    files that no step needs any more (also with history-size 0, no limit:
+    then no step is dropped)"""
     limit = _limit(config, st)
-    if not limit:
-        return
     dropped = st.prune(limit, discard=journal.to_system_trash)
     if dropped:
         logger.info(f'{len(dropped)} old step(s) dropped from the history '

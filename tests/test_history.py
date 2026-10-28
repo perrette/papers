@@ -356,6 +356,13 @@ class TestHistoryCommand(LibraryTest):
         self.assertNotIn(ids[0], self.out('history --all'))
         self.assertIn('no history yet', self.out('history'))
 
+    def test_bibtex_without_library(self):
+        # a bibtex given with --bibtex, without library: its history, as undo has it
+        Path(self.path('refs.bib')).write_text('@article{a2000,\n title = {A},\n year = {2000}\n}\n')
+        self.papers('tag a2000 --add x --bibtex refs.bib')
+        out = self.papers('history --bibtex refs.bib', sp_cmd='check_output')
+        self.assertRegex(out, r'> [0-9a-f]{8} papers tag a2000 --add x --bibtex refs.bib')
+
     def test_remove_keeps_the_history_of_a_copy(self):
         self.add('one2000')
         shutil.copytree(self.path('lib'), self.path('copy'))

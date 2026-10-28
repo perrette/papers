@@ -136,6 +136,7 @@ def remove_history(config, yes=False, id=None):
         return
     project.remove()
     print(f'removed {what}')
+    backup.prune(config, project.store)  # its pieces and files, unless another library keeps them
 
 
 def _size(size):
@@ -217,6 +218,9 @@ def _show_all(config):
 def historycmd(parser, o, config):
     if o.cmd == 'backup':
         logger.warning('`papers backup` is deprecated: use `papers history`')
+    if getattr(o, 'bibtex', None) is not None:  # a bibtex given (also without library), as for undo
+        from papers.cli.common import check_install
+        config = check_install(parser, o, config, bibtex_must_exist=False)
     if o.remove is not None:
         return remove_history(config, yes=o.yes, id=o.remove or None)
     if o.all:
