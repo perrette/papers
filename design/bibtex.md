@@ -33,7 +33,9 @@ The reference conformance test for reading and writing is the pair
 - A file that is not valid UTF-8 cannot be loaded: the command stops with
   an error.
 - `.papers/distinct.json` (section 9.4) is also written as UTF-8 with `\n`
-  line endings.
+  line endings, and read as UTF-8 (a byte order mark is dropped).
+
+Tests: tests/test_spec_bibtex.py::TestEncodingAndLineEnds::test_line_ends_read_and_written_as_lf, tests/test_spec_bibtex.py::TestEncodingAndLineEnds::test_invalid_utf8_stops, tests/test_unchanged_save.py::TestReadWrite::test_byte_order_mark, tests/test_spec_bibtex.py::TestEncodingAndLineEnds::test_byte_order_mark_of_an_added_bibtex, tests/test_spec_bibtex.py::TestEncodingAndLineEnds::test_byte_order_mark_from_the_editor, tests/test_spec_bibtex.py::TestEncodingAndLineEnds::test_distinct_json_utf8_lf, tests/test_spec_bibtex.py::TestDistinctFile::test_reading
 
 ## 2. Reading
 
@@ -53,6 +55,8 @@ A bibtex text is a sequence of blocks:
 The `@` keyword is matched without regard to case (`@ARTICLE`, `@String`,
 `@Comment` all work). A block can be delimited by `{...}` or `(...)`.
 Whitespace (spaces, tabs) is allowed between `@type` and the delimiter.
+
+Tests: tests/test_spec_bibtex.py::TestBlocks::test_block_kinds, tests/test_spec_bibtex.py::TestBlocks::test_keyword_case_delimiters_whitespace, tests/test_sort_format.py::TestSortFormat::test_sort_format_unchanged
 
 ### 2.2 Entries
 
@@ -86,6 +90,8 @@ Whitespace (spaces, tabs) is allowed between `@type` and the delimiter.
     without braces (section 3.3).
 - The values are not decoded: LaTeX (`{\"u}`, `\&`) stays as written.
 
+Tests: tests/test_spec_bibtex.py::TestEntries::test_type_key_field_names, tests/test_spec_bibtex.py::TestEntries::test_entry_without_fields, tests/test_spec_bibtex.py::TestEntries::test_values, tests/test_spec_bibtex.py::TestEntries::test_values_not_decoded, tests/test_parsing.py::TestFieldNames::test_capitals
+
 ### 2.3 `@string` and `@preamble`
 
 - `@string{name = value}`: the name keeps its case; the value is read as
@@ -102,6 +108,8 @@ Whitespace (spaces, tabs) is allowed between `@type` and the delimiter.
 - `@preamble{...}`: the text between the delimiters is kept as written,
   without trimming.
 
+Tests: tests/test_spec_bibtex.py::TestStringsAndPreamble::test_references_resolved, tests/test_spec_bibtex.py::TestStringsAndPreamble::test_later_string_wins, tests/test_spec_bibtex.py::TestStringsAndPreamble::test_written
+
 ### 2.4 Comments
 
 - An explicit comment `@comment{text}`: the text is kept, trimmed of
@@ -115,6 +123,8 @@ Whitespace (spaces, tabs) is allowed between `@type` and the delimiter.
   block wherever it is, so `% @article{x, ...}` is an entry. An `@` not
   followed by a word and a delimiter (an e-mail address) is text.
 - Comments are kept and written back (section 3.1 says where).
+
+Tests: tests/test_spec_bibtex.py::TestComments::test_explicit_comment_trimmed, tests/test_spec_bibtex.py::TestComments::test_implicit_comment_one_block, tests/test_spec_bibtex.py::TestComments::test_percent_is_not_special
 
 ### 2.5 Failed blocks
 
@@ -130,8 +140,14 @@ Kinds of failed blocks:
 | Kind | Cause |
 |---|---|
 | syntax error | unbalanced braces or quotes, a missing `=` or `,`, end of file inside a block |
-| field given twice | two fields with the same name *as written* (`title` twice) |
-| duplicate key | an entry (or string) whose key, compared *with* case, is that of an earlier one |
+| field given twice | two fields whose names are equal without case (`title` twice, or `Title` and `title`) |
+| duplicate key | an entry whose key, compared without case, is that of an earlier entry; a string whose name is exactly that of an earlier string |
+
+The warning gives the reason as `syntax error`, `a field given twice:
+'title'` (the names, as bibtexparser prints them) or `a key given twice
+(keys ignore case): 'smith2000'`.
+BibTeX ignores the case of field names and keys; papers reads them the
+same way (section 2.6 for keys).
 
 Rules of the parser that decide where a failed block ends:
 
@@ -152,25 +168,27 @@ Rules of the parser that decide where a failed block ends:
   must keep the raw text of what it cannot read, and must read correctly
   what papers writes.
 
-Two consequences of these rules:
+A consequence of these rules: the warning line written above a failed
+block (section 3.2) is removed when the file is read again, whether it is
+read as an implicit comment or into the raw text of the failed block
+before it, so that it is not repeated at each save. A file written by
+papers is written back unchanged.
 
-- Two fields whose names differ only by case (`Title` and `title`) are
-  *not* "given twice" (the check is made before papers lower-cases the
-  names): the entry is read, with two `title` fields. A lookup of the
-  field gives the last one; both are written (see the open questions).
-- The warning line written above a failed block (section 3.2) is removed
-  when the file is read again, whether it is read as an implicit comment
-  or into the raw text of the failed block before it, so that it is not
-  repeated at each save. A file written by papers is written back
-  unchanged.
+A pool with a failed block refuses writes (exchange.md).
+
+Tests: tests/test_spec_bibtex.py::TestFailedBlocks::test_kinds_and_warning, tests/test_spec_bibtex.py::TestFailedBlocks::test_at_starts_a_block, tests/test_spec_bibtex.py::TestFailedBlocks::test_written_back_unchanged, tests/test_spec_bibtex.py::TestFailedBlocks::test_field_names_and_keys_ignore_case, tests/test_unreadable.py::TestUnreadable::test_case, tests/test_unreadable.py::TestUnreadable::test_text_kept, tests/test_unreadable.py::TestUnreadable::test_added_bibtex_warns, tests/test_unchanged_save.py::TestReadWrite::test_unreadable_blocks_stay_as_they_are
 
 ### 2.6 Duplicate keys
 
-- Two entries with exactly the same key: the second is a failed block
-  (kept raw, ignored).
-- Two entries whose keys differ only by case (`Smith2000`, `smith2000`):
-  both are read as entries. papers itself never creates this: it compares
-  keys without case everywhere else (selection, new keys, renames).
+- Two entries whose keys are equal without case (`Smith2000` twice, or
+  `Smith2000` and `smith2000`): the first is read, the second is a failed
+  block (kept raw, ignored). papers compares keys without case everywhere
+  (selection, new keys, renames).
+- `@string` names keep their case: two strings with exactly the same name
+  give a failed block; names that differ only by case are both read
+  (section 2.3).
+
+Tests: tests/test_spec_bibtex.py::TestDuplicateKeys::test_first_is_read, tests/test_spec_bibtex.py::TestDuplicateKeys::test_strings, tests/test_unreadable.py::TestUnreadable::test_case
 
 ### 2.7 Parse cache
 
@@ -180,6 +198,8 @@ the cache never changes the result; a parse with the cache gives the same
 blocks, values and failed blocks as a parse without it. Whether to have a
 cache is **free**. Its format and the cutting into pieces are in
 history.md.
+
+Tests: tests/test_parsecache.py::TestParseCache::test_cases, tests/test_parsecache.py::TestParseCache::test_files_of_the_tests, tests/test_parsecache.py::TestParseCache::test_not_cached_when_a_block_fails
 
 ## 3. Writing
 
@@ -211,6 +231,8 @@ history.md.
 So a comment written above an entry stays above it when the entries are
 reordered, and an explicit `@comment` above an entry moves with the
 entry, not with the other comments.
+
+Tests: tests/test_spec_bibtex.py::TestBlockOrder::test_order, tests/test_sort_format.py::TestSortFormat::test_sort_format_unchanged, tests/test_sort_format.py::TestSortFormat::test_same_order_as_bibtexparser
 
 ### 3.2 Layout of each block
 
@@ -259,6 +281,8 @@ with the `\n` of the last block and no blank line after it, except when
 the last block is a failed block: then the file ends with one empty line.
 A library with no blocks is written as an empty file. The reference test
 `tests/sortformat/varied.expected.bib` shows both cases.
+
+Tests: tests/test_spec_bibtex.py::TestLayout::test_entry, tests/test_spec_bibtex.py::TestLayout::test_entry_without_fields, tests/test_spec_bibtex.py::TestLayout::test_multiline_value, tests/test_spec_bibtex.py::TestLayout::test_other_blocks_and_separators, tests/test_spec_bibtex.py::TestLayout::test_failed_block_last, tests/test_spec_bibtex.py::TestLayout::test_empty_library, tests/test_spec_bibtex.py::TestLayout::test_warning_line_removed_at_reading, tests/test_spec_bibtex.py::TestFailedBlocks::test_written_back_unchanged, tests/test_sort_format.py::TestSortFormat::test_sort_format_unchanged, tests/test_sort_format.py::TestSortFormat::test_save_unchanged
 
 ### 3.3 Values
 
@@ -327,6 +351,8 @@ Written by papers:
 (The `file` field is kept as written until papers rewrites the links of
 the entry, see section 5.)
 
+Tests: tests/test_spec_bibtex.py::TestValues::test_braces, tests/test_spec_bibtex.py::TestValues::test_bare_value_that_cannot_stay_bare, tests/test_spec_bibtex.py::TestValues::test_value_set_by_papers, tests/test_spec_bibtex.py::TestValues::test_example, tests/test_spec_bibtex.py::TestValues::test_merge_keeps_bare, tests/test_spec_bibtex.py::TestEntries::test_values, tests/test_merge_dup_unit.py::test_bare_value_stays_bare
+
 ### 3.4 When the file is written
 
 - Every save sorts and formats the whole library as above.
@@ -339,6 +365,8 @@ the entry, see section 5.)
   it, then renamed), keeping its permissions; a symbolic link is
   followed. These are **free** as to the method, but a reader must never
   see a partial file.
+
+Tests: tests/test_spec_bibtex.py::TestWhenWritten::test_unchanged_text_not_written, tests/test_spec_bibtex.py::TestWhenWritten::test_changed_on_disk_refused, tests/test_bib_fix.py::TestBiblio::test_save_without_change_does_not_write, tests/test_safe_writes.py::TestChangedSinceRead::test_refused, tests/test_safe_writes.py::TestChangedSinceRead::test_same_content, tests/test_safe_writes.py::TestWriteAtomic::test_write, tests/test_safe_writes.py::TestWriteAtomic::test_symlink
 
 ### 3.5 What is normalized
 
@@ -359,8 +387,7 @@ fields only through commands:
 - `check --format-name` and `list --fetch`: author and editor names
   rewritten as `Family, Given` (see below).
 - `check --fix-doi`: the DOI cleaned of prefixes and suffixes, with the
-  DOI parser of the PDF text extraction (not specified in these files;
-  see README.md, open questions).
+  DOI parser of the PDF text extraction (section 3.6, informative).
 - `check --encoding latex|unicode`: section 4.
 - `check --key-ascii`: the key transliterated to ASCII.
 
@@ -377,6 +404,43 @@ depth 0, so a `{...}` group is one word whatever it contains.
    it is written as the last word, `, `, and the other words joined by
    one space: `John {van der Berg}` gives `{van der Berg}, John`.
 4. The parts are joined with ` and `.
+
+Tests: tests/test_spec_bibtex.py::TestNormalized::test_only_layout, tests/test_spec_bibtex.py::TestNormalized::test_name_formatting, tests/test_entries.py::test_standard_name_braces, tests/test_check.py::TestCheckFormatName::test_check_format_name, tests/test_bib_fix.py::TestFixEntry::test_key_ascii
+
+### 3.6 The DOI parser of `check --fix-doi` (informative)
+
+This parser is a heuristic, written for the text of PDF files; it is not
+contract. It is described here so that another implementation can give
+similar results. `check --fix-doi` gives it the text `doi:` + the `doi`
+field (papers/extract.py, `parse_doi`):
+
+1. The text is cleaned: zero-width spaces (U+200B) and soft hyphens
+   (U+00AD) removed, en and em dashes replaced by `-`, the control
+   character U+0002 replaced by `/`; then lower-cased. A DOI cut by a line
+   break is joined in three cases: after `10.` before the registrant
+   (`10.\n1073/...`), after `10.1073/pnas.` before a digit, and after a
+   `-` in the suffix.
+2. Candidates are the matches of `(?<![\w.\-])(10\.\d{4,9}/[-._;()/:a-z0-9]+)`,
+   in order, without repeats. Without match, `arxiv:\s*(\d{4}\.\d{4,5})`
+   gives `10.48550/arXiv.<id>`; otherwise the parse fails.
+3. DOIs of data repositories (prefixes `10.5281`, `10.5061`, `10.6084`,
+   `10.5066`, `10.17882`, `10.1594`, `10.5067`) come after the others.
+   Among several candidates, one that also appears in a URL
+   (`www.<name>.org/<path>/`, `doi.org/`, `dx.doi.org/`) is preferred; a
+   first candidate ending in `.s<digits>` (a supplement) gives way to a
+   candidate that starts with the same text without that ending.
+4. Each candidate is cut at the first of `/-/dcsupplemental`, `/-/dc`,
+   `(0123456789`, `.pdf`, `preprint`, `received`, `published`, `edited`,
+   `advance`, `full`, `abstract`, `-supplement`, `supplement` found after
+   its first character (a word must follow a letter, digit, `.`, `-`, `_`
+   or `/`); trailing `.` and `:` are removed, then trailing `)` while the
+   DOI has more `)` than `(`. A candidate of 8 characters or fewer is
+   dropped.
+5. The first candidate left is the DOI. `check --fix-doi` writes it (in
+   lower case) when it differs from the field other than by case; when no
+   DOI is found the field is kept, with a warning.
+
+Tests: tests/test_check.py::TestCheckFixDoi::test_check_fix_doi, tests/test_bib_fix.py::TestFixEntry::test_fix_doi, tests/test_check.py::TestFixEntryBadDoi::test_other_fixes_still_applied, tests/test_extract_unit.py::TestParseDoi::test_strips_doi_prefix, tests/test_extract_unit.py::TestParseDoi::test_strips_unbalanced_trailing_paren, tests/test_extract_unit.py::TestParseDoiCandidates::test_prefers_article_doi_over_data_repository, tests/test_extract_unit.py::TestTextDoiCandidates::test_doi_glued_to_a_word_or_number_is_ignored
 
 ## 4. LaTeX and Unicode
 
@@ -412,6 +476,8 @@ Steps, in order:
 The result is not always right (`T\^ete` gives `Tet̂e`; `\url{x}` gives
 `r̆lx`), but it is the reference: see the open questions.
 
+Tests: tests/test_spec_bibtex.py::TestLatexToUnicodeTable::test_steps, tests/test_spec_bibtex.py::TestLatexToUnicodeTable::test_tables, tests/test_latexenc.py::TestLatexToUnicode::test_simple_accents, tests/test_latexenc.py::TestLatexToUnicode::test_crappy_format, tests/test_latexenc.py::TestLatexToUnicode::test_crappy2_combining_accents, tests/test_latexenc.py::TestLatexToUnicode::test_trailing_combining_char_discarded, tests/test_latexenc.py::TestLatexToUnicode::test_no_backslash_unchanged, tests/test_latexenc.py::TestLatexToUnicode::test_removes_braces
+
 ### 4.2 Unicode to LaTeX (`check --encoding latex`)
 
 **Contract** for the output of this command. Each character of the value
@@ -423,6 +489,8 @@ It is applied to every field except `abstract`, `file`, `doi`, `url`,
 `eprint`, `isbn`, `issn`, `ids`. It is not idempotent on a value already in
 LaTeX (a backslash is encoded again).
 
+Tests: tests/test_spec_bibtex.py::TestUnicodeToLatex::test_check_encoding_latex, tests/test_bib_fix.py::TestFixEntry::test_encoding_latex, tests/test_latexenc.py::TestStringToLatex::test_preserves_spaces_and_braces
+
 ### 4.3 LaTeX to text (`check --encoding unicode`, and `add` of a PDF)
 
 A full LaTeX-to-text conversion of every field value: accent commands and
@@ -430,8 +498,14 @@ escapes become Unicode characters, braces are removed, `~` becomes a
 no-break space, `--` and `---` become en and em dashes, `\url{x}` becomes
 `x`, formatting commands are dropped (`\textit{x}` gives `x`), math
 (`$...$`) is kept as written. Applied by `check --encoding unicode` and to
-the bibtex of a paper added from a PDF (fetched or extracted metadata). The
-exact output is that of a third-party converter; see the open questions.
+the bibtex of a paper added from a PDF (fetched or extracted metadata).
+
+**Free.** The exact output is that of the pylatexenc library (through
+bibtexparser) and may change with its version. It is not contract: papers
+writes it once and does not read it back nor compare it (also for the
+RIS and CSL-JSON exports, formats.md).
+
+Tests: none (free)
 
 ## 5. The `file` field
 
@@ -452,10 +526,11 @@ reads the files of Mendeley and JabRef (`Full Text:files/x.pdf:application/pdf`)
 
 - Empty links (`;;`, or text that is only whitespace) are skipped.
 - A link whose path is empty (`::pdf`) is skipped with a warning.
-- The path is not trimmed: whitespace around it is part of it.
+- Each path is trimmed of surrounding whitespace (`a.pdf; b.pdf` gives
+  `a.pdf` and `b.pdf`).
 - There is no escaping: a path with `;` cannot be stored, and `\:` or `\;`
   (JabRef escapes) are read literally. A two-part link `C:\x.pdf` is read
-  as the path `C`.
+  as the path `C`; papers writes `:C:\x.pdf:pdf`, read back as `C:\x.pdf`.
 
 **Contract.** papers writes each link as `:path:type`, where `type` is the
 file extension without the dot, as written (`PDF` stays `PDF`; the part
@@ -469,6 +544,8 @@ file = {:files/smith2000.pdf:pdf;:../other/notes.txt:txt;:files/README:}
 A file named `x.tar.gz` has type `gz`. A file whose name starts with a
 dot and has no other dot has an empty type.
 
+Tests: tests/test_spec_bibtex.py::TestFileSyntax::test_reading, tests/test_spec_bibtex.py::TestFileSyntax::test_writing, tests/test_entries.py::TestBibtexFileEntry::test_parse_file, tests/test_entries.py::TestBibtexFileEntry::test_parse_files_trimmed, tests/test_entries.py::TestBibtexFileEntry::test_parse_file_colon_in_path, tests/test_entries.py::TestBibtexFileEntry::test_parse_file_empty_path_ignored, tests/test_entries.py::TestBibtexFileEntry::test_format_files
+
 ### 5.2 Relative and absolute paths
 
 - A relative path is relative to the directory of the bibtex file. An
@@ -477,21 +554,27 @@ dot and has no other dot has an empty type.
   of the library (library.md):
   - `relative`: the path relative to the bibtex directory, normalized
     (`..` used to reach files outside it: `../other/notes.txt`; `.` and
-    redundant separators removed). Symbolic links are not resolved.
+    redundant separators removed). Symbolic links are not resolved. On
+    Windows, a file on another drive than the bibtex keeps its absolute
+    path.
   - `absolute`: the absolute path, normalized (`..` resolved as text,
     symbolic links not resolved).
 - When papers writes the links of an entry: on any change of its files
   (add, attach, detach, rename, merge), the whole field is rewritten from
   the parsed paths, so descriptions and MIME types are lost and the
   current `paths` setting applies to all its links.
-- At load, with `paths` = `absolute`, the links of all entries are
-  rewritten as absolute (and the bibtex is saved even if the command
-  changes nothing else). With `paths` = `relative`, nothing is rewritten
-  at load: absolute links stay until the entry's files change or `papers
-  config paths relative` converts all links (see the open questions).
+- At load, the links are rewritten to the `paths` setting, in memory:
+  with `absolute`, the links of all entries; with `relative`, the links of
+  the entries that have an absolute link (the whole field of such an
+  entry). The bibtex is written with them at the next command that saves
+  it, even if that command changes nothing else.
 - Links are kept in their order. When papers sets the links of an entry,
-  a path given twice (same absolute path as text) is kept once, at its
-  first position. If no link is left, the field is removed.
+  a file given twice is kept once, at its first position; paths are
+  compared normalized (resolved against the bibtex directory), so
+  `files/./a.pdf` and `files/a.pdf` are one link. If no link is left, the
+  field is removed.
+
+Tests: tests/test_spec_bibtex.py::TestFilePaths::test_relative_to_bibtex, tests/test_spec_bibtex.py::TestFilePaths::test_one_file_however_written, tests/test_spec_bibtex.py::TestFilePaths::test_no_link_left, tests/test_spec_bibtex.py::TestFilePaths::test_rewritten_at_load, tests/test_library_unit.py::TestGetBiblio::test_absolute_links_made_relative, tests/test_library_unit.py::TestGetBiblio::test_relative_links_left_alone, tests/test_library_unit.py::TestGetBiblio::test_link_on_another_drive_stays_absolute, tests/test_unchanged_save.py::TestUnchangedSave::test_converted_links_are_saved
 
 ## 6. The `keywords` field and tags
 
@@ -505,14 +588,18 @@ documentation (`docs/listing.md`).
   `a/b/c` are `a` and `a/b`.
 - When papers sets tags it writes them joined by `, ` (comma and space).
   When no tag is left, the field is removed.
-- Add: the new tags are appended after the existing ones, in the order
-  given, skipping those already present and repeats; the existing tags
-  keep their order. Comparison is exact (case-sensitive).
-- Remove: the tags equal (case-sensitive) to a given tag are removed; the
-  others keep their order.
-- Rename `OLD` to `NEW` (whole library): a tag equal to `OLD` becomes
-  `NEW`, a tag starting with `OLD/` gets `NEW/` in its place; then
-  repeats are removed, keeping the first. Exact, case-sensitive.
+- Add, remove and rename compare tags without case, as matching does
+  (`Climate` and `climate` are one tag):
+  - Add: the new tags are appended after the existing ones, in the order
+    given, skipping those already present and repeats; the existing tags
+    keep their order and their spelling (adding `climate` to an entry
+    with `Climate` changes nothing).
+  - Remove: the tags equal to a given tag are removed; the others keep
+    their order.
+  - Rename `OLD` to `NEW` (whole library): a tag equal to `OLD` becomes
+    `NEW`, a tag starting with `OLD/` gets `NEW/` in place of its first
+    characters; then repeats are removed, keeping the first. A rename can
+    change the case of a tag (`--rename climate Climate`).
 - Matching (`list --tag PATTERN`): the tag and the pattern are compared in
   lower case; a trailing `/` of the pattern is dropped; the pattern is a
   shell-style pattern (`*`, `?`, `[...]`) matched against the whole tag;
@@ -526,6 +613,8 @@ documentation (`docs/listing.md`).
 
 The fields are not merged as sets in a two-way merge: two `keywords`
 values that differ are a conflict (section 10).
+
+Tests: tests/test_spec_bibtex.py::TestTags::test_syntax, tests/test_spec_bibtex.py::TestTags::test_add_remove_rename_ignore_case, tests/test_spec_bibtex.py::TestTags::test_counting, tests/test_spec_bibtex.py::TestTags::test_matching, tests/test_spec_bibtex.py::TestTwoWayMerge::test_keywords_conflict, tests/test_entries.py::test_tags_without_case, tests/test_entry_cmds.py::TestTag::test_add, tests/test_entry_cmds.py::TestTag::test_rm, tests/test_entry_cmds.py::TestTag::test_rename_merges, tests/test_entry_cmds.py::TestNestedTags::test_list_tag, tests/test_entry_cmds.py::TestNestedTags::test_rename, tests/test_entry_cmds.py::TestNestedTags::test_rename_nested
 
 ## 7. Keys: `ids` and `crossref`
 
@@ -544,12 +633,17 @@ biblatex key alias field). papers:
   (for the report of changes);
 - fills it in two cases:
   - `edit KEY --key NEW --keep-old-key`: the former key is appended to
-    `ids`, and a part equal to the new key (without case) is removed from
-    it. Without `--keep-old-key`, `ids` is not changed.
+    `ids`, unless `ids` has it already (without case) or it is the new
+    key apart from case. With or without `--keep-old-key`, a part equal
+    to the new key (without case) is removed from `ids`; the field is
+    removed when no part is left. (`check --fix-key` changes keys the same
+    way.)
   - `check --duplicates`: the keys of the merged entries go to the `ids`
     of the entry that is kept (section 10.5).
 - does not send it to pools: each side of an exchange keeps its own
   `ids` (exchange.md).
+
+Tests: tests/test_spec_bibtex.py::TestIds::test_read_and_selected, tests/test_spec_bibtex.py::TestIds::test_keep_old_key_written, tests/test_entry_cmds.py::TestEditSet::test_keep_old_key, tests/test_entry_cmds.py::TestEditSet::test_keep_old_key_once, tests/test_duplicates.py::TestCheckOnDuplicate::test_ids_appended_without_repetition
 
 ### 7.2 Key validity on rename
 
@@ -558,15 +652,21 @@ contains whitespace or one of `, { } " # % ~ = ( ) \`, and a key that
 another entry has (compared without case). (The key template is in
 library.md.)
 
+Tests: tests/test_spec_bibtex.py::TestKeyValidity::test_refused, tests/test_entry_cmds.py::TestEditSet::test_key_refused
+
 ### 7.3 `crossref` follows renames
 
 At save, for each entry whose key changed during the command (the same
 entry, its old key no longer in the library, its new key not in the
 library when it was loaded), every `crossref` field equal to the old key
 (compared without case) is set to the new key. Other fields that name
-keys (`xdata`, `related`, `xref`) are not followed. Keys removed by a merge
-are not renames: a `crossref` to a merged-away key is not changed (see the
-open questions).
+keys (`xdata`, `related`, `xref`) are not followed.
+
+Keys removed by a merge are not renames, but `check --duplicates` also
+sets a `crossref` that names an entry merged into another to the key of
+that entry (the merged key goes to its `ids`, section 10.5).
+
+Tests: tests/test_spec_bibtex.py::TestCrossref::test_follows_renames, tests/test_entry_cmds.py::TestEditSet::test_key, tests/test_entry_cmds.py::TestEditSet::test_fix_key, tests/test_duplicates.py::test_crossref_follows_the_merge
 
 ## 8. Key collisions when entries are added
 
@@ -574,27 +674,39 @@ open questions).
 
 - A new key from the key template (library.md) that is already in the
   library (compared without case) gets a letter suffix.
-- Suffix rule: if the key ends with a lower-case letter `a`-`z` right after
-  a digit (`Author2000b`), that letter is taken as a previous suffix: it
-  is removed and the next letters are tried (`c`, `d`, ...). Otherwise the
-  letters `b` to `z` are tried, appended. The first key not in the library
-  (without case) is taken. If none is free, the command fails.
+- Suffix rule: if the key ends with a letter `a`-`z` or `A`-`Z` right
+  after a digit (`Author2000b`, `Author2000B`), that letter is taken as a
+  previous suffix: it is removed and the next letters of the alphabet are
+  tried, in the case of that letter (`c`, `d`, ... or `C`, `D`, ...).
+  Otherwise the letters `b` to `z` are tried, appended. Then the key
+  itself (with its last letter) followed by each of `a` to `z`. The first
+  key not in the library (without case) is taken. If none is free, the
+  command fails.
   - `Author2000` with `author2000` taken: `Author2000b`.
   - `Author2000` with `author2000` and `author2000b` taken: `Author2000c`.
-  - `Ab` with `ab` taken: `Abb` (no digit before the last letter).
+  - `Author2000B` taken: `Author2000C`.
+  - `Author2000z` taken: `Author2000za` (`Author2000Z`: `Author2000Za`).
+  - `Ab` with `ab` taken: `Abb` (no digit before the last letter); with
+    `ab` and `abb` to `abz` taken: `Aba`.
 - When the entry is in the library already (`check --auto-key`), its own
   key is not counted as taken: an entry whose key is already the template
   key keeps it (`smith2000` stays `smith2000`).
 - Adding an entry whose key is given (not from the template) and already
   used:
-  - if the existing entry has the same title (exact text) and is the same
-    paper (section 9): the added entry is not inserted; its file links are
-    added to the existing entry;
+  - if the existing entry is the same paper (section 9) and their merge
+    has nothing to decide (no conflict and no field to add, section 10.2;
+    equivalent values such as titles that differ by case are no
+    difference): the added entry is not inserted; its file links are added
+    to the existing entry;
   - otherwise the command fails ("this key is already in the library").
+  This is the path of `add --no-check-duplicate`; with the duplicate check,
+  a same paper is found and merged first (section 10).
 - An added entry that the user declared a different paper from a library
   entry (answer "not the same paper") is inserted, and its key gets a
   suffix as above if it is taken.
 - An added entry without key gets a key from the template.
+
+Tests: tests/test_spec_bibtex.py::TestKeySuffix::test_suffix_rule, tests/test_spec_bibtex.py::TestKeySuffix::test_entry_without_key, tests/test_spec_bibtex.py::TestKeySuffix::test_given_key_taken, tests/test_bib_unit.py::TestAppendAbc::test_ignores_case, tests/test_bib_unit.py::TestAppendAbc::test_upper_case_suffix, tests/test_bib_unit.py::TestAppendAbc::test_after_z, tests/test_bib_fix.py::TestFixEntry::test_auto_key_keeps_a_right_key, tests/test_bib_fix.py::TestBiblio::test_same_key_other_paper, tests/test_bib_fix.py::TestBiblio::test_same_key_title_by_case, tests/test_bib_fix.py::TestBiblio::test_same_key_same_title_merges_files, tests/test_duplicates.py::TestAddDialogue::test_n_same_key_gets_a_free_key
 
 ## 9. Entry identity: the same-paper rule
 
@@ -609,10 +721,13 @@ the exchanges with pools.
 1. empty text gives empty text;
 2. LaTeX to Unicode by table (section 4.1) (a text that is ASCII without
    `\`, `{`, `}` is unchanged by this step);
-3. transliteration to ASCII (`ü` to `u`, `ß` to `ss`, `Å` to `A`; the
-   table is that of the Unidecode project, see the open questions);
+3. transliteration to ASCII with the table of the Unidecode library
+   (`ü` to `u`, `ß` to `ss`, `Å` to `A`); papers runs with Unidecode
+   1.4.0, the same table as for the slugs of the templates (library.md);
 4. remove `{` and `}`;
 5. lower case; whitespace runs replaced by one space; trimmed.
+
+Tests: tests/test_spec_bibtex.py::TestNormalization::test_norm, tests/test_bib_unit.py::TestEntryId::test_author_id_accents, tests/test_bib_unit.py::TestEntryId::test_title_id_braces_and_spaces, tests/test_duplicates.py::TestIdentifiers::test_author_title_accents
 
 ### 9.2 Identifiers of an entry
 
@@ -639,16 +754,18 @@ the exchanges with pools.
   1,3,1,3...; sum divisible by 10) is kept. Invalid ones are ignored. The
   identifier is the set of ISBN-13s.
 - **Authors**: the `author` field split on `and` surrounded by whitespace
-  (case-sensitive, any whitespace; also inside braces, unlike the name
-  formatting of section 3.5: see the open questions). The family name of
-  each name: if it
-  contains a comma, the text before the first comma; otherwise its last
-  word, where a `{...}` group without nested braces counts as one word
+  (case-sensitive, any whitespace), at brace depth 0 as the name
+  formatting of section 3.5 (`{Barnes and Noble}` is one name). The
+  family name of each name: if it contains a comma at brace depth 0, the
+  text before the first such comma; otherwise its last word, where a
+  `{...}` group without nested braces counts as one word
   (`Jane {van der Berg}` gives `{van der Berg}`). Each family name is
   normalized (9.1); the author identifier is the normalized family names
   joined by spaces. The `editor` field is not used.
 - **Title**: `norm(title)`.
 - **Author-title**: `authors|title` when both are non-empty, else none.
+
+Tests: tests/test_spec_bibtex.py::TestIdentifiersOfAnEntry::test_doi, tests/test_spec_bibtex.py::TestIdentifiersOfAnEntry::test_arxiv, tests/test_spec_bibtex.py::TestIdentifiersOfAnEntry::test_isbn, tests/test_spec_bibtex.py::TestIdentifiersOfAnEntry::test_authors_and_title, tests/test_duplicates.py::TestIdentifiers::test_arxiv_eprint, tests/test_duplicates.py::TestIdentifiers::test_other_archive_is_not_arxiv, tests/test_duplicates.py::TestIdentifiers::test_isbn_ignored_for_chapters, tests/test_merge_dup_unit.py::TestDuplicate::test_parse_name, tests/test_merge_dup_unit.py::TestDuplicate::test_split_names_outside_braces, tests/test_merge_dup_unit.py::TestDuplicate::test_isbn_prefix, tests/test_bib_unit.py::TestEntryId::test_authortitle_id_needs_both
 
 ### 9.3 The rule
 
@@ -672,11 +789,16 @@ Consequence: an entry with a DOI and one without are compared on the next
 identifier they share, so an entry with no DOI matches by arXiv id or by
 authors and title.
 
+Tests: tests/test_spec_bibtex.py::TestSamePaperRule::test_isbn_has_no_title_guard, tests/test_spec_bibtex.py::TestSamePaperRule::test_title_guard_needs_both_titles, tests/test_duplicates.py::TestDistinct::test_recorded_and_honoured, tests/test_duplicates.py::TestIdentifiers::test_doi_case_and_prefix, tests/test_duplicates.py::TestIdentifiers::test_different_dois_are_different_papers, tests/test_duplicates.py::TestIdentifiers::test_different_arxiv_ids, tests/test_duplicates.py::TestIdentifiers::test_isbn_books, tests/test_duplicates.py::TestIdentifiers::test_isbn_different_books, tests/test_duplicates.py::TestIdentifiers::test_author_title, tests/test_duplicates.py::TestIdentifiers::test_title_without_authors_is_not_enough, tests/test_duplicates.py::TestIdentifiers::test_one_doi_only_falls_back_to_author_title, tests/test_duplicates.py::TestIdentifiers::test_order_doi_before_arxiv, tests/test_duplicates.py::TestIdentifiers::test_order_arxiv_before_author_title, tests/test_duplicates.py::TestIdentifiers::test_order_isbn_before_author_title, tests/test_duplicates.py::TestTitleGuard::test_types_and_titles_differ, tests/test_duplicates.py::TestTitleGuard::test_same_type_always_same, tests/test_duplicates.py::TestTitleGuard::test_titles_equal_after_normalization, tests/test_duplicates.py::TestTitleGuard::test_arxiv_guard
+
 ### 9.4 `distinct.json`
 
-File `.papers/distinct.json` next to the bibtex. It records pairs of
-entries that the user declared not the same paper, by identity, not by
-key, so that the file means the same in every library.
+File `.papers/distinct.json` in the library folder (the folder of
+`.papers/config.json`; for a bibtex without library, the folder of the
+bibtex), also when the bibtex is in another folder (library.md, Layout).
+It records pairs of entries that the user declared not the same paper,
+by identity, not by key, so that the file means the same in every
+library.
 
 **Contract** (format):
 
@@ -703,7 +825,9 @@ key, so that the file means the same in every library.
 - Written with an indentation of one space, keys sorted, non-ASCII
   characters escaped as `\uXXXX`, and a final newline. Written only when a
   pair was added.
-- Reading: a missing file is no pairs; a file that cannot be read is
+- Reading: as UTF-8, a byte order mark dropped, so raw UTF-8 characters
+  written by another implementation are read the same way as `\u`
+  escapes. A missing file is no pairs; a file that cannot be read is
   ignored with a warning; elements of `distinct` that are not lists of
   two are ignored.
 - A recorded side matches an entry when `doi`, `arxiv` and `isbn` are
@@ -718,6 +842,8 @@ key, so that the file means the same in every library.
   equal, in either order, to a recorded one is not added again).
 - An entry whose identifiers change later (e.g. it gains a DOI) no longer
   matches the recorded side.
+
+Tests: tests/test_spec_bibtex.py::TestDistinctFile::test_format, tests/test_spec_bibtex.py::TestDistinctFile::test_reading, tests/test_spec_bibtex.py::TestDistinctFile::test_matching, tests/test_spec_bibtex.py::TestDistinctFile::test_in_the_library_folder, tests/test_spec_bibtex.py::TestDistinctFile::test_union, tests/test_duplicates.py::TestDistinct::test_recorded_and_honoured, tests/test_duplicates.py::TestDistinct::test_identities_not_keys, tests/test_duplicates.py::TestDistinct::test_does_not_leak_to_other_entries, tests/test_duplicates.py::TestDistinct::test_update, tests/test_duplicates.py::TestCheckDialogue::test_n_remembered, tests/test_duplicates.py::TestAddDialogue::test_n, tests/test_merge_dup_unit.py::TestDuplicate::test_distinct_unreadable, tests/test_merge_dup_unit.py::TestDuplicate::test_distinct_add_without_identity, tests/test_merge_dup_unit.py::TestDuplicate::test_side_matches_empty, tests/test_bib_fix.py::TestBiblio::test_save_keeps_a_backup_and_the_distinct_pairs
 
 ### 9.5 Finding duplicates
 
@@ -738,6 +864,8 @@ key, so that the file means the same in every library.
   goes with the first of them. The order in which groups are presented is
   **free**.
 
+Tests: tests/test_spec_bibtex.py::TestFindingDuplicates::test_add_candidates, tests/test_spec_bibtex.py::TestFindingDuplicates::test_groups, tests/test_duplicates.py::TestGroups::test_copy_without_doi_goes_with_one_entry, tests/test_duplicates.py::TestGroups::test_ask_group, tests/test_duplicate_equivalence.py::TestEquivalence::test_find_duplicates, tests/test_duplicate_equivalence.py::TestEquivalence::test_duplicate_groups
+
 ## 10. Merging entries that are the same paper (two-way)
 
 ### 10.1 Target
@@ -749,6 +877,8 @@ in the library) with the other entries.
 - `check --duplicates`: the first entry of the group (most fields).
 - In the dialogue, the user can make another entry the target (`t N`).
 
+Tests: tests/test_duplicates.py::TestMerge::test_model, tests/test_duplicates.py::TestMerge::test_with_target, tests/test_duplicates.py::TestCheckDialogue::test_t, tests/test_duplicates.py::TestGroups::test_copy_without_doi_goes_with_one_entry
+
 ### 10.2 Fields
 
 All field names of all entries, except `file` and `ids`, plus the entry
@@ -757,12 +887,14 @@ empty or whitespace-only value counting as absent:
 
 | Case | Status | Value |
 |---|---|---|
-| no entry has a value | same | the target's value as written (possibly empty), or empty if absent |
+| no entry has a value | same | the target's value as written (possibly empty); no field if the target does not have it (an empty field of another entry is not added) |
 | all values present are equivalent, target has one | same | the preferred value (10.3) |
 | all values present are equivalent, target has none | added (`+`) | the preferred value |
 | otherwise | conflict (`!`) | decided (10.6); by default the target's value, or the first entry having one |
 
 The entry type is compared in lower case.
+
+Tests: tests/test_spec_bibtex.py::TestTwoWayMerge::test_fields, tests/test_merge_dup_unit.py::TestMerge::test_empty_values, tests/test_merge_dup_unit.py::test_empty_field_not_added, tests/test_duplicates.py::TestMerge::test_model
 
 ### 10.3 Equivalent values
 
@@ -770,10 +902,12 @@ The entry type is compared in lower case.
   equal normalized family names (9.1, 9.2), and compatible given names.
   Given names are normalized and split into words on whitespace, `.`, `-`
   and `~`; the words are compared pairwise up to the shorter list (extra
-  words on one side are ignored); two words are compatible if equal, or
-  if one is a single letter that starts the other (`J` and `John`).
-  `Smith, J.` and `John Smith` are equivalent; `Smith, Jo` and
-  `Smith, John` are not.
+  words on one side are ignored, so a missing middle name is not a
+  conflict: `Smith, J.` and `Smith, John Quincy` are equivalent); two
+  words are compatible if equal, or if one is a single letter that starts
+  the other (`J` and `John`). `Smith, J.` and `John Smith` are
+  equivalent; `Smith, Jo` and `Smith, John` are not. Names are split as
+  in section 9.2 (at brace depth 0).
 - `doi`: if both values are DOIs (9.2), equal normalized DOIs; otherwise
   as other fields.
 - Other fields: equal after `norm` (case, braces, accents, LaTeX accents,
@@ -784,12 +918,16 @@ one with the longest given names (sum of the lengths of the given-name
 words), the first one on a tie; for other fields, the first present (the
 target's when it has one).
 
+Tests: tests/test_spec_bibtex.py::TestTwoWayMerge::test_equivalent_values, tests/test_spec_bibtex.py::TestTwoWayMerge::test_preferred_value, tests/test_duplicates.py::TestNames::test_initials, tests/test_duplicates.py::TestNames::test_different_first_names, tests/test_duplicates.py::TestNames::test_fuller_form_kept_from_either_side, tests/test_duplicates.py::TestNames::test_different_names_conflict
+
 ### 10.4 `file`
 
 The union of the links of all entries, target first, in order. A link is
 skipped if it names a file already in the union, by real path (symbolic
 links resolved) or, for an existing file, by content checksum. The links
 are written with the `paths` setting of the library (section 5).
+
+Tests: tests/test_spec_bibtex.py::TestTwoWayMerge::test_files_by_content, tests/test_duplicates.py::TestMerge::test_files_by_real_path, tests/test_duplicates.py::TestMerge::test_model
 
 ### 10.5 `ids`
 
@@ -799,6 +937,8 @@ equal to the target's key, or to a part already taken, is dropped
 (compared without case; the first spelling is kept). Written joined by
 `, `; no field if empty. In `add`, the key of the added entry is not put
 in `ids`.
+
+Tests: tests/test_spec_bibtex.py::TestTwoWayMerge::test_ids, tests/test_duplicates.py::TestMerge::test_keys_to_ids, tests/test_duplicates.py::TestMerge::test_no_ids_in_add, tests/test_duplicates.py::TestCheckOnDuplicate::test_ids_appended_without_repetition
 
 ### 10.6 Decision
 
@@ -816,6 +956,8 @@ in `ids`.
 - "Not the same paper": the pair (or every pair of the group) goes to
   `distinct.json`; in `add` the entry is inserted (key suffix if needed).
 
+Tests: tests/test_duplicates.py::TestAddOnDuplicate::test_exact_duplicate_never_asks, tests/test_duplicates.py::TestAddOnDuplicate::test_keep, tests/test_duplicates.py::TestAddOnDuplicate::test_update, tests/test_duplicates.py::TestAddOnDuplicate::test_skip, tests/test_duplicates.py::TestAddOnDuplicate::test_error_exit_status, tests/test_duplicates.py::TestAddOnDuplicate::test_default_without_terminal_is_error, tests/test_duplicates.py::TestCheckOnDuplicate::test_keep, tests/test_duplicates.py::TestCheckOnDuplicate::test_skip, tests/test_duplicates.py::TestCheckOnDuplicate::test_update_not_available, tests/test_duplicates.py::TestAddDialogue::test_title_guard_asks, tests/test_duplicates.py::TestAddDialogue::test_n, tests/test_duplicates.py::TestAddDialogue::test_n_same_key_gets_a_free_key, tests/test_duplicates.py::TestCheckDialogue::test_n_remembered
+
 ### 10.7 Result
 
 The merged entry has the target's key, the merged type, the merged fields
@@ -825,85 +967,67 @@ entries of the group are removed. A bare value stays bare when it is the
 value of one of the entries (section 3.3); the other values are written in
 braces.
 
+Tests: tests/test_duplicates.py::TestMerge::test_model, tests/test_duplicates.py::TestCheckDialogue::test_1, tests/test_merge_dup_unit.py::test_bare_value_stays_bare, tests/test_spec_bibtex.py::TestValues::test_merge_keeps_bare
+
 ### 10.8 Three-way merge
 
 The exchange with a pool (pull, push) uses a three-way merge against the
 last exchanged copy, and keeps the key, `ids` and `file` of each side: see
 exchange.md.
 
+Tests: in exchange.md, section 5.
+
 ## Open questions
 
-1. **Field names that differ by case give two fields.** `Title` and
-   `title` in one entry are not "a field given twice" (the check runs
-   before lower-casing): both are kept and written, a lookup gives the
-   last one. papers/entries.py:104-111, 114-122.
-2. **`@string` references are inlined.** A resolved reference is written
-   as its value, so `journal = jgr` becomes `journal = {...}` at the first
-   save, while the `@string` block is kept. Intended?
-3. **Empty fields are added by a merge.** A field that is empty in the
-   added entry and absent in the target is added to the target, empty
-   (`pages = {}`). papers/merge.py:152-157.
-4. **Given-name compatibility ignores extra words.** Words are compared
-   with a pairwise zip, so `John` and `John David` are equivalent, and
-   `J.` and `John Quincy` too. papers/merge.py:67-79.
+1. **Field names that differ by case give two fields.** Resolved: such an
+   entry is a failed block, as BibTeX ignores the case of field names
+   (section 2.5; #168).
+2. **`@string` references are inlined.** Resolved: kept, and documented
+   (`docs/library-management.md`, section 2.3; #170).
+3. **Empty fields are added by a merge.** Resolved: an empty field of
+   another entry is no longer added; an empty field of the target stays
+   (section 10.2; #176).
+4. **Given-name compatibility ignores extra words.** Resolved: kept, and
+   documented in `docs/adding-entries.md` (section 10.3; #176).
 5. **Tag add/remove/rename are case-sensitive, matching is not.**
-   `--tag climate` finds `Climate`, but `--rm-tag climate` does not
-   remove it, and `--add-tag climate` adds it next to `Climate`.
-   papers/cli/entry_cmds.py:343-347 versus 385-421.
-6. **Key suffix after an upper-case letter or `z`.** The suffix rule only
-   knows lower-case letters, so `Author2000B` gets `Author2000Bb`; a
-   template key that ends with a digit and `z` (`Author2000z`) has no
-   next letter, and the command fails.
-   papers/bib.py:80-102.
-7. **`--keep-old-key` can repeat a former key.** The old key is appended
-   to `ids` without checking whether it is there already; without
-   `--keep-old-key`, a part of `ids` equal to the new key stays.
-   papers/bib.py:308-310.
-8. **`crossref` to a merged-away key is not updated.** After
-   `check --duplicates`, a `crossref` that names a key that went to
-   `ids` keeps naming it (biblatex may or may not resolve it through
-   `ids`). Fields `xdata`, `related` are never followed.
-   papers/bib.py:277-294, papers/library.py:179-190.
+   Resolved: add, remove and rename ignore case (section 6; #160).
+6. **Key suffix after an upper-case letter or `z`.** Resolved: an
+   upper-case suffix continues in upper case, and after `z` a second
+   letter is added (section 8; #176).
+7. **`--keep-old-key` can repeat a former key.** Resolved: each former
+   key once, and never the new key, in `ids` (section 7.1; #176).
+8. **`crossref` to a merged-away key is not updated.** Resolved:
+   `check --duplicates` sets it to the key of the entry it was merged into
+   (section 7.3; #161). `xdata` and `related` are still not followed.
 9. **Absolute links in a relative library are not converted at load.**
-   With `paths` = `absolute` all links are rewritten at load; with
-   `relative`, absolute links stay until the entry's files change.
-   papers/library.py:93-97.
-10. **No escaping in the `file` field.** A path with `;` cannot be
-    stored; JabRef's `\:` and `\;` are read literally; a two-part link
-    `C:\x.pdf` is read as `C`. Paths are not trimmed. papers/entries.py:246-290.
+   Resolved: they are made relative at load, as relative links are made
+   absolute in an absolute library (section 5.2; #176).
+10. **No escaping in the `file` field.** Resolved: no escaping is the rule
+    (section 5.1, `docs/files.md`); each path is now trimmed (#172).
 11. **The table LaTeX decoder is wrong for some input, and it defines
     identity.** `T\^ete` gives `Tet̂e` (the accent is moved twice), `\url{x}`
-    gives `r̆lx`, `\'e` without braces is not decoded. A second
-    implementation must copy the algorithm and its tables exactly to give
-    the same verdicts. papers/latexenc.py:34-90.
-12. **Transliteration is a third-party table.** Step 3 of the
-    normalization (9.1) is the Unidecode table; a second implementation
-    needs the same table, or identities (and `distinct.json`) differ.
-    papers/duplicate.py:83-90.
+    gives `r̆lx`, `\'e` without braces gives `e` (the accent is lost). A
+    second implementation must copy the algorithm and its tables exactly
+    to give the same verdicts; replacing the decoder would change the
+    identities stored in `distinct.json`. Open: waits for a decision of
+    the user. papers/latexenc.py:34-90.
+12. **Transliteration is a third-party table.** Resolved: Unidecode
+    everywhere (identity and slugs), version named in section 9.1 (#176).
 13. **`check --encoding unicode` and `add` of a PDF use a third-party
-    LaTeX-to-text converter** (not the table of 4.1), whose exact output
-    is hard to reproduce. papers/encoding.py:21-30, papers/bib.py:698-700.
-14. **Keys that differ by case are both read.** The parser rejects only
-    exact duplicate keys; papers compares keys without case elsewhere, so
-    a file with `Smith2000` and `smith2000` has two entries that the same
-    selection cannot tell apart. papers/bib.py:261-262.
-15. **"Exact duplicate" on key collision compares raw titles.** When an
-    added entry has the key of a library entry, it is folded into it only
-    if the titles are the same text (not normalized) and the same-paper
-    rule says `same`. papers/bib.py:438-446.
-16. **`and` inside braces: three different splits.** Name formatting
-    (3.5) splits an author field only at brace depth 0, so
-    `{Barnes and Noble}` is one name. The identity (9.2) and the
-    equivalence of names (10.3) split on `and` inside braces too (two
-    authors, family names `{Barnes` and `Noble}`). The family names of the
-    key template split the formatted text again on ` and ` and on the
-    first comma without regard to braces. Should all three split at depth
-    0? Changing identity changes `distinct.json` matches.
-    papers/duplicate.py:93-95; papers/encoding.py:91-93 versus
-    papers/entries.py:221-241.
-17. **`distinct.json` is read with the platform encoding.** It is written
-    as UTF-8 with non-ASCII characters escaped, so papers' own files read
-    the same everywhere; a file with raw UTF-8 characters (valid JSON,
-    written by another implementation) is misread on Windows or with a
-    non-UTF-8 locale. Should the contract require the `\uXXXX` escapes,
-    or should reading be UTF-8? papers/duplicate.py:326.
+    LaTeX-to-text converter.** Resolved: its output is not contract
+    (section 4.3; #176).
+14. **Keys that differ by case are both read.** Resolved: the second is a
+    failed block (section 2.6; #168).
+15. **"Exact duplicate" on key collision compares raw titles.** Resolved:
+    the same paper with nothing to merge is folded in, whatever the case
+    of the titles (section 8; #176).
+16. **`and` inside braces: three different splits.** Resolved: every
+    split is made at brace depth 0 (sections 3.5, 9.2, 10.3; #176).
+17. **`distinct.json` is read with the platform encoding.** Resolved: read
+    as UTF-8, a byte order mark dropped (section 9.4; #162).
+18. **The DOI parser of `check --fix-doi`.** Resolved: a heuristic,
+    described as informative in section 3.6 (decision (c)12).
+19. **Resolved (paths-slash):** links are compared after normalization. Was: **Two spellings of one path are both kept.** When papers sets the
+    links of an entry, a path is dropped as a repeat only when its text is
+    the same before normalization: `files/./a.pdf` and `files/a.pdf` are
+    written as two links `:files/a.pdf:pdf`. papers/bib.py:533-539.

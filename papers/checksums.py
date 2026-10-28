@@ -36,7 +36,9 @@ def parse(text, config):
         stored = json.loads(text).get('files', {})
     except (ValueError, AttributeError):
         return {}
-    return {os.path.normpath(os.path.join(_base(config), path)): digest for path, digest in stored.items()}
+    # stored with / (with \\ by papers on Windows before 3.0.0b6)
+    return {os.path.normpath(os.path.join(_base(config), path.replace('\\', '/'))): digest
+            for path, digest in stored.items()}
 
 
 def load(config):
@@ -57,8 +59,8 @@ def save(config, hashes):
             os.remove(path)
         return
     base = _base(config)
-    stored = {(p if config.absolute_paths else os.path.relpath(p, base)): digest
-              for p, digest in sorted(hashes.items())}
+    stored = {(p if config.absolute_paths else os.path.relpath(p, base)).replace(os.sep, '/'): digest
+              for p, digest in sorted(hashes.items())}  # the same keys on every system
     os.makedirs(os.path.dirname(path), exist_ok=True)
     write_atomic(path, json.dumps({'files': stored}, indent=1, sort_keys=True) + '\n')
 

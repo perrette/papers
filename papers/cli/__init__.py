@@ -62,6 +62,9 @@ def main(args=None):
 
 def _main(argv, directory=None):
     check_legacy_global_config()
+    # the library is loaded before the arguments are parsed: a dry run
+    # must not move its files either (see papers.config.move_papers_files)
+    papers.config.DRYRUN = '--dry-run' in (sys.argv[1:] if argv is None else argv)
     config = find_config()
 
     parser, subparsers = get_parser(config)

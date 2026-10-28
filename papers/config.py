@@ -130,7 +130,8 @@ REMOVED_SETTINGS = {
 
 # the keys of a library configuration file that papers reads, or read in earlier versions; the
 # file keeps the others as they are (e.g. the settings of a newer papers, see Config.tojson)
-_KNOWN_KEYS = {*SETTINGS, *REMOVED_SETTINGS, *_V2_KEYS, 'id', 'version', 'local', 'pools', 'light', 'sync'}
+_KNOWN_KEYS = {*SETTINGS, *REMOVED_SETTINGS, *_V2_KEYS, 'id', 'version', 'local', 'pools', 'light', 'sync',
+               'gitdir', 'gitlfs'}  # gitdir, gitlfs: papers 2.2 to 2.4
 
 
 def default_value(name):
