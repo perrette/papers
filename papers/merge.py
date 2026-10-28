@@ -345,9 +345,21 @@ class Merge:
         return Merge(entries, relative_to=self.relative_to, keys_to_ids=self.keys_to_ids, base=self.base,
                      exchange=self.exchange)
 
+    def _field(self, f):
+        """the Field of the merged value of f: a bare value (month = jan, a
+        @string name) stays bare when it is the value of one of the entries"""
+        field = Field(f.name, f.value)
+        for e in [self.entries[f.choice]] + self.entries:
+            same = e.fields_dict.get(f.name)
+            if same is not None and same.value == f.value:
+                if getattr(same, 'enclosing', None) is not None:
+                    field.enclosing = same.enclosing
+                break
+        return field
+
     def result(self):
         "the merged entry, with the key of the target"
-        fields = [Field(f.name, f.value) for f in self.fields if f.name != 'ENTRYTYPE' and f.value is not None]
+        fields = [self._field(f) for f in self.fields if f.name != 'ENTRYTYPE' and f.value is not None]
         if self.files:
             fields.append(Field('file', format_file(self.files, relative_to=self.relative_to)))
         if self.ids:
@@ -410,10 +422,16 @@ def _oneline(value, width=None):
 
 
 def apply_entry(target, entry):
-    "make the target entry (in the library) equal to `entry`, in place"
+    "make the target entry (in the library) equal to `entry`, in place (a bare value stays bare)"
     target.entry_type = entry.entry_type
     target.key = entry.key
-    target.fields = [Field(f.key, f.value) for f in entry.fields]
+    fields = []
+    for f in entry.fields:
+        field = Field(f.key, f.value)
+        if getattr(f, 'enclosing', None) is not None:
+            field.enclosing = f.enclosing
+        fields.append(field)
+    target.fields = fields
 
 
 # THE DIALOGUE

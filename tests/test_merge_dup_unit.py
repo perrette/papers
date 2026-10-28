@@ -131,3 +131,17 @@ class TestDuplicate(unittest.TestCase):
 
     def test_isbn_prefix(self):
         self.assertEqual(normalize_isbn('ISBN: 978-0-306-40615-7'), '9780306406157')
+
+
+def test_bare_value_stays_bare():
+    # month = jan is a bibtex month name, not the text "jan": a merge keeps it bare
+    from papers.entries import format_library, library_from_entries, parse_string
+    from papers.merge import Merge
+    a, b = parse_string('@article{a, month = jan, title = {T}}\n@article{b, title = {T}, year = {2000}}').entries
+    text = format_library(library_from_entries([Merge([a, b]).result()]))
+    assert ' month = jan,' in text, text
+    assert ' year = {2000}' in text, text
+    # written into the library entry
+    from papers.merge import apply_entry
+    apply_entry(b, Merge([b, a]).result())
+    assert ' month = jan,' in format_library(library_from_entries([b]))
