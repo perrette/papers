@@ -1166,8 +1166,10 @@ removes single tags of the <code>keywords</code> field.</p>
 records of the exchanges with pools (see <a href="../pools/">Pools</a>), follow the new
 key; LaTeX documents that cite the old key do not. With <code>--keep-old-key</code>,
 the old key goes to the <code>ids</code> field of the entry: papers (e.g.
-<code>papers edit OLD</code>) and biblatex still find the entry by it. A key that
-another entry has is refused. <code>papers check --fix-key</code> changes keys the
+<code>papers edit OLD</code>) and biblatex still find the entry by it (once: a key
+already in <code>ids</code> is not added again). The new key itself is taken out of
+<code>ids</code>, with or without <code>--keep-old-key</code>. A key that another entry has is
+refused. <code>papers check --fix-key</code> changes keys the
 same way.</p>
 <p>An edit that does not parse, has a malformed field name, or gives the entry
 the key of another entry is not applied, and the command exits with status

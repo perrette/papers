@@ -1085,7 +1085,9 @@ value is the global or default one; the other settings follow the global
 configuration. <code>papers config --unset NAME</code> removes a setting from the
 file, and the library then follows the global configuration again.
 <code>papers config --prune</code> removes all the values equal to the global or
-default value (<code>pool</code> stays).</p>
+default value (<code>pool</code> stays). Keys of the file that papers does not know
+(for example the settings of a newer version) are kept as they are when
+papers writes the file.</p>
 <table>
 <thead>
 <tr>
@@ -1251,11 +1253,19 @@ stands with it:</p>
 <li><code>library changed</code>: the library has changes to send (<code>papers push</code>), e.g.
   made in an editor, or with <code>auto-push</code> off;</li>
 <li><code>both changed</code>: both (<code>papers sync</code>);</li>
-<li><code>not pulled from yet</code>, <code>missing</code>, <code>not a library</code>.</li>
+<li><code>not pulled from yet</code>: no entry was exchanged with the pool yet;</li>
+<li><code>not pulled in full yet</code>: entries were exchanged, but the pool was never
+  pulled in full (only <code>papers pull KEY</code>, a pull that skipped a conflict,
+  or a push that left the pool with something the library does not have),
+  so papers does not know which pool changes the library has;</li>
+<li><code>missing</code>, <code>not a library</code>.</li>
 </ul>
 <p>papers compares the entries, not only the files: a pool that changed in
 entries the library does not have, or the same change made on both sides,
-is in sync. Once it found them in sync, papers remembers (with the history
+is in sync. It compares only the entries exchanged with the pool before
+(with an origin copy): an entry that the library and the pool both have
+but never exchanged is not compared; <code>papers pull --dry-run</code> finds those
+too. Once it found them in sync, papers remembers (with the history
 of the library, on the computer) the pieces of the library, of the pool and
 of the origin copies at that time, and later compares only the entries of
 the pieces that changed since: a single change does not cost a comparison
@@ -1266,6 +1276,11 @@ history of the library (see <a href="../undo-redo/">Undo and redo</a>).</p>
 so that a library folder can be moved or shared with its files. Set
 <code>papers config paths absolute</code> to store absolute paths instead, e.g. for a
 bibtex that links to files in a central folder.</p>
+<p>papers rewrites the links to the setting when it reads the bibtex: with
+<code>absolute</code>, all links; with <code>relative</code>, the absolute links (for example
+written by another program). The bibtex is written with them at the next
+command that saves it. On Windows, a link to a file on another drive than the
+bibtex stays absolute.</p>
 <p>The options <code>--relative-paths</code> and <code>--absolute-paths</code> of the commands still
 override the setting for one command, with a deprecation warning.</p>
 <p>A library in the git repository of a project leaves <code>.papers/</code> out of it
@@ -1293,7 +1308,8 @@ performs the one-time upgrades from version 2:</p>
 <p>Library configurations of version 2 keep working without migration: they
 are read as self-contained libraries (their files are their own, no pool),
 as in version 2. Their file is moved to <code>.papers/config.json</code> the next
-time papers saves the configuration (e.g. <code>papers config</code>), or by
+time papers writes the configuration (e.g. <code>papers config</code>, or the first
+command that changes the library, which adds the <code>id</code> of its history), or by
 <code>papers migrate</code> run in the library (see
 <a href="../upgrading/#project-libraries">Upgrading from papers 2</a>). The configuration files written by version 3 carry
 <code>"version": 3</code>; a file without <code>version</code> is read as a file of version 2. A

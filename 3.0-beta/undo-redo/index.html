@@ -1064,7 +1064,9 @@ after it, and now:</p>
 <ul>
 <li>an entry that the step added is removed, unless it changed since (it is
   kept, and a line says so);</li>
-<li>an entry that the step removed comes back as it was;</li>
+<li>an entry that the step removed comes back as it was, unless the library
+  has an entry with its key now (or with its key among its former keys):
+  that entry stays, and a line says so when it is not the removed one;</li>
 <li>a field that the step changed goes back to its value before the step,
   unless it changed since: then it is a conflict, decided as for
   <a href="../pools/#papers-pull"><code>papers pull</code></a>, with <code>--on-duplicate</code> (<code>keep</code>: the
@@ -1119,6 +1121,13 @@ or on another computer that syncs the library), papers notices it at its
 next command and records your change as a step of its own, "changed outside
 papers". <code>papers undo</code> never drops it silently: undoing a papers command
 goes back to what was on disk just before it, your change included.</p>
+<p>The step of your change also has the files of <code>.papers/</code> (the origin
+records of a library with a pool, <code>distinct.json</code>, <code>files.json</code>) as they
+were on disk, so a synced folder that brought a new bibtex and new origin
+records together gives one consistent step. papers notices a change by the
+bibtex only: a change made outside papers to the files of <code>.papers/</code> alone
+is not a step of its own, it becomes part of the next command's step (and
+undoing that command takes it back too).</p>
 <p>Running <code>papers undo</code> right after your own edit undoes that edit (<code>papers
 redo</code> brings it back). <code>papers restore</code> without a step number does the
 same: it puts the library back to its last step, as papers left it.</p>

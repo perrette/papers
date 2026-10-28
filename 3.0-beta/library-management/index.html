@@ -1098,7 +1098,11 @@ command that changes a library and its pool (<code>add</code> in a shallow libra
 <code>push</code>, <code>sync</code>, an undo that also undoes the pool's step) locks the library
 first, then the pool. Another command that wants to change the same
 library waits, with a line that names the command holding it, and stops
-after 30 seconds with an error; nothing is written. Commands that only read
+after 30 seconds with an error; nothing is written. Two commands that lock
+two libraries in opposite orders (a command in A with <code>--pool B</code> and a
+command in B with <code>--pool A</code>) wait for each other the same way: the first
+to wait stops after 30 seconds, and the other then goes on, unless it too
+waited 30 seconds. Commands that only read
 (<code>list</code> without an action, <code>status</code>, <code>export</code>, <code>file check</code>, <code>history</code>) do
 not wait.</p>
 <p>The holder touches the lock every 2 seconds. A lock that nobody touched

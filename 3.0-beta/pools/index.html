@@ -1161,6 +1161,12 @@ side changed a field. A removed field counts as a change:</p>
 </tr>
 </tbody>
 </table>
+<p>Values that differ only by case, braces or the form of the names (<code>J.
+Smith</code> and <code>John Smith</code>) are equivalent. A change to an equivalent value
+(e.g. <code>CO2</code> to <code>{CO2}</code>) is taken when the side that receives has the
+value of the origin copy exactly. Otherwise, and for an entry without
+origin copy, equivalent values are not a difference: the side that
+receives keeps its value (for names, the fuller form of the two).</p>
 <p>Conflicts are decided in the dialogue or with <code>--on-duplicate</code> (see
 <a href="#papers-pull"><code>papers pull</code></a> and <a href="#papers-push"><code>papers push</code></a>). <code>keep</code>
 keeps the values of the side that receives the changes, and <code>update</code> takes
@@ -1176,7 +1182,11 @@ exchanges merge three-way.</p>
 <p>An entry is never removed by an exchange:</p>
 <ul>
 <li><code>papers rm KEY</code> removes the entry from the library only. <code>push</code> and
-  <code>sync</code> do not remove it from the pool.</li>
+  <code>sync</code> do not remove it from the pool. Its origin copies stay. An entry
+  that later gets KEY by a change of key (<code>papers edit --key</code>, a rename)
+  does not take them: its own origin copies replace them, and where it
+  has none they are dropped, so that it is not taken for the removed
+  paper.</li>
 <li>An entry removed from the pool stays in the libraries that have it. It
   is no longer shared: <code>pull</code>, <code>push</code> and <code>sync</code> without KEY or <code>--all</code>
   (and the auto-push of a shallow library) leave it out, and note it once:</li>
@@ -1347,8 +1357,8 @@ origin copy: that pool entry is taken if it is the same paper as the origin
 copy or as the entry. Otherwise, e.g. when the pool key now names another
 paper, the pool entry is found by the rule above (from the origin copy,
 then from the entry), and last under the pool key, if its DOI, arXiv
-identifier and ISBN do not differ from those of the origin copy (both
-titles changed). When the pool has the same paper twice, the entry of the
+identifier and ISBN do not differ from those of the origin copy and it has
+the same authors (family names) and year (both titles changed). When the pool has the same paper twice, the entry of the
 origin copy is the one exchanged.</p>
 <h2 id="origin-copies">Origin copies<a class="headerlink" href="#origin-copies" title="Permanent link">&para;</a></h2>
 <p><code>.papers/origin/</code> of the library holds one file per
@@ -1382,7 +1392,11 @@ pool (<code>papers-pool-key</code>) and the time (<code>papers-time</code>). In 
 library, the origin copy for its pool also keeps its <code>file</code> field, the
 file links of the pool entry after the exchange, so that a pull can tell a
 link that the pool entry removed from one it never had (the origin copies
-for other libraries have no <code>file</code> field). The file links are not part of
+for other libraries have no <code>file</code> field). For a pool entry without file
+links, the field is there and empty (<code>file = {}</code>): the pool entry had no
+links, while an origin copy without the field (e.g. recorded before the
+library was shallow) says nothing about them. In the library bibtex, an
+entry whose last link a pull removed has no <code>file</code> field. The file links are not part of
 the three-way merge. The modification time is recorded at a pull of all
 entries that skipped no conflict, or a push or an add when the pool had
 not changed since the previous exchange (or when it is the first
@@ -1391,6 +1405,10 @@ library entry does not have does not count: <code>papers status</code> then show
 pool as changed until the next pull. The files are part of the history of
 the library (see <a href="../undo-redo/">Undo and redo</a>), which <code>papers undo</code>
 restores with its bibtex.</p>
+<p>papers reads every <code>.bib</code> file of <code>.papers/origin/</code>. Two files that name
+the same pool (e.g. a copy) are merged, and the next time papers writes
+the origin copies of that pool, it writes them to the file of its own name
+and removes the other.</p>
 <p>The files of all pools are kept: after <code>papers config pool PATH</code>, the
 library uses the file of PATH (with the origin copies of the exchanges
 with <code>--pool PATH</code>, if any), and setting the pool back to an earlier one
@@ -1399,12 +1417,16 @@ finds its origin copies again.</p>
 <code>.papers/origin.bib</code>: papers splits it into these files the first time it
 reads it, and removes it. Versions up to 3.0.0b5 named the pool by its path
 (<code>@comment{papers-pool ../shared-with-bob}</code>): at the next exchange with the
-pool, papers moves its origin copies to the pool's identifier (a pool that
-has none yet, a library of an earlier version that never recorded a step,
-keeps its path until it has one).</p>
+pool, papers moves its origin copies to the pool's identifier: those of
+every path that names the pool (e.g. <code>../shared-with-bob</code> and
+<code>~/papers/shared-with-bob</code>) at once, an origin copy already under the
+identifier being kept. A pool that has no identifier yet (a library of an
+earlier version that never recorded a step) keeps its path until it has
+one.</p>
 <p>The origin copy is the third version of a three-way merge. It is the
 version of the side that sent the entry, as it was sent: the pool entry
-after <code>add</code> and <code>pull</code>, the library entry after <code>push</code>. What the receiving
+after <code>add</code> and <code>pull</code>, the library entry after <code>push</code>, without the
+former keys (<code>ids</code>), which each side keeps for itself. What the receiving
 side has beyond it is a change of that side, for the next exchange the
 other way: a field that only the pool entry has comes with the next
 <code>pull</code>; a field that only the library entry has goes to the pool with the

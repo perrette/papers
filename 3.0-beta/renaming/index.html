@@ -1014,7 +1014,8 @@ method). Its placeholders are:</p>
 <ul>
 <li><code>{author}</code>, <code>{Author}</code>, <code>{AUTHOR}</code>, <code>{authorX}</code>, <code>{AuthorX}</code>: the authors
   (see below)</li>
-<li><code>{year}</code>, <code>{journal}</code></li>
+<li><code>{year}</code>, <code>{journal}</code> (empty for an entry without journal: a folder of
+  the template that is empty, as in <code>{journal}/{author}</code>, is left out)</li>
 <li><code>{title}</code>, <code>{Title}</code>: the title words (see the modifiers below)</li>
 <li><code>{key}</code> (or <code>{ID}</code>): the bibtex key of the entry</li>
 <li><code>{doi}</code>, <code>{doi_}</code> (the doi with <code>-</code> in place of <code>/</code>, <code>.</code> and the other
@@ -1056,6 +1057,10 @@ its name until the entry is renamed (<code>papers file rename</code>, <code>pape
   depending on the number of authors</li>
 <li><code>AuthorX</code> same as <code>authorX</code> but capitalized</li>
 </ul>
+<p>The author names, the title words, <code>{doi_}</code> and <code>{doi_or_id}</code> are written
+in ASCII: accented and non-Latin letters are transliterated with the table
+of the Unidecode library (<code>Müller</code> gives <code>muller</code>, <code>Хрущёв</code> gives
+<code>khrushchev</code>), and other characters separate words.</p>
 <h2 id="modifiers">Modifiers<a class="headerlink" href="#modifiers" title="Permanent link">&para;</a></h2>
 <p>The modifiers are:</p>
 <ul>

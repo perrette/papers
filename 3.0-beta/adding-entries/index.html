@@ -1370,7 +1370,8 @@ in this order:</p>
 <li>otherwise the family names of the authors and the title, compared without
    case, braces, accents and extra spaces. Both entries need authors and a
    title: two entries titled "Editorial" without authors are not the same
-   paper.</li>
+   paper. A name in braces is one name: <code>and</code> and commas inside braces
+   (<code>{Barnes and Noble}</code>) do not separate names, as in BibTeX.</li>
 </ol>
 <p>The first identifier that both entries have decides: equal values make the
 same paper, different values two papers. A preprint and the published
@@ -1390,7 +1391,8 @@ arXiv id, ISBN, authors and title), not their keys.</p>
 <p>The entry already in the library (entry 1) is the target:</p>
 <ul>
 <li>it keeps its key;</li>
-<li>fields that only the added entry has are added;</li>
+<li>fields that only the added entry has are added (except empty ones, such
+  as <code>pages = {}</code>);</li>
 <li>the file links of both entries are kept (a file linked twice, or two
   copies with the same content, once);</li>
 <li>values that differ only by case, braces, spaces, or the case of a DOI are
@@ -1398,7 +1400,9 @@ arXiv id, ISBN, authors and title), not their keys.</p>
   initials and with full first names (<code>Smith, J.</code> and <code>Smith, John</code>) are not
   a conflict either: the fuller form is kept, whichever entry it comes
   from. Different first names (<code>Smith, John</code> and <code>Smith, Jane</code>) are a
-  conflict;</li>
+  conflict. First names are compared word by word up to the shorter one, so
+  a missing middle name is not a conflict (<code>Smith, J.</code> and
+  <code>Smith, John Quincy</code>);</li>
 <li>the remaining differences are conflicts.</li>
 </ul>
 <p>An added entry that brings nothing new (no conflict, no field to add) is
@@ -1437,7 +1441,11 @@ fields to add:</p>
 </tr>
 </tbody>
 </table>
-<p><code>--no-check-duplicate</code> adds the entries without looking for duplicates.</p>
+<p><code>--no-check-duplicate</code> adds the entries without looking for duplicates. An
+entry with the key of a library entry is still folded into it (its files
+added) when it is the same paper and the merge has nothing to decide (no
+conflict, no field to add); otherwise the command stops: pass
+<code>-u/--update-key</code> or <code>--key KEY</code>.</p>
 <h3 id="the-dialogue">The dialogue<a class="headerlink" href="#the-dialogue" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>$&gt; papers add new.bib
 <a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>Already in library: smith2020climate (same DOI 10.1000/abc123)
@@ -1517,6 +1525,10 @@ fetched from a DOI always get a generated key. <code>--key KEY</code> sets the k
 instead, in both cases. Either way, this only
 concerns entries new to the library: an entry merged into a duplicate takes
 the key of the library entry.</p>
+<p>A key that another entry has already (ignoring case) gets a letter suffix:
+<code>Smith2000</code> becomes <code>Smith2000b</code>, then <code>Smith2000c</code>. A key that ends with a
+digit and a letter continues from that letter, in its case (<code>Smith2000B</code>
+gives <code>Smith2000C</code>); after <code>z</code>, a second letter is added (<code>Smith2000za</code>).</p>
 <h3 id="options-of-earlier-versions">Options of earlier versions<a class="headerlink" href="#options-of-earlier-versions" title="Permanent link">&para;</a></h3>
 <p>These options still work, with a warning, and will be removed:</p>
 <table>
