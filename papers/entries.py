@@ -11,7 +11,8 @@ import re
 import bibtexparser
 from bibtexparser import Library
 from bibtexparser.middlewares.enclosing import AddEnclosingMiddleware
-from bibtexparser.model import Entry, ExplicitComment, Field, ImplicitComment, ParsingFailedBlock, Preamble, String
+from bibtexparser.model import (DuplicateBlockKeyBlock, DuplicateFieldKeyBlock, Entry, ExplicitComment, Field,
+                                ImplicitComment, ParsingFailedBlock, Preamble, String)
 from bibtexparser.writer import BibtexFormat, write
 
 from papers import logger
@@ -103,11 +104,27 @@ def library_from_entries(entries):
 
 def lowercase_fields(library):
     """the field names of the entries in lower case (BibTeX ignores their
-    case: older JabRef files write Title, Keywords...), in place"""
-    for e in library.entries:
-        for f in e.fields:
-            if f.key != f.key.lower():
-                f.key = f.key.lower()
+    case: older JabRef files write Title, Keywords...), in place. BibTeX
+    also ignores the case of the keys: an entry with two fields that differ
+    only by case (Title and title), or with the key of an entry before it
+    in another case (smith2000 after Smith2000), is a failed block, as
+    bibtexparser makes an entry with a field or key given twice exactly
+    (its text is written back, see papers.bib.unreadable_blocks)"""
+    keys = {}
+    for e in list(library.entries):
+        names = [f.key.lower() for f in e.fields]
+        twice = {name for name in names if names.count(name) > 1}
+        previous = keys.get(e.key.lower())
+        if twice:
+            library.replace(e, DuplicateFieldKeyBlock(twice, e), fail_on_duplicate_key=False)
+        elif previous is not None:
+            library.replace(e, DuplicateBlockKeyBlock(e.key, previous, e, e.start_line, e.raw),
+                            fail_on_duplicate_key=False)
+        else:
+            keys[e.key.lower()] = e
+            for f in e.fields:
+                if f.key != f.key.lower():
+                    f.key = f.key.lower()
     return library
 
 

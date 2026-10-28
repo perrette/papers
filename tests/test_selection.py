@@ -200,9 +200,9 @@ class SelectIdentifiersTest(unittest.TestCase):
         self.assertEqual(keys(select_entries(biblio, ['Older2019'])), ['New2021'])  # the alias still works
 
     def test_keys_differing_in_case(self):
+        # the second is a key given twice, as in BibTeX: unreadable (see test_unreadable)
         biblio = Biblio(parse_string('@article{Same,\n title = {A}\n}\n\n@article{same,\n title = {B}\n}\n'))
-        with self.assertRaisesRegex(PapersExit, 'several entries match: Same, same'):
-            select_entries(biblio, ['SAME'])
+        self.assertEqual(keys(select_entries(biblio, ['SAME'])), ['Same'])
 
 
 class SelectionCommandsTest(InitTest):
