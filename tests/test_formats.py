@@ -401,6 +401,17 @@ class TestRIS(unittest.TestCase):
         self.assertEqual(e['doi'], '10.1000/xyz')
         self.assertEqual(e['url'], 'https://example.org/paper')
 
+    def test_blank_line_after_ty(self):
+        # rispy reads a blank line (or a line without tag) after TY as the continuation of the last tag
+        # (an error when the last tag of the previous record holds one value, e.g. TI)
+        text = ('TY  - JOUR\nKW  - a\nTI  - First\nER  - \n\n'
+                'TY  - JOUR\n\nTI  - Second\nKW  - b\n\nAU  - Smith, J\nER  - \n\n'
+                'TY  - JOUR\nstray text\nTI  - Third\nER  - \n')
+        first, second, third = formats.loads_ris(text)
+        self.assertEqual((first['title'], second['title'], third['title']), ('First', 'Second', 'Third'))
+        self.assertEqual(second['keywords'], 'b')
+        self.assertEqual(second['author'], 'Smith, J')
+
     def test_not_ris(self):
         with self.assertRaisesRegex(ValueError, 'not a RIS file'):
             formats.loads_ris('@article{x, title={T}}')
