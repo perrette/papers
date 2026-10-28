@@ -39,8 +39,8 @@ from papers.encoding import standard_name, family_names, format_entries
 from papers.latexenc import string_to_latex
 
 from papers.filename import NAMEFORMAT, KEYFORMAT
-from papers.files import (download_url, read_entry_dir, attachment_names, remove_entry_dir_if_empty, realpath,
-                          scan_dir_items, is_download)
+from papers.files import (download_url, read_entry_dir, attachment_names, free_name, remove_entry_dir_if_empty,
+                          realpath, scan_dir_items, is_download)
 from papers import journal
 from papers.utils import bcolors, checksum, move as _move, write_atomic, PapersExit
 import papers.config
@@ -884,8 +884,10 @@ class Biblio:
                 logger.warning(file+': original file link is broken')
                 newfile = file
             elif file != newfile:
-                self.move(file, newfile, action == 'copy', hardlink=hardlink)
-                count += 1
+                newfile = free_name(newfile, file)  # the name of another entry's file: a suffix
+                if file != newfile:
+                    self.move(file, newfile, action == 'copy', hardlink=hardlink)
+                    count += 1
             newfiles.append(newfile)
         self.set_files(e, newfiles, relative_to=relative_to)
 

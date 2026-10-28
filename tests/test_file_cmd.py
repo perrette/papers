@@ -500,3 +500,36 @@ class TestClean(FileTest):
         out = self.out('file clean -y')
         self.assertFalse(os.path.exists(folder))
         self.assertIn('removed 4 unlinked file(s)', out)
+
+
+class TestSameFileName(FileTest):
+    "two entries whose files get the same name: the second gets a -2 suffix, no file is replaced"
+
+    def test_two_papers_same_name(self):
+        a = self.write('src', 'a.pdf', content='pdf a')
+        b = self.write('src', 'b.pdf', content='pdf b')
+        # same author, year and title: the same file name
+        Path(self.path('src', 'a.bib')).write_text(entry('one2000', a))
+        Path(self.path('src', 'b.bib')).write_text(entry('one2000', b).replace('@article{one2000', '@article{other2000'))
+        self.lib('config files move')
+        self.lib('add ../src/a.bib')
+        self.lib('add ../src/b.bib --no-check-duplicate')
+        fa, = self.files('one2000')
+        fb, = self.files('other2000')
+        self.assertNotEqual(fa, fb)
+        self.assertEqual(Path(fa).read_text(), 'pdf a')
+        self.assertEqual(Path(fb).read_text(), 'pdf b')
+        self.assertTrue(fb.endswith('-2.pdf'), fb)
+        # renaming again changes nothing
+        self.lib('file rename')
+        self.assertEqual((self.files('one2000'), self.files('other2000')), ([fa], [fb]))
+
+    def test_same_content_is_the_same_file(self):
+        a = self.write('src', 'a.pdf', content='pdf a')
+        b = self.write('src', 'b.pdf', content='pdf a')
+        Path(self.path('src', 'a.bib')).write_text(entry('one2000', a))
+        Path(self.path('src', 'b.bib')).write_text(entry('one2000', b).replace('@article{one2000', '@article{other2000'))
+        self.lib('config files move')
+        self.lib('add ../src/a.bib')
+        self.lib('add ../src/b.bib --no-check-duplicate')
+        self.assertEqual(self.files('one2000'), self.files('other2000'))
