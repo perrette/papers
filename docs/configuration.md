@@ -223,11 +223,19 @@ stands with it:
 - `library changed`: the library has changes to send (`papers push`), e.g.
   made in an editor, or with `auto-push` off;
 - `both changed`: both (`papers sync`);
-- `not pulled from yet`, `missing`, `not a library`.
+- `not pulled from yet`: no entry was exchanged with the pool yet;
+- `not pulled in full yet`: entries were exchanged, but the pool was never
+  pulled in full (only `papers pull KEY`, a pull that skipped a conflict,
+  or a push that left the pool with something the library does not have),
+  so papers does not know which pool changes the library has;
+- `missing`, `not a library`.
 
 papers compares the entries, not only the files: a pool that changed in
 entries the library does not have, or the same change made on both sides,
-is in sync. Once it found them in sync, papers remembers (with the history
+is in sync. It compares only the entries exchanged with the pool before
+(with an origin copy): an entry that the library and the pool both have
+but never exchanged is not compared; `papers pull --dry-run` finds those
+too. Once it found them in sync, papers remembers (with the history
 of the library, on the computer) the pieces of the library, of the pool and
 of the origin copies at that time, and later compares only the entries of
 the pieces that changed since: a single change does not cost a comparison
