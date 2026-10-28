@@ -103,3 +103,20 @@ def test_standard_name_braces():
     assert standard_name('John Smith and\n  Jane Doe') == 'Smith, John and Doe, Jane'
     assert standard_name('Smith, John and {Barnes and Noble}') == 'Smith, John and {Barnes and Noble}'
     assert standard_name('Jean-Paul de la Fontaine') == 'Fontaine, Jean-Paul de la'
+
+
+def test_tags_without_case():
+    # Climate and climate are one tag, as --tag finds them: add, remove and rename agree
+    from papers.cli.entry_cmds import add_tags, remove_tags, rename_tag
+    from papers.encoding import parse_keywords
+    from papers.entries import parse_string
+    e, = parse_string('@article{a, keywords = {climate, Ice}}').entries
+    add_tags([e], ['Climate', 'ocean', 'OCEAN'])
+    assert parse_keywords(e) == ['climate', 'Ice', 'ocean']
+    remove_tags([e], ['ice'])
+    assert parse_keywords(e) == ['climate', 'ocean']
+    assert rename_tag([e], 'CLIMATE', 'Climate') == 1  # a rename can change the case
+    assert parse_keywords(e) == ['Climate', 'ocean']
+    add_tags([e], ['Climate/amoc'])
+    assert rename_tag([e], 'climate', 'sea') == 1
+    assert parse_keywords(e) == ['sea', 'ocean', 'sea/amoc']

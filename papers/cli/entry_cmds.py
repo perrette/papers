@@ -383,29 +383,37 @@ def set_tags(e, tags):
         del e['keywords']
 
 
+# tags are compared without case, as --tag finds them (Climate and climate are one tag): the
+# spelling of a tag already there is kept
+
+
 def add_tags(entries, tags):
     for e in entries:
         old = parse_keywords(e)
-        new = old + [t for i, t in enumerate(tags) if t not in old and t not in tags[:i]]
+        new = list(old)
+        for t in tags:
+            if t.lower() not in {x.lower() for x in new}:
+                new.append(t)
         if new != old:
             set_tags(e, new)
 
 
 def remove_tags(entries, tags):
+    removed = {t.lower() for t in tags}
     for e in entries:
         old = parse_keywords(e)
-        new = [t for t in old if t not in tags]
+        new = [t for t in old if t.lower() not in removed]
         if new != old:
             set_tags(e, new)
 
 
 def rename_tag(entries, old, new):
     """rename a tag in all entries, and the tags under it (climate/amoc ->
-    ocean/amoc); return the number of entries changed"""
+    ocean/amoc), whatever their case; return the number of entries changed"""
     def rename(t):
-        if t == old:
+        if t.lower() == old.lower():
             return new
-        if t.startswith(old + '/'):
+        if t.lower().startswith(old.lower() + '/'):
             return new + t[len(old):]
         return t
     count = 0
@@ -415,7 +423,7 @@ def rename_tag(entries, old, new):
             continue
         renamed = []
         for t in map(rename, tags):
-            if t not in renamed:
+            if t.lower() not in {x.lower() for x in renamed}:
                 renamed.append(t)
         set_tags(e, renamed)
         count += 1

@@ -47,7 +47,10 @@ Perrette2013: A scaling approach to project regional sea level rise and it... (d
 
 `--tag` matches whole tags, whatever their case: `--tag ice` does not find
 `ice-review`, `--tag 'ice*'` does. With several tags, an entry needs all of
-them (`--any`: one of them).
+them (`--any`: one of them). Adding, removing and renaming tags ignore the
+case too: `papers tag --add Ice` adds nothing to an entry that has `ice`
+(the spelling already there stays), `--rm Ice` removes `ice`, and
+`papers tag --rename ice Ice` changes the spelling.
 
 A tag with `/` is under another tag: `climate/amoc` is under `climate`.
 `--tag climate` also finds `climate/amoc` and `climate/amoc/tipping` (not

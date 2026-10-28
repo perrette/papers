@@ -193,11 +193,12 @@ class TestNestedTags(EntryTest):
 
     def test_rename(self):
         out = self.out('tag --rename climate ocean')
-        self.assertIn('2 entries', out)
+        self.assertIn('3 entries', out)
         self.assertEqual(self.tags('one2000'), ['ocean', 'ocean/amoc'])
         self.assertEqual(self.tags('two2000'), ['ocean/amoc/tipping', 'kiwi'])
         self.assertEqual(self.tags('three2000'), ['climate-review', 'climatex'])
-        self.assertEqual(self.tags('four2000'), ['ocean/amoc', 'Climate/Arctic'])
+        # whatever the case, as --tag climate finds it
+        self.assertEqual(self.tags('four2000'), ['ocean/amoc', 'ocean/Arctic'])
 
     def test_rename_nested(self):
         self.lib('tag --rename climate/amoc ocean')
