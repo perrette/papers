@@ -806,9 +806,33 @@ def dumps_ris(entries, files=lambda e: (), rispy=None):
     return rispy.dumps(refs, implementation=Writer, **_ris_options(rispy))
 
 
+# a line of a RIS tag: two characters, two spaces, a dash (and a space and the value)
+_RIS_TAG = re.compile(r'^[A-Z][A-Z0-9]  -( |$)')
+
+
+def _ris_without_stray_lines(text):
+    """the RIS text without the blank lines inside a record and the lines
+    without tag between TY and the first tag: rispy (0.10) reads them as
+    the continuation of the last tag of the previous record (an error for a
+    single tag such as TI, an empty keyword for KW)"""
+    lines, inside, tagged = [], False, False
+    for line in text.split('\n'):
+        tag = _RIS_TAG.match(line)
+        if tag and line.startswith('TY  -'):
+            inside, tagged = True, False
+        elif tag:
+            tagged = True
+            if line.startswith('ER  -'):
+                inside = False
+        elif inside and (not line.strip() or not tagged):
+            continue
+        lines.append(line)
+    return '\n'.join(lines)
+
+
 def loads_ris(text, rispy=None):
     rispy = rispy or load_rispy()
-    text = text.lstrip('﻿').replace('\r\n', '\n')
+    text = _ris_without_stray_lines(text.lstrip('﻿').replace('\r\n', '\n'))
     refs = rispy.loads(text, skip_unknown_tags=True, **_ris_options(rispy))
     if not refs and text.strip():
         raise ValueError('not a RIS file: no record found (a record starts with TY  - )')
