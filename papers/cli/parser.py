@@ -916,7 +916,9 @@ def get_parser(config=None):
         the bibtex. `papers add DIR --recursive` adds it back; `papers config pool DIR` makes it the
         pool of the library. With --format, the entries are also, or instead, written as RIS
         (DIR/papers.ris) or CSL-JSON (DIR/papers.json), with file links relative to DIR; without
-        bibtex, DIR is not a papers library.''')
+        bibtex, DIR is not a papers library (`papers add DIR/papers.ris` adds the entries of a RIS
+        file; `papers add DIR --recursive` adds the bibtex files of a folder, not the RIS or JSON
+        files).''')
     exportp.add_argument('dir', metavar='DIR', help='directory of the new library (must not exist, or be empty)')
     exportp.add_argument('entries', nargs='*', metavar='KEY', help=_selection_help + ' (default: all entries)')
     _export_options(exportp)

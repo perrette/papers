@@ -394,6 +394,13 @@ class TestRIS(unittest.TestCase):
                           'file_attachments1': ['files/a.pdf', 'file:///abs/b.pdf']})
         self.assertEqual(links(e), ['files/a.pdf', '/abs/b.pdf'])
 
+    def test_doi_from_a_url_next_to_another(self):
+        # no DO line: the DOI of the doi.org link, also when another URL is there
+        e = ris_to_entry({'type_of_reference': 'JOUR', 'title': 'T',
+                          'urls': ['https://example.org/paper', 'https://doi.org/10.1000/xyz']})
+        self.assertEqual(e['doi'], '10.1000/xyz')
+        self.assertEqual(e['url'], 'https://example.org/paper')
+
     def test_not_ris(self):
         with self.assertRaisesRegex(ValueError, 'not a RIS file'):
             formats.loads_ris('@article{x, title={T}}')

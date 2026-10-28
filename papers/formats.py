@@ -766,8 +766,9 @@ def ris_to_entry(ref):
     urls = [u for u in _as_list(ref.get('urls')) if u.strip() and not _DOI_PREFIX.match(u.strip())]
     if urls:
         fields['url'] = urls[0].strip()
-    elif not fields['doi'] and _as_list(ref.get('urls')):
-        fields['doi'] = _clean_doi(_as_list(ref.get('urls'))[0])
+    doi_urls = [u for u in _as_list(ref.get('urls')) if _DOI_PREFIX.match(u.strip())]
+    if not fields['doi'] and doi_urls:  # no DO line: the DOI of a doi.org link, also next to another URL
+        fields['doi'] = _clean_doi(doi_urls[0])
     for sn in _as_list(ref.get('issn')):
         digits = re.sub(r'[^0-9Xx]', '', sn.split()[0] if sn.split() else '')
         name = 'issn' if len(digits) == 8 else 'isbn'
