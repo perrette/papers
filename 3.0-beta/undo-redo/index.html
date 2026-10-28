@@ -1055,6 +1055,13 @@ kept):</p>
 <a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>- The history of the libraries is dropped: no undo before this point.
 <a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>Proceed? [y/N]
 </code></pre></div>
+<p><code>papers history</code> shows the size of the files each step keeps
+(<code>[3.2 MB of deleted files]</code>). <code>papers history --drop-files N</code> removes from
+the history the files that step N deleted, and <code>--drop-files PATH</code> the file
+deleted from PATH (by any step): they go to the trash of the system, the
+steps stay, and undo says the files are no longer in the history. <code>papers
+history --remove</code> removes the whole history of the library. Both ask
+first (<code>-y</code> does not).</p>
 <p>If you would rather not keep deleted files at all (you have your own
 backups, or no space to spare): <code>papers config --global keep-deleted-files
 false</code>. Deleted files then go straight to the trash of the system, and undo
