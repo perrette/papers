@@ -5,14 +5,14 @@ The store is a folder of the machine (papers.config.HISTORY_DIR):
 
     objects/ab/ab12…          pieces of text, compressed (zlib), named by their sha256
     file-objects/ab/ab12….pdf the files deleted by the commands, named by their sha256
-    projects/<id>/states/     one state per command (000001.json, …), in a tree
+    projects/<id>/states/     one state per command, named by its identifier (see state_id), in a tree
     projects/<id>/heads.json  the current state of each place that uses the project
 
 A project is the history of a library, named by its identifier; a place is
 where the library is (the real path of its bibtex): a copy of a library is
 another place of the same project, whose states branch from the copy on.
 
-A state is a dict: `parent` (a state number, or None), `time`, `message`,
+A state is a dict: `parent` (the identifier of a state, or None), `time`, `message`,
 `kind` ('command', 'outside': changed outside papers, 'start': the
 library before its first recorded command), `bibtex` ({'pieces': [...],
 'sha': ...}), `files` ({name: [pieces]}, the other text files of the
@@ -34,6 +34,14 @@ import zlib
 # an object or a file object younger than this is not removed (a command
 # writes its objects before its state)
 GRACE = 3600
+
+# the identifier of a state: the sha256 of these lines (see state_id); SHORT
+# characters of it name the state in the messages, and any unique prefix of
+# at least PREFIX characters is accepted (see Project.resolve)
+STATE_VERSION = 'papers-state 1'
+SHORT = 8
+PREFIX = 4
+_STATE_ID = re.compile(r'[0-9a-f]{64}')
 
 # the bibtex is cut before each line that starts with @ (an entry), and the
 # entries are grouped in pieces of about PIECE_ENTRIES: a piece ends after an
@@ -147,6 +155,57 @@ class Store:
         return sorted(name for name in os.listdir(self.projects)
                       if os.path.isdir(os.path.join(self.projects, name)))
 
+    def upgrade(self):
+        """the states of papers up to 3.0.0b5, numbered (000001.json, ...):
+        named by their identifier (see state_id), and the references to them
+        rewritten (parent, the current state and the redo list of each
+        place, reverts, and the steps of the pools that a step links to, in
+        other projects). All projects at once (a step names the steps of its
+        pools); the result does not depend on who does it, so two commands
+        doing it at the same time agree."""
+        numbered, maps = {}, {}
+        for id in self.project_ids():
+            folder = os.path.join(self.projects, id, 'states')
+            names = [n for n in os.listdir(folder) if n.endswith('.json') and n[:-5].isdigit()] \
+                if os.path.isdir(folder) else []
+            if names:
+                numbered[id] = {int(n[:-5]): _read_json(os.path.join(folder, n)) for n in names}
+        if not numbered:
+            return
+        for id, states in numbered.items():
+            maps[id] = {}
+            for n in sorted(states):  # a parent has a smaller number than its states
+                state = states[n]
+                if not isinstance(state, dict):
+                    continue
+                state['parent'] = maps[id].get(state.get('parent'))
+                if state.get('reverts'):
+                    state['reverts'] = [maps[id][r] for r in state['reverts'] if r in maps[id]]
+                maps[id][n] = state_id(state)
+        for id, states in numbered.items():
+            project = self.project(id)
+            for n, state in states.items():
+                if not isinstance(state, dict):
+                    continue
+                links = {}
+                for pool, link in (state.get('pools') or {}).items():
+                    target = maps.get(pool, {}).get(link.get('state'), link.get('state'))
+                    links[pool] = dict(link, state=target)
+                if links:
+                    state['pools'] = links
+                _write(project._path(maps[id][n]), json.dumps(state, indent=1).encode())
+            heads = _read_json(os.path.join(project.dir, 'heads.json'), {})  # as written (not through states())
+            heads = heads if isinstance(heads, dict) else {}
+            for head in heads.values():
+                head['state'] = maps[id].get(head.get('state'), head.get('state'))
+                head['redo'] = [maps[id].get(r, r) for r in head.get('redo') or []]
+            _write(os.path.join(project.dir, 'heads.json'), json.dumps(heads, indent=1).encode())
+            for n in states:
+                try:
+                    os.remove(os.path.join(project.states_dir, f'{n:06d}.json'))
+                except FileNotFoundError:
+                    pass
+
     # size and retention
     # ==================
 
@@ -221,6 +280,23 @@ class Store:
         return dropped
 
 
+def state_id(state):
+    """the identifier of a state: what the state is (its parent, its time to
+    the microsecond, the checksum of its bibtex, the pieces of the other
+    files), and nothing that a later command may change (the file
+    operations, the deleted files, the labels)"""
+    lines = [STATE_VERSION, f'parent {state.get("parent") or "-"}', f'time {float(state.get("time") or 0):.6f}',
+             f'bibtex {(state.get("bibtex") or {}).get("sha", "")}']
+    for name, digests in sorted((state.get('files') or {}).items()):
+        lines.append(f'file {name} {",".join(digests)}')
+    return sha256(('\n'.join(lines) + '\n').encode('utf-8'))
+
+
+def short(n):
+    "the identifier of a state as the messages show it"
+    return n[:SHORT] if isinstance(n, str) else n
+
+
 def pieces(text):
     "{checksum: piece} of a text cut as the store cuts it (see put_text), nothing stored"
     return {sha256(p.encode('utf-8')): p for p in _pieces(text)}
@@ -267,36 +343,52 @@ class Project:
     # ======
 
     def states(self):
-        "{number: state}"
+        "{identifier: state}"
         if self._states is None:
             self._states = {}
             if os.path.isdir(self.states_dir):
-                for name in os.listdir(self.states_dir):
-                    if name.endswith('.json') and name[:-5].isdigit():
+                names = os.listdir(self.states_dir)
+                if any(name.endswith('.json') and name[:-5].isdigit() for name in names):
+                    self.store.upgrade()  # numbered states of an earlier version
+                    names = os.listdir(self.states_dir)
+                for name in names:
+                    if name.endswith('.json') and _STATE_ID.fullmatch(name[:-5]):
                         state = _read_json(os.path.join(self.states_dir, name))
                         if isinstance(state, dict):
-                            self._states[int(name[:-5])] = state
+                            self._states[name[:-5]] = state
         return self._states
 
     def state(self, n):
         return self.states().get(n)
 
+    def resolve(self, ref):
+        """the identifier of the state that `ref` names: the identifier, or a
+        unique prefix of at least PREFIX characters; None if no state has it;
+        ValueError if several have it (the message lists them)"""
+        ref = str(ref).strip().lower()
+        if ref in self.states():
+            return ref
+        if len(ref) < PREFIX or not re.fullmatch(r'[0-9a-f]+', ref):
+            return None
+        found = sorted(n for n in self.states() if n.startswith(ref))
+        if len(found) > 1:
+            raise ValueError(f'{ref} names several steps: {", ".join(short(n) for n in found)}')
+        return found[0] if found else None
+
     def _path(self, n):
-        return os.path.join(self.states_dir, f'{n:06d}.json')
+        return os.path.join(self.states_dir, f'{n}.json')
 
     def add(self, state):
-        "write a new state; return its number"
+        "write a new state; return its identifier (see state_id)"
         os.makedirs(self.states_dir, exist_ok=True)
-        n = max(self.states(), default=0) + 1
-        while True:
-            try:
-                fd = os.open(self._path(n), os.O_WRONLY | os.O_CREAT | os.O_EXCL)
-            except FileExistsError:  # another command of the same project
-                n += 1
-                continue
+        n = state_id(state)
+        try:
+            fd = os.open(self._path(n), os.O_WRONLY | os.O_CREAT | os.O_EXCL)
+        except FileExistsError:  # the same state (parent, time, content): written already
+            pass
+        else:
             with os.fdopen(fd, 'w', encoding='utf-8', newline='\n') as f:
                 json.dump(state, f, indent=1)
-            break
         self.states()[n] = state
         return n
 
@@ -336,6 +428,7 @@ class Project:
 
     def heads(self):
         "{place: {'state': n, 'redo': [n, …]}}"
+        self.states()  # the states of an earlier version are named by their identifier first (see Store.upgrade)
         heads = _read_json(os.path.join(self.dir, 'heads.json'), {})
         return heads if isinstance(heads, dict) else {}
 

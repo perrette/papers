@@ -36,7 +36,7 @@ from papers.utils import PapersExit, stdin_is_terminal
 
 MB = 1024 * 1024
 DAY = 86400
-# without files deleted, the store is pruned every PRUNE_EVERY states
+# without files deleted, the store is pruned every PRUNE_EVERY states (of the library)
 PRUNE_EVERY = 50
 
 
@@ -289,7 +289,7 @@ def record(config, message=None, ops=None):
         # the operations done after the save join this state; after a save that added none, they
         # make a state of their own at the end of the command (not that of the previous command)
         journal.saved((config, n))
-    if any(op['op'] == 'trashed' for op in ops) or n % PRUNE_EVERY == 0:
+    if any(op['op'] == 'trashed' for op in ops) or len(project.states()) % PRUNE_EVERY == 0:
         prune(config, project.store)
     return n
 
@@ -389,11 +389,22 @@ def _pool_dirs(config):
 
 
 def describe(project, n):
-    "the line of a state: number, command, time, and the library that made it (a step of a pool)"
+    "the line of a state: identifier (short), command, time, and the library that made it (a step of a pool)"
     state = project.state(n)
     when = time.strftime('%Y-%m-%d %H:%M', time.localtime(state.get('time', 0)))
     origin = f', from {papers.config.short_home(state["from"])}' if state.get('from') else ''
-    return f'{n} {state.get("message", "")} ({when}{origin})'
+    return f'{history.short(n)} {state.get("message", "")} ({when}{origin})'
+
+
+def resolve(project, ref):
+    "the identifier of the step that `ref` names (see Project.resolve); PapersExit if none or several"
+    try:
+        n = project.resolve(ref)
+    except ValueError as error:
+        raise PapersExit(str(error))
+    if n is None:
+        raise PapersExit(f'no step {ref} in the history of the library (see `papers history`)')
+    return n
 
 
 def state_hashes(config, project, n):
@@ -512,7 +523,7 @@ def _pool(config, id, link):
     if project is not None and project.id == id:
         lock.acquire(pool_config)  # before looking where the pool is: no other command writes it until the end
     if project is None or project.id != id or project.head(place) is None:
-        return f'the pool of step {link["state"]} is not found (at {papers.config.short_home(file)})'
+        return f'the pool of step {history.short(link["state"])} is not found (at {papers.config.short_home(file)})'
     pool = _Pool(pool_config, project, place, project.head(place), _shown(config, pool_config))
     if history.sha256(_bibtex_text(pool_config).encode('utf-8')) != project.state(pool.at)['bibtex'].get('sha'):
         return f'pool {pool.shown}: changed outside papers since its last step'
@@ -590,7 +601,7 @@ def _move_pools(config, pools, undo, kind):
                 for n in pool.again:
                     revert_lines += papers.revert.revert(pool.config, biblio, n, resolver, forward=True,
                                                          anywhere=True)
-                plural = lambda numbers: f'step{"s" if len(numbers) > 1 else ""} {", ".join(map(str, numbers))}'
+                plural = lambda steps: f'step{"s" if len(steps) > 1 else ""} {", ".join(map(history.short, steps))}'
                 what = ([f'revert of {plural(pool.reverts)}'] if pool.reverts else []) + (
                     [f'{plural(pool.again)} again'] if pool.again else [])
                 mark(pool.config, reverts=list(pool.reverts), message=f'{_message()}: {", ".join(what)}')
@@ -669,15 +680,13 @@ def restore(config, n=None):
         if head is None:
             raise PapersExit('no history: nothing to restore')
         target = head['state']
-    elif project.state(n) is None:
-        raise PapersExit(f'no step {n} in the history of the library (see `papers history`)')
     else:
-        target = n
+        target = resolve(project, n)
     if papers.config.DRYRUN:
         return project, target, None, []
     cur = sync_head(config, project, place)
     if cur == target:
-        raise PapersExit(f'nothing to restore: {os.path.basename(config.bibtex)} is step {target}')
+        raise PapersExit(f'nothing to restore: {os.path.basename(config.bibtex)} is step {history.short(target)}')
     lines = go_to(config, project, cur, target)
     back, forward = project.path(cur, target)
     project.set_head(place, target, list(reversed(back)) if not forward else [])
@@ -697,16 +706,20 @@ def kept_size(project, n):
     return total
 
 
+def is_path(target):
+    "a path, not a step: a file that exists, or a name with a folder separator or a dot"
+    return os.path.exists(target) or os.sep in target or '/' in target or '.' in target
+
+
 def files_to_drop(config, project, target):
-    """the files kept by the history that `target` names: a step number (the
-    files its command deleted), or a path (the file deleted from that place,
-    by any step). Return {checksum: (path before the deletion, bytes)}."""
+    """the files kept by the history that `target` names: a step (its
+    identifier or a prefix of it: the files its command deleted), or a path
+    (the file deleted from that place, by any step; see is_path). Return
+    {checksum: (path before the deletion, bytes)}."""
     found = {}
     states = project.states()
-    if target.isdigit():
-        if int(target) not in states:
-            raise PapersExit(f'no step {target} in the history of the library (see `papers history`)')
-        chosen, path = [int(target)], None
+    if not is_path(target):
+        chosen, path = [resolve(project, target)], None
     else:
         chosen, path = list(states), os.path.abspath(os.path.expanduser(target))
     for n in chosen:

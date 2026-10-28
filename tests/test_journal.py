@@ -162,9 +162,11 @@ class TestSeveralSteps(JournalTest):
         self.assertFalse(os.path.exists(self.a))
 
     def test_restore_state(self):
-        self.lib('file rename --move')  # state 1: the library before it
+        self.lib('file rename --move')  # the first state: the library before it
         self.lib('tag one2000 --add x')
-        out = self.out('restore 1')
+        project, place = self.project()
+        first = project.line(project.head(place)['state'])[-1]
+        out = self.out(f'restore {first[:6]}')  # the start of its identifier
         self.assertIn(' --> moved back to ', out)
         self.assertEqual(Path(self.a).read_text(), 'pdf a')
         self.assertEqual(self.files('one2000'), [self.a])
@@ -557,7 +559,7 @@ class TestDropFiles(JournalTest):
         return [f for _, _, files in os.walk(root) for f in files] if os.path.isdir(root) else []
 
     def test_size_in_the_list(self):
-        self.assertRegex(self.out('history'), rf'> {self.step} papers rm one2000 --delete-files .*\[3 KB of deleted files\]')
+        self.assertRegex(self.out('history'), rf'> {self.step[:8]} papers rm one2000 --delete-files .*\[3 KB of deleted files\]')
 
     def test_drop_by_step(self):
         out = self.out(f'history --drop-files {self.step} --yes')

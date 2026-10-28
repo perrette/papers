@@ -14,7 +14,7 @@ once.
 ```
 $ papers add ~/Downloads/esd-4-11-2013.pdf --move
 $ papers undo
-undo: papers.bib restored to 12 papers add ~/Downloads/esd-4-11-2013.pdf --move (2026-10-22 14:03)
+undo: papers.bib restored to 4f1c9a2e papers add ~/Downloads/esd-4-11-2013.pdf --move (2026-10-22 14:03)
     files/perrette_2013_a-scaling-approach.pdf --> moved back to ~/Downloads/esd-4-11-2013.pdf
 ```
 
@@ -29,53 +29,59 @@ back are marked as undone:
 
 ```
 $ papers history
-  13 papers rm smith2020 --delete-files (2026-10-22 14:10)  (undone: `papers redo`)
-> 12 papers add ~/Downloads/esd-4-11-2013.pdf --move (2026-10-22 14:03)
-  11 papers tag smith2020 --add climate (2026-10-21 09:12)
+  b7e30d51 papers rm smith2020 --delete-files (2026-10-22 14:10)  (undone: `papers redo`)
+> 4f1c9a2e papers add ~/Downloads/esd-4-11-2013.pdf --move (2026-10-22 14:03)
+  92ad6c07 papers tag smith2020 --add climate (2026-10-21 09:12)
   ...
 history: ~/.local/share/papers/history, 3.2 MB (up to 500 MB: the history-size setting; deleted files kept)
 ```
 
-`papers restore N` brings the library to step N. Making a change after an
+A step is named by its identifier, the first column: 8 characters of the
+sha256 of the step (of its bibtex, its other files, its parent and its
+time), which never changes. A command that takes a step accepts the start
+of it, 4 characters or more, as long as no other step starts the same way.
+
+`papers restore STEP` brings the library to that step. Making a change after an
 undo starts a new line of history; the undone steps are not lost, and
-`papers restore N` still reaches them.
+`papers restore STEP` still reaches them.
 
 ## Taking back an older step
 
-`papers undo -n 3` goes back over the last three steps. To take back step
-N alone and keep the steps made after it:
+`papers undo -n 3` goes back over the last three steps. To take back one
+step alone and keep the steps made after it, give its identifier (or the
+start of it, see [The history](#the-history)):
 
 ```
-$ papers history --revert 11
+$ papers history --revert 92ad
 Modified -> smith2020: Sea level rise... (later)
 ```
 
 The revert is a new step of the history (`papers undo` takes it back). For
-each entry that step N changed, papers compares the entry before step N,
+each entry that the step changed, papers compares the entry before the step,
 after it, and now:
 
-- an entry that step N added is removed, unless it changed since (it is
+- an entry that the step added is removed, unless it changed since (it is
   kept, and a line says so);
-- an entry that step N removed comes back as it was;
-- a field that step N changed goes back to its value before step N,
+- an entry that the step removed comes back as it was;
+- a field that the step changed goes back to its value before the step,
   unless it changed since: then it is a conflict, decided as for
   [`papers pull`](pools.md#papers-pull), with `--on-duplicate` (`keep`: the
-  value now, `update`: the value before step N; in a terminal, papers asks);
-- the tags and the file links are taken one by one: those that step N added
+  value now, `update`: the value before the step; in a terminal, papers asks);
+- the tags and the file links are taken one by one: those that the step added
   are removed, those it removed come back, those added since stay;
-- a key that step N changed (with `--keep-old-key`, which keeps the former
+- a key that the step changed (with `--keep-old-key`, which keeps the former
   key in `ids`) goes back to the former key.
 
-The files go back as undo moves them, for the files of step N only: a file
-that step N moved or renamed is moved back, a file it deleted comes back
-from the history. The pairs that step N recorded in `.papers/distinct.json`
+The files go back as undo moves them, for the files of the step only: a file
+that the step moved or renamed is moved back, a file it deleted comes back
+from the history. The pairs that the step recorded in `.papers/distinct.json`
 (entries that are not the same paper) are removed. The origin copies
 (`.papers/origin/`) are not changed: the next `pull` or `push` compares
 with them, and with auto-push the revert is pushed like any command.
 
 A step that also changed the pool is reverted in the library only; a line
 gives the command that reverts the pool's step:
-`papers -C ../pool history --revert 31`.
+`papers -C ../pool history --revert 3c5e0b7a`.
 
 ## Deleted files
 
@@ -85,7 +91,7 @@ it back, also when no entry linked to it, or when the command was stopped
 (an error, Ctrl-C) after deleting it:
 
 ```
-undo: papers.bib restored to 12 papers add paper.pdf (2026-10-22 14:03)
+undo: papers.bib restored to 4f1c9a2e papers add paper.pdf (2026-10-22 14:03)
     files/perrette_2013_a-scaling-approach.pdf: restored from the history
 ```
 
@@ -103,8 +109,8 @@ Proceed? [y/N]
 ```
 
 `papers history` shows the size of the files each step keeps
-(`[3.2 MB of deleted files]`). `papers history --drop-files N` removes from
-the history the files that step N deleted, and `--drop-files PATH` the file
+(`[3.2 MB of deleted files]`). `papers history --drop-files STEP` removes from
+the history the files that the step deleted, and `--drop-files PATH` the file
 deleted from PATH (by any step): they go to the trash of the system, the
 steps stay, and undo says the files are no longer in the history. `papers
 history --remove` removes the whole history of the library. Both ask
@@ -175,7 +181,7 @@ library also records the step of the pool.
   nothing to push: the undo restores the origin copies with the bibtex.
   There is something when a step was made with auto-push off; that push is
   then a new step, after which there is nothing to redo, as after any
-  command (`papers restore N` still goes to the steps undone).
+  command (`papers restore STEP` still goes to the steps undone).
 - `papers undo --library-only` (and `redo --library-only`) leave the pool
   as it is: the files that the command moved to the pool are copied back.
 - The pool does not know which libraries use its entries. If another
@@ -194,9 +200,9 @@ library also records the step of the pool.
 ```
 $ papers add ~/Downloads/esd-4-11-2013.pdf --move
 $ papers undo
-undo: papers.bib restored to 7 papers pull (2026-10-28 10:12)
+undo: papers.bib restored to 0e8d41f3 papers pull (2026-10-28 10:12)
     ~/sealevel/files/perrette_2013_a-scaling-approach.pdf --> moved back to ~/Downloads/esd-4-11-2013.pdf
-pool ../sealevel: also undone, restored to 31 papers push (2026-10-28 10:09)
+pool ../sealevel: also undone, restored to 3c5e0b7a papers push (2026-10-28 10:09)
 ```
 
 The library also restores its origin copies (`.papers/origin/`, see
@@ -217,7 +223,7 @@ that step:
   from the library too, unless the library changed it since (a conflict, see
   [`papers pull`](pools.md#papers-pull)).
 
-`papers restore N` restores the library only.
+`papers restore STEP` restores the library only.
 
 ## Details
 

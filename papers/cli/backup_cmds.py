@@ -48,7 +48,7 @@ def _auto_push(config):
         undone = project.head(place)['redo']
         save_exchange(exchange)
         if undone:
-            print(f'the push is a new step: nothing to redo now (`papers restore {undone[0]}` '
+            print(f'the push is a new step: nothing to redo now (`papers restore {papers.history.short(undone[0])}` '
                   f'goes back to the steps undone)')
     print_push_notes(biblio, push_notes(report))
 
@@ -150,7 +150,7 @@ def drop_files(config, target, yes=False):
         raise PapersExit('the library has no history')
     found = backup.files_to_drop(config, project, target)
     if not found:
-        print(f'the history keeps no file deleted {"by step " + target if target.isdigit() else "from " + target}')
+        print(f'the history keeps no file deleted {"from " + target if backup.is_path(target) else "by step " + target}')
         return
     total = sum(size for _, size in found.values())
     for path, size in sorted(found.values()):
@@ -174,14 +174,16 @@ def revert(o, config):
         raise PapersExit('no library: --revert takes back a step of the history of a library')
     papers.lock.acquire(config)
     biblio = get_biblio(config)
-    lines = papers.revert.revert(config, biblio, o.revert, duplicate_resolver(o, 'revert'))
-    backup.mark(config, reverts=[o.revert])
+    project, _ = backup.project_of(config)
+    step = backup.resolve(project, o.revert)
+    lines = papers.revert.revert(config, biblio, step, duplicate_resolver(o, 'revert'))
+    backup.mark(config, reverts=[step])
     notes = save_entries(config, biblio)
     _print_biblio_diff(biblio, biblio.entries, notes=notes)
     if lines:
         print('\n'.join(lines))
     project, _ = backup.project_of(config)
-    for line in papers.revert.pool_lines(config, project, o.revert):
+    for line in papers.revert.pool_lines(config, project, step):
         print(line)
 
 
