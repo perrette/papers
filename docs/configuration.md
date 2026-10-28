@@ -110,6 +110,12 @@ that the library can be moved or shared as a whole. `papers config bibtex`,
 absolute paths. A relative path given to set them is relative to the current
 directory.
 
+A configuration file (of a library or the global one) that is not valid
+JSON, or that gives a setting a value of the wrong type (for example
+`"auto-push": "no"` instead of `false`, or a number for `pool`), is an
+error: papers names the file and the setting and does nothing until the
+file is corrected.
+
 `history-dir` and `keep-deleted-files` can only be set in the global
 configuration (`papers config --global`): a library you receive from
 someone cannot choose where your history goes, or what it keeps.
