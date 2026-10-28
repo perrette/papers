@@ -35,14 +35,13 @@ _FORMAT_HELP = {
 
 
 class _Deprecated(argparse.Action):
-    """a deprecated form of an option (removed in v4): warns with the new
-    form, and sets the option's destination (the values given, or `const`
+    """a deprecated form of an option (removed in v4), hidden from the help:
+    warns with the new form, and sets the option's destination (the values given, or `const`
     for a flag). The warning is printed once per parser, though the option
     is repeated or the arguments parsed again (papers.cli._main does)"""
 
     def __init__(self, option_strings, dest, new, nargs=0, const=True, help=None, **kw):
-        super().__init__(option_strings, dest, nargs=nargs, const=const,
-                         help=help or f'deprecated: use {new}', **kw)
+        super().__init__(option_strings, dest, nargs=nargs, const=const, help=argparse.SUPPRESS, **kw)
         self.new = new
 
     def __call__(self, parser, namespace, values, option_string=None):
@@ -71,6 +70,28 @@ class _Ignored(argparse.Action):
 
 _NO_GIT = 'papers keeps the history of the libraries without git (see `papers history`)'
 _NO_GIT_LFS = 'papers keeps the files that its commands delete in its history (see `papers history`)'
+
+
+# the deprecated commands (removed in v4): they work, with a warning, and the help does not show them
+DEPRECATED_COMMANDS = ('install', 'uninstall', 'filecheck', 'doi', 'restore-backup', 'backup', 'git')
+
+
+def _hide_commands(subparsers, names):
+    """leave the commands `names` out of the usage, the list of commands of
+    the help, and the error of an unknown command (see _Parser)"""
+    subparsers.visible = [n for n in subparsers.choices if n not in names]
+    subparsers.metavar = '{' + ','.join(subparsers.visible) + '}'
+    subparsers._choices_actions = [a for a in subparsers._choices_actions if a.dest not in names]
+
+
+class _Parser(argparse.ArgumentParser):
+    "an unknown command is an error that names the commands of the help only (see _hide_commands)"
+
+    def _check_value(self, action, value):
+        visible = getattr(action, 'visible', None)
+        if visible is not None and value not in action.choices:
+            raise argparse.ArgumentError(None, f'unknown command {value!r} (commands: {", ".join(visible)})')
+        super()._check_value(action, value)
 
 
 def _default(value):
@@ -165,7 +186,7 @@ def get_parser(config=None):
     if config is None:
         config = papers.config.Config()
 
-    parser = argparse.ArgumentParser(prog='papers', description='library management tool')
+    parser = _Parser(prog='papers', description='library management tool')
     parser.add_argument('--version', action='store_true', help='Print version string and exit.')
     parser.add_argument('-C', metavar='DIR', dest='directory',
         help='run as if papers was started in DIR (before the command name)')
@@ -218,9 +239,9 @@ def get_parser(config=None):
     grp.add_argument('--dry-run', action='store_true',
         help='no PDF renaming/copying, no bibtex writing on disk (for testing)')
     grp.add_argument('--relative-paths', action="store_false", dest="absolute_paths", default=None,
-        help='store file paths relative to the bibtex file (deprecated: `papers config paths relative`)')
+        help=argparse.SUPPRESS)  # deprecated: `papers config paths relative`
     grp.add_argument('--absolute-paths', action="store_true", default=None,
-        help='store absolute file paths (deprecated: `papers config paths absolute`)')
+        help=argparse.SUPPRESS)  # deprecated: `papers config paths absolute`
     grp.add_argument('--no-git', action=_Ignored, why=_NO_GIT)
 
     # the format options default to None: the configured values apply
@@ -330,7 +351,7 @@ def get_parser(config=None):
     installp.add_argument('--no-prompt', '--force', action=_Deprecated, dest='yes', new='-y/--yes')
 
     installp.add_argument('--local', action="store_true", default=None,
-        help="""ignored (a library configuration is always local)""")
+        help=argparse.SUPPRESS)  # ignored: a library configuration is always local
     installp.add_argument('--global', action="store_false", dest='local', default=None,
         help="no longer supported: an error that changes nothing (`papers init PATH --global` creates the "
              "default library, `papers config --global default PATH` registers an existing one)")
@@ -350,7 +371,7 @@ def get_parser(config=None):
     uninstallp = subparsers.add_parser('uninstall', description='deprecated: remove the library configuration '
         '(`rm -r .papers`); its history: `papers history --remove`',
         parents=[loggingp])
-    uninstallp.add_argument("--recursive", action="store_true", help="deprecated and ignored: only the configuration of the library is removed")
+    uninstallp.add_argument("--recursive", action="store_true", help=argparse.SUPPRESS)  # deprecated and ignored
     uninstallp.add_argument("--remove-backup", "--remove-history", action="store_true", dest='remove_history',
         help="also remove the history of the library (`papers history --remove`)")
     _command(uninstallp, uninstallcmd)
@@ -393,13 +414,12 @@ def get_parser(config=None):
         `papers pull --pool PATH` brings its corrections. Nothing is added to PATH. Not the same as
         `papers -C PATH add`, which adds to the library PATH.''')
     grp.add_argument('--no-merge-files', action='store_true',
-        help='deprecated and ignored: file links are always merged')
+        help=argparse.SUPPRESS)  # deprecated and ignored: file links are always merged
     grp.add_argument('-u', '--update-key', action='store_true',
         help='''regenerate the key of the entries new to the library from the key template
         (see "bibtex key format" options). A duplicate always keeps the key of the library.''')
     grp.add_argument('-m', '--mode', choices=['u', 'U', 'o', 's', 'r', 'i', 'a'],
-        help='''deprecated: use --on-duplicate (i: ask, u: keep, U and o: update, s: skip,
-        r: error, a: --no-check-duplicate)''')
+        help=argparse.SUPPRESS)  # deprecated: --on-duplicate (i: ask, u: keep, U and o: update, s: skip, r: error, a: --no-check-duplicate)
 
     grp = addp.add_argument_group('directory scan')
     grp.add_argument('-R', '--recursive', action='store_true',
@@ -446,7 +466,7 @@ def get_parser(config=None):
     grp.add_argument('--attach', nargs='+', type=file_uri_to_path, dest='attachment', metavar='FILE',
         help='attach these files to the entry (e.g. supplementary material)')
     grp.add_argument('--attachment', nargs='+', type=file_uri_to_path, dest='attachment_deprecated',
-        help='deprecated: use --attach')
+        help=argparse.SUPPRESS)  # deprecated: --attach
     _files_mode_options(grp, add=True)
 
     grp = addp.add_argument_group('actions')
@@ -494,7 +514,7 @@ def get_parser(config=None):
         keep (merge, conflicts keep the value of entry 1), skip (leave the group),
         error (exit with status 1 if there is any group; the default without a terminal,
         and skip with -y/--yes)''')
-    grp.add_argument('-m', '--mode', choices=list('ims'), help='deprecated: use --on-duplicate (i: ask, m: keep, s: skip)')
+    grp.add_argument('-m', '--mode', choices=list('ims'), help=argparse.SUPPRESS)  # deprecated: --on-duplicate
     _command(checkp, checkcmd, library=True)
 
 
@@ -664,7 +684,7 @@ def get_parser(config=None):
     listp.add_argument('--fuzzy-ratio', type=int,
         help=f'threshold for fuzzy matching of title, author, abstract (default: 50), '
              f'and of authors and title with --duplicates --fuzzy (default: {FUZZY_RATIO})')
-    listp.add_argument('--similarity', help='deprecated and ignored')
+    listp.add_argument('--similarity', help=argparse.SUPPRESS)  # deprecated and ignored
     listp.add_argument('--invert', action='store_true',
         help='list the entries that the same command without --invert does not list')
     listp.add_argument('--any', action='store_true', help='when several keywords: any of them')
@@ -753,11 +773,10 @@ def get_parser(config=None):
     grp.add_argument('--export', metavar='DIR',
         help='write the listed entries as a new library in DIR, as `papers export DIR KEY...`')
     _export_options(grp, format='--export-format', files='--export-files')
-    grp.add_argument('--fetch', action='store_true', help='deprecated: `papers check --fetch --fetch-all --fix-doi --fix-key --format-name -`')
+    grp.add_argument('--fetch', action='store_true', help=argparse.SUPPRESS)  # deprecated: papers check --fetch --fetch-all --fix-doi --fix-key --format-name -
     grp.add_argument('--add-files', nargs='+', type=file_uri_to_path, metavar='FILE',
-        help='deprecated: use --attach (--add-files links the files where they are, or moves them with '
-             '--rename, or copies them with --copy)')
-    grp.add_argument('--copy', action='store_true', help='deprecated: use --rename --keep-source')
+        help=argparse.SUPPRESS)  # deprecated: --attach
+    grp.add_argument('--copy', action='store_true', help=argparse.SUPPRESS)  # deprecated: --rename --keep-source
     _command(listp, listcmd, library=True)
 
     # edit, rm, tag
@@ -954,7 +973,7 @@ def get_parser(config=None):
 
     # git
     # ===
-    gitp = subparsers.add_parser('git', help=argparse.SUPPRESS,
+    gitp = subparsers.add_parser('git',
         description=f'removed: {_NO_GIT}; to keep the library under git, run git in its folder')
     gitp.add_argument('gitargs', nargs=argparse.REMAINDER)
     _command(gitp, gitcmd)
@@ -982,4 +1001,6 @@ def get_parser(config=None):
             historyp.add_argument('patterns', nargs='*', help=argparse.SUPPRESS)
         _command(historyp, historycmd)
 
+    _hide_commands(subparsers, DEPRECATED_COMMANDS)
+    _hide_commands(filesub, ())  # the same error for an unknown subcommand
     return parser, subparsers
