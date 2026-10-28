@@ -252,13 +252,12 @@ def _export_formats(o):
 
 def export_entries(o, config, biblio, entries):
     """`papers export` (also `papers list --export`): write the entries in
-    the directory o.dir, with the options of export (o.format, o.files,
-    o.git)"""
+    the directory o.dir, with the options of export (o.format, o.files)"""
     formats = _export_formats(o)
     if 'ris' in formats:
         load_rispy()  # before anything is written
     library = 'bibtex' in formats
-    new, target = export(biblio, config, entries, o.dir, files=o.files, git=o.git, library=library)
+    new, target = export(biblio, config, entries, o.dir, files=o.files, library=library)
     dest = new.configdir if library else os.path.abspath(o.dir)
     written = []
     if library:

@@ -64,14 +64,12 @@ class TestLegacyConfig(TmpTest):
     def assert_v2_paths(self, config):
         self.assertEqual(config.bibtex, self.path('lib', 'papers.bib'))
         self.assertEqual(config.filesdir, self.path('lib', 'files'))
-        self.assertEqual(config.gitdir, self.path('lib', '.papers', 'backup'))
         self.assertEqual(str(config.configdir), self.path('lib'))
 
     def test_v2_dot_papers_read_in_place(self):
         # used to resolve the paths against .papers/
         config = Config.load(self.v2_library(), machine=papers.config.MachineConfig())
         self.assert_v2_paths(config)
-        self.assertEqual(config.legacy_gitdir, self.path('lib', '.papers'))  # see papers.backup.adopt_central_backup
 
     def test_v2_dot_papers_found_in_place(self):
         self.v2_library()
@@ -120,11 +118,11 @@ class TestSavebib(TmpTest):
             papers.config.DRYRUN = False
         biblio.save.assert_not_called()
 
-    def test_backup_failure_keeps_the_save(self):
-        config = Config(bibtex=self.path('papers.bib'), git=True)
+    def test_history_failure_keeps_the_save(self):
+        config = Config(bibtex=self.path('papers.bib'))
         biblio = mock.Mock()
-        with mock.patch('papers.library.silent_backup_bib', side_effect=OSError('no git')), \
+        with mock.patch('papers.backup.record', side_effect=OSError('disk full')), \
                 self.assertLogs('papers', level='ERROR') as logs:
             savebib(biblio, config)
-        biblio.save.assert_called_once_with(config.bibtex, backup=None)
-        self.assertIn('its git backup failed: no git', logs.output[0])
+        biblio.save.assert_called_once_with(config.bibtex)
+        self.assertIn('its history failed: disk full', logs.output[-1])

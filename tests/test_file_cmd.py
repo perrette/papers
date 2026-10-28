@@ -73,7 +73,7 @@ class TestRename(FileTest):
 
     def test_other_library_is_copied(self):
         os.makedirs(self.path('other'))
-        self.papers('init --no-git', cwd=self.path('other'))
+        self.papers('init', cwd=self.path('other'))
         c = self.write('other', 'files', 'c.pdf')
         self.bib(entry('three2000', c))
         self.lib('file rename --move')

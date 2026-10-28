@@ -33,7 +33,7 @@ class FilesModeTest(ConfigTest):
         super().setUp()
         os.makedirs(self.path('lib'))
         os.makedirs(self.path('src'))
-        self.lib('init --no-git')
+        self.lib('init')
         self.pdf = self.path('src', 'a.pdf')
         Path(self.pdf).write_text('pdf a')
         Path(self.path('src', 'a.bib')).write_text(bib_with_file('one2000', self.pdf))
@@ -201,7 +201,7 @@ class TestOtherLibrary(FilesModeTest):
     def setUp(self):
         super().setUp()
         os.makedirs(self.path('other'))
-        self.papers('init --no-git', cwd=self.path('other'))
+        self.papers('init', cwd=self.path('other'))
         os.makedirs(self.path('other', 'files'), exist_ok=True)
         self.other_pdf = self.path('other', 'files', 'b.pdf')
         Path(self.other_pdf).write_text('pdf b')

@@ -1,10 +1,10 @@
-"""A command that changes nothing does not write the bibtex nor commit to
-the git backup (papers.library.savebib, Biblio.unchanged)"""
+"""A command that changes nothing does not write the bibtex nor add a state
+to the history (papers.library.savebib, Biblio.unchanged)"""
 import os
 from pathlib import Path
 from unittest.mock import patch
 
-from papers.backup import run_git
+import papers.backup
 from papers.bib import Biblio
 from papers.config import Config, library_config_file
 
@@ -16,7 +16,6 @@ class TestUnchangedSave(FileTest):
     def setUp(self):
         super().setUp()
         self.bib(entry('one2000', doi='10.1000/one'), entry('two2000'))
-        self.lib('config git true')
         self.lib('tag one2000 --add first')  # the bibtex as papers writes it
         self.config = Config.load(library_config_file(self.path('lib')))
         os.utime(self.bibtex(), ns=(1, 1))
@@ -25,7 +24,9 @@ class TestUnchangedSave(FileTest):
         return self.path('lib', 'papers.bib')
 
     def commits(self):
-        return int(run_git(self.config.gitdir, ['rev-list', '--count', 'HEAD']).stdout)
+        "the number of states of the history of the library"
+        project, _ = papers.backup.project_of(Config.load(library_config_file(self.path('lib'))), create=False)
+        return len(project.states())
 
     def assertNotSaved(self, cmd):
         commits = self.commits()

@@ -2,7 +2,6 @@ import atexit
 import os
 import shutil
 import tempfile
-import subprocess as sp
 
 # Keep the tests away from the user's configuration, backups and default
 # library: papers.config derives its locations from platformdirs, which
@@ -13,16 +12,6 @@ import subprocess as sp
 _TEST_HOME = tempfile.mkdtemp(prefix='papers-tests-')
 atexit.register(shutil.rmtree, _TEST_HOME, ignore_errors=True)
 os.environ.setdefault('XDG_CACHE_HOME', os.path.join(os.path.expanduser('~'), '.cache'))
-
-# git commits of the backups need a user name and email: take those of the
-# developer's git configuration (not found once HOME changes), or test
-# values, and give them through the environment (inherited by every git call)
-for _key, _var, _value in [('user.name', 'NAME', 'Papers Tests'), ('user.email', 'EMAIL', 'papers.tests@github.com')]:
-    _run = sp.run(['git', 'config', _key], capture_output=True, text=True)
-    _value = _run.stdout.strip() if _run.returncode == 0 and _run.stdout.strip() else _value
-    os.environ.setdefault(f'GIT_AUTHOR_{_var}', _value)
-    os.environ.setdefault(f'GIT_COMMITTER_{_var}', _value)
-del sp
 
 os.environ['HOME'] = os.path.join(_TEST_HOME, 'home')
 os.makedirs(os.environ['HOME'])

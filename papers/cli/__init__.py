@@ -134,10 +134,10 @@ def _run(o, parser, subparsers, config):
         config = check_install(o.command_parser, o, config, bibtex_must_exist=o.bibtex_must_exist)
     # the editor setting wins over $VISUAL and $EDITOR
     papers.utils.EDITOR = config.editor
-    # the backup of papers 3.0.0b2 and earlier moves to the library
-    papers.backup.adopt_central_backup(config)
-    # the file operations of the command (see papers.journal)
-    papers.journal.start(config.bibtex, config.trash() if config.file else None)
+    # the file operations of the command, and where the files it deletes go (see papers.journal)
+    papers.journal.start(config.bibtex, papers.backup.Deleted(config) if config.bibtex else None)
+    papers.journal.ASSUME_YES = bool(getattr(o, 'yes', False))
+    papers.backup.start(config, o.cmd)
     o.func(o.command_parser, o, config)
     finish_journal()
 

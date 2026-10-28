@@ -21,7 +21,11 @@ papers 3 adds the following new functionalities:
   deprecated (see [What else changed](#what-else-changed));
 - **RIS, CSL-JSON and BibJSON**: `papers add refs.ris` (or `.json`, `.bib.json`) imports them,
   `papers list --format` and `papers export` write them (see
-  [Export](export.md)).
+  [Export](export.md));
+- **undo without git**: `papers undo` takes back any command, with the
+  files it moved, renamed or deleted, without git or git-lfs (see
+  [Undo and redo](undo-redo.md)). The git backup of papers 2 is no longer
+  used (see [Backups of earlier versions](git.md#backups-of-earlier-versions)).
 
 ## What changes for an existing setup
 
@@ -53,10 +57,15 @@ by other tools. What changes:
     | `papers list ... --fetch` | `papers check --fetch --fetch-all --fix-doi --fix-key --format-name KEY...`, or `papers list ... -K \| papers check --fetch ... -` |
     | `papers doi` | `papers extract --doi-only` |
     | `papers restore-backup` | `papers restore` |
+    | `papers backup` | `papers history` |
+    | `papers uninstall` | `rm -r .papers`, and `papers history --remove` |
     | `--attachment` | `--attach` |
     | `-m/--mode` | `--on-duplicate` |
     | `--relative-paths` / `--absolute-paths` | `papers config paths relative` or `absolute` |
 
+    `papers git` is removed, and the options `--git`, `--no-git`,
+    `--git-lfs` and `--restore-files` are ignored (papers keeps its
+    history without git, see [Undo and redo](undo-redo.md)).
     `papers install --global` is removed: it stops with an error, and
     changes nothing. `papers init PATH --global` creates the default
     library, and `papers config --global default PATH` registers an
@@ -117,8 +126,8 @@ global configuration of papers v2: ~/.config/papersconfig.json
   configuration of papers 3 already sets another one: commands run
   outside of any project act on it (see
   [A global shared library](global-library.md)).
-- The bibtex and the PDFs stay where they are. The git backup moves into
-  the library, `.papers/backup` (see
+- The bibtex and the PDFs stay where they are. The git backup of papers 2
+  is no longer used, and stays where it is until you delete it (see
   [Backups of earlier versions](git.md#backups-of-earlier-versions)). File links
   stay absolute, as they were; `papers migrate --relative` makes them
   relative to the bibtex.

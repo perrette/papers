@@ -115,8 +115,8 @@ class TestCheckInstall(ConfigTest):
         Path(self.path('papers.bib')).write_text('')
         config = Config(bibtex=self.path('papers.bib'))
         with self.assertLogs('papers', level='WARNING'):
-            config = check_install(None, self.options(filesdir='files', absolute_paths=True, git=False), config)
-        self.assertEqual((config.filesdir, config.absolute_paths, config.git), ('files', True, False))
+            config = check_install(None, self.options(filesdir='files', absolute_paths=True), config)
+        self.assertEqual((config.filesdir, config.absolute_paths), ('files', True))
 
 
 class TestFilesMode(unittest.TestCase):

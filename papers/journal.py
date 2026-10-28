@@ -1,59 +1,51 @@
-"""The file operations of a command, the trash of a library, and `restore`,
+"""The file operations of a command, the files it deletes, and `restore`,
 which brings the files from one state of the library to another (undo,
 redo, restore).
 
 Each operation is a dict: `op` is moved (a file or a folder, renamed or
 moved to another folder), copied, trashed (a file deleted by the command,
-kept in the trash of the library, see `remove`) or removed (deleted for
-good); `src` the path before, `dst` the path after (for removed: the
-identical file that was kept, if any); `checksum` the sha256 of the file
-(None for a folder). With the git backup, the operations of a command are
-committed with its snapshot (JOURNAL_FILE); without it, the operations of
-the last command are kept in the backup folder of the library, next to the
-previous bibtex (see journal_file). The operations done after the save of
-the library (e.g. the files deleted by papers rm) join them when the
-command ends (see papers.library.finish_journal).
+kept in the history of the machine, see `remove`) or removed (deleted for
+good, or sent to the trash of the system); `src` the path before, `dst` the
+path after (for removed: the identical file that was kept, if any);
+`checksum` the sha256 of the file (None for a folder). The operations of a
+command are recorded with its state in the history (see papers.backup);
+those done after the save of the library (e.g. the files deleted by papers
+rm) join them when the command ends (see papers.library.finish_journal).
 
 `restore` compares the files that the entries link to in the two states:
 the operations say what the commands did (moved or copied, deleted or only
 unlinked, where from), the checksums find the files (see papers.checksums).
 """
-import json
 import os
 import shutil
-import time
 from contextlib import contextmanager
 
 import papers.config
 from papers import logger
 from papers.utils import checksum
 
-# the operations of a command, in the backup directory (one per commit)
-JOURNAL_FILE = 'files-journal.json'
-
-# the trash of a library, in its backup directory: the files deleted by its commands
-TRASH_DIR = 'trash'
-
 _ops = []
 _owner = None  # real path of the bibtex of the library of the command
 _paused = 0
-_trash = None  # (directory, days, megabytes) of the trash of the library of the command
-_saved = None  # where the operations of the command went: ('git', gitdir, commit) or ('file', bibtex)
+_deleted = None  # where the files that the command deletes go (see papers.backup.Deleted), or None
+_saved = None  # where the operations of the command went (see papers.backup.record)
+# the answer to the questions before deleting files (see papers.files.delete_files): -y/--yes
+ASSUME_YES = False
 
 
-def start(bibtex, trash=None):
-    """a new command, on the library of this bibtex; trash: (directory,
-    days, megabytes) of its trash (see `remove`)"""
-    global _owner, _trash, _saved
+def start(bibtex, deleted=None):
+    """a new command, on the library of this bibtex; deleted: where the
+    files that it deletes go (see `remove`)"""
+    global _owner, _deleted, _saved
     _ops.clear()
     _owner = os.path.realpath(bibtex) if bibtex else None
-    _trash = trash
+    _deleted = deleted
     _saved = None
 
 
 @contextmanager
 def paused():
-    "file operations that are not the command's (e.g. the copies of the git-lfs backup)"
+    "file operations that are not the command's"
     global _paused
     _paused += 1
     try:
@@ -95,6 +87,39 @@ def pending(bibtex):
     return list(_ops) if is_owner(bibtex) else []
 
 
+def rollback(bibtex, find_deleted=None):
+    """put back the files of the operations of the command on the library of
+    this bibtex, the last one first, and forget them (e.g. its save was
+    refused: the bibtex does not record them). The safety rules of `restore`
+    hold: no file is overwritten, a file changed since stays. Return the
+    lines of the report."""
+    ops = pending(bibtex)
+    lines = []
+    for op in reversed(ops):
+        src, dst, digest = op['src'], op.get('dst'), op.get('checksum')
+        if op['op'] in ('moved', 'copied') and dst and os.path.lexists(dst):
+            if digest and os.path.isfile(dst) and _checksum(dst) != digest:
+                lines.append(f'    {_show(dst)}: changed since: left as it is')
+            elif op['op'] == 'moved' and not os.path.lexists(src):
+                _place(dst, src)
+                lines.append(_arrow(dst, src, 'moved back to'))
+            elif op['op'] == 'copied' and os.path.isfile(src):
+                os.remove(dst)
+                lines.append(f'    {_show(dst)}: removed (a copy of {_show(src)})')
+            else:
+                lines.append(f'    {_show(dst)}: not moved back, {_show(src)} exists')
+        elif op['op'] == 'trashed' and not os.path.lexists(src):
+            found = find_deleted(digest) if find_deleted else None
+            if found:
+                _place(found, src, copy=True)
+                lines.append(f'    {_show(src)}: restored from the history')
+        elif op['op'] == 'removed' and not op.get('dst') and not os.path.lexists(src):
+            lines.append(f'    {_show(src)}: deleted by the command, not restored')
+    if is_owner(bibtex):
+        _ops.clear()
+    return lines
+
+
 def is_owner(bibtex):
     "the library of this bibtex is the library of the command"
     return bool(bibtex) and _owner == os.path.realpath(bibtex)
@@ -114,150 +139,57 @@ def leftover():
     return ops, _saved
 
 
-# the trash
-# =========
+# the files deleted by the command
+# =================================
 
 MB = 1024 * 1024
 
 
-def trash_capacity():
-    "the size of the trash of the library of the command, in megabytes, or None (no trash)"
-    return _trash[2] if _trash is not None else None
+def guard(total, count):
+    """before deleting `count` files of `total` bytes: True (they are kept
+    for undo), False (to the trash of the system: undo cannot bring them
+    back) or None (the user said no: keep the files)"""
+    if _deleted is None or papers.config.DRYRUN:
+        return True
+    return _deleted.guard(total, count)
+
+
+def keeps_deleted():
+    "the files that the command deletes are kept in the history"
+    return _deleted is not None and _deleted.keep
 
 
 def remove(path, trash=True):
-    """delete a file for the command: it goes to the trash of the library
-    (recorded, `undo` brings it back), unless trash=False, there is no
-    trash, the file is larger than the trash, or the operation is not the
-    command's (`paused`); then it is deleted (recorded as removed)"""
+    """delete a file for the command: it is kept in the history of the
+    machine (recorded, `undo` brings it back), unless trash=False, the
+    keep-deleted-files setting is off, or the operation is not the
+    command's (`paused`); then it goes to the trash of the system, or is
+    deleted (recorded as removed)"""
     if papers.config.DRYRUN:
         return
-    if _paused or not trash or _trash is None or not os.path.isfile(path):
+    if _paused or not trash or _deleted is None or not _deleted.keep or not os.path.isfile(path):
         if not _paused and os.path.isfile(path):
             record('removed', path, digest=_checksum(path))
-        os.remove(path)
-        return
-    directory, days, megabytes = _trash
-    size = os.path.getsize(path)
-    if size > megabytes * MB:
-        logger.warning(f'{path}: larger than the trash ({size / MB:.0f} MB > {megabytes} MB, '
-                       f'the trash-size setting): deleted')
-        record('removed', path, digest=_checksum(path))
-        os.remove(path)
+        if _paused or not os.path.isfile(path):
+            os.remove(path)
+        else:
+            to_system_trash(path)
         return
     digest = _checksum(path)
-    os.makedirs(directory, exist_ok=True)
-    target = os.path.join(directory, digest + os.path.splitext(path)[1])
-    if os.path.exists(target):
-        os.remove(path)  # the trash has this content already
-    else:
-        shutil.move(path, target)
-    os.utime(target)  # the time it entered the trash
-    record('trashed', path, target, digest)
-    empty_trash(directory, days, megabytes)
+    _deleted.store.put_file(path, digest)
+    record('trashed', path, None, digest)
 
 
-def _to_system_trash(path):
-    """a file that leaves the trash of the library goes to the trash of the
-    system (the user empties it), or is deleted if there is none"""
+def to_system_trash(path):
+    """a file that papers does not keep goes to the trash of the system
+    (the user empties it), or is deleted if there is none"""
     try:
         from send2trash import send2trash
         send2trash(path)
     except Exception as error:  # no trash of the system (e.g. a server), or no send2trash
         logger.debug(f'{path}: not sent to the trash of the system ({error}): deleted')
-        os.remove(path)
-
-
-def empty_trash(directory, days, megabytes):
-    """the files of the trash older than `days`, then the oldest ones beyond
-    `megabytes`, go to the trash of the system"""
-    if not os.path.isdir(directory):
-        return
-    files = [os.path.join(directory, f) for f in os.listdir(directory)]
-    files = sorted((os.path.getmtime(f), os.path.getsize(f), f) for f in files if os.path.isfile(f))
-    limit = time.time() - days * 86400
-    total = sum(size for _, size, _ in files)
-    for mtime, size, f in files:  # the oldest first
-        if mtime >= limit and total <= megabytes * MB:
-            break
-        logger.info(f'{f}: leaves the trash of the library, to the trash of the system')
-        _to_system_trash(f)
-        total -= size
-
-
-def trash_size(directory):
-    "files and bytes in the trash"
-    if not os.path.isdir(directory):
-        return 0, 0
-    files = [os.path.join(directory, f) for f in os.listdir(directory)]
-    return len(files), sum(os.path.getsize(f) for f in files if os.path.isfile(f))
-
-
-# without the git backup: the operations of the last command
-# ==========================================================
-
-def journal_file(backupdir):
-    "the operations of the last command, in the backup folder of the library, next to the previous bibtex"
-    return os.path.join(backupdir, 'previous-files.json')
-
-
-def save_last(bibtex, backupdir, ops):
-    "after a command that wrote the bibtex (git backup off); no operations: no file"
-    if papers.config.DRYRUN:
-        return
-    if is_owner(bibtex):
-        saved(('file', bibtex, backupdir))
-    if not ops:
-        if os.path.exists(journal_file(backupdir)):
-            os.remove(journal_file(backupdir))
-        return
-    os.makedirs(backupdir, exist_ok=True)
-    with open(journal_file(backupdir), 'w') as f:
-        json.dump({'bibtex': _checksum(bibtex), 'state': 'done', 'ops': ops}, f, indent=1)
-
-
-def append_last(bibtex, backupdir, ops):
-    "operations done after the save of the bibtex (git backup off): join those of its last change"
-    path = journal_file(backupdir)
-    os.makedirs(backupdir, exist_ok=True)
-    journal = {'bibtex': _checksum(bibtex), 'state': 'done', 'ops': []}
-    if os.path.exists(path):
-        try:
-            journal = json.load(open(path))
-        except (OSError, ValueError):
-            pass
-    journal['ops'] = (journal.get('ops') or []) + ops
-    with open(path, 'w') as f:
-        json.dump(journal, f, indent=1)
-
-
-def swap_last(bibtex, backupdir, current, target, pool_dirs=()):
-    """the bibtex is swapped with its previous version (undo or redo without
-    git): bring the files from the links of the bibtex (current) to those of
-    the previous version (target), see `restore`. To call before the swap;
-    return the lines of the report, and the journal to save after the swap
-    (see save_swapped), or None."""
-    path = journal_file(backupdir)
-    if not os.path.exists(path) or not os.path.exists(bibtex):
-        return [], None
-    try:
-        journal = json.load(open(path))
-    except (OSError, ValueError):
-        return [], None
-    if journal.get('bibtex') != _checksum(bibtex):
-        return [], None  # the bibtex changed since: the operations are not those of its last change
-    undo = journal.get('state') == 'done'
-    lines = restore(current, target, journal.get('ops') or [], undo, pool_dirs=pool_dirs,
-                    trash_dir=os.path.join(backupdir, TRASH_DIR))
-    journal['state'] = 'undone' if undo else 'done'
-    return lines, journal
-
-
-def save_swapped(bibtex, backupdir, journal):
-    "after the swap of swap_last: the journal of the bibtex now in place"
-    journal['bibtex'] = _checksum(bibtex)
-    with open(journal_file(backupdir), 'w') as f:
-        json.dump(journal, f, indent=1)
+        if os.path.exists(path):
+            os.remove(path)
 
 
 # restore: from one state of the files to another
@@ -290,25 +222,7 @@ def _inside(path, dirs):
     return any(real.startswith(os.path.realpath(d) + os.sep) for d in dirs if d)
 
 
-def lfs_object(gitdir, digest):
-    "the copy of a file of this checksum in the git-lfs store of a backup, or None"
-    if not gitdir or not digest:
-        return None
-    path = os.path.join(gitdir, '.git', 'lfs', 'objects', digest[:2], digest[2:4], digest)
-    return path if os.path.isfile(path) else None
-
-
-def trash_object(trash_dir, digest):
-    "the file of this checksum in the trash, or None"
-    if not trash_dir or not digest or not os.path.isdir(trash_dir):
-        return None
-    for name in os.listdir(trash_dir):
-        if os.path.splitext(name)[0] == digest:
-            return os.path.join(trash_dir, name)
-    return None
-
-
-def restore(current, target, ops, undo, hashes=None, pool_dirs=(), trash_dir=None, gitdir=None):
+def restore(current, target, ops, undo, hashes=None, pool_dirs=(), find_deleted=None):
     """bring the files from one state of the library to another (undo,
     redo, restore). current, target: the paths of the files that the
     entries link to, now and in the state restored; ops: the operations of
@@ -319,11 +233,11 @@ def restore(current, target, ops, undo, hashes=None, pool_dirs=(), trash_dir=Non
     A file that the restored state links to and that does not exist is
     taken from: the other end of a move or copy of the commands; a file of
     the same checksum (one that no entry links to any more is moved, one
-    that an entry links to, or a file of the pool, is copied); the trash;
-    the git-lfs store of the backup (gitdir). Then the files that the
+    that an entry links to, or a file of the pool, is copied); the files
+    deleted by the commands (find_deleted: checksum -> path, or None). Then the files that the
     commands put in place and that the restored state does not link go
     back: moved back to where they came from, or deleted (a copy; a
-    file that the command deleted, when redone, goes to the trash). Files
+    file that the command deleted, when redone, goes to the history). Files
     are never overwritten, and a file that changed since the command stays
     as it is; files that the commands did not touch are left alone.
     Return the lines of the report."""
@@ -397,19 +311,14 @@ def restore(current, target, ops, undo, hashes=None, pool_dirs=(), trash_dir=Non
             else:
                 place(path, other, copy, ('copied' if copy else 'moved') + back + ' to')
             continue
-        found = trash_object(trash_dir, want)
+        found = find_deleted(want) if find_deleted and want else None
         if found:
-            _place(found, path)
-            lines.append(f'    {_show(path)}: restored from the trash')
-            continue
-        found = lfs_object(gitdir, want)
-        if found:
-            _place(found, path, copy=True)
-            lines.append(f'    {_show(path)}: restored from the git-lfs copy')
+            _place(found, path, copy=True)  # the history keeps it, for the other states
+            lines.append(f'    {_show(path)}: restored from the history')
             continue
         deleted = [op for op in ops if op['src'] == path and op['op'] in ('trashed', 'removed')]
         if deleted and deleted[-1]['op'] == 'trashed':
-            lines.append(f'    {_show(path)}: no longer in the trash (see the trash-days and trash-size settings), '
+            lines.append(f'    {_show(path)}: no longer in the history (see the history-size setting), '
                          'not restored')
         elif deleted or want:
             lines.append(f'    {_show(path)}: deleted by the command, not restored')
@@ -446,7 +355,7 @@ def restore(current, target, ops, undo, hashes=None, pool_dirs=(), trash_dir=Non
                     lines.append(_arrow(path, deleted['dst'], 'moved to'))
             elif deleted['op'] == 'trashed':
                 remove(path)
-                lines.append(f'    {_show(path)}: deleted again (to the trash)')
+                lines.append(f'    {_show(path)}: deleted again (kept in the history)')
             else:
                 os.remove(path)
                 lines.append(f'    {_show(path)}: removed again')

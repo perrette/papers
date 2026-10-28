@@ -65,7 +65,7 @@ class TestRenameInPlace(BibTest):
         Path(self.dir, 'b.pdf').write_text('b')
         Path(self.dir, 'in.bib').write_text(ENTRY)
         Path(self.dir, 'lib.bib').write_text('')
-        self.opts = '--bibtex lib.bib --filesdir files --relative-paths --no-git'
+        self.opts = '--bibtex lib.bib --filesdir files --relative-paths'
 
     def tearDown(self):
         self.temp_dir.cleanup()
@@ -246,7 +246,7 @@ class TestScanFlatLayout(BibTest):
         from unittest import mock
         with mock.patch('papers.bib.extract_pdf_metadata', self.fake_metadata), \
                 mock.patch('papers.cli.entry_cmds.prefetch_pdf_metadata', lambda *a, **k: None):
-            paperscmd('add --recursive files --bibtex lib.bib --no-git --relative-paths', cwd=self.dir)
+            paperscmd('add --recursive files --bibtex lib.bib --relative-paths', cwd=self.dir)
         self.assertEqual(sorted(self.scanned), ['main.pdf', 'other.pdf'])
         biblio = Biblio.load(os.path.join(self.dir, 'lib.bib'), None)
         files = {e['title']: [os.path.basename(f) for f in biblio.get_files(e)] for e in biblio.entries}
@@ -270,7 +270,7 @@ class TestScanFlatLayout(BibTest):
 """)
         with mock.patch('papers.bib.extract_pdf_metadata', self.fake_metadata), \
                 mock.patch('papers.cli.entry_cmds.prefetch_pdf_metadata', lambda *a, **k: None):
-            paperscmd('add --recursive scanned --bibtex lib.bib --no-git --relative-paths', cwd=self.dir)
+            paperscmd('add --recursive scanned --bibtex lib.bib --relative-paths', cwd=self.dir)
         self.assertEqual(self.scanned, ['other.pdf'])
         biblio = Biblio.load(os.path.join(self.dir, 'lib.bib'), None)
         files = {e.key: [os.path.relpath(f, self.dir) for f in biblio.get_files(e)] for e in biblio.entries}

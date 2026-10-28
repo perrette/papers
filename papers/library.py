@@ -1,6 +1,6 @@
 """Opening and saving a library: find its configuration (from the current
 directory, or for a bibtex given on the command line), load its bibtex, and
-save it with its git backup.
+save it, with its state in the history (see papers.backup).
 """
 import copy
 import os
@@ -9,8 +9,8 @@ import shutil
 import papers.checksums
 import papers.config
 from papers import journal, logger
-from papers.backup import backup_bib, ensure_backupdir, silent_backup_bib
-from papers.bib import Biblio
+import papers.backup
+from papers.bib import Biblio, BibtexChanged
 from papers.entries import get_entry_val
 from papers.config import (Config, MachineConfig, CONFIG_FILE, CONFIG_FILE_LEGACY, CONFIG_FILE_LEGACY_XDG,
                            find_library_config, library_config_file)
@@ -61,10 +61,10 @@ def config_for_bibtex(bibtex, config):
 
     If it is another library than the configured one, the local configuration
     of that library (searched from the bibtex's directory upwards, as for the
-    current directory) applies: its files directory, git backup and formats.
+    current directory) applies: its files directory, history and formats.
     Without one, the current configuration applies to the bibtex, except that
-    it is never written back to disk and the backup goes to a directory of
-    the bibtex's own.
+    it is never written back to disk and the history is that of the bibtex
+    (named by its path).
     """
     if config.bibtex and os.path.realpath(bibtex) == os.path.realpath(config.bibtex):
         return config
@@ -80,7 +80,7 @@ def config_for_bibtex(bibtex, config):
     logger.debug(f'{bibtex} has no configuration of its own: use {config.file} without saving it')
     config = copy.copy(config)
     config.file = None
-    config.gitdir = None  # the backup folder of its own (see Config.gitdir)
+    config.id = None
     return config
 
 
@@ -132,12 +132,13 @@ def _repair_pool_links(biblio, config):
 
 def savebib(biblio, config, other_changes=False):
     """
-    Given a Biblio object and its configuration, save them to disk.  If you're using the git bib tracker, will trigger a git commit there.
+    Given a Biblio object and its configuration, save them to disk, and
+    record the state in the history (see papers.backup).
 
     A library loaded by get_biblio that did not change since (see
-    Biblio.unchanged) is not written, and has no git commit, unless
+    Biblio.unchanged) is not written, and has no new state, unless
     `other_changes` (e.g. the origin records of the library changed,
-    which the git backup has too).
+    which the history has too).
     """
     if papers.config.DRYRUN:
         logger.info(f'DRYRUN: NOT saving {config.bibtex}')
@@ -148,22 +149,28 @@ def savebib(biblio, config, other_changes=False):
     logger.info(f'Saving {config.bibtex}')
     if isinstance(biblio, Biblio):
         follow_renamed_keys(biblio, config)
+    # the bibtex as it was before the command, if papers did not write it (see papers.backup.sync_head)
+    try:
+        papers.backup.sync_head(config)
+    except Exception as error:
+        logger.error(f'the history of the library could not record its state before the command: {error}')
     if biblio is not None:
         if isinstance(biblio, Biblio):
             papers.checksums.update(config, biblio)
-        if not config.git and config.gitdir:
-            ensure_backupdir(config)
-        biblio.save(config.bibtex, backup=None if config.git else config.previous_bibtex)
-    if config.git:
-        # the backup comes last: a failure must not undo the work done above
         try:
-            silent_backup_bib(biblio, config)
-        except Exception as error:
-            logger.error(f'the bibliography was saved, but its git backup failed: {error}')
-    else:
-        logger.debug('do not backup bib: git is off')
-        # the file operations of the command, for undo (see papers.journal)
-        journal.save_last(config.bibtex, config.gitdir, journal.take(config.bibtex))
+            biblio.save(config.bibtex)
+        except BibtexChanged:
+            # the bibtex does not record what the command did to the files: put them back
+            lines = journal.rollback(config.bibtex, papers.backup.Deleted(config).store.file_object)
+            if lines:
+                print('the files of the command are put back:')
+                print('\n'.join(lines))
+            raise
+    # the history comes last: a failure must not undo the work done above
+    try:
+        papers.backup.record(config)
+    except Exception as error:
+        logger.error(f'the bibliography was saved, but its history failed: {error}')
 
 
 def follow_renamed_keys(biblio, config):
@@ -188,11 +195,8 @@ def finish_journal():
     ops, where = journal.leftover()
     if not ops or where is None or papers.config.DRYRUN:
         return
-    if where[0] == 'git':
-        from papers.backup import amend_journal
-        amend_journal(where[1], where[2], ops)
-    else:
-        journal.append_last(where[1], where[2], ops)
+    config, n = where
+    papers.backup.add_operations(config, n, ops)
 
 
 def convert_file_links(config):
@@ -200,8 +204,3 @@ def convert_file_links(config):
     biblio = get_biblio(config)  # converts to absolute links if needed
     biblio.update_file_path(biblio.relative_to)  # converts to relative links if needed
     savebib(biblio, config)
-
-
-def snapshot_backup(config):
-    "commit the current bibtex to the backup directory"
-    backup_bib(get_biblio(config), config)

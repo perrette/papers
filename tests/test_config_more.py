@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from unittest import mock
 
-from papers.config import (CONFIG_FILE_LOCAL, Config, MachineConfig, file_version, gitdir_from_json, json_get, json_set,
+from papers.config import (CONFIG_FILE_LOCAL, Config, MachineConfig, file_version, json_get, json_set,
                            short_home)
 from papers.utils import PapersExit
 
@@ -26,16 +26,12 @@ class TestJson(unittest.TestCase):
 
     def test_paths_of_v2(self):
         self.assertEqual(json_get({'absolute_paths': False}, 'paths'), 'relative')
-        self.assertEqual(json_get({'backup_files': True}, 'git-lfs'), True)
 
     def test_short_home(self):
         home = os.path.expanduser('~')
         self.assertEqual(short_home(os.path.join(home, 'papers')), os.path.join('~', 'papers'))
         self.assertEqual(short_home(home), '~')
         self.assertEqual(short_home('/elsewhere'), '/elsewhere')
-
-    def test_gitdir_none(self):
-        self.assertIsNone(gitdir_from_json(None, '/lib'))
 
 
 class TestMachineConfig(unittest.TestCase):

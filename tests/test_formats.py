@@ -466,13 +466,13 @@ class LibraryCommands(FileTest):
 class TestExportFormats(LibraryCommands):
 
     def test_default_bib(self):
-        out = self.out('export ../out --no-git')
+        out = self.out('export ../out')
         self.assertIn('(papers.bib; files: copy)', out)
         self.assertEqual(sorted(os.listdir(self.path('out'))), ['.papers', 'files', 'papers.bib'])
 
     @needs_rispy
     def test_all(self):
-        out = self.out('export ../out --format all --no-git')
+        out = self.out('export ../out --format all')
         self.assertIn('(papers.bib, papers.ris, papers.json, papers.bib.json; files: copy)', out)
         self.assertNotIn('not a papers library', out)
         biblio, entries = self.entries('out', 'papers.bib')
@@ -633,7 +633,7 @@ class TestRispyMissingCommands(LibraryCommands):
             self.lib('add ../refs.ris')
         self.assertEqual(Path(self.path('lib', 'papers.bib')).read_text(), before)
         with self.assertRaisesRegex(PapersExit, 'RIS needs the rispy package'):
-            self.lib('export ../out --format ris --no-git')
+            self.lib('export ../out --format ris')
         self.assertFalse(os.path.exists(self.path('out')))
         with self.assertRaisesRegex(PapersExit, 'RIS needs the rispy package'):
             self.lib('list --format ris')

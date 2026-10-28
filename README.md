@@ -35,8 +35,8 @@ project folder.
   title, and merge them.
 - **Export** a selection as a library with copies of its PDFs, or as RIS
   and CSL-JSON (for Zotero, EndNote, pandoc) or BibJSON (for programs).
-- **Plain files**: the bibtex is the database. Every change is backed up
-  with git (when it is installed), and `papers undo` / `papers redo` take it back or restore it.
+- **Plain files**: the bibtex is the database. `papers undo` / `papers redo`
+  take back any command, with the files it moved or deleted.
 <!-- intro-end -->
 
 ## Example
@@ -49,7 +49,7 @@ $ papers init
 created the library ~/projects/sealevel
 * bibtex:  papers.bib
 * files:   files (the files directory of the library)
-* backup:  bibtex history (git)
+* history: undo and redo (`papers history`)
 `papers config` lists and sets the settings
 $ papers add ~/Downloads/esd-4-11-2013.pdf
 Added -> perrette_landerer2013: A scaling approach to project regional sea level rise and it... (doi:10.5194/esd-4-11-2013, file:1)
@@ -60,7 +60,7 @@ created the library ~/projects/tides
 * bibtex:  papers.bib
 * files:   in the pool (shallow library)
 * pool:    ../sealevel
-* backup:  bibtex history (git)
+* history: undo and redo (`papers history`)
 `papers config` lists and sets the settings
 $ papers add --doi 10.5194/esd-4-11-2013
 Added -> perrette_landerer2013: A scaling approach to project regional sea level rise and it... (doi:10.5194/esd-4-11-2013, file:1) [from pool ../sealevel]

@@ -226,8 +226,8 @@ class Biblio:
         text = read_text(bibtex)
         if text != self.read_state[2]:
             raise BibtexChanged(f'{bibtex} changed since papers read it (another program wrote it meanwhile): '
-                                'papers did not write it. Run the command again. The files that the command '
-                                'moved or copied stay where it put them.')
+                                'papers did not write it, and put back the files that the command moved, '
+                                'copied or deleted. Run the command again.')
         return text
 
     @classmethod

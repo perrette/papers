@@ -1,11 +1,11 @@
-"""Undo and redo in a library that has a pool, with the git backup: each
-library has its own history (the pool too), and the origin records of the
-library (.papers/origin/) are restored with its bibtex"""
+"""Undo and redo in a library that has a pool: each library has its own
+history (the pool too), and the origin records of the library
+(.papers/origin/) are restored with its bibtex"""
 import os
 import unittest
 from pathlib import Path
 
-from papers.backup import run_git, cursor_commit
+import papers.backup
 from papers.bib import Biblio
 from papers.config import Config, CONFIG_FILE_LOCAL
 from papers.pools import ORIGIN_DIR, Origin
@@ -30,15 +30,15 @@ OTHER_BIB = """@article{other2023,
 
 
 class UndoPoolTest(ConfigTest):
-    """a pool in pool/ and a shallow library in lib/ that uses it, both
-    with the git backup; auto_push: the auto-push setting of the library"""
+    """a pool in pool/ and a shallow library in lib/ that uses it;
+    auto_push: the auto-push setting of the library"""
 
     auto_push = False
 
     def setUp(self):
         super().setUp()
-        self.papers('init pool --git')
-        self.papers('init lib --git --pool ../pool')
+        self.papers('init pool')
+        self.papers('init lib --pool ../pool')
         if self.auto_push:
             self.lib('config auto-push true')
         Path(self.path('new.bib')).write_text(NEW_BIB)
@@ -50,14 +50,18 @@ class UndoPoolTest(ConfigTest):
     def out(self, cmd):
         return self.papers(cmd, cwd=self.path('lib'), sp_cmd='check_output')
 
-    def gitdir(self, where):
-        return Config.load(self.path(where, CONFIG_FILE_LOCAL)).gitdir
+    def project(self, where):
+        return papers.backup.project_of(Config.load(self.path(where, CONFIG_FILE_LOCAL)), create=False)
 
     def commits(self, where):
-        return int(run_git(self.gitdir(where), ['rev-list', '--count', 'HEAD']).stdout)
+        "the number of states of the history of a library"
+        project, _ = self.project(where)
+        return len(project.states()) if project else 0
 
     def cursor(self, where='lib'):
-        return cursor_commit(self.gitdir(where))
+        "the current state of a library"
+        project, place = self.project(where)
+        return project.head(place)['state']
 
     def entries(self, where='lib'):
         return {e.key: e for e in Biblio.load(self.path(where, 'papers.bib'), '').entries}
@@ -98,9 +102,9 @@ class UndoInLibrary:
     def test_add_then_undo_redo(self):
         lib, pool = self.commits('lib'), self.commits('pool')
         self.lib('add ../new.bib')
-        # both the library and the pool get a commit
-        self.assertEqual(self.commits('lib'), lib + 1)
-        self.assertEqual(self.commits('pool'), pool + 1)
+        # both the library and the pool get a state (and the first one, the state before it)
+        self.assertEqual(self.commits('lib'), lib + (2 if lib == 0 else 1))
+        self.assertEqual(self.commits('pool'), pool + (2 if pool == 0 else 1))
         self.assertIn('mine2022', self.entries('pool'))
         self.assertIsNotNone(self.record('mine2022'))
 
@@ -244,32 +248,8 @@ class TestUndoPoolAutoPush(UndoPoolTest, UndoInLibrary):
     auto_push = True
 
 
-class TestUndoPoolNoGit(UndoPoolTest):
-    """a shallow library without the git backup: undo swaps the bibtex with
-    its previous version, and leaves the origin records as they are"""
-    auto_push = True
-
-    def setUp(self):
-        super().setUp()
-        self.lib('config git false')
-
-    def test_undo_after_pull(self):
-        self.lib('add ../new.bib')
-        self.tag('mine2022', 'b', where='pool')
-        self.lib('pull')
-        origin = self.origin_files()
-        self.lib('undo')
-        self.assertEqual(self.keywords('mine2022'), 'a')
-        # the origin records are those after the pull
-        self.assertEqual(self.origin_files(), origin)
-        self.assertEqual(self.record('mine2022').entry['keywords'], 'a, b')
-        # the undone pull is a change of the library: the push sends it, and says so
-        self.assertIn('Modified -> mine2022', self.out('push'))
-        self.assertEqual(self.keywords('mine2022', 'pool'), 'a')
-
-
 class TestUndoFileRmShallow(UndoPoolTest):
-    """`file rm` in a shallow library deletes the pool file (to the trash) and
+    """`file rm` in a shallow library deletes the pool file (kept in the history) and
     removes the link from the pool entry: undo in the library restores its
     link and the file, and the pool keeps the change"""
 
@@ -287,7 +267,7 @@ class TestUndoFileRmShallow(UndoPoolTest):
 
         self.lib('undo')
         self.assertEqual(biblio.get_files(self.entries()['mine2022']), [si])
-        self.assertEqual(Path(si).read_text(), 'supplement')  # from the trash
+        self.assertEqual(Path(si).read_text(), 'supplement')  # from the history
         self.assertNotIn('file', self.entries('pool')['mine2022'].fields_dict)
         # the pool entry no longer has the link it had at the restored state: the pull removes it
         self.lib('pull')

@@ -87,14 +87,13 @@ NO_POOL_MESSAGE = 'this library has no pool: give one with `--pool PATH`'
 # LIBRARIES
 # =========
 
-def create_library(path, machine, bibtex='papers.bib', git=None):
+def create_library(path, machine, bibtex='papers.bib'):
     """create a self-contained library (no pool, its own files) in
     directory `path` (as `papers init` does), and return its
     configuration. With --dry-run, nothing is written: the configuration
     is that of the library to be created."""
     o = SimpleNamespace(bibtex=os.path.join(path, bibtex), filesdir=os.path.join(path, 'files'),
-                        reset=False, paths=None, absolute_paths=None, pool=NO_POOL, gitdir=None,
-                        editor=None, git=git, git_lfs=None)
+                        reset=False, paths=None, absolute_paths=None, pool=NO_POOL, editor=None)
     plan = resolve_install(Config(machine=machine), o, asker=DefaultAsker(),
                            target=os.path.join(path, CONFIG_FILE_LOCAL))
     if papers.config.DRYRUN:
@@ -1454,7 +1453,7 @@ def use_pool_files(config, pools):
 # EXPORT
 # ======
 
-def export(biblio, config, entries, dest, files='copy', git=None, library=True):
+def export(biblio, config, entries, dest, files='copy', library=True):
     """write the entries (and their files, as `files` says: copy, link or
     none) as a new library in directory `dest`, which must not exist or be
     empty: a self-contained library (pool none, its own files), to be
@@ -1472,7 +1471,7 @@ def export(biblio, config, entries, dest, files='copy', git=None, library=True):
     dest = os.path.abspath(dest)
     if library:
         name = os.path.basename(config.bibtex) if config.bibtex else 'papers.bib'
-        new = create_library(dest, config.machine, bibtex=name, git=git)
+        new = create_library(dest, config.machine, bibtex=name)
         for setting in papers.config.SETTINGS:
             if setting.startswith(('name.', 'key.')) and config.source(setting) == 'library':
                 new.set(setting, config.get(setting))

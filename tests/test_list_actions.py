@@ -8,7 +8,9 @@ import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
+import papers.backup
 from papers.bib import Biblio
+from papers.config import Config, CONFIG_FILE_LOCAL
 from papers.utils import PapersExit
 from tests.common import FileTest, entry
 from tests.test_pools import NEW_BIB, PoolTest
@@ -98,12 +100,14 @@ class TestListActions(FileTest):
             self.lib('list --key one2000 --rename')
         warning.assert_not_called()
 
-    def test_one_backup_commit(self):
-        self.lib('config git true')
-        count = lambda: int(self.out('git rev-list --count HEAD').strip())
+    def test_one_history_state(self):
+        def count():
+            config = Config.load(self.path('lib', CONFIG_FILE_LOCAL))
+            project, _ = papers.backup.project_of(config, create=False)
+            return len(project.states()) if project else 0
         before = count()
         self.lib('list --year 2000 --rename --move')
-        self.assertEqual(count(), before + 1)
+        self.assertEqual(count(), before + (2 if before == 0 else 1))  # without history: the state before, too
         self.assertNotIn('lib-src', Path(self.path('lib', 'papers.bib')).read_text())
         # one undo step: the links before the rename
         self.lib('undo')
@@ -119,7 +123,8 @@ def _snapshot(root):
             dirs.remove('.git')
         for f in files:
             path = os.path.join(folder, f)
-            state[os.path.relpath(path, root)] = re.sub(rb'\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d[^},\s]*', b'TIME', re.sub(rb'\d{16,}', b'MTIME', Path(path).read_bytes()))
+            content = re.sub(rb'"id": "[0-9a-f]+"', b'"id": ID', Path(path).read_bytes())  # each library its own
+            state[os.path.relpath(path, root)] = re.sub(rb'\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d[^},\s]*', b'TIME', re.sub(rb'\d{16,}', b'MTIME', content))
     return state
 
 

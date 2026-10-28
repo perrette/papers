@@ -15,16 +15,24 @@ class TestConfigCmd(FileTest):
         with self.assertRaises(SystemExit):
             self.lib('config --unset git git')
 
-    def test_unset_git_turns_off_git_lfs(self):
-        self.lib('config git-lfs true')
-        self.assertEqual(self.out('config git').strip(), 'true')  # git-lfs implies git
-        self.lib('config --unset git')
-        self.assertEqual(self.out('config git-lfs').strip(), 'false')
+    def test_removed_settings(self):
+        for name in ('git', 'git-lfs', 'trash-days', 'trash-size'):
+            with self.assertRaises(PapersExit) as cm:
+                self.lib(f'config {name} true')
+            self.assertIn('no longer used', str(cm.exception))
 
-    def test_git_false_turns_off_git_lfs(self):
-        self.lib('config git-lfs true')
-        self.lib('config git false')
-        self.assertEqual(self.out('config git-lfs').strip(), 'false')
+    def test_machine_settings(self):
+        # a library cannot choose where the history goes, or whether it keeps the deleted files
+        for name in ('history-dir', 'keep-deleted-files'):
+            with self.assertRaises(PapersExit) as cm:
+                self.lib(f'config {name} x')
+            self.assertIn('setting of the machine', str(cm.exception))
+        self.lib('config --global keep-deleted-files false')
+        self.assertIn('keep-deleted-files = false', self.out('config --global'))
+        # history-separate and history-size: a library may set them (its own store)
+        self.lib('config history-separate true')
+        self.lib('config history-size 10')
+        self.assertEqual(self.out('config history-size').strip(), '10')
 
     def test_filesdir_that_does_not_exist(self):
         with self.assertLogs('papers', level='WARNING') as logs:
@@ -71,26 +79,26 @@ class TestInitSummary(ConfigTest):
 
     def test_self_contained(self):
         # by default, a self-contained library
-        out = self.papers('init lib --no-git', sp_cmd='check_output')
+        out = self.papers('init lib', sp_cmd='check_output')
         self.assertEqual(out.splitlines(), [
             f'created the library {papers.config.short_home(self.path("lib"))}',
             '* bibtex:  papers.bib',
             '* files:   files (the files directory of the library)',
-            '* backup:  previous bibtex only (git off: one undo step)',
+            '* history: undo and redo (`papers history`)',
             '`papers config` lists and sets the settings'])
         self.assertEqual(self.json('lib')['pool'], 'none')
         self.assertNotIn('local', self.json('lib'))
 
     def test_shallow(self):
-        self.papers('init pool --no-git')
-        out = self.papers('init lib --git --pool ../pool', sp_cmd='check_output')
+        self.papers('init pool')
+        out = self.papers('init lib --pool ../pool', sp_cmd='check_output')
         self.assertIn('* files:   in the pool (shallow library)\n* pool:    ../pool\n', out)
-        self.assertIn('* backup:  bibtex history (git)', out)
+        self.assertIn('* history: undo and redo', out)
         self.assertEqual(self.json('lib')['pool'], '../pool')
         self.assertNotIn('local', self.json('lib'))
 
     def test_pool_none(self):
-        out = self.papers('init lib --no-git --pool none', sp_cmd='check_output')
+        out = self.papers('init lib --pool none', sp_cmd='check_output')
         self.assertIn('* files:   files (the files directory of the library)\n', out)
         self.assertNotIn('* pool:', out)
 
@@ -118,19 +126,19 @@ class TestOtherCommands(ConfigTest):
     def test_init_no_check_files_is_gone(self):
         # it did nothing on init; install keeps it (it skips the files count of the status)
         with self.assertRaises(SystemExit):
-            self.papers('init --no-git --no-check-files')
+            self.papers('init --no-check-files')
         self.assertFalse(os.path.exists(self.path(CONFIG_FILE_LOCAL)))
 
     def test_init_dir_not_left_behind(self):
         # a check that fails after DIR is created removes it again
-        with patch('papers.install.check_git_available', side_effect=PapersExit('no git')), \
+        with patch('papers.cli.library_cmds.resolve_install', side_effect=PapersExit('failed')), \
                 self.assertRaises((PapersExit, SystemExit)):
-            self.papers('init new/lib --git')
+            self.papers('init new/lib')
         self.assertFalse(os.path.exists(self.path('new')))
 
     def test_init_in_a_library(self):
-        self.papers('init --no-git')
+        self.papers('init')
         os.makedirs(self.path('sub'))
         with self.assertLogs('papers', level='INFO') as logs:
-            self.papers('init --no-git --info', cwd=self.path('sub'))
+            self.papers('init --info', cwd=self.path('sub'))
         self.assertIn('inside the library', '\n'.join(logs.output))

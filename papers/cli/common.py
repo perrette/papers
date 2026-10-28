@@ -77,8 +77,6 @@ def check_install(parser, o, config, bibtex_must_exist=True):
         logger.warning(f"{option} is deprecated: file paths are a setting of the library, "
                        f"`papers config paths {'absolute' if o.absolute_paths else 'relative'}`")
         config.absolute_paths = o.absolute_paths
-    if getattr(o, "git", None) is not None:
-        config.git = o.git
 
     if not config.bibtex:
         raise PapersExit(f"{no_library_message(config)}, or pass --bibtex")

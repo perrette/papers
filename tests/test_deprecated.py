@@ -283,17 +283,25 @@ class TestRenamedOptions(FileTest):
                 self.warns(f'check one2000 {option}', f'{option} is deprecated: use -y/--yes')
             self.assertFalse(fix.call_args.kwargs['interactive'])
 
-    def test_backup_force(self):
-        self.warns('backup remove x -f', '-f is deprecated: use -y/--yes')
+    def test_backup(self):
+        self.warns('backup', '`papers backup` is deprecated: use `papers history`')
+
+    def test_uninstall(self):
+        self.warns('uninstall', '`papers uninstall` is deprecated')
+
+    def test_restore_files(self):
+        with patch('papers.cli.backup_cmds.backup.undo', return_value=(None, None, None)), \
+                patch('papers.cli.backup_cmds.backup.describe', return_value=''):
+            self.warns('undo --restore-files', '--restore-files is ignored')
 
     def test_install_no_prompt(self):
         for option in ('--no-prompt', '--force'):
             with patch('papers.cli.library_cmds.InputAsker', side_effect=AssertionError('no question expected')):
-                self.warns(f'install {option} --no-git', f'{option} is deprecated: use -y/--yes')
+                self.warns(f'install {option}', f'{option} is deprecated: use -y/--yes')
 
     def test_restore_backup(self):
-        with patch('papers.cli.backup_cmds.restore_from_backupdir') as restore:
-            self.lib('config git true')
+        with patch('papers.cli.backup_cmds.backup.restore', return_value=(None, None, None)) as restore, \
+                patch('papers.cli.backup_cmds.backup.describe', return_value=''):
             self.warns('restore-backup', '`papers restore-backup` is deprecated: use `papers restore`')
         restore.assert_called_once()
 
@@ -306,8 +314,8 @@ class TestRenamedOptions(FileTest):
         os.makedirs(self.path('other'))
         with self.assertLogs('papers', level='WARNING') as logs:
             self.papers('install --backup-files -y', cwd=self.path('other'))
-        self.assertIn('--backup-files is deprecated: use --git-lfs', '\n'.join(logs.output))
-        self.assertTrue(self.json('other')['gitlfs'])
+        self.assertIn('--backup-files is ignored', '\n'.join(logs.output))
+        self.assertNotIn('gitlfs', self.json('other'))
 
     def test_paths_options(self):
         self.warns('list --relative-paths', '--relative-paths is deprecated')

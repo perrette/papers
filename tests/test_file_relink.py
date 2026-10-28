@@ -27,10 +27,10 @@ class RelinkTest(ConfigTest):
 
     def setUp(self):
         super().setUp()
-        self.papers('init pool --no-git')
+        self.papers('init pool')
         self.pool_pdf = self.write('pool', 'files', 'smith.pdf')
         Path(self.path('pool', 'papers.bib')).write_text(entry('smith2000', 'files/smith.pdf', doi='10.1000/smith'))
-        self.papers('init lib --no-git')
+        self.papers('init lib')
         self.lib('config files move')
 
     def lib(self, cmd):
@@ -401,7 +401,7 @@ class TestOtherLibrary(RelinkTest):
     def test_shallow_library_copies_into_its_pool(self):
         # lib/ is a shallow library of own/, whose entry has no file: the file of pool/ is copied
         # into the files directory of own/, and the entry of own/ links to it
-        self.papers('init own --no-git')
+        self.papers('init own')
         self.bib(entry('smith2000', doi='10.1000/smith'), where='own')
         self.lib('config pool ../own -y')
         out = self.out('file fix --pool ../pool')
@@ -414,7 +414,7 @@ class TestOtherLibrary(RelinkTest):
 
     def test_own_pool_first(self):
         # the pool of the library has the file: PATH is not used
-        self.papers('init own --no-git')
+        self.papers('init own')
         own_pdf = self.write('own', 'files', 'smith.pdf')
         self.bib(entry('smith2000', 'files/smith.pdf', doi='10.1000/smith'), where='own')
         self.lib('config pool ../own -y')
@@ -430,10 +430,10 @@ class TestSharedFilesDir(ConfigTest):
     def setUp(self):
         super().setUp()
         for name in ('lib1', 'lib2'):
-            self.papers(f'init {name} --no-git', cwd=self.dir)
+            self.papers(f'init {name}', cwd=self.dir)
             self.papers('config filesdir ../shared', cwd=self.path(name))
             self.papers('config files move', cwd=self.path(name))
-        self.papers('init P --no-git', cwd=self.dir)  # the library that lib1 moves to
+        self.papers('init P', cwd=self.dir)  # the library that lib1 moves to
         os.makedirs(self.path('shared'))
         for name in ('a', 'b', 'c', 'd'):
             Path(self.path('shared', f'{name}.pdf')).write_text(name)

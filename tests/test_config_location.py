@@ -9,7 +9,7 @@ from contextlib import redirect_stdout
 from pathlib import Path
 
 import papers.config
-from papers.backup import run_git
+import papers.backup
 from papers.config import CONFIG_FILE_LOCAL, CONFIG_FILE_LOCAL_V2, Config, find_library_config, library_config_file
 from papers.utils import PapersExit
 from tests import TEST_DEFAULT_LIBRARY
@@ -49,26 +49,26 @@ class TestInit(ConfigTest):
     def test_init(self):
         out = io.StringIO()
         with redirect_stdout(out):
-            self.papers('init --no-git')
+            self.papers('init')
         self.assertTrue(os.path.isfile(self.path(CONFIG_FILE_LOCAL)))
         self.assertFalse(os.path.exists(self.path(CONFIG_FILE_LOCAL_V2)))
         self.assertEqual(Config.load(self.path(CONFIG_FILE_LOCAL)).bibtex, self.path('papers.bib'))
 
     def test_init_global(self):
-        self.papers(f'init {TEST_DEFAULT_LIBRARY} --global --no-git')
+        self.papers(f'init {TEST_DEFAULT_LIBRARY} --global')
         self.assertTrue(os.path.isfile(os.path.join(TEST_DEFAULT_LIBRARY, CONFIG_FILE_LOCAL)))
         self.assertFalse(os.path.exists(os.path.join(TEST_DEFAULT_LIBRARY, CONFIG_FILE_LOCAL_V2)))
 
     def test_init_in_a_v2_library(self):
-        self.papers('init --no-git')
+        self.papers('init')
         to_v2_name(self.dir)
         with self.assertRaisesRegex(PapersExit, 'a library already exists here'):
-            self.papers('init --no-git')
+            self.papers('init')
 
     def test_pool_that_is_not_a_library(self):
         os.makedirs(self.path('pool'))
         with self.assertRaisesRegex(PapersExit, r'not a library \(no \.papers/config\.json\)'):
-            self.papers('init lib --pool ../pool --no-git')
+            self.papers('init lib --pool ../pool')
 
 
 class V2LibraryTest(FileTest):
@@ -106,7 +106,7 @@ class TestV2Library(V2LibraryTest):
 
     def test_pool(self):
         os.makedirs(self.path('shallow'))
-        self.papers('init --pool ../lib --no-git', cwd=self.path('shallow'))
+        self.papers('init --pool ../lib', cwd=self.path('shallow'))
         self.assertEqual(self.json('shallow')['pool'], '../lib')
         self.assertTrue(os.path.exists(self.old()))  # the pool is not saved
 
@@ -164,7 +164,7 @@ class TestV2Library(V2LibraryTest):
 
 
 class TestUndoAfterMove(V2LibraryTest):
-    """the backup does not track the library configuration: undo and redo
+    """the history does not keep the library configuration: undo and redo
     bring back the bibtex, before and after the move, and leave the
     configuration where it is"""
 
@@ -172,18 +172,18 @@ class TestUndoAfterMove(V2LibraryTest):
         return open(self.path('lib', 'papers.bib')).read()
 
     def test_undo(self):
-        self.lib('config git true')  # saves the configuration: moved
+        self.lib('config files copy')  # saves the configuration: moved
         self.assertTrue(os.path.exists(self.new()))
-        gitdir = Config.load(self.new()).gitdir
         self.write('a.bib', content=entry('a2000'))
         self.write('b.bib', content=entry('b2000'))
         self.lib(f'add {self.path("a.bib")}')
         state_a = self.bibtex()
         self.lib(f'add {self.path("b.bib")}')
         self.assertIn('b2000', self.bibtex())
-        tracked = run_git(gitdir, ['ls-files']).stdout.split()
-        self.assertNotIn('config.json', ' '.join(tracked))
-        self.assertNotIn(CONFIG_FILE_LOCAL_V2, tracked)
+        project, place = papers.backup.project_of(Config.load(self.new()), create=False)
+        kept = ' '.join(project.state(project.head(place)['state'])['files'])
+        self.assertNotIn('config.json', kept)
+        self.assertNotIn(CONFIG_FILE_LOCAL_V2, kept)
 
         self.lib('undo')
         self.assertEqual(self.bibtex(), state_a)
@@ -193,13 +193,10 @@ class TestUndoAfterMove(V2LibraryTest):
         self.assertEqual(self.bibtex(), state_a)
         self.assertTrue(os.path.exists(self.new()))
         self.assertFalse(os.path.exists(self.old()))
-        self.assertTrue(Config.load(self.new()).git)
+        self.assertEqual(Config.load(self.new()).files, 'copy')
 
-    def test_undo_of_a_backup_made_before_the_move(self):
-        # backups made by the library under its papers 2 name
-        os.replace(self.old(), self.new())
-        self.lib('config git true')
-        os.replace(self.new(), self.old())
+    def test_undo_of_a_state_made_before_the_move(self):
+        # states recorded by the library under its papers 2 name
         self.write('a.bib', content=entry('a2000'))
         self.lib(f'add {self.path("a.bib")}')
         self.assertTrue(os.path.exists(self.old()))  # the add does not save the configuration
@@ -216,6 +213,6 @@ class TestExport(FileTest):
 
     def test_export(self):
         self.bib(entry('a2000'))
-        self.lib('export ../out --no-git')
+        self.lib('export ../out')
         self.assertTrue(os.path.isfile(self.path('out', CONFIG_FILE_LOCAL)))
         self.assertFalse(os.path.exists(self.path('out', CONFIG_FILE_LOCAL_V2)))

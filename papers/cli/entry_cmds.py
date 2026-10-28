@@ -678,7 +678,7 @@ def listcmd(parser, o, config):
         return
 
     elif o.export:
-        export_options = argparse.Namespace(dir=o.export, format=o.export_format, files=o.export_files, git=o.git)
+        export_options = argparse.Namespace(dir=o.export, format=o.export_format, files=o.export_files)
         export_entries(export_options, config, biblio, entries)
         return
 
