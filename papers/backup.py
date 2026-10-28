@@ -13,7 +13,8 @@ A command that also writes another library (its pool: add in a shallow
 library, auto-push, push, sync) records the step of that library in its
 own: `pools` ({project id of the pool: {'state': n, 'config': path of its
 configuration}}). Undo and redo in the library take the pool step along
-when the pool is still where the command left it.
+when the pool is still where the command left it. The step of the pool
+records the folder of the library that made it (`from`).
 
 The old backups (the git repository .papers/backup of the v3 branch, the
 folders of ~/.local/share/papers/backups of earlier versions) are no
@@ -26,7 +27,7 @@ import time
 import papers.checksums
 import papers.config
 import papers.utils
-from papers import history, journal, logger
+from papers import history, journal, lock, logger
 from papers.checksums import FILES_JSON
 from papers.duplicate import DISTINCT_FILE
 from papers.utils import PapersExit, stdin_is_terminal
@@ -266,6 +267,8 @@ def record(config, message=None, ops=None):
         if linked:
             state['pools'] = linked
             _linked.clear()
+        if not own and journal.owner():
+            state['from'] = os.path.dirname(journal.owner())
         n = project.add(state)
         project.set_head(place, n)
         if not own and config.file and config.is_library:
@@ -373,10 +376,11 @@ def _pool_dirs(config):
 
 
 def describe(project, n):
-    "the line of a state: number, command, time"
+    "the line of a state: number, command, time, and the library that made it (a step of a pool)"
     state = project.state(n)
     when = time.strftime('%Y-%m-%d %H:%M', time.localtime(state.get('time', 0)))
-    return f'{n} {state.get("message", "")} ({when})'
+    origin = f', from {papers.config.short_home(state["from"])}' if state.get('from') else ''
+    return f'{n} {state.get("message", "")} ({when}{origin})'
 
 
 def go_to(config, project, cur, target, pool_dirs=None):
@@ -386,6 +390,8 @@ def go_to(config, project, cur, target, pool_dirs=None):
     moved (by default, the files directory of the pool of a shallow
     library, see _pool_dirs). Return the lines of the report on the files."""
     from bibtexparser import parse_string
+    lock.acquire(config)  # held already by a command that writes the library (see papers.lock)
+    lock.check(config)
     st = project.store
     relative_to = os.path.dirname(os.path.abspath(config.bibtex))
     texts = {}
@@ -481,6 +487,8 @@ def _pool(config, id, link):
     file = link.get('config')
     pool_config = papers.config.Config.load(file, machine=config.machine) if file and os.path.isfile(file) else None
     project, place = project_of(pool_config, create=False) if pool_config else (None, None)
+    if project is not None and project.id == id:
+        lock.acquire(pool_config)  # before looking where the pool is: no other command writes it until the end
     if project is None or project.id != id or project.head(place) is None:
         return f'the pool of step {link["state"]} is not found (at {papers.config.short_home(file)})'
     pool = _Pool(pool_config, project, place, project.head(place), _shown(config, pool_config))

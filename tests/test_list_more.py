@@ -1,6 +1,7 @@
 """More tests of papers list, tag and edit: the filters, the review check,
 and the errors of the options"""
 import io
+import os
 from unittest.mock import patch
 
 from papers.utils import PapersExit
@@ -111,8 +112,16 @@ class TestEditPipe(FileTest):
     def test_keys_from_a_pipe(self):
         # the editor reads the terminal: /dev/tty, when there is one
         self.bib(entry('one2000'))
+        real_open = os.open
+        ttys = []
+
+        def no_terminal(path, *args, **kwargs):  # the other files (e.g. the lock of the library) open
+            if path == '/dev/tty':
+                ttys.append(path)
+                raise OSError('no terminal')
+            return real_open(path, *args, **kwargs)
         with patch('sys.stdin', io.StringIO('one2000\n')), \
-                patch('papers.cli.entry_cmds.os.open', side_effect=OSError('no terminal')) as tty, \
+                patch('papers.cli.entry_cmds.os.open', side_effect=no_terminal), \
                 patch('papers.cli.common.edit_in_editor', side_effect=lambda entries: entries):
             self.lib('edit -')
-        tty.assert_called_once()
+        self.assertEqual(ttys, ['/dev/tty'])

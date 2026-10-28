@@ -63,7 +63,7 @@ from bibtexparser.model import Entry, ExplicitComment, Field
 from slugify import slugify
 
 import papers.config
-from papers import history, journal, logger
+from papers import history, journal, lock, logger
 from papers.config import Config, CONFIG_FILE_LOCAL, NO_POOL, library_config_file, short_home
 from papers.duplicate import (Distinct, IdentityIndex, contradicts, distinct_union, find_duplicates, same_paper,
                               SAME, Verdict)
@@ -378,6 +378,8 @@ class Pools:
                 raise PoolError(f'pool {shown}: not a directory')
             raise PoolError(not_a_library('pool', path))
         config = Config.load(configfile, machine=self.config.machine)
+        if lock.held():  # a command that writes its library: the pool too, before it reads it
+            lock.acquire(config)
         pool_ = Pool(self._id(path), path, config, shown)
         self._cache[key] = pool_
         return pool_

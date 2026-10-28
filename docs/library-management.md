@@ -152,3 +152,27 @@ removing them: a way to check what is actually tracked and what is not.
 
 See [Files](files.md) for all the `papers file` commands. `papers filecheck`
 is the deprecated form of these commands (it still works, with a warning).
+
+## Two commands at the same time
+
+A command that changes a library locks it while it runs: the file
+`.papers/lock` says which command holds it (process and computer). A
+command that changes a library and its pool (`add` in a shallow library,
+`push`, `sync`, an undo that also undoes the pool's step) locks the library
+first, then the pool. Another command that wants to change the same
+library waits, with a line that names the command holding it, and stops
+after 30 seconds with an error; nothing is written. Commands that only read
+(`list` without an action, `status`, `export`, `file check`, `history`) do
+not wait.
+
+The holder rewrites the lock every 2 seconds. A lock that nobody rewrote
+for 10 seconds, or that names a process of this computer that no longer
+exists (e.g. after a crash), is stale: the next command takes it over. A
+command that lost its lock (e.g. the computer was asleep) stops before it
+writes.
+
+The lock works for a library on a network drive, used from several
+computers. It does not work for a folder kept in sync by a service
+(Dropbox, Nextcloud, Syncthing...), where a file reaches the other
+computers seconds or minutes later. There, papers notices a bibtex changed
+outside papers since it read it, and does not write over it.
