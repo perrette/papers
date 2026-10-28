@@ -1075,13 +1075,13 @@ library that does not set it has no pool (<code>none</code>).
 and the <code>name.*</code> settings are marked <code>not used: shallow library</code>: the
 files are in the pool, named with the pool's template (<code>filesdir</code> is where
 <code>papers config pool none</code> copies them).</p>
-<p>The library configuration keeps only the settings that differ from the
-global or default value: setting one to that value removes it from the
-file, and the library then follows the global configuration. <code>pool</code> is
-the exception: once set, even to <code>none</code>, it stays until
-<code>papers config --unset pool</code>. <code>papers config --prune</code> removes the values
-equal to the global or default value from a file written by an earlier
-version (papers also leaves them out each time it saves the file).</p>
+<p>The library configuration keeps the settings given to the library
+(<code>papers init --paths absolute</code>, <code>papers config NAME VALUE</code>), even when the
+value is the global or default one; the other settings follow the global
+configuration. <code>papers config --unset NAME</code> removes a setting from the
+file, and the library then follows the global configuration again.
+<code>papers config --prune</code> removes all the values equal to the global or
+default value (<code>pool</code> stays).</p>
 <table>
 <thead>
 <tr>

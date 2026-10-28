@@ -981,7 +981,9 @@ bibtex. <code>--format</code> writes RIS, CSL-JSON or BibJSON as well, or instea
 <a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>~/export-test/files:
 <a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>perrette_et_al_2013_a-scaling-approach-to-project-regional-sea-level-rise-and-its-uncertainties.pdf
 </code></pre></div>
-<p><code>papers add DIR --recursive</code> adds an exported library to another one, and
+<p><code>papers add DIR --recursive</code> adds an exported library to another one (its
+bibtex and PDFs; the RIS and JSON files of a folder are left out: add one
+with <code>papers add DIR/papers.ris</code>), and
 <code>papers config pool DIR</code> makes it the pool of the library (the export has
 copies of its PDFs). <code>papers sync --pool DIR</code> exchanges entries with it
 later (see <a href="../pools/#exchanges-with-any-library">Exchanges with any library</a>).</p>
@@ -1268,7 +1270,13 @@ a program can read the whole library:</p>
   <code>{"name": ...}</code>, as BibJSON gives them;</li>
 <li>the other fields are strings, as in the bibtex;</li>
 <li><code>file</code> is the list of the file links (absolute paths with <code>papers list</code>,
-  relative to <code>DIR</code> with <code>papers export</code>).</li>
+  relative to <code>DIR</code> with <code>papers export</code>);</li>
+<li>a bibtex field with the name of a BibJSON key (<code>type</code>, <code>id</code>, <code>cid</code>,
+  <code>collection</code>, <code>identifier</code>, <code>link</code>, <code>license</code>), e.g. the <code>type</code> of a
+  techreport (<code>type = {Working paper}</code>), is written as <code>bibtex:type</code>, and
+  the collection's <code>metadata</code> declares the namespace
+  (<code>"namespace": {"bibtex": ...}</code>), as BibJSON says for additional keys.
+  papers reads it back as the bibtex field.</li>
 </ul>
 <p><code>papers add refs.bib.json</code> reads a collection (<code>{"records": [...]}</code>), a
 list of records or one record. It also reads the DOI of BibJSON

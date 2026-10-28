@@ -1048,7 +1048,10 @@ lists them with the number of entries, adds and removes them:</p>
 </code></pre></div>
 <p><code>--tag</code> matches whole tags, whatever their case: <code>--tag ice</code> does not find
 <code>ice-review</code>, <code>--tag 'ice*'</code> does. With several tags, an entry needs all of
-them (<code>--any</code>: one of them).</p>
+them (<code>--any</code>: one of them). Adding, removing and renaming tags ignore the
+case too: <code>papers tag --add Ice</code> adds nothing to an entry that has <code>ice</code>
+(the spelling already there stays), <code>--rm Ice</code> removes <code>ice</code>, and
+<code>papers tag --rename ice Ice</code> changes the spelling.</p>
 <p>A tag with <code>/</code> is under another tag: <code>climate/amoc</code> is under <code>climate</code>.
 <code>--tag climate</code> also finds <code>climate/amoc</code> and <code>climate/amoc/tipping</code> (not
 <code>climate-review</code>), <code>--tag climate/amoc</code> finds that tag and the ones under it.

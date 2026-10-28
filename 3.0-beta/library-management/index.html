@@ -1097,7 +1097,7 @@ library waits, with a line that names the command holding it, and stops
 after 30 seconds with an error; nothing is written. Commands that only read
 (<code>list</code> without an action, <code>status</code>, <code>export</code>, <code>file check</code>, <code>history</code>) do
 not wait.</p>
-<p>The holder rewrites the lock every 2 seconds. A lock that nobody rewrote
+<p>The holder touches the lock every 2 seconds. A lock that nobody touched
 for 10 seconds, or that names a process of this computer that no longer
 exists (e.g. after a crash), is stale: the next command takes it over. A
 command that lost its lock (e.g. the computer was asleep) stops before it

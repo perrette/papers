@@ -1349,24 +1349,28 @@ origin copy is the one exchanged.</p>
 <h2 id="origin-copies">Origin copies<a class="headerlink" href="#origin-copies" title="Permanent link">&para;</a></h2>
 <p><code>.papers/origin/</code>, next to the bibtex of the library, holds one file per
 pool: the pool of the library, and each library exchanged with through
-<code>--pool PATH</code>. A file is named after the folder of the pool and the start
-of a hash of its path as the library names it, e.g.
-<code>shared-with-bob-d15650.bib</code> for <code>../shared-with-bob</code>, or
-<code>papers-&lt;hash&gt;.bib</code> for <code>~/Documents/papers</code>. The first lines of the file
-name the pool and give the modification time of its bibtex at the last
-exchange. In a library whose pool is <code>../shared-with-bob</code>, after <code>papers
-pull agnew_farrell1978</code> and <code>papers pull</code>:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>@comment{papers-pool ../shared-with-bob}
+<code>--pool PATH</code>. The pool is named by its library identifier (the <code>id</code> of
+its <code>.papers/config.json</code>), which does not change when the library or the
+pool moves: after a move, <code>papers config pool NEWPATH</code> finds its origin
+copies again. A file is named after the folder of the pool and the start of
+a hash of its identifier, e.g. <code>shared-with-bob-d15650.bib</code>. The first lines
+of the file name the pool, give the modification time of its bibtex at the
+last exchange, and where the pool was then. In a library whose pool is
+<code>../shared-with-bob</code>, after <code>papers pull agnew_farrell1978</code> and
+<code>papers pull</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>@comment{papers-pool 9b916361b46f4304980306f3dcdce793}
 <a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>
 <a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>@comment{papers-pulled 1792681264781917448}
 <a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>
-<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>@article{agnew_farrell1978,
-<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a> author = {Agnew, D. C. and Farrell, W. E.},
-<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a> papers-pool-key = {agnew_farrell1978},
-<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a> papers-time = {2026-10-22T17:01:45+02:00},
-<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a> title = {Self-consistent equilibrium ocean tides},
-<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a> year = {1978}
-<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>}
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>@comment{papers-pool-path ~/papers/shared-with-bob}
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>@article{agnew_farrell1978,
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a> author = {Agnew, D. C. and Farrell, W. E.},
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a> papers-pool-key = {agnew_farrell1978},
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a> papers-time = {2026-10-22T17:01:45+02:00},
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a> title = {Self-consistent equilibrium ocean tides},
+<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a> year = {1978}
+<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a>}
 </code></pre></div>
 <p>The file records, for each entry exchanged with the pool (by <code>add</code>, <code>pull</code>
 or <code>push</code>), its origin copy, under the library's key, with the key in the
@@ -1389,7 +1393,11 @@ with <code>--pool PATH</code>, if any), and setting the pool back to an earlier 
 finds its origin copies again.</p>
 <p>Earlier v3 beta versions kept all the origin copies in one file,
 <code>.papers/origin.bib</code>: papers splits it into these files the first time it
-reads it, and removes it.</p>
+reads it, and removes it. Versions up to 3.0.0b5 named the pool by its path
+(<code>@comment{papers-pool ../shared-with-bob}</code>): at the next exchange with the
+pool, papers moves its origin copies to the pool's identifier (a pool that
+has none yet, a library of an earlier version that never recorded a step,
+keeps its path until it has one).</p>
 <p>The origin copy is the third version of a three-way merge. It is the
 version of the side that sent the entry, as it was sent: the pool entry
 after <code>add</code> and <code>pull</code>, the library entry after <code>push</code>. What the receiving

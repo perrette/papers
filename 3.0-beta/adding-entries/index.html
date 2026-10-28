@@ -1293,6 +1293,10 @@ RIS needs the <a href="https://pypi.org/project/rispy/">rispy</a> package (see
   read relative to the added file and attached as for a bibtex file; links
   that are not local files (<code>http://</code>, EndNote's <code>internal-pdf://</code>) are left
   out with a warning;</li>
+<li>RIS and CSL-JSON hold plain text: <code>&amp;</code>, <code>%</code>, <code>#</code> and <code>_</code> are escaped for
+  LaTeX (<code>\&amp;</code>...), except in <code>url</code>, <code>doi</code>, <code>file</code>, <code>eprint</code>, <code>isbn</code>,
+  <code>issn</code>, <code>keywords</code> and <code>urldate</code>; BibJSON values are read as they are,
+  since they are bibtex values;</li>
 <li>in a shallow library, the new entries go to the pool too;</li>
 <li>a directory scan (<code>-R</code>) reads PDFs and bibtex files only.</li>
 </ul>

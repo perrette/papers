@@ -1118,7 +1118,8 @@ setting says how a new file gets to the pool:</p>
 <p><code>pull</code> and <code>sync</code> with the pool link to the pool's files instead of
   copying them, and the library entry follows the pool entry's links: a
   link that the pool entry had at the last exchange and no longer has is
-  removed from the library entry (the file is not deleted). A link that
+  removed from the library entry (the file is not deleted); <code>push</code> does
+  not send it back to the pool, and the next <code>pull</code> removes it. A link that
   the pool entry never had stays. The origin copy records the pool entry's
   links for this, in its <code>file</code> field; an origin copy without it removes
   nothing until the next exchange;</p>

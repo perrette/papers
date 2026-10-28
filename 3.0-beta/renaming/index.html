@@ -971,6 +971,10 @@ name followed by <code>--</code> and the file's original name:</p>
 <p>The label after <code>--</code> is kept when the entry is renamed again (e.g. after its
 title or year was fixed), so only the part before <code>--</code> changes. If two
 attachments have the same original name, the second one gets a <code>-2</code> suffix.</p>
+<p>Two entries can get the same file name (the same authors, year and title,
+e.g. a preprint and the published paper). A file of another entry is never
+replaced: the second file gets a <code>-2</code> suffix (<code>-3</code>, ... after that), unless
+it has the same content, in which case both entries link to the same file.</p>
 <p>Versions before 2.19 placed the files of an entry with several files in a
 folder named after the entry, with a hidden copy of the entry
 (<code>files/&lt;name&gt;/.&lt;name&gt;.bib</code>). Such folders keep working as they are: their
