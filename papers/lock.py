@@ -164,6 +164,7 @@ def acquire(config, command=None, wait=None):
     if key in _held:
         return
     os.makedirs(os.path.dirname(path), exist_ok=True)
+    papers.config.ignore_papers_folder(os.path.dirname(path))  # also when papers never saves the configuration
     content = _content(command or 'papers ' + ' '.join(sys.argv[1:]))
     wait = WAIT if wait is None else wait
     start = time.monotonic()

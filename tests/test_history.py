@@ -325,6 +325,13 @@ class TestPlaces(LibraryTest):
         self.lib('config files move')
         self.assertEqual(Path(ignore).read_text(), 'files.json\n')
 
+    def test_gitignore_without_a_save_of_the_configuration(self):
+        # e.g. a configuration written by hand: the first command that writes the library writes it
+        ignore = self.path('lib', '.papers', '.gitignore')
+        os.remove(ignore)
+        self.add('one2000')
+        self.assertEqual(Path(ignore).read_text(), '*\n')
+
     def test_moved_library_continues(self):
         self.add('one2000')
         self.add('two2000')
