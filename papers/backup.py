@@ -113,6 +113,22 @@ def _library_names(config):
     return sorted(n for n in names if os.path.isfile(os.path.join(libdir, n)))
 
 
+# the names of the files of .papers/ and the paths of the operations are stored with /, on any
+# system (a state has the same identifier everywhere, see history.state_id); read with its separator
+
+def _stored(path):
+    return path.replace(os.sep, '/') if path and os.sep != '/' else path
+
+
+def _native(path):
+    return path.replace('/', os.sep) if path and os.sep != '/' else path
+
+
+def state_files(state):
+    "the files of .papers/ of a state: {name, with the separator of the system: pieces}"
+    return {_native(name): pieces for name, pieces in (state.get('files') or {}).items()}
+
+
 def _read(path):
     with open(path, encoding='utf-8', newline='') as f:
         return f.read()
@@ -131,7 +147,7 @@ def _snapshot(config, st, texts=None):
     """the bibtex and the files of .papers/, stored; texts: the texts to
     store (see _texts), instead of those on disk"""
     text, others = texts or _texts(config)
-    files = {name: st.put_text(content) for name, content in others.items()}
+    files = {_stored(name): st.put_text(content) for name, content in others.items()}
     return {'bibtex': {'pieces': st.put_text(text), 'sha': history.sha256(text.encode('utf-8'))},
             'files': files}
 
@@ -139,16 +155,14 @@ def _snapshot(config, st, texts=None):
 def _relative_ops(ops, config):
     """the paths of the operations as the library writes its links: relative
     to the folder of the bibtex for a file in it (relative paths), else absolute"""
-    if config.absolute_paths:
-        return ops
     root = os.path.dirname(os.path.abspath(config.bibtex))
 
     def rel(path):
-        if path and os.path.isabs(path):
+        if path and os.path.isabs(path) and not config.absolute_paths:
             r = os.path.relpath(path, root)
             if r != '..' and not r.startswith('..' + os.sep):
-                return r
-        return path
+                return _stored(r)
+        return _stored(path)
     return [dict(op, src=rel(op['src']), dst=rel(op.get('dst'))) for op in ops]
 
 
@@ -156,6 +170,7 @@ def _absolute_ops(ops, config):
     root = os.path.dirname(os.path.abspath(config.bibtex))
 
     def ab(path):
+        path = _native(path)
         return os.path.normpath(os.path.join(root, path)) if path and not os.path.isabs(path) else path
     return [dict(op, src=ab(op['src']), dst=ab(op.get('dst'))) for op in ops]
 
@@ -273,7 +288,7 @@ def record(config, message=None, ops=None):
     linked = dict(_linked) if own else {}
     previous = project.state(parent) if parent is not None else None
     if (previous and not ops and not linked and previous['bibtex'] == snap['bibtex']
-            and previous.get('files') == snap['files']):
+            and state_files(previous) == state_files(snap)):
         n = parent
     else:
         state = dict(parent=parent, time=time.time(), kind='command', message=message or _message(),
@@ -415,7 +430,7 @@ def resolve(project, ref):
 
 def state_hashes(config, project, n):
     "the checksums of the files of the state n ({path: sha256}, from its files.json)"
-    pieces = (project.state(n).get('files') or {}).get(FILES_JSON)
+    pieces = state_files(project.state(n)).get(FILES_JSON)
     return papers.checksums.parse(project.store.text(pieces) if pieces else '{}', config)
 
 
@@ -481,13 +496,13 @@ def _write_library_files(config, project, cur, target):
     def inside(name):
         return not os.path.relpath(os.path.join(libdir, name), libdir).startswith('..')
 
-    files = project.state(target).get('files') or {}
+    files = state_files(project.state(target))
     for name, pieces in files.items():
         if inside(name):
             path = os.path.join(libdir, name)
             os.makedirs(os.path.dirname(path), exist_ok=True)
             papers.utils.write_atomic(path, project.store.text(pieces))
-    for name in (project.state(cur).get('files') or {}):
+    for name in state_files(project.state(cur)):
         path = os.path.join(libdir, name)
         if name not in files and inside(name) and os.path.isfile(path):
             logger.info(f'remove {path}: not in the restored state')

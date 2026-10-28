@@ -47,7 +47,7 @@ def _state_entries(project, n):
 
 def _distinct_pairs(project, n):
     "the pairs of distinct.json of the state n"
-    pieces = (project.state(n).get('files') or {}).get(DISTINCT_FILE)
+    pieces = backup.state_files(project.state(n)).get(DISTINCT_FILE)
     if not pieces:
         return []
     try:

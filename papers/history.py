@@ -17,8 +17,9 @@ A state is a dict: `parent` (the identifier of a state, or None), `time`, `messa
 `kind` ('command', 'outside': changed outside papers, 'start': the
 library before its first recorded command), `bibtex` ({'pieces': [...],
 'sha': ...}), `files` ({name: [pieces]}, the other text files of the
-library), `ops` (the file operations of the command, see papers.journal)
-and `deleted` (the file objects it refers to). The store only reads
+library, named with /), `ops` (the file operations of the command, see
+papers.journal; the paths with /) and `deleted` (the file objects it
+refers to). The store only reads
 `parent`, `time`, the pieces and `deleted`; the rest belongs to the caller.
 
 This module uses the standard library only, and nothing else of papers.

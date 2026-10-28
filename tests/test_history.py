@@ -8,6 +8,8 @@ import tempfile
 import time
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import patch
 
 import papers.backup
 import papers.config
@@ -410,6 +412,34 @@ class TestHistoryCommand(LibraryTest):
         self.add('one2000')
         with self.assertRaisesRegex(Exception, 'no terminal to confirm'):
             self.lib('history --remove')
+
+
+class TestStoredNames(LibraryTest):
+    "the names of the files of .papers/ and the paths of the operations are stored with /"
+
+    def test_known_state_id(self):
+        # the identifier of a state does not change (it names the files of .papers/)
+        Path(self.path('lib', 'papers.bib')).write_text(entry('one2000'))
+        os.makedirs(self.path('lib', '.papers', 'origin'))
+        Path(self.path('lib', '.papers', 'origin', 'pool.bib')).write_text(entry('one2000'))
+        Path(self.path('lib', '.papers', 'distinct.json')).write_text('{"distinct": []}\n')
+        Path(self.path('lib', '.papers', 'files.json')).write_text('{"files": {}}\n')
+        config = self.config()
+        snap = papers.backup._snapshot(config, papers.backup.store(config))
+        self.assertEqual(sorted(snap['files']), ['.papers/distinct.json', '.papers/files.json',
+                                                 '.papers/origin/pool.bib'])
+        state = dict(parent=None, time=1700000000.25, **snap)
+        self.assertEqual(history.state_id(state), 'c56b8e5014c28ea6944a45a1c5b0907e29dac4d2ace3e73d64f0305c598e1262')
+
+    def test_windows_separators(self):
+        # as on Windows: stored with /, read back with \\
+        config = SimpleNamespace(absolute_paths=True, bibtex='/lib/papers.bib')
+        op = {'op': 'moved', 'src': 'C:\\lib\\a.pdf', 'dst': 'C:\\lib\\files\\a.pdf'}
+        with patch.object(os, 'sep', '\\'):
+            [stored] = papers.backup._relative_ops([op], config)
+            self.assertEqual((stored['src'], stored['dst']), ('C:/lib/a.pdf', 'C:/lib/files/a.pdf'))
+            state = {'files': {'.papers/origin/pool.bib': ['ab']}}
+            self.assertEqual(papers.backup.state_files(state), {'.papers\\origin\\pool.bib': ['ab']})
 
 
 class TestSeparate(LibraryTest):
