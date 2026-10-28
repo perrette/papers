@@ -91,7 +91,7 @@ def resolve_install(config, o, probe=None, asker=None, target=None):
     `config` is the library configuration to update, or a fresh Config
     (`config.file is None`); `o` the argparse namespace of the init or
     install command; `target` the configuration file to write (default: the
-    one of `config`, else .papersconfig.json in the current directory).
+    one of `config`, else .papers/config.json in the current directory).
     """
     asker = asker or DefaultAsker()
 
