@@ -104,7 +104,7 @@ left out.
 |---|---|---|
 | key | `id`, `citation-key` | `ID` |
 | entry type | `type` (below) | `TY` (below) |
-| `author`, `editor` | `author`, `editor` (`family`, `given`, `non-dropping-particle`, `suffix`; a name in braces is a `literal`) | `AU`, `ED` (`Family, Given, Suffix`) |
+| `author`, `editor`, `translator` | `author`, `editor`, `translator` (`family`, `given`, `non-dropping-particle`, `suffix`; a name in braces is a `literal`) | `AU`, `ED`, `A4` (`Family, Given, Suffix`) |
 | `title` | `title` | `TI` |
 | `journal`, `booktitle` | `container-title` | `T2` |
 | `series` | `collection-title` | `T3` |
@@ -113,6 +113,7 @@ left out.
 | `number`, `issue` | `issue` (articles), else `number` | `IS` |
 | `pages` | `page` (`11-29`) | `SP`, `EP` |
 | `doi`, `url` | `DOI`, `URL` | `DO`, `UR` |
+| `urldate` | `accessed` | `Y2` |
 | `isbn`, `issn` | `ISBN`, `ISSN` | `SN` |
 | `publisher` (or `school`, `institution`) | `publisher` | `PB` |
 | `address` | `publisher-place` | `CY` |

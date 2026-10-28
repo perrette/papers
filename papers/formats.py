@@ -640,6 +640,9 @@ def entry_to_ris(e, files=()):
     editors = parse_bibtex_names(get_entry_val(e, 'editor', ''))
     if editors:
         ref['editors'] = [_ris_name(n) for n in editors]
+    translators = parse_bibtex_names(get_entry_val(e, 'translator', ''))
+    if translators:
+        ref['subsidiary_authors'] = [_ris_name(n) for n in translators]  # A4: the translators, as in Zotero
     if f.get('title'):
         ref['title'] = f['title']
     container = f.get('journal') or f.get('booktitle')
@@ -669,6 +672,8 @@ def entry_to_ris(e, files=()):
         ref['doi'] = _clean_doi(f['doi'])
     if f.get('url'):
         ref['urls'] = [f['url']]
+    if f.get('urldate'):
+        ref['access_date'] = f['urldate']
     numbers = [f[k] for k in ('isbn', 'issn') if f.get(k)]
     if numbers:
         ref['issn'] = numbers
@@ -721,6 +726,9 @@ def ris_to_entry(ref):
         editors = _as_list(ref.get('secondary_authors'))  # A2: the editors, in EndNote exports
     if editors:
         fields['editor'] = ' and '.join(_bibtex_name_of_ris(a) for a in editors if a.strip())
+    translators = _as_list(ref.get('subsidiary_authors'))
+    if translators:
+        fields['translator'] = ' and '.join(_bibtex_name_of_ris(a) for a in translators if a.strip())
     fields['title'] = _first(ref, 'title', 'primary_title')
     container = _first(ref, 'secondary_title', 'alternate_title3', 'journal_name', 'alternate_title2',
                        'alternate_title1')
@@ -747,6 +755,7 @@ def ris_to_entry(ref):
     doi_urls = [u for u in _as_list(ref.get('urls')) if _DOI_PREFIX.match(u.strip())]
     if not fields['doi'] and doi_urls:  # no DO line: the DOI of a doi.org link, also next to another URL
         fields['doi'] = _clean_doi(doi_urls[0])
+    fields['urldate'] = _first(ref, 'access_date')
     for sn in _as_list(ref.get('issn')):
         digits = re.sub(r'[^0-9Xx]', '', sn.split()[0] if sn.split() else '')
         name = 'issn' if len(digits) == 8 else 'isbn'
