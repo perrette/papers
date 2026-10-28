@@ -653,6 +653,9 @@ def entry_to_ris(e, files=()):
     editors = parse_bibtex_names(get_entry_val(e, 'editor', ''))
     if editors:
         ref['editors'] = [_ris_name(n) for n in editors]
+    translators = parse_bibtex_names(get_entry_val(e, 'translator', ''))
+    if translators:
+        ref['subsidiary_authors'] = [_ris_name(n) for n in translators]  # A4: the translators, as in Zotero
     if f.get('title'):
         ref['title'] = f['title']
     container = f.get('journal') or f.get('booktitle')
@@ -682,6 +685,8 @@ def entry_to_ris(e, files=()):
         ref['doi'] = _clean_doi(f['doi'])
     if f.get('url'):
         ref['urls'] = [f['url']]
+    if f.get('urldate'):
+        ref['access_date'] = f['urldate']
     numbers = [f[k] for k in ('isbn', 'issn') if f.get(k)]
     if numbers:
         ref['issn'] = numbers
@@ -734,6 +739,9 @@ def ris_to_entry(ref):
         editors = _as_list(ref.get('secondary_authors'))  # A2: the editors, in EndNote exports
     if editors:
         fields['editor'] = ' and '.join(_bibtex_name_of_ris(a) for a in editors if a.strip())
+    translators = _as_list(ref.get('subsidiary_authors'))
+    if translators:
+        fields['translator'] = ' and '.join(_bibtex_name_of_ris(a) for a in translators if a.strip())
     fields['title'] = _first(ref, 'title', 'primary_title')
     container = _first(ref, 'secondary_title', 'alternate_title3', 'journal_name', 'alternate_title2',
                        'alternate_title1')
@@ -760,6 +768,7 @@ def ris_to_entry(ref):
     doi_urls = [u for u in _as_list(ref.get('urls')) if _DOI_PREFIX.match(u.strip())]
     if not fields['doi'] and doi_urls:  # no DO line: the DOI of a doi.org link, also next to another URL
         fields['doi'] = _clean_doi(doi_urls[0])
+    fields['urldate'] = _first(ref, 'access_date')
     for sn in _as_list(ref.get('issn')):
         digits = re.sub(r'[^0-9Xx]', '', sn.split()[0] if sn.split() else '')
         name = 'issn' if len(digits) == 8 else 'isbn'
@@ -806,7 +815,8 @@ def _ris_without_stray_lines(text):
     """the RIS text without the blank lines inside a record and the lines
     without tag between TY and the first tag: rispy (0.10) reads them as
     the continuation of the last tag of the previous record (an error for a
-    single tag such as TI, an empty keyword for KW)"""
+    single tag such as TI, an empty keyword for KW). A last record without
+    ER gets one: rispy drops it otherwise"""
     lines, inside, tagged = [], False, False
     for line in text.split('\n'):
         tag = _RIS_TAG.match(line)
@@ -819,6 +829,8 @@ def _ris_without_stray_lines(text):
         elif inside and (not line.strip() or not tagged):
             continue
         lines.append(line)
+    if inside:
+        lines.append('ER  - ')
     return '\n'.join(lines)
 
 

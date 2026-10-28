@@ -157,7 +157,9 @@ without opening an editor (for scripts and other programs). The entry keeps
 its key, and its `file` and `keywords` fields when FILE has none; its other
 fields are those of FILE (a field that FILE does not have is removed). FILE
 is bibtex, or RIS (`.ris`), CSL-JSON (`.json`) or BibJSON (`.bib.json`),
-or the format given with `--format`. `--from -` reads the entry from the standard input:
+or the format given with `--format`. The file links of FILE are relative to
+the directory of FILE, as with `papers add FILE`. `--from -` reads the entry
+from the standard input:
 
 ```
 papers extract paper.pdf | papers edit perrette2013 --from -

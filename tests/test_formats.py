@@ -434,6 +434,15 @@ class TestRIS(unittest.TestCase):
         self.assertEqual(e['author'], r'AT\&T')
         self.assertEqual(e['url'], 'https://example.org/a_b')
 
+    def test_urldate_and_translator(self):
+        e = parse_string('@book{x,\n title = {T},\n translator = {Doe, Jane and Roe, R.},\n'
+                         ' url = {https://example.org},\n urldate = {2024-03-01}\n}\n').entries[0]
+        text = formats.dumps_ris([e])
+        for line in ['A4  - Doe, Jane', 'A4  - Roe, R.', 'Y2  - 2024-03-01']:
+            self.assertIn(line + '\n', text)
+        back = formats.loads_ris(text)[0]
+        self.assertEqual((back['translator'], back['urldate']), ('Doe, Jane and Roe, R.', '2024-03-01'))
+
     def test_doi_from_a_url_next_to_another(self):
         # no DO line: the DOI of the doi.org link, also when another URL is there
         e = ris_to_entry({'type_of_reference': 'JOUR', 'title': 'T',
@@ -451,6 +460,11 @@ class TestRIS(unittest.TestCase):
         self.assertEqual((first['title'], second['title'], third['title']), ('First', 'Second', 'Third'))
         self.assertEqual(second['keywords'], 'b')
         self.assertEqual(second['author'], 'Smith, J')
+
+    def test_last_record_without_er(self):
+        first, second = formats.loads_ris('TY  - JOUR\nTI  - First\nER  - \n\nTY  - JOUR\nTI  - Second\n\n')
+        self.assertEqual((first['title'], second['title']), ('First', 'Second'))
+        self.assertEqual(formats.loads_ris('TY  - JOUR\nTI  - Only')[0]['title'], 'Only')
 
     def test_not_ris(self):
         with self.assertRaisesRegex(ValueError, 'not a RIS file'):

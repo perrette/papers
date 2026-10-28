@@ -234,8 +234,7 @@ The fields are converted as `papers export --format` writes them (see
 [How the fields are converted](export.md#how-the-fields-are-converted)); a
 few more are read: `T1`, `JO`, `JF` (title, journal), `A2` (editors of a
 chapter, in EndNote exports), `N2` (abstract), `M3` (type of a report); and
-in CSL-JSON, `accessed` (`urldate`), `genre` (the type of a report or
-thesis). Other fields are ignored.
+in CSL-JSON, `genre` (the type of a report or thesis). Other fields are ignored.
 
 ## Add an entry from its DOI
 

@@ -351,6 +351,13 @@ class TestEditFrom(EntryTest):
         self.assertEqual(parse_keywords(e), ['ocean'])
         self.assertIn('other.pdf', e['file'])
 
+    def test_from_file_links_relative_to_file(self):
+        # as with papers add FILE: a relative link is relative to the directory of FILE
+        new = self.write('down', 'new.bib', content='@article{x,\n title = {T},\n file = {:paper.pdf:pdf}\n}\n')
+        self.lib(f'edit one2000 --from {new}')
+        biblio = Biblio.load(self.path('lib', 'papers.bib'), '')
+        self.assertEqual(biblio.get_files(self.entry('one2000')), [self.path('down', 'paper.pdf')])
+
     def test_from_stdin_pipe(self):
         with patch('sys.stdin', io.StringIO('@article{x,\n title = {Piped}\n}\n')), \
                 patch('papers.utils.stdin_is_terminal', return_value=False):
