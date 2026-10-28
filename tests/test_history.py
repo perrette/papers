@@ -147,6 +147,10 @@ class TestStates(StoreTest):
         self.assertEqual(lib.state(two)['pools']['pool']['state'], pool.head('/l.bib')['state'])
         self.assertEqual(lib.line(three), [three, two, lib.state(two)['parent']])
         self.assertFalse(any(name[:-5].isdigit() for name in os.listdir(lib.states_dir)))
+        # the numbers are kept, for the links from another store
+        self.assertEqual(pool.upgraded(2), pool.head('/l.bib')['state'])
+        self.assertEqual(pool.upgraded(9), 9)
+        self.assertEqual(pool.upgraded(two), two)
 
     def test_places(self):
         p = self.store.project('p')

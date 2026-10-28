@@ -559,7 +559,7 @@ def pool_steps(config, project, steps, undo):
                     continue
                 pools[id] = pool
             pool = pools[id]
-            n = link['state']
+            n = pool.project.upgraded(link['state'])  # a number: a link of an earlier version to another store
             # the pool's state before the command (several saves of the pool: before the first one)
             parent = link.get('base', (pool.project.state(n) or {}).get('parent'))
             if pool.project.state(n) is None or parent is None or pool.project.state(parent) is None:
