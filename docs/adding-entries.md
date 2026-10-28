@@ -428,6 +428,11 @@ instead, in both cases. Either way, this only
 concerns entries new to the library: an entry merged into a duplicate takes
 the key of the library entry.
 
+A key that another entry has already (ignoring case) gets a letter suffix:
+`Smith2000` becomes `Smith2000b`, then `Smith2000c`. A key that ends with a
+digit and a letter continues from that letter, in its case (`Smith2000B`
+gives `Smith2000C`); after `z`, a second letter is added (`Smith2000za`).
+
 ### Options of earlier versions
 
 These options still work, with a warning, and will be removed:

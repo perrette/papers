@@ -48,9 +48,17 @@ class TestAppendAbc(unittest.TestCase):
         self.assertEqual(append_abc('perrette', ['perrette']), 'perretteb')
         self.assertEqual(append_abc('10-1000-abc', ['10-1000-abc']), '10-1000-abcb')
 
+    def test_upper_case_suffix(self):
+        self.assertEqual(append_abc('Author2000B', ['Author2000B']), 'Author2000C')
+
+    def test_after_z(self):
+        self.assertEqual(append_abc('Author2000z', ['Author2000z']), 'Author2000za')
+        self.assertEqual(append_abc('Author2000z', ['Author2000z', 'Author2000za']), 'Author2000zb')
+
     def test_no_letter_left(self):
+        keys = ['Author2000z'] + ['Author2000z' + l for l in 'abcdefghijklmnopqrstuvwxyz']
         with self.assertRaises(ValueError):
-            append_abc('Author2000z', ['Author2000z'])
+            append_abc('Author2000z', keys)
 
 
 class TestIsvalidkey(unittest.TestCase):

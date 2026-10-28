@@ -85,20 +85,30 @@ def append_abc(key, keys=[]):
     'Author2000c'
     >>> append_abc('Author2000', ['Author2000', 'Author2000b'])
     'Author2000c'
+    >>> append_abc('Author2000B')
+    'Author2000C'
+    >>> append_abc('Author2000z')
+    'Author2000za'
     """
-    letters = 'abcdefghijklmnopqrstuvwxyz'
+    alphabet = 'abcdefghijklmnopqrstuvwxyz'
     keys = {k.lower() for k in keys}  # keys are compared ignoring case
 
-    # a letter after a digit is a suffix of this function (Author2000b)
-    if len(key) > 1 and key[-1] in letters and key[-2].isdigit():
-        letters = letters[letters.index(key[-1])+1:]
-        key = key[:-1]
+    # a letter after a digit is a suffix of this function (Author2000b), in
+    # either case
+    last = key[-1:]
+    if len(key) > 1 and last.lower() in alphabet and key[-2].isdigit():
+        letters = alphabet[alphabet.index(last.lower())+1:]
+        if last.isupper():
+            letters = letters.upper()
+        base = key[:-1]
     else:
-        letters = letters[1:] # start at b
+        letters = alphabet[1:] # start at b
+        base = key
 
-    for l in letters:
-        if (key+l).lower() not in keys:
-            return key+l
+    # no letter left (after z): a second letter (Author2000za)
+    for k in [base + l for l in letters] + [key + l for l in alphabet]:
+        if k.lower() not in keys:
+            return k
     raise ValueError(f'{key}: no free key with a letter suffix')
 
 
