@@ -165,13 +165,17 @@ library also records the step of the pool.
   new step of the pool, see [Taking back an older step](#taking-back-an-older-step)).
   An entry that changed in the pool since stays; in a terminal, papers asks
   about a field changed on both sides. `papers redo` then reverts that
-  revert.
+  revert. If the undo took the pool's step back and the pool changed
+  after it, `papers redo` does the step again there (a new step of the
+  pool, with the same rules).
 - If the pool changed outside papers since its last step, the library only
   is undone, and a line says so.
 - With auto-push, the shared entries that differ from their origin copy are
   pushed after the undo or redo, as after any command. In general there is
   nothing to push: the undo restores the origin copies with the bibtex.
-  There is something when a step was made with auto-push off.
+  There is something when a step was made with auto-push off; that push is
+  then a new step, after which there is nothing to redo, as after any
+  command (`papers restore N` still goes to the steps undone).
 - `papers undo --library-only` (and `redo --library-only`) leave the pool
   as it is: the files that the command moved to the pool are copied back.
 - The pool does not know which libraries use its entries. If another
