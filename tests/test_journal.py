@@ -205,10 +205,17 @@ class TestSeveralSteps(JournalTest):
         self.assertIn(' --> moved back to ', out)
         self.assertEqual(Path(b).read_text(), 'pdf b')
         self.assertEqual(self.libfiles(), [])
+        project, place = self.project()
+        states = len(project.states())
         out = self.out('redo -n 2')
         self.assertIn('deleted again (kept in the history)', out)
         self.assertFalse(os.path.exists(b))
         self.assertEqual(self.libfiles(), [])
+        # the file deleted again by redo is not a step of its own: undo goes back before the rm
+        project, place = self.project()
+        self.assertEqual(len(project.states()), states)
+        self.lib('undo')
+        self.assertEqual(len(self.libfiles()), 1)  # restored from the history, where the add put it
 
     def test_add_copied_from_outside(self):
         b = self.write('downloads', 'b.pdf', content='pdf b')
@@ -279,9 +286,11 @@ class TestChecksums(JournalTest):
 
 
 class TestShallow(FileTest):
-    "a file added to a shallow library goes to the pool: undo in the library copies it back, the pool keeps it"
+    """a file added to a shallow library goes to the pool: undo in the library
+    moves it back (the pool undoes the add too); with --library-only, copies
+    it back, and the pool keeps it"""
 
-    def test_copied_back(self):
+    def add(self):
         self.papers('init pool')
         self.papers('init shallow --pool ../pool')
         a = self.write('src', 'a.pdf', content='pdf a')
@@ -290,7 +299,20 @@ class TestShallow(FileTest):
         pool_files = os.listdir(self.path('pool', 'files'))
         self.assertEqual(len(pool_files), 1)
         self.assertFalse(os.path.exists(a))
+        return a, pool_files
+
+    def test_moved_back(self):
+        a, pool_files = self.add()
         self.papers('undo', cwd=self.path('shallow'))
+        self.assertTrue(os.path.exists(a))
+        self.assertEqual(os.listdir(self.path('pool', 'files')), [])
+        self.papers('redo', cwd=self.path('shallow'))
+        self.assertFalse(os.path.exists(a))
+        self.assertEqual(os.listdir(self.path('pool', 'files')), pool_files)
+
+    def test_copied_back(self):
+        a, pool_files = self.add()
+        self.papers('undo --library-only', cwd=self.path('shallow'))
         self.assertTrue(os.path.exists(a))
         self.assertEqual(os.listdir(self.path('pool', 'files')), pool_files)  # the pool entry still links it
         self.papers('redo', cwd=self.path('shallow'))

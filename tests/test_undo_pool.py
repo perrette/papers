@@ -1,6 +1,8 @@
 """Undo and redo in a library that has a pool: each library has its own
 history (the pool too), and the origin records of the library
-(.papers/origin/) are restored with its bibtex"""
+(.papers/origin/) are restored with its bibtex. A step that also wrote the
+pool is undone and redone in the pool too, unless the pool changed since
+(or with --library-only)."""
 import os
 import unittest
 from pathlib import Path
@@ -87,12 +89,12 @@ class UndoPoolTest(ConfigTest):
             self.lib(f'list -k {key} --add-tag {tag}')
             self.lib(f'push {key}')
 
-    def undo_to(self, commit):
+    def undo_to(self, commit, options=''):
         "undo in the library, one step at a time, back to the state of `commit`"
         for _ in range(10):
             if self.cursor() == commit:
                 return
-            self.lib('undo')
+            self.lib(f'undo {options}')
         self.fail(f'undo does not reach {commit}')
 
 
@@ -109,27 +111,91 @@ class UndoInLibrary:
         self.assertIsNotNone(self.record('mine2022'))
 
         pool = self.commits('pool')
-        self.lib('undo')
-        # the library only: the pool keeps the entry and its history
+        out = self.out('undo')
+        # the pool takes back its step of the add too
+        self.assertIn('pool ../pool: also undone', out)
         self.assertNotIn('mine2022', self.entries())
-        self.assertIn('mine2022', self.entries('pool'))
+        self.assertNotIn('mine2022', self.entries('pool'))
         self.assertEqual(self.commits('pool'), pool)
         # the origin file did not exist before the add: removed
         self.assertEqual(self.origin_files(), {})
 
-        self.lib('redo')
+        self.assertIn('pool ../pool: also redone', self.out('redo'))
         self.assertIn('mine2022', self.entries())
+        self.assertIn('mine2022', self.entries('pool'))
         self.assertIsNotNone(self.record('mine2022'))
         self.assertEqual(self.commits('pool'), pool)
+
+    def test_add_then_undo_library_only(self):
+        self.lib('add ../new.bib')
+        pool = self.commits('pool')
+        self.lib('undo --library-only')
+        # the library only: the pool keeps the entry and its history
+        self.assertNotIn('mine2022', self.entries())
+        self.assertIn('mine2022', self.entries('pool'))
+        self.assertEqual(self.commits('pool'), pool)
+        self.assertEqual(self.origin_files(), {})
+        # the pool is still where the add left it: redo has nothing to do there
+        self.assertNotIn('pool ../pool', self.out('redo'))
+        self.assertIn('mine2022', self.entries())
+        self.assertIsNotNone(self.record('mine2022'))
+
+    def test_pool_changed_since(self):
+        self.lib('add ../new.bib')
+        self.tag('mine2022', 'b', where='pool')
+        out = self.out('undo')
+        # the pool has a step on top of that of the add: the library only
+        self.assertIn('pool ../pool: changed since step', out)
+        self.assertNotIn('mine2022', self.entries())
+        self.assertEqual(self.keywords('mine2022', 'pool'), 'a, b')
+
+    def test_pool_changed_outside_papers(self):
+        self.lib('add ../new.bib')
+        bib = Path(self.path('pool', 'papers.bib'))
+        bib.write_text(bib.read_text() + OTHER_BIB)
+        self.assertIn('pool ../pool: changed outside papers', self.out('undo'))
+        self.assertNotIn('mine2022', self.entries())
+        self.assertIn('mine2022', self.entries('pool'))
+        self.assertIn('other2023', self.entries('pool'))
+
+    def test_pool_undone_first(self):
+        # the pool undid the add itself: undo in the library has nothing to do there
+        self.lib('add ../new.bib')
+        self.lib('-C ../pool undo')
+        self.assertNotIn('pool ../pool', self.out('undo'))
+        self.assertNotIn('mine2022', self.entries())
+        self.assertNotIn('mine2022', self.entries('pool'))
 
     def test_undo_after_push(self):
         self.lib('add ../new.bib')
         before, origin = self.cursor(), self.origin_files()
         self.tag('mine2022', 'foo')
         self.assertEqual(self.keywords('mine2022', 'pool'), 'a, foo')
-        self.assertEqual(self.record('mine2022').entry['keywords'], 'a, foo')
 
         self.undo_to(before)
+        # the push is undone in the pool too: in sync
+        self.assertEqual(self.keywords('mine2022'), 'a')
+        self.assertEqual(self.keywords('mine2022', 'pool'), 'a')
+        self.assertEqual(self.origin_files(), origin)
+        self.assertIn('../pool (in sync)', self.out('status'))
+
+        # several steps at once: the pool follows
+        project, place = self.project('lib')
+        steps = len(project.head(place)['redo'])
+        self.lib(f'redo -n {steps}')
+        self.assertEqual(self.keywords('mine2022', 'pool'), 'a, foo')
+        self.lib(f'undo -n {steps}')
+        self.assertEqual(self.cursor(), before)
+        self.assertEqual(self.keywords('mine2022', 'pool'), 'a')
+
+    def test_undo_after_push_library_only(self):
+        self.lib('add ../new.bib')
+        before, origin = self.cursor(), self.origin_files()
+        self.tag('mine2022', 'foo')
+        self.assertEqual(self.keywords('mine2022', 'pool'), 'a, foo')
+        self.assertEqual(self.record('mine2022').entry['keywords'], 'a, foo')
+
+        self.undo_to(before, '--library-only')
         # the bibtex and the origin records are those of the state restored
         self.assertEqual(self.keywords('mine2022'), 'a')
         self.assertEqual(self.origin_files(), origin)
@@ -250,8 +316,8 @@ class TestUndoPoolAutoPush(UndoPoolTest, UndoInLibrary):
 
 class TestUndoFileRmShallow(UndoPoolTest):
     """`file rm` in a shallow library deletes the pool file (kept in the history) and
-    removes the link from the pool entry: undo in the library restores its
-    link and the file, and the pool keeps the change"""
+    removes the link from the pool entry: undo in the library restores the
+    file and the links of both; with --library-only, the pool keeps the change"""
 
     def test_undo_file_rm(self):
         self.lib('add ../new.bib')
@@ -268,6 +334,14 @@ class TestUndoFileRmShallow(UndoPoolTest):
         self.lib('undo')
         self.assertEqual(biblio.get_files(self.entries()['mine2022']), [si])
         self.assertEqual(Path(si).read_text(), 'supplement')  # from the history
+        self.assertIn('file', self.entries('pool')['mine2022'].fields_dict)
+        self.assertIn('../pool (in sync)', self.out('status'))
+
+        self.lib('redo')
+        self.assertFalse(os.path.exists(si))
+        self.lib('undo --library-only')
+        self.assertEqual(biblio.get_files(self.entries()['mine2022']), [si])
+        self.assertEqual(Path(si).read_text(), 'supplement')
         self.assertNotIn('file', self.entries('pool')['mine2022'].fields_dict)
         # the pool entry no longer has the link it had at the restored state: the pull removes it
         self.lib('pull')

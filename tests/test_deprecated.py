@@ -293,7 +293,7 @@ class TestRenamedOptions(FileTest):
         self.warns('uninstall', '`papers uninstall` is deprecated')
 
     def test_restore_files(self):
-        with patch('papers.cli.backup_cmds.backup.undo', return_value=(None, None, None)), \
+        with patch('papers.cli.backup_cmds.backup.undo', return_value=(None, None, None, [])), \
                 patch('papers.cli.backup_cmds.backup.describe', return_value=''):
             self.warns('undo --restore-files', '--restore-files is ignored')
 
@@ -303,7 +303,7 @@ class TestRenamedOptions(FileTest):
                 self.warns(f'install {option}', f'{option} is deprecated: use -y/--yes')
 
     def test_restore_backup(self):
-        with patch('papers.cli.backup_cmds.backup.restore', return_value=(None, None, None)) as restore, \
+        with patch('papers.cli.backup_cmds.backup.restore', return_value=(None, None, None, [])) as restore, \
                 patch('papers.cli.backup_cmds.backup.describe', return_value=''):
             self.warns('restore-backup', '`papers restore-backup` is deprecated: use `papers restore`')
         restore.assert_called_once()

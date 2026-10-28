@@ -117,11 +117,28 @@ of its own, with its own `history-size`.
 A pool is a library with its own history. A command that exchanges entries
 with the pool (`add` in a shallow library, a command that changes entries
 with auto-push; `push`, `pull`, `sync`) writes both, and each records a
-step in its own history.
+step in its own history. When the command wrote the pool, the step of the
+library also records the step of the pool.
 
-- `papers undo` and `papers redo` in the library change the library only.
-  The pool keeps what the undone command wrote to it.
+- `papers undo` and `papers redo` in the library undo and redo the pool's
+  step too, as long as the pool is still where the command left it (for
+  redo: where the undo left it). The files that the command moved to the
+  files directory of the pool are moved back.
+- If the pool changed since (another command in the pool or in another
+  library that shares it, or an edit outside papers), the library only is
+  undone, and a line says so; `papers -C POOL history` shows the steps of
+  the pool.
+- `papers undo --library-only` (and `redo --library-only`) leave the pool
+  as it is: the files that the command moved to the pool are copied back.
 - `papers -C POOL undo` and `papers -C POOL redo` change the pool only.
+
+```
+$ papers add ~/Downloads/esd-4-11-2013.pdf --move
+$ papers undo
+undo: papers.bib restored to 7 papers pull (2026-10-28 10:12)
+    ~/sealevel/files/perrette_2013_a-scaling-approach.pdf --> moved back to ~/Downloads/esd-4-11-2013.pdf
+pool ../sealevel: also undone, restored to 31 papers push (2026-10-28 10:09)
+```
 
 The library also restores its origin copies (`.papers/origin/`, see
 [Pools](pools.md#origin-copies)) and `.papers/distinct.json` to the step it
@@ -129,17 +146,19 @@ goes back to, and removes those that did not exist at that step. The next
 exchange then compares the library and the pool to the origin copies of
 that step:
 
-- After undoing a `push` or a `pull` in the library, the pool shows as
+- After undoing a `pull`, or a `push` whose step the pool did not undo
+  (`--library-only`, or the pool changed since), the pool shows as
   changed in `papers status`: what the pool has beyond the restored state
   comes again with the next `pull`, and the next `push` does not send the
-  undone state back to the pool. To undo the change in the pool too, undo
-  there as well (`papers -C POOL undo`).
+  undone state back to the pool.
 - After an undo in the pool, the origin copies of the library still have the
   newer version, so the pool shows as changed, and a `pull` takes the pool's
   older values for the fields the library did not change since. A field
   that the pool undo removes is a removal in the pool: the `pull` removes it
   from the library too, unless the library changed it since (a conflict, see
   [`papers pull`](pools.md#papers-pull)).
+
+`papers restore N` restores the library only.
 
 ## Details
 

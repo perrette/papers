@@ -9,6 +9,12 @@ state of the command, with its file operations (see papers.journal).
 `go_to` brings the library to another state: the bibtex, the files of
 .papers/ (origin records, distinct.json, files.json) and the files.
 
+A command that also writes another library (its pool: add in a shallow
+library, auto-push, push, sync) records the step of that library in its
+own: `pools` ({project id of the pool: {'state': n, 'config': path of its
+configuration}}). Undo and redo in the library take the pool step along
+when the pool is still where the command left it.
+
 The old backups (the git repository .papers/backup of the v3 branch, the
 folders of ~/.local/share/papers/backups of earlier versions) are no
 longer used: `stale_backups` lists them.
@@ -212,6 +218,10 @@ _NO_START = {'status', 'config', 'init', 'install', 'uninstall', 'migrate', 'his
 # the library before the command, for its first state: {place: texts (see _texts)}
 _before = {}
 
+# the steps that the command added to the histories of other libraries (its pools),
+# for the next step of its own library: {project id: {'state': n, 'config': path}}
+_linked = {}
+
 
 def start(config, cmd):
     """at the start of a command: the library as it is before it, kept in
@@ -219,6 +229,7 @@ def start(config, cmd):
     write the files of .papers/ before it saves the bibtex; see sync_head).
     Nothing is written: a command that changes nothing leaves no trace."""
     _before.clear()
+    _linked.clear()
     if cmd in _NO_START or papers.config.DRYRUN or not config.bibtex or not os.path.exists(config.bibtex):
         return
     try:
@@ -232,7 +243,9 @@ def start(config, cmd):
 def record(config, message=None, ops=None):
     """after the save of the library: its state, with the file operations of
     the command (ops: those given, instead of those of the journal); return
-    the number of the state, or None"""
+    the number of the state, or None. The state of another library than
+    that of the command (its pool) is linked to the next state of the
+    library of the command (see _linked)."""
     project, place = project_of(config)
     if project is None or papers.config.DRYRUN:
         return None
@@ -241,14 +254,23 @@ def record(config, message=None, ops=None):
     parent = head['state'] if head else None
     ops = _relative_ops(journal.take(config.bibtex) if ops is None else ops, config)
     snap = _snapshot(config, project.store)
+    own = journal.is_owner(config.bibtex)
+    linked = dict(_linked) if own else {}
     previous = project.state(parent) if parent is not None else None
-    if previous and not ops and previous['bibtex'] == snap['bibtex'] and previous.get('files') == snap['files']:
+    if (previous and not ops and not linked and previous['bibtex'] == snap['bibtex']
+            and previous.get('files') == snap['files']):
         n = parent
     else:
-        n = project.add(dict(parent=parent, time=time.time(), kind='command', message=message or _message(),
-                             ops=ops, deleted=_deleted_refs(ops), **snap))
+        state = dict(parent=parent, time=time.time(), kind='command', message=message or _message(),
+                     ops=ops, deleted=_deleted_refs(ops), **snap)
+        if linked:
+            state['pools'] = linked
+            _linked.clear()
+        n = project.add(state)
         project.set_head(place, n)
-    if journal.is_owner(config.bibtex):
+        if not own and config.file and config.is_library:
+            _linked[project.id] = {'state': n, 'config': os.path.abspath(config.file)}
+    if own:
         journal.saved((config, n))
     if any(op['op'] == 'trashed' for op in ops) or n % PRUNE_EVERY == 0:
         prune(config, project.store)
@@ -357,10 +379,12 @@ def describe(project, n):
     return f'{n} {state.get("message", "")} ({when})'
 
 
-def go_to(config, project, cur, target):
+def go_to(config, project, cur, target, pool_dirs=None):
     """bring the library from the state `cur` to the state `target`: the
     files (command by command, then by checksum), the bibtex and the files
-    of .papers/. Return the lines of the report on the files."""
+    of .papers/. pool_dirs: the folders whose files are copied back, not
+    moved (by default, the files directory of the pool of a shallow
+    library, see _pool_dirs). Return the lines of the report on the files."""
     from bibtexparser import parse_string
     st = project.store
     relative_to = os.path.dirname(os.path.abspath(config.bibtex))
@@ -384,21 +408,22 @@ def go_to(config, project, cur, target):
     def ops(n):
         return _absolute_ops(project.state(n).get('ops') or [], config)
 
-    kw = dict(pool_dirs=_pool_dirs(config), find_deleted=st.file_object)
+    kw = dict(pool_dirs=_pool_dirs(config) if pool_dirs is None else pool_dirs, find_deleted=st.file_object)
     back, forward = project.path(cur, target)
     lines = []
-    for n in back:
-        parent = project.state(n).get('parent')
-        if parent is None or project.state(parent) is None:
-            break
-        if ops(n):
-            lines += journal.restore(links(n), links(parent), ops(n), True, hashes=hashes(parent), **kw)
-    for n in forward:
-        parent = project.state(n).get('parent')
-        if ops(n) and parent is not None and project.state(parent) is not None:
-            lines += journal.restore(links(parent), links(n), ops(n), False, hashes=hashes(n), **kw)
-    current = papers.checksums.bibtex_links(config.bibtex, relative_to)
-    lines += journal.restore(current, links(target), [], not forward, hashes=hashes(target), **kw)
+    with journal.unrecorded():  # moving in the history is not a step of it
+        for n in back:
+            parent = project.state(n).get('parent')
+            if parent is None or project.state(parent) is None:
+                break
+            if ops(n):
+                lines += journal.restore(links(n), links(parent), ops(n), True, hashes=hashes(parent), **kw)
+        for n in forward:
+            parent = project.state(n).get('parent')
+            if ops(n) and parent is not None and project.state(parent) is not None:
+                lines += journal.restore(links(parent), links(n), ops(n), False, hashes=hashes(n), **kw)
+        current = papers.checksums.bibtex_links(config.bibtex, relative_to)
+        lines += journal.restore(current, links(target), [], not forward, hashes=hashes(target), **kw)
 
     papers.utils.write_atomic(config.bibtex, text(target))
     _write_library_files(config, project, cur, target)
@@ -433,9 +458,90 @@ def _require(config):
     return project, place
 
 
-def undo(config, steps=1):
-    """go back `steps` states; return (project, state restored, report on
-    the files; None with --dry-run)"""
+class _Pool:
+    "a pool whose steps go with those of the library (see pool_steps)"
+    def __init__(self, config, project, place, head, shown):
+        self.config, self.project, self.place, self.head, self.shown = config, project, place, head, shown
+        self.at = head['state']  # where the pool is, once the steps taken so far are
+        self.taken = []
+
+
+def _shown(config, pool_config):
+    "how the messages name a pool: as the pool setting of the library writes it, else with ~"
+    root = papers.config.config_root(pool_config.file)
+    own = config.pool_path()
+    if own is not None and os.path.realpath(own) == os.path.realpath(root):
+        return config.pool_label()
+    return papers.config.short_home(root)
+
+
+def _pool(config, id, link):
+    """the pool of a link (see _linked), as a _Pool, or a message: not
+    found, or its bibtex changed outside papers since its last step"""
+    file = link.get('config')
+    pool_config = papers.config.Config.load(file, machine=config.machine) if file and os.path.isfile(file) else None
+    project, place = project_of(pool_config, create=False) if pool_config else (None, None)
+    if project is None or project.id != id or project.head(place) is None:
+        return f'the pool of step {link["state"]} is not found (at {papers.config.short_home(file)})'
+    pool = _Pool(pool_config, project, place, project.head(place), _shown(config, pool_config))
+    if history.sha256(_bibtex_text(pool_config).encode('utf-8')) != project.state(pool.at)['bibtex'].get('sha'):
+        return f'pool {pool.shown}: changed outside papers since its last step'
+    return pool
+
+
+def pool_steps(config, project, steps, undo):
+    """the steps of the pools that go with the steps of the library undone
+    (undo) or redone, `steps` in the order they are taken: each pool takes
+    back (or does again) the step linked to a library step when it is still
+    at that step (or before it), and stops at the first one it moved on
+    from. Return ([_Pool], the lines of the pools that moved on)."""
+    pools, lines, stopped = {}, [], set()
+    for s in steps:
+        for id, link in (project.state(s).get('pools') or {}).items():
+            if id in stopped:
+                continue
+            if id not in pools:
+                pool = _pool(config, id, link)
+                if isinstance(pool, str):
+                    lines.append(f'{pool}: the library only')
+                    stopped.add(id)
+                    continue
+                pools[id] = pool
+            pool = pools[id]
+            n = link['state']
+            parent = (pool.project.state(n) or {}).get('parent')
+            before, after = (n, parent) if undo else (parent, n)
+            if pool.project.state(n) is None or parent is None or pool.at == after:
+                continue  # no longer in the history of the pool, or there already
+            if pool.at != before:
+                lines.append(f'pool {pool.shown}: changed since step {s} of the library, '
+                             f'not {"undone" if undo else "redone"}: the library only '
+                             f'(see `papers -C {pool.shown} history`)')
+                stopped.add(id)
+                continue
+            pool.taken.append(n)
+            pool.at = after
+    return [p for p in pools.values() if p.taken], lines
+
+
+def _move_pools(pools, undo, kind):
+    "bring the pools to the steps found by pool_steps; return the lines of the report"
+    lines = []
+    for pool in pools:
+        cur = pool.head['state']
+        file_lines = go_to(pool.config, pool.project, cur, pool.at)
+        redo = (list(reversed(pool.taken)) + pool.head['redo'] if undo
+                else [n for n in pool.head['redo'] if n not in pool.taken])
+        pool.project.set_head(pool.place, pool.at, redo)
+        lines.append(f'pool {pool.shown}: also {kind}, restored to {describe(pool.project, pool.at)}')
+        lines += file_lines
+    return lines
+
+
+def undo(config, steps=1, library_only=False):
+    """go back `steps` states, the pool too for the steps that wrote it
+    (unless library_only, see pool_steps); return (project, state restored,
+    report on the files; None with --dry-run, report on the pools)"""
     project, place = _require(config)
     if papers.config.DRYRUN:
         cur = (project.head(place) or {}).get('state')
@@ -446,14 +552,16 @@ def undo(config, steps=1):
         raise PapersExit('nothing to undo' if len(line) <= 1 else f'only {len(line) - 1} step(s) to undo')
     target = line[steps]
     if papers.config.DRYRUN:
-        return project, target, None
+        return project, target, None, []
+    pools, pool_lines = pool_steps(config, project, line[:steps], True) if not library_only else ([], [])
     redo = list(reversed(line[:steps])) + project.head(place)['redo']
-    lines = go_to(config, project, cur, target)
+    # the pool takes back its step too: the files the command moved to the pool are moved back
+    lines = go_to(config, project, cur, target, pool_dirs=[] if pools and not pool_lines else None)
     project.set_head(place, target, redo)
-    return project, target, lines
+    return project, target, lines, pool_lines + _move_pools(pools, True, 'undone')
 
 
-def redo(config, steps=1):
+def redo(config, steps=1, library_only=False):
     "go forward `steps` states (see undo)"
     project, place = _require(config)
     head = project.head(place)
@@ -467,16 +575,18 @@ def redo(config, steps=1):
         raise PapersExit(f'only {len(head["redo"])} step(s) to redo')
     target = head['redo'][steps - 1]
     if papers.config.DRYRUN:
-        return project, target, None
+        return project, target, None, []
+    pools, pool_lines = pool_steps(config, project, head['redo'][:steps], False) if not library_only else ([], [])
     lines = go_to(config, project, cur, target)
     project.set_head(place, target, head['redo'][steps:])
-    return project, target, lines
+    return project, target, lines, pool_lines + _move_pools(pools, False, 'redone')
 
 
 def restore(config, n=None):
     """go to the state n of the project of the library; without n, to the
     current state (the changes made outside papers since are undone, and
-    recorded: `papers redo` brings them back). Return as undo."""
+    recorded: `papers redo` brings them back). Return as undo (the library
+    only: no pool)."""
     project, place = _require(config)
     head = project.head(place)
     if n is None:
@@ -488,14 +598,14 @@ def restore(config, n=None):
     else:
         target = n
     if papers.config.DRYRUN:
-        return project, target, None
+        return project, target, None, []
     cur = sync_head(config, project, place)
     if cur == target:
         raise PapersExit(f'nothing to restore: {os.path.basename(config.bibtex)} is step {target}')
     lines = go_to(config, project, cur, target)
     back, forward = project.path(cur, target)
     project.set_head(place, target, list(reversed(back)) if not forward else [])
-    return project, target, lines
+    return project, target, lines, []
 
 
 # the files kept by the history

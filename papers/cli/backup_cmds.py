@@ -22,15 +22,17 @@ def _linked_files(config):
 
 def _time_travel(config, kind, func, *args):
     """undo, redo or restore: say which state is restored, the files that
-    moved, and which files of the files directory no entry links to any more"""
+    moved, the pools that followed, and which files of the files directory no entry links to any more"""
     before = _linked_files(config)
-    project, target, file_lines = func(config, *args)
+    project, target, file_lines, pool_lines = func(config, *args)
     if file_lines is None:  # --dry-run
         print(f'DRYRUN: {kind}: {config.bibtex} not restored to {backup.describe(project, target)}')
         return
     print(f'{kind}: {os.path.basename(config.bibtex)} restored to {backup.describe(project, target)}')
     if file_lines:
         print('\n'.join(file_lines))
+    if pool_lines:
+        print('\n'.join(pool_lines))
     after = _linked_files(config)
     unlinked = sorted(f for f in before - after
                       if os.path.isfile(f) and config.filesdir and is_inside(f, config.filesdir))
@@ -42,11 +44,11 @@ def _time_travel(config, kind, func, *args):
 
 
 def undocmd(parser, o, config):
-    _time_travel(config, 'undo', backup.undo, o.steps)
+    _time_travel(config, 'undo', backup.undo, o.steps, o.library_only)
 
 
 def redocmd(parser, o, config):
-    _time_travel(config, 'redo', backup.redo, o.steps)
+    _time_travel(config, 'redo', backup.redo, o.steps, o.library_only)
 
 
 def restorecmd(parser, o, config):
