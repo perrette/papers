@@ -31,7 +31,9 @@ papers.bib
 perrette_et_al_2013_a-scaling-approach-to-project-regional-sea-level-rise-and-its-uncertainties.pdf
 ```
 
-`papers add DIR --recursive` adds an exported library to another one, and
+`papers add DIR --recursive` adds an exported library to another one (its
+bibtex and PDFs; the RIS and JSON files of a folder are left out: add one
+with `papers add DIR/papers.ris`), and
 `papers config pool DIR` makes it the pool of the library (the export has
 copies of its PDFs). `papers sync --pool DIR` exchanges entries with it
 later (see [Exchanges with any library](pools.md#exchanges-with-any-library)).
