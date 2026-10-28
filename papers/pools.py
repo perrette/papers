@@ -53,7 +53,9 @@ record or not: the record is only the base of the merge.
 """
 import datetime
 import hashlib
+import json
 import os
+import re
 from types import SimpleNamespace
 
 from bibtexparser import Library
@@ -61,7 +63,7 @@ from bibtexparser.model import Entry, ExplicitComment, Field
 from slugify import slugify
 
 import papers.config
-from papers import journal, logger
+from papers import history, journal, logger
 from papers.config import Config, CONFIG_FILE_LOCAL, NO_POOL, library_config_file, short_home
 from papers.duplicate import (Distinct, IdentityIndex, contradicts, distinct_union, find_duplicates, same_paper,
                               SAME, Verdict)
@@ -1551,6 +1553,57 @@ def _fields(e):
             if k.lower() not in ('file', 'ids') and not k.lower().startswith('papers-')}
 
 
+# the key of each entry of a bibtex text (not @comment, @string, @preamble)
+_ENTRY_KEY = re.compile(r'(?m)^@\s*(\w+)\s*[{(]\s*([^,\s]+)\s*,')
+
+
+def _keys(texts):
+    "the lower-case keys of the entries of bibtex texts"
+    return {m.group(2).lower() for t in texts for m in _ENTRY_KEY.finditer(t)
+            if m.group(1).lower() not in ('comment', 'string', 'preamble')}
+
+
+class _Pieces:
+    """the pieces (see papers.history.pieces) of the library, its pool and
+    its origin file for that pool, when status last found them in sync: a
+    piece that did not change on any side holds entries still in sync. Kept
+    with the history of the library, on the machine (exchanges.json)."""
+
+    def __init__(self, config, pool, origin_path):
+        from papers.backup import project_of  # papers.backup imports this module
+        project, _ = project_of(config, create=False)
+        self.path = os.path.join(project.dir, 'exchanges.json') if project is not None else None
+        self.pool = pool
+        self.files = {'library': config.bibtex, 'pool': pool.config.bibtex, 'origin': origin_path}
+        self.now = {side: history.pieces(read_text(f) if f and os.path.exists(f) else '')
+                    for side, f in self.files.items()}
+        try:
+            self.then = json.load(open(self.path))[pool.id] if self.path else None
+        except (OSError, ValueError, KeyError, TypeError):
+            self.then = None
+
+    def changed(self):
+        """(keys of the library, keys of the pool) of the entries in pieces
+        that changed since, or None (not known: compare everything)"""
+        if not isinstance(self.then, dict):
+            return None
+        new = {side: [p for d, p in self.now[side].items() if d not in set(self.then.get(side, ()))]
+               for side in self.now}
+        return _keys(new['library'] + new['origin']), _keys(new['pool'])
+
+    def save(self, origin_path):
+        "after status found the library and the pool in sync"
+        if self.path is None or papers.config.DRYRUN:
+            return
+        self.now['origin'] = history.pieces(read_text(origin_path) if os.path.exists(origin_path) else '')
+        try:
+            data = json.load(open(self.path))
+        except (OSError, ValueError):
+            data = {}
+        data[self.pool.id] = {side: sorted(p) for side, p in self.now.items()}
+        write_atomic(self.path, json.dumps(data))
+
+
 def exchange_state(config, pools, path):
     """how a library stands with its pool, for `papers status`: 'in sync',
     'pool changed', 'library changed' or 'both changed' (an entry exchanged
@@ -1567,14 +1620,25 @@ def exchange_state(config, pools, path):
         return first, _HINTS[first]
     if not config.bibtex or not os.path.exists(config.bibtex):
         return 'in sync', None
-    biblio = Biblio.load(config.bibtex, config.filesdir)
     moved = origin.pulled(pool.id) != pool.bibtex_mtime()
+    origin_path = os.path.join(origin.dir, origin_file_name(pool.id)) if origin.dir else None
+    pieces = _Pieces(config, pool, origin_path)
+    changed = pieces.changed()
+    if changed == (set(), set()):  # no piece changed on any side since status found them in sync
+        if moved and not papers.config.DRYRUN:
+            origin.set_pulled(pool.id, pool.bibtex_mtime())
+            origin.save()
+            pieces.save(origin_path)
+        return 'in sync', None
+    biblio = Biblio.load(config.bibtex, config.filesdir)
     exchange = Exchange(config, biblio, pools, origin=origin)
     pool_changed = library_changed = False
     for e in biblio.entries:
         record = origin.get(e, pool.id)
         if record is None:
             continue
+        if changed is not None and e.key.lower() not in changed[0] and record.pool_key.lower() not in changed[1]:
+            continue  # in pieces that changed on no side since they were in sync
         if not moved and _fields(e) == _fields(record.entry):
             continue  # neither side changed (the pool file did not change)
         pe, record = exchange.pool_entry(e, pool)
@@ -1601,4 +1665,6 @@ def exchange_state(config, pools, path):
     if moved and not papers.config.DRYRUN:
         origin.set_pulled(pool.id, pool.bibtex_mtime())
         origin.save()
+    if origin_path:
+        pieces.save(origin_path)
     return 'in sync', None
