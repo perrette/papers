@@ -832,6 +832,8 @@ class Biblio:
                 apply_entry(target, decision.entry)
                 for e in others:
                     self.db.remove(e)
+                    if e.key.lower() != target.key.lower():
+                        self.rekey_references(e.key, target.key)  # a crossref to the entry merged into the target
                 print(f'merged into {get_entry_val(target, "ID", "")}: '
                       + ', '.join(get_entry_val(e, 'ID', '') for e in others) + ' (kept in ids)')
 
