@@ -451,8 +451,10 @@ paper was written with. Leave `auto-push` off there, and do not pull.
 
 A pool is a library with its own history (see
 [Undo and redo](undo-redo.md)). `papers undo` in a
-library undoes a change of that library only: an entry that `add` also
-added to the pool stays in the pool. To undo a change in the pool, run the
-command in the pool, e.g. `papers -C ../sealevel undo`. The origin copies
+library also undoes what the command wrote to the pool (an entry that
+`add` also added to the pool, a push), unless the pool changed since;
+`papers undo --library-only` undoes the library only. To undo a change
+made in the pool, run the command in the pool, e.g.
+`papers -C ../sealevel undo`. The origin copies
 of the library are restored with its bibtex: see
 [Undo in a library that has a pool](undo-redo.md#undo-in-a-library-that-has-a-pool).

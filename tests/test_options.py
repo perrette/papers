@@ -55,7 +55,7 @@ class TestOptions(FileTest):
         scan.assert_called_once()
 
     def test_restore(self):
-        with patch('papers.cli.backup_cmds.backup.restore', return_value=(None, None, None)) as restore, \
+        with patch('papers.cli.backup_cmds.backup.restore', return_value=(None, None, None, [])) as restore, \
                 patch('papers.cli.backup_cmds.backup.describe', return_value=''), \
                 patch('papers.cli.backup_cmds.logger.warning') as warning:
             self.lib('restore 3')

@@ -27,6 +27,7 @@ from papers.utils import checksum
 _ops = []
 _owner = None  # real path of the bibtex of the library of the command
 _paused = 0
+_unrecorded = 0
 _deleted = None  # where the files that the command deletes go (see papers.backup.Deleted), or None
 _saved = None  # where the operations of the command went (see papers.backup.record)
 # the answer to the questions before deleting files (see papers.files.delete_files): -y/--yes
@@ -41,6 +42,19 @@ def start(bibtex, deleted=None):
     _owner = os.path.realpath(bibtex) if bibtex else None
     _deleted = deleted
     _saved = None
+
+
+@contextmanager
+def unrecorded():
+    """file operations that are not recorded, but done as the command's (a
+    file deleted goes to the history): those of undo, redo and restore,
+    which move in the history and are not a step of it"""
+    global _unrecorded
+    _unrecorded += 1
+    try:
+        yield
+    finally:
+        _unrecorded -= 1
 
 
 @contextmanager
@@ -62,7 +76,7 @@ def _checksum(path):
 def record(op, src, dst=None, digest=None):
     """record an operation done (moved, copied: after it, the checksum of
     dst; removed: give the checksum, taken before)"""
-    if _paused or papers.config.DRYRUN:
+    if _paused or _unrecorded or papers.config.DRYRUN:
         return
     src, dst = os.path.abspath(src), dst and os.path.abspath(dst)
     if isinstance(digest, bytes):

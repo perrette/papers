@@ -957,6 +957,9 @@ def get_parser(config=None):
 
     _stepsp = argparse.ArgumentParser(add_help=False)
     _stepsp.add_argument('-n', '--steps', type=int, default=1, help='number of steps to undo or redo')
+    _stepsp.add_argument('--library-only', action='store_true',
+        help='the library only: a step that also wrote the pool (add in a shallow library, auto-push, push, '
+             'sync) is undone or redone in the pool too, unless the pool changed since')
 
     _undo_help = ('undo the last change of the library: the bibtex and the files (moved back, deleted files '
                   'restored from the history). Each command that changes the library is a step of its '
