@@ -12,8 +12,10 @@ state of the command, with its file operations (see papers.journal).
 A command that also writes another library (its pool: add in a shallow
 library, auto-push, push, sync) records the step of that library in its
 own: `pools` ({project id of the pool: {'state': n, 'config': path of its
-configuration}}). Undo and redo in the library take the pool step along
-when the pool is still where the command left it. The step of the pool
+configuration}}). Undo and redo in the library take the pool step along:
+undone (redone) when the pool is still where the command left it (where
+the undo left it), else reverted (see papers.revert; the state of a revert
+lists the steps it takes back in `reverts`). The step of the pool
 records the folder of the library that made it (`from`).
 
 The old backups (the git repository .papers/backup of the v3 branch, the
@@ -170,6 +172,11 @@ def _message():
     return 'papers ' + ' '.join(sys.argv[1:])
 
 
+def mark(config, **fields):
+    "fields of the next state of the library of `config` (see _fields)"
+    _fields.setdefault(os.path.realpath(config.bibtex), {}).update(fields)
+
+
 def sync_head(config, project=None, place=None):
     """the current state of the library, before a command writes it: the
     state of its place; a new place starts from the state that has its
@@ -219,6 +226,9 @@ _NO_START = {'status', 'config', 'init', 'install', 'uninstall', 'migrate', 'his
 # the library before the command, for its first state: {place: texts (see _texts)}
 _before = {}
 
+# fields of the next state of a library, {place: fields} (e.g. reverts: the steps a revert takes back)
+_fields = {}
+
 # the steps that the command added to the histories of other libraries (its pools),
 # for the next step of its own library: {project id: {'state': n, 'config': path}}
 _linked = {}
@@ -231,6 +241,7 @@ def start(config, cmd):
     Nothing is written: a command that changes nothing leaves no trace."""
     _before.clear()
     _linked.clear()
+    _fields.clear()
     if cmd in _NO_START or papers.config.DRYRUN or not config.bibtex or not os.path.exists(config.bibtex):
         return
     try:
@@ -267,6 +278,7 @@ def record(config, message=None, ops=None):
         if linked:
             state['pools'] = linked
             _linked.clear()
+        state.update(_fields.pop(place, {}))
         if not own and journal.owner():
             state['from'] = os.path.dirname(journal.owner())
         n = project.add(state)
@@ -383,12 +395,19 @@ def describe(project, n):
     return f'{n} {state.get("message", "")} ({when}{origin})'
 
 
-def go_to(config, project, cur, target, pool_dirs=None):
+def state_hashes(config, project, n):
+    "the checksums of the files of the state n ({path: sha256}, from its files.json)"
+    pieces = (project.state(n).get('files') or {}).get(FILES_JSON)
+    return papers.checksums.parse(project.store.text(pieces) if pieces else '{}', config)
+
+
+def go_to(config, project, cur, target, pool_dirs=None, shared=()):
     """bring the library from the state `cur` to the state `target`: the
     files (command by command, then by checksum), the bibtex and the files
     of .papers/. pool_dirs: the folders whose files are copied back, not
     moved (by default, the files directory of the pool of a shallow
-    library, see _pool_dirs). Return the lines of the report on the files."""
+    library, see _pool_dirs); shared: the files that another library links
+    to, also copied back. Return the lines of the report on the files."""
     from bibtexparser import parse_string
     lock.acquire(config)  # held already by a command that writes the library (see papers.lock)
     lock.check(config)
@@ -407,14 +426,11 @@ def go_to(config, project, cur, target, pool_dirs=None):
     def links(n):
         return papers.checksums.entry_links(parse_string(text(n)).entries, relative_to)
 
-    def hashes(n):
-        pieces = (project.state(n).get('files') or {}).get(FILES_JSON)
-        return papers.checksums.parse(st.text(pieces) if pieces else '{}', config)
-
     def ops(n):
         return _absolute_ops(project.state(n).get('ops') or [], config)
 
-    kw = dict(pool_dirs=_pool_dirs(config) if pool_dirs is None else pool_dirs, find_deleted=st.file_object)
+    kw = dict(pool_dirs=_pool_dirs(config) if pool_dirs is None else pool_dirs, find_deleted=st.file_object,
+              shared={os.path.normpath(f) for f in shared})
     back, forward = project.path(cur, target)
     lines = []
     with journal.unrecorded():  # moving in the history is not a step of it
@@ -423,13 +439,16 @@ def go_to(config, project, cur, target, pool_dirs=None):
             if parent is None or project.state(parent) is None:
                 break
             if ops(n):
-                lines += journal.restore(links(n), links(parent), ops(n), True, hashes=hashes(parent), **kw)
+                lines += journal.restore(links(n), links(parent), ops(n), True,
+                                         hashes=state_hashes(config, project, parent), **kw)
         for n in forward:
             parent = project.state(n).get('parent')
             if ops(n) and parent is not None and project.state(parent) is not None:
-                lines += journal.restore(links(parent), links(n), ops(n), False, hashes=hashes(n), **kw)
+                lines += journal.restore(links(parent), links(n), ops(n), False,
+                                         hashes=state_hashes(config, project, n), **kw)
         current = papers.checksums.bibtex_links(config.bibtex, relative_to)
-        lines += journal.restore(current, links(target), [], not forward, hashes=hashes(target), **kw)
+        lines += journal.restore(current, links(target), [], not forward,
+                                 hashes=state_hashes(config, project, target), **kw)
 
     papers.utils.write_atomic(config.bibtex, text(target))
     _write_library_files(config, project, cur, target)
@@ -469,7 +488,8 @@ class _Pool:
     def __init__(self, config, project, place, head, shown):
         self.config, self.project, self.place, self.head, self.shown = config, project, place, head, shown
         self.at = head['state']  # where the pool is, once the steps taken so far are
-        self.taken = []
+        self.taken = []  # the steps undone (redone) in the pool
+        self.reverts = []  # the steps reverted in the pool (it moved on since)
 
 
 def _shown(config, pool_config):
@@ -499,50 +519,83 @@ def _pool(config, id, link):
 
 def pool_steps(config, project, steps, undo):
     """the steps of the pools that go with the steps of the library undone
-    (undo) or redone, `steps` in the order they are taken: each pool takes
-    back (or does again) the step linked to a library step when it is still
-    at that step (or before it), and stops at the first one it moved on
-    from. Return ([_Pool], the lines of the pools that moved on)."""
-    pools, lines, stopped = {}, [], set()
+    (undo) or redone, `steps` in the order they are taken. A pool still at
+    the step linked to a library step (for redo: where the undo left it)
+    takes it back (does it again); once it moved on, the linked steps are
+    reverted (for redo: the reverts made by the undo are reverted). Return
+    ([_Pool], the lines of the pools not found)."""
+    pools, lines, gone = {}, [], set()
     for s in steps:
         for id, link in (project.state(s).get('pools') or {}).items():
-            if id in stopped:
+            if id in gone:
                 continue
             if id not in pools:
                 pool = _pool(config, id, link)
                 if isinstance(pool, str):
                     lines.append(f'{pool}: the library only')
-                    stopped.add(id)
+                    gone.add(id)
                     continue
                 pools[id] = pool
             pool = pools[id]
             n = link['state']
             parent = (pool.project.state(n) or {}).get('parent')
+            if pool.project.state(n) is None or parent is None:
+                continue  # no longer in the history of the pool
             before, after = (n, parent) if undo else (parent, n)
-            if pool.project.state(n) is None or parent is None or pool.at == after:
-                continue  # no longer in the history of the pool, or there already
-            if pool.at != before:
-                lines.append(f'pool {pool.shown}: changed since step {s} of the library, '
-                             f'not {"undone" if undo else "redone"}: the library only '
-                             f'(see `papers -C {pool.shown} history`)')
-                stopped.add(id)
-                continue
-            pool.taken.append(n)
-            pool.at = after
-    return [p for p in pools.values() if p.taken], lines
+            if pool.at == after:
+                continue  # there already
+            if pool.at == before and not pool.reverts:
+                pool.taken.append(n)
+                pool.at = after
+            elif undo:
+                pool.reverts.append(n)
+            else:
+                line = pool.project.line(pool.at)
+                revert = next((r for r in line if n in (pool.project.state(r).get('reverts') or [])), None)
+                if revert is not None:
+                    pool.reverts.append(revert)
+    return [p for p in pools.values() if p.taken or p.reverts], lines
 
 
-def _move_pools(pools, undo, kind):
-    "bring the pools to the steps found by pool_steps; return the lines of the report"
+def _move_pools(config, pools, undo, kind):
+    """bring the pools to the steps found by pool_steps (undo, redo), then
+    revert the others (a new step of the pool); return the lines of the report"""
+    import papers.revert  # papers.revert imports this module
+    from papers.library import get_biblio, savebib
+    from papers.merge import Resolver
     lines = []
     for pool in pools:
-        cur = pool.head['state']
-        file_lines = go_to(pool.config, pool.project, cur, pool.at)
-        redo = (list(reversed(pool.taken)) + pool.head['redo'] if undo
-                else [n for n in pool.head['redo'] if n not in pool.taken])
-        pool.project.set_head(pool.place, pool.at, redo)
-        lines.append(f'pool {pool.shown}: also {kind}, restored to {describe(pool.project, pool.at)}')
-        lines += file_lines
+        if pool.taken:
+            cur = pool.head['state']
+            file_lines = go_to(pool.config, pool.project, cur, pool.at)
+            redo = (list(reversed(pool.taken)) + pool.head['redo'] if undo
+                    else [n for n in pool.head['redo'] if n not in pool.taken])
+            pool.project.set_head(pool.place, pool.at, redo)
+            lines.append(f'pool {pool.shown}: also {kind}, restored to {describe(pool.project, pool.at)}')
+            lines += file_lines
+        if pool.reverts:
+            # a conflict (an entry changed in the pool since) is asked in a terminal, else left as it is
+            resolver = Resolver('ask' if stdin_is_terminal() else 'skip')
+            biblio = get_biblio(pool.config)
+            before = pool.project.head(pool.place)['state']
+            revert_lines = []
+            with journal.unrecorded():  # the files of the pool: not a step of the library
+                for n in pool.reverts:
+                    revert_lines += papers.revert.revert(pool.config, biblio, n, resolver)
+                steps = ', '.join(str(n) for n in pool.reverts)
+                mark(pool.config, reverts=list(pool.reverts),
+                     message=f'{_message()}: revert of step{"s" if len(pool.reverts) > 1 else ""} {steps}')
+                savebib(biblio, pool.config)
+            pool.project = pool.project.store.project(pool.project.id)  # with the state of the revert
+            head = pool.project.head(pool.place)['state']
+            steps = f'step{"s" if len(pool.reverts) > 1 else ""} {", ".join(str(n) for n in pool.reverts)}'
+            if head != before:
+                lines.append(f'pool {pool.shown}: changed since, so {steps} reverted there: '
+                             f'{describe(pool.project, head)}')
+            else:
+                lines.append(f'pool {pool.shown}: changed since; {steps} not reverted there (nothing to take '
+                             f'back without changing what was done since)')
+            lines += ['    ' + line for line in revert_lines]
     return lines
 
 
@@ -561,12 +614,15 @@ def undo(config, steps=1, library_only=False):
     target = line[steps]
     if papers.config.DRYRUN:
         return project, target, None, []
-    pools, pool_lines = pool_steps(config, project, line[:steps], True) if not library_only else ([], [])
+    pools, missing = pool_steps(config, project, line[:steps], True) if not library_only else ([], [])
     redo = list(reversed(line[:steps])) + project.head(place)['redo']
-    # the pool takes back its step too: the files the command moved to the pool are moved back
-    lines = go_to(config, project, cur, target, pool_dirs=[] if pools and not pool_lines else None)
+    # the pools first: the files the command moved to a pool are moved back, unless the pool still links them
+    pool_lines = _move_pools(config, pools, True, 'undone')
+    shared = [f for p in pools for f in papers.checksums.bibtex_links(
+        p.config.bibtex, os.path.dirname(os.path.abspath(p.config.bibtex)))]
+    lines = go_to(config, project, cur, target, pool_dirs=[] if pools and not missing else None, shared=shared)
     project.set_head(place, target, redo)
-    return project, target, lines, pool_lines + _move_pools(pools, True, 'undone')
+    return project, target, lines, missing + pool_lines
 
 
 def redo(config, steps=1, library_only=False):
@@ -585,9 +641,10 @@ def redo(config, steps=1, library_only=False):
     if papers.config.DRYRUN:
         return project, target, None, []
     pools, pool_lines = pool_steps(config, project, head['redo'][:steps], False) if not library_only else ([], [])
+    # the library first: the files the command moved to the pool are there when the pool comes back
     lines = go_to(config, project, cur, target)
     project.set_head(place, target, head['redo'][steps:])
-    return project, target, lines, pool_lines + _move_pools(pools, False, 'redone')
+    return project, target, lines, pool_lines + _move_pools(config, pools, False, 'redone')
 
 
 def restore(config, n=None):

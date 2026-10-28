@@ -241,13 +241,15 @@ def _inside(path, dirs):
     return any(real.startswith(os.path.realpath(d) + os.sep) for d in dirs if d)
 
 
-def restore(current, target, ops, undo, hashes=None, pool_dirs=(), find_deleted=None):
+def restore(current, target, ops, undo, hashes=None, pool_dirs=(), find_deleted=None, shared=()):
     """bring the files from one state of the library to another (undo,
     redo, restore). current, target: the paths of the files that the
     entries link to, now and in the state restored; ops: the operations of
     the commands between the two states, oldest first; undo: the state
     restored is the earlier one; hashes: the checksums of the files of the
-    state restored ({path: sha256}, see papers.checksums).
+    state restored ({path: sha256}, see papers.checksums); a file in
+    `pool_dirs`, or in `shared` (the files another library links to), is
+    copied back, not moved.
 
     A file that the restored state links to and that does not exist is
     taken from: the other end of a move or copy of the commands; a file of
@@ -259,7 +261,9 @@ def restore(current, target, ops, undo, hashes=None, pool_dirs=(), find_deleted=
     file that the command deleted, when redone, goes to the history). Files
     are never overwritten, and a file that changed since the command stays
     as it is; files that the commands did not touch are left alone.
-    Return the lines of the report."""
+    The operations are recorded for the command (see `record`): those of a
+    revert are part of its step (undo, redo and restore record none, see
+    `unrecorded`). Return the lines of the report."""
     lines = []
     back = ' back' if undo else ''
     current, target = set(current), set(target)
@@ -293,6 +297,7 @@ def restore(current, target, ops, undo, hashes=None, pool_dirs=(), find_deleted=
     def place(path, src, copy, verb):
         "put the file src at path, and report it"
         _place(src, path, copy=copy)
+        record('copied' if copy else 'moved', src, path)
         digests.pop(src, None)
         digests.pop(path, None)
         lines.append(_arrow(src, path, verb))
@@ -323,9 +328,10 @@ def restore(current, target, ops, undo, hashes=None, pool_dirs=(), find_deleted=
                 source = other, False, False
         if source is not None:
             other, copy, moved_by_command = source
-            copy = copy or other in target or other in kept or _inside(other, pool_dirs)
+            copy = copy or other in target or other in kept or _inside(other, pool_dirs) or other in shared
             if copy and not moved_by_command:
                 _place(other, path, copy=True)
+                record('copied', other, path)
                 lines.append(f'    {_show(path)}: restored (a copy of {_show(other)})')
             else:
                 place(path, other, copy, ('copied' if copy else 'moved') + back + ' to')
@@ -333,6 +339,7 @@ def restore(current, target, ops, undo, hashes=None, pool_dirs=(), find_deleted=
         found = find_deleted(want) if find_deleted and want else None
         if found:
             _place(found, path, copy=True)  # the history keeps it, for the other states
+            record('copied', found, path)
             lines.append(f'    {_show(path)}: restored from the history')
             continue
         deleted = [op for op in ops if op['src'] == path and op['op'] in ('trashed', 'removed')]
@@ -353,6 +360,7 @@ def restore(current, target, ops, undo, hashes=None, pool_dirs=(), find_deleted=
             found = find_deleted(op.get('checksum')) if find_deleted else None
             if found:
                 _place(found, path, copy=True)
+                record('copied', found, path)
                 lines.append(f'    {_show(path)}: restored from the history')
             else:
                 lines.append(f'    {_show(path)}: no longer in the history (see the history-size setting), '
@@ -373,12 +381,13 @@ def restore(current, target, ops, undo, hashes=None, pool_dirs=(), find_deleted=
                     lines.append(f'    {_show(path)}: not where the command left it (or changed since): '
                                  'left as it is')
                 elif op['op'] == 'moved':
-                    copy = _inside(path, pool_dirs)
+                    copy = _inside(path, pool_dirs) or path in shared
                     place(other, path, copy, ('copied' if copy else 'moved') + ' back to')
                 break
             else:
                 copied = next((op for op in reversed(moves) if op['op'] == 'copied' and op['dst'] == path), None)
                 if copied and os.path.isfile(copied['src']) and digest(copied['src']) == digest(path):
+                    record('removed', path, copied['src'], digest(path))
                     os.remove(path)
                     lines.append(f'    {_show(path)}: removed (a copy of {_show(copied["src"])})')
         else:
@@ -389,12 +398,14 @@ def restore(current, target, ops, undo, hashes=None, pool_dirs=(), find_deleted=
             if deleted['op'] == 'moved':
                 # copied back by the undo (e.g. from the pool, which keeps it): moved again
                 if deleted['dst'] in target and digest(deleted['dst']) == digest(path):
+                    record('removed', path, deleted['dst'], digest(path))
                     os.remove(path)
                     lines.append(_arrow(path, deleted['dst'], 'moved to'))
             elif deleted['op'] == 'trashed':
                 remove(path)
                 lines.append(f'    {_show(path)}: deleted again (kept in the history)')
             else:
+                record('removed', path, digest=digest(path))
                 os.remove(path)
                 lines.append(f'    {_show(path)}: removed again')
     return lines

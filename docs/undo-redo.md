@@ -40,6 +40,43 @@ history: ~/.local/share/papers/history, 3.2 MB (up to 500 MB: the history-size s
 undo starts a new line of history; the undone steps are not lost, and
 `papers restore N` still reaches them.
 
+## Taking back an older step
+
+`papers undo -n 3` goes back over the last three steps. To take back step
+N alone and keep the steps made after it:
+
+```
+$ papers history --revert 11
+Modified -> smith2020: Sea level rise... (later)
+```
+
+The revert is a new step of the history (`papers undo` takes it back). For
+each entry that step N changed, papers compares the entry before step N,
+after it, and now:
+
+- an entry that step N added is removed, unless it changed since (it is
+  kept, and a line says so);
+- an entry that step N removed comes back as it was;
+- a field that step N changed goes back to its value before step N,
+  unless it changed since: then it is a conflict, decided as for
+  [`papers pull`](pools.md#papers-pull), with `--on-duplicate` (`keep`: the
+  value now, `update`: the value before step N; in a terminal, papers asks);
+- the tags and the file links are taken one by one: those that step N added
+  are removed, those it removed come back, those added since stay;
+- a key that step N changed (with `--keep-old-key`, which keeps the former
+  key in `ids`) goes back to the former key.
+
+The files go back as undo moves them, for the files of step N only: a file
+that step N moved or renamed is moved back, a file it deleted comes back
+from the history. The pairs that step N recorded in `.papers/distinct.json`
+(entries that are not the same paper) are removed. The origin copies
+(`.papers/origin/`) are not changed: the next `pull` or `push` compares
+with them, and with auto-push the revert is pushed like any command.
+
+A step that also changed the pool is reverted in the library only; a line
+gives the command that reverts the pool's step:
+`papers -C ../pool history --revert 31`.
+
 ## Deleted files
 
 A file that a command deletes (`papers rm --delete-files`, `papers file
@@ -125,11 +162,23 @@ library also records the step of the pool.
   redo: where the undo left it). The files that the command moved to the
   files directory of the pool are moved back.
 - If the pool changed since (another command in the pool or in another
-  library that shares it, or an edit outside papers), the library only is
-  undone, and a line says so; `papers -C POOL history` shows the steps of
-  the pool.
+  library that shares it), papers reverts the pool's step there instead (a
+  new step of the pool, see [Taking back an older step](#taking-back-an-older-step)).
+  An entry that changed in the pool since stays; in a terminal, papers asks
+  about a field changed on both sides. `papers redo` then reverts that
+  revert.
+- If the pool changed outside papers since its last step, the library only
+  is undone, and a line says so.
+- With auto-push, the shared entries that differ from their origin copy are
+  pushed after the undo or redo, as after any command. In general there is
+  nothing to push: the undo restores the origin copies with the bibtex.
+  There is something when a step was made with auto-push off.
 - `papers undo --library-only` (and `redo --library-only`) leave the pool
   as it is: the files that the command moved to the pool are copied back.
+- The pool does not know which libraries use its entries. If another
+  library pulled an entry since the `add` that undo takes back, that
+  library's link to the PDF breaks: the PDF goes back where it came from,
+  and `papers file fix --search FOLDER` there finds it.
 - `papers -C POOL undo` and `papers -C POOL redo` change the pool only:
   they undo the last change of the pool, whichever library made it. In the
   history of the pool, a step made from a library names it:
@@ -153,8 +202,8 @@ goes back to, and removes those that did not exist at that step. The next
 exchange then compares the library and the pool to the origin copies of
 that step:
 
-- After undoing a `pull`, or a `push` whose step the pool did not undo
-  (`--library-only`, or the pool changed since), the pool shows as
+- After undoing a `pull`, or a `push` whose step the pool did not undo or
+  revert (`--library-only`, a conflict in the pool), the pool shows as
   changed in `papers status`: what the pool has beyond the restored state
   comes again with the next `pull`, and the next `push` does not send the
   undone state back to the pool.
