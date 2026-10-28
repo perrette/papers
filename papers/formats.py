@@ -793,7 +793,8 @@ def _ris_without_stray_lines(text):
     """the RIS text without the blank lines inside a record and the lines
     without tag between TY and the first tag: rispy (0.10) reads them as
     the continuation of the last tag of the previous record (an error for a
-    single tag such as TI, an empty keyword for KW)"""
+    single tag such as TI, an empty keyword for KW). A last record without
+    ER gets one: rispy drops it otherwise"""
     lines, inside, tagged = [], False, False
     for line in text.split('\n'):
         tag = _RIS_TAG.match(line)
@@ -806,6 +807,8 @@ def _ris_without_stray_lines(text):
         elif inside and (not line.strip() or not tagged):
             continue
         lines.append(line)
+    if inside:
+        lines.append('ER  - ')
     return '\n'.join(lines)
 
 

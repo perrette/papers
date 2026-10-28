@@ -431,6 +431,11 @@ class TestRIS(unittest.TestCase):
         self.assertEqual(second['keywords'], 'b')
         self.assertEqual(second['author'], 'Smith, J')
 
+    def test_last_record_without_er(self):
+        first, second = formats.loads_ris('TY  - JOUR\nTI  - First\nER  - \n\nTY  - JOUR\nTI  - Second\n\n')
+        self.assertEqual((first['title'], second['title']), ('First', 'Second'))
+        self.assertEqual(formats.loads_ris('TY  - JOUR\nTI  - Only')[0]['title'], 'Only')
+
     def test_not_ris(self):
         with self.assertRaisesRegex(ValueError, 'not a RIS file'):
             formats.loads_ris('@article{x, title={T}}')
