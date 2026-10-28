@@ -412,3 +412,29 @@ class TestUndoFileRmShallow(UndoPoolTest):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class TestSeveralSavesOfThePool(UndoPoolTest):
+    "a command that saved the pool twice: undo takes the pool back to before the first save"
+
+    def test_undo(self):
+        from papers import journal
+        from papers.library import savebib
+        self.lib('add ../new.bib')
+        pool_before = self.entries('pool')
+        lib_config = Config.load(self.path('lib', CONFIG_FILE_LOCAL))
+        pool_config = Config.load(self.path('pool', CONFIG_FILE_LOCAL))
+        journal.start(lib_config.bibtex)
+        papers.backup.start(lib_config, 'tag')
+        for tag in ('x', 'y'):  # two saves of the pool in one command
+            biblio = Biblio.load(pool_config.bibtex, '')
+            biblio.entries[0]['keywords'] = tag
+            savebib(biblio, pool_config)
+        lib = Biblio.load(lib_config.bibtex, '')
+        lib.entries[0]['note'] = 'changed'
+        savebib(lib, lib_config)
+        self.assertEqual(self.keywords('mine2022', 'pool'), 'y')
+        self.lib('undo')
+        self.assertEqual(self.keywords('mine2022', 'pool'), pool_before['mine2022']['keywords'])
+        self.lib('redo')
+        self.assertEqual(self.keywords('mine2022', 'pool'), 'y')

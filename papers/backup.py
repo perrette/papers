@@ -11,8 +11,9 @@ state of the command, with its file operations (see papers.journal).
 
 A command that also writes another library (its pool: add in a shallow
 library, auto-push, push, sync) records the step of that library in its
-own: `pools` ({project id of the pool: {'state': n, 'config': path of its
-configuration}}). Undo and redo in the library take the pool step along:
+own: `pools` ({project id of the pool: {'state': n, 'base': its state before
+the command, 'config': path of its configuration}}; base is the parent of n,
+unless the command saved the pool several times). Undo and redo in the library take the pool step along:
 undone (redone) when the pool is still where the command left it (where
 the undo left it), else reverted (see papers.revert; the state of a revert
 lists the steps it takes back in `reverts`). The step of the pool
@@ -287,7 +288,9 @@ def record(config, message=None, ops=None):
         n = project.add(state)
         project.set_head(place, n)
         if not own and config.file and config.is_library:
-            _linked[project.id] = {'state': n, 'config': os.path.abspath(config.file)}
+            # the pool saved several times by the command: its last state, and its state before the first save
+            first = _linked.get(project.id, {}).get('base', parent)
+            _linked[project.id] = {'state': n, 'base': first, 'config': os.path.abspath(config.file)}
     if own and n != parent:
         # the operations done after the save join this state; after a save that added none, they
         # make a state of their own at the end of the command (not that of the previous command)
@@ -506,6 +509,7 @@ class _Pool:
         self.taken = []  # the steps undone (redone) in the pool
         self.reverts = []  # the steps reverted in the pool (it moved on since)
         self.again = []  # the steps done again in the pool (redo: it moved on since the undo of the step)
+        self.bases = {}  # step of reverts or again -> the state it is compared with (see pool_steps)
 
 
 def _shown(config, pool_config):
@@ -555,8 +559,9 @@ def pool_steps(config, project, steps, undo):
                 pools[id] = pool
             pool = pools[id]
             n = link['state']
-            parent = (pool.project.state(n) or {}).get('parent')
-            if pool.project.state(n) is None or parent is None:
+            # the pool's state before the command (several saves of the pool: before the first one)
+            parent = link.get('base', (pool.project.state(n) or {}).get('parent'))
+            if pool.project.state(n) is None or parent is None or pool.project.state(parent) is None:
                 continue  # no longer in the history of the pool
             before, after = (n, parent) if undo else (parent, n)
             if pool.at == after:
@@ -566,6 +571,7 @@ def pool_steps(config, project, steps, undo):
                 pool.at = after
             elif undo:
                 pool.reverts.append(n)
+                pool.bases[n] = parent
             else:
                 line = pool.project.line(pool.at)
                 revert = next((r for r in line if n in (pool.project.state(r).get('reverts') or [])), None)
@@ -573,6 +579,7 @@ def pool_steps(config, project, steps, undo):
                     pool.reverts.append(revert)
                 else:  # the undo took step n back there, and the pool moved on since: done again
                     pool.again.append(n)
+                    pool.bases[n] = parent
     return [p for p in pools.values() if p.taken or p.reverts or p.again], lines
 
 
@@ -600,10 +607,11 @@ def _move_pools(config, pools, undo, kind):
             revert_lines = []
             with journal.captured() as ops:  # the files of the pool: in its state, not in a step of the library
                 for n in pool.reverts:
-                    revert_lines += papers.revert.revert(pool.config, biblio, n, resolver, anywhere=True)
+                    revert_lines += papers.revert.revert(pool.config, biblio, n, resolver, anywhere=True,
+                                                         parent=pool.bases.get(n))
                 for n in pool.again:
                     revert_lines += papers.revert.revert(pool.config, biblio, n, resolver, forward=True,
-                                                         anywhere=True)
+                                                         anywhere=True, parent=pool.bases.get(n))
                 plural = lambda steps: f'step{"s" if len(steps) > 1 else ""} {", ".join(map(history.short, steps))}'
                 what = ([f'revert of {plural(pool.reverts)}'] if pool.reverts else []) + (
                     [f'{plural(pool.again)} again'] if pool.again else [])

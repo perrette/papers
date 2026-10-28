@@ -117,13 +117,15 @@ def _without_tags(e):
     return e
 
 
-def revert(config, biblio, n, resolver, forward=False, anywhere=False):
+def revert(config, biblio, n, resolver, forward=False, anywhere=False, parent=None):
     """take back step n in `biblio` (the library, loaded): the entries, the
     files and distinct.json; not saved. forward: do step n again instead
     (the same rules, from the state of step n to its parent swapped: redo
     in a pool that changed since the undo of its step). anywhere: step n
     need not be in the current history (a pool, whose step n was undone or
-    done again by another step). Return the lines of the report (the
+    done again by another step). parent: the state that step n is
+    compared with, instead of its parent (a pool saved several times by
+    one command: its state before the first save). Return the lines of the report (the
     entries left as they are and why, the files)."""
     project, place = backup.project_of(config)
     head = backup.sync_head(config, project, place) if not papers.config.DRYRUN else \
@@ -133,7 +135,7 @@ def revert(config, biblio, n, resolver, forward=False, anywhere=False):
     if not anywhere and (head is None or n not in project.line(head)):
         raise PapersExit(f'step {short(n)} is not in the current history of the library: '
                          f'`papers restore {short(n)}` goes there')
-    parent = state.get('parent')
+    parent = parent if parent is not None else state.get('parent')
     if parent is None or project.state(parent) is None:
         raise PapersExit(f'step {short(n)} is the first step of the history: nothing before it to go back to')
     before, after = _state_entries(project, parent), _state_entries(project, n)
