@@ -390,8 +390,9 @@ class MachineConfig:
 
     def save(self):
         os.makedirs(os.path.dirname(self.file), exist_ok=True)
-        json.dump({**self.data, 'version': CONFIG_VERSION}, open(self.file, 'w'),
-                  sort_keys=True, indent=2, separators=(',', ': '))
+        # through a temporary file (see write_atomic): a crash never leaves half a configuration
+        write_atomic(self.file, json.dumps({**self.data, 'version': CONFIG_VERSION},
+                                           sort_keys=True, indent=2, separators=(',', ': ')))
 
 
 def _read_earlier_v3(js, machine, file):
