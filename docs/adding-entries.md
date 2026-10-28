@@ -343,7 +343,9 @@ The entry already in the library (entry 1) is the target:
   initials and with full first names (`Smith, J.` and `Smith, John`) are not
   a conflict either: the fuller form is kept, whichever entry it comes
   from. Different first names (`Smith, John` and `Smith, Jane`) are a
-  conflict;
+  conflict. First names are compared word by word up to the shorter one, so
+  a missing middle name is not a conflict (`Smith, J.` and
+  `Smith, John Quincy`);
 - the remaining differences are conflicts.
 
 An added entry that brings nothing new (no conflict, no field to add) is

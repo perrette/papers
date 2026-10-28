@@ -69,7 +69,8 @@ def _given_tokens(given):
 
 
 def _given_compatible(g1, g2):
-    "John / J. / J. D. / John David: each word equal, or an initial of the other"
+    """John / J. / J. D. / John David: each word equal, or an initial of the
+    other; words beyond the shorter name are not compared (J. and John Quincy)"""
     for x, y in zip(_given_tokens(g1), _given_tokens(g2)):
         if x == y:
             continue
