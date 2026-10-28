@@ -803,7 +803,8 @@ def get_parser(config=None):
     editp.add_argument('--from', dest='from_file', metavar='FILE',
         help='replace the entry by the entry in FILE, without an editor (- reads it from the standard input: '
              'a pipe, or a paste, ended by the closing brace of the entry). The entry keeps its key, and its '
-             'file and keywords fields when FILE has none; its other fields are those of FILE')
+             'file and keywords fields when FILE has none; its other fields are those of FILE. The file links '
+             'of FILE are relative to its directory, as with papers add FILE')
     editp.add_argument('--format', choices=FORMATS,
         help=f'the format of --from FILE (default: from the extension: {extensions_help()}; - is bibtex)')
     editp.add_argument('--set', nargs='+', metavar='FIELD=VALUE', type=_field_value,

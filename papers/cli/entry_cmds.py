@@ -430,9 +430,10 @@ def rename_tag(entries, old, new):
     return count
 
 
-def _entry_from(path, fmt, entry):
+def _entry_from(biblio, path, fmt, entry):
     """the entry of `path` (- : the standard input) in place of `entry`: with
-    its key, and its file and keywords fields when the new one has none"""
+    its key, and its file and keywords fields when the new one has none. Its
+    file links are relative to the directory of `path`, as with `papers add`"""
     if path == '-':
         text = read_entry_text()
     else:
@@ -446,6 +447,8 @@ def _entry_from(path, fmt, entry):
         raise EditRejected(f'--from {path}: {len(new)} entries, --from takes one -- keeping original entries')
     new = new[0]
     set_entry_key(new, get_entry_val(entry, 'ID', ''))
+    if path != '-' and 'file' in new:
+        biblio.set_files(new, biblio.get_files(new, os.path.dirname(os.path.abspath(path))))
     for name in ('file', 'keywords'):
         if get_entry_val(new, name, None) is None and get_entry_val(entry, name, None) is not None:
             new[name] = get_entry_val(entry, name)
@@ -470,7 +473,7 @@ def editcmd(parser, o, config):
     if o.from_file:
         if len(entries) != 1:
             raise PapersExit(f'--from replaces one entry: {len(entries)} selected')
-        replace_entries(biblio, entries, [_entry_from(o.from_file, o.format, entries[0])])
+        replace_entries(biblio, entries, [_entry_from(biblio, o.from_file, o.format, entries[0])])
     elif o.set or o.unset:
         set_fields(entries, o.set or [], o.unset or [])
     elif o.new_key:
