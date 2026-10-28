@@ -414,6 +414,8 @@ def _set_pool(o, config):
         changes = {'pool': pool_setting(value, str(config.configdir), base=os.getcwd())}
     for key, value in changes.items():
         new.unset(key) if value is None else new.set(key, value)
+    if new.is_pool_library():
+        raise PapersExit(f'pool {o.values[0]}: this is the library itself (nothing was changed)')
     if new.has_pool():
         library_without_pool(new.pool_path(), config.machine, f'pool {o.values[0]}:')
 

@@ -175,7 +175,8 @@ has at most one pool, its `pool` setting: a path relative to the library
 (e.g. `../shared-with-bob`), a path with `~` or absolute, or `none`. A
 library that does not set it has no pool. The pool must be an existing
 library without pool: `papers init --pool PATH` and `papers config pool
-PATH` check it, and stop otherwise. A pool that takes a pool of its own
+PATH` check it, and stop otherwise. They also refuse a PATH that is the
+library itself (`.`, or its path written another way). A pool that takes a pool of its own
 later is checked again by `pull`, `push`, `sync` and the commands that add
 entries or files to the pool: they stop with an error (the automatic push
 after a command prints a warning instead). `papers init --shallow` writes the

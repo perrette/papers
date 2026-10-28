@@ -2,6 +2,7 @@
 export, status, shallow libraries, and the conversions of `papers config
 pool`"""
 import json
+import re
 import os
 import shutil
 import unittest
@@ -1312,6 +1313,18 @@ class TestConfigPoolSelfContained(OwnFilesTest):
                                                 r'give a library without pool \(nothing was changed\)'):
             self.lib('config pool ../shallow -y')
         self.assertEqual(self.json('lib'), lib_json)
+
+    def test_config_pool_not_the_library_itself(self):
+        lib_json = self.json('lib')
+        for pool in ('.', self.path('lib'), '../lib'):
+            with self.subTest(pool=pool):
+                with self.assertRaisesRegex(PapersExit, f'pool {re.escape(pool)}: this is the library itself '
+                                                        r'\(nothing was changed\)'):
+                    self.lib(f'config pool {pool} -y')
+        self.assertEqual(self.json('lib'), lib_json)
+        # a configuration that has it already is read as no pool
+        Path(self.path('lib', CONFIG_FILE_LOCAL)).write_text(json.dumps({**lib_json, 'pool': '.'}))
+        self.assertNotIn('pool', self.out('status'))
 
     def test_configured_pool_that_takes_a_pool(self):
         # the pool takes a pool after the setting was made: the exchanges stop, as with --pool PATH

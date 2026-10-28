@@ -19,7 +19,8 @@ papers init [DIR] --pool PATH
 ```
 
 creates a shallow library that uses the library PATH as pool. PATH must be
-an existing library without pool of its own (a self-contained library):
+an existing library without pool of its own (a self-contained library),
+and not the library itself:
 `papers init --pool PATH` and `papers config pool PATH` stop with an error
 otherwise, and nothing is created or changed:
 

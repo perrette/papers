@@ -316,7 +316,7 @@ def get_parser(config=None):
                     'settings and where each comes from (library, global or default); with KEY, '
                     'print its value; with KEY VALUE..., set it in the library configuration',
         epilog='settings: ' + ', '.join(SETTINGS) + '; with --global, also default (the default library: '
-               'PATH or none). pool PATH (a library without pool) makes the library shallow: it links to the '
+               'PATH or none). pool PATH (a library without pool, not the library itself) makes the library shallow: it links to the '
                'pool\'s copies of its PDFs, and its own copies are deleted; each PDF must be in the pool entry '
                'already, otherwise nothing changes and papers names the entries to push first (`papers push '
                '--pool PATH KEY...`). pool none makes a shallow library self-contained: the pool files that it '
