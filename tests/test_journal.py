@@ -496,3 +496,46 @@ class TestShallowClean(FileTest):
         with self.assertRaisesRegex(Exception, r'in its pool: clean them there.*papers -C \.\./pool file clean'):
             self.lib('file clean --yes')
         self.assertTrue(os.path.exists(other))
+
+
+class TestDropFiles(JournalTest):
+    "papers history --drop-files N|PATH: the files kept by the history leave it by hand"
+
+    def setUp(self):
+        super().setUp()
+        Path(self.a).write_text('x' * 3000)
+        self.lib('rm one2000 --delete-files')
+        project, place = self.project()
+        self.step = project.head(place)['state']
+
+    def kept(self):
+        root = papers.backup.store(self.config()).file_objects
+        return [f for _, _, files in os.walk(root) for f in files] if os.path.isdir(root) else []
+
+    def test_size_in_the_list(self):
+        self.assertRegex(self.out('history'), rf'> {self.step} papers rm one2000 --delete-files .*\[3 KB of deleted files\]')
+
+    def test_drop_by_step(self):
+        out = self.out(f'history --drop-files {self.step} --yes')
+        self.assertIn('dropped 1 file (3 KB) from the history', out)
+        self.assertEqual(self.kept(), [])
+        self.assertNotIn('deleted files]', self.out('history'))
+        self.assertIn('no longer in the history', self.out('undo'))
+        self.assertFalse(os.path.exists(self.a))
+
+    def test_drop_by_path(self):
+        self.lib(f'history --drop-files {self.a} --yes')
+        self.assertEqual(self.kept(), [])
+        self.assertIn('keeps no file deleted from', self.out(f'history --drop-files {self.a} --yes'))
+
+    def test_confirmation(self):
+        with self.assertRaisesRegex(Exception, 'no terminal to confirm'):
+            self.lib(f'history --drop-files {self.step}')
+        with patch('papers.cli.backup_cmds.stdin_is_terminal', return_value=True), \
+                patch('builtins.input', return_value='n'):
+            self.lib(f'history --drop-files {self.step}')
+        self.assertEqual(len(self.kept()), 1)
+
+    def test_unknown_step(self):
+        with self.assertRaisesRegex(Exception, 'no step 99'):
+            self.lib('history --drop-files 99 --yes')

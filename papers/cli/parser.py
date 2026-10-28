@@ -1001,8 +1001,11 @@ def get_parser(config=None):
         historyp.add_argument('--remove', nargs='?', const='', metavar='ID',
             help='remove the history of this library (of this folder; the history itself when no other '
                  'folder uses it), or of the library ID (see --all)')
+        historyp.add_argument('--drop-files', metavar='N|PATH',
+            help='remove from the history the files that step N deleted, or the file deleted from PATH '
+                 '(by any step): they go to the trash of the system, and undo no longer brings them back')
         historyp.add_argument('-n', type=int, default=20, help='number of steps to show (default: 20; 0: all)')
-        historyp.add_argument('-y', '--yes', action='store_true', help='remove without confirmation')
+        historyp.add_argument('-y', '--yes', action='store_true', help='remove or drop without confirmation')
         if name == 'backup':
             historyp.add_argument('action', nargs='?', help=argparse.SUPPRESS)
             historyp.add_argument('patterns', nargs='*', help=argparse.SUPPRESS)

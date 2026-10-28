@@ -99,6 +99,31 @@ def remove_history(config, yes=False, id=None):
     print(f'removed {what}')
 
 
+def _size(size):
+    return f'{size / 1024:.0f} KB' if size < MB else f'{size / MB:.1f} MB'
+
+
+def drop_files(config, target, yes=False):
+    """papers history --drop-files N|PATH: the files that step N deleted, or
+    the file deleted from PATH, leave the history (to the trash of the system)"""
+    project, place = backup.project_of(config, create=False)
+    if project is None or not project.exists():
+        raise PapersExit('the library has no history')
+    found = backup.files_to_drop(config, project, target)
+    if not found:
+        print(f'the history keeps no file deleted {"by step " + target if target.isdigit() else "from " + target}')
+        return
+    total = sum(size for _, size in found.values())
+    for path, size in sorted(found.values()):
+        print(f'  {papers.config.short_home(path)} ({_size(size)})')
+    question = (f'drop {len(found)} file{"s" if len(found) > 1 else ""} ({_size(total)}) from the history? '
+                'Undo will not bring them back; they go to the trash of the system')
+    if not yes and not _confirm(question):
+        return
+    backup.drop_files(project, set(found))
+    print(f'dropped {len(found)} file{"s" if len(found) > 1 else ""} ({_size(total)}) from the history')
+
+
 def _confirm(question):
     if not stdin_is_terminal():
         raise PapersExit(f'{question} no terminal to confirm: -y/--yes removes without asking')
@@ -133,6 +158,8 @@ def historycmd(parser, o, config):
         return remove_history(config, yes=o.yes, id=o.remove or None)
     if o.all:
         return _show_all(config)
+    if o.drop_files:
+        return drop_files(config, o.drop_files, yes=o.yes)
     project, place = backup.project_of(config, create=False) if config.bibtex else (None, None)
     head = project.head(place) if project else None
     if head is None:
@@ -141,10 +168,13 @@ def historycmd(parser, o, config):
     else:
         line = project.line(head['state'])
         shown = line if not o.n else line[:o.n]
+        def kept(n):
+            size = backup.kept_size(project, n)
+            return f'  [{_size(size)} of deleted files]' if size else ''
         for n in reversed(head['redo']):
-            print(f'  {backup.describe(project, n)}  (undone: `papers redo`)')
+            print(f'  {backup.describe(project, n)}  (undone: `papers redo`){kept(n)}')
         for n in shown:
-            print(f'{">" if n == head["state"] else " "} {backup.describe(project, n)}')
+            print(f'{">" if n == head["state"] else " "} {backup.describe(project, n)}{kept(n)}')
         if len(line) > len(shown):
             print(f'  ... {len(line) - len(shown)} older step(s) (-n 0 shows them all)')
     st = project.store if project else backup.store(config)
