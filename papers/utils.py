@@ -280,7 +280,7 @@ def write_atomic(path, text):
         mode = 0o666 & ~umask
     fd, tmp = tempfile.mkstemp(dir=directory, prefix='.' + os.path.basename(path) + '.', suffix='.tmp')
     try:
-        with os.fdopen(fd, 'w') as f:
+        with os.fdopen(fd, 'w', encoding='utf-8') as f:
             f.write(text)
             f.flush()
             os.fsync(f.fileno())
@@ -325,12 +325,12 @@ def edit_text(text, editor=None):
     editor = editor or EDITOR or os.environ.get('VISUAL') or os.environ.get('EDITOR') or 'vi'
     fd, filename = tempfile.mkstemp(suffix='.bib')
     try:
-        with os.fdopen(fd, 'w') as f:
+        with os.fdopen(fd, 'w', encoding='utf-8') as f:
             f.write(text)
         if os.system(f'{editor} {shlex.quote(filename)}') != 0:
             logger.error('the editor failed')
             return None
-        with open(filename) as f:
+        with open(filename, encoding='utf-8-sig') as f:
             return f.read()
     finally:
         os.remove(filename)

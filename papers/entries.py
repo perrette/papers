@@ -11,7 +11,7 @@ import re
 import bibtexparser
 from bibtexparser import Library
 from bibtexparser.middlewares.enclosing import AddEnclosingMiddleware
-from bibtexparser.model import Entry, ExplicitComment, Field, ImplicitComment, Preamble, String
+from bibtexparser.model import Entry, ExplicitComment, Field, ImplicitComment, ParsingFailedBlock, Preamble, String
 from bibtexparser.writer import BibtexFormat, write
 
 from papers import logger
@@ -183,7 +183,17 @@ _FAILED_COMMENT = re.compile(r'% WARNING Parsing failed for the following \d+ li
 def _without_failed_comments(block):
     """`block` without the lines that bibtexparser wrote above an unreadable
     block at the previous saves (it writes them again), or None if nothing
-    else is left of it"""
+    else is left of it. They are in a comment, or at the end of the text of
+    the unreadable block before (which runs to the next @). The blank lines
+    at the end of an unreadable block go too: the blank line written after
+    each block would be read back into it, one more at each save."""
+    if isinstance(block, ParsingFailedBlock) and block.raw:
+        lines = [line for line in block.raw.splitlines() if not _FAILED_COMMENT.fullmatch(line.strip())]
+        raw = '\n'.join(lines).rstrip() + '\n'
+        if raw != block.raw:
+            block = copy.copy(block)
+            block._raw = raw
+        return block
     if not isinstance(block, ImplicitComment) or not _FAILED_COMMENT.search(block.comment):
         return block
     lines = [line for line in block.comment.splitlines() if not _FAILED_COMMENT.fullmatch(line.strip())]
