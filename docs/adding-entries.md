@@ -365,7 +365,11 @@ fields to add:
 | `skip` | the entry is not added; the library entry, its files and the added file are left as they are |
 | `error` | stop before saving, and exit with status 1 (default without a terminal, e.g. in a script) |
 
-`--no-check-duplicate` adds the entries without looking for duplicates.
+`--no-check-duplicate` adds the entries without looking for duplicates. An
+entry with the key of a library entry is still folded into it (its files
+added) when it is the same paper and the merge has nothing to decide (no
+conflict, no field to add); otherwise the command stops: pass
+`-u/--update-key` or `--key KEY`.
 
 ### The dialogue
 

@@ -454,8 +454,10 @@ class Biblio:
                 logger.info('key conflict: {} => {}'.format(get_entry_val(entry, 'ID', ''), newkey))
                 set_entry_key(entry, newkey)
 
-            elif get_entry_val(existing_same_key, 'title', '') == get_entry_val(entry, 'title', '') \
-                    and same_paper(existing_same_key, entry, self.distinct).kind == SAME:
+            elif same_paper(existing_same_key, entry, self.distinct).kind == SAME \
+                    and Merge([existing_same_key, entry], relative_to=self.relative_to).is_exact():
+                # the same paper with nothing to decide, as for "already in library" (equivalent
+                # values, such as titles that differ only by case or braces, are no difference)
                 logger.info('exact duplicate')
                 # keep the files of the new entry
                 files = self.get_files(existing_same_key) + self.get_files(entry)
@@ -466,7 +468,7 @@ class Biblio:
 
             else:  # (with update_key, the key generated above is not in the library)
                 raise DuplicateKeyError(f'{get_entry_val(entry, "ID", "")}: this key is already in the library, '
-                                        'for another paper: pass -u/--update-key to generate a new key, '
+                                        'for another paper or another version of it: pass -u/--update-key to generate a new key, '
                                         'or --key KEY')
 
         else:
