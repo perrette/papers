@@ -1495,7 +1495,8 @@ paper was written with. Leave <code>auto-push</code> off there, and do not pull.
 <p>A pool is a library with its own history (see
 <a href="../undo-redo/">Undo and redo</a>). <code>papers undo</code> in a
 library also undoes what the command wrote to the pool (an entry that
-<code>add</code> also added to the pool, a push), unless the pool changed since;
+<code>add</code> also added to the pool, a push); if the pool changed since, it
+reverts the pool's step there (a new step of the pool);
 <code>papers undo --library-only</code> undoes the library only. To undo a change
 made in the pool, run the command in the pool, e.g.
 <code>papers -C ../sealevel undo</code>. The origin copies
