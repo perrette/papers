@@ -2,6 +2,7 @@
 export, status, shallow libraries, and the conversions of `papers config
 pool`"""
 import json
+import re
 import os
 import shutil
 import unittest
@@ -230,7 +231,7 @@ class TestResolution(PoolTest):
             with self.assertRaisesRegex(PapersExit, missing):
                 self.lib(cmd)
         with self.assertRaisesRegex(PapersExit, missing):
-            self.papers('init other --pool ../no/such/pool')
+            self.papers('init other --pool no/such/pool')
         self.assertFalse(os.path.exists(self.path('no')))
         self.assertFalse(os.path.exists(self.path('other')))
         self.assertEqual(self.json('lib'), lib_json)
@@ -308,6 +309,26 @@ class TestOrigin(PoolTest):
         self.assertIsNone(origin.get(lib, '../other'))
         self.assertEqual((origin.pulled('~/Documents/papers'), origin.pulled('../pool')), (12345, None))
         self.assertEqual(len(origin), 2)
+
+    def test_two_files_of_one_pool(self):
+        # a second file of the same pool id (copied, or named by another
+        # implementation): its records are read, and it is removed when the pool is written
+        path = self.path('lib', ORIGIN_DIR)
+        origin = Origin(path)
+        smith, brown = parse_string(POOL_BIB).entries
+        origin.set('smith2020climate', '../pool', smith)
+        origin.save()
+        name = origin_file_name('../pool')
+        Path(path, 'a-copy.bib').write_text('@comment{papers-pool ../pool}\n\n'
+                                            '@article{brown2021,\n papers-pool-key = {Brown_2021},\n title = {Ocean heat}\n}\n')
+        origin = Origin.load(path)
+        self.assertEqual(sorted(r.key for r in origin.records('../pool')), ['brown2021', 'smith2020climate'])
+        self.assertEqual(origin.file_of('../pool'), os.path.join(path, name))
+        origin.set('smith2020climate', '../pool', brown)
+        origin.save()
+        self.assertEqual(os.listdir(path), [name])
+        origin = Origin.load(path)
+        self.assertEqual(sorted(r.key for r in origin.records('../pool')), ['brown2021', 'smith2020climate'])
 
     def test_migration(self):
         # earlier v3 builds: one file, .papers/origin.bib, with a papers-pool
@@ -523,6 +544,26 @@ class TestPull(PoolTest):
         out = self.out('pull')
         self.assertIn('nothing to pull from pool ../pool', out)
 
+    def test_rename_onto_a_leftover_record(self):
+        # a record left by a removed entry is not taken by an entry renamed to its key
+        self.lib('rm smith2020climate --keep-files')
+        self.assertIsNotNone(self.origin().entries['../pool'].get('smith2020climate'))  # left over
+        Path(self.path('new.bib')).write_text(NEW_BIB.replace('mine.pdf', 'none.pdf'))
+        self.lib('add ../new.bib --no-pool')
+        self.lib('edit mine2022 --key smith2020climate')
+        self.assertIsNone(self.origin().get(self.entry('smith2020climate')))
+        self.lib('push smith2020climate')  # not sent onto the pool entry of the leftover record
+        self.assertEqual(self.entry('Smith_2020', 'pool')['title'], 'Climate sensitivity revisited')
+
+    def test_record_without_the_pool_ids(self):
+        # the former keys of the pool entry are not part of the origin copy (as after a push)
+        self.edit_pool('journal = {Nat.}', 'ids = {smith_old},\n journal = {Nature}')
+        self.lib('pull')
+        self.assertEqual(self.entry('smith2020climate')['journal'], 'Nature')
+        self.assertNotIn('ids', self.origin().get(self.entry('smith2020climate')).entry)
+        self.assertNotIn('smith_old', ''.join(Path(self.path('lib', ORIGIN_DIR), n).read_text()
+                                              for n in os.listdir(self.path('lib', ORIGIN_DIR))))
+
     def test_key_changed(self):
         # the record of the exchange follows the key (papers edit --key)
         self.lib('edit smith2020climate --key smith2020')
@@ -692,13 +733,13 @@ class TestPull(PoolTest):
         self.assertRegex(out, r'^Not found -> smith2020climate: .* \[not in pool ../pool\]$')
 
     def test_distinct_merged(self):
-        pool_distinct = Distinct.for_bibtex(self.path('pool', 'papers.bib'))
+        pool_distinct = Distinct.for_library(self.path('pool'))
         pool_distinct.pairs.append([{'doi': '10.1/a'}, {'doi': '10.1/b'}])
         pool_distinct.changed = True
         pool_distinct.save()
         self.lib('pull')
         self.assertIn([{'doi': '10.1/a'}, {'doi': '10.1/b'}],
-                      Distinct.for_bibtex(self.path('lib', 'papers.bib')).pairs)
+                      Distinct.for_library(self.path('lib')).pairs)
 
     def test_check_and_status(self):
         self.lib('pull')
@@ -798,6 +839,13 @@ class TestPush(PoolTest):
         self.assertEqual(pool['Smith_2020']['volume'], '10')
         self.assertEqual(pool['Smith_2020']['doi'], '10.1000/abc123')
 
+    def test_brace_fix_is_sent(self):
+        self.lib('pull Smith_2020')
+        self.edit_lib('title = {Climate sensitivity revisited}', 'title = {{Climate} sensitivity revisited}')
+        self.lib('push Smith_2020')
+        self.assertEqual(self.entry('Smith_2020', 'pool')['title'], '{Climate} sensitivity revisited')
+        self.assertIn('nothing to pull from pool ../pool', self.out('pull'))
+
     def test_pool_only_fields_come_with_the_next_pull(self):
         # the same paper on both sides, without origin record: each has a field of its own
         self.edit_pool('journal = {Nat.},', 'abstract = {From the pool.},\n journal = {Nat.},')
@@ -812,10 +860,12 @@ class TestPush(PoolTest):
         self.assertNotIn('abstract', self.origin().get(self.entry('smith2020climate')).entry)
         self.assertIn('changed since last pull or push', self.state())
         out = self.out('pull --check')
-        self.assertIn('smith2020climate: changed in pool ../pool: abstract, file, journal', out)
+        # the pool kept its form of the DOI at the push (equivalent): it comes with the pull
+        self.assertIn('smith2020climate: changed in pool ../pool: abstract, doi, file, journal', out)
         self.lib('pull')
         e = self.entry('smith2020climate')
-        self.assertEqual((e['abstract'], e['journal'], e['keywords']), ('From the pool.', 'Nat.', 'mine'))
+        self.assertEqual((e['abstract'], e['journal'], e['keywords'], e['doi']),
+                         ('From the pool.', 'Nat.', 'mine', '10.1000/abc123'))
         self.assertIn('up to date', self.state())
         self.assertIn('nothing to pull from pool ../pool', self.out('pull'))
         self.assertIn('nothing to push to pool ../pool', self.out('push smith2020climate'))
@@ -835,13 +885,13 @@ class TestPush(PoolTest):
         self.assertEqual(self.entry('mine2022')['title'], 'My own paper (pool)')
 
     def test_distinct_merged(self):
-        lib = Distinct.for_bibtex(self.path('lib', 'papers.bib'))
+        lib = Distinct.for_library(self.path('lib'))
         lib.pairs.append([{'doi': '10.1/a'}, {'doi': '10.1/b'}])
         lib.changed = True
         lib.save()
         self.lib('push --all')
         self.assertIn([{'doi': '10.1/a'}, {'doi': '10.1/b'}],
-                      Distinct.for_bibtex(self.path('pool', 'papers.bib')).pairs)
+                      Distinct.for_library(self.path('pool')).pairs)
 
     def test_status_after_push(self):
         self.lib('pull')
@@ -932,6 +982,15 @@ class TestExport(PoolTest):
 
 class TestStatus(PoolTest):
 
+    def test_status_not_pulled_in_full(self):
+        # entries exchanged, but no pull of the whole pool yet
+        self.lib('pull Smith_2020')
+        self.assertIn('not pulled in full yet', self.state())
+        self.lib('config pool ../pool -y')
+        out = self.out('status')
+        self.assertIn('* pool:   ../pool (not pulled in full yet)', out)
+        self.assertTrue(out.endswith('`papers pull` takes the changes of the pool'))
+
     def test_status(self):
         out = self.out('status')
         self.assertIn('* files:  files (the files directory of the library', out)
@@ -997,14 +1056,14 @@ class TestStatus(PoolTest):
         self.assertEqual(hint, '`papers sync --dry-run` shows the changes, `papers sync` exchanges them')
 
     def test_same_change_on_both_sides(self):
-        # the pool file changed, but the entry is the same on both sides: in sync, and recorded silently
+        # the pool file changed, but the entry is the same on both sides: in sync (nothing of the library written)
         self.shallow_with_smith()
         self.edit_lib('journal = {Nat.}', 'journal = {Nature}')
         self.edit_pool('journal = {Nat.}', 'journal = {Nature}')
         line, hint = self.pool_line()
         self.assertTrue(line.endswith('../pool (in sync)'), line)
         self.assertEqual(hint, '`papers config` lists and sets the settings')
-        self.assertIn('up to date', self.state())  # the modification time of the pool is recorded
+        self.assertIn('changed since last pull or push', self.state())  # status writes no origin file
 
     def test_fast_path(self):
         # once status found them in sync, it compares only the entries of the pieces that changed since
@@ -1026,12 +1085,32 @@ class TestStatus(PoolTest):
         self.assertTrue(self.pool_line()[0].endswith('(in sync)'))
 
     def test_fast_path_after_a_touch(self):
-        # the pool file rewritten as it was: in sync, its time recorded, nothing read
+        # the pool file rewritten as it was: in sync, from the pieces, and nothing of the library written
         self.shallow_with_smith()
         self.out('status')
+        origin = {f: Path(self.path('lib', '.papers', 'origin', f)).read_text()
+                  for f in os.listdir(self.path('lib', '.papers', 'origin'))}
         os.utime(self.path('pool', 'papers.bib'), ns=(1, 1))
         self.assertTrue(self.pool_line()[0].endswith('(in sync)'))
-        self.assertIn('up to date', self.state())
+        self.assertEqual({f: Path(self.path('lib', '.papers', 'origin', f)).read_text()
+                          for f in os.listdir(self.path('lib', '.papers', 'origin'))}, origin)
+
+    def test_entry_type_changed(self):
+        # @article -> @book in the library: push would send it, status says so
+        self.shallow_with_smith()
+        self.out('status')
+        self.edit_lib('@article{smith2020climate', '@book{smith2020climate')
+        self.assertTrue(self.pool_line()[0].endswith('(library changed)'), self.pool_line())
+
+    def test_entry_removed_from_the_pool(self):
+        # once in sync, an entry removed from the pool shows (the fast comparison does not skip it)
+        self.shallow_with_smith()
+        self.out('status')
+        text = Path(self.path('pool', 'papers.bib')).read_text()
+        start = text.index('@article{Smith_2020')
+        end = text.find('\n@', start + 1)
+        Path(self.path('pool', 'papers.bib')).write_text(text[:start] + (text[end + 1:] if end > 0 else ''))
+        self.assertFalse(self.pool_line()[0].endswith('(in sync)'), self.pool_line())
 
     def test_other_entries_of_the_pool(self):
         # a change of the pool that does not concern the library
@@ -1063,7 +1142,7 @@ class TestStatus(PoolTest):
         elif config:
             self.lib(config)
         self.take_smith()
-        self.papers('init b' + (' --pool ../pool' if shallow else ''))
+        self.papers('init b' + (' --pool pool' if shallow else ''))
         option = '' if shallow else ' --pool ../pool'
         b = lambda cmd: self.papers(cmd + (option if cmd.split()[0] in EXCHANGES else ''), cwd=self.path('b'))
         if config and not shallow:
@@ -1109,7 +1188,7 @@ class TestStatus(PoolTest):
 
     def test_after_add_to_the_pool(self):
         # a shallow library: add places the entry in the pool
-        self.papers('init other --pool ../pool')
+        self.papers('init other --pool pool')
         Path(self.path('new.bib')).write_text(NEW_BIB)
         Path(self.path('mine.pdf')).write_text('mine')
         self.papers('add ../new.bib', cwd=self.path('other'))
@@ -1287,11 +1366,36 @@ class TestConfigPoolSelfContained(OwnFilesTest):
         os.makedirs(self.path('notalib'))
         with self.assertRaisesRegex(PapersExit, 'is not a library'):
             self.lib('config pool ../notalib -y')
-        self.papers('init shallow --pool ../pool')
+        self.papers('init shallow --pool pool')
         with self.assertRaisesRegex(PapersExit, r'pool ../shallow: \S+/shallow has a pool itself \(../pool\): '
                                                 r'give a library without pool \(nothing was changed\)'):
             self.lib('config pool ../shallow -y')
         self.assertEqual(self.json('lib'), lib_json)
+
+    def test_config_pool_not_the_library_itself(self):
+        lib_json = self.json('lib')
+        for pool in ('.', self.path('lib'), '../lib'):
+            with self.subTest(pool=pool):
+                with self.assertRaisesRegex(PapersExit, f'pool {re.escape(pool)}: this is the library itself '
+                                                        r'\(nothing was changed\)'):
+                    self.lib(f'config pool {pool} -y')
+        self.assertEqual(self.json('lib'), lib_json)
+        # a configuration that has it already is read as no pool
+        Path(self.path('lib', CONFIG_FILE_LOCAL)).write_text(json.dumps({**lib_json, 'pool': '.'}))
+        self.assertNotIn('pool', self.out('status'))
+
+    def test_configured_pool_that_takes_a_pool(self):
+        # the pool takes a pool after the setting was made: the exchanges stop, as with --pool PATH
+        self.papers('init other --pool pool')
+        self.papers('init top')
+        pool_json = self.json('pool')
+        pool_json['pool'] = '../top'
+        Path(self.path('pool', CONFIG_FILE_LOCAL)).write_text(json.dumps(pool_json))
+        for cmd in ('pull', 'push', 'sync'):
+            with self.subTest(cmd=cmd):
+                with self.assertRaisesRegex(PapersExit, r'\.\./pool has a pool itself \(\.\./top\)'):
+                    self.papers(cmd, cwd=self.path('other'))
+        self.papers('status', cwd=self.path('other'))  # a command that only reads the pool goes on
 
     def test_local_is_gone(self):
         with self.assertRaisesRegex(PapersExit, 'unknown setting: local'):
@@ -1300,7 +1404,7 @@ class TestConfigPoolSelfContained(OwnFilesTest):
             self.papers('init other --local')
 
     def test_init_shallow(self):
-        out = self.papers('init other --pool ../pool', sp_cmd='check_output')
+        out = self.papers('init other --pool pool', sp_cmd='check_output')
         self.assertIn('* files:   in the pool (shallow library)\n* pool:    ../pool\n', out)
         self.assertEqual(self.json('other')['pool'], '../pool')
         self.assertNotIn('local', self.json('other'))
@@ -1310,20 +1414,20 @@ class TestConfigPoolSelfContained(OwnFilesTest):
         self.assertEqual(self.json('fourth')['pool'], 'none')
 
     def test_init_pool_must_be_a_library_without_pool(self):
-        for pool, error in [('../missing', 'does not exist'), ('../lib/files', 'is not a library'),
-                            ('.', 'this is the library itself')]:
+        for pool, error in [('missing', 'does not exist'), ('lib/files', 'is not a library'),
+                            ('other', 'this is the library itself')]:
             with self.subTest(pool=pool):
                 with self.assertRaisesRegex(PapersExit, error):
                     self.papers(f'init other --pool {pool}')
                 self.assertFalse(os.path.exists(self.path('other')))  # nothing created
-        self.papers('init shallow --pool ../pool')
+        self.papers('init shallow --pool pool')
         with self.assertRaisesRegex(PapersExit, 'has a pool itself'):
-            self.papers('init other --pool ../shallow')
+            self.papers('init other --pool shallow')
         self.assertFalse(os.path.exists(self.path('other')))
 
     def test_init_shallow_has_no_files_directory(self):
         # the files go to the pool: the files directory is created when needed
-        self.papers('init other --pool ../pool')
+        self.papers('init other --pool pool')
         self.assertFalse(os.path.exists(self.path('other', 'files')))
         out = self.papers('status', cwd=self.path('other'), sp_cmd='check_output')
         self.assertIn(f'* files:  in the pool, {self.path("pool", "files")}\n', out)
@@ -1654,6 +1758,27 @@ class TestShallow(OwnFilesTest):
         new = self.rename_in_pool()
         self.lib('tag smith2020climate --add x')  # any command that writes
         self.assertEqual(self.files('smith2020climate'), [new])
+
+    def test_link_removed_in_pool(self):
+        # the library entry loses its field; the record keeps an empty one: the pool entry has no links
+        self.edit_pool('journal = {Nat.}', 'journal = {Nature}')
+        self.lib('pull')  # records the links of the pool entry
+        self.assertEqual(self.origin().get(self.entry('smith2020climate')).files, ':../pool/files/smith.pdf:pdf')
+        self.edit_pool(' file = {:files/smith.pdf:pdf},\n', '')
+        self.lib('pull')
+        self.assertNotIn('file', self.entry('smith2020climate'))
+        self.assertEqual(self.origin().get(self.entry('smith2020climate')).files, '')
+        origin_dir = self.path('lib', ORIGIN_DIR)
+        self.assertIn(' file = {},', ''.join(Path(origin_dir, n).read_text() for n in os.listdir(origin_dir)))
+
+    def test_status_sees_repaired_links(self):
+        # status repairs the links as pull does, in memory only
+        self.rename_in_pool()
+        before = Path(self.path('lib', 'papers.bib')).read_text()
+        out = self.out('status')
+        self.assertIn('in sync', out)
+        self.assertIn('nothing to pull', self.out('pull --dry-run'))
+        self.assertEqual(Path(self.path('lib', 'papers.bib')).read_text(), before)
 
     def test_file_check_fix(self):
         new = self.rename_in_pool()

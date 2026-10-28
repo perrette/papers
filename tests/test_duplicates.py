@@ -165,14 +165,14 @@ class TestDistinct(unittest.TestCase):
     def test_recorded_and_honoured(self):
         a = entry('a', **SMITH)
         b = entry('b', **SMITH)
-        d = Distinct.for_bibtex(self.bibtex)
+        d = Distinct.for_library(os.path.dirname(self.bibtex))
         self.assertEqual(kind(a, b, d), SAME)
         d.add(a, b)
         d.save()
         path = os.path.join(self.tmp.name, '.papers', 'distinct.json')
         self.assertEqual(json.load(open(path))['distinct'],
                          [[{'authortitle': 'smith doe|climate sensitivity revisited'}] * 2])
-        d2 = Distinct.for_bibtex(self.bibtex)
+        d2 = Distinct.for_library(os.path.dirname(self.bibtex))
         self.assertEqual(kind(a, b, d2), DIFFERENT)
         self.assertEqual(kind(b, a, d2), DIFFERENT)
 
@@ -731,7 +731,7 @@ class TestListDuplicates(LibraryTest):
         self.assertEqual(sorted(self.keys('list --duplicates --invert')), ['brown2021', 'smith2019preprint'])
 
     def test_distinct(self):
-        d = Distinct.for_bibtex(self.bibtex)
+        d = Distinct.for_library(os.path.dirname(self.bibtex))
         entries = self.entries()
         d.add(entries['handbook'], entries['chapter'])
         d.save()
@@ -779,3 +779,19 @@ class TestEditEntriesTempFile(unittest.TestCase):
             env.pop('VISUAL', None)
             edit_entries(parse_string(self.bib).entries)
         self.assertTrue(system.call_args[0][0].startswith('vi '))
+
+
+def test_crossref_follows_the_merge():
+    # an entry that names a merged entry in its crossref names the entry it was merged into
+    from papers.bib import Biblio
+    from papers.entries import parse_string
+    biblio = Biblio(parse_string(
+        '@book{proc2000a, title = {Proceedings of X}, year = {2000}, doi = {10.1000/p}}\n'
+        '@book{proc2000b, title = {Proceedings of X}, year = {2000}, doi = {10.1000/p}, publisher = {P}}\n'
+        '@inproceedings{talk2000, title = {A talk}, crossref = {proc2000a}}\n'))
+    biblio.check_duplicates(on_duplicate='keep')
+    keys = [e.key for e in biblio.entries]
+    target = 'proc2000b' if 'proc2000b' in keys else 'proc2000a'
+    talk, = [e for e in biblio.entries if e.key == 'talk2000']
+    assert talk['crossref'] == target, (keys, talk['crossref'])
+    assert len(keys) == 2

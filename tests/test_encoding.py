@@ -32,6 +32,10 @@ class TestFamilyNames(unittest.TestCase):
         result = family_names("Doe, Jane and Smith, John")
         self.assertEqual(result, ["Doe", "Smith"])
 
+    def test_braces_are_one_name(self):
+        result = family_names("{Barnes and Noble} and {Smith, Jones}, J. and John Doe")
+        self.assertEqual(result, ["{Barnes and Noble}", "{Smith, Jones}", "Doe"])
+
 
 class TestParseKeywords(unittest.TestCase):
 

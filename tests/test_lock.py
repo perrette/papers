@@ -1,5 +1,6 @@
 """The locks of the libraries (papers.lock): a command that writes a library
 holds .papers/lock, refreshed while it runs; a stale lock is taken over"""
+import errno
 import json
 import os
 import socket
@@ -125,6 +126,19 @@ class TestLock(LockTest):
         self.assertEqual(json.loads(Path(self.lockfile).read_text())['host'], 'faster')
         self.assertEqual([f for f in os.listdir(os.path.dirname(self.lockfile)) if 'stale' in f], [])
 
+    def test_take_over_without_hard_links(self):
+        # a file system without hard links: the fresh lock is put back as a
+        # copy, with the token of its holder
+        self.other_lock(host='elsewhere', pid=1)
+        stale = papers.lock._signature(self.lockfile)
+        os.remove(self.lockfile)
+        self.other_lock(host='faster', pid=2)
+        with patch('papers.lock.os.link', side_effect=OSError(errno.EPERM, 'Operation not permitted')):
+            papers.lock._take_over(self.lockfile, stale)
+        self.assertEqual(json.loads(Path(self.lockfile).read_text())['host'], 'faster')
+        self.assertEqual(json.loads(Path(self.lockfile).read_text())['token'], 'other')
+        self.assertEqual([f for f in os.listdir(os.path.dirname(self.lockfile)) if 'stale' in f], [])
+
     def test_take_over(self):
         self.other_lock(host='elsewhere', pid=1)
         papers.lock._take_over(self.lockfile, papers.lock._signature(self.lockfile))
@@ -181,7 +195,7 @@ class TestUndoLocksPool(LockTest):
 
     def test_undo_waits_for_the_pool(self):
         self.papers('init pool')
-        self.papers('init shallow --pool ../pool')
+        self.papers('init shallow --pool pool')
         self.papers('add ../new.bib', cwd=self.path('shallow'))
         Path(self.path('pool', '.papers', 'lock')).write_text(json.dumps({
             'token': 'other', 'pid': self.sleeper.pid, 'host': socket.gethostname(), 'command': 'papers edit'}))
@@ -201,7 +215,7 @@ class TestPoolStepFrom(ConfigTest):
 
     def test_history_of_the_pool(self):
         self.papers('init pool')
-        self.papers('init lib --pool ../pool')
+        self.papers('init lib --pool pool')
         Path(self.path('new.bib')).write_text(BIB)
         self.papers('add ../new.bib', cwd=self.path('lib'))
         out = self.papers('history', cwd=self.path('pool'), sp_cmd='check_output')

@@ -294,7 +294,7 @@ class TestShallow(FileTest):
 
     def add(self):
         self.papers('init pool')
-        self.papers('init shallow --pool ../pool')
+        self.papers('init shallow --pool pool')
         a = self.write('src', 'a.pdf', content='pdf a')
         Path(self.path('src', 'a.bib')).write_text(entry('one2000', a))
         self.papers('add ../src/a.bib --move', cwd=self.path('shallow'))
@@ -376,6 +376,13 @@ class TestDeleted(JournalTest):
         self.assertEqual(self.kept(), [])
         self.assertIn('deleted by the command, not restored', self.out('undo'))
 
+    def test_redo_with_keep_deleted_files_false(self):
+        self.lib('rm one2000 --delete-files')
+        self.lib('undo')
+        self.lib('config --global keep-deleted-files false')
+        self.assertIn('deleted again (to the trash of the system)', self.out('redo'))
+        self.assertFalse(os.path.exists(self.a))
+
     def test_history_emptied(self):
         self.lib('rm one2000 --delete-files')
         shutil.rmtree(self.store().file_objects)
@@ -454,6 +461,26 @@ class TestGuard(JournalTest):
         with patch('builtins.input', side_effect=AssertionError('no question expected')):
             self.lib('rm one2000 --delete-files')
         self.assertIn('restored from the history', self.out('undo'))
+
+
+class TestCyclicalRemoval(JournalTest):
+    """with a history of 3 MB, deleting five files of 1 MB one after the
+    other keeps the last three: the oldest steps go first, with their files"""
+
+    def test_last_three_kept(self):
+        self.lib('config --global history-size 3')
+        paths = []
+        for i in range(5):
+            paths.append(self.write('src', f'p{i}.pdf', content=''))
+            Path(paths[-1]).write_bytes(b'%PDF' + bytes([48 + i]) * (journal.MB - 100))
+        self.bib(*[entry(f'p{i}2000', p) for i, p in enumerate(paths)])
+        for i in range(5):
+            self.lib(f'rm p{i}2000 --delete-files --yes')
+            self.assertLessEqual(papers.backup.store(self.config()).size(), 3 * journal.MB + 100 * 1024)
+        self.assertIn('restored from the history', self.out('undo'))
+        self.assertIn('restored from the history', self.out('undo'))
+        self.assertTrue(os.path.exists(paths[4]) and os.path.exists(paths[3]))
+        self.assertFalse(os.path.exists(paths[0]))
 
 
 class TestRefusedSave(JournalTest):

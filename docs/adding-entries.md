@@ -223,6 +223,17 @@ The entries are added as those of a bibtex file:
   read relative to the added file and attached as for a bibtex file; links
   that are not local files (`http://`, EndNote's `internal-pdf://`) are left
   out with a warning;
+- RIS and CSL-JSON hold plain text: `&`, `%`, `#` and `_` are escaped for
+  LaTeX (`\&`...), except in `url`, `doi`, `file`, `eprint`, `isbn`,
+  `issn`, `keywords` and `urldate`; BibJSON values are read as they are,
+  since they are bibtex values;
+- keywords (RIS `KW`, CSL-JSON `keyword`) are split on `,` and `;` and
+  joined with `, ` (export splits the `keywords` field on `,` only);
+- the CSL-JSON `container-title` (RIS `T2`, `JO`...) is the `booktitle` of a chapter or a
+  conference paper (`incollection`, `inproceedings`), the `journal` of any
+  other type;
+- a date part that is zero or missing ends the date: `2013-00-05` is the
+  year 2013 only;
 - in a shallow library, the new entries go to the pool too;
 - a directory scan (`-R`) reads PDFs and bibtex files only.
 
@@ -230,8 +241,9 @@ The fields are converted as `papers export --format` writes them (see
 [How the fields are converted](export.md#how-the-fields-are-converted)); a
 few more are read: `T1`, `JO`, `JF` (title, journal), `A2` (editors of a
 chapter, in EndNote exports), `N2` (abstract), `M3` (type of a report); and
-in CSL-JSON, `accessed` (`urldate`), `genre` (the type of a report or
-thesis). Other fields are ignored.
+in CSL-JSON, `genre` (the type of a report or thesis). A thesis whose type
+(RIS `M3`, CSL-JSON `genre`) contains `master` is a `mastersthesis`, any
+other a `phdthesis`. Other fields are ignored.
 
 ## Add an entry from its DOI
 
@@ -306,7 +318,8 @@ in this order:
 4. otherwise the family names of the authors and the title, compared without
    case, braces, accents and extra spaces. Both entries need authors and a
    title: two entries titled "Editorial" without authors are not the same
-   paper.
+   paper. A name in braces is one name: `and` and commas inside braces
+   (`{Barnes and Noble}`) do not separate names, as in BibTeX.
 
 The first identifier that both entries have decides: equal values make the
 same paper, different values two papers. A preprint and the published
@@ -321,7 +334,7 @@ dataset "Data for: X" deposited under the DOI of the article "X". Without a
 terminal, such a pair is never merged.
 
 When you answer that two entries are not the same paper (`n`, below), papers
-records it in `.papers/distinct.json`, next to the bibtex, and does not ask
+records it in `.papers/distinct.json` of the library, and does not ask
 about them again. The file records the identifiers of both entries (DOI,
 arXiv id, ISBN, authors and title), not their keys.
 
@@ -330,7 +343,8 @@ arXiv id, ISBN, authors and title), not their keys.
 The entry already in the library (entry 1) is the target:
 
 - it keeps its key;
-- fields that only the added entry has are added;
+- fields that only the added entry has are added (except empty ones, such
+  as `pages = {}`);
 - the file links of both entries are kept (a file linked twice, or two
   copies with the same content, once);
 - values that differ only by case, braces, spaces, or the case of a DOI are
@@ -338,7 +352,9 @@ The entry already in the library (entry 1) is the target:
   initials and with full first names (`Smith, J.` and `Smith, John`) are not
   a conflict either: the fuller form is kept, whichever entry it comes
   from. Different first names (`Smith, John` and `Smith, Jane`) are a
-  conflict;
+  conflict. First names are compared word by word up to the shorter one, so
+  a missing middle name is not a conflict (`Smith, J.` and
+  `Smith, John Quincy`);
 - the remaining differences are conflicts.
 
 An added entry that brings nothing new (no conflict, no field to add) is
@@ -358,7 +374,11 @@ fields to add:
 | `skip` | the entry is not added; the library entry, its files and the added file are left as they are |
 | `error` | stop before saving, and exit with status 1 (default without a terminal, e.g. in a script) |
 
-`--no-check-duplicate` adds the entries without looking for duplicates.
+`--no-check-duplicate` adds the entries without looking for duplicates. An
+entry with the key of a library entry is still folded into it (its files
+added) when it is the same paper and the merge has nothing to decide (no
+conflict, no field to add); otherwise the command stops: pass
+`-u/--update-key` or `--key KEY`.
 
 ### The dialogue
 
@@ -420,6 +440,11 @@ fetched from a DOI always get a generated key. `--key KEY` sets the key
 instead, in both cases. Either way, this only
 concerns entries new to the library: an entry merged into a duplicate takes
 the key of the library entry.
+
+A key that another entry has already (ignoring case) gets a letter suffix:
+`Smith2000` becomes `Smith2000b`, then `Smith2000c`. A key that ends with a
+digit and a letter continues from that letter, in its case (`Smith2000B`
+gives `Smith2000C`); after `z`, a second letter is added (`Smith2000za`).
 
 ### Options of earlier versions
 

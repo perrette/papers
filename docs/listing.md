@@ -47,7 +47,10 @@ Perrette2013: A scaling approach to project regional sea level rise and it... (d
 
 `--tag` matches whole tags, whatever their case: `--tag ice` does not find
 `ice-review`, `--tag 'ice*'` does. With several tags, an entry needs all of
-them (`--any`: one of them).
+them (`--any`: one of them). Adding, removing and renaming tags ignore the
+case too: `papers tag --add Ice` adds nothing to an entry that has `ice`
+(the spelling already there stays), `--rm Ice` removes `ice`, and
+`papers tag --rename ice Ice` changes the spelling.
 
 A tag with `/` is under another tag: `climate/amoc` is under `climate`.
 `--tag climate` also finds `climate/amoc` and `climate/amoc/tipping` (not
@@ -84,8 +87,10 @@ to-read (2)
 - `--format key`: the keys only, one per line (also `-K`, `--key-only`),
   to pipe into other commands (below).
 
-`--field FIELD...` prints the key and the given fields of each entry
-(`--no-key` leaves the key out). `-f` is a deprecated alias of `--field`: in
+`--field FIELD...` prints one line per entry: `KEY:` and the values of the
+given fields, separated by spaces (an empty value for a missing field).
+`--no-key` leaves the key out: the line starts with the first value. The
+key is coloured only when colours are on (see `--color`). `-f` is a deprecated alias of `--field`: in
 v4, `-f` is no longer `--field` (it means `--force` in other commands).
 
 ## Duplicates
@@ -154,7 +159,9 @@ without opening an editor (for scripts and other programs). The entry keeps
 its key, and its `file` and `keywords` fields when FILE has none; its other
 fields are those of FILE (a field that FILE does not have is removed). FILE
 is bibtex, or RIS (`.ris`), CSL-JSON (`.json`) or BibJSON (`.bib.json`),
-or the format given with `--format`. `--from -` reads the entry from the standard input:
+or the format given with `--format`. The file links of FILE are relative to
+the directory of FILE, as with `papers add FILE`. `--from -` reads the entry
+from the standard input:
 
 ```
 papers extract paper.pdf | papers edit perrette2013 --from -
@@ -189,8 +196,10 @@ The `crossref` fields of other entries that name the old key, and the
 records of the exchanges with pools (see [Pools](pools.md)), follow the new
 key; LaTeX documents that cite the old key do not. With `--keep-old-key`,
 the old key goes to the `ids` field of the entry: papers (e.g.
-`papers edit OLD`) and biblatex still find the entry by it. A key that
-another entry has is refused. `papers check --fix-key` changes keys the
+`papers edit OLD`) and biblatex still find the entry by it (once: a key
+already in `ids` is not added again). The new key itself is taken out of
+`ids`, with or without `--keep-old-key`. A key that another entry has is
+refused. `papers check --fix-key` changes keys the
 same way.
 
 An edit that does not parse, has a malformed field name, or gives the entry
@@ -220,6 +229,11 @@ and an entry merged into another one is `removed` (a program that follows an
 entry across these can match it by DOI). Every other message
 (questions, warnings, the files moved) goes to the standard error. An error
 exits with status 1.
+
+`papers list` without action prints no such lines: its listing is its
+output, and goes to the standard output with `--porcelain` too (`papers
+list -K --porcelain` prints the keys). With an action (`--add-tag`,
+`--edit`...), it prints the lines of the command the action stands for.
 
 ## Actions on the listed entries
 

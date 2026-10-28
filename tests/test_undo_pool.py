@@ -41,7 +41,7 @@ class UndoPoolTest(ConfigTest):
     def setUp(self):
         super().setUp()
         self.papers('init pool')
-        self.papers('init lib --pool ../pool')
+        self.papers('init lib --pool pool')
         if self.auto_push:
             self.lib('config auto-push true')
         Path(self.path('new.bib')).write_text(NEW_BIB)
@@ -346,6 +346,25 @@ class TestUndoPool(UndoPoolTest, UndoInLibrary):
         self.lib('redo')
         self.assertEqual(Path(distinct).read_text(), '{"distinct": []}\n')
 
+    def test_undo_across_an_outside_change_of_the_origin_records(self):
+        # e.g. a synced folder: the bibtex and the origin records changed together outside papers
+        # are one state, as they are on disk
+        self.lib('add ../new.bib')
+        bib = Path(self.path('lib', 'papers.bib'))
+        [name] = self.origin_files()
+        origin = Path(self.path('lib', ORIGIN_DIR, name))
+        before = bib.read_text(), origin.read_text()
+        bib.write_text(before[0].replace('My own paper', 'My paper'))
+        origin.write_text(before[1].replace('My own paper', 'My paper'))
+        outside = bib.read_text(), origin.read_text()
+        self.lib('list -k mine2022 --add-tag foo')
+        self.lib('undo')  # to the state changed outside papers
+        self.assertEqual((bib.read_text(), origin.read_text()), outside)
+        self.lib('undo')
+        self.assertEqual((bib.read_text(), origin.read_text()), before)
+        self.lib('redo')
+        self.assertEqual((bib.read_text(), origin.read_text()), outside)
+
 
 class TestUndoPoolAutoPush(UndoPoolTest, UndoInLibrary):
     "a shallow library, with auto-push"
@@ -412,3 +431,76 @@ class TestUndoFileRmShallow(UndoPoolTest):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class TestSeveralSavesOfThePool(UndoPoolTest):
+    "a command that saved the pool twice: undo takes the pool back to before the first save"
+
+    def test_undo(self):
+        from papers import journal
+        from papers.library import savebib
+        self.lib('add ../new.bib')
+        pool_before = self.entries('pool')
+        lib_config = Config.load(self.path('lib', CONFIG_FILE_LOCAL))
+        pool_config = Config.load(self.path('pool', CONFIG_FILE_LOCAL))
+        journal.start(lib_config.bibtex)
+        papers.backup.start(lib_config, 'tag')
+        for tag in ('x', 'y'):  # two saves of the pool in one command
+            biblio = Biblio.load(pool_config.bibtex, '')
+            biblio.entries[0]['keywords'] = tag
+            savebib(biblio, pool_config)
+        lib = Biblio.load(lib_config.bibtex, '')
+        lib.entries[0]['note'] = 'changed'
+        savebib(lib, lib_config)
+        self.assertEqual(self.keywords('mine2022', 'pool'), 'y')
+        self.lib('undo')
+        self.assertEqual(self.keywords('mine2022', 'pool'), pool_before['mine2022']['keywords'])
+        self.lib('redo')
+        self.assertEqual(self.keywords('mine2022', 'pool'), 'y')
+
+
+class TestNumberedStatesOfTwoStores(UndoPoolTest):
+    """history-separate: the library and its pool in two stores, with the
+    numbered states of papers up to 3.0.0b5. The link of a library step to
+    its pool's step keeps a number; the pool's store maps it once upgraded."""
+
+    def as_numbered(self):
+        "write the states of both histories as an earlier version did (000001.json, ...)"
+        import json
+        projects = [self.project(where)[0] for where in ('lib', 'pool')]
+        numbers = {}
+        for project in projects:
+            order = sorted(project.states(), key=lambda n: project.state(n)['time'])
+            numbers[project.id] = {n: i + 1 for i, n in enumerate(order)}
+        for project in projects:
+            ids = numbers[project.id]
+            for n, state in project.states().items():
+                state = dict(state, parent=ids.get(state.get('parent')))
+                if state.get('pools'):
+                    state['pools'] = {p: dict(link, state=numbers[p][link['state']])
+                                      for p, link in state['pools'].items()}
+                Path(project.states_dir, f'{ids[n]:06d}.json').write_text(json.dumps(state))
+                os.remove(project._path(n))
+            heads = json.loads(Path(project.dir, 'heads.json').read_text())
+            for head in heads.values():
+                head['state'] = ids[head['state']]
+                head['redo'] = [ids[r] for r in head.get('redo') or []]
+            Path(project.dir, 'heads.json').write_text(json.dumps(heads))
+
+    def check_undo_redo(self, first):
+        self.lib('config history-separate true')
+        self.lib('add ../new.bib')
+        lib, pool = (self.project(where)[0] for where in ('lib', 'pool'))
+        self.assertNotEqual(lib.store.root, pool.store.root)
+        self.as_numbered()
+        self.project(first)[0].states()  # this store is upgraded first
+        self.assertIn('pool ../pool: also undone', self.out('undo'))
+        self.assertNotIn('mine2022', self.entries('pool'))
+        self.assertIn('pool ../pool: also redone', self.out('redo'))
+        self.assertIn('mine2022', self.entries('pool'))
+
+    def test_library_upgraded_first(self):
+        self.check_undo_redo('lib')
+
+    def test_pool_upgraded_first(self):
+        self.check_undo_redo('pool')

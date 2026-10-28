@@ -3,7 +3,7 @@ import os
 from papers.identifiers import read_selection, select_entries, select_some
 from papers.library import get_biblio, savebib
 from papers.formats import FILENAMES, FORMATS, dumps, load_rispy
-from papers.pools import Exchange, PoolError, NO_POOL_MESSAGE, export, report_counts, removed_note
+from papers.pools import Exchange, PoolError, NO_POOL_MESSAGE, export, export_bibtex_name, report_counts, removed_note
 from papers.utils import PapersExit
 from papers.cli.common import (duplicate_resolver, _entries_or_all, exchange_lines, print_exchange, save_exchange,
                                library_pools, push_changed, push_notes, print_push_notes)
@@ -269,9 +269,9 @@ def export_entries(o, config, biblio, entries):
         path = os.path.join(dest, FILENAMES[fmt])
         text = dumps(target.entries, fmt,
                      files=lambda e: [os.path.relpath(f, dest) for f in target.get_files(e)])
-        with open(path, 'w', encoding='utf-8') as f:
+        with open(path, 'w', encoding='utf-8', newline='\n') as f:  # \n on every platform, as the bibtex
             f.write(text)
         written.append(FILENAMES[fmt])
     print(f'exported {len(entries)} entries to {dest} ({", ".join(written)}; files: {o.files})')
     if not library:
-        print(f'{dest} is not a papers library (no {FILENAMES["bibtex"]}): --format bib or all makes one')
+        print(f'{dest} is not a papers library (no {export_bibtex_name(config)}): --format bib or all makes one')

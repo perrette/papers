@@ -47,7 +47,7 @@ def _state_entries(project, n):
 
 def _distinct_pairs(project, n):
     "the pairs of distinct.json of the state n"
-    pieces = (project.state(n).get('files') or {}).get(DISTINCT_FILE)
+    pieces = backup.state_files(project.state(n)).get(DISTINCT_FILE)
     if not pieces:
         return []
     try:
@@ -117,13 +117,15 @@ def _without_tags(e):
     return e
 
 
-def revert(config, biblio, n, resolver, forward=False, anywhere=False):
+def revert(config, biblio, n, resolver, forward=False, anywhere=False, parent=None):
     """take back step n in `biblio` (the library, loaded): the entries, the
     files and distinct.json; not saved. forward: do step n again instead
     (the same rules, from the state of step n to its parent swapped: redo
     in a pool that changed since the undo of its step). anywhere: step n
     need not be in the current history (a pool, whose step n was undone or
-    done again by another step). Return the lines of the report (the
+    done again by another step). parent: the state that step n is
+    compared with, instead of its parent (a pool saved several times by
+    one command: its state before the first save). Return the lines of the report (the
     entries left as they are and why, the files)."""
     project, place = backup.project_of(config)
     head = backup.sync_head(config, project, place) if not papers.config.DRYRUN else \
@@ -133,7 +135,7 @@ def revert(config, biblio, n, resolver, forward=False, anywhere=False):
     if not anywhere and (head is None or n not in project.line(head)):
         raise PapersExit(f'step {short(n)} is not in the current history of the library: '
                          f'`papers restore {short(n)}` goes there')
-    parent = state.get('parent')
+    parent = parent if parent is not None else state.get('parent')
     if parent is None or project.state(parent) is None:
         raise PapersExit(f'step {short(n)} is the first step of the history: nothing before it to go back to')
     before, after = _state_entries(project, parent), _state_entries(project, n)
@@ -156,10 +158,11 @@ def revert(config, biblio, n, resolver, forward=False, anywhere=False):
                 lines.append(f'{now.key}: {added} by step {short(n)} and changed since: kept (`papers rm {now.key}` '
                              'removes it)')
         elif e is None:  # removed by N
-            if _current(biblio, p) is not None:
-                continue
-            if any(x.key.lower() == p.key.lower() for x in biblio.entries):
-                lines.append(f'{p.key}: {removed} by step {short(n)}; another entry has its key now: not added')
+            now = _current(biblio, p)
+            if now is not None:  # back already, or another entry has its key now
+                if not entry_content_equal(now, p, skip_keys=('file',)):
+                    lines.append(f'{p.key}: {removed} by step {short(n)}; the entry {now.key} has its key now: '
+                                 'not added')
                 continue
             back = entry_copy(p)
             files = biblio.get_files(p, relative_to=libdir)
@@ -232,6 +235,10 @@ def pool_lines(config, project, n):
             continue
         pool_config = papers.config.Config.load(file, machine=config.machine)
         shown = backup._shown(config, pool_config)
-        lines.append(f'step {short(n)} also changed pool {shown} (its step {short(link["state"])}): '
-                     f'`papers -C {shown} history --revert {short(link["state"])}` takes it back there')
+        state = link['state']
+        if isinstance(state, int):  # a link of an earlier version to another store (see history.Store.upgrade)
+            pool_project, _ = backup.project_of(pool_config, create=False)
+            state = pool_project.upgraded(state) if pool_project else state
+        lines.append(f'step {short(n)} also changed pool {shown} (its step {short(state)}): '
+                     f'`papers -C {shown} history --revert {short(state)}` takes it back there')
     return lines

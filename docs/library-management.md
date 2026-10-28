@@ -18,6 +18,11 @@ bibtex file. When saving a bibtex, it will save file links according to the
 `paths` setting of the library (relative to the bibtex by default, see
 [Configuration](configuration.md#relative-versus-absolute-paths)).
 
+A field that uses an `@string` abbreviation (`journal = jgr`, with
+`@string{jgr = {J. Geophys. Res.}}`) is written with its text
+(`journal = {J. Geophys. Res.}`) the first time papers saves the bibtex.
+The `@string` definition itself stays in the file.
+
 To move the files directory, or some of its files, use `papers file mv`: it
 updates the links of the entries, and the `filesdir` setting when the files
 directory itself moves (see [Files](files.md#moving-files)):
@@ -161,7 +166,11 @@ command that changes a library and its pool (`add` in a shallow library,
 `push`, `sync`, an undo that also undoes the pool's step) locks the library
 first, then the pool. Another command that wants to change the same
 library waits, with a line that names the command holding it, and stops
-after 30 seconds with an error; nothing is written. Commands that only read
+after 30 seconds with an error; nothing is written. Two commands that lock
+two libraries in opposite orders (a command in A with `--pool B` and a
+command in B with `--pool A`) wait for each other the same way: the first
+to wait stops after 30 seconds, and the other then goes on, unless it too
+waited 30 seconds. Commands that only read
 (`list` without an action, `status`, `export`, `file check`, `history`) do
 not wait.
 

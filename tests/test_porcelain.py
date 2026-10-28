@@ -41,3 +41,10 @@ class TestPorcelain(FileTest):
         stdout = sys.stdout
         self.run_porcelain('tag one2000 --add y')
         self.assertIs(sys.stdout, stdout)
+
+    def test_list_on_stdout(self):
+        # the listing of papers list is its data: on the standard output
+        self.assertEqual(self.run_porcelain('list -K')[0], ['one2000', 'two2000'])
+        self.assertEqual(self.run_porcelain('list --field year')[0], ['one2000: 2000', 'two2000: 2000'])
+        # a list action prints the porcelain lines of its command
+        self.assertEqual(self.run_porcelain('list one2000 --add-tag x')[0], ['modified one2000'])

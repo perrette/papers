@@ -7,17 +7,20 @@ The store is a folder of the machine (papers.config.HISTORY_DIR):
     file-objects/ab/ab12….pdf the files deleted by the commands, named by their sha256
     projects/<id>/states/     one state per command, named by its identifier (see state_id), in a tree
     projects/<id>/heads.json  the current state of each place that uses the project
+    numbers.json              the identifiers of the numbered states of earlier versions (see Store.upgrade)
 
 A project is the history of a library, named by its identifier; a place is
 where the library is (the real path of its bibtex): a copy of a library is
 another place of the same project, whose states branch from the copy on.
 
 A state is a dict: `parent` (the identifier of a state, or None), `time`, `message`,
-`kind` ('command', 'outside': changed outside papers, 'start': the
-library before its first recorded command), `bibtex` ({'pieces': [...],
+`kind` (optional and informational, no reader uses it: 'command',
+'outside': changed outside papers, 'start': the library before its first
+recorded command), `bibtex` ({'pieces': [...],
 'sha': ...}), `files` ({name: [pieces]}, the other text files of the
-library), `ops` (the file operations of the command, see papers.journal)
-and `deleted` (the file objects it refers to). The store only reads
+library, named with /), `ops` (the file operations of the command, see
+papers.journal; the paths with /) and `deleted` (the file objects it
+refers to). The store only reads
 `parent`, `time`, the pieces and `deleted`; the rest belongs to the caller.
 
 This module uses the standard library only, and nothing else of papers.
@@ -162,7 +165,9 @@ class Store:
         place, reverts, and the steps of the pools that a step links to, in
         other projects). All projects at once (a step names the steps of its
         pools); the result does not depend on who does it, so two commands
-        doing it at the same time agree."""
+        doing it at the same time agree. The numbers and their identifiers
+        are kept in numbers.json: a link from another store (history-separate)
+        names a pool's state by its number (see Project.upgraded)."""
         numbered, maps = {}, {}
         for id in self.project_ids():
             folder = os.path.join(self.projects, id, 'states')
@@ -182,6 +187,10 @@ class Store:
                 if state.get('reverts'):
                     state['reverts'] = [maps[id][r] for r in state['reverts'] if r in maps[id]]
                 maps[id][n] = state_id(state)
+        known = self.numbers()
+        for id, ids in maps.items():
+            known.setdefault(id, {}).update({str(n): i for n, i in ids.items()})
+        _write(os.path.join(self.root, 'numbers.json'), json.dumps(known, indent=1).encode())
         for id, states in numbered.items():
             project = self.project(id)
             for n, state in states.items():
@@ -205,6 +214,11 @@ class Store:
                     os.remove(os.path.join(project.states_dir, f'{n:06d}.json'))
                 except FileNotFoundError:
                     pass
+
+    def numbers(self):
+        "{project id: {number: identifier}} of the numbered states upgraded (see upgrade)"
+        known = _read_json(os.path.join(self.root, 'numbers.json'), {})
+        return known if isinstance(known, dict) else {}
 
     # size and retention
     # ==================
@@ -233,30 +247,43 @@ class Store:
         """drop the oldest states of all projects until the store holds no
         more than `limit` bytes (counting `extra` bytes about to be stored),
         then remove the pieces and files that no state refers to (not those
-        younger than GRACE). The current states of the places are kept.
+        younger than GRACE, unless they belonged to a dropped state and
+        were not used again since). The current states of the places are kept.
         A removed file goes through `discard` (e.g. the system trash).
         dry: change nothing. Return the dropped states: [(project id, number, state)]."""
         now = time.time() if now is None else now
         sizes = self._sizes()
         refs = {}
+        latest = {}  # when the latest state that refers to it was written
         states = []
         for id in self.project_ids():
             project = self.project(id)
             heads = {h['state'] for h in project.heads().values()}
             for n, state in project.states().items():
+                try:  # the state is written (and its deleted files added) after its objects
+                    written = os.path.getmtime(project._path(n))
+                except OSError:
+                    written = state.get('time', 0)
                 for ref in _refs(state):
                     refs[ref] = refs.get(ref, 0) + 1
+                    latest[ref] = max(latest.get(ref, 0), written)
                 if n not in heads:
                     states.append((state.get('time', 0), id, n, state))
         states.sort(key=lambda s: (s[0], s[2]))
 
         def removable(ref):
+            # a recent object may be one that a command is storing (or uses
+            # again) before it writes its state: kept, unless no command
+            # touched it since the states that referred to it
             item = sizes.get(ref)
-            return item is not None and refs.get(ref, 0) == 0 and now - item[2] >= GRACE
+            return (item is not None and refs.get(ref, 0) == 0
+                    and (now - item[2] >= GRACE or item[2] <= latest.get(ref, 0)))
 
         total = sum(size for _, size, _ in sizes.values()) + extra
         freed = {ref for ref in sizes if removable(ref)}
-        total -= sum(sizes[ref][1] for ref in freed)
+        # the recent objects that no state refers to yet are not counted:
+        # dropping old states would not make room for them
+        total -= sum(size for ref, (_, size, _) in sizes.items() if ref in freed or not refs.get(ref, 0))
         dropped = []
         for _, id, n, state in states:
             if not limit or total <= limit:
@@ -290,6 +317,13 @@ def state_id(state):
     for name, digests in sorted((state.get('files') or {}).items()):
         lines.append(f'file {name} {",".join(digests)}')
     return sha256(('\n'.join(lines) + '\n').encode('utf-8'))
+
+
+def is_file_object(path):
+    "a file of the files deleted by the commands (file-objects/ab/ab12….pdf), in any store"
+    folder = os.path.dirname(path)
+    return os.path.basename(os.path.dirname(folder)) == 'file-objects' \
+        and os.path.basename(path).startswith(os.path.basename(folder))
 
 
 def short(n):
@@ -360,6 +394,14 @@ class Project:
 
     def state(self, n):
         return self.states().get(n)
+
+    def upgraded(self, n):
+        """the identifier of the state that an earlier version numbered n (a
+        link from a state of another store, see Store.upgrade); else n"""
+        if not isinstance(n, int) or isinstance(n, bool):
+            return n
+        self.states()  # numbered states upgraded first
+        return self.store.numbers().get(self.id, {}).get(str(n), n)
 
     def resolve(self, ref):
         """the identifier of the state that `ref` names: the identifier, or a

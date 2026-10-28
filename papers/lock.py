@@ -16,7 +16,8 @@ is stale:
 To take it over, the waiting command renames the stale file to a name of
 its own (one step: two waiting commands cannot both get it) and checks that
 the file it renamed is the one it found stale; a fresh lock taken by a
-faster command meanwhile is put back.
+faster command meanwhile is put back (a hard link, or a copy with the same
+token on a file system without hard links).
 
 Before writing the library, the holder checks that the lock still has its
 token (see `check`): a holder that could not refresh it in time (e.g. the
@@ -26,7 +27,11 @@ it still has its token.
 
 A command locks the library of the command line first, then its pool
 (see papers.pools.Pools.resolve); a command in the pool locks the pool
-only: two commands never wait for each other. A lock does not help in a
+only. Two commands that lock two libraries in opposite orders (a command
+in L1 with `--pool L2` and a command in L2 with `--pool L1`) each hold one
+lock and wait for the other: the first to wait fails after WAIT seconds
+with a LockError, before it writes anything, and the other then gets the
+lock if it has not waited WAIT seconds as well. A lock does not help in a
 folder synchronized by a service (Dropbox, Nextcloud…): the file reaches
 the other computers seconds or minutes later.
 """
@@ -59,7 +64,7 @@ def lock_path(config):
     "the lock file of a library (.papers/lock), or None (a bibtex without library)"
     if not config.file or not config.is_library:
         return None
-    return os.path.join(papers.config.config_root(config.file), '.papers', LOCK_FILE)
+    return os.path.join(config.libdir, '.papers', LOCK_FILE)
 
 
 # the locks held by this process: {real path of the lock file: content}
@@ -97,7 +102,8 @@ def _signature(path):
 def _take_over(path, signature):
     """remove the stale lock file whose signature is `signature`: renamed
     first (one step), then removed if it is that file; a fresh lock found
-    there instead is put back (unless another lock was created meanwhile)"""
+    there instead is put back (unless another lock was created meanwhile),
+    as a copy on a file system without hard links"""
     aside = f'{path}.{uuid.uuid4().hex}.stale'
     try:
         os.rename(path, aside)
@@ -108,8 +114,14 @@ def _take_over(path, signature):
         return
     try:
         os.link(aside, path)  # put back: only if no lock was created meanwhile
-    except OSError:
-        pass
+    except FileExistsError:
+        pass  # its holder finds another token at its check and stops
+    except OSError:  # no hard links (some network or FAT drives): put back as a copy, same token
+        content = _read(aside)
+        if not content:  # still being written by its holder
+            time.sleep(POLL)
+            content = _read(aside)
+        _create(path, content or {})
     os.remove(aside)
 
 
@@ -156,6 +168,7 @@ def acquire(config, command=None, wait=None):
     if key in _held:
         return
     os.makedirs(os.path.dirname(path), exist_ok=True)
+    papers.config.ignore_papers_folder(os.path.dirname(path))  # also when papers never saves the configuration
     content = _content(command or 'papers ' + ' '.join(sys.argv[1:]))
     wait = WAIT if wait is None else wait
     start = time.monotonic()

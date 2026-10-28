@@ -11,7 +11,8 @@ import re
 import bibtexparser
 from bibtexparser import Library
 from bibtexparser.middlewares.enclosing import AddEnclosingMiddleware
-from bibtexparser.model import Entry, ExplicitComment, Field, ImplicitComment, ParsingFailedBlock, Preamble, String
+from bibtexparser.model import (DuplicateBlockKeyBlock, DuplicateFieldKeyBlock, Entry, ExplicitComment, Field,
+                                ImplicitComment, ParsingFailedBlock, Preamble, String)
 from bibtexparser.writer import BibtexFormat, write
 
 from papers import logger
@@ -103,11 +104,27 @@ def library_from_entries(entries):
 
 def lowercase_fields(library):
     """the field names of the entries in lower case (BibTeX ignores their
-    case: older JabRef files write Title, Keywords...), in place"""
-    for e in library.entries:
-        for f in e.fields:
-            if f.key != f.key.lower():
-                f.key = f.key.lower()
+    case: older JabRef files write Title, Keywords...), in place. BibTeX
+    also ignores the case of the keys: an entry with two fields that differ
+    only by case (Title and title), or with the key of an entry before it
+    in another case (smith2000 after Smith2000), is a failed block, as
+    bibtexparser makes an entry with a field or key given twice exactly
+    (its text is written back, see papers.bib.unreadable_blocks)"""
+    keys = {}
+    for e in list(library.entries):
+        names = [f.key.lower() for f in e.fields]
+        twice = {name for name in names if names.count(name) > 1}
+        previous = keys.get(e.key.lower())
+        if twice:
+            library.replace(e, DuplicateFieldKeyBlock(twice, e), fail_on_duplicate_key=False)
+        elif previous is not None:
+            library.replace(e, DuplicateBlockKeyBlock(e.key, previous, e, e.start_line, e.raw),
+                            fail_on_duplicate_key=False)
+        else:
+            keys[e.key.lower()] = e
+            for f in e.fields:
+                if f.key != f.key.lower():
+                    f.key = f.key.lower()
     return library
 
 
@@ -276,7 +293,7 @@ def parse_file(file, relative_to=None):
     for f in file.split(';'):
         if not f.strip():
             continue
-        path = _parse_file(f)
+        path = _parse_file(f).strip()
         if not path:
             # joining an empty path to relative_to would point at a directory
             logger.warning(f'empty file path in file field (ignored): {f!r}')
@@ -303,6 +320,14 @@ def update_file_path(entry, from_relative_to, to_relative_to, check=False):
             return (old_file, new_file)
 
 
+def _relative_link(path, relative_to):
+    "path relative to `relative_to`, or absolute when it cannot be (another drive on Windows)"
+    try:
+        return os.path.normpath(os.path.relpath(path, relative_to))
+    except ValueError:
+        return os.path.abspath(path)
+
+
 def format_file(files, relative_to=None):
     # make sure the path is right
     if relative_to is not None:
@@ -310,7 +335,7 @@ def format_file(files, relative_to=None):
         if relative_to == os.path.sep:
             files = [os.path.abspath(p) for p in files]
         else:
-            files = [os.path.normpath(os.path.relpath(p, relative_to)) for p in files]
+            files = [_relative_link(p, relative_to) for p in files]
         msg += f" => {', '.join(files)}"
         logger.debug(msg)
     return ';'.join([_format_file(f) for f in files])

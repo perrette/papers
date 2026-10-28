@@ -1,9 +1,23 @@
 """
 Key and file name formatting
 """
-from slugify import slugify
+import os
+import re
+import unicodedata
+from slugify import slugify as _slugify
+from unidecode import unidecode
 from papers.encoding import family_names
 from papers.entries import get_entry_val
+
+def slugify(text):
+    """python-slugify's slug of `text`, with the transliteration table of
+    Unidecode, whatever table python-slugify would choose (text-unidecode
+    when Unidecode is not installed): the slug is that of python-slugify with
+    Unidecode installed, apostrophes included (one in `text` separates words,
+    one from the table, as in Ь, is dropped)"""
+    text = unidecode(unicodedata.normalize('NFKD', text.replace("'", '-'))).replace("'", '')
+    return _slugify(text)
+
 
 def title_words(words, maxlength=30, minwordlen=3, n=100, sep='-'):
     """the first `n` words of at least `minwordlen` characters, without the
@@ -30,7 +44,7 @@ def _cite_author(names):
 
 UNKNOWN_AUTHOR = 'unknown'
 UNKNOWN_YEAR = '0000'
-UNKNOWN_JOURNAL = None
+UNKNOWN_JOURNAL = ''
 UNKNOWN_TITLE = ""
 
 def path_safe(value):
@@ -44,6 +58,48 @@ def path_safe(value):
     if value and not value.strip('.'):
         value = '-' * len(value)
     return value
+
+# the longest name (in bytes, as UTF-8) of a file or folder that papers names
+# after an entry: 255 is the limit of most file systems, minus room for the
+# -2, -3... suffix of a name already taken
+MAX_NAME_BYTES = 250
+# characters that Windows does not accept in a file name ('/' separates the
+# folders of the template, '\\' is replaced in the values, see path_safe)
+_FORBIDDEN = re.compile(r'[<>:"|?*\x00-\x1f]')
+_RESERVED = {'CON', 'PRN', 'AUX', 'NUL', *(f'COM{i}' for i in range(1, 10)), *(f'LPT{i}' for i in range(1, 10))}
+
+
+def cut_bytes(text, size):
+    "the start of `text` that is at most `size` bytes as UTF-8"
+    return text.encode('utf-8')[:size].decode('utf-8', errors='ignore')
+
+
+def safe_file_name(name):
+    """a file name made from a template, valid on every system: in each
+    folder of it, the characters that Windows forbids replaced with '-', no
+    trailing dot or space, '-' after a reserved name of Windows (CON, NUL...),
+    and at most MAX_NAME_BYTES bytes"""
+    parts = []
+    for part in name.split('/'):
+        if part not in ('', '.', '..'):
+            part = cut_bytes(_FORBIDDEN.sub('-', part), MAX_NAME_BYTES).rstrip('. ') or '-'
+            first, dot, rest = part.partition('.')
+            if first.upper() in _RESERVED:
+                part = cut_bytes(first + '-' + dot + rest, MAX_NAME_BYTES)
+        parts.append(part)
+    return '/'.join(parts)
+
+
+def fit_name(path):
+    """`path` with its file name (extension included) cut to MAX_NAME_BYTES
+    bytes, keeping the extension"""
+    head, name = os.path.split(path)
+    stem, ext = os.path.splitext(name)
+    if len(name.encode('utf-8')) <= MAX_NAME_BYTES:
+        return path
+    stem = cut_bytes(stem, MAX_NAME_BYTES - len(ext.encode('utf-8'))).rstrip('. ') or '-'
+    return os.path.join(head, stem + ext)
+
 
 def make_template_fields(
     entry,
@@ -61,7 +117,7 @@ def make_template_fields(
     - Author : same as author but title case (first letter capitalized)
     - AUTHOR : same as author but upper case
     - authorX: first; first and second; first et al
-    - journal: journal name
+    - journal: journal name ('' without journal)
     (the values of journal, year, key, ID and doi have their path separators
     replaced with '-': see path_safe)
     - title : normalized title in lower case, separated by {title_sep} ('-' by default) with max {title_word_num} words
@@ -154,7 +210,7 @@ class Format:
         'author' generates 'perrette'
         'Author' generates 'Perrette'
         'AUTHOR' generates 'PERRETTE'
-    any other case, like 'AuTHoR', will retrieve the field from 'e' with unaltered case.
+    Any other placeholder, like 'AuTHoR', is a TemplateError.
 
     """
     def __init__(self, template, author_num=2, title_word_num=100, title_word_size=1, title_length=100,
@@ -181,9 +237,16 @@ class Format:
         fields = make_template_fields(entry, **vars(self))
 
         if self.unknown_template and self.is_unknown(entry):
-            return format_template(self.unknown_template, fields, self.kind + ' unknown')
-
-        return format_template(self.template, fields, self.kind)
+            template = self.unknown_template
+            name = format_template(template, fields, self.kind + ' unknown')
+        else:
+            template = self.template
+            name = format_template(template, fields, self.kind)
+        if self.kind != 'name':
+            return name
+        if not template.startswith('/'):  # an empty first folder ({journal}/... without journal) is left out
+            name = name.lstrip('/')
+        return safe_file_name(name)
 
     def __call__(self, entry):
         # Support both dict and bibtexparser v2 Entry (convert to dict for ** unpacking)

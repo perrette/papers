@@ -105,6 +105,27 @@ class TestGetBiblio(TmpTest):
             get_biblio(config)
         self.assertIn('broken pool', logs.output[0])
 
+    def test_absolute_links_made_relative(self):
+        # paths relative: an absolute link is rewritten at load, in memory
+        abspath = self.path('files', 'a.pdf')
+        text = '@article{a,\n file = {:%s:pdf},\n title = {A}\n}\n' % abspath
+        Path(self.path('papers.bib')).write_text(text)
+        biblio = get_biblio(Config(bibtex=self.path('papers.bib'), filesdir=self.path('files')))
+        self.assertEqual(biblio.entries[0]['file'], ':' + os.path.join('files', 'a.pdf') + ':pdf')
+        self.assertTrue(biblio.load_changes)
+        self.assertEqual(Path(self.path('papers.bib')).read_text(), text)
+
+    def test_relative_links_left_alone(self):
+        Path(self.path('papers.bib')).write_text('@article{a,\n file = {files/a.pdf:PDF},\n title = {A}\n}\n')
+        biblio = get_biblio(Config(bibtex=self.path('papers.bib'), filesdir=self.path('files')))
+        self.assertEqual(biblio.entries[0]['file'], 'files/a.pdf:PDF')
+        self.assertFalse(biblio.load_changes)
+
+    def test_link_on_another_drive_stays_absolute(self):
+        from papers.entries import format_file
+        with mock.patch('os.path.relpath', side_effect=ValueError('path is on mount C:, start on mount D:')):
+            self.assertEqual(format_file([self.path('a.pdf')], relative_to=self.dir), ':' + self.path('a.pdf') + ':pdf')
+
 
 class TestSavebib(TmpTest):
 

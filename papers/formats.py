@@ -181,9 +181,10 @@ def parse_bibtex_name(name):
         if particle:
             d['non-dropping-particle'] = ' '.join(particle)
     else:
+        # Last, First or Last, Jr, First; further commas belong to First
         last = parts[0]
-        suffix = parts[1] if len(parts) == 3 else ''
-        given = parts[-1]
+        suffix = parts[1] if len(parts) >= 3 else ''
+        given = ', '.join(parts[2:]) if len(parts) >= 3 else parts[1]
         tokens = split_depth0(last, r'\s+')
         particle = []
         while len(tokens) > 1 and _is_particle(tokens[0]):
@@ -216,7 +217,8 @@ def format_bibtex_name(name):
     given = ' '.join(x for x in [name.get('given', ''), name.get('dropping-particle', '')] if x)
     suffix = name.get('suffix', '')
     if suffix:
-        return f'{family}, {suffix}, {given}'
+        # the last comma stays without given name: it marks the suffix as one
+        return f'{family}, {suffix}, {given}' if given else f'{family}, {suffix},'
     return f'{family}, {given}' if given else family
 
 
@@ -242,7 +244,17 @@ def _date_parts(text):
     m = re.match(r'\s*(\d{4})(?:[-/](\d{1,2}))?(?:[-/](\d{1,2}))?', str(text or ''))
     if not m:
         return []
-    return [int(x) for x in m.groups() if x and int(x) > 0]
+    return _leading_parts(m.groups())
+
+
+def _leading_parts(parts):
+    "the numbers of date parts up to the first missing or zero one: 2013-00-05 is the year 2013 only"
+    numbers = []
+    for x in parts:
+        if x is None or not str(x).strip() or int(x) <= 0:
+            break
+        numbers.append(int(x))
+    return numbers
 
 
 def _entry_date_parts(e):
@@ -325,8 +337,22 @@ def _file_paths(value):
     return paths
 
 
-def _entry(entry_type, key, fields, files=()):
+_RAW_FIELDS = ('url', 'doi', 'file', 'eprint', 'isbn', 'issn')
+
+# & % # _ are commands or errors for LaTeX; RIS and CSL-JSON hold plain text
+_LATEX_SPECIAL = re.compile(r'(?<!\\)([&%#_])')
+
+
+def _latex_escaped(fields):
+    "the text fields with & % # _ escaped (urls, DOIs, keywords and dates as they are)"
+    raw = _RAW_FIELDS + ('keywords', 'urldate')
+    return {k: (v if k in raw else _LATEX_SPECIAL.sub(r'\\\1', str(v))) for k, v in fields.items()}
+
+
+def _entry(entry_type, key, fields, files=(), escape=False):
     fields = {k: v for k, v in fields.items() if v not in (None, '')}
+    if escape:
+        fields = _latex_escaped(fields)
     if files:
         fields['file'] = format_file(list(files))
     return Entry(entry_type=entry_type, key=key, fields=[Field(k, str(v)) for k, v in fields.items()])
@@ -334,8 +360,7 @@ def _entry(entry_type, key, fields, files=()):
 
 def _unicode_fields(e):
     "the fields of an entry, as unicode text (urls, DOIs and files as they are)"
-    raw = ('url', 'doi', 'file', 'eprint', 'isbn', 'issn')
-    return {f.key.lower(): (f.value if f.key.lower() in raw else _latex_to_unicode(f.value))
+    return {f.key.lower(): (f.value if f.key.lower() in _RAW_FIELDS else _latex_to_unicode(f.value))
             for f in e.fields if f.value not in (None, '')}
 
 
@@ -422,6 +447,9 @@ def entry_to_csl(e, files=()):
         names = parse_bibtex_names(get_entry_val(e, name, ''))
         if names:
             item[name] = names
+    if not f.get('publisher'):
+        # at the position of publisher in the item
+        f['publisher'] = next((f[name] for name in ('school', 'institution', 'organization') if f.get(name)), '')
     for bib, csl in _CSL_SIMPLE.items():
         if f.get(bib):
             item[csl] = f[bib]
@@ -435,11 +463,6 @@ def entry_to_csl(e, files=()):
         item['issue' if csl_type == 'article-journal' or f.get('issue') else 'number'] = number
     if f.get('pages'):
         item['page'] = _pages_to_bibtex(f['pages']).replace('--', '-')
-    if not f.get('publisher'):
-        for name in ('school', 'institution', 'organization'):
-            if f.get(name):
-                item['publisher'] = f[name]
-                break
     if entry_type == 'phdthesis':
         item['genre'] = 'PhD thesis'
     elif entry_type == 'mastersthesis':
@@ -466,7 +489,7 @@ def _csl_date(value):
         dp = value.get('date-parts')
         if dp and dp[0]:
             try:
-                return [int(x) for x in dp[0] if str(x).strip()]
+                return _leading_parts(dp[0])
             except (TypeError, ValueError):
                 pass
         return _date_parts(value.get('raw') or value.get('literal') or '')
@@ -496,7 +519,7 @@ def csl_to_entry(item):
         fields['doi'] = _clean_doi(fields['doi'])
     container = _csl_text(item.get('container-title'))
     if container:
-        fields['journal' if entry_type in ('article', 'misc', 'online') else 'booktitle'] = container
+        fields['booktitle' if entry_type in ('incollection', 'inproceedings') else 'journal'] = container
     number = item.get('issue') or item.get('number')
     if number not in (None, ''):
         fields['number'] = _csl_text(number)
@@ -520,7 +543,7 @@ def csl_to_entry(item):
         fields['urldate'] = '-'.join(f'{x:02d}' for x in accessed)
     files = _file_paths(item.get('file')) + _file_paths((item.get('custom') or {}).get('file'))
     key = usable_key(item.get('citation-key')) or usable_key(item.get('id'))
-    return _entry(entry_type, key, fields, files)
+    return _entry(entry_type, key, fields, files, escape=True)
 
 
 def dumps_csl(entries, files=lambda e: ()):
@@ -612,10 +635,10 @@ def _ris_name(name):
     if name.get('literal') and not name.get('family'):
         return name['literal']
     family = ' '.join(x for x in [name.get('non-dropping-particle', ''), name.get('family', '')] if x)
-    parts = [family, name.get('given', '')]
-    if name.get('suffix'):
-        parts.append(name['suffix'])
-    return ', '.join(p for p in parts if p) if parts[1] or len(parts) > 2 else family
+    given, suffix = name.get('given', ''), name.get('suffix', '')
+    if suffix:
+        return f'{family}, {given}, {suffix}'  # an empty given name keeps its place
+    return f'{family}, {given}' if given else family
 
 
 def _bibtex_name_of_ris(name):
@@ -625,7 +648,7 @@ def _bibtex_name_of_ris(name):
         return name if ' ' not in name else '{' + name + '}'
     parts = [p.strip() for p in name.split(',')]
     if len(parts) >= 3 and parts[2]:
-        return f'{parts[0]}, {parts[2]}, {parts[1]}'
+        return f'{parts[0]}, {parts[2]}, {parts[1]}' if parts[1] else f'{parts[0]}, {parts[2]},'
     return f'{parts[0]}, {parts[1]}' if parts[1] else parts[0]
 
 
@@ -640,6 +663,9 @@ def entry_to_ris(e, files=()):
     editors = parse_bibtex_names(get_entry_val(e, 'editor', ''))
     if editors:
         ref['editors'] = [_ris_name(n) for n in editors]
+    translators = parse_bibtex_names(get_entry_val(e, 'translator', ''))
+    if translators:
+        ref['subsidiary_authors'] = [_ris_name(n) for n in translators]  # A4: the translators, as in Zotero
     if f.get('title'):
         ref['title'] = f['title']
     container = f.get('journal') or f.get('booktitle')
@@ -669,6 +695,8 @@ def entry_to_ris(e, files=()):
         ref['doi'] = _clean_doi(f['doi'])
     if f.get('url'):
         ref['urls'] = [f['url']]
+    if f.get('urldate'):
+        ref['access_date'] = f['urldate']
     numbers = [f[k] for k in ('isbn', 'issn') if f.get(k)]
     if numbers:
         ref['issn'] = numbers
@@ -689,6 +717,8 @@ def entry_to_ris(e, files=()):
         ref['language'] = f['language']
     if f.get('type') and entry_type in ('techreport', 'report', 'phdthesis', 'mastersthesis', 'thesis'):
         ref['type_of_work'] = f['type']
+    elif entry_type == 'mastersthesis':
+        ref['type_of_work'] = "Master's thesis"  # M3: read back as a mastersthesis
     if files:
         ref['file_attachments1'] = list(files)
     return ref
@@ -712,6 +742,8 @@ def ris_to_entry(ref):
     "a bibtex entry of a RIS record (as rispy reads it, see _ris_options)"
     ris_type = str(ref.get('type_of_reference', 'GEN')).strip().upper()
     entry_type = RIS_TO_BIBTEX_TYPE.get(ris_type, 'misc')
+    if ris_type == 'THES' and 'master' in _first(ref, 'type_of_work').lower():
+        entry_type = 'mastersthesis'
     fields = {}
     authors = _as_list(ref.get('authors')) + _as_list(ref.get('first_authors'))
     if authors:
@@ -721,11 +753,14 @@ def ris_to_entry(ref):
         editors = _as_list(ref.get('secondary_authors'))  # A2: the editors, in EndNote exports
     if editors:
         fields['editor'] = ' and '.join(_bibtex_name_of_ris(a) for a in editors if a.strip())
+    translators = _as_list(ref.get('subsidiary_authors'))
+    if translators:
+        fields['translator'] = ' and '.join(_bibtex_name_of_ris(a) for a in translators if a.strip())
     fields['title'] = _first(ref, 'title', 'primary_title')
     container = _first(ref, 'secondary_title', 'alternate_title3', 'journal_name', 'alternate_title2',
                        'alternate_title1')
     if container:
-        fields['journal' if entry_type in ('article', 'misc', 'online') else 'booktitle'] = container
+        fields['booktitle' if entry_type in ('incollection', 'inproceedings') else 'journal'] = container
     if ref.get('tertiary_title'):
         fields['series'] = _first(ref, 'tertiary_title')
     parts = _date_parts(_first(ref, 'year', 'publication_year', 'date'))
@@ -747,6 +782,7 @@ def ris_to_entry(ref):
     doi_urls = [u for u in _as_list(ref.get('urls')) if _DOI_PREFIX.match(u.strip())]
     if not fields['doi'] and doi_urls:  # no DO line: the DOI of a doi.org link, also next to another URL
         fields['doi'] = _clean_doi(doi_urls[0])
+    fields['urldate'] = _first(ref, 'access_date')
     for sn in _as_list(ref.get('issn')):
         digits = re.sub(r'[^0-9Xx]', '', sn.split()[0] if sn.split() else '')
         name = 'issn' if len(digits) == 8 else 'isbn'
@@ -754,7 +790,8 @@ def ris_to_entry(ref):
             fields[name] = sn.strip()
     publisher = _first(ref, 'publisher')
     if publisher:
-        fields[{'phdthesis': 'school', 'techreport': 'institution'}.get(entry_type, 'publisher')] = publisher
+        name = {'phdthesis': 'school', 'mastersthesis': 'school', 'techreport': 'institution'}.get(entry_type)
+        fields[name or 'publisher'] = publisher
     fields['address'] = _first(ref, 'place_published')
     fields['abstract'] = _first(ref, 'abstract', 'notes_abstract')
     keywords = []
@@ -770,7 +807,7 @@ def ris_to_entry(ref):
     if entry_type in ('techreport', 'phdthesis'):
         fields['type'] = _first(ref, 'type_of_work')
     files = _file_paths(_as_list(ref.get('file_attachments1')))
-    return _entry(entry_type, usable_key(_first(ref, 'id')), fields, files)
+    return _entry(entry_type, usable_key(_first(ref, 'id')), fields, files, escape=True)
 
 
 def dumps_ris(entries, files=lambda e: (), rispy=None):
@@ -785,15 +822,16 @@ def dumps_ris(entries, files=lambda e: (), rispy=None):
     return rispy.dumps(refs, implementation=Writer, **_ris_options(rispy))
 
 
-# a line of a RIS tag: two characters, two spaces, a dash (and a space and the value)
-_RIS_TAG = re.compile(r'^[A-Z][A-Z0-9]  -( |$)')
+# a line of a RIS tag: two characters, two spaces, a dash (then a separator and the value), as rispy reads it
+_RIS_TAG = re.compile(r'^[A-Z][A-Z0-9]  -')
 
 
 def _ris_without_stray_lines(text):
     """the RIS text without the blank lines inside a record and the lines
     without tag between TY and the first tag: rispy (0.10) reads them as
     the continuation of the last tag of the previous record (an error for a
-    single tag such as TI, an empty keyword for KW)"""
+    single tag such as TI, an empty keyword for KW). A last record without
+    ER gets one: rispy drops it otherwise"""
     lines, inside, tagged = [], False, False
     for line in text.split('\n'):
         tag = _RIS_TAG.match(line)
@@ -806,6 +844,8 @@ def _ris_without_stray_lines(text):
         elif inside and (not line.strip() or not tagged):
             continue
         lines.append(line)
+    if inside:
+        lines.append('ER  - ')
     return '\n'.join(lines)
 
 
@@ -860,11 +900,9 @@ def _bibjson_text(value):
     if isinstance(value, dict):
         return _bibjson_text(value.get('name', ''))
     if isinstance(value, list):
-        return ', '.join(_bibjson_text(v) for v in value)
+        return ', '.join(_bibjson_text(v) for v in value if v is not None)
     if isinstance(value, bool):
         return 'true' if value else 'false'
-    if isinstance(value, float) and value.is_integer():
-        return str(int(value))
     return str(value)
 
 
@@ -878,7 +916,7 @@ def bibjson_to_entry(record):
         if value is None:
             continue
         if name in _BIBJSON_NAMES and isinstance(value, list):
-            fields[name] = ' and '.join(_bibjson_text(v) for v in value)
+            fields[name] = ' and '.join(_bibjson_text(v) for v in value if v is not None)
         else:
             fields[name] = _bibjson_text(value)
     if 'doi' not in fields:  # the DOI of BibJSON identifiers: [{"type": "doi", "id": ...}]
@@ -902,7 +940,7 @@ def dumps_bibjson(entries, files=lambda e: ()):
 
 def loads_bibjson(text):
     try:
-        data = json.loads(text)
+        data = json.loads(text, parse_float=str, parse_int=str)  # numbers as written
     except json.JSONDecodeError as error:
         raise ValueError(f'not a BibJSON file: {error}')
     if isinstance(data, dict):

@@ -13,7 +13,6 @@ import os
 
 import papers.config
 from papers import journal
-from papers.config import config_root
 from papers.entries import parse_file
 from papers.utils import checksum, write_atomic
 
@@ -24,7 +23,7 @@ def files_json(config):
     "the checksums file of the library, or None (a bibtex without library)"
     if not config.file or not config.is_library:
         return None
-    return os.path.join(config_root(config.file), FILES_JSON)
+    return os.path.join(config.libdir, FILES_JSON)
 
 
 def _base(config):
@@ -45,7 +44,7 @@ def load(config):
     path = files_json(config)
     if path is None or not os.path.exists(path):
         return {}
-    return parse(open(path).read(), config)
+    return parse(open(path, encoding='utf-8-sig').read(), config)
 
 
 def save(config, hashes):

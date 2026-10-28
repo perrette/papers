@@ -69,7 +69,8 @@ method). Its placeholders are:
 
 - `{author}`, `{Author}`, `{AUTHOR}`, `{authorX}`, `{AuthorX}`: the authors
   (see below)
-- `{year}`, `{journal}`
+- `{year}`, `{journal}` (empty for an entry without journal: a folder of
+  the template that is empty, as in `{journal}/{author}`, is left out)
 - `{title}`, `{Title}`: the title words (see the modifiers below)
 - `{key}` (or `{ID}`): the bibtex key of the entry
 - `{doi}`, `{doi_}` (the doi with `-` in place of `/`, `.` and the other
@@ -88,6 +89,23 @@ name-template should be
 `--name-template {year}/{Author}{year}-{Title} --name-title-sep ''`
 (note the case).
 
+The names made from the template are valid on every system. In each part
+of the name (the folders and the file name), papers:
+
+- replaces the characters that Windows does not accept (`<>:"|?*` and
+  control characters) with `-` (`/` and `\` in the field values are
+  replaced with `-` too, so a field cannot add a folder),
+- removes trailing dots and spaces,
+- adds `-` after a name that Windows reserves (`CON`, `PRN`, `AUX`, `NUL`,
+  `COM1` to `COM9`, `LPT1` to `LPT9`),
+- cuts the name to 250 bytes (UTF-8), extension included (a `-2` suffix
+  for a name already taken can follow).
+
+This applies only to the names papers makes from the template: a file
+linked where it is keeps its name, and a file named before this rule keeps
+its name until the entry is renamed (`papers file rename`, `papers list
+--rename`).
+
 ## Case-sensitive fields
 
 Entries are case-sensitive, and a few more fields are added, so that:
@@ -98,6 +116,11 @@ Entries are case-sensitive, and a few more fields are added, so that:
 - `authorX` generates `perrette`, `perrette_and_landerer` or `perrette_et_al`
   depending on the number of authors
 - `AuthorX` same as `authorX` but capitalized
+
+The author names, the title words, `{doi_}` and `{doi_or_id}` are written
+in ASCII: accented and non-Latin letters are transliterated with the table
+of the Unidecode library (`Müller` gives `muller`, `Хрущёв` gives
+`khrushchev`), and other characters separate words.
 
 ## Modifiers
 

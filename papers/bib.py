@@ -85,20 +85,30 @@ def append_abc(key, keys=[]):
     'Author2000c'
     >>> append_abc('Author2000', ['Author2000', 'Author2000b'])
     'Author2000c'
+    >>> append_abc('Author2000B')
+    'Author2000C'
+    >>> append_abc('Author2000z')
+    'Author2000za'
     """
-    letters = 'abcdefghijklmnopqrstuvwxyz'
+    alphabet = 'abcdefghijklmnopqrstuvwxyz'
     keys = {k.lower() for k in keys}  # keys are compared ignoring case
 
-    # a letter after a digit is a suffix of this function (Author2000b)
-    if len(key) > 1 and key[-1] in letters and key[-2].isdigit():
-        letters = letters[letters.index(key[-1])+1:]
-        key = key[:-1]
+    # a letter after a digit is a suffix of this function (Author2000b), in
+    # either case
+    last = key[-1:]
+    if len(key) > 1 and last.lower() in alphabet and key[-2].isdigit():
+        letters = alphabet[alphabet.index(last.lower())+1:]
+        if last.isupper():
+            letters = letters.upper()
+        base = key[:-1]
     else:
-        letters = letters[1:] # start at b
+        letters = alphabet[1:] # start at b
+        base = key
 
-    for l in letters:
-        if (key+l).lower() not in keys:
-            return key+l
+    # no letter left (after z): a second letter (Author2000za)
+    for k in [base + l for l in letters] + [key + l for l in alphabet]:
+        if k.lower() not in keys:
+            return k
     raise ValueError(f'{key}: no free key with a letter suffix')
 
 
@@ -144,20 +154,22 @@ def unreadable_blocks(db):
     for block in getattr(db, 'failed_blocks', []):
         if type(block).__name__ == 'DuplicateFieldKeyBlock':
             reason = str(block.error).split('. Note')[0].replace('Duplicate field keys on entry', 'a field given twice')
+        elif type(block).__name__ == 'DuplicateBlockKeyBlock':
+            reason = f"a key given twice (keys ignore case): '{block.key}'"
         else:
             reason = 'syntax error'
         found.append(((block.start_line or 0) + 1, reason))
     return found
 
 
-def unreadable_message(bibtex, unreadable):
+def unreadable_message(bibtex, unreadable, outcome='papers ignores them until they are fixed'):
     lines = '; '.join(f'line {line}: {reason}' for line, reason in unreadable)
     n = len(unreadable)
     home = os.path.expanduser('~')
     if bibtex.startswith(home + os.sep):
         bibtex = '~' + bibtex[len(home):]
     return (f'{bibtex}: {n} entr{"ies" if n > 1 else "y"} could not be read ({lines}): '
-            'papers ignores them until they are fixed')
+            + outcome)
 
 
 class Biblio:
@@ -241,7 +253,7 @@ class Biblio:
     def load(cls, bibtex, filesdir, relative_to=None, **kw):
         with open(bibtex, encoding='utf-8-sig') as f:  # UTF-8, without a byte order mark (see read_text)
             bibtexs = f.read()
-        kw.setdefault('distinct', Distinct.for_bibtex(bibtex))
+        kw.setdefault('distinct', Distinct.for_library(papers.config.library_dir(bibtex)))
         db = parse_string(bibtexs, cache=parse_cache())
         loaded_bib = cls(db, filesdir, relative_to=relative_to if relative_to is not None else os.path.dirname(bibtex), **kw)
         loaded_bib._remember(bibtex, bibtexs)
@@ -305,9 +317,16 @@ class Biblio:
             raise PapersExit(f'{new}: another entry of the library has this key')
         old = e.key
         set_entry_key(e, new)
-        if keep_old:
-            ids = [i.strip() for i in get_entry_val(e, 'ids', '').split(',') if i.strip()]
-            e['ids'] = ', '.join([i for i in ids if i.lower() != new.lower()] + [old])
+        # ids: never the key itself, and each former key once
+        ids = [i.strip() for i in get_entry_val(e, 'ids', '').split(',') if i.strip()]
+        kept = [i for i in ids if i.lower() != new.lower()]
+        if keep_old and old.lower() not in {i.lower() for i in kept} | {new.lower()}:
+            kept.append(old)
+        if kept != ids:
+            if kept:
+                e['ids'] = ', '.join(kept)
+            else:
+                del e['ids']
 
     @property
     def loaded(self):
@@ -435,8 +454,10 @@ class Biblio:
                 logger.info('key conflict: {} => {}'.format(get_entry_val(entry, 'ID', ''), newkey))
                 set_entry_key(entry, newkey)
 
-            elif get_entry_val(existing_same_key, 'title', '') == get_entry_val(entry, 'title', '') \
-                    and same_paper(existing_same_key, entry, self.distinct).kind == SAME:
+            elif same_paper(existing_same_key, entry, self.distinct).kind == SAME \
+                    and Merge([existing_same_key, entry], relative_to=self.relative_to).is_exact():
+                # the same paper with nothing to decide, as for "already in library" (equivalent
+                # values, such as titles that differ only by case or braces, are no difference)
                 logger.info('exact duplicate')
                 # keep the files of the new entry
                 files = self.get_files(existing_same_key) + self.get_files(entry)
@@ -447,7 +468,7 @@ class Biblio:
 
             else:  # (with update_key, the key generated above is not in the library)
                 raise DuplicateKeyError(f'{get_entry_val(entry, "ID", "")}: this key is already in the library, '
-                                        'for another paper: pass -u/--update-key to generate a new key, '
+                                        'for another paper or another version of it: pass -u/--update-key to generate a new key, '
                                         'or --key KEY')
 
         else:
@@ -524,6 +545,9 @@ class Biblio:
 
     def add_bibtex(self, bibtex, relative_to=None, attachments=None, convert_to_unicode=False, **kw):
         bib = parse_string(bibtex)
+        unreadable = unreadable_blocks(bib)
+        if unreadable:
+            logger.warning(unreadable_message('the added bibtex', unreadable, 'they are not added'))
         if convert_to_unicode:
             bib = latex_to_unicode_library(bib)
         return self.add_entries(bib.entries, relative_to=relative_to, attachments=attachments, **kw)
@@ -770,7 +794,7 @@ class Biblio:
         self._remember(bibtex, s)
         if self.distinct.changed:
             if self.distinct.path is None:
-                ondisk = Distinct.for_bibtex(bibtex)
+                ondisk = Distinct.for_library(papers.config.library_dir(bibtex))
                 ondisk.update(self.distinct)
                 self.distinct = ondisk
             self.distinct.save()
@@ -791,6 +815,18 @@ class Biblio:
         if len(updates):
             logger.info(f"{len(updates)} entry files were updated")
         self.relative_to = relative_to
+        return updates
+
+    def relative_links(self):
+        """the absolute links of a library with relative links rewritten
+        relative to the bibtex directory (a link to another drive on Windows
+        stays absolute). Return the [(old, new)] file fields that changed."""
+        updates = []
+        for e in self.entries:
+            if any(os.path.isabs(f) for f in parse_file(get_entry_val(e, 'file', ''))):
+                update = update_file_path(e, self.relative_to, self.relative_to)
+                if update is not None:
+                    updates.append(update)
         return updates
 
 
@@ -832,6 +868,8 @@ class Biblio:
                 apply_entry(target, decision.entry)
                 for e in others:
                     self.db.remove(e)
+                    if e.key.lower() != target.key.lower():
+                        self.rekey_references(e.key, target.key)  # a crossref to the entry merged into the target
                 print(f'merged into {get_entry_val(target, "ID", "")}: '
                       + ', '.join(get_entry_val(e, 'ID', '') for e in others) + ' (kept in ids)')
 

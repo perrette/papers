@@ -18,7 +18,7 @@ import subprocess
 import sys
 import types
 import unittest
-from contextlib import redirect_stderr
+from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from unittest.mock import patch
 
@@ -150,11 +150,34 @@ class TestNames(unittest.TestCase):
         self.assertEqual(parse_bibtex_names('Plato and {Barnes and Noble}'),
                          [{'family': 'Plato'}, {'literal': 'Barnes and Noble'}])
 
+    def test_more_commas(self):
+        # Last, Jr, First: further commas belong to First (nothing is lost)
+        self.assertEqual(parse_bibtex_names('Doe, Jr, Jane, X'), [{'family': 'Doe', 'given': 'Jane, X', 'suffix': 'Jr'}])
+        self.assertEqual(format_bibtex_names(parse_bibtex_names('Doe, Jr, Jane, X')), 'Doe, Jr, Jane, X')
+
+    def test_suffix_without_given(self):
+        self.assertEqual(format_bibtex_names([{'family': 'Doe', 'suffix': 'Jr'}, {'family': 'Roe'}]),
+                         'Doe, Jr, and Roe')
+        self.assertEqual(parse_bibtex_names('Doe, Jr,'), [{'family': 'Doe', 'suffix': 'Jr'}])
+
     def test_format(self):
         self.assertEqual(format_bibtex_names([{'family': 'Beethoven', 'given': 'Ludwig',
                                                'non-dropping-particle': 'van'}, {'literal': 'IPCC'},
                                               {'family': 'Müller', 'given': 'Jörg', 'suffix': 'Jr'}]),
                          'van Beethoven, Ludwig and {IPCC} and Müller, Jr, Jörg')
+
+
+class TestDates(unittest.TestCase):
+
+    def test_zero_or_missing_part_ends_the_date(self):
+        # the positions count: the day of 2013-00-05 is not a month
+        self.assertEqual(formats._date_parts('2013-00-05'), [2013])
+        self.assertEqual(formats._date_parts('2013-05-00'), [2013, 5])
+        self.assertEqual(formats._date_parts('2013/05/02/'), [2013, 5, 2])
+        self.assertEqual(formats._csl_date({'date-parts': [[2013, 0, 5]]}), [2013])
+        self.assertEqual(formats._csl_date({'date-parts': [['2013', '', '5']]}), [2013])
+        self.assertEqual(fields(csl_to_entry({'type': 'book', 'title': 'T', 'issued': {'raw': '2013-00-05'}})),
+                         {'title': 'T', 'year': '2013'})
 
 
 class TestCSL(unittest.TestCase):
@@ -193,6 +216,37 @@ class TestCSL(unittest.TestCase):
         expected = {k: formats._latex_to_unicode(v) if k not in ('author', 'editor', 'pages') else v
                     for k, v in expected.items()}
         self.assertEqual({k: v for k, v in fields(back).items() if k in MAIN}, expected, e.key)
+
+    def test_container_title(self):
+        # booktitle for the parts of a book or proceedings, journal for any other type
+        for csl_type, name in [('chapter', 'booktitle'), ('paper-conference', 'booktitle'),
+                               ('entry-encyclopedia', 'booktitle'), ('article-journal', 'journal'),
+                               ('book', 'journal'), ('dataset', 'journal'), ('report', 'journal'),
+                               ('manuscript', 'journal')]:
+            e = csl_to_entry({'type': csl_type, 'title': 'T', 'container-title': 'C'})
+            self.assertEqual(fields(e).get(name), 'C', csl_type)
+
+    def test_publisher_position(self):
+        # publisher from school, institution or organization: at the position of publisher
+        e = parse_string('@phdthesis{x,\n title = {T},\n school = {ETH},\n pages = {1--2},\n'
+                         ' address = {Zurich}\n}\n').entries[0]
+        keys = list(entry_to_csl(e))
+        self.assertEqual(keys[keys.index('publisher') + 1], 'publisher-place')
+        self.assertEqual(entry_to_csl(e)['publisher'], 'ETH')
+
+    def test_latex_special_characters(self):
+        # CSL-JSON holds plain text: & % # _ are escaped for LaTeX, urls and DOIs kept
+        e = csl_to_entry({'id': 'x', 'type': 'article-journal', 'title': 'R&D: 5% of #1 in a_b',
+                          'container-title': 'Science & Policy', 'URL': 'https://example.org/a_b?x=1&y=2',
+                          'DOI': '10.1000/a_b', 'keyword': 'sea_level'})
+        self.assertEqual(e['title'], r'R\&D: 5\% of \#1 in a\_b')
+        self.assertEqual(e['journal'], r'Science \& Policy')
+        self.assertEqual(e['url'], 'https://example.org/a_b?x=1&y=2')
+        self.assertEqual(e['doi'], '10.1000/a_b')
+        self.assertEqual(e['keywords'], 'sea_level')
+        # an escaped character stays as it is, and the export gives the text back
+        self.assertEqual(csl_to_entry({'id': 'x', 'type': 'book', 'title': r'R\&D'})['title'], r'R\&D')
+        self.assertEqual(entry_to_csl(e)['title'], 'R&D: 5% of #1 in a_b')
 
     def test_file_key(self):
         # a non-standard file key (a text separated by ; or a list) is read too
@@ -309,9 +363,15 @@ class TestBibJSON(unittest.TestCase):
     def test_json_values(self):
         [e] = formats.loads_bibjson(json.dumps({'type': 'misc', 'id': 'x', 'year': 2000.0, 'note': None,
                                                 'peer-reviewed': True}))
-        self.assertEqual(fields(e)['year'], '2000')
+        self.assertEqual(fields(e)['year'], '2000.0')  # numbers as written
         self.assertNotIn('note', fields(e))
         self.assertEqual(fields(e)['peer-reviewed'], 'true')
+
+    def test_numbers_as_written_and_null_items(self):
+        [e] = formats.loads_bibjson('{"type": "misc", "id": "x", "year": 2000, "number": 0.0000001,'
+                                    ' "volume": 1E3, "keywords": ["a", null, "b"], "author": [null, {"name": "Doe, J"}]}')
+        self.assertEqual(fields(e), {'year': '2000', 'number': '0.0000001', 'volume': '1E3', 'keywords': 'a, b',
+                                     'author': 'Doe, J'})
 
     def test_spec_examples(self):
         first, second = read_file(os.path.join(FIXTURES, 'bibjson.json'), 'bibjson')
@@ -413,6 +473,32 @@ class TestRIS(unittest.TestCase):
                           'file_attachments1': ['files/a.pdf', 'file:///abs/b.pdf']})
         self.assertEqual(links(e), ['files/a.pdf', '/abs/b.pdf'])
 
+    def test_latex_special_characters(self):
+        e = ris_to_entry({'type_of_reference': 'JOUR', 'title': 'Ice & sea_level', 'authors': ['AT&T'],
+                          'urls': ['https://example.org/a_b']})
+        self.assertEqual(e['title'], r'Ice \& sea\_level')
+        self.assertEqual(e['author'], r'AT\&T')
+        self.assertEqual(e['url'], 'https://example.org/a_b')
+
+    def test_urldate_and_translator(self):
+        e = parse_string('@book{x,\n title = {T},\n translator = {Doe, Jane and Roe, R.},\n'
+                         ' url = {https://example.org},\n urldate = {2024-03-01}\n}\n').entries[0]
+        text = formats.dumps_ris([e])
+        for line in ['A4  - Doe, Jane', 'A4  - Roe, R.', 'Y2  - 2024-03-01']:
+            self.assertIn(line + '\n', text)
+        back = formats.loads_ris(text)[0]
+        self.assertEqual((back['translator'], back['urldate']), ('Doe, Jane and Roe, R.', '2024-03-01'))
+
+    def test_container_and_suffix(self):
+        # the container of a book or a report is its journal, as in CSL-JSON
+        self.assertEqual(ris_to_entry({'type_of_reference': 'RPRT', 'title': 'T', 'secondary_title': 'S'})['journal'], 'S')
+        self.assertEqual(ris_to_entry({'type_of_reference': 'CHAP', 'title': 'T', 'secondary_title': 'S'})['booktitle'], 'S')
+        # a suffix without given name stays a suffix
+        e = parse_string('@book{x,\n title = {T},\n author = {Doe, Jr,}\n}\n').entries[0]
+        text = formats.dumps_ris([e])
+        self.assertIn('AU  - Doe, , Jr\n', text)
+        self.assertEqual(formats.loads_ris(text)[0]['author'], 'Doe, Jr,')
+
     def test_doi_from_a_url_next_to_another(self):
         # no DO line: the DOI of the doi.org link, also when another URL is there
         e = ris_to_entry({'type_of_reference': 'JOUR', 'title': 'T',
@@ -430,6 +516,26 @@ class TestRIS(unittest.TestCase):
         self.assertEqual((first['title'], second['title'], third['title']), ('First', 'Second', 'Third'))
         self.assertEqual(second['keywords'], 'b')
         self.assertEqual(second['author'], 'Smith, J')
+
+    def test_tag_without_space_after_dash(self):
+        # a tag line as the reader takes it (the 6th character is the separator), also right after TY
+        [e] = formats.loads_ris('TY  - JOUR\nTI  -xA title\nAU  - Smith, J\nER  - \n')
+        self.assertEqual((e['title'], e['author']), ('A title', 'Smith, J'))
+
+    def test_mastersthesis(self):
+        e = parse_string('@mastersthesis{x,\n title = {T},\n school = {ETH},\n year = {2020}\n}\n').entries[0]
+        text = formats.dumps_ris([e])
+        self.assertIn("M3  - Master's thesis\n", text)
+        [back] = formats.loads_ris(text)
+        self.assertEqual((back.entry_type, fields(back)), ('mastersthesis', {'title': 'T', 'school': 'ETH',
+                                                                            'year': '2020'}))
+        phd = formats.loads_ris(text.replace("M3  - Master's thesis\n", ''))[0]
+        self.assertEqual(phd.entry_type, 'phdthesis')
+
+    def test_last_record_without_er(self):
+        first, second = formats.loads_ris('TY  - JOUR\nTI  - First\nER  - \n\nTY  - JOUR\nTI  - Second\n\n')
+        self.assertEqual((first['title'], second['title']), ('First', 'Second'))
+        self.assertEqual(formats.loads_ris('TY  - JOUR\nTI  - Only')[0]['title'], 'Only')
 
     def test_not_ris(self):
         with self.assertRaisesRegex(ValueError, 'not a RIS file'):
@@ -533,6 +639,23 @@ class TestExportFormats(LibraryCommands):
         [file] = items[0]['custom']['file']
         self.assertTrue(file.startswith('files/'))
         self.assertTrue(os.path.samefile(self.path('out', file), self.pdf))
+
+    def test_line_ends(self):
+        # \n on every platform, as the bibtex (os.linesep is read at run time by the Python io module)
+        import _pyio
+        with patch('papers.cli.pool_cmds.open', _pyio.open, create=True), patch('os.linesep', '\r\n'):
+            self.lib('export ../out --format csl-json,bibjson')
+        for name in ('papers.json', 'papers.bib.json'):
+            self.assertNotIn(b'\r', Path(self.path('out', name)).read_bytes(), name)
+
+    def test_bibtex_name_in_message(self):
+        os.makedirs(self.path('lib2'))
+        self.papers('init --bibtex refs.bib', cwd=self.path('lib2'))
+        Path(self.path('lib2', 'refs.bib')).write_text(SAMPLE)
+        out = io.StringIO()
+        with redirect_stdout(out):
+            self.papers('export ../out --format csl-json', cwd=self.path('lib2'))
+        self.assertIn('is not a papers library (no refs.bib)', out.getvalue())
 
     @needs_rispy
     def test_repeated_and_comma(self):

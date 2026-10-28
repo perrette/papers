@@ -31,7 +31,7 @@ from typing import NamedTuple
 from unidecode import unidecode
 
 from papers import logger
-from papers.entries import get_entry_val
+from papers.entries import get_entry_val, split_depth0
 from papers.identifiers import normalize_doi, normalize_isbn, entry_arxiv
 from papers.latexenc import latex_to_unicode
 
@@ -92,16 +92,21 @@ def normalize_text(s):
 
 def split_names(field):
     "the names of an author (or editor) field"
-    return [n.strip() for n in re.split(r'\s+and\s+', field or '') if n.strip()]
+    return [n for n in split_depth0(field or '', r'\s+and\s+') if n]
 
 
 def parse_name(name):
     """(family, given) of one name: 'Smith, John', 'John Smith', or
     '{van der Berg}, Jane'. Given names may be empty."""
     name = name.strip()
-    if ',' in name:
-        family, given = name.split(',', 1)
-        return family.strip(), given.strip()
+    depth = 0
+    for i, c in enumerate(name):  # the first comma outside braces
+        if c == '{':
+            depth += 1
+        elif c == '}':
+            depth -= 1
+        elif c == ',' and depth == 0:
+            return name[:i].strip(), name[i + 1:].strip()
     # last word, keeping a braced group together
     m = re.match(r'^(.*?)\s*(\{[^{}]*\}|\S+)$', name)
     if not m:
@@ -302,7 +307,7 @@ def _side_matches(recorded, ident):
 class Distinct:
     """Pairs of entries that are not the same paper, recorded by identity
     (see `identity`), not by key, so that the file means the same in every
-    library. Stored in .papers/distinct.json next to the bibtex:
+    library. Stored in .papers/distinct.json of the library folder:
 
         {"distinct": [[{"doi": "10.1000/a", "authortitle": "..."}, {...}], ...]}
     """
@@ -313,17 +318,16 @@ class Distinct:
         self.changed = False
 
     @classmethod
-    def for_bibtex(cls, bibtex):
-        "the pairs recorded for the library of this bibtex file"
-        path = os.path.join(os.path.dirname(os.path.abspath(bibtex)), DISTINCT_FILE)
-        return cls.load(path)
+    def for_library(cls, libdir):
+        "the pairs recorded for the library in the folder `libdir` (see papers.config.library_dir)"
+        return cls.load(os.path.join(libdir, DISTINCT_FILE))
 
     @classmethod
     def load(cls, path):
         pairs = []
         if os.path.exists(path):
             try:
-                with open(path) as f:
+                with open(path, encoding='utf-8-sig') as f:
                     pairs = [p for p in json.load(f).get('distinct', [])
                              if isinstance(p, list) and len(p) == 2]
             except (ValueError, OSError, AttributeError) as error:

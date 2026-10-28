@@ -6,6 +6,15 @@ An entry links to its files (the PDF, supplementary material...) in its
 [Renaming files and keys](renaming.md)), but an entry can link to a file
 anywhere.
 
+The `file` field holds the links separated by `;`. Each link is `path`,
+`path:type` or `description:path:type`; papers writes `:path:type`
+(`:files/x.pdf:pdf`), as JabRef and Zotero do. In the three-part form, the
+path is everything between the first and the last `:`, so it may contain
+`:` (`:C:\x.pdf:pdf`). Spaces around each path are removed. There is no
+escaping: a path that contains `;` cannot be linked, JabRef's `\:` and `\;`
+are read as they are, and a Windows path written alone (`C:\x.pdf`) is
+read as the path `C` with type `\x.pdf`.
+
 ## What `add` does with a file
 
 The `files` setting says what `papers add` does with the PDF it adds, with
@@ -204,7 +213,9 @@ looks for each missing file, without parsing any PDF:
    checksum `.papers/files.json` has, if the history keeps a file with that
    content) is copied back there, and the link stays as it is
    (`one2000: files/a.pdf: restored from the history (deleted by step
-   4f1c9a2e)`). `papers undo` removes it again.
+   4f1c9a2e)`). `papers undo` removes it again. The step of `papers file
+   fix` keeps the file in the history too, so that undo and redo still
+   work once the step that deleted it is dropped.
 
 The file found in the pool, `--pool PATH` or a `--search` folder replaces
 the broken link. It is never moved, whatever the

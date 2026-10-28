@@ -98,6 +98,13 @@ class TestDuplicate(unittest.TestCase):
         self.assertEqual(parse_name('Smith, John'), ('Smith', 'John'))
         self.assertEqual(parse_name('John {van der Berg}'), ('{van der Berg}', 'John'))
         self.assertEqual(parse_name(''), ('', ''))
+        self.assertEqual(parse_name('{Smith, Jones and Co}'), ('{Smith, Jones and Co}', ''))
+        self.assertEqual(parse_name('{Smith, Jones}, Ltd'), ('{Smith, Jones}', 'Ltd'))
+
+    def test_split_names_outside_braces(self):
+        from papers.duplicate import split_names, author_id
+        self.assertEqual(split_names('{Barnes and Noble} and Smith, J.'), ['{Barnes and Noble}', 'Smith, J.'])
+        self.assertEqual(author_id({'author': '{Barnes and Noble} and Smith, J.'}), 'barnes and noble smith')
 
     def test_identity_of_a_book(self):
         book, = entries('@book{b, isbn = {0-306-40615-2}, title = {T}}')
@@ -145,3 +152,12 @@ def test_bare_value_stays_bare():
     from papers.merge import apply_entry
     apply_entry(b, Merge([b, a]).result())
     assert ' month = jan,' in format_library(library_from_entries([b]))
+
+
+def test_empty_field_not_added():
+    # an empty field of the added entry is not added; an empty field of the target stays
+    from papers.merge import Merge
+    a, b = parse_string('@article{a, note = {}, title = {T}}\n@article{b, pages = {}, title = {T}}').entries
+    result = Merge([a, b]).result()
+    assert 'pages' not in result, dict(result.items())
+    assert result['note'] == ''

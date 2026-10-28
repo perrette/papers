@@ -7,6 +7,7 @@ import sys
 
 import papers.config
 import papers.files
+import papers.utils
 from papers import logger
 from papers.bib import isvalidkey
 from papers.duplicate import FUZZY_RATIO, duplicate_groups, fuzzy_pairs
@@ -383,29 +384,37 @@ def set_tags(e, tags):
         del e['keywords']
 
 
+# tags are compared without case, as --tag finds them (Climate and climate are one tag): the
+# spelling of a tag already there is kept
+
+
 def add_tags(entries, tags):
     for e in entries:
         old = parse_keywords(e)
-        new = old + [t for i, t in enumerate(tags) if t not in old and t not in tags[:i]]
+        new = list(old)
+        for t in tags:
+            if t.lower() not in {x.lower() for x in new}:
+                new.append(t)
         if new != old:
             set_tags(e, new)
 
 
 def remove_tags(entries, tags):
+    removed = {t.lower() for t in tags}
     for e in entries:
         old = parse_keywords(e)
-        new = [t for t in old if t not in tags]
+        new = [t for t in old if t.lower() not in removed]
         if new != old:
             set_tags(e, new)
 
 
 def rename_tag(entries, old, new):
     """rename a tag in all entries, and the tags under it (climate/amoc ->
-    ocean/amoc); return the number of entries changed"""
+    ocean/amoc), whatever their case; return the number of entries changed"""
     def rename(t):
-        if t == old:
+        if t.lower() == old.lower():
             return new
-        if t.startswith(old + '/'):
+        if t.lower().startswith(old.lower() + '/'):
             return new + t[len(old):]
         return t
     count = 0
@@ -415,16 +424,17 @@ def rename_tag(entries, old, new):
             continue
         renamed = []
         for t in map(rename, tags):
-            if t not in renamed:
+            if t.lower() not in {x.lower() for x in renamed}:
                 renamed.append(t)
         set_tags(e, renamed)
         count += 1
     return count
 
 
-def _entry_from(path, fmt, entry):
+def _entry_from(biblio, path, fmt, entry):
     """the entry of `path` (- : the standard input) in place of `entry`: with
-    its key, and its file and keywords fields when the new one has none"""
+    its key, and its file and keywords fields when the new one has none. Its
+    file links are relative to the directory of `path`, as with `papers add`"""
     if path == '-':
         text = read_entry_text()
     else:
@@ -438,6 +448,8 @@ def _entry_from(path, fmt, entry):
         raise EditRejected(f'--from {path}: {len(new)} entries, --from takes one -- keeping original entries')
     new = new[0]
     set_entry_key(new, get_entry_val(entry, 'ID', ''))
+    if path != '-' and 'file' in new:
+        biblio.set_files(new, biblio.get_files(new, os.path.dirname(os.path.abspath(path))))
     for name in ('file', 'keywords'):
         if get_entry_val(new, name, None) is None and get_entry_val(entry, name, None) is not None:
             new[name] = get_entry_val(entry, name)
@@ -462,7 +474,7 @@ def editcmd(parser, o, config):
     if o.from_file:
         if len(entries) != 1:
             raise PapersExit(f'--from replaces one entry: {len(entries)} selected')
-        replace_entries(biblio, entries, [_entry_from(o.from_file, o.format, entries[0])])
+        replace_entries(biblio, entries, [_entry_from(biblio, o.from_file, o.format, entries[0])])
     elif o.set or o.unset:
         set_fields(entries, o.set or [], o.unset or [])
     elif o.new_key:
@@ -749,19 +761,22 @@ def listcmd(parser, o, config):
         return
 
     else:
+        # the listing is the data: on the standard output, with --porcelain too
+        out = papers.utils.PORCELAIN or sys.stdout
         if o.field:
             for e in entries:
-                print(format_key(e, no_key=o.no_key),*[get_entry_val(e, k, "") for k in o.field])
+                values = [get_entry_val(e, k, "") for k in o.field]
+                print(*values if o.no_key else [format_key(e), *values], file=out)
         elif o.format == 'key':
             for e in entries:
-                print(get_entry_val(e, 'ID', ''))
+                print(get_entry_val(e, 'ID', ''), file=out)
         elif o.format == 'bibtex':
-            print(format_entries(entries))
+            print(format_entries(entries), file=out)
         elif o.format in FORMATS:
-            sys.stdout.write(dumps(entries, o.format, files=biblio.get_files))
+            out.write(dumps(entries, o.format, files=biblio.get_files))
         else:
             for e in entries:
-                print(format_entry(biblio, e, no_key=o.no_key))
+                print(format_entry(biblio, e, no_key=o.no_key), file=out)
         return  # nothing was changed: no Added/Modified/Removed lines to look for
 
     # report any entry mutations (--attach, --add-tag, --rm-tag, --edit, --fetch,

@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from unittest import mock
 
-from papers.config import Config, CONFIG_FILE_LOCAL, MachineConfig
+from papers.config import Config, CONFIG_FILE_LOCAL, CONFIG_FILE_LOCAL_V2, MachineConfig
 
 
 class TestConfigRelpath(unittest.TestCase):
@@ -78,6 +78,17 @@ class TestLibraryId(unittest.TestCase):
         config.library_id()
         self.assertEqual(set(json.load(open(self.file))), {'bibtex', 'version', 'id'})
 
+    def test_written_to_papers_config_json(self):
+        # a library configuration of papers 2 is moved first, as by any save
+        v2 = os.path.join(self.tmp.name, CONFIG_FILE_LOCAL_V2)
+        os.rmdir(os.path.dirname(self.file))
+        json.dump({'bibtex': 'lib.bib', 'version': 3}, open(v2, 'w'))
+        config = Config.load(v2, machine=self.machine)
+        id = config.library_id()
+        self.assertFalse(os.path.exists(v2))
+        self.assertEqual(config.file, self.file)
+        self.assertEqual(json.load(open(self.file)), {'bibtex': 'lib.bib', 'version': 3, 'id': id})
+
     def test_machine_settings_not_read_from_a_library(self):
         json.dump({'bibtex': 'lib.bib', 'version': 3, 'history-dir': '/tmp/evil', 'keep-deleted-files': False,
                    'history-separate': True, 'history-size': 7}, open(self.file, 'w'))
@@ -90,3 +101,40 @@ class TestLibraryId(unittest.TestCase):
         js = config.tojson()
         self.assertNotIn('history-dir', js)
         self.assertNotIn('keep-deleted-files', js)
+
+    def test_unknown_keys_kept(self):
+        # e.g. the settings of a newer papers: kept as they are when papers saves the file
+        json.dump({'bibtex': 'lib.bib', 'version': 3, 'editor': 'vim', 'pools': ['old'], 'future': {'a': [1]},
+                   'nameformat': {'template': '{author}', 'future-field': 2}}, open(self.file, 'w'))
+        config = Config.load(self.file, machine=self.machine)
+        config.unset('editor')
+        config.set('name.template', '{year}')
+        config.save()
+        js = json.load(open(self.file))
+        self.assertEqual(js['future'], {'a': [1]})
+        self.assertEqual(js['nameformat'], {'template': '{year}', 'future-field': 2})
+        # the known settings are those of papers: unset, or read and no longer written
+        self.assertNotIn('editor', js)
+        self.assertNotIn('pools', js)
+
+
+class TestPathsOfSettings(unittest.TestCase):
+    "~ is the home directory in every path setting; a relative path of the global configuration is relative to its folder"
+
+    def test_home_in_bibtex_and_filesdir(self):
+        from papers.config import Config, MachineConfig
+        with tempfile.TemporaryDirectory() as d:
+            os.makedirs(os.path.join(d, '.papers'))
+            file = os.path.join(d, '.papers', 'config.json')
+            with open(file, 'w') as f:
+                json.dump({'bibtex': '~/refs.bib', 'filesdir': '~/pdfs', 'version': 3}, f)
+            config = Config.load(file, machine=MachineConfig(os.path.join(d, 'machine.json')))
+            self.assertEqual(config.bibtex, os.path.join(os.path.expanduser('~'), 'refs.bib'))
+            self.assertEqual(config.filesdir, os.path.join(os.path.expanduser('~'), 'pdfs'))
+
+    def test_relative_to_the_global_configuration(self):
+        from papers.config import MachineConfig
+        machine = MachineConfig('/etc/papers/config.json', {'default': 'library', 'history-dir': '../history'})
+        self.assertEqual(machine.default_path(), '/etc/papers/library')
+        self.assertEqual(machine.absolute('../history'), '/etc/history')
+        self.assertEqual(machine.absolute('~/h'), os.path.join(os.path.expanduser('~'), 'h'))

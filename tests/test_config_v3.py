@@ -185,7 +185,7 @@ class TestInit(ConfigTest):
 
     def test_init_options(self):
         self.papers('init shared')
-        self.papers('init lib --bibtex refs.bib --filesdir pdfs --pool ../shared '
+        self.papers('init lib --bibtex lib/refs.bib --filesdir lib/pdfs --pool shared '
                     '--paths absolute --name-template "{author}_{year}" --key-author-num 1')
         js = self.json('lib')
         self.assertEqual(js['bibtex'], 'refs.bib')
@@ -228,11 +228,26 @@ class TestInit(ConfigTest):
         self.assertFalse(os.path.exists(self.path(CONFIG_FILE_LOCAL)))
         with self.assertRaises(PapersExit):
             self.papers('init lib/sub')
-        # an existing directory; --bibtex and --filesdir are relative to it
-        self.papers('init lib --bibtex refs.bib --filesdir pdfs')
+        # an existing directory; --bibtex and --filesdir are relative to the current directory
+        self.papers('init lib --bibtex lib/refs.bib --filesdir lib/pdfs')
         js = self.json('lib')
         self.assertEqual((js['bibtex'], js['filesdir']), ('refs.bib', 'pdfs'))
         self.assertTrue(os.path.isfile(self.path('lib', 'refs.bib')))
+
+    def test_init_paths_relative_to_current_directory(self):
+        # run from another folder than the parent of the library: the paths
+        # are read from the current directory, and stored relative to the library
+        os.makedirs(self.path('work'))
+        self.papers('init ../pool', cwd=self.path('work'))
+        self.papers('init ../a/lib --bibtex refs.bib --filesdir pdfs --pool ../pool', cwd=self.path('work'))
+        js = self.json('a', 'lib')
+        self.assertEqual((js['bibtex'], js['filesdir'], js['pool']), ('../../work/refs.bib', '../../work/pdfs', '../../pool'))
+        self.assertTrue(os.path.isfile(self.path('work', 'refs.bib')))
+        self.assertEqual(os.path.realpath(Config.load(self.path('a', 'lib', CONFIG_FILE_LOCAL)).pool_path()),
+                         os.path.realpath(self.path('pool')))
+        # an absolute path is kept absolute
+        self.papers(f'init ../b --pool {self.path("pool")}', cwd=self.path('work'))
+        self.assertEqual(self.json('b')['pool'], self.path('pool'))
 
     def test_relative_paths_by_default(self):
         self.papers('init')
@@ -314,7 +329,7 @@ class TestDefaultLibrary(ConfigTest):
         self.papers('init pool')
         for cmd, error in [('init --global', r'--global needs the directory of the library: `papers init PATH '
                                              r'--global` \(`papers init \. --global` for the current directory\)'),
-                           ('init lib --global --pool ../pool', '--global: the default library has no pool'),
+                           ('init lib --global --pool pool', '--global: the default library has no pool'),
                            ('init pool --global', 'a library already exists here .*`papers config --global default '
                                                   'PATH` registers an existing library')]:
             with self.assertRaisesRegex(PapersExit, error, msg=cmd):
@@ -332,11 +347,11 @@ class TestDefaultLibrary(ConfigTest):
         self.assertIn('* files:   in the pool (shallow library)\n* pool:    ~/Documents/papers\n', out)
         self.assertEqual(self.json('lib')['pool'], '~/Documents/papers')  # written with ~
         with self.assertRaisesRegex(PapersExit, '--shallow is --pool with the default library'):
-            self.papers('init other --shallow --pool ../lib')
+            self.papers('init other --shallow --pool lib')
 
     def test_config_global_default(self):
         self.papers('init pool')
-        self.papers('init shallow --pool ../pool')
+        self.papers('init shallow --pool pool')
         self.papers(f'config --global default {self.path("pool")}')
         self.assertEqual(MachineConfig.load().default_path(), self.path('pool'))
         self.assertIn(f'default = {papers.config.short_home(self.path("pool"))}', self.papers(

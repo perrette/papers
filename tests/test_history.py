@@ -8,6 +8,8 @@ import tempfile
 import time
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import patch
 
 import papers.backup
 import papers.config
@@ -147,6 +149,10 @@ class TestStates(StoreTest):
         self.assertEqual(lib.state(two)['pools']['pool']['state'], pool.head('/l.bib')['state'])
         self.assertEqual(lib.line(three), [three, two, lib.state(two)['parent']])
         self.assertFalse(any(name[:-5].isdigit() for name in os.listdir(lib.states_dir)))
+        # the numbers are kept, for the links from another store
+        self.assertEqual(pool.upgraded(2), pool.head('/l.bib')['state'])
+        self.assertEqual(pool.upgraded(9), 9)
+        self.assertEqual(pool.upgraded(two), two)
 
     def test_places(self):
         p = self.store.project('p')
@@ -191,6 +197,35 @@ class TestPrune(StoreTest):
         self.assertEqual(len(self.objects()), 1)
         self.store.prune(1, now=time.time() + history.GRACE + 1)
         self.assertEqual(self.objects(), [])
+
+    def test_objects_of_dropped_states(self):
+        # the objects of a dropped state go at once, also when recent
+        p = self.store.project('p')
+        old = p.add(self.state('@article{old,\n}\n', t=time.time() - 10))
+        p.set_head('/lib.bib', p.add(self.state('@article{new,\n}\n', parent=old)))
+        self.store.prune(1)
+        self.assertEqual(len(self.objects()), 1)
+
+    def test_object_used_again_kept(self):
+        # an object that a command stores again after the dropped state: kept (its state is to come)
+        p = self.store.project('p')
+        old = p.add(self.state('@article{old,\n}\n', t=time.time() - 10))
+        p.set_head('/lib.bib', p.add(self.state('@article{new,\n}\n', parent=old)))
+        future = time.time() + 5
+        self.store.put_text('@article{old,\n}\n')
+        for root, _, files in os.walk(self.store.objects):
+            for f in files:
+                os.utime(os.path.join(root, f), (future, future))
+        self.store.prune(1)
+        self.assertEqual(len(self.objects()), 2)
+
+    def test_recent_orphans_do_not_push_states_out(self):
+        p = self.store.project('p')
+        old = p.add(self.state('@article{old,\n}\n', t=time.time() - 10))
+        p.set_head('/lib.bib', p.add(self.state('@article{new,\n}\n', parent=old)))
+        size = self.store.size()
+        self.store.put_text('@article{orphan,\n}\n' + 'x' * 1000)  # a command storing its state
+        self.assertEqual(self.store.prune(size), [])
 
     def test_files_to_the_discard(self):
         p = self.store.project('p')
@@ -290,6 +325,13 @@ class TestPlaces(LibraryTest):
         self.lib('config files move')
         self.assertEqual(Path(ignore).read_text(), 'files.json\n')
 
+    def test_gitignore_without_a_save_of_the_configuration(self):
+        # e.g. a configuration written by hand: the first command that writes the library writes it
+        ignore = self.path('lib', '.papers', '.gitignore')
+        os.remove(ignore)
+        self.add('one2000')
+        self.assertEqual(Path(ignore).read_text(), '*\n')
+
     def test_moved_library_continues(self):
         self.add('one2000')
         self.add('two2000')
@@ -356,6 +398,13 @@ class TestHistoryCommand(LibraryTest):
         self.assertNotIn(ids[0], self.out('history --all'))
         self.assertIn('no history yet', self.out('history'))
 
+    def test_bibtex_without_library(self):
+        # a bibtex given with --bibtex, without library: its history, as undo has it
+        Path(self.path('refs.bib')).write_text('@article{a2000,\n title = {A},\n year = {2000}\n}\n')
+        self.papers('tag a2000 --add x --bibtex refs.bib')
+        out = self.papers('history --bibtex refs.bib', sp_cmd='check_output')
+        self.assertRegex(out, r'> [0-9a-f]{8} papers tag a2000 --add x --bibtex refs.bib')
+
     def test_remove_keeps_the_history_of_a_copy(self):
         self.add('one2000')
         shutil.copytree(self.path('lib'), self.path('copy'))
@@ -370,6 +419,34 @@ class TestHistoryCommand(LibraryTest):
         self.add('one2000')
         with self.assertRaisesRegex(Exception, 'no terminal to confirm'):
             self.lib('history --remove')
+
+
+class TestStoredNames(LibraryTest):
+    "the names of the files of .papers/ and the paths of the operations are stored with /"
+
+    def test_known_state_id(self):
+        # the identifier of a state does not change (it names the files of .papers/)
+        Path(self.path('lib', 'papers.bib')).write_text(entry('one2000'))
+        os.makedirs(self.path('lib', '.papers', 'origin'))
+        Path(self.path('lib', '.papers', 'origin', 'pool.bib')).write_text(entry('one2000'))
+        Path(self.path('lib', '.papers', 'distinct.json')).write_text('{"distinct": []}\n')
+        Path(self.path('lib', '.papers', 'files.json')).write_text('{"files": {}}\n')
+        config = self.config()
+        snap = papers.backup._snapshot(config, papers.backup.store(config))
+        self.assertEqual(sorted(snap['files']), ['.papers/distinct.json', '.papers/files.json',
+                                                 '.papers/origin/pool.bib'])
+        state = dict(parent=None, time=1700000000.25, **snap)
+        self.assertEqual(history.state_id(state), 'c56b8e5014c28ea6944a45a1c5b0907e29dac4d2ace3e73d64f0305c598e1262')
+
+    def test_windows_separators(self):
+        # as on Windows: stored with /, read back with \\
+        config = SimpleNamespace(absolute_paths=True, bibtex='/lib/papers.bib')
+        op = {'op': 'moved', 'src': 'C:\\lib\\a.pdf', 'dst': 'C:\\lib\\files\\a.pdf'}
+        with patch.object(os, 'sep', '\\'):
+            [stored] = papers.backup._relative_ops([op], config)
+            self.assertEqual((stored['src'], stored['dst']), ('C:/lib/a.pdf', 'C:/lib/files/a.pdf'))
+            state = {'files': {'.papers/origin/pool.bib': ['ab']}}
+            self.assertEqual(papers.backup.state_files(state), {'.papers\\origin\\pool.bib': ['ab']})
 
 
 class TestSeparate(LibraryTest):
@@ -393,6 +470,13 @@ class TestSeparate(LibraryTest):
         self.assertIn('up to 7 MB', self.out('history'))
         # without history-separate, the size of the library does not apply
         self.lib('config history-separate false')
+        self.assertIn('up to 500 MB', self.out('history'))
+
+    def test_shared_store_in_a_folder_named_separate(self):
+        # the shared store is told from a store of its own by its place, not by the name of its folder
+        self.lib(f'config --global history-dir {self.path("separate", "history")}')
+        self.lib('config history-size 7')
+        self.add('one2000')
         self.assertIn('up to 500 MB', self.out('history'))
 
     def test_dry_run_writes_nothing(self):

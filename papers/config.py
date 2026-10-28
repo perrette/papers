@@ -1,4 +1,4 @@
-import os, json, re
+import os, json, re, shutil
 import copy
 from pathlib import Path
 import platformdirs
@@ -128,6 +128,11 @@ REMOVED_SETTINGS = {
 }
 
 
+# the keys of a library configuration file that papers reads, or read in earlier versions; the
+# file keeps the others as they are (e.g. the settings of a newer papers, see Config.tojson)
+_KNOWN_KEYS = {*SETTINGS, *REMOVED_SETTINGS, *_V2_KEYS, 'id', 'version', 'local', 'pools', 'light', 'sync'}
+
+
 def default_value(name):
     "built-in default of a setting"
     if name.startswith('name.'):
@@ -178,6 +183,43 @@ def json_set(js, name, value):
         js.pop(name, None)
     else:
         js[name] = value
+
+
+# the JSON type of each kind of setting in a configuration file
+_JSON_TYPES = {'path': (str, 'a text'), 'pool': (str, 'a text'), 'str': (str, 'a text'),
+               'bool': (bool, 'true or false'), 'int': (int, 'an integer')}
+
+
+def check_settings(js, file, names=SETTINGS):
+    """raise PapersExit if a setting of the json of a configuration file has
+    a value of the wrong type (None is unset)"""
+    for group in ('nameformat', 'keyformat'):
+        if js.get(group) is not None and not isinstance(js[group], dict):
+            raise PapersExit(f"{file}: invalid {group} {js[group]!r} (expected an object): correct the file")
+    for name in names:
+        value = json_get(js, name)
+        if value is None:
+            continue
+        kind = SETTINGS.get(name, 'str')
+        if isinstance(kind, tuple):
+            ok, expected = value in kind, 'one of ' + ', '.join(kind)
+        else:
+            types, expected = _JSON_TYPES[kind]
+            ok = isinstance(value, types) and (kind == 'bool' or not isinstance(value, bool))
+        if not ok:
+            raise PapersExit(f"{file}: invalid value {json.dumps(value)} for the setting {name} "
+                             f"(expected {expected}): correct the file")
+
+
+def read_config_file(file):
+    "the json of a configuration file; raise PapersExit if it is not a JSON object"
+    try:
+        js = json.load(open(file, encoding='utf-8-sig'))
+    except (json.JSONDecodeError, OSError) as error:
+        raise PapersExit(f"{file} could not be read ({error}): correct the file")
+    if not isinstance(js, dict):
+        raise PapersExit(f"{file} is not a JSON object: correct the file")
+    return js
 
 
 def parse_value(name, values):
@@ -239,7 +281,7 @@ def ignore_papers_folder(folder):
         return
     path = os.path.join(folder, '.gitignore')
     try:
-        current = open(path).read() if os.path.exists(path) else None
+        current = open(path, encoding='utf-8').read() if os.path.exists(path) else None
         if current is None or current in _LEGACY_GITIGNORES:
             write_atomic(path, GITIGNORE)
     except OSError as error:
@@ -255,6 +297,44 @@ def config_root(file):
     if p.name == 'config.json' and p.parent.name == '.papers':
         return p.parent.parent
     return p.parent
+
+
+def library_dir(bibtex, file=None):
+    """the folder whose .papers/ holds the files of the library of `bibtex`
+    (distinct.json, origin/, files.json, lock): that of its library
+    configuration file `file` (see config_root), else the folder of the
+    bibtex (a bibtex without library)"""
+    return os.path.abspath(config_root(file) if file else os.path.dirname(os.path.abspath(bibtex)))
+
+
+# the files of .papers/ that earlier v3 builds wrote next to the bibtex, not in the library folder
+_PAPERS_FILES_NEXT_TO_BIBTEX = ('distinct.json', 'origin', 'origin.bib')
+
+
+def move_papers_files(config):
+    """move distinct.json and origin/ (origin.bib) from the .papers/ next to
+    the bibtex, where earlier v3 builds wrote them, to the .papers/ of the
+    library folder: when the two folders differ, for a file the library
+    folder has not, and unless the folder of the bibtex is another library"""
+    if DRYRUN or not (config.file and config.is_library and config.bibtex):
+        return
+    old = os.path.join(os.path.dirname(os.path.abspath(config.bibtex)), '.papers')
+    new = os.path.join(config.libdir, '.papers')
+    if (os.path.realpath(old) == os.path.realpath(new) or not os.path.isdir(old)
+            or os.path.exists(os.path.join(old, 'config.json'))):
+        return
+    moved = []
+    for name in _PAPERS_FILES_NEXT_TO_BIBTEX:
+        src, dst = os.path.join(old, name), os.path.join(new, name)
+        if os.path.exists(src) and not os.path.exists(dst):
+            try:
+                os.makedirs(new, exist_ok=True)
+                shutil.move(src, dst)
+                moved.append(name)
+            except OSError as error:
+                logger.warning(f'{src}: not moved to {dst} ({error})')
+    if moved:
+        logger.info(f"moved {', '.join(moved)} from {short_home(old)} to {short_home(new)}")
 
 
 def library_config_file(path):
@@ -345,8 +425,8 @@ class MachineConfig:
     def __init__(self, file=None, data=None):
         self.file = file
         self.data = data if data is not None else {}
-        # pool names of earlier v3 builds (`pools.NAME PATH`): only read, so
-        # that their libraries keep finding their pool
+        # pool names of earlier v3 builds (`pools.NAME PATH`): not a setting,
+        # but written back by save, so that their libraries keep finding their pool
         self.pool_names = {}
         names = self.data.pop('pools', None)
         if isinstance(names, dict):
@@ -357,15 +437,13 @@ class MachineConfig:
         file = file or MACHINE_CONFIG_FILE
         data = {}
         if os.path.exists(file):
-            try:
-                data = json.load(open(file))
-            except (json.JSONDecodeError, OSError) as error:
-                logger.warning(f"unreadable global configuration {file}: {error} -- ignored")
+            data = read_config_file(file)
         file_version(data, file)
         data.pop('version', None)
         if data.pop('pool', None) not in (None, NO_POOL):
             logger.warning(f"{file}: the global pool setting is no longer used (ignored); "
                            "`papers config --global default PATH` sets a default library")
+        check_settings(data, file, [*SETTINGS, DEFAULT_LIBRARY])
         return cls(file, data)
 
     def exists(self):
@@ -383,16 +461,24 @@ class MachineConfig:
         return self.data.get(DEFAULT_LIBRARY) or None
 
     def default_path(self):
-        "absolute path of the default library, or None"
+        "absolute path of the default library, or None (a relative path is relative to the folder of this file)"
         if self.default is None:
             return None
-        return os.path.abspath(os.path.expanduser(self.default))
+        return self.absolute(self.default)
+
+    def absolute(self, path):
+        "a path of this configuration: ~ expanded, relative to the folder of the file"
+        path = os.path.expanduser(path)
+        base = os.path.dirname(os.path.abspath(self.file)) if self.file else os.getcwd()
+        return os.path.normpath(os.path.join(base, path))
 
     def save(self):
         os.makedirs(os.path.dirname(self.file), exist_ok=True)
         # through a temporary file (see write_atomic): a crash never leaves half a configuration
-        write_atomic(self.file, json.dumps({**self.data, 'version': CONFIG_VERSION},
-                                           sort_keys=True, indent=2, separators=(',', ': ')))
+        data = {**self.data, 'version': CONFIG_VERSION}
+        if self.pool_names:
+            data['pools'] = self.pool_names
+        write_atomic(self.file, json.dumps(data, sort_keys=True, indent=2, separators=(',', ': ')))
 
 
 def _read_earlier_v3(js, machine, file):
@@ -449,6 +535,8 @@ class Config:
         self.bibtex = bibtex
         # the identifier of the library: its history (see library_id)
         self.id = None
+        # the content of the configuration file, for the keys that papers does not know (see tojson)
+        self.raw = {}
         self.keyformat = copy.deepcopy(keyformat) if keyformat is not None else self._inherited_format('key')
         self.nameformat = copy.deepcopy(nameformat) if nameformat is not None else self._inherited_format('name')
         self.editor = editor if editor is not None else self.inherited('editor')
@@ -481,9 +569,11 @@ class Config:
             from papers.history import new_id  # papers.history is self-contained
             self.id = new_id()
             if os.path.exists(self.file) and not DRYRUN:
+                if is_v2_config_name(self.file):
+                    self.file = move_v2_config(self.file)  # as any save does
                 # the identifier only: the settings in memory may be those of the command
                 # (e.g. the files directory of the pool, see papers.pools.use_pool_files)
-                js = json.load(open(self.file))
+                js = json.load(open(self.file, encoding='utf-8-sig'))
                 js['id'] = self.id
                 write_atomic(self.file, json.dumps(js, sort_keys=True, indent=2, separators=(',', ': ')))
         return self.id
@@ -586,6 +676,11 @@ class Config:
         "directory that relative paths of a local configuration file refer to"
         return config_root(self.file).resolve() if self.file else Path.cwd()
 
+    @property
+    def libdir(self):
+        "the folder whose .papers/ holds the files of the library (see library_dir)"
+        return library_dir(self.bibtex, self.file if self.is_library else None)
+
     def _relpath(self, p):
         if p is None: return p
         if not self.is_library:  # v2 compatibility, remove with migrate
@@ -605,20 +700,20 @@ class Config:
         if p is None: return p
         if not self.is_library:  # v2 compatibility, remove with migrate
             return str(Path(p).resolve())  # abspath
-        # normpath, not resolve: '..' is removed, the symbolic links are kept
-        return os.path.normpath((Path(root).resolve() if root is not None else self.configdir) / p)
+        # normpath, not resolve: '..' is removed, the symbolic links are kept; ~ is the home directory
+        return os.path.normpath((Path(root).resolve() if root is not None else self.configdir) / os.path.expanduser(p))
 
 
     def tojson(self):
         """content of the configuration file: the paths, and the settings that
-        the library sets (the others come from the global configuration when loaded)"""
-        js = {
-            "filesdir": self._relpath(self.filesdir),
-            "bibtex": self._relpath(self.bibtex),
-        }
+        the library sets (the others come from the global configuration when
+        loaded), over the keys of the file that papers does not know (kept as
+        they are, also in nameformat and keyformat)"""
+        js = {key: copy.deepcopy(value) for key, value in self.raw.items() if key not in _KNOWN_KEYS}
+        js["filesdir"] = self._relpath(self.filesdir)
+        js["bibtex"] = self._relpath(self.bibtex)
         for name in LIBRARY_SETTINGS:
-            if self.is_set(name):
-                json_set(js, name, self.get(name))
+            json_set(js, name, self.get(name) if self.is_set(name) else None)
         if self.is_library and self.id:
             js["id"] = self.id
         if self.is_library:
@@ -647,7 +742,8 @@ class Config:
     def load(cls, the_file, machine=None, is_library=None):
         """is_library=False for a global configuration of v2 (the default
         tells them apart by the file content or name)"""
-        js = json.load(open(the_file))
+        js = read_config_file(the_file)
+        raw = copy.deepcopy(js)
         version = file_version(js, the_file)
         if is_library is None and version >= 3:
             is_library = True  # v3 has no global configuration
@@ -661,8 +757,10 @@ class Config:
             is_library = os.path.basename(the_file) != os.path.basename(CONFIG_FILE)
         machine = machine if machine is not None else MachineConfig.load()
         _read_earlier_v3(js, machine, the_file)
+        check_settings(js, the_file)
         cfg = cls(file=the_file, is_library=is_library, machine=machine,
                   bibtex=js.get('bibtex'), filesdir=js.get('filesdir'))
+        cfg.raw = raw
         # an identifier that papers did not write (e.g. a path, in a library received from someone) is ignored
         if is_library and isinstance(js.get('id'), str) and re.fullmatch(r'[0-9a-f]{32}', js['id']):
             cfg.id = js['id']
@@ -673,6 +771,7 @@ class Config:
             if value is not None:
                 cfg.set(name, value)
         cfg._update_paths_to_absolute()
+        move_papers_files(cfg)
         return cfg
 
 

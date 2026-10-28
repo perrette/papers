@@ -55,11 +55,15 @@ papers export DIR [KEY...|-] --format bib|ris|csl-json|bibjson|all
 | `bibjson` (or `bib.json`) | `papers.bib.json` | BibJSON: the bibtex fields as they are, in JSON, for programs (see [BibJSON](#bibjson)) |
 | `all` | the four files | |
 
+The files are written in UTF-8 with `\n` line ends on every platform, as
+the bibtex.
+
 Repeat the option or separate the formats with commas
 (`--format bib,ris`). The file links of each file point to the copies in
 `DIR/files`, relative to `DIR` (with `--files link`, to the files where
 they are). Without `bib`, `DIR` is not a papers library (it has no
-`.papers/config.json`), and papers says so:
+`.papers/config.json` and no bibtex, which would be named as the bibtex of
+the library), and papers says so:
 
 ```
 $ papers export ~/export-test --format all
@@ -100,11 +104,17 @@ The values are written as unicode (LaTeX accents and commands are
 converted, braces removed). Fields without an equivalent in the format are
 left out.
 
+The conversion from LaTeX to unicode is that of the pylatexenc library
+(through bibtexparser), also used by `papers check --encoding unicode` and
+for the entry fetched for an added PDF or DOI. Its exact text can change
+with the version of the library; papers does not read it back nor compare
+it.
+
 | bibtex | CSL-JSON | RIS |
 |---|---|---|
 | key | `id`, `citation-key` | `ID` |
 | entry type | `type` (below) | `TY` (below) |
-| `author`, `editor` | `author`, `editor` (`family`, `given`, `non-dropping-particle`, `suffix`; a name in braces is a `literal`) | `AU`, `ED` (`Family, Given, Suffix`) |
+| `author`, `editor`, `translator` | `author`, `editor`, `translator` (`family`, `given`, `non-dropping-particle`, `suffix`; a name in braces is a `literal`) | `AU`, `ED`, `A4` (`Family, Given, Suffix`) |
 | `title` | `title` | `TI` |
 | `journal`, `booktitle` | `container-title` | `T2` |
 | `series` | `collection-title` | `T3` |
@@ -113,6 +123,7 @@ left out.
 | `number`, `issue` | `issue` (articles), else `number` | `IS` |
 | `pages` | `page` (`11-29`) | `SP`, `EP` |
 | `doi`, `url` | `DOI`, `URL` | `DO`, `UR` |
+| `urldate` | `accessed` | `Y2` |
 | `isbn`, `issn` | `ISBN`, `ISSN` | `SN` |
 | `publisher` (or `school`, `institution`) | `publisher` | `PB` |
 | `address` | `publisher-place` | `CY` |
@@ -122,6 +133,10 @@ left out.
 
 CSL-JSON has no field for files: the links are written in its `custom`
 object, `"custom": {"file": [...]}`, which other programs ignore.
+
+A `mastersthesis` is a `thesis` of genre `Master's thesis` in CSL-JSON,
+and a `THES` record with `M3  - Master's thesis` in RIS (unless the entry
+has a `type` field), so that it is read back as a `mastersthesis`.
 
 | bibtex | CSL-JSON | RIS |
 |---|---|---|
@@ -190,4 +205,5 @@ $ papers list perrette --format bibjson
 `papers add refs.bib.json` reads a collection (`{"records": [...]}`), a
 list of records or one record. It also reads the DOI of BibJSON
 identifiers (`"identifier": [{"type": "doi", "id": ...}]`), and joins the
-lists of strings (e.g. keywords) with commas.
+lists of strings (e.g. keywords) with commas, leaving out `null` items.
+Numbers are kept as written in the file (`0.0000001`, `2000.0`).

@@ -193,11 +193,12 @@ class TestNestedTags(EntryTest):
 
     def test_rename(self):
         out = self.out('tag --rename climate ocean')
-        self.assertIn('2 entries', out)
+        self.assertIn('3 entries', out)
         self.assertEqual(self.tags('one2000'), ['ocean', 'ocean/amoc'])
         self.assertEqual(self.tags('two2000'), ['ocean/amoc/tipping', 'kiwi'])
         self.assertEqual(self.tags('three2000'), ['climate-review', 'climatex'])
-        self.assertEqual(self.tags('four2000'), ['ocean/amoc', 'Climate/Arctic'])
+        # whatever the case, as --tag climate finds it
+        self.assertEqual(self.tags('four2000'), ['ocean/amoc', 'ocean/Arctic'])
 
     def test_rename_nested(self):
         self.lib('tag --rename climate/amoc ocean')
@@ -350,6 +351,13 @@ class TestEditFrom(EntryTest):
         self.assertEqual(parse_keywords(e), ['ocean'])
         self.assertIn('other.pdf', e['file'])
 
+    def test_from_file_links_relative_to_file(self):
+        # as with papers add FILE: a relative link is relative to the directory of FILE
+        new = self.write('down', 'new.bib', content='@article{x,\n title = {T},\n file = {:paper.pdf:pdf}\n}\n')
+        self.lib(f'edit one2000 --from {new}')
+        biblio = Biblio.load(self.path('lib', 'papers.bib'), '')
+        self.assertEqual(biblio.get_files(self.entry('one2000')), [self.path('down', 'paper.pdf')])
+
     def test_from_stdin_pipe(self):
         with patch('sys.stdin', io.StringIO('@article{x,\n title = {Piped}\n}\n')), \
                 patch('papers.utils.stdin_is_terminal', return_value=False):
@@ -448,6 +456,18 @@ class TestEditSet(EntryTest):
         self.assertEqual(self.entry('perrette2013')['ids'], 'one2000')
         self.lib('edit one2000 --set note=found')  # the old key still selects it
         self.assertEqual(self.entry('perrette2013')['note'], 'found')
+
+    def test_keep_old_key_once(self):
+        # back and forth: each former key once in ids, never the key itself
+        self.lib('edit one2000 --key perrette2013 --keep-old-key')
+        self.lib('edit perrette2013 --key one2000 --keep-old-key')
+        self.assertEqual(self.entry('one2000')['ids'], 'perrette2013')
+        self.lib('edit one2000 --key perrette2013 --keep-old-key')
+        self.assertEqual(self.entry('perrette2013')['ids'], 'one2000')
+        self.lib('edit perrette2013 --key one2000')  # without --keep-old-key
+        self.assertNotIn('ids', self.entry('one2000'))
+        self.lib('edit one2000 --key One2000 --keep-old-key')  # the same key, by case
+        self.assertNotIn('ids', self.entry('One2000'))
 
     def test_key_refused(self):
         with self.assertRaisesRegex(PapersExit, 'another entry'):

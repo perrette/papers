@@ -11,8 +11,9 @@ state of the command, with its file operations (see papers.journal).
 
 A command that also writes another library (its pool: add in a shallow
 library, auto-push, push, sync) records the step of that library in its
-own: `pools` ({project id of the pool: {'state': n, 'config': path of its
-configuration}}). Undo and redo in the library take the pool step along:
+own: `pools` ({project id of the pool: {'state': n, 'base': its state before
+the command, 'config': path of its configuration}}; base is the parent of n,
+unless the command saved the pool several times). Undo and redo in the library take the pool step along:
 undone (redone) when the pool is still where the command left it (where
 the undo left it), else reverted (see papers.revert; the state of a revert
 lists the steps it takes back in `reverts`). The step of the pool
@@ -42,7 +43,10 @@ PRUNE_EVERY = 50
 
 def history_root(config):
     "the folder of the history of the machine (the history-dir setting)"
-    return os.path.expanduser(config.history_dir or papers.config.HISTORY_DIR)
+    if not config.history_dir:
+        return papers.config.HISTORY_DIR
+    # a relative path is relative to the folder of the global configuration (where history-dir is set)
+    return config.machine.absolute(config.history_dir)
 
 
 def store(config, id=None):
@@ -68,8 +72,8 @@ def history_size(config, st=None):
     """history-size in megabytes (0: no limit) of the store st (by default,
     that of the library): that of the library for a store of its own (the
     history-separate setting), that of the machine for the shared store"""
-    separate = config.history_separate if st is None else os.path.basename(
-        os.path.dirname(st.root)) == 'separate'
+    separate = config.history_separate if st is None else (
+        os.path.realpath(st.root) != os.path.realpath(history_root(config)))
     value = config.history_size if separate else config.machine.get('history-size')
     if value is None:
         value = papers.config.default_value('history-size')
@@ -99,14 +103,30 @@ def project_of(config, create=True):
 # ===================================
 
 def _library_names(config):
-    "the files of .papers/ that belong to the states of the library (relative to the folder of the bibtex)"
+    "the files of .papers/ that belong to the states of the library (relative to the library folder)"
     from papers.pools import ORIGIN_DIR, LEGACY_ORIGIN_FILE  # papers.pools imports this module
-    libdir = os.path.dirname(os.path.abspath(config.bibtex))
+    libdir = config.libdir
     names = {DISTINCT_FILE, LEGACY_ORIGIN_FILE, FILES_JSON}
     origin = os.path.join(libdir, ORIGIN_DIR)
     if os.path.isdir(origin):
         names.update(os.path.join(ORIGIN_DIR, f) for f in os.listdir(origin) if f.endswith('.bib'))
     return sorted(n for n in names if os.path.isfile(os.path.join(libdir, n)))
+
+
+# the names of the files of .papers/ and the paths of the operations are stored with /, on any
+# system (a state has the same identifier everywhere, see history.state_id); read with its separator
+
+def _stored(path):
+    return path.replace(os.sep, '/') if path and os.sep != '/' else path
+
+
+def _native(path):
+    return path.replace('/', os.sep) if path and os.sep != '/' else path
+
+
+def state_files(state):
+    "the files of .papers/ of a state: {name, with the separator of the system: pieces}"
+    return {_native(name): pieces for name, pieces in (state.get('files') or {}).items()}
 
 
 def _read(path):
@@ -120,19 +140,14 @@ def _bibtex_text(config):
 
 def _texts(config):
     "the text of the bibtex and of the files of .papers/, as they are on disk"
-    libdir = os.path.dirname(os.path.abspath(config.bibtex))
-    return _bibtex_text(config), {name: _read(os.path.join(libdir, name)) for name in _library_names(config)}
+    return _bibtex_text(config), {name: _read(os.path.join(config.libdir, name)) for name in _library_names(config)}
 
 
-def _snapshot(config, st, files=None, texts=None):
-    """the bibtex and the files of .papers/, stored; files: those of another
-    state (the files of .papers/ are not read); texts: the texts to store
-    (see _texts), instead of those on disk"""
-    text, others = texts or (_bibtex_text(config), None)
-    if files is None:
-        if others is None:
-            others = _texts(config)[1]
-        files = {name: st.put_text(content) for name, content in others.items()}
+def _snapshot(config, st, texts=None):
+    """the bibtex and the files of .papers/, stored; texts: the texts to
+    store (see _texts), instead of those on disk"""
+    text, others = texts or _texts(config)
+    files = {_stored(name): st.put_text(content) for name, content in others.items()}
     return {'bibtex': {'pieces': st.put_text(text), 'sha': history.sha256(text.encode('utf-8'))},
             'files': files}
 
@@ -140,16 +155,14 @@ def _snapshot(config, st, files=None, texts=None):
 def _relative_ops(ops, config):
     """the paths of the operations as the library writes its links: relative
     to the folder of the bibtex for a file in it (relative paths), else absolute"""
-    if config.absolute_paths:
-        return ops
     root = os.path.dirname(os.path.abspath(config.bibtex))
 
     def rel(path):
-        if path and os.path.isabs(path):
+        if path and os.path.isabs(path) and not config.absolute_paths:
             r = os.path.relpath(path, root)
             if r != '..' and not r.startswith('..' + os.sep):
-                return r
-        return path
+                return _stored(r)
+        return _stored(path)
     return [dict(op, src=rel(op['src']), dst=rel(op.get('dst'))) for op in ops]
 
 
@@ -157,12 +170,15 @@ def _absolute_ops(ops, config):
     root = os.path.dirname(os.path.abspath(config.bibtex))
 
     def ab(path):
+        path = _native(path)
         return os.path.normpath(os.path.join(root, path)) if path and not os.path.isabs(path) else path
     return [dict(op, src=ab(op['src']), dst=ab(op.get('dst'))) for op in ops]
 
 
 def _deleted_refs(ops):
-    return sorted({op['checksum'] for op in ops if op['op'] == 'trashed' and op.get('checksum')})
+    "the file objects a state needs: the files its command deleted, and those it copied from the history"
+    return sorted({op['checksum'] for op in ops if op.get('checksum') and (
+        op['op'] == 'trashed' or op['op'] == 'copied' and history.is_file_object(op['src']))})
 
 
 # recording
@@ -199,21 +215,19 @@ def sync_head(config, project=None, place=None):
             head = project.head(place)
     if head is not None and project.state(head['state'])['bibtex'].get('sha') == sha:
         return head['state']
-    texts = None
+    # the library at the start of the command, if kept (see start): the bibtex and the files of
+    # .papers/ that the command may have written before its save; else as they are on disk
+    texts = _before.pop(place, None)
     if head is None:
-        kind, message, files = 'start', 'the library before its first recorded command', None
-        texts = _before.get(place)  # the library before the command (see start)
-        if texts is not None:
-            sha = history.sha256(texts[0].encode('utf-8'))
+        kind, message = 'start', 'the library before its first recorded command'
     else:
         kind, message = 'outside', 'changed outside papers'
-        files = project.state(head['state']).get('files')
         logger.info(f'{os.path.basename(config.bibtex)} changed outside papers since its last state: recorded')
     state = dict(parent=head['state'] if head else None, time=time.time(), kind=kind, message=message,
-                 ops=[], deleted=[], **_snapshot(config, project.store, files=files, texts=texts))
+                 ops=[], deleted=[], **_snapshot(config, project.store, texts=texts))
     n = project.add(state)
     project.set_head(place, n)
-    if head is None and texts is not None and texts[0] != text:
+    if texts is not None and texts[0] != text:
         return sync_head(config, project, place)  # changed by the command before its save: recorded after
     return n
 
@@ -223,7 +237,7 @@ _NO_START = {'status', 'config', 'init', 'install', 'uninstall', 'migrate', 'his
              'undo', 'redo', 'restore', 'restore-backup'}
 
 
-# the library before the command, for its first state: {place: texts (see _texts)}
+# the library before the command, for the state before it (see start): {place: texts (see _texts)}
 _before = {}
 
 # fields of the next state of a library, {place: fields} (e.g. reverts: the steps a revert takes back)
@@ -236,9 +250,11 @@ _linked = {}
 
 def start(config, cmd):
     """at the start of a command: the library as it is before it, kept in
-    memory, for its first state if it has no history yet (the command may
-    write the files of .papers/ before it saves the bibtex; see sync_head).
-    Nothing is written: a command that changes nothing leaves no trace."""
+    memory, for the state that sync_head records before the save of the
+    command (the command may write the files of .papers/ before it saves
+    the bibtex): when the library has no history yet, or its bibtex changed
+    outside papers since its current state. Nothing is written: a command
+    that changes nothing leaves no trace."""
     _before.clear()
     _linked.clear()
     _fields.clear()
@@ -246,7 +262,9 @@ def start(config, cmd):
         return
     try:
         project, place = project_of(config, create=False)
-        if project is None or project.head(place) is None:
+        head = project.head(place) if project is not None else None
+        if head is None or project.state(head['state'])['bibtex'].get('sha') != history.sha256(
+                _bibtex_text(config).encode('utf-8')):
             _before[os.path.realpath(config.bibtex)] = _texts(config)
     except Exception as error:
         logger.debug(f'the library before the command is not kept: {error}')
@@ -270,7 +288,7 @@ def record(config, message=None, ops=None):
     linked = dict(_linked) if own else {}
     previous = project.state(parent) if parent is not None else None
     if (previous and not ops and not linked and previous['bibtex'] == snap['bibtex']
-            and previous.get('files') == snap['files']):
+            and state_files(previous) == state_files(snap)):
         n = parent
     else:
         state = dict(parent=parent, time=time.time(), kind='command', message=message or _message(),
@@ -284,7 +302,9 @@ def record(config, message=None, ops=None):
         n = project.add(state)
         project.set_head(place, n)
         if not own and config.file and config.is_library:
-            _linked[project.id] = {'state': n, 'config': os.path.abspath(config.file)}
+            # the pool saved several times by the command: its last state, and its state before the first save
+            first = _linked.get(project.id, {}).get('base', parent)
+            _linked[project.id] = {'state': n, 'base': first, 'config': os.path.abspath(config.file)}
     if own and n != parent:
         # the operations done after the save join this state; after a save that added none, they
         # make a state of their own at the end of the command (not that of the previous command)
@@ -310,9 +330,10 @@ def add_operations(config, n, ops):
 
 
 def prune(config, st):
+    """drop the oldest steps beyond history-size, and remove the pieces and
+    files that no step needs any more (also with history-size 0, no limit:
+    then no step is dropped)"""
     limit = _limit(config, st)
-    if not limit:
-        return
     dropped = st.prune(limit, discard=journal.to_system_trash)
     if dropped:
         logger.info(f'{len(dropped)} old step(s) dropped from the history '
@@ -409,7 +430,7 @@ def resolve(project, ref):
 
 def state_hashes(config, project, n):
     "the checksums of the files of the state n ({path: sha256}, from its files.json)"
-    pieces = (project.state(n).get('files') or {}).get(FILES_JSON)
+    pieces = state_files(project.state(n)).get(FILES_JSON)
     return papers.checksums.parse(project.store.text(pieces) if pieces else '{}', config)
 
 
@@ -470,18 +491,18 @@ def go_to(config, project, cur, target, pool_dirs=None, shared=()):
 def _write_library_files(config, project, cur, target):
     """the files of .papers/ of the state `target`; those of the state `cur`
     that `target` has not are removed (a file no state had is left alone)"""
-    libdir = os.path.dirname(os.path.abspath(config.bibtex))
+    libdir = config.libdir
 
     def inside(name):
         return not os.path.relpath(os.path.join(libdir, name), libdir).startswith('..')
 
-    files = project.state(target).get('files') or {}
+    files = state_files(project.state(target))
     for name, pieces in files.items():
         if inside(name):
             path = os.path.join(libdir, name)
             os.makedirs(os.path.dirname(path), exist_ok=True)
             papers.utils.write_atomic(path, project.store.text(pieces))
-    for name in (project.state(cur).get('files') or {}):
+    for name in state_files(project.state(cur)):
         path = os.path.join(libdir, name)
         if name not in files and inside(name) and os.path.isfile(path):
             logger.info(f'remove {path}: not in the restored state')
@@ -503,6 +524,7 @@ class _Pool:
         self.taken = []  # the steps undone (redone) in the pool
         self.reverts = []  # the steps reverted in the pool (it moved on since)
         self.again = []  # the steps done again in the pool (redo: it moved on since the undo of the step)
+        self.bases = {}  # step of reverts or again -> the state it is compared with (see pool_steps)
 
 
 def _shown(config, pool_config):
@@ -551,9 +573,10 @@ def pool_steps(config, project, steps, undo):
                     continue
                 pools[id] = pool
             pool = pools[id]
-            n = link['state']
-            parent = (pool.project.state(n) or {}).get('parent')
-            if pool.project.state(n) is None or parent is None:
+            n = pool.project.upgraded(link['state'])  # a number: a link of an earlier version to another store
+            # the pool's state before the command (several saves of the pool: before the first one)
+            parent = link.get('base', (pool.project.state(n) or {}).get('parent'))
+            if pool.project.state(n) is None or parent is None or pool.project.state(parent) is None:
                 continue  # no longer in the history of the pool
             before, after = (n, parent) if undo else (parent, n)
             if pool.at == after:
@@ -563,6 +586,7 @@ def pool_steps(config, project, steps, undo):
                 pool.at = after
             elif undo:
                 pool.reverts.append(n)
+                pool.bases[n] = parent
             else:
                 line = pool.project.line(pool.at)
                 revert = next((r for r in line if n in (pool.project.state(r).get('reverts') or [])), None)
@@ -570,6 +594,7 @@ def pool_steps(config, project, steps, undo):
                     pool.reverts.append(revert)
                 else:  # the undo took step n back there, and the pool moved on since: done again
                     pool.again.append(n)
+                    pool.bases[n] = parent
     return [p for p in pools.values() if p.taken or p.reverts or p.again], lines
 
 
@@ -597,10 +622,11 @@ def _move_pools(config, pools, undo, kind):
             revert_lines = []
             with journal.captured() as ops:  # the files of the pool: in its state, not in a step of the library
                 for n in pool.reverts:
-                    revert_lines += papers.revert.revert(pool.config, biblio, n, resolver, anywhere=True)
+                    revert_lines += papers.revert.revert(pool.config, biblio, n, resolver, anywhere=True,
+                                                         parent=pool.bases.get(n))
                 for n in pool.again:
                     revert_lines += papers.revert.revert(pool.config, biblio, n, resolver, forward=True,
-                                                         anywhere=True)
+                                                         anywhere=True, parent=pool.bases.get(n))
                 plural = lambda steps: f'step{"s" if len(steps) > 1 else ""} {", ".join(map(history.short, steps))}'
                 what = ([f'revert of {plural(pool.reverts)}'] if pool.reverts else []) + (
                     [f'{plural(pool.again)} again'] if pool.again else [])

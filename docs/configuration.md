@@ -5,9 +5,12 @@
 A library is a bibtex file, a files directory, and a configuration file
 `.papers/config.json` in the library directory. The `.papers/` folder also
 holds the origin copies of the entries exchanged with pools and the pairs
-recorded as not the same paper. `papers init` creates a library in the
-current directory, and `papers init DIR` in the directory `DIR` (created if
-missing, with its parents):
+recorded as not the same paper, also when the bibtex is in another folder.
+Versions up to 3.0.0b5 wrote these two next to the bibtex: papers moves
+them to the `.papers/` of the library when it opens the library, unless the
+folder of the bibtex is a library of its own. `papers init` creates a
+library in the current directory, and `papers init DIR` in the directory
+`DIR` (created if missing, with its parents):
 
 ```
 $> papers init
@@ -26,8 +29,9 @@ files directory is `files` (or an existing `pdfs`, `pdf`, `papers` or
 `--paths relative|absolute`, `--editor`
 and the name and key format options (see
 [Renaming files and keys](renaming.md)).
-With `DIR`, the paths given to `--bibtex` and `--filesdir` are relative to
-`DIR`.
+With `DIR`, the paths given to `--bibtex`, `--filesdir` and `--pool` are
+relative to the current directory, as `DIR` is (`papers init lib --bibtex
+lib/refs.bib`).
 `papers init` does not prompt, and fails if the directory already has a
 library configuration: change the settings of an existing library with
 `papers config`.
@@ -81,7 +85,9 @@ value is the global or default one; the other settings follow the global
 configuration. `papers config --unset NAME` removes a setting from the
 file, and the library then follows the global configuration again.
 `papers config --prune` removes all the values equal to the global or
-default value (`pool` stays).
+default value (`pool` stays). Keys of the file that papers does not know
+(for example the settings of a newer version) are kept as they are when
+papers writes the file.
 
 | Setting | Values |
 |---|---|
@@ -107,8 +113,22 @@ them for one command.
 Paths in the library configuration are stored relative to its directory, so
 that the library can be moved or shared as a whole. `papers config bibtex`,
 `papers config filesdir` and the list of `papers config` show them as
-absolute paths. A relative path given to set them is relative to the current
-directory.
+absolute paths.
+
+A path given on the command line is relative to the current directory, as
+for any other command: `papers config bibtex`, `papers config filesdir`,
+`papers config pool`, `papers config --global default` and `papers config
+--global history-dir`, and `papers init DIR --bibtex FILE --filesdir FOLDER
+--pool PATH` (relative to the current directory, not to DIR). papers then
+stores it as the setting is written: relative to the library for `bibtex`
+and `filesdir`, as described below for `pool`, and absolute (with `~` for
+the home directory) for `default` and `history-dir`.
+
+A configuration file (of a library or the global one) that is not valid
+JSON, or that gives a setting a value of the wrong type (for example
+`"auto-push": "no"` instead of `false`, or a number for `pool`), is an
+error: papers names the file and the setting and does nothing until the
+file is corrected.
 
 `history-dir` and `keep-deleted-files` can only be set in the global
 configuration (`papers config --global`): a library you receive from
@@ -163,7 +183,11 @@ has at most one pool, its `pool` setting: a path relative to the library
 (e.g. `../shared-with-bob`), a path with `~` or absolute, or `none`. A
 library that does not set it has no pool. The pool must be an existing
 library without pool: `papers init --pool PATH` and `papers config pool
-PATH` check it, and stop otherwise. `papers init --shallow` writes the
+PATH` check it, and stop otherwise. They also refuse a PATH that is the
+library itself (`.`, or its path written another way). A pool that takes a pool of its own
+later is checked again by `pull`, `push`, `sync` and the commands that add
+entries or files to the pool: they stop with an error (the automatic push
+after a command prints a warning instead). `papers init --shallow` writes the
 default library of the global configuration as the pool, with `~` as the
 global configuration writes it, so that a project copied to another
 machine with the same layout finds its pool there.
@@ -199,11 +223,19 @@ stands with it:
 - `library changed`: the library has changes to send (`papers push`), e.g.
   made in an editor, or with `auto-push` off;
 - `both changed`: both (`papers sync`);
-- `not pulled from yet`, `missing`, `not a library`.
+- `not pulled from yet`: no entry was exchanged with the pool yet;
+- `not pulled in full yet`: entries were exchanged, but the pool was never
+  pulled in full (only `papers pull KEY`, a pull that skipped a conflict,
+  or a push that left the pool with something the library does not have),
+  so papers does not know which pool changes the library has;
+- `missing`, `not a library`.
 
 papers compares the entries, not only the files: a pool that changed in
 entries the library does not have, or the same change made on both sides,
-is in sync. Once it found them in sync, papers remembers (with the history
+is in sync. It compares only the entries exchanged with the pool before
+(with an origin copy): an entry that the library and the pool both have
+but never exchanged is not compared; `papers pull --dry-run` finds those
+too. Once it found them in sync, papers remembers (with the history
 of the library, on the computer) the pieces of the library, of the pool and
 of the origin copies at that time, and later compares only the entries of
 the pieces that changed since: a single change does not cost a comparison
@@ -216,6 +248,12 @@ The file links in the bibtex are relative to the bibtex directory by default,
 so that a library folder can be moved or shared with its files. Set
 `papers config paths absolute` to store absolute paths instead, e.g. for a
 bibtex that links to files in a central folder.
+
+papers rewrites the links to the setting when it reads the bibtex: with
+`absolute`, all links; with `relative`, the absolute links (for example
+written by another program). The bibtex is written with them at the next
+command that saves it. On Windows, a link to a file on another drive than the
+bibtex stays absolute.
 
 The options `--relative-paths` and `--absolute-paths` of the commands still
 override the setting for one command, with a deprecation warning.
@@ -247,7 +285,8 @@ performs the one-time upgrades from version 2:
 Library configurations of version 2 keep working without migration: they
 are read as self-contained libraries (their files are their own, no pool),
 as in version 2. Their file is moved to `.papers/config.json` the next
-time papers saves the configuration (e.g. `papers config`), or by
+time papers writes the configuration (e.g. `papers config`, or the first
+command that changes the library, which adds the `id` of its history), or by
 `papers migrate` run in the library (see
 [Upgrading from papers 2](upgrading.md#project-libraries)). The configuration files written by version 3 carry
 `"version": 3`; a file without `version` is read as a file of version 2. A
