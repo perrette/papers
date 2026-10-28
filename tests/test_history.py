@@ -435,6 +435,13 @@ class TestSeparate(LibraryTest):
         self.lib('config history-separate false')
         self.assertIn('up to 500 MB', self.out('history'))
 
+    def test_shared_store_in_a_folder_named_separate(self):
+        # the shared store is told from a store of its own by its place, not by the name of its folder
+        self.lib(f'config --global history-dir {self.path("separate", "history")}')
+        self.lib('config history-size 7')
+        self.add('one2000')
+        self.assertIn('up to 500 MB', self.out('history'))
+
     def test_dry_run_writes_nothing(self):
         Path(self.path('one.bib')).write_text(entry('one2000'))
         self.lib('add ../one.bib --dry-run')

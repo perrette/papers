@@ -72,8 +72,8 @@ def history_size(config, st=None):
     """history-size in megabytes (0: no limit) of the store st (by default,
     that of the library): that of the library for a store of its own (the
     history-separate setting), that of the machine for the shared store"""
-    separate = config.history_separate if st is None else os.path.basename(
-        os.path.dirname(st.root)) == 'separate'
+    separate = config.history_separate if st is None else (
+        os.path.realpath(st.root) != os.path.realpath(history_root(config)))
     value = config.history_size if separate else config.machine.get('history-size')
     if value is None:
         value = papers.config.default_value('history-size')
