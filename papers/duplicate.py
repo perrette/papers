@@ -31,7 +31,7 @@ from typing import NamedTuple
 from unidecode import unidecode
 
 from papers import logger
-from papers.entries import get_entry_val
+from papers.entries import get_entry_val, split_depth0
 from papers.identifiers import normalize_doi, normalize_isbn, entry_arxiv
 from papers.latexenc import latex_to_unicode
 
@@ -92,16 +92,21 @@ def normalize_text(s):
 
 def split_names(field):
     "the names of an author (or editor) field"
-    return [n.strip() for n in re.split(r'\s+and\s+', field or '') if n.strip()]
+    return [n for n in split_depth0(field or '', r'\s+and\s+') if n]
 
 
 def parse_name(name):
     """(family, given) of one name: 'Smith, John', 'John Smith', or
     '{van der Berg}, Jane'. Given names may be empty."""
     name = name.strip()
-    if ',' in name:
-        family, given = name.split(',', 1)
-        return family.strip(), given.strip()
+    depth = 0
+    for i, c in enumerate(name):  # the first comma outside braces
+        if c == '{':
+            depth += 1
+        elif c == '}':
+            depth -= 1
+        elif c == ',' and depth == 0:
+            return name[:i].strip(), name[i + 1:].strip()
     # last word, keeping a braced group together
     m = re.match(r'^(.*?)\s*(\{[^{}]*\}|\S+)$', name)
     if not m:

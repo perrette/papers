@@ -98,6 +98,13 @@ class TestDuplicate(unittest.TestCase):
         self.assertEqual(parse_name('Smith, John'), ('Smith', 'John'))
         self.assertEqual(parse_name('John {van der Berg}'), ('{van der Berg}', 'John'))
         self.assertEqual(parse_name(''), ('', ''))
+        self.assertEqual(parse_name('{Smith, Jones and Co}'), ('{Smith, Jones and Co}', ''))
+        self.assertEqual(parse_name('{Smith, Jones}, Ltd'), ('{Smith, Jones}', 'Ltd'))
+
+    def test_split_names_outside_braces(self):
+        from papers.duplicate import split_names, author_id
+        self.assertEqual(split_names('{Barnes and Noble} and Smith, J.'), ['{Barnes and Noble}', 'Smith, J.'])
+        self.assertEqual(author_id({'author': '{Barnes and Noble} and Smith, J.'}), 'barnes and noble smith')
 
     def test_identity_of_a_book(self):
         book, = entries('@book{b, isbn = {0-306-40615-2}, title = {T}}')

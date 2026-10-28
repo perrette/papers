@@ -309,7 +309,8 @@ in this order:
 4. otherwise the family names of the authors and the title, compared without
    case, braces, accents and extra spaces. Both entries need authors and a
    title: two entries titled "Editorial" without authors are not the same
-   paper.
+   paper. A name in braces is one name: `and` and commas inside braces
+   (`{Barnes and Noble}`) do not separate names, as in BibTeX.
 
 The first identifier that both entries have decides: equal values make the
 same paper, different values two papers. A preprint and the published
