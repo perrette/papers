@@ -3,9 +3,21 @@ Key and file name formatting
 """
 import os
 import re
-from slugify import slugify
+import unicodedata
+from slugify import slugify as _slugify
+from unidecode import unidecode
 from papers.encoding import family_names
 from papers.entries import get_entry_val
+
+def slugify(text):
+    """python-slugify's slug of `text`, with the transliteration table of
+    Unidecode, whatever table python-slugify would choose (text-unidecode
+    when Unidecode is not installed): the slug is that of python-slugify with
+    Unidecode installed, apostrophes included (one in `text` separates words,
+    one from the table, as in Ь, is dropped)"""
+    text = unidecode(unicodedata.normalize('NFKD', text.replace("'", '-'))).replace("'", '')
+    return _slugify(text)
+
 
 def title_words(words, maxlength=30, minwordlen=3, n=100, sep='-'):
     """the first `n` words of at least `minwordlen` characters, without the

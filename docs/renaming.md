@@ -117,6 +117,11 @@ Entries are case-sensitive, and a few more fields are added, so that:
   depending on the number of authors
 - `AuthorX` same as `authorX` but capitalized
 
+The author names, the title words, `{doi_}` and `{doi_or_id}` are written
+in ASCII: accented and non-Latin letters are transliterated with the table
+of the Unidecode library (`Müller` gives `muller`, `Хрущёв` gives
+`khrushchev`), and other characters separate words.
+
 ## Modifiers
 
 The modifiers are:
