@@ -7,6 +7,7 @@ import papers.config
 import papers.history
 from papers import backup, journal, logger
 from papers.entries import get_entry_val
+from papers.filename import fit_name
 from papers.config import short_home
 from papers.files import (SearchFolders, attach_files, broken_links, check_entry_files, clean_filesdir,
                           delete_files, detach_links, execute_moves, files_to_delete, link_snapshot, linked_files,
@@ -239,7 +240,7 @@ def _search_names(e, link, rest, nameformat):
     ext = os.path.splitext(link)[1]
     if sum(os.path.splitext(f)[1].lower() == ext.lower() for f in rest) == 1:
         try:
-            names.append(os.path.basename(nameformat(e)) + ext)
+            names.append(os.path.basename(fit_name(nameformat(e) + ext)))
         except Exception as error:
             logger.debug(f'{e.key}: no template name: {error}')
     return names
