@@ -827,6 +827,11 @@ def loads_ris(text, rispy=None):
 
 _BIBJSON_NAMES = ('author', 'editor')
 _BIBJSON_SKIPPED = ('type', 'id', 'cid', 'collection', 'file', 'identifier', 'link', 'license')
+# a bibtex field with the name of a key of BibJSON (e.g. the type of a techreport, `type = {Working
+# paper}`) goes in a namespaced key, `bibtex:type`, declared in the metadata of the collection (as the
+# BibJSON convention says for additional keys): the record's own type and id stay the entry type and key
+_BIBJSON_NAMESPACE = 'bibtex'
+_BIBJSON_NAMESPACE_URL = 'https://www.bibtex.org/Format/'
 
 
 def entry_to_bibjson(e, files=()):
@@ -838,6 +843,8 @@ def entry_to_bibjson(e, files=()):
             record[field.key] = [{'name': name} for name in _split_depth0(field.value, r'\s+and\s+')]
         elif field.key == 'journal':
             record['journal'] = {'name': field.value}
+        elif field.key in _BIBJSON_SKIPPED:
+            record[f'{_BIBJSON_NAMESPACE}:{field.key}'] = field.value
         else:
             record[field.key] = field.value
     if files:
@@ -851,13 +858,21 @@ def _bibjson_text(value):
         return _bibjson_text(value.get('name', ''))
     if isinstance(value, list):
         return ', '.join(_bibjson_text(v) for v in value)
+    if isinstance(value, bool):
+        return 'true' if value else 'false'
+    if isinstance(value, float) and value.is_integer():
+        return str(int(value))
     return str(value)
 
 
 def bibjson_to_entry(record):
     fields = {}
     for name, value in record.items():
-        if name.startswith('_') or name in _BIBJSON_SKIPPED:
+        if name.startswith(_BIBJSON_NAMESPACE + ':'):
+            name = name[len(_BIBJSON_NAMESPACE) + 1:]  # a bibtex field with the name of a BibJSON key
+        elif name.startswith('_') or name in _BIBJSON_SKIPPED:
+            continue
+        if value is None:
             continue
         if name in _BIBJSON_NAMES and isinstance(value, list):
             fields[name] = ' and '.join(_bibjson_text(v) for v in value)
@@ -874,7 +889,11 @@ def bibjson_to_entry(record):
 
 def dumps_bibjson(entries, files=lambda e: ()):
     records = [entry_to_bibjson(e, files(e)) for e in entries]
-    collection = {'metadata': {'records': len(records)}, 'records': records}
+    metadata = {'records': len(records)}
+    prefix = _BIBJSON_NAMESPACE + ':'
+    if any(name.startswith(prefix) for record in records for name in record):
+        metadata['namespace'] = {_BIBJSON_NAMESPACE: _BIBJSON_NAMESPACE_URL}
+    collection = {'metadata': metadata, 'records': records}
     return json.dumps(collection, indent=2, ensure_ascii=False) + '\n'
 
 
