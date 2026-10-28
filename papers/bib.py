@@ -533,7 +533,13 @@ class Biblio:
     def set_files(self, entry, files, relative_to=None):
         if relative_to is None:
             relative_to = self.relative_to
-        entry['file'] = format_file(list(sorted(set(files), key=lambda f: files.index(f))), relative_to=relative_to)
+        unique, seen = [], set()
+        for f in files:  # a repeat: the same file, however written (files/./a.pdf, files/a.pdf)
+            path = os.path.normpath(os.path.join(relative_to or '', f))
+            if path not in seen:
+                seen.add(path)
+                unique.append(f)
+        entry['file'] = format_file(unique, relative_to=relative_to)
         # delete field if empty
         if not entry['file'].strip():
             del entry['file']

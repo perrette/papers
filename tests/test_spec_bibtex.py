@@ -512,6 +512,12 @@ class TestFilePaths(SpecLibrary):
         self.assertEqual(biblio.get_files(biblio.entries[0]), [self.path('files', 'a.pdf'),
                                                                os.path.normpath(outside)])
 
+    def test_one_file_however_written(self):
+        "bibtex.md 5.2: two spellings of one file are one link"
+        biblio = Biblio.load(self.bibtex, '')
+        biblio.set_files(biblio.entries[0], [self.path('files', '.', 'a.pdf'), self.path('files', 'a.pdf')])
+        self.assertEqual(get_entry_val(biblio.entries[0], 'file'), ':files/a.pdf:pdf')
+
     def test_no_link_left(self):
         "bibtex.md 5.2: if no link is left, the field is removed"
         biblio = Biblio(parse_string('@misc{k, file = {:a.pdf:pdf}}'), relative_to=self.dir)

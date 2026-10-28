@@ -1795,12 +1795,13 @@ of the library directory; a bibtex without library has none.
 ```
 
 - Keys: the path of a file, relative to the directory of the bibtex (with
-  `..` for a file outside it), or absolute with `paths absolute`. Values:
-  sha256 of the file's content.
+  `..` for a file outside it), or absolute with `paths absolute`, with `/`
+  as separator on every system. Values: sha256 of the file's content.
 - Written with one-space indentation, sorted keys and a final newline,
   through a temporary file and a rename. When there is no checksum left,
   the file is deleted.
-- Read: each key resolved against the directory of the bibtex and
+- Read: each key, with any `\` read as `/` (papers on Windows wrote `\`
+  before 3.0.0b6), resolved against the directory of the bibtex and
   normalized. An unreadable file means no checksums.
 
 When it is written: at each save of the library (5.4, before the bibtex):
@@ -1824,6 +1825,7 @@ a file at its path with another content is not overwritten and not
 moved.
 
 Tests: tests/test_spec_history.py::TestFilesJson::test_format,
+tests/test_spec_history.py::TestFilesJsonKeys::test_written_and_read_with_slash,
 tests/test_spec_history.py::TestFilesJson::test_absolute,
 tests/test_spec_history.py::TestFilesJson::test_deleted_without_checksums,
 tests/test_spec_history.py::TestFilesJson::test_relative_to_the_bibtex,
@@ -2091,7 +2093,7 @@ are those of the code before the fix.
     (3.4), and undo and redo find it by checksum after a change of
     `history-dir` (6.4, 6.6).
 
-15. **Separators in `files.json`.** The keys of `.papers/files.json` are
+15. **Resolved (paths-slash):** the keys are written with `/` on every system; a `\` in a key is read as `/`. Was: **Separators in `files.json`.** The keys of `.papers/files.json` are
     written with `os.path.relpath`, so with `\` on Windows
     (papers/checksums.py:60), and read with `os.path.join`
     (papers/checksums.py:39). A library written on Windows and read on

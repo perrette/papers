@@ -1096,3 +1096,21 @@ class TestFilesJson(SpecTest):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class TestFilesJsonKeys(unittest.TestCase):
+    "history.md: the keys of .papers/files.json use / on every system"
+
+    def test_written_and_read_with_slash(self):
+        from types import SimpleNamespace
+        from papers import checksums
+        with tempfile.TemporaryDirectory() as d:
+            config = SimpleNamespace(file=os.path.join(d, '.papers', 'config.json'), is_library=True, libdir=d,
+                                     bibtex=os.path.join(d, 'papers.bib'), absolute_paths=False)
+            path = os.path.join(d, 'files', 'a.pdf')
+            with patch('os.sep', '\\'), patch('os.path.relpath', return_value='files\\a.pdf'):
+                checksums.save(config, {path: 'abc'})
+            stored = json.load(open(os.path.join(d, '.papers', 'files.json')))
+            self.assertEqual(stored, {'files': {'files/a.pdf': 'abc'}})
+            # a key written with \ by papers on Windows before 3.0.0b6 is read too
+            self.assertEqual(checksums.parse('{"files": {"files\\\\a.pdf": "abc"}}', config), {path: 'abc'})

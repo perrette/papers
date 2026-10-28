@@ -569,12 +569,12 @@ Tests: tests/test_spec_bibtex.py::TestFileSyntax::test_reading, tests/test_spec_
   entry). The bibtex is written with them at the next command that saves
   it, even if that command changes nothing else.
 - Links are kept in their order. When papers sets the links of an entry,
-  a path given twice (the same text, before normalization) is kept once,
-  at its first position: two spellings of one path (`files/./a.pdf` and
-  `files/a.pdf`) are both written. If no link is left, the field is
-  removed.
+  a file given twice is kept once, at its first position; paths are
+  compared normalized (resolved against the bibtex directory), so
+  `files/./a.pdf` and `files/a.pdf` are one link. If no link is left, the
+  field is removed.
 
-Tests: tests/test_spec_bibtex.py::TestFilePaths::test_relative_to_bibtex, tests/test_spec_bibtex.py::TestFilePaths::test_no_link_left, tests/test_spec_bibtex.py::TestFilePaths::test_rewritten_at_load, tests/test_library_unit.py::TestGetBiblio::test_absolute_links_made_relative, tests/test_library_unit.py::TestGetBiblio::test_relative_links_left_alone, tests/test_library_unit.py::TestGetBiblio::test_link_on_another_drive_stays_absolute, tests/test_unchanged_save.py::TestUnchangedSave::test_converted_links_are_saved
+Tests: tests/test_spec_bibtex.py::TestFilePaths::test_relative_to_bibtex, tests/test_spec_bibtex.py::TestFilePaths::test_one_file_however_written, tests/test_spec_bibtex.py::TestFilePaths::test_no_link_left, tests/test_spec_bibtex.py::TestFilePaths::test_rewritten_at_load, tests/test_library_unit.py::TestGetBiblio::test_absolute_links_made_relative, tests/test_library_unit.py::TestGetBiblio::test_relative_links_left_alone, tests/test_library_unit.py::TestGetBiblio::test_link_on_another_drive_stays_absolute, tests/test_unchanged_save.py::TestUnchangedSave::test_converted_links_are_saved
 
 ## 6. The `keywords` field and tags
 
@@ -1027,7 +1027,7 @@ Tests: in exchange.md, section 5.
     as UTF-8, a byte order mark dropped (section 9.4; #162).
 18. **The DOI parser of `check --fix-doi`.** Resolved: a heuristic,
     described as informative in section 3.6 (decision (c)12).
-19. **Two spellings of one path are both kept.** When papers sets the
+19. **Resolved (paths-slash):** links are compared after normalization. Was: **Two spellings of one path are both kept.** When papers sets the
     links of an entry, a path is dropped as a repeat only when its text is
     the same before normalization: `files/./a.pdf` and `files/a.pdf` are
     written as two links `:files/a.pdf:pdf`. papers/bib.py:533-539.
