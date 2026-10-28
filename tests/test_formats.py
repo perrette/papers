@@ -294,6 +294,25 @@ class TestBibJSON(unittest.TestCase):
             self.assertEqual({k: v for k, v in fields(b).items() if k != 'file'},
                              {k: v for k, v in fields(e).items() if k != 'file'}, e.key)
 
+    def test_field_named_as_a_bibjson_key(self):
+        # the type of a techreport and a field `id`: namespaced (bibtex:type), the record's type and id stay
+        [e] = parse_string('@techreport{wp2020,\n id = {X1},\n title = {T},\n type = {Working paper}\n}').entries
+        collection = json.loads(formats.dumps_bibjson([e]))
+        record, = collection['records']
+        self.assertEqual((record['type'], record['id']), ('techreport', 'wp2020'))
+        self.assertEqual((record['bibtex:type'], record['bibtex:id']), ('Working paper', 'X1'))
+        self.assertIn('bibtex', collection['metadata']['namespace'])
+        [back] = formats.loads_bibjson(json.dumps(collection))
+        self.assertEqual((back.key, back.entry_type), ('wp2020', 'techreport'))
+        self.assertEqual((fields(back)['type'], fields(back)['id']), ('Working paper', 'X1'))
+
+    def test_json_values(self):
+        [e] = formats.loads_bibjson(json.dumps({'type': 'misc', 'id': 'x', 'year': 2000.0, 'note': None,
+                                                'peer-reviewed': True}))
+        self.assertEqual(fields(e)['year'], '2000')
+        self.assertNotIn('note', fields(e))
+        self.assertEqual(fields(e)['peer-reviewed'], 'true')
+
     def test_spec_examples(self):
         first, second = read_file(os.path.join(FIXTURES, 'bibjson.json'), 'bibjson')
         self.assertEqual(first.key, '')  # no id: papers makes one

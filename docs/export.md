@@ -179,7 +179,13 @@ $ papers list perrette --format bibjson
   `{"name": ...}`, as BibJSON gives them;
 - the other fields are strings, as in the bibtex;
 - `file` is the list of the file links (absolute paths with `papers list`,
-  relative to `DIR` with `papers export`).
+  relative to `DIR` with `papers export`);
+- a bibtex field with the name of a BibJSON key (`type`, `id`, `cid`,
+  `collection`, `identifier`, `link`, `license`), e.g. the `type` of a
+  techreport (`type = {Working paper}`), is written as `bibtex:type`, and
+  the collection's `metadata` declares the namespace
+  (`"namespace": {"bibtex": ...}`), as BibJSON says for additional keys.
+  papers reads it back as the bibtex field.
 
 `papers add refs.bib.json` reads a collection (`{"records": [...]}`), a
 list of records or one record. It also reads the DOI of BibJSON
