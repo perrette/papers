@@ -10,6 +10,7 @@ from papers.config import Config, CONFIG_FILE_LOCAL
 from papers.pools import Exchange, Pools, PoolError, load_biblio, mtime, use_pool_files
 from papers.utils import PapersExit
 
+from tests.common import ConfigTest
 from tests.test_pools import PoolTest, SMITH_BIB, NEW_BIB
 
 
@@ -309,3 +310,33 @@ class TestSync(PoolTest):
         self.lib('sync mine2022 Brown_2021')
         self.assertIn('Brown_2021', self.bib()[1])
         self.assertEqual(len(self.bib('pool')[1]), 3)
+
+
+class TestPoolIdentifier(ConfigTest):
+    """the origin records name the pool by its library identifier: a library
+    moved away from its pool keeps them"""
+
+    def test_library_moved(self):
+        import shutil
+        self.papers('init pool')
+        self.papers('init lib --pool ../pool')
+        Path(self.path('new.bib')).write_text('@article{mine2022,\n author = {Mine, Me},\n title = {Mine},\n'
+                                              ' year = {2022}\n}\n')
+        self.papers('add ../new.bib', cwd=self.path('lib'))
+        self.papers('pull', cwd=self.path('lib'))  # an exchange once the pool has its identifier
+        names = os.listdir(self.path('lib', '.papers', 'origin'))
+        self.assertEqual(len(names), 1)
+        self.assertTrue(names[0].startswith('pool-'), names)  # named after the pool folder
+        text = Path(self.path('lib', '.papers', 'origin', names[0])).read_text()
+        self.assertRegex(text, r'@comment\{papers-pool [0-9a-f]{32}\}')
+        self.assertIn('@comment{papers-pool-path', text)
+        # the library moves; its pool setting is set again
+        os.makedirs(self.path('elsewhere'))
+        shutil.move(self.path('lib'), self.path('elsewhere', 'lib'))
+        lib = self.path('elsewhere', 'lib')
+        self.papers('config pool ../../pool -y', cwd=lib)
+        # a correction in the pool (before: under the former id, the records were lost: nothing to pull)
+        self.papers('edit mine2022 --set title=Corrected', cwd=self.path('pool'))
+        out = self.papers('pull', cwd=lib, sp_cmd='check_output')
+        self.assertIn('Modified -> mine2022: Corrected', out)
+        self.assertIn('(in sync)', self.papers('status', cwd=lib, sp_cmd='check_output'))

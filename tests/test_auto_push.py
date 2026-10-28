@@ -539,6 +539,7 @@ class TestShallowSharedLinks(ExchangeTest):
         self.papers(f'file detach {self.si}', cwd=self.path('pool'))
         self.out('pull')
         self.assertIn(self.si, self.files('smith2020climate'))
+        origin = self.origin_file()  # (renamed if the records moved to the pool's identifier)
         self.assertNotIn('papers-files', origin.read_text())
         self.assertIn(' file = ', origin.read_text())
 
