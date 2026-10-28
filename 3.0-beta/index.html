@@ -967,8 +967,15 @@ project folder.</p>
   title, and merge them.</li>
 <li><strong>Export</strong> a selection as a library with copies of its PDFs, or as RIS
   and CSL-JSON (for Zotero, EndNote, pandoc) or BibJSON (for programs).</li>
-<li><strong>Plain files</strong>: the bibtex is the database. <code>papers undo</code> / <code>papers redo</code>
-  take back any command, with the files it moved or deleted.</li>
+<li><strong>Plain files</strong>: the bibtex is the database, the PDFs stay in folders you
+  see, and the library can be edited with any tool.</li>
+<li><strong>Undo anything</strong>: every command is a step of the library's history,
+  kept on your computer; <code>papers undo</code> / <code>papers redo</code> take back any
+  command, with the files it moved, renamed or deleted, and a change made
+  outside papers is never lost.</li>
+<li><strong>Fast on large libraries</strong>: the parsed bibtex is cached piece by piece,
+  and <code>papers status</code> compares a project with its pool only where they
+  changed.</li>
 </ul>
 <h2 id="get-started">Get started<a class="headerlink" href="#get-started" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pip<span class="w"> </span>install<span class="w"> </span>--pre<span class="w"> </span>papers-cli<span class="w">    </span><span class="c1"># the 3.0 beta</span>
