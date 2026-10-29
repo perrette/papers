@@ -368,6 +368,7 @@ for the specification. A section marked free has none.
 - tests/test_config_v3.py::TestDefaultLibrary::test_outside_library
 - tests/test_filename_unit.py::TestSafeFileNames::test_keys_unchanged
 - tests/test_spec_library.py::TestTemplateKeys::test_key_not_transformed
+- tests/test_spec_bibtex.py::TestKeySuffix::test_empty_template_key
 
 ### Path safety
 
@@ -615,6 +616,8 @@ for the specification. A section marked free has none.
 - tests/test_spec_bibtex.py::TestKeySuffix::test_suffix_rule
 - tests/test_spec_bibtex.py::TestKeySuffix::test_entry_without_key
 - tests/test_spec_bibtex.py::TestKeySuffix::test_given_key_taken
+- tests/test_spec_bibtex.py::TestKeySuffix::test_empty_template_key
+- tests/test_entry_cmds.py::TestAddEmptyKey::test_add
 - tests/test_bib_unit.py::TestAppendAbc::test_ignores_case
 - tests/test_bib_unit.py::TestAppendAbc::test_upper_case_suffix
 - tests/test_bib_unit.py::TestAppendAbc::test_after_z

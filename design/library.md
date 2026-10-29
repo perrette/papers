@@ -844,6 +844,9 @@ linked where it is keeps its name.
 - The key template gives a key for entries created from a PDF or a DOI,
   for entries without key, and with `--update-key`/`--auto-key`. Entries
   added from a bibtex file keep their key otherwise.
+- An empty key from the template: a new entry gets a key from its title
+  and year (`only2000`, else `entry`), a renamed entry keeps its key
+  (`bibtex.md` sections 8 and 7.2).
 - Collisions: the letter suffix rule of `bibtex.md` section 8. The
   entry's own key does not count as taken: an entry whose key is already
   the template's keeps it (`check --auto-key` leaves `smith2000` as it

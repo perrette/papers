@@ -155,7 +155,7 @@ def addcmd(parser, o, config):
             raise PapersExit("No entry added: use --doi, --metadata, --key, --attachment, --title, --author, "
                              "--journal, --year to add a new entry")
 
-        metadata.setdefault('ID', biblio.keyformat(metadata))
+        metadata.setdefault('ID', biblio.keyformat(metadata) or biblio.generate_key(metadata, new=True))
         metadata.setdefault('ENTRYTYPE', 'article')
         entry = entry_from_dict(metadata)
         if o.edit:

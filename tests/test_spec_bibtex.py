@@ -693,6 +693,24 @@ class TestKeySuffix(unittest.TestCase):
                                                   Field('year', '2000')])])
         self.assertEqual(sorted(e.key for e in biblio.entries), ['smith2000', 'smith2000b'])
 
+    def test_empty_template_key(self):
+        "bibtex.md 8: the template gives an empty key: the first title word and the year, else `entry`, with a suffix"
+        from bibtexparser.model import Entry, Field
+        biblio = Biblio(parse_string('@article{only, title = {Only}}'))
+        added = [Entry('article', '', [Field('title', 'Only a title')]),
+                 Entry('article', '', [Field('title', 'Only a title'), Field('year', '2000')]),
+                 Entry('article', '', [Field('title', 'A b')]),
+                 Entry('article', '', [Field('title', "Müller's ice")]),
+                 Entry('misc', '', [Field('note', 'no title')])]
+        biblio.add_entries(added, check_duplicate=False)
+        self.assertEqual([e.key for e in added], ['onlyb', 'only2000', 'a', 'muller', 'entry'])
+        # also with -u/--update-key
+        new, = entries('@article{x1, title = {Sea level}, year = {2001}}')
+        biblio.insert_entry(new, update_key=True)
+        self.assertEqual(new.key, 'sea2001')
+        # a rename keeps the key (bibtex.md 7.2): the template key alone is empty
+        self.assertEqual(biblio.generate_key(new), '')
+
     def test_given_key_taken(self):
         "bibtex.md 8: a given key that is taken: folded in when the same paper with nothing to merge, else an error"
         from papers.bib import DuplicateKeyError

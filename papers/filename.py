@@ -253,6 +253,18 @@ class Format:
         return self.render(**entry)
 
 
+def fallback_key(entry):
+    """the key of a new entry for which the key template gives an empty key:
+    the first title word of at least 3 characters (else the first word) of
+    the slugified title, followed by the slugified year if there is one
+    (`only2000`); `entry` without title"""
+    words = [w for w in slugify(get_entry_val(entry, 'title', '')).split('-') if w]
+    if not words:
+        return 'entry'
+    word = next((w for w in words if len(w) >= 3), words[0])
+    return word + slugify(get_entry_val(entry, 'year', ''))
+
+
 # the unknown-key fallback uses the slugified doi: a raw doi (slashes,
 # parentheses, unicode...) makes for an invalid or unwieldy bibtex key
 KEYFORMAT = Format(template='{author}{year}', author_num=2, author_sep="_", unknown_template="{doi_}", kind='key')

@@ -687,6 +687,19 @@ that entry (the merged key goes to its `ids`, section 10.5).
   entry (answer "not the same paper") is inserted, and its key gets a
   suffix as above if it is taken.
 - An added entry without key gets a key from the template.
+- A new entry never gets an empty key. When the key template gives an
+  empty key (`{author}{year}` falls back to the unknown template `{doi_}`,
+  empty without a DOI), the key is made from the title: the title is
+  slugified (library.md, Slugify) and split on `-`; the first word of at
+  least 3 characters is taken, else the first word; the slugified `year`
+  field follows if the entry has one. Without title words, the key is
+  `entry`. The suffix rule above then applies.
+  - `Only a title`, year 2000: `only2000`; without year: `only`; with
+    `only` taken: `onlyb`.
+  - `A b`: `a`. No title: `entry`.
+  This applies to the entries new to the library only: an entry renamed
+  by the key template (`check --fix-key`, `--auto-key`, `list --fetch`)
+  keeps its key when the template gives an empty key (section 7.2).
 
 ## 9. Entry identity: the same-paper rule
 

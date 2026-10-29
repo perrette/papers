@@ -38,7 +38,7 @@ from papers.fetch import fetch_bibtex_by_fulltext_crossref, fetch_bibtex_by_doi
 from papers.encoding import standard_name, family_names, format_entries
 from papers.latexenc import string_to_latex
 
-from papers.filename import NAMEFORMAT, KEYFORMAT
+from papers.filename import NAMEFORMAT, KEYFORMAT, fallback_key
 from papers.files import (download_url, read_entry_dir, attachment_names, free_name, remove_entry_dir_if_empty,
                           realpath, scan_dir_items, is_download)
 from papers import journal
@@ -439,8 +439,8 @@ class Biblio:
 
     def _insert_new(self, entry, update_key=False, rename=False, copy=False, index=None, free_key=False):
         "insert an entry new to the library"
-        if update_key:
-            set_entry_key(entry, self.generate_key(entry))
+        if update_key or not self.key(entry):
+            set_entry_key(entry, self.generate_key(entry, new=True))
 
         # Key duplicate check: lookup by key (public API), case-insensitive to match entries_dict keys
         key_lower = self.key(entry)
@@ -520,11 +520,17 @@ class Biblio:
         return []
 
 
-    def generate_key(self, entry):
+    def generate_key(self, entry, new=False):
         """the key of the key template for the entry, with a letter suffix if
-        another entry of the library has it (the entry's own key is not taken)"""
+        another entry of the library has it (the entry's own key is not taken).
+        An empty key from the template: empty (a renamed entry keeps its key),
+        or for a `new` entry the key of fallback_key"""
         keys = {self.key(e) for e in self.db.entries if e is not entry}
         key = self.keyformat(entry)
+        if not key and not new:
+            return key
+        if not key:
+            key = fallback_key(entry)
         if key.lower() in keys:
             key = append_abc(key, keys)
         return key
@@ -576,7 +582,7 @@ class Biblio:
             kw['duplicate_index'] = IdentityIndex(self.entries)
         for e in added:
             if not e.key:
-                set_entry_key(e, self.generate_key(e))
+                set_entry_key(e, self.generate_key(e, new=True))
             files = []
             if "file" in e:
                 # make sure paths relative to other bibtex are inserted correctly

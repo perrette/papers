@@ -24,6 +24,17 @@ class EntryTest(FileTest):
         return next(e for e in Biblio.load(self.path('lib', 'papers.bib'), '').entries if e.key == key)
 
 
+class TestAddEmptyKey(EntryTest):
+    "the key template gives an empty key (no author, year, doi): the key of the first title word"
+
+    def test_add(self):
+        new = self.write('new.json', content='[{"type": "article-journal", "title": "Only a title"}]')
+        self.lib(f'add {new}')
+        self.lib('add --title "Only a title" --year 2000')
+        self.lib('add --title "Only another"')
+        self.assertEqual(self.keys(), ['only', 'only2000', 'onlyb'])
+
+
 class TestRm(EntryTest):
 
     def setUp(self):
