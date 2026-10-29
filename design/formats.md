@@ -355,7 +355,7 @@ All other bibtex fields are left out (e.g. `month` as such, `eprint`,
 
 | bibtex | from CSL |
 |---|---|
-| `author`, `editor`, `translator` | name arrays (2.3) |
+| `author`, `editor`, `translator` | name arrays (2.3); a value that is a string or an object is an array of that one name |
 | `title`, `volume`, `doi`, `url`, `isbn`, `issn`, `publisher`, `address`, `abstract`, `note`, `edition`, `language`, `series`, `pmid`, `pmcid` | the keys of 3.2 rows 7–21. A value that is an array gives its first element; numbers become their decimal text. `doi` is cleaned (2.6). |
 | `booktitle` (types `incollection`, `inproceedings`) or `journal` (other types) | `container-title` |
 | `number` | `issue`, else `number` |
@@ -865,7 +865,7 @@ they changed:
 | `papers check` (fixes, `--fix-key`...) | `modified`, `renamed`, `removed`, `added` |
 | `papers edit` (editor, `--from`, `--set/--unset`, `--key`) | `modified`, `renamed`, ... |
 | `papers rm` | `removed` |
-| `papers tag` | `modified` |
+| `papers tag` (`--add`, `--rm`, `--rename`) | `modified` |
 | `papers file rename`, `papers file attach` | `modified` |
 | `papers config pool PATH`, `none`, `--unset pool` | `modified` (relinked entries) |
 | `papers history --revert STEP` | `added`, `modified`, `removed`, `renamed` |
@@ -890,7 +890,8 @@ Algorithm, comparing the entries as loaded at the start of the command
 (before) with the entries after it:
 
 1. `renamed`: the key changes recorded by the command (old key → new key,
-   e.g. `edit --key`, `check --fix-key`).
+   e.g. `edit --key`, `check --fix-key`), as in bibtex.md 7.3; a change
+   of case only is a rename.
 2. `removed`: keys before, not after, and not an old key of a rename.
 3. `added`: keys after, not before, and not a new key of a rename.
 4. For the entries the command considered (the touched entries) whose key

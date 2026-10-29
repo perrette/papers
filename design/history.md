@@ -345,7 +345,7 @@ state refers to:
 |---|---|---|---|
 | `parent` | string or `null` | always | the identifier of the state before; `null` for the first state of a project |
 | `time` | number | always | Unix time (seconds, fractional) when the state was made |
-| `kind` | string | always (written by papers; optional for a reader) | `command`, `outside` or `start` (3.2) |
+| `kind` | string | optional (papers writes it in each state it makes) | `command`, `outside` or `start` (3.2) |
 | `message` | string | always | the command line, or a description (3.2) |
 | `ops` | list of objects | always | the file operations of the command (section 4) |
 | `deleted` | list of strings | always | the sha256 of the file objects the state keeps (3.4) |
@@ -790,7 +790,7 @@ not deleted) are the behaviour users rely on.
 | a command that writes a pool from a shallow library | a state in the pool's project (`from`), then one in the library's (`pools`) |
 | undo, redo, restore | none in the library; a state in a pool when its step is reverted or done again (7.3) |
 | undo, redo with `auto-push` that sends something | a push: a pool state, then a library state (7.6) |
-| `--dry-run` | none |
+| `--dry-run` | none (also for `history --remove` and `--drop-files`: nothing is removed) |
 
 ## 6. Undo, redo, restore
 
@@ -815,7 +815,20 @@ All three require a bibtex (otherwise
 head up to date first (5.2). With `--dry-run` they read the head as it is
 and change nothing.
 
-**`papers undo [-n N] [--library-only]`** (N = 1 by default):
+A command with nothing to do leaves no trace (5.3): the errors below
+(`nothing to undo`, `only K step(s) to undo`, `nothing to redo`, `no
+history: nothing to restore`, `nothing to restore: …`, no step named
+STEP) are decided first, as if the head were brought up to date, and
+then nothing is written: no `id` in the configuration, no `start` state,
+no head for a new place, no store folder. A change made outside papers
+counts as a step to undo (its `outside` state would be added). The one
+exception is redo after a change made outside papers (step 2 of redo):
+the change is recorded, then redo stops.
+
+N, the number of steps of undo and redo, is 1 by default; a value below
+1 is a usage error (exit code 2), and nothing is read or changed.
+
+**`papers undo [-n N] [--library-only]`**:
 
 1. `line` = the line of the head. If it has N states or fewer: stop with
    `nothing to undo` (one state or none) or `only K step(s) to undo` (K =
@@ -1169,7 +1182,8 @@ redone, oldest first. For each step S, for each entry (id, link) of its
    is reverted, section 8, with `p` as the state before it).
 7. Else, for redo: in the line of the pool's `at`, the first (newest)
    state whose `reverts` contains `n`; if found, append it to `reverts`
-   (the revert made by the undo is itself reverted). If not found (the
+   unless it is there already (the revert made by the undo is itself
+   reverted, once: an undo of several steps reverts them in one state). If not found (the
    undo took step `n` back in the pool, and the pool moved on since),
    append `n` to `again`: the step is done again (8.5, with `p` as the
    state before it).
@@ -1441,9 +1455,12 @@ and the removable objects are removed. papers prints, at info level,
 
 ### 9.3 `papers history --remove [ID]`
 
-- Without ID: if other places use the project, only this place's head is
-  removed: `removed the history of <place>; the history of the library
-  stays for the other folder(s) that use it: …`. Otherwise, after
+- Without ID: if other places use the project and this place has no head
+  (a copy of the library never used in its folder), nothing is removed:
+  `nothing to remove: <place> has no history; …` (exit code 0). If other
+  places use the project, only this place's head is removed: `removed
+  the history of <place>; the history of the library stays for the other
+  folder(s) that use it: …`. Otherwise, after
   confirmation, the folder `projects/<id>/` is deleted (`removed the
   history of the library (K steps)`), and the store is pruned (9.2): the
   pieces and files that no other project refers to are removed once they
@@ -1454,7 +1471,10 @@ and the removable objects are removed. papers prints, at info level,
   `papers history --all`)``.
 - The confirmation: `-y`/`--yes` skips it; without a terminal the command
   stops with an error.
-- No project: `the library has no history`.
+- With `--dry-run`: nothing is removed and nothing is asked; papers says
+  what would be removed (`DRYRUN: the history of the library (K steps)
+  not removed`).
+- No project: `the library has no history` (exit code 0).
 
 ### 9.4 `papers history --drop-files STEP|PATH`
 
@@ -1472,6 +1492,8 @@ the separator of the operating system, or `.`; otherwise it names a step
    PATH`).
 2. List them with their sizes and ask (`-y` skips; without a terminal,
    an error).
+   With `--dry-run`: the list, then `DRYRUN: N file(s) (X) not dropped
+   from the history`; nothing is asked and nothing changes.
 3. Remove their checksums from `deleted` in every state of the project
    (rewriting those states). `ops` stays: undo reports
    `no longer in the history (see the history-size setting), not

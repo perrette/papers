@@ -75,7 +75,11 @@ Contract:
   two folders are the same (real path), the target exists already, the
   `.papers` folder of the directory of the bibtex has a `config.json` (the
   bibtex belongs to another library), or the command is a dry run (see
-  [Open questions](#open-questions)). A move that fails is a warning.
+  [Open questions](#open-questions)), whatever the spelling of the option
+  (`--dry-run`, an abbreviation such as `--dry`, `file mv -n`). The move
+  is made once the command line is read: a command whose arguments are
+  wrong (a usage error) moves nothing either. A move that fails is a
+  warning.
 
 ### `.papers/.gitignore`
 
@@ -229,8 +233,8 @@ settings of papers 2 (`git`, `gitlfs`, `backup_files`, `gitdir`,
 Contract:
 
 1. Parse the JSON, as UTF-8 (a byte order mark is ignored). A file that
-   is not valid JSON, or not a JSON object, is an error that names the
-   file.
+   is not valid UTF-8, not valid JSON, or not a JSON object, is an error
+   that names the file.
 2. `version`: absent means 2. A value that is not an integer (booleans
    excluded) is an error. A value greater than 3 is an error: the file was
    written by a newer papers. For version 3 and above, the keys
@@ -427,9 +431,9 @@ Contract: a JSON object with the layout of a library configuration:
 | `pools` | Legacy: an object `{name: path}` of earlier v3 builds, used only to read `pools` lists of library configurations. Not a setting; written back unchanged when papers rewrites the file. |
 
 Reading: the file is read as UTF-8 (a byte order mark is ignored). A
-file that is not valid JSON, or not a JSON object, is an error that
-names the file, as for a library configuration, so that no later save
-replaces its content. The values are type-checked as in a library
+file that is not valid UTF-8, not valid JSON, or not a JSON object, is
+an error that names the file, as for a library configuration, so that no
+later save replaces its content. The values are type-checked as in a library
 configuration (`default` must be a string). A missing file means no
 settings.
 
@@ -560,6 +564,9 @@ Contract (other implementations must find the same library):
   current directory).
 - The `.papers` folder of a bibtex without library is that of the
   directory of FILE (see [Layout](#layout)).
+- `papers status --bibtex FILE` shows the library so found (or the
+  bibtex without library); a FILE that does not exist is an error, as
+  for the other commands.
 
 **`--filesdir DIR`** replaces the files directory for the command.
 
@@ -700,7 +707,9 @@ Contract:
 - When `<name><ext>` (or `<name>--<label><ext>`) is longer than 250 bytes
   in UTF-8, the part before `<ext>` is cut to fit 250 bytes with `<ext>`
   (at a character boundary), then trailing dots and spaces are removed
-  (`-` if nothing is left). The `-2` suffixes below come after this cut.
+  (`-` if nothing is left). An `<ext>` longer than 249 bytes is first cut
+  to 249 bytes (at a character boundary), so that the part before it
+  keeps at least one byte. The `-2` suffixes below come after this cut.
 - The name may contain `/` (and `\` on Windows) from the template itself:
   it then names subfolders of the files directory, created as needed.
 - Each other file of the entry is placed at
@@ -739,7 +748,9 @@ Contract:
 A template is text with placeholders `{name}`. `{{` and `}}` are literal
 braces. An unknown placeholder (also a case variant such as `{AuTHoR}`)
 is an error that lists the available ones. Only these three forms are
-contract. Free: an implementation may accept more, for example a format
+contract. A template that cannot be formatted (an unknown placeholder, or
+a form that is not accepted, such as `{year.real}`) stops the command
+with an error (`papers: error: ...`, exit code 1, formats.md 7.3). Free: an implementation may accept more, for example a format
 specification after a colon (`{title:.20}`, the first 20 characters);
 papers accepts such forms, another implementation need not.
 
@@ -883,6 +894,11 @@ intended folder.
    entry, and its files stay where they are with their links unchanged.
    This covers templates such as `../{author}`, `/tmp/{author}`,
    `{author}/../../x` and `.`.
+   `papers file rename` (and `papers list --rename`) places the files of
+   the other entries, then exits with code 1; so does it when the name
+   template has an unknown or invalid placeholder. `papers file attach`
+   (and `papers list --attach`) keeps the new links, saves, and exits
+   with code 1.
 3. Labels of the other files come from base names, which contain no
    separator.
 4. Templates may still create subfolders (`{year}/{author}`): separators
@@ -1045,6 +1061,7 @@ All resolved. Each record gives the question and the decision.
     it is put back as a copy, with its token.
 20. **Does a dry run move the files of the `.papers/` next to the
     bibtex?** No: the dry run is in force before the library is loaded,
-    so nothing is moved.
+    so nothing is moved. #194: also with another spelling of the option
+    (an abbreviation, `file mv -n`).
 21. **Does `papers config --prune` remove `gitlfs` and `gitdir`?** Yes:
     they are known keys of papers 2, not written back at save.

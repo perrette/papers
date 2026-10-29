@@ -145,6 +145,15 @@ class TestFixEntry(unittest.TestCase):
         biblio.fix_entry(e, fix_key=True)
         self.assertEqual(e.key, 'author2000')
 
+    def test_fix_key_never_empty(self):
+        # the key template gives an empty key: the entry keeps its key (#194)
+        biblio = biblio_of('@article{2019doe, author = {Doe Jane and Smith John}, journal = {Nature}, year = {2019}}\n')
+        e = biblio.entries[0]
+        with self.assertLogs('papers', level='WARNING') as logs:
+            biblio.fix_entry(e, fix_key=True)
+        self.assertEqual(e.key, '2019doe')
+        self.assertIn('the key template gives an empty key: the key stays', logs.output[0])
+
     def test_fix_key_keeps_valid_key(self):
         biblio = biblio_of(ENTRY)
         e = biblio.entries[0]

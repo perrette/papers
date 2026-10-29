@@ -510,10 +510,23 @@ def _write_library_files(config, project, cur, target):
 
 
 def _require(config):
-    project, place = project_of(config)
-    if project is None:
+    """the project and the place of the library, without creating its
+    identifier (project None: a library without one, so without history)"""
+    if not config.bibtex:
         raise PapersExit('no history: the library has no bibtex')
-    return project, place
+    return project_of(config, create=False)
+
+
+def _synced(config, project, place):
+    """where sync_head would bring the head, without writing anything: (the
+    state it would start from, or None; True if it would add a state on top,
+    start or outside). Undo, redo and restore with nothing to do leave no trace."""
+    if project is None:
+        return None, True
+    sha = history.sha256(_bibtex_text(config).encode('utf-8'))
+    head = project.head(place)
+    n = head['state'] if head else project.start_state(sha)
+    return n, n is None or project.state(n)['bibtex'].get('sha') != sha
 
 
 class _Pool:
@@ -591,7 +604,8 @@ def pool_steps(config, project, steps, undo):
                 line = pool.project.line(pool.at)
                 revert = next((r for r in line if n in (pool.project.state(r).get('reverts') or [])), None)
                 if revert is not None:
-                    pool.reverts.append(revert)
+                    if revert not in pool.reverts:  # one revert of several steps (undo -n N): reverted once
+                        pool.reverts.append(revert)
                 else:  # the undo took step n back there, and the pool moved on since: done again
                     pool.again.append(n)
                     pool.bases[n] = parent
@@ -653,15 +667,18 @@ def undo(config, steps=1, library_only=False):
     report on the files; None with --dry-run, report on the pools)"""
     project, place = _require(config)
     if papers.config.DRYRUN:
-        cur = (project.head(place) or {}).get('state')
+        cur, added = ((project.head(place) or {}).get('state') if project else None), False
     else:
-        cur = sync_head(config, project, place)
-    line = project.line(cur) if cur is not None else []
-    if len(line) <= steps:
-        raise PapersExit('nothing to undo' if len(line) <= 1 else f'only {len(line) - 1} step(s) to undo')
-    target = line[steps]
+        cur, added = _synced(config, project, place)
+    length = (len(project.line(cur)) if cur is not None else 0) + added
+    if length <= steps:
+        raise PapersExit('nothing to undo' if length <= 1 else f'only {length - 1} step(s) to undo')
     if papers.config.DRYRUN:
-        return project, target, None, []
+        return project, project.line(cur)[steps], None, []
+    project, place = project_of(config)
+    cur = sync_head(config, project, place)
+    line = project.line(cur)
+    target = line[steps]
     pools, missing = pool_steps(config, project, line[:steps], True) if not library_only else ([], [])
     redo = list(reversed(line[:steps])) + project.head(place)['redo']
     # the pools first: the files the command moved to a pool are moved back, unless the pool still links them
@@ -676,7 +693,7 @@ def undo(config, steps=1, library_only=False):
 def redo(config, steps=1, library_only=False):
     "go forward `steps` states (see undo)"
     project, place = _require(config)
-    head = project.head(place)
+    head = project.head(place) if project else None
     if head is None or not head['redo']:
         raise PapersExit('nothing to redo')
     cur = head['state']
@@ -701,16 +718,21 @@ def restore(config, n=None):
     recorded: `papers redo` brings them back). Return as undo (the library
     only: no pool)."""
     project, place = _require(config)
-    head = project.head(place)
+    head = project.head(place) if project else None
     if n is None:
         if head is None:
             raise PapersExit('no history: nothing to restore')
         target = head['state']
+    elif project is None:
+        raise PapersExit(f'no step {n} in the history of the library (see `papers history`)')
     else:
         target = resolve(project, n)
     if papers.config.DRYRUN:
         return project, target, None, []
-    cur = sync_head(config, project, place)
+    if _synced(config, project, place) == (target, False):
+        cur = target
+    else:
+        cur = sync_head(config, project, place)
     if cur == target:
         raise PapersExit(f'nothing to restore: {os.path.basename(config.bibtex)} is step {history.short(target)}')
     lines = go_to(config, project, cur, target)

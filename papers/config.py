@@ -216,7 +216,7 @@ def read_config_file(file):
     "the json of a configuration file; raise PapersExit if it is not a JSON object"
     try:
         js = json.load(open(file, encoding='utf-8-sig'))
-    except (json.JSONDecodeError, OSError) as error:
+    except (json.JSONDecodeError, UnicodeDecodeError, OSError) as error:
         raise PapersExit(f"{file} could not be read ({error}): correct the file")
     if not isinstance(js, dict):
         raise PapersExit(f"{file} is not a JSON object: correct the file")

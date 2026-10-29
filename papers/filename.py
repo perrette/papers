@@ -112,11 +112,12 @@ def safe_file_name(name):
 
 def fit_name(path):
     """`path` with its file name (extension included) cut to MAX_NAME_BYTES
-    bytes, keeping the extension"""
+    bytes, keeping the extension (itself cut when it leaves no room for the name)"""
     head, name = os.path.split(path)
     stem, ext = os.path.splitext(name)
     if len(name.encode('utf-8')) <= MAX_NAME_BYTES:
         return path
+    ext = cut_bytes(ext, MAX_NAME_BYTES - 1)
     stem = cut_bytes(stem, MAX_NAME_BYTES - len(ext.encode('utf-8'))).rstrip('. ') or '-'
     return os.path.join(head, stem + ext)
 
@@ -211,7 +212,7 @@ def format_template(template, fields, kind='name'):
         available = ', '.join('{' + f + '}' for f in PLACEHOLDERS)
         raise TemplateError(f'unknown placeholder {{{name}}} in the {kind} template {template!r}; '
                             f'available: {available}') from None
-    except ValueError as error:
+    except (ValueError, AttributeError, TypeError) as error:  # e.g. {year.real}, {year[x]}
         raise TemplateError(f'invalid {kind} template {template!r}: {error}') from None
 
 

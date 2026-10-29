@@ -248,6 +248,12 @@ class TestPartsToNames(unittest.TestCase):
             e = csl_one(type='book', title='T', author=names)
             self.assertEqual(e['author'], bibtex, names)
 
+    def test_one_name_not_in_an_array(self):
+        "formats.md 2.3, 3.3: an author value that is a string or an object is one name"
+        self.assertEqual(csl_one(type='book', title='T', author='Smith, John')['author'], '{Smith, John}')
+        self.assertEqual(csl_one(type='book', title='T', editor={'family': 'Doe', 'given': 'Jane'})['editor'],
+                         'Doe, Jane')
+
 
 class TestDates(unittest.TestCase):
 
@@ -1212,6 +1218,51 @@ class TestExitCodes(SpecLibrary):
         code, out, err = run_papers('list', '--no-such-option', cwd=lib)
         self.assertEqual(code, 2)
         self.assertIn('papers list: error: ', err)
+
+    def test_refused_rename(self):
+        "formats.md 7.3, library.md Path safety 2: a refused file rename is an error: exit 1, files unchanged"
+        self.bib(entry('one2000'), entry('two2000'))
+        self.lib(f'file attach one2000 {self.write("a.pdf")} --move')
+        before = self.files('one2000')
+        for template in ('../{author}', '{nope}'):
+            for keys in ('', 'one2000 '):
+                cmd = f"file rename --move {keys}--name-template '{template}'"
+                with self.assertRaises(PapersExit, msg=cmd):
+                    self.lib(cmd)
+                self.assertEqual(self.files('one2000'), before)
+        self.lib("config name.template '../{author}'")
+        with self.assertRaises(PapersExit):
+            self.lib('list one2000 --rename')
+        self.lib("config name.template '{key}-x'")
+        self.lib('file rename --move')  # exit 0
+        self.assertEqual(self.libfiles(), ['one2000-x.pdf'])
+
+    def test_refused_attach(self):
+        "formats.md 7.3, library.md Path safety 2: a refused file attach exits 1, the link is kept"
+        self.bib(entry('one2000'))
+        pdf = self.write('a.pdf')
+        lib = self.path('lib')
+        code, out, err = run_papers('file', 'attach', 'one2000', pdf, '--copy', '--name-template', '../{author}', cwd=lib)
+        self.assertEqual(code, 1)
+        self.assertIn('points outside the files directory', err)
+        self.assertEqual(self.files('one2000'), [pdf])
+        self.lib("config name.template '../{author}'")
+        self.lib('config files move')
+        code, out, err = run_papers('list', '-k', 'one2000', '--attach', self.write('b.pdf'), cwd=lib)
+        self.assertEqual(code, 1, err)
+
+    def test_template_error(self):
+        "formats.md 7.3, library.md Syntax: a template that cannot be formatted is a clean error, exit 1"
+        self.bib(entry('one2000'))
+        pdf = self.write('a.pdf')
+        lib = self.path('lib')
+        for template in ('{year.real}', '{year[x]}', '{nope}'):
+            code, out, err = run_papers('file', 'attach', 'one2000', pdf, '--copy', '--name-template', template, cwd=lib)
+            self.assertEqual(code, 1, template)
+            self.assertTrue(err.startswith('papers: error: '), err)
+            self.assertNotIn('Traceback', err)
+        code, out, err = run_papers('add', '--title', 'T', '--author', 'A, B', '--year', '2001', '--key-template', '{year.real}', cwd=lib)
+        self.assertEqual((code, err.startswith('papers: error: invalid key template')), (1, True), err)
 
     def test_question_without_input(self):
         "formats.md 7.3: a question with closed standard input exits 1"

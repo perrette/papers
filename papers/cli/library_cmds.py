@@ -544,6 +544,8 @@ def migratecmd(parser, o, config):
 
 
 def statuscmd(parser, o, config):
+    if o.bibtex is not None or o.filesdir is not None:
+        config = check_install(parser, o, config)  # the library of --bibtex FILE, as for the other commands
     print(config.status(check_files=not o.no_check_files, verbose=o.verbose))
     if config.file is None:
         default = config.machine.default_path()

@@ -16,6 +16,11 @@ Two labels are used below:
 - **Free**: an implementation may do it differently, as long as the
   contracts hold.
 
+**Brace depth** (in a field value, for the splits "at brace depth 0"
+below and in the other files): 0 at the start of the value, one more
+after each `{`, one less after each `}`, but never below 0 (a stray `}`
+is ignored; `a} and b` splits into `a}` and `b`). Contract.
+
 The reference conformance test for reading and writing is the pair
 `tests/sortformat/varied.bib` (input) and
 `tests/sortformat/varied.expected.bib` (what papers writes for it).
@@ -600,7 +605,11 @@ documentation (`docs/listing.md`).
   `a;b, c` by another program is read as the tags `a;b` and `c`, and
   stays as it is until then.
 - Counting (`papers tag`): an entry counts once for each of its tags and
-  for each parent of them.
+  for each parent of them. Tags are counted as written (`Climate` and
+  `climate` are counted apart). Order: the tags under each parent (and
+  the top-level tags) by decreasing count, then by the tag in lower case,
+  then by the tag itself (Unicode code points), so `Climate` comes before
+  `climate` when their counts are equal.
 
 The fields are not merged as sets in a two-way merge: two `keywords`
 values that differ are a conflict (section 10).
@@ -634,10 +643,15 @@ biblatex key alias field). papers:
 
 ### 7.2 Key validity on rename
 
-`edit --key NEW` refuses a key that is empty, starts with a digit, or
-contains whitespace or one of `, { } " # % ~ = ( ) \`, and a key that
-another entry has (compared without case). (The key template is in
-library.md.)
+`edit --key NEW` refuses a key that is empty, starts with a digit
+(`0`-`9`; another Unicode digit is allowed), or contains whitespace or
+one of `, { } " # % ~ = ( ) \`, and a key that another entry has
+(compared without case). (The key template is in library.md.)
+
+`check --fix-key` and `list --fetch` never rename an entry to an empty
+key: when the key template gives an empty key, the entry keeps its key,
+with a warning (free text: `<key>: the key template gives an empty key:
+the key stays`).
 
 `edit --set FIELD=VALUE` does not change the key: `--set ID=...` and
 `--set key=...` (the field name in any case) are refused (exit 1), with
@@ -648,8 +662,10 @@ links). `--unset ID` and `--unset file` are refused too.
 
 At save, for each entry whose key changed during the command (the same
 entry, its old key no longer in the library, its new key not in the
-library when it was loaded), every `crossref` field equal to the old key
-(compared without case) is set to the new key. Other fields that name
+library when it was loaded; or the same entry with its key changed in
+case only, no other entry having that key without case), every
+`crossref` field equal to the old key (compared without case) is set to
+the new key. Other fields that name
 keys (`xdata`, `related`, `xref`) are not followed.
 
 Keys removed by a merge are not renames, but `check --duplicates` also
@@ -663,10 +679,10 @@ that entry (the merged key goes to its `ids`, section 10.5).
 - A new key from the key template (library.md) that is already in the
   library (compared without case) gets a letter suffix.
 - Suffix rule: if the key ends with a letter `a`-`z` or `A`-`Z` right
-  after a digit (`Author2000b`, `Author2000B`), that letter is taken as a
-  previous suffix: it is removed and the next letters of the alphabet are
-  tried, in the case of that letter (`c`, `d`, ... or `C`, `D`, ...).
-  Otherwise the letters `b` to `z` are tried, appended. Then the key
+  after a digit `0`-`9` (`Author2000b`, `Author2000B`), that letter is
+  taken as a previous suffix: it is removed and the next letters of the
+  alphabet are tried, in the case of that letter (`c`, `d`, ... or `C`,
+  `D`, ...). Otherwise the letters `b` to `z` are tried, appended. Then the key
   itself (with its last letter) followed by each of `a` to `z`. The first
   key not in the library (without case) is taken. If none is free, the
   command fails.
@@ -730,6 +746,9 @@ the exchanges with pools.
 
 ### 9.2 Identifiers of an entry
 
+A digit, here, is one of the ASCII digits `0`-`9` (`N` in the forms
+below); other Unicode digits (`٣`, `３`) are not digits.
+
 - **DOI**: the `doi` field, trimmed, without a leading
   `http://doi.org/`, `https://doi.org/`, `http(s)://dx.doi.org/` or
   `doi:` (any case, spaces allowed after `doi:`), trimmed again. It is a
@@ -757,9 +776,10 @@ the exchanges with pools.
   (case-sensitive, any whitespace), at brace depth 0 as the name
   formatting of section 3.5 (`{Barnes and Noble}` is one name). The
   family name of each name: if it contains a comma at brace depth 0, the
-  text before the first such comma; otherwise its last word, where a
-  `{...}` group without nested braces counts as one word
-  (`Jane {van der Berg}` gives `{van der Berg}`). Each family name is
+  text before the first such comma; otherwise its last word (words are
+  separated by whitespace runs, line breaks included), where a `{...}`
+  group without nested braces counts as one word (`Jane {van der Berg}`
+  gives `{van der Berg}`). Each family name is
   normalized (9.1); the author identifier is the normalized family names
   joined by spaces. The `editor` field is not used.
 - **Title**: `norm(title)`.
@@ -825,9 +845,10 @@ library.
   pair was added.
 - Reading: as UTF-8, a byte order mark dropped, so raw UTF-8 characters
   written by another implementation are read the same way as `\u`
-  escapes. A missing file is no pairs; a file that cannot be read is
-  ignored with a warning; elements of `distinct` that are not arrays of
-  two are ignored.
+  escapes. A missing file, or one without `distinct`, is no pairs; a
+  file that cannot be read, or whose value is not an object, or whose
+  `distinct` is not an array, is ignored with a warning; elements of
+  `distinct` that are not arrays of two objects are ignored.
 - A recorded side matches an entry when `doi`, `arxiv` and `isbn` are
   equal (absent on both sides counts as equal), and `authortitle` and
   `title` are equal where both sides have them. A pair matches two

@@ -452,17 +452,22 @@ def rename_files(biblio, entries, config, pool_dirs=(), keep_source=False, mode=
     template name: the files already there are renamed, the others are
     moved, copied or left where they are as the files mode says (mode, else
     the `files` setting; keep_source: copy). A file that belongs to another
-    library is copied, see FilesPolicy."""
+    library is copied, see FilesPolicy. Returns the number of entries whose
+    files could not be placed (an error is reported for each)."""
     if config.filesdir is None:
         raise PapersExit('the library has no files directory: pass --filesdir, '
                          'or set it with `papers config filesdir DIR`')
     mode = 'copy' if keep_source else (mode or config.files or 'move')
     policy = files_policy(config, mode, pool_dirs)
+    failed = 0
     for e in entries:
         try:
-            biblio.rename_entry_files(e, copy=policy)
+            if biblio.rename_entry_files(e, copy=policy) is False:
+                failed += 1
         except Exception as error:
             logger.error(f"{get_entry_val(e, 'ID', '')}: {error}")
+            failed += 1
+    return failed
 
 
 def attach_files(biblio, e, files, config, mode, pool_dirs=(), replace=None, pool_files=(), copied=()):
@@ -472,7 +477,9 @@ def attach_files(biblio, e, files, config, mode, pool_dirs=(), replace=None, poo
     replace: {link: [files]}: links of the entry (broken links) replaced in
     place by files, placed in the same way (`files` come after them).
     pool_files: files of pool entries, never moved (see FilesPolicy).
-    copied: files copied, never moved (see FilesPolicy)."""
+    copied: files copied, never moved (see FilesPolicy).
+    Return False when the name points outside the files directory (the
+    links are kept, the files left where they are), True otherwise."""
     def resolve(f):
         if str(f).startswith("http://") or str(f).startswith("https://"):
             return download_url(f, expect_pdf=False)  # moved into the files directory
@@ -487,8 +494,9 @@ def attach_files(biblio, e, files, config, mode, pool_dirs=(), replace=None, poo
     added = [f for fs in replace.values() for f in fs] + new
     biblio.set_files(e, [g for f in old for g in replace.get(f, [f])] + new)
     if mode != 'link' or any(is_download(f) for f in added):
-        biblio.rename_entry_files(e, copy=files_policy(config, mode, pool_dirs, keep=kept, pool_files=pool_files,
-                                                       copied=copied))
+        return biblio.rename_entry_files(e, copy=files_policy(config, mode, pool_dirs, keep=kept, pool_files=pool_files,
+                                                              copied=copied))
+    return True
 
 
 class SearchFolders:

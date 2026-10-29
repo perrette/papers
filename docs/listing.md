@@ -228,7 +228,8 @@ modified smith2020
 
 The lines are `added KEY`, `modified KEY`, `renamed OLD NEW`, `removed KEY`
 and `existing KEY`. `renamed OLD NEW` is an entry whose key the command
-changed (`papers edit OLD --key NEW`, `papers check --fix-key`). An entry
+changed (`papers edit OLD --key NEW`, `papers check --fix-key`), also
+when only its case changes (`--key Smith2000` for `smith2000`). An entry
 replaced in the editor with another key is `removed OLD` and `added NEW`,
 and an entry merged into another one is `removed` (a program that follows an
 entry across these can match it by DOI). Every other message

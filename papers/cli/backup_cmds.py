@@ -115,6 +115,9 @@ def remove_history(config, yes=False, id=None):
             raise PapersExit(f'no history of a library {id} (see `papers history --all`)')
         project = found[0].project(id)
         what = f'the history of the library {id} ({len(project.states())} steps)'
+        if papers.config.DRYRUN:
+            print(f'DRYRUN: {what} not removed')
+            return
         if not yes and not _confirm(f'remove {what}?'):
             return
         project.remove()
@@ -126,12 +129,22 @@ def remove_history(config, yes=False, id=None):
         print('the library has no history')
         return
     others = [p for p in project.heads() if p != place]
+    if others and place not in project.heads():
+        print(f'nothing to remove: {papers.config.short_home(place)} has no history; the history of the library '
+              f'is that of the other folder(s) that use it: {", ".join(papers.config.short_home(p) for p in others)}')
+        return
     if others:
+        if papers.config.DRYRUN:
+            print(f'DRYRUN: the history of {papers.config.short_home(place)} not removed')
+            return
         project.remove_head(place)
         print(f'removed the history of {papers.config.short_home(place)}; the history of the library stays '
               f'for the other folder(s) that use it: {", ".join(papers.config.short_home(p) for p in others)}')
         return
     what = f'the history of the library ({len(project.states())} steps)'
+    if papers.config.DRYRUN:
+        print(f'DRYRUN: {what} not removed')
+        return
     if not yes and not _confirm(f'remove {what}?'):
         return
     project.remove()
@@ -156,6 +169,9 @@ def drop_files(config, target, yes=False):
     total = sum(size for _, size in found.values())
     for path, size in sorted(found.values()):
         print(f'  {papers.config.short_home(path)} ({_size(size)})')
+    if papers.config.DRYRUN:
+        print(f'DRYRUN: {len(found)} file{"s" if len(found) > 1 else ""} ({_size(total)}) not dropped from the history')
+        return
     question = (f'drop {len(found)} file{"s" if len(found) > 1 else ""} ({_size(total)}) from the history? '
                 'Undo will not bring them back; they go to the trash of the system')
     if not yes and not _confirm(question):

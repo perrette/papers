@@ -2,6 +2,7 @@
 class per section of the specification, each test naming its section."""
 import json
 import os
+import re
 import socket
 import sys
 import unittest
@@ -14,6 +15,7 @@ from papers.bib import Biblio
 from papers.config import CONFIG_FILE_LOCAL, Config, MachineConfig, SETTINGS
 from papers.filename import Format, make_template_fields, slugify
 from papers.lock import LockError
+from papers.utils import PapersExit
 
 from tests.common import ConfigTest, FileTest, entry
 
@@ -51,6 +53,21 @@ class TestLayout(ConfigTest):
         papers.config.DRYRUN = False
         self.assertTrue(os.path.exists(self.path('lib', 'bib', '.papers', 'distinct.json')))
         self.assertFalse(os.path.exists(self.path('lib', '.papers', 'distinct.json')))
+
+    def test_no_move_with_other_spellings_of_dry_run(self):
+        """library.md Layout: no move with --dry-run written otherwise (an
+        abbreviation, `file mv -n`); a command without it moves them"""
+        self.papers('init lib --bibtex lib/refs/papers.bib')
+        os.makedirs(self.path('lib', 'refs', '.papers'))
+        Path(self.path('lib', 'refs', '.papers', 'distinct.json')).write_text('{"distinct": []}\n')
+        for cmd in ('list --dry', 'file mv -n x.pdf y.pdf'):
+            self.papers(cmd, cwd=self.path('lib'), sp_cmd='call')  # (mv: no entry links x.pdf, an error)
+            papers.config.DRYRUN = False
+            self.assertTrue(os.path.exists(self.path('lib', 'refs', '.papers', 'distinct.json')), cmd)
+            self.assertFalse(os.path.exists(self.path('lib', '.papers', 'distinct.json')), cmd)
+        self.papers('list', cwd=self.path('lib'))
+        self.assertFalse(os.path.exists(self.path('lib', 'refs', '.papers', 'distinct.json')))
+        self.assertTrue(os.path.exists(self.path('lib', '.papers', 'distinct.json')))
 
 
 class TestConfigurationFormat(ConfigTest):
@@ -162,6 +179,14 @@ class TestReading(ConfigTest):
         os.makedirs(self.path('lib', '.papers'), exist_ok=True)
         Path(self.path('lib', CONFIG_FILE_LOCAL)).write_text(json.dumps(js))
         return self.path('lib', CONFIG_FILE_LOCAL)
+
+    def test_invalid_utf8(self):
+        """library.md Reading 1: a file that is not valid UTF-8 is an error
+        that names the file, as invalid JSON"""
+        file = self.write({})
+        Path(file).write_bytes(b'{"version": 3, "editor": "\xff"}')
+        with self.assertRaisesRegex(PapersExit, rf'^{re.escape(file)} could not be read \(.*\): correct the file$'):
+            Config.load(file, machine=MachineConfig(self.path('machine.json')))
 
     def test_unknown_pool_name(self):
         """library.md Reading 4: a pools item that is an unknown pool name is
@@ -409,6 +434,17 @@ class TestFindingTheLibrary(ConfigTest):
         self.assertEqual([e.key for e in Biblio.load(self.path('loose', 'refs.bib'), '').entries], ['k2000'])
         self.assertEqual(os.listdir(self.path('loose')), ['refs.bib'])
         self.assertFalse(os.path.exists(self.path('lib', '.papers', 'files.json')))
+
+    def test_status_bibtex(self):
+        "library.md Finding the library, --bibtex FILE: papers status too"
+        self.papers('init lib')
+        self.papers('init other --bibtex other/refs.bib')
+        Path(self.path('other', 'refs.bib')).write_text(entry('one2000'))
+        out = self.papers('status --bibtex ../other/refs.bib', cwd=self.path('lib'), sp_cmd='check_output')
+        self.assertIn('refs.bib (1 entr', out)
+        self.assertIn(self.path('other'), out)
+        with self.assertRaises(PapersExit):
+            self.papers(f'status --bibtex {self.path("missing.bib")}', cwd=self.path('lib'))
 
 
 class TestPoolSetting(ConfigTest):
