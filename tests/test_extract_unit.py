@@ -150,6 +150,29 @@ class TestCrossrefToBibtex(unittest.TestCase):
         bib = crossref_to_bibtex(msg)
         self.assertIn("@book{", bib)
 
+    BASE = {"type": "journal-article", "DOI": "10.1/x", "title": ["T"], "author": [{"family": "S", "given": "J"}],
+            "issued": {"date-parts": [[2000]]}, "container-title": ["J"]}
+
+    def test_empty_title_and_container_title(self):
+        bib = crossref_to_bibtex({**self.BASE, "title": [], "container-title": []})
+        self.assertNotIn("title", bib)
+        self.assertNotIn("journal", bib)
+        self.assertIn("year = {2000}", bib)
+        self.assertNotIn("isbn", crossref_to_bibtex({**self.BASE, "type": "book", "ISBN": []}))
+
+    def test_institution_list(self):
+        self.assertIn("institution = {A}", crossref_to_bibtex({**self.BASE, "type": "report", "institution": [{"name": "A"}]}))
+        self.assertIn("school = {A}", crossref_to_bibtex({**self.BASE, "type": "thesis", "institution": [{"name": "A"}]}))
+        self.assertIn("institution = {A}", crossref_to_bibtex({**self.BASE, "type": "report", "institution": {"name": "A"}}))
+        self.assertNotIn("institution", crossref_to_bibtex({**self.BASE, "type": "report", "institution": []}))
+
+    def test_date_without_year(self):
+        self.assertIn("year = {0000}", crossref_to_bibtex({**self.BASE, "issued": {"date-parts": [[None]]}}))
+        self.assertIn("year = {0000}", crossref_to_bibtex({**self.BASE, "issued": None}))
+        self.assertIn("year = {0000}", crossref_to_bibtex({**self.BASE, "issued": {"date-parts": []}}))
+        # a date without year is passed over for the next one
+        self.assertIn("year = {2000}", crossref_to_bibtex({**self.BASE, "published-print": {"date-parts": [[None]]}}))
+
 
 class TestQueryText(unittest.TestCase):
 
@@ -250,6 +273,17 @@ class TestExtractTxtMetadataCandidates(unittest.TestCase):
         with mock.patch('papers.extract.fetch_bibtex_by_doi', side_effect=fetch):
             bibtex = extract_txt_metadata(txt, search_doi=True, search_fulltext=False)
         self.assertIn('10.5678/registered-paper', bibtex)
+
+    def test_crossref_record_with_empty_title_is_skipped(self):
+        # crossref_to_bibtex used to raise IndexError, which stopped the whole extraction
+        from unittest import mock
+        from papers.extract import extract_txt_metadata
+        txt = 'cites https://doi.org/10.1000/untitled then https://doi.org/10.1000/titled\nThe Titled Paper'
+        records = {'10.1000/untitled': {'DOI': '10.1000/untitled', 'type': 'journal-article', 'title': []},
+                   '10.1000/titled': {'DOI': '10.1000/titled', 'type': 'journal-article', 'title': ['The Titled Paper']}}
+        with mock.patch('papers.fetch.fetch_doi_metadata', side_effect=lambda doi: records[doi]):
+            bibtex = extract_txt_metadata(txt, search_doi=True, search_fulltext=False)
+        self.assertIn('10.1000/titled', bibtex)
 
     def test_prefers_candidate_whose_title_is_in_text(self):
         from unittest import mock

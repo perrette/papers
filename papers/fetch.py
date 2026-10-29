@@ -162,7 +162,7 @@ def _crossref_score(txt, r):
     if 'author' in r:
         author = ' '.join([p['family'] for p in r.get('author',[]) if 'family' in p])
         score += token_set_ratio(author, txt)
-    if 'title' in r:
+    if r.get('title'):
         score += token_set_ratio(r['title'][0], txt)
     if 'abstract' in r:
         score += token_set_ratio(r['abstract'], txt)
@@ -193,12 +193,26 @@ def format_authors(authors):
     return " and ".join(author_list)
 
 
+def _first(message, field):
+    # first element of a list field (title, container-title, ISBN), which may be empty
+    values = message.get(field) or ['']
+    return values[0] if isinstance(values, list) else values
+
+
+def _institution(message):
+    # a list of {name, place...} in the crossref schema (a dict in older records)
+    institution = message.get('institution') or {}
+    if isinstance(institution, list):
+        institution = institution[0] if institution else {}
+    return institution.get('name', '')
+
+
 def crossref_to_bibtex(message):
     entry_type = message.get('type', 'misc')  # Default to 'misc' if type is not specified
 
     # Common fields
     bib_entry = {
-        'title': message.get('title', [''])[0],
+        'title': _first(message, 'title'),
         'author': format_authors(message.get('author', [])),
         'doi': message.get('DOI', ''),
         'url': message.get('URL', ''),
@@ -207,20 +221,19 @@ def crossref_to_bibtex(message):
     }
 
     # Year: Look for publication date in several possible places
-    date_parts = None
+    # (a date without year is [[null]], and a field may be null)
+    year = None
     for date_field in ["published-print", "published-online", "issued"]:
-        if date_field in message and "date-parts" in message[date_field]:
-            date_parts = message[date_field]["date-parts"][0]
+        date_parts = (message.get(date_field) or {}).get("date-parts") or [[]]
+        year = (date_parts[0] or [None])[0]
+        if year is not None:
             break
-    if date_parts and len(date_parts) > 0:
-        bib_entry["year"] = str(date_parts[0])
-    else:
-        bib_entry["year"] = "0000"
+    bib_entry["year"] = str(year) if year is not None else "0000"
 
     # Fields specific to entry types
     if entry_type == 'journal-article':
         bib_entry.update({
-            'journal': message.get('container-title', [''])[0],
+            'journal': _first(message, 'container-title'),
             'volume': message.get('volume', ''),
             'number': message.get('issue', ''),
             'pages': message.get('page', ''),
@@ -230,23 +243,23 @@ def crossref_to_bibtex(message):
             'publisher': message.get('publisher', ''),
             'address': message.get('publisher-location', ''),
             'editor': format_authors(message.get('editor', [])),
-            'isbn': message.get('ISBN', [''])[0],
+            'isbn': _first(message, 'ISBN'),
         })
 
 
     elif entry_type == 'proceedings-article':
         bib_entry.update({
-            'booktitle': message.get('container-title', [''])[0],
+            'booktitle': _first(message, 'container-title'),
             'publisher': message.get('publisher', ''),
             'editor': format_authors(message.get('editor', [])),
         })
     elif entry_type == 'report':
         bib_entry.update({
-            'institution': message.get('institution', {}).get('name', ''),
+            'institution': _institution(message),
         })
     elif entry_type == 'thesis':
         bib_entry.update({
-            'school': message.get('institution', {}).get('name', ''),
+            'school': _institution(message),
             'type': message.get('type', ''),
         })
 
