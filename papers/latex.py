@@ -62,7 +62,7 @@ def characters():
     names = {}
     for char, latex in unicode_to_latex + unicode_to_crappy_latex1:
         m = _NAMED.match(latex)
-        if m:
+        if m and len(char) == 1:  # a few rows of the table hold text such as '≂-00338'
             name = next(g for g in m.groups() if g)
             if name not in ACCENTS:
                 names.setdefault(name, char)

@@ -137,7 +137,9 @@ class TestSlugTable(unittest.TestCase):
         import sys
         from unittest import mock
         from papers.filename import make_template_fields, slugify
-        with mock.patch.dict(sys.modules, {'unidecode': None}):
+        import unidecode
+        # the tables that Unidecode cannot import meanwhile would stay marked as missing
+        with mock.patch.dict(unidecode.Cache), mock.patch.dict(sys.modules, {'unidecode': None}):
             self.assertEqual(make_template_fields({'title': 'x˯x', 'author': 'D˯e'})['title'], 'xx')
             self.assertEqual(make_template_fields({'title': 'x˯x', 'author': 'D˯e'})['author'], 'de')
         # the slug of python-slugify with Unidecode, apostrophes included

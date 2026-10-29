@@ -1,5 +1,16 @@
 # Scripts
 
+## Data tables of the specification
+
+`spec_tables.py` writes the two tables of `design/data/` from the code (the
+LaTeX character table of `papers/latexenc.py` and the transliteration of
+the Unidecode package); `--check` exits 1 when a table differs.
+`tests/test_spec_tables.py` runs the same check.
+
+```bash
+python scripts/spec_tables.py
+```
+
 ## DOI extraction checked against a library
 
 `doi_benchmark.py` runs the DOI extraction of `papers extract --doi-only` on

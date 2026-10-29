@@ -34,6 +34,18 @@ implementation may choose.
 Other documents:
 
 - [tests.md](tests.md): the tests of each section.
+- [data/](data/): the two data tables that rules refer to, each with its
+  origin and license in its header lines:
+  - [latex-characters.tsv](data/latex-characters.tsv): LaTeX text of
+    characters (bibtex.md 4.1, 4.2), from the W3C table of MathML
+    characters, by way of python-bibtexparser 1.x;
+  - [ascii-transliteration.tsv](data/ascii-transliteration.tsv): ASCII
+    transliteration of about 41,000 characters, all scripts, Chinese
+    included (bibtex.md 9.1, library.md Slugify), from Unidecode (GNU
+    GPL v2 or later, unlike the rest of papers).
+
+  `scripts/spec_tables.py` writes them from the code, and a test checks
+  that they are the same.
 - [v3.md](v3.md) is the older design document of papers 3. It is kept for
   its rationale. Where it differs from these files, these files are
   right.
@@ -80,6 +92,7 @@ Every on-disk format and name that two implementations must share:
 | Key suffix rule | bibtex.md, section 8 |
 | Same-paper rule and text normalization (they decide `distinct.json` matches) | bibtex.md, section 9 |
 | `.papers/distinct.json` | bibtex.md, section 9.4 |
+| The character table and the ASCII transliteration table | `data/latex-characters.tsv`, `data/ascii-transliteration.tsv` |
 | Origin records `.papers/origin/<name>-<hash>.bib`, pool ids (library identifiers, path ids), `papers-pool-path`, legacy `.papers/origin.bib` | exchange.md, sections 2.3 and 3 |
 | Three-way merge and its outcomes | exchange.md, section 5 |
 | `exchanges.json` (if written, exactly that content) | exchange.md, section 14.4 |
@@ -114,6 +127,4 @@ likely bugs (fixed), inconsistencies (fixed, or kept and documented),
 rules to pin for compatibility (pinned in the rule text) and minor items
 (fixed, or kept as correct behaviour).
 
-One is open: the character table and the ASCII transliteration table
-that the same-paper rule and the file names use are not yet published with
-this specification ([bibtex.md](bibtex.md#open-questions) 20).
+None is open.
