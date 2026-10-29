@@ -162,6 +162,7 @@ class Store:
         power loss)"""
         found = self.file_object(digest)
         if found is not None:
+            import hashlib
             h = hashlib.sha256()
             try:
                 with open(found, 'rb') as f:
