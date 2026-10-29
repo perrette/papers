@@ -412,3 +412,17 @@ class TestPullCost(PoolTest):
             self.lib('pull --all')
         self.assertEqual(len(self.bib()[1]), self.N)
         self.assertLess(len(calls), 5 * self.N)  # 1 770 before (each new entry: the keys of all entries before it)
+
+    def test_selection_without_quadratic_search(self):
+        # the pool entries to add are not searched for in the list of those found before
+        seen = []
+        def any_(items):
+            for x in items:
+                seen.append(1)
+                if x:
+                    return True
+            return False
+        with patch('papers.cli.pool_cmds.any', any_, create=True):
+            self.lib('pull --all')
+        self.assertEqual(len(self.bib()[1]), self.N)
+        self.assertLess(len(seen), self.N)  # 1 770 before

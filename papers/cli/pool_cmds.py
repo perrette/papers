@@ -68,17 +68,23 @@ def _pull_selection(exchange, pool, args, take_all=False):
     entries, missing = select_some(biblio, selection) if selection else (list(biblio.entries), [])
     named = list(entries) if selection else []
     new = []
+    listed = {id(e) for e in entries}  # the entries of `entries` and of `new`, by identity
     if missing:
         for pe in select_entries(pool.biblio, missing):
             e = exchange.library_entry(pe, pool)
             if e is not None:
-                if not any(e is x for x in entries):
+                if id(e) not in listed:
+                    listed.add(id(e))
                     entries.append(e)
                     named.append(e)
-            elif not any(pe is x for x in new):
+            elif id(pe) not in listed:
+                listed.add(id(pe))
                 new.append(pe)
     if take_all:
-        new.extend(pe for pe in exchange.missing(pool) if not any(pe is x for x in new))
+        for pe in exchange.missing(pool):
+            if id(pe) not in listed:
+                listed.add(id(pe))
+                new.append(pe)
     return entries, new, named
 
 
