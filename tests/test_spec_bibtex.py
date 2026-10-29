@@ -598,9 +598,10 @@ class TestTags(SpecLibrary):
                          {'a;b': 1, 'c': 1, 'climate': 1, 'climate/amoc': 1, 'climate/amoc/tipping': 1, 'Climate': 1})
 
     def test_matching(self):
-        "bibtex.md 6: --tag: lower case, trailing / dropped, shell pattern on the whole tag, or a parent"
+        "bibtex.md 6: --tag: lower case, trailing /s dropped, shell pattern on the whole tag, or a parent"
         from papers.cli.entry_cmds import tag_matches
         self.assertTrue(tag_matches('Climate/AMOC', 'climate/'))
+        self.assertTrue(tag_matches('climate', 'climate//'))  # every trailing /
         self.assertTrue(tag_matches('climate/amoc', 'clim*'))
         self.assertTrue(tag_matches('climate/amoc', 'c?imate/[a-z]moc'))
         self.assertFalse(tag_matches('climate-review', 'climate'))
@@ -782,6 +783,13 @@ class TestIdentifiersOfAnEntry(unittest.TestCase):
                                     'isbn 080442957x}}'),
                          {'isbn': '9780306406157,9780804429573,9783161484100'})
         self.assertEqual(self.ident('@incollection{a, isbn = {0-306-40615-2}}'), {})
+
+    def test_isbn_prefix(self):
+        "bibtex.md 9.2: a leading ISBN (any case) and every : after it removed; a : alone is not removed"
+        from papers.identifiers import normalize_isbn
+        for text in ('ISBN::0-306-40615-2', 'isbn : : 0306406152', 'Isbn0306406152'):
+            self.assertEqual(normalize_isbn(text), '9780306406157', text)
+        self.assertIsNone(normalize_isbn(':0306406152'))
 
     def test_authors_and_title(self):
         "bibtex.md 9.2: family names (before the first comma at depth 0, else the last word or {...} group), normalized"

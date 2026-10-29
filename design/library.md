@@ -718,8 +718,9 @@ Contract:
     content (same sha256), that path is used: the source is removed (move)
     or nothing is done (copy), and the entry links to that path. Two
     entries can so link to one file;
-  - otherwise `-2` is inserted before the extension (as above), then `-3`, and so on, until a path is free
-    or holds the file itself or the same content:
+  - otherwise `-2` is inserted before the extension (as above), then
+    `-3`, and so on, until a path is free or holds the file itself or
+    the same content:
     `<name>-2<ext>`, `<name>--<label>-2<ext>`.
 
   This applies to each file of the entry, after the suffixes between the

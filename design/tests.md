@@ -642,6 +642,7 @@ for the specification. A section marked free has none.
 - tests/test_spec_bibtex.py::TestIdentifiersOfAnEntry::test_doi
 - tests/test_spec_bibtex.py::TestIdentifiersOfAnEntry::test_arxiv
 - tests/test_spec_bibtex.py::TestIdentifiersOfAnEntry::test_isbn
+- tests/test_spec_bibtex.py::TestIdentifiersOfAnEntry::test_isbn_prefix
 - tests/test_spec_bibtex.py::TestIdentifiersOfAnEntry::test_authors_and_title
 - tests/test_duplicates.py::TestIdentifiers::test_arxiv_eprint
 - tests/test_duplicates.py::TestIdentifiers::test_other_archive_is_not_arxiv

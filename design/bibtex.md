@@ -591,7 +591,8 @@ documentation (`docs/listing.md`).
     characters; then repeats are removed, keeping the first. A rename can
     change the case of a tag (`--rename climate Climate`).
 - Matching (`list --tag PATTERN`): the tag and the pattern are compared in
-  lower case; a trailing `/` of the pattern is dropped; the pattern is a
+  lower case; every trailing `/` of the pattern is dropped (`climate//`
+  is `climate`); the pattern is a
   shell-style pattern (`*`, `?`, `[...]`) matched against the whole tag;
   a tag also matches when it is under a tag that matches (`climate`
   matches `climate/amoc`).
@@ -744,8 +745,9 @@ the exchanges with pools.
     `math.AG/0601001`), each with an optional version `vN`, which is
     dropped. Lower case. Anything else is no arXiv id.
 - **ISBNs**: only for entries of type `book`. The `isbn` field is split on
-  `,` and `;`. Each part: whitespace and hyphens removed, a leading `ISBN`
-  (any case) and `:` removed, upper case. A 10-character ISBN
+  `,` and `;`. Each part: whitespace and hyphens removed; a leading `ISBN`
+  (any case) removed, and then every `:` that follows it (`ISBN::x`; a
+  `:` without `ISBN` before it stays); upper case. A 10-character ISBN
   (`NNNNNNNNN` + digit or `X`) with a valid check digit (weighted sum
   10..1 divisible by 11) is converted to ISBN-13 (`978` + first 9 digits +
   new check digit). A 13-digit ISBN with a valid check digit (weights
