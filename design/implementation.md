@@ -359,12 +359,28 @@ rapidfuzz and is quadratic; it is for listing only.
 bibtex.md 4.1 says: accent commands, named characters (a table built once
 from `papers/latexenc.py`), formatting commands dropped, then NFC.
 
-The loop tests each character against the special cases, including four
+The loop tested each character against the special cases, including four
 `str.startswith` calls per character in text mode (`---`, `--`, ` `` `,
 `''`). On a pull of 10 000 entries, 15 million `startswith` calls came from
 this loop, about 1.3 s under the profiler, mostly from the merge comparing
 abstracts (`merge.equivalent` normalizes both values). Decoding author and
-title of 10 000 entries takes 288 ms.
+title of 10 000 entries took 288 ms.
+
+Fixed: the loop now copies each run of characters that are not special
+(text mode: not `\ { } $ ~ - ` '`; paths: not `\ { }`) in one step (a
+regular expression), and the special characters go through the cases as
+before. The ASCII transliteration (`papers/ascii.py`) looks up the table
+only for the runs of non-ASCII characters (the table maps one character at
+a time, so the result is the same), and `normalize_text` returns a plain
+ASCII text (no `\`, `{`, `}`) lower-cased and spaced without the other
+steps, as bibtex.md 9.1 allows. `papers list WORDS` normalizes the whole
+text of each entry (formats.md 6.1); on 358 generated entries it took
+151 ms CPU (`papers list` alone: 104 ms), now 111 ms (`papers list`: 90 ms);
+on 3 000 entries 553 ms, now 279 ms (`papers list`: 196 ms). The fields are
+not normalized one by one: the normalization of the joined text is not
+always the join of the normalized fields (the shortcut for a plain ASCII
+text applies to the whole text, and a command at the end of a field can
+take the start of the next one as its argument).
 
 `FieldMerge` calls `equivalent` on every present value, also when the
 values are equal as strings, so equal abstracts are normalized too. The
@@ -497,17 +513,17 @@ Notes for another implementation:
 - The refresh needs a timer independent of the main work (a thread, or a
   timer in an event loop). A holder blocked for more than 10 s (a laptop
   that sleeps) loses the lock; `check` before each write detects it.
-- `release_all` reads the token and then removes the file: if the lock
-  was taken over between the two steps, it removes the other command's
-  lock. The window is short (the holder must already have been stale);
-  renaming the file aside, checking the token, then removing it, closes
-  it.
+- `release_all` read the token and then removed the file: if the lock
+  was taken over between the two steps, it removed the other command's
+  lock. Fixed: it renames the file aside (as a take-over does), checks
+  the token of the renamed file, and removes it only if it is its own;
+  otherwise it puts it back (library.md, The lock, Release).
 - In a long-running process that runs several commands, `release_all`
-  stops the refresh thread; a lock taken again immediately after can find
-  the old thread still alive (it exits a moment later) and not start a
-  new one (`_start_refresh` only checks `is_alive`). The command line
-  runs one command per process, so this does not happen there; the
-  desktop application should take care of it.
+  stops the refresh thread; a lock taken again immediately after could
+  find the old thread still alive (it exits a moment later) and not start
+  a new one (`_start_refresh` only checked `is_alive`). Fixed: each thread
+  has its own stop signal, and a thread told to stop is replaced by a new
+  one.
 
 Within one process, the Python implementation is single-threaded apart
 from the lock refresh and the network requests of `add DIR` (a thread
@@ -521,10 +537,30 @@ the same time (history.md 13, "Not protected").
 
 The command line imports what every command needs and imports the heavy
 dependencies when first used: `requests`, `rapidfuzz`, `scholarly`,
-`bs4`, PyMuPDF. `papers --version` takes 88 ms (Python itself: 21 ms;
+`bs4`, PyMuPDF. `papers --version` took 88 ms (Python itself: 21 ms;
 importing `papers.cli`: 44 ms). On a library of one entry, `papers list`
-takes 80–100 ms; on 10 000 entries 430 ms (warm parse cache), `add` of
+took 80–100 ms; on 10 000 entries 430 ms (warm parse cache), `add` of
 one entry about 0.9 s, `undo` 1.7 s.
+
+Fixed in part: the standard modules that only some commands use are now
+imported in the functions that use them: `urllib.parse` (with
+`ipaddress`), `subprocess`, `platform`, `socket`, `uuid`, `hashlib`,
+`difflib`, `concurrent.futures`, `mimetypes`, `html.entities` (and the
+regular expression of the HTML references, built on first use), AnyAscii
+and `papers/latexenc.py`. CPU time (best of 40, a library of 358
+generated entries, Python 3.14): `papers --version` 86 ms, now 69 ms;
+`papers list` 104 ms, now 90 ms; `papers status` 106 ms, now 87 ms.
+
+What is left: `logging` (18 ms, most of it `traceback`, which imports
+`_colorize`, `dataclasses` and `inspect` in Python 3.14), bibtexparser and
+pylatexenc (7 ms, needed by every command that reads the library, also
+imported by `--version` through the configuration), `platformdirs` (5 ms
+with `typing`), `shutil` (3.5 ms with the compression modules), and the
+argument parser: `get_parser` builds the parsers of all commands (about
+300 arguments) at each start, 10 ms, of which about 4 ms are calls of
+`gettext.find` by argparse (one per translated text, none cached when no
+translation exists). Building only the parser of the command given would
+remove most of it.
 
 For an implementation in a compiled language, startup is negligible, and
 the cost of a command is the parse, the format and the history; for the
@@ -539,7 +575,7 @@ that changes one entry spends about:
 
 | Step | ms |
 |---|---|
-| startup | 90 |
+| startup | 70–90 |
 | read and parse (warm cache) | 370 |
 | sort and format | 150 |
 | compare with the file, write | 10–20 |
