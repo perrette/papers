@@ -123,11 +123,22 @@ def _accent(s, i, mark, text):
     return first + arg[1:k] + mark + arg[k:], end
 
 
+# a run of characters the decoder copies as they are
+_PLAIN_TEXT = re.compile(r"[^\\{}$~\-`']+")
+_PLAIN_PATH = re.compile(r"[^\\{}]+")
+
+
 def _decode(s, text):
     out = []
     i = 0
     n = len(s)
+    plain = _PLAIN_TEXT if text else _PLAIN_PATH
     while i < n:
+        m = plain.match(s, i)
+        if m:
+            out.append(m.group())
+            i = m.end()
+            continue
         c = s[i]
         if c == '\\':
             name, j = _command(s, i)

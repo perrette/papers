@@ -72,19 +72,14 @@ class Verdict:
 MEMO_SIZE = 1 << 18
 
 
-def _latex_to_unicode(s):
-    "latex_to_unicode, without its work for a plain ASCII text (no backslash, no brace)"
-    if s.isascii() and '\\' not in s and '{' not in s and '}' not in s:
-        return s
-    return latex_to_unicode(s)
-
-
 @functools.lru_cache(maxsize=MEMO_SIZE)
 def normalize_text(s):
     """lower case, LaTeX and accents to ASCII, no braces, single spaces"""
     if not s:
         return ''
-    s = _latex_to_unicode(s)
+    if s.isascii() and '\\' not in s and '{' not in s and '}' not in s:
+        return ' '.join(s.lower().split())  # the other steps leave it as it is
+    s = latex_to_unicode(s)
     s = to_ascii(s)
     s = s.replace('{', '').replace('}', '')
     return ' '.join(s.lower().split())
