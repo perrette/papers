@@ -468,14 +468,17 @@ class TestExtractPdfMetadataFromPdfMetadata(unittest.TestCase):
 
 
 class FakeResponse:
-    def __init__(self, status_code=200, json=None, content_type='application/json', text=''):
+    def __init__(self, status_code=200, json=None, content_type='application/json', text='', url=''):
         self.status_code = status_code
         self._json = json
+        self.url = url
         self.headers = {'content-type': content_type}
         self.text = text
         self.ok = status_code < 400
 
     def json(self):
+        if isinstance(self._json, Exception):
+            raise self._json
         return self._json
 
     def raise_for_status(self):
@@ -560,6 +563,30 @@ class TestDoiRequests(unittest.TestCase):
                     fetch_bibtex_by_doi('10.1000/misread')
         website.assert_not_called()
         self.assertEqual(len(calls), 2)  # crossref + doi.org, once
+
+    def test_invalid_json_on_doi_org_tries_the_website(self):
+        import json
+        from unittest import mock
+        from papers.fetch import fetch_bibtex_by_doi
+        get, calls = self._get([('https://api.crossref.org/', FakeResponse(404)),
+                                ('https://doi.org/', FakeResponse(json=json.JSONDecodeError('Expecting value', '<html>', 0)))])
+        website = mock.Mock(return_value='@article{x, title = {From Website}}')
+        with mock.patch('papers.fetch.http_get', get), \
+             mock.patch('papers.fetch.fetch_bibtex_on_journal_website', website):
+            self.assertIn('From Website', fetch_bibtex_by_doi('10.1000/badjson'))
+
+    def test_website_bibtex_links_are_relative_to_the_page(self):
+        # doi.org redirects to the journal page: its relative links are relative to that page
+        from unittest import mock
+        from papers.fetch import fetch_bibtex_on_journal_website
+        bibtex = '@article{x, doi = {10.1000/web}, title = {From Website}}'
+        get, calls = self._get([
+            ('https://doi.org/', FakeResponse(text='<a href="cite/x.bib">BibTeX</a>', content_type='text/html',
+                                              url='https://journal.example.org/articles/x')),
+            ('https://journal.example.org/articles/cite/x.bib', FakeResponse(text=bibtex, content_type='text/plain'))])
+        with mock.patch('papers.fetch.http_get', get):
+            self.assertEqual(fetch_bibtex_on_journal_website('10.1000/web', as_string=True), bibtex)
+        self.assertEqual(calls, ['https://doi.org/10.1000/web', 'https://journal.example.org/articles/cite/x.bib'])
 
     def test_registered_doi_without_metadata_tries_the_website(self):
         # e.g. a new paper: the DOI resolves but the metadata are not out yet

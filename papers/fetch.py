@@ -77,7 +77,10 @@ def fetch_csl_by_doi(doi):
     if not response.ok or 'json' not in response.headers.get('content-type', ''):
         # the DOI exists but its metadata are not available (yet)
         raise DOIRequestError(f'{doi}: no metadata on doi.org (HTTP {response.status_code})')
-    message = response.json()
+    try:
+        message = response.json()
+    except ValueError as error:
+        raise DOIRequestError(f'{doi}: invalid metadata on doi.org ({error})')
     for field in ['title', 'container-title']:
         if isinstance(message.get(field), str):
             message[field] = [message[field]]
@@ -317,9 +320,10 @@ def fetch_bibtex_by_fulltext_crossref(txt, title=None, author=None, rows=5):
 # the DOI resolves to, and take the entry with that DOI.
 
 def fetch_html(url):
+    """the page and its URL, after the redirections (the links are relative to it)"""
     response = http_get(url)
     response.raise_for_status()  # Raise an error for bad status codes
-    return response.text
+    return response.text, response.url
 
 def find_bibtex_links(html_content, base_url):
     from bs4 import BeautifulSoup
@@ -344,8 +348,7 @@ def parse_bibtex(bibtex_content, target_doi):
     return None
 
 def fetch_bibtex_on_journal_website(doi, as_string=False):
-    base_url = f"https://doi.org/{doi}"
-    html_content = fetch_html(base_url)
+    html_content, base_url = fetch_html(f"https://doi.org/{doi}")
     for bibtex_url in find_bibtex_links(html_content, base_url):
         bibtex_content = download_bibtex(bibtex_url)
         bibtex_entry = parse_bibtex(bibtex_content, doi)
