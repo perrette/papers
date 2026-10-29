@@ -2,13 +2,10 @@ import os
 import re
 import shlex
 import shutil
-import hashlib
-import subprocess, platform
 import sys
 import tempfile
 from contextlib import contextmanager
 from pathlib import Path
-from urllib.parse import urlparse, unquote
 
 from papers import logger
 
@@ -125,6 +122,7 @@ def checksum(fname):
 
     source: https://stackoverflow.com/a/3431835/2192272
     """
+    import hashlib
     return hash_bytestr_iter(file_as_blockiter(open(fname, 'rb')), hashlib.sha256())
 
 
@@ -222,6 +220,8 @@ def set_directory(path: Path):
 def open_with_system(path):
     """open a file or a folder with the application the system associates with it
     (https://stackoverflow.com/questions/434597)"""
+    import platform
+    import subprocess
     if platform.system() == 'Darwin':       # macOS
         subprocess.call(('open', path))
     elif platform.system() == 'Windows':    # Windows
@@ -236,6 +236,7 @@ def file_uri_to_path(arg):
     Desktop entries launch viewers with `%U`, i.e. with file:// URIs.
     """
     if arg.startswith('file://'):
+        from urllib.parse import urlparse, unquote
         return unquote(urlparse(arg).path)
     return arg
 

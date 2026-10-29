@@ -1,4 +1,3 @@
-import difflib
 import os
 import re
 from collections import Counter
@@ -37,7 +36,6 @@ from papers.fetch import fetch_bibtex_by_fulltext_crossref, fetch_bibtex_by_doi
 from papers.identifiers import DIGITS
 
 from papers.encoding import standard_name, family_names, format_entries
-from papers.latexenc import string_to_latex
 
 from papers.filename import NAMEFORMAT, KEYFORMAT, fallback_key
 from papers.files import (download_url, read_entry_dir, attachment_names, free_name, remove_entry_dir_if_empty,
@@ -67,6 +65,7 @@ LATEX_SKIP = {'abstract', 'file', 'doi', 'url', 'eprint', 'isbn', 'issn', 'ids'}
 
 def entry_diff(e_old, e, color=True):
     "line diff of two entries, as bibtex"
+    import difflib
     lines = difflib.ndiff(format_entries([e_old]).splitlines(1), format_entries([e]).splitlines(1))
     diff = ''.join(lines)
     if not color:
@@ -1001,6 +1000,7 @@ class Biblio:
             else:
                 # all fields but the abstract, and the paths and identifiers
                 # (string_to_latex escapes _ and ~)
+                from papers.latexenc import string_to_latex
                 for k in [k for k, _ in e.items() if k not in LATEX_SKIP]:
                     if k == k.lower():  # not ENTRYTYPE, ID
                         try:

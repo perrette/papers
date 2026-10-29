@@ -2,12 +2,10 @@
 one json file per key under papers.config.CACHE_DIR, see `cached`.
 """
 import contextlib
-import hashlib
 import json
 import os
 import tempfile
 import time
-from urllib.parse import quote
 
 import papers.config
 from papers import logger
@@ -17,6 +15,8 @@ def _cache_path(folder, key):
     """one json file per key: <folder>/<prefix>/<rest>.json, split at the first
     slash so that DOIs are grouped by registrant (10.1126/science.1166510 ->
     10.1126/science.1166510.json); characters unsafe in file names are quoted"""
+    import hashlib
+    from urllib.parse import quote
     head, sep, tail = key.partition('/')
     if not sep:
         head, tail = key[:2], key
@@ -90,6 +90,7 @@ def cached(name, hashed_key=False, legacy=None, migrate=None, trim=None, not_fou
             if legacy and not papers.config.DRYRUN and os.path.exists(os.path.join(cache_dir, legacy)):
                 _migrate_legacy_cache(os.path.join(cache_dir, legacy), folder, migrate)
             if hashed_key: # use hashed parameter as key (for full text query)
+                import hashlib
                 key = hashlib.sha256(arg.encode('utf-8')).hexdigest()[:16]
             file = _cache_path(folder, key)
             data = _read_cache_file(file)

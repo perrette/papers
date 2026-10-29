@@ -3,7 +3,6 @@ bibliographic search), doi.org content negotiation, arXiv, Google Scholar,
 and the journal website, with the results cached (see papers.cache)."""
 import json
 import threading
-from urllib.parse import quote, urljoin
 
 import papers
 from papers import logger
@@ -50,6 +49,7 @@ def _migrate_crossref_cache(response):
 
 def fetch_crossref_by_doi(doi):
     """crossref record of a DOI ("message" field of the API response)"""
+    from urllib.parse import quote
     response = http_get('https://api.crossref.org/works/' + quote(doi, safe='/'))
     if response.status_code == 404:
         raise DOINotFoundError(f'{doi}: not found on crossref')
@@ -70,6 +70,7 @@ CSL_TYPES = {
 def fetch_csl_by_doi(doi):
     """metadata of a DOI of any registration agency (crossref, DataCite...)
     by content negotiation on doi.org, as a crossref-like record"""
+    from urllib.parse import quote
     response = http_get('https://doi.org/' + quote(doi, safe='/'),
                         headers={'Accept': 'application/vnd.citationstyles.csl+json'})
     if response.status_code == 404:
@@ -326,6 +327,7 @@ def fetch_html(url):
     return response.text, response.url
 
 def find_bibtex_links(html_content, base_url):
+    from urllib.parse import urljoin
     from bs4 import BeautifulSoup
     soup = BeautifulSoup(html_content, 'html.parser')
 

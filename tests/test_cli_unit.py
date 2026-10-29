@@ -262,6 +262,28 @@ class TestImports(unittest.TestCase):
                              env=dict(os.environ, PYTHONPATH=str(Path(papers.cli.__file__).parents[2])))
         self.assertEqual(out.stdout.strip(), '[]')
 
+    def test_modules_of_other_commands_not_imported(self):
+        "the modules used to write, to fetch, to read PDFs or to open files are imported when used"
+        modules = ('urllib.parse', 'subprocess', 'socket', 'uuid', 'difflib', 'concurrent.futures', 'html.entities',
+                   'mimetypes', 'platform', 'anyascii', 'papers.latexenc')
+        code = ("import sys, papers.cli\n"
+                "papers.cli.main(sys.argv[1:])\n"
+                f"print(sorted(m for m in {modules!r} if m in sys.modules), file=sys.stderr)\n")
+        with tempfile.TemporaryDirectory() as home:
+            env = dict(os.environ, HOME=home, XDG_CONFIG_HOME=os.path.join(home, 'config'),
+                       XDG_DATA_HOME=os.path.join(home, 'data'), XDG_CACHE_HOME=os.path.join(home, 'cache'),
+                       PYTHONPATH=str(Path(papers.cli.__file__).parents[2]))
+            lib = os.path.join(home, 'lib')
+            os.makedirs(lib)
+            Path(lib, 'papers.bib').write_text('@article{smith2000,\n author = {Smith, J.},\n'
+                                               ' title = {Sea level},\n year = {2000}\n}\n')
+            subprocess.run([sys.executable, '-m', 'papers', 'init', '--bibtex', 'papers.bib'], cwd=lib, env=env,
+                           capture_output=True, check=True)
+            for args in [['--version'], ['list'], ['status']]:
+                res = subprocess.run([sys.executable, '-c', code] + args, cwd=lib, env=env,
+                                     capture_output=True, text=True, check=True)
+                self.assertEqual(res.stderr.strip().splitlines()[-1], '[]', args)
+
 
 class TestBrokenPipe(unittest.TestCase):
 

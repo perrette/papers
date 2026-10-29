@@ -2,12 +2,10 @@
 paper, checked against the text (the queries themselves are in
 papers.fetch)."""
 import os
-import subprocess as sp
 import re
 import tempfile
 
 import logging
-from concurrent.futures import ThreadPoolExecutor
 
 from papers.ascii import to_ascii
 
@@ -45,6 +43,7 @@ def readpdf_pymupdf(pdf_path, pages=None, first=None, last=None):
 
 def readpdf_poputils(pdf, first=None, last=None, pages=None):
     "text of a PDF with pdftotext (poppler-utils), when PyMuPDF is not installed"
+    import subprocess as sp
     with tempfile.TemporaryDirectory() as tmpdir:
         tmptxt = os.path.join(tmpdir, 'pdf.txt')
         cmd = ['pdftotext']
@@ -67,6 +66,7 @@ def readpdf(pdf, first=None, last=None):
 
 
 def readpdf_image(pdf, first=None, last=None):
+    import subprocess as sp
 
     if not os.path.isfile(pdf):
         raise ValueError(repr(pdf) + ": not a file")
@@ -130,6 +130,7 @@ def _parse_doi_from_info_fields(fields):
 
 def parse_doi_from_pdf_metadata_poppler(pdf_path):
     """Extract DOI from PDF metadata using pdfinfo (poppler-utils)."""
+    import subprocess as sp
     try:
         result = sp.run(['pdfinfo', pdf_path], capture_output=True, text=True, timeout=5)
         if result.returncode == 0:
@@ -380,6 +381,7 @@ def pdftail(pdf):
     try:
         import pymupdf
     except ImportError:
+        import subprocess as sp
         pages = re.search(r'^Pages:\s*(\d+)', sp.run(['pdfinfo', pdf], capture_output=True, text=True).stdout, re.M)
         if not pages or int(pages.group(1)) < 2:
             return ''
@@ -561,6 +563,7 @@ def prefetch_pdf_metadata(pdfs, workers=3, search_doi=True, search_fulltext=True
     requests at a time (crossref's limit), so that adding them one by one
     afterwards is fast. Errors and log messages are left to that second pass.
     """
+    from concurrent.futures import ThreadPoolExecutor
     contents = []
     for pdf in pdfs:  # read in this thread: PyMuPDF is not thread-safe
         try:

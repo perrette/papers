@@ -5,11 +5,9 @@ and `papers rm`.
 
 Links of the bibtex are compared by real path (symbolic links resolved).
 """
-import mimetypes
 import os
 import shutil
 import tempfile
-from urllib.parse import urlparse, unquote
 
 import papers.config
 from papers import journal, logger
@@ -40,6 +38,7 @@ def is_inside(path, folder):
 # =========
 
 def _basename_from_url(url):
+    from urllib.parse import urlparse, unquote
     path = urlparse(url).path
     name = unquote(path.rsplit('/', 1)[-1]) or 'download'
     # strip characters that would break filesystem paths
@@ -106,6 +105,7 @@ def download_url(url, expect_pdf=False, dest_dir=None):
         if not basename.lower().endswith('.pdf'):
             basename += '.pdf'
     else:
+        import mimetypes
         ext = mimetypes.guess_extension((ctype or '').split(';')[0].strip())
         if ext and not basename.lower().endswith(ext.lower()):
             basename += ext

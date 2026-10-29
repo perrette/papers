@@ -79,7 +79,7 @@ class TestFastNormalization(unittest.TestCase):
 
     def test_ascii_runs_not_transliterated(self):
         seen = []
-        with patch.object(ascii, 'anyascii', lambda t: seen.append(t) or anyascii(t)):
+        with patch('anyascii.anyascii', lambda t: seen.append(t) or anyascii(t)):
             self.assertEqual(ascii.to_ascii('Müller and Schrödinger, sea level'), 'Muller and Schrodinger, sea level')
         self.assertEqual(seen, ['ü', 'ö'])
 

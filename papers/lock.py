@@ -39,11 +39,9 @@ the other computers seconds or minutes later.
 import atexit
 import json
 import os
-import socket
 import sys
 import threading
 import time
-import uuid
 
 import papers.config
 from papers import logger
@@ -76,6 +74,8 @@ _mutex = threading.Lock()
 
 
 def _content(command):
+    import socket
+    import uuid
     return {'token': uuid.uuid4().hex, 'pid': os.getpid(), 'host': socket.gethostname(), 'command': command}
 
 
@@ -116,6 +116,7 @@ def _take_over(path, signature):
 
 def _rename_aside(path):
     "rename the lock file to a name of this process (one step); None if there is no file"
+    import uuid
     aside = f'{path}.{uuid.uuid4().hex}.stale'
     try:
         os.rename(path, aside)
@@ -153,6 +154,7 @@ def _create(path, content):
 
 def _process_gone(other):
     "the lock names this computer and a process that no longer exists"
+    import socket
     if other.get('host') != socket.gethostname() or not isinstance(other.get('pid'), int):
         return False
     if sys.platform == 'win32':  # os.kill would end the process: the lifetime decides

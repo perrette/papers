@@ -23,9 +23,7 @@ import importlib.util
 import json
 import os
 import re
-import subprocess
 import sys
-from urllib.parse import unquote, urlparse
 
 from bibtexparser.model import Entry, Field
 
@@ -102,6 +100,7 @@ def load_rispy(interactive=None, input=input):
         answer = ''
     if answer.strip().lower() not in ('y', 'yes'):
         raise PapersExit(f'rispy not installed: {_rispy_help()}')
+    import subprocess
     result = subprocess.run(command, stdout=sys.stderr, stderr=sys.stderr)
     if result.returncode != 0:
         raise PapersExit(f'`{" ".join(command)}` failed: {_rispy_help()}')
@@ -320,6 +319,7 @@ def _file_paths(value):
     separated by ; (bibtex-like description:path:type is accepted).
     file:// URIs are converted; links that are not files (http, EndNote
     internal-pdf://) are left out"""
+    from urllib.parse import unquote, urlparse
     if not value:
         return []
     if isinstance(value, str):

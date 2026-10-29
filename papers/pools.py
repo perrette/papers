@@ -52,7 +52,6 @@ when the pool has its paper this way (Exchange.sharing), with an origin
 record or not: the record is only the base of the merge.
 """
 import datetime
-import hashlib
 import json
 import os
 import re
@@ -506,6 +505,7 @@ def origin_file_name(pool, path=None):
     the pool is, for a pool id that is a library identifier) and the start
     of the sha1 of the pool id (two pools in folders of the same name get
     different files)"""
+    import hashlib
     folder = path if path is not None else (pool if _is_path_id(pool) else '')
     name = slugify(os.path.basename(os.path.normpath(folder))) if folder else ''
     return f'{name or "pool"}-{hashlib.sha1(pool.encode()).hexdigest()[:6]}.bib'

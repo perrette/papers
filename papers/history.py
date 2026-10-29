@@ -25,13 +25,11 @@ refers to). The store only reads
 
 This module uses the standard library only, and nothing else of papers.
 """
-import hashlib
 import json
 import os
 import re
 import shutil
 import time
-import uuid
 import zlib
 
 # an object or a file object younger than this is not removed (a command
@@ -57,10 +55,12 @@ PIECE_MAX = 256
 
 def new_id():
     "the identifier of a new project"
+    import uuid
     return uuid.uuid4().hex
 
 
 def sha256(data):
+    import hashlib
     return hashlib.sha256(data).hexdigest()
 
 

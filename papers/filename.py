@@ -1,22 +1,27 @@
 """
 Key and file name formatting
 """
+import functools
 import os
 import re
 import unicodedata
-from html.entities import name2codepoint
 from papers.ascii import to_ascii
 from papers.encoding import family_names
 from papers.entries import get_entry_val
 
-# the references of HTML: named (the entities of HTML 4), decimal, hexadecimal
-_HTML_REFERENCE = re.compile(r'&(?:#([0-9]+)|#[xX]([0-9a-fA-F]+)|(%s));' % '|'.join(name2codepoint))
+
+@functools.cache
+def _html_reference():
+    "the references of HTML: named (the entities of HTML 4), decimal, hexadecimal"
+    from html.entities import name2codepoint
+    return re.compile(r'&(?:#([0-9]+)|#[xX]([0-9a-fA-F]+)|(%s));' % '|'.join(name2codepoint))
 
 
 def _decode_reference(match):
     "the character of an HTML reference; a number that is no character (a surrogate, above U+10FFFF) stays as written"
     decimal, hexadecimal, name = match.groups()
     if name:
+        from html.entities import name2codepoint
         return chr(name2codepoint[name])
     digits = (decimal or hexadecimal).lstrip('0') or '0'
     n = int(digits, 10 if decimal else 16) if len(digits) <= 8 else -1
@@ -25,7 +30,9 @@ def _decode_reference(match):
 
 def decode_html(text):
     "`text` with its HTML references decoded, in one pass from left to right (a decoded `&` starts no reference)"
-    return _HTML_REFERENCE.sub(_decode_reference, text)
+    if '&' not in text:
+        return text
+    return _html_reference().sub(_decode_reference, text)
 
 
 def slugify(text):
