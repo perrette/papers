@@ -806,6 +806,21 @@ class TestCommands(SpecTest):
         project, place = self.project()
         self.assertEqual(project.head(place)['redo'], [])
 
+    def test_steps_out_of_range(self):
+        "history.md 6.2: -n of undo and redo is 1 or more, else a usage error (exit 2); more than there are: an error"
+        self.add('one2000')
+        self.add('two2000')
+        self.lib('undo -n 2')
+        project, place = self.project()
+        head = project.head(place)
+        for cmd in ('undo -n 0', 'undo -n -1', 'redo -n 0', 'redo -n -9'):
+            with self.assertRaises(SystemExit) as cm:
+                self.lib(cmd)
+            self.assertEqual(cm.exception.code, 2)
+        with self.assertRaisesRegex(PapersExit, r'^only 2 step\(s\) to redo$'):
+            self.lib('redo -n 3')
+        self.assertEqual(project.head(place), head)
+
     def test_nothing_to_restore(self):
         "history.md 6.2: restore to the current state"
         self.add('one2000')

@@ -134,6 +134,17 @@ def _field_value(text):
     return name.strip(), value
 
 
+def _steps(text):
+    "-n of undo and redo: a number of steps, 1 or more"
+    try:
+        n = int(text)
+    except ValueError:
+        raise argparse.ArgumentTypeError(f'{text!r}: a number of steps expected')
+    if n < 1:
+        raise argparse.ArgumentTypeError(f'{text!r}: 1 step or more')
+    return n
+
+
 # the names of the formats in `papers export --format` (bib, json, bib.json: other forms)
 _EXPORT_NAMES = {'bib': 'bibtex', 'json': 'csl-json', 'bib.json': 'bibjson', **{fmt: fmt for fmt in FORMATS}}
 
@@ -972,7 +983,7 @@ def get_parser(config=None):
         why='undo, redo and restore bring the files back (see `papers history`)')
 
     _stepsp = argparse.ArgumentParser(add_help=False)
-    _stepsp.add_argument('-n', '--steps', type=int, default=1, help='number of steps to undo or redo')
+    _stepsp.add_argument('-n', '--steps', type=_steps, default=1, help='number of steps to undo or redo (1 or more)')
     _stepsp.add_argument('--library-only', action='store_true',
         help='the library only: a step that also wrote the pool (add in a shallow library, auto-push, push, '
              'sync) is undone or redone in the pool too, unless the pool changed since')

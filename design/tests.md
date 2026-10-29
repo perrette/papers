@@ -1793,6 +1793,7 @@ for the specification. A section marked free has none.
 - tests/test_spec_history.py::TestCommands::test_redo_list_of_undo
 - tests/test_spec_history.py::TestCommands::test_redo_after_an_outside_change
 - tests/test_spec_history.py::TestCommands::test_restore_redo_list
+- tests/test_spec_history.py::TestCommands::test_steps_out_of_range
 - tests/test_spec_history.py::TestCommands::test_nothing_to_restore
 - tests/test_undo.py::TestTimeTravel::test_undo_redo
 - tests/test_undo.py::TestTimeTravel::test_nothing_to_undo

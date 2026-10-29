@@ -815,7 +815,10 @@ All three require a bibtex (otherwise
 head up to date first (5.2). With `--dry-run` they read the head as it is
 and change nothing.
 
-**`papers undo [-n N] [--library-only]`** (N = 1 by default):
+N, the number of steps of undo and redo, is 1 by default; a value below
+1 is a usage error (exit code 2), and nothing is read or changed.
+
+**`papers undo [-n N] [--library-only]`**:
 
 1. `line` = the line of the head. If it has N states or fewer: stop with
    `nothing to undo` (one state or none) or `only K step(s) to undo` (K =
