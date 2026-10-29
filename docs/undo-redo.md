@@ -117,7 +117,7 @@ the history the files that the step deleted, and `--drop-files PATH` the file
 deleted from PATH (by any step): they go to the trash of the system, the
 steps stay, and undo says the files are no longer in the history. `papers
 history --remove` removes the whole history of the library. Both ask
-first (`-y` does not).
+first (`-y` does not); with `--dry-run` they only say what they would remove.
 
 If you would rather not keep deleted files at all (you have your own
 backups, or no space to spare): `papers config --global keep-deleted-files

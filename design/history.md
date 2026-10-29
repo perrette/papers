@@ -790,7 +790,7 @@ not deleted) are the behaviour users rely on.
 | a command that writes a pool from a shallow library | a state in the pool's project (`from`), then one in the library's (`pools`) |
 | undo, redo, restore | none in the library; a state in a pool when its step is reverted or done again (7.3) |
 | undo, redo with `auto-push` that sends something | a push: a pool state, then a library state (7.6) |
-| `--dry-run` | none |
+| `--dry-run` | none (also for `history --remove` and `--drop-files`: nothing is removed) |
 
 ## 6. Undo, redo, restore
 
@@ -1441,9 +1441,12 @@ and the removable objects are removed. papers prints, at info level,
 
 ### 9.3 `papers history --remove [ID]`
 
-- Without ID: if other places use the project, only this place's head is
-  removed: `removed the history of <place>; the history of the library
-  stays for the other folder(s) that use it: …`. Otherwise, after
+- Without ID: if other places use the project and this place has no head
+  (a copy of the library never used in its folder), nothing is removed:
+  `nothing to remove: <place> has no history; …` (exit code 0). If other
+  places use the project, only this place's head is removed: `removed
+  the history of <place>; the history of the library stays for the other
+  folder(s) that use it: …`. Otherwise, after
   confirmation, the folder `projects/<id>/` is deleted (`removed the
   history of the library (K steps)`), and the store is pruned (9.2): the
   pieces and files that no other project refers to are removed once they
@@ -1454,7 +1457,10 @@ and the removable objects are removed. papers prints, at info level,
   `papers history --all`)``.
 - The confirmation: `-y`/`--yes` skips it; without a terminal the command
   stops with an error.
-- No project: `the library has no history`.
+- With `--dry-run`: nothing is removed and nothing is asked; papers says
+  what would be removed (`DRYRUN: the history of the library (K steps)
+  not removed`).
+- No project: `the library has no history` (exit code 0).
 
 ### 9.4 `papers history --drop-files STEP|PATH`
 
@@ -1472,6 +1478,8 @@ the separator of the operating system, or `.`; otherwise it names a step
    PATH`).
 2. List them with their sizes and ask (`-y` skips; without a terminal,
    an error).
+   With `--dry-run`: the list, then `DRYRUN: N file(s) (X) not dropped
+   from the history`; nothing is asked and nothing changes.
 3. Remove their checksums from `deleted` in every state of the project
    (rewriting those states). `ops` stays: undo reports
    `no longer in the history (see the history-size setting), not

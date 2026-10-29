@@ -1957,6 +1957,8 @@ for the specification. A section marked free has none.
 - tests/test_spec_history.py::TestRemove::test_last_place_prunes
 - tests/test_spec_history.py::TestRemove::test_by_id
 - tests/test_spec_history.py::TestRemove::test_no_project
+- tests/test_spec_history.py::TestRemove::test_dry_run
+- tests/test_spec_history.py::TestRemove::test_place_without_history
 - tests/test_history.py::TestHistoryCommand::test_all_and_remove
 - tests/test_history.py::TestHistoryCommand::test_remove_keeps_the_history_of_a_copy
 - tests/test_history.py::TestHistoryCommand::test_remove_without_terminal.
@@ -1964,6 +1966,7 @@ for the specification. A section marked free has none.
 ### 9.4 `papers history --drop-files STEP|PATH`
 
 - tests/test_spec_history.py::TestDropFiles::test_file_kept_by_another_project
+- tests/test_spec_history.py::TestDropFiles::test_dry_run
 - tests/test_spec_history.py::TestKeys::test_unknown_keys_kept
 - tests/test_journal.py::TestDropFiles::test_size_in_the_list
 - tests/test_journal.py::TestDropFiles::test_drop_by_step

@@ -1028,6 +1028,23 @@ class TestRemove(SpecTest):
         "history.md 9.3: no project"
         self.assertIn('the library has no history', self.out('history --remove --yes'))
 
+    def test_dry_run(self):
+        "history.md 9.3: with --dry-run nothing is removed"
+        self.add('one2000')
+        out = self.out('history --remove --yes --dry-run')
+        self.assertIn('DRYRUN: the history of the library (2 steps) not removed', out)
+        self.assertEqual(self.count(), 2)
+
+    def test_place_without_history(self):
+        "history.md 9.3: a copy that was never used has no history: nothing is removed"
+        self.add('one2000')
+        shutil.copytree(self.path('lib'), self.path('copy'))
+        out = self.out('history --remove --yes', where='copy')
+        self.assertIn('nothing to remove', out)
+        project, place = self.project()
+        self.assertEqual(list(project.heads()), [place])
+        self.assertEqual(self.count(), 2)
+
 
 class TestDropFiles(SpecTest):
     "history.md 9.4"
@@ -1046,6 +1063,15 @@ class TestDropFiles(SpecTest):
         self.assertEqual(len(os.listdir(folder)), 1)
         self.lib('undo')  # found by checksum in the store
         self.assertTrue(os.path.isfile(self.path('lib', 'files', 'a.pdf')))
+
+    def test_dry_run(self):
+        "history.md 9.4: with --dry-run the files are listed and stay"
+        a = self.write('lib', 'files', 'a.pdf', content='a pdf')
+        self.add('one2000', a)
+        self.lib('rm one2000 --delete-files')
+        out = self.out(f'history --drop-files {self.head()} --yes --dry-run')
+        self.assertIn('DRYRUN: 1 file (0 KB) not dropped from the history', out)
+        self.assertEqual(len(self.state()['deleted']), 1)
 
 
 # 10. .papers/files.json
