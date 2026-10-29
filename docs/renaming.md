@@ -75,7 +75,7 @@ method). Its placeholders are:
 - `{key}` (or `{ID}`): the bibtex key of the entry
 - `{doi}`, `{doi_}` (the doi with `-` in place of `/`, `.` and the other
   characters that are not letters or digits, for a file name),
-  `{doi_or_id}` (the same, or the key if the entry has no doi)
+  `{doi_or_id}` (the same, or the key if the entry has no doi, or an empty one)
 
 Another placeholder is an error that lists these.
 
@@ -148,6 +148,12 @@ and for entries without author, year or title:
 
 The same template and modifiers system applies to the bibtex key generation by
 replacing the prefix `--name-` with `--key-`, e.g. `--key-template`.
+
+When the key template gives an empty key (an entry without author, year and
+DOI, with the default templates), a new entry gets a key from the first word
+of its title (of at least 3 letters) and its year: `only2000` for "Only a
+title" of 2000, `only` without year, `entry` without title. `papers check
+--fix-key` and the other renames keep the key of the entry instead.
 
 In the common case where the bibtex (`--bibtex`), files directory
 (`--filesdir`), and name and key formats (e.g. `--name-template`) do not
