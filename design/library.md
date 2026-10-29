@@ -233,8 +233,8 @@ settings of papers 2 (`git`, `gitlfs`, `backup_files`, `gitdir`,
 Contract:
 
 1. Parse the JSON, as UTF-8 (a byte order mark is ignored). A file that
-   is not valid JSON, or not a JSON object, is an error that names the
-   file.
+   is not valid UTF-8, not valid JSON, or not a JSON object, is an error
+   that names the file.
 2. `version`: absent means 2. A value that is not an integer (booleans
    excluded) is an error. A value greater than 3 is an error: the file was
    written by a newer papers. For version 3 and above, the keys
@@ -431,9 +431,9 @@ Contract: a JSON object with the layout of a library configuration:
 | `pools` | Legacy: an object `{name: path}` of earlier v3 builds, used only to read `pools` lists of library configurations. Not a setting; written back unchanged when papers rewrites the file. |
 
 Reading: the file is read as UTF-8 (a byte order mark is ignored). A
-file that is not valid JSON, or not a JSON object, is an error that
-names the file, as for a library configuration, so that no later save
-replaces its content. The values are type-checked as in a library
+file that is not valid UTF-8, not valid JSON, or not a JSON object, is
+an error that names the file, as for a library configuration, so that no
+later save replaces its content. The values are type-checked as in a library
 configuration (`default` must be a string). A missing file means no
 settings.
 

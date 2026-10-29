@@ -82,6 +82,7 @@ for the specification. A section marked free has none.
 - tests/test_config_v3.py::TestConfigCommand::test_errors
 - tests/test_library_cmds.py::TestConfigCmd::test_bad_value
 - tests/test_spec_library.py::TestConfigurationFormat::test_read_as_utf8
+- tests/test_spec_library.py::TestReading::test_invalid_utf8
 - tests/test_spec_library.py::TestReading::test_unknown_pool_name
 - tests/test_spec_library.py::TestReading::test_pools_item_that_is_a_path
 - tests/test_spec_library.py::TestReading::test_null_is_unset

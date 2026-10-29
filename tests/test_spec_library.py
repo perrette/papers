@@ -2,6 +2,7 @@
 class per section of the specification, each test naming its section."""
 import json
 import os
+import re
 import socket
 import sys
 import unittest
@@ -14,6 +15,7 @@ from papers.bib import Biblio
 from papers.config import CONFIG_FILE_LOCAL, Config, MachineConfig, SETTINGS
 from papers.filename import Format, make_template_fields, slugify
 from papers.lock import LockError
+from papers.utils import PapersExit
 
 from tests.common import ConfigTest, FileTest, entry
 
@@ -177,6 +179,14 @@ class TestReading(ConfigTest):
         os.makedirs(self.path('lib', '.papers'), exist_ok=True)
         Path(self.path('lib', CONFIG_FILE_LOCAL)).write_text(json.dumps(js))
         return self.path('lib', CONFIG_FILE_LOCAL)
+
+    def test_invalid_utf8(self):
+        """library.md Reading 1: a file that is not valid UTF-8 is an error
+        that names the file, as invalid JSON"""
+        file = self.write({})
+        Path(file).write_bytes(b'{"version": 3, "editor": "\xff"}')
+        with self.assertRaisesRegex(PapersExit, rf'^{re.escape(file)} could not be read \(.*\): correct the file$'):
+            Config.load(file, machine=MachineConfig(self.path('machine.json')))
 
     def test_unknown_pool_name(self):
         """library.md Reading 4: a pools item that is an unknown pool name is
