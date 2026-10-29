@@ -255,6 +255,47 @@ class TestThreeWayDialogue(unittest.TestCase):
         self.assertEqual(Resolver('skip').decide(self.merge(), 'pull', verdict).kind, 'skip')
 
 
+
+class TestMergeFiles(unittest.TestCase):
+    "the union of the file links: a checksum only between files of the same size"
+
+    def setUp(self):
+        import tempfile
+        self.dir = tempfile.mkdtemp()
+
+    def tearDown(self):
+        import shutil
+        shutil.rmtree(self.dir)
+
+    def write(self, name, content):
+        import os
+        path = os.path.join(self.dir, name)
+        with open(path, 'w') as f:
+            f.write(content)
+        return path
+
+    def merge(self, *links):
+        from unittest import mock
+        import papers.merge
+        entries = [entry(f'k{i}', **BASE, file=';'.join(f':{f}:pdf' for f in fs)) for i, fs in enumerate(links)]
+        with mock.patch.object(papers.merge, 'checksum', wraps=papers.merge.checksum) as checksum:
+            m = Merge(entries)
+        return m.files, checksum.call_count
+
+    def test_same_files_not_read(self):
+        a, b = self.write('a.pdf', 'aaa'), self.write('b.pdf', 'bbbb')
+        self.assertEqual(self.merge([a, b], [a, b]), ([a, b], 0))
+
+    def test_sizes_differ_not_read(self):
+        a, b = self.write('a.pdf', 'aaa'), self.write('b.pdf', 'bbbb')
+        self.assertEqual(self.merge([a], [b]), ([a, b], 0))
+
+    def test_same_content_once(self):
+        a, copy, other = self.write('a.pdf', 'aaa'), self.write('copy.pdf', 'aaa'), self.write('c.pdf', 'ccc')
+        files, calls = self.merge([a], [copy, other])
+        self.assertEqual(files, [a, other])
+        self.assertLessEqual(calls, 3)  # each file read once at most
+
 if __name__ == '__main__':
     unittest.main()
 

@@ -306,17 +306,29 @@ class Merge:
         return parse_file(get_entry_val(e, 'file', ''), relative_to=self.relative_to)
 
     def _merge_files(self):
-        "union of the file links: the same file (real path, or content) once"
+        """union of the file links: the same file (real path, or content) once.
+        The content is compared only between files of the same size (a
+        checksum reads the whole file)"""
         self.files = []
-        seen = set()
+        kept = {}  # real path of a file kept -> its size (None: not a file)
+        sums = {}  # real path -> checksum, computed when needed
+
+        def content(path):
+            if path not in sums:
+                sums[path] = checksum(path)
+            return sums[path]
+
         for e in self.entries:
             for f in self._files(e):
-                ids = {os.path.realpath(f)}
-                if os.path.isfile(f):
-                    ids.add(checksum(f))
-                if not ids & seen:
-                    self.files.append(f)
-                seen |= ids
+                path = os.path.realpath(f)
+                if path in kept:
+                    continue
+                size = os.path.getsize(path) if os.path.isfile(path) else None
+                if size is not None and any(s == size and content(p) == content(path)
+                                            for p, s in kept.items()):
+                    continue
+                kept[path] = size
+                self.files.append(f)
         own = {os.path.realpath(f) for f in self._files(self.target)}
         self.new_files = [f for f in self.files if os.path.realpath(f) not in own]
 
