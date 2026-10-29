@@ -384,6 +384,16 @@ class TestHistoryCommand(LibraryTest):
         self.assertIn('rm -rf ', out)
         self.assertTrue(os.path.isdir(self.path('lib', '.papers', 'backup')))  # papers does not delete it
 
+    def test_all_sorted_by_place(self):
+        # history --all: the projects in the order of the bibtex of their last place, not of their ids
+        for name in ('b', 'c', 'a'):
+            self.papers(f'init {name}')
+            self.add(f'{name}2000', where=name)
+        out = self.out('history --all')
+        ids = [self.config(w).library_id(create=False) for w in ('a', 'b', 'c')]
+        found = [line.split(':')[0][2:] for line in out.splitlines() if line.startswith('* ')]
+        self.assertEqual(found, ids)
+
     def test_all_and_remove(self):
         self.add('one2000')
         self.papers('init other')

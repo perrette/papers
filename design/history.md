@@ -1592,7 +1592,9 @@ stale: ~/.local/share/papers/backups (backup of an earlier papers, 12.0 MB, no l
 - `--all`: for each store with projects, its root and size; for each
   project: `* <id>: K steps, X MB of its own, last used at <place>` (own:
   the objects that only this project refers to; last used: the place with
-  the largest head `time`).
+  the largest head `time`). The projects of a store are listed in the
+  order of that place (the real path of its bibtex, by Unicode code
+  points), the projects without place last; the identifier breaks ties.
 
 **Old backups** (`stale:` lines). papers lists, and never deletes, the
 backups of earlier versions:

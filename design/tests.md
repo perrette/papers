@@ -2015,3 +2015,9 @@ for the specification. A section marked free has none.
 - tests/test_parsecache.py::TestParseCache::test_not_cached_when_a_block_fails
 - tests/test_parsecache.py::TestParseCache::test_prune
 - tests/test_parsecache.py::TestParseCache::test_damaged_cache.
+
+### 12. `papers history`
+
+- tests/test_history.py::TestHistoryCommand::test_list
+- tests/test_history.py::TestHistoryCommand::test_all_and_remove
+- tests/test_history.py::TestHistoryCommand::test_all_sorted_by_place

@@ -206,11 +206,15 @@ def _show_all(config):
                 for ref in papers.history._refs(state):
                     refs.setdefault(ref, set()).add(id)
         print(f'{papers.config.short_home(st.root)}: {_mb(st.size())}')
+        projects = []
         for id in ids:
+            heads = st.project(id).heads()
+            last = max(heads.items(), key=lambda h: h[1].get('time', 0))[0] if heads else None
+            projects.append((last, id))
+        # by the bibtex of the place last used (the ids are random), those without place last
+        for last, id in sorted(projects, key=lambda p: (p[0] is None, p[0] or '', p[1])):
             project = st.project(id)
             own = sum(sizes[r][1] for r, users in refs.items() if users == {id} and r in sizes)
-            heads = project.heads()
-            last = max(heads.items(), key=lambda h: h[1].get('time', 0))[0] if heads else None
             print(f'* {id}: {len(project.states())} steps, {_mb(own)} of its own'
                   + (f', last used at {papers.config.short_home(last)}' if last else ''))
 
