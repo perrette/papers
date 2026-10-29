@@ -11,6 +11,7 @@ from papers.pools import Exchange, Pools, PoolError, load_biblio, mtime, use_poo
 from papers.utils import PapersExit
 
 from tests.common import ConfigTest
+from papers.pools import Origin, ORIGIN_DIR
 from tests.test_pools import PoolTest, SMITH_BIB, NEW_BIB
 
 
@@ -426,3 +427,42 @@ class TestPullCost(PoolTest):
             self.lib('pull --all')
         self.assertEqual(len(self.bib()[1]), self.N)
         self.assertLess(len(seen), self.N)  # 1 770 before
+
+    def test_origin_parsed_once_with_cache(self):
+        # the origin records are parsed once per command (also loaded to repair the
+        # links of the shallow library), through the parse cache
+        self.lib('pull --all')
+        Origin.__dict__.get('_parsed', {}).clear()  # parsed by the commands before
+        import papers.pools
+        calls = []
+        parse = papers.pools.parse_string
+        def parse_string(text, cache=None):
+            if '@comment{papers-pool ' in text:
+                calls.append(cache)
+            return parse(text, cache=cache)
+        with patch('papers.pools.parse_string', parse_string):
+            self.lib('pull --all')
+            self.assertEqual(len(calls), 1)  # 2 before
+            self.assertIsNotNone(calls[0])
+            calls.clear()
+            self.lib('status')
+            self.assertEqual(calls, [])  # the same text: not parsed again in this process
+        Origin.__dict__.get('_parsed', {}).clear()  # parsed by the commands before
+        with patch('papers.pools.parse_string', parse_string):
+            self.lib('status')
+        self.assertEqual(len(calls), 1)
+        self.assertIsNotNone(calls[0])
+
+    def test_shared_records_not_changed_in_place(self):
+        # the parsed records are shared between loads: a change goes to a copy
+        self.lib('pull --all')
+        origin = Origin.load(self.path('lib', ORIGIN_DIR))
+        (pool, records), = origin.entries.items()
+        before = records['key0']
+        files = before['file']
+        origin.set_files('Key0', pool, 'files/new.pdf')
+        origin.rekey('Key1', 'Other1')
+        again = Origin.load(self.path('lib', ORIGIN_DIR)).entries[pool]
+        self.assertIs(again['key0'], before)
+        self.assertEqual(again['key0']['file'], files)
+        self.assertEqual(again['key1'].key, 'Key1')
