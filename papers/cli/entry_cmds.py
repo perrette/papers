@@ -15,6 +15,7 @@ from papers.encoding import family_names, format_entries, format_entry, format_k
 from papers.formats import FORMATS, dumps, file_format, load_rispy
 from papers.entries import entry_from_dict, get_entry_val, format_file, parse_file, set_entry_key
 from papers.extract import isvaliddoi, prefetch_pdf_metadata
+from papers.fetch import DOIRequestError
 from papers.files import delete_files, describe_file, download_url, files_policy, scan_dir_items
 from papers.identifiers import normalize_doi, read_selection, select_entries
 from papers.library import get_biblio, savebib
@@ -134,7 +135,12 @@ def addcmd(parser, o, config):
             'update_key':o.update_key, 'metadata':metadata}
 
     if len(o.file) == 0 and o.doi and not o.no_query_doi:
-        entries.extend( biblio.fetch_doi(o.doi, attachments=o.attachment, rename=rename, copy=policy, **kw) )
+        try:
+            entries.extend( biblio.fetch_doi(o.doi, attachments=o.attachment, rename=rename, copy=policy, **kw) )
+        except DOIRequestError as error:  # its message names the DOI
+            raise PapersExit(str(error)) from error
+        except OSError as error:  # network error
+            raise PapersExit(f'{o.doi}: {error}') from error
 
     elif len(o.file) == 0 and o.key and not (o.edit or o.metadata or o.doi or o.title or o.author
                                              or o.journal or o.year):

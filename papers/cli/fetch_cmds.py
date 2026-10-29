@@ -4,7 +4,7 @@ from pathlib import Path
 
 from papers import logger
 from papers.extract import extract_pdf_doi, extract_pdf_metadata
-from papers.fetch import fetch_bibtex_by_doi, fetch_bibtex_by_fulltext_crossref, fetch_bibtex_by_fulltext_scholar
+from papers.fetch import DOIRequestError, fetch_bibtex_by_doi, fetch_bibtex_by_fulltext_crossref, fetch_bibtex_by_fulltext_scholar
 from papers.identifiers import strip_doi
 from papers.utils import PapersExit
 
@@ -24,15 +24,23 @@ def fetchcmd(parser, o, config):
         if o.scholar:
             parser.error("Fetching from DOI does not support Google Scholar option")
         for doi in dois:
-            print(fetch_bibtex_by_doi(doi))
+            try:
+                print(fetch_bibtex_by_doi(doi))
+            except DOIRequestError as error:  # its message names the DOI
+                raise PapersExit(str(error)) from error
+            except OSError as error:  # network error
+                raise PapersExit(f'{doi}: {error}') from error
         return
 
     # or one full text search
     field = " ".join(o.doi_or_text)
-    if o.scholar:
-        print(fetch_bibtex_by_fulltext_scholar(field))
-    else:
-        print(fetch_bibtex_by_fulltext_crossref(field))
+    try:
+        if o.scholar:
+            print(fetch_bibtex_by_fulltext_scholar(field))
+        else:
+            print(fetch_bibtex_by_fulltext_crossref(field))
+    except (ValueError, OSError) as error:  # no result, network error
+        raise PapersExit(str(error)) from error
 
 
 def _collect_pdf_files(paths, recursive=False):
@@ -77,9 +85,9 @@ def extractcmd(parser, o, config):
                 raise PapersExit(f'{file}: {error}')
             logger.error(f'{file}: {error}')
             failed += 1
-        except Exception as error:
+        except Exception as error:  # e.g. not a PDF, network error
             if len(files) == 1:
-                raise
+                raise PapersExit(f'{file}: {error}') from error
             logger.error(f'{file}: {error}')
             failed += 1
     if failed:

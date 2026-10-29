@@ -4,6 +4,7 @@ import os
 from contextlib import redirect_stdout
 from unittest.mock import patch
 
+from papers.fetch import DOINotFoundError
 from papers.utils import PapersExit
 from tests.common import FileTest
 
@@ -29,6 +30,23 @@ class TestFetch(FileTest):
         with patch('papers.cli.fetch_cmds.fetch_bibtex_by_fulltext_scholar', return_value='@misc{x}') as search:
             self.out('fetch Climate sensitivity --scholar')
         search.assert_called_once_with('Climate sensitivity')
+
+    def test_unknown_doi_is_a_clean_error(self):
+        with patch('papers.fetch.fetch_doi_metadata', side_effect=DOINotFoundError('10.1000/zz: unknown to doi.org')):
+            with self.assertRaisesRegex(PapersExit, '^10.1000/zz: unknown to doi.org$'):
+                self.lib('fetch 10.1000/zz')
+            with self.assertRaisesRegex(PapersExit, '^10.1000/zz: unknown to doi.org$'):
+                self.lib('add --doi 10.1000/zz')
+
+    def test_network_error_is_a_clean_error(self):
+        import requests
+        with patch('papers.fetch.http_get', side_effect=requests.exceptions.ProxyError('no proxy')):
+            with self.assertRaisesRegex(PapersExit, '^10.1000/nw: no proxy$'):
+                self.lib('fetch 10.1000/nw')
+            with self.assertRaisesRegex(PapersExit, '^10.1000/nw: no proxy$'):
+                self.lib('add --doi 10.1000/nw')
+            with self.assertRaisesRegex(PapersExit, '^no proxy$'):
+                self.lib('fetch Climate sensitivity revisited')
 
 
 class TestExtract(FileTest):
@@ -65,3 +83,7 @@ class TestExtract(FileTest):
         with patch('papers.cli.fetch_cmds.extract_pdf_metadata', side_effect=ValueError('no metadata')):
             with self.assertRaisesRegex(PapersExit, f'^{self.a}: no metadata$'):
                 self.lib(f'extract {self.a}')
+
+    def test_one_file_not_a_pdf_is_a_clean_error(self):
+        with self.assertRaisesRegex(PapersExit, f'^{self.a}: '):
+            self.lib(f'extract {self.a}')
