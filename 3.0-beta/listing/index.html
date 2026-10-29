@@ -1032,6 +1032,10 @@ perform actions on the matched entries.</p>
 <a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>$&gt; papers list --key perrette2013 --author perrette --year 2013 --title scaling approach sea level
 <a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>... (precise list)
 </code></pre></div>
+<p>The search ignores case, accents, LaTeX and braces: <code>papers list muller</code>
+finds <code>M{\"u}ller</code> and <code>Müller</code>, <code>--title "sea level"</code> finds <code>{S}ea level</code>.
+A word matches part of the text; with <code>--strict</code>, the whole value
+(<code>--key perrette_2011 --strict</code>, or a pattern: <code>--year '201?' --strict</code>).</p>
 <p>With <code>--invert</code>, <code>papers list</code> lists the entries that the same command
 without <code>--invert</code> does not list.</p>
 <h2 id="tags">Tags<a class="headerlink" href="#tags" title="Permanent link">&para;</a></h2>

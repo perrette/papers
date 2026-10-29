@@ -1020,7 +1020,7 @@ method). Its placeholders are:</p>
 <li><code>{key}</code> (or <code>{ID}</code>): the bibtex key of the entry</li>
 <li><code>{doi}</code>, <code>{doi_}</code> (the doi with <code>-</code> in place of <code>/</code>, <code>.</code> and the other
   characters that are not letters or digits, for a file name),
-  <code>{doi_or_id}</code> (the same, or the key if the entry has no doi)</li>
+  <code>{doi_or_id}</code> (the same, or the key if the entry has no doi, or an empty one)</li>
 </ul>
 <p>Another placeholder is an error that lists these. A name that would place
 the file outside the files directory (<code>../{author}</code>) is refused: the files
@@ -1063,8 +1063,8 @@ its name until the entry is renamed (<code>papers file rename</code>, <code>pape
 </ul>
 <p>The author names, the title words, <code>{doi_}</code> and <code>{doi_or_id}</code> are written
 in ASCII: accented and non-Latin letters are transliterated with the table
-of the Unidecode library (<code>Müller</code> gives <code>muller</code>, <code>Хрущёв</code> gives
-<code>khrushchev</code>), and other characters separate words.</p>
+of AnyAscii (<code>Müller</code> gives <code>muller</code>, <code>Хрущёв</code> gives <code>khrushchev</code>, <code>北京</code>
+gives <code>beijing</code>), and other characters separate words.</p>
 <h2 id="modifiers">Modifiers<a class="headerlink" href="#modifiers" title="Permanent link">&para;</a></h2>
 <p>The modifiers are:</p>
 <ul>
@@ -1090,6 +1090,11 @@ of the Unidecode library (<code>Müller</code> gives <code>muller</code>, <code>
 </ul>
 <p>The same template and modifiers system applies to the bibtex key generation by
 replacing the prefix <code>--name-</code> with <code>--key-</code>, e.g. <code>--key-template</code>.</p>
+<p>When the key template gives an empty key (an entry without author, year and
+DOI, with the default templates), a new entry gets a key from the first word
+of its title (of at least 3 letters) and its year: <code>only2000</code> for "Only a
+title" of 2000, <code>only</code> without year, <code>entry</code> without title. <code>papers check
+--fix-key</code> and the other renames keep the key of the entry instead.</p>
 <p>In the common case where the bibtex (<code>--bibtex</code>), files directory
 (<code>--filesdir</code>), and name and key formats (e.g. <code>--name-template</code>) do not
 change, it is convenient to store them in a <a href="../configuration/">library configuration</a>
