@@ -205,6 +205,7 @@ the same placeholders can be written in `before/`, `before-home/`, `argv` and
 | placeholder | what |
 |---|---|
 | `$WORK` | the working folder (`<sandbox>/work`), as an absolute path |
+| `$NOSLASH_WORK` | the same without its leading slash, as Mendeley writes file links |
 | `$HOME` | the HOME of the sandbox |
 | `$CONFIG` | the folder of the global configuration of papers (`config.json` is in it) |
 | `$DATA/history` | the history store of the machine (`$DATA`: the data folder of papers) |
@@ -290,6 +291,7 @@ Not compared:
 
 - The parse cache (`$CACHE`, `Library/Caches/papers`): private to each
   implementation.
+- The trash of the system (`~/.local/share/Trash` on Linux; on macOS it is outside HOME): where a deleted file goes is the system's, not papers'.
 - File times and permissions.
 - `.DS_Store`.
 

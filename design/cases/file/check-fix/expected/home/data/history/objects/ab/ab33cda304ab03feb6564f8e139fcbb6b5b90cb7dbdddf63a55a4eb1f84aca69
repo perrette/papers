@@ -1,13 +1,13 @@
 @article{a2020,
  author = {Doe, Jane},
- file = {:files/a1.txt:txt},
+ file = {:files/a1.txt:txt;:files/a1.txt:txt;:files/a1-copy.txt:txt},
  title = {Title of a2020},
  year = {2020}
 }
 
 @article{b2021,
  author = {Roe, R},
- file = {:../../../../../../../../usr/bin/env:;:files/roe_2020_title-of-b2021--b.pdf:pdf;:files/roe_2020_title-of-b2021--b2.txt:txt},
+ file = {:mendeley/tool:;:files/roe_2020_title-of-b2021--b.pdf:pdf;:files/roe_2020_title-of-b2021--b2.txt:txt},
  title = {Title of b2021},
  year = {2020}
 }

@@ -273,6 +273,8 @@ class Sandbox:
             pairs.append((path, ph))
             if path.startswith(self.home + os.sep):   # as papers shows it
                 pairs.append(('~' + path[len(self.home):], ph))
+        # the working folder written without its leading slash, as Mendeley writes file links
+        pairs.append((self.work.lstrip(os.sep), '$NOSLASH_WORK'))
         pairs.append((self.root, '$TMP'))
         # the same with the unresolved name of the temporary directory
         if self.tmp != self.root:
@@ -294,7 +296,7 @@ class Sandbox:
     def expand(self, text):
         "the placeholders of a case file or argument, as paths of this sandbox"
         d = self.dirs
-        for ph, path in (('$WORK', self.work), ('$HOME', self.home), ('$CONFIG', d['config']),
+        for ph, path in (('$NOSLASH_WORK', self.work.lstrip(os.sep)), ('$WORK', self.work), ('$HOME', self.home), ('$CONFIG', d['config']),
                          ('$DATA', d['data']), ('$CACHE', d['cache'])):
             text = text.replace(ph, path)
         return STATE_PLACEHOLDER.sub(self._state_text, text)
@@ -463,6 +465,8 @@ class Sandbox:
         for path, content in raw.items():
             if path.startswith(cache):
                 continue   # the parse cache: private to each implementation
+            if path.startswith('.local/share/Trash/'):
+                continue   # the trash of the system (Linux: in HOME; macOS: elsewhere): not papers'
             if path.startswith(history):
                 rel = 'data/history/' + path[len(history):]
                 parts = rel.split('/')

@@ -5,7 +5,7 @@ d2023: broken link: $WORK/lost/dup.txt: $WORK/search/one/dup.txt matches the bro
 e2024: broken link: $WORK/lost/dup.txt: $WORK/search/one/dup.txt matches the broken links of d2023, e2024 (not relinked)
 a2020: the same file is linked twice: $WORK/files/a1.txt and $WORK/files/a1.txt (second link removed)
 a2020: identical files: $WORK/files/a1.txt and $WORK/files/a1-copy.txt (second link removed)
-b2021: path can be repaired: $WORK/usr/bin/env -> /usr/bin/env (fixed)
+b2021: path can be repaired: $WORK$WORK/mendeley/tool -> $WORK/mendeley/tool (fixed)
 f2025: broken link: $WORK/lost/fine.txt (remove it with `papers file detach --broken --key f2025`)
 3 links relinked, 4 still broken (papers file detach --broken removes them)
 4 issue(s) left in the files of 6 entries

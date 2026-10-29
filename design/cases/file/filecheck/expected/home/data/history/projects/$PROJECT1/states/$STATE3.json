@@ -12,9 +12,9 @@
   },
   {
    "op": "copied",
-   "src": "/usr/bin/env",
+   "src": "mendeley/tool",
    "dst": "files/roe_2020_title-of-b2021",
-   "checksum": "2b2a1145527f00e8369fda0d2ffc523b520201bb08dbaf4b0bded837f7652ce0"
+   "checksum": "555500e631fc5b2a3ea0934875e951e883035ef16ed6885294bf73bea5cb524a"
   },
   {
    "op": "copied",
@@ -38,7 +38,7 @@
  },
  "files": {
   ".papers/files.json": [
-   "006563715ecf77f89956ba693eb6727ad22f29c15a580b6f627d5322970cd9fd"
+   "fdacb4935c00358617b68112a4e0828455912dab08a86f27bb79e46b246c2806"
   ]
  }
 }
