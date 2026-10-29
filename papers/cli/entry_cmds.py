@@ -10,7 +10,7 @@ import papers.files
 import papers.utils
 from papers import logger
 from papers.bib import isvalidkey
-from papers.duplicate import FUZZY_RATIO, duplicate_groups, fuzzy_pairs
+from papers.duplicate import FUZZY_RATIO, duplicate_groups, fuzzy_pairs, normalize_text
 from papers.encoding import family_names, format_entries, format_entry, format_key, parse_keywords, standard_name
 from papers.formats import FORMATS, dumps, file_format, load_rispy
 from papers.entries import entry_from_dict, get_entry_val, format_file, parse_file, set_entry_key
@@ -582,7 +582,10 @@ def listcmd(parser, o, config):
 
 
     def _longmatch(word, target):
-        return _match(word, target, fuzzy=o.fuzzy, substring=not o.strict)
+        # both sides as the same-paper rule compares text (LaTeX decoded, ASCII, no braces,
+        # lower case, single spaces): Muller finds M{\"u}ller and Müller
+        target = [normalize_text(t) for t in target] if isinstance(target, list) else normalize_text(target)
+        return _match(normalize_text(word), target, fuzzy=o.fuzzy, substring=not o.strict)
 
     def _requiresreview(e):
         if not isvalidkey(get_entry_val(e, 'ID', '')): return True

@@ -1010,6 +1010,19 @@ for the specification. A section marked free has none.
 - tests/test_formats.py::TestListFormats::test_bibjson
 - tests/test_formats.py::TestListFormats::test_ris
 
+### 6.1 Search
+
+- tests/test_spec_formats.py::TestListOutput::test_search_normalized
+- tests/test_list.py::SearchTest::test_list_title
+- tests/test_list.py::SearchTest::test_list_title_fuzzy
+- tests/test_list.py::SearchTest::test_list_title_multiple
+- tests/test_list.py::SearchTest::test_list_author
+- tests/test_list.py::SearchTest::test_list_first_author
+- tests/test_list.py::SearchTest::test_list_key
+- tests/test_list.py::SearchTest::test_list_year
+- tests/test_list.py::SearchTest::test_list_combined
+- tests/test_list.py::SearchTest::test_list_fullsearch
+
 ### 7. `--porcelain`
 
 - those of 7.1 and 7.2.

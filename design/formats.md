@@ -797,6 +797,36 @@ keywords yellow, and terminal hyperlinks (OSC 8) on `doi:` and the file
 count. Exact escape codes are **free**; without colours the text is as
 above.
 
+### 6.1 Search
+
+Which entries `papers list` lists (**contract**, except `--fuzzy`). Each
+search compares a text of the entry with each search word; the two are
+first normalized with `norm` (bibtex.md 9.1: LaTeX decoded, ASCII
+transliteration, no braces, lower case, single spaces), so `Muller`
+finds `M{\"u}ller` and `Müller`, and `sea level` finds `{S}ea level`.
+
+| search | text of the entry |
+|---|---|
+| `papers list WORD...` | `ENTRYTYPE`, the key and the field values, in the order of their names (`ENTRYTYPE`, `ID`, then the field names by code point), joined with single spaces |
+| `--title`, `--abstract`, `--year`, `--doi` | the field; an entry without it is not listed |
+| `--key` | the key |
+| `--author` | the family names of the authors, as for the key and name templates (library.md, Placeholders, Author names: the names formatted as `check --format-name` does, each cut at its first comma at brace depth 0), joined with single spaces; an entry without `author` is not listed |
+| `--first-author` | the family name of the first author; as `--author` |
+
+Matching of one word with the text:
+
+- by default, the word is a substring of the text;
+- with `--strict`, the whole text matches the word as a shell pattern
+  (`*`, `?`, `[...]`); `--strict` does not apply to `papers list WORD...`
+  (always substring);
+- with `--fuzzy`: a substring, or a fuzzy score at least `--fuzzy-ratio`
+  (the rapidfuzz token set ratio, default 50) (**free**).
+
+An option with several words lists the entries that match all of them
+(`--any`: one of them); several options list the entries that pass each.
+`--tag` matches whole tags (bibtex.md 6), with `--fuzzy` the `keywords`
+field as text, as above.
+
 `papers status` has no machine-readable output (only `--no-check-files`
 and `-v`); its text is human output (**free**).
 

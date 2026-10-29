@@ -26,6 +26,11 @@ $> papers list --key perrette2013 --author perrette --year 2013 --title scaling 
 ... (precise list)
 ```
 
+The search ignores case, accents, LaTeX and braces: `papers list muller`
+finds `M{\"u}ller` and `Müller`, `--title "sea level"` finds `{S}ea level`.
+A word matches part of the text; with `--strict`, the whole value
+(`--key perrette_2011 --strict`, or a pattern: `--year '201?' --strict`).
+
 With `--invert`, `papers list` lists the entries that the same command
 without `--invert` does not list.
 

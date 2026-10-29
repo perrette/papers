@@ -1078,6 +1078,18 @@ class TestListOutput(SpecLibrary):
         self.assertEqual(self.out('list --field note year --no-key'), ' 2000\n')
         self.assertEqual(self.out('list --field year --no-key'), '2000\n')
 
+    def test_search_normalized(self):
+        "formats.md 6.1: the search words and the texts of the entries compared after norm (bibtex.md 9.1)"
+        self.bib('@article{latex2000,\n author = {M{\\"u}ller, Jan},\n title = {{S}ea level},\n year = {2000}\n}\n',
+                 '@article{plain2000,\n author = {Müller, Jan},\n title = {Straße},\n year = {2000}\n}\n')
+        both = 'latex2000\nplain2000\n'
+        self.assertEqual(self.out('list -K Muller'), both)
+        self.assertEqual(self.out('list -K Müller'), both)
+        self.assertEqual(self.out('list -K --author muller'), both)
+        self.assertEqual(self.out("list -K --first-author 'M{\\\"u}ller' --strict"), both)
+        self.assertEqual(self.out('list -K --title "sea level"'), 'latex2000\n')
+        self.assertEqual(self.out('list -K --title strasse'), 'plain2000\n')
+
     def test_other_formats_paths(self):
         "formats.md 6: RIS, CSL-JSON, BibJSON: absolute normalised paths, symlinks not resolved"
         os.symlink(self.path('lib', 'files'), self.path('lib', 'link'))
