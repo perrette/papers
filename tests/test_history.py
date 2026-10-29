@@ -77,6 +77,28 @@ class TestPieces(StoreTest):
         shutil.rmtree(self.store.objects)
         self.assertRaises(KeyError, self.store.text, pieces)
 
+    def test_damaged_piece(self):
+        # empty or truncated (a power loss): Damaged, a KeyError; unreadable finds the empty one without reading
+        pieces = self.store.put_text(BIB)
+        path = self.store._object(pieces[0])
+        data = Path(path).read_bytes()
+        self.assertIsNone(self.store.unreadable(pieces))
+        Path(path).write_bytes(data[:len(data) // 2])
+        self.assertRaisesRegex(history.Damaged, 'cannot be read', self.store.text, pieces)
+        Path(path).write_bytes(b'')
+        self.assertRaises(history.Damaged, self.store.text, pieces)
+        self.assertEqual(self.store.unreadable(pieces), pieces[0])
+
+    def test_damaged_file(self):
+        path = os.path.join(self.tmp.name, 'a.pdf')
+        Path(path).write_text('pdf')
+        digest = history.sha256(b'pdf')
+        kept = self.store.put_file(path, digest)
+        self.assertEqual(self.store.check_file(digest), kept)
+        Path(kept).write_bytes(b'')
+        self.assertRaises(history.Damaged, self.store.check_file, digest)
+        self.assertIsNone(self.store.check_file('0' * 64))  # none: not damaged
+
     def test_files(self):
         path = os.path.join(self.tmp.name, 'a.pdf')
         Path(path).write_text('pdf')
@@ -247,6 +269,33 @@ class TestPrune(StoreTest):
         size = self.store.size()
         self.assertEqual(self.store.prune(size, dry=True), [])
         self.assertEqual(len(self.store.prune(size, extra=1000, dry=True)), 1)
+
+    def test_damaged_state_skipped(self):
+        p = self.store.project('p')
+        old = p.add(self.state('@article{old,\n}\n', t=1))
+        new = p.add(self.state('@article{new,\n}\n', parent=old, t=2))
+        p.set_head('/lib.bib', new)
+        Path(p._path(old)).write_text('{"parent"')
+        q = history.Store(self.tmp.name).project('p')
+        self.assertEqual((list(q.states()), q.damaged()), ([new], {old}))
+        self.assertEqual(q.resolve(old[:6]), old)
+        self.assertEqual(history.Store(self.tmp.name).prune(1, now=time.time() + history.GRACE + 1), [])
+        self.assertTrue(os.path.exists(p._path(old)))
+
+    def test_each_state_read_once(self):
+        # dropping a state does not read the states of its project again
+        p = self.store.project('p')
+        n = None
+        for i in range(10):
+            n = p.add(self.state(f'@article{{a{i},\n}}\n', parent=n, t=i + 1))
+        p.set_head('/lib.bib', n)
+        reads = []
+        read = history._read_json
+        with patch('papers.history._read_json', lambda path, *a: reads.append(path) or read(path, *a)):
+            dropped = history.Store(self.tmp.name).prune(1, now=time.time() + history.GRACE + 1)
+        self.assertEqual(len(dropped), 9)
+        states = [r for r in reads if os.path.dirname(r) == p.states_dir]
+        self.assertEqual(len(states), 10)
 
 
 class LibraryTest(ConfigTest):

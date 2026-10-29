@@ -220,12 +220,11 @@ when it disagrees with the folder listing.
 (`os.scandir` of the 256 folders), reads all states of all projects,
 counts references per object, sorts the unprotected states by time and
 drops them oldest first until the size fits. Its cost is linear in
-objects + states × pieces, except for one point found while measuring:
-each dropped state is removed through `self.project(id).drop(n)`, which
-creates a new `Project` whose `drop` calls `states()` and so reads every
-state file again. Dropping 260 of 500 states took 4.7 s, of which almost
-all is this re-reading (quadratic in the number of states). Keeping one
-`Project` per id during the prune removes it.
+objects + states × pieces: it keeps one `Project` per id for the whole
+prune, so each state file is read once. (Before, each dropped state was
+removed through a new `Project` whose `drop` read every state file again,
+quadratic in the number of states: 500 states of the 10 000-entry library,
+162 dropped, took 3.8 s; now 0.08 s.)
 
 Pruning runs after a command that deleted files, after `history
 --remove`, and when the number of states of the project is a multiple of
@@ -254,24 +253,39 @@ records it as changed outside papers: the content is safe, but the file
 operations of the crashed command are not in a state, so undo cannot put
 the moved files back by operation (it can still find them by checksum).
 
-Not covered by the Python implementation: `history._write` (objects,
+Durability is left to the operating system: `history._write` (objects,
 `heads.json`) and `Project.add` (states) do not `fsync`, and
 `write_atomic` does not `fsync` the folder. After a power loss, a file
 system may keep the rename and lose the data, leaving an empty object
-that a state refers to. An implementation that wants durability can
-`fsync` each object and the folder before writing the state; the cost is
-one `fsync` per new piece, usually one or two per command.
+that a state refers to, or an empty state file. Such files are detected
+when read (history.md 2.9): `Store.text` raises `history.Damaged` (a
+`KeyError`) for a piece missing, empty or not zlib; `Store.check_file`
+for a file object whose sha256 differs; `Project.states` sets aside the
+state files that are not JSON (`Project.damaged`). `backup._plan` reads
+the texts and checks the file objects a move needs before `go_to` changes
+anything (the texts it read are those `go_to` then uses, so this costs no
+second read; checking a file object hashes it once more before it is
+copied back), and `papers history` checks the size of the objects of the
+states it lists (one `stat` each: 14 ms for 20 states of the 10 000-entry
+library). An implementation that wants durability
+can `fsync` each object and the folder before writing the state; the cost
+is one `fsync` per new piece, usually one or two per command.
 
 ### 4.5 Undo, redo, restore
 
 `backup.go_to` walks from the current state to the target (the path
 through the common ancestor, `Project.path`), and for each step with file
 operations calls `journal.restore` with the file links of the two states.
-The links are found by parsing the full bibtex of each state
-(`bibtexparser.parse_string`, without the cache), once per state and per
-use: an undo of one step parses the library three times (the state, its
-parent, the current file). For 10 000 entries, undo takes 1.7 s, most of
-it these parses.
+The links are found by parsing the full bibtex of each state, through the
+parse cache and the same middleware as a library load (`lowercase_fields`
+included). One parser (`backup.parser`) serves the whole command: the
+files linked before and after (`_time_travel`), the states of the path
+and the bibtex on disk; it keeps each parsed text, so a text is parsed
+once even when two states, or a state and the file on disk, have it (the
+common case: the bibtex on disk is the current state). An undo of one
+step parses two texts. For 10 000 entries, `papers undo` of a `file
+attach` took 2.9 s and now takes 1.1 s, measured on the same machine (it
+parsed the library six times, three of them without the cache).
 
 `journal.restore` computes checksums lazily (a `digest` memo per call)
 and only of the files it considers: those linked now or in the target,
@@ -282,11 +296,11 @@ Ideas: compare the pieces of the two states and parse only the pieces
 that differ (the links of the other entries are the same); memoize the
 links per state.
 
-A small inconsistency found here: `go_to` parses the states with
+An inconsistency found here, fixed: `go_to` parsed the states with
 bibtexparser directly, without `lowercase_fields`, so a state recorded
 from a file edited outside papers with `File = {...}` (capitalized, as
-older JabRef writes) has no links for undo; the rest of papers reads the
-field.
+older JabRef writes) had no links for undo. `revert._state_entries` still
+parses the states with bibtexparser directly.
 
 ## 5. The duplicate search
 
@@ -568,7 +582,7 @@ dependencies when first used: `requests`, `rapidfuzz`, `scholarly`,
 `bs4`, PyMuPDF. `papers --version` took 88 ms (Python itself: 21 ms;
 importing `papers.cli`: 44 ms). On a library of one entry, `papers list`
 took 80–100 ms; on 10 000 entries 430 ms (warm parse cache), `add` of
-one entry about 0.9 s, `undo` 1.7 s.
+one entry about 0.9 s, `undo` 1.7 s (about 1.1 s since the change of 4.5).
 
 Fixed in part: the standard modules that only some commands use are now
 imported in the functions that use them: `urllib.parse` (with
@@ -609,6 +623,7 @@ that changes one entry spends about:
 | compare with the file, write | 10–20 |
 | history: read the text again, cut, store pieces, state, head | about 100 |
 | read the states of the project | 25 per 500 states |
+| pruning, one command in 50 (4.3) | 80 per 500 states |
 
 The parse and the format are linear in the size of the library and done
 in full at every command. Reusing the text of unchanged entries (2.2),

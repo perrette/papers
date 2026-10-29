@@ -1734,6 +1734,18 @@ for the specification. A section marked free has none.
 
 - tests/test_spec_history.py::TestWritingOrder::test_order.
 
+### 2.9 Damaged files
+
+- tests/test_spec_history.py::TestDamagedFiles::test_empty_object
+- tests/test_spec_history.py::TestDamagedFiles::test_truncated_object
+- tests/test_spec_history.py::TestDamagedFiles::test_empty_state_file
+- tests/test_spec_history.py::TestDamagedFiles::test_damaged_state_file_redone
+- tests/test_spec_history.py::TestDamagedFiles::test_nothing_moved_before_the_error
+- tests/test_spec_history.py::TestDamagedFiles::test_empty_file_object
+- tests/test_history.py::TestPieces::test_damaged_piece
+- tests/test_history.py::TestPieces::test_damaged_file
+- tests/test_history.py::TestPrune::test_damaged_state_skipped.
+
 ### 3.1 Keys
 
 - tests/test_spec_history.py::TestKeys::test_keys
@@ -1862,7 +1874,9 @@ for the specification. A section marked free has none.
 - tests/test_undo.py::TestTimeTravel::test_undo_redo
 - tests/test_undo_pool.py::TestUndoPool::test_add_then_undo_redo
 - tests/test_undo_pool.py::TestUndoPool::test_undo_restores_distinct
-- tests/test_journal.py::TestChecksums::test_found_by_checksum.
+- tests/test_journal.py::TestChecksums::test_found_by_checksum
+- tests/test_journal.py::TestOneStep::test_capitalized_field_name
+- tests/test_journal.py::TestOneStep::test_each_text_parsed_once.
 
 ### 6.4 Restoring the files
 
@@ -2003,6 +2017,7 @@ for the specification. A section marked free has none.
 - tests/test_history.py::TestPrune::test_recent_orphans_do_not_push_states_out
 - tests/test_history.py::TestPrune::test_files_to_the_discard
 - tests/test_history.py::TestPrune::test_extra
+- tests/test_history.py::TestPrune::test_each_state_read_once
 - tests/test_journal.py::TestCyclicalRemoval::test_last_three_kept.
 
 ### 9.3 `papers history --remove [ID]`

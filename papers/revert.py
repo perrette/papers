@@ -28,7 +28,7 @@ import os
 from bibtexparser import parse_string
 
 import papers.config
-from papers import backup, journal
+from papers import backup, history, journal
 from papers.history import short
 from papers.duplicate import DISTINCT_FILE, Verdict, SAME
 from papers.encoding import parse_keywords
@@ -41,8 +41,8 @@ def _state_entries(project, n):
     "the entries of the bibtex of the state n"
     try:
         return parse_string(project.store.text(project.state(n)['bibtex']['pieces'])).entries
-    except KeyError as error:
-        raise PapersExit(f'the history of the library is damaged: {error}')
+    except history.Damaged as error:
+        raise backup.damaged(n, error)
 
 
 def _distinct_pairs(project, n):
@@ -53,7 +53,9 @@ def _distinct_pairs(project, n):
     try:
         return [p for p in json.loads(project.store.text(pieces)).get('distinct', [])
                 if isinstance(p, list) and len(p) == 2]
-    except (KeyError, ValueError):
+    except history.Damaged as error:
+        raise backup.damaged(n, error)
+    except (KeyError, ValueError, AttributeError):
         return []
 
 
@@ -136,9 +138,19 @@ def revert(config, biblio, n, resolver, forward=False, anywhere=False, parent=No
         raise PapersExit(f'step {short(n)} is not in the current history of the library: '
                          f'`papers restore {short(n)}` goes there')
     parent = parent if parent is not None else state.get('parent')
+    if parent in project.damaged():
+        raise backup.damaged(parent, 'its state file cannot be read')
     if parent is None or project.state(parent) is None:
         raise PapersExit(f'step {short(n)} is the first step of the history: nothing before it to go back to')
     before, after = _state_entries(project, parent), _state_entries(project, n)
+    pairs = _distinct_pairs(project, parent), _distinct_pairs(project, n)
+    hashes = backup.state_hashes(config, project, n if forward else parent)
+    find_deleted = backup._intact_file(project.store)
+    for digest in state.get('deleted') or [] if not forward else ():
+        try:
+            project.store.check_file(digest)
+        except history.Damaged as error:
+            raise backup.damaged(n, error)
     # what step n did, as the lines say it (done again: an entry added by n is taken as removed, and so on)
     added, removed = ('removed', 'added') if forward else ('added', 'removed')
     if forward:
@@ -202,14 +214,12 @@ def revert(config, biblio, n, resolver, forward=False, anywhere=False, parent=No
                         now['ids'] = ', '.join(i.strip() for i in ids)
                     elif 'ids' in now.fields_dict:
                         del now['ids']
-    pairs = _distinct_pairs(project, parent), _distinct_pairs(project, n)
     _revert_distinct(biblio, *(reversed(pairs) if forward else pairs))
     if papers.config.DRYRUN:
         return lines
     ops = backup._absolute_ops(state.get('ops') or [], config)
-    hashes = backup.state_hashes(config, project, n if forward else parent)
     lines += journal.restore(current_links, links(), ops, not forward, hashes=hashes,
-                             pool_dirs=backup._pool_dirs(config), find_deleted=project.store.file_object)
+                             pool_dirs=backup._pool_dirs(config), find_deleted=find_deleted)
     return lines
 
 

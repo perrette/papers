@@ -6,6 +6,7 @@ import papers.config
 import papers.history
 import papers.lock
 from papers import backup, logger
+from papers.backup import state_files
 from papers.bib import Biblio
 from papers.files import is_inside
 from papers.utils import PapersExit, stdin_is_terminal
@@ -13,11 +14,11 @@ from papers.utils import PapersExit, stdin_is_terminal
 MB = backup.MB
 
 
-def _linked_files(config):
-    "the real paths of the files that the entries of the bibtex link to"
+def _linked_files(config, parse=None):
+    "the real paths of the files that the entries of the bibtex link to (parse: see papers.bib.Biblio.load)"
     if not config.bibtex or not os.path.exists(config.bibtex):
         return set()
-    biblio = Biblio.load(config.bibtex, config.filesdir)
+    biblio = Biblio.load(config.bibtex, config.filesdir, parse=parse)
     return {os.path.realpath(f) for e in biblio.entries for f in biblio.get_files(e)}
 
 
@@ -56,8 +57,9 @@ def _auto_push(config):
 def _time_travel(config, kind, func, *args):
     """undo, redo or restore: say which state is restored, the files that
     moved, the pools that followed, and which files of the files directory no entry links to any more"""
-    before = _linked_files(config)
-    project, target, file_lines, pool_lines = func(config, *args)
+    parse = backup.parser()  # the texts parsed once for the whole command
+    before = _linked_files(config, parse)
+    project, target, file_lines, pool_lines = func(config, *args, parse=parse)
     if file_lines is None:  # --dry-run
         print(f'DRYRUN: {kind}: {config.bibtex} not restored to {backup.describe(project, target)}')
         return
@@ -66,7 +68,7 @@ def _time_travel(config, kind, func, *args):
         print('\n'.join(file_lines))
     if pool_lines:
         print('\n'.join(pool_lines))
-    after = _linked_files(config)
+    after = _linked_files(config, parse)
     unlinked = sorted(f for f in before - after
                       if os.path.isfile(f) and config.filesdir and is_inside(f, config.filesdir))
     if unlinked:
@@ -251,7 +253,10 @@ def historycmd(parser, o, config):
         return revert(o, config)
     project, place = backup.project_of(config, create=False) if config.bibtex else (None, None)
     head = project.head(place) if project else None
-    if head is None:
+    lost = (project.heads().get(place) or {}).get('state') if project and head is None else None
+    if lost is not None and lost in project.damaged():  # a head on a damaged state: recorded again by the next command
+        print(f'> {backup.describe(project, lost)}')
+    elif head is None:
         print('no history yet: each command that changes the library records a step'
               if config.bibtex else 'no library: `papers history --all` lists the histories of the machine')
     else:
@@ -262,10 +267,17 @@ def historycmd(parser, o, config):
             return f'  [{_size(size)} of deleted files]' if size else ''
         for n in reversed(head['redo']):
             print(f'  {backup.describe(project, n)}  (undone: `papers redo`){kept(n)}')
+        def mark(n):
+            state = project.state(n)
+            pieces = state['bibtex'].get('pieces', []) + [d for ds in state_files(state).values() for d in ds]
+            missing = project.store.unreadable(pieces)
+            return '  (damaged: a piece of it is missing or empty in the history)' if missing else ''
         for n in shown:
-            print(f'{">" if n == head["state"] else " "} {backup.describe(project, n)}{kept(n)}')
+            print(f'{">" if n == head["state"] else " "} {backup.describe(project, n)}{kept(n)}{mark(n)}')
         if len(line) > len(shown):
             print(f'  ... {len(line) - len(shown)} older step(s) (-n 0 shows them all)')
+        elif backup.damaged_before(project, line[-1]):
+            print(f'  {backup.describe(project, backup.damaged_before(project, line[-1]))}')
     st = project.store if project else backup.store(config)
     size = backup.history_size(config, st)
     limit = f'up to {size} MB' if size else 'no limit'
