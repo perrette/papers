@@ -248,6 +248,12 @@ class TestPartsToNames(unittest.TestCase):
             e = csl_one(type='book', title='T', author=names)
             self.assertEqual(e['author'], bibtex, names)
 
+    def test_one_name_not_in_an_array(self):
+        "formats.md 2.3, 3.3: an author value that is a string or an object is one name"
+        self.assertEqual(csl_one(type='book', title='T', author='Smith, John')['author'], '{Smith, John}')
+        self.assertEqual(csl_one(type='book', title='T', editor={'family': 'Doe', 'given': 'Jane'})['editor'],
+                         'Doe, Jane')
+
 
 class TestDates(unittest.TestCase):
 

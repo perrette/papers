@@ -355,7 +355,7 @@ All other bibtex fields are left out (e.g. `month` as such, `eprint`,
 
 | bibtex | from CSL |
 |---|---|
-| `author`, `editor`, `translator` | name arrays (2.3) |
+| `author`, `editor`, `translator` | name arrays (2.3); a value that is a string or an object is an array of that one name |
 | `title`, `volume`, `doi`, `url`, `isbn`, `issn`, `publisher`, `address`, `abstract`, `note`, `edition`, `language`, `series`, `pmid`, `pmcid` | the keys of 3.2 rows 7–21. A value that is an array gives its first element; numbers become their decimal text. `doi` is cleaned (2.6). |
 | `booktitle` (types `incollection`, `inproceedings`) or `journal` (other types) | `container-title` |
 | `number` | `issue`, else `number` |

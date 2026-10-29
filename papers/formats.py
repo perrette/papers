@@ -223,6 +223,9 @@ def format_bibtex_name(name):
 
 
 def format_bibtex_names(names):
+    "CSL names as a bibtex field: an array of names, or one name (a string or an object)"
+    if isinstance(names, (str, dict)):
+        names = [names]
     return ' and '.join(format_bibtex_name(n) for n in names or [] if n)
 
 

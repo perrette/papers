@@ -824,6 +824,7 @@ for the specification. A section marked free has none.
 ### 2.3 Names: parts to bibtex
 
 - tests/test_spec_formats.py::TestPartsToNames::test_rules
+- tests/test_spec_formats.py::TestPartsToNames::test_one_name_not_in_an_array
 - tests/test_formats.py::TestNames::test_format
 - tests/test_formats.py::TestNames::test_suffix_without_given
 
@@ -892,6 +893,7 @@ for the specification. A section marked free has none.
 ### 3.3 Fields, import
 
 - tests/test_spec_formats.py::TestCSLImportFields::test_simple_fields
+- tests/test_spec_formats.py::TestPartsToNames::test_one_name_not_in_an_array
 - tests/test_spec_formats.py::TestCSLImportFields::test_number_pages_publisher_genre
 - tests/test_spec_formats.py::TestCSLImportFields::test_keywords
 - tests/test_spec_formats.py::TestCSLImportFields::test_issued_and_accessed
