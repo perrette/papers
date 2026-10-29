@@ -9,7 +9,7 @@ import tempfile
 import logging
 from concurrent.futures import ThreadPoolExecutor
 
-from unidecode import unidecode
+from papers.ascii import to_ascii
 
 from papers import logger
 from papers.entries import get_entry_val, parse_string
@@ -441,7 +441,7 @@ def query_text(txt, max_query_words=200):
 
 def _normalize_for_match(s):
     s = re.sub(r'<[^>]+>', '', s)  # markup in crossref titles, e.g. CO<sub>2</sub>
-    return re.sub(r'[^a-z0-9]', '', unidecode(s).lower())
+    return re.sub(r'[^a-z0-9]', '', to_ascii(s).lower())
 
 
 def title_in_text(title, txt):

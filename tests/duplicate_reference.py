@@ -30,7 +30,7 @@ import json
 import os
 import re
 
-from unidecode import unidecode
+from papers.ascii import to_ascii as unidecode
 
 from papers import logger
 from papers.entries import get_entry_val, split_depth0

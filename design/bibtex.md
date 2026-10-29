@@ -703,7 +703,7 @@ the exchanges with pools.
    `{`, `}` is unchanged by this step);
 3. transliteration to ASCII: each character is replaced by its text in
    the table [data/ascii-transliteration.tsv](data/ascii-transliteration.tsv)
-   (`ü` to `u`, `ß` to `ss`, `Å` to `A`, `中` to `Zhong `); a character
+   (`ü` to `u`, `ß` to `ss`, `Å` to `A`, `中` to `Zhong`); a character
    below U+0080 stays, a character not in the table is removed. The same
    table gives the slugs of the templates (library.md);
 4. remove `{` and `}`;
@@ -994,4 +994,7 @@ All resolved. Each item gives the question and the decision.
     Both are published with this specification, with their origin, in
     `data/`: the character table of sections 4.1 and 4.2 and the ASCII
     transliteration table of section 9.1 (also used for slugs). A test
-    checks that the code uses the same tables.
+    checks that the code uses the same tables. The transliteration is that
+    of AnyAscii (permissive license, #192); it was that of Unidecode, whose
+    license does not allow copying it into an implementation under a
+    permissive license.

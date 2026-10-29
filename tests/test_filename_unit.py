@@ -131,16 +131,14 @@ class TestSafeFileNames(unittest.TestCase):
 
 class TestSlugTable(unittest.TestCase):
 
-    def test_unidecode_whatever_the_slugify_backend(self):
-        # python-slugify takes text-unidecode when it cannot import Unidecode
-        # (another slug for some characters: x-x for x˯x); papers always uses Unidecode
+    def test_own_table_whatever_the_slugify_backend(self):
+        # python-slugify transliterates with text-unidecode or Unidecode; papers
+        # transliterates first with its own table, so the backend does not matter
         import sys
         from unittest import mock
         from papers.filename import make_template_fields, slugify
-        import unidecode
-        # the tables that Unidecode cannot import meanwhile would stay marked as missing
-        with mock.patch.dict(unidecode.Cache), mock.patch.dict(sys.modules, {'unidecode': None}):
-            self.assertEqual(make_template_fields({'title': 'x˯x', 'author': 'D˯e'})['title'], 'xx')
-            self.assertEqual(make_template_fields({'title': 'x˯x', 'author': 'D˯e'})['author'], 'de')
-        # the slug of python-slugify with Unidecode, apostrophes included
+        with mock.patch.dict(sys.modules, {'unidecode': None}):
+            self.assertEqual(make_template_fields({'title': 'x˯x', 'author': 'D˯e'})['title'], 'xvx')
+            self.assertEqual(make_template_fields({'title': 'x˯x', 'author': 'D˯e'})['author'], 'dve')
+        # apostrophes included
         self.assertEqual(slugify("l'objet Объект Хрущёв µm"), 'l-objet-obekt-khrushchev-mm')

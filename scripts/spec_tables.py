@@ -5,7 +5,7 @@
 
 latex-characters.tsv: the (character, LaTeX text) pairs of papers/latexenc.py.
 ascii-transliteration.tsv: the ASCII transliteration of every character that
-the Unidecode package transliterates to a non-empty text.
+papers.ascii (AnyAscii) transliterates to a non-empty text.
 """
 import argparse
 import os
@@ -41,21 +41,20 @@ def latex_table():
 
 
 def ascii_table():
-    import unidecode
     from importlib.metadata import version
+    from papers.ascii import to_ascii
     lines = ['# The ASCII transliteration table of the papers specification (bibtex.md, section 9.1;',
              '# library.md, Slugify).',
-             f'# Origin: the Unidecode package {version("Unidecode")} (Tomaž Šolc, github.com/avian2/unidecode),',
-             '# a port of the Perl module Text::Unidecode by Sean M. Burke (tables copyright 2001',
-             '# Sean M. Burke). License: GNU General Public License, version 2 or later; this file is',
-             '# under that license, unlike the rest of papers (MIT).',
+             f'# Origin: AnyAscii {version("anyascii")} (github.com/anyascii/anyascii, ISC license), built from',
+             '# romanization standards (ALA-LC, BGN/PCGN, ISO, KNAB...); implementations exist in many',
+             '# languages.',
              '# Columns: code point, ASCII text (backslash written \\\\, newline \\n). A character',
              '# below U+0080 is itself; a character not listed gives an empty text.',
              'code\tascii']
     for cp in range(0x80, 0x110000):
         if 0xD800 <= cp < 0xE000:
             continue
-        text = unidecode.unidecode(chr(cp))
+        text = to_ascii(chr(cp))
         if text:
             lines.append(f'U+{cp:04X}\t{escape(text)}')
     return '\n'.join(lines) + '\n'

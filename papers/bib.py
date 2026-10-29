@@ -4,7 +4,7 @@ import re
 from collections import Counter
 from pathlib import Path
 import shutil
-from unidecode import unidecode as unicode_to_ascii
+from papers.ascii import to_ascii as unicode_to_ascii
 from bibtexparser import Library
 from bibtexparser.model import Entry, Field
 

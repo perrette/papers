@@ -513,7 +513,7 @@ class TestPlaceholders(unittest.TestCase):
 
     def test_slugify(self):
         """library.md Placeholders, Slugify: the examples, HTML entities, and
-        the Unidecode transliteration"""
+        the ASCII transliteration"""
         for text, slug in [('Müller', 'muller'), ("l'eau", 'l-eau'), ('10.1000/xyz(1)', '10-1000-xyz-1'),
                            ('1,000', '1000'), ('a,b', 'a-b'), ('ß', 'ss'), ('Œuvre', 'oeuvre'),
                            ('R&amp;D', 'r-d'), ('R&#38;D', 'r-d'), ('R&#x26;D', 'r-d'), ('--a--b--', 'a-b'),
@@ -521,11 +521,11 @@ class TestPlaceholders(unittest.TestCase):
             with self.subTest(text=text):
                 self.assertEqual(slugify(text), slug)
 
-    @unittest.skipUnless(__import__('importlib.metadata').metadata.version('unidecode') == '1.4.0',
-                         'the version of Unidecode named in the specification')
-    def test_unidecode_version(self):
-        """library.md Placeholders, Slugify: the table of Unidecode 1.4.0"""
-        self.assertEqual(slugify('北京'), 'bei-jing')
+    def test_ascii_table(self):
+        """library.md Placeholders, Slugify: the table of bibtex.md 9.1, all scripts"""
+        for text, slug in [('北京', 'beijing'), ('Αθήνα', 'athina'), ('한국어', 'hangugeo'), ('×', '')]:
+            with self.subTest(text=text):
+                self.assertEqual(slugify(text), slug)
 
 
 class TestTemplateKeys(unittest.TestCase):

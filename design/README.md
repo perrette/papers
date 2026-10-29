@@ -40,9 +40,9 @@ Other documents:
     characters (bibtex.md 4.1, 4.2), from the W3C table of MathML
     characters, by way of python-bibtexparser 1.x;
   - [ascii-transliteration.tsv](data/ascii-transliteration.tsv): ASCII
-    transliteration of about 41,000 characters, all scripts, Chinese
-    included (bibtex.md 9.1, library.md Slugify), from Unidecode (GNU
-    GPL v2 or later, unlike the rest of papers).
+    transliteration of about 122,000 characters, all scripts, Chinese
+    included (bibtex.md 9.1, library.md Slugify), from AnyAscii (ISC
+    license), which exists in many languages.
 
   `scripts/spec_tables.py` writes them from the code, and a test checks
   that they are the same.

@@ -23,7 +23,8 @@ dependencies = [
     # See https://github.com/pymupdf/PyMuPDF/issues/5170
     "PyMuPDF<2; python_version < '3.15' or sys_platform != 'linux' or platform_machine != 'x86_64'",
     "pymupdf-lite>=2; python_version >= '3.15' and sys_platform == 'linux' and platform_machine == 'x86_64'",
-    "unidecode",
+    # the ASCII transliteration table of the specification (design/data/ascii-transliteration.tsv)
+    "anyascii==0.3.3",
     "bibtexparser>=2.0.0b2",
     "scholarly",
     "rapidfuzz",
