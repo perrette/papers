@@ -521,6 +521,16 @@ class TestPlaceholders(unittest.TestCase):
             with self.subTest(text=text):
                 self.assertEqual(slugify(text), slug)
 
+    def test_slugify_html_references(self):
+        """library.md Slugify 3: the named entities of HTML 4, each valid numeric
+        reference decoded, an invalid one left as written, in one pass"""
+        for text, slug in [('a&#65;b &#1114112; &#66;c', 'aab-1114112-bc'), ('&#xD800;x&#x41;', 'xd800-xa'),
+                           ('&#X41;&#0065;&#x0000041;', 'aaa'), ('&#99999999999999999999;', '99999999999999999999'),
+                           ('l&apos;eau', 'l-apos-eau'), ('caf&eacute;', 'cafe'), ('&amp;#65;', '65'),
+                           ('&#39;s', 's'), ('&Eacute;t&eacute;', 'e-te'), ('&notin;x', 'x')]:
+            with self.subTest(text=text):
+                self.assertEqual(slugify(text), slug)
+
     def test_ascii_table(self):
         """library.md Placeholders, Slugify: the table of bibtex.md 9.1, all scripts"""
         for text, slug in [('北京', 'beijing'), ('Αθήνα', 'athina'), ('한국어', 'hangugeo'), ('×', '')]:

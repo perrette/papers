@@ -132,8 +132,8 @@ class TestSafeFileNames(unittest.TestCase):
 class TestSlugTable(unittest.TestCase):
 
     def test_own_table_whatever_the_slugify_backend(self):
-        # python-slugify transliterates with text-unidecode or Unidecode; papers
-        # transliterates first with its own table, so the backend does not matter
+        # papers transliterates with its own table, whatever transliteration
+        # package is installed
         import sys
         from unittest import mock
         from papers.filename import make_template_fields, slugify

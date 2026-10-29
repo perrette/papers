@@ -340,8 +340,9 @@ for the specification. A section marked free has none.
 
 ### Placeholders
 
-- tests/test_filename_unit.py::TestSlugTable::test_unidecode_whatever_the_slugify_backend
+- tests/test_filename_unit.py::TestSlugTable::test_own_table_whatever_the_slugify_backend
 - tests/test_spec_library.py::TestPlaceholders::test_slugify
+- tests/test_spec_library.py::TestPlaceholders::test_slugify_html_references
 - tests/test_spec_library.py::TestPlaceholders::test_unidecode_version
 
 ### Placeholders

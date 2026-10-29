@@ -794,8 +794,18 @@ a non-empty value made only of dots replaced by as many `-`.
 1. each run of `'` replaced by `-`;
 2. Unicode NFKD, then transliteration to ASCII (`ü` → `u`, `ß` → `ss`,
    `Œ` → `oe`, other scripts romanised);
-3. HTML entities decoded: named (`&amp;`), decimal (`&#38;`) and
-   hexadecimal (`&#x26;`);
+3. HTML references decoded, in one pass from left to right (a decoded
+   `&` starts no reference: `&amp;#38;` gives `&#38;`):
+   - named: the 252 named entities of HTML 4 (`&amp;`, `&eacute;`; case
+     sensitive; `&apos;`, which HTML 4 does not have, stays as written);
+   - decimal `&#38;` and hexadecimal `&#x26;` or `&#X26;` (any number of
+     digits, leading zeros allowed): the character of that code point,
+     when it is a character: at most U+10FFFF and not a surrogate
+     (U+D800 to U+DFFF). Any other number stays as written, and does not
+     change the decoding of the other references (`a&#65;b &#1114112;
+     &#66;c` gives `aab-1114112-bc`).
+   - a decoded character is not transliterated (step 2 is done): its
+     accents become `-` in step 6 (`&eacute;t&eacute;` gives `e-te`);
 4. Unicode NFKD again; lower case;
 5. remaining `'` removed; a `,` between two digits removed;
 6. each run of characters other than `a-z` and `0-9` and `-` replaced by

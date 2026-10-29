@@ -4,18 +4,39 @@ Key and file name formatting
 import os
 import re
 import unicodedata
-from slugify import slugify as _slugify
+from html.entities import name2codepoint
 from papers.ascii import to_ascii
 from papers.encoding import family_names
 from papers.entries import get_entry_val
 
+# the references of HTML: named (the entities of HTML 4), decimal, hexadecimal
+_HTML_REFERENCE = re.compile(r'&(?:#([0-9]+)|#[xX]([0-9a-fA-F]+)|(%s));' % '|'.join(name2codepoint))
+
+
+def _decode_reference(match):
+    "the character of an HTML reference; a number that is no character (a surrogate, above U+10FFFF) stays as written"
+    decimal, hexadecimal, name = match.groups()
+    if name:
+        return chr(name2codepoint[name])
+    digits = (decimal or hexadecimal).lstrip('0') or '0'
+    n = int(digits, 10 if decimal else 16) if len(digits) <= 8 else -1
+    return chr(n) if 0 <= n <= 0x10FFFF and not 0xD800 <= n <= 0xDFFF else match.group(0)
+
+
+def decode_html(text):
+    "`text` with its HTML references decoded, in one pass from left to right (a decoded `&` starts no reference)"
+    return _HTML_REFERENCE.sub(_decode_reference, text)
+
+
 def slugify(text):
-    """python-slugify's slug of `text`, transliterated by papers' own table
-    first (papers.ascii), whatever table python-slugify would choose;
-    apostrophes included (one in `text` separates words, one from the
-    table, as in Ь, is dropped)"""
+    """the slug of `text` (design/library.md, Slugify): words of `a-z0-9`
+    joined with `-`, transliterated by papers' own table (papers.ascii);
+    an apostrophe in `text` separates words, one from the table (as in Ь)
+    is dropped"""
     text = to_ascii(unicodedata.normalize('NFKD', text.replace("'", '-'))).replace("'", '')
-    return _slugify(text)
+    text = unicodedata.normalize('NFKD', decode_html(text)).lower()
+    text = re.sub(r'(?<=\d),(?=\d)', '', text.replace("'", ''))
+    return re.sub(r'-{2,}', '-', re.sub(r'[^-a-zA-Z0-9]+', '-', text)).strip('-')
 
 
 def title_words(words, maxlength=30, minwordlen=3, n=100, sep='-'):

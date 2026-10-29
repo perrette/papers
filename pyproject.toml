@@ -28,7 +28,6 @@ dependencies = [
     "bibtexparser>=2.0.0b2",
     "scholarly",
     "rapidfuzz",
-    "python-slugify",
     "requests",
     "beautifulsoup4",
     "platformdirs",
