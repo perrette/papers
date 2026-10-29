@@ -1111,54 +1111,53 @@ Details are in `history.md`.
 
 ## Open questions
 
-All the questions of this file are resolved. Each item says what was
-decided.
+All the questions of this file are resolved. Each item gives the question
+and the decision.
 
-1. **Status ignores a change of entry type.** Resolved: status compares
-   the entry type too (14.3, step 2), #162.
-2. **Status reads the library without repairing pool links.** Resolved:
-   status repairs the links in memory, as pull does (14.3, 15.3).
-3. **Empty `file` fields.** Resolved, kept and documented: a record's
-   `file = {}` says the pool entry had no links (3.3); a library entry
-   whose last link a pull removed has no `file` field (15.2).
-4. **The base of a pull keeps the pool's `ids`.** Resolved: no record
-   keeps `ids` (3.3).
-5. **The base of a push of a new entry is the pool entry as inserted.**
-   Resolved, kept: that entry has the fields of the library entry as sent,
-   as for the other pushes; the spec text is corrected (3.3).
-6. **The piece cache can miss an entry removed from the pool.** Resolved:
-   a stored pool piece gone from the pool means "compare every entry"
-   (14.4), #162.
-7. **`status` writes without lock or history step.** Resolved: status
-   writes nothing in the library (14.3), #162.
-8. **`status` ignores shared entries without record.** Resolved, kept and
-   documented: `papers pull --dry-run` finds them (14.3).
-9. **`never pulled` versus `not pulled from yet`.** Resolved: the state is
-   named `not pulled in full yet` (14.1).
-10. **Origin files under another name.** Resolved: every file of a pool id
-    is merged, and the others are removed when the pool's file is written
-    (3.4, 3.5).
-11. **Two path ids for one pool.** Resolved: all move to the identifier in
-    one exchange (3.9).
-12. **Record lookup by key under a reused pool key.** Resolved: step 4 of
-    4.1 also requires the same authors and year as the base.
-13. **Equivalent changes are not sent.** Resolved: an equivalent change is
-    taken when the target has the base exactly (5.3).
-14. **`add` from a pool sets the exchange time on the first exchange
-    only.** Resolved, kept and documented (3.6).
-15. **The dialogue says the origin is the pool version.** Resolved: it says
-    `origin = the entry as last exchanged (add, pull or push)`.
-16. **`keep` and `update` mean opposite sides in pull and push.**
-    Resolved, kept: `keep` keeps the receiving side's values, `update`
-    takes the incoming side's; the help says which side for each command
-    (5.6), #170.
-17. **Rekey overwrites.** Resolved: a leftover record under the new key is
-    replaced by the entry's own record, or dropped (3.7).
-18. **`papers-pool-path` is written only when records move.** Resolved:
-    every exchange writes it, and the file is named after the pool folder
-    (3.1, 3.2), #162.
-19. **`status` names the origin file without `papers-pool-path`.**
-    Resolved: status uses the file the records were read from (14.4),
+1. **Does status see a change of entry type?** Yes: status compares the
+   entry type too (14.3, step 2), #162.
+2. **Does status repair broken links to pool files?** Yes, in memory only,
+   as pull does (14.3, 15.3).
+3. **What does an empty `file` field mean?** In a record, `file = {}`
+   says the pool entry had no links (3.3); a library entry whose last link
+   a pull removed has no `file` field (15.2).
+4. **Does the base of a pull keep the pool's `ids`?** No: no record keeps
+   `ids` (3.3).
+5. **What is the base of a push of an entry new to the pool?** The pool
+   entry as inserted, which has the fields of the library entry as sent,
+   as for the other pushes (3.3).
+6. **Can the piece cache miss an entry removed from the pool?** No: a
+   stored pool piece gone from the pool's text means "compare every
+   entry" (14.4), #162.
+7. **May status write without the lock or a history step?** Status writes
+   nothing in the library (14.3), #162.
+8. **Does status compare shared entries without record?** No;
+   `papers pull --dry-run` finds them (14.3).
+9. **Which name for the state of a pool with records but no exchange
+   time?** `not pulled in full yet` (14.1).
+10. **What about origin files of the same pool under another name?** All
+    files of a pool id are merged, and the others are removed when the
+    pool's file is written (3.4, 3.5).
+11. **What if two path ids designate one pool?** All move to the
+    identifier in one exchange (3.9).
+12. **Can the lookup by pool key match another paper put under a reused
+    key?** No: step 4 of 4.1 also requires the same authors and year as
+    the base.
+13. **Is an equivalent change sent?** Yes, when the target has the base's
+    value exactly (5.3).
+14. **Does `add` from a pool set the exchange time?** Only on the first
+    exchange with the pool (3.6).
+15. **What does the dialogue call the base?** `origin = the entry as last
+    exchanged (add, pull or push)`.
+16. **Do `keep` and `update` mean the same side in pull and push?** No:
+    `keep` keeps the target's values, `update` takes the incoming values;
+    the help says which side that is for each command (5.6), #170.
+17. **What happens to a record left under the new key of a renamed
+    entry?** It is replaced by the entry's own record, or dropped (3.7).
+18. **When is `papers-pool-path` written?** At every exchange with the
+    pool, and the origin file is named after the pool folder (3.1, 3.2),
     #162.
-20. **Origin files are read with the platform encoding.** Resolved: they
-    are read as UTF-8, a byte order mark dropped (3.4), #162.
+19. **Which origin file does status use for the piece cache?** The file
+    the records were read from (14.4), #162.
+20. **Which encoding do origin files use?** UTF-8; a byte order mark is
+    dropped (3.4), #162.

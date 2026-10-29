@@ -203,11 +203,11 @@ section says what papers produces):
   only as above: the setting names (the machine-only settings included,
   never written), `version`, `id`, `git`, `git-lfs`, `trash-days`,
   `trash-size`, `absolute_paths`, `backup_files`, `local`, `pools`,
-  `light` and `sync`.
+  `light`, `sync`, and the keys `gitlfs` and `gitdir` of papers 2.2 to
+  2.4.
 - Every other key of the file papers read (for example a setting of a
   newer implementation) is written back as it was, also inside
-  `nameformat` and `keyformat`. The other keys of papers 2 (`gitlfs`,
-  `gitdir`) are among them.
+  `nameformat` and `keyformat`.
 
 `papers init` writes `pool` (`none` by default) and `paths` (the value of
 `--paths`, else the inherited value), and the settings given as its
@@ -737,10 +737,9 @@ Contract:
 A template is text with placeholders `{name}`. `{{` and `}}` are literal
 braces. An unknown placeholder (also a case variant such as `{AuTHoR}`)
 is an error that lists the available ones. Only these three forms are
-contract. papers formats templates with Python's format syntax, so format
-specifications (`{title:.20}`) and indexing also work there
-(`docs/renaming.md` calls the template a Python template); another
-implementation need not accept them.
+contract. Free: an implementation may accept more, for example a format
+specification after a colon (`{title:.20}`, the first 20 characters);
+papers accepts such forms, another implementation need not.
 
 ### Placeholders
 
@@ -805,10 +804,9 @@ a non-empty value made only of dots replaced by as many `-`.
 Examples: `Müller` → `muller`, `l'eau` → `l-eau`,
 `10.1000/xyz(1)` → `10-1000-xyz-1`, `1,000` → `1000`, `Ocean’s` →
 `oceans` (the table gives `'` for `’`, removed in step 5). The
-transliteration of step 2 is the table of the Python package Unidecode
-(papers is tested with Unidecode 1.4.0), whatever table python-slugify
-would choose; another implementation must use the same table to produce
-the same names.
+transliteration of step 2 is the ASCII transliteration table of
+bibtex.md section 9.1, the same in every implementation, so that the same
+entry gives the same name.
 
 **Unknown entries.** When `unknown-template` is non-empty and the entry is
 "unknown", the unknown template is used instead of the template. An
@@ -987,66 +985,51 @@ take no lock. `init`, `config` and `migrate` take no lock at the start;
 
 ## Open questions
 
-Resolved:
+All resolved. Each record gives the question and the decision.
 
-1. **`.papers/` of the bibtex directory vs of the library directory.**
-   Resolved (#167): every file of `.papers/` is in the library directory;
-   the files that earlier builds wrote next to the bibtex are moved at load.
-2. **`{journal}` of an entry without journal is `None`.** Resolved
-   (97f9fe4): it is empty, and an empty first folder is left out.
-3. **Template syntax is Python's.** Resolved ((c)4): the contract is
-   `{name}`, `{{`, `}}`; the docs call the template a Python template, so
-   papers keeps `str.format`. The `Format` docstring now says that
-   `{AuTHoR}` is an error.
-4. **Slugify transliteration is not pinned.** Resolved (ff110d6, (c)1):
-   slugify always uses the Unidecode table.
-5. **No file-name length or character limit.** Resolved (#168): see
-   [File names](#file-names-1) of the templates.
-6. **Values in config.json are not type-checked.** Resolved (#168): the
-   values are checked at load; invalid JSON is an error for the library
-   and the machine configuration.
-7. **Unknown keys are dropped on save.** Resolved (5bf7022, (c)5): they
-   are kept.
-8. **`~` in `bibtex`/`filesdir` is not expanded.** Resolved (#159): it is.
-9. **Relative `default` and `history-dir` resolve against the current
-   directory.** Resolved (#159, #170): they are read relative to the folder
-   of the machine configuration, and `papers config --global` writes them
-   absolute.
-10. **The configured pool is not re-checked for a pool of its own.**
-    Resolved (#170): exchanges stop, the automatic push warns.
-11. **`papers config pool .` is accepted, `papers init --pool .` is
-    refused.** Resolved (#170): both refuse it.
-12. **Base of a relative pool path differs.** Resolved (#170): the current
-    directory for both.
-13. **Locks of two libraries in opposite orders.** Resolved ((b)9, kept
-    and documented): see the Order rule of [The lock](#protocol).
-14. **`.gitignore` only on configuration save.** Resolved (38ea762): also
-    written when the lock is taken.
-15. **Machine configuration drops the legacy `pools` names.** Resolved
+1. **Where is `.papers/` when the bibtex is in another directory?** In
+   the library directory (#167); the files that earlier builds wrote next
+   to the bibtex are moved when the library is loaded.
+2. **What is `{journal}` for an entry without journal?** Empty
+   (97f9fe4); an empty first folder is left out.
+3. **Which template syntax is contract?** `{name}`, `{{` and `}}` only;
+   other forms are free. `{AuTHoR}` is an error.
+4. **Which transliteration does slugify use?** One fixed table
+   (ff110d6), see Slugify.
+5. **Is there a limit on file-name length or characters?** Yes (#168):
+   see [File names](#file-names-1) of the templates.
+6. **Are the values in `config.json` type-checked?** Yes (#168), at load;
+   invalid JSON is an error for the library and the machine
+   configuration.
+7. **Are unknown keys kept on save?** Yes (5bf7022).
+8. **Is `~` in `bibtex` and `filesdir` expanded?** Yes (#159).
+9. **What is a relative `default` or `history-dir` relative to?** The
+   folder of the machine configuration (#159, #170); `papers config
+   --global` writes them absolute.
+10. **Is the configured pool checked again for a pool of its own?** Yes
+    (#170): exchanges stop, the automatic push warns.
+11. **Is a pool equal to the library itself accepted?** No (#170):
+    `papers config pool .` and `papers init --pool .` both refuse it.
+12. **What is the base of a relative pool path given by the user?** The
+    current directory, for `init --pool` and `config pool` (#170).
+13. **What happens when two commands lock two libraries in opposite
+    orders?** Kept as it is and documented: see the Order rule of
+    [The lock](#protocol).
+14. **When is `.papers/.gitignore` written?** On configuration save and
+    when the lock is taken (38ea762).
+15. **Does the machine configuration keep the legacy `pools` names?** Yes
     (#169): they are written back.
-16. **Legacy global location comment.** Resolved (13941ba): the docstring
-    is corrected; the path was right.
-17. **`id` written into `.papersconfig.json`.** Resolved (d6ea7ae): the
-    file is moved to `.papers/config.json` first.
-18. **Install docstring.** Resolved (aeb7158).
-19. **Configuration files are read in the platform's encoding.** Resolved
-    (#162): read as UTF-8, a byte order mark ignored.
-20. **A fresh lock renamed aside is lost without hard links.** Resolved
-    (#169): it is put back as a copy with its token.
-
-Open:
-
-21. **Resolved (library-spec-bugs):** the command line sets the dry run before it loads the library. Was: **A dry run moved the files of the `.papers/` next to the bibtex.**
-    `move_papers_files` (papers/config.py:314) skips the move with
-    `--dry-run`, but the command line loads the configuration
-    (papers/cli/__init__.py:65) before it sets `papers.config.DRYRUN`
-    (papers/cli/__init__.py:125), so `papers list --dry-run` moves them.
-    Test: `tests/test_spec_library.py::TestLayout::test_no_move_with_dry_run`
-    (expected failure).
-22. **Resolved (library-spec-bugs):** `gitdir` and `gitlfs` are known keys, dropped at save. Was: **`papers config --prune` kept `gitlfs` and `gitdir`.** The prune
-    lists them as removed (papers/cli/library_cmds.py:374), but they are
-    not among the known keys (papers/config.py:133), so the save keeps
-    them as unknown keys. A `.papers/config.json` of papers 2.2 to 2.4 has
-    both. Test:
-    `tests/test_spec_library.py::TestWrittenKeys::test_prune_removes_the_settings_of_papers_2`
-    (expected failure).
+16. **Where is the legacy global configuration of papers 2?** As in
+    [Global configuration of papers 2](#global-configuration-of-papers-2-papersconfigjson)
+    (13941ba).
+17. **Where is the `id` written for a `.papersconfig.json`?** The file is
+    first moved to `.papers/config.json` (d6ea7ae).
+18. **In which encoding are configuration files read?** UTF-8, a byte
+    order mark ignored (#162).
+19. **Is a fresh lock renamed aside lost without hard links?** No (#169):
+    it is put back as a copy, with its token.
+20. **Does a dry run move the files of the `.papers/` next to the
+    bibtex?** No: the dry run is in force before the library is loaded,
+    so nothing is moved.
+21. **Does `papers config --prune` remove `gitlfs` and `gitdir`?** Yes:
+    they are known keys of papers 2, not written back at save.

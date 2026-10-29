@@ -2,7 +2,8 @@
 
 These files specify what papers does with a library on disk: the files it
 reads and writes, their formats, and the rules that decide their content.
-They are written from the code of the Python version (papers 3).
+They describe papers 3. They are language agnostic: they say what happens
+to the files and on the command line, not how a program does it.
 
 Their purpose: a second implementation (in Rust) and a desktop
 application (Papers Desktop) will work on the same libraries and the same
@@ -32,9 +33,10 @@ implementation may choose.
 
 Other documents:
 
+- [tests.md](tests.md): the tests of each section.
 - [v3.md](v3.md) is the older design document of papers 3. It is kept for
-  its rationale. Where it differs from these files, these files describe
-  the code.
+  its rationale. Where it differs from these files, these files are
+  right.
 - The user documentation (`docs/*.md`) describes the commands and their
   options.
 
@@ -53,8 +55,7 @@ Each file marks its rules with one of two labels:
   same result on disk, caches, thresholds marked as such. An
   implementation may do it differently, as long as the contracts hold.
 
-A rule that is not labelled is contract. Each open question names the
-code (file and line) that the rule was taken from.
+A rule that is not labelled is contract.
 
 ## The compatibility contract
 
@@ -72,7 +73,7 @@ Every on-disk format and name that two implementations must share:
 | The `pool` setting and the states self-contained and shallow | library.md, Pools and shallow libraries |
 | File names of the files directory, name and key templates, slugify, path safety | library.md, The files directory; Name and key templates; Path safety |
 | The lock file `.papers/lock` and its protocol | library.md, The lock |
-| Bibtex reading and output format (blocks, order, layout, values) | bibtex.md, sections 1 to 3; reference test `tests/sortformat/varied.bib` and `varied.expected.bib` |
+| Bibtex reading and output format (blocks, order, layout, values) | bibtex.md, sections 1 to 3 |
 | `file` field syntax | bibtex.md, section 5 |
 | `keywords` field syntax (tags) | bibtex.md, section 6 |
 | `ids` field syntax, `crossref` on renames | bibtex.md, section 7 |
@@ -98,12 +99,12 @@ Every on-disk format and name that two implementations must share:
 
 ## Tests
 
-Each rule ends with a `Tests:` line: the tests of the Python version that
-check it (`tests/test_spec_<file>.py` for the tests written for the
-specification, the other test files for those that existed before). A
-rule marked free has none. A second implementation can be checked against
-the same cases: they say what is on disk and on the command line after
-each command.
+[tests.md](tests.md) lists, for each section, the test cases of the Python
+version that check its rules. A second implementation can be checked
+against the same cases: they say what is on disk and on the command line
+after each command. The bibtex output format has a reference pair of
+files, `tests/sortformat/varied.bib` and the expected output
+`varied.expected.bib`.
 
 ## Open questions
 
@@ -113,4 +114,6 @@ likely bugs (fixed), inconsistencies (fixed, or kept and documented),
 rules to pin for compatibility (pinned in the rule text) and minor items
 (fixed, or kept as correct behaviour).
 
-None is open.
+One is open: the character table and the ASCII transliteration table
+that the same-paper rule and the file names use are not yet published with
+this specification ([bibtex.md](bibtex.md#open-questions) 20).

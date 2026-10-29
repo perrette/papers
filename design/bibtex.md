@@ -134,7 +134,8 @@ Kinds of failed blocks:
 | duplicate key | an entry whose key, compared without case, is that of an earlier entry; a string whose name is exactly that of an earlier string |
 
 The warning gives the reason as `syntax error`, `a field given twice:
-'title'` (the names, as bibtexparser prints them) or `a key given twice
+'title'` (the names given twice, sorted and joined by `, ` inside the
+quotes: `'title, year'`) or `a key given twice
 (keys ignore case): 'smith2000'`.
 BibTeX ignores the case of field names and keys; papers reads them the
 same way (section 2.6 for keys).
@@ -386,7 +387,7 @@ depth 0, so a `{...}` group is one word whatever it contains.
 This parser is a heuristic, written for the text of PDF files; it is not
 contract. It is described here so that another implementation can give
 similar results. `check --fix-doi` gives it the text `doi:` + the `doi`
-field (papers/extract.py, `parse_doi`):
+field:
 
 1. The text is cleaned: zero-width spaces (U+200B) and soft hyphens
    (U+00AD) removed, en and em dashes replaced by `-`, the control
@@ -394,8 +395,9 @@ field (papers/extract.py, `parse_doi`):
    break is joined in three cases: after `10.` before the registrant
    (`10.\n1073/...`), after `10.1073/pnas.` before a digit, and after a
    `-` in the suffix.
-2. Candidates are the matches of `(?<![\w.\-])(10\.\d{4,9}/[-._;()/:a-z0-9]+)`,
-   in order, without repeats. Without match, `arxiv:\s*(\d{4}\.\d{4,5})`
+2. Candidates are the matches of the regular expression
+   `(?<![\w.\-])(10\.\d{4,9}/[-._;()/:a-z0-9]+)` (`\w`: a Unicode letter,
+   digit or underscore), in order, without repeats. Without match, `arxiv:\s*(\d{4}\.\d{4,5})`
    gives `10.48550/arXiv.<id>`; otherwise the parse fails.
 3. DOIs of data repositories (prefixes `10.5281`, `10.5061`, `10.6084`,
    `10.5066`, `10.17882`, `10.1594`, `10.5067`) come after the others.
@@ -439,7 +441,7 @@ it:
    `j`. A letter that already carries accents gets the new one after
    them (`\'{\"u}` gives `ǘ`). An accent without argument gives nothing.
 2. A command that names a character gives that character: the commands
-   of the table of section 4.2 that are written as one command (`\o`,
+   of the character table (section 4.2) that are written as one command (`\o`,
    `{\o}`, `\o{}`, `$\alpha$`, with `\cyrchar` in front dropped; the first
    one of each name), and `\dh` ð, `\j` ȷ, `\times` ×, `\ell` ℓ,
    `\copyright` ©, `\textregistered` ®. Examples: `\ss` ß, `\AA` Å, `\l` ł,
@@ -474,7 +476,8 @@ made from.
 ### 4.2 Unicode to LaTeX (`check --encoding latex`)
 
 **Contract** for the output of this command. Each character of the value
-is replaced by its LaTeX text from the `to_latex` table; space, `{` and `}`
+is replaced by its LaTeX text from the character table, a table of
+(character, LaTeX text) pairs that papers ships; space, `{` and `}`
 are kept; characters not in the table are kept. Example:
 `Müller étoile_x ~ 50% & {GCM}` gives
 `M{\"u}ller {\'e}toile\_x \textasciitilde  50\% \& {GCM}`.
@@ -491,10 +494,10 @@ no-break space, `--` and `---` become en and em dashes, `\url{x}` becomes
 (`$...$`) is kept as written. Applied by `check --encoding unicode` and to
 the bibtex of a paper added from a PDF (fetched or extracted metadata).
 
-**Free.** The exact output is that of the pylatexenc library (through
-bibtexparser) and may change with its version. It is not contract: papers
-writes it once and does not read it back nor compare it (also for the
-RIS and CSL-JSON exports, formats.md).
+**Free.** The exact output is not contract: papers writes it once and
+does not read it back nor compare it (also for the RIS and CSL-JSON
+exports, formats.md). Examples: `M{\"u}ller` gives `Müller`,
+`\textit{Ocean} --- heat` gives `Ocean — heat`.
 
 ## 5. The `file` field
 
@@ -696,9 +699,9 @@ the exchanges with pools.
 1. empty text gives empty text;
 2. LaTeX to Unicode (section 4.1) (a text that is ASCII without `\`,
    `{`, `}` is unchanged by this step);
-3. transliteration to ASCII with the table of the Unidecode library
-   (`ü` to `u`, `ß` to `ss`, `Å` to `A`); papers runs with Unidecode
-   1.4.0, the same table as for the slugs of the templates (library.md);
+3. transliteration to ASCII with the ASCII transliteration table
+   (`ü` to `u`, `ß` to `ss`, `Å` to `A`), the same table as for the slugs
+   of the templates (library.md);
 4. remove `{` and `}`;
 5. lower case; whitespace runs replaced by one space; trimmed.
 
@@ -791,13 +794,15 @@ library.
   `doi` (normalized DOI), `arxiv` (normalized arXiv id), `isbn` (the
   ISBN-13s of a book, sorted, joined by `,`), and `authortitle`, or
   `title` when the entry has a title but no authors.
-- Written with an indentation of one space, keys sorted, non-ASCII
-  characters escaped as `\uXXXX`, and a final newline. Written only when a
+- Written with an indentation of one space, `,` at the end of a line and
+  `: ` between a key and its value (as in the example), keys sorted,
+  non-ASCII characters escaped as `\uXXXX` (a character above U+FFFF as
+  its two UTF-16 surrogates), and a final newline. Written only when a
   pair was added.
 - Reading: as UTF-8, a byte order mark dropped, so raw UTF-8 characters
   written by another implementation are read the same way as `\u`
   escapes. A missing file is no pairs; a file that cannot be read is
-  ignored with a warning; elements of `distinct` that are not lists of
+  ignored with a warning; elements of `distinct` that are not arrays of
   two are ignored.
 - A recorded side matches an entry when `doi`, `arxiv` and `isbn` are
   equal (absent on both sides counts as equal), and `authortitle` and
@@ -928,55 +933,62 @@ exchange.md.
 
 ## Open questions
 
-1. **Field names that differ by case give two fields.** Resolved: such an
-   entry is a failed block, as BibTeX ignores the case of field names
-   (section 2.5; #168).
-2. **`@string` references are inlined.** Resolved: kept, and documented
-   (`docs/library-management.md`, section 2.3; #170).
-3. **Empty fields are added by a merge.** Resolved: an empty field of
-   another entry is no longer added; an empty field of the target stays
-   (section 10.2; #176).
-4. **Given-name compatibility ignores extra words.** Resolved: kept, and
-   documented in `docs/adding-entries.md` (section 10.3; #176).
-5. **Tag add/remove/rename are case-sensitive, matching is not.**
-   Resolved: add, remove and rename ignore case (section 6; #160).
-6. **Key suffix after an upper-case letter or `z`.** Resolved: an
-   upper-case suffix continues in upper case, and after `z` a second
-   letter is added (section 8; #176).
-7. **`--keep-old-key` can repeat a former key.** Resolved: each former
-   key once, and never the new key, in `ids` (section 7.1; #176).
-8. **`crossref` to a merged-away key is not updated.** Resolved:
-   `check --duplicates` sets it to the key of the entry it was merged into
-   (section 7.3; #161). `xdata` and `related` are still not followed.
+Each item gives the question and the decision. All are resolved but the last.
+
+1. **Field names that differ by case give two fields.** Such an entry is
+   a failed block, as BibTeX ignores the case of field names (section
+   2.5; #168).
+2. **`@string` references are inlined.** Kept, and documented in the
+   user documentation (section 2.3; #170).
+3. **Empty fields are added by a merge.** An empty field of another
+   entry is not added; an empty field of the target stays (section 10.2;
+   #176).
+4. **Given-name compatibility ignores extra words.** Kept, and documented
+   in the user documentation (section 10.3; #176).
+5. **Tag add, remove and rename are case-sensitive, matching is not.**
+   Add, remove and rename ignore case (section 6; #160).
+6. **Key suffix after an upper-case letter or `z`.** An upper-case suffix
+   continues in upper case, and after `z` a second letter is added
+   (section 8; #176).
+7. **`--keep-old-key` can repeat a former key.** Each former key once,
+   and never the new key, in `ids` (section 7.1; #176).
+8. **`crossref` to a merged-away key is not updated.** `check
+   --duplicates` sets it to the key of the entry it was merged into
+   (section 7.3; #161). `xdata` and `related` are not followed.
 9. **Absolute links in a relative library are not converted at load.**
-   Resolved: they are made relative at load, as relative links are made
-   absolute in an absolute library (section 5.2; #176).
-10. **No escaping in the `file` field.** Resolved: no escaping is the rule
-    (section 5.1, `docs/files.md`); each path is now trimmed (#172).
-11. **The table LaTeX decoder was wrong for some input, and it defines
-    identity.** `T\^ete` gave `Tet̂e`, `\url{x}` gave `r̆lx`, `\'e` without
-    braces gave `e`. Resolved: a decoder that reads the text as LaTeX
-    reads it replaces the table one (section 4.1). Identities recorded in
-    `distinct.json` for entries whose authors or title contain other
-    LaTeX than accents and braces may differ from the new ones: such a
-    pair is asked again.
-12. **Transliteration is a third-party table.** Resolved: Unidecode
-    everywhere (identity and slugs), version named in section 9.1 (#176).
-13. **`check --encoding unicode` and `add` of a PDF use a third-party
-    LaTeX-to-text converter.** Resolved: its output is not contract
-    (section 4.3; #176).
-14. **Keys that differ by case are both read.** Resolved: the second is a
-    failed block (section 2.6; #168).
-15. **"Exact duplicate" on key collision compares raw titles.** Resolved:
-    the same paper with nothing to merge is folded in, whatever the case
-    of the titles (section 8; #176).
-16. **`and` inside braces: three different splits.** Resolved: every
-    split is made at brace depth 0 (sections 3.5, 9.2, 10.3; #176).
-17. **`distinct.json` is read with the platform encoding.** Resolved: read
-    as UTF-8, a byte order mark dropped (section 9.4; #162).
-18. **The DOI parser of `check --fix-doi`.** Resolved: a heuristic,
-    described as informative in section 3.6 (decision (c)12).
-19. **Resolved (paths-slash):** links are compared after normalization. Was: **Two spellings of one path are both kept.** When papers sets the
-    links of an entry, a path is dropped as a repeat only when its text is
-    the same before normalization: `files/./a.pdf` and `files/a.pdf` are
-    written as two links `:files/a.pdf:pdf`. papers/bib.py:533-539.
+   They are made relative at load, as relative links are made absolute in
+   an absolute library (section 5.2; #176).
+10. **No escaping in the `file` field.** No escaping is the rule (section
+    5.1); each path is trimmed (#172).
+11. **The LaTeX decoder of the same-paper rule.** It reads the text as
+    LaTeX reads it (section 4.1); an earlier decoder by table replacement
+    gave wrong results (`T\^ete` gave `Tet̂e`). Pairs recorded in
+    `distinct.json` for entries whose authors or title contain LaTeX other
+    than accents and braces may no longer match: such a pair is asked
+    again.
+12. **Transliteration depends on an external table.** One ASCII
+    transliteration table everywhere (identity and slugs), section 9.1
+    (#176).
+13. **`check --encoding unicode` and `add` of a PDF use a full
+    LaTeX-to-text conversion.** Its output is not contract (section 4.3;
+    #176).
+14. **Keys that differ by case are both read.** The second is a failed
+    block (section 2.6; #168).
+15. **"Exact duplicate" on key collision compares raw titles.** The same
+    paper with nothing to merge is folded in, whatever the case of the
+    titles (section 8; #176).
+16. **`and` inside braces is split three different ways.** Every split is
+    made at brace depth 0 (sections 3.5, 9.2, 10.3; #176).
+17. **`distinct.json` is read with the platform encoding.** It is read as
+    UTF-8, a byte order mark dropped (section 9.4; #162).
+18. **The DOI parser of `check --fix-doi`.** A heuristic, described as
+    informative in section 3.6.
+19. **Two spellings of one path are both kept as links.** Links are
+    compared after normalization, so `files/./a.pdf` and `files/a.pdf`
+    are one link (section 5.2).
+20. **Open: the two character tables are not part of the specification.**
+    The character table of sections 4.1 and 4.2 and the ASCII
+    transliteration table of section 9.1 (also used for slugs) are data
+    of the current implementation. To be decided: publish them as data
+    files next to this specification, or replace the transliteration
+    table by a rule.

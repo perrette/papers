@@ -71,22 +71,18 @@ Used by `papers add FILE` and `papers edit --from FILE`.
 - Writing: UTF-8, no byte-order mark, `\n` line ends on every platform.
   **Contract.**
 
-### 1.4 RIS dependency (Python only)
+### 1.4 RIS support
 
-The Python code reads and writes RIS with an optional package (the `ris`
-extra). An implementation that has RIS built in does not need any of this
-(**Free**). The Python behaviour, for reference:
+Whether RIS support is built in or an optional component, and how its
+absence is reported, is **free**. The current implementation, for
+reference, has RIS as an optional component:
 
-- The package is loaded only when RIS is needed: `papers export` with
+- Its absence is detected only when RIS is needed: `papers export` with
   `ris` among its formats, before anything is written; `papers add` when
   any of its files is RIS, before anything is added; `papers list
   --format ris`; `papers edit --from` with a RIS file.
-- Not installed, no terminal on standard input: exit 1 with
-  `papers: error: RIS needs the rispy package, which is not installed: install it with one of: `pip install rispy`, `pipx inject papers-cli rispy`, `pip install 'papers-cli[ris]'` (with uv: `uv tool install papers-cli --with rispy`)`.
-- Not installed, in a terminal: a question on standard error
-  `RIS needs the rispy package: install it now (`<python> -m pip install rispy`)? [y/N] `;
-  `y` or `yes` runs pip (its output on standard error), anything else
-  exits 1 (`rispy not installed: ...`).
+- Without it, the command exits 1 with a message that says how to
+  install it; in a terminal, it first asks whether to install it now.
 - With `edit --from`, the error is reported as a rejected edit
   (`the text could not be read as ris (...) -- keeping original entries`).
 
@@ -104,11 +100,10 @@ they are.
 - A value that contains none of the characters `\ { } $ ~ % &` is only
   trimmed of surrounding white space. **Contract.**
 - Otherwise it is decoded as LaTeX text and trimmed. The decoded text is
-  **free**: the Python version uses the LaTeX-to-text converter of the
-  pylatexenc library (`LatexNodes2Text(math_mode='verbatim')`), whose
-  output can change with its version. papers never reads it back nor
-  compares it (the values imported back are compared by the rules of
-  bibtex.md, section 9). Observed rules of pylatexenc 2, for reference:
+  **free**: papers never reads it back nor compares it (the values
+  imported back are compared by the rules of bibtex.md, section 9).
+  Example of a decoding, for reference (the output of the current
+  implementation, not a requirement):
 
 | input | output |
 |---|---|
@@ -468,14 +463,8 @@ RIS is a line format: one record per reference, one tag per line.
 8. If the text is not blank and no record was found: error
    `not a RIS file: no record found (a record starts with TY  - )`.
 
-Step 2 is there because the RIS reader of the Python version (rispy
-0.10) reads such lines as the continuation of the last tag of the
-previous record: an internal error for a single tag such as `TI`, an
-empty keyword for `KW` (reported upstream as MrTango/rispy#77). The
-result of steps 1 to 8 is the contract; an implementation with its own
-reader may get it another way (**Free**). The Python version also adds an
-`ER` line at the end of a last record without one, which rispy would
-drop.
+The result of steps 1 to 8 is the contract; how an implementation
+arrives at it is **free**.
 
 ### 4.3 Writing
 
@@ -999,22 +988,22 @@ All the questions of this file are resolved:
 
 1. Resolved (#165): RIS and CSL-JSON imports escape `&`, `%`, `#`, `_`
    for LaTeX (2.9).
-2. Resolved (decision (c) 2): the LaTeX-to-text output is that of
-   pylatexenc and is not contract; it is never read back (2.1).
+2. Resolved: the LaTeX-to-text output of the export is
+   not contract; it is never read back (2.1).
 3. Resolved (#166): a last RIS record without `ER` is read (4.2).
 4. Resolved (#166): RIS exports and imports `urldate` as `Y2` and
    `translator` as `A4` (4.3, 4.5).
-5. Resolved (decision (b) 21, #172): kept and documented: export splits
+5. Resolved (#172): kept and documented: export splits
    `keywords` on `,`, import on `,` and `;` (3.2, 3.3, 4.6).
 6. Resolved (#172): a zero or missing date part ends the date (2.4).
 7. Resolved (#172): with 4 or more comma parts, the parts from the third
    on are the given name (2.2).
 8. Resolved (#172, #173): a suffix without given name is written
    `Family, Suffix,` in bibtex (2.3) and `Family, , Suffix` in RIS (4.3).
-9. Resolved (decision (b) 22, #172, #173): `container-title` and `T2` are
+9. Resolved (#172, #173): `container-title` and `T2` are
    the `booktitle` of `incollection` and `inproceedings`, the `journal` of
    any other type (3.3, 4.5).
-10. Resolved (decision (c) 7, #172): the publisher from
+10. Resolved (#172): the publisher from
     school/institution/organization is at the position of `publisher`
     (3.2).
 11. Resolved (#166): `edit --from FILE` reads relative file links against
@@ -1027,9 +1016,9 @@ All the questions of this file are resolved:
     `M3` contains `master` is read as a `mastersthesis` (4.3, 4.4).
 15. Resolved (#172): `--field --no-key` prints the values only; the
     colour of `KEY:` is only there with colours on, and not contract (6).
-16. Resolved (decision (b) 25, #172): the export files are written with
+16. Resolved (#172): the export files are written with
     `\n` line ends on every platform (1.3).
-17. Resolved (decision (c) 8, #172): BibJSON numbers are read as written,
+17. Resolved (#172): BibJSON numbers are read as written,
     `null` array elements are left out (5.2).
 18. Resolved (#172): the stray-line step tests tag lines as the reader
     does (4.1, 4.2).

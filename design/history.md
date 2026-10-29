@@ -26,8 +26,7 @@ Two kinds of rules appear below:
 
 When a section does not say, the rule is part of the contract.
 
-Each section ends with the tests that check its rules against the Python
-code (`Tests:`); `none (free)` marks a section whose rules are all free.
+The tests that check these rules are listed in `tests.md`.
 
 Terms used below:
 
@@ -155,7 +154,7 @@ holds the comment and `k0`…`k30` (32 segments), the second `k31`…`k39`.
   compression level is free; a reader accepts any zlib stream;
 - written to a temporary file in the same folder, then renamed over the
   final name (a reader never sees half an object). The temporary name ends
-  with `.tmp` (Python uses `<name>.<pid>.tmp`). Files ending with `.tmp`
+  with `.tmp` (for example `<name>.<pid>.tmp`). Files ending with `.tmp`
   are not objects;
 - when the object exists already, it is not written again, but its
   modification time is set to now. The retention keeps objects younger
@@ -926,8 +925,8 @@ Definitions:
   a file (computed once per path, and again after the file moves).
 - `moves`: the operations `moved` and `copied`.
 - `partners(path)`: for each operation of `moves`, the last one first:
-  if its `src` is the path and it has a `dst`, yield (`dst`, operation);
-  else if its `dst` is the path, yield (`src`, operation).
+  if its `src` is the path and it has a `dst`, give (`dst`, operation);
+  else if its `dst` is the path, give (`src`, operation).
 - `mentioned`: all `src` and `dst` of `moves`.
 - `kept`: the `dst` of the `removed` operations that have one.
 - `candidates`: the sorted list of (`current` ∪ `mentioned`) − `target`,
@@ -1541,8 +1540,8 @@ not parsed again in full at each command (see `bibtex.md` 2.7).
   `<cache dir>` is `$XDG_CACHE_HOME/papers` or `~/.cache/papers` (Linux),
   `~/Library/Caches/papers` (macOS), `%LOCALAPPDATA%\papers\papers\Cache`
   (Windows), and the sha256 is that of a piece cut as in 2.3.
-- Content: `{"format": 1, "blocks": [...]}`, the blocks that the Python
-  bibtex parser makes of the piece (kind, line within the piece, raw
+- Content: `{"format": 1, "blocks": [...]}`, the blocks that the bibtex
+  parser of the implementation that writes the cache makes of the piece (kind, line within the piece, raw
   text, type, key, fields with their line). A file of another `format`,
   or unreadable, is ignored.
 - A piece is cached only when every block is an entry, a string, a
@@ -1561,10 +1560,10 @@ Contract:
 - The cache must never change a result: a parse with it gives the same
   blocks, values, line numbers and failed blocks as a parse of the whole
   text without it.
-- The format is that of the Python parser. Another implementation does
-  not read it, and must not write into `<cache dir>/parsed/` (it would
-  give Python wrong blocks). Having a cache, and its location, are free
-  otherwise.
+- The format is that of the parser of the implementation that writes it.
+  Another implementation does not read it, and must not write into
+  `<cache dir>/parsed/` (the first implementation would read wrong
+  blocks). Having a cache, and its location, are free otherwise.
 
 ## 12. `papers history`
 
@@ -1609,7 +1608,7 @@ Each with its total size. There is no migration from them.
 
 ## 13. Two implementations on one store
 
-Python papers and another implementation may run at the same time on the
+Two implementations of papers may run at the same time on the
 same machine, on the same store. What makes this safe, and what does not:
 
 - **Objects** are named by content and written by rename: two writers of
@@ -1643,142 +1642,75 @@ same machine, on the same store. What makes this safe, and what does not:
 
 ## Open questions
 
-Questions 1 to 14 are resolved; each says how. Their code references
-are those of the code before the fix.
+All questions are resolved. Each gives the question and the decision.
 
-1. **Unreachable line in revert.** For an entry removed by step N, an
-   entry with its key is found first by the "entry now" lookup, which
-   returns early (papers/revert.py:159-160); the check "another entry has
-   its key now: not added" (papers/revert.py:161-163) can never apply.
+1. **Revert of a removed entry whose key is taken.** The line "another
+   entry has its key now: not added" could never be printed.
+   Decision (#174): it is printed when the entry found under that
+   key is not the removed one (8.2).
 
-   Resolved (#174, (d)23): the line is printed when the entry found under
-   that key is not the removed one (8.2).
+2. **Does the outside state read `.papers/`?** It copied the `.papers/`
+   files of the head, and outside changes were detected on the bibtex
+   only. Decision (#174): the outside state has the `.papers/`
+   files as they were at the start of the command (5.2, 5.3); a change of
+   `.papers/` alone joins the next command's state.
 
-2. **The outside state does not read `.papers/`.** It copies the files of
-   the head (papers/backup.py:210), and outside changes are detected on
-   the bibtex only (papers/backup.py:200). An edit of `distinct.json` or
-   of an origin record made outside papers becomes part of the next
-   command's state, and undoing that command takes it back too.
+3. **Several saves of one pool in one command** (sync with pull and
+   push): undo took back the last pool step only. Decision (#163): the
+   link records `base`, the pool's state before the first save; undo,
+   redo and the revert of a pool step go back to it (7.1, 7.2).
 
-   Resolved (#174, (b)37): the outside state has the `.papers/` files as
-   they were at the start of the command (5.2, 5.3); a change of
-   `.papers/` alone still joins the next command's state (documented).
+4. **"deleted again (kept in the history)" with `keep-deleted-files`
+   false**, when the file went to the system trash. Decision (#174): the
+   line says `(to the trash of the system)` (6.4).
 
-3. **Several saves of one pool in one command.** `pools` holds one state
-   per pool id (papers/backup.py:287): if a command saves the same pool
-   twice, undo takes back the last pool step only. Can it happen (sync
-   with pull and push)?
+5. **`history-size 0` never removed anything**, and `--remove` of the
+   last place did not prune. Decision (#164): with `history-size` 0 the
+   removable objects are removed (no state is dropped), and `--remove` of
+   the last place prunes the store (9.2, 9.3).
 
-   Resolved (#163): the link records `base`, the pool's state before the
-   first save; undo, redo and the revert of a pool step go back to it
-   (7.1, 7.2).
+6. **Recent objects that no state refers to** counted in the total but
+   could not be freed, so the prune dropped more states. Decision (#171):
+   they are not counted, and the objects of a dropped state are freed at
+   once unless stored again since (9.2).
 
-4. **"deleted again (kept in the history)" with keep-deleted-files
-   false.** The line is printed whatever happened to the file
-   (papers/journal.py:382, 432); with the setting false it went to the
-   system trash.
+7. **`papers history --bibtex FILE` without library** said "no library",
+   while `papers undo --bibtex FILE` worked. Decision (#164): it shows the
+   history of that bibtex (section 12).
 
-   Resolved (#174): with `keep-deleted-files` false the line says
-   `(to the trash of the system)` (6.4).
+8. **Kept `.papers/` files: relative to the bibtex directory or the
+   library directory?** Decision (#167): relative to the library
+   directory, where `files.json`, `distinct.json` and `origin/` are (3.3).
 
-5. **`history-size 0` never removes anything.** Pruning returns at once
-   when the limit is 0 (papers/backup.py:314), so objects no state refers
-   to (after `--remove`, after `--drop-files` of a shared file) stay for
-   ever. `--remove` of the last place does not prune at all
-   (papers/cli/backup_cmds.py:134-139).
+9. **Separators in stored paths**: names and paths used the separator of
+   the system, so stores and state identifiers differed on Windows.
+   Decision (#174): they are stored with `/` and read back with the
+   separator of the system; state identifiers are the same on every
+   platform (2.5, 3.3, 4).
 
-   Resolved (#164): with `history-size` 0 the removable objects are
-   removed (no state is dropped), and `--remove` of the last place prunes
-   the store (9.2, 9.3).
+10. **How is a separate store recognised?** It was by its folder name
+    `separate`. Decision (#174): a store is separate when its real
+    path is not that of the shared store (9.1).
 
-6. **Recent unreferenced objects count but cannot be freed.** Objects
-   younger than `GRACE` that no state refers to (for example written by
-   a concurrent command) count in `total` (papers/history.py:257-259)
-   but are never subtracted, so they make the prune drop more states.
+11. **The pool step's `from`: bibtex directory or library directory?**
+    Decision (#167): it stays the directory of the bibtex; it is
+    only shown to the user (3.1).
 
-   Resolved (#171): objects that no state refers to are not counted, and
-   the objects of a dropped state are freed at once unless stored again
-   since (9.2).
+12. **`kind` is written but never read: keep it?** Decision
+    (#174): it stays, optional and informational (3.1).
 
-7. **`papers history` ignores a bibtex without library.** The command is
-   not a library command (papers/cli/parser.py:1040), so
-   `papers history --bibtex x.bib` says "no library"
-   (papers/cli/backup_cmds.py:228-232), while `papers undo --bibtex x.bib`
-   works on that bibtex's history.
-
-   Resolved (#164): `papers history --bibtex FILE` shows the history of
-   that bibtex (section 12).
-
-8. **Kept `.papers/` files relative to the bibtex directory.** The names
-   are looked up in the directory of the bibtex
-   (papers/backup.py:101-109) while `files.json` is in the library
-   directory (papers/checksums.py:23-27): see `library.md`, open
-   question 1.
-
-   Resolved (#167): the kept files are named relative to the library
-   directory, where `files.json`, `distinct.json` and `origin/` all are
-   (3.3).
-
-9. **Separators in stored paths.** The names in `files` and the relative
-   paths in `ops` use the separator of the operating system
-   (papers/backup.py:140-153, papers/checksums.py:61), so a store is not
-   portable between Windows and other systems. The `file` lines of a
-   state identifier contain these names (papers/history.py:288-291), so
-   the same state gets another identifier on Windows. Should the stored
-   form use `/`?
-
-   Resolved (#174, (c)10): names and paths are stored with `/` and read
-   back with the separator of the system; state identifiers are the same
-   on every platform (2.5, 3.3, 4).
-
-10. **Separate store recognised by its folder name.** The retention of a
-    store uses the library's `history-size` when the store's parent
-    folder is named `separate` (papers/backup.py:71-72); a library's own
-    `history-size` is ignored in the shared store. Intended?
-
-    Resolved (#174, (b)42): a store is separate when its real path is not
-    that of the shared store (9.1).
-
-11. **The pool step's `from` is the bibtex directory**, not the library
-    directory (papers/backup.py:283): they differ when the bibtex is in a
-    subfolder.
-
-    Resolved ((b)1, #167): kept as it is; `from` is only shown to the user
-    (3.1), and stays the directory of the bibtex.
-
-12. **`kind` is never read.** It is written (papers/backup.py:212, 276)
-    and documented, but nothing uses it. Keep it in the contract?
-
-    Resolved (#174, (c)11): `kind` stays, optional and informational
-    (3.1).
-
-13. **The upgrade of numbered states stops at its store.** It rewrites
-    the `pools` links of a state only for the projects of the same store
-    (papers/history.py:167-168, 192). A library with `history-separate`
-    whose pool is in the shared store (or the reverse) keeps a number in
-    its links; the pool's states are named by identifiers once that store
-    is upgraded, so the link names no state and undo and redo leave the
-    pool alone (papers/backup.py:556-557).
-
-    Resolved (#169): the upgrade writes `numbers.json`; a link that keeps
+13. **The upgrade of numbered states stopped at its store**, so a link
+    to a pool in another store kept a number that named no state.
+    Decision (#169): the upgrade writes `numbers.json`; a link that keeps
     a number is looked up there (2.5, 7.2).
 
-14. **A file brought back by `file fix` depends on the store.** The
-    `copied` operation names the file object in the store as its source
-    (papers/cli/file_cmds.py:420), but the fix's state does not list it in
-    `deleted` (papers/backup.py:165), so the retention may remove it once
-    the step that deleted the file is dropped, and a change of
-    `history-dir` moves it. Undo then leaves the copy in place (6.4,
-    pass 3 requires the source to exist; papers/journal.py:391).
+14. **A file brought back by `file fix` depended on the store**: its file
+    object was not listed in the fix's `deleted`, so the retention could
+    remove it, and a change of `history-dir` lost it. Decision (#169): the
+    fix's state lists the file object in `deleted` (3.4), and undo and
+    redo find it by checksum after a change of `history-dir` (6.4, 6.6).
 
-    Resolved (#169): the fix's state lists the file object in `deleted`
-    (3.4), and undo and redo find it by checksum after a change of
-    `history-dir` (6.4, 6.6).
-
-15. **Resolved (paths-slash):** the keys are written with `/` on every system; a `\` in a key is read as `/`. Was: **Separators in `files.json`.** The keys of `.papers/files.json` are
-    written with `os.path.relpath`, so with `\` on Windows
-    (papers/checksums.py:60), and read with `os.path.join`
-    (papers/checksums.py:39). A library written on Windows and read on
-    Linux or macOS (a synced folder) gives keys that name no file: undo
-    there finds no file by checksum. Should the keys use `/`, as the
-    history does (3.3, 4)?
+15. **Separators in the keys of `.papers/files.json`**: written with `\`
+    on Windows, they named no file on other systems. Decision
+    (#184): the keys are written with `/` on every system; a `\`
+    in a key is read as `/` (10).
