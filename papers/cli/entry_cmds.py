@@ -173,7 +173,7 @@ def addcmd(parser, o, config):
 
 
     # several PDFs: fetch their metadata concurrently first
-    if not o.doi and not o.scholar and not (o.no_query_doi and o.no_query_fulltext):
+    if not o.doi and not o.scholar and not o.openalex and not (o.no_query_doi and o.no_query_fulltext):
         pdfs = []
         for file in o.file:
             if os.path.isdir(file) and o.recursive:
@@ -200,6 +200,7 @@ def addcmd(parser, o, config):
                     entries.extend( biblio.scan_dir(file, rename=rename, copy=policy,
                                 search_doi=not o.no_query_doi,
                                 search_fulltext=not o.no_query_fulltext,
+                                scholar=o.scholar, openalex=o.openalex,
                                 **kw) )
                 else:
                     raise ValueError(file+' is a directory, requires -R/--recursive to explore')
@@ -208,7 +209,7 @@ def addcmd(parser, o, config):
                 entries.extend( biblio.add_pdf(file, attachments=o.attachment, rename=rename, copy=policy,
                            search_doi=not o.no_query_doi,
                            search_fulltext=not o.no_query_fulltext,
-                           scholar=o.scholar, doi=o.doi,
+                           scholar=o.scholar, openalex=o.openalex, doi=o.doi,
                            **kw) )
 
             elif file_format(file, o.format) == 'bibtex':

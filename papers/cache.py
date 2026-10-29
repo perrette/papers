@@ -1,4 +1,4 @@
-"""Cache of the network queries (crossref, doi.org, arXiv, Google Scholar):
+"""Cache of the network queries (crossref, doi.org, arXiv, Google Scholar, OpenAlex):
 one json file per key under papers.config.CACHE_DIR, see `cached`.
 """
 import contextlib

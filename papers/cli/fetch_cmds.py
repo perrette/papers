@@ -5,6 +5,7 @@ from pathlib import Path
 from papers import logger
 from papers.extract import extract_pdf_doi, extract_pdf_metadata
 from papers.fetch import DOIRequestError, fetch_bibtex_by_doi, fetch_bibtex_by_fulltext_crossref, fetch_bibtex_by_fulltext_scholar
+from papers.openalex import fetch_bibtex_by_fulltext_openalex
 from papers.identifiers import strip_doi
 from papers.utils import PapersExit
 
@@ -21,8 +22,8 @@ def fetchcmd(parser, o, config):
     # either one or several DOIs
     dois = [strip_doi(field) for field in o.doi_or_text]  # the case of arXiv ids matters
     if all(dois):
-        if o.scholar:
-            parser.error("Fetching from DOI does not support Google Scholar option")
+        if o.scholar or o.openalex:
+            parser.error("Fetching from DOI does not support the options --scholar and --openalex")
         for doi in dois:
             try:
                 print(fetch_bibtex_by_doi(doi))
@@ -37,6 +38,8 @@ def fetchcmd(parser, o, config):
     try:
         if o.scholar:
             print(fetch_bibtex_by_fulltext_scholar(field))
+        elif o.openalex:
+            print(fetch_bibtex_by_fulltext_openalex(field))
         else:
             print(fetch_bibtex_by_fulltext_crossref(field))
     except (ValueError, OSError) as error:  # no result, network error
@@ -79,7 +82,7 @@ def extractcmd(parser, o, config):
             if o.doi_only:
                 print(extract_pdf_doi(file, image=o.image))
                 continue
-            print(extract_pdf_metadata(file, search_doi=not o.fulltext, search_fulltext=True, scholar=o.scholar, minwords=o.word_count, max_query_words=o.word_count, image=o.image))
+            print(extract_pdf_metadata(file, search_doi=not o.fulltext, search_fulltext=True, scholar=o.scholar, openalex=o.openalex, minwords=o.word_count, max_query_words=o.word_count, image=o.image))
         except ValueError as error:  # DOIParsingError among them: no DOI or metadata found
             if len(files) == 1:
                 raise PapersExit(f'{file}: {error}')

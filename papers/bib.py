@@ -715,7 +715,7 @@ class Biblio:
         return self._insert_taken(taken, **kw)
 
 
-    def add_pdf(self, pdf, attachments=None, search_doi=True, search_fulltext=True, scholar=False, doi=None, **kw):
+    def add_pdf(self, pdf, attachments=None, search_doi=True, search_fulltext=True, scholar=False, openalex=False, doi=None, **kw):
 
         if str(pdf).startswith("http"):
             pdf = download_url(pdf, expect_pdf=True)
@@ -737,7 +737,7 @@ class Biblio:
         if doi:
             bibtex = fetch_bibtex_by_doi(doi)
         else:
-            bibtex = extract_pdf_metadata(pdf, search_doi, search_fulltext, scholar=scholar)
+            bibtex = extract_pdf_metadata(pdf, search_doi, search_fulltext, scholar=scholar, openalex=openalex)
         bib = parse_string(bibtex)
         entry = bib.entries[0]
 
@@ -758,7 +758,7 @@ class Biblio:
         return self.insert_entry(entry, **kw)
 
 
-    def scan_dir_iter(self, direc, search_doi=True, search_fulltext=True, **kw):
+    def scan_dir_iter(self, direc, search_doi=True, search_fulltext=True, scholar=False, openalex=False, **kw):
 
         for kind, path, attachments in scan_dir_items(direc):
             # a special entry directory
@@ -775,7 +775,8 @@ class Biblio:
 
             try:
                 if path.lower().endswith('.pdf'):
-                    yield from self.add_pdf(path, attachments=attachments, search_doi=search_doi, search_fulltext=search_fulltext, **kw)
+                    yield from self.add_pdf(path, attachments=attachments, search_doi=search_doi, search_fulltext=search_fulltext,
+                                      scholar=scholar, openalex=openalex, **kw)
                 elif path.lower().endswith('.bib'):
                     yield from self.add_bibtex_file(path, **kw)
             except (EOFError, DuplicateError):
