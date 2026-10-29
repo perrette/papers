@@ -480,3 +480,9 @@ class TestEditSet(EntryTest):
             self.lib('edit one2000 --keep-old-key')
         self.assertEqual(self.keys(), ['chap2000', 'one2000', 'two2000'])
 
+    def test_empty_key_refused(self):
+        # bibtex.md 7.2: --key '' is refused, it does not open the editor
+        with patch.dict(os.environ, EDITOR='false'), self.assertRaisesRegex(PapersExit, 'not a valid key'):
+            self.lib("edit one2000 --key ''")
+        self.assertEqual(self.keys(), ['chap2000', 'one2000', 'two2000'])
+

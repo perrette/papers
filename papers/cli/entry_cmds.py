@@ -464,10 +464,10 @@ def _entry_from(biblio, path, fmt, entry):
 
 def editcmd(parser, o, config):
     ways = [name for name, given in (('--from', o.from_file), ('--set/--unset', o.set or o.unset),
-                                     ('--key', o.new_key)) if given]
+                                     ('--key', o.new_key is not None)) if given]
     if len(ways) > 1:
         parser.error(f'{" and ".join(ways)}: one at a time')
-    if o.keep_old_key and not o.new_key:
+    if o.keep_old_key and o.new_key is None:
         parser.error('--keep-old-key goes with --key NEW')
     if o.from_file == '-' and '-' in o.entries:
         parser.error('--from - and the keys from the standard input (-): only one of them can read it')
@@ -483,7 +483,7 @@ def editcmd(parser, o, config):
         replace_entries(biblio, entries, [_entry_from(biblio, o.from_file, o.format, entries[0])])
     elif o.set or o.unset:
         set_fields(entries, o.set or [], o.unset or [])
-    elif o.new_key:
+    elif o.new_key is not None:
         if len(entries) != 1:
             raise PapersExit(f'--key changes the key of one entry: {len(entries)} selected')
         biblio.set_key(entries[0], o.new_key, keep_old=o.keep_old_key)
