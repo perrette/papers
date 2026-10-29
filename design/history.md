@@ -163,10 +163,7 @@ holds the comment and `k0`…`k30` (32 segments), the second `k31`…`k39`.
 
 A text is UTF-8, read without line-ending translation: the stored text
 is the bytes of the file (a byte order mark and `\r\n` included). A
-missing or unreadable piece makes the state unusable:
-undo, redo and restore stop with an error that names the piece (free
-text: `the history of the library is damaged: 'piece <sha256> is missing
-from the history'`).
+missing or unreadable piece makes the state unusable (2.9).
 
 ### 2.4 File objects: deleted files
 
@@ -336,6 +333,37 @@ state refers to:
 1. write (or refresh) the objects and file objects of the state;
 2. write the state;
 3. write the head.
+
+No file is synced to the disk (`fsync`): the durability after a power loss
+is that of the operating system and its file system. A file that a power
+loss damaged is detected when it is read (2.9).
+
+### 2.9 Damaged files
+
+A file of the store is damaged when it cannot be read as written: an
+object missing, empty or not a valid zlib stream of UTF-8 text; a file
+object whose content does not have its sha256 (an empty one, for
+instance; a missing file object is not damaged, see 9.2); a state file
+that is not a JSON object.
+
+- Undo, redo, restore and `history --revert` read everything the move
+  needs from the store before they change anything: the bibtex and the
+  kept files of the states they use, and the file objects that undo
+  brings back. If one is damaged, or if the move goes to a state, or
+  through a state, whose state file is damaged, the command stops with an
+  error (exit 1) that names the step and says that its data is damaged;
+  the library and its files are left as they are (a change made outside
+  papers may have been recorded first, 5.2). Free text, for example
+  `step 4f1c9a2e: its data in the history is damaged (piece <sha256> cannot
+  be read); nothing was changed`.
+- A damaged state file is not a state (2.5): the line of its children
+  stops before it (6.1). Its identifier is still named: `papers history`
+  lists it, `restore` and `--revert` of it stop with the error above. It
+  is not removed by the retention (9.2), which skips it. A head on a
+  damaged state is as no head (5.2): the next command records the
+  library on disk.
+- The commands that do not need the damaged file go on as usual; prune
+  and the other readers skip it, without error.
 
 ## 3. A state
 
@@ -1610,6 +1638,12 @@ stale: ~/.local/share/papers/backups (backup of an earlier papers, 12.0 MB, no l
   `>`, at most `-n` states (20 by default, 0: all).
 - `[X of deleted files]`: the size of the file objects of the state's
   `deleted` that exist.
+- A damaged state file (2.9) is listed where the line stops, in place of
+  its message: `<id> damaged: its state file in the history cannot be
+  read`; a head on one is shown so (`>`). A state one of whose objects
+  is missing or empty is marked `(damaged: a piece of it is missing or
+  empty in the history)` (a check of their size: an object damaged
+  otherwise is found when it is read). Free text.
 - No head: `no history yet: each command that changes the library records
   a step`.
 - With `--bibtex FILE` and no library: the history of that bibtex (the

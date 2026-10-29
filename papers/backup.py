@@ -412,6 +412,8 @@ def _pool_dirs(config):
 def describe(project, n):
     "the line of a state: identifier (short), command, time, and the library that made it (a step of a pool)"
     state = project.state(n)
+    if state is None:
+        return f'{history.short(n)} damaged: its state file in the history cannot be read'
     when = time.strftime('%Y-%m-%d %H:%M', time.localtime(state.get('time', 0)))
     origin = f', from {papers.config.short_home(state["from"])}' if state.get('from') else ''
     return f'{history.short(n)} {state.get("message", "")} ({when}{origin})'
@@ -425,13 +427,18 @@ def resolve(project, ref):
         raise PapersExit(str(error))
     if n is None:
         raise PapersExit(f'no step {ref} in the history of the library (see `papers history`)')
+    if n in project.damaged():
+        raise damaged(n, 'its state file cannot be read')
     return n
 
 
 def state_hashes(config, project, n):
     "the checksums of the files of the state n ({path: sha256}, from its files.json)"
     pieces = state_files(project.state(n)).get(FILES_JSON)
-    return papers.checksums.parse(project.store.text(pieces) if pieces else '{}', config)
+    try:
+        return papers.checksums.parse(project.store.text(pieces) if pieces else '{}', config)
+    except history.Damaged as error:
+        raise damaged(n, error)
 
 
 def parser():
@@ -451,74 +458,122 @@ def parser():
     return parse
 
 
-def go_to(config, project, cur, target, pool_dirs=None, shared=(), parse=None):
+def _plan(project, cur, target):
+    """the steps from the state `cur` to the state `target`, and what they
+    read from the history, read before anything changes (a damaged piece or
+    deleted file stops the command, naming its step): (forward, [(state
+    now, state restored, the state of the operations, undo)], read: (state,
+    None for the bibtex or a name of state_files) -> text)"""
+    st = project.store
+    back, forward = project.path(cur, target)
+    steps = []
+    for n in back:
+        parent = project.state(n).get('parent')
+        if parent is None or project.state(parent) is None:
+            break
+        if project.state(n).get('ops'):
+            steps.append((n, parent, n, True))
+    for n in forward:
+        parent = project.state(n).get('parent')
+        if project.state(n).get('ops') and parent is not None and project.state(parent) is not None:
+            steps.append((parent, n, n, False))
+    texts = {}
+
+    def read(n, name=None):
+        if (n, name) not in texts:
+            state = project.state(n)
+            pieces = state['bibtex']['pieces'] if name is None else state_files(state).get(name)
+            try:
+                texts[n, name] = st.text(pieces) if pieces is not None else None
+            except history.Damaged as error:
+                raise damaged(n, error)
+        return texts[n, name]
+
+    for a, b, n, undo in steps:
+        read(a), read(b), read(b, FILES_JSON)
+        for digest in project.state(n).get('deleted') or [] if undo else ():
+            try:
+                st.check_file(digest)
+            except history.Damaged as error:
+                raise damaged(n, error)
+    read(target)
+    for name in state_files(project.state(target)):
+        read(target, name)
+    return forward, steps, read
+
+
+def go_to(config, project, cur, target, pool_dirs=None, shared=(), parse=None, plan=None):
     """bring the library from the state `cur` to the state `target`: the
     files (command by command, then by checksum), the bibtex and the files
     of .papers/. pool_dirs: the folders whose files are copied back, not
     moved (by default, the files directory of the pool of a shallow
     library, see _pool_dirs); shared: the files that another library links
-    to, also copied back; parse: see parser. Return the lines of the report on the files."""
+    to, also copied back; parse: see parser; plan: see _plan (made here
+    by default). Return the lines of the report on the files."""
     lock.acquire(config)  # held already by a command that writes the library (see papers.lock)
     lock.check(config)
     st = project.store
     relative_to = os.path.dirname(os.path.abspath(config.bibtex))
-    texts = {}
     parse = parse or parser()
-
-    def text(n):
-        if n not in texts:
-            try:
-                texts[n] = st.text(project.state(n)['bibtex']['pieces'])
-            except KeyError as error:
-                raise PapersExit(f'the history of the library is damaged: {error}')
-        return texts[n]
+    forward, steps, read = plan or _plan(project, cur, target)
 
     def links(n):
-        return papers.checksums.entry_links(parse(text(n)).entries, relative_to)
+        return papers.checksums.entry_links(parse(read(n)).entries, relative_to)
 
-    def ops(n):
-        return _absolute_ops(project.state(n).get('ops') or [], config)
+    def hashes(n):
+        return papers.checksums.parse(read(n, FILES_JSON) or '{}', config)
 
-    kw = dict(pool_dirs=_pool_dirs(config) if pool_dirs is None else pool_dirs, find_deleted=st.file_object,
+    kw = dict(pool_dirs=_pool_dirs(config) if pool_dirs is None else pool_dirs, find_deleted=_intact_file(st),
               shared={os.path.normpath(f) for f in shared})
-    back, forward = project.path(cur, target)
     lines = []
     with journal.unrecorded():  # moving in the history is not a step of it
-        for n in back:
-            parent = project.state(n).get('parent')
-            if parent is None or project.state(parent) is None:
-                break
-            if ops(n):
-                lines += journal.restore(links(n), links(parent), ops(n), True,
-                                         hashes=state_hashes(config, project, parent), **kw)
-        for n in forward:
-            parent = project.state(n).get('parent')
-            if ops(n) and parent is not None and project.state(parent) is not None:
-                lines += journal.restore(links(parent), links(n), ops(n), False,
-                                         hashes=state_hashes(config, project, n), **kw)
+        for a, b, n, undo in steps:
+            lines += journal.restore(links(a), links(b), _absolute_ops(project.state(n).get('ops') or [], config),
+                                     undo, hashes=hashes(b), **kw)
         current = papers.checksums.bibtex_links(config.bibtex, relative_to, parse=parse)
-        lines += journal.restore(current, links(target), [], not forward,
-                                 hashes=state_hashes(config, project, target), **kw)
+        lines += journal.restore(current, links(target), [], not forward, hashes=hashes(target), **kw)
 
-    papers.utils.write_atomic(config.bibtex, text(target))
-    _write_library_files(config, project, cur, target)
+    papers.utils.write_atomic(config.bibtex, read(target))
+    _write_library_files(config, project, cur, target, read)
     return lines
 
 
-def _write_library_files(config, project, cur, target):
-    """the files of .papers/ of the state `target`; those of the state `cur`
-    that `target` has not are removed (a file no state had is left alone)"""
+def damaged_before(project, n):
+    "the parent of the state n if its state file cannot be read (the line of n stops there), else None"
+    parent = project.state(n).get('parent')
+    return parent if parent in project.damaged() else None
+
+
+def damaged(n, error):
+    "the error of a command that needs the step n, whose data in the history cannot be read"
+    return PapersExit(f'step {history.short(n)}: its data in the history is damaged ({error}); nothing was changed')
+
+
+def _intact_file(st):
+    "the stored file of a checksum, None if there is none or it is damaged (see history.Store.check_file)"
+    def find(digest):
+        try:
+            return st.check_file(digest)
+        except history.Damaged:
+            return None
+    return find
+
+
+def _write_library_files(config, project, cur, target, read):
+    """the files of .papers/ of the state `target` (read: (state, name) ->
+    text); those of the state `cur` that `target` has not are removed (a
+    file no state had is left alone)"""
     libdir = config.libdir
 
     def inside(name):
         return not os.path.relpath(os.path.join(libdir, name), libdir).startswith('..')
 
     files = state_files(project.state(target))
-    for name, pieces in files.items():
+    for name in files:
         if inside(name):
             path = os.path.join(libdir, name)
             os.makedirs(os.path.dirname(path), exist_ok=True)
-            papers.utils.write_atomic(path, project.store.text(pieces))
+            papers.utils.write_atomic(path, read(target, name))
     for name in state_files(project.state(cur)):
         path = os.path.join(libdir, name)
         if name not in files and inside(name) and os.path.isfile(path):
@@ -688,6 +743,10 @@ def undo(config, steps=1, library_only=False, parse=None):
     else:
         cur, added = _synced(config, project, place)
     length = (len(project.line(cur)) if cur is not None else 0) + added
+    if length <= steps and cur is not None:
+        before = damaged_before(project, project.line(cur)[-1])
+        if before is not None:
+            raise damaged(before, 'its state file cannot be read')
     if length <= steps:
         raise PapersExit('nothing to undo' if length <= 1 else f'only {length - 1} step(s) to undo')
     if papers.config.DRYRUN:
@@ -696,6 +755,7 @@ def undo(config, steps=1, library_only=False, parse=None):
     cur = sync_head(config, project, place)
     line = project.line(cur)
     target = line[steps]
+    plan = _plan(project, cur, target)  # before the pools move (a damaged step stops the undo)
     pools, missing = pool_steps(config, project, line[:steps], True) if not library_only else ([], [])
     redo = list(reversed(line[:steps])) + project.head(place)['redo']
     # the pools first: the files the command moved to a pool are moved back, unless the pool still links them
@@ -703,7 +763,7 @@ def undo(config, steps=1, library_only=False, parse=None):
     shared = [f for p in pools for f in papers.checksums.bibtex_links(
         p.config.bibtex, os.path.dirname(os.path.abspath(p.config.bibtex)))]
     lines = go_to(config, project, cur, target, pool_dirs=[] if pools and not missing else None, shared=shared,
-                  parse=parse)
+                  parse=parse, plan=plan)
     project.set_head(place, target, redo)
     return project, target, lines, missing + pool_lines
 
@@ -721,6 +781,9 @@ def redo(config, steps=1, library_only=False, parse=None):
     if len(head['redo']) < steps:
         raise PapersExit(f'only {len(head["redo"])} step(s) to redo')
     target = head['redo'][steps - 1]
+    for n in head['redo'][:steps]:
+        if n in project.damaged():
+            raise damaged(n, 'its state file cannot be read')
     if papers.config.DRYRUN:
         return project, target, None, []
     pools, pool_lines = pool_steps(config, project, head['redo'][:steps], False) if not library_only else ([], [])
@@ -765,7 +828,7 @@ def restore(config, n=None, parse=None):
 def kept_size(project, n):
     "bytes of the files that the state n keeps (the files its command deleted, still in the history)"
     total = 0
-    for digest in project.state(n).get('deleted') or []:
+    for digest in (project.state(n) or {}).get('deleted') or []:
         path = project.store.file_object(digest)
         if path:
             total += os.path.getsize(path)

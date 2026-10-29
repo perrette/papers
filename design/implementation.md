@@ -253,13 +253,23 @@ records it as changed outside papers: the content is safe, but the file
 operations of the crashed command are not in a state, so undo cannot put
 the moved files back by operation (it can still find them by checksum).
 
-Not covered by the Python implementation: `history._write` (objects,
+Durability is left to the operating system: `history._write` (objects,
 `heads.json`) and `Project.add` (states) do not `fsync`, and
 `write_atomic` does not `fsync` the folder. After a power loss, a file
 system may keep the rename and lose the data, leaving an empty object
-that a state refers to. An implementation that wants durability can
-`fsync` each object and the folder before writing the state; the cost is
-one `fsync` per new piece, usually one or two per command.
+that a state refers to, or an empty state file. Such files are detected
+when read (history.md 2.9): `Store.text` raises `history.Damaged` (a
+`KeyError`) for a piece missing, empty or not zlib; `Store.check_file`
+for a file object whose sha256 differs; `Project.states` sets aside the
+state files that are not JSON (`Project.damaged`). `backup._plan` reads
+the texts and checks the file objects a move needs before `go_to` changes
+anything (the texts it read are those `go_to` then uses, so this costs no
+second read; checking a file object hashes it once more before it is
+copied back), and `papers history` checks the size of the objects of the
+states it lists (one `stat` each: 14 ms for 20 states of the 10 000-entry
+library). An implementation that wants durability
+can `fsync` each object and the folder before writing the state; the cost
+is one `fsync` per new piece, usually one or two per command.
 
 ### 4.5 Undo, redo, restore
 

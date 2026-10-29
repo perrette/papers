@@ -1729,6 +1729,18 @@ for the specification. A section marked free has none.
 
 - tests/test_spec_history.py::TestWritingOrder::test_order.
 
+### 2.9 Damaged files
+
+- tests/test_spec_history.py::TestDamagedFiles::test_empty_object
+- tests/test_spec_history.py::TestDamagedFiles::test_truncated_object
+- tests/test_spec_history.py::TestDamagedFiles::test_empty_state_file
+- tests/test_spec_history.py::TestDamagedFiles::test_damaged_state_file_redone
+- tests/test_spec_history.py::TestDamagedFiles::test_nothing_moved_before_the_error
+- tests/test_spec_history.py::TestDamagedFiles::test_empty_file_object
+- tests/test_history.py::TestPieces::test_damaged_piece
+- tests/test_history.py::TestPieces::test_damaged_file
+- tests/test_history.py::TestPrune::test_damaged_state_skipped.
+
 ### 3.1 Keys
 
 - tests/test_spec_history.py::TestKeys::test_keys

@@ -507,6 +507,98 @@ class TestWritingOrder(SpecTest):
         self.assertEqual(calls[first_state + 1], 'head')
 
 
+class TestDamagedFiles(SpecTest):
+    """history.md 2.9: an object, a file object or a state file that cannot
+    be read (e.g. after a power loss): the commands that need it stop with
+    an error naming the step, nothing changed; the others go on"""
+
+    def setUp(self):
+        super().setUp()
+        self.add('one2000')
+        self.add('two2000')
+        project, _ = self.project()
+        self.target = project.line(self.head())[1]  # the state undo goes to
+        self.bib = Path(self.path('lib', 'papers.bib'))
+        self.text = self.bib.read_bytes()
+
+    def object(self, digest):
+        return Path(self.root(), 'objects', digest[:2], digest)
+
+    def stopped(self, cmd, n):
+        with self.assertRaisesRegex(PapersExit, rf'step {n[:8]}.*damaged'):
+            self.lib(cmd)
+        self.assertEqual(self.bib.read_bytes(), self.text)
+        self.assertEqual(self.head(), self.head_before)
+
+    def damage_piece(self, how):
+        piece = self.object(self.state(self.target)['bibtex']['pieces'][-1])
+        piece.write_bytes(b'' if how == 'empty' else piece.read_bytes()[:5])
+        self.head_before = self.head()
+
+    def test_empty_object(self):
+        self.damage_piece('empty')
+        self.stopped('undo', self.target)
+        self.stopped(f'restore {self.target[:8]}', self.target)
+        self.assertIn(f'{self.target[:8]} ', self.out('history'))
+        self.assertIn('(damaged', self.out('history'))
+
+    def test_truncated_object(self):
+        self.damage_piece('truncated')
+        self.stopped('undo', self.target)
+        self.stopped(f'history --revert {self.head()[:8]}', self.target)
+        history.Store(self.root()).prune(1, now=time.time() + 2 * history.GRACE)  # no error
+
+    def test_empty_state_file(self):
+        self.state_file(self.target).write_bytes(b'')
+        self.head_before = self.head()
+        self.stopped('undo', self.target)
+        self.stopped(f'restore {self.target[:8]}', self.target)
+        self.stopped(f'history --revert {self.head()[:8]}', self.target)
+        out = self.out('history')
+        self.assertIn(f'{self.target[:8]} damaged', out)
+        project, _ = self.project()
+        self.assertEqual(project.damaged(), {self.target})
+        history.Store(self.root()).prune(1, now=time.time() + 2 * history.GRACE)
+        self.assertTrue(self.state_file(self.target).exists())  # left as it is
+        self.lib('tag one2000 --add x')  # the other commands go on
+
+    def test_damaged_state_file_redone(self):
+        self.lib('undo')
+        project, place = self.project()
+        undone, = project.head(place)['redo']
+        self.text = self.bib.read_bytes()
+        self.state_file(undone).write_bytes(b'{"parent": ')
+        self.head_before = self.head()
+        self.stopped('redo', undone)
+        self.assertIn(f'{undone[:8]} damaged', self.out('history'))
+
+    def test_nothing_moved_before_the_error(self):
+        # the steps between are read first: the file that a later step moved stays where it is
+        a = self.write('src', 'a.pdf', content='pdf a')
+        self.lib(f'file attach one2000 {a} --move')
+        self.assertFalse(os.path.exists(a))
+        self.text = self.bib.read_bytes()
+        project, _ = self.project()
+        first = project.line(self.head())[2]  # one2000 alone
+        self.target = first
+        self.damage_piece('empty')
+        self.stopped('undo -n 2', first)
+        self.assertFalse(os.path.exists(a))
+
+    def test_empty_file_object(self):
+        a = self.write('lib', 'files', 'a.pdf', content='pdf a')
+        self.add('three2000', a)
+        self.lib('rm three2000 --delete-files')
+        self.text = self.bib.read_bytes()
+        step = self.head()
+        digest, = self.state()['deleted']
+        found = history.Store(self.root()).file_object(digest)
+        Path(found).write_bytes(b'')
+        self.head_before = self.head()
+        self.stopped('undo', step)
+        self.assertFalse(os.path.exists(a))
+
+
 # 3. A state
 # ==========
 

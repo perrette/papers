@@ -6,6 +6,7 @@ import papers.config
 import papers.history
 import papers.lock
 from papers import backup, logger
+from papers.backup import state_files
 from papers.bib import Biblio
 from papers.files import is_inside
 from papers.utils import PapersExit, stdin_is_terminal
@@ -252,7 +253,10 @@ def historycmd(parser, o, config):
         return revert(o, config)
     project, place = backup.project_of(config, create=False) if config.bibtex else (None, None)
     head = project.head(place) if project else None
-    if head is None:
+    lost = (project.heads().get(place) or {}).get('state') if project and head is None else None
+    if lost is not None and lost in project.damaged():  # a head on a damaged state: recorded again by the next command
+        print(f'> {backup.describe(project, lost)}')
+    elif head is None:
         print('no history yet: each command that changes the library records a step'
               if config.bibtex else 'no library: `papers history --all` lists the histories of the machine')
     else:
@@ -263,10 +267,17 @@ def historycmd(parser, o, config):
             return f'  [{_size(size)} of deleted files]' if size else ''
         for n in reversed(head['redo']):
             print(f'  {backup.describe(project, n)}  (undone: `papers redo`){kept(n)}')
+        def mark(n):
+            state = project.state(n)
+            pieces = state['bibtex'].get('pieces', []) + [d for ds in state_files(state).values() for d in ds]
+            missing = project.store.unreadable(pieces)
+            return '  (damaged: a piece of it is missing or empty in the history)' if missing else ''
         for n in shown:
-            print(f'{">" if n == head["state"] else " "} {backup.describe(project, n)}{kept(n)}')
+            print(f'{">" if n == head["state"] else " "} {backup.describe(project, n)}{kept(n)}{mark(n)}')
         if len(line) > len(shown):
             print(f'  ... {len(line) - len(shown)} older step(s) (-n 0 shows them all)')
+        elif backup.damaged_before(project, line[-1]):
+            print(f'  {backup.describe(project, backup.damaged_before(project, line[-1]))}')
     st = project.store if project else backup.store(config)
     size = backup.history_size(config, st)
     limit = f'up to {size} MB' if size else 'no limit'

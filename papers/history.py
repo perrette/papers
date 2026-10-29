@@ -55,6 +55,12 @@ PIECE_ENTRIES = 32
 PIECE_MAX = 256
 
 
+class Damaged(KeyError):
+    "a file of the store that cannot be read (a piece, a deleted file)"
+    def __str__(self):
+        return self.args[0] if self.args else ''
+
+
 def new_id():
     "the identifier of a new project"
     return uuid.uuid4().hex
@@ -109,15 +115,32 @@ class Store:
         return pieces
 
     def text(self, pieces):
-        "the text of a list of pieces; raise KeyError for a missing piece"
+        """the text of a list of pieces; raise Damaged for a piece missing or
+        that cannot be read (empty, not zlib, not UTF-8: e.g. after a power loss)"""
         parts = []
         for digest in pieces:
             try:
                 with open(self._object(digest), 'rb') as f:
-                    parts.append(zlib.decompress(f.read()))
-            except (OSError, zlib.error):
-                raise KeyError(f'piece {digest} is missing from the history')
-        return b''.join(parts).decode('utf-8')
+                    data = f.read()
+            except OSError:
+                raise Damaged(f'piece {digest} is missing from the history')
+            try:
+                parts.append(zlib.decompress(data).decode('utf-8'))
+            except (zlib.error, UnicodeDecodeError):
+                raise Damaged(f'piece {digest} cannot be read')
+        return ''.join(parts)
+
+    def unreadable(self, pieces):
+        """the first of these pieces that is missing or empty, or None (a
+        check without reading them: a damaged piece that is not empty is
+        found when it is read, see text)"""
+        for digest in pieces:
+            try:
+                if not os.path.getsize(self._object(digest)):
+                    return digest
+            except OSError:
+                return digest
+        return None
 
     # files deleted by the commands
     # =============================
@@ -132,6 +155,23 @@ class Store:
                 if name.split('.', 1)[0] == digest:
                     return os.path.join(folder, name)
         return None
+
+    def check_file(self, digest):
+        """the stored file of this checksum, or None if there is none; raise
+        Damaged if its content does not have the checksum (e.g. emptied by a
+        power loss)"""
+        found = self.file_object(digest)
+        if found is not None:
+            h = hashlib.sha256()
+            try:
+                with open(found, 'rb') as f:
+                    for block in iter(lambda: f.read(1 << 20), b''):
+                        h.update(block)
+            except OSError:
+                raise Damaged(f'deleted file {digest} cannot be read')
+            if h.hexdigest() != digest:
+                raise Damaged(f'deleted file {digest} is damaged')
+        return found
 
     def put_file(self, path, digest):
         "move a file into the store (named by its checksum `digest`); return its path in the store"
@@ -370,6 +410,7 @@ class Project:
         self.dir = os.path.join(store.projects, id)
         self.states_dir = os.path.join(self.dir, 'states')
         self._states = None
+        self._damaged = set()
 
     def exists(self):
         return os.path.isdir(self.dir)
@@ -380,7 +421,7 @@ class Project:
     def states(self):
         "{identifier: state}"
         if self._states is None:
-            self._states = {}
+            self._states, self._damaged = {}, set()
             if os.path.isdir(self.states_dir):
                 names = os.listdir(self.states_dir)
                 if any(name.endswith('.json') and name[:-5].isdigit() for name in names):
@@ -391,7 +432,14 @@ class Project:
                         state = _read_json(os.path.join(self.states_dir, name))
                         if isinstance(state, dict):
                             self._states[name[:-5]] = state
+                        else:  # not JSON (e.g. emptied by a power loss): see damaged
+                            self._damaged.add(name[:-5])
         return self._states
+
+    def damaged(self):
+        "the identifiers of the state files that cannot be read (not a JSON object)"
+        self.states()
+        return self._damaged
 
     def state(self, n):
         return self.states().get(n)
@@ -409,11 +457,12 @@ class Project:
         unique prefix of at least PREFIX characters; None if no state has it;
         ValueError if several have it (the message lists them)"""
         ref = str(ref).strip().lower()
-        if ref in self.states():
+        known = set(self.states()) | self.damaged()
+        if ref in known:
             return ref
         if len(ref) < PREFIX or not re.fullmatch(r'[0-9a-f]+', ref):
             return None
-        found = sorted(n for n in self.states() if n.startswith(ref))
+        found = sorted(n for n in known if n.startswith(ref))
         if len(found) > 1:
             raise ValueError(f'{ref} names several steps: {", ".join(short(n) for n in found)}')
         return found[0] if found else None
@@ -439,6 +488,7 @@ class Project:
         "rewrite the state n (e.g. the file operations done after its save)"
         _write(self._path(n), json.dumps(state, indent=1).encode())
         self.states()[n] = state
+        self._damaged.discard(n)
 
     def drop(self, n):
         try:
@@ -446,6 +496,7 @@ class Project:
         except FileNotFoundError:
             pass
         self.states().pop(n, None)
+        self._damaged.discard(n)
 
     def line(self, n):
         "the states from n back to the oldest one kept: [n, parent, …]"
@@ -479,7 +530,7 @@ class Project:
         "{'state': n, 'redo': [...]} of a place, or None"
         head = self.heads().get(place)
         if head and head.get('state') in self.states():
-            head['redo'] = [n for n in head.get('redo') or [] if n in self.states()]
+            head['redo'] = [n for n in head.get('redo') or [] if n in self.states() or n in self.damaged()]
             return head
         return None
 
@@ -520,3 +571,4 @@ class Project:
         "delete the history of the project (the pieces and files go at the next prune)"
         shutil.rmtree(self.dir, ignore_errors=True)
         self._states = {}
+        self._damaged = set()
