@@ -693,8 +693,10 @@ Contract:
 - The first file of an entry is placed at
   `<files directory>/<name><ext>`, where `<name>` is the name template
   applied to the entry (see below) and `<ext>` is the extension of the
-  file's current name (the part from the last `.` of the base name, case
-  kept; empty if none).
+  file's current name: the part from the last `.` of the base name, case
+  kept, where the leading dots of the base name do not count; empty if
+  none (`paper.v2.PDF`: `.PDF`; `.hidden`, `..x` and `notes`: empty;
+  `.x.pdf`: `.pdf`; `a.`: `.`).
 - When `<name><ext>` (or `<name>--<label><ext>`) is longer than 250 bytes
   in UTF-8, the part before `<ext>` is cut to fit 250 bytes with `<ext>`
   (at a character boundary), then trailing dots and spaces are removed
@@ -716,8 +718,7 @@ Contract:
     content (same sha256), that path is used: the source is removed (move)
     or nothing is done (copy), and the entry links to that path. Two
     entries can so link to one file;
-  - otherwise `-2` is inserted before the extension (the part from the
-    last `.` of the base name), then `-3`, and so on, until a path is free
+  - otherwise `-2` is inserted before the extension (as above), then `-3`, and so on, until a path is free
     or holds the file itself or the same content:
     `<name>-2<ext>`, `<name>--<label>-2<ext>`.
 

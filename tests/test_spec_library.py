@@ -555,10 +555,14 @@ class TestFileNames(FileTest):
 
     def test_extension(self):
         """library.md File names: <ext> is the part of the current name from
-        the last dot of the base name, case kept; empty if none"""
+        the last dot of the base name, leading dots not counted, case kept;
+        empty if none"""
         self.lib('config files move')
         self.lib('config name.template "{author}_{year}"')
-        for key, name, new in [('a2000', 'paper.v2.PDF', 'one_2000.PDF'), ('b2001', 'notes', 'one_2001')]:
+        # the leading dots of the base name do not count
+        for key, name, new in [('a2000', 'paper.v2.PDF', 'one_2000.PDF'), ('b2001', 'notes', 'one_2001'),
+                               ('c2002', '.hidden', 'one_2002'), ('d2003', '..x', 'one_2003'),
+                               ('e2004', '.x.pdf', 'one_2004.pdf'), ('f2005', 'a.', 'one_2005.')]:
             src = self.write('src', name)
             Path(self.path('src', key + '.bib')).write_text(
                 entry(key, src).replace('Some One', 'One, Some').replace('2000', key[1:]))
