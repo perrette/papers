@@ -546,6 +546,7 @@ for the specification. A section marked free has none.
 - tests/test_spec_bibtex.py::TestLatexToUnicode::test_unicode_to_latex_decodes_back
 - tests/test_latexenc.py::TestLatexToUnicode::test_simple_accents
 - tests/test_files_unit.py::TestCheckFiles::test_fix_mendeley_path_keeps_text_signs
+- tests/test_spec_tables.py::TestSpecTables::test_latex_characters
 
 ### 4.2 Unicode to LaTeX (`check --encoding latex`)
 
@@ -629,6 +630,7 @@ for the specification. A section marked free has none.
 - tests/test_bib_unit.py::TestEntryId::test_author_id_accents
 - tests/test_bib_unit.py::TestEntryId::test_title_id_braces_and_spaces
 - tests/test_duplicates.py::TestIdentifiers::test_author_title_accents
+- tests/test_spec_tables.py::TestSpecTables::test_ascii_transliteration
 
 ### 9.2 Identifiers of an entry
 

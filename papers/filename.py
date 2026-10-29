@@ -5,17 +5,16 @@ import os
 import re
 import unicodedata
 from slugify import slugify as _slugify
-from unidecode import unidecode
+from papers.ascii import to_ascii
 from papers.encoding import family_names
 from papers.entries import get_entry_val
 
 def slugify(text):
-    """python-slugify's slug of `text`, with the transliteration table of
-    Unidecode, whatever table python-slugify would choose (text-unidecode
-    when Unidecode is not installed): the slug is that of python-slugify with
-    Unidecode installed, apostrophes included (one in `text` separates words,
-    one from the table, as in Ь, is dropped)"""
-    text = unidecode(unicodedata.normalize('NFKD', text.replace("'", '-'))).replace("'", '')
+    """python-slugify's slug of `text`, transliterated by papers' own table
+    first (papers.ascii), whatever table python-slugify would choose;
+    apostrophes included (one in `text` separates words, one from the
+    table, as in Ь, is dropped)"""
+    text = to_ascii(unicodedata.normalize('NFKD', text.replace("'", '-'))).replace("'", '')
     return _slugify(text)
 
 

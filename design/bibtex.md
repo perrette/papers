@@ -440,10 +440,11 @@ it:
    and `\vec` U+20D7. On `\i` (ı) and `\j` (ȷ) the accent goes on `i` and
    `j`. A letter that already carries accents gets the new one after
    them (`\'{\"u}` gives `ǘ`). An accent without argument gives nothing.
-2. A command that names a character gives that character: the commands
-   of the character table (section 4.2) that are written as one command (`\o`,
-   `{\o}`, `\o{}`, `$\alpha$`, with `\cyrchar` in front dropped; the first
-   one of each name), and `\dh` ð, `\j` ȷ, `\times` ×, `\ell` ℓ,
+2. A command that names a character gives that character: the rows of
+   the character table (section 4.2, both kinds, in table order) whose
+   LaTeX text is one command (`\o`, `\o ` with its trailing space, `{\o}`,
+   `\o{}`, `$\alpha$`, with `\cyrchar` in front dropped; the first row of
+   each name; the names of the accents of step 1 excluded), and `\dh` ð, `\j` ȷ, `\times` ×, `\ell` ℓ,
    `\copyright` ©, `\textregistered` ®. Examples: `\ss` ß, `\AA` Å, `\l` ł,
    `\th` þ, `\alpha` α, `\textendash` –, `\space` a space.
 3. A formatting command is dropped and its argument kept: `\emph`,
@@ -476,9 +477,10 @@ made from.
 ### 4.2 Unicode to LaTeX (`check --encoding latex`)
 
 **Contract** for the output of this command. Each character of the value
-is replaced by its LaTeX text from the character table, a table of
-(character, LaTeX text) pairs that papers ships; space, `{` and `}`
-are kept; characters not in the table are kept. Example:
+is replaced by its LaTeX text from the character table
+[data/latex-characters.tsv](data/latex-characters.tsv) (the rows of kind
+`encode`); space, `{` and `}` are kept; characters not in the table are
+kept. Example:
 `Müller étoile_x ~ 50% & {GCM}` gives
 `M{\"u}ller {\'e}toile\_x \textasciitilde  50\% \& {GCM}`.
 It is applied to every field except `abstract`, `file`, `doi`, `url`,
@@ -699,9 +701,11 @@ the exchanges with pools.
 1. empty text gives empty text;
 2. LaTeX to Unicode (section 4.1) (a text that is ASCII without `\`,
    `{`, `}` is unchanged by this step);
-3. transliteration to ASCII with the ASCII transliteration table
-   (`ü` to `u`, `ß` to `ss`, `Å` to `A`), the same table as for the slugs
-   of the templates (library.md);
+3. transliteration to ASCII: each character is replaced by its text in
+   the table [data/ascii-transliteration.tsv](data/ascii-transliteration.tsv)
+   (`ü` to `u`, `ß` to `ss`, `Å` to `A`, `中` to `Zhong`); a character
+   below U+0080 stays, a character not in the table is removed. The same
+   table gives the slugs of the templates (library.md);
 4. remove `{` and `}`;
 5. lower case; whitespace runs replaced by one space; trimmed.
 
@@ -933,7 +937,7 @@ exchange.md.
 
 ## Open questions
 
-Each item gives the question and the decision. All are resolved but the last.
+All resolved. Each item gives the question and the decision.
 
 1. **Field names that differ by case give two fields.** Such an entry is
    a failed block, as BibTeX ignores the case of field names (section
@@ -986,9 +990,11 @@ Each item gives the question and the decision. All are resolved but the last.
 19. **Two spellings of one path are both kept as links.** Links are
     compared after normalization, so `files/./a.pdf` and `files/a.pdf`
     are one link (section 5.2).
-20. **Open: the two character tables are not part of the specification.**
-    The character table of sections 4.1 and 4.2 and the ASCII
-    transliteration table of section 9.1 (also used for slugs) are data
-    of the current implementation. To be decided: publish them as data
-    files next to this specification, or replace the transliteration
-    table by a rule.
+20. **The two character tables were data of the implementation only.**
+    Both are published with this specification, with their origin, in
+    `data/`: the character table of sections 4.1 and 4.2 and the ASCII
+    transliteration table of section 9.1 (also used for slugs). A test
+    checks that the code uses the same tables. The transliteration is that
+    of AnyAscii (permissive license, #192); it was that of Unidecode, whose
+    license does not allow copying it into an implementation under a
+    permissive license.

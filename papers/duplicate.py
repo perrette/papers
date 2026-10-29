@@ -28,7 +28,7 @@ import os
 import re
 from typing import NamedTuple
 
-from unidecode import unidecode
+from papers.ascii import to_ascii
 
 from papers import logger
 from papers.entries import get_entry_val, split_depth0
@@ -85,7 +85,7 @@ def normalize_text(s):
     if not s:
         return ''
     s = _latex_to_unicode(s)
-    s = unidecode(s)
+    s = to_ascii(s)
     s = s.replace('{', '').replace('}', '')
     return ' '.join(s.lower().split())
 

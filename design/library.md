@@ -804,9 +804,9 @@ a non-empty value made only of dots replaced by as many `-`.
 Examples: `Müller` → `muller`, `l'eau` → `l-eau`,
 `10.1000/xyz(1)` → `10-1000-xyz-1`, `1,000` → `1000`, `Ocean’s` →
 `oceans` (the table gives `'` for `’`, removed in step 5). The
-transliteration of step 2 is the ASCII transliteration table of
-bibtex.md section 9.1, the same in every implementation, so that the same
-entry gives the same name.
+transliteration of step 2 is the table of bibtex.md section 9.1
+([data/ascii-transliteration.tsv](data/ascii-transliteration.tsv)), the
+same in every implementation, so that the same entry gives the same name.
 
 **Unknown entries.** When `unknown-template` is non-empty and the entry is
 "unknown", the unknown template is used instead of the template. An
