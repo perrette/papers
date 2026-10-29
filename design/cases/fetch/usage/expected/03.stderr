@@ -1,4 +1,4 @@
 usage: papers fetch [-h] [-v] [--debug] [--color {auto,always,never}]
-                    [--porcelain] [--scholar]
+                    [--porcelain] [--scholar | --openalex]
                     doi_or_text [doi_or_text ...]
-papers fetch: error: Fetching from DOI does not support Google Scholar option
+papers fetch: error: Fetching from DOI does not support the options --scholar and --openalex
