@@ -1025,7 +1025,8 @@ method). Its placeholders are:</p>
 <p>Another placeholder is an error that lists these. A name that would place
 the file outside the files directory (<code>../{author}</code>) is refused: the files
 of that entry stay where they are, and <code>papers file rename</code> exits with
-status 1 once it has renamed the files of the other entries.</p>
+status 1 once it has renamed the files of the other entries. <code>papers file
+attach</code> keeps the new link to the file where it is, and exits with status 1.</p>
 <p>To rename <code>esd-4-11-2013.pdf</code> as <code>perrette_2013.pdf</code>, the template should be
 <code>--name-template {author}_{year} --name-author-num 1</code>. If that happens to be
 the entry key, <code>{key}</code> also works.</p>
