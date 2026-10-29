@@ -48,11 +48,32 @@ papers add entry.bib --attach esd-4-11-2013.pdf --bibtex papers.bib --filesdir f
    arXiv and are checked as in step 3.
 
 When no DOI is accepted, papers searches crossref with the first 200 words
-of the text (`--scholar`: Google Scholar), and accepts the result only if
+of the text (`--scholar`: Google Scholar, `--openalex`: OpenAlex, see
+[below](#search-with-openalex)), and accepts the result only if
 its title appears in the text. Otherwise the PDF is not added, and papers
 stops with an error: pass the DOI with `--doi`, or describe the entry (see
 [below](#add-a-whole-directory-of-pdfs)). `--no-query-doi` skips the DOI
 search, and `--no-query-fulltext` the text search.
+
+### Search with OpenAlex
+
+`--openalex` (of `add`, `extract` and `fetch`) searches
+[OpenAlex](https://openalex.org) instead of crossref: an open catalogue
+(CC0 data) with an API, where `--scholar` scrapes the web pages of Google
+Scholar, which often blocks it. OpenAlex finds the works whose title and
+abstract are closest in meaning to the text (the first 1500 characters of the
+query), and papers takes the one that scores best, as for crossref, among
+those whose title (of at least 20 letters and digits) is in the text, the
+published works before their preprints. The entry is that of the DOI of the
+work (crossref, doi.org, arXiv); a work without DOI gives an entry made of its
+OpenAlex record, with the OpenAlex id as key.
+
+Without a key, OpenAlex allows about 100 searches a day (for all the users of
+a network). A free key, from [openalex.org/settings/api](https://openalex.org/settings/api),
+gives ten times as many: papers reads it from the environment variable
+`OPENALEX_API_KEY`. `PAPERS_MAILTO`, if set, is the email address that
+OpenAlex is given to identify the requests. Searches are at most one a second,
+and are saved in the cache (see [Configuration](configuration.md#cache)).
 
 `papers extract --doi-only FILE` prints the DOI that steps 1 to 4 find,
 without adding anything:
