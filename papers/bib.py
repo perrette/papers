@@ -289,15 +289,19 @@ class Biblio:
     def renamed_keys(self):
         """[(old, new)]: the entries whose key changed since mark_loaded (the
         same entry; its old key no longer in the library, its new key not in
-        it when loaded: not a merge), [] without mark_loaded"""
+        it when loaded: not a merge; or a change of case only, the key being
+        that of no other entry), [] without mark_loaded"""
         if self.loaded_entries is None:
             return []
-        now = {e.key.lower() for e in self.entries}
-        before = {key.lower() for _, key in self.loaded_keys}
+        now = Counter(e.key.lower() for e in self.entries)
+        before = Counter(key.lower() for _, key in self.loaded_keys)
         present = {id(e) for e in self.entries}
-        return [(old, e.key) for e, old in self.loaded_keys
-                if id(e) in present and e.key.lower() != old.lower()
-                and old.lower() not in now and e.key.lower() not in before]
+
+        def renamed(e, old):
+            if e.key.lower() == old.lower():
+                return e.key != old and now[old.lower()] == before[old.lower()] == 1
+            return old.lower() not in now and e.key.lower() not in before
+        return [(old, e.key) for e, old in self.loaded_keys if id(e) in present and renamed(e, old)]
 
     def rekey_references(self, old, new):
         "the crossref fields of the entries that name `old` (a key that changed to `new`)"

@@ -610,6 +610,7 @@ for the specification. A section marked free has none.
 
 - tests/test_spec_bibtex.py::TestCrossref::test_follows_renames
 - tests/test_entry_cmds.py::TestEditSet::test_key
+- tests/test_entry_cmds.py::TestEditSet::test_key_case_only
 - tests/test_entry_cmds.py::TestEditSet::test_fix_key
 - tests/test_duplicates.py::test_crossref_follows_the_merge
 
@@ -1030,6 +1031,7 @@ for the specification. A section marked free has none.
 - tests/test_porcelain.py::TestPorcelain::test_tag_rename
 - tests/test_porcelain.py::TestPorcelain::test_list_on_stdout
 - tests/test_entry_cmds.py::TestEditSet::test_key
+- tests/test_entry_cmds.py::TestEditSet::test_key_case_only
 - tests/test_entry_cmds.py::TestEditSet::test_fix_key
 - tests/test_spec_formats.py::TestPorcelainStreams::test_commands_without_lines
 - tests/test_spec_formats.py::TestPorcelainLines::test_order

@@ -642,8 +642,10 @@ library.md.)
 
 At save, for each entry whose key changed during the command (the same
 entry, its old key no longer in the library, its new key not in the
-library when it was loaded), every `crossref` field equal to the old key
-(compared without case) is set to the new key. Other fields that name
+library when it was loaded; or the same entry with its key changed in
+case only, no other entry having that key without case), every
+`crossref` field equal to the old key (compared without case) is set to
+the new key. Other fields that name
 keys (`xdata`, `related`, `xref`) are not followed.
 
 Keys removed by a merge are not renames, but `check --duplicates` also

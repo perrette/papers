@@ -859,7 +859,8 @@ Algorithm, comparing the entries as loaded at the start of the command
 (before) with the entries after it:
 
 1. `renamed`: the key changes recorded by the command (old key → new key,
-   e.g. `edit --key`, `check --fix-key`).
+   e.g. `edit --key`, `check --fix-key`), as in bibtex.md 7.3; a change
+   of case only is a rename.
 2. `removed`: keys before, not after, and not an old key of a rename.
 3. `added`: keys after, not before, and not a new key of a rename.
 4. For the entries the command considered (the touched entries) whose key
