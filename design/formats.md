@@ -774,9 +774,10 @@ The output goes to standard output, with `--porcelain` too (section 7).
 | `--format ris` | 4.3; file links as absolute normalised paths (resolved against the library's bibtex directory, `.` and `..` removed, symlinks not resolved). No entry: empty | **contract** |
 | `--format csl-json` | 3.4, same file paths. No entry: `[]\n` | **contract** |
 | `--format bibjson` | 5.1, same file paths. No entry: `metadata.records` 0 and `"records": []` | **contract** |
-| `--format line` (default) | below | human output; should match |
+| `--format line` (default) | below | **free** (human output) |
 
-Line format: `KEY: TITLE INFO`
+Line format (**free**: it is for people; programs read `-K`, `--field`
+or another format. What papers prints, informative): `KEY: TITLE INFO`
 
 - `KEY:` the key and a colon; with `--no-key`, empty (the line starts
   with a space);
