@@ -520,6 +520,8 @@ def tagcmd(parser, o, config):
         old, new = o.rename
         count = rename_tag(biblio.entries, old, new)
         notes = save_entries(config, biblio)
+        if papers.utils.PORCELAIN is not None:
+            _print_biblio_diff(biblio, biblio.entries, notes=notes)
         print(f"renamed tag {old} to {new} in {count} entries")
         print_push_notes(biblio, notes)
         return

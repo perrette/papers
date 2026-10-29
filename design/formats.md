@@ -834,7 +834,7 @@ they changed:
 | `papers check` (fixes, `--fix-key`...) | `modified`, `renamed`, `removed`, `added` |
 | `papers edit` (editor, `--from`, `--set/--unset`, `--key`) | `modified`, `renamed`, ... |
 | `papers rm` | `removed` |
-| `papers tag` | `modified` |
+| `papers tag` (`--add`, `--rm`, `--rename`) | `modified` |
 | `papers file rename`, `papers file attach` | `modified` |
 | `papers config pool PATH`, `none`, `--unset pool` | `modified` (relinked entries) |
 | `papers history --revert STEP` | `added`, `modified`, `removed`, `renamed` |

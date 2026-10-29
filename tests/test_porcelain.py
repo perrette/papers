@@ -29,6 +29,13 @@ class TestPorcelain(FileTest):
         self.assertEqual(self.run_porcelain('tag one2000 --add x')[0], ['modified one2000'])
         self.assertEqual(self.run_porcelain('rm two2000 --keep-files')[0], ['removed two2000'])
 
+    def test_tag_rename(self):
+        self.run_porcelain('tag one2000 two2000 --add climate')
+        lines, err = self.run_porcelain('tag --rename climate ocean')
+        self.assertEqual(lines, ['modified one2000', 'modified two2000'])
+        self.assertIn('renamed tag climate to ocean in 2 entries', err)
+        self.assertEqual(self.run_porcelain('tag --rename nothing other')[0], [])
+
     def test_other_messages_on_stderr(self):
         # the human messages of the command go to the standard error
         lines, err = self.run_porcelain('tag one2000 two2000 --add x')

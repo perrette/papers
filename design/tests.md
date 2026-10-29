@@ -1023,6 +1023,7 @@ for the specification. A section marked free has none.
 
 - tests/test_porcelain.py::TestPorcelain::test_add
 - tests/test_porcelain.py::TestPorcelain::test_tag_and_rm
+- tests/test_porcelain.py::TestPorcelain::test_tag_rename
 - tests/test_porcelain.py::TestPorcelain::test_list_on_stdout
 - tests/test_entry_cmds.py::TestEditSet::test_key
 - tests/test_entry_cmds.py::TestEditSet::test_fix_key
