@@ -25,6 +25,14 @@ class TestPorcelain(FileTest):
         lines, _ = self.run_porcelain(f'add {new}')
         self.assertEqual(lines, ['existing three2000'])
 
+    def test_add_skipped_duplicate_is_existing(self):
+        # a duplicate skipped by --on-duplicate skip: the library entry it is of was considered
+        new = self.write('new.bib', content=entry('other2000', doi='10.1/one').replace('year', 'journal = {J},\n year'))
+        self.lib('edit one2000 --set doi=10.1/one')
+        lines, err = self.run_porcelain(f'add {new} --on-duplicate skip')
+        self.assertEqual(lines, ['existing one2000'])
+        self.assertIn('skipped: other2000', err)
+
     def test_tag_and_rm(self):
         self.assertEqual(self.run_porcelain('tag one2000 --add x')[0], ['modified one2000'])
         self.assertEqual(self.run_porcelain('rm two2000 --keep-files')[0], ['removed two2000'])

@@ -1020,6 +1020,7 @@ for the specification. A section marked free has none.
 ### 7.2 Porcelain lines
 
 - tests/test_porcelain.py::TestPorcelain::test_add
+- tests/test_porcelain.py::TestPorcelain::test_add_skipped_duplicate_is_existing
 - tests/test_porcelain.py::TestPorcelain::test_tag_and_rm
 - tests/test_porcelain.py::TestPorcelain::test_list_on_stdout
 - tests/test_entry_cmds.py::TestEditSet::test_key

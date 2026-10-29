@@ -200,6 +200,8 @@ class Biblio:
         self._loaded = None
         # {new path: (original path, 'moved' or 'copied')}: the files placed by the command, for its report
         self.placed = {}
+        # the library entries that duplicates skipped by insert_entry were of: considered by the command
+        self.skipped = []
 
     def move(self, file, newfile, copy=False, hardlink=False):
         result = _move(file, newfile, copy=copy, dryrun=papers.config.DRYRUN, hardlink=hardlink)
@@ -514,6 +516,7 @@ class Biblio:
             return self._insert_new(entry, update_key=update_key, rename=rename, copy=copy, index=index, free_key=True)
 
         print(f'skipped: {get_entry_val(entry, "ID", "")} (already in library: {merge.key})')
+        self.skipped.append(existing)
         return []
 
 

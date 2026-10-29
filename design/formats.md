@@ -866,6 +866,9 @@ Algorithm, comparing the entries as loaded at the start of the command
    is both before and after: `modified` if their content differs, else
    `existing` — `existing` only for `papers add`. Content equality: the
    same set of field names with the same values, field order ignored.
+   For `papers add`, a duplicate that is skipped (`--on-duplicate skip`,
+   or skip at the question) makes the library entry it is a duplicate of
+   considered: `existing KEY`, with the key of the library.
 5. Output order: all `removed` sorted by key; all `renamed` sorted by
    new key; all `added` sorted by key; then the step 4 lines sorted by
    key. Sorting is by Unicode code points, case-sensitive. Keys are

@@ -260,7 +260,8 @@ def addcmd(parser, o, config):
 
     # compare entries to inform user
     # this is not very efficient but I have yet to hear a complaint about speed
-    _print_biblio_diff(biblio, entries, show_existing=True, notes=notes)
+    # (with the entries a skipped duplicate was of: `existing`)
+    _print_biblio_diff(biblio, entries + biblio.skipped, show_existing=True, notes=notes)
 
     if o.open:
         for e in entries:
