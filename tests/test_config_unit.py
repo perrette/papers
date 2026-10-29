@@ -138,3 +138,63 @@ class TestPathsOfSettings(unittest.TestCase):
         self.assertEqual(machine.default_path(), '/etc/papers/library')
         self.assertEqual(machine.absolute('../history'), '/etc/history')
         self.assertEqual(machine.absolute('~/h'), os.path.join(os.path.expanduser('~'), 'h'))
+
+
+class TestPoolPathsOnce(unittest.TestCase):
+    """the folder of the library and the path of its pool resolve symbolic
+    links: once per configuration file and pool setting (the exchanges ask
+    for them for every entry), again when either changes"""
+
+    def setUp(self):
+        from papers.config import Config, MachineConfig
+        self.dir = tempfile.TemporaryDirectory()
+        d = os.path.realpath(self.dir.name)
+        for name in ('lib', 'pool'):
+            os.makedirs(os.path.join(d, name, '.papers'))
+        os.symlink(os.path.join(d, 'lib'), os.path.join(d, 'link'))
+        self.d = d
+        self.config = Config(file=os.path.join(d, 'lib', '.papers', 'config.json'), is_library=True,
+                             bibtex=os.path.join(d, 'lib', 'papers.bib'), pool='../pool',
+                             machine=MachineConfig(os.path.join(d, 'machine.json')))
+
+    def tearDown(self):
+        self.dir.cleanup()
+
+    def test_resolved_once(self):
+        calls = []
+        realpath = os.path.realpath
+        with mock.patch('os.path.realpath', lambda p, **kw: calls.append(p) or realpath(p, **kw)):
+            for _ in range(100):
+                self.assertTrue(self.config.shallow)
+                self.assertTrue(self.config.has_pool())
+                self.assertEqual(self.config.pool_path(), os.path.join(self.d, 'pool'))
+                self.assertEqual(str(self.config.configdir), os.path.join(self.d, 'lib'))
+        self.assertLessEqual(len(calls), 3)  # 1 200 before
+
+    def test_changed_pool_setting(self):
+        self.assertTrue(self.config.shallow)
+        self.config.set('pool', '.')
+        self.assertTrue(self.config.is_pool_library())
+        self.assertFalse(self.config.shallow)
+        self.config.set('pool', '../link')  # the library itself, through a symbolic link
+        self.assertTrue(self.config.is_pool_library())
+        self.config.pool = '../pool'
+        self.assertTrue(self.config.shallow)
+        self.config.set('pool', 'none')
+        self.assertIsNone(self.config.pool_path())
+        self.assertFalse(self.config.shallow)
+
+    def test_changed_file(self):
+        self.assertEqual(str(self.config.configdir), os.path.join(self.d, 'lib'))
+        self.config.file = os.path.join(self.d, 'pool', '.papers', 'config.json')
+        self.assertEqual(str(self.config.configdir), os.path.join(self.d, 'pool'))
+        self.assertTrue(self.config.is_pool_library())  # ../pool from pool/
+
+    def test_relative_file(self):
+        # a relative configuration file is relative to the current directory
+        from papers.utils import set_directory
+        self.config.file = os.path.join('.papers', 'config.json')
+        with set_directory(os.path.join(self.d, 'lib')):
+            self.assertEqual(str(self.config.configdir), os.path.join(self.d, 'lib'))
+        with set_directory(os.path.join(self.d, 'pool')):
+            self.assertEqual(str(self.config.configdir), os.path.join(self.d, 'pool'))
