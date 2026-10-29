@@ -442,6 +442,9 @@ class TestEditSet(EntryTest):
                 self.lib(f'edit one2000 --set {value}')
         with self.assertRaises(PapersExit):
             self.lib('edit one2000 --unset file')
+        with self.assertRaisesRegex(PapersExit, "'bad.name' is not a field name"):
+            self.lib('edit one2000 --unset keywords bad.name')  # nothing is removed
+        self.assertIn('keywords', self.entry('one2000'))
         with self.assertRaises(SystemExit), patch('sys.stderr', io.StringIO()):
             self.lib('edit one2000 --set novalue')
         with self.assertRaises(SystemExit), patch('sys.stderr', io.StringIO()):

@@ -656,7 +656,10 @@ the key stays`).
 `edit --set FIELD=VALUE` does not change the key: `--set ID=...` and
 `--set key=...` (the field name in any case) are refused (exit 1), with
 an error that points to `edit --key`; so is `--set file=...` (the file
-links). `--unset ID` and `--unset file` are refused too.
+links). `--unset ID` and `--unset file` are refused too. A name given
+to `--set` or `--unset` that is not a field name (a letter, then
+letters, digits, `_` or `-`) is refused the same way, with the error
+`'<name>' is not a field name`; nothing is changed.
 
 ### 7.3 `crossref` follows renames
 
