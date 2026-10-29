@@ -34,6 +34,7 @@ from papers.extract import parse_doi
 from papers.extract import (extract_pdf_metadata, parse_doi_from_pdf_metadata, parse_dois, pdfhead, pdftail,
                             title_in_text)
 from papers.fetch import fetch_bibtex_by_fulltext_crossref, fetch_bibtex_by_doi
+from papers.identifiers import DIGITS
 
 from papers.encoding import standard_name, family_names, format_entries
 from papers.latexenc import string_to_latex
@@ -96,7 +97,7 @@ def append_abc(key, keys=[]):
     # a letter after a digit is a suffix of this function (Author2000b), in
     # either case
     last = key[-1:]
-    if len(key) > 1 and last.lower() in alphabet and key[-2].isdigit():
+    if len(key) > 1 and last.lower() in alphabet and key[-2] in DIGITS:
         letters = alphabet[alphabet.index(last.lower())+1:]
         if last.isupper():
             letters = letters.upper()
@@ -1083,4 +1084,4 @@ _KEY_FORBIDDEN = re.compile(r'[\s,{}"#%~=()\\]')
 
 
 def isvalidkey(key):
-    return key and not key[0].isdigit()
+    return key and key[0] not in DIGITS

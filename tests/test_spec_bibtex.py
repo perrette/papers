@@ -646,6 +646,11 @@ class TestKeyValidity(SpecLibrary):
         self.papers('edit spec0 --key a-b_c:d.e/f+g')
         self.assertIn('a-b_c:d.e/f+g', self.entries())
 
+    def test_leading_digit_is_ascii(self):
+        "bibtex.md 7.2: a leading digit is an ASCII digit 0-9; a key may start with another Unicode digit"
+        self.papers("edit spec0 --key '\u0662abc'")
+        self.assertIn('\u0662abc', self.entries())
+
 
 class TestCrossref(SpecLibrary):
     "bibtex.md 7.3"
@@ -764,6 +769,14 @@ class TestIdentifiersOfAnEntry(unittest.TestCase):
                                     'isbn 080442957x}}'),
                          {'isbn': '9780306406157,9780804429573,9783161484100'})
         self.assertEqual(self.ident('@incollection{a, isbn = {0-306-40615-2}}'), {})
+
+    def test_ascii_digits(self):
+        "bibtex.md 9.2: the digits of an ISBN or an arXiv id are ASCII digits 0-9 (not other Unicode digits)"
+        from papers.identifiers import normalize_arxiv, normalize_isbn
+        self.assertIsNone(normalize_isbn('\u0660\u0663\u0660\u0666\u0664\u0660\u0666\u0661\u0665\u0662'))
+        self.assertIsNone(normalize_isbn('97803064\uff10615\uff17'))
+        self.assertIsNone(normalize_arxiv('\u0662101.01234'))
+        self.assertEqual(self.ident('@book{a, isbn = {\u0660\u0663\u0660\u0666\u0664\u0660\u0666\u0661\u0665\u0662}}'), {})
 
     def test_authors_and_title(self):
         "bibtex.md 9.2: family names (before the first comma at depth 0, else the last word or {...} group), normalized"

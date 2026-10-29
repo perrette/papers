@@ -633,10 +633,10 @@ biblatex key alias field). papers:
 
 ### 7.2 Key validity on rename
 
-`edit --key NEW` refuses a key that is empty, starts with a digit, or
-contains whitespace or one of `, { } " # % ~ = ( ) \`, and a key that
-another entry has (compared without case). (The key template is in
-library.md.)
+`edit --key NEW` refuses a key that is empty, starts with a digit
+(`0`-`9`; another Unicode digit is allowed), or contains whitespace or
+one of `, { } " # % ~ = ( ) \`, and a key that another entry has
+(compared without case). (The key template is in library.md.)
 
 ### 7.3 `crossref` follows renames
 
@@ -659,10 +659,10 @@ that entry (the merged key goes to its `ids`, section 10.5).
 - A new key from the key template (library.md) that is already in the
   library (compared without case) gets a letter suffix.
 - Suffix rule: if the key ends with a letter `a`-`z` or `A`-`Z` right
-  after a digit (`Author2000b`, `Author2000B`), that letter is taken as a
-  previous suffix: it is removed and the next letters of the alphabet are
-  tried, in the case of that letter (`c`, `d`, ... or `C`, `D`, ...).
-  Otherwise the letters `b` to `z` are tried, appended. Then the key
+  after a digit `0`-`9` (`Author2000b`, `Author2000B`), that letter is
+  taken as a previous suffix: it is removed and the next letters of the
+  alphabet are tried, in the case of that letter (`c`, `d`, ... or `C`,
+  `D`, ...). Otherwise the letters `b` to `z` are tried, appended. Then the key
   itself (with its last letter) followed by each of `a` to `z`. The first
   key not in the library (without case) is taken. If none is free, the
   command fails.
@@ -712,6 +712,9 @@ the exchanges with pools.
 5. lower case; whitespace runs replaced by one space; trimmed.
 
 ### 9.2 Identifiers of an entry
+
+A digit, here, is one of the ASCII digits `0`-`9` (`N` in the forms
+below); other Unicode digits (`٣`, `３`) are not digits.
 
 - **DOI**: the `doi` field, trimmed, without a leading
   `http://doi.org/`, `https://doi.org/`, `http(s)://dx.doi.org/` or

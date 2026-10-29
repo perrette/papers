@@ -604,6 +604,7 @@ for the specification. A section marked free has none.
 ### 7.2 Key validity on rename
 
 - tests/test_spec_bibtex.py::TestKeyValidity::test_refused
+- tests/test_spec_bibtex.py::TestKeyValidity::test_leading_digit_is_ascii
 - tests/test_entry_cmds.py::TestEditSet::test_key_refused
 - tests/test_entry_cmds.py::TestEditSet::test_empty_key_refused
 
@@ -642,6 +643,7 @@ for the specification. A section marked free has none.
 - tests/test_spec_bibtex.py::TestIdentifiersOfAnEntry::test_doi
 - tests/test_spec_bibtex.py::TestIdentifiersOfAnEntry::test_arxiv
 - tests/test_spec_bibtex.py::TestIdentifiersOfAnEntry::test_isbn
+- tests/test_spec_bibtex.py::TestIdentifiersOfAnEntry::test_ascii_digits
 - tests/test_spec_bibtex.py::TestIdentifiersOfAnEntry::test_authors_and_title
 - tests/test_duplicates.py::TestIdentifiers::test_arxiv_eprint
 - tests/test_duplicates.py::TestIdentifiers::test_other_archive_is_not_arxiv
