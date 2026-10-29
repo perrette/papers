@@ -71,12 +71,13 @@ def entry_links(entries, relative_to):
             for p in parse_file(e['file'], relative_to)}
 
 
-def bibtex_links(bibtex, relative_to):
-    "the absolute paths of the files that the entries of a bibtex file link to"
+def bibtex_links(bibtex, relative_to, parse=None):
+    """the absolute paths of the files that the entries of a bibtex file
+    link to (parse: see papers.bib.Biblio.load)"""
     from papers.bib import Biblio  # papers.bib imports papers.journal
     if not os.path.exists(bibtex):
         return set()
-    biblio = Biblio.load(bibtex, '', relative_to=relative_to)
+    biblio = Biblio.load(bibtex, '', relative_to=relative_to, parse=parse)
     return {os.path.normpath(f) for e in biblio.entries for f in biblio.get_files(e)}
 
 

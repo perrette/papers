@@ -266,11 +266,16 @@ one `fsync` per new piece, usually one or two per command.
 `backup.go_to` walks from the current state to the target (the path
 through the common ancestor, `Project.path`), and for each step with file
 operations calls `journal.restore` with the file links of the two states.
-The links are found by parsing the full bibtex of each state
-(`bibtexparser.parse_string`, without the cache), once per state and per
-use: an undo of one step parses the library three times (the state, its
-parent, the current file). For 10 000 entries, undo takes 1.7 s, most of
-it these parses.
+The links are found by parsing the full bibtex of each state, through the
+parse cache and the same middleware as a library load (`lowercase_fields`
+included). One parser (`backup.parser`) serves the whole command: the
+files linked before and after (`_time_travel`), the states of the path
+and the bibtex on disk; it keeps each parsed text, so a text is parsed
+once even when two states, or a state and the file on disk, have it (the
+common case: the bibtex on disk is the current state). An undo of one
+step parses two texts. For 10 000 entries, `papers undo` of a `file
+attach` took 2.9 s and now takes 1.1 s, measured on the same machine (it
+parsed the library six times, three of them without the cache).
 
 `journal.restore` computes checksums lazily (a `digest` memo per call)
 and only of the files it considers: those linked now or in the target,
@@ -281,11 +286,11 @@ Ideas: compare the pieces of the two states and parse only the pieces
 that differ (the links of the other entries are the same); memoize the
 links per state.
 
-A small inconsistency found here: `go_to` parses the states with
+An inconsistency found here, fixed: `go_to` parsed the states with
 bibtexparser directly, without `lowercase_fields`, so a state recorded
 from a file edited outside papers with `File = {...}` (capitalized, as
-older JabRef writes) has no links for undo; the rest of papers reads the
-field.
+older JabRef writes) had no links for undo. `revert._state_entries` still
+parses the states with bibtexparser directly.
 
 ## 5. The duplicate search
 
@@ -523,7 +528,7 @@ dependencies when first used: `requests`, `rapidfuzz`, `scholarly`,
 `bs4`, PyMuPDF. `papers --version` takes 88 ms (Python itself: 21 ms;
 importing `papers.cli`: 44 ms). On a library of one entry, `papers list`
 takes 80–100 ms; on 10 000 entries 430 ms (warm parse cache), `add` of
-one entry about 0.9 s, `undo` 1.7 s.
+one entry about 0.9 s, `undo` 1.7 s (about 1.1 s since the change of 4.5).
 
 For an implementation in a compiled language, startup is negligible, and
 the cost of a command is the parse, the format and the history; for the
@@ -544,6 +549,7 @@ that changes one entry spends about:
 | compare with the file, write | 10–20 |
 | history: read the text again, cut, store pieces, state, head | about 100 |
 | read the states of the project | 25 per 500 states |
+| pruning, one command in 50 (4.3) | 80 per 500 states |
 
 The parse and the format are linear in the size of the library and done
 in full at every command. Reusing the text of unchanged entries (2.2),

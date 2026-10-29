@@ -13,11 +13,11 @@ from papers.utils import PapersExit, stdin_is_terminal
 MB = backup.MB
 
 
-def _linked_files(config):
-    "the real paths of the files that the entries of the bibtex link to"
+def _linked_files(config, parse=None):
+    "the real paths of the files that the entries of the bibtex link to (parse: see papers.bib.Biblio.load)"
     if not config.bibtex or not os.path.exists(config.bibtex):
         return set()
-    biblio = Biblio.load(config.bibtex, config.filesdir)
+    biblio = Biblio.load(config.bibtex, config.filesdir, parse=parse)
     return {os.path.realpath(f) for e in biblio.entries for f in biblio.get_files(e)}
 
 
@@ -56,8 +56,9 @@ def _auto_push(config):
 def _time_travel(config, kind, func, *args):
     """undo, redo or restore: say which state is restored, the files that
     moved, the pools that followed, and which files of the files directory no entry links to any more"""
-    before = _linked_files(config)
-    project, target, file_lines, pool_lines = func(config, *args)
+    parse = backup.parser()  # the texts parsed once for the whole command
+    before = _linked_files(config, parse)
+    project, target, file_lines, pool_lines = func(config, *args, parse=parse)
     if file_lines is None:  # --dry-run
         print(f'DRYRUN: {kind}: {config.bibtex} not restored to {backup.describe(project, target)}')
         return
@@ -66,7 +67,7 @@ def _time_travel(config, kind, func, *args):
         print('\n'.join(file_lines))
     if pool_lines:
         print('\n'.join(pool_lines))
-    after = _linked_files(config)
+    after = _linked_files(config, parse)
     unlinked = sorted(f for f in before - after
                       if os.path.isfile(f) and config.filesdir and is_inside(f, config.filesdir))
     if unlinked:

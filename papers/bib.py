@@ -253,12 +253,14 @@ class Biblio:
         return text
 
     @classmethod
-    def load(cls, bibtex, filesdir, relative_to=None, **kw):
+    def load(cls, bibtex, filesdir, relative_to=None, parse=None, **kw):
+        """parse: the Library of a text (by default parse_string through the
+        parse cache), e.g. one that keeps the texts parsed already"""
         with open(bibtex, encoding='utf-8-sig') as f:  # UTF-8, without a byte order mark (see read_text)
             bibtexs = f.read()
         if 'distinct' not in kw:  # not read twice (a warning of an unreadable file twice)
             kw['distinct'] = Distinct.for_library(papers.config.library_dir(bibtex))
-        db = parse_string(bibtexs, cache=parse_cache())
+        db = parse(bibtexs) if parse else parse_string(bibtexs, cache=parse_cache())
         loaded_bib = cls(db, filesdir, relative_to=relative_to if relative_to is not None else os.path.dirname(bibtex), **kw)
         loaded_bib._remember(bibtex, bibtexs)
         loaded_bib.unreadable = unreadable_blocks(db)

@@ -118,6 +118,37 @@ class TestOneStep(JournalTest):
         out = self.out('undo')
         self.assertIn('restored from the history', out)
 
+    def test_capitalized_field_name(self):
+        # a step recorded from a bibtex written outside papers with File = {...} (older JabRef): its links
+        # count when undo goes to it (here: the file renamed outside papers since is found by its checksum)
+        a = self.write('lib', 'files', 'a.pdf', content='pdf a')
+        self.bib(entry('one2000', a))
+        self.lib('file checksum')
+        self.bib(entry('one2000', a).replace(' file = ', ' File = ').replace('Title', 'Another title'))
+        self.lib('tag one2000 --add x')
+        w = self.path('lib', 'files', 'w.pdf')
+        os.rename(a, w)
+        self.bib(entry('one2000', w))
+        out = self.out('undo -n 2')
+        self.assertIn('renamed back to a.pdf', out)
+        self.assertEqual(Path(a).read_text(), 'pdf a')
+        self.assertFalse(os.path.exists(w))
+
+    def test_each_text_parsed_once(self):
+        # the bibtex before the undo (the state undone) and after it (the state it goes to): parsed once each
+        self.lib('file rename --move')
+        import bibtexparser
+        import papers.parsecache
+        texts = []
+        direct, cached = bibtexparser.parse_string, papers.parsecache.parse
+        with patch('bibtexparser.parse_string', lambda text, *a, **kw: texts.append(text) or direct(text, *a, **kw)), \
+                patch('papers.parsecache.parse', lambda text, cache: texts.append(text) or cached(text, cache)):
+            self.lib('undo')
+        bibtexs = [t for t in texts if 'one2000' in t]
+        self.assertEqual(len(bibtexs), 2)
+        self.assertEqual(len(set(bibtexs)), 2)
+        self.assertEqual(Path(self.a).read_text(), 'pdf a')
+
 
 class TestSeveralSteps(JournalTest):
 

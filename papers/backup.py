@@ -434,19 +434,36 @@ def state_hashes(config, project, n):
     return papers.checksums.parse(project.store.text(pieces) if pieces else '{}', config)
 
 
-def go_to(config, project, cur, target, pool_dirs=None, shared=()):
+def parser():
+    """a function that gives the Library of a bibtex text, through the parse
+    cache, each text parsed once (the states of an undo and the bibtex on
+    disk are often the same texts): for one command, the Libraries are
+    not to be changed"""
+    from papers.bib import parse_cache
+    from papers.entries import parse_string
+    cache = parse_cache()
+    parsed = {}
+
+    def parse(text):
+        if text not in parsed:
+            parsed[text] = parse_string(text, cache=cache)
+        return parsed[text]
+    return parse
+
+
+def go_to(config, project, cur, target, pool_dirs=None, shared=(), parse=None):
     """bring the library from the state `cur` to the state `target`: the
     files (command by command, then by checksum), the bibtex and the files
     of .papers/. pool_dirs: the folders whose files are copied back, not
     moved (by default, the files directory of the pool of a shallow
     library, see _pool_dirs); shared: the files that another library links
-    to, also copied back. Return the lines of the report on the files."""
-    from bibtexparser import parse_string
+    to, also copied back; parse: see parser. Return the lines of the report on the files."""
     lock.acquire(config)  # held already by a command that writes the library (see papers.lock)
     lock.check(config)
     st = project.store
     relative_to = os.path.dirname(os.path.abspath(config.bibtex))
     texts = {}
+    parse = parse or parser()
 
     def text(n):
         if n not in texts:
@@ -457,7 +474,7 @@ def go_to(config, project, cur, target, pool_dirs=None, shared=()):
         return texts[n]
 
     def links(n):
-        return papers.checksums.entry_links(parse_string(text(n)).entries, relative_to)
+        return papers.checksums.entry_links(parse(text(n)).entries, relative_to)
 
     def ops(n):
         return _absolute_ops(project.state(n).get('ops') or [], config)
@@ -479,7 +496,7 @@ def go_to(config, project, cur, target, pool_dirs=None, shared=()):
             if ops(n) and parent is not None and project.state(parent) is not None:
                 lines += journal.restore(links(parent), links(n), ops(n), False,
                                          hashes=state_hashes(config, project, n), **kw)
-        current = papers.checksums.bibtex_links(config.bibtex, relative_to)
+        current = papers.checksums.bibtex_links(config.bibtex, relative_to, parse=parse)
         lines += journal.restore(current, links(target), [], not forward,
                                  hashes=state_hashes(config, project, target), **kw)
 
@@ -661,7 +678,7 @@ def _move_pools(config, pools, undo, kind):
     return lines
 
 
-def undo(config, steps=1, library_only=False):
+def undo(config, steps=1, library_only=False, parse=None):
     """go back `steps` states, the pool too for the steps that wrote it
     (unless library_only, see pool_steps); return (project, state restored,
     report on the files; None with --dry-run, report on the pools)"""
@@ -685,12 +702,13 @@ def undo(config, steps=1, library_only=False):
     pool_lines = _move_pools(config, pools, True, 'undone')
     shared = [f for p in pools for f in papers.checksums.bibtex_links(
         p.config.bibtex, os.path.dirname(os.path.abspath(p.config.bibtex)))]
-    lines = go_to(config, project, cur, target, pool_dirs=[] if pools and not missing else None, shared=shared)
+    lines = go_to(config, project, cur, target, pool_dirs=[] if pools and not missing else None, shared=shared,
+                  parse=parse)
     project.set_head(place, target, redo)
     return project, target, lines, missing + pool_lines
 
 
-def redo(config, steps=1, library_only=False):
+def redo(config, steps=1, library_only=False, parse=None):
     "go forward `steps` states (see undo)"
     project, place = _require(config)
     head = project.head(place) if project else None
@@ -707,12 +725,12 @@ def redo(config, steps=1, library_only=False):
         return project, target, None, []
     pools, pool_lines = pool_steps(config, project, head['redo'][:steps], False) if not library_only else ([], [])
     # the library first: the files the command moved to the pool are there when the pool comes back
-    lines = go_to(config, project, cur, target)
+    lines = go_to(config, project, cur, target, parse=parse)
     project.set_head(place, target, head['redo'][steps:])
     return project, target, lines, pool_lines + _move_pools(config, pools, False, 'redone')
 
 
-def restore(config, n=None):
+def restore(config, n=None, parse=None):
     """go to the state n of the project of the library; without n, to the
     current state (the changes made outside papers since are undone, and
     recorded: `papers redo` brings them back). Return as undo (the library
@@ -735,7 +753,7 @@ def restore(config, n=None):
         cur = sync_head(config, project, place)
     if cur == target:
         raise PapersExit(f'nothing to restore: {os.path.basename(config.bibtex)} is step {history.short(target)}')
-    lines = go_to(config, project, cur, target)
+    lines = go_to(config, project, cur, target, parse=parse)
     back, forward = project.path(cur, target)
     project.set_head(place, target, list(reversed(back)) if not forward else [])
     return project, target, lines, []

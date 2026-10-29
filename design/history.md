@@ -908,7 +908,10 @@ From the current state C to the target T (contract for the result):
 
 "The links of a state" are the files that its entries link to: the
 `file` fields of the bibtex of the state (see `bibtex.md` 5), resolved
-against the directory of the bibtex, as normalized absolute paths.
+against the directory of the bibtex, as normalized absolute paths. The
+bibtex of a state is read as the library is (`bibtex.md` 2): the field
+name is compared without case, so `File = {...}` of a bibtex written
+outside papers is a link too.
 
 "`files.json` of a state" is the checksums in the state's
 `.papers/files.json` (section 10), as `{normalized absolute path:

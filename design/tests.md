@@ -1857,7 +1857,9 @@ for the specification. A section marked free has none.
 - tests/test_undo.py::TestTimeTravel::test_undo_redo
 - tests/test_undo_pool.py::TestUndoPool::test_add_then_undo_redo
 - tests/test_undo_pool.py::TestUndoPool::test_undo_restores_distinct
-- tests/test_journal.py::TestChecksums::test_found_by_checksum.
+- tests/test_journal.py::TestChecksums::test_found_by_checksum
+- tests/test_journal.py::TestOneStep::test_capitalized_field_name
+- tests/test_journal.py::TestOneStep::test_each_text_parsed_once.
 
 ### 6.4 Restoring the files
 
