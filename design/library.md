@@ -983,7 +983,11 @@ the lock:
 
 **Release.** At the end of the command (also after an error or an
 interrupt, and at process exit), the holder removes the file if it still
-has its token.
+has its token. So that a lock taken over between the token read and the
+removal is not removed, the holder renames the file as in a take-over
+(`.papers/lock.<hex>.stale`), reads the token of the renamed file, and
+removes it if it is its own; otherwise it puts it back as in step 4.3 of
+Acquire.
 
 **Order.** A command locks the library of the command line first (when it
 writes), then each pool or other library it opens while it holds a lock

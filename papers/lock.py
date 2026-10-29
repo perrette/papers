@@ -23,7 +23,8 @@ Before writing the library, the holder checks that the lock still has its
 token (see `check`): a holder that could not refresh it in time (e.g. the
 computer was asleep) stops instead of writing over the command that took
 the lock over. The holder removes the lock at the end of the command, if
-it still has its token.
+it still has its token (renamed aside first, then its token checked, so
+that a lock taken over meanwhile is put back and not removed).
 
 A command locks the library of the command line first, then its pool
 (see papers.pools.Pools.resolve); a command in the pool locks the pool
@@ -70,7 +71,7 @@ def lock_path(config):
 # the locks held by this process: {real path of the lock file: content}
 _held = {}
 _thread = None
-_stop = threading.Event()
+_stop = threading.Event()  # the stop signal of _thread (one per thread)
 _mutex = threading.Lock()
 
 
@@ -104,14 +105,28 @@ def _take_over(path, signature):
     first (one step), then removed if it is that file; a fresh lock found
     there instead is put back (unless another lock was created meanwhile),
     as a copy on a file system without hard links"""
-    aside = f'{path}.{uuid.uuid4().hex}.stale'
-    try:
-        os.rename(path, aside)
-    except FileNotFoundError:
+    aside = _rename_aside(path)
+    if aside is None:
         return
     if _signature(aside) == signature:
         os.remove(aside)
         return
+    _put_back(path, aside)
+
+
+def _rename_aside(path):
+    "rename the lock file to a name of this process (one step); None if there is no file"
+    aside = f'{path}.{uuid.uuid4().hex}.stale'
+    try:
+        os.rename(path, aside)
+    except FileNotFoundError:
+        return None
+    return aside
+
+
+def _put_back(path, aside):
+    """put the lock renamed to `aside` back to `path` (unless another lock
+    was created meanwhile), as a copy on a file system without hard links"""
     try:
         os.link(aside, path)  # put back: only if no lock was created meanwhile
     except FileExistsError:
@@ -230,11 +245,20 @@ def release_all():
         held = list(_held.items())
         _held.clear()
     for path, content in held:
-        if (_read(path) or {}).get('token') == content['token']:
-            try:
-                os.remove(path)
-            except OSError:
-                pass
+        if (_read(path) or {}).get('token') != content['token']:
+            continue
+        # renamed aside, then its token read again: a lock taken over between
+        # the read above and the removal is put back, not removed
+        try:
+            aside = _rename_aside(path)
+            if aside is None:
+                continue
+            if (_read(aside) or {}).get('token') == content['token']:
+                os.remove(aside)
+            else:
+                _put_back(path, aside)
+        except OSError as error:
+            logger.debug(f'{path}: lock not removed: {error}')
 
 
 def held():
@@ -242,8 +266,8 @@ def held():
     return sorted(_held)
 
 
-def _refresh():
-    while not _stop.wait(REFRESH):
+def _refresh(stop):
+    while not stop.wait(REFRESH):
         with _mutex:
             held = list(_held.items())
         for path, content in held:
@@ -255,10 +279,13 @@ def _refresh():
 
 
 def _start_refresh():
-    global _thread
-    if _thread is None or not _thread.is_alive():
-        _stop.clear()
-        _thread = threading.Thread(target=_refresh, name='papers-lock', daemon=True)
+    global _thread, _stop
+    with _mutex:
+        # a thread told to stop by release_all may still be alive: it exits, a new one starts
+        if _thread is not None and _thread.is_alive() and not _stop.is_set():
+            return
+        _stop = threading.Event()
+        _thread = threading.Thread(target=_refresh, args=(_stop,), name='papers-lock', daemon=True)
         _thread.start()
 
 

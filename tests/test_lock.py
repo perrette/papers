@@ -159,6 +159,51 @@ class TestLock(LockTest):
         papers.lock.release_all()
         self.assertTrue(os.path.exists(self.lockfile))  # not ours: left as it is
 
+    def test_release_after_take_over(self):
+        # taken over between the token read of the release and the removal:
+        # the lock of the other command stays
+        papers.lock.acquire(self.config)
+        read = papers.lock._read
+
+        def read_then_take_over(path):
+            content = read(path)
+            if path == os.path.realpath(self.lockfile):
+                self.other_lock()
+            return content
+        with patch('papers.lock._read', side_effect=read_then_take_over):
+            papers.lock.release_all()
+        self.assertEqual(json.loads(Path(self.lockfile).read_text())['token'], 'other')
+        self.assertEqual([f for f in os.listdir(os.path.dirname(self.lockfile)) if 'stale' in f], [])
+
+    def test_release_without_hard_links(self):
+        papers.lock.acquire(self.config)
+        read = papers.lock._read
+
+        def read_then_take_over(path):
+            content = read(path)
+            if path == os.path.realpath(self.lockfile):
+                self.other_lock()
+            return content
+        with patch('papers.lock._read', side_effect=read_then_take_over), \
+                patch('papers.lock.os.link', side_effect=OSError(errno.EPERM, 'Operation not permitted')):
+            papers.lock.release_all()
+        self.assertEqual(json.loads(Path(self.lockfile).read_text())['token'], 'other')
+
+    def test_refresh_after_release_and_acquire(self):
+        # the refresh thread told to stop by release_all has not exited yet
+        # when the lock is taken again: a new thread refreshes it
+        class Exiting:
+            def is_alive(self):
+                return True
+        with patch('papers.lock.REFRESH', 0.05):
+            papers.lock.acquire(self.config)
+            papers.lock.release_all()
+            papers.lock._thread = Exiting()
+            papers.lock.acquire(self.config)
+            before = os.stat(self.lockfile).st_mtime_ns
+            time.sleep(0.5)
+            self.assertNotEqual(os.stat(self.lockfile).st_mtime_ns, before)
+
 
 class TestCommands(LockTest):
 

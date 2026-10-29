@@ -408,6 +408,9 @@ for the specification. A section marked free has none.
 - tests/test_lock.py::TestLock::test_take_over
 - tests/test_lock.py::TestLock::test_refresh_does_not_rewrite
 - tests/test_lock.py::TestLock::test_lost
+- tests/test_lock.py::TestLock::test_release_after_take_over
+- tests/test_lock.py::TestLock::test_release_without_hard_links
+- tests/test_lock.py::TestLock::test_refresh_after_release_and_acquire
 - tests/test_spec_library.py::TestLockProtocol::test_unreadable_lock_is_being_written
 - tests/test_spec_library.py::TestLockProtocol::test_check_recreates_a_removed_lock
 - tests/test_spec_library.py::TestLockProtocol::test_check_unreadable_goes_on
@@ -557,6 +560,7 @@ for the specification. A section marked free has none.
 - tests/test_spec_bibtex.py::TestLatexToUnicode::test_paths
 - tests/test_spec_bibtex.py::TestLatexToUnicode::test_unicode_to_latex_decodes_back
 - tests/test_latexenc.py::TestLatexToUnicode::test_simple_accents
+- tests/test_normalize_fast.py::TestFastNormalization::test_decoder_runs_same_text
 - tests/test_files_unit.py::TestCheckFiles::test_fix_mendeley_path_keeps_text_signs
 - tests/test_spec_tables.py::TestSpecTables::test_latex_characters
 
@@ -647,6 +651,7 @@ for the specification. A section marked free has none.
 ### 9.1 Text normalization
 
 - tests/test_spec_bibtex.py::TestNormalization::test_norm
+- tests/test_normalize_fast.py::TestFastNormalization::test_normalize_same_text
 - tests/test_bib_unit.py::TestEntryId::test_author_id_accents
 - tests/test_bib_unit.py::TestEntryId::test_title_id_braces_and_spaces
 - tests/test_duplicates.py::TestIdentifiers::test_author_title_accents
