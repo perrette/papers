@@ -892,6 +892,8 @@ class Biblio:
         <label> is the file's original name (see `attachment_names`).
         Directories of previous versions (<name>/ with a hidden .<name>.bib)
         are emptied into that layout, and removed when nothing else is left.
+        Returns False when the name points outside the files directory (the
+        files are left where they are), True otherwise.
 
         copy: keep the original file (a hard link when possible, with
             hardlink=True, otherwise a copy). It can also be a function that
@@ -908,7 +910,7 @@ class Biblio:
 
         if not files:
             logger.info('no files to rename')
-            return
+            return True
 
         newname = (formatter or self.nameformat)(e)
         # absolute, to compare with the (absolute) current file paths
@@ -916,7 +918,7 @@ class Biblio:
         target = os.path.normpath(os.path.join(filesdir, newname))
         if os.path.commonpath([filesdir, target]) != filesdir or target == filesdir:
             logger.error(f'{get_entry_val(e, "ID", "")}: the file name {newname!r} points outside the files directory: the files are left where they are')
-            return
+            return False
 
         if callable(copy):
             actions = [copy(file) for file in files]
@@ -944,6 +946,7 @@ class Biblio:
 
         if count > 0:
             logger.info('renamed file(s): {}'.format(count))
+        return True
 
 
     def rename_entries_files(self, copy=False, relative_to=None, hardlink=True):

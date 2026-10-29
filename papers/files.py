@@ -452,17 +452,22 @@ def rename_files(biblio, entries, config, pool_dirs=(), keep_source=False, mode=
     template name: the files already there are renamed, the others are
     moved, copied or left where they are as the files mode says (mode, else
     the `files` setting; keep_source: copy). A file that belongs to another
-    library is copied, see FilesPolicy."""
+    library is copied, see FilesPolicy. Returns the number of entries whose
+    files could not be placed (an error is reported for each)."""
     if config.filesdir is None:
         raise PapersExit('the library has no files directory: pass --filesdir, '
                          'or set it with `papers config filesdir DIR`')
     mode = 'copy' if keep_source else (mode or config.files or 'move')
     policy = files_policy(config, mode, pool_dirs)
+    failed = 0
     for e in entries:
         try:
-            biblio.rename_entry_files(e, copy=policy)
+            if biblio.rename_entry_files(e, copy=policy) is False:
+                failed += 1
         except Exception as error:
             logger.error(f"{get_entry_val(e, 'ID', '')}: {error}")
+            failed += 1
+    return failed
 
 
 def attach_files(biblio, e, files, config, mode, pool_dirs=(), replace=None, pool_files=(), copied=()):

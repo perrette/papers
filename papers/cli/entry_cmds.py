@@ -712,7 +712,7 @@ def listcmd(parser, o, config):
         listed = {id(e) for e in entries}
         entries = [e for e in biblio.db.entries if id(e) not in listed]
 
-    notes = {}
+    notes, failed = {}, 0
     if o.add_keywords:
         add_tags(entries, o.add_keywords)
         notes = save_entries(config, biblio)
@@ -756,8 +756,8 @@ def listcmd(parser, o, config):
         notes = save_entries(config, biblio)
 
     elif rename:
-        notes = rename_entries(biblio, config, pools, entries, keep_source=keep_source,
-                               mode='move' if o.move else None)
+        notes, failed = rename_entries(biblio, config, pools, entries, keep_source=keep_source,
+                                       mode='move' if o.move else None)
 
     elif o.delete:
         todelete = remove_entries(biblio, entries, config, delete_files=_delete_files_option(parser, o, config))
@@ -791,6 +791,8 @@ def listcmd(parser, o, config):
     # --rename, --delete) using the same Added/Modified/Removed convention as addcmd
     # (the other actions print their report, as their command does)
     _print_biblio_diff(biblio, entries, notes=notes)
+    if failed:
+        raise PapersExit()  # the errors are reported: exit 1
 
 
 def opencmd(parser, o, config):

@@ -65,9 +65,10 @@ def rename_entries(biblio, config, pools, entries, keep_source=False, mode=None)
     the entries under their template name, and save the library. pools: the
     library_pools of the configuration, made before the library is loaded
     (in a shallow library, they set the files directory and name template
-    of the run). Return the notes of save_entries."""
-    rename_files(biblio, entries, config, pools.files_dirs(), keep_source=keep_source, mode=mode)
-    return save_entries(config, biblio, Exchange(config, biblio, pools))
+    of the run). Return the notes of save_entries, and the number of entries
+    whose files could not be placed."""
+    failed = rename_files(biblio, entries, config, pools.files_dirs(), keep_source=keep_source, mode=mode)
+    return save_entries(config, biblio, Exchange(config, biblio, pools)), failed
 
 
 def file_renamecmd(parser, o, config):
@@ -76,8 +77,10 @@ def file_renamecmd(parser, o, config):
     biblio = get_biblio(config)
     entries = _entries_or_all(biblio, o.entries)
     mode = files_mode(o, config) if o.move or o.copy or o.link else None
-    notes = rename_entries(biblio, config, pools, entries, keep_source=o.keep_source, mode=mode)
+    notes, failed = rename_entries(biblio, config, pools, entries, keep_source=o.keep_source, mode=mode)
     _print_biblio_diff(biblio, entries, notes=notes)
+    if failed:
+        raise PapersExit()  # the errors are reported: exit 1
 
 
 def file_mvcmd(parser, o, config):

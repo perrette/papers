@@ -868,6 +868,9 @@ intended folder.
    entry, and its files stay where they are with their links unchanged.
    This covers templates such as `../{author}`, `/tmp/{author}`,
    `{author}/../../x` and `.`.
+   `papers file rename` (and `papers list --rename`) places the files of
+   the other entries, then exits with code 1; so does it when the name
+   template has an unknown or invalid placeholder.
 3. Labels of the other files come from base names, which contain no
    separator.
 4. Templates may still create subfolders (`{year}/{author}`): separators

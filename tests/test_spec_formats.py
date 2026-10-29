@@ -1201,6 +1201,24 @@ class TestExitCodes(SpecLibrary):
         self.assertEqual(code, 2)
         self.assertIn('papers list: error: ', err)
 
+    def test_refused_rename(self):
+        "formats.md 7.3, library.md Path safety 2: a refused file rename is an error: exit 1, files unchanged"
+        self.bib(entry('one2000'), entry('two2000'))
+        self.lib(f'file attach one2000 {self.write("a.pdf")} --move')
+        before = self.files('one2000')
+        for template in ('../{author}', '{nope}'):
+            for keys in ('', 'one2000 '):
+                cmd = f"file rename --move {keys}--name-template '{template}'"
+                with self.assertRaises(PapersExit, msg=cmd):
+                    self.lib(cmd)
+                self.assertEqual(self.files('one2000'), before)
+        self.lib("config name.template '../{author}'")
+        with self.assertRaises(PapersExit):
+            self.lib('list one2000 --rename')
+        self.lib("config name.template '{key}-x'")
+        self.lib('file rename --move')  # exit 0
+        self.assertEqual(self.libfiles(), ['one2000-x.pdf'])
+
     def test_question_without_input(self):
         "formats.md 7.3: a question with closed standard input exits 1"
         self.bib(entry('one2000', doi='10.1/x'))
