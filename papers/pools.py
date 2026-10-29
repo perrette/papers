@@ -67,7 +67,7 @@ from papers.duplicate import (Distinct, IdentityIndex, author_id, contradicts, d
                               same_paper, SAME, Verdict)
 from papers.entries import (get_entry_val, set_entry_key, entry_copy, parse_string, format_library, format_file,
                             parse_file)
-from papers.bib import Biblio, append_abc, read_text
+from papers.bib import Biblio, append_abc, parse_cache, read_text
 from papers.extract import parse_doi_from_pdf_metadata, parse_dois, pdfhead, pdftail, title_in_text
 from papers.files import ATTACHMENT_SEP, FilesPolicy, realpath, is_inside
 from papers.filename import slugify
@@ -581,13 +581,27 @@ class Origin:
         origin.known = {pool for pool, records in origin.entries.items() if records}
         return origin
 
-    @staticmethod
-    def _parse(path):
+    # path -> (text, Library) of the origin files parsed in this process (see _parse)
+    _parsed = {}
+
+    @classmethod
+    def _parse(cls, path):
+        """the parsed origin file, through the parse cache; a file parsed
+        before in this process, with the same text, is not parsed again (a
+        command loads the records more than once, e.g. to repair the links
+        of a shallow library, then for the exchange). The entries are shared
+        by those loads: Origin does not change them in place."""
         try:
-            return parse_string(open(path, encoding='utf-8-sig').read())
+            text = open(path, encoding='utf-8-sig').read()
+            known = cls._parsed.get(path)
+            if known is not None and known[0] == text:
+                return known[1]
+            lib = parse_string(text, cache=parse_cache())
         except Exception as error:
             logger.warning(f'{path}: could not be read ({error}); ignored')
             return None
+        cls._parsed[path] = text, lib
+        return lib
 
     def _read(self, path):
         lib = self._parse(path)
@@ -679,6 +693,7 @@ class Origin:
         if old is None or (get_entry_val(old, FILE_FIELD, None) == files
                            and _DEV_FILES_FIELD not in old.fields_dict):
             return
+        old = self.entries[pool][key.lower()] = entry_copy(old)  # the parsed entry is shared (see _parse)
         for name in (FILE_FIELD, _DEV_FILES_FIELD):
             if name in old.fields_dict:
                 del old[name]
@@ -698,6 +713,7 @@ class Origin:
         for pool, records in self.entries.items():
             record = records.pop(old.lower(), None)
             if record is not None:
+                record = entry_copy(record)  # the parsed entry is shared (see _parse)
                 set_entry_key(record, new)
                 records[new.lower()] = record
                 self.changed.add(pool)
@@ -1012,8 +1028,9 @@ class Exchange:
                     report.append((e, None, 'not found'))
                 continue
             report.append((e, pool, self._pull_one(e, pool, pe, record, resolver, mode)))
+        keys = {self.biblio.key(x) for x in self.biblio.entries} if new else set()
         for pe in new:
-            report.append((self._pull_new(pe, pool, mode), pool, 'added'))
+            report.append((self._pull_new(pe, pool, mode, keys), pool, 'added'))
         # a pull that skipped (or quit) leaves pool changes to take: not a pull of the pool
         if record_pull and pool is not None and not resolver.quit \
                 and not any(what == 'skipped' for _, _, what in report):
@@ -1045,12 +1062,14 @@ class Exchange:
         self.record(e, pool, pe, pe)
         return 'updated'
 
-    def _pull_new(self, pe, pool, mode):
+    def _pull_new(self, pe, pool, mode, keys):
         """add a pool entry to the library, under the pool key (with a letter
         suffix if the library has this key already); its files are linked
-        in a shallow library (its own pool), else placed as the files mode says"""
-        keys = {self.biblio.key(x) for x in self.biblio.entries}
+        in a shallow library (its own pool), else placed as the files mode
+        says. keys: the lower-case keys of the library, to which the key of
+        the new entry is added"""
         key = pe.key if pe.key.lower() not in keys else append_abc(pe.key, keys)
+        keys.add(key.lower())
         e = exchange_copy(pe, pool.biblio, self.biblio, key=key)
         self.biblio.db.add(e)
         self._place_files(e, self.files_policy(mode, pools=[pool]))

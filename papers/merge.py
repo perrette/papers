@@ -98,6 +98,8 @@ def _fullness(field):
 
 
 def equivalent(name, v1, v2):
+    if v1 == v2:  # the usual case, without normalizing (long values, e.g. abstracts)
+        return True
     if name in ('author', 'editor'):
         return names_compatible(v1, v2)
     if name == 'doi':

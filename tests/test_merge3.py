@@ -257,3 +257,20 @@ class TestThreeWayDialogue(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class TestEqualValues(unittest.TestCase):
+    "values equal as strings are equivalent without being normalized (long abstracts)"
+
+    def test_not_normalized(self):
+        from unittest.mock import patch
+        import papers.merge
+        abstract = 'A long abstract with {LaTeX} and $x^2$, ' * 20
+        calls = []
+        normalize = papers.merge.normalize_text
+        with patch('papers.merge.normalize_text', lambda v: calls.append(v) or normalize(v)):
+            m = three(lib={'abstract': abstract}, pool={'abstract': abstract}, base={'abstract': abstract})
+            self.assertTrue(m.is_exact())
+            self.assertTrue(papers.merge.equivalent('author', 'Smith, J.', 'Smith, J.'))
+        self.assertNotIn(abstract, calls)
+        self.assertNotIn('Smith, J.', calls)

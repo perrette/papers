@@ -561,6 +561,8 @@ class Config:
         self.keep_deleted_files = self.inherited('keep-deleted-files')
         # the checksums of the files that the commands touch (see papers.checksums)
         self.checksums = self.inherited('checksums')
+        # configdir, pool path and is_pool_library, for a configuration file and a pool setting (see _paths)
+        self._paths_of = None, None
 
     def library_id(self, create=True):
         """the identifier of the library, which names its history (see
@@ -647,12 +649,27 @@ class Config:
 
     # pool
     # ----
+    def _paths(self):
+        """(configdir, pool path, is_pool_library) of a library with a file:
+        they resolve paths, and the exchanges ask for them several times per
+        entry, so they are computed once for a configuration file and a pool
+        setting (and the current directory, for a relative file), and again
+        after a save"""
+        pool = None if self.pool == NO_POOL else os.path.expanduser(self.pool)
+        key = (self.file, pool, None if os.path.isabs(self.file) else os.getcwd())
+        if self._paths_of[0] != key:
+            configdir = config_root(self.file).resolve()
+            path = None if pool is None else os.path.abspath(os.path.join(configdir, pool))
+            own = path is not None and os.path.realpath(path) == os.path.realpath(configdir)
+            self._paths_of = key, (configdir, path, own)
+        return self._paths_of[1]
+
     def pool_path(self):
         """absolute path of the pool of the library (the pool setting, relative
         to the library), or None (pool none, or no library)"""
-        if not self.file or self.pool == NO_POOL:
+        if not self.file:
             return None
-        return os.path.abspath(os.path.join(self.configdir, os.path.expanduser(self.pool)))
+        return self._paths()[1]
 
     def pool_label(self):
         "the pool as the pool setting writes it (relative to the library, or with ~), or None"
@@ -660,8 +677,7 @@ class Config:
 
     def is_pool_library(self):
         "the library is its own pool (e.g. pool .), so it has none"
-        path = self.pool_path()
-        return bool(self.file) and path is not None and os.path.realpath(path) == os.path.realpath(self.configdir)
+        return bool(self.file) and self._paths()[2]
 
     def has_pool(self):
         return self.pool_path() is not None and not self.is_pool_library()
@@ -675,7 +691,7 @@ class Config:
     @property
     def configdir(self):
         "directory that relative paths of a local configuration file refer to"
-        return config_root(self.file).resolve() if self.file else Path.cwd()
+        return self._paths()[0] if self.file else Path.cwd()
 
     @property
     def libdir(self):
@@ -735,6 +751,7 @@ class Config:
         if os.path.dirname(self.file):
             os.makedirs(os.path.dirname(self.file), exist_ok=True)
         write_atomic(self.file, json.dumps(self.tojson(), sort_keys=True, indent=2, separators=(',', ': ')))
+        self._paths_of = None, None  # the folders may have been created: resolved again
         if self.is_library:
             ignore_papers_folder(os.path.dirname(self.file))
 

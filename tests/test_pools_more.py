@@ -11,6 +11,7 @@ from papers.pools import Exchange, Pools, PoolError, load_biblio, mtime, use_poo
 from papers.utils import PapersExit
 
 from tests.common import ConfigTest
+from papers.pools import Origin, ORIGIN_DIR
 from tests.test_pools import PoolTest, SMITH_BIB, NEW_BIB
 
 
@@ -389,3 +390,79 @@ class TestPoolIdentifier(ConfigTest):
         self.assertEqual(sorted(origin.entries[own]), ['a2020', 'b2021'])
         self.assertEqual(origin.entries[own]['b2021']['title'], 'B')
         self.assertEqual(len(os.listdir(self.path('lib', ORIGIN_DIR))), 1)
+
+
+class TestPullCost(PoolTest):
+    """the steps of a pull that once grew with the square of the number of
+    entries, or were repeated for each entry: counted, not timed"""
+
+    N = 60
+
+    def setUp(self):
+        super().setUp()
+        Path(self.path('pool', 'papers.bib')).write_text(''.join(
+            f'@article{{Key{i},\n author = {{Author{i}, A.}},\n title = {{Title number {i}}},\n'
+            f' year = {{2000}}\n}}\n\n' for i in range(self.N)))
+        self.lib('config pool ../pool -y')  # a shallow library
+
+    def test_keys_of_the_library_once(self):
+        # the keys of the library are gathered once for all new entries, not for each one
+        calls = []
+        key = Biblio.key
+        with patch.object(Biblio, 'key', lambda self, e: calls.append(1) or key(self, e)):
+            self.lib('pull --all')
+        self.assertEqual(len(self.bib()[1]), self.N)
+        self.assertLess(len(calls), 5 * self.N)  # 1 770 before (each new entry: the keys of all entries before it)
+
+    def test_selection_without_quadratic_search(self):
+        # the pool entries to add are not searched for in the list of those found before
+        seen = []
+        def any_(items):
+            for x in items:
+                seen.append(1)
+                if x:
+                    return True
+            return False
+        with patch('papers.cli.pool_cmds.any', any_, create=True):
+            self.lib('pull --all')
+        self.assertEqual(len(self.bib()[1]), self.N)
+        self.assertLess(len(seen), self.N)  # 1 770 before
+
+    def test_origin_parsed_once_with_cache(self):
+        # the origin records are parsed once per command (also loaded to repair the
+        # links of the shallow library), through the parse cache
+        self.lib('pull --all')
+        Origin.__dict__.get('_parsed', {}).clear()  # parsed by the commands before
+        import papers.pools
+        calls = []
+        parse = papers.pools.parse_string
+        def parse_string(text, cache=None):
+            if '@comment{papers-pool ' in text:
+                calls.append(cache)
+            return parse(text, cache=cache)
+        with patch('papers.pools.parse_string', parse_string):
+            self.lib('pull --all')
+            self.assertEqual(len(calls), 1)  # 2 before
+            self.assertIsNotNone(calls[0])
+            calls.clear()
+            self.lib('status')
+            self.assertEqual(calls, [])  # the same text: not parsed again in this process
+        Origin.__dict__.get('_parsed', {}).clear()  # parsed by the commands before
+        with patch('papers.pools.parse_string', parse_string):
+            self.lib('status')
+        self.assertEqual(len(calls), 1)
+        self.assertIsNotNone(calls[0])
+
+    def test_shared_records_not_changed_in_place(self):
+        # the parsed records are shared between loads: a change goes to a copy
+        self.lib('pull --all')
+        origin = Origin.load(self.path('lib', ORIGIN_DIR))
+        (pool, records), = origin.entries.items()
+        before = records['key0']
+        files = before['file']
+        origin.set_files('Key0', pool, 'files/new.pdf')
+        origin.rekey('Key1', 'Other1')
+        again = Origin.load(self.path('lib', ORIGIN_DIR)).entries[pool]
+        self.assertIs(again['key0'], before)
+        self.assertEqual(again['key0']['file'], files)
+        self.assertEqual(again['key1'].key, 'Key1')
