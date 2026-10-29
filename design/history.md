@@ -815,6 +815,16 @@ All three require a bibtex (otherwise
 head up to date first (5.2). With `--dry-run` they read the head as it is
 and change nothing.
 
+A command with nothing to do leaves no trace (5.3): the errors below
+(`nothing to undo`, `only K step(s) to undo`, `nothing to redo`, `no
+history: nothing to restore`, `nothing to restore: …`, no step named
+STEP) are decided first, as if the head were brought up to date, and
+then nothing is written: no `id` in the configuration, no `start` state,
+no head for a new place, no store folder. A change made outside papers
+counts as a step to undo (its `outside` state would be added). The one
+exception is redo after a change made outside papers (step 2 of redo):
+the change is recorded, then redo stops.
+
 N, the number of steps of undo and redo, is 1 by default; a value below
 1 is a usage error (exit code 2), and nothing is read or changed.
 

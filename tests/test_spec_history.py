@@ -806,6 +806,26 @@ class TestCommands(SpecTest):
         project, place = self.project()
         self.assertEqual(project.head(place)['redo'], [])
 
+    def test_nothing_to_do_leaves_no_trace(self):
+        "history.md 6.2, 5.3: undo, redo and restore with nothing to do write no id, no state, no store folder"
+        Path(self.path('lib', 'papers.bib')).write_text(entry('one2000'))
+        for cmd, error in [('undo', 'nothing to undo'), ('undo -n 2', 'nothing to undo'),
+                           ('redo', 'nothing to redo'), ('restore', 'no history: nothing to restore'),
+                           ('restore abcd', 'no step abcd')]:
+            with self.assertRaisesRegex(PapersExit, error):
+                self.lib(cmd)
+        self.assertNotIn('id', json.loads(Path(self.path('lib', CONFIG_FILE_LOCAL)).read_text()))
+        self.assertFalse(os.path.exists(self.root()) and os.listdir(self.root()))
+        # a copy, never used in its folder, at the step it was copied at: no head written
+        self.add('two2000')
+        shutil.copytree(self.path('lib'), self.path('copy'))
+        with self.assertRaisesRegex(PapersExit, 'nothing to restore'):
+            self.lib(f'restore {self.head()}', where='copy')
+        with self.assertRaisesRegex(PapersExit, 'nothing to redo'):
+            self.lib('redo', where='copy')
+        project, place = self.project()
+        self.assertEqual(list(project.heads()), [place])
+
     def test_steps_out_of_range(self):
         "history.md 6.2: -n of undo and redo is 1 or more, else a usage error (exit 2); more than there are: an error"
         self.add('one2000')
