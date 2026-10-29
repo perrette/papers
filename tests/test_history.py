@@ -248,6 +248,21 @@ class TestPrune(StoreTest):
         self.assertEqual(self.store.prune(size, dry=True), [])
         self.assertEqual(len(self.store.prune(size, extra=1000, dry=True)), 1)
 
+    def test_each_state_read_once(self):
+        # dropping a state does not read the states of its project again
+        p = self.store.project('p')
+        n = None
+        for i in range(10):
+            n = p.add(self.state(f'@article{{a{i},\n}}\n', parent=n, t=i + 1))
+        p.set_head('/lib.bib', n)
+        reads = []
+        read = history._read_json
+        with patch('papers.history._read_json', lambda path, *a: reads.append(path) or read(path, *a)):
+            dropped = history.Store(self.tmp.name).prune(1, now=time.time() + history.GRACE + 1)
+        self.assertEqual(len(dropped), 9)
+        states = [r for r in reads if os.path.dirname(r) == p.states_dir]
+        self.assertEqual(len(states), 10)
+
 
 class LibraryTest(ConfigTest):
 

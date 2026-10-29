@@ -220,12 +220,11 @@ when it disagrees with the folder listing.
 (`os.scandir` of the 256 folders), reads all states of all projects,
 counts references per object, sorts the unprotected states by time and
 drops them oldest first until the size fits. Its cost is linear in
-objects + states × pieces, except for one point found while measuring:
-each dropped state is removed through `self.project(id).drop(n)`, which
-creates a new `Project` whose `drop` calls `states()` and so reads every
-state file again. Dropping 260 of 500 states took 4.7 s, of which almost
-all is this re-reading (quadratic in the number of states). Keeping one
-`Project` per id during the prune removes it.
+objects + states × pieces: it keeps one `Project` per id for the whole
+prune, so each state file is read once. (Before, each dropped state was
+removed through a new `Project` whose `drop` read every state file again,
+quadratic in the number of states: 500 states of the 10 000-entry library,
+162 dropped, took 3.8 s; now 0.08 s.)
 
 Pruning runs after a command that deleted files, after `history
 --remove`, and when the number of states of the project is a multiple of

@@ -1998,6 +1998,7 @@ for the specification. A section marked free has none.
 - tests/test_history.py::TestPrune::test_recent_orphans_do_not_push_states_out
 - tests/test_history.py::TestPrune::test_files_to_the_discard
 - tests/test_history.py::TestPrune::test_extra
+- tests/test_history.py::TestPrune::test_each_state_read_once
 - tests/test_journal.py::TestCyclicalRemoval::test_last_three_kept.
 
 ### 9.3 `papers history --remove [ID]`

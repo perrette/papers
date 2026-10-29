@@ -256,8 +256,9 @@ class Store:
         refs = {}
         latest = {}  # when the latest state that refers to it was written
         states = []
+        projects = {}  # one per id: its states are read once (dropping a state reads none again)
         for id in self.project_ids():
-            project = self.project(id)
+            project = projects[id] = self.project(id)
             heads = {h['state'] for h in project.heads().values()}
             for n, state in project.states().items():
                 try:  # the state is written (and its deleted files added) after its objects
@@ -297,7 +298,7 @@ class Store:
         if dry:
             return dropped
         for id, n, _ in dropped:
-            self.project(id).drop(n)
+            projects[id].drop(n)
         for ref in freed:
             path = sizes[ref][0]
             try:
