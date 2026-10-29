@@ -503,6 +503,8 @@ class TestPlaceholders(unittest.TestCase):
         self.assertEqual((fields['doi'], fields['doi_'], fields['doi_or_id']),
                          ('10.1000-ABC.d(1)', '10-1000-abc-d-1', '10-1000-abc-d-1'))
         self.assertEqual(make_template_fields({'ID': 'Smith_2020'})['doi_or_id'], 'smith-2020')
+        for empty in ('', ' '):  # an empty doi is no doi
+            self.assertEqual(make_template_fields({'ID': 'Smith_2020', 'doi': empty})['doi_or_id'], 'smith-2020')
 
     def test_title_placeholders(self):
         """library.md Placeholders, Title: title and Title, the words of the

@@ -189,7 +189,8 @@ def make_template_fields(
         "ID": path_safe(get_entry_val(entry, "ID", "")),
         "doi": path_safe(get_entry_val(entry, "doi", "")),
         "doi_": slugify(get_entry_val(entry, "doi", "")),
-        "doi_or_id": slugify(get_entry_val(entry, "doi", get_entry_val(entry, "ID", ""))),
+        # an empty doi field is no doi
+        "doi_or_id": slugify(get_entry_val(entry, "doi", "").strip() or get_entry_val(entry, "ID", "")),
     }
 
 

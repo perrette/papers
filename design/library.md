@@ -787,7 +787,7 @@ a non-empty value made only of dots replaced by as many `-`.
 | `key`, `ID` | The entry key, path-safe. |
 | `doi` | The `doi` field (or empty), path-safe. |
 | `doi_` | The `doi` field slugified. |
-| `doi_or_id` | The `doi` field slugified, or the key slugified if there is no doi. |
+| `doi_or_id` | The `doi` field slugified, or the key slugified if there is no doi (no `doi` field, or one that is empty or only whitespace). |
 
 **Slugify.** In order:
 
