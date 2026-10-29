@@ -1,4 +1,5 @@
 """Unit tests for papers.filename"""
+import os
 import unittest
 
 from papers.filename import Format, TemplateError, UNKNOWN_AUTHOR, UNKNOWN_YEAR, UNKNOWN_TITLE, listtag, make_template_fields
@@ -117,6 +118,13 @@ class TestSafeFileNames(unittest.TestCase):
         self.assertLessEqual(len(folder.encode()), MAX_NAME_BYTES)
         self.assertEqual(fit_name(name + '.pdf')[-4:], '.pdf')
         self.assertEqual(len(fit_name(name + '.pdf').split('/')[1].encode()), MAX_NAME_BYTES)
+
+    def test_long_extension(self):
+        "an extension that leaves no room for the name is cut too (#194)"
+        from papers.filename import MAX_NAME_BYTES, fit_name
+        self.assertEqual(fit_name('/lib/' + 'a' * 300 + '.' + 'b' * 300), '/lib/a.' + 'b' * 248)
+        self.assertEqual(fit_name('/lib/' + 'a' * 10 + '.' + 'é' * 200), '/lib/a.' + 'é' * 124)
+        self.assertLessEqual(len(os.path.basename(fit_name('x.' + 'é' * 200)).encode()), MAX_NAME_BYTES)
 
     def test_attachments_fit(self):
         from papers.files import attachment_names

@@ -702,7 +702,9 @@ Contract:
 - When `<name><ext>` (or `<name>--<label><ext>`) is longer than 250 bytes
   in UTF-8, the part before `<ext>` is cut to fit 250 bytes with `<ext>`
   (at a character boundary), then trailing dots and spaces are removed
-  (`-` if nothing is left). The `-2` suffixes below come after this cut.
+  (`-` if nothing is left). An `<ext>` longer than 249 bytes is first cut
+  to 249 bytes (at a character boundary), so that the part before it
+  keeps at least one byte. The `-2` suffixes below come after this cut.
 - The name may contain `/` (and `\` on Windows) from the template itself:
   it then names subfolders of the files directory, created as needed.
 - Each other file of the entry is placed at

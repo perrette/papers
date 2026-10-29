@@ -304,6 +304,7 @@ for the specification. A section marked free has none.
 - tests/test_file_cmd.py::TestSameFileName::test_two_papers_same_name
 - tests/test_file_cmd.py::TestSameFileName::test_same_content_is_the_same_file
 - tests/test_filename_unit.py::TestSafeFileNames::test_length
+- tests/test_filename_unit.py::TestSafeFileNames::test_long_extension
 - tests/test_filename_unit.py::TestSafeFileNames::test_attachments_fit
 - tests/test_config_v3.py::TestMigrateFolders::test_folders
 - tests/test_spec_library.py::TestFileNames::test_extension
