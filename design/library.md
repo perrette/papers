@@ -75,7 +75,11 @@ Contract:
   two folders are the same (real path), the target exists already, the
   `.papers` folder of the directory of the bibtex has a `config.json` (the
   bibtex belongs to another library), or the command is a dry run (see
-  [Open questions](#open-questions)). A move that fails is a warning.
+  [Open questions](#open-questions)), whatever the spelling of the option
+  (`--dry-run`, an abbreviation such as `--dry`, `file mv -n`). The move
+  is made once the command line is read: a command whose arguments are
+  wrong (a usage error) moves nothing either. A move that fails is a
+  warning.
 
 ### `.papers/.gitignore`
 
@@ -1030,6 +1034,7 @@ All resolved. Each record gives the question and the decision.
     it is put back as a copy, with its token.
 20. **Does a dry run move the files of the `.papers/` next to the
     bibtex?** No: the dry run is in force before the library is loaded,
-    so nothing is moved.
+    so nothing is moved. #194: also with another spelling of the option
+    (an abbreviation, `file mv -n`).
 21. **Does `papers config --prune` remove `gitlfs` and `gitdir`?** Yes:
     they are known keys of papers 2, not written back at save.

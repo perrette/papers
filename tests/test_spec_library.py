@@ -52,6 +52,21 @@ class TestLayout(ConfigTest):
         self.assertTrue(os.path.exists(self.path('lib', 'bib', '.papers', 'distinct.json')))
         self.assertFalse(os.path.exists(self.path('lib', '.papers', 'distinct.json')))
 
+    def test_no_move_with_other_spellings_of_dry_run(self):
+        """library.md Layout: no move with --dry-run written otherwise (an
+        abbreviation, `file mv -n`); a command without it moves them"""
+        self.papers('init lib --bibtex lib/refs/papers.bib')
+        os.makedirs(self.path('lib', 'refs', '.papers'))
+        Path(self.path('lib', 'refs', '.papers', 'distinct.json')).write_text('{"distinct": []}\n')
+        for cmd in ('list --dry', 'file mv -n x.pdf y.pdf'):
+            self.papers(cmd, cwd=self.path('lib'), sp_cmd='call')  # (mv: no entry links x.pdf, an error)
+            papers.config.DRYRUN = False
+            self.assertTrue(os.path.exists(self.path('lib', 'refs', '.papers', 'distinct.json')), cmd)
+            self.assertFalse(os.path.exists(self.path('lib', '.papers', 'distinct.json')), cmd)
+        self.papers('list', cwd=self.path('lib'))
+        self.assertFalse(os.path.exists(self.path('lib', 'refs', '.papers', 'distinct.json')))
+        self.assertTrue(os.path.exists(self.path('lib', '.papers', 'distinct.json')))
+
 
 class TestConfigurationFormat(ConfigTest):
     "library.md, The library configuration: Format"

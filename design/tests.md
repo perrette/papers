@@ -18,6 +18,7 @@ for the specification. A section marked free has none.
 - tests/test_library_folder.py::LibraryFolderTest::test_other_library_left_alone
 - tests/test_spec_library.py::TestLayout::test_papers_folder_of_the_library_directory
 - tests/test_spec_library.py::TestLayout::test_no_move_with_dry_run
+- tests/test_spec_library.py::TestLayout::test_no_move_with_other_spellings_of_dry_run
 - tests/test_spec_library.py::TestFindingTheLibrary::test_bibtex_without_library
 
 ### `.papers/.gitignore`

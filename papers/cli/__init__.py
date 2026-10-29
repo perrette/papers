@@ -62,10 +62,14 @@ def main(args=None):
 
 def _main(argv, directory=None):
     check_legacy_global_config()
-    # the library is loaded before the arguments are parsed: a dry run
-    # must not move its files either (see papers.config.move_papers_files)
-    papers.config.DRYRUN = '--dry-run' in (sys.argv[1:] if argv is None else argv)
-    config = find_config()
+    # the library is loaded before the arguments are parsed, as in a dry run: its
+    # files are moved once the arguments say it is not one (see _run and
+    # papers.config.move_papers_files; --dry-run has other spellings: --dry, file mv -n)
+    papers.config.DRYRUN = True
+    try:
+        config = find_config()
+    finally:
+        papers.config.DRYRUN = False
 
     parser, subparsers = get_parser(config)
 
@@ -124,8 +128,8 @@ def _run(o, parser, subparsers, config):
                        "outside of libraries; `papers migrate` turns it into a library, the default library")
 
     # modify disk state?
-    if hasattr(o,'dry_run'):
-        papers.config.DRYRUN = o.dry_run
+    papers.config.DRYRUN = bool(getattr(o, 'dry_run', False))
+    papers.config.move_papers_files(config)  # not done when the library was loaded (see _main)
 
     try:
         subp = subparsers.choices[o.cmd]
