@@ -553,6 +553,26 @@ def dumps_csl(entries, files=lambda e: ()):
     return json.dumps([entry_to_csl(e, files(e)) for e in entries], indent=2, ensure_ascii=False) + '\n'
 
 
+_CSL_NAME_PARTS = ('family', 'given', 'literal', 'non-dropping-particle', 'dropping-particle', 'suffix')
+
+
+def _is_csl_name(name):
+    "a string, or an object whose name parts are strings (or null)"
+    return isinstance(name, str) or isinstance(name, dict) and all(
+        isinstance(name.get(part), (str, type(None))) for part in _CSL_NAME_PARTS)
+
+
+def _check_csl_names(item, number):
+    "ValueError if a name list of the item (author...) is not a name or an array of names"
+    for name in ('author', 'editor', 'translator'):
+        names = item.get(name)
+        if not names:
+            continue
+        if not (_is_csl_name(names) or isinstance(names, list) and all(_is_csl_name(n) for n in names if n)):
+            label = f'item {number}' + (f' (id {json.dumps(item["id"], ensure_ascii=False)})' if 'id' in item else '')
+            raise ValueError(f'not a CSL-JSON file: {label}: {name} is not a name or an array of names')
+
+
 def loads_csl(text):
     try:
         data = json.loads(text)
@@ -562,6 +582,8 @@ def loads_csl(text):
         data = data.get('items', [data])  # one item, or {"items": [...]}
     if not isinstance(data, list) or not all(isinstance(x, dict) for x in data):
         raise ValueError('not a CSL-JSON file: a list of items is expected')
+    for number, item in enumerate(data, 1):
+        _check_csl_names(item, number)
     return [csl_to_entry(item) for item in data]
 
 
