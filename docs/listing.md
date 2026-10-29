@@ -135,8 +135,10 @@ The commands that act on entries take KEY arguments, where KEY is any of:
 - an ISBN, 10 or 13 digits, with hyphens or spaces (the ISBN-10 and ISBN-13
   forms of a book are the same), matched against the `isbn` field.
 
-A key cannot start with a digit, so an argument that starts with a digit is
-never a key. An identifier that matches no entry, or several entries (e.g.
+A key of the library names its entry first, even if it starts with a digit
+or reads as a DOI or ISBN (the `{doi}` key template gives keys such as
+`10.1000-xyz`); otherwise an argument that starts with a digit is read as a
+DOI, arXiv id or ISBN. An identifier that matches no entry, or several entries (e.g.
 an ISBN shared by the chapters of a book), is an error, reported before
 anything changes.
 

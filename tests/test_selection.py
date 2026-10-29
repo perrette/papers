@@ -152,7 +152,7 @@ class IdentifierTest(unittest.TestCase):
 
     def test_key(self):
         self.assertEqual(parse_identifier('Smith2000'), ('key', 'smith2000'))
-        with self.assertRaisesRegex(ValueError, 'cannot start with a digit'):
+        with self.assertRaisesRegex(ValueError, 'not a key of the library'):
             parse_identifier('2000smith')
 
 
@@ -190,8 +190,16 @@ class SelectIdentifiersTest(unittest.TestCase):
             select_entries(self.biblio, ['-'], stdin=io.StringIO('Book2000\n0306406152\n'))
 
     def test_not_a_key(self):
-        with self.assertRaisesRegex(PapersExit, 'cannot start with a digit'):
+        with self.assertRaisesRegex(PapersExit, 'not a key of the library'):
             self.select('2000book')
+
+    def test_key_that_starts_with_a_digit(self):
+        "a key of the library names its entry, though it starts with a digit (the {doi} key template gives such keys)"
+        biblio = Biblio(parse_string('@article{10.1000-xyz,\n title = {A title},\n doi = {10.1000/xyz}\n}\n'
+                                     '@book{9780306406157,\n title = {A book}\n}\n'))
+        self.assertEqual(keys(select_entries(biblio, ['10.1000-xyz'])), ['10.1000-xyz'])
+        self.assertEqual(keys(select_entries(biblio, ['10.1000/xyz'])), ['10.1000-xyz'])  # the DOI still works
+        self.assertEqual(keys(select_entries(biblio, ['9780306406157'])), ['9780306406157'])  # a key before an ISBN
 
     def test_key_wins_over_alias(self):
         "a key that is also a former key of another entry names the entry of that key"

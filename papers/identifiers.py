@@ -95,7 +95,8 @@ def entry_arxiv(e):
 def parse_identifier(arg):
     """(kind, normalized value) of a command-line identifier, kind being
     'doi', 'arxiv', 'isbn' or 'key'. Raise ValueError for an argument that
-    starts with a digit (keys cannot) and is none of the others."""
+    starts with a digit and is none of the others (select_some takes a key
+    of the library first: only then may a key start with a digit)."""
     doi = normalize_doi(arg)
     if doi:
         return 'doi', doi
@@ -106,7 +107,7 @@ def parse_identifier(arg):
     if isbn:
         return 'isbn', isbn
     if arg.strip()[:1] in DIGITS:
-        raise ValueError(f'{arg}: not a {ACCEPTED} (a key cannot start with a digit)')
+        raise ValueError(f'{arg}: not a key of the library, nor a DOI, arXiv id or ISBN')
     return 'key', arg.strip().lower()
 
 
@@ -185,11 +186,14 @@ def select_some(biblio, args, stdin=None):
     errors = []
     missing = []
     for arg in selection:
-        try:
-            ident = parse_identifier(arg)
-        except ValueError as error:
-            errors.append(str(error))
-            continue
+        if arg.strip().lower() in keys:  # a key of the library is that entry, even if it reads as a DOI or ISBN
+            ident = ('key', arg.strip().lower())
+        else:
+            try:
+                ident = parse_identifier(arg)
+            except ValueError as error:
+                errors.append(str(error))
+                continue
         # the key of an entry wins over the former keys (ids) of the others:
         # the index of all identifiers is only needed for the other arguments
         found = keys.get(ident[1], []) if ident[0] == 'key' else []
