@@ -560,6 +560,9 @@ Contract (other implementations must find the same library):
   current directory).
 - The `.papers` folder of a bibtex without library is that of the
   directory of FILE (see [Layout](#layout)).
+- `papers status --bibtex FILE` shows the library so found (or the
+  bibtex without library); a FILE that does not exist is an error, as
+  for the other commands.
 
 **`--filesdir DIR`** replaces the files directory for the command.
 

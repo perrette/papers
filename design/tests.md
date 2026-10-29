@@ -206,6 +206,7 @@ for the specification. A section marked free has none.
 - tests/test_spec_library.py::TestFindingTheLibrary::test_root_never_searched
 - tests/test_spec_library.py::TestFindingTheLibrary::test_bibtex_of_the_library_from_elsewhere
 - tests/test_spec_library.py::TestFindingTheLibrary::test_bibtex_without_library
+- tests/test_spec_library.py::TestFindingTheLibrary::test_status_bibtex
 
 ### Finding the library of a command
 
