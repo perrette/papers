@@ -804,10 +804,7 @@ a non-empty value made only of dots replaced by as many `-`.
 
 **Slugify.** In order:
 
-1. each run of `'` replaced by `-`;
-2. Unicode NFKD, then transliteration to ASCII (`ü` → `u`, `ß` → `ss`,
-   `Œ` → `oe`, other scripts romanised);
-3. HTML references decoded, in one pass from left to right (a decoded
+1. HTML references decoded, in one pass from left to right (a decoded
    `&` starts no reference: `&amp;#38;` gives `&#38;`):
    - named: the 252 named entities of HTML 4 (`&amp;`, `&eacute;`; case
      sensitive; `&apos;`, which HTML 4 does not have, stays as written);
@@ -817,9 +814,11 @@ a non-empty value made only of dots replaced by as many `-`.
      (U+D800 to U+DFFF). Any other number stays as written, and does not
      change the decoding of the other references (`a&#65;b &#1114112;
      &#66;c` gives `aab-1114112-bc`).
-   - a decoded character is not transliterated (step 2 is done): its
-     accents become `-` in step 6 (`&eacute;t&eacute;` gives `e-te`);
-4. Unicode NFKD again; lower case;
+2. each run of `'` replaced by `-` (also one from step 1: `l&#39;eau`
+   gives `l-eau`);
+3. Unicode NFKD, then transliteration to ASCII (`ü` → `u`, `ß` → `ss`,
+   `Œ` → `oe`, other scripts romanised; `&eacute;t&eacute;` gives `ete`);
+4. lower case;
 5. remaining `'` removed; a `,` between two digits removed;
 6. each run of characters other than `a-z` and `0-9` and `-` replaced by
    `-`; runs of `-` collapsed to one; leading and trailing `-` removed.
@@ -827,7 +826,7 @@ a non-empty value made only of dots replaced by as many `-`.
 Examples: `Müller` → `muller`, `l'eau` → `l-eau`,
 `10.1000/xyz(1)` → `10-1000-xyz-1`, `1,000` → `1000`, `Ocean’s` →
 `oceans` (the table gives `'` for `’`, removed in step 5). The
-transliteration of step 2 is the table of bibtex.md section 9.1
+transliteration of step 3 is the table of bibtex.md section 9.1
 ([data/ascii-transliteration.tsv](data/ascii-transliteration.tsv)), the
 same in every implementation, so that the same entry gives the same name.
 

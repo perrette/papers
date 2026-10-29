@@ -717,9 +717,11 @@ class TestKeySuffix(unittest.TestCase):
                  Entry('article', '', [Field('title', 'Only a title'), Field('year', '2000')]),
                  Entry('article', '', [Field('title', 'A b')]),
                  Entry('article', '', [Field('title', "Müller's ice")]),
-                 Entry('misc', '', [Field('note', 'no title')])]
+                 Entry('misc', '', [Field('note', 'no title')]),
+                 Entry('article', '', [Field('title', '100 years'), Field('year', '2000')]),
+                 Entry('article', '', [Field('title', '100')])]
         biblio.add_entries(added, check_duplicate=False)
-        self.assertEqual([e.key for e in added], ['onlyb', 'only2000', 'a', 'muller', 'entry'])
+        self.assertEqual([e.key for e in added], ['onlyb', 'only2000', 'a', 'muller', 'entry', 'years2000', 'entryb'])
         # also with -u/--update-key
         new, = entries('@article{x1, title = {Sea level}, year = {2001}}')
         biblio.insert_entry(new, update_key=True)

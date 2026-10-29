@@ -33,8 +33,9 @@ def slugify(text):
     joined with `-`, transliterated by papers' own table (papers.ascii);
     an apostrophe in `text` separates words, one from the table (as in Ь)
     is dropped"""
+    text = decode_html(text)
     text = to_ascii(unicodedata.normalize('NFKD', text.replace("'", '-'))).replace("'", '')
-    text = unicodedata.normalize('NFKD', decode_html(text)).lower()
+    text = text.lower()
     text = re.sub(r'(?<=\d),(?=\d)', '', text.replace("'", ''))
     return re.sub(r'-{2,}', '-', re.sub(r'[^-a-zA-Z0-9]+', '-', text)).strip('-')
 
@@ -279,9 +280,10 @@ class Format:
 def fallback_key(entry):
     """the key of a new entry for which the key template gives an empty key:
     the first title word of at least 3 characters (else the first word) of
-    the slugified title, followed by the slugified year if there is one
-    (`only2000`); `entry` without title"""
-    words = [w for w in slugify(get_entry_val(entry, 'title', '')).split('-') if w]
+    the slugified title, words that start with a digit left out (a key does
+    not start with one), followed by the slugified year if there is one
+    (`only2000`); `entry` without such a word"""
+    words = [w for w in slugify(get_entry_val(entry, 'title', '')).split('-') if w and not w[0].isdigit()]
     if not words:
         return 'entry'
     word = next((w for w in words if len(w) >= 3), words[0])

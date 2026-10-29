@@ -712,13 +712,15 @@ that entry (the merged key goes to its `ids`, section 10.5).
 - A new entry never gets an empty key. When the key template gives an
   empty key (`{author}{year}` falls back to the unknown template `{doi_}`,
   empty without a DOI), the key is made from the title: the title is
-  slugified (library.md, Slugify) and split on `-`; the first word of at
-  least 3 characters is taken, else the first word; the slugified `year`
-  field follows if the entry has one. Without title words, the key is
-  `entry`. The suffix rule above then applies.
+  slugified (library.md, Slugify) and split on `-`; words that start with
+  a digit are left out (a key does not start with one); the first word of
+  at least 3 characters is taken, else the first word; the slugified
+  `year` field follows if the entry has one. Without such a word, the key
+  is `entry`. The suffix rule above then applies.
   - `Only a title`, year 2000: `only2000`; without year: `only`; with
     `only` taken: `onlyb`.
-  - `A b`: `a`. No title: `entry`.
+  - `A b`: `a`. `100 years`, year 2000: `years2000`. No title, or `100`:
+    `entry`.
   This applies to the entries new to the library only: an entry renamed
   by the key template (`check --fix-key`, `--auto-key`, `list --fetch`)
   keeps its key when the template gives an empty key (section 7.2).

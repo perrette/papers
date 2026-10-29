@@ -123,8 +123,8 @@ Entries are case-sensitive, and a few more fields are added, so that:
 
 The author names, the title words, `{doi_}` and `{doi_or_id}` are written
 in ASCII: accented and non-Latin letters are transliterated with the table
-of the Unidecode library (`Müller` gives `muller`, `Хрущёв` gives
-`khrushchev`), and other characters separate words.
+of AnyAscii (`Müller` gives `muller`, `Хрущёв` gives `khrushchev`, `北京`
+gives `beijing`), and other characters separate words.
 
 ## Modifiers
 
