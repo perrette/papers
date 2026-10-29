@@ -597,6 +597,16 @@ class TestTags(SpecLibrary):
         self.assertEqual(tag_counts(self.entries().values()),
                          {'a;b': 1, 'c': 1, 'climate': 1, 'climate/amoc': 1, 'climate/amoc/tipping': 1, 'Climate': 1})
 
+    def test_counting_order(self):
+        "bibtex.md 6: papers tag lists by decreasing count, then lower case, then the tag itself"
+        from papers.cli.entry_cmds import print_tag_tree
+        counts = {'x': 1, 'climate': 1, 'Climate': 1, 'b': 2, 'Climate/z': 1, 'Climate/a': 1}
+        for order in (list(counts), list(reversed(counts))):
+            out = io.StringIO()
+            with redirect_stdout(out):
+                print_tag_tree({t: counts[t] for t in order})
+            self.assertEqual(out.getvalue(), 'b (2)\nClimate (1)\n  a (1)\n  z (1)\nclimate (1)\nx (1)\n')
+
     def test_matching(self):
         "bibtex.md 6: --tag: lower case, trailing / dropped, shell pattern on the whole tag, or a parent"
         from papers.cli.entry_cmds import tag_matches

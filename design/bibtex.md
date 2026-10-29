@@ -599,7 +599,11 @@ documentation (`docs/listing.md`).
   `a;b, c` by another program is read as the tags `a;b` and `c`, and
   stays as it is until then.
 - Counting (`papers tag`): an entry counts once for each of its tags and
-  for each parent of them.
+  for each parent of them. Tags are counted as written (`Climate` and
+  `climate` are counted apart). Order: the tags under each parent (and
+  the top-level tags) by decreasing count, then by the tag in lower case,
+  then by the tag itself (Unicode code points), so `Climate` comes before
+  `climate` when their counts are equal.
 
 The fields are not merged as sets in a two-way merge: two `keywords`
 values that differ are a conflict (section 10).

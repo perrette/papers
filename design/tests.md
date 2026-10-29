@@ -585,6 +585,7 @@ for the specification. A section marked free has none.
 - tests/test_spec_bibtex.py::TestTags::test_syntax
 - tests/test_spec_bibtex.py::TestTags::test_add_remove_rename_ignore_case
 - tests/test_spec_bibtex.py::TestTags::test_counting
+- tests/test_spec_bibtex.py::TestTags::test_counting_order
 - tests/test_spec_bibtex.py::TestTags::test_matching
 - tests/test_spec_bibtex.py::TestTwoWayMerge::test_keywords_conflict
 - tests/test_entries.py::test_tags_without_case

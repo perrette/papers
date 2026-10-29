@@ -375,7 +375,7 @@ def print_tag_tree(counts):
         children.setdefault(parents[-1] if parents else None, []).append(tag)
 
     def show(parent, depth):
-        for tag in sorted(children.get(parent, []), key=lambda t: (-counts[t], t.lower())):
+        for tag in sorted(children.get(parent, []), key=lambda t: (-counts[t], t.lower(), t)):
             name = tag[len(parent)+1:] if parent else tag
             print(f"{'  '*depth}{name} ({counts[tag]})")
             show(tag, depth+1)
