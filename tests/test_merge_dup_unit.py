@@ -100,6 +100,9 @@ class TestDuplicate(unittest.TestCase):
         self.assertEqual(parse_name(''), ('', ''))
         self.assertEqual(parse_name('{Smith, Jones and Co}'), ('{Smith, Jones and Co}', ''))
         self.assertEqual(parse_name('{Smith, Jones}, Ltd'), ('{Smith, Jones}', 'Ltd'))
+        # bibtex.md 9.2: words are split on any whitespace, a newline too
+        self.assertEqual(parse_name('Jane\nMary Smith'), ('Smith', 'Jane\nMary'))
+        self.assertEqual(parse_name('Jane Mary\n{van der Berg}'), ('{van der Berg}', 'Jane Mary'))
 
     def test_split_names_outside_braces(self):
         from papers.duplicate import split_names, author_id

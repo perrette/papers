@@ -108,7 +108,7 @@ def parse_name(name):
         elif c == ',' and depth == 0:
             return name[:i].strip(), name[i + 1:].strip()
     # last word, keeping a braced group together
-    m = re.match(r'^(.*?)\s*(\{[^{}]*\}|\S+)$', name)
+    m = re.match(r'^(.*?)\s*(\{[^{}]*\}|\S+)$', name, re.DOTALL)  # the words may be on several lines
     if not m:
         return name, ''
     return m.group(2), m.group(1).strip()

@@ -739,9 +739,10 @@ the exchanges with pools.
   (case-sensitive, any whitespace), at brace depth 0 as the name
   formatting of section 3.5 (`{Barnes and Noble}` is one name). The
   family name of each name: if it contains a comma at brace depth 0, the
-  text before the first such comma; otherwise its last word, where a
-  `{...}` group without nested braces counts as one word
-  (`Jane {van der Berg}` gives `{van der Berg}`). Each family name is
+  text before the first such comma; otherwise its last word (words are
+  separated by whitespace runs, line breaks included), where a `{...}`
+  group without nested braces counts as one word (`Jane {van der Berg}`
+  gives `{van der Berg}`). Each family name is
   normalized (9.1); the author identifier is the normalized family names
   joined by spaces. The `editor` field is not used.
 - **Title**: `norm(title)`.
