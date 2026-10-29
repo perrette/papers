@@ -80,7 +80,8 @@ method). Its placeholders are:
 Another placeholder is an error that lists these. A name that would place
 the file outside the files directory (`../{author}`) is refused: the files
 of that entry stay where they are, and `papers file rename` exits with
-status 1 once it has renamed the files of the other entries.
+status 1 once it has renamed the files of the other entries. `papers file
+attach` keeps the new link to the file where it is, and exits with status 1.
 
 To rename `esd-4-11-2013.pdf` as `perrette_2013.pdf`, the template should be
 `--name-template {author}_{year} --name-author-num 1`. If that happens to be

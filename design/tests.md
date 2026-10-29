@@ -380,6 +380,7 @@ for the specification. A section marked free has none.
 - tests/test_path_traversal.py::TestRename::test_fields_stay_inside
 - tests/test_path_traversal.py::TestRename::test_template_outside_is_refused
 - tests/test_spec_formats.py::TestExitCodes::test_refused_rename
+- tests/test_spec_formats.py::TestExitCodes::test_refused_attach
 - tests/test_path_traversal.py::TestRename::test_subfolders_still_work
 - tests/test_path_traversal.py::TestAddBibtex::test_add
 
@@ -1058,6 +1059,7 @@ for the specification. A section marked free has none.
 
 - tests/test_spec_formats.py::TestExitCodes::test_codes
 - tests/test_spec_formats.py::TestExitCodes::test_refused_rename
+- tests/test_spec_formats.py::TestExitCodes::test_refused_attach
 - tests/test_spec_formats.py::TestExitCodes::test_template_error
 - tests/test_spec_formats.py::TestExitCodes::test_question_without_input
 - tests/test_cli_unit.py::TestMainCleanExit::test_papers_exit

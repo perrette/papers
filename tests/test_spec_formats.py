@@ -1225,6 +1225,20 @@ class TestExitCodes(SpecLibrary):
         self.lib('file rename --move')  # exit 0
         self.assertEqual(self.libfiles(), ['one2000-x.pdf'])
 
+    def test_refused_attach(self):
+        "formats.md 7.3, library.md Path safety 2: a refused file attach exits 1, the link is kept"
+        self.bib(entry('one2000'))
+        pdf = self.write('a.pdf')
+        lib = self.path('lib')
+        code, out, err = run_papers('file', 'attach', 'one2000', pdf, '--copy', '--name-template', '../{author}', cwd=lib)
+        self.assertEqual(code, 1)
+        self.assertIn('points outside the files directory', err)
+        self.assertEqual(self.files('one2000'), [pdf])
+        self.lib("config name.template '../{author}'")
+        self.lib('config files move')
+        code, out, err = run_papers('list', '-k', 'one2000', '--attach', self.write('b.pdf'), cwd=lib)
+        self.assertEqual(code, 1, err)
+
     def test_template_error(self):
         "formats.md 7.3, library.md Syntax: a template that cannot be formatted is a clean error, exit 1"
         self.bib(entry('one2000'))

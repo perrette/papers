@@ -881,7 +881,9 @@ intended folder.
    `{author}/../../x` and `.`.
    `papers file rename` (and `papers list --rename`) places the files of
    the other entries, then exits with code 1; so does it when the name
-   template has an unknown or invalid placeholder.
+   template has an unknown or invalid placeholder. `papers file attach`
+   (and `papers list --attach`) keeps the new links, saves, and exits
+   with code 1.
 3. Labels of the other files come from base names, which contain no
    separator.
 4. Templates may still create subfolders (`{year}/{author}`): separators

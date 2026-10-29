@@ -743,7 +743,8 @@ def listcmd(parser, o, config):
     elif attach:
         if len(entries) != 1:
             raise PapersExit(f"list only one entry to use --attach ({len(entries)} listed): nothing was changed")
-        notes = attach_entry_files(biblio, config, pools, entries[0], attach, attach_mode)
+        notes, placed = attach_entry_files(biblio, config, pools, entries[0], attach, attach_mode)
+        failed = 0 if placed else 1
 
     elif o.edit:
         edit_selected(biblio, entries)
