@@ -345,7 +345,7 @@ state refers to:
 |---|---|---|---|
 | `parent` | string or `null` | always | the identifier of the state before; `null` for the first state of a project |
 | `time` | number | always | Unix time (seconds, fractional) when the state was made |
-| `kind` | string | always (written by papers; optional for a reader) | `command`, `outside` or `start` (3.2) |
+| `kind` | string | optional (papers writes it in each state it makes) | `command`, `outside` or `start` (3.2) |
 | `message` | string | always | the command line, or a description (3.2) |
 | `ops` | list of objects | always | the file operations of the command (section 4) |
 | `deleted` | list of strings | always | the sha256 of the file objects the state keeps (3.4) |
