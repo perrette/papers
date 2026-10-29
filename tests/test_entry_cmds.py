@@ -444,6 +444,12 @@ class TestEditSet(EntryTest):
         self.assertEqual(self.entry('chap2000')['crossref'], 'perrette2013')  # follows
         self.assertNotIn('ids', self.entry('perrette2013'))
 
+    def test_key_case_only(self):
+        # formats.md 7.2, bibtex.md 7.3: a change of case is a rename, crossref follows
+        self.assertEqual(self.porcelain('edit one2000 --key One2000'), ['renamed one2000 One2000', 'modified chap2000'])
+        self.assertEqual(self.keys(), ['One2000', 'chap2000', 'two2000'])
+        self.assertEqual(self.entry('chap2000')['crossref'], 'One2000')
+
     def test_fix_key(self):
         # any change of key of an entry is a rename, papers check --fix-key too
         self.bib('@article{2000bad,\n author = {Smith, John},\n title = {Climate},\n year = {2000}\n}\n',
@@ -478,5 +484,11 @@ class TestEditSet(EntryTest):
             self.lib('edit one2000 two2000 --key x')
         with self.assertRaises(SystemExit), patch('sys.stderr', io.StringIO()):
             self.lib('edit one2000 --keep-old-key')
+        self.assertEqual(self.keys(), ['chap2000', 'one2000', 'two2000'])
+
+    def test_empty_key_refused(self):
+        # bibtex.md 7.2: --key '' is refused, it does not open the editor
+        with patch.dict(os.environ, EDITOR='false'), self.assertRaisesRegex(PapersExit, 'not a valid key'):
+            self.lib("edit one2000 --key ''")
         self.assertEqual(self.keys(), ['chap2000', 'one2000', 'two2000'])
 

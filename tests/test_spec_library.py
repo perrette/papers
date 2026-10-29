@@ -435,6 +435,17 @@ class TestFindingTheLibrary(ConfigTest):
         self.assertEqual(os.listdir(self.path('loose')), ['refs.bib'])
         self.assertFalse(os.path.exists(self.path('lib', '.papers', 'files.json')))
 
+    def test_status_bibtex(self):
+        "library.md Finding the library, --bibtex FILE: papers status too"
+        self.papers('init lib')
+        self.papers('init other --bibtex other/refs.bib')
+        Path(self.path('other', 'refs.bib')).write_text(entry('one2000'))
+        out = self.papers('status --bibtex ../other/refs.bib', cwd=self.path('lib'), sp_cmd='check_output')
+        self.assertIn('refs.bib (1 entr', out)
+        self.assertIn(self.path('other'), out)
+        with self.assertRaises(PapersExit):
+            self.papers(f'status --bibtex {self.path("missing.bib")}', cwd=self.path('lib'))
+
 
 class TestPoolSetting(ConfigTest):
     "library.md, Pools and shallow libraries: The pool setting"

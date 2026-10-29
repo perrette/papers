@@ -190,7 +190,7 @@ def format_template(template, fields, kind='name'):
         available = ', '.join('{' + f + '}' for f in PLACEHOLDERS)
         raise TemplateError(f'unknown placeholder {{{name}}} in the {kind} template {template!r}; '
                             f'available: {available}') from None
-    except ValueError as error:
+    except (ValueError, AttributeError, TypeError) as error:  # e.g. {year.real}, {year[x]}
         raise TemplateError(f'invalid {kind} template {template!r}: {error}') from None
 
 

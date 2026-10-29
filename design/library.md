@@ -564,6 +564,9 @@ Contract (other implementations must find the same library):
   current directory).
 - The `.papers` folder of a bibtex without library is that of the
   directory of FILE (see [Layout](#layout)).
+- `papers status --bibtex FILE` shows the library so found (or the
+  bibtex without library); a FILE that does not exist is an error, as
+  for the other commands.
 
 **`--filesdir DIR`** replaces the files directory for the command.
 
@@ -743,7 +746,9 @@ Contract:
 A template is text with placeholders `{name}`. `{{` and `}}` are literal
 braces. An unknown placeholder (also a case variant such as `{AuTHoR}`)
 is an error that lists the available ones. Only these three forms are
-contract. Free: an implementation may accept more, for example a format
+contract. A template that cannot be formatted (an unknown placeholder, or
+a form that is not accepted, such as `{year.real}`) stops the command
+with an error (`papers: error: ...`, exit code 1, formats.md 7.3). Free: an implementation may accept more, for example a format
 specification after a colon (`{title:.20}`, the first 20 characters);
 papers accepts such forms, another implementation need not.
 
@@ -874,6 +879,9 @@ intended folder.
    entry, and its files stay where they are with their links unchanged.
    This covers templates such as `../{author}`, `/tmp/{author}`,
    `{author}/../../x` and `.`.
+   `papers file rename` (and `papers list --rename`) places the files of
+   the other entries, then exits with code 1; so does it when the name
+   template has an unknown or invalid placeholder.
 3. Labels of the other files come from base names, which contain no
    separator.
 4. Templates may still create subfolders (`{year}/{author}`): separators

@@ -597,6 +597,16 @@ class TestTags(SpecLibrary):
         self.assertEqual(tag_counts(self.entries().values()),
                          {'a;b': 1, 'c': 1, 'climate': 1, 'climate/amoc': 1, 'climate/amoc/tipping': 1, 'Climate': 1})
 
+    def test_counting_order(self):
+        "bibtex.md 6: papers tag lists by decreasing count, then lower case, then the tag itself"
+        from papers.cli.entry_cmds import print_tag_tree
+        counts = {'x': 1, 'climate': 1, 'Climate': 1, 'b': 2, 'Climate/z': 1, 'Climate/a': 1}
+        for order in (list(counts), list(reversed(counts))):
+            out = io.StringIO()
+            with redirect_stdout(out):
+                print_tag_tree({t: counts[t] for t in order})
+            self.assertEqual(out.getvalue(), 'b (2)\nClimate (1)\n  a (1)\n  z (1)\nclimate (1)\nx (1)\n')
+
     def test_matching(self):
         "bibtex.md 6: --tag: lower case, trailing / dropped, shell pattern on the whole tag, or a parent"
         from papers.cli.entry_cmds import tag_matches
@@ -645,6 +655,11 @@ class TestKeyValidity(SpecLibrary):
         self.assertEqual(sorted(self.entries()), ['Other', 'spec0'])
         self.papers('edit spec0 --key a-b_c:d.e/f+g')
         self.assertIn('a-b_c:d.e/f+g', self.entries())
+
+    def test_leading_digit_is_ascii(self):
+        "bibtex.md 7.2: a leading digit is an ASCII digit 0-9; a key may start with another Unicode digit"
+        self.papers("edit spec0 --key '\u0662abc'")
+        self.assertIn('\u0662abc', self.entries())
 
 
 class TestCrossref(SpecLibrary):
@@ -765,6 +780,14 @@ class TestIdentifiersOfAnEntry(unittest.TestCase):
                          {'isbn': '9780306406157,9780804429573,9783161484100'})
         self.assertEqual(self.ident('@incollection{a, isbn = {0-306-40615-2}}'), {})
 
+    def test_ascii_digits(self):
+        "bibtex.md 9.2: the digits of an ISBN or an arXiv id are ASCII digits 0-9 (not other Unicode digits)"
+        from papers.identifiers import normalize_arxiv, normalize_isbn
+        self.assertIsNone(normalize_isbn('\u0660\u0663\u0660\u0666\u0664\u0660\u0666\u0661\u0665\u0662'))
+        self.assertIsNone(normalize_isbn('97803064\uff10615\uff17'))
+        self.assertIsNone(normalize_arxiv('\u0662101.01234'))
+        self.assertEqual(self.ident('@book{a, isbn = {\u0660\u0663\u0660\u0666\u0664\u0660\u0666\u0661\u0665\u0662}}'), {})
+
     def test_authors_and_title(self):
         "bibtex.md 9.2: family names (before the first comma at depth 0, else the last word or {...} group), normalized"
         self.assertEqual(self.ident('@article{a, author = {Smith, John and Jane {van der Berg} and M{\\"u}ller and '
@@ -827,6 +850,19 @@ class TestDistinctFile(SpecLibrary):
              '{"authortitle": "b|c"}]]}').encode('utf-8'))
         d = Distinct.for_library(self.dir)
         self.assertEqual(d.pairs, [[{'authortitle': 'müller|ü'}, {'authortitle': 'b|c'}]])
+
+    def test_reading_bad_values(self):
+        "bibtex.md 9.4: a `distinct` that is not an array makes the file unreadable (warning); pairs of non-objects are ignored"
+        from papers.duplicate import Distinct
+        os.makedirs(self.path('.papers'))
+        path = Path(self.path('.papers', 'distinct.json'))
+        for text in ('{"distinct": 5}', '{"distinct": null}', '{"distinct": {}}'):
+            path.write_text(text)
+            with self.assertLogs('papers', level='WARNING'):
+                self.assertEqual(Distinct.for_library(self.dir).pairs, [])
+        path.write_text('{"distinct": [["a", "b"], [{"title": "t"}, 3], [{"title": "t"}, {"title": "u"}]]}')
+        self.assertEqual(Distinct.for_library(self.dir).pairs, [[{'title': 't'}, {'title': 'u'}]])
+        self.assertFalse(Distinct.for_library(self.dir).contains(self.entry('spec0'), self.entry('spec1')))
 
     def test_matching(self):
         "bibtex.md 9.4: doi, arxiv and isbn equal (absent on both counts as equal), authortitle and title where both have them"

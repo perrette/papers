@@ -34,6 +34,7 @@ from papers.extract import parse_doi
 from papers.extract import (extract_pdf_metadata, parse_doi_from_pdf_metadata, parse_dois, pdfhead, pdftail,
                             title_in_text)
 from papers.fetch import fetch_bibtex_by_fulltext_crossref, fetch_bibtex_by_doi
+from papers.identifiers import DIGITS
 
 from papers.encoding import standard_name, family_names, format_entries
 from papers.latexenc import string_to_latex
@@ -96,7 +97,7 @@ def append_abc(key, keys=[]):
     # a letter after a digit is a suffix of this function (Author2000b), in
     # either case
     last = key[-1:]
-    if len(key) > 1 and last.lower() in alphabet and key[-2].isdigit():
+    if len(key) > 1 and last.lower() in alphabet and key[-2] in DIGITS:
         letters = alphabet[alphabet.index(last.lower())+1:]
         if last.isupper():
             letters = letters.upper()
@@ -253,7 +254,8 @@ class Biblio:
     def load(cls, bibtex, filesdir, relative_to=None, **kw):
         with open(bibtex, encoding='utf-8-sig') as f:  # UTF-8, without a byte order mark (see read_text)
             bibtexs = f.read()
-        kw.setdefault('distinct', Distinct.for_library(papers.config.library_dir(bibtex)))
+        if 'distinct' not in kw:  # not read twice (a warning of an unreadable file twice)
+            kw['distinct'] = Distinct.for_library(papers.config.library_dir(bibtex))
         db = parse_string(bibtexs, cache=parse_cache())
         loaded_bib = cls(db, filesdir, relative_to=relative_to if relative_to is not None else os.path.dirname(bibtex), **kw)
         loaded_bib._remember(bibtex, bibtexs)
@@ -289,15 +291,19 @@ class Biblio:
     def renamed_keys(self):
         """[(old, new)]: the entries whose key changed since mark_loaded (the
         same entry; its old key no longer in the library, its new key not in
-        it when loaded: not a merge), [] without mark_loaded"""
+        it when loaded: not a merge; or a change of case only, the key being
+        that of no other entry), [] without mark_loaded"""
         if self.loaded_entries is None:
             return []
-        now = {e.key.lower() for e in self.entries}
-        before = {key.lower() for _, key in self.loaded_keys}
+        now = Counter(e.key.lower() for e in self.entries)
+        before = Counter(key.lower() for _, key in self.loaded_keys)
         present = {id(e) for e in self.entries}
-        return [(old, e.key) for e, old in self.loaded_keys
-                if id(e) in present and e.key.lower() != old.lower()
-                and old.lower() not in now and e.key.lower() not in before]
+
+        def renamed(e, old):
+            if e.key.lower() == old.lower():
+                return e.key != old and now[old.lower()] == before[old.lower()] == 1
+            return old.lower() not in now and e.key.lower() not in before
+        return [(old, e.key) for e, old in self.loaded_keys if id(e) in present and renamed(e, old)]
 
     def rekey_references(self, old, new):
         "the crossref fields of the entries that name `old` (a key that changed to `new`)"
@@ -892,6 +898,8 @@ class Biblio:
         <label> is the file's original name (see `attachment_names`).
         Directories of previous versions (<name>/ with a hidden .<name>.bib)
         are emptied into that layout, and removed when nothing else is left.
+        Returns False when the name points outside the files directory (the
+        files are left where they are), True otherwise.
 
         copy: keep the original file (a hard link when possible, with
             hardlink=True, otherwise a copy). It can also be a function that
@@ -908,7 +916,7 @@ class Biblio:
 
         if not files:
             logger.info('no files to rename')
-            return
+            return True
 
         newname = (formatter or self.nameformat)(e)
         # absolute, to compare with the (absolute) current file paths
@@ -916,7 +924,7 @@ class Biblio:
         target = os.path.normpath(os.path.join(filesdir, newname))
         if os.path.commonpath([filesdir, target]) != filesdir or target == filesdir:
             logger.error(f'{get_entry_val(e, "ID", "")}: the file name {newname!r} points outside the files directory: the files are left where they are')
-            return
+            return False
 
         if callable(copy):
             actions = [copy(file) for file in files]
@@ -944,6 +952,7 @@ class Biblio:
 
         if count > 0:
             logger.info('renamed file(s): {}'.format(count))
+        return True
 
 
     def rename_entries_files(self, copy=False, relative_to=None, hardlink=True):
@@ -1078,4 +1087,4 @@ _KEY_FORBIDDEN = re.compile(r'[\s,{}"#%~=()\\]')
 
 
 def isvalidkey(key):
-    return key and not key[0].isdigit()
+    return key and key[0] not in DIGITS

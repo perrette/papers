@@ -12,11 +12,12 @@ from papers.entries import get_entry_val
 from papers.utils import PapersExit
 
 ACCEPTED = 'key, DOI, arXiv id or ISBN'
+DIGITS = frozenset('0123456789')  # the digits of keys and identifiers: ASCII only (str.isdigit: any Unicode digit)
 
 _DOI_PREFIX = re.compile(r'^(https?://(dx\.)?doi\.org/|doi:\s*)', re.IGNORECASE)
 _ARXIV_PREFIX = re.compile(r'^(arxiv:\s*|https?://arxiv\.org/(abs|pdf)/)', re.IGNORECASE)
-_ARXIV_NEW = re.compile(r'^(\d{4}\.\d{4,5})(v\d+)?$')
-_ARXIV_OLD = re.compile(r'^([a-z][a-z\-]*(\.[a-z]{2})?/\d{7})(v\d+)?$', re.IGNORECASE)
+_ARXIV_NEW = re.compile(r'^([0-9]{4}\.[0-9]{4,5})(v[0-9]+)?$')  # [0-9]: ASCII digits (\d is any Unicode digit)
+_ARXIV_OLD = re.compile(r'^([a-z][a-z\-]*(\.[a-z]{2})?/[0-9]{7})(v[0-9]+)?$', re.IGNORECASE)
 _ARXIV_DOI = re.compile(r'^10\.48550/arxiv\.(.+)$', re.IGNORECASE)
 
 
@@ -51,14 +52,14 @@ def normalize_isbn(text):
     if s.lower().startswith('isbn'):
         s = s[4:].lstrip(':')
     s = s.upper()
-    if re.fullmatch(r'\d{9}[\dX]', s):
+    if re.fullmatch(r'[0-9]{9}[0-9X]', s):
         digits = [10 if c == 'X' else int(c) for c in s]
         if sum((10 - i) * d for i, d in enumerate(digits)) % 11:
             return None
         core = '978' + s[:9]
         check = (10 - sum(int(c) * (1 if i % 2 == 0 else 3) for i, c in enumerate(core)) % 10) % 10
         return core + str(check)
-    if re.fullmatch(r'\d{13}', s):
+    if re.fullmatch(r'[0-9]{13}', s):
         if sum(int(c) * (1 if i % 2 == 0 else 3) for i, c in enumerate(s)) % 10:
             return None
         return s
@@ -104,7 +105,7 @@ def parse_identifier(arg):
     isbn = normalize_isbn(arg)
     if isbn:
         return 'isbn', isbn
-    if arg.strip()[:1].isdigit():
+    if arg.strip()[:1] in DIGITS:
         raise ValueError(f'{arg}: not a {ACCEPTED} (a key cannot start with a digit)')
     return 'key', arg.strip().lower()
 

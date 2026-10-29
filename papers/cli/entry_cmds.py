@@ -375,7 +375,7 @@ def print_tag_tree(counts):
         children.setdefault(parents[-1] if parents else None, []).append(tag)
 
     def show(parent, depth):
-        for tag in sorted(children.get(parent, []), key=lambda t: (-counts[t], t.lower())):
+        for tag in sorted(children.get(parent, []), key=lambda t: (-counts[t], t.lower(), t)):
             name = tag[len(parent)+1:] if parent else tag
             print(f"{'  '*depth}{name} ({counts[tag]})")
             show(tag, depth+1)
@@ -464,10 +464,10 @@ def _entry_from(biblio, path, fmt, entry):
 
 def editcmd(parser, o, config):
     ways = [name for name, given in (('--from', o.from_file), ('--set/--unset', o.set or o.unset),
-                                     ('--key', o.new_key)) if given]
+                                     ('--key', o.new_key is not None)) if given]
     if len(ways) > 1:
         parser.error(f'{" and ".join(ways)}: one at a time')
-    if o.keep_old_key and not o.new_key:
+    if o.keep_old_key and o.new_key is None:
         parser.error('--keep-old-key goes with --key NEW')
     if o.from_file == '-' and '-' in o.entries:
         parser.error('--from - and the keys from the standard input (-): only one of them can read it')
@@ -483,7 +483,7 @@ def editcmd(parser, o, config):
         replace_entries(biblio, entries, [_entry_from(biblio, o.from_file, o.format, entries[0])])
     elif o.set or o.unset:
         set_fields(entries, o.set or [], o.unset or [])
-    elif o.new_key:
+    elif o.new_key is not None:
         if len(entries) != 1:
             raise PapersExit(f'--key changes the key of one entry: {len(entries)} selected')
         biblio.set_key(entries[0], o.new_key, keep_old=o.keep_old_key)
@@ -520,6 +520,8 @@ def tagcmd(parser, o, config):
         old, new = o.rename
         count = rename_tag(biblio.entries, old, new)
         notes = save_entries(config, biblio)
+        if papers.utils.PORCELAIN is not None:
+            _print_biblio_diff(biblio, biblio.entries, notes=notes)
         print(f"renamed tag {old} to {new} in {count} entries")
         print_push_notes(biblio, notes)
         return
@@ -710,7 +712,7 @@ def listcmd(parser, o, config):
         listed = {id(e) for e in entries}
         entries = [e for e in biblio.db.entries if id(e) not in listed]
 
-    notes = {}
+    notes, failed = {}, 0
     if o.add_keywords:
         add_tags(entries, o.add_keywords)
         notes = save_entries(config, biblio)
@@ -754,8 +756,8 @@ def listcmd(parser, o, config):
         notes = save_entries(config, biblio)
 
     elif rename:
-        notes = rename_entries(biblio, config, pools, entries, keep_source=keep_source,
-                               mode='move' if o.move else None)
+        notes, failed = rename_entries(biblio, config, pools, entries, keep_source=keep_source,
+                                       mode='move' if o.move else None)
 
     elif o.delete:
         todelete = remove_entries(biblio, entries, config, delete_files=_delete_files_option(parser, o, config))
@@ -789,6 +791,8 @@ def listcmd(parser, o, config):
     # --rename, --delete) using the same Added/Modified/Removed convention as addcmd
     # (the other actions print their report, as their command does)
     _print_biblio_diff(biblio, entries, notes=notes)
+    if failed:
+        raise PapersExit()  # the errors are reported: exit 1
 
 
 def opencmd(parser, o, config):

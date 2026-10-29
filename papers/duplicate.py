@@ -108,7 +108,7 @@ def parse_name(name):
         elif c == ',' and depth == 0:
             return name[:i].strip(), name[i + 1:].strip()
     # last word, keeping a braced group together
-    m = re.match(r'^(.*?)\s*(\{[^{}]*\}|\S+)$', name)
+    m = re.match(r'^(.*?)\s*(\{[^{}]*\}|\S+)$', name, re.DOTALL)  # the words may be on several lines
     if not m:
         return name, ''
     return m.group(2), m.group(1).strip()
@@ -328,9 +328,12 @@ class Distinct:
         if os.path.exists(path):
             try:
                 with open(path, encoding='utf-8-sig') as f:
-                    pairs = [p for p in json.load(f).get('distinct', [])
-                             if isinstance(p, list) and len(p) == 2]
-            except (ValueError, OSError, AttributeError) as error:
+                    data = json.load(f)
+                if not isinstance(data, dict) or not isinstance(data.get('distinct', []), list):
+                    raise ValueError('not an object with a list "distinct"')
+                pairs = [p for p in data['distinct'] if isinstance(p, list) and len(p) == 2
+                         and all(isinstance(side, dict) for side in p)] if 'distinct' in data else []
+            except (ValueError, OSError) as error:
                 logger.warning(f'{path}: could not be read ({error}); ignored')
         return cls(pairs, path)
 

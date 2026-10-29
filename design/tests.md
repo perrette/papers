@@ -208,6 +208,7 @@ for the specification. A section marked free has none.
 - tests/test_spec_library.py::TestFindingTheLibrary::test_root_never_searched
 - tests/test_spec_library.py::TestFindingTheLibrary::test_bibtex_of_the_library_from_elsewhere
 - tests/test_spec_library.py::TestFindingTheLibrary::test_bibtex_without_library
+- tests/test_spec_library.py::TestFindingTheLibrary::test_status_bibtex
 
 ### Finding the library of a command
 
@@ -313,6 +314,7 @@ for the specification. A section marked free has none.
 
 - tests/test_filename_unit.py::TestPlaceholders::test_unknown_placeholder
 - tests/test_file_cmd.py::TestRename::test_unknown_placeholder
+- tests/test_spec_formats.py::TestExitCodes::test_template_error
 - tests/test_spec_library.py::TestTemplateSyntax::test_literal_braces
 
 ### Placeholders
@@ -377,6 +379,7 @@ for the specification. A section marked free has none.
 - tests/test_path_traversal.py::TestPathSafe::test_fields
 - tests/test_path_traversal.py::TestRename::test_fields_stay_inside
 - tests/test_path_traversal.py::TestRename::test_template_outside_is_refused
+- tests/test_spec_formats.py::TestExitCodes::test_refused_rename
 - tests/test_path_traversal.py::TestRename::test_subfolders_still_work
 - tests/test_path_traversal.py::TestAddBibtex::test_add
 
@@ -432,6 +435,7 @@ for the specification. A section marked free has none.
 - tests/test_spec_bibtex.py::TestEncodingAndLineEnds::test_byte_order_mark_from_the_editor
 - tests/test_spec_bibtex.py::TestEncodingAndLineEnds::test_distinct_json_utf8_lf
 - tests/test_spec_bibtex.py::TestDistinctFile::test_reading
+- tests/test_spec_bibtex.py::TestDistinctFile::test_reading_bad_values
 
 ### 2.1 Blocks
 
@@ -481,6 +485,7 @@ for the specification. A section marked free has none.
 - tests/test_parsecache.py::TestParseCache::test_cases
 - tests/test_parsecache.py::TestParseCache::test_files_of_the_tests
 - tests/test_parsecache.py::TestParseCache::test_not_cached_when_a_block_fails
+- tests/test_parsecache.py::TestParseCache::test_warning_once
 
 ### 3.1 Block order
 
@@ -584,6 +589,7 @@ for the specification. A section marked free has none.
 - tests/test_spec_bibtex.py::TestTags::test_syntax
 - tests/test_spec_bibtex.py::TestTags::test_add_remove_rename_ignore_case
 - tests/test_spec_bibtex.py::TestTags::test_counting
+- tests/test_spec_bibtex.py::TestTags::test_counting_order
 - tests/test_spec_bibtex.py::TestTags::test_matching
 - tests/test_spec_bibtex.py::TestTwoWayMerge::test_keywords_conflict
 - tests/test_entries.py::test_tags_without_case
@@ -605,13 +611,16 @@ for the specification. A section marked free has none.
 ### 7.2 Key validity on rename
 
 - tests/test_spec_bibtex.py::TestKeyValidity::test_refused
+- tests/test_spec_bibtex.py::TestKeyValidity::test_leading_digit_is_ascii
 - tests/test_entry_cmds.py::TestEditSet::test_key_refused
 - tests/test_bib_fix.py::TestFixEntry::test_fix_key_never_empty
+- tests/test_entry_cmds.py::TestEditSet::test_empty_key_refused
 
 ### 7.3 `crossref` follows renames
 
 - tests/test_spec_bibtex.py::TestCrossref::test_follows_renames
 - tests/test_entry_cmds.py::TestEditSet::test_key
+- tests/test_entry_cmds.py::TestEditSet::test_key_case_only
 - tests/test_entry_cmds.py::TestEditSet::test_fix_key
 - tests/test_duplicates.py::test_crossref_follows_the_merge
 
@@ -642,6 +651,7 @@ for the specification. A section marked free has none.
 - tests/test_spec_bibtex.py::TestIdentifiersOfAnEntry::test_doi
 - tests/test_spec_bibtex.py::TestIdentifiersOfAnEntry::test_arxiv
 - tests/test_spec_bibtex.py::TestIdentifiersOfAnEntry::test_isbn
+- tests/test_spec_bibtex.py::TestIdentifiersOfAnEntry::test_ascii_digits
 - tests/test_spec_bibtex.py::TestIdentifiersOfAnEntry::test_authors_and_title
 - tests/test_duplicates.py::TestIdentifiers::test_arxiv_eprint
 - tests/test_duplicates.py::TestIdentifiers::test_other_archive_is_not_arxiv
@@ -676,6 +686,7 @@ for the specification. A section marked free has none.
 
 - tests/test_spec_bibtex.py::TestDistinctFile::test_format
 - tests/test_spec_bibtex.py::TestDistinctFile::test_reading
+- tests/test_spec_bibtex.py::TestDistinctFile::test_reading_bad_values
 - tests/test_spec_bibtex.py::TestDistinctFile::test_matching
 - tests/test_spec_bibtex.py::TestDistinctFile::test_in_the_library_folder
 - tests/test_spec_bibtex.py::TestDistinctFile::test_union
@@ -686,6 +697,7 @@ for the specification. A section marked free has none.
 - tests/test_duplicates.py::TestCheckDialogue::test_n_remembered
 - tests/test_duplicates.py::TestAddDialogue::test_n
 - tests/test_merge_dup_unit.py::TestDuplicate::test_distinct_unreadable
+- tests/test_merge_dup_unit.py::TestDuplicate::test_distinct_read_once
 - tests/test_merge_dup_unit.py::TestDuplicate::test_distinct_add_without_identity
 - tests/test_merge_dup_unit.py::TestDuplicate::test_side_matches_empty
 - tests/test_bib_fix.py::TestBiblio::test_save_keeps_a_backup_and_the_distinct_pairs
@@ -826,6 +838,7 @@ for the specification. A section marked free has none.
 ### 2.3 Names: parts to bibtex
 
 - tests/test_spec_formats.py::TestPartsToNames::test_rules
+- tests/test_spec_formats.py::TestPartsToNames::test_one_name_not_in_an_array
 - tests/test_formats.py::TestNames::test_format
 - tests/test_formats.py::TestNames::test_suffix_without_given
 
@@ -894,6 +907,7 @@ for the specification. A section marked free has none.
 ### 3.3 Fields, import
 
 - tests/test_spec_formats.py::TestCSLImportFields::test_simple_fields
+- tests/test_spec_formats.py::TestPartsToNames::test_one_name_not_in_an_array
 - tests/test_spec_formats.py::TestCSLImportFields::test_number_pages_publisher_genre
 - tests/test_spec_formats.py::TestCSLImportFields::test_keywords
 - tests/test_spec_formats.py::TestCSLImportFields::test_issued_and_accessed
@@ -1026,8 +1040,10 @@ for the specification. A section marked free has none.
 
 - tests/test_porcelain.py::TestPorcelain::test_add
 - tests/test_porcelain.py::TestPorcelain::test_tag_and_rm
+- tests/test_porcelain.py::TestPorcelain::test_tag_rename
 - tests/test_porcelain.py::TestPorcelain::test_list_on_stdout
 - tests/test_entry_cmds.py::TestEditSet::test_key
+- tests/test_entry_cmds.py::TestEditSet::test_key_case_only
 - tests/test_entry_cmds.py::TestEditSet::test_fix_key
 - tests/test_spec_formats.py::TestPorcelainStreams::test_commands_without_lines
 - tests/test_spec_formats.py::TestPorcelainLines::test_order
@@ -1041,6 +1057,8 @@ for the specification. A section marked free has none.
 ### 7.3 Exit codes and standard error
 
 - tests/test_spec_formats.py::TestExitCodes::test_codes
+- tests/test_spec_formats.py::TestExitCodes::test_refused_rename
+- tests/test_spec_formats.py::TestExitCodes::test_template_error
 - tests/test_spec_formats.py::TestExitCodes::test_question_without_input
 - tests/test_cli_unit.py::TestMainCleanExit::test_papers_exit
 - tests/test_cli_unit.py::TestMainCleanExit::test_eof
@@ -2006,5 +2024,6 @@ for the specification. A section marked free has none.
 - tests/test_parsecache.py::TestParseCache::test_files_of_the_tests
 - tests/test_parsecache.py::TestParseCache::test_only_changed_pieces_are_split
 - tests/test_parsecache.py::TestParseCache::test_not_cached_when_a_block_fails
+- tests/test_parsecache.py::TestParseCache::test_warning_once
 - tests/test_parsecache.py::TestParseCache::test_prune
 - tests/test_parsecache.py::TestParseCache::test_damaged_cache.

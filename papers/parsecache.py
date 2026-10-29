@@ -16,6 +16,7 @@ cut by a line starting with @ inside a value) is not cached, and the whole
 text is then parsed as before.
 """
 import json
+import logging
 import os
 
 import bibtexparser
@@ -126,7 +127,13 @@ def parse(text, cache):
     for digest, piece in _ordered(text):
         dumped = cache.get(digest)
         if dumped is None:
-            split = Splitter(bibstr=piece).split().blocks
+            # its warnings (a block that failed) come once, from the parse of the whole text below
+            splitter_log = logging.getLogger('bibtexparser.splitter')
+            disabled, splitter_log.disabled = splitter_log.disabled, True
+            try:
+                split = Splitter(bibstr=piece).split().blocks
+            finally:
+                splitter_log.disabled = disabled
             dumped = [_dump(b) for b in split]
             if any(d is None for d in dumped):
                 return bibtexparser.parse_string(text)  # a block that is not cached: the whole text

@@ -87,6 +87,10 @@ class TestPlaceholders(unittest.TestCase):
             Format(template="{}")(ENTRY)
         with self.assertRaisesRegex(TemplateError, 'invalid name template'):
             Format(template="{year")(ENTRY)
+        # attributes and indexes of the values (library.md, Syntax)
+        for template in ('{year.real}', '{year[x]}', '{author.x.y}'):
+            with self.assertRaisesRegex(TemplateError, 'invalid name template', msg=template):
+                Format(template=template)(ENTRY)
 
 
 class TestSafeFileNames(unittest.TestCase):
