@@ -1,6 +1,7 @@
 """Bibliographic metadata over the network: crossref (by DOI and by
 bibliographic search), doi.org content negotiation, arXiv, Google Scholar,
-and the journal website, with the results cached (see papers.cache)."""
+and the journal website, with the results cached (see papers.cache). OpenAlex
+is in papers.openalex."""
 import json
 import threading
 
@@ -211,7 +212,8 @@ def _institution(message):
     return institution.get('name', '')
 
 
-def crossref_to_bibtex(message):
+def crossref_to_bibtex(message, key=''):
+    """BibTeX of a crossref record; the key is its DOI, else `key`"""
     entry_type = message.get('type', 'misc')  # Default to 'misc' if type is not specified
 
     # Common fields
@@ -221,7 +223,7 @@ def crossref_to_bibtex(message):
         'doi': message.get('DOI', ''),
         'url': message.get('URL', ''),
         'ENTRYTYPE': map_crossref_to_bibtex_type(entry_type),
-        'ID': message.get('DOI', '')
+        'ID': message.get('DOI') or key,
     }
 
     # Year: Look for publication date in several possible places

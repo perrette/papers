@@ -327,5 +327,5 @@ All internet requests, such as crossref requests, are saved in the cache
 directory (shown by `papers status -v`), whether or not a library is
 configured. The metadata of each DOI is a json file under `doi/`, e.g.
 `doi/10.1126/science.1166510.json` (DOIs that do not exist are remembered for
-a day). Deleting the directory, or any file in it, is safe: the requests are
-made again when needed.
+a day), and the searches of `--openalex` are under `openalex/`. Deleting the
+directory, or any file in it, is safe: the requests are made again when needed.

@@ -477,7 +477,10 @@ def get_parser(config=None):
         help='any fields')
     grp.add_argument('--no-query-doi', action='store_true', help='do not attempt to parse and query doi')
     grp.add_argument('--no-query-fulltext', action='store_true', help='do not attempt to query fulltext in case doi query fails')
-    grp.add_argument('--scholar', action='store_true', help='use google scholar instead of crossref')
+    search = grp.add_mutually_exclusive_group()
+    search.add_argument('--scholar', action='store_true', help='use google scholar instead of crossref')
+    search.add_argument('--openalex', action='store_true',
+        help='use OpenAlex (open API, CC0 data) instead of crossref; without a free API key (environment variable OPENALEX_API_KEY) OpenAlex allows about 100 searches a day')
 
     grp = addp.add_argument_group('files',
         description=f'''What happens to the added PDF, the files of an added bibtex, and the
@@ -958,7 +961,10 @@ def get_parser(config=None):
     # =====
     fetchp = subparsers.add_parser('fetch', description='fetch bibtex from DOI or full-text', parents=[loggingp])
     fetchp.add_argument('doi_or_text', nargs='+', help='DOI or full text.')
-    fetchp.add_argument('--scholar', action='store_true', help='use google scholar instead of default crossref for fulltext search')
+    search = fetchp.add_mutually_exclusive_group()
+    search.add_argument('--scholar', action='store_true', help='use google scholar instead of default crossref for fulltext search')
+    search.add_argument('--openalex', action='store_true',
+        help='use OpenAlex (open API, CC0 data) instead of crossref; without a free API key (environment variable OPENALEX_API_KEY) OpenAlex allows about 100 searches a day')
     _command(fetchp, fetchcmd)
 
     # extract
@@ -972,7 +978,10 @@ def get_parser(config=None):
     extractp.add_argument('-R', '--recursive', action='store_true', help='accept directories and scan them for PDF files')
     extractp.add_argument('-n', '--word-count', type=int, default=200)
     extractp.add_argument('--fulltext', action='store_true', help='fulltext only (otherwise DOI-based)')
-    extractp.add_argument('--scholar', action='store_true', help='use google scholar instead of default crossref for fulltext search')
+    search = extractp.add_mutually_exclusive_group()
+    search.add_argument('--scholar', action='store_true', help='use google scholar instead of default crossref for fulltext search')
+    search.add_argument('--openalex', action='store_true',
+        help='use OpenAlex (open API, CC0 data) instead of crossref; without a free API key (environment variable OPENALEX_API_KEY) OpenAlex allows about 100 searches a day')
     extractp.add_argument('--image', action='store_true', help='convert to image and use tesseract instead of pdftotext')
     _command(extractp, extractcmd)
 

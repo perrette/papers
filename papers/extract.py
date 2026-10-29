@@ -13,6 +13,7 @@ from papers import logger
 from papers.entries import get_entry_val, parse_string
 from papers.fetch import (DOIRequestError, fetch_bibtex_by_doi, fetch_bibtex_by_fulltext_crossref,
                           fetch_bibtex_by_fulltext_scholar)
+from papers.openalex import fetch_bibtex_by_fulltext_openalex
 
 
 class DOIParsingError(ValueError):
@@ -460,6 +461,17 @@ def title_in_text(title, txt):
     return title in _normalize_for_match(txt)
 
 
+MIN_TITLE_LENGTH = 20  # letters and digits, see title_in_text_strict
+
+def title_in_text_strict(title, txt):
+    """title_in_text, but a title of less than MIN_TITLE_LENGTH letters and
+    digits is not found: it is too short to tell, where title_in_text lets it
+    pass (OpenAlex has hits whose title is the name of a journal, or a word that
+    any text has)"""
+    title = _normalize_for_match(title)
+    return len(title) >= MIN_TITLE_LENGTH and title in _normalize_for_match(txt)
+
+
 def _bibtex_title(bibtex):
     entries = parse_string(bibtex).entries
     return get_entry_val(entries[0], 'title', '') if entries else ''
@@ -490,9 +502,9 @@ def confirm_doi(dois, txt):
     return None
 
 
-def extract_txt_metadata(txt, search_doi=True, search_fulltext=False, max_query_words=200, scholar=False, tail=''):
+def extract_txt_metadata(txt, search_doi=True, search_fulltext=False, max_query_words=200, scholar=False, openalex=False, tail=''):
     """
-    extract metadata from text, by parsing and doi-query, or by fulltext query in google scholar
+    extract metadata from text, by parsing and doi-query, or by fulltext query in crossref (default), google scholar or OpenAlex
 
     The result is accepted only if its title appears in txt (not in the tail:
     for most papers the last page is the reference list, where cited papers
@@ -524,6 +536,9 @@ def extract_txt_metadata(txt, search_doi=True, search_fulltext=False, max_query_
             query_txt = query_text(txt, max_query_words)
             if scholar:
                 bibtex = fetch_bibtex_by_fulltext_scholar(query_txt)
+            elif openalex:
+                bibtex = fetch_bibtex_by_fulltext_openalex(
+                    query_txt, accept=lambda title: title_in_text_strict(title, txt))
             else:
                 bibtex = fetch_bibtex_by_fulltext_crossref(query_txt)
         except Exception as error:

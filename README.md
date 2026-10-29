@@ -21,7 +21,8 @@ project folder.
 - **Add papers** from PDFs, DOIs, bibtex, RIS, CSL-JSON or BibJSON files, or whole folders. The DOI is
   read from the PDF, and the metadata comes from
   [crossref](https://github.com/CrossRef/rest-api-doc) (by DOI or full-text
-  search), doi.org or google scholar.
+  search), doi.org, google scholar or
+  [OpenAlex](https://openalex.org).
 - **Name the PDFs** with a template (`{authorX}_{year}_{title}` by default),
   and attach supplements to an entry.
 - **Share entries and PDFs between projects**: a shallow project uses
