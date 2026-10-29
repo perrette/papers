@@ -287,6 +287,18 @@ class TestCSL(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'list of items'):
             loads_csl('[1, 2]')
 
+    def test_bad_names(self):
+        # formats.md 3.4: a name list that is not a name or an array of names is an error naming the item
+        for value in ('5', 'true', '[5]', '["A B", [1]]', '[{"family": 5}]'):
+            with self.assertRaisesRegex(ValueError, r'^not a CSL-JSON file: item 2 \(id "x"\): author is not '
+                                                    r'a name or an array of names$'):
+                loads_csl('[{"id": "y", "title": "T"}, {"id": "x", "author": %s}]' % value)
+        with self.assertRaisesRegex(ValueError, r'^not a CSL-JSON file: item 1: editor is not'):
+            loads_csl('[{"editor": 5}]')
+        # null names and null name parts are left out, as before
+        e, = loads_csl('[{"id": "x", "author": [null, "A B", {"family": "C", "given": null}]}]')
+        self.assertEqual(e['author'], '{A B} and C')
+
     @unittest.skipUnless(HAS_JSONSCHEMA, 'jsonschema is not installed')
     def test_schema(self):
         import jsonschema

@@ -355,7 +355,7 @@ All other bibtex fields are left out (e.g. `month` as such, `eprint`,
 
 | bibtex | from CSL |
 |---|---|
-| `author`, `editor`, `translator` | name arrays (2.3); a value that is a string or an object is an array of that one name |
+| `author`, `editor`, `translator` | name arrays (2.3); a value that is a string or an object is an array of that one name; another value is an error (3.4) |
 | `title`, `volume`, `doi`, `url`, `isbn`, `issn`, `publisher`, `address`, `abstract`, `note`, `edition`, `language`, `series`, `pmid`, `pmcid` | the keys of 3.2 rows 7–21. A value that is an array gives its first element; numbers become their decimal text. `doi` is cleaned (2.6). |
 | `booktitle` (types `incollection`, `inproceedings`) or `journal` (other types) | `container-title` |
 | `number` | `issue`, else `number` |
@@ -378,6 +378,18 @@ when it has `items`, else as one item. The result must be an array of
 objects. Errors: `not a CSL-JSON file: <JSON error>` and
 `not a CSL-JSON file: a list of items is expected` (exit 1 from `add`;
 the JSON error text is **free**).
+
+Each `author`, `editor` and `translator` that is present and not empty
+(not `null`, `false`, `""`, `[]` or `{}`) must be a name or an array
+whose elements are names or empty ones (left out). A name is a string or
+an object whose `family`, `given`, `literal`, `non-dropping-particle`,
+`dropping-particle` and `suffix` are strings or `null` when present.
+Else nothing is read, and the error is
+`not a CSL-JSON file: item <N> (id <id>): <key> is not a name or an array of names`,
+where N is the position of the item in the array (from 1), `<id>` the
+item's `id` as JSON text (`"x"`, `5`), and ` (id <id>)` left out when
+the item has no `id`. The first such item in the array, and within it
+the first of `author`, `editor`, `translator`, is the one reported.
 
 Writing: a JSON array of items, see 8 for the JSON text format.
 

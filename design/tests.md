@@ -934,6 +934,7 @@ for the specification. A section marked free has none.
 - tests/test_spec_formats.py::TestCSLDocument::test_add_error_exit
 - tests/test_spec_formats.py::TestCSLDocument::test_example
 - tests/test_formats.py::TestCSL::test_not_csl
+- tests/test_formats.py::TestCSL::test_bad_names
 
 ### 3.5 What is lost
 
