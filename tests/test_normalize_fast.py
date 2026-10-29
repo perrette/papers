@@ -84,9 +84,14 @@ class TestFastNormalization(unittest.TestCase):
 
     def test_plain_ascii_not_decoded(self):
         with patch('papers.duplicate.latex_to_unicode') as decode, patch('papers.duplicate.to_ascii') as translit:
-            self.assertEqual(normalize_text('  Sea   LEVEL -- rise~ '), 'sea level -- rise~')
+            self.assertEqual(normalize_text('  Sea   LEVEL - rise '), 'sea level - rise')
         decode.assert_not_called()
         translit.assert_not_called()
+
+    def test_ascii_with_latex_signs_decoded(self):
+        "--, ~, $, `` and '' are LaTeX even in ASCII text: decoded, as in a text with commands"
+        for text, norm in [('Sea -- rise', 'sea - rise'), ('a~b', 'a b'), ('CO$_2$', 'co_2'), ("``x''", '"x"')]:
+            self.assertEqual(normalize_text(text), norm, text)
 
 
 if __name__ == '__main__':
