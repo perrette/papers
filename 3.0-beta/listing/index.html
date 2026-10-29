@@ -1187,7 +1187,8 @@ command added, modified, renamed or removed, or found already in the library
 </code></pre></div>
 <p>The lines are <code>added KEY</code>, <code>modified KEY</code>, <code>renamed OLD NEW</code>, <code>removed KEY</code>
 and <code>existing KEY</code>. <code>renamed OLD NEW</code> is an entry whose key the command
-changed (<code>papers edit OLD --key NEW</code>, <code>papers check --fix-key</code>). An entry
+changed (<code>papers edit OLD --key NEW</code>, <code>papers check --fix-key</code>), also
+when only its case changes (<code>--key Smith2000</code> for <code>smith2000</code>). An entry
 replaced in the editor with another key is <code>removed OLD</code> and <code>added NEW</code>,
 and an entry merged into another one is <code>removed</code> (a program that follows an
 entry across these can match it by DOI). Every other message
