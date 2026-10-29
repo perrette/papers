@@ -112,6 +112,15 @@ def test_standard_name_braces():
     assert standard_name('Jean-Paul de la Fontaine') == 'Fontaine, Jean-Paul de la'
 
 
+def test_stray_closing_brace():
+    "the brace depth never goes below 0: a stray } does not stop the split (#194)"
+    from papers.encoding import standard_name
+    from papers.entries import split_depth0
+    assert split_depth0('a} and b', r'\s+and\s+') == ['a}', 'b']
+    assert split_depth0('a} and {b and c} and d', r'\s+and\s+') == ['a}', '{b and c}', 'd']
+    assert standard_name('x} and y z') == 'x} and z, y'
+
+
 def test_tags_without_case():
     # Climate and climate are one tag, as --tag finds them: add, remove and rename agree
     from papers.cli.entry_cmds import add_tags, remove_tags, rename_tag

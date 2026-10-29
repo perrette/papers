@@ -245,7 +245,7 @@ def split_depth0(value, sep_regex):
         if c == '{':
             depth += 1
         elif c == '}':
-            depth -= 1
+            depth = max(depth - 1, 0)  # a stray } does not stop the split
         elif depth == 0:
             m = pattern.match(value, i)
             if m:

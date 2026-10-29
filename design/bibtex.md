@@ -16,6 +16,11 @@ Two labels are used below:
 - **Free**: an implementation may do it differently, as long as the
   contracts hold.
 
+**Brace depth** (in a field value, for the splits "at brace depth 0"
+below and in the other files): 0 at the start of the value, one more
+after each `{`, one less after each `}`, but never below 0 (a stray `}`
+is ignored; `a} and b` splits into `a}` and `b`). Contract.
+
 The reference conformance test for reading and writing is the pair
 `tests/sortformat/varied.bib` (input) and
 `tests/sortformat/varied.expected.bib` (what papers writes for it).

@@ -525,6 +525,7 @@ for the specification. A section marked free has none.
 - tests/test_spec_bibtex.py::TestNormalized::test_only_layout
 - tests/test_spec_bibtex.py::TestNormalized::test_name_formatting
 - tests/test_entries.py::test_standard_name_braces
+- tests/test_entries.py::test_stray_closing_brace (brace depth, at the start of bibtex.md)
 - tests/test_check.py::TestCheckFormatName::test_check_format_name
 - tests/test_bib_fix.py::TestFixEntry::test_key_ascii
 
