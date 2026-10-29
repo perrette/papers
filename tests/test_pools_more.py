@@ -389,3 +389,26 @@ class TestPoolIdentifier(ConfigTest):
         self.assertEqual(sorted(origin.entries[own]), ['a2020', 'b2021'])
         self.assertEqual(origin.entries[own]['b2021']['title'], 'B')
         self.assertEqual(len(os.listdir(self.path('lib', ORIGIN_DIR))), 1)
+
+
+class TestPullCost(PoolTest):
+    """the steps of a pull that once grew with the square of the number of
+    entries, or were repeated for each entry: counted, not timed"""
+
+    N = 60
+
+    def setUp(self):
+        super().setUp()
+        Path(self.path('pool', 'papers.bib')).write_text(''.join(
+            f'@article{{Key{i},\n author = {{Author{i}, A.}},\n title = {{Title number {i}}},\n'
+            f' year = {{2000}}\n}}\n\n' for i in range(self.N)))
+        self.lib('config pool ../pool -y')  # a shallow library
+
+    def test_keys_of_the_library_once(self):
+        # the keys of the library are gathered once for all new entries, not for each one
+        calls = []
+        key = Biblio.key
+        with patch.object(Biblio, 'key', lambda self, e: calls.append(1) or key(self, e)):
+            self.lib('pull --all')
+        self.assertEqual(len(self.bib()[1]), self.N)
+        self.assertLess(len(calls), 5 * self.N)  # 1 770 before (each new entry: the keys of all entries before it)
