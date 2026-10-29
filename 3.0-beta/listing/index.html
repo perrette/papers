@@ -1122,8 +1122,10 @@ forms of <code>--duplicates --by key</code>, <code>--by doi</code> and <code>--b
 <li>an ISBN, 10 or 13 digits, with hyphens or spaces (the ISBN-10 and ISBN-13
   forms of a book are the same), matched against the <code>isbn</code> field.</li>
 </ul>
-<p>A key cannot start with a digit, so an argument that starts with a digit is
-never a key. An identifier that matches no entry, or several entries (e.g.
+<p>A key of the library names its entry first, even if it starts with a digit
+or reads as a DOI or ISBN (the <code>{doi}</code> key template gives keys such as
+<code>10.1000-xyz</code>); otherwise an argument that starts with a digit is read as a
+DOI, arXiv id or ISBN. An identifier that matches no entry, or several entries (e.g.
 an ISBN shared by the chapters of a book), is an error, reported before
 anything changes.</p>
 <h2 id="piping">Piping<a class="headerlink" href="#piping" title="Permanent link">&para;</a></h2>

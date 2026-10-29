@@ -578,6 +578,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#search-with-openalex" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Search with OpenAlex
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1155,11 +1166,29 @@ attachment.</p>
    arXiv and are checked as in step 3.</li>
 </ol>
 <p>When no DOI is accepted, papers searches crossref with the first 200 words
-of the text (<code>--scholar</code>: Google Scholar), and accepts the result only if
+of the text (<code>--scholar</code>: Google Scholar, <code>--openalex</code>: OpenAlex, see
+<a href="#search-with-openalex">below</a>), and accepts the result only if
 its title appears in the text. Otherwise the PDF is not added, and papers
 stops with an error: pass the DOI with <code>--doi</code>, or describe the entry (see
 <a href="#add-a-whole-directory-of-pdfs">below</a>). <code>--no-query-doi</code> skips the DOI
 search, and <code>--no-query-fulltext</code> the text search.</p>
+<h3 id="search-with-openalex">Search with OpenAlex<a class="headerlink" href="#search-with-openalex" title="Permanent link">&para;</a></h3>
+<p><code>--openalex</code> (of <code>add</code>, <code>extract</code> and <code>fetch</code>) searches
+<a href="https://openalex.org">OpenAlex</a> instead of crossref: an open catalogue
+(CC0 data) with an API, where <code>--scholar</code> scrapes the web pages of Google
+Scholar, which often blocks it. OpenAlex finds the works whose title and
+abstract are closest in meaning to the text (the first 1500 characters of the
+query), and papers takes the one that scores best, as for crossref, among
+those whose title (of at least 20 letters and digits) is in the text, the
+published works before their preprints. The entry is that of the DOI of the
+work (crossref, doi.org, arXiv); a work without DOI gives an entry made of its
+OpenAlex record, with the OpenAlex id as key.</p>
+<p>Without a key, OpenAlex allows about 100 searches a day (for all the users of
+a network). A free key, from <a href="https://openalex.org/settings/api">openalex.org/settings/api</a>,
+gives ten times as many: papers reads it from the environment variable
+<code>OPENALEX_API_KEY</code>. <code>PAPERS_MAILTO</code>, if set, is the email address that
+OpenAlex is given to identify the requests. Searches are at most one a second,
+and are saved in the cache (see <a href="../configuration/#cache">Configuration</a>).</p>
 <p><code>papers extract --doi-only FILE</code> prints the DOI that steps 1 to 4 find,
 without adding anything:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>$ papers extract --doi-only bg-8-515-2011.pdf
