@@ -828,6 +828,19 @@ class TestDistinctFile(SpecLibrary):
         d = Distinct.for_library(self.dir)
         self.assertEqual(d.pairs, [[{'authortitle': 'müller|ü'}, {'authortitle': 'b|c'}]])
 
+    def test_reading_bad_values(self):
+        "bibtex.md 9.4: a `distinct` that is not an array makes the file unreadable (warning); pairs of non-objects are ignored"
+        from papers.duplicate import Distinct
+        os.makedirs(self.path('.papers'))
+        path = Path(self.path('.papers', 'distinct.json'))
+        for text in ('{"distinct": 5}', '{"distinct": null}', '{"distinct": {}}'):
+            path.write_text(text)
+            with self.assertLogs('papers', level='WARNING'):
+                self.assertEqual(Distinct.for_library(self.dir).pairs, [])
+        path.write_text('{"distinct": [["a", "b"], [{"title": "t"}, 3], [{"title": "t"}, {"title": "u"}]]}')
+        self.assertEqual(Distinct.for_library(self.dir).pairs, [[{'title': 't'}, {'title': 'u'}]])
+        self.assertFalse(Distinct.for_library(self.dir).contains(self.entry('spec0'), self.entry('spec1')))
+
     def test_matching(self):
         "bibtex.md 9.4: doi, arxiv and isbn equal (absent on both counts as equal), authortitle and title where both have them"
         from papers.duplicate import Distinct

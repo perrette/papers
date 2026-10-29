@@ -429,6 +429,7 @@ for the specification. A section marked free has none.
 - tests/test_spec_bibtex.py::TestEncodingAndLineEnds::test_byte_order_mark_from_the_editor
 - tests/test_spec_bibtex.py::TestEncodingAndLineEnds::test_distinct_json_utf8_lf
 - tests/test_spec_bibtex.py::TestDistinctFile::test_reading
+- tests/test_spec_bibtex.py::TestDistinctFile::test_reading_bad_values
 
 ### 2.1 Blocks
 
@@ -671,6 +672,7 @@ for the specification. A section marked free has none.
 
 - tests/test_spec_bibtex.py::TestDistinctFile::test_format
 - tests/test_spec_bibtex.py::TestDistinctFile::test_reading
+- tests/test_spec_bibtex.py::TestDistinctFile::test_reading_bad_values
 - tests/test_spec_bibtex.py::TestDistinctFile::test_matching
 - tests/test_spec_bibtex.py::TestDistinctFile::test_in_the_library_folder
 - tests/test_spec_bibtex.py::TestDistinctFile::test_union

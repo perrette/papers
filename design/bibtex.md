@@ -805,9 +805,10 @@ library.
   pair was added.
 - Reading: as UTF-8, a byte order mark dropped, so raw UTF-8 characters
   written by another implementation are read the same way as `\u`
-  escapes. A missing file is no pairs; a file that cannot be read is
-  ignored with a warning; elements of `distinct` that are not arrays of
-  two are ignored.
+  escapes. A missing file, or one without `distinct`, is no pairs; a
+  file that cannot be read, or whose value is not an object, or whose
+  `distinct` is not an array, is ignored with a warning; elements of
+  `distinct` that are not arrays of two objects are ignored.
 - A recorded side matches an entry when `doi`, `arxiv` and `isbn` are
   equal (absent on both sides counts as equal), and `authortitle` and
   `title` are equal where both sides have them. A pair matches two
