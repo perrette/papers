@@ -34,6 +34,9 @@ implementation may choose.
 Other documents:
 
 - [tests.md](tests.md): the tests of each section.
+- [implementation.md](implementation.md): the internal structure of the
+  Python implementation (data structures, costs, ideas for another
+  implementation). Not part of the specification.
 - [data/](data/): the two data tables that rules refer to, each with its
   origin and license in its header lines:
   - [latex-characters.tsv](data/latex-characters.tsv): LaTeX text of
