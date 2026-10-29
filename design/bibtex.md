@@ -736,8 +736,9 @@ the exchanges with pools.
 `norm(s)`:
 
 1. empty text gives empty text;
-2. LaTeX to Unicode (section 4.1) (a text that is ASCII without `\`,
-   `{`, `}` is unchanged by this step);
+2. LaTeX to Unicode (section 4.1); `Ice--ocean` and `Ice–ocean` give the
+   same text (a text that is ASCII without any of `\ { } $ ~` and without
+   `--`, ``` `` ```, `''` is unchanged by this step);
 3. transliteration to ASCII: each character is replaced by its text in
    the table [data/ascii-transliteration.tsv](data/ascii-transliteration.tsv)
    (`ü` to `u`, `ß` to `ss`, `Å` to `A`, `中` to `Zhong`); a character

@@ -756,7 +756,8 @@ class TestNormalization(unittest.TestCase):
         from papers.duplicate import normalize_text
         cases = {'': '', 'Sea  {Level}\n rise ': 'sea level rise', 'M{\\"u}ller': 'muller', 'Müller': 'muller',
                  'Straße': 'strasse', 'Ångström': 'angstrom', '{\\AA}ngstr{\\"o}m': 'angstrom',
-                 'T\\^ete': 'tete', "\\'Ecole": 'ecole', '\\textit{Ice} sheets': 'ice sheets'}
+                 'T\\^ete': 'tete', "\\'Ecole": 'ecole', '\\textit{Ice} sheets': 'ice sheets',
+                 'Ice--ocean': 'ice-ocean', 'Ice–ocean': 'ice-ocean', 'a~b': 'a b', 'CO$_2$': 'co_2'}
         for text, norm in cases.items():
             self.assertEqual(normalize_text(text), norm, text)
 

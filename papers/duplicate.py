@@ -72,12 +72,16 @@ class Verdict:
 MEMO_SIZE = 1 << 18
 
 
+# what the LaTeX decoding changes in an ASCII text (design/bibtex.md 4.1)
+_LATEX_SIGNS = re.compile(r"[\\{}$~]|--|``|''")
+
+
 @functools.lru_cache(maxsize=MEMO_SIZE)
 def normalize_text(s):
     """lower case, LaTeX and accents to ASCII, no braces, single spaces"""
     if not s:
         return ''
-    if s.isascii() and '\\' not in s and '{' not in s and '}' not in s:
+    if s.isascii() and not _LATEX_SIGNS.search(s):
         return ' '.join(s.lower().split())  # the other steps leave it as it is
     s = latex_to_unicode(s)
     s = to_ascii(s)

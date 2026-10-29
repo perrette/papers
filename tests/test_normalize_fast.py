@@ -34,9 +34,8 @@ def _slow_normalize(s):
     "norm(s) of bibtex.md 9.1, every step done, one character at a time"
     if not s:
         return ''
-    if not (s.isascii() and not set(s) & set('\\{}')):  # step 2 leaves such a text unchanged
-        with patch.object(latex, '_PLAIN_TEXT', NEVER):
-            s = latex.latex_to_unicode(s)
+    with patch.object(latex, '_PLAIN_TEXT', NEVER):
+        s = latex.latex_to_unicode(s)
     s = anyascii(s).replace('{', '').replace('}', '')
     return ' '.join(s.lower().split())
 
