@@ -311,6 +311,7 @@ for the specification. A section marked free has none.
 
 - tests/test_filename_unit.py::TestPlaceholders::test_unknown_placeholder
 - tests/test_file_cmd.py::TestRename::test_unknown_placeholder
+- tests/test_spec_formats.py::TestExitCodes::test_template_error
 - tests/test_spec_library.py::TestTemplateSyntax::test_literal_braces
 
 ### Placeholders
@@ -1049,6 +1050,7 @@ for the specification. A section marked free has none.
 
 - tests/test_spec_formats.py::TestExitCodes::test_codes
 - tests/test_spec_formats.py::TestExitCodes::test_refused_rename
+- tests/test_spec_formats.py::TestExitCodes::test_template_error
 - tests/test_spec_formats.py::TestExitCodes::test_question_without_input
 - tests/test_cli_unit.py::TestMainCleanExit::test_papers_exit
 - tests/test_cli_unit.py::TestMainCleanExit::test_eof

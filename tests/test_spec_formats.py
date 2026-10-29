@@ -1225,6 +1225,19 @@ class TestExitCodes(SpecLibrary):
         self.lib('file rename --move')  # exit 0
         self.assertEqual(self.libfiles(), ['one2000-x.pdf'])
 
+    def test_template_error(self):
+        "formats.md 7.3, library.md Syntax: a template that cannot be formatted is a clean error, exit 1"
+        self.bib(entry('one2000'))
+        pdf = self.write('a.pdf')
+        lib = self.path('lib')
+        for template in ('{year.real}', '{year[x]}', '{nope}'):
+            code, out, err = run_papers('file', 'attach', 'one2000', pdf, '--copy', '--name-template', template, cwd=lib)
+            self.assertEqual(code, 1, template)
+            self.assertTrue(err.startswith('papers: error: '), err)
+            self.assertNotIn('Traceback', err)
+        code, out, err = run_papers('add', '--title', 'T', '--author', 'A, B', '--year', '2001', '--key-template', '{year.real}', cwd=lib)
+        self.assertEqual((code, err.startswith('papers: error: invalid key template')), (1, True), err)
+
     def test_question_without_input(self):
         "formats.md 7.3: a question with closed standard input exits 1"
         self.bib(entry('one2000', doi='10.1/x'))

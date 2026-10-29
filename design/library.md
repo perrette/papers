@@ -740,7 +740,9 @@ Contract:
 A template is text with placeholders `{name}`. `{{` and `}}` are literal
 braces. An unknown placeholder (also a case variant such as `{AuTHoR}`)
 is an error that lists the available ones. Only these three forms are
-contract. Free: an implementation may accept more, for example a format
+contract. A template that cannot be formatted (an unknown placeholder, or
+a form that is not accepted, such as `{year.real}`) stops the command
+with an error (`papers: error: ...`, exit code 1, formats.md 7.3). Free: an implementation may accept more, for example a format
 specification after a colon (`{title:.20}`, the first 20 characters);
 papers accepts such forms, another implementation need not.
 

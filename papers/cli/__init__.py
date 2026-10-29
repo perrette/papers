@@ -10,6 +10,7 @@ import papers.lock
 import papers.utils
 from papers import __version__, logger
 from papers.config import CONFIG_FILE
+from papers.filename import TemplateError
 from papers.library import check_legacy_global_config, find_config, finish_journal
 from papers.utils import PapersExit, file_uri_to_path, find_masked_viewer, set_directory, open_with_system
 from papers.cli.common import check_install
@@ -169,7 +170,7 @@ def main_clean_exit(args=None):
     logging.basicConfig(handlers=[handler])
     try:
         main(args)
-    except PapersExit as error:
+    except (PapersExit, TemplateError) as error:  # TemplateError: a name or key template that cannot be formatted
         if logger.getEffectiveLevel() == logging.DEBUG:
             raise
         if error.args:
