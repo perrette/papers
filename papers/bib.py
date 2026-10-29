@@ -1052,7 +1052,9 @@ class Biblio:
         if fix_key or auto_key:
             if auto_key or not isvalidkey(get_entry_val(e, 'ID','')):
                 key = self.generate_key(e)
-                if get_entry_val(e, 'ID', '') != key:
+                if not key:  # never renamed to an empty key
+                    logger.warning(f"{get_entry_val(e, 'ID', '')}: the key template gives an empty key: the key stays")
+                elif get_entry_val(e, 'ID', '') != key:
                     logger.info('update key {} => {}'.format(get_entry_val(e, 'ID', ''), key))
                     set_entry_key(e, key)
 

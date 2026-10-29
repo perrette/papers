@@ -643,6 +643,11 @@ contains whitespace or one of `, { } " # % ~ = ( ) \`, and a key that
 another entry has (compared without case). (The key template is in
 library.md.)
 
+`check --fix-key` and `list --fetch` never rename an entry to an empty
+key: when the key template gives an empty key, the entry keeps its key,
+with a warning (free text: `<key>: the key template gives an empty key:
+the key stays`).
+
 ### 7.3 `crossref` follows renames
 
 At save, for each entry whose key changed during the command (the same
