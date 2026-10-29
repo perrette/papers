@@ -603,6 +603,7 @@ for the specification. A section marked free has none.
 
 - tests/test_spec_bibtex.py::TestKeyValidity::test_refused
 - tests/test_entry_cmds.py::TestEditSet::test_key_refused
+- tests/test_entry_cmds.py::TestEditSet::test_set_refused
 
 ### 7.3 `crossref` follows renames
 

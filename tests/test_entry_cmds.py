@@ -437,7 +437,7 @@ class TestEditSet(EntryTest):
         self.assertIn('one.pdf', e['file'])
 
     def test_set_refused(self):
-        for value in ('file=x.pdf', 'ID=x', 'bad.name=x'):
+        for value in ('file=x.pdf', 'ID=x', 'id=x', 'key=x', 'KEY=x', 'bad.name=x'):
             with self.assertRaises(PapersExit):
                 self.lib(f'edit one2000 --set {value}')
         with self.assertRaises(PapersExit):

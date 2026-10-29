@@ -450,6 +450,9 @@ def set_fields(entries, values=(), unset=()):
     for name in [name for name, _ in values] + list(unset):
         if name.lower() in _NOT_SET:
             raise EditRejected(f'{name}: changed by {_NOT_SET[name.lower()]}, not --set or --unset')
+    for name, _ in values:  # a field named `key` would be read as the key: --set key=... is --key
+        if name.lower() == 'key':
+            raise EditRejected(f'{name}: the key is changed by {_NOT_SET["id"]}, not --set')
         if not FIELD_NAME.match(name):
             raise EditRejected(f'{name!r} is not a field name')
     for e in entries:

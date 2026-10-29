@@ -638,6 +638,11 @@ contains whitespace or one of `, { } " # % ~ = ( ) \`, and a key that
 another entry has (compared without case). (The key template is in
 library.md.)
 
+`edit --set FIELD=VALUE` does not change the key: `--set ID=...` and
+`--set key=...` (the field name in any case) are refused (exit 1), with
+an error that points to `edit --key`; so is `--set file=...` (the file
+links). `--unset ID` and `--unset file` are refused too.
+
 ### 7.3 `crossref` follows renames
 
 At save, for each entry whose key changed during the command (the same
