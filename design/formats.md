@@ -25,9 +25,6 @@ configuration and file placement are in [library.md](library.md).
 - A value is "empty" when it is missing or the empty string. Empty values
   are never written, in any format, in either direction.
 
-Tests: tests/test_spec_formats.py::TestCSLExportFields::test_values,
-tests/test_spec_formats.py::TestBibJSONReading::test_values (an object without `name`)
-
 ## 1. Formats and where they are used
 
 | format id | label in messages | extension (read) | file written by export |
@@ -40,8 +37,6 @@ tests/test_spec_formats.py::TestBibJSONReading::test_values (an object without `
 The format ids, file names and the order `bibtex, ris, csl-json, bibjson`
 are **contract**.
 
-Tests: tests/test_spec_formats.py::TestFormatsTable::test_ids_and_file_names, tests/test_formats.py::TestExportFormats::test_all
-
 ### 1.1 Format of a file from its name
 
 Used by `papers add FILE` and `papers edit --from FILE`.
@@ -53,9 +48,6 @@ Used by `papers add FILE` and `papers edit --from FILE`.
 3. Else `bibtex`.
 
 **Contract.**
-
-Tests: tests/test_spec_formats.py::TestFormatOfAFile::test_extensions, tests/test_formats.py::TestBibJSON::test_file_format,
-tests/test_formats.py::TestAddFormats::test_format_option, tests/test_formats.py::TestAddFormats::test_bibtex_by_default
 
 ### 1.2 Commands
 
@@ -71,16 +63,6 @@ tests/test_formats.py::TestAddFormats::test_format_option, tests/test_formats.py
 `papers edit --format` without `--from` is a usage error (exit 2):
 `--format is the format of --from FILE`.
 
-Tests: tests/test_formats.py::TestAddFormats::test_add_json_duplicates, tests/test_formats.py::TestAddFormats::test_add_ris_with_file,
-tests/test_formats.py::TestAddFormats::test_add_bibjson, tests/test_formats.py::TestAddFormats::test_format_option,
-tests/test_formats.py::TestAddFormats::test_metadata_one_entry_only, tests/test_spec_formats.py::TestCommands::test_recursive_reads_pdf_and_bib_only,
-tests/test_entry_cmds.py::TestEditFrom::test_from_file, tests/test_entry_cmds.py::TestEditFrom::test_from_file_with_file_and_keywords,
-tests/test_entry_cmds.py::TestEditFrom::test_from_ris, tests/test_entry_cmds.py::TestEditFrom::test_from_stdin_pipe,
-tests/test_entry_cmds.py::TestEditFrom::test_two_entries, tests/test_entry_cmds.py::TestEditFrom::test_errors,
-tests/test_spec_formats.py::TestCommands::test_from_stdin_with_format, tests/test_spec_formats.py::TestCommands::test_format_without_from,
-tests/test_formats.py::TestListFormats::test_csl_json, tests/test_list_actions.py::TestListFileActions::test_export,
-tests/test_list_actions.py::TestListFileActions::test_export_files
-
 ### 1.3 Text encoding
 
 - Reading: the file is decoded as UTF-8; a leading byte-order mark is
@@ -88,10 +70,6 @@ tests/test_list_actions.py::TestListFileActions::test_export_files
   `\r` is not). **Contract.**
 - Writing: UTF-8, no byte-order mark, `\n` line ends on every platform.
   **Contract.**
-
-Tests: tests/test_spec_formats.py::TestTextEncoding::test_read_bom_and_crlf, tests/test_spec_formats.py::TestTextEncoding::test_ris_lone_cr,
-tests/test_spec_formats.py::TestTextEncoding::test_written_utf8_lf, tests/test_formats.py::TestRIS::test_endnote_export,
-tests/test_formats.py::TestExportFormats::test_line_ends
 
 ### 1.4 RIS dependency (Python only)
 
@@ -111,9 +89,6 @@ extra). An implementation that has RIS built in does not need any of this
   exits 1 (`rispy not installed: ...`).
 - With `edit --from`, the error is reported as a rejected edit
   (`the text could not be read as ris (...) -- keeping original entries`).
-
-Tests: none (free). The Python behaviour is checked by
-tests/test_formats.py::TestRispyMissing and tests/test_formats.py::TestRispyMissingCommands::test_commands_change_nothing.
 
 ## 2. Shared conversion rules
 
@@ -149,9 +124,6 @@ they are.
 | newlines inside a value | kept |
 
 This is the converter of bibtex.md 4.3 (`check --encoding unicode`).
-
-Tests: tests/test_spec_formats.py::TestValuesAsText::test_raw_fields, tests/test_spec_formats.py::TestValuesAsText::test_text_without_latex_is_trimmed_only,
-tests/test_spec_formats.py::TestValuesAsText::test_latex_decoded
 
 ### 2.2 Names: bibtex to parts
 
@@ -197,10 +169,6 @@ Examples:
 | `Doe, Jr,` | `family: Doe, suffix: Jr` |
 | `A AND B` | `family: B, given: A AND` (one name) |
 
-Tests: tests/test_spec_formats.py::TestNamesToParts::test_examples, tests/test_formats.py::TestNames::test_parse,
-tests/test_formats.py::TestNames::test_one_word_and_braces, tests/test_formats.py::TestNames::test_more_commas,
-tests/test_formats.py::TestNames::test_suffix_without_given
-
 ### 2.3 Names: parts to bibtex
 
 A name given as a plain string is treated as `{literal: string}`.
@@ -216,8 +184,6 @@ A name given as a plain string is treated as `{literal: string}`.
 
 Names are joined with ` and `. The `&`, `%`, `#`, `_` of the names are
 then escaped as in 2.9; other unicode characters are kept.
-
-Tests: tests/test_spec_formats.py::TestPartsToNames::test_rules, tests/test_formats.py::TestNames::test_format, tests/test_formats.py::TestNames::test_suffix_without_given
 
 ### 2.4 Dates
 
@@ -244,9 +210,6 @@ When `year` is all digits, the day of the `date` field is never used.
 `month` = the second number as decimal text (`5`, not `may`). The day is
 dropped.
 
-Tests: tests/test_spec_formats.py::TestDates::test_date_text, tests/test_spec_formats.py::TestDates::test_date_of_an_entry, tests/test_spec_formats.py::TestDates::test_month_numbers,
-tests/test_spec_formats.py::TestDates::test_date_to_fields, tests/test_formats.py::TestDates::test_zero_or_missing_part_ends_the_date
-
 ### 2.5 Pages
 
 - To bibtex: split on `--`, `-`, `–` (U+2013) or `—` (U+2014), with any
@@ -255,15 +218,11 @@ tests/test_spec_formats.py::TestDates::test_date_to_fields, tests/test_formats.p
 - First and last page of a bibtex value: the same split; first = part 1,
   last = part 2 (or empty).
 
-Tests: tests/test_spec_formats.py::TestPages::test_to_bibtex, tests/test_spec_formats.py::TestPages::test_first_and_last, tests/test_spec_formats.py::TestPages::test_first_and_last_ris
-
 ### 2.6 DOI
 
 A DOI is cleaned by trimming and removing, case-insensitively, a leading
 `http://doi.org/`, `https://doi.org/`, `http(s)://dx.doi.org/` or `doi:`
 followed by optional white space.
-
-Tests: tests/test_spec_formats.py::TestDOI::test_clean
 
 ### 2.7 Keys of imported entries
 
@@ -273,9 +232,6 @@ Otherwise the key is empty and `papers add` gives the entry a key from
 the key template (library.md). Zotero item URLs and EndNote record numbers
 are not kept. With `edit --from`, the entry keeps the key of the edited
 entry whatever the file says.
-
-Tests: tests/test_spec_formats.py::TestKeys::test_usable_keys, tests/test_formats.py::TestCSL::test_key, tests/test_formats.py::TestAddFormats::test_add_json_duplicates,
-tests/test_entry_cmds.py::TestEditFrom::test_from_file
 
 ### 2.8 File links of imported entries
 
@@ -298,11 +254,6 @@ library writes file links (library.md). This holds for a bibtex FILE too.
 With `papers edit --from -` (standard input), the `file` field is stored
 as written, so its relative paths are read relative to the library.
 
-Tests: tests/test_spec_formats.py::TestFileLinks::test_items, tests/test_spec_formats.py::TestFileLinks::test_string_split,
-tests/test_spec_formats.py::TestEditFromLinks::test_relative_to_file, tests/test_spec_formats.py::TestEditFromLinks::test_stdin_as_written,
-tests/test_formats.py::TestCSL::test_file_key, tests/test_formats.py::TestRIS::test_file_links, tests/test_formats.py::TestRIS::test_endnote_export,
-tests/test_formats.py::TestAddFormats::test_add_ris_with_file, tests/test_entry_cmds.py::TestEditFrom::test_from_file_links_relative_to_file
-
 ### 2.9 LaTeX special characters of imported values
 
 RIS and CSL-JSON hold plain text. On import, each `&`, `%`, `#` and `_`
@@ -315,10 +266,6 @@ unchanged.
 
 Since the export decodes these escapes (2.1), a round trip gives the
 value back.
-
-Tests: tests/test_spec_formats.py::TestLatexEscape::test_escaped_fields, tests/test_spec_formats.py::TestLatexEscape::test_bibjson_unchanged,
-tests/test_spec_formats.py::TestLatexEscape::test_ris_escaped, tests/test_formats.py::TestCSL::test_latex_special_characters,
-tests/test_formats.py::TestRIS::test_latex_special_characters
 
 ## 3. CSL-JSON
 
@@ -363,8 +310,6 @@ Import (CSL → bibtex); a missing `type` is `document`:
 | `manuscript` | `unpublished` |
 | `document` | `misc` |
 | any other | `misc` |
-
-Tests: tests/test_spec_formats.py::TestCSLTypes::test_export, tests/test_spec_formats.py::TestCSLTypes::test_import, tests/test_formats.py::TestCSL::test_types
 
 ### 3.2 Fields, export
 
@@ -411,11 +356,6 @@ JSON integers. All other values are JSON strings.
 All other bibtex fields are left out (e.g. `month` as such, `eprint`,
 `urldate` when not a date, `crossref`, `ids`, `papers-*` fields).
 
-Tests: tests/test_spec_formats.py::TestCSLExportFields::test_key_order, tests/test_spec_formats.py::TestCSLExportFields::test_publisher_fallback_and_genre,
-tests/test_spec_formats.py::TestCSLExportFields::test_container_issue_keywords, tests/test_spec_formats.py::TestCSLExportFields::test_dates,
-tests/test_spec_formats.py::TestCSLExportFields::test_values, tests/test_formats.py::TestCSL::test_article, tests/test_formats.py::TestCSL::test_publisher_position,
-tests/test_formats.py::TestCSL::test_schema
-
 ### 3.3 Fields, import
 
 | bibtex | from CSL |
@@ -435,11 +375,6 @@ tests/test_formats.py::TestCSL::test_schema
 | key | `citation-key`, else `id` (2.7) |
 
 Everything else is ignored. The values are then escaped as in 2.9.
-
-Tests: tests/test_spec_formats.py::TestCSLImportFields::test_simple_fields, tests/test_spec_formats.py::TestCSLImportFields::test_number_pages_publisher_genre,
-tests/test_spec_formats.py::TestCSLImportFields::test_keywords, tests/test_spec_formats.py::TestCSLImportFields::test_issued_and_accessed,
-tests/test_spec_formats.py::TestCSLImportFields::test_files_and_key, tests/test_formats.py::TestCSL::test_container_title, tests/test_formats.py::TestCSL::test_zotero_export,
-tests/test_formats.py::TestCSL::test_round_trip
 
 ### 3.4 Document layout
 
@@ -479,9 +414,6 @@ $ papers list rep2020 --format csl-json
 ]
 ```
 
-Tests: tests/test_spec_formats.py::TestCSLDocument::test_reading, tests/test_spec_formats.py::TestCSLDocument::test_add_error_exit,
-tests/test_spec_formats.py::TestCSLDocument::test_example, tests/test_formats.py::TestCSL::test_not_csl
-
 ### 3.5 What is lost
 
 Export: LaTeX markup (decoded); `month` names (become numbers); the day
@@ -493,8 +425,6 @@ A round trip export → import gives: `month = {5}` instead of `may`;
 `journal`/`booktitle` chosen by type; `school`/`institution` only for
 the types above (a `manual` or `report` with `organization` comes back
 as `techreport` with `institution`); `issue` comes back as `number`.
-
-Tests: tests/test_spec_formats.py::TestCSLLost::test_round_trip, tests/test_formats.py::TestCSL::test_round_trip
 
 ## 4. RIS
 
@@ -508,8 +438,6 @@ RIS is a line format: one record per reference, one tag per line.
   character 7 on, trimmed. `ER  -` with nothing after it is a valid tag
   line.
 - Any other line is a continuation line (value = the line, trimmed).
-
-Tests: tests/test_spec_formats.py::TestRISLines::test_tag_lines, tests/test_formats.py::TestRIS::test_tag_without_space_after_dash
 
 ### 4.2 Reading
 
@@ -548,12 +476,6 @@ result of steps 1 to 8 is the contract; an implementation with its own
 reader may get it another way (**Free**). The Python version also adds an
 `ER` line at the end of a last record without one, which rispy would
 drop.
-
-Tests: tests/test_spec_formats.py::TestRISReading::test_records, tests/test_spec_formats.py::TestRISReading::test_continuation, tests/test_spec_formats.py::TestRISReading::test_stray_lines,
-tests/test_spec_formats.py::TestRISReading::test_single_and_list_tags, tests/test_spec_formats.py::TestRISReading::test_unknown_tags_and_errors,
-tests/test_formats.py::TestRIS::test_blank_line_after_ty, tests/test_formats.py::TestRIS::test_tag_without_space_after_dash,
-tests/test_formats.py::TestRIS::test_last_record_without_er, tests/test_formats.py::TestRIS::test_not_ris, tests/test_formats.py::TestRIS::test_endnote_export,
-tests/test_formats.py::TestRIS::test_wos_export
 
 ### 4.3 Writing
 
@@ -662,10 +584,6 @@ ER  -
 
 (`50%  x`: the space before `~` is kept and `~` is U+00A0.)
 
-Tests: tests/test_spec_formats.py::TestRISWriting::test_example (the example with a plain title, and the file name of its template), tests/test_spec_formats.py::TestRISWriting::test_no_entries,
-tests/test_spec_formats.py::TestRISWriting::test_tags, tests/test_spec_formats.py::TestRISWriting::test_dates, tests/test_formats.py::TestRIS::test_article,
-tests/test_formats.py::TestRIS::test_urldate_and_translator, tests/test_formats.py::TestRIS::test_container_and_suffix, tests/test_formats.py::TestRIS::test_mastersthesis
-
 ### 4.4 Entry types
 
 Export:
@@ -709,8 +627,6 @@ Import (type trimmed, upper-cased; missing is `GEN`):
 
 A `THES` record whose first `M3` value contains `master` (any case) is a
 `mastersthesis`.
-
-Tests: tests/test_spec_formats.py::TestRISTypes::test_export, tests/test_spec_formats.py::TestRISTypes::test_import, tests/test_formats.py::TestRIS::test_mastersthesis
 
 ### 4.5 Fields, import
 
@@ -756,13 +672,6 @@ RIS name to bibtex name:
 
 The values are then escaped as in 2.9.
 
-Tests: tests/test_spec_formats.py::TestRISImportFields::test_names, tests/test_spec_formats.py::TestRISImportFields::test_ris_names,
-tests/test_spec_formats.py::TestRISImportFields::test_titles_and_container, tests/test_spec_formats.py::TestRISImportFields::test_dates,
-tests/test_spec_formats.py::TestRISImportFields::test_pages, tests/test_spec_formats.py::TestRISImportFields::test_identifiers,
-tests/test_spec_formats.py::TestRISImportFields::test_other_fields, tests/test_formats.py::TestRIS::test_endnote_export, tests/test_formats.py::TestRIS::test_wos_export,
-tests/test_formats.py::TestRIS::test_doi_from_a_url_next_to_another, tests/test_formats.py::TestRIS::test_container_and_suffix,
-tests/test_formats.py::TestRIS::test_urldate_and_translator, tests/test_formats.py::TestRIS::test_round_trip
-
 ### 4.6 What is lost
 
 Export: LaTeX markup; `month` as a name (written as `DA` digits);
@@ -774,8 +683,6 @@ Import: every tag not in 4.5 (`N2` when `AB` is present, `A3`, `L2`,
 `mastersthesis` (its `M3` only decides the entry type).
 
 A keyword with `;` exported as one `KW` line comes back as two keywords.
-
-Tests: tests/test_spec_formats.py::TestRISLost::test_keyword_with_semicolon
 
 ## 5. BibJSON
 
@@ -824,9 +731,6 @@ Field names are lower case, as papers reads them (bibtex.md 2.2).
 
 A month macro (`month = may`) is written as `"may"`, like a braced value.
 
-Tests: tests/test_spec_formats.py::TestBibJSONWriting::test_example, tests/test_spec_formats.py::TestBibJSONWriting::test_without_namespace,
-tests/test_formats.py::TestBibJSON::test_article, tests/test_formats.py::TestBibJSON::test_field_named_as_a_bibjson_key
-
 ### 5.2 Reading
 
 The text must be JSON. An object with `records` gives that array; any
@@ -856,19 +760,12 @@ For each record:
 
 The values are not escaped (2.9).
 
-Tests: tests/test_spec_formats.py::TestBibJSONReading::test_records, tests/test_spec_formats.py::TestBibJSONReading::test_type_key_and_skipped,
-tests/test_spec_formats.py::TestBibJSONReading::test_values, tests/test_spec_formats.py::TestBibJSONReading::test_doi_and_file, tests/test_formats.py::TestBibJSON::test_json_values,
-tests/test_formats.py::TestBibJSON::test_numbers_as_written_and_null_items, tests/test_formats.py::TestBibJSON::test_spec_examples,
-tests/test_formats.py::TestBibJSON::test_one_record_or_list, tests/test_formats.py::TestBibJSON::test_not_bibjson
-
 ### 5.3 What is lost
 
 Nothing for ordinary fields, nor for the fields written as
 `bibtex:<name>`. A bibtex field whose name starts with `_` does not
 survive a round trip. The distinction between a month macro and a
 braced value is lost (`may` comes back as `{may}`).
-
-Tests: tests/test_spec_formats.py::TestBibJSONLost::test_round_trip, tests/test_formats.py::TestBibJSON::test_round_trip
 
 ## 6. `papers list` output
 
@@ -911,28 +808,17 @@ keywords yellow, and terminal hyperlinks (OSC 8) on `doi:` and the file
 count. Exact escape codes are **free**; without colours the text is as
 above.
 
-Tests: tests/test_spec_formats.py::TestListOutput::test_no_entry, tests/test_spec_formats.py::TestListOutput::test_bibtex, tests/test_spec_formats.py::TestListOutput::test_field,
-tests/test_spec_formats.py::TestListOutput::test_other_formats_paths, tests/test_spec_formats.py::TestListOutput::test_line_format,
-tests/test_list.py::FormattingTest::test_format, tests/test_list.py::FormattingTest::test_format_option,
-tests/test_list.py::FormattingTest::test_format_exclusive, tests/test_list.py::FormattingTest::test_color,
-tests/test_list_more.py::TestListFilters::test_field, tests/test_deprecated.py::TestRenamedOptions::test_list_f,
-tests/test_formats.py::TestListFormats::test_csl_json, tests/test_formats.py::TestListFormats::test_bibjson, tests/test_formats.py::TestListFormats::test_ris
-
 `papers status` has no machine-readable output (only `--no-check-files`
 and `-v`); its text is human output (**free**).
 
 `papers extract` and `papers fetch` print bibtex (or DOIs with `extract
 --doi-only`) on standard output; see bibtex.md for the entry text.
 
-Tests: none (free) for these two paragraphs.
-
 ## 7. `--porcelain`
 
 `--porcelain` is an option of every command that takes the common
 logging options (it comes after the command name: `papers tag X --add y
 --porcelain`).
-
-Tests: those of 7.1 and 7.2.
 
 ### 7.1 Streams
 
@@ -947,10 +833,6 @@ With `--porcelain`, for the whole command:
   produces neither writes nothing to standard output.
 
 **Contract.**
-
-Tests: tests/test_porcelain.py::TestPorcelain::test_other_messages_on_stderr,
-tests/test_porcelain.py::TestPorcelain::test_list_on_stdout, tests/test_porcelain.py::TestPorcelain::test_stdout_restored,
-tests/test_spec_formats.py::TestPorcelainStreams::test_formats_on_stdout
 
 ### 7.2 Porcelain lines
 
@@ -1018,14 +900,6 @@ existing arx2021
 existing perrette2013
 ```
 
-Tests: tests/test_porcelain.py::TestPorcelain::test_add, tests/test_porcelain.py::TestPorcelain::test_tag_and_rm,
-tests/test_porcelain.py::TestPorcelain::test_list_on_stdout, tests/test_entry_cmds.py::TestEditSet::test_key,
-tests/test_entry_cmds.py::TestEditSet::test_fix_key, tests/test_spec_formats.py::TestPorcelainStreams::test_commands_without_lines,
-tests/test_spec_formats.py::TestPorcelainLines::test_order, tests/test_spec_formats.py::TestPorcelainLines::test_existing_only_for_add,
-tests/test_spec_formats.py::TestPorcelainLines::test_content_equality, tests/test_spec_formats.py::TestPorcelainLines::test_add_lines,
-tests/test_spec_formats.py::TestPorcelainCommands::test_file_commands, tests/test_spec_formats.py::TestPorcelainCommands::test_history_revert,
-tests/test_spec_formats.py::TestPorcelainConfigPool::test_config_pool. The human lines: none (free).
-
 ### 7.3 Exit codes and standard error
 
 | situation | exit code |
@@ -1041,11 +915,6 @@ Exit codes are **contract**. Warnings and errors on standard error have
 the form `papers: <level>: <message>` (`warning`, `error`); the message
 texts are **free**.
 
-Tests: tests/test_spec_formats.py::TestExitCodes::test_codes, tests/test_spec_formats.py::TestExitCodes::test_question_without_input,
-tests/test_cli_unit.py::TestMainCleanExit::test_papers_exit, tests/test_cli_unit.py::TestMainCleanExit::test_eof,
-tests/test_cli_unit.py::TestBrokenPipe::test_no_traceback, tests/test_cli_unit.py::TestInterrupt::test_ctrl_c,
-tests/test_options.py::TestUnknownOptions::test_command_does_not_run, tests/test_options.py::TestUnknownOptions::test_subcommand
-
 ## 8. JSON text format
 
 For CSL-JSON and BibJSON (**contract**, so that files compare byte for
@@ -1059,9 +928,6 @@ byte):
   `\"`, `\\`, `\n`, `\r`, `\t`, `\b`, `\f`, and `\u00XX` (lower-case hex)
   for the other characters below U+0020; `/` is not escaped;
 - the document ends with `\n`.
-
-Tests: tests/test_spec_formats.py::TestJSONText::test_bytes, tests/test_spec_formats.py::TestCSLDocument::test_example, tests/test_spec_formats.py::TestBibJSONWriting::test_example,
-tests/test_spec_formats.py::TestListOutput::test_no_entry
 
 ## 9. `papers export` layout
 
@@ -1115,13 +981,6 @@ File link paths: in the bibtex, as the new library writes them (relative
 to its directory by default); in RIS, CSL-JSON and BibJSON, relative to
 DIR (with `link`, e.g. `../lib/files/x.pdf`). **Contract.**
 
-Tests: tests/test_spec_formats.py::TestExportLayout::test_dir, tests/test_spec_formats.py::TestExportLayout::test_format_names, tests/test_spec_formats.py::TestExportLayout::test_new_library,
-tests/test_spec_formats.py::TestExportLayout::test_files, tests/test_pools.py::TestExport::test_copy,
-tests/test_pools.py::TestExport::test_selection_and_link, tests/test_pools.py::TestExport::test_none,
-tests/test_pools.py::TestExport::test_not_empty, tests/test_formats.py::TestExportFormats::test_default_bib, tests/test_formats.py::TestExportFormats::test_all,
-tests/test_formats.py::TestExportFormats::test_csl_only, tests/test_formats.py::TestExportFormats::test_repeated_and_comma, tests/test_formats.py::TestExportFormats::test_bibjson,
-tests/test_formats.py::TestExportFormats::test_files_none, tests/test_formats.py::TestExportFormats::test_unknown_format
-
 Messages (standard output, or standard error with `--porcelain`):
 
 ```
@@ -1133,8 +992,6 @@ DIR is not a papers library (no papers.bib): --format bib or all makes one   (on
 DIR is the absolute path; N is the number of selected entries; the
 names are those written, in order; `papers.bib` in the last message is the
 name of the library's bibtex. The wording is **free**.
-
-Tests: none (free); checked by tests/test_formats.py::TestExportFormats::test_bibtex_name_in_message.
 
 ## Open questions
 

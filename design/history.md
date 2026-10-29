@@ -60,9 +60,6 @@ library asks for a store of its own, see 2.6). In a store:
   (2.5). States form a tree (each names its parent);
 - a **head** is the current state of a place, with its redo list.
 
-Tests: tests/test_history.py::TestPlaces::test_moved_library_continues,
-tests/test_history.py::TestPlaces::test_copied_library_branches.
-
 ## 2. The store on disk
 
 ### 2.1 Location
@@ -90,16 +87,6 @@ Rules:
 An implementation must find the same folder on the same computer
 (contract).
 
-Tests: tests/test_spec_history.py::TestLocation::test_default_location,
-tests/test_spec_history.py::TestLocation::test_relative_history_dir,
-tests/test_spec_history.py::TestLocation::test_home,
-tests/test_spec_history.py::TestLocation::test_nothing_created_without_a_change,
-tests/test_config_unit.py::TestPathsOfSettings::test_relative_to_the_global_configuration,
-tests/test_config_unit.py::TestLibraryId::test_machine_settings_not_read_from_a_library,
-tests/test_library_cmds.py::TestConfigCmd::test_machine_settings,
-tests/test_library_cmds.py::TestConfigCmd::test_global_path_relative_to_current_directory,
-tests/test_history.py::TestSeparate::test_dry_run_writes_nothing.
-
 ### 2.2 Layout
 
 ```
@@ -122,10 +109,6 @@ tests/test_history.py::TestSeparate::test_dry_run_writes_nothing.
 
 `<id>` matches `[0-9A-Za-z_-]+` (an implementation refuses other values).
 The folder of an object is the first two characters of its name.
-
-Tests: tests/test_spec_history.py::TestLayout::test_layout,
-tests/test_spec_history.py::TestLayout::test_project_id,
-tests/test_history.py::TestStates::test_identifier.
 
 ### 2.3 Objects: pieces of text
 
@@ -186,20 +169,6 @@ undo, redo and restore stop with an error that names the piece (free
 text: `the history of the library is damaged: 'piece <sha256> is missing
 from the history'`).
 
-Tests: tests/test_spec_history.py::TestObjects::test_example,
-tests/test_spec_history.py::TestObjects::test_piece_max,
-tests/test_spec_history.py::TestObjects::test_segments,
-tests/test_spec_history.py::TestObjects::test_object_file,
-tests/test_spec_history.py::TestObjects::test_any_zlib_stream,
-tests/test_spec_history.py::TestObjects::test_existing_object_refreshed,
-tests/test_spec_history.py::TestObjects::test_tmp_files_are_not_objects,
-tests/test_spec_history.py::TestObjectsOfALibrary::test_bytes_of_the_file,
-tests/test_spec_history.py::TestObjectsOfALibrary::test_missing_piece,
-tests/test_history.py::TestPieces::test_byte_for_byte,
-tests/test_history.py::TestPieces::test_pieces_of_entries,
-tests/test_history.py::TestPieces::test_shared_pieces,
-tests/test_history.py::TestPieces::test_missing_piece.
-
 ### 2.4 File objects: deleted files
 
 A file that a command deletes is moved into the store (see 5.6), so that
@@ -219,12 +188,6 @@ undo can bring it back.
 - File objects are shared by all projects of the store: a file deleted by
   two libraries is stored once. Undo finds a file by checksum in the whole
   store, not only among the files of its project.
-
-Tests: tests/test_spec_history.py::TestFileObjects::test_extension_as_written,
-tests/test_spec_history.py::TestFileObjects::test_lookup_by_checksum,
-tests/test_spec_history.py::TestFileObjects::test_stored_again,
-tests/test_spec_history.py::TestFileObjects::test_shared_by_the_projects,
-tests/test_history.py::TestPieces::test_files.
 
 ### 2.5 States and their identifiers
 
@@ -314,20 +277,6 @@ project id (7.2, 8.4).
 The result does not depend on who does it: two commands (or two
 implementations) upgrading at the same time write the same files.
 
-Tests: tests/test_history.py::TestStates::test_tree,
-tests/test_history.py::TestStates::test_state_identifier,
-tests/test_history.py::TestStates::test_upgrade_numbered_states,
-tests/test_history.py::TestStoredNames::test_known_state_id,
-tests/test_undo_pool.py::TestNumberedStatesOfTwoStores::test_library_upgraded_first,
-tests/test_undo_pool.py::TestNumberedStatesOfTwoStores::test_pool_upgraded_first,
-tests/test_undo.py::TestTimeTravel::test_unknown_state,
-tests/test_spec_history.py::TestStates::test_written_once,
-tests/test_spec_history.py::TestStates::test_other_files_ignored,
-tests/test_spec_history.py::TestStates::test_naming,
-tests/test_spec_history.py::TestStates::test_several,
-tests/test_spec_history.py::TestStates::test_json,
-tests/test_spec_history.py::TestStates::test_numbers_json.
-
 ### 2.6 Separate stores
 
 With the `history-separate` setting true, the library's project is in the
@@ -345,12 +294,6 @@ libraries, and its retention is counted alone.
   library finds no history in the other store and starts a new one there.
 - `papers history --all` and `papers history --remove ID` look in the
   shared store and in each folder of `<root>/separate/`.
-
-Tests: tests/test_history.py::TestSeparate::test_own_store,
-tests/test_history.py::TestSeparate::test_size_of_its_own,
-tests/test_spec_history.py::TestSeparateStores::test_machine_setting,
-tests/test_spec_history.py::TestSeparateStores::test_bibtex_without_library,
-tests/test_spec_history.py::TestSeparateStores::test_change_of_the_setting.
 
 ### 2.7 `heads.json`
 
@@ -386,11 +329,6 @@ Rules:
   head changes: read, modify, write.
 - A missing or unreadable file means no heads.
 
-Tests: tests/test_spec_history.py::TestHeads::test_format,
-tests/test_spec_history.py::TestHeads::test_missing_states,
-tests/test_spec_history.py::TestHeads::test_unreadable,
-tests/test_history.py::TestStates::test_places.
-
 ### 2.8 Writing order
 
 Contract, so that a concurrent retention (section 9) never removes what a
@@ -399,8 +337,6 @@ state refers to:
 1. write (or refresh) the objects and file objects of the state;
 2. write the state;
 3. write the head.
-
-Tests: tests/test_spec_history.py::TestWritingOrder::test_order.
 
 ## 3. A state
 
@@ -431,11 +367,6 @@ it, and a reader must accept a state without it. A reader ignores
 unknown keys; an implementation that rewrites a state (5.5, 9.4) keeps
 them.
 
-Tests: tests/test_spec_history.py::TestKeys::test_keys,
-tests/test_spec_history.py::TestKeys::test_without_kind,
-tests/test_spec_history.py::TestKeys::test_unknown_keys_kept,
-tests/test_history.py::TestStates::test_state_identifier.
-
 ### 3.2 Kinds and messages
 
 | `kind` | When | `message` |
@@ -449,9 +380,6 @@ followed by `: revert of step A` (or `steps A, B`), `: step A again` (or
 `steps A, B again`), or both joined by `, ` (`papers undo: revert of step
 3c5e0b7a`), with the identifiers shortened to 8 characters. The text of
 `message` is free; it is for display.
-
-Tests: tests/test_spec_history.py::TestKinds::test_kinds,
-tests/test_history.py::TestHistoryCommand::test_list.
 
 ### 3.3 The kept `.papers/` files
 
@@ -480,13 +408,6 @@ Builds of papers 3 before #167 kept `distinct.json` and `origin/` in the
 names; going to such a state writes the files into the library directory
 (where papers moves them at load, see `library.md`).
 
-Tests: tests/test_spec_history.py::TestKeptFiles::test_names,
-tests/test_spec_history.py::TestKeptFiles::test_library_directory,
-tests/test_history.py::TestStoredNames::test_known_state_id,
-tests/test_history.py::TestStoredNames::test_windows_separators,
-tests/test_library_folder.py::LibraryFolderTest::test_undo_across_the_move,
-tests/test_undo_pool.py::TestUndoPool::test_undo_restores_distinct.
-
 ### 3.4 `deleted`
 
 The sorted list, without repeats, of the checksums of these operations
@@ -501,10 +422,6 @@ of `ops` (section 4):
 A file object is kept by the retention as long as a state lists it in
 `deleted`. `--drop-files` removes checksums from `deleted` and leaves
 `ops` unchanged (9.4).
-
-Tests: tests/test_spec_history.py::TestDeleted::test_sorted_without_repeats,
-tests/test_journal.py::TestDeleted::test_rm_undo_restores_from_the_history,
-tests/test_file_cmd.py::TestFixFromHistory::test_restored_file_kept_by_its_step.
 
 ### 3.5 Examples
 
@@ -619,8 +536,6 @@ pool moved on to step `d48b6e15…`:
 }
 ```
 
-Tests: none (examples; their keys are checked in 3.1, 4 and 7.1).
-
 ## 4. File operations
 
 `ops` lists the file operations of the command, oldest first. Each is an
@@ -678,16 +593,6 @@ copy of a library acts on the copy's own files (relative) and on the same
 outside files (absolute). The separator is `/` on every platform: on
 Windows `\` is written `/` (`C:/u/x.pdf`), and read back as `\`.
 
-Tests: tests/test_spec_history.py::TestFileOperations::test_trashed,
-tests/test_spec_history.py::TestFileOperations::test_moved,
-tests/test_spec_history.py::TestFileOperations::test_paths_absolute,
-tests/test_spec_history.py::TestFileOperations::test_copied,
-tests/test_spec_history.py::TestFileOperations::test_relative_to_the_copy,
-tests/test_history.py::TestDownloads::test_add_move_undo,
-tests/test_history.py::TestStoredNames::test_windows_separators,
-tests/test_journal.py::TestSeveralSteps::test_operations_in_the_state,
-tests/test_journal.py::TestDeleted::test_identical_copy_not_kept.
-
 ## 5. Recording
 
 ### 5.1 The place and the project of a library
@@ -702,12 +607,6 @@ tests/test_journal.py::TestDeleted::test_identical_copy_not_kept.
     the UTF-8 bytes of the place. Moving such a bibtex loses its history.
 - `papers export DIR` gives the new library a new id: it has a history of
   its own.
-
-Tests: tests/test_spec_history.py::TestRecording::test_id_created_at_the_first_state,
-tests/test_spec_history.py::TestSeparateStores::test_bibtex_without_library,
-tests/test_history.py::TestPlaces::test_no_trace_before_a_change,
-tests/test_history.py::TestPlaces::test_export_has_its_own_history,
-tests/test_history.py::TestSeparate::test_dry_run_writes_nothing.
 
 ### 5.2 The head of a place, and changes made outside papers
 
@@ -756,15 +655,6 @@ Only the bibtex is compared. A change made outside papers to the kept
 command's state. A change of the bibtex and of `.papers/` files together
 (a synced folder) is one `outside` state, with both.
 
-Tests: tests/test_spec_history.py::TestRecording::test_outside_state_files_from_disk,
-tests/test_undo_pool.py::TestUndoPool::test_undo_across_an_outside_change_of_the_origin_records,
-tests/test_undo.py::TestOutsideChanges::test_not_dropped_by_undo,
-tests/test_undo.py::TestOutsideChanges::test_undo_right_after_an_outside_change,
-tests/test_spec_history.py::TestKinds::test_kinds,
-tests/test_history.py::TestStates::test_places,
-tests/test_history.py::TestPlaces::test_moved_library_continues,
-tests/test_history.py::TestPlaces::test_copied_library_branches.
-
 ### 5.3 The library before the command
 
 When a command starts, if its library has no head yet, or if the sha of
@@ -783,9 +673,6 @@ first state is the library before its first recorded command).
 
 Nothing is written at the start of a command: a command that changes
 nothing leaves no trace (no state, no id, no store folder).
-
-Tests: tests/test_spec_history.py::TestRecording::test_library_before_the_command,
-tests/test_history.py::TestPlaces::test_no_trace_before_a_change.
 
 ### 5.4 The state after a save
 
@@ -831,15 +718,6 @@ without other changes, is skipped entirely (no lock, no state).
 If recording fails after the bibtex was written, papers prints an error
 and the command goes on: the save is not undone (free).
 
-Tests: tests/test_spec_history.py::TestRecording::test_no_state_for_an_identical_save,
-tests/test_spec_history.py::TestRecording::test_command_after_undo_starts_a_branch,
-tests/test_spec_history.py::TestPoolLink::test_link,
-tests/test_journal.py::TestRefusedSave::test_files_put_back,
-tests/test_journal.py::TestRefusedSave::test_deleted_files_put_back,
-tests/test_journal.py::TestRefusedSave::test_rollback,
-tests/test_undo.py::TestTimeTravel::test_undo_then_change_branches,
-tests/test_journal.py::TestSeveralSteps::test_operations_in_the_state.
-
 ### 5.5 Operations after the save
 
 Some operations happen after the save (for example `rm --delete-files`
@@ -858,13 +736,6 @@ command, also after an error or an interrupt:
   added with these operations and the bibtex and `.papers/` files on
   disk, as in 5.4 (never skipped by rule 6, since `ops` is not empty).
   The operations never join the state of an earlier command.
-
-Tests: tests/test_spec_history.py::TestRecording::test_operations_after_the_head_moved,
-tests/test_journal.py::TestDeleted::test_rm_undo_restores_from_the_history,
-tests/test_journal.py::TestDeleted::test_operations_after_a_save_without_state,
-tests/test_journal.py::TestCommandsThatDoNotSave::test_file_clean_undo,
-tests/test_journal.py::TestCommandsThatDoNotSave::test_interrupted,
-tests/test_journal.py::TestSeveralSteps::test_add_then_delete_several_steps.
 
 ### 5.6 Deleted files
 
@@ -908,16 +779,6 @@ warning `no terminal to confirm: the files are kept (-y/--yes proceeds)`.
 The thresholds and texts are free; the outcomes (store, system trash, or
 not deleted) are the behaviour users rely on.
 
-Tests: tests/test_journal.py::TestDeleted::test_rm_undo_restores_from_the_history,
-tests/test_journal.py::TestDeleted::test_keep_deleted_files_false,
-tests/test_journal.py::TestDeleted::test_identical_copy_not_kept,
-tests/test_journal.py::TestGuard::test_more_than_the_history_keeps_without_terminal,
-tests/test_journal.py::TestGuard::test_more_than_the_history_keeps_confirmed,
-tests/test_journal.py::TestGuard::test_answer_no,
-tests/test_journal.py::TestGuard::test_yes,
-tests/test_journal.py::TestGuard::test_lesser_case_recent_states,
-tests/test_journal.py::TestGuard::test_no_limit.
-
 ### 5.7 Summary
 
 | Situation | States added |
@@ -931,8 +792,6 @@ tests/test_journal.py::TestGuard::test_no_limit.
 | undo, redo, restore | none in the library; a state in a pool when its step is reverted or done again (7.3) |
 | undo, redo with `auto-push` that sends something | a push: a pool state, then a library state (7.6) |
 | `--dry-run` | none |
-
-Tests: those of 5.1 to 5.6, 6.2 and 7.1 (the table sums them up).
 
 ## 6. Undo, redo, restore
 
@@ -949,8 +808,6 @@ From state A to state B:
   the line of A when there is none;
 - `forward`: the states of the line of B, down to (not including) that
   common ancestor, in order from the oldest to B.
-
-Tests: tests/test_history.py::TestStates::test_tree.
 
 ### 6.2 The commands
 
@@ -1009,20 +866,6 @@ Undo, redo and restore record no file operations and add no state to the
 library (contract: they move the head). After undo and redo in a shallow
 library with `auto-push`, a push may follow (7.6).
 
-Tests: tests/test_spec_history.py::TestCommands::test_no_state_added,
-tests/test_spec_history.py::TestCommands::test_redo_list_of_undo,
-tests/test_spec_history.py::TestCommands::test_redo_after_an_outside_change,
-tests/test_spec_history.py::TestCommands::test_restore_redo_list,
-tests/test_spec_history.py::TestCommands::test_nothing_to_restore,
-tests/test_undo.py::TestTimeTravel::test_undo_redo,
-tests/test_undo.py::TestTimeTravel::test_nothing_to_undo,
-tests/test_undo.py::TestTimeTravel::test_undo_then_change_branches,
-tests/test_undo.py::TestTimeTravel::test_dry_run,
-tests/test_undo.py::TestOutsideChanges::test_undo_right_after_an_outside_change,
-tests/test_undo.py::TestOutsideChanges::test_restore_drops_the_outside_change,
-tests/test_journal.py::TestSeveralSteps::test_restore_state,
-tests/test_undo_pool.py::TestUndoPool::test_restore_ref_restores_origin.
-
 ### 6.3 Going to a state
 
 From the current state C to the target T (contract for the result):
@@ -1058,13 +901,6 @@ against the directory of the bibtex, as normalized absolute paths.
 "`files.json` of a state" is the checksums in the state's
 `.papers/files.json` (section 10), as `{normalized absolute path:
 sha256}`; empty when the state has none.
-
-Tests: tests/test_spec_history.py::TestGoingToAState::test_kept_files_written_and_removed,
-tests/test_spec_history.py::TestObjectsOfALibrary::test_bytes_of_the_file,
-tests/test_undo.py::TestTimeTravel::test_undo_redo,
-tests/test_undo_pool.py::TestUndoPool::test_add_then_undo_redo,
-tests/test_undo_pool.py::TestUndoPool::test_undo_restores_distinct,
-tests/test_journal.py::TestChecksums::test_found_by_checksum.
 
 ### 6.4 Restoring the files
 
@@ -1219,30 +1055,6 @@ The paths in the report lines are shown relative to the current
 directory when they are below it, else absolute with `~` for the home
 directory; each line is indented by four spaces (free).
 
-Tests: tests/test_journal.py::TestOneStep::test_rename_undo_redo,
-tests/test_journal.py::TestOneStep::test_copy_removed_by_undo,
-tests/test_journal.py::TestOneStep::test_file_changed_since,
-tests/test_journal.py::TestOneStep::test_place_taken,
-tests/test_journal.py::TestOneStep::test_only_the_last_command,
-tests/test_journal.py::TestOneStep::test_file_mv,
-tests/test_journal.py::TestOneStep::test_deleted_file_reported,
-tests/test_journal.py::TestSeveralSteps::test_one_step_at_a_time,
-tests/test_journal.py::TestSeveralSteps::test_several_steps,
-tests/test_journal.py::TestSeveralSteps::test_chain_of_moves,
-tests/test_journal.py::TestSeveralSteps::test_external_file_only_unlinked,
-tests/test_journal.py::TestSeveralSteps::test_add_moved_from_outside,
-tests/test_journal.py::TestSeveralSteps::test_add_then_delete_several_steps,
-tests/test_journal.py::TestSeveralSteps::test_add_copied_from_outside,
-tests/test_journal.py::TestChecksums::test_found_by_checksum,
-tests/test_journal.py::TestShallow::test_moved_back,
-tests/test_journal.py::TestShallow::test_copied_back,
-tests/test_journal.py::TestDeleted::test_history_emptied,
-tests/test_journal.py::TestDeleted::test_identical_copy_not_kept,
-tests/test_journal.py::TestDeleted::test_redo_with_keep_deleted_files_false,
-tests/test_journal.py::TestCommandsThatDoNotSave::test_file_clean_undo,
-tests/test_file_cmd.py::TestFixFromHistory::test_restore,
-tests/test_file_cmd.py::TestFixFromHistory::test_restored_file_after_history_dir_change.
-
 ### 6.5 The report
 
 Free. papers prints:
@@ -1261,8 +1073,6 @@ the short id being the first 8 characters of the identifier. The
 last block lists the files of the files directory that the entries linked
 before and no longer link. With `--dry-run`:
 `DRYRUN: undo: papers.bib not restored to <state>`.
-
-Tests: none (free).
 
 ### 6.6 Files brought back by `papers file check` and `fix`
 
@@ -1294,11 +1104,6 @@ a change of `history-dir` (`source(op)`, 6.4). Lines (free): `<key>:
 `--dry-run`, `DRYRUN: <key>: restore <link> from the history (…)`; with
 `file check`, `<key>: broken link: <link> -> in the history (…)`.
 
-Tests: tests/test_file_cmd.py::TestFixFromHistory::test_restore,
-tests/test_file_cmd.py::TestFixFromHistory::test_by_checksum,
-tests/test_file_cmd.py::TestFixFromHistory::test_restored_file_kept_by_its_step,
-tests/test_file_cmd.py::TestFixFromHistory::test_restored_file_after_history_dir_change.
-
 ## 7. Undo and redo with a pool
 
 ### 7.1 The link
@@ -1328,10 +1133,6 @@ state before the first. A link written before #163 has no `base`: its
 base is the parent of `state`. The link is only added for another
 library that has a configuration file. A library state with `pools` is
 never skipped by rule 6 of 5.4.
-
-Tests: tests/test_spec_history.py::TestPoolLink::test_link,
-tests/test_undo_pool.py::TestSeveralSavesOfThePool::test_undo,
-tests/test_revert.py::TestRevertShallow::test_pool_line.
 
 ### 7.2 Finding the pool steps
 
@@ -1380,15 +1181,6 @@ Once a step of a pool is reverted, its later steps are reverted too
 `<name>` is the pool as the library's `pool` setting writes it when the
 link points to that pool, else its folder with `~` (free).
 
-Tests: tests/test_spec_history.py::TestPoolLink::test_pool_not_found,
-tests/test_undo_pool.py::TestUndoPool::test_pool_changed_since,
-tests/test_undo_pool.py::TestUndoPool::test_pool_changed_since_elsewhere,
-tests/test_undo_pool.py::TestUndoPool::test_redo_after_the_pool_moved_on,
-tests/test_undo_pool.py::TestUndoPool::test_pool_changed_outside_papers,
-tests/test_undo_pool.py::TestUndoPool::test_pool_undone_first,
-tests/test_undo_pool.py::TestSeveralSavesOfThePool::test_undo,
-tests/test_undo_pool.py::TestNumberedStatesOfTwoStores::test_library_upgraded_first.
-
 ### 7.3 Moving the pools
 
 For each pool with steps:
@@ -1417,13 +1209,6 @@ For each pool with steps:
 
   followed by the lines of the revert, indented by four spaces.
 
-Tests: tests/test_undo_pool.py::TestUndoPool::test_add_then_undo_redo,
-tests/test_undo_pool.py::TestUndoPool::test_pool_changed_since,
-tests/test_undo_pool.py::TestUndoPool::test_pool_changed_since_elsewhere,
-tests/test_undo_pool.py::TestUndoPool::test_redo_after_the_pool_moved_on,
-tests/test_undo_pool.py::TestUndoPool::test_undo_after_push,
-tests/test_undo_pool.py::TestUndoPoolAutoPush::test_add_then_undo_redo.
-
 ### 7.4 Order
 
 - **Undo: the pools first, then the library.** The library's undo then
@@ -1444,10 +1229,6 @@ bibtex and `.papers/` files. The exception is a pool state made by
 undo or redo (7.3): its file operations are its own, so
 `papers -C POOL undo` of it moves its files back.
 
-Tests: tests/test_journal.py::TestShallow::test_moved_back,
-tests/test_journal.py::TestShallow::test_copied_back,
-tests/test_undo_pool.py::TestUndoFileRmShallow::test_undo_file_rm.
-
 ### 7.5 `--library-only`, and commands run in the pool
 
 - `undo --library-only`, `redo --library-only`: no pool step is looked
@@ -1457,12 +1238,6 @@ tests/test_undo_pool.py::TestUndoFileRmShallow::test_undo_file_rm.
   library made it (`from` names it). The library's link then no longer
   matches where the pool is; a later undo in the library reverts instead.
 - `papers restore` never touches the pools.
-
-Tests: tests/test_undo_pool.py::TestUndoPool::test_add_then_undo_library_only,
-tests/test_undo_pool.py::TestUndoPool::test_undo_after_push_library_only,
-tests/test_undo_pool.py::TestUndoPool::test_pool_undo_redo,
-tests/test_undo_pool.py::TestUndoPool::test_restore_ref_restores_origin,
-tests/test_journal.py::TestShallow::test_copied_back.
 
 ### 7.6 Auto-push after undo and redo
 
@@ -1477,9 +1252,6 @@ prints ``the push is a new step: nothing to redo now (`papers restore
 <short id>` goes back to the steps undone)``, naming the first state of
 that list (free). In general there is nothing to push: the undo
 restored the origin records with the bibtex.
-
-Tests: tests/test_undo_pool.py::TestUndoPoolAutoPush::test_undo_pushes_what_a_step_did_not,
-tests/test_undo_pool.py::TestUndoPoolAutoPush::test_undo_without_anything_to_push.
 
 ## 8. Revert: `papers history --revert STEP`
 
@@ -1501,9 +1273,6 @@ Errors (nothing changes):
 Let P = the parent of N, and **before**, **after** = the entries of the
 bibtex of P and of N, **now** = the entries of the library.
 
-Tests: tests/test_spec_history.py::TestRevert::test_errors,
-tests/test_revert.py::TestRevertEntries::test_errors.
-
 ### 8.1 The entries step N changed
 
 Keys are compared without case.
@@ -1518,8 +1287,6 @@ Keys are compared without case.
 
 The entry **now** of an entry X of a state: the entry of the library with
 X's key; else the entry whose `ids` contains X's key.
-
-Tests: those of 8.2.
 
 ### 8.2 Rules per entry
 
@@ -1562,17 +1329,6 @@ Tests: those of 8.2.
      when empty). The rename is followed as any rename is (crossref
      fields, the keys in the origin records, see `exchange.md`).
 
-Tests: tests/test_revert.py::TestRevertEntries::test_tags_one_by_one,
-tests/test_revert.py::TestRevertEntries::test_tag_removed_comes_back,
-tests/test_revert.py::TestRevertEntries::test_field,
-tests/test_revert.py::TestRevertEntries::test_conflict,
-tests/test_revert.py::TestRevertEntries::test_skip,
-tests/test_revert.py::TestRevertEntries::test_added_entry,
-tests/test_revert.py::TestRevertEntries::test_added_entry_changed_since,
-tests/test_revert.py::TestRevertEntries::test_removed_entry,
-tests/test_revert.py::TestRevertEntries::test_removed_entry_whose_key_is_taken,
-tests/test_revert.py::TestRevertEntries::test_key.
-
 ### 8.3 Files, `distinct.json`, origin records
 
 - `distinct.json`: the pairs in N's file and not in P's are removed from
@@ -1590,12 +1346,6 @@ tests/test_revert.py::TestRevertEntries::test_key.
   with them.
 - With `--dry-run`: the report of the entries, no files, nothing saved.
 
-Tests: tests/test_revert.py::TestRevertEntries::test_distinct,
-tests/test_revert.py::TestRevertEntries::test_dry_run,
-tests/test_revert.py::TestRevertFiles::test_added_with_file,
-tests/test_revert.py::TestRevertFiles::test_removed_with_file,
-tests/test_spec_history.py::TestRevert::test_origin_records_unchanged.
-
 ### 8.4 The state
 
 The library is saved as after any command that changes entries (with
@@ -1607,10 +1357,6 @@ If step N also wrote a pool, the pool is not reverted. For each entry of
 N's `pools` whose configuration file exists, papers prints (M: the
 `state` of the link, a number looked up as in 2.5):
 ``step N also changed pool <name> (its step M): `papers -C <name> history --revert M` takes it back there``.
-
-Tests: tests/test_spec_history.py::TestRevert::test_state,
-tests/test_revert.py::TestRevertEntries::test_tags_one_by_one,
-tests/test_revert.py::TestRevertShallow::test_pool_line.
 
 ### 8.5 Doing a step again
 
@@ -1625,8 +1371,6 @@ in N's and not in P's added. The files: restored as redo does (6.4) with
 the operations of N, undo = false, checksums = `files.json` of N. The
 lines say `added`/`removed` as the step did them, from the side of the
 redo (free). The result is a new state of the pool (7.3).
-
-Tests: tests/test_undo_pool.py::TestUndoPool::test_redo_after_the_pool_moved_on.
 
 ## 9. Retention
 
@@ -1646,12 +1390,6 @@ not that of `<root>` (2.1).
 The size of a store is the sum of the sizes on disk of the files in
 `objects/*/` and `file-objects/*/`, `.tmp` files excluded. States and
 `heads.json` are not counted.
-
-Tests: tests/test_spec_history.py::TestSize::test_what_counts,
-tests/test_spec_history.py::TestSizeOfALibrary::test_machine_value_for_the_shared_store,
-tests/test_spec_history.py::TestSizeOfALibrary::test_separate_store_falls_back_to_the_machine,
-tests/test_history.py::TestSeparate::test_size_of_its_own,
-tests/test_history.py::TestSeparate::test_shared_store_in_a_folder_named_separate.
 
 ### 9.2 Pruning
 
@@ -1702,18 +1440,6 @@ state); after `history --remove`. With the limit 0 no state is dropped,
 and the removable objects are removed. papers prints, at info level,
 `N old step(s) dropped from the history (history-size: S MB)`.
 
-Tests: tests/test_spec_history.py::TestPruning::test_no_limit_frees_unreferenced_objects,
-tests/test_spec_history.py::TestPruning::test_order_by_time_then_identifier,
-tests/test_spec_history.py::TestPruning::test_heads_of_all_projects_protected,
-tests/test_history.py::TestPrune::test_oldest_states_first,
-tests/test_history.py::TestPrune::test_recent_objects_kept,
-tests/test_history.py::TestPrune::test_objects_of_dropped_states,
-tests/test_history.py::TestPrune::test_object_used_again_kept,
-tests/test_history.py::TestPrune::test_recent_orphans_do_not_push_states_out,
-tests/test_history.py::TestPrune::test_files_to_the_discard,
-tests/test_history.py::TestPrune::test_extra,
-tests/test_journal.py::TestCyclicalRemoval::test_last_three_kept.
-
 ### 9.3 `papers history --remove [ID]`
 
 - Without ID: if other places use the project, only this place's head is
@@ -1730,13 +1456,6 @@ tests/test_journal.py::TestCyclicalRemoval::test_last_three_kept.
 - The confirmation: `-y`/`--yes` skips it; without a terminal the command
   stops with an error.
 - No project: `the library has no history`.
-
-Tests: tests/test_spec_history.py::TestRemove::test_last_place_prunes,
-tests/test_spec_history.py::TestRemove::test_by_id,
-tests/test_spec_history.py::TestRemove::test_no_project,
-tests/test_history.py::TestHistoryCommand::test_all_and_remove,
-tests/test_history.py::TestHistoryCommand::test_remove_keeps_the_history_of_a_copy,
-tests/test_history.py::TestHistoryCommand::test_remove_without_terminal.
 
 ### 9.4 `papers history --drop-files STEP|PATH`
 
@@ -1762,23 +1481,12 @@ the separator of the operating system, or `.`; otherwise it names a step
    `deleted` goes to the system trash. One that another project keeps
    stays (and undo in this library can still find it by checksum).
 
-Tests: tests/test_spec_history.py::TestDropFiles::test_file_kept_by_another_project,
-tests/test_spec_history.py::TestKeys::test_unknown_keys_kept,
-tests/test_journal.py::TestDropFiles::test_size_in_the_list,
-tests/test_journal.py::TestDropFiles::test_drop_by_step,
-tests/test_journal.py::TestDropFiles::test_drop_by_path,
-tests/test_journal.py::TestDropFiles::test_confirmation,
-tests/test_journal.py::TestDropFiles::test_unknown_step.
-
 ### 9.5 `keep-deleted-files`
 
 Machine setting, true by default. False: files deleted by commands go to
 the system trash (5.6), `papers history` says `deleted files not kept:
 keep-deleted-files false`, and undo reports `deleted by the command, not
 restored`.
-
-Tests: tests/test_journal.py::TestDeleted::test_keep_deleted_files_false,
-tests/test_journal.py::TestDeleted::test_redo_with_keep_deleted_files_false.
 
 ## 10. `.papers/files.json`
 
@@ -1824,17 +1532,6 @@ by its content wherever the commands left it, or among the deleted files;
 a file at its path with another content is not overwritten and not
 moved.
 
-Tests: tests/test_spec_history.py::TestFilesJson::test_format,
-tests/test_spec_history.py::TestFilesJsonKeys::test_written_and_read_with_slash,
-tests/test_spec_history.py::TestFilesJson::test_absolute,
-tests/test_spec_history.py::TestFilesJson::test_deleted_without_checksums,
-tests/test_spec_history.py::TestFilesJson::test_relative_to_the_bibtex,
-tests/test_journal.py::TestChecksums::test_written_by_the_commands,
-tests/test_journal.py::TestChecksums::test_setting_off,
-tests/test_journal.py::TestChecksums::test_command,
-tests/test_journal.py::TestChecksums::test_found_by_checksum,
-tests/test_undo.py::TestUndoNoInstall::test_undo.
-
 ## 11. The parse cache
 
 papers keeps a cache of parsed bibtex pieces, so that a large bibtex is
@@ -1868,13 +1565,6 @@ Contract:
   not read it, and must not write into `<cache dir>/parsed/` (it would
   give Python wrong blocks). Having a cache, and its location, are free
   otherwise.
-
-Tests: tests/test_parsecache.py::TestParseCache::test_cases,
-tests/test_parsecache.py::TestParseCache::test_files_of_the_tests,
-tests/test_parsecache.py::TestParseCache::test_only_changed_pieces_are_split,
-tests/test_parsecache.py::TestParseCache::test_not_cached_when_a_block_fails,
-tests/test_parsecache.py::TestParseCache::test_prune,
-tests/test_parsecache.py::TestParseCache::test_damaged_cache.
 
 ## 12. `papers history`
 
@@ -1917,11 +1607,6 @@ backups of earlier versions:
 
 Each with its total size. There is no migration from them.
 
-Tests: none (free). The display is checked by tests/test_history.py::TestHistoryCommand::test_list,
-tests/test_history.py::TestHistoryCommand::test_stale_backups,
-tests/test_history.py::TestHistoryCommand::test_bibtex_without_library,
-tests/test_journal.py::TestDropFiles::test_size_in_the_list.
-
 ## 13. Two implementations on one store
 
 Python papers and another implementation may run at the same time on the
@@ -1955,9 +1640,6 @@ same machine, on the same store. What makes this safe, and what does not:
   from the other implementation.
 - The store keeps no format version. A new key in a state must be
   optional for the other implementation (3.1).
-
-Tests: none (a summary of 2.3, 2.5, 2.8, 7.2 and section 9; the cases not
-protected are not tested).
 
 ## Open questions
 

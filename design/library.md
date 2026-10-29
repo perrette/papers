@@ -77,16 +77,6 @@ Contract:
   bibtex belongs to another library), or the command is a dry run (see
   [Open questions](#open-questions)). A move that fails is a warning.
 
-Tests: tests/test_library_folder.py::LibraryFolderTest::test_origin_in_library_folder,
-tests/test_library_folder.py::LibraryFolderTest::test_distinct_in_library_folder,
-tests/test_library_folder.py::LibraryFolderTest::test_move_from_bibtex_folder,
-tests/test_library_folder.py::LibraryFolderTest::test_no_move_over_existing_file,
-tests/test_library_folder.py::LibraryFolderTest::test_undo_across_the_move,
-tests/test_library_folder.py::LibraryFolderTest::test_other_library_left_alone,
-tests/test_spec_library.py::TestLayout::test_papers_folder_of_the_library_directory,
-tests/test_spec_library.py::TestLayout::test_no_move_with_dry_run (expected failure),
-tests/test_spec_library.py::TestFindingTheLibrary::test_bibtex_without_library
-
 ### `.papers/.gitignore`
 
 Content: the two bytes `*\n` (everything ignored). papers writes it each
@@ -101,24 +91,16 @@ configuration papers never saved (written by hand, or the
 `.papersconfig.json` of papers 2) so gets the file at the first command
 that writes it.
 
-Tests: tests/test_history.py::TestPlaces::test_no_trace_before_a_change,
-tests/test_history.py::TestPlaces::test_gitignore,
-tests/test_history.py::TestPlaces::test_gitignore_without_a_save_of_the_configuration
-
 ### `.papers/distinct.json`
 
 Pairs of entries that the user declared to be different papers: format,
 writing and matching in `bibtex.md` section 9.4.
-
-Tests: see `bibtex.md` section 9.4.
 
 ### `.papers/files.json`, `.papers/origin/`
 
 - `files.json`: `{"files": {path: sha256}}` with the paths written as the
   file links of the bibtex. See `history.md`.
 - `origin/`: one bibtex file per pool. See `exchange.md`.
-
-Tests: see `history.md` section 10 and `exchange.md`.
 
 ## The library configuration: `.papers/config.json`
 
@@ -138,11 +120,6 @@ Contract:
   (its target is written). The permissions of an existing file are kept.
   (Atomic writing is free; the format is the
   contract.)
-
-Tests: tests/test_spec_library.py::TestConfigurationFormat::test_written_format,
-tests/test_spec_library.py::TestConfigurationFormat::test_read_as_utf8,
-tests/test_safe_writes.py::TestWriteAtomic::test_write,
-tests/test_safe_writes.py::TestWriteAtomic::test_symlink
 
 Example (a shallow library):
 
@@ -201,11 +178,6 @@ other JSON keys are the setting names themselves, with hyphens
 `history-dir` and `keep-deleted-files` are settings of the machine only.
 In a library configuration they are ignored when read and never written.
 
-Tests: tests/test_spec_library.py::TestConfigurationKeys::test_format_keys,
-tests/test_spec_library.py::TestConfigurationKeys::test_other_keys,
-tests/test_config_v3.py::TestConfigCommand::test_types,
-tests/test_config_unit.py::TestLibraryId::test_machine_settings_not_read_from_a_library
-
 ### Which keys papers writes
 
 Contract (the reader must accept files with more or fewer keys; this
@@ -252,23 +224,6 @@ settings of papers 2 (`git`, `gitlfs`, `backup_files`, `gitdir`,
 `trash-days`, `trash-size`; see [Open questions](#open-questions) for
 `gitlfs` and `gitdir`).
 
-Tests: tests/test_config_v3.py::TestResolution::test_save_keeps_inherited_settings_out,
-tests/test_config_v3.py::TestResolution::test_unset,
-tests/test_config_v3.py::TestResolution::test_v2_local_config,
-tests/test_config_v3.py::TestInit::test_init,
-tests/test_config_v3.py::TestInit::test_init_options,
-tests/test_config_v3.py::TestInit::test_init_machine_defaults,
-tests/test_config_v3.py::TestConfigCommand::test_explicit_values_saved,
-tests/test_config_v3.py::TestConfigCommand::test_get_set_unset,
-tests/test_config_v3.py::TestConfigCommand::test_prune,
-tests/test_config_v3.py::TestFormatVersion::test_written,
-tests/test_config_v3.py::TestFormatVersion::test_earlier_v3_settings,
-tests/test_config_unit.py::TestLibraryId::test_unknown_keys_kept,
-tests/test_config_unit.py::TestLibraryId::test_machine_settings_not_read_from_a_library,
-tests/test_spec_library.py::TestWrittenKeys::test_paths_written_as_null,
-tests/test_spec_library.py::TestWrittenKeys::test_init_writes_pool_and_paths,
-tests/test_spec_library.py::TestWrittenKeys::test_prune_removes_the_settings_of_papers_2 (expected failure)
-
 ### Reading
 
 Contract:
@@ -314,22 +269,6 @@ Values given on the command line are checked: booleans accept
 `true yes on 1` and `false no off 0` (any case), integers must parse,
 choices must be one of the listed values.
 
-Tests: tests/test_config_more.py::TestJson::test_invalid_version,
-tests/test_config_more.py::TestConfig::test_wrong_type,
-tests/test_config_v3.py::TestFormatVersion::test_newer_version,
-tests/test_config_v3.py::TestFormatVersion::test_newer_version_command,
-tests/test_config_v3.py::TestFormatVersion::test_v3_ignores_v2_settings,
-tests/test_config_v3.py::TestFormatVersion::test_earlier_v3_settings,
-tests/test_pools_onetime.py::TestPoolSettingAsList::test_one_path,
-tests/test_pools_onetime.py::TestPoolSettingAsList::test_several_paths,
-tests/test_config_unit.py::TestLibraryId::test_invalid_id_ignored,
-tests/test_config_v3.py::TestConfigCommand::test_errors,
-tests/test_library_cmds.py::TestConfigCmd::test_bad_value,
-tests/test_spec_library.py::TestConfigurationFormat::test_read_as_utf8,
-tests/test_spec_library.py::TestReading::test_unknown_pool_name,
-tests/test_spec_library.py::TestReading::test_pools_item_that_is_a_path,
-tests/test_spec_library.py::TestReading::test_null_is_unset
-
 ### The `id` field
 
 Contract:
@@ -350,15 +289,6 @@ Contract:
 - With `--dry-run`, no id is created.
 - A bibtex without library configuration has no id; its history is named
   from its path (see `history.md`).
-
-Tests: tests/test_config_unit.py::TestLibraryId::test_created_once_and_kept,
-tests/test_config_unit.py::TestLibraryId::test_invalid_id_ignored,
-tests/test_config_unit.py::TestLibraryId::test_only_the_id_is_written,
-tests/test_config_unit.py::TestLibraryId::test_written_to_papers_config_json,
-tests/test_history.py::TestPlaces::test_no_trace_before_a_change,
-tests/test_spec_library.py::TestIdField::test_id_is_a_uuid4,
-tests/test_spec_library.py::TestIdField::test_no_id_with_dry_run,
-tests/test_spec_library.py::TestFindingTheLibrary::test_bibtex_without_library
 
 ### Relative paths
 
@@ -386,18 +316,6 @@ Contract:
   setting is written: relative to the library directory for `bibtex` and
   `filesdir`, as in [The pool setting](#the-pool-setting) for `pool`.
 
-Tests: tests/test_config_unit.py::TestPathsOfSettings::test_home_in_bibtex_and_filesdir,
-tests/test_config_v3.py::TestConfigCommand::test_paths_normalized,
-tests/test_config_v3.py::TestConfigCommand::test_paths_are_absolute,
-tests/test_config_v3.py::TestInit::test_init_dir,
-tests/test_config_v3.py::TestInit::test_init_paths_relative_to_current_directory,
-tests/test_paths.py::TestLocalConfigSubfolder::test_save_from_another_directory,
-tests/test_config_more.py::TestConfig::test_relpath_failure_keeps_the_path,
-tests/test_library_cmds.py::TestConfigCmd::test_filesdir_that_does_not_exist,
-tests/test_spec_library.py::TestRelativePaths::test_symbolic_links,
-tests/test_spec_library.py::TestRelativePaths::test_absolute_stays_absolute,
-tests/test_spec_library.py::TestRelativePaths::test_pool_resolved_against_the_library
-
 ## Legacy configuration files
 
 ### Library configuration of papers 2: `.papersconfig.json`
@@ -422,20 +340,6 @@ Contract:
   same move.
 - A version 2 file is recognised by the missing `version`, not by its
   name.
-
-Tests: tests/test_config_location.py::TestFindLibraryConfig::test_both_names_from_a_subdirectory,
-tests/test_config_location.py::TestFindLibraryConfig::test_both_files_are_an_error,
-tests/test_config_location.py::TestV2Library::test_found,
-tests/test_config_location.py::TestV2Library::test_moved_on_save,
-tests/test_config_location.py::TestV2Library::test_dry_run_moves_nothing,
-tests/test_config_location.py::TestV2Library::test_both_files,
-tests/test_config_location.py::TestV2Library::test_migrate,
-tests/test_config_location.py::TestInit::test_init_in_a_v2_library,
-tests/test_config_v3.py::TestResolution::test_v2_local_config,
-tests/test_config_v3.py::TestFormatVersion::test_v3_ignores_v2_settings,
-tests/test_library_unit.py::TestLegacyConfig::test_v2_dot_papers_read_in_place,
-tests/test_library_unit.py::TestLegacyConfig::test_v2_dot_papers_saved_in_place,
-tests/test_pools.py::TestResolution::test_v2_project_library
 
 ### Global configuration of papers 2: `papersconfig.json`
 
@@ -467,14 +371,6 @@ Contract:
   and renames the old file to `papersconfig.json.v2.bak`. A configuration
   without bibtex creates no library; the file is still renamed.
 
-Tests: tests/test_config_v3.py::TestMigrateV2Global::test_still_used_before_migration,
-tests/test_config_v3.py::TestMigrateV2Global::test_migrate,
-tests/test_config_v3.py::TestMigrateV2Global::test_migrate_relative,
-tests/test_config_v3.py::TestMigrateV2Global::test_existing_library_config_is_kept,
-tests/test_config_v3.py::TestMigrateV2Global::test_other_default_library_is_kept,
-tests/test_config_v3.py::TestMigrateV2Global::test_install_global_is_an_error,
-tests/test_config_more.py::TestConfig::test_v2_global_configuration
-
 Older locations of this file, moved at the start of every command
 (free: when; contract: the locations):
 
@@ -485,9 +381,6 @@ Older locations of this file, moved at the start of every command
 
 If the current location does not exist, the older file is moved there.
 Otherwise a warning asks the user to delete the older file.
-
-Tests: tests/test_library_unit.py::TestLegacyConfig::test_global_config_is_moved,
-tests/test_library_unit.py::TestLegacyConfig::test_both_exist
 
 ## The machine configuration
 
@@ -509,8 +402,6 @@ folder.) Other folders of the machine, for reference:
 |---|---|---|---|
 | data (`history/` lives here, see `history.md`) | `~/.local/share/papers` | `~/Library/Application Support/papers` | `%LOCALAPPDATA%\papers\papers` |
 | cache | `~/.cache/papers` | `~/Library/Caches/papers` | `%LOCALAPPDATA%\papers\papers\Cache` |
-
-Tests: tests/test_spec_library.py::TestMachineConfiguration::test_location (Linux)
 
 ### Format
 
@@ -549,16 +440,6 @@ configuration (keys sorted, indent two spaces, ASCII with `\uXXXX`
 escapes, LF line endings, no final newline), atomically through a
 temporary file in the same directory.
 
-Tests: tests/test_config_v3.py::TestFormatVersion::test_written,
-tests/test_config_v3.py::TestFormatVersion::test_newer_version,
-tests/test_config_more.py::TestMachineConfig::test_unreadable,
-tests/test_config_more.py::TestMachineConfig::test_wrong_type,
-tests/test_config_more.py::TestMachineConfig::test_right_types,
-tests/test_config_more.py::TestMachineConfig::test_pool_names_of_earlier_v3,
-tests/test_config_more.py::TestMachineConfig::test_pool_names_kept_on_save,
-tests/test_pools_onetime.py::TestPoolSettingAsList::test_global,
-tests/test_spec_library.py::TestMachineConfiguration::test_written_format
-
 `default` (contract for the meaning):
 
 - set with `papers config --global default PATH` (PATH relative to the
@@ -570,15 +451,6 @@ tests/test_spec_library.py::TestMachineConfiguration::test_written_format
   folder of the machine configuration file. `history-dir` is read the same
   way; `papers config --global history-dir PATH` writes it absolute (PATH
   relative to the current directory), with `~`.
-
-Tests: tests/test_config_v3.py::TestDefaultLibrary::test_config_global_default,
-tests/test_config_v3.py::TestDefaultLibrary::test_init_global,
-tests/test_config_more.py::TestMachineConfig::test_default_library,
-tests/test_config_unit.py::TestPathsOfSettings::test_relative_to_the_global_configuration,
-tests/test_library_cmds.py::TestConfigCmd::test_global_path_relative_to_current_directory,
-tests/test_library_cmds.py::TestConfigCmd::test_global_default_takes_one_path,
-tests/test_spec_library.py::TestMachineConfiguration::test_default_written_with_home,
-tests/test_spec_library.py::TestMachineConfiguration::test_history_dir_written_absolute
 
 ## Settings
 
@@ -624,11 +496,6 @@ configuration, M = machine configuration.
 The defaults are part of the contract: a library that does not write a
 setting relies on them.
 
-Tests: tests/test_spec_library.py::TestSettings::test_table,
-tests/test_spec_library.py::TestSettings::test_where,
-tests/test_library_cmds.py::TestConfigCmd::test_machine_settings,
-tests/test_files_mode.py::TestSetting::test_default_is_move
-
 ### Precedence
 
 Contract:
@@ -656,17 +523,6 @@ Exceptions:
 
 `papers config` (free for the display) shows the source
 of each value as `library`, `global` or `default`.
-
-Tests: tests/test_config_v3.py::TestResolution::test_order,
-tests/test_config_v3.py::TestDefaultLibrary::test_builtin_default,
-tests/test_config_v3.py::TestConfigCommand::test_global,
-tests/test_config_v3.py::TestConfigCommand::test_global_library_only,
-tests/test_config_v3.py::TestFormatOptions::test_no_key_unknown_strict,
-tests/test_files_mode.py::TestSetting::test_machine_then_library,
-tests/test_files_mode.py::TestModes::test_options_override_setting,
-tests/test_pools.py::TestResolution::test_no_pool_setting,
-tests/test_pools.py::TestShallow::test_add_places_files_in_pool,
-tests/test_spec_library.py::TestSettings::test_command_line_first
 
 ## Finding the library of a command
 
@@ -707,23 +563,6 @@ Contract (other implementations must find the same library):
 
 **`--filesdir DIR`** replaces the files directory for the command.
 
-Tests: tests/test_config_v3.py::TestDirectoryOption::test_C,
-tests/test_config_v3.py::TestDirectoryOption::test_C_missing,
-tests/test_cli_unit.py::TestMain::test_C_attached_form,
-tests/test_cli_unit.py::TestMain::test_C_combined,
-tests/test_cli_unit.py::TestMain::test_C_not_a_directory,
-tests/test_config_location.py::TestFindLibraryConfig::test_none,
-tests/test_config_location.py::TestFindLibraryConfig::test_both_names_from_a_subdirectory,
-tests/test_config_location.py::TestFindLibraryConfig::test_both_files_are_an_error,
-tests/test_config_v3.py::TestMigrateV2Global::test_still_used_before_migration,
-tests/test_config_v3.py::TestDefaultLibrary::test_outside_library,
-tests/test_config_v3.py::TestDefaultLibrary::test_no_library,
-tests/test_config_v3.py::TestDefaultLibrary::test_library_takes_precedence,
-tests/test_spec_library.py::TestFindingTheLibrary::test_first_library_upwards,
-tests/test_spec_library.py::TestFindingTheLibrary::test_root_never_searched,
-tests/test_spec_library.py::TestFindingTheLibrary::test_bibtex_of_the_library_from_elsewhere,
-tests/test_spec_library.py::TestFindingTheLibrary::test_bibtex_without_library
-
 `papers init [DIR]` creates the library in the current directory or in
 DIR (created with its parents if missing; removed again if the command
 fails and they are still empty). A directory that already has a library
@@ -735,16 +574,6 @@ or the first existing one of `files`, `pdfs`, `pdf`, `papers`,
 `bibliography`. `init` creates the empty bibtex and, for a self-contained
 library, the files directory (free: the defaults of
 `init` are behaviour, not file format).
-
-Tests: tests/test_config_v3.py::TestInit::test_init,
-tests/test_config_v3.py::TestInit::test_init_existing,
-tests/test_config_v3.py::TestInit::test_init_dir,
-tests/test_config_v3.py::TestInit::test_init_paths_relative_to_current_directory,
-tests/test_library_cmds.py::TestOtherCommands::test_init_dir_not_left_behind,
-tests/test_library_cmds.py::TestOtherCommands::test_init_in_a_library,
-tests/test_install.py::TestLocalInstall::test_install_defaults_no_preexisting_bibtex,
-tests/test_install.py::TestLocalInstall::test_install_defaults_preexisting_bibtex,
-tests/test_install.py::TestLocalInstall::test_install_defaults_preexisting_pdfs
 
 ## Pools and shallow libraries
 
@@ -774,15 +603,6 @@ for `papers init --pool PATH` and for `papers config pool PATH`.
 (made absolute): it is written with `~` when under the home directory, as
 the machine configuration writes it.
 
-Tests: tests/test_config_v3.py::TestInit::test_init_options,
-tests/test_config_v3.py::TestInit::test_init_paths_relative_to_current_directory,
-tests/test_config_v3.py::TestConfigCommand::test_types,
-tests/test_config_v3.py::TestDefaultLibrary::test_init_shallow,
-tests/test_pools.py::TestConfigPool::test_pool_path_written_relative,
-tests/test_pools_onetime.py::TestSmallFixes::test_config_pool_path_with_home,
-tests/test_spec_library.py::TestPoolSetting::test_written_with_home,
-tests/test_spec_library.py::TestPoolSetting::test_inside_the_library
-
 ### States
 
 Contract:
@@ -796,13 +616,6 @@ Contract:
   `papers config pool PATH` refuse it (`this is the library itself`).
 - There is no marker of being a pool: any self-contained library can be a
   pool.
-
-Tests: tests/test_config_v3.py::TestFormatVersion::test_v3_ignores_v2_settings,
-tests/test_pools.py::TestResolution::test_never_itself,
-tests/test_pools.py::TestResolution::test_errors,
-tests/test_pools.py::TestConfigPoolSelfContained::test_config_pool_not_the_library_itself,
-tests/test_pools.py::TestConfigPoolSelfContained::test_init_pool_must_be_a_library_without_pool,
-tests/test_pools.py::TestConfigPoolSelfContained::test_earlier_local_setting_ignored
 
 Rules on the pool (contract for the conditions; the checks are behaviour):
 
@@ -819,16 +632,6 @@ Rules on the pool (contract for the conditions; the checks are behaviour):
   print a warning and go on without it; commands that write to it stop
   with an error. The parent directory missing is reported as a possible
   unmounted disk.
-
-Tests: tests/test_pools.py::TestConfigPoolSelfContained::test_pool_must_be_a_library_without_pool,
-tests/test_pools.py::TestConfigPoolSelfContained::test_init_pool_must_be_a_library_without_pool,
-tests/test_pools.py::TestConfigPoolSelfContained::test_configured_pool_that_takes_a_pool,
-tests/test_config_v3.py::TestDefaultLibrary::test_config_global_default,
-tests/test_pools.py::TestResolution::test_missing_pool_is_a_warning,
-tests/test_pools.py::TestResolution::test_missing_library_is_never_created,
-tests/test_pools.py::TestResolution::test_push_to_missing_pool,
-tests/test_config_location.py::TestInit::test_pool_that_is_not_a_library,
-tests/test_spec_library.py::TestRulesOnThePool::test_auto_push_warns
 
 ### Files of a shallow library
 
@@ -851,21 +654,6 @@ tests/test_spec_library.py::TestRulesOnThePool::test_auto_push_warns
     Otherwise nothing changes and the entries are named.
   papers lists the changes and asks first (`-y`, `--dry-run`; without a
   terminal, an error).
-
-Tests: tests/test_pools.py::TestShallow::test_add_places_files_in_pool,
-tests/test_pools.py::TestShallow::test_file_attach_places_files_in_pool,
-tests/test_pools.py::TestShallow::test_file_rename_places_files_in_pool,
-tests/test_pools.py::TestConfigPoolSelfContained::test_init_shallow_has_no_files_directory,
-tests/test_pools_more.py::TestExchange::test_pool_without_filesdir,
-tests/test_pools.py::TestConfigPoolSelfContained::test_refused,
-tests/test_pools.py::TestConfigPoolSelfContained::test_becomes_shallow,
-tests/test_pools.py::TestConfigPoolSelfContained::test_same_paper_different_content,
-tests/test_pools.py::TestConfigPoolSelfContained::test_dry_run,
-tests/test_pools.py::TestConfigPoolSelfContained::test_no_terminal,
-tests/test_pools.py::TestConfigPoolSelfContained::test_pool_none,
-tests/test_pools.py::TestConfigPool::test_pool_none,
-tests/test_pools.py::TestConfigPool::test_pool_none_no_terminal,
-tests/test_pools.py::TestConfigPool::test_other_pool
 
 ## The files directory
 
@@ -897,25 +685,6 @@ warning). The rules, in order (the first that applies decides):
 
 The mode set, the rules are behaviour that another implementation should
 follow so that files are not lost; the exact prompts are free.
-
-Tests: tests/test_files_mode.py::TestSetting::test_ask,
-tests/test_files_mode.py::TestSetting::test_ask_answers,
-tests/test_files_mode.py::TestSetting::test_invalid,
-tests/test_files_mode.py::TestModes::test_move,
-tests/test_files_mode.py::TestModes::test_copy_is_hard_link,
-tests/test_files_mode.py::TestModes::test_copy_without_hard_link,
-tests/test_files_mode.py::TestModes::test_link,
-tests/test_files_mode.py::TestModes::test_rename_is_move,
-tests/test_files_mode.py::TestAttach::test_attach,
-tests/test_files_mode.py::TestOtherLibrary::test_move_falls_back_to_copy,
-tests/test_files_mode.py::TestOtherLibrary::test_outside_files_directory_is_moved,
-tests/test_files_mode.py::TestOtherLibrary::test_own_files_directory_is_not_other,
-tests/test_files_unit.py::TestPolicy::test_download_is_moved,
-tests/test_pools.py::TestAdd::test_copy_mode,
-tests/test_pools.py::TestAdd::test_move_mode_never_moves_pool_files,
-tests/test_pools.py::TestShallow::test_add_same_pdf_move_mode,
-tests/test_file_relink.py::TestSearch::test_move,
-tests/test_file_relink.py::TestOtherLibrary::test_move_still_copies
 
 ### File names
 
@@ -961,21 +730,6 @@ Contract:
   hidden `.<name>.bib`) are moved into the flat layout when renamed; the
   folder is removed when only the hidden bibtex is left.
 
-Tests: tests/test_paths.py::TestFlatLayout::test_names,
-tests/test_paths.py::TestFlatLayout::test_new_name_keeps_labels,
-tests/test_paths.py::TestFlatLayout::test_same_labels,
-tests/test_paths.py::TestFlatLayout::test_legacy_directory,
-tests/test_paths.py::TestFlatLayout::test_legacy_directory_with_other_files,
-tests/test_paths.py::TestRenameInPlace::test_single_file,
-tests/test_paths.py::TestRenameInPlace::test_several_files,
-tests/test_paths.py::TestMoveSameFile::test_hardlink_is_moved,
-tests/test_file_cmd.py::TestSameFileName::test_two_papers_same_name,
-tests/test_file_cmd.py::TestSameFileName::test_same_content_is_the_same_file,
-tests/test_filename_unit.py::TestSafeFileNames::test_length,
-tests/test_filename_unit.py::TestSafeFileNames::test_attachments_fit,
-tests/test_config_v3.py::TestMigrateFolders::test_folders,
-tests/test_spec_library.py::TestFileNames::test_extension
-
 ## Name and key templates
 
 ### Syntax
@@ -987,10 +741,6 @@ contract. papers formats templates with Python's format syntax, so format
 specifications (`{title:.20}`) and indexing also work there
 (`docs/renaming.md` calls the template a Python template); another
 implementation need not accept them.
-
-Tests: tests/test_filename_unit.py::TestPlaceholders::test_unknown_placeholder,
-tests/test_file_cmd.py::TestRename::test_unknown_placeholder,
-tests/test_spec_library.py::TestTemplateSyntax::test_literal_braces
 
 ### Placeholders
 
@@ -1016,9 +766,6 @@ depth 0 (`John {van der Berg}` gives `{van der berg}`,
 
 Examples with `author-sep` `_`: `doe`, `doe_and_smith`, `doe_et_al`.
 
-Tests: tests/test_spec_library.py::TestPlaceholders::test_authors,
-tests/test_spec_library.py::TestPlaceholders::test_missing_fields
-
 **Title.** If `title-word-num` is 0 or the title is empty: empty.
 Otherwise: slugify the title, split on `-`, keep the words of at least
 `title-word-size` characters, keep the first `title-word-num` of them,
@@ -1031,16 +778,6 @@ left is longer than `title-length`, cut it to that length.
 | `title` | The words joined with `title-sep`. |
 | `Title` | The words, each with its first character uppercased, joined with `title-sep`. |
 
-Tests: tests/test_filename_unit.py::TestTitleLength::test_drops_last_words,
-tests/test_filename_unit.py::TestTitleLength::test_one_word_left,
-tests/test_filename_unit.py::TestTitleLength::test_long_first_word_is_cut,
-tests/test_filename_unit.py::TestTitleLength::test_word_num,
-tests/test_filename_unit.py::TestTitleLength::test_word_size,
-tests/test_filename_unit.py::TestTitleLength::test_separator_counts,
-tests/test_filename_unit.py::TestTitleLength::test_template,
-tests/test_config_v3.py::TestFormatOptions::test_key_title_length,
-tests/test_spec_library.py::TestPlaceholders::test_title_placeholders
-
 **Other fields.** "Path-safe" means: `/`, `\` and NUL replaced by `-`;
 a non-empty value made only of dots replaced by as many `-`.
 
@@ -1052,13 +789,6 @@ a non-empty value made only of dots replaced by as many `-`.
 | `doi` | The `doi` field (or empty), path-safe. |
 | `doi_` | The `doi` field slugified. |
 | `doi_or_id` | The `doi` field slugified, or the key slugified if there is no doi. |
-
-Tests: tests/test_filename_unit.py::TestPlaceholders::test_key,
-tests/test_filename_unit.py::TestUnknownKeySanitized::test_unknown_key_from_doi_is_sanitized,
-tests/test_path_traversal.py::TestPathSafe::test_separators,
-tests/test_path_traversal.py::TestPathSafe::test_fields,
-tests/test_spec_library.py::TestPlaceholders::test_missing_fields,
-tests/test_spec_library.py::TestPlaceholders::test_doi_placeholders
 
 **Slugify.** In order:
 
@@ -1080,21 +810,11 @@ transliteration of step 2 is the table of the Python package Unidecode
 would choose; another implementation must use the same table to produce
 the same names.
 
-Tests: tests/test_filename_unit.py::TestSlugTable::test_unidecode_whatever_the_slugify_backend,
-tests/test_spec_library.py::TestPlaceholders::test_slugify,
-tests/test_spec_library.py::TestPlaceholders::test_unidecode_version
-
 **Unknown entries.** When `unknown-template` is non-empty and the entry is
 "unknown", the unknown template is used instead of the template. An
 entry is unknown when its `author` field is missing or equal to
 `unknown`, its `year` is missing or equal to `0000`, or its `title` is
 missing or empty: any of the three, or all three with `unknown-strict`.
-
-Tests: tests/test_filename_unit.py::TestFormatIsUnknown::test_unknown_strict_all_must_be_unknown,
-tests/test_filename_unit.py::TestFormatIsUnknown::test_unknown_non_strict_any_is_unknown,
-tests/test_config_v3.py::TestFormatOptions::test_key_unknown_template,
-tests/test_config_v3.py::TestFormatOptions::test_key_unknown_strict,
-tests/test_config_v3.py::TestFormatOptions::test_unknown_strict_default_is_the_setting
 
 ### File names
 
@@ -1121,12 +841,6 @@ name with its extension is cut to 250 bytes (see [File names](#file-names)).
 These rules apply only to the names made from the name template: a file
 linked where it is keeps its name.
 
-Tests: tests/test_filename_unit.py::TestSafeFileNames::test_windows_characters,
-tests/test_filename_unit.py::TestSafeFileNames::test_reserved_names,
-tests/test_filename_unit.py::TestSafeFileNames::test_no_journal,
-tests/test_filename_unit.py::TestSafeFileNames::test_length,
-tests/test_path_traversal.py::TestRename::test_subfolders_still_work
-
 ### Keys
 
 - The key template gives a key for entries created from a PDF or a DOI,
@@ -1139,13 +853,6 @@ tests/test_path_traversal.py::TestRename::test_subfolders_still_work
 - The key is not otherwise transformed: the template decides its
   characters (bibtex key validity is in `bibtex.md`). The file-name rules
   above do not apply to keys.
-
-Tests: tests/test_bib_fix.py::TestFixEntry::test_auto_key_keeps_a_right_key,
-tests/test_bib_fix.py::TestFixEntry::test_auto_key_suffix_is_stable,
-tests/test_bib_fix.py::TestFixEntry::test_fix_key,
-tests/test_config_v3.py::TestDefaultLibrary::test_outside_library,
-tests/test_filename_unit.py::TestSafeFileNames::test_keys_unchanged,
-tests/test_spec_library.py::TestTemplateKeys::test_key_not_transformed
 
 ## Path safety
 
@@ -1171,12 +878,6 @@ intended folder.
 Other names derived from data (origin file names) are slugified (see
 `exchange.md`).
 
-Tests: tests/test_path_traversal.py::TestPathSafe::test_fields,
-tests/test_path_traversal.py::TestRename::test_fields_stay_inside,
-tests/test_path_traversal.py::TestRename::test_template_outside_is_refused,
-tests/test_path_traversal.py::TestRename::test_subfolders_still_work,
-tests/test_path_traversal.py::TestAddBibtex::test_add
-
 ## The lock: `.papers/lock`
 
 A command that writes a library holds its lock, so that two commands (or
@@ -1201,12 +902,6 @@ marked as free.
   | `pid` | Process id of the holder (integer). |
   | `host` | Host name of the holder's computer. |
   | `command` | The command line, for messages. |
-
-Tests: tests/test_lock.py::TestLock::test_acquire_release,
-tests/test_spec_library.py::TestLockFile::test_content,
-tests/test_spec_library.py::TestLockFile::test_no_lock,
-tests/test_spec_library.py::TestLockFile::test_dot_papers_created,
-tests/test_spec_library.py::TestLayout::test_papers_folder_of_the_library_directory
 
 ### Protocol
 
@@ -1262,22 +957,6 @@ the lock:
 interrupt, and at process exit), the holder removes the file if it still
 has its token.
 
-Tests: tests/test_lock.py::TestLock::test_acquire_release,
-tests/test_lock.py::TestLock::test_wait_then_error,
-tests/test_lock.py::TestLock::test_released_while_waiting,
-tests/test_lock.py::TestLock::test_stale_process_gone,
-tests/test_lock.py::TestLock::test_stale_not_refreshed,
-tests/test_lock.py::TestLock::test_refreshed_lock_is_not_stale,
-tests/test_lock.py::TestLock::test_refresh,
-tests/test_lock.py::TestLock::test_take_over_only_the_stale_file,
-tests/test_lock.py::TestLock::test_take_over_without_hard_links,
-tests/test_lock.py::TestLock::test_take_over,
-tests/test_lock.py::TestLock::test_refresh_does_not_rewrite,
-tests/test_lock.py::TestLock::test_lost,
-tests/test_spec_library.py::TestLockProtocol::test_unreadable_lock_is_being_written,
-tests/test_spec_library.py::TestLockProtocol::test_check_recreates_a_removed_lock,
-tests/test_spec_library.py::TestLockProtocol::test_check_unreadable_goes_on
-
 **Order.** A command locks the library of the command line first (when it
 writes), then each pool or other library it opens while it holds a lock
 (before it reads it). A command run in the pool locks the pool only. A
@@ -1289,10 +968,6 @@ stops after `WAIT` seconds with an error, before it writes anything, and
 the other then gets the lock, unless it too waited `WAIT` seconds.
 Nothing is corrupted.
 
-Tests: tests/test_lock.py::TestCommands::test_pool_locked_too,
-tests/test_lock.py::TestUndoLocksPool::test_undo_waits_for_the_pool,
-tests/test_lock.py::TestCommands::test_writing_command_waits
-
 **Values.**
 
 | Name | Value | Status |
@@ -1302,8 +977,6 @@ tests/test_lock.py::TestCommands::test_writing_command_waits
 | `WAIT` | 30 s | free |
 | `POLL` | 0.1 s | free |
 
-Tests: tests/test_spec_library.py::TestLockProtocol::test_values
-
 A lock does not help in a folder synchronised by a service (Dropbox,
 Nextcloud): the file reaches the other computers too late.
 
@@ -1311,9 +984,6 @@ Commands that do not write (`list` without a writing action, `status`)
 take no lock. `init`, `config` and `migrate` take no lock at the start;
 `config` takes it when it saves the bibtex (for example `config paths`,
 `config pool`).
-
-Tests: tests/test_lock.py::TestCommands::test_reading_command_does_not_wait,
-tests/test_lock.py::TestCommands::test_writing_command_waits
 
 ## Open questions
 
