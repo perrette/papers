@@ -264,8 +264,10 @@ class TestImports(unittest.TestCase):
 
     def test_modules_of_other_commands_not_imported(self):
         "the modules used to write, to fetch, to read PDFs or to open files are imported when used"
-        modules = ('urllib.parse', 'subprocess', 'socket', 'uuid', 'difflib', 'concurrent.futures', 'html.entities',
+        modules = ('subprocess', 'socket', 'uuid', 'difflib', 'concurrent.futures', 'html.entities',
                    'mimetypes', 'platform', 'anyascii', 'papers.latexenc')
+        if sys.version_info >= (3, 13):  # before, pathlib imports urllib.parse
+            modules = ('urllib.parse',) + modules
         code = ("import sys, papers.cli\n"
                 "papers.cli.main(sys.argv[1:])\n"
                 f"print(sorted(m for m in {modules!r} if m in sys.modules), file=sys.stderr)\n")
