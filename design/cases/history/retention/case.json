@@ -1,0 +1,60 @@
+{
+  "description": "history-size 1 MB: a command whose deleted files do not fit with the history drops the oldest steps first (the current state stays); undo stops where the line is cut",
+  "sections": [
+    "history.md#9.1",
+    "history.md#9.2",
+    "history.md#5.6",
+    "history.md#2.5"
+  ],
+  "tests": [
+    "tests/test_journal.py::TestGuard::test_more_than_the_history_keeps_without_terminal"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "config",
+        "--global",
+        "history-size",
+        "1"
+      ]
+    },
+    {
+      "argv": [
+        "rm",
+        "doe2019",
+        "--delete-files",
+        "-y"
+      ]
+    },
+    {
+      "argv": [
+        "history"
+      ]
+    },
+    {
+      "argv": [
+        "rm",
+        "mueller2021",
+        "--delete-files",
+        "-y"
+      ]
+    },
+    {
+      "argv": [
+        "history"
+      ]
+    },
+    {
+      "argv": [
+        "undo"
+      ]
+    },
+    {
+      "argv": [
+        "history",
+        "-n",
+        "1"
+      ]
+    }
+  ]
+}

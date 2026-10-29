@@ -1,0 +1,62 @@
+{
+  "description": "a file that is missing, is not a PDF, has no DOI: the error of the file with one file, the count of the failed ones with several (the others are printed)",
+  "sections": [
+    "formats.md#7.3"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "extract",
+        "--doi-only",
+        "missing.pdf"
+      ],
+      "contract": [
+        "stdout"
+      ]
+    },
+    {
+      "argv": [
+        "extract",
+        "--doi-only",
+        "no-doi.pdf"
+      ],
+      "contract": [
+        "stdout"
+      ]
+    },
+    {
+      "argv": [
+        "extract",
+        "--doi-only",
+        "xmp-doi.pdf",
+        "missing.pdf",
+        "no-doi.pdf"
+      ],
+      "contract": [
+        "stdout"
+      ]
+    },
+    {
+      "argv": [
+        "extract",
+        "--doi-only",
+        "xmp-doi.pdf",
+        "not-a-pdf.pdf"
+      ],
+      "contract": [
+        "stdout"
+      ]
+    },
+    {
+      "argv": [
+        "extract",
+        "--doi-only",
+        "folder",
+        "xmp-doi.pdf"
+      ],
+      "contract": [
+        "stdout"
+      ]
+    }
+  ]
+}

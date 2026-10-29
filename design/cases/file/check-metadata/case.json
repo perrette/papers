@@ -1,0 +1,39 @@
+{
+  "description": "file check --metadata: the DOI of the PDFs (from their metadata, no query) is compared with the DOI of the entry: a mismatch, an entry without DOI, a link to something that is not a PDF",
+  "sections": [
+    "library.md#the-files-directory",
+    "bibtex.md#5.1",
+    "formats.md#7.3"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "file",
+        "check"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "check",
+        "--metadata"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "check",
+        "--metadata",
+        "ice2020",
+        "ok2023"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "fix",
+        "--dry-run"
+      ]
+    }
+  ]
+}

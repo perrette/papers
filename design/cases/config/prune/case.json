@@ -1,0 +1,24 @@
+{
+  "description": "config --prune removes the values equal to the global or default value",
+  "sections": [
+    "library.md#the-library-configuration/which-keys-papers-writes"
+  ],
+  "tests": [
+    "tests/test_config_v3.py::TestConfigCommand::test_prune",
+    "tests/test_spec_library.py::TestWrittenKeys::test_prune_removes_the_settings_of_papers_2"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "config",
+        "--prune"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "--prune"
+      ]
+    }
+  ]
+}

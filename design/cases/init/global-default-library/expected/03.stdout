@@ -1,0 +1,4 @@
+papers library: $WORK/shared (default library, set in $CONFIG/config.json)
+* bibtex: shared/papers.bib (empty)
+* files:  shared/files (the files directory of the library, empty)
+`papers config` lists and sets the settings

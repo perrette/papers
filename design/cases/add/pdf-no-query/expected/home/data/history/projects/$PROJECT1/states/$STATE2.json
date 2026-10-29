@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE1",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers add --no-query-doi --doi 10.1234/new.2021 --title New --key new2021",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "ebbd77faa15c1ce8e6668f0d4864169ce822d516e9eada04e4676b593ca3735d"
+  ],
+  "sha": "ebbd77faa15c1ce8e6668f0d4864169ce822d516e9eada04e4676b593ca3735d"
+ },
+ "files": {}
+}

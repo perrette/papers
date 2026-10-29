@@ -1,0 +1,1 @@
+papers: error: $CONFIG/config.json could not be read (Expecting value: line 1 column 31 (char 30)): correct the file

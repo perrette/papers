@@ -1,0 +1,21 @@
+@article{a2020,
+ author = {Doe, Jane},
+ file = {:files/doe_2020_title-of-a2020.txt:txt},
+ keywords = {x},
+ title = {Title of a2020},
+ year = {2020}
+}
+
+@article{b2021,
+ author = {Roe, R},
+ keywords = {x},
+ title = {Title of b2021},
+ year = {2020}
+}
+
+@article{c2022,
+ author = {Lee, A},
+ file = {:files/lee_2020_title-of-c2022.pdf:pdf;:files/lee_2020_title-of-c2022--x1.txt:txt;:files/lee_2020_title-of-c2022--x2.txt:txt;:files/lee_2020_title-of-c2022--x4.txt:txt;:files/lee_2020_title-of-c2022--x5.txt:txt;:x6.txt:txt},
+ title = {Title of c2022},
+ year = {2020}
+}

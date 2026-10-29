@@ -1,0 +1,26 @@
+{
+ "parent": "$STATE3",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers add in3.bib --move",
+ "ops": [
+  {
+   "op": "moved",
+   "src": "src/3.txt",
+   "dst": "files/doe_2019_entry-3.txt",
+   "checksum": "f6936912184481f5edd4c304ce27c5a1a827804fc7f329f43d273b8621870776"
+  }
+ ],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "6e31bb44dddd8f0e9a22fe1fbb8daec3d7b1bf208e001439fed78a249c75f6dc"
+  ],
+  "sha": "6e31bb44dddd8f0e9a22fe1fbb8daec3d7b1bf208e001439fed78a249c75f6dc"
+ },
+ "files": {
+  ".papers/files.json": [
+   "3c2775df51491d2328739225e35e48e22d2eddfffb6feefc02f7dfce337c7c43"
+  ]
+ }
+}

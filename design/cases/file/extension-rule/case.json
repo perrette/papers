@@ -1,0 +1,96 @@
+{
+  "description": "the extension of a file name is the part from the last dot of the base name, case kept, where the leading dots of the base name do not count: paper.v2.PDF has .PDF, .hidden, ..x and notes have none, .x.pdf has .pdf, a. has .",
+  "sections": [
+    "library.md#the-files-directory/file-names"
+  ],
+  "tests": [
+    "tests/test_spec_library.py::TestFileNames::test_extension"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "file",
+        "attach",
+        "e1",
+        "src/paper.v2.PDF",
+        "--copy",
+        "--name-template",
+        "{key}"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "attach",
+        "e2",
+        "src/.hidden",
+        "--copy",
+        "--name-template",
+        "{key}"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "attach",
+        "e3",
+        "src/..x",
+        "--copy",
+        "--name-template",
+        "{key}"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "attach",
+        "e4",
+        "src/notes",
+        "--copy",
+        "--name-template",
+        "{key}"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "attach",
+        "e5",
+        "src/.x.pdf",
+        "--copy",
+        "--name-template",
+        "{key}"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "attach",
+        "e6",
+        "src/a.",
+        "--copy",
+        "--name-template",
+        "{key}"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "attach",
+        "e7",
+        "src/archive.tar.gz",
+        "src/paper.v2.PDF",
+        "--copy",
+        "--name-template",
+        "{key}"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    }
+  ]
+}

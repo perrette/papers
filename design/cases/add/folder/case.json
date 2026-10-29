@@ -1,0 +1,82 @@
+{
+  "description": "add -R DIR: the PDFs of a folder and of the folders below it, those of the folders that start with . or _ not scanned, the files <name>--<label>.<ext> are the attachments of <name>.pdf; a folder needs -R; the fields given are for one file only; a file that cannot be added is a warning",
+  "sections": [
+    "library.md#the-files-directory/file-names",
+    "bibtex.md#5.1",
+    "formats.md#7.3"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "add",
+        "in"
+      ]
+    },
+    {
+      "argv": [
+        "add",
+        "in",
+        "-R",
+        "--dry-run"
+      ]
+    },
+    {
+      "argv": [
+        "add",
+        "in",
+        "-R",
+        "--title",
+        "x"
+      ]
+    },
+    {
+      "argv": [
+        "add",
+        "in",
+        "in2",
+        "-R"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    },
+    {
+      "argv": [
+        "undo"
+      ]
+    },
+    {
+      "argv": [
+        "add",
+        "in2",
+        "-R",
+        "--link"
+      ]
+    },
+    {
+      "argv": [
+        "add",
+        "nosuchdir",
+        "-R"
+      ]
+    },
+    {
+      "argv": [
+        "add",
+        "in/empty",
+        "-R"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    }
+  ]
+}

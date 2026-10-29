@@ -1,0 +1,112 @@
+{
+  "description": "add of a PDF whose DOI is in its metadata (XMP, document information) and that the library has: no query, the PDF is attached to its entry and placed by the name template; a PDF with the content of a file of the entry is not attached again; --doi names the entry; the fields given are not applied to an existing entry; attachments come with the PDF",
+  "sections": [
+    "library.md#the-files-directory/file-names",
+    "library.md#the-files-directory/the-files-setting",
+    "bibtex.md#5.1",
+    "formats.md#7.3"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "add",
+        "xmp-doi.pdf"
+      ]
+    },
+    {
+      "argv": [
+        "add",
+        "again/xmp-doi.pdf",
+        "--attach",
+        "extra.txt"
+      ]
+    },
+    {
+      "argv": [
+        "add",
+        "again/xmp-doi.pdf"
+      ]
+    },
+    {
+      "argv": [
+        "add",
+        "info-doi.pdf",
+        "--title",
+        "Another title",
+        "--copy"
+      ]
+    },
+    {
+      "argv": [
+        "add",
+        "info-doi.pdf",
+        "--dry-run"
+      ]
+    },
+    {
+      "argv": [
+        "add",
+        "info-doi.pdf",
+        "--doi",
+        "10.1234/other.2021",
+        "--link"
+      ]
+    },
+    {
+      "argv": [
+        "add",
+        "missing.pdf"
+      ]
+    },
+    {
+      "argv": [
+        "add",
+        "missing.pdf",
+        "again/xmp-doi.pdf"
+      ]
+    },
+    {
+      "argv": [
+        "add",
+        "missing.pdf",
+        "again/xmp-doi.pdf",
+        "--ignore-errors"
+      ]
+    },
+    {
+      "argv": [
+        "add",
+        "again/xmp-doi.pdf",
+        "info-doi.pdf",
+        "--title",
+        "x"
+      ]
+    },
+    {
+      "argv": [
+        "add",
+        "again/xmp-doi.pdf",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    },
+    {
+      "argv": [
+        "undo"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    }
+  ]
+}

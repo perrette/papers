@@ -1,0 +1,4 @@
+[1mpapers library: $WORK/corrupted[0m
+* bibtex: papers.bib
+* files:  files (the files directory of the library, [93mempty[0m)
+`papers config` lists and sets the settings

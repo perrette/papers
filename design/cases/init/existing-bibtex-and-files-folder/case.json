@@ -1,0 +1,21 @@
+{
+  "description": "init picks the first .bib file of the folder and an existing pdfs folder",
+  "sections": [
+    "library.md#finding-the-library-of-a-command"
+  ],
+  "tests": [
+    "tests/test_config_v3.py::TestInit::test_init_existing"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "init"
+      ]
+    },
+    {
+      "argv": [
+        "list"
+      ]
+    }
+  ]
+}

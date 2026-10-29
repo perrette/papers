@@ -1,0 +1,5 @@
+b2021: removed the link to $WORK/files/sub/deep/b.txt
+b2021: removed the link to $WORK/files/sub/c.txt
+delete $WORK/files/sub/deep/b.txt (kept in the history: undo restores it)
+delete $WORK/files/sub/c.txt (kept in the history: undo restores it)
+remove folder $WORK/files/sub/deep

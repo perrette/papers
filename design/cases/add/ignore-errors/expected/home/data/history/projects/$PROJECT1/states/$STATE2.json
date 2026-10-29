@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE1",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers add good.bib missing.bib other.bib --ignore-errors --porcelain",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "d2cd00fbb33279b79db63ef8a52fc75e3d21b4cf1d7e6083ab9ec44d513bdc24"
+  ],
+  "sha": "d2cd00fbb33279b79db63ef8a52fc75e3d21b4cf1d7e6083ab9ec44d513bdc24"
+ },
+ "files": {}
+}

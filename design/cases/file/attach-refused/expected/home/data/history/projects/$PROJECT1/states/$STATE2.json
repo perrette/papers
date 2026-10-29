@@ -1,0 +1,19 @@
+{
+ "parent": "$STATE1",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers file attach doe2020 x.txt --name-template ../{author}",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "8ca7c11334bec627f5ca702a0bb5c72fdadf75111bf23e826980d17a6a31faca"
+  ],
+  "sha": "8ca7c11334bec627f5ca702a0bb5c72fdadf75111bf23e826980d17a6a31faca"
+ },
+ "files": {
+  ".papers/files.json": [
+   "87c3f4d10de041ecae88a21ef726069f30d322d1fd5237031d99f9f64235b3cd"
+  ]
+ }
+}

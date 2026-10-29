@@ -1,0 +1,79 @@
+{
+  "metadata": {
+    "records": 9
+  },
+  "records": [
+    {
+      "type": "misc",
+      "id": "f1",
+      "title": "The whole text is the path",
+      "file": [
+        "$WORK/files/one.txt"
+      ]
+    },
+    {
+      "type": "misc",
+      "id": "f2",
+      "title": "path:type",
+      "file": [
+        "$WORK/files/two.txt"
+      ]
+    },
+    {
+      "type": "misc",
+      "id": "f3",
+      "title": "description:path:type",
+      "file": [
+        "$WORK/files/three.txt"
+      ]
+    },
+    {
+      "type": "misc",
+      "id": "f4",
+      "title": "The path has a colon",
+      "file": [
+        "$WORK/dir/a: b.txt"
+      ]
+    },
+    {
+      "type": "misc",
+      "id": "f5",
+      "title": "Empty links, an empty path",
+      "file": [
+        "$WORK/files/one.txt"
+      ]
+    },
+    {
+      "type": "misc",
+      "id": "f6",
+      "title": "A drive letter is a type",
+      "file": [
+        "$WORK/C"
+      ]
+    },
+    {
+      "type": "misc",
+      "id": "f7",
+      "title": "Relative, outside, absolute, not normalized",
+      "file": [
+        "$WORK/files/with space.txt",
+        "$TMP/outside.txt",
+        "/abs/path.txt",
+        "$WORK/files/one.txt"
+      ]
+    },
+    {
+      "type": "misc",
+      "id": "f8",
+      "title": "White space is part of the path",
+      "file": [
+        "$WORK/files/one.txt"
+      ]
+    },
+    {
+      "type": "misc",
+      "id": "f9",
+      "title": "No file field"
+    }
+  ]
+}

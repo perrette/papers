@@ -1,0 +1,26 @@
+@article{e1,
+ author = {One, A},
+ keywords = {a;b, c, d, b},
+ title = {Separator is the comma only},
+ year = {2001}
+}
+
+@article{e2,
+ author = {Two, B},
+ keywords = { x ,  , y,x,},
+ title = {Spaces, empty tags and repeats},
+ year = {2002}
+}
+
+@article{e3,
+ author = {Three, C},
+ keywords = {last},
+ title = {Case and levels},
+ year = {2003}
+}
+
+@article{e4,
+ author = {Four, D},
+ title = {No keywords},
+ year = {2004}
+}

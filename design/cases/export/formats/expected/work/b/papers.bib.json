@@ -1,0 +1,50 @@
+{
+  "metadata": {
+    "records": 3
+  },
+  "records": [
+    {
+      "type": "article",
+      "id": "doe2019",
+      "author": [
+        {
+          "name": "Doe, Jane"
+        }
+      ],
+      "journal": {
+        "name": "J. Ocean"
+      },
+      "title": "A paper with two files",
+      "year": "2019",
+      "file": [
+        "files/doe_2019.txt",
+        "files/doe_2019--d2.txt"
+      ]
+    },
+    {
+      "type": "article",
+      "id": "mueller2021",
+      "author": [
+        {
+          "name": "Müller, Hans"
+        }
+      ],
+      "title": "A paper with one file",
+      "year": "2021",
+      "file": [
+        "files/muller_2021.txt"
+      ]
+    },
+    {
+      "type": "article",
+      "id": "plain2020",
+      "author": [
+        {
+          "name": "Plain, Pat"
+        }
+      ],
+      "title": "A paper with no file",
+      "year": "2020"
+    }
+  ]
+}

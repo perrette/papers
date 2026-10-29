@@ -1,0 +1,19 @@
+{
+ "parent": "$STATE4",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers add --title No author or year",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "c509a42632883df138cfd7ef4157e99a2fa38ff546eb03476d8616b16c80d6a1"
+  ],
+  "sha": "c509a42632883df138cfd7ef4157e99a2fa38ff546eb03476d8616b16c80d6a1"
+ },
+ "files": {
+  ".papers/files.json": [
+   "e9cd44d3d280038a193f9c54b470b793fbcb98e49943f2518bec2bc3ac562735"
+  ]
+ }
+}

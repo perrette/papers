@@ -1,0 +1,5 @@
+smith2020: broken link: $WORK/pool/files/old_name.txt -> $WORK/pool/files/smith_doe_2020_a-title.txt (from the pool)
+lost: broken link: $WORK/pool/files/lost.txt (remove it with `papers file detach --broken --key lost`)
+1 link can be relinked, 1 without a file found (papers file detach --broken removes them)
+2 issue(s) in the files of 2 entries
+1 link can be repaired: `papers -C lib file fix`

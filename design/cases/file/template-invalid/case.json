@@ -1,0 +1,61 @@
+{
+  "description": "a name template that cannot be formatted (an unknown placeholder, a form that is not accepted such as {year.real}, an unbalanced brace) stops file rename with papers: error and exit status 1, no traceback; {{ and }} are literal braces",
+  "sections": [
+    "library.md#name-and-key-templates/file-names",
+    "library.md#name-and-key-templates/placeholders",
+    "formats.md#7.3"
+  ],
+  "tests": [
+    "tests/test_spec_formats.py::TestExitCodes::test_template_error",
+    "tests/test_spec_library.py::TestTemplateSyntax::test_literal_braces"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "file",
+        "rename",
+        "--name-template",
+        "{year.real}"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "rename",
+        "--name-template",
+        "{author"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "rename",
+        "--name-template",
+        "{}"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "rename",
+        "--name-template",
+        "{AuTHoR}"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "rename",
+        "--name-template",
+        "{{{key}}}"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    }
+  ]
+}

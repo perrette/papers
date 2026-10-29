@@ -1,0 +1,83 @@
+{
+  "description": "a value of the wrong type or outside the choices in .papers/config.json is an error that names the file and the setting, whichever the command; null means unset",
+  "sections": [
+    "library.md#the-library-configuration/reading"
+  ],
+  "tests": [
+    "tests/test_config_more.py::TestConfig::test_wrong_type"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "-C",
+        "a",
+        "list",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "b",
+        "list",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "c",
+        "list",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "d",
+        "list",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "e",
+        "list",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "f",
+        "list",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "g",
+        "list",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "h",
+        "list",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "i",
+        "list",
+        "-K"
+      ]
+    }
+  ]
+}

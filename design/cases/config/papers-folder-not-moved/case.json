@@ -1,0 +1,36 @@
+{
+  "description": "the move of .papers/ files from the bibtex folder is not done when the target exists already, when the bibtex folder holds the library of another bibtex (it has a config.json), or when it is the library directory",
+  "sections": [
+    "library.md#layout"
+  ],
+  "tests": [
+    "tests/test_library_folder.py::LibraryFolderTest::test_no_move_over_existing_file",
+    "tests/test_library_folder.py::LibraryFolderTest::test_other_library_left_alone"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "-C",
+        "a",
+        "list",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "b",
+        "list",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "c",
+        "list",
+        "-K"
+      ]
+    }
+  ]
+}

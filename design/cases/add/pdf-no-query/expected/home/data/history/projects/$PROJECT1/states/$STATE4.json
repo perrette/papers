@@ -1,0 +1,26 @@
+{
+ "parent": "$STATE3",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers add xmp-doi.pdf xmp-doi.pdf --no-query-fulltext",
+ "ops": [
+  {
+   "op": "moved",
+   "src": "xmp-doi.pdf",
+   "dst": "files/doe_2020_title-of-ice2020.pdf",
+   "checksum": "3fc0e10996c7afa5a142f2e7c2d54f0ad574adbed672c433330e37df4467d0c4"
+  }
+ ],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "4c9cbc303691dc0b2962928eeb13ae8bfb031e1c49b1879108bbf602854a41f1"
+  ],
+  "sha": "4c9cbc303691dc0b2962928eeb13ae8bfb031e1c49b1879108bbf602854a41f1"
+ },
+ "files": {
+  ".papers/files.json": [
+   "81af9af68fe952f18a1158a819d0ee731067b1bf6d1b7f3d9d12eb75f1338d23"
+  ]
+ }
+}

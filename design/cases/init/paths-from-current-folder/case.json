@@ -1,0 +1,49 @@
+{
+  "description": "init DIR --bibtex FILE --filesdir DIR --pool PATH: the paths are read from the current folder, not from the new library, and stored relative to the library",
+  "sections": [
+    "library.md#the-library-configuration/relative-paths",
+    "library.md#pools-and-shallow-libraries/the-pool-setting"
+  ],
+  "tests": [
+    "tests/test_config_v3.py::TestInit::test_init_paths_relative_to_current_directory"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "init",
+        "../lib",
+        "--bibtex",
+        "../refs/lib.bib",
+        "--filesdir",
+        "../pdfs",
+        "--pool",
+        "../pool"
+      ],
+      "cwd": "sub"
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "config",
+        "bibtex"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "config",
+        "filesdir"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "config",
+        "pool"
+      ]
+    }
+  ]
+}

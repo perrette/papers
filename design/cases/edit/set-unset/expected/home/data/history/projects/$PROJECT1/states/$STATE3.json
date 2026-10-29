@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE2",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers edit perrette2013 --unset pages volume",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "b50eaf4075c94a2f4bb010f8b8164aa140b795deee1a833ef2f0cd8b7e30d37c"
+  ],
+  "sha": "b50eaf4075c94a2f4bb010f8b8164aa140b795deee1a833ef2f0cd8b7e30d37c"
+ },
+ "files": {}
+}

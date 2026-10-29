@@ -1,0 +1,85 @@
+{
+  "description": "a .papersconfig.json (papers 2) is read as a library configuration: absolute_paths gives paths, no pool; when papers saves it the file moves to .papers/config.json; both files in a directory is an error",
+  "sections": [
+    "library.md#legacy-configuration-files",
+    "library.md#finding-the-library-of-a-command"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "-C",
+        "old",
+        "config"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "old",
+        "status"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "old",
+        "tag",
+        "doe2019",
+        "--add",
+        "x"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "old",
+        "config"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "old",
+        "config",
+        "editor",
+        "vim"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "old",
+        "config"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "both",
+        "config"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "both",
+        "list",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "migrate",
+        "migrate"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "migrate",
+        "config"
+      ]
+    }
+  ]
+}

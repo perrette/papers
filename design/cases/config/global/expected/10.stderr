@@ -1,0 +1,1 @@
+papers: error: bibtex is a setting of a library: the global configuration holds the default library and the default settings of the libraries (the global library of papers v2 is now the default library, see `papers config --global default`)

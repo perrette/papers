@@ -1,0 +1,26 @@
+{
+  "description": ".papers/ is in the library directory also when the bibtex is in a subfolder: distinct.json, origin/ and origin.bib that earlier builds wrote next to the bibtex are moved there when the library is loaded",
+  "sections": [
+    "library.md#layout"
+  ],
+  "tests": [
+    "tests/test_library_folder.py::LibraryFolderTest::test_origin_in_library_folder",
+    "tests/test_library_folder.py::LibraryFolderTest::test_distinct_in_library_folder",
+    "tests/test_library_folder.py::LibraryFolderTest::test_move_from_bibtex_folder",
+    "tests/test_spec_library.py::TestLayout::test_papers_folder_of_the_library_directory"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "list",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-K"
+      ]
+    }
+  ]
+}

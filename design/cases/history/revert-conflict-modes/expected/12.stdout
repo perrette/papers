@@ -1,0 +1,6 @@
+> $STATE5 papers history --revert $STATE2 --on-duplicate update ($TIME)
+  $STATE4 papers edit mueller2021 --set note=m ($TIME)
+  $STATE3 papers edit doe2019 --set note=two ($TIME)
+  $STATE2 papers edit doe2019 --set note=one ($TIME)
+  $STATE1 the library before its first recorded command ($TIME)
+history: $DATA/history, 0.0 MB (up to 500 MB: the history-size setting; deleted files kept)

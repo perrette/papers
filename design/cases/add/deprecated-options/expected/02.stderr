@@ -1,0 +1,2 @@
+papers: warning: -m/--mode s is deprecated: use --on-duplicate skip (the file of the added entry is no longer attached; keep does that)
+skipped: dup (already in library: doe2019)

@@ -1,0 +1,74 @@
+{
+  "description": "add of a PDF that the library does not have, without a query: the PDF must be given a DOI or a title; the errors change nothing",
+  "sections": [
+    "formats.md#7.3",
+    "bibtex.md#5.1"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "add",
+        "bad.pdf",
+        "--no-query-doi",
+        "--no-query-fulltext"
+      ]
+    },
+    {
+      "argv": [
+        "add",
+        "xmp-doi.pdf",
+        "--no-query-doi",
+        "--no-query-fulltext"
+      ]
+    },
+    {
+      "argv": [
+        "add",
+        "xmp-doi.pdf",
+        "--no-query-doi",
+        "--no-query-fulltext",
+        "--key",
+        "k"
+      ]
+    },
+    {
+      "argv": [
+        "add",
+        "--no-query-doi",
+        "--doi",
+        "10.1234/new.2021",
+        "--title",
+        "New",
+        "--key",
+        "new2021"
+      ]
+    },
+    {
+      "argv": [
+        "add",
+        "--no-query-doi",
+        "--doi",
+        "10.1234/new.2021",
+        "--attach",
+        "plain.txt",
+        "--key",
+        "new2021"
+      ]
+    },
+    {
+      "argv": [
+        "add",
+        "xmp-doi.pdf",
+        "xmp-doi.pdf",
+        "--no-query-fulltext"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    }
+  ]
+}

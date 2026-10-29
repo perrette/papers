@@ -1,0 +1,3 @@
+undo: papers.bib restored to $STATE3 papers file rm files/sub -r ($TIME)
+    files/a2.txt: restored from the history
+    out/o.txt: restored from the history

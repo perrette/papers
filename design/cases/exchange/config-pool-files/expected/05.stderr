@@ -1,0 +1,3 @@
+papers: error: pool ../pool: 1 entry links to PDFs that the pool ../pool does not have (nothing was changed): only
+Copy them to the pool first: `papers push --pool ../pool only`
+Then run `papers config pool ../pool` again.

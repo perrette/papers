@@ -1,0 +1,6 @@
+DRYRUN: $WORK/lib/.papers/origin not saved
+DRYRUN: $WORK/lib/papers.bib not saved
+Added -> smith2020: A title of a paper (doi:10.1000/abc, file:1) [from pool ../pool]
+Added -> brown2021: Another paper  [from pool ../pool]
+Added -> jones2019: Ice sheets (doi:10.1000/xyz, ice | to-read) [from pool ../pool]
+pull from pool ../pool: 3 added

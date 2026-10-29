@@ -1,0 +1,83 @@
+{
+  "description": "history --remove with --dry-run: nothing is removed and nothing is asked, papers says what would be removed; in a place that has no history (a copy of the library never used in its folder) there is nothing to remove, exit status 0",
+  "sections": [
+    "history.md#9.3",
+    "history.md#5.7",
+    "history.md#12"
+  ],
+  "tests": [
+    "tests/test_spec_history.py::TestRemove::test_dry_run",
+    "tests/test_spec_history.py::TestRemove::test_place_without_history"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "-C",
+        "a",
+        "tag",
+        "doe2019",
+        "--add",
+        "x"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "b",
+        "history",
+        "--remove"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "b",
+        "history",
+        "--remove",
+        "-y"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "a",
+        "history",
+        "--remove",
+        "--dry-run"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "a",
+        "history",
+        "--remove",
+        "--dry-run",
+        "-y"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "a",
+        "history"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "a",
+        "history",
+        "--remove",
+        "-y",
+        "--dry-run"
+      ]
+    },
+    {
+      "argv": [
+        "history",
+        "--all"
+      ]
+    }
+  ]
+}

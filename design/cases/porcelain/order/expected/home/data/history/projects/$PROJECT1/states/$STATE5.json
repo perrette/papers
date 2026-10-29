@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE4",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers edit alpha2019 --key a2019 --porcelain",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "f78641dc966f82f1c6198d7cf9d24a3ab7f0b067af329c73ce4db8227374462e"
+  ],
+  "sha": "f78641dc966f82f1c6198d7cf9d24a3ab7f0b067af329c73ce4db8227374462e"
+ },
+ "files": {}
+}

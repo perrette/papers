@@ -1,0 +1,2 @@
+no library: `papers history --all` lists the histories of the machine
+history: $DATA/history, 0.0 MB (up to 500 MB: the history-size setting; deleted files kept)

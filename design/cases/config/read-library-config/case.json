@@ -1,0 +1,122 @@
+{
+  "description": "reading .papers/config.json: keys that papers does not know, the keys of earlier builds and the machine-only settings are ignored and not written back; an id that is not 32 hex characters is ignored, a valid one is kept; a version above 3 or not an integer is an error; pool given as a list",
+  "sections": [
+    "library.md#the-library-configuration/reading",
+    "library.md#the-library-configuration/the-id-field",
+    "library.md#the-library-configuration/which-keys-papers-writes",
+    "library.md#the-library-configuration/keys"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "-C",
+        "a",
+        "config"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "a",
+        "config",
+        "name.template"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "a",
+        "config",
+        "editor",
+        "vim"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "b",
+        "config",
+        "pool"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "b",
+        "config",
+        "editor",
+        "vim"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "c",
+        "config",
+        "pool"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "c",
+        "config",
+        "editor",
+        "vim"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "d",
+        "config"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "e",
+        "config"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "f",
+        "config"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "g",
+        "config"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "g",
+        "config",
+        "pool"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "a",
+        "status"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "a",
+        "tag",
+        "doe2019",
+        "--add",
+        "x"
+      ]
+    }
+  ]
+}

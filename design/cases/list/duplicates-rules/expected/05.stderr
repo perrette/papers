@@ -1,0 +1,5 @@
+merged into doe_a: doe_b (kept in ids)
+merged into arx_a: arx_b (kept in ids)
+merged into isbn_a: isbn_b (kept in ids)
+merged into ml_a: ml_c (kept in ids)
+papers: warning: same paper: guard_a, guard_b (same DOI 10.1000/guard, but the entry types (article, book) and the titles differ; 2 conflicts): not merged, decide in the dialogue (--on-duplicate ask)

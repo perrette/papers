@@ -1,0 +1,61 @@
+{
+  "description": "edit --set and --unset change single fields",
+  "sections": [
+    "bibtex.md#3.3",
+    "bibtex.md#3.5"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "edit",
+        "perrette2013",
+        "--set",
+        "journal=Earth System Dynamics (ESD)",
+        "year=2014"
+      ]
+    },
+    {
+      "argv": [
+        "edit",
+        "perrette2013",
+        "--unset",
+        "pages",
+        "volume"
+      ]
+    },
+    {
+      "argv": [
+        "edit",
+        "perrette2013",
+        "--unset",
+        "nosuchfield"
+      ]
+    },
+    {
+      "argv": [
+        "edit",
+        "doe2019",
+        "--set",
+        "author=Doe, Jane and Roe, Richard"
+      ]
+    },
+    {
+      "argv": [
+        "edit",
+        "perrette2013",
+        "--set",
+        "note="
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex",
+        "--any",
+        "perrette2013",
+        "doe2019"
+      ]
+    }
+  ]
+}

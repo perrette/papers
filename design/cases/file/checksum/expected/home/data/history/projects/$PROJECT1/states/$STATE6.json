@@ -1,0 +1,19 @@
+{
+ "parent": "$STATE5",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers rm doe2019 --keep-files",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "ab582c59f27aac071acc19f2373f066e19b1adba2e1f9e4b77e0d3cc4f9b93f9"
+  ],
+  "sha": "ab582c59f27aac071acc19f2373f066e19b1adba2e1f9e4b77e0d3cc4f9b93f9"
+ },
+ "files": {
+  ".papers/files.json": [
+   "20fda7404e33264b6d832e3c91270d92039dcb0eca4c604f033885428b338ba7"
+  ]
+ }
+}

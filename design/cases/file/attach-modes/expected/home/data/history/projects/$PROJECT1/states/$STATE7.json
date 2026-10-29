@@ -1,0 +1,19 @@
+{
+ "parent": "$STATE6",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers file attach lee2023 p1.txt",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "b56334f814c0818355363cf72fe88c3c7ca0aa08cf2f1e8364a70ad49a32683a"
+  ],
+  "sha": "b56334f814c0818355363cf72fe88c3c7ca0aa08cf2f1e8364a70ad49a32683a"
+ },
+ "files": {
+  ".papers/files.json": [
+   "2f5fd07b01b702b040f514dacfa5a0af1aed26fdd5ea1e49a58e0319753ce80d"
+  ]
+ }
+}

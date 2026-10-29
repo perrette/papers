@@ -1,0 +1,4 @@
+DRYRUN: a2020: removed the link to $WORK/files/a1.txt
+DRYRUN: b2021: removed the link to $WORK/files/a1.txt
+DRYRUN: $WORK/papers.bib not saved
+DRYRUN: delete $WORK/files/a1.txt (kept in the history: undo restores it)

@@ -1,0 +1,113 @@
+@article{doe_a,
+ author = {Doe, Jane},
+ doi = {10.1000/Same.1},
+ title = {Same DOI, written differently},
+ year = {2020}
+}
+
+@article{doe_b,
+ author = {Doe, J.},
+ doi = {https://doi.org/10.1000/same.1},
+ title = {Same DOI with a url prefix},
+ year = {2020}
+}
+
+@article{diff_a,
+ author = {Roe, Richard},
+ doi = {10.1000/one},
+ title = {The same title and authors, different DOIs},
+ year = {2018}
+}
+
+@article{diff_b,
+ author = {Roe, Richard},
+ doi = {10.1000/two},
+ title = {The same title and authors, different DOIs},
+ year = {2018}
+}
+
+@misc{arx_a,
+ author = {Arx, Ann},
+ eprint = {arXiv:2101.01234v2},
+ title = {An arXiv preprint},
+ year = {2021}
+}
+
+@misc{arx_b,
+ author = {Arx, A.},
+ eprint = {2101.01234v1},
+ title = {An arXiv preprint, version one},
+ year = {2021}
+}
+
+@book{isbn_a,
+ author = {Book, Bea},
+ isbn = {0-306-40615-2},
+ title = {A book with an ISBN-10},
+ year = {1980}
+}
+
+@book{isbn_b,
+ author = {Other, Olga},
+ isbn = {978-0-306-40615-7; 978-3-16-148410-0},
+ title = {The same book with another title},
+ year = {1981}
+}
+
+@article{ml_a,
+ author = {M{\"u}ller, Hans and {van der Berg}, Jan},
+ title = {Tipping {P}oints in the Climate},
+ year = {2019}
+}
+
+@article{ml_b,
+ author = {Müller, Hans and Berg, Jan},
+ title = {tipping points in the climate},
+ year = {2020}
+}
+
+@article{ml_c,
+ author = {Muller, Hans and Jan {van der Berg}},
+ title = {Tipping  points in the climate},
+ year = {2021}
+}
+
+@article{nodoi,
+ author = {Doe, Jane},
+ title = {Same DOI, written differently},
+ year = {2022}
+}
+
+@article{guard_a,
+ author = {Chap, Cid},
+ doi = {10.1000/guard},
+ title = {A chapter},
+ year = {2010}
+}
+
+@book{guard_b,
+ author = {Chap, Cid},
+ doi = {10.1000/guard},
+ title = {The whole book},
+ year = {2010}
+}
+
+@article{alone,
+ author = {Alone, Al},
+ title = {Only one},
+ year = {2000}
+}
+
+@article{notitle1,
+ doi = {10.1000/nt1}
+}
+
+@article{notitle2,
+ title = {Authors missing, title the same},
+ year = {2001}
+}
+
+@article{notitle3,
+ title = {Authors missing, title the same},
+ year = {2002}
+}

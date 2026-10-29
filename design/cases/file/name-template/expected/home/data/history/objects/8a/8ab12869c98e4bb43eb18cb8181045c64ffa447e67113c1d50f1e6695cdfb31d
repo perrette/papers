@@ -1,0 +1,29 @@
+@article{doe2019,
+ author = {Doe, Jane},
+ file = {:files/Doe-2019/J. Ocean-DOE-A-Longer-Title-About-Many-Different-Subjects-Of-The-Sea.txt:txt;:files/Doe-2019/J. Ocean-DOE-A-Longer-Title-About-Many-Different-Subjects-Of-The-Sea--x.txt:txt;:files/Doe-2019/J. Ocean-DOE-A-Longer-Title-About-Many-Different-Subjects-Of-The-Sea--x-2.txt:txt;:files/Doe-2019/J. Ocean-DOE-A-Longer-Title-About-Many-Different-Subjects-Of-The-Sea--y.PDF:PDF},
+ journal = {J. Ocean},
+ title = {A longer title about many different subjects of the sea},
+ year = {2019}
+}
+
+@article{mueller2021,
+ author = {Müller, Hans and Škoda, Petr and Third, Tim},
+ file = {:files/Muller_Skoda-2021/Nature-Science-MULLER_SKODA-The-Ice-L-Eau-Of-10000-Things-A-Study.txt:txt},
+ journal = {Nature/Science},
+ title = {The Ice: l'eau of 10,000 things (a study)},
+ year = {2021}
+}
+
+@article{two,
+ author = {Roe, Richard and Poe, Pat},
+ file = {:files/Roe_Poe-2018/---ROE_POE-Two-Authors.txt:txt},
+ journal = {..},
+ title = {Two authors},
+ year = {2018}
+}
+
+@article{unk,
+ doi = {10.1000/xyz(1)},
+ file = {:files/unknown_10-1000-xyz-1.txt:txt},
+ title = {No author and no year}
+}

@@ -1,0 +1,20 @@
+@article{a2020,
+ author = {Doe, Jane},
+ file = {:archive/c.txt:txt;:moved/a2.txt:txt},
+ title = {Title of a2020},
+ year = {2020}
+}
+
+@article{b2021,
+ author = {Roe, R},
+ file = {:other/sub/b.txt:txt;:other/sub/c.txt:txt;:other/o.txt:txt},
+ title = {Title of b2021},
+ year = {2020}
+}
+
+@article{c2022,
+ author = {Lee, A},
+ file = {:archive/c.txt:txt},
+ title = {Title of c2022},
+ year = {2020}
+}

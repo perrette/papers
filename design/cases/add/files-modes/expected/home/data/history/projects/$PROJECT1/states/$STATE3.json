@@ -1,0 +1,19 @@
+{
+ "parent": "$STATE2",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers add in2.bib --link",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "c411653987fd86fcd78748e176b0f1e1e6e286a0fddccd79177a7f2d3ae43bcc"
+  ],
+  "sha": "c411653987fd86fcd78748e176b0f1e1e6e286a0fddccd79177a7f2d3ae43bcc"
+ },
+ "files": {
+  ".papers/files.json": [
+   "1a6cfe29bf2f7852471168d366b797abb88d91b0cb289d28ebc299e2ac8140d9"
+  ]
+ }
+}

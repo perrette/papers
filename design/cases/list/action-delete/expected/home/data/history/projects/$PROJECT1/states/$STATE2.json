@@ -1,0 +1,16 @@
+{
+ "parent": "$STATE1",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers list --key a --delete",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "4ed3c2c744e16ea11eea475cdf0fee539caa65469ad8e9c8a135bb15df4b24a5",
+   "71287594e45385b368cde9e3357f74cb5e25ccd682a71c4c7856651350935480"
+  ],
+  "sha": "64d558fdc42c88e238b6847730a3bface0e9edbc6e44b9d23157317ce1b5771d"
+ },
+ "files": {}
+}

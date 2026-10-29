@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE4",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers edit perrette2013 --set note=",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "b0a98b9d7ff7ce85bcfcb14dd94d38492be7e98a59de315dead79325b1da308b"
+  ],
+  "sha": "b0a98b9d7ff7ce85bcfcb14dd94d38492be7e98a59de315dead79325b1da308b"
+ },
+ "files": {}
+}

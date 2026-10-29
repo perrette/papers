@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE1",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers rm bretreger1978 --porcelain",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "50bfaaf6a5947de027ae8eebec9a1dc5cf6354541183be4d75449b2dd3d1ae95"
+  ],
+  "sha": "50bfaaf6a5947de027ae8eebec9a1dc5cf6354541183be4d75449b2dd3d1ae95"
+ },
+ "files": {}
+}

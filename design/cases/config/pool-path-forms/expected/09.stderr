@@ -1,0 +1,1 @@
+papers: error: pool nowhere: $WORK/lib/nowhere does not exist: create it first with `papers init $WORK/lib/nowhere` (nothing was changed)

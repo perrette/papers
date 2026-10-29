@@ -1,0 +1,34 @@
+{
+ "parent": "$STATE3",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers file mv -f moved/new/a.txt files/c.txt",
+ "ops": [
+  {
+   "op": "trashed",
+   "src": "files/c.txt",
+   "dst": null,
+   "checksum": "a3a5e715f0cc574a73c3f9bebb6bc24f32ffd5b67b387244c2c909da779a1478"
+  },
+  {
+   "op": "moved",
+   "src": "moved/new/a.txt",
+   "dst": "files/c.txt",
+   "checksum": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865"
+  }
+ ],
+ "deleted": [
+  "a3a5e715f0cc574a73c3f9bebb6bc24f32ffd5b67b387244c2c909da779a1478"
+ ],
+ "bibtex": {
+  "pieces": [
+   "b5a01ab2640e0bb077844964c9f33e750fcd1c1f47a64d3b3cff756fdd3bdcda"
+  ],
+  "sha": "b5a01ab2640e0bb077844964c9f33e750fcd1c1f47a64d3b3cff756fdd3bdcda"
+ },
+ "files": {
+  ".papers/files.json": [
+   "4d3b417fc645b815457d930a56f1ca9b69807d757a12c7a35bfbc2f721c338e9"
+  ]
+ }
+}

@@ -1,0 +1,20 @@
+{
+ "parent": 6,
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers add --doi 10.1038/nature12373 --no-check-duplicate",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "bf7a01182a15aad968a3109224b600bd5892772b63728ddceffd1ce7b2db4ec7",
+   "67f13db7e8de68e3622d910f284c21b67dee04f4b467364084daa8af244e4ea7"
+  ],
+  "sha": "cc0663517ecb46dd3f3881c6f4c08d9f6c1a18ae4c135eefd7662db86d8b24c0"
+ },
+ "files": {
+  ".papers/files.json": [
+   "f238096beee2d1be8b4f2aa17f5a44b96d19a670f457a142e0dbf7dd28cef86c"
+  ]
+ }
+}

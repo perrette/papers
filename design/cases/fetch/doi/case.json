@@ -1,0 +1,49 @@
+{
+  "description": "the bibtex of DOIs (crossref, DataCite through doi.org, an arXiv DOI), several at once (a DOI that does not exist is an uncaught exception, a traceback: no case)",
+  "sections": [
+    "formats.md#7.3"
+  ],
+  "requires": [
+    "network"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "fetch",
+        "10.5194/tc-11-1015-2017"
+      ],
+      "contract": [
+        "stdout"
+      ]
+    },
+    {
+      "argv": [
+        "fetch",
+        "10.48550/arXiv.1706.03762"
+      ],
+      "contract": [
+        "stdout"
+      ]
+    },
+    {
+      "argv": [
+        "fetch",
+        "doi:10.5281/zenodo.2580252"
+      ],
+      "contract": [
+        "stdout"
+      ]
+    },
+    {
+      "argv": [
+        "fetch",
+        "https://doi.org/10.5194/tc-11-1015-2017",
+        "10.5194/TC-11-1015-2017",
+        "10.48550/arXiv.1706.03762"
+      ],
+      "contract": [
+        "stdout"
+      ]
+    }
+  ]
+}

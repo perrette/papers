@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE7",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers tag doe2019 --rm to-read",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "2e5be5bf21d9ab99d4721b22b5920887f8d15bb81d1ab95d116c2e36b972272c"
+  ],
+  "sha": "2e5be5bf21d9ab99d4721b22b5920887f8d15bb81d1ab95d116c2e36b972272c"
+ },
+ "files": {}
+}

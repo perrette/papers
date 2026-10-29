@@ -1,0 +1,68 @@
+{
+  "description": "file check and file fix look in the history last: the file a papers command deleted from the place of a broken link is copied back there (deleted by step ...), and undo removes the copy; --dry-run changes nothing",
+  "sections": [
+    "history.md#6.6",
+    "history.md#5.6"
+  ],
+  "tests": [
+    "tests/test_file_cmd.py::TestFixFromHistory::test_restored_file_kept_by_its_step",
+    "tests/test_file_cmd.py::TestFixFromHistory::test_restored_file_after_history_dir_change"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "rm",
+        "doe2019",
+        "--delete-files",
+        "-y"
+      ]
+    },
+    {
+      "argv": [
+        "add",
+        "again.bib"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "check"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "fix",
+        "--dry-run"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "fix"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "check"
+      ]
+    },
+    {
+      "argv": [
+        "history"
+      ]
+    },
+    {
+      "argv": [
+        "undo"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "check"
+      ]
+    }
+  ]
+}

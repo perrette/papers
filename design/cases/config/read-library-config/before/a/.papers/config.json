@@ -1,0 +1,18 @@
+{
+  "absolute_paths": true,
+  "bibtex": "papers.bib",
+  "filesdir": "files",
+  "foo": "bar",
+  "git": true,
+  "history-dir": "/elsewhere",
+  "id": "not-a-valid-id",
+  "keep-deleted-files": false,
+  "light": true,
+  "nameformat": {
+    "template": "{author}",
+    "unknown_key": 1
+  },
+  "pool": "none",
+  "sync": false,
+  "version": 3
+}

@@ -1,0 +1,9 @@
+{
+  "bibtex": "papers.bib",
+  "filesdir": "files",
+  "pool": [
+    "../b",
+    "../c"
+  ],
+  "version": 3
+}

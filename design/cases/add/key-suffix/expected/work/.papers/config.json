@@ -1,0 +1,10 @@
+{
+  "bibtex": "papers.bib",
+  "filesdir": "files",
+  "id": "$PROJECT1",
+  "keyformat": {
+    "template": "{author}"
+  },
+  "pool": "none",
+  "version": 3
+}

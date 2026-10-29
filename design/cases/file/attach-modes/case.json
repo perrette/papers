@@ -1,0 +1,175 @@
+{
+  "description": "file attach: move, copy, link, the files setting (ask without a terminal links), several files with labels, a file of another library is copied, not moved; a file that does not exist, an unknown entry, two entries; --dry-run changes nothing",
+  "sections": [
+    "library.md#the-files-directory/the-files-setting",
+    "library.md#the-files-directory/file-names",
+    "bibtex.md#5.1",
+    "history.md#4"
+  ],
+  "tests": [
+    "tests/test_files_mode.py::TestAttach::test_attach"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "file",
+        "attach",
+        "doe2020",
+        "x.txt"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "attach",
+        "doe2020",
+        "y.txt",
+        "--copy"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "attach",
+        "lee2022",
+        "sub/w.txt",
+        "--link"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "attach",
+        "lee2022",
+        "nonexistent.txt"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "attach",
+        "nosuch",
+        "z.pdf"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "attach",
+        "lee",
+        "z.pdf"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "attach",
+        "roe2021",
+        "z.pdf",
+        "--link",
+        "--copy"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "attach",
+        "roe2021",
+        "z.pdf",
+        "sub/v.txt",
+        "--move"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "attach",
+        "lee2023",
+        "p1.txt",
+        "--dry-run"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "attach",
+        "lee2023",
+        "p1.txt",
+        "--copy",
+        "--dry-run"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "attach",
+        "lee2023",
+        "lib2/files/ext.txt",
+        "--move"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "files",
+        "link"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "attach",
+        "lee2023",
+        "p1.txt"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "files",
+        "ask"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "attach",
+        "roe2021",
+        "p2.txt"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "attach",
+        "roe2021",
+        "p3.txt",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    },
+    {
+      "argv": [
+        "undo"
+      ]
+    },
+    {
+      "argv": [
+        "undo"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    }
+  ]
+}

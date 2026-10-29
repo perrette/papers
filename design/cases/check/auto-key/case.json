@@ -1,0 +1,59 @@
+{
+  "description": "check --auto-key makes the key of every entry from the key template; an entry whose key is already the template key keeps it (it is not given a letter); a collision gets the next letter",
+  "sections": [
+    "bibtex.md#8",
+    "library.md#settings"
+  ],
+  "tests": [
+    "tests/test_bib_fix.py::TestFixEntry::test_auto_key_keeps_a_right_key",
+    "tests/test_bib_fix.py::TestFixEntry::test_auto_key_suffix_is_stable"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "check",
+        "--auto-key",
+        "-y",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "check",
+        "--auto-key",
+        "-y",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "check",
+        "--auto-key",
+        "--key-template",
+        "{author}_{year}",
+        "--key-author-num",
+        "1",
+        "-y",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-K"
+      ]
+    }
+  ]
+}

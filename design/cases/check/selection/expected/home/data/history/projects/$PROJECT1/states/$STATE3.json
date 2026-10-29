@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE2",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers check -k k2 k3 --format-name -y --porcelain",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "05ed2c2ed820d683666062941fea0a2f1b3df4365c9c0bb53c6be92787e6b3fe"
+  ],
+  "sha": "05ed2c2ed820d683666062941fea0a2f1b3df4365c9c0bb53c6be92787e6b3fe"
+ },
+ "files": {}
+}

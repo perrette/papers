@@ -1,0 +1,12 @@
+@article{broken2021,
+ author = {Broken, Bob},
+ file = {:files/missing.pdf:pdf},
+ title = {An entry with a missing file},
+ year = {2021}
+}
+
+@article{plain2019,
+ author = {Plain, Pat},
+ title = {An entry without file},
+ year = {2019}
+}

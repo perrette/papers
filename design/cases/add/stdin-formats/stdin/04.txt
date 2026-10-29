@@ -1,0 +1,1 @@
+[{"id": "ignored", "type": "article-journal", "title": "Replaced", "container-title": "J"}]

@@ -1,0 +1,15 @@
+@article{doe2019,
+ a-b_c = {1},
+ abstract = {An abstract},
+ author = {Doe, Jane},
+ file = {:files/d.txt:txt},
+ note = {Value},
+ title = {New {Title}},
+ year = {2019}
+}
+
+@article{smith2020,
+ author = {Smith, John},
+ title = {Other},
+ year = {2019}
+}

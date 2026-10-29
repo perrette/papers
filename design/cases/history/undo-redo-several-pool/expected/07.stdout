@@ -1,0 +1,3 @@
+undo: papers.bib restored to $STATE3 the library before its first recorded command ($TIME)
+pool ../pool: changed since, so steps $STATE5, $STATE2 reverted there: $STATE8 papers -C lib undo -n 2: revert of steps $STATE5, $STATE2 ($TIME, from $WORK/lib)
+    bretreger_mather1978: added by step $STATE2 and changed since: kept (`papers rm bretreger_mather1978` removes it)

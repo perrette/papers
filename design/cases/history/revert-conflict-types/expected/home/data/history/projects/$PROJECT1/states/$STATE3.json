@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE2",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers edit doe2019 --set publisher=Elsevier abstract=a new abstract isbn=0-306-40615-2 --unset note",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "67c02f4cfe4215e15558d3b040f1add4c778c977d09254a2befb9621e643584c"
+  ],
+  "sha": "67c02f4cfe4215e15558d3b040f1add4c778c977d09254a2befb9621e643584c"
+ },
+ "files": {}
+}

@@ -1,0 +1,1 @@
+papers: warning: `papers list --fetch` is deprecated: use `papers list ... -K | papers check --fetch --fetch-all --fix-doi --fix-key --format-name -`

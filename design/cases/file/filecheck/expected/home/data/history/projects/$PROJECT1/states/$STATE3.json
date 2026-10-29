@@ -1,0 +1,44 @@
+{
+ "parent": "$STATE2",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers filecheck -r -c",
+ "ops": [
+  {
+   "op": "moved",
+   "src": "files/a1.txt",
+   "dst": "files/doe_2020_title-of-a2020.txt",
+   "checksum": "a6328afc76e9db71da297ebff4b0d3e7a7eb3b01d917c05a6573fef121b6ecb6"
+  },
+  {
+   "op": "copied",
+   "src": "mendeley/tool",
+   "dst": "files/roe_2020_title-of-b2021",
+   "checksum": "555500e631fc5b2a3ea0934875e951e883035ef16ed6885294bf73bea5cb524a"
+  },
+  {
+   "op": "copied",
+   "src": "loose/b2.txt",
+   "dst": "files/roe_2020_title-of-b2021--b2.txt",
+   "checksum": "65f653bec9d0d1be6a363cb500e002c0165efdc82ed058f38b786f05dd19d87f"
+  },
+  {
+   "op": "moved",
+   "src": "files/c.txt",
+   "dst": "files/lee_2020_title-of-c2022.txt",
+   "checksum": "a3a5e715f0cc574a73c3f9bebb6bc24f32ffd5b67b387244c2c909da779a1478"
+  }
+ ],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "6175c6f6f7ce213a39c03ca9b47d35261be57866d36270e80828dffc0e411094"
+  ],
+  "sha": "6175c6f6f7ce213a39c03ca9b47d35261be57866d36270e80828dffc0e411094"
+ },
+ "files": {
+  ".papers/files.json": [
+   "fdacb4935c00358617b68112a4e0828455912dab08a86f27bb79e46b246c2806"
+  ]
+ }
+}

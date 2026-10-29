@@ -1,0 +1,8 @@
+{
+ "files": {
+  "archive/c.txt": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+  "moved/a2.txt": "53c234e5e8472b6ac51c1ae1cab3fe06fad053beb8ebfd8977b010655bfdd3c3",
+  "other/sub/b.txt": "0263829989b6fd954f72baaf2fc64bc2e2f01d692d4de72986ea808f6e99813f",
+  "other/sub/c.txt": "a3960f48bb1f93e212cd1ea623b9b58a50d93a1e876f0172b8c07c34824a50f1"
+ }
+}

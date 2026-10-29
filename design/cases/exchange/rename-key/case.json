@@ -1,0 +1,82 @@
+{
+  "description": "the records follow a key that a command changes: pull, rename in the library, then the push and the next pull find the record under the new key",
+  "sections": [
+    "exchange.md#3.7"
+  ],
+  "tests": [
+    "tests/test_spec_exchange.py::TestRenamedKeys::test_shallow_library",
+    "tests/test_pools.py::TestPull::test_rename_onto_a_leftover_record"
+  ],
+  "ignore": [
+    "home/data/history/*"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "pull",
+        "--all"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "edit",
+        "smith2020",
+        "--key",
+        "smith_new",
+        "--keep-old-key"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "edit",
+        "smith_new",
+        "--set",
+        "note=renamed"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "push"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "pool",
+        "list",
+        "--format",
+        "bibtex",
+        "smith2020"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "pull",
+        "--check"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "status"
+      ],
+      "wait": 1.1
+    }
+  ]
+}

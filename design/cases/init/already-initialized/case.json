@@ -1,0 +1,14 @@
+{
+  "description": "init in a folder that has a library fails",
+  "sections": [
+    "library.md#finding-the-library-of-a-command",
+    "formats.md#7.3"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "init"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,5 @@
+created the library $WORK/project
+* bibtex:  papers.bib
+* files:   in the pool (shallow library)
+* pool:    $WORK/shared
+`papers config` lists and sets the settings

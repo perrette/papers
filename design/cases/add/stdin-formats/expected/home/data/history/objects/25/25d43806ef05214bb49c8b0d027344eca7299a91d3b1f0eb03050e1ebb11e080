@@ -1,0 +1,12 @@
+@book{bj1,
+ author = {Roe, Richard},
+ title = {BibJSON record},
+ year = {2021}
+}
+
+@book{stdin1,
+ author = {Doe, Jane},
+ month = {3},
+ title = {From stdin},
+ year = {2020}
+}

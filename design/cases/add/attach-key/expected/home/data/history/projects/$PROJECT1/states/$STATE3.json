@@ -1,0 +1,19 @@
+{
+ "parent": "$STATE2",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers add --key DOE2019 --attach dl/b.txt --link --porcelain",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "33384e4cdfa9f2798d2a8d17094cee198cff55faa1b02f2aa72addad7a9dbbf2"
+  ],
+  "sha": "33384e4cdfa9f2798d2a8d17094cee198cff55faa1b02f2aa72addad7a9dbbf2"
+ },
+ "files": {
+  ".papers/files.json": [
+   "165e34a70cb7ab7f28648946508f8bfa661b3a1779b52fb19f079c58ca558851"
+  ]
+ }
+}

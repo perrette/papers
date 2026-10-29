@@ -1,0 +1,26 @@
+{
+ "parent": "$STATE1",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers file rename --name-template {year.real}",
+ "ops": [
+  {
+   "op": "moved",
+   "src": "files/u.txt",
+   "dst": "files/unknown_10-1000-xyz-1.txt",
+   "checksum": "ea46748e171abd2dd4dba5b86bb6589334d86bba2df8d50cbb16b36c83b0856a"
+  }
+ ],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "80f150c2dcc248734baca5dd8c15cf812229b785f381bbe6f1a5a2c85bc44eb5"
+  ],
+  "sha": "80f150c2dcc248734baca5dd8c15cf812229b785f381bbe6f1a5a2c85bc44eb5"
+ },
+ "files": {
+  ".papers/files.json": [
+   "0f54f13389b73816be942acd11fd045000387c704e7e1c33f94676dadd55a580"
+  ]
+ }
+}

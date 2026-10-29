@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE3",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers tag bretreger1978 --add Tidal Gravity",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "5927b03d4304a1ab9dc3e9bcf25418490d57dd78ba7ae02059487f6b372772d7"
+  ],
+  "sha": "5927b03d4304a1ab9dc3e9bcf25418490d57dd78ba7ae02059487f6b372772d7"
+ },
+ "files": {}
+}

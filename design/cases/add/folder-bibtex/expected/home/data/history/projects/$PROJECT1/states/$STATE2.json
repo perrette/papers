@@ -1,0 +1,38 @@
+{
+ "parent": "$STATE1",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers add in -R --copy",
+ "ops": [
+  {
+   "op": "copied",
+   "src": "in/xmp-doi.pdf",
+   "dst": "files/roe_2020_title-of-new2021.pdf",
+   "checksum": "3fc0e10996c7afa5a142f2e7c2d54f0ad574adbed672c433330e37df4467d0c4"
+  },
+  {
+   "op": "copied",
+   "src": "in/sub/n.txt",
+   "dst": "files/roe_2020_title-of-new2021--n.txt",
+   "checksum": "a4fb621495a0122493b2203591c448903c472e306a1ede54fabad829e01075c0"
+  },
+  {
+   "op": "copied",
+   "src": "in/old2000/o1.txt",
+   "dst": "files/old_2020_title-of-old2000.txt",
+   "checksum": "86a3fbef92c917e64721c9a2e110137b00ac2cc5170705085beba743211ef31f"
+  }
+ ],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "ab634fa27b63770dca2d1bf85d5f3dca87e7469cb49e599df82ec85a8772905e"
+  ],
+  "sha": "ab634fa27b63770dca2d1bf85d5f3dca87e7469cb49e599df82ec85a8772905e"
+ },
+ "files": {
+  ".papers/files.json": [
+   "d1bc0e06ead563709e648e90449fcdd68ddf580e1da0cd2f1f85e478ae60636b"
+  ]
+ }
+}

@@ -1,0 +1,11 @@
+@article{vdb2019,
+ author = {John {van der Berg}},
+ title = {Braces are not taken into account},
+ year = {2019}
+}
+
+@article{ok2020,
+ author = {Anne Other},
+ title = {A name without braces},
+ year = {2020}
+}

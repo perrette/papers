@@ -1,0 +1,8 @@
+{
+  "bibtex": "papers.bib",
+  "editor": "sed -i.bak s/Flow/Circulation/",
+  "filesdir": "files",
+  "id": "$PROJECT1",
+  "pool": "none",
+  "version": 3
+}

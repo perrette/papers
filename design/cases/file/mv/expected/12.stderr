@@ -1,0 +1,3 @@
+papers: error: $WORK/files/a1.txt: does not exist
+$WORK/files/a2.txt: does not exist
+nothing was moved

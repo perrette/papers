@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE2",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers add --title Second paper --author Doe, John and Roe, Jane --year 2023 --type book",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "edf163e90aafab2ac5729b5717ec6bcd7c6983564b18d65decf00682463902ed"
+  ],
+  "sha": "edf163e90aafab2ac5729b5717ec6bcd7c6983564b18d65decf00682463902ed"
+ },
+ "files": {}
+}

@@ -1,0 +1,26 @@
+{
+ "parent": "$STATE1",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers -C lib file fix --search ../search",
+ "ops": [
+  {
+   "op": "copied",
+   "src": "$WORK/search/gone.txt",
+   "dst": "files/doe_2020_title-of-a2020.txt",
+   "checksum": "768c71d785bf6bbbf8c4d6af6582041f2659027140a962cd0c55b11eddfd5e3d"
+  }
+ ],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "a4192871a2ead3e267ad0c927eb21cc2286bc9dd59c60471b2ce021e4dd486ac"
+  ],
+  "sha": "a4192871a2ead3e267ad0c927eb21cc2286bc9dd59c60471b2ce021e4dd486ac"
+ },
+ "files": {
+  ".papers/files.json": [
+   "d3b097473a7e75ea0f3d71dde935caefcf97597d1642ec4ab30869c75a907600"
+  ]
+ }
+}

@@ -1,0 +1,31 @@
+{
+  "description": "a key papers does not know (a setting of a newer implementation) is written back as it was when papers saves the configuration, also inside nameformat and keyformat",
+  "sections": [
+    "library.md#the-library-configuration/which-keys-papers-writes"
+  ],
+  "tests": [
+    "tests/test_config_unit.py::TestLibraryId::test_unknown_keys_kept"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "config",
+        "editor",
+        "vim"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "--unset",
+        "auto-push"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "--prune"
+      ]
+    }
+  ]
+}

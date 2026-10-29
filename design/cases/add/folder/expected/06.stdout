@@ -1,0 +1,7 @@
+undo: papers.bib restored to $STATE1 the library before its first recorded command ($TIME)
+    files/doe_2020_title-of-ice2020--data.csv --> moved back to in/xmp-doi--data.csv
+    files/doe_2020_title-of-ice2020--info-doi--supp.zip --> moved back to in/sub/info-doi--supp.zip
+    files/doe_2020_title-of-ice2020--info-doi.pdf --> moved back to in/sub/info-doi.pdf
+    files/doe_2020_title-of-ice2020--notes--more.txt --> moved back to in/xmp-doi--notes--more.txt
+    files/doe_2020_title-of-ice2020--notes.txt --> moved back to in/xmp-doi--notes.txt
+    files/doe_2020_title-of-ice2020.pdf --> moved back to in/xmp-doi.pdf

@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE1",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers edit doe2019 --from one.json",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "5f6c4feeae04e790a999bec1f7b661fdaa68492610a4e05a61bfa0cf65405790"
+  ],
+  "sha": "5f6c4feeae04e790a999bec1f7b661fdaa68492610a4e05a61bfa0cf65405790"
+ },
+ "files": {}
+}

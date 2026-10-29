@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE4",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers file detach --broken",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "be34fc72ebbbf87dc0a89149b17c10d8c4a2bdca5ce1dcdd0704b2c8bd155692"
+  ],
+  "sha": "be34fc72ebbbf87dc0a89149b17c10d8c4a2bdca5ce1dcdd0704b2c8bd155692"
+ },
+ "files": {}
+}

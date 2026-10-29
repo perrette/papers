@@ -1,0 +1,64 @@
+{
+  "description": "edit --from a .json file (CSL-JSON) or a .bib.json file (BibJSON): the entry is replaced, its key stays; exactly one entry is accepted; --format is for --from only",
+  "sections": [
+    "formats.md#1.1",
+    "formats.md#1.2",
+    "formats.md#3.3",
+    "formats.md#5.2",
+    "formats.md#7.3"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "edit",
+        "doe2019",
+        "--from",
+        "one.json"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    },
+    {
+      "argv": [
+        "edit",
+        "doe2019",
+        "--from",
+        "two.bib.json"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    },
+    {
+      "argv": [
+        "edit",
+        "doe2019",
+        "--from",
+        "two.json"
+      ]
+    },
+    {
+      "argv": [
+        "edit",
+        "doe2019",
+        "--format",
+        "csl-json"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-K"
+      ]
+    }
+  ]
+}

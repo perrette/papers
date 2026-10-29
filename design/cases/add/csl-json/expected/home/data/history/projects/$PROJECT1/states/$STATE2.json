@@ -1,0 +1,26 @@
+{
+ "parent": "$STATE1",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers add refs.json",
+ "ops": [
+  {
+   "op": "moved",
+   "src": "files/a.txt",
+   "dst": "files/doe_2018_a-report.txt",
+   "checksum": "87428fc522803d31065e7bce3cf03fe475096631e5e07bbd7a0fde60c4cf25c7"
+  }
+ ],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "eb77a5ad69190dd97e3c974b3895eed1662bc05229dcd95f3b4b860aa6b912d9"
+  ],
+  "sha": "eb77a5ad69190dd97e3c974b3895eed1662bc05229dcd95f3b4b860aa6b912d9"
+ },
+ "files": {
+  ".papers/files.json": [
+   "b54fbdcdf9f289c2e096a4d295e025d0daed441a76437c0f7c9aa1acc3e6cbc7"
+  ]
+ }
+}

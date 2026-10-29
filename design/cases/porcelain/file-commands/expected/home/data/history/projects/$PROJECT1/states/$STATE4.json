@@ -1,0 +1,19 @@
+{
+ "parent": "$STATE3",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers file detach files/doe_2019_a-paper.txt --key doe2019 --porcelain",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "590ee37a8903bc1a3d7372f95d2e45492630b429d3c70eff85fd9eaab871bca4"
+  ],
+  "sha": "590ee37a8903bc1a3d7372f95d2e45492630b429d3c70eff85fd9eaab871bca4"
+ },
+ "files": {
+  ".papers/files.json": [
+   "e5d71af8728d0247454763decfec8bcf04791d5f5efa9d882499bcf4d8e34c7c"
+  ]
+ }
+}

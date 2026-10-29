@@ -1,0 +1,4 @@
+undo: papers.bib restored to $STATE1 the library before its first recorded command ($TIME)
+    files/m.txt: restored from the history
+    files/d1.txt: restored from the history
+    files/sub/d2.txt: restored from the history

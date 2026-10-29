@@ -1,0 +1,7 @@
+@article{doe2019,
+ author = {Doe, Jane},
+ keywords = {kept},
+ file = {:files/a.txt:txt},
+ title = {A paper},
+ year = {2019}
+}

@@ -1,0 +1,25 @@
+@article{doe_a,
+ author = {Doe, Jane},
+ doi = {10.1000/Same.1},
+ title = {Same DOI, written differently},
+ year = {2020}
+}
+
+@article{doe_b,
+ author = {Doe, J.},
+ doi = {https://doi.org/10.1000/same.1},
+ title = {Same DOI with a url prefix},
+ year = {2020}
+}
+
+@article{roe_a,
+ author = {Roe, Richard},
+ title = {A paper},
+ year = {2018}
+}
+
+@article{roe_b,
+ author = {Roe, Richard},
+ title = {A paper},
+ year = {2018}
+}

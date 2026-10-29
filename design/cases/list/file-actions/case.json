@@ -1,0 +1,186 @@
+{
+  "description": "the file actions of list on the entries listed: --attach (one entry only), --detach with and without files, --detach-broken, --rename (--keep-source copies), --fix-files with its folders and --move; the deprecated --add-files; one action at a time",
+  "sections": [
+    "library.md#the-files-directory",
+    "bibtex.md#5.1",
+    "formats.md#7.2"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "list",
+        "--tag",
+        "x",
+        "--attach",
+        "x1.txt"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "c2022",
+        "--attach",
+        "x1.txt",
+        "x2.txt"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "c2022",
+        "--attach",
+        "x3.txt",
+        "--dry-run"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "c2022",
+        "--attach",
+        "x3.txt",
+        "--rename"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--tag",
+        "x",
+        "--rename",
+        "--keep-source",
+        "--dry-run"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--tag",
+        "x",
+        "--rename",
+        "--keep-source"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--keep-source"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--tag",
+        "x",
+        "--move"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "a2020",
+        "--detach-broken"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "b2021",
+        "--detach",
+        "files/roe_2020_title-of-b2021.txt",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "a2020",
+        "--detach",
+        "x",
+        "--detach-broken"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "c2022",
+        "--fix-files",
+        "search",
+        "--dry-run"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "c2022",
+        "--fix-files",
+        "search",
+        "--move"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "a2020",
+        "b2021",
+        "--detach"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "nosuchword",
+        "--detach"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--tag",
+        "x",
+        "--add-files",
+        "x4.txt"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "c2022",
+        "--add-files",
+        "x4.txt",
+        "--rename"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "c2022",
+        "--add-files",
+        "x5.txt",
+        "--copy"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "c2022",
+        "--add-files",
+        "x6.txt"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    }
+  ]
+}

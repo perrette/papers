@@ -1,0 +1,32 @@
+{
+ "parent": "$STATE2",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers list --tag x --rename --keep-source",
+ "ops": [
+  {
+   "op": "copied",
+   "src": "loose/a.txt",
+   "dst": "files/doe_2020_title-of-a2020.txt",
+   "checksum": "87428fc522803d31065e7bce3cf03fe475096631e5e07bbd7a0fde60c4cf25c7"
+  },
+  {
+   "op": "copied",
+   "src": "loose/b.txt",
+   "dst": "files/roe_2020_title-of-b2021.txt",
+   "checksum": "0263829989b6fd954f72baaf2fc64bc2e2f01d692d4de72986ea808f6e99813f"
+  }
+ ],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "7a53e3848d5dc5e2a745b3a838a9368caa38ceaa126d4d6f3b9a7428470099e5"
+  ],
+  "sha": "7a53e3848d5dc5e2a745b3a838a9368caa38ceaa126d4d6f3b9a7428470099e5"
+ },
+ "files": {
+  ".papers/files.json": [
+   "7641c33aa9a5bfae396a7eb09dc85408f5bc30b41250d588e5b0c23501a1723c"
+  ]
+ }
+}

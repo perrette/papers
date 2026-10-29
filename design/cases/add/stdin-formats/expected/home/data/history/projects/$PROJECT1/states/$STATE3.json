@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE2",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers add /dev/stdin --format bibjson --porcelain",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "25d43806ef05214bb49c8b0d027344eca7299a91d3b1f0eb03050e1ebb11e080"
+  ],
+  "sha": "25d43806ef05214bb49c8b0d027344eca7299a91d3b1f0eb03050e1ebb11e080"
+ },
+ "files": {}
+}

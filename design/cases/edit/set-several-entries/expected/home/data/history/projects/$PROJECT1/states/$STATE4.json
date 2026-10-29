@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE3",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers edit doi:10.5194/esd-4-11-2013 --unset note",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "8774ce01905230ce9273318866a69e89a5b8f915df4c23c3610b7e9c93122903"
+  ],
+  "sha": "8774ce01905230ce9273318866a69e89a5b8f915df4c23c3610b7e9c93122903"
+ },
+ "files": {}
+}

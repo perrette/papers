@@ -1,0 +1,26 @@
+{
+ "parent": "$STATE5",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers file attach lee2023 lib2/files/ext.txt --move",
+ "ops": [
+  {
+   "op": "copied",
+   "src": "lib2/files/ext.txt",
+   "dst": "files/lee_2020_title-of-lee2023.txt",
+   "checksum": "a3fee2baeadf395a2c80c511823d06ca3e7664d7574cc0c8b24dc65e7546f718"
+  }
+ ],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "ce5c20d04f9147f7b0c6230f22c4628bb4b75c7d444c3397688e37758a9b28b8"
+  ],
+  "sha": "ce5c20d04f9147f7b0c6230f22c4628bb4b75c7d444c3397688e37758a9b28b8"
+ },
+ "files": {
+  ".papers/files.json": [
+   "a5914eb01f2c267dbd9a180ea48b6dd90044ef210187d68002da9301b21c0751"
+  ]
+ }
+}

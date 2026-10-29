@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE1",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers tag e1 --add d d c b",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "8bc1753799c4fc69c6c6bb8d062ba9004bc49d0d01c4ab38cfb903bfa7f13b04"
+  ],
+  "sha": "8bc1753799c4fc69c6c6bb8d062ba9004bc49d0d01c4ab38cfb903bfa7f13b04"
+ },
+ "files": {}
+}

@@ -1,0 +1,10 @@
+{
+  "bibtex": "papers.bib",
+  "editor": "vim",
+  "filesdir": "files",
+  "nameformat": {
+    "template": "{author}_{year}"
+  },
+  "pool": "none",
+  "version": 3
+}

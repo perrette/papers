@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE1",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers edit doe2019 --set Note=Value TITLE=New {Title} a-b_c=1",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "b03792d26ba39b28e540989cdb3df26bcc1279a84cca15d746132780bb5343b4"
+  ],
+  "sha": "b03792d26ba39b28e540989cdb3df26bcc1279a84cca15d746132780bb5343b4"
+ },
+ "files": {}
+}

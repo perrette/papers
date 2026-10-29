@@ -1,0 +1,2 @@
+papers: error: $WORK/files/nosuch.txt: does not exist
+nothing was moved

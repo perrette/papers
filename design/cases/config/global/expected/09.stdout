@@ -1,0 +1,4 @@
+# $CONFIG/config.json
+history-size = 50
+keep-deleted-files = false
+name.template = {author}_{year}

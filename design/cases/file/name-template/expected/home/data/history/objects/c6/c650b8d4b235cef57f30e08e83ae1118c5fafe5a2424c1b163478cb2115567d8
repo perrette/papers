@@ -1,0 +1,21 @@
+@article{mueller2021,
+ author = {Müller, Hans and Škoda, Petr and Third, Tim},
+ file = {:files/muller_skoda_mueller2021.txt:txt},
+ journal = {Nature/Science},
+ title = {The Ice: l'eau of 10,000 things (a study)},
+ year = {2021}
+}
+
+@article{two,
+ author = {Roe, Richard and Poe, Pat},
+ file = {:files/roe_poe_two.txt:txt},
+ journal = {..},
+ title = {Two authors},
+ year = {2018}
+}
+
+@article{unk,
+ doi = {10.1000/xyz(1)},
+ file = {:files/unknown_10-1000-xyz-1.txt:txt},
+ title = {No author and no year}
+}

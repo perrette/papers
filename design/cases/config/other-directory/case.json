@@ -1,0 +1,33 @@
+{
+  "description": "config -C DIR acts on the library of DIR",
+  "sections": [
+    "library.md#finding-the-library-of-a-command"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "config",
+        "name.template",
+        "{author}"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "config",
+        "name.template"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "lib/sub",
+        "config",
+        "name.template"
+      ]
+    }
+  ]
+}

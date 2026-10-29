@@ -1,0 +1,2 @@
+undo: papers.bib restored to $STATE5 papers -C lib add ../new.bib ($TIME)
+pool ../pool: also undone, restored to $STATE4 papers -C lib add ../new.bib ($TIME, from $WORK/lib)

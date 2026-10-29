@@ -1,0 +1,20 @@
+{
+  "bibtex": "papers.bib",
+  "editor": "vim",
+  "filesdir": "files",
+  "future-setting": {
+    "a": [
+      1,
+      2
+    ]
+  },
+  "keyformat": {
+    "future_member": "x"
+  },
+  "nameformat": {
+    "future_member": 7,
+    "template": "{author}_{year}"
+  },
+  "pool": "none",
+  "version": 3
+}

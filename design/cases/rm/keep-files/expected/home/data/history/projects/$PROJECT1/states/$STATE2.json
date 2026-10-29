@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE1",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers rm linked2020 --keep-files",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "17f08634167e16f9886888617b0de024c6a6e3ed51163447b5ae814371ca7588"
+  ],
+  "sha": "17f08634167e16f9886888617b0de024c6a6e3ed51163447b5ae814371ca7588"
+ },
+ "files": {}
+}

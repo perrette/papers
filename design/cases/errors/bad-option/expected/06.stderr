@@ -1,0 +1,6 @@
+usage: papers tag [-h] [-v] [--debug] [--color {auto,always,never}]
+                  [--porcelain] [--filesdir FILESDIR] [--bibtex BIBTEX]
+                  [--dry-run] [--add TAG [TAG ...]] [--rm TAG [TAG ...]]
+                  [--rename OLD NEW]
+                  [KEY ...]
+papers tag: error: argument --rename: expected 2 arguments

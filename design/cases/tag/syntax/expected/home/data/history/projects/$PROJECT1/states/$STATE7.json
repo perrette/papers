@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE6",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers tag e3 --rm last",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "fe8ae9f9fd76ab09c70c9e4c71e364a324b8902394e46eef273b5260ae9bd7c1"
+  ],
+  "sha": "fe8ae9f9fd76ab09c70c9e4c71e364a324b8902394e46eef273b5260ae9bd7c1"
+ },
+ "files": {}
+}

@@ -1,0 +1,2 @@
+papers: warning: `papers list --add-files` is deprecated: use `papers list --attach` (`papers file attach KEY FILE... --link`)
+papers: error: list only one entry to use --attach (2 listed): nothing was changed

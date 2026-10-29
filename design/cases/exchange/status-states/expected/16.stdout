@@ -1,0 +1,5 @@
+papers library: $WORK/bare
+* bibtex: papers.bib (empty)
+* files:  in the pool
+* pool:   ../emptydir (not a library)
+`papers config` lists and sets the settings

@@ -1,0 +1,11 @@
+Modified -> doe2019: A longer title about many different subjects of the sea (files:4)
+    files/d1.txt --> renamed to doe_2019_a-longer-title-about-many-different-subjects-of-the-sea.txt
+    files/sub/x.txt --> moved to files/doe_2019_a-longer-title-about-many-different-subjects-of-the-sea--x.txt
+    files/other/x.txt --> moved to files/doe_2019_a-longer-title-about-many-different-subjects-of-the-sea--x-2.txt
+    files/y.PDF --> renamed to doe_2019_a-longer-title-about-many-different-subjects-of-the-sea--y.PDF
+Modified -> mueller2021: The Ice: l'eau of 10,000 things (a study) (file:1)
+    files/m.txt --> renamed to muller_et_al_2021_the-ice-l-eau-of-10000-things-a-study.txt
+Modified -> two: Two authors (file:1)
+    files/r.txt --> renamed to roe_and_poe_2018_two-authors.txt
+Modified -> unk: No author and no year (doi:10.1000/xyz(1), file:1)
+    files/u.txt --> renamed to unknown_10-1000-xyz-1.txt

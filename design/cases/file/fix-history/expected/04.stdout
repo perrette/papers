@@ -1,0 +1,4 @@
+DRYRUN: doe2019: restore $WORK/files/a.txt from the history (deleted by step $STATE2)
+DRYRUN: 1 link relinked, 0 still broken
+1 issue(s) in the files of 2 entries
+DRYRUN: $WORK/papers.bib not saved

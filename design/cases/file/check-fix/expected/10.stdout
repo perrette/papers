@@ -1,0 +1,6 @@
+d2023: broken link: $WORK/lost/dup.txt (remove it with `papers file detach --broken --key d2023`)
+e2024: broken link: $WORK/lost/dup.txt (remove it with `papers file detach --broken --key e2024`)
+f2025: broken link: $WORK/lost/several.txt (remove it with `papers file detach --broken --key f2025`)
+f2025: broken link: $WORK/lost/fine.txt (remove it with `papers file detach --broken --key f2025`)
+0 links relinked, 4 still broken (papers file detach --broken removes them)
+4 issue(s) left in the files of 6 entries

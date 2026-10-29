@@ -1,0 +1,24 @@
+Same paper: 3 entries (same DOI 10.1000/abc)
+  1  a2  article  doi 10.1000/abc
+  2  a1  article  doi 10.1000/abc
+  3  a3  article  doi 10.1000/abc
+
+@article{a2,
+!  key     = a2
+!            2: a1 (kept in ids)
+!            3: a3 (kept in ids)
+   author  = {Smith, John}
+   doi     = {10.1000/abc}
++  ids     = {a1, a3}
+!  journal = {Science}
+!            2: {Nature}
++  note    = {x}
+   title   = {Climate sensitivity revisited}
+   volume  = {3}
+   year    = {2020}
+}
+1 conflict. Entries 2, 3 are removed after the merge; their keys go to ids.
+  1 keep values of 1   2 take values of 2   3 take values of 3   f field by field   e edit
+  t N make entry N the target   n not the same paper   s skip   q quit   ? help
+>>> merged into a2: a1, a3 (kept in ids)
+merged into b2: b1 (kept in ids)

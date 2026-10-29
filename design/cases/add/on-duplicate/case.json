@@ -1,0 +1,58 @@
+{
+  "description": "an entry that is already there with conflicts: error, skip, keep, update",
+  "sections": [
+    "bibtex.md#9.3",
+    "bibtex.md#10",
+    "formats.md#7.2"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "add",
+        "dup.bib"
+      ]
+    },
+    {
+      "argv": [
+        "add",
+        "dup.bib",
+        "--on-duplicate",
+        "error"
+      ]
+    },
+    {
+      "argv": [
+        "add",
+        "dup.bib",
+        "--on-duplicate",
+        "skip"
+      ]
+    },
+    {
+      "argv": [
+        "add",
+        "dup.bib",
+        "--on-duplicate",
+        "keep",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "add",
+        "dup.bib",
+        "--on-duplicate",
+        "update",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex",
+        "perrette"
+      ]
+    }
+  ]
+}

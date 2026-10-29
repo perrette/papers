@@ -1,0 +1,4 @@
+pool none: the library becomes self-contained, with its own files
+copy 1 file of the pool into files (hard links when possible); the library will link to the copies, and the pool keeps its files.
+  smith2020: $WORK/pool/files/smith_doe_2020_a-title.txt
+DRYRUN: nothing was changed

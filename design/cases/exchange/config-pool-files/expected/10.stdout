@@ -1,0 +1,2 @@
+undo: papers.bib restored to $STATE4 papers -C own rm only --keep-files ($TIME)
+    files/own_copy.txt: restored (a copy of $WORK/pool/files/smith_doe_2020_a-title.txt)

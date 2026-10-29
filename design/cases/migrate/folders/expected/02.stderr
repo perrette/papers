@@ -1,0 +1,1 @@
+papers: error: no bibtex file found, do `touch $WORK/lib/papers.bib` or `papers init --bibtex $WORK/lib/papers.bib`

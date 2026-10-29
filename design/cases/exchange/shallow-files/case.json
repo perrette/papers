@@ -1,0 +1,104 @@
+{
+  "description": "in a shallow library the files of the entries are the pool entries links: attach, detach and rename update the links in the pool entry (and its record), without copying or deleting a file",
+  "sections": [
+    "exchange.md#12.3",
+    "exchange.md#15",
+    "library.md#pools-and-shallow-libraries/files-of-a-shallow-library"
+  ],
+  "tests": [
+    "tests/test_pools.py::TestShallow::test_file_attach_places_files_in_pool",
+    "tests/test_pools.py::TestShallow::test_file_rename_places_files_in_pool",
+    "tests/test_pools.py::TestShallow::test_add_places_files_in_pool"
+  ],
+  "ignore": [
+    "home/data/history/*"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "pull",
+        "--all"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "file",
+        "attach",
+        "jones2019",
+        "../extra.txt"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "pool",
+        "list",
+        "--format",
+        "bibtex",
+        "jones2019"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "status"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "file",
+        "rename"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "pool",
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "file",
+        "detach",
+        "-k",
+        "jones2019",
+        "--broken"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "rm",
+        "smith2020"
+      ],
+      "wait": 1.1
+    }
+  ]
+}

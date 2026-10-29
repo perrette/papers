@@ -1,0 +1,5 @@
+> $STATE6 papers -C lib undo: revert of step $STATE2 ($TIME, from $WORK/lib)
+  $STATE5 papers -C pool edit doe2019 --set note=pool note ($TIME)
+  $STATE2 papers -C lib add ../import/refs.bib ($TIME, from $WORK/lib)
+  $STATE1 the library before its first recorded command ($TIME)
+history: $DATA/history, 0.0 MB (up to 500 MB: the history-size setting; deleted files kept)

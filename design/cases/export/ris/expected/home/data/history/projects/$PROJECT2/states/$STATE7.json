@@ -1,0 +1,16 @@
+{
+ "parent": "$STATE6",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers export d --format ris,bib --files none",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "41b3d1948b35353a258f81fec665bbde0183ee5ea564c3d98fa176a8330920ee"
+  ],
+  "sha": "41b3d1948b35353a258f81fec665bbde0183ee5ea564c3d98fa176a8330920ee"
+ },
+ "files": {},
+ "from": "$WORK"
+}

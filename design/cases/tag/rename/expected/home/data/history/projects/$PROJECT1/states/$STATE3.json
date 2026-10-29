@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE2",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers tag --rename ice ice-sheets --porcelain",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "c6e5cde72fcf7c15d47ff9df115dcd931e246bd8f6e193d5cb200ccaa11226ce"
+  ],
+  "sha": "c6e5cde72fcf7c15d47ff9df115dcd931e246bd8f6e193d5cb200ccaa11226ce"
+ },
+ "files": {}
+}

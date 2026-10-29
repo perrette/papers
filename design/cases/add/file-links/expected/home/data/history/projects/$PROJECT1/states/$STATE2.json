@@ -1,0 +1,26 @@
+{
+ "parent": "$STATE1",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers add links.bib",
+ "ops": [
+  {
+   "op": "moved",
+   "src": "files/linked.txt",
+   "dst": "files/linked_2020_an-entry-with-notes-attached.txt",
+   "checksum": "3f6d8aa26ef2970c0573310e78e38f15e077c8d90c72a69ee6f451de751624a9"
+  }
+ ],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "372c12daf16a6ec8d28908f46ad2eaf1b1c7182bcf257aa956e6091223d171e7"
+  ],
+  "sha": "372c12daf16a6ec8d28908f46ad2eaf1b1c7182bcf257aa956e6091223d171e7"
+ },
+ "files": {
+  ".papers/files.json": [
+   "e71bfd3a1a400b81bf4d569281d955ebbd59567cf361e057c0823304e0156658"
+  ]
+ }
+}

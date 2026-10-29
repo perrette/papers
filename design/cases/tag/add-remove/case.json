@@ -1,0 +1,71 @@
+{
+  "description": "tag --add and --rm",
+  "sections": [
+    "bibtex.md#6",
+    "formats.md#7.2"
+  ],
+  "tests": [
+    "tests/test_spec_bibtex.py::TestTags::test_add_remove_rename_ignore_case",
+    "tests/test_entry_cmds.py::TestTag::test_add"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "tag",
+        "perrette2013",
+        "smith2020",
+        "--add",
+        "to-read",
+        "climate/amoc/tipping",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "tag",
+        "perrette2013",
+        "--rm",
+        "to-read"
+      ]
+    },
+    {
+      "argv": [
+        "tag",
+        "perrette2013",
+        "--rm",
+        "notthere"
+      ]
+    },
+    {
+      "argv": [
+        "tag",
+        "perrette2013",
+        "--add",
+        "projections"
+      ]
+    },
+    {
+      "argv": [
+        "tag",
+        "bretreger1978",
+        "--add",
+        "Tidal Gravity"
+      ]
+    },
+    {
+      "argv": [
+        "tag"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex",
+        "--any",
+        "perrette2013",
+        "bretreger1978"
+      ]
+    }
+  ]
+}

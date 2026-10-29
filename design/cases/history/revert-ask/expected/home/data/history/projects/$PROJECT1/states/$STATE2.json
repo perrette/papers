@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE1",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers edit doe2019 --set note=one year=2018 publisher=Elsevier",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "e044c7ed1064d2bdf07dc74b7af08ca5c2a35ac77d541c6fc4d12de986297e66"
+  ],
+  "sha": "e044c7ed1064d2bdf07dc74b7af08ca5c2a35ac77d541c6fc4d12de986297e66"
+ },
+ "files": {}
+}

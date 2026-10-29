@@ -1,0 +1,59 @@
+{
+  "description": ".papers/.gitignore is written when the configuration is saved and it is missing or is the \"backup/\" of earlier versions; a file the user wrote stays",
+  "sections": [
+    "library.md#layout/papersgitignore",
+    "library.md#the-library-configuration/which-keys-papers-writes"
+  ],
+  "tests": [
+    "tests/test_history.py::TestPlaces::test_gitignore",
+    "tests/test_history.py::TestPlaces::test_gitignore_without_a_save_of_the_configuration"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "-C",
+        "a",
+        "config",
+        "editor",
+        "vim"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "b",
+        "config",
+        "editor",
+        "vim"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "c",
+        "config",
+        "editor",
+        "vim"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "d",
+        "config",
+        "--unset",
+        "nosuch"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "d",
+        "tag",
+        "doe2019",
+        "--add",
+        "x"
+      ]
+    }
+  ]
+}

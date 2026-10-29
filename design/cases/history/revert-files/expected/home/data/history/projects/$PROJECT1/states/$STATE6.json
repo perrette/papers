@@ -1,0 +1,31 @@
+{
+ "parent": "$STATE4",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers rm doe2019 --delete-files",
+ "ops": [
+  {
+   "op": "trashed",
+   "src": "files/doe_2019_ocean-circulation.txt",
+   "dst": null,
+   "checksum": "87428fc522803d31065e7bce3cf03fe475096631e5e07bbd7a0fde60c4cf25c7"
+  },
+  {
+   "op": "trashed",
+   "src": "files/doe_2019_ocean-circulation--b.txt",
+   "dst": null,
+   "checksum": "0263829989b6fd954f72baaf2fc64bc2e2f01d692d4de72986ea808f6e99813f"
+  }
+ ],
+ "deleted": [
+  "0263829989b6fd954f72baaf2fc64bc2e2f01d692d4de72986ea808f6e99813f",
+  "87428fc522803d31065e7bce3cf03fe475096631e5e07bbd7a0fde60c4cf25c7"
+ ],
+ "bibtex": {
+  "pieces": [
+   "ffb9cf2f63f00ddbb72353444cf87af7407942246edf963e3901d2972a5056f8"
+  ],
+  "sha": "ffb9cf2f63f00ddbb72353444cf87af7407942246edf963e3901d2972a5056f8"
+ },
+ "files": {}
+}

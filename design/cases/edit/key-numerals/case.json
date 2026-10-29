@@ -1,0 +1,44 @@
+{
+  "description": "a key that starts with a digit is refused: the digits 0-9 only; another Unicode digit (٣, ３) is allowed",
+  "sections": [
+    "bibtex.md#7.2",
+    "bibtex.md#9.2"
+  ],
+  "tests": [
+    "tests/test_spec_bibtex.py::TestKeyValidity::test_leading_digit_is_ascii"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "edit",
+        "doe2019",
+        "--key",
+        "3doe"
+      ]
+    },
+    {
+      "argv": [
+        "edit",
+        "doe2019",
+        "--key",
+        "٣doe",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "edit",
+        "smith2019",
+        "--key",
+        "３smith",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-K"
+      ]
+    }
+  ]
+}

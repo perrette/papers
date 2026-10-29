@@ -1,0 +1,26 @@
+{
+ "parent": "$STATE1",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers add --key doe2019 --attach dl/a.txt",
+ "ops": [
+  {
+   "op": "moved",
+   "src": "dl/a.txt",
+   "dst": "files/doe_2019_a-paper.txt",
+   "checksum": "d048a00658e42bb3cf33258a4394ed22e313f78166ce7f56c2d611adf6822c24"
+  }
+ ],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "a5a8eabfce77ce16ece8c079f0364e78ec039aee78b5a419349564478ee28ac7"
+  ],
+  "sha": "a5a8eabfce77ce16ece8c079f0364e78ec039aee78b5a419349564478ee28ac7"
+ },
+ "files": {
+  ".papers/files.json": [
+   "418153482214b553dfd8dfec2867d1acdddddca16f3bf8f00c36316448bbadc5"
+  ]
+ }
+}

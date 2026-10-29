@@ -1,0 +1,26 @@
+@article{doe2020,
+ author = {Doe, Jane},
+ file = {:x.txt:txt},
+ title = {Title of doe2020},
+ year = {2020}
+}
+
+@article{lee2022,
+ author = {Lee, Ann},
+ title = {Title of lee2022},
+ year = {2020}
+}
+
+@article{lee2023,
+ author = {Lee, Ann},
+ title = {Title of lee2023},
+ year = {2020}
+}
+
+@article{roe2021,
+ author = {Roe, Richard},
+ file = {:files/roe.txt:txt;:p1.txt:txt},
+ title = {Title of roe2021},
+ year = {2020}
+}
+

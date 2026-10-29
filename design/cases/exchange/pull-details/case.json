@@ -1,0 +1,135 @@
+{
+  "description": "pull: a new entry whose key is taken gets a letter suffix, a link that the pool removed is removed from the library entry (no file deleted), a pull of named entries does not set the exchange time, an entry named but in neither is an error",
+  "sections": [
+    "exchange.md#6.3",
+    "exchange.md#15.2",
+    "exchange.md#3.6",
+    "exchange.md#6.1"
+  ],
+  "tests": [
+    "tests/test_auto_push.py::TestShallowSharedLinks::test_pull_removes_the_links_the_pool_removed"
+  ],
+  "ignore": [
+    "home/data/history/*"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "pull",
+        "brown2021"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "pull",
+        "smith2020",
+        "nosuch"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "pull",
+        "smith2020"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "pull",
+        "--check"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "status"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "pull",
+        "--all"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "status"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "pool",
+        "file",
+        "detach",
+        "smith_doe_2020_a-title.txt",
+        "-k",
+        "smith2020"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "pull",
+        "--check"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "pull"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "list",
+        "--format",
+        "bibtex",
+        "smith2020"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "status"
+      ],
+      "wait": 1.1
+    }
+  ]
+}

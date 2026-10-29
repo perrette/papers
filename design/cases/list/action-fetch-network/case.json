@@ -1,0 +1,25 @@
+{
+  "description": "list --fetch with the network: the metadata of the DOI, or of a search by title and authors (a result of another paper is rejected), over the fields; the key of an entry that has no valid key is made; each change shown as a diff, and kept or not as the answer says",
+  "sections": [
+    "formats.md#7.2"
+  ],
+  "requires": [
+    "network"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "list",
+        "--fetch"
+      ],
+      "stdin": "y\n\nn\ny\n"
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,116 @@
+{
+  "description": "an exchange with another library given by --pool PATH: pull and push with a self-contained library (its own origin file, the files copied, never moved), a second pull is three-way",
+  "sections": [
+    "exchange.md#10",
+    "exchange.md#2.3",
+    "exchange.md#3.1",
+    "exchange.md#6.4"
+  ],
+  "ignore": [
+    "home/data/history/*"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "pull",
+        "--pool",
+        "../pool",
+        "smith2020",
+        "jones2019"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "pull",
+        "--pool",
+        "../pool"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "pool",
+        "edit",
+        "smith2020",
+        "--set",
+        "note=from the other"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "edit",
+        "jones2019",
+        "--set",
+        "note=from the library"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "sync",
+        "--pool",
+        "../pool"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "push",
+        "--pool",
+        "../pool",
+        "--all"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "pool",
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "pull",
+        "--check",
+        "--pool",
+        "../pool"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "status"
+      ],
+      "wait": 1.1
+    }
+  ]
+}

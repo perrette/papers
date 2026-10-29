@@ -1,0 +1,15 @@
+{
+ "parent": 1,
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers list --fetch",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "80a206e3232e50eefcbd9264d4e4d5367b5a3cd93cb61a49229d588b3b93ad6d"
+  ],
+  "sha": "80a206e3232e50eefcbd9264d4e4d5367b5a3cd93cb61a49229d588b3b93ad6d"
+ },
+ "files": {}
+}

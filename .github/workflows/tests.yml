@@ -26,3 +26,21 @@ jobs:
         pip install tox tox-gh-actions
     - name: Test with tox
       run: tox
+
+  cases:
+    # the conformance cases of design/cases, on papers: the expected output is recorded
+    # with this Python version (the usage messages of argparse differ between versions)
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v7
+    - name: Set up Python 3.14
+      uses: actions/setup-python@v7
+      with:
+        python-version: "3.14"
+    - name: Install papers
+      run: |
+        python -m pip install --upgrade pip
+        pip install ".[ris]"
+    - name: Run the cases
+      run: python design/cases/run.py --papers papers -j 4 -q

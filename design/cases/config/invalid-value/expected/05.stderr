@@ -1,0 +1,1 @@
+papers: error: $WORK/e/.papers/config.json: the pool setting lists several pools (../p1, ../p2); papers takes one pool: write one path, or none, in this file

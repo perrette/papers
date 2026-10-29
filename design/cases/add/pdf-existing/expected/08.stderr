@@ -1,0 +1,2 @@
+papers: error: no such file: 'missing.pdf'
+use --ignore-errors to add other files anyway

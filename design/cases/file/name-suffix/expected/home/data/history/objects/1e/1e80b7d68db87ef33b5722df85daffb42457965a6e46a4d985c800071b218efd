@@ -1,0 +1,27 @@
+@article{e1,
+ author = {Doe, Jane},
+ file = {:files/doe_2019_same-title.txt:txt},
+ title = {Same title},
+ year = {2019}
+}
+
+@article{e2,
+ author = {Doe, Jane},
+ file = {:files/doe_2019_same-title-2.txt:txt},
+ title = {Same title},
+ year = {2019}
+}
+
+@article{e3,
+ author = {Doe, Jane},
+ file = {:files/doe_2019_same-title.txt:txt},
+ title = {Same title},
+ year = {2019}
+}
+
+@article{e4,
+ author = {Doe, Jane},
+ file = {:files/doe_2019_same-title-3.txt:txt},
+ title = {Same title},
+ year = {2019}
+}

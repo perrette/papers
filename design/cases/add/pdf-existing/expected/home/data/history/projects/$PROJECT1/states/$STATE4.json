@@ -1,0 +1,26 @@
+{
+ "parent": "$STATE3",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers add info-doi.pdf --title Another title --copy",
+ "ops": [
+  {
+   "op": "copied",
+   "src": "info-doi.pdf",
+   "dst": "files/doe_2020_title-of-ice2020--info-doi.pdf",
+   "checksum": "78f1f4ebd3809e1aa2bba6a7a7df5991791c99ccd15d3231c99bbba85bb66406"
+  }
+ ],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "cd9c011d7e76f08273dfdb0768e9236713e94ae9ba5be4ae9b5ee6d9ef50e3a9"
+  ],
+  "sha": "cd9c011d7e76f08273dfdb0768e9236713e94ae9ba5be4ae9b5ee6d9ef50e3a9"
+ },
+ "files": {
+  ".papers/files.json": [
+   "9c3df504a452f0c603d6f9d7257eb164dc6736c98b94e261e9322d4f7daa193e"
+  ]
+ }
+}

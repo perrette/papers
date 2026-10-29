@@ -1,0 +1,18 @@
+{
+ "parent": "$STATE4",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers history --revert $STATE4 --porcelain",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "1fdca19c4e9809a6228ee18859c0abba2b81f888ab4f0b11e519300e18afd1f4"
+  ],
+  "sha": "1fdca19c4e9809a6228ee18859c0abba2b81f888ab4f0b11e519300e18afd1f4"
+ },
+ "files": {},
+ "reverts": [
+  "$STATE4"
+ ]
+}

@@ -1,0 +1,1 @@
+papers: error: $WORK/both has two library configurations, .papers/config.json and .papersconfig.json (of papers 2): keep one of them and remove the other (nothing was changed)

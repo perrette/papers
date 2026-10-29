@@ -1,0 +1,40 @@
+{
+  "description": "several files: an error stops the command (nothing is added) and says so, --ignore-errors goes on with the other files; a directory needs -R",
+  "sections": [
+    "formats.md#1.2",
+    "formats.md#7.3"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "add",
+        "good.bib",
+        "missing.bib",
+        "other.bib"
+      ]
+    },
+    {
+      "argv": [
+        "add",
+        "good.bib",
+        "dir"
+      ]
+    },
+    {
+      "argv": [
+        "add",
+        "good.bib",
+        "missing.bib",
+        "other.bib",
+        "--ignore-errors",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-K"
+      ]
+    }
+  ]
+}

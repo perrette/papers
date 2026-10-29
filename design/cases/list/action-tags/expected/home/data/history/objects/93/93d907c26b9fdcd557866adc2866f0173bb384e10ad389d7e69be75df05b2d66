@@ -1,0 +1,47 @@
+@article{bretreger1978,
+ author = {Bretreger, K. and Mather, R. S.},
+ doi = {10.1111/j.1365-246X.1978.tb04232.x},
+ journal = {Geophysical Journal International},
+ title = {Modelling ocean-loading effects on tidal gravity in Australia},
+ year = {1978}
+}
+
+@book{doe2019,
+ abstract = {An overview of the large-scale circulation.},
+ author = {Doe, Jane},
+ isbn = {978-3-16-148410-0},
+ keywords = {to-read, climate/amoc/tipping},
+ publisher = {Springer},
+ title = {Ocean Circulation},
+ year = {2019}
+}
+
+@inproceedings{mueller2021,
+ author = {Müller, Hans and Škoda, Petr},
+ booktitle = {Proceedings of the Ice Conference},
+ doi = {10.1234/mueller.2021.7},
+ keywords = {climate/amoc, climate/amoc/tipping, ice},
+ title = {Tipping points in the overturning circulation},
+ year = {2021}
+}
+
+@article{perrette2013,
+ author = {Perrette, M. and Landerer, F. and Riva, R. and Frieler, K. and Meinshausen, M.},
+ doi = {10.5194/esd-4-11-2013},
+ journal = {Earth System Dynamics},
+ keywords = {sea-level, projections, climate/amoc, to-read, climate/amoc/tipping, a, b},
+ pages = {11--29},
+ title = {A scaling approach to project regional sea level rise and its uncertainties},
+ volume = {4},
+ year = {2013}
+}
+
+@article{smith2020,
+ author = {Sm{\"i}th, J{\'o}hn and Doe, Jane},
+ doi = {10.1234/abc.2020.1},
+ journal = {Journal of Glaciology},
+ keywords = {ice, to-read, climate/arctic},
+ note = {Caf\'e r{\'e}sum{\'e} \& \%},
+ title = {Cold {Water} and K{\"a}lte: \textit{ice} caps},
+ year = {2020}
+}

@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE4",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers file rm files/missing.txt",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "9ad29a8e7ed7481952d1568da9c24fa1c90f02a01d90d42cfa9a4bfda0fd5d83"
+  ],
+  "sha": "9ad29a8e7ed7481952d1568da9c24fa1c90f02a01d90d42cfa9a4bfda0fd5d83"
+ },
+ "files": {}
+}

@@ -1,0 +1,13 @@
+{
+  "bibtex": "papers.bib",
+  "editor": "vim",
+  "filesdir": "files",
+  "foo": "bar",
+  "id": "$PROJECT1",
+  "nameformat": {
+    "template": "{author}",
+    "unknown_key": 1
+  },
+  "pool": "none",
+  "version": 3
+}

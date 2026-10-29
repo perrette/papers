@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE4",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers list --author Perrette --rm-tag b --porcelain",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "d770ecafcfb403915a2dd15a0750f0b43dfeb8a7f5eca15629d90fb23f9c3212"
+  ],
+  "sha": "d770ecafcfb403915a2dd15a0750f0b43dfeb8a7f5eca15629d90fb23f9c3212"
+ },
+ "files": {}
+}

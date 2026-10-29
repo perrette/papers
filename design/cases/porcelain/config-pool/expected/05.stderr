@@ -1,0 +1,4 @@
+link to the copies in the pool ../pool for 1 file (same content); the library's copies in files (1 file) are deleted
+pool = ../pool (in $WORK/lib/.papers/config.json)
+the library is now shallow: it links to the PDFs of the pool entries, and `papers add` adds its new entries to the pool
+delete $WORK/lib/files/smith_2020_a-paper.txt (hard link: the other links remain)

@@ -1,0 +1,5 @@
+# $CONFIG/config.json
+editor = vim
+history-size = 50
+keep-deleted-files = false
+name.template = {author}_{year}

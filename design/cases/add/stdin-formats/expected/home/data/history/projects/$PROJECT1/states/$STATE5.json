@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE4",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers edit stdin1 --from - --format csl-json",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "0fede7e6a3c7058ed6dd363e6e6b41746cb90a173769d678874df3ec1968f349"
+  ],
+  "sha": "0fede7e6a3c7058ed6dd363e6e6b41746cb90a173769d678874df3ec1968f349"
+ },
+ "files": {}
+}

@@ -1,0 +1,66 @@
+{
+  "description": "revert of an add that moved a file into the files directory: the file goes back to where it came from; the report",
+  "sections": [
+    "history.md#8",
+    "history.md#8.1",
+    "history.md#8.2",
+    "history.md#8.4",
+    "history.md#8.3",
+    "history.md#2.5"
+  ],
+  "tests": [
+    "tests/test_revert.py::TestRevertFiles::test_added_with_file"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "add",
+        "import/one.bib",
+        "--attach",
+        "dl/c.txt"
+      ]
+    },
+    {
+      "argv": [
+        "tag",
+        "doe2019",
+        "--add",
+        "x"
+      ]
+    },
+    {
+      "argv": [
+        "history",
+        "--revert",
+        "$STATE2"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "history"
+      ]
+    },
+    {
+      "argv": [
+        "undo"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "history"
+      ]
+    }
+  ]
+}

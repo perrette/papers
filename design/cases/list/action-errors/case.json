@@ -1,0 +1,74 @@
+{
+  "description": "list: one action at a time; --delete-files and --keep-files are no error without --delete; nothing is changed",
+  "sections": [
+    "formats.md#7.3"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "list",
+        "--key",
+        "smith2020",
+        "--add-tag",
+        "x",
+        "--delete"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--key",
+        "smith2020",
+        "--edit",
+        "--rm-tag",
+        "x"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--key",
+        "smith2020",
+        "--fetch",
+        "--add-tag",
+        "x"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--key",
+        "smith2020",
+        "--delete-files",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--key",
+        "smith2020",
+        "--keep-files",
+        "--delete-files",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--key",
+        "smith2020",
+        "--fuzzy",
+        "--strict",
+        "--add-tag",
+        "x"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-K"
+      ]
+    }
+  ]
+}

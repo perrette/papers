@@ -1,0 +1,37 @@
+{
+  "description": "migrate --folders moves the files of entries kept in folders of papers < 2.19 (<name>/ with a hidden .<name>.bib) to the flat layout of the files directory, and the folder goes; --dry-run changes nothing",
+  "sections": [
+    "bibtex.md#5"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "migrate",
+        "--folders",
+        "--dry-run"
+      ],
+      "cwd": "lib"
+    },
+    {
+      "argv": [
+        "migrate",
+        "--folders"
+      ],
+      "cwd": "lib"
+    },
+    {
+      "argv": [
+        "migrate",
+        "--folders"
+      ],
+      "cwd": "lib"
+    },
+    {
+      "argv": [
+        "undo",
+        "-y"
+      ],
+      "cwd": "lib"
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE2",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers edit smith2020 --set journal=Nature",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "4069180941a4f520d9553be09160a4f6215c527cbac343028caf4dfc5afd4444"
+  ],
+  "sha": "4069180941a4f520d9553be09160a4f6215c527cbac343028caf4dfc5afd4444"
+ },
+ "files": {}
+}

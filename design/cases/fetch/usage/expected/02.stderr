@@ -1,0 +1,4 @@
+usage: papers fetch [-h] [-v] [--debug] [--color {auto,always,never}]
+                    [--porcelain] [--scholar]
+                    doi_or_text [doi_or_text ...]
+papers fetch: error: Fetching from DOI does not support Google Scholar option

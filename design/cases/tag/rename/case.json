@@ -1,0 +1,59 @@
+{
+  "description": "tag --rename renames a tag in the whole library (--porcelain: modified KEY for each entry changed)",
+  "sections": [
+    "bibtex.md#6",
+    "formats.md#7.2"
+  ],
+  "tests": [
+    "tests/test_entry_cmds.py::TestTag::test_rename_merges",
+    "tests/test_spec_bibtex.py::TestTags::test_add_remove_rename_ignore_case",
+    "tests/test_porcelain.py::TestPorcelain::test_tag_rename"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "tag",
+        "--rename",
+        "to-read",
+        "reading"
+      ]
+    },
+    {
+      "argv": [
+        "tag",
+        "--rename",
+        "ice",
+        "ice-sheets",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "tag",
+        "--rename",
+        "nothere",
+        "x"
+      ]
+    },
+    {
+      "argv": [
+        "tag",
+        "--rename",
+        "sea-level",
+        "projections"
+      ]
+    },
+    {
+      "argv": [
+        "tag"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--field",
+        "keywords"
+      ]
+    }
+  ]
+}

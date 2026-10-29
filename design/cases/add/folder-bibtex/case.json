@@ -1,0 +1,24 @@
+{
+  "description": "add -R with bibtex files in the folder (added with the files they link to, which are then not scanned as PDFs) and folders of the layout before 2.19 (a hidden .<name>.bib)",
+  "sections": [
+    "library.md#the-files-directory/file-names",
+    "bibtex.md#5.1"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "add",
+        "in",
+        "-R",
+        "--copy"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    }
+  ]
+}

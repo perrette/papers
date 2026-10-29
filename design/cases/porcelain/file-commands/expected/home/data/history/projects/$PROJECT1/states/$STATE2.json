@@ -1,0 +1,26 @@
+{
+ "parent": "$STATE1",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers file attach doe2019 extra.txt --porcelain",
+ "ops": [
+  {
+   "op": "moved",
+   "src": "extra.txt",
+   "dst": "files/doe_2019_a-paper--extra.txt",
+   "checksum": "65110ea3b8b62b0c09742c368bf1527f0978b06dff7a1371ef7b4c98e244d91a"
+  }
+ ],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "193e3f79644e7f77353ddc9526f2f744c83a4a980c7a045ddf1bbb59e249a4d0"
+  ],
+  "sha": "193e3f79644e7f77353ddc9526f2f744c83a4a980c7a045ddf1bbb59e249a4d0"
+ },
+ "files": {
+  ".papers/files.json": [
+   "e5d71af8728d0247454763decfec8bcf04791d5f5efa9d882499bcf4d8e34c7c"
+  ]
+ }
+}

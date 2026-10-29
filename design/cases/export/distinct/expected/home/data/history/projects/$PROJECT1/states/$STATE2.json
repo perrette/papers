@@ -1,0 +1,20 @@
+{
+ "parent": "$STATE1",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers export out",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "a9508929e810cd7592545b4f2c51573b8b5077e2ed32167f3d4cbf91cd494c31"
+  ],
+  "sha": "a9508929e810cd7592545b4f2c51573b8b5077e2ed32167f3d4cbf91cd494c31"
+ },
+ "files": {
+  ".papers/distinct.json": [
+   "0d5846a0114fd7321429fde69dbf18aa742d75a83f19ea7bb3af9a6febdd8f11"
+  ]
+ },
+ "from": "$WORK"
+}

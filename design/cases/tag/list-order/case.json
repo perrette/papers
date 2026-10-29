@@ -1,0 +1,30 @@
+{
+  "description": "tag lists the tags counted as written (Climate and climate apart), each with its parents counted too: the tags under each parent, and the top-level ones, by decreasing count, then by the tag in lower case, then by the tag itself (Climate before climate)",
+  "sections": [
+    "bibtex.md#6"
+  ],
+  "tests": [
+    "tests/test_spec_bibtex.py::TestTags::test_counting_order",
+    "tests/test_spec_bibtex.py::TestTags::test_counting"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "tag"
+      ]
+    },
+    {
+      "argv": [
+        "tag",
+        "--rename",
+        "climate",
+        "Climate"
+      ]
+    },
+    {
+      "argv": [
+        "tag"
+      ]
+    }
+  ]
+}

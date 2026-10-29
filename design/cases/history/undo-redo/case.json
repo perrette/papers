@@ -1,0 +1,108 @@
+{
+  "description": "undo and redo bring the bibtex back and forth; history marks where the library is",
+  "sections": [
+    "history.md#2.5",
+    "history.md#6.2",
+    "history.md#3.1"
+  ],
+  "tests": [
+    "tests/test_spec_history.py::TestCommands::test_redo_list_of_undo",
+    "tests/test_undo.py::TestTimeTravel::test_undo_redo"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "history"
+      ]
+    },
+    {
+      "argv": [
+        "tag",
+        "doe2019",
+        "--add",
+        "x"
+      ]
+    },
+    {
+      "argv": [
+        "edit",
+        "doe2019",
+        "--set",
+        "year=2000"
+      ]
+    },
+    {
+      "argv": [
+        "rm",
+        "smith2020"
+      ]
+    },
+    {
+      "argv": [
+        "history"
+      ]
+    },
+    {
+      "argv": [
+        "undo"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "history"
+      ]
+    },
+    {
+      "argv": [
+        "redo"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "redo"
+      ]
+    },
+    {
+      "argv": [
+        "undo",
+        "-n",
+        "3"
+      ]
+    },
+    {
+      "argv": [
+        "history"
+      ]
+    },
+    {
+      "argv": [
+        "redo",
+        "-n",
+        "2"
+      ]
+    },
+    {
+      "argv": [
+        "history"
+      ]
+    },
+    {
+      "argv": [
+        "history",
+        "--all"
+      ]
+    }
+  ]
+}

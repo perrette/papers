@@ -1,0 +1,102 @@
+{
+  "description": "config sets settings in the library (name and key formats are nested in the file); --unset removes them",
+  "sections": [
+    "library.md#the-library-configuration/keys",
+    "library.md#the-library-configuration/which-keys-papers-writes",
+    "library.md#settings/precedence"
+  ],
+  "tests": [
+    "tests/test_config_v3.py::TestConfigCommand::test_get_set_unset",
+    "tests/test_config_v3.py::TestResolution::test_unset"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "config",
+        "name.template",
+        "{author}_{year}"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "key.author-num",
+        "3"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "files",
+        "copy"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "paths",
+        "absolute"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "editor",
+        "subl -w"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "checksums",
+        "false"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "history-size",
+        "100"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "name.unknown-strict",
+        "true"
+      ]
+    },
+    {
+      "argv": [
+        "config"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "--unset",
+        "name.template"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "--unset",
+        "files"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "--unset",
+        "nosuch"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "name.template"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,1 @@
+papers: error: no bibtex file found, do `touch nosuch.bib` or `papers init --bibtex nosuch.bib`

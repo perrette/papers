@@ -1,0 +1,84 @@
+{
+  "description": "config paths in a shallow library rewrites the links to the pool files (absolute, then relative again), as in a self-contained library; the records of the pool keep the links as the library writes them",
+  "sections": [
+    "library.md#the-library-configuration/relative-paths",
+    "exchange.md#3.3"
+  ],
+  "ignore": [
+    "home/data/history/*"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "pull",
+        "--all"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "config",
+        "paths",
+        "absolute"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "list",
+        "--format",
+        "bibtex",
+        "smith2020"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "status"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "config",
+        "paths",
+        "relative"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "list",
+        "--format",
+        "bibtex",
+        "smith2020"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "pull",
+        "--check"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "status"
+      ],
+      "wait": 1.1
+    }
+  ]
+}

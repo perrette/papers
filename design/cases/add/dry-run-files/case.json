@@ -1,0 +1,70 @@
+{
+  "description": "a dry run changes nothing: the files are not moved or deleted, the history has no step",
+  "sections": [
+    "bibtex.md#3.4",
+    "history.md#5.1"
+  ],
+  "tests": [
+    "tests/test_history.py::TestSeparate::test_dry_run_writes_nothing"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "add",
+        "in.bib",
+        "--dry-run"
+      ]
+    },
+    {
+      "argv": [
+        "add",
+        "in.bib",
+        "--copy",
+        "--dry-run",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "rm",
+        "doe2019",
+        "--delete-files",
+        "--dry-run"
+      ]
+    },
+    {
+      "argv": [
+        "tag",
+        "doe2019",
+        "--add",
+        "x",
+        "--dry-run"
+      ]
+    },
+    {
+      "argv": [
+        "edit",
+        "doe2019",
+        "--set",
+        "note=x",
+        "--dry-run"
+      ]
+    },
+    {
+      "argv": [
+        "edit",
+        "doe2019",
+        "--key",
+        "doe_2019",
+        "--dry-run"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    }
+  ]
+}

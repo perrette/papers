@@ -1,0 +1,37 @@
+@article{keep,
+ author = {Perrette, M.},
+ doi = {10.5194/esd-4-11-2013},
+ file = {:x.pdf:pdf},
+ journal = {Mine},
+ year = {2013}
+}
+
+@article{nosuch,
+ author = {Roe, R},
+ title = {Some paper that surely does not exist at all xyzzy},
+ year = {2020}
+}
+
+@article{perrette2013,
+ author = {Perrette, M. and Landerer, F. and Riva, R. and Frieler, K. and Meinshausen, M.},
+ doi = {10.5194/esd-4-11-2013},
+ journal = {Earth System Dynamics},
+ number = {1},
+ pages = {11-29},
+ title = {A scaling approach to project regional sea level rise and its uncertainties},
+ url = {https://doi.org/10.5194/esd-4-11-2013},
+ volume = {4},
+ year = {2013}
+}
+
+@article{perrette_landerer2013,
+ author = {Perrette, M. and Landerer, F. and Riva, R. and Frieler, K. and Meinshausen, M.},
+ doi = {10.5194/esd-4-11-2013},
+ journal = {Earth System Dynamics},
+ number = {1},
+ pages = {11-29},
+ title = {A scaling approach to project regional sea level rise and its uncertainties},
+ url = {https://doi.org/10.5194/esd-4-11-2013},
+ volume = {4},
+ year = {2013}
+}

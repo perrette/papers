@@ -1,0 +1,16 @@
+@misc{e1,
+ file = {:$WORK/files/a.txt:txt;:$WORK/extra/x.txt:txt},
+ keywords = {t},
+ title = {A link in the form of another program}
+}
+
+@misc{e2,
+ file = {:$WORK/extra/a.tar.gz:gz;:$WORK/extra/.hidden:;:$WORK/extra/README:;:$WORK/extra/UP.PDF:PDF;:$WORK/extra/x.txt:txt},
+ title = {No link yet}
+}
+
+@misc{e3,
+ file = {:$WORK/files/a.txt:txt;:$WORK/files/b.txt:txt},
+ title = {The same path twice}
+}
+

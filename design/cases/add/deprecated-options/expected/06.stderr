@@ -1,0 +1,1 @@
+papers: warning: -a now means --author; dl/a.txt exists, so it is attached as with --attach (this fallback is removed in v4)

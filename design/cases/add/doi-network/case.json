@@ -1,0 +1,79 @@
+{
+  "description": "add --doi DOI: the entry of crossref, its key from the key template, the attachments; again: the files are added to the entry that the library has; add of a PDF with --doi and of a PDF whose metadata has the DOI",
+  "sections": [
+    "library.md#the-files-directory/file-names",
+    "library.md#name-and-key-templates/keys",
+    "formats.md#7.3",
+    "bibtex.md#5.1"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "add",
+        "--doi",
+        "10.5194/esd-4-1-2013"
+      ]
+    },
+    {
+      "argv": [
+        "add",
+        "--doi",
+        "10.5194/esd-4-1-2013",
+        "--attach",
+        "extra.txt",
+        "--copy"
+      ]
+    },
+    {
+      "argv": [
+        "add",
+        "dummy.pdf",
+        "--doi",
+        "10.5194/esd-4-1-2013",
+        "--link"
+      ]
+    },
+    {
+      "argv": [
+        "add",
+        "real.pdf"
+      ]
+    },
+    {
+      "argv": [
+        "add",
+        "real2.pdf",
+        "--attach",
+        "extra.txt"
+      ]
+    },
+    {
+      "argv": [
+        "add",
+        "dummy2.pdf",
+        "--doi",
+        "10.1038/nature12373",
+        "--key",
+        "mykey"
+      ]
+    },
+    {
+      "argv": [
+        "add",
+        "--doi",
+        "10.1038/nature12373",
+        "--no-check-duplicate"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    }
+  ],
+  "requires": [
+    "network"
+  ]
+}

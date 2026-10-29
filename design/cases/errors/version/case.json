@@ -1,0 +1,13 @@
+{
+  "description": "--version",
+  "sections": [
+    "formats.md#7.3"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "--version"
+      ]
+    }
+  ]
+}

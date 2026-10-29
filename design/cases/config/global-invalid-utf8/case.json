@@ -1,0 +1,42 @@
+{
+  "description": "a machine configuration that is not valid UTF-8 is an error that names the file, for every command, and config --global does not replace it",
+  "sections": [
+    "library.md#the-machine-configuration/format",
+    "library.md#the-machine-configuration"
+  ],
+  "tests": [
+    "tests/test_spec_library.py::TestReading::test_invalid_utf8"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "list",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "--global"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "--global",
+        "editor",
+        "vim"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "config",
+        "editor"
+      ]
+    }
+  ]
+}

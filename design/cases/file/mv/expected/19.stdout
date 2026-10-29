@@ -1,0 +1,4 @@
+DRYRUN: mv $WORK/files $WORK/archive
+DRYRUN: a2020: $WORK/files/c.txt -> $WORK/archive/c.txt
+DRYRUN: c2022: $WORK/files/c.txt -> $WORK/archive/c.txt
+DRYRUN: filesdir = $WORK/archive

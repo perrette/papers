@@ -1,0 +1,65 @@
+{
+  "description": "check KEY... (also -k, and - for the keys from the standard input, a DOI) fixes those entries only; an unknown identifier is an error before anything changes",
+  "sections": [
+    "formats.md#7.2",
+    "bibtex.md#3"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "check",
+        "k1",
+        "--format-name",
+        "-y",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "check",
+        "nokey",
+        "k2",
+        "--format-name",
+        "-y",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "check",
+        "-k",
+        "k2",
+        "k3",
+        "--format-name",
+        "-y",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "check",
+        "-",
+        "--format-name",
+        "-y",
+        "--porcelain"
+      ],
+      "stdin": "k3\n"
+    },
+    {
+      "argv": [
+        "check",
+        "10.1000/abc",
+        "--fix-doi",
+        "-y",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    }
+  ]
+}

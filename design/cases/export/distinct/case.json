@@ -1,0 +1,47 @@
+{
+  "description": "export: the pairs of .papers/distinct.json are copied to the new library (the same paper by identity, declared different: not listed by --duplicates there); entries that are the same paper stay (no merge); a selection",
+  "sections": [
+    "formats.md#9",
+    "bibtex.md#9.4"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "export",
+        "out"
+      ]
+    },
+    {
+      "argv": [
+        "export",
+        "out2",
+        "doe2019",
+        "doe2019b"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "out",
+        "list",
+        "--duplicates",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--duplicates",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "export",
+        "out3",
+        "--format",
+        "bibjson,ris"
+      ]
+    }
+  ]
+}

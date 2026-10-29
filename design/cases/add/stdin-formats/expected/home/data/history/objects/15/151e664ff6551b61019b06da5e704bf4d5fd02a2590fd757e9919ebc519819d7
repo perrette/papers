@@ -1,0 +1,6 @@
+@book{stdin1,
+ author = {Doe, Jane},
+ month = {3},
+ title = {From stdin},
+ year = {2020}
+}

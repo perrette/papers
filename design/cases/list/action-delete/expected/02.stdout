@@ -1,0 +1,4 @@
+kept 1 file(s) of the removed entries in the files directory:
+  $WORK/files/a1.txt
+delete them with `papers file clean`, or remove the entries with `--delete-files`
+Removed -> a: A (file:1)

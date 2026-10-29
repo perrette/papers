@@ -1,0 +1,5 @@
+usage: papers extract [-h] [-v] [--debug] [--color {auto,always,never}]
+                      [--porcelain] [--doi-only] [-R] [-n WORD_COUNT]
+                      [--fulltext] [--scholar] [--image]
+                      pdf [pdf ...]
+papers extract: error: folder is a directory, requires -R/--recursive to scan

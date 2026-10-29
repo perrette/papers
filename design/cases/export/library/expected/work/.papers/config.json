@@ -1,0 +1,10 @@
+{
+  "bibtex": "refs.bib",
+  "filesdir": "files",
+  "id": "$PROJECT6",
+  "nameformat": {
+    "template": "{author}_{year}"
+  },
+  "pool": "none",
+  "version": 3
+}

@@ -1,0 +1,105 @@
+{
+  "description": "file rename: the name template with its placeholders and modifiers (authorX, Author, AUTHOR, Title, year, journal path-safe, doi_or_id of an unknown entry), slugified names, the label of the other files, subfolders from the template; a template that leaves the files folder, or an unknown placeholder, is refused: an error per entry and exit status 1",
+  "sections": [
+    "library.md#the-files-directory/file-names",
+    "library.md#name-and-key-templates/file-names",
+    "library.md#name-and-key-templates/placeholders",
+    "library.md#path-safety",
+    "bibtex.md#5.1",
+    "formats.md#7.3"
+  ],
+  "tests": [
+    "tests/test_path_traversal.py::TestRename::test_template_outside_is_refused",
+    "tests/test_paths.py::TestFlatLayout::test_new_name_keeps_labels",
+    "tests/test_spec_formats.py::TestExitCodes::test_refused_rename",
+    "tests/test_spec_formats.py::TestExitCodes::test_template_error"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "file",
+        "rename"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "rename",
+        "--name-template",
+        "{Author}-{year}/{journal}-{AUTHOR}-{Title}"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "rename",
+        "--name-template",
+        "{author}_{doi_or_id}"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "rename",
+        "--name-template",
+        "../{author}"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "rename",
+        "--name-template",
+        "/tmp/{author}"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "rename",
+        "--name-template",
+        "{key}/../../x"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "rename",
+        "--name-template",
+        "{authorX}_{year}_{title}",
+        "--name-title-length",
+        "20",
+        "--name-title-word-num",
+        "3",
+        "--name-title-word-size",
+        "3",
+        "--name-author-num",
+        "1",
+        "--name-author-sep",
+        "-"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "rename",
+        "--name-template",
+        "{nosuch}"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    }
+  ]
+}

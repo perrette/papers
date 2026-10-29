@@ -1,0 +1,4 @@
+DRYRUN: c2022: relink $WORK/lost/c.pdf -> $WORK/search/c.pdf (found in $WORK/search)
+DRYRUN: 1 link relinked, 0 still broken
+1 issue(s) in the files of 1 entries
+DRYRUN: $WORK/papers.bib not saved

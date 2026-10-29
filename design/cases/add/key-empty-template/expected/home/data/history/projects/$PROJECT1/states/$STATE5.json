@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE4",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers add --title 10 000 --metadata note=no word",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "f815d7cdccd1d2baa11e5e22385222566e03094bb3662049bba36929d1d66697"
+  ],
+  "sha": "f815d7cdccd1d2baa11e5e22385222566e03094bb3662049bba36929d1d66697"
+ },
+ "files": {}
+}

@@ -1,0 +1,1 @@
+papers: error: $WORK/a/.papers/config.json: invalid value "no" for the setting auto-push (expected true or false): correct the file

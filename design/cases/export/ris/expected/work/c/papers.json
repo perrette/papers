@@ -1,0 +1,195 @@
+[
+  {
+    "id": "arx2021",
+    "citation-key": "arx2021",
+    "type": "article",
+    "title": "Preprint",
+    "issued": {
+      "date-parts": [
+        [
+          2021
+        ]
+      ]
+    },
+    "accessed": {
+      "date-parts": [
+        [
+          2022,
+          3,
+          4
+        ]
+      ]
+    }
+  },
+  {
+    "id": "conf2017",
+    "citation-key": "conf2017",
+    "type": "paper-conference",
+    "author": [
+      {
+        "family": "Doe",
+        "given": "Jane"
+      }
+    ],
+    "editor": [
+      {
+        "family": "Ed",
+        "given": "Anne"
+      },
+      {
+        "family": "Ed",
+        "given": "Bob"
+      }
+    ],
+    "title": "A talk",
+    "publisher-place": "Berlin",
+    "edition": "2",
+    "language": "en",
+    "collection-title": "LNCS",
+    "container-title": "Proc. of the Ice Conference",
+    "issued": {
+      "date-parts": [
+        [
+          2017
+        ]
+      ]
+    }
+  },
+  {
+    "id": "dated2022",
+    "citation-key": "dated2022",
+    "type": "document",
+    "title": "Only a date",
+    "issued": {
+      "date-parts": [
+        [
+          2022,
+          3,
+          4
+        ]
+      ]
+    }
+  },
+  {
+    "id": "perrette2013",
+    "citation-key": "perrette2013",
+    "type": "article-journal",
+    "author": [
+      {
+        "family": "Perrette",
+        "given": "M."
+      },
+      {
+        "family": "Berg",
+        "given": "Jan",
+        "non-dropping-particle": "van der"
+      },
+      {
+        "literal": "World Health Organization"
+      },
+      {
+        "family": "Smith",
+        "given": "John",
+        "suffix": "Jr"
+      }
+    ],
+    "title": "A scaling approach to Sea level in Göttingen & $\\alpha$ 50%  x",
+    "volume": "4",
+    "DOI": "10.5194/esd-4-11-2013",
+    "URL": "https://esd.copernicus.org/x",
+    "ISSN": "2190-4979",
+    "abstract": "Sea level\n rise.",
+    "note": "A note",
+    "container-title": "Earth System Dynamics",
+    "issue": "1",
+    "page": "11-29",
+    "keyword": "sea level, ice; amoc",
+    "issued": {
+      "date-parts": [
+        [
+          2013,
+          5
+        ]
+      ]
+    },
+    "custom": {
+      "file": [
+        "files/perrette_et_al_2013_a-scaling-approach-to-s-ea-level-in-g-o-ttingen-alpha-50-x.pdf"
+      ]
+    }
+  },
+  {
+    "id": "rep2020",
+    "citation-key": "rep2020",
+    "type": "report",
+    "author": [
+      {
+        "family": "Doe",
+        "given": "Jane"
+      }
+    ],
+    "title": "Report",
+    "publisher": "PIK",
+    "publisher-place": "Potsdam",
+    "genre": "Working paper",
+    "issued": {
+      "date-parts": [
+        [
+          2020
+        ]
+      ]
+    }
+  },
+  {
+    "id": "th2018",
+    "citation-key": "th2018",
+    "type": "thesis",
+    "author": [
+      {
+        "family": "Roe",
+        "given": "Richard"
+      }
+    ],
+    "title": "A master's thesis",
+    "publisher": "Univ. of Ice",
+    "genre": "Master's thesis",
+    "issued": {
+      "date-parts": [
+        [
+          2018
+        ]
+      ]
+    }
+  },
+  {
+    "id": "th2019",
+    "citation-key": "th2019",
+    "type": "thesis",
+    "author": [
+      {
+        "family": "Roe",
+        "given": "Richard"
+      }
+    ],
+    "title": "A thesis",
+    "publisher": "Univ. of Ice",
+    "genre": "PhD thesis",
+    "issued": {
+      "date-parts": [
+        [
+          2019
+        ]
+      ]
+    }
+  },
+  {
+    "id": "web2020",
+    "citation-key": "web2020",
+    "type": "webpage",
+    "title": "A page",
+    "URL": "https://example.org/a",
+    "issued": {
+      "literal": "n.d."
+    }
+  }
+]
