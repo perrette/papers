@@ -1182,7 +1182,8 @@ redone, oldest first. For each step S, for each entry (id, link) of its
    is reverted, section 8, with `p` as the state before it).
 7. Else, for redo: in the line of the pool's `at`, the first (newest)
    state whose `reverts` contains `n`; if found, append it to `reverts`
-   (the revert made by the undo is itself reverted). If not found (the
+   unless it is there already (the revert made by the undo is itself
+   reverted, once: an undo of several steps reverts them in one state). If not found (the
    undo took step `n` back in the pool, and the pool moved on since),
    append `n` to `again`: the step is done again (8.5, with `p` as the
    state before it).

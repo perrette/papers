@@ -1861,6 +1861,7 @@ for the specification. A section marked free has none.
 - tests/test_undo_pool.py::TestUndoPool::test_pool_changed_since
 - tests/test_undo_pool.py::TestUndoPool::test_pool_changed_since_elsewhere
 - tests/test_undo_pool.py::TestUndoPool::test_redo_after_the_pool_moved_on
+- tests/test_undo_pool.py::TestUndoPool::test_redo_of_several_steps_reverted_together
 - tests/test_undo_pool.py::TestUndoPool::test_pool_changed_outside_papers
 - tests/test_undo_pool.py::TestUndoPool::test_pool_undone_first
 - tests/test_undo_pool.py::TestSeveralSavesOfThePool::test_undo

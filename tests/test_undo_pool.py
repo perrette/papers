@@ -187,6 +187,20 @@ class UndoInLibrary:
         self.assertNotIn('mine2022', self.entries('pool'))
         self.assertEqual(self.keywords('other2023', 'pool'), 'b')
 
+    def test_redo_of_several_steps_reverted_together(self):
+        # undo -n 2 reverts the two steps of the pool in one revert; redo -n 2 reverts that revert once (#194)
+        self.lib('add ../other.bib')
+        self.lib('add ../new.bib')
+        self.tag('other2023', 'b', where='pool')
+        self.lib('undo -n 2')
+        undo = self.cursor('pool')
+        self.lib('redo -n 2')
+        project, _ = self.project('pool')
+        self.assertEqual(project.state(self.cursor('pool'))['reverts'], [undo])
+        self.assertIn('mine2022', self.entries('pool'))
+        self.assertIn('other2023', self.entries('pool'))
+        self.assertEqual(self.keywords('other2023', 'pool'), 'b')
+
     def test_pool_changed_outside_papers(self):
         self.lib('add ../new.bib')
         bib = Path(self.path('pool', 'papers.bib'))

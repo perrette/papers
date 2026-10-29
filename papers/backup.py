@@ -604,7 +604,8 @@ def pool_steps(config, project, steps, undo):
                 line = pool.project.line(pool.at)
                 revert = next((r for r in line if n in (pool.project.state(r).get('reverts') or [])), None)
                 if revert is not None:
-                    pool.reverts.append(revert)
+                    if revert not in pool.reverts:  # one revert of several steps (undo -n N): reverted once
+                        pool.reverts.append(revert)
                 else:  # the undo took step n back there, and the pool moved on since: done again
                     pool.again.append(n)
                     pool.bases[n] = parent
