@@ -114,12 +114,17 @@ def _parse_doi_from_metadata_string(metadata):
     return None
 
 def _parse_doi_from_info_fields(fields):
-    """DOI in the document info fields (subject, keywords, title)"""
+    """DOI in the document info fields (subject, keywords, title), which
+    are free text: cleaned as a DOI of the text (lower case, no trailing
+    period...)"""
     for key in ['subject', 'keywords', 'title']:
-        value = fields.get(key) or ''
-        doi_match = re.search(r'10\.\d{4,9}/[-._;()/:a-z0-9]+', value, re.IGNORECASE)
+        value = _normalize_doi_text(fields.get(key) or '')
+        doi_match = re.search(r'10\.\d{4,9}/[-._;()/:a-z0-9]+', value)
         if doi_match:
-            return doi_match.group(0)
+            try:
+                return _clean_doi(doi_match.group(0))
+            except DOIParsingError:
+                continue
     return None
 
 

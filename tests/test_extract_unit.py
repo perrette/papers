@@ -85,6 +85,20 @@ class TestParseDoiFromMetadataString(unittest.TestCase):
         self.assertIsNone(_parse_doi_from_metadata_string(''))
 
 
+class TestParseDoiFromInfoFields(unittest.TestCase):
+
+    def test_cleaned_as_in_the_text(self):
+        from papers.extract import _parse_doi_from_info_fields, parse_dois
+        subject = 'Journal X. doi:10.1000/ABC.123.'
+        self.assertEqual(_parse_doi_from_info_fields({'subject': subject}), '10.1000/abc.123')
+        self.assertEqual(parse_dois(subject), ['10.1000/abc.123'])
+
+    def test_too_short_is_passed_over(self):
+        from papers.extract import _parse_doi_from_info_fields
+        self.assertEqual(_parse_doi_from_info_fields({'subject': 'doi:10.1000/.', 'title': 'doi:10.1000/Title-1'}),
+                         '10.1000/title-1')
+
+
 class TestFormatAuthors(unittest.TestCase):
 
     def test_single_author(self):
