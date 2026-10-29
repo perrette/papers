@@ -363,18 +363,19 @@ The loop tests each character against the special cases, including four
 `str.startswith` calls per character in text mode (`---`, `--`, ` `` `,
 `''`). On a pull of 10 000 entries, 15 million `startswith` calls came from
 this loop, about 1.3 s under the profiler, mostly from the merge comparing
-abstracts (`merge.equivalent` normalizes both values). Decoding author and
+abstracts (`merge.equivalent` normalized both values). Decoding author and
 title of 10 000 entries takes 288 ms.
 
-`FieldMerge` calls `equivalent` on every present value, also when the
-values are equal as strings, so equal abstracts are normalized too. The
-`normalize_text` memo then holds them (up to 2^18 values), which costs
-memory and rarely hits, since abstracts are unique.
+`FieldMerge` calls `equivalent` on every present value. It used to
+normalize values also when they were equal as strings, so equal
+abstracts went through the decoder and filled the `normalize_text` memo
+(up to 2^18 values, rarely hit, since abstracts are unique). Fixed:
+`equivalent` compares the values as strings first, and only values that
+differ are normalized.
 
 Ideas: copy runs of characters that are not `\ { } $ ~ - ` '` in one step
-(a regex or `memchr`-style search for the next special character); test
-raw equality before normalizing; memoize only short values (names,
-titles).
+(a regex or `memchr`-style search for the next special character);
+memoize only short values (names, titles).
 
 Contract note: the character table and the ASCII transliteration table
 (AnyAscii, `papers/ascii.py` in Python) decide the same-paper rule and
@@ -413,10 +414,16 @@ pool entry as last exchanged, without `file` and `ids`, with
 its pool, the origin file is about the size of the bibtex (7.5 MB for the
 10 000-entry library).
 
-Origin files are parsed with `entries.parse_string` without the parse
-cache, and a pull loads them twice (once per `Exchange`): about 2.6 s for
-the 10 000-entry library under the profiler. Using the parse cache for
-them, or loading the records once per command, would remove most of it.
+Origin files were parsed without the parse cache, and a pull of a
+shallow library loaded them twice (to repair the links to the pool files
+when the library is loaded, then for the exchange): about 2.6 s for the
+10 000-entry library under the profiler. Fixed: they are parsed through
+the parse cache (3), and `Origin` keeps each parsed file with its text,
+so a later load in the same process that reads the same text reuses it.
+The loads then share the entry objects, so `Origin` never changes a
+record in place (`set_files` and `rekey` replace it by a copy). The
+origin files take room in the parse cache, about as much as the
+bibtex.
 
 ### 8.2 Matching and the three-way merge
 
@@ -442,34 +449,55 @@ in the new pieces (found with a regex on the piece text) are compared.
 This uses the same cut as the history and costs one sha256 pass over the
 three texts. In the Python implementation the origin records are loaded
 (and parsed in full) before this check, so the fast path still pays for
-that parse: 1.2 s for `status` with the 10 000-entry pool in sync.
+that parse, now through the parse cache (8.1): `status` with the
+10 000-entry pool in sync went from 1.45 s to 1.1 s, of which about half
+is that parse and half the parse of the library for the bibtex line of
+`status`. Reading only the comments of the origin file (the pool id and
+the pull time) before the check would remove the first half.
 
 ### 8.4 Costs measured
 
-`papers pull --all` into an empty shallow library:
+`papers pull --all` into an empty shallow library (wall time of the
+command), before and after the fixes of 8.5 (measured one after the
+other on the same machine, so the "before" numbers differ a little from
+the first measurement: 0.65, 2.4 and 13.8 s for the first pull):
 
 | Pool entries | first pull (all new) | second pull (nothing changes) |
 |---|---|---|
-| 1 000 | 0.65 s | 0.85 s |
-| 3 000 | 2.4 s | 2.4 s |
-| 10 000 | 13.8 s | 7.9 s |
+| 1 000 | 0.86 s → 0.42 s | 0.83 s → 0.53 s |
+| 3 000 | 2.85 s → 0.98 s | 2.8 s → 1.42 s |
+| 10 000 | 17.0 s → 3.5 s | 8.8 s → 4.8 s |
+
+`papers status` with the 10 000-entry pool in sync: 1.45 s → 1.1 s.
+
+Both pulls are now about linear. What remains of the second pull is per
+entry: finding the pool entry of each library entry (`pool_entry`, with
+`same_paper`), the three-way merge, the index of the library for
+`missing` (`--all`), and the parse of the library, the pool and the
+origin file.
 
 ### 8.5 Quadratic steps found while measuring
 
-- `Exchange._pull_new` builds the set of all library keys for each new
-  entry (`{self.biblio.key(x) for x in self.biblio.entries}`): 50 million
-  calls for 10 000 new entries. Keeping the set and adding each new key
-  makes it linear.
-- `cli/pool_cmds._pull_selection` checks `not any(pe is x for x in new)`
-  for each missing entry: quadratic in the number of new entries. A set
-  of `id(pe)` fixes it.
-- `Config.shallow` (through `has_pool`, `is_pool_library`, `pool_path`,
-  `configdir`) resolves paths with `realpath` at each call, and the
-  exchange calls it several times per entry (30 000 calls, about 6 s under
-  the profiler for 10 000 entries). These values do not change during a
-  command and can be computed once.
+All fixed; none of them changed a result. They mattered from a few
+thousand entries.
 
-None of these changes a result; they matter from a few thousand entries.
+- `Exchange._pull_new` built the set of all library keys for each new
+  entry: 50 million calls for 10 000 new entries. Fixed: `Exchange.pull`
+  builds the set once and each new key is added to it.
+- `cli/pool_cmds._pull_selection` checked `not any(pe is x for x in new)`
+  for each missing entry: quadratic in the number of new entries. Fixed:
+  a set of the `id` of the entries found.
+- `Config.shallow` (through `has_pool`, `is_pool_library`, `pool_path`,
+  `configdir`) resolved paths with `realpath` at each call, and the
+  exchange calls it several times per entry (30 000 calls, about 6 s
+  under the profiler for 10 000 entries). Fixed: the three values are
+  kept with what they were computed from (the configuration file, the
+  pool setting, and the current directory for a relative file) and
+  computed again when one of these changes (`papers config pool`,
+  `init`) or after a save.
+- The origin records were parsed twice per pull, without the parse
+  cache (8.1). Fixed.
+- Equal values were normalized by the merge (6). Fixed.
 
 ## 9. The lock and concurrency
 
