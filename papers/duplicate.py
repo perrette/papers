@@ -33,7 +33,7 @@ from unidecode import unidecode
 from papers import logger
 from papers.entries import get_entry_val, split_depth0
 from papers.identifiers import normalize_doi, normalize_isbn, entry_arxiv
-from papers.latexenc import latex_to_unicode
+from papers.latex import latex_to_unicode
 
 
 SAME = 'same'

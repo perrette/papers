@@ -39,8 +39,8 @@ Other documents:
   options.
 
 Not covered: fetching metadata from the network, the extraction of
-metadata from PDF files (including the DOI parser, see the open
-questions), the screens of the interactive dialogues.
+metadata from PDF files (its DOI parser is described, as information, in
+bibtex.md section 3.6), the screens of the interactive dialogues.
 
 ## How to read Contract and Free
 
@@ -113,10 +113,4 @@ likely bugs (fixed), inconsistencies (fixed, or kept and documented),
 rules to pin for compatibility (pinned in the rule text) and minor items
 (fixed, or kept as correct behaviour).
 
-One question is still open:
-
-- The LaTeX decoder that the same-paper rule uses is a vendored table that
-  is wrong for some input (`T\^ete` gives `Tet̂e`, `\url{x}` gives `r̆lx`):
-  a second implementation must copy it exactly, or a smaller specified
-  decoder replaces it, which changes the identities stored in
-  `distinct.json` for such input. [bibtex.md](bibtex.md#open-questions) 11.
+None is open.

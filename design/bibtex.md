@@ -447,36 +447,59 @@ Tests: tests/test_check.py::TestCheckFixDoi::test_check_fix_doi, tests/test_bib_
 papers stores values as they are written in the file, LaTeX or Unicode.
 Three conversions exist; none is applied at reading or writing.
 
-### 4.1 LaTeX to Unicode, by table (identity and file names)
+### 4.1 LaTeX to Unicode (identity and file names)
 
 Used to normalize text for the same-paper rule (section 9.1) and to repair
 file links saved by Mendeley. **Contract** (it decides whether two entries
-are the same paper). It uses three tables of (Unicode character, LaTeX
-text) pairs, given as data in `papers/latexenc.py`: `to_latex` (about
-2340 pairs, e.g. `ü` / `{\"u}`, `%` / `\%`, space / `\space `),
-`to_crappy1` (about 200 pairs, accented letters written as `\"{u}`,
-`\'{e}`, `\AA `...), and `to_crappy2` (4 pairs: the combining grave,
-acute, circumflex and cedilla, written `` \` ``, `\'`, `\^`, `\c`).
+are the same paper). The text is read from left to right, as LaTeX reads
+it:
 
-Steps, in order:
+1. An accent command puts its accent on the first character of its
+   argument. The argument is the braced group or the single character
+   that follows (spaces before it skipped), or a command that names a
+   character (`\'\i`). The accents, as Unicode combining characters:
+   `` \` `` U+0300, `\'` U+0301, `\^` U+0302, `\~` U+0303, `\=` U+0304,
+   `\u` U+0306, `\.` U+0307, `\"` U+0308, `\r` U+030A, `\H` U+030B,
+   `\v` U+030C, `\d` U+0323, `\c` U+0327, `\k` U+0328, `\b` U+0331,
+   `\t` U+0361, and in math `\grave`, `\acute`, `\hat`, `\tilde`,
+   `\bar`, `\breve`, `\dot`, `\ddot`, `\check` (the same characters)
+   and `\vec` U+20D7. On `\i` (ı) and `\j` (ȷ) the accent goes on `i` and
+   `j`. A letter that already carries accents gets the new one after
+   them (`\'{\"u}` gives `ǘ`). An accent without argument gives nothing.
+2. A command that names a character gives that character: the commands
+   of the table of section 4.2 that are written as one command (`\o`,
+   `{\o}`, `\o{}`, `$\alpha$`, with `\cyrchar` in front dropped; the first
+   one of each name), and `\dh` ð, `\j` ȷ, `\times` ×, `\ell` ℓ,
+   `\copyright` ©, `\textregistered` ®. Examples: `\ss` ß, `\AA` Å, `\l` ł,
+   `\th` þ, `\alpha` α, `\textendash` –, `\space` a space.
+3. A formatting command is dropped and its argument kept: `\emph`,
+   `\textit`, `\textbf`, `\textsc`, `\textrm`, `\textsf`, `\texttt`,
+   `\textup`, `\textsl`, `\textmd`, `\textnormal`, `\textsuperscript`,
+   `\textsubscript`, `\mathrm`, `\mathit`, `\mathbf`, `\mathsf`, `\mathtt`,
+   `\mathcal`, `\mathnormal`, `\text`, `\mbox`, `\hbox`, `\url`, `\href`,
+   `\ensuremath`, `\protect`, `\relax`, `\cyrchar`, `\it`, `\bf`, `\sc`,
+   `\rm`, `\sf`, `\tt`, `\em`, `\sl`, `\up`, `\normalfont`, `\nocase`.
+4. The spaces after a command name of letters are not text (`\AA ngstr`
+   gives `Ångstr`).
+5. `\&`, `\%`, `\$`, `\#`, `\_`, `\{`, `\}` give the character after the
+   backslash; `\ `, `\,`, `\;`, `\:`, `\!` and `\\` give a space; `\-` gives
+   nothing.
+6. Any other command is kept as written (`\foo` stays `\foo`).
+7. `{` and `}` are dropped; `$` is dropped; `~` is a no-break space
+   (U+00A0); `---` is an em dash, `--` an en dash; ``` `` ``` and `''` are
+   `"`.
+8. The result is in Unicode NFC form.
 
-1. If the text contains `\` or `{`: for each pair of `to_crappy1`, then of
-   `to_latex`, in table order, every occurrence of the LaTeX text is
-   replaced by the character.
-2. If the text still contains `\`: for each pair of `to_crappy2`, the text
-   is split on the LaTeX text; for each piece but the last, if the next
-   piece is not empty, its first character is moved to the end of this
-   piece; the pieces are joined with the (combining) character.
-3. Each combining character (Unicode combining class not 0) is swapped
-   with the character after it; a combining character at the end is
-   dropped.
-4. Unicode NFC normalization.
-5. All `{` and `}` are removed.
+A file path (the Mendeley repair) is decoded by steps 1 to 6 and 8, and
+the braces dropped: `$`, `~`, dashes and quotes stay as written.
 
-The result is not always right (`T\^ete` gives `Tet̂e`; `\url{x}` gives
-`r̆lx`), but it is the reference: see the open questions.
+Examples: `T\^ete` gives `Tête`, `\'e` gives `é`, `\v{S}koda` gives
+`Škoda`, `A{\dh}algeirsd{\'o}ttir` gives `Aðalgeirsdóttir`, `\url{x}` gives
+`x`, `$\alpha$-decay` gives `α-decay`, `CO$_2$` gives `CO_2`. The text that
+`check --encoding latex` writes (section 4.2) decodes to the text it was
+made from.
 
-Tests: tests/test_spec_bibtex.py::TestLatexToUnicodeTable::test_steps, tests/test_spec_bibtex.py::TestLatexToUnicodeTable::test_tables, tests/test_latexenc.py::TestLatexToUnicode::test_simple_accents, tests/test_latexenc.py::TestLatexToUnicode::test_crappy_format, tests/test_latexenc.py::TestLatexToUnicode::test_crappy2_combining_accents, tests/test_latexenc.py::TestLatexToUnicode::test_trailing_combining_char_discarded, tests/test_latexenc.py::TestLatexToUnicode::test_no_backslash_unchanged, tests/test_latexenc.py::TestLatexToUnicode::test_removes_braces
+Tests: tests/test_spec_bibtex.py::TestLatexToUnicode::test_accents, tests/test_spec_bibtex.py::TestLatexToUnicode::test_characters, tests/test_spec_bibtex.py::TestLatexToUnicode::test_other_commands, tests/test_spec_bibtex.py::TestLatexToUnicode::test_text_signs, tests/test_spec_bibtex.py::TestLatexToUnicode::test_paths, tests/test_spec_bibtex.py::TestLatexToUnicode::test_unicode_to_latex_decodes_back, tests/test_latexenc.py::TestLatexToUnicode::test_simple_accents, tests/test_files_unit.py::TestCheckFiles::test_fix_mendeley_path_keeps_text_signs
 
 ### 4.2 Unicode to LaTeX (`check --encoding latex`)
 
@@ -719,8 +742,8 @@ the exchanges with pools.
 `norm(s)`:
 
 1. empty text gives empty text;
-2. LaTeX to Unicode by table (section 4.1) (a text that is ASCII without
-   `\`, `{`, `}` is unchanged by this step);
+2. LaTeX to Unicode (section 4.1) (a text that is ASCII without `\`,
+   `{`, `}` is unchanged by this step);
 3. transliteration to ASCII with the table of the Unidecode library
    (`ü` to `u`, `ß` to `ss`, `Å` to `A`); papers runs with Unidecode
    1.4.0, the same table as for the slugs of the templates (library.md);
@@ -1004,13 +1027,13 @@ Tests: in exchange.md, section 5.
    absolute in an absolute library (section 5.2; #176).
 10. **No escaping in the `file` field.** Resolved: no escaping is the rule
     (section 5.1, `docs/files.md`); each path is now trimmed (#172).
-11. **The table LaTeX decoder is wrong for some input, and it defines
-    identity.** `T\^ete` gives `Tet̂e` (the accent is moved twice), `\url{x}`
-    gives `r̆lx`, `\'e` without braces gives `e` (the accent is lost). A
-    second implementation must copy the algorithm and its tables exactly
-    to give the same verdicts; replacing the decoder would change the
-    identities stored in `distinct.json`. Open: waits for a decision of
-    the user. papers/latexenc.py:34-90.
+11. **The table LaTeX decoder was wrong for some input, and it defines
+    identity.** `T\^ete` gave `Tet̂e`, `\url{x}` gave `r̆lx`, `\'e` without
+    braces gave `e`. Resolved: a decoder that reads the text as LaTeX
+    reads it replaces the table one (section 4.1). Identities recorded in
+    `distinct.json` for entries whose authors or title contain other
+    LaTeX than accents and braces may differ from the new ones: such a
+    pair is asked again.
 12. **Transliteration is a third-party table.** Resolved: Unidecode
     everywhere (identity and slugs), version named in section 9.1 (#176).
 13. **`check --encoding unicode` and `add` of a PDF use a third-party

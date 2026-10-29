@@ -428,28 +428,48 @@ class TestNormalized(SpecLibrary):
 # 4. LaTeX and Unicode
 # ====================
 
-class TestLatexToUnicodeTable(unittest.TestCase):
+class TestLatexToUnicode(unittest.TestCase):
     "bibtex.md 4.1"
 
-    def test_steps(self):
-        "bibtex.md 4.1: the table decoder, including its known wrong outputs"
-        from papers.latexenc import latex_to_unicode
-        cases = {
-            '{\\"u}': 'ü', '\\"{u}': 'ü', '\\AA ngstr': 'Ångstr', '50\\%': '50%', 'x\\space y': 'x y',
-            'a {b} c': 'a b c', 'plain text': 'plain text',
-            'T\\^ete': 'Tet\u0302e',  # the accent is moved twice
-            '\\url{x}': 'r\u0306lx',
-            "\\'e": 'e',  # the accent is lost
-        }
+    def decode(self, cases, **kw):
+        from papers.latex import latex_to_unicode
         for latex, text in cases.items():
-            self.assertEqual(latex_to_unicode(latex), text, latex)
+            self.assertEqual(latex_to_unicode(latex, **kw), text, latex)
 
-    def test_tables(self):
-        "bibtex.md 4.1: the three tables of papers/latexenc.py"
-        from papers import latexenc
-        self.assertIn(('ü', '{\\"u}'), latexenc.unicode_to_latex)
-        self.assertEqual(len(latexenc.unicode_to_crappy_latex2), 4)
+    def test_accents(self):
+        "bibtex.md 4.1: an accent goes on the first character of its argument, in every spelling"
+        self.decode({'{\\"u}': 'ü', '\\"{u}': 'ü', '\\"u': 'ü', "\\'e": 'é', "\\' e": 'é', 'T\\^ete': 'Tête',
+                     '\\c c': 'ç', '\\c{c}a': 'ça', '\\v{S}koda': 'Škoda', "{\\'{\\i}}": 'í', "\\'\\i": 'í',
+                     '\\H{o}': 'ő', '\\k{a}': 'ą', '\\r{a}': 'å', '\\u{g}': 'ğ', '\\={a}': 'ā', '\\.{z}': 'ż',
+                     '\\d{s}': 'ṣ', "\\'{\\\"u}": 'ǘ', '\\acute{\\ddot{\\iota}}': 'ΐ', '\\"{}': ''})
 
+    def test_characters(self):
+        "bibtex.md 4.1: commands that name a character, and escaped characters"
+        self.decode({'\\o': 'ø', '{\\O}': 'Ø', '\\ss{}': 'ß', '\\AA ngstr': 'Ångstr', '{\\ae}': 'æ', '\\l': 'ł',
+                     'A{\\dh}algeirsd{\\\'o}ttir': 'Aðalgeirsdóttir', '{\\th}': 'þ', '$\\alpha$-decay': 'α-decay',
+                     '\\Omega': 'Ω', '\\textendash': '–', 'x\\space y': 'x y',
+                     '50\\%': '50%', 'a \\& b': 'a & b', '\\$\\#\\_\\{\\}': '$#_{}'})
+
+    def test_other_commands(self):
+        "bibtex.md 4.1: formatting commands give their argument, other commands are kept as written"
+        self.decode({'\\textit{Foo} bar': 'Foo bar', '\\emph{x}': 'x', '\\url{x}': 'x', '\\mbox{CO2}': 'CO2',
+                     '\\foo{bar} baz': '\\foobar baz', 'a\\-b': 'ab', 'a\\,b': 'a b'})
+
+    def test_text_signs(self):
+        "bibtex.md 4.1: braces and $ dropped, ~ a no-break space, -- and --- dashes, `` and '' quotes"
+        self.decode({'a {b} c': 'a b c', 'CO$_2$': 'CO_2', 'a~b': 'a\u00a0b', 'Ice--ocean': 'Ice–ocean',
+                     'a---b': 'a—b', "``x''": '"x"', 'plain text': 'plain text', '': ''})
+
+    def test_paths(self):
+        "bibtex.md 4.1: in a file path only the commands and braces are decoded"
+        self.decode({'a--b~c$d.pdf': 'a--b~c$d.pdf', 'x{\\_}{\\"u}.pdf': 'x_ü.pdf'}, text=False)
+
+    def test_unicode_to_latex_decodes_back(self):
+        "bibtex.md 4.1: the text written by check --encoding latex (4.2) decodes to the same text"
+        from papers.latex import latex_to_unicode
+        from papers.latexenc import string_to_latex
+        for text in ('Müller', 'Ångström', 'Straße', 'Łódź', 'Dvořák', 'Þór', 'αβγ', 'François Ça', '50% & x_1'):
+            self.assertEqual(latex_to_unicode(string_to_latex(text)), text, text)
 
 class TestUnicodeToLatex(SpecLibrary):
     "bibtex.md 4.2"
@@ -696,10 +716,11 @@ class TestNormalization(unittest.TestCase):
     "bibtex.md 9.1"
 
     def test_norm(self):
-        "bibtex.md 9.1: LaTeX table, Unidecode, no braces, lower case, single spaces"
+        "bibtex.md 9.1: LaTeX decoded, Unidecode, no braces, lower case, single spaces"
         from papers.duplicate import normalize_text
         cases = {'': '', 'Sea  {Level}\n rise ': 'sea level rise', 'M{\\"u}ller': 'muller', 'Müller': 'muller',
-                 'Straße': 'strasse', 'Ångström': 'angstrom', '{\\AA}ngstr{\\"o}m': 'angstrom'}
+                 'Straße': 'strasse', 'Ångström': 'angstrom', '{\\AA}ngstr{\\"o}m': 'angstrom',
+                 'T\\^ete': 'tete', "\\'Ecole": 'ecole', '\\textit{Ice} sheets': 'ice sheets'}
         for text, norm in cases.items():
             self.assertEqual(normalize_text(text), norm, text)
 

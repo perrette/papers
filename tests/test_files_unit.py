@@ -240,10 +240,9 @@ class TestCheckFiles(TmpTest):
         self.assertEqual(fix_mendeley_path(broken), pdf)
         self.assertEqual(fix_mendeley_path('a.pdf'), 'a.pdf')  # no directory: unchanged
 
-    def test_fix_mendeley_path_bad_latex(self):
-        with mock.patch('papers.files.latex_to_unicode', side_effect=KeyError('x')), \
-                self.assertLogs('papers', level='WARNING'):
-            self.assertEqual(fix_mendeley_path('/a/b.pdf'), '/a/b.pdf')
+    def test_fix_mendeley_path_keeps_text_signs(self):
+        "only LaTeX commands and braces are decoded in a path: --, ~ and $ stay"
+        self.assertEqual(fix_mendeley_path('/a/x--y~z$w{\\_}{\\"u}.pdf'), '/a/x--y~z$w_ü.pdf')
 
     def test_repair_and_identical_files(self):
         # a link saved by Mendeley without its leading /: relative to the bibtex directory, it is broken

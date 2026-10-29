@@ -1,8 +1,8 @@
-"""Unit tests for papers.latexenc - LaTeX/Unicode conversion (37% coverage -> target ~90%)"""
+"""Unit tests for papers.latex and papers.latexenc - LaTeX/Unicode conversion"""
 import unittest
 
+from papers.latex import latex_to_unicode
 from papers.latexenc import (
-    latex_to_unicode,
     string_to_latex,
     protect_uppercase,
 )
@@ -18,18 +18,16 @@ class TestLatexToUnicode(unittest.TestCase):
         self.assertEqual(latex_to_unicode("{\\c{c}}"), "ç")
         self.assertEqual(latex_to_unicode("{\\~n}"), "ñ")
 
-    def test_crappy_format(self):
+    def test_accent_before_braces(self):
         self.assertEqual(latex_to_unicode("\\'{e}"), "é")
         self.assertEqual(latex_to_unicode("\\'{a}"), "á")
 
-    def test_crappy2_combining_accents(self):
-        """unicode_to_crappy_latex2: \\` {e} -> e with combining grave"""
+    def test_accent_on_braced_letter(self):
         self.assertEqual(latex_to_unicode("\\`{e}"), "è")
         self.assertEqual(latex_to_unicode("\\'{e}"), "é")
 
     def test_trailing_combining_char_discarded(self):
-        """Trailing combining diacritical (e.g. bare \\') is discarded"""
-        # "\\'" alone maps to U+0301 (combining acute), trailing so discarded -> empty
+        """an accent without argument (bare \\') gives nothing"""
         result = latex_to_unicode("\\'")
         self.assertEqual(result, "")
 

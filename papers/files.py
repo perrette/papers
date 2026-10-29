@@ -17,7 +17,7 @@ from papers.config import Config, config_root, find_library_config
 from papers.entries import get_entry_val, parse_string, parse_file, format_file
 from papers.extract import extract_pdf_doi, isvaliddoi
 from papers.filename import fit_name
-from papers.latexenc import latex_to_unicode
+from papers.latex import latex_to_unicode
 from papers.utils import checksum, stdin_is_terminal, PapersExit
 
 
@@ -816,10 +816,7 @@ def fix_mendeley_path(file, key=''):
     """the path of a file link as saved by Mendeley, repaired: latex symbols
     (e.g. "{\\_}") converted, and the leading "/" restored when it was omitted
     (home/... instead of /home/...)"""
-    try:
-        file = latex_to_unicode(file)
-    except KeyError as error:
-        logger.warning(key+': '+str(error)+': failed to convert latex symbols to unicode: '+file)
+    file = latex_to_unicode(file, text=False)
 
     # fix root (e.g. path starts with home instead of /home)
     dirname = os.path.dirname(file)
