@@ -90,6 +90,12 @@ class TestParseCache(unittest.TestCase):
         self.assertTrue(cached)
         self.assertLess(len(cached), len(list(parsecache._ordered(CASES['broken entry']))))
 
+    def test_warning_once(self):
+        # the splitter's warning of the broken block: once, not again for its piece
+        with self.assertLogs('bibtexparser.splitter', 'WARNING') as logs:
+            parse_string(CASES['broken entry'], cache=self.cache)
+        self.assertEqual(len(logs.output), 1, logs.output)
+
     def test_prune(self):
         parse_string(entries(1000), cache=self.cache)
         self.cache.prune(size=1000)

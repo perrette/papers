@@ -5,6 +5,7 @@ import tempfile
 import unittest
 from unittest import mock
 
+from papers.bib import Biblio
 from papers.duplicate import (Distinct, IdentityIndex, SAME, Verdict, find_duplicates, identity, parse_name,
                               _side_matches)
 from papers.entries import parse_string
@@ -123,6 +124,18 @@ class TestDuplicate(unittest.TestCase):
                 f.write('[1, 2]')  # not a dict
             with self.assertLogs('papers', level='WARNING'):
                 self.assertEqual(Distinct.load(path).pairs, [])
+
+    def test_distinct_read_once(self):
+        # Biblio.load given the pairs does not read distinct.json (an unreadable file: one warning)
+        with tempfile.TemporaryDirectory() as d:
+            bib = os.path.join(d, 'papers.bib')
+            with open(bib, 'w') as f:
+                f.write(A)
+            os.makedirs(os.path.join(d, '.papers'))
+            with open(os.path.join(d, '.papers', 'distinct.json'), 'w') as f:
+                f.write('[1, 2]')
+            with self.assertNoLogs('papers', 'WARNING'):
+                Biblio.load(bib, '', distinct=Distinct())
 
     def test_distinct_add_without_identity(self):
         a, = entries('@misc{a}')

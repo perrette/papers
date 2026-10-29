@@ -482,6 +482,7 @@ for the specification. A section marked free has none.
 - tests/test_parsecache.py::TestParseCache::test_cases
 - tests/test_parsecache.py::TestParseCache::test_files_of_the_tests
 - tests/test_parsecache.py::TestParseCache::test_not_cached_when_a_block_fails
+- tests/test_parsecache.py::TestParseCache::test_warning_once
 
 ### 3.1 Block order
 
@@ -690,6 +691,7 @@ for the specification. A section marked free has none.
 - tests/test_duplicates.py::TestCheckDialogue::test_n_remembered
 - tests/test_duplicates.py::TestAddDialogue::test_n
 - tests/test_merge_dup_unit.py::TestDuplicate::test_distinct_unreadable
+- tests/test_merge_dup_unit.py::TestDuplicate::test_distinct_read_once
 - tests/test_merge_dup_unit.py::TestDuplicate::test_distinct_add_without_identity
 - tests/test_merge_dup_unit.py::TestDuplicate::test_side_matches_empty
 - tests/test_bib_fix.py::TestBiblio::test_save_keeps_a_backup_and_the_distinct_pairs
@@ -2010,5 +2012,6 @@ for the specification. A section marked free has none.
 - tests/test_parsecache.py::TestParseCache::test_files_of_the_tests
 - tests/test_parsecache.py::TestParseCache::test_only_changed_pieces_are_split
 - tests/test_parsecache.py::TestParseCache::test_not_cached_when_a_block_fails
+- tests/test_parsecache.py::TestParseCache::test_warning_once
 - tests/test_parsecache.py::TestParseCache::test_prune
 - tests/test_parsecache.py::TestParseCache::test_damaged_cache.
