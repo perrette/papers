@@ -1,0 +1,80 @@
+{
+  "description": "tags are the keywords: --tag matches whole tags, whatever their case, with wildcards",
+  "sections": [
+    "bibtex.md#6"
+  ],
+  "tests": [
+    "tests/test_entry_cmds.py::TestNestedTags::test_list_tag",
+    "tests/test_spec_bibtex.py::TestTags::test_matching"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "list",
+        "--tag",
+        "ice"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--tag",
+        "ICE"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--tag",
+        "ic"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--tag",
+        "ic*"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--tag",
+        "ice",
+        "to-read"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--tag",
+        "ice",
+        "to-read",
+        "--any"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--tag",
+        "ice",
+        "--invert"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-K",
+        "--tag",
+        "sea-level"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--tag",
+        "nothing"
+      ]
+    }
+  ]
+}

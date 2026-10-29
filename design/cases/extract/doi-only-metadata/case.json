@@ -1,0 +1,39 @@
+{
+  "description": "the DOI of a PDF from its metadata (the XMP, the document information): nothing is asked of the network; several files get a header line each",
+  "sections": [
+    "formats.md#7.3"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "extract",
+        "--doi-only",
+        "xmp-doi.pdf"
+      ],
+      "contract": [
+        "stdout"
+      ]
+    },
+    {
+      "argv": [
+        "extract",
+        "--doi-only",
+        "info-doi.pdf"
+      ],
+      "contract": [
+        "stdout"
+      ]
+    },
+    {
+      "argv": [
+        "extract",
+        "--doi-only",
+        "xmp-doi.pdf",
+        "info-doi.pdf"
+      ],
+      "contract": [
+        "stdout"
+      ]
+    }
+  ]
+}

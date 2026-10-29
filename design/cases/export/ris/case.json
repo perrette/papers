@@ -1,0 +1,48 @@
+{
+  "description": "export --format ris: papers.ris with the file links relative to DIR (copied, linked, none); all the formats",
+  "sections": [
+    "formats.md#9",
+    "formats.md#4.3"
+  ],
+  "tests": [
+    "tests/test_spec_formats.py::TestExportLayout::test_dir"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "export",
+        "a",
+        "--format",
+        "ris"
+      ]
+    },
+    {
+      "argv": [
+        "export",
+        "b",
+        "--format",
+        "ris",
+        "--files",
+        "link"
+      ]
+    },
+    {
+      "argv": [
+        "export",
+        "c",
+        "--format",
+        "all"
+      ]
+    },
+    {
+      "argv": [
+        "export",
+        "d",
+        "--format",
+        "ris,bib",
+        "--files",
+        "none"
+      ]
+    }
+  ]
+}

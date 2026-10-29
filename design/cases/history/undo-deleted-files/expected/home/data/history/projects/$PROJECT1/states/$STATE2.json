@@ -1,0 +1,31 @@
+{
+ "parent": "$STATE1",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers rm doe2019 --delete-files",
+ "ops": [
+  {
+   "op": "trashed",
+   "src": "files/d1.txt",
+   "dst": null,
+   "checksum": "aa7c0aae7df2aa227cedc731deb961340e89eb853c15d6b90d474e2bb66277e3"
+  },
+  {
+   "op": "trashed",
+   "src": "files/sub/d2.txt",
+   "dst": null,
+   "checksum": "c66169a0e4913133cbebf50c3f71dabef7540b9a636cde9c80be6e39f7113fa5"
+  }
+ ],
+ "deleted": [
+  "aa7c0aae7df2aa227cedc731deb961340e89eb853c15d6b90d474e2bb66277e3",
+  "c66169a0e4913133cbebf50c3f71dabef7540b9a636cde9c80be6e39f7113fa5"
+ ],
+ "bibtex": {
+  "pieces": [
+   "b6f2669aad455deb58853102830e6bd885fab858dbacfcd91b2a0768a37fc9ff"
+  ],
+  "sha": "b6f2669aad455deb58853102830e6bd885fab858dbacfcd91b2a0768a37fc9ff"
+ },
+ "files": {}
+}

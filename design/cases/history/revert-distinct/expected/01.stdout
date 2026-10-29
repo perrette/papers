@@ -1,0 +1,20 @@
+Already in library: perrette2013 (same DOI 10.5194/esd-4-11-2013)
+  1  library  perrette2013  article  doi 10.5194/esd-4-11-2013
+  2  new      perrette_dup  article  doi 10.5194/esd-4-11-2013
+
+@article{perrette2013,
+!  author   = {Perrette, M. and Landerer, F. and Riva, R. and Frieler, K. and Meinshausen, M.}
+!             2: {Perrette, M.}
+   doi      = {10.5194/esd-4-11-2013}
+!  journal  = {Earth System Dynamics}
+!             2: {Another journal}
+   keywords = {sea-level, projections, climate/amoc}
+   pages    = {11--29}
+   title    = {A scaling approach to project regional sea level rise and its uncer...}
+   volume   = {4}
+   year     = {2013}
+}
+2 conflicts. The key perrette2013 is kept; + lines are added.
+  1 keep library values   2 take new values   f field by field   e edit
+  n not the same paper (add perrette_dup separately)   s skip   q quit   ? help
+>>> Added -> perrette_dup: A scaling approach to project regional sea level rise and it... (doi:10.5194/esd-4-11-2013)

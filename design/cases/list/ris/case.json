@@ -1,0 +1,57 @@
+{
+  "description": "list --format ris: the RIS records of the entries (the types, the names, the date, the pages, the file links as absolute paths, the type of a report or thesis); a selection; no entry",
+  "sections": [
+    "formats.md#4.3",
+    "formats.md#4.4",
+    "formats.md#2.1",
+    "formats.md#2.2",
+    "formats.md#2.4",
+    "formats.md#6"
+  ],
+  "tests": [
+    "tests/test_formats.py::TestListFormats::test_ris"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "list",
+        "--format",
+        "ris"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "perrette",
+        "rep2020",
+        "--format",
+        "ris"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "nosuch",
+        "--format",
+        "ris"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--tag",
+        "ice",
+        "--format",
+        "ris"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "ris",
+        "--porcelain"
+      ]
+    }
+  ]
+}

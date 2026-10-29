@@ -1,0 +1,20 @@
+@book{doe2019,
+ abstract = {An overview of the large-scale circulation.},
+ author = {Doe, Jane},
+ isbn = {978-3-16-148410-0},
+ keywords = {to-read},
+ publisher = {Springer},
+ title = {Ocean Circulation},
+ year = {2019}
+}
+
+@article{smith2020,
+ author = {Sm{\"i}th, J{\'o}hn and Doe, Jane},
+ doi = {10.1234/abc.2020.1},
+ journal = {Journal of Glaciology},
+ keywords = {ice, to-read, climate/arctic},
+ note = {Caf\'e r{\'e}sum{\'e} \& \%},
+ title = {Cold {Water} and K{\"a}lte: \textit{ice} caps},
+ year = {2020}
+}
+

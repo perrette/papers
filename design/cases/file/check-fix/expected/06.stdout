@@ -1,0 +1,13 @@
+DRYRUN: b2021: relink $WORK/lost/b.pdf -> $WORK/search/deep/b.pdf (found in $WORK/search)
+DRYRUN: b2021: relink $WORK/lost/b2.txt -> $WORK/search/b2.txt (found in $WORK/search)
+DRYRUN: c2022: relink $WORK/lost/needs-name.pdf -> $WORK/search/lee_2020_title-of-c2022.pdf (found in $WORK/search)
+f2025: broken link: $WORK/lost/several.txt: several files match in the --search folders: $WORK/search/three/several.txt, $WORK/search/two/several.txt (not relinked)
+d2023: broken link: $WORK/lost/dup.txt: $WORK/search/one/dup.txt matches the broken links of d2023, e2024 (not relinked)
+e2024: broken link: $WORK/lost/dup.txt: $WORK/search/one/dup.txt matches the broken links of d2023, e2024 (not relinked)
+DRYRUN: a2020: the same file is linked twice: $WORK/files/a1.txt and $WORK/files/a1.txt (second link removed)
+DRYRUN: a2020: identical files: $WORK/files/a1.txt and $WORK/files/a1-copy.txt (second link removed)
+DRYRUN: b2021: path can be repaired: $WORK/usr/bin/env -> /usr/bin/env (fixed)
+f2025: broken link: $WORK/lost/fine.txt (remove it with `papers file detach --broken --key f2025`)
+DRYRUN: 3 links relinked, 4 still broken (papers file detach --broken removes them)
+10 issue(s) in the files of 6 entries
+DRYRUN: $WORK/papers.bib not saved

@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE3",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers edit mueller2021 --set note=m",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "166bcd0386c0d49dbddf9f56a7073bfae3ef6de5631961fe0a4d6921975e63c9"
+  ],
+  "sha": "166bcd0386c0d49dbddf9f56a7073bfae3ef6de5631961fe0a4d6921975e63c9"
+ },
+ "files": {}
+}

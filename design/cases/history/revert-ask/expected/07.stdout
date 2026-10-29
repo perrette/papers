@@ -1,0 +1,33 @@
+Same paper: 2 entries (step $STATE2)
+  1  doe2019  book  no doi
+  2  doe2019  book  no doi
+     origin = the entry as last exchanged (add, pull or push)
+
+@book{doe2019,
+   abstract  = {An overview of the large-scale circulation.}
+   author    = {Doe, Jane}
+   isbn      = {0-306-40615-2}                       changed in doe2019, kept
+!  note      = {two}                                 removed in doe2019, changed in doe2019
+!              2: (removed)
+!              origin: {one}
+!  publisher = {Wiley}                               changed on both sides
+!              2: {Springer}
+!              origin: {Elsevier}
+   title     = {Ocean Circulation}
+!  year      = {2017}                                changed on both sides
+!              2: {2019}
+!              origin: {2018}
+}
+3 conflicts. Entry 2 is removed after the merge; its key goes to ids.
+  1 keep values of 1   2 take values of 2   f field by field   e edit
+  n not the same paper   s skip   q quit   ? help
+>>> note:
+  1  two        doe2019
+  2  (removed)  doe2019
+  [1/2/e] >>> publisher:
+  1  Wiley     doe2019
+  2  Springer  doe2019
+  [1/2/e] >>> year:
+  1  2017  doe2019
+  2  2019  doe2019
+  [1/2/e] >>> Modified -> doe2019: Ocean Circulation (to-read)

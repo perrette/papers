@@ -1,0 +1,25 @@
+{
+  "description": "a machine configuration of a newer version is an error",
+  "sections": [
+    "library.md#the-machine-configuration/format",
+    "library.md#the-machine-configuration"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "config",
+        "editor"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "--global",
+        "editor",
+        "vim"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE2",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers rm 10.1234/abc.2020.1",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "f9f092fce24b2ec5d2c1aeacf0c81a77bcda0cbbae8f79c56576879f8c7389ee"
+  ],
+  "sha": "f9f092fce24b2ec5d2c1aeacf0c81a77bcda0cbbae8f79c56576879f8c7389ee"
+ },
+ "files": {}
+}

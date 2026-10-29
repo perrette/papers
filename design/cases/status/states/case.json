@@ -1,0 +1,104 @@
+{
+  "description": "status of a library: the bibtex (missing, empty, entries and file links, not read with --no-check-files), the files directory (missing, empty, PDFs counted, none), colours with --color always",
+  "sections": [
+    "library.md#layout"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "-C",
+        "full",
+        "status"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "full",
+        "status",
+        "--no-check-files"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "full",
+        "status",
+        "--color",
+        "always"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "full",
+        "status",
+        "-v",
+        "--color",
+        "always"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "missing",
+        "status"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "missing",
+        "status",
+        "--no-check-files"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "empty",
+        "status"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "empty",
+        "status",
+        "--no-check-files"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "nofiles",
+        "status"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "corrupted",
+        "status"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "corrupted",
+        "status",
+        "--no-check-files",
+        "--color",
+        "always"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "full",
+        "status",
+        "--porcelain"
+      ]
+    }
+  ]
+}

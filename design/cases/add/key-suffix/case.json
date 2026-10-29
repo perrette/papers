@@ -1,0 +1,70 @@
+{
+  "description": "a new key from the template that the library has (any case) gets a letter suffix: b, c, ...; a letter after a digit is taken as a previous suffix; a key given by the file and already used makes the command fail",
+  "sections": [
+    "bibtex.md#8",
+    "library.md#name-and-key-templates/keys"
+  ],
+  "tests": [
+    "tests/test_spec_bibtex.py::TestKeySuffix::test_given_key_taken",
+    "tests/test_bib_fix.py::TestFixEntry::test_auto_key_suffix_is_stable"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "add",
+        "new.bib",
+        "-u",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "key.template",
+        "{author}"
+      ]
+    },
+    {
+      "argv": [
+        "add",
+        "newab.bib",
+        "-u",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "add",
+        "clash.bib"
+      ]
+    },
+    {
+      "argv": [
+        "add",
+        "clash.bib",
+        "--porcelain",
+        "--key-template",
+        "{author}{year}",
+        "-u"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-K"
+      ]
+    }
+  ]
+}

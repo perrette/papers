@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE3",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers edit doe2019 --set note=by the former key, other case",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "307cf7e18b3da6a2f0f2edee9b685b429ef5bb6bd11e4eeef02d1c5cd25e582e"
+  ],
+  "sha": "307cf7e18b3da6a2f0f2edee9b685b429ef5bb6bd11e4eeef02d1c5cd25e582e"
+ },
+ "files": {}
+}

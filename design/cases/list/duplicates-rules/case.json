@@ -1,0 +1,65 @@
+{
+  "description": "the same-paper rule: same DOI (case and url prefix ignored), different DOIs are different papers, arXiv ids with versions, ISBN-10 and ISBN-13 of books, authors and title normalized (LaTeX accents, braces, case, transliteration), the title guard; list --duplicates -K lists the entries of the groups",
+  "sections": [
+    "bibtex.md#9.1",
+    "bibtex.md#9.2",
+    "bibtex.md#9.3",
+    "bibtex.md#9.5"
+  ],
+  "tests": [
+    "tests/test_spec_bibtex.py::TestSamePaperRule::test_isbn_has_no_title_guard",
+    "tests/test_duplicates.py::TestIdentifiers::test_isbn_different_books",
+    "tests/test_duplicates.py::TestIdentifiers::test_one_doi_only_falls_back_to_author_title"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "list",
+        "--duplicates",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--duplicates",
+        "--by",
+        "doi",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--duplicates",
+        "--by",
+        "title",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--duplicates",
+        "--by",
+        "key",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "check",
+        "--duplicates",
+        "--on-duplicate",
+        "keep",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-K"
+      ]
+    }
+  ]
+}

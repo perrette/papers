@@ -1,0 +1,58 @@
+{
+  "description": "rm: without option, no terminal: the files of the removed entries are kept, and listed (in the files directory, outside it); --delete-files deletes those that no other entry links to, and says which are kept; they are kept in the history",
+  "sections": [
+    "history.md#4",
+    "history.md#5.6",
+    "bibtex.md#7.1"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "rm",
+        "a"
+      ]
+    },
+    {
+      "argv": [
+        "rm",
+        "b"
+      ]
+    },
+    {
+      "argv": [
+        "rm",
+        "c",
+        "--delete-files"
+      ]
+    },
+    {
+      "argv": [
+        "rm",
+        "e",
+        "--delete-files"
+      ]
+    },
+    {
+      "argv": [
+        "rm",
+        "d",
+        "--delete-files",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "rm",
+        "f",
+        "--keep-files",
+        "--delete-files"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-K"
+      ]
+    }
+  ]
+}

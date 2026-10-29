@@ -1,0 +1,17 @@
+{
+  "description": "check --format-name splits a name without comma at its last space, braces or not: John {van der Berg} becomes Berg}, John {van der, which the bibtex then cannot be read with (open question: bibtex.md 19)",
+  "sections": [
+    "bibtex.md#3",
+    "formats.md#7.2"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "check",
+        "--format-name",
+        "-y",
+        "--porcelain"
+      ]
+    }
+  ]
+}

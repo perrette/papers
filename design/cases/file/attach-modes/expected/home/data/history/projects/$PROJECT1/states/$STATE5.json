@@ -1,0 +1,32 @@
+{
+ "parent": "$STATE4",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers file attach roe2021 z.pdf sub/v.txt --move",
+ "ops": [
+  {
+   "op": "moved",
+   "src": "z.pdf",
+   "dst": "files/roe_2020_title-of-roe2021--z.pdf",
+   "checksum": "c865f6c5ab8d1b0bcd383a5e1e3879d22681c96bf462c269b7581d523fbe70ab"
+  },
+  {
+   "op": "moved",
+   "src": "sub/v.txt",
+   "dst": "files/roe_2020_title-of-roe2021--v.txt",
+   "checksum": "73324e1ab1db72ee9eb4fdf1c90a586d67e00ab58330d1cbfea26ecd0a77fa4d"
+  }
+ ],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "8420900dc0bd49869a9c26aaf090b167bf47c88881b4beab932e491614f74bc3"
+  ],
+  "sha": "8420900dc0bd49869a9c26aaf090b167bf47c88881b4beab932e491614f74bc3"
+ },
+ "files": {
+  ".papers/files.json": [
+   "bfd67656b6a4bf52238839638c4783fc14d67d5dd697d08162b472f7dcb97107"
+  ]
+ }
+}

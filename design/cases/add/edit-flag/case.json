@@ -1,0 +1,85 @@
+{
+  "description": "add --edit shows the added entries in the editor (the editor setting) and keeps what it makes of them: fields emptied are removed; an edit that is not valid, or an editor that fails, leaves the entries as added",
+  "sections": [
+    "bibtex.md#3.3",
+    "formats.md#1.2"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "config",
+        "editor",
+        "sed -i.bak s/Ocean/Sea/"
+      ]
+    },
+    {
+      "argv": [
+        "add",
+        "in.bib",
+        "--edit"
+      ]
+    },
+    {
+      "argv": [
+        "add",
+        "--title",
+        "Ocean by fields",
+        "--author",
+        "Ann Bee",
+        "--year",
+        "2020",
+        "--edit",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "editor",
+        "sed -i.bak s/@article/@/"
+      ]
+    },
+    {
+      "argv": [
+        "add",
+        "in2.bib",
+        "--edit"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "editor",
+        "false"
+      ]
+    },
+    {
+      "argv": [
+        "add",
+        "in3.bib",
+        "--edit"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "editor",
+        "sed -i.bak s/note\\ =\\ {x}/note\\ =\\ {}/"
+      ]
+    },
+    {
+      "argv": [
+        "add",
+        "in4.bib",
+        "--edit"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    }
+  ]
+}

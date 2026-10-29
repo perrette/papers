@@ -1,0 +1,19 @@
+{
+ "parent": "$STATE1",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers filecheck --hash-check",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "a48cdb4f738458cf61261737fe532ffbef6d2fdfa086203be8f67f10dc6f3724"
+  ],
+  "sha": "a48cdb4f738458cf61261737fe532ffbef6d2fdfa086203be8f67f10dc6f3724"
+ },
+ "files": {
+  ".papers/files.json": [
+   "7769e1353a6a7f67a3c021dbfdb9c75039500ae9acec644da4af2f6a0b10f998"
+  ]
+ }
+}

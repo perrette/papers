@@ -1,0 +1,3 @@
+kept 1 file(s) outside the files directory (`--delete-files` deletes them):
+  $WORK/ext/b1.txt
+Removed -> b: B (file:1)

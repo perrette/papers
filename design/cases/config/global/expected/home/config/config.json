@@ -1,0 +1,8 @@
+{
+  "history-size": 50,
+  "keep-deleted-files": false,
+  "nameformat": {
+    "template": "{author}_{year}"
+  },
+  "version": 3
+}

@@ -1,0 +1,4 @@
+smith2020: relinked to $WORK/plain/files/smith_and_doe_2020_a-title-of-a-paper.txt (from the library ../pool)
+lost: broken link: $WORK/plain/files/gone.txt (remove it with `papers file detach --broken --key lost`)
+1 link relinked, 1 still broken (papers file detach --broken removes them)
+1 issue(s) left in the files of 2 entries

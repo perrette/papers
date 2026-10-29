@@ -1,0 +1,66 @@
+{
+  "description": "add --key KEY --attach FILE adds files to the entry the library has: placed as file attach does, the fields stay; a file with the content of one of its files is not attached again; an unknown key is an error; --key with fields is a new entry (a key that is taken, for another paper, is an error)",
+  "sections": [
+    "bibtex.md#5.1",
+    "formats.md#1.2",
+    "history.md#4"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "add",
+        "--key",
+        "doe2019",
+        "--attach",
+        "dl/a.txt"
+      ]
+    },
+    {
+      "argv": [
+        "add",
+        "--key",
+        "smith2020",
+        "--attach",
+        "dl/copy-of-s.txt"
+      ]
+    },
+    {
+      "argv": [
+        "add",
+        "--key",
+        "nosuch",
+        "--attach",
+        "dl/b.txt"
+      ]
+    },
+    {
+      "argv": [
+        "add",
+        "--key",
+        "doe2019",
+        "--title",
+        "Another paper",
+        "--attach",
+        "dl/b.txt"
+      ]
+    },
+    {
+      "argv": [
+        "add",
+        "--key",
+        "DOE2019",
+        "--attach",
+        "dl/b.txt",
+        "--link",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    }
+  ]
+}

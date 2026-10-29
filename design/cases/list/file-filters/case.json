@@ -1,0 +1,35 @@
+{
+  "description": "entries with, without and with broken file links",
+  "sections": [
+    "bibtex.md#5.1",
+    "bibtex.md#5.2"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "list",
+        "--has-file"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--no-file"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--broken-file"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-K",
+        "--has-file",
+        "--invert"
+      ]
+    }
+  ]
+}

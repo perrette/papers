@@ -1,0 +1,133 @@
+{
+  "description": "papers list --pull, --push and --sync exchange the entries listed (no shared filter, no new entries from the pool); --pool PATH with them",
+  "sections": [
+    "exchange.md#6.1",
+    "exchange.md#7.1"
+  ],
+  "tests": [
+    "tests/test_spec_exchange.py::TestPullSelection::test_list_pull",
+    "tests/test_spec_exchange.py::TestPushSelection::test_list_push"
+  ],
+  "ignore": [
+    "home/data/history/*"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "list",
+        "--key",
+        "jones2019",
+        "--pull"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "list",
+        "--pull"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "pull",
+        "--all"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "edit",
+        "jones2019",
+        "--set",
+        "note=library"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "list",
+        "--key",
+        "jones2019",
+        "--push"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "pool",
+        "edit",
+        "smith2020",
+        "--set",
+        "note=pool"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "list",
+        "--key",
+        "smith2020",
+        "--sync"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "own",
+        "list",
+        "--pull",
+        "--pool",
+        "../pool"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "own",
+        "list",
+        "--key",
+        "brown",
+        "--sync",
+        "--pool",
+        "../pool"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "own",
+        "list",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "list",
+        "--pull",
+        "--pool",
+        "../pool",
+        "--pool",
+        "../own"
+      ],
+      "wait": 1.1
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE1",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers add dup.bib --on-duplicate skip",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "aec98ddf6d76bb2947a2096103d3afbe40ca9ad786d70825aa3653a625b78881"
+  ],
+  "sha": "aec98ddf6d76bb2947a2096103d3afbe40ca9ad786d70825aa3653a625b78881"
+ },
+ "files": {}
+}

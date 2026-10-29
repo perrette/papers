@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE2",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers check --auto-key -y --porcelain",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "24e31155e95864699fd9133f32c29dbe2cf80e9025e5a6775d6570216d478a73"
+  ],
+  "sha": "24e31155e95864699fd9133f32c29dbe2cf80e9025e5a6775d6570216d478a73"
+ },
+ "files": {}
+}

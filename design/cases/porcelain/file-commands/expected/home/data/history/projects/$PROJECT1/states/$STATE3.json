@@ -1,0 +1,26 @@
+{
+ "parent": "$STATE2",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers file rename --porcelain",
+ "ops": [
+  {
+   "op": "moved",
+   "src": "files/doe.txt",
+   "dst": "files/doe_2019_a-paper.txt",
+   "checksum": "444e0fffbd825e9610ff5b199485707a0c895339ae80c15cc8a8aee41b106fda"
+  }
+ ],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "9b58a35abf808b23242c51f76bc4d1c412e73c460559343f0e26d301f14dccd1"
+  ],
+  "sha": "9b58a35abf808b23242c51f76bc4d1c412e73c460559343f0e26d301f14dccd1"
+ },
+ "files": {
+  ".papers/files.json": [
+   "3dfd9c10592ec5a2d1eb791fb6ce1c6869f3911b082c767786e242a70e5836fd"
+  ]
+ }
+}

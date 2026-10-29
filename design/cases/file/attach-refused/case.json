@@ -1,0 +1,63 @@
+{
+  "description": "file attach with a name template that leaves the files directory (or an unknown or invalid placeholder): the file stays where it is and the entry links to it there (saved), an error is printed, and the exit status is 1",
+  "sections": [
+    "library.md#path-safety",
+    "library.md#name-and-key-templates/file-names",
+    "formats.md#7.3"
+  ],
+  "tests": [
+    "tests/test_spec_formats.py::TestExitCodes::test_refused_attach",
+    "tests/test_spec_formats.py::TestExitCodes::test_template_error"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "file",
+        "attach",
+        "doe2020",
+        "x.txt",
+        "--name-template",
+        "../{author}"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "attach",
+        "doe2020",
+        "y.txt",
+        "--name-template",
+        "{nosuch}"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "attach",
+        "lee2022",
+        "sub/w.txt",
+        "--name-template",
+        "{year.real}",
+        "--copy"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "attach",
+        "roe2021",
+        "p1.txt",
+        "--name-template",
+        "/abs/{author}",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    }
+  ]
+}

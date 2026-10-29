@@ -1,0 +1,1 @@
+{"items": [{"id": "stdin1", "type": "book", "title": "From stdin", "author": [{"family": "Doe", "given": "Jane"}], "issued": {"raw": "2020-3-4"}}]}

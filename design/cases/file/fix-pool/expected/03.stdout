@@ -1,0 +1,5 @@
+DRYRUN: smith2020: relink $WORK/pool/files/old_name.txt -> $WORK/pool/files/smith_doe_2020_a-title.txt (from the pool)
+lost: broken link: $WORK/pool/files/lost.txt (remove it with `papers file detach --broken --key lost`)
+DRYRUN: 1 link relinked, 1 still broken (papers file detach --broken removes them)
+2 issue(s) in the files of 2 entries
+DRYRUN: $WORK/lib/papers.bib not saved

@@ -1,0 +1,38 @@
+{
+ "parent": "$STATE7",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers history --revert $STATE6",
+ "ops": [
+  {
+   "op": "copied",
+   "src": "$DATA/history/file-objects/02/0263829989b6fd954f72baaf2fc64bc2e2f01d692d4de72986ea808f6e99813f.txt",
+   "dst": "files/doe_2019_ocean-circulation--b.txt",
+   "checksum": "0263829989b6fd954f72baaf2fc64bc2e2f01d692d4de72986ea808f6e99813f"
+  },
+  {
+   "op": "copied",
+   "src": "$DATA/history/file-objects/87/87428fc522803d31065e7bce3cf03fe475096631e5e07bbd7a0fde60c4cf25c7.txt",
+   "dst": "files/doe_2019_ocean-circulation.txt",
+   "checksum": "87428fc522803d31065e7bce3cf03fe475096631e5e07bbd7a0fde60c4cf25c7"
+  }
+ ],
+ "deleted": [
+  "0263829989b6fd954f72baaf2fc64bc2e2f01d692d4de72986ea808f6e99813f",
+  "87428fc522803d31065e7bce3cf03fe475096631e5e07bbd7a0fde60c4cf25c7"
+ ],
+ "bibtex": {
+  "pieces": [
+   "6066ba17e97f2d07c6635843b4bae893e7b24a786e35ebc6819fead4bf40b924"
+  ],
+  "sha": "6066ba17e97f2d07c6635843b4bae893e7b24a786e35ebc6819fead4bf40b924"
+ },
+ "files": {
+  ".papers/files.json": [
+   "9187d0887fc5c9ed65e4ebf9a1502e00d9d37d18aac7dfcb3ab16be6696623fb"
+  ]
+ },
+ "reverts": [
+  "$STATE6"
+ ]
+}

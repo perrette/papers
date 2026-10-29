@@ -1,0 +1,3 @@
+undo: papers.bib restored to $STATE4 papers filecheck -d ($TIME)
+    files/unlinked.txt: restored from the history
+    files/a1-copy.txt: restored from the history

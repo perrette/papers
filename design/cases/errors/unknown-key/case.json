@@ -1,0 +1,56 @@
+{
+  "description": "an entry that does not exist: nothing changes, exit status 1",
+  "sections": [
+    "formats.md#7.3",
+    "bibtex.md#7.1"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "edit",
+        "nosuch",
+        "--set",
+        "a=b"
+      ]
+    },
+    {
+      "argv": [
+        "rm",
+        "nosuch"
+      ]
+    },
+    {
+      "argv": [
+        "tag",
+        "nosuch"
+      ]
+    },
+    {
+      "argv": [
+        "tag",
+        "nosuch",
+        "--add",
+        "x"
+      ]
+    },
+    {
+      "argv": [
+        "edit",
+        "10.9999/none",
+        "--set",
+        "a=b"
+      ]
+    },
+    {
+      "argv": [
+        "rm",
+        "2101.01234"
+      ]
+    },
+    {
+      "argv": [
+        "history"
+      ]
+    }
+  ]
+}

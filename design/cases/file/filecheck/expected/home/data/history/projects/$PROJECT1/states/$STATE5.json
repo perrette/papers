@@ -1,0 +1,35 @@
+{
+ "parent": "$STATE4",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers filecheck --clean-filesdir --force",
+ "ops": [
+  {
+   "op": "trashed",
+   "src": "files/a1-copy.txt",
+   "dst": null,
+   "checksum": "a6328afc76e9db71da297ebff4b0d3e7a7eb3b01d917c05a6573fef121b6ecb6"
+  },
+  {
+   "op": "trashed",
+   "src": "files/unlinked.txt",
+   "dst": null,
+   "checksum": "ea46748e171abd2dd4dba5b86bb6589334d86bba2df8d50cbb16b36c83b0856a"
+  }
+ ],
+ "deleted": [
+  "a6328afc76e9db71da297ebff4b0d3e7a7eb3b01d917c05a6573fef121b6ecb6",
+  "ea46748e171abd2dd4dba5b86bb6589334d86bba2df8d50cbb16b36c83b0856a"
+ ],
+ "bibtex": {
+  "pieces": [
+   "01c5d326a7a34d10ce3488927bc9dbe493eb03d304e0276512c82af8aaca12cd"
+  ],
+  "sha": "01c5d326a7a34d10ce3488927bc9dbe493eb03d304e0276512c82af8aaca12cd"
+ },
+ "files": {
+  ".papers/files.json": [
+   "006563715ecf77f89956ba693eb6727ad22f29c15a580b6f627d5322970cd9fd"
+  ]
+ }
+}

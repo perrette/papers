@@ -1,0 +1,19 @@
+{
+ "parent": "$STATE2",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers tag doe2019 --add x",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "607a1a7f971eb1680dc5d7d5af2a51f785e64212fa022f260e984151d218bbd4"
+  ],
+  "sha": "607a1a7f971eb1680dc5d7d5af2a51f785e64212fa022f260e984151d218bbd4"
+ },
+ "files": {
+  ".papers/distinct.json": [
+   "c5b61869deb66d11e9908dcd981ff49374cf463d9bcb4e168f929c1d1aa60eff"
+  ]
+ }
+}

@@ -1,0 +1,122 @@
+{
+  "description": "list --edit opens the entries listed in the editor, as papers edit does (a changed key is a removal and an addition; a key of another entry, a text that is not bibtex, an editor that fails keep the entries); an empty listing opens the editor on an empty text",
+  "sections": [
+    "bibtex.md#3.3",
+    "bibtex.md#7.1",
+    "formats.md#7.3"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "config",
+        "editor",
+        "sed -i.bak s/Circulation/Flow/"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--year",
+        "2019",
+        "--edit"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--key",
+        "doe2019",
+        "smith2020",
+        "--edit",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "editor",
+        "sed -i.bak s/doe2019/doe_2019/"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--key",
+        "doe2019",
+        "--edit"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "editor",
+        "sed -i.bak s/smith2020/doe_2019/"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--key",
+        "smith2020",
+        "--edit"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "editor",
+        "sed -i.bak s/@article/@/"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--key",
+        "smith2020",
+        "--edit"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "editor",
+        "false"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--key",
+        "smith2020",
+        "--edit"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "editor",
+        "sed -i.bak s/Flow/Circulation/"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--key",
+        "nosuchkey",
+        "--edit"
+      ]
+    },
+    {
+      "argv": [
+        "undo"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    }
+  ]
+}

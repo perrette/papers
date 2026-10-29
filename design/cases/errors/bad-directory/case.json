@@ -1,0 +1,33 @@
+{
+  "description": "-C of a folder that does not exist or is not a library",
+  "sections": [
+    "library.md#finding-the-library-of-a-command",
+    "formats.md#7.3"
+  ],
+  "tests": [
+    "tests/test_cli_unit.py::TestMain::test_C_not_a_directory"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "-C",
+        "nodir",
+        "list"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "plain",
+        "list"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "file.txt",
+        "list"
+      ]
+    }
+  ]
+}

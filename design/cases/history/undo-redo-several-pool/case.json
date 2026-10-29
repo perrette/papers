@@ -1,0 +1,120 @@
+{
+  "description": "undo -n 2 of two steps that wrote the pool, when the pool changed since: one revert in the pool takes both back; redo -n 2 reverts that revert once",
+  "sections": [
+    "history.md#7",
+    "history.md#7.3",
+    "history.md#8",
+    "history.md#6.2"
+  ],
+  "tests": [
+    "tests/test_undo_pool.py::TestUndoPool::test_redo_of_several_steps_reverted_together"
+  ],
+  "ignore": [
+    "home/data/history/*"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "init",
+        "pool"
+      ]
+    },
+    {
+      "argv": [
+        "init",
+        "lib",
+        "--pool",
+        "pool"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "add",
+        "../import/refs.bib"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "add",
+        "../import/more.bib"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "pool",
+        "list",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "pool",
+        "edit",
+        "bretreger_mather1978",
+        "--set",
+        "note=pool note"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "undo",
+        "-n",
+        "2"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "pool",
+        "list",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "pool",
+        "history"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "redo",
+        "-n",
+        "2"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "pool",
+        "list",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "pool",
+        "history"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "history"
+      ]
+    }
+  ]
+}

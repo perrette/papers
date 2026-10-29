@@ -1,0 +1,26 @@
+{
+ "parent": "$STATE1",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers add text.pdf",
+ "ops": [
+  {
+   "op": "moved",
+   "src": "text.pdf",
+   "dst": "files/doe_2020_ice-sheet-response-to-warming-in-the-early-holocene.pdf",
+   "checksum": "536b1c481862dafb8c14a915aaa9abb1b12411c1a4fad5e15d1d21f94ad5b77e"
+  }
+ ],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "251a87806e5f2b1358c8e2fa1fa8100440e2661e7ad25363c654a237bcc7dea3"
+  ],
+  "sha": "251a87806e5f2b1358c8e2fa1fa8100440e2661e7ad25363c654a237bcc7dea3"
+ },
+ "files": {
+  ".papers/files.json": [
+   "6d30aef42761fa6736b4d9b53617222244ef212aa28ce40b116f7a8333453c2c"
+  ]
+ }
+}

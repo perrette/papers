@@ -1,0 +1,5 @@
+usage: papers rm [-h] [-v] [--debug] [--color {auto,always,never}]
+                 [--porcelain] [--filesdir FILESDIR] [--bibtex BIBTEX]
+                 [--dry-run] [--delete-files] [--keep-files] [-y]
+                 KEY [KEY ...]
+papers rm: error: unrecognized arguments: --nonsense

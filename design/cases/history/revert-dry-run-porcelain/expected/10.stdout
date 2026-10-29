@@ -1,0 +1,7 @@
+> $STATE6 papers history --revert $STATE3 --porcelain --on-duplicate keep ($TIME)
+  $STATE5 papers history --revert $STATE4 --porcelain ($TIME)
+  $STATE4 papers rm mueller2021 ($TIME)
+  $STATE3 papers tag smith2020 --add y ($TIME)
+  $STATE2 papers tag doe2019 --add x ($TIME)
+  $STATE1 the library before its first recorded command ($TIME)
+history: $DATA/history, 0.0 MB (up to 500 MB: the history-size setting; deleted files kept)

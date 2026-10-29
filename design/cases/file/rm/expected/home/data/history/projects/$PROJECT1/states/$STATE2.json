@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE1",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers file rm files/a1.txt --key a2020",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "04868a7b1b1bfa61b693bd896a06e2eb57241cfd5cf4b896d3ad40c5942f04af"
+  ],
+  "sha": "04868a7b1b1bfa61b693bd896a06e2eb57241cfd5cf4b896d3ad40c5942f04af"
+ },
+ "files": {}
+}

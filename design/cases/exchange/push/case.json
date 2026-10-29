@@ -1,0 +1,111 @@
+{
+  "description": "push: the library changes go to the pool (a three-way merge from the other side); an entry new to the pool is added to it; nothing to push changes nothing",
+  "sections": [
+    "exchange.md#7",
+    "exchange.md#5",
+    "exchange.md#3"
+  ],
+  "ignore": [
+    "home/data/history/*"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "pull",
+        "smith2020"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "edit",
+        "smith2020",
+        "--set",
+        "note=from the library"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "push"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "pool",
+        "list",
+        "--format",
+        "bibtex",
+        "smith2020"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "push"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "pool",
+        "edit",
+        "smith2020",
+        "--set",
+        "year=2021"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "edit",
+        "smith2020",
+        "--set",
+        "journal=A Journal"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "sync"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "pool",
+        "list",
+        "--format",
+        "bibtex",
+        "smith2020"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "list",
+        "--format",
+        "bibtex",
+        "smith2020"
+      ],
+      "wait": 1.1
+    }
+  ]
+}

@@ -1,0 +1,3 @@
+bibtexparser.splitter: warning: Parsing of `@article` block (line 0) aborted on line 2 due to syntactical error in bibtex:
+ Unexpectedly reached end of file.
+papers: warning: $WORK/papers.bib: 1 entry could not be read (line 1: syntax error): papers ignores them until they are fixed

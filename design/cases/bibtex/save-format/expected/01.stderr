@@ -1,0 +1,3 @@
+bibtexparser.splitter: warning: Parsing of `@article` block (line 52) aborted on line 56 due to syntactical error in bibtex:
+ Unexpected block start: `@string`. Was still looking for field-value closing `,` or `}` 
+papers: warning: $WORK/papers.bib: 3 entries could not be read (line 44: a field given twice: 'title'; line 49: a key given twice (keys ignore case): 'Zeta2020'; line 53: syntax error): papers ignores them until they are fixed

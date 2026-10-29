@@ -1,0 +1,31 @@
+{
+ "parent": "$STATE2",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers file rm files/sub -r",
+ "ops": [
+  {
+   "op": "trashed",
+   "src": "files/sub/deep/b.txt",
+   "dst": null,
+   "checksum": "0263829989b6fd954f72baaf2fc64bc2e2f01d692d4de72986ea808f6e99813f"
+  },
+  {
+   "op": "trashed",
+   "src": "files/sub/c.txt",
+   "dst": null,
+   "checksum": "a3960f48bb1f93e212cd1ea623b9b58a50d93a1e876f0172b8c07c34824a50f1"
+  }
+ ],
+ "deleted": [
+  "0263829989b6fd954f72baaf2fc64bc2e2f01d692d4de72986ea808f6e99813f",
+  "a3960f48bb1f93e212cd1ea623b9b58a50d93a1e876f0172b8c07c34824a50f1"
+ ],
+ "bibtex": {
+  "pieces": [
+   "4d8f61a217e358f5c69f4cdb545e793e9a10e73ed933df7fbd011f5cbeb8d53e"
+  ],
+  "sha": "4d8f61a217e358f5c69f4cdb545e793e9a10e73ed933df7fbd011f5cbeb8d53e"
+ },
+ "files": {}
+}

@@ -1,0 +1,20 @@
+@article{Odd2020,
+ author = {Odd, Ö. and {van der Berg}, Jan},
+ doi = {10.1000/ODD.2020.12},
+ journal = {Earth System Dynamics},
+ month = {January},
+ note = "line one " # "and two",
+ number = {3},
+ pages = {1--10},
+ title = {A {B}racing {T}itle with {\ae}sc and $\alpha$-values},
+ volume = {12},
+ year = {2020}
+}
+
+@book{Second2018,
+ author = {Second, Anne},
+ keywords = {Tag One,tag-two, tag-two},
+ title = {Second {Book}},
+ url = {https://example.org/second},
+ year = {2018}
+}

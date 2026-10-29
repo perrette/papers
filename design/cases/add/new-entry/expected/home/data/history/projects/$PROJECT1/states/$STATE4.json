@@ -1,0 +1,26 @@
+{
+ "parent": "$STATE3",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers add --title With attachment --author Ann Bee --year 2021 --attach dl/c.txt --copy",
+ "ops": [
+  {
+   "op": "copied",
+   "src": "dl/c.txt",
+   "dst": "files/bee_2021_with-attachment.txt",
+   "checksum": "18f60d84c76ea02e5eeb3681c490cdc801f8bee8d4eff42376a2b319e4e67997"
+  }
+ ],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "00607584eed90da167745eb4ac7786b11287aa5152df0389b9a0b8002ce0be25"
+  ],
+  "sha": "00607584eed90da167745eb4ac7786b11287aa5152df0389b9a0b8002ce0be25"
+ },
+ "files": {
+  ".papers/files.json": [
+   "e9cd44d3d280038a193f9c54b470b793fbcb98e49943f2518bec2bc3ac562735"
+  ]
+ }
+}

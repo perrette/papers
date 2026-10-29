@@ -1,0 +1,22 @@
+{
+ "parent": "$STATE3",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers history --revert $STATE2",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "b22eb9b0bd7f2a68705a4676a9a147720ac61a50875933ff96c3a6cdd015a5d4"
+  ],
+  "sha": "b22eb9b0bd7f2a68705a4676a9a147720ac61a50875933ff96c3a6cdd015a5d4"
+ },
+ "files": {
+  ".papers/distinct.json": [
+   "035cd1a595e66821187cf766391388c4c4356906db174c4834debdad7c4b9418"
+  ]
+ },
+ "reverts": [
+  "$STATE2"
+ ]
+}

@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE6",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers tag smith2020 --add y",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "65a52b1349a69bff5d7dc7bdc16d6f6675d5abab915d574675fd5de41faecabd"
+  ],
+  "sha": "65a52b1349a69bff5d7dc7bdc16d6f6675d5abab915d574675fd5de41faecabd"
+ },
+ "files": {}
+}

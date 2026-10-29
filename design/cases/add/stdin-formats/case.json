@@ -1,0 +1,60 @@
+{
+  "description": "add /dev/stdin with --format reads CSL-JSON or BibJSON from the standard input; a file with another extension is read in the format of --format; {\"items\": [...]} and a single item are accepted; edit --from - takes --format",
+  "sections": [
+    "formats.md#1.1",
+    "formats.md#1.2",
+    "formats.md#3.4"
+  ],
+  "tests": [
+    "tests/test_spec_formats.py::TestCommands::test_from_stdin_with_format"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "add",
+        "/dev/stdin",
+        "--format",
+        "csl-json",
+        "--porcelain"
+      ],
+      "stdin_file": "stdin/01.txt"
+    },
+    {
+      "argv": [
+        "add",
+        "/dev/stdin",
+        "--format",
+        "bibjson",
+        "--porcelain"
+      ],
+      "stdin_file": "stdin/02.txt"
+    },
+    {
+      "argv": [
+        "add",
+        "items.txt",
+        "--format",
+        "csl-json",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "edit",
+        "stdin1",
+        "--from",
+        "-",
+        "--format",
+        "csl-json"
+      ],
+      "stdin_file": "stdin/04.txt"
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    }
+  ]
+}

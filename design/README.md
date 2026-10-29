@@ -122,6 +122,11 @@ after each command. The bibtex output format has a reference pair of
 files, `tests/sortformat/varied.bib` and the expected output
 `varied.expected.bib`.
 
+[cases/](cases/README.md) is the language-neutral side of these tests: folders
+of a library, a command and the expected output and files, recorded from papers
+and run on any implementation with `cases/run.py --papers COMMAND`. Each case
+names the sections it exercises. CI runs them on papers.
+
 ## Open questions
 
 Each file keeps its list of open questions, with how each one was

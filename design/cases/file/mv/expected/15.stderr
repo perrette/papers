@@ -1,0 +1,1 @@
+papers: warning: -f replaces $WORK/files/c.txt, which c2022 links to: that link leads to the moved file

@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE1",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers add /dev/stdin --porcelain",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "c4540f6bc5506e3eb2c41b98107015ffab11d1540d57ac8c5104c425a1df5904"
+  ],
+  "sha": "c4540f6bc5506e3eb2c41b98107015ffab11d1540d57ac8c5104c425a1df5904"
+ },
+ "files": {}
+}

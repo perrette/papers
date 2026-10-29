@@ -1,0 +1,5 @@
+usage: papers file mv [-h] [-v] [--debug] [--color {auto,always,never}]
+                      [--porcelain] [--filesdir FILESDIR] [--bibtex BIBTEX]
+                      [--dry-run] [-f] [-n]
+                      SRC... DEST [SRC... DEST ...]
+papers file mv: error: papers file mv SRC... DEST

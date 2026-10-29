@@ -1,0 +1,3 @@
+papers: warning: -m/--mode r is deprecated: use --on-duplicate error
+papers: error: dup: already in library as doe2019 (same DOI 10.1/x; fields to add)
+Pass --on-duplicate with one of: ask, keep, update, skip (ask is the default in a terminal), see `papers add --help`.

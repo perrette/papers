@@ -1,0 +1,117 @@
+{
+  "description": "add looks in the pool first: the entry of a key, of a DOI, of a bibtex entry that is the same paper; --no-pool; --pool PATH from a self-contained library",
+  "sections": [
+    "exchange.md#13",
+    "exchange.md#2.1"
+  ],
+  "ignore": [
+    "home/data/history/*"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "add",
+        "--key",
+        "brown2021"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "add",
+        "--doi",
+        "10.1000/abc"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "add",
+        "--key",
+        "nosuch"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "add",
+        "--key",
+        "nosuch",
+        "--no-pool"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "add",
+        "../new.bib"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "add",
+        "--pool",
+        "pool",
+        "--no-pool"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "own",
+        "add",
+        "--pool",
+        "../pool",
+        "--key",
+        "jones2019"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "own",
+        "add",
+        "--pool",
+        "../pool",
+        "--doi",
+        "10.1000/abc"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "own",
+        "status"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "status"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "pool",
+        "list",
+        "-K"
+      ]
+    }
+  ]
+}

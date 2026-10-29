@@ -1,0 +1,55 @@
+{
+  "description": "check --duplicates --on-duplicate ask: the answers of the dialogue from the standard input: take an entry's values (1), choose the target (t 2), not the same paper (n, recorded in distinct.json), skip (s), quit (q)",
+  "sections": [
+    "bibtex.md#10",
+    "bibtex.md#9.3"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "check",
+        "--duplicates",
+        "--on-duplicate",
+        "ask",
+        "--porcelain"
+      ],
+      "stdin": "2\ns\n"
+    },
+    {
+      "argv": [
+        "check",
+        "--duplicates",
+        "--on-duplicate",
+        "ask",
+        "--porcelain"
+      ],
+      "stdin": "t 2\n1\nq\n"
+    },
+    {
+      "argv": [
+        "check",
+        "--duplicates",
+        "--on-duplicate",
+        "ask",
+        "--porcelain"
+      ],
+      "stdin": "n\nn\n"
+    },
+    {
+      "argv": [
+        "check",
+        "--duplicates",
+        "--on-duplicate",
+        "keep",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    }
+  ]
+}

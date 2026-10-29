@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE1",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers tag --rename climate ocean",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "fe020b8869197bb7eb04f391251b8d1c1fa2fd7f39744c3ac36a1162016badbf"
+  ],
+  "sha": "fe020b8869197bb7eb04f391251b8d1c1fa2fd7f39744c3ac36a1162016badbf"
+ },
+ "files": {}
+}

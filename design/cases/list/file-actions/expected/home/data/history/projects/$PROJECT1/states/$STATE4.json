@@ -1,0 +1,19 @@
+{
+ "parent": "$STATE3",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers list a2020 --detach-broken",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "3a2e4c2b3ce737e89aacbd810dcbb4c32bb6f4351ead6e117c7d7470ab2be0fb"
+  ],
+  "sha": "3a2e4c2b3ce737e89aacbd810dcbb4c32bb6f4351ead6e117c7d7470ab2be0fb"
+ },
+ "files": {
+  ".papers/files.json": [
+   "7641c33aa9a5bfae396a7eb09dc85408f5bc30b41250d588e5b0c23501a1723c"
+  ]
+ }
+}

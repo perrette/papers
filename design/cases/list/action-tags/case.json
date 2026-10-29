@@ -1,0 +1,103 @@
+{
+  "description": "list --add-tag and --rm-tag on the entries listed: the same lines and bibtex as papers tag, --porcelain, a selection that is empty, a change that changes nothing, --dry-run; the step of the history is undone",
+  "sections": [
+    "bibtex.md#6",
+    "formats.md#7.2",
+    "history.md#4"
+  ],
+  "tests": [
+    "tests/test_porcelain.py::TestPorcelain::test_tag_and_rm"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "list",
+        "--year",
+        "2019",
+        "2013",
+        "--any",
+        "--add-tag",
+        "to-read",
+        "climate/amoc/tipping"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--key",
+        "perrette2013",
+        "--add-tag",
+        "a",
+        "b",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--tag",
+        "climate/amoc",
+        "--rm-tag",
+        "ice",
+        "a"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--key",
+        "smith2020",
+        "--rm-tag",
+        "notthere"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--key",
+        "nosuchkey",
+        "--add-tag",
+        "x"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--key",
+        "smith2020",
+        "--add-tag",
+        "dry",
+        "--dry-run"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--author",
+        "Perrette",
+        "--rm-tag",
+        "b",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    },
+    {
+      "argv": [
+        "undo"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    }
+  ]
+}

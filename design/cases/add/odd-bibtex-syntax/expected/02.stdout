@@ -1,0 +1,53 @@
+[
+  {
+    "id": "Odd2020",
+    "citation-key": "Odd2020",
+    "type": "article-journal",
+    "author": [
+      {
+        "family": "Odd",
+        "given": "Ö."
+      },
+      {
+        "family": "van der Berg",
+        "given": "Jan"
+      }
+    ],
+    "title": "A Bracing Title with æsc and $\\alpha$-values",
+    "volume": "12",
+    "DOI": "10.1000/ODD.2020.12",
+    "note": "\"line one \" # \"and two\"",
+    "container-title": "Earth System Dynamics",
+    "issue": "3",
+    "page": "1-10",
+    "issued": {
+      "date-parts": [
+        [
+          2020,
+          1
+        ]
+      ]
+    }
+  },
+  {
+    "id": "Second2018",
+    "citation-key": "Second2018",
+    "type": "book",
+    "author": [
+      {
+        "family": "Second",
+        "given": "Anne"
+      }
+    ],
+    "title": "Second Book",
+    "URL": "https://example.org/second",
+    "keyword": "Tag One, tag-two, tag-two",
+    "issued": {
+      "date-parts": [
+        [
+          2018
+        ]
+      ]
+    }
+  }
+]

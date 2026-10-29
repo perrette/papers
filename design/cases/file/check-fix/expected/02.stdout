@@ -1,0 +1,13 @@
+b2021: broken link: $WORK/lost/b.pdf -> $WORK/search/deep/b.pdf (found in $WORK/search)
+b2021: broken link: $WORK/lost/b2.txt -> $WORK/search/b2.txt (found in $WORK/search)
+c2022: broken link: $WORK/lost/needs-name.pdf -> $WORK/search/lee_2020_title-of-c2022.pdf (found in $WORK/search)
+f2025: broken link: $WORK/lost/several.txt: several files match in the --search folders: $WORK/search/three/several.txt, $WORK/search/two/several.txt (not relinked)
+d2023: broken link: $WORK/lost/dup.txt: $WORK/search/one/dup.txt matches the broken links of d2023, e2024 (not relinked)
+e2024: broken link: $WORK/lost/dup.txt: $WORK/search/one/dup.txt matches the broken links of d2023, e2024 (not relinked)
+a2020: the same file is linked twice: $WORK/files/a1.txt and $WORK/files/a1.txt
+a2020: identical files: $WORK/files/a1.txt and $WORK/files/a1-copy.txt
+b2021: path can be repaired: $WORK/usr/bin/env -> /usr/bin/env
+f2025: broken link: $WORK/lost/fine.txt (remove it with `papers file detach --broken --key f2025`)
+3 links can be relinked, 4 without a file found (papers file detach --broken removes them)
+10 issue(s) in the files of 6 entries
+6 links can be repaired: `papers file fix --search $WORK/search`

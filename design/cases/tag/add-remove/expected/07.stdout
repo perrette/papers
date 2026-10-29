@@ -1,0 +1,20 @@
+@article{bretreger1978,
+ author = {Bretreger, K. and Mather, R. S.},
+ doi = {10.1111/j.1365-246X.1978.tb04232.x},
+ journal = {Geophysical Journal International},
+ keywords = {Tidal Gravity},
+ title = {Modelling ocean-loading effects on tidal gravity in Australia},
+ year = {1978}
+}
+
+@article{perrette2013,
+ author = {Perrette, M. and Landerer, F. and Riva, R. and Frieler, K. and Meinshausen, M.},
+ doi = {10.5194/esd-4-11-2013},
+ journal = {Earth System Dynamics},
+ keywords = {sea-level, projections, climate/amoc, climate/amoc/tipping},
+ pages = {11--29},
+ title = {A scaling approach to project regional sea level rise and its uncertainties},
+ volume = {4},
+ year = {2013}
+}
+

@@ -1,0 +1,51 @@
+{
+  "description": "history-dir of the machine configuration: the store is in that folder (~ expanded)",
+  "sections": [
+    "history.md#2.1"
+  ],
+  "tests": [
+    "tests/test_spec_history.py::TestLocation::test_relative_history_dir"
+  ],
+  "ignore": [
+    "home/home/elsewhere/*"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "config",
+        "--global",
+        "history-dir",
+        "~/elsewhere"
+      ]
+    },
+    {
+      "argv": [
+        "tag",
+        "doe2019",
+        "--add",
+        "x"
+      ]
+    },
+    {
+      "argv": [
+        "history"
+      ]
+    },
+    {
+      "argv": [
+        "undo"
+      ]
+    },
+    {
+      "argv": [
+        "history",
+        "--all"
+      ]
+    },
+    {
+      "argv": [
+        "redo"
+      ]
+    }
+  ]
+}

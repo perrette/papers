@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE6",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers tag mueller2021 --add b",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "c6026bde6a3f650e20645534da410929c72bda3e3a54eff4deb8e3406af6dcb1"
+  ],
+  "sha": "c6026bde6a3f650e20645534da410929c72bda3e3a54eff4deb8e3406af6dcb1"
+ },
+ "files": {}
+}

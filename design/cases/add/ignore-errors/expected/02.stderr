@@ -1,0 +1,2 @@
+papers: error: dir is a directory, requires -R/--recursive to explore
+use --ignore-errors to add other files anyway

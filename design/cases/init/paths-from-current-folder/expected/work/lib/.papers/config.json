@@ -1,0 +1,7 @@
+{
+  "bibtex": "../refs/lib.bib",
+  "filesdir": "../pdfs",
+  "paths": "relative",
+  "pool": "../pool",
+  "version": 3
+}

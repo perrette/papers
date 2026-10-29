@@ -1,0 +1,19 @@
+{
+ "parent": "$STATE3",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers file attach lee2022 sub/w.txt --link",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "96a50e3b02849b99c99a59344fbffb105f4fb77cf573af53e23357abbc3136d7"
+  ],
+  "sha": "96a50e3b02849b99c99a59344fbffb105f4fb77cf573af53e23357abbc3136d7"
+ },
+ "files": {
+  ".papers/files.json": [
+   "aa6c5ae31bdd270b1fc03b4d8c014f05010188f10254363f2371047889d0ae1d"
+  ]
+ }
+}

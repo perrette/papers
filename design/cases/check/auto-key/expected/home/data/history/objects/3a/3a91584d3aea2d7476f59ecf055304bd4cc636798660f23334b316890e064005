@@ -1,0 +1,23 @@
+@article{doe_2010,
+ author = {Doe, Jane and Roe, Richard},
+ title = {Two authors},
+ year = {2010}
+}
+
+@article{doe_2010b,
+ author = {Doe, Jane and Roe, Richard},
+ title = {Two authors again},
+ year = {2010}
+}
+
+@article{smith_2000,
+ author = {Smith, John},
+ title = {Already the template key},
+ year = {2000}
+}
+
+@article{smith_2000b,
+ author = {Smith, John},
+ title = {A second paper by the same author},
+ year = {2000}
+}

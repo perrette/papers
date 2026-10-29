@@ -1,0 +1,28 @@
+{
+  "description": "the keys made from the key template for names of other scripts: the family names are transliterated to ASCII with the table of bibtex.md 9.1 (Иванов: ivanov, 中村: zhongcun, Παπαδόπουλος: papadopoylos, محمد: mhmd, Østergård: ostergard, Œuvre: oeuvre), then slugified",
+  "sections": [
+    "library.md#name-and-key-templates/placeholders",
+    "library.md#name-and-key-templates/keys",
+    "bibtex.md#9.1"
+  ],
+  "tests": [
+    "tests/test_spec_tables.py::TestSpecTables::test_ascii_transliteration",
+    "tests/test_spec_library.py::TestPlaceholders::test_slugify"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "add",
+        "names.bib",
+        "-u",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-K"
+      ]
+    }
+  ]
+}

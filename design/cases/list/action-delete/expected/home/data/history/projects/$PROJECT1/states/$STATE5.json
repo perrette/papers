@@ -1,0 +1,24 @@
+{
+ "parent": "$STATE4",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers list --key e --delete --delete-files --porcelain",
+ "ops": [
+  {
+   "op": "trashed",
+   "src": "ext/e1.txt",
+   "dst": null,
+   "checksum": "e49cae41a83f04a326ed0b6516adbd9ce3b2dac53c639ff9dfafb15d582f143e"
+  }
+ ],
+ "deleted": [
+  "e49cae41a83f04a326ed0b6516adbd9ce3b2dac53c639ff9dfafb15d582f143e"
+ ],
+ "bibtex": {
+  "pieces": [
+   "10bd6bc33bc5fedba37e34e4f41c789cae8646376ea905140b0b79cb01e7a9dc"
+  ],
+  "sha": "10bd6bc33bc5fedba37e34e4f41c789cae8646376ea905140b0b79cb01e7a9dc"
+ },
+ "files": {}
+}

@@ -1,0 +1,18 @@
+{
+ "parent": "$STATE9",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers history --revert $STATE3",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "33751d50e3984b155c009b8dbac20621eec0dd9025f2beefaa6d278eaa4b17b5"
+  ],
+  "sha": "33751d50e3984b155c009b8dbac20621eec0dd9025f2beefaa6d278eaa4b17b5"
+ },
+ "files": {},
+ "reverts": [
+  "$STATE3"
+ ]
+}

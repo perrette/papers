@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE3",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers add n3.bib -u --porcelain",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "df719db258b9eb32cc6eee9539b6dd5cb978f87916a60509f400a14bca97b2c8"
+  ],
+  "sha": "df719db258b9eb32cc6eee9539b6dd5cb978f87916a60509f400a14bca97b2c8"
+ },
+ "files": {}
+}

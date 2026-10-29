@@ -1,0 +1,10 @@
+@book{doe2019,
+ abstract = {a new abstract},
+ author = {Doe, Jane},
+ isbn = {0-306-40615-2},
+ keywords = {to-read},
+ publisher = {Elsevier},
+ title = {Ocean Circulation},
+ year = {2019}
+}
+

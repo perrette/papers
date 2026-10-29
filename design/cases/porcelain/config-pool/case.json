@@ -1,0 +1,87 @@
+{
+  "description": "config pool none and config pool PATH relink the entries: modified lines; the question of pool none, with closed standard input, is an error",
+  "sections": [
+    "formats.md#7.2",
+    "library.md#pools-and-shallow-libraries/the-pool-setting",
+    "formats.md#7.3"
+  ],
+  "tests": [
+    "tests/test_spec_formats.py::TestPorcelainConfigPool::test_config_pool"
+  ],
+  "ignore": [
+    "home/data/history/*"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "pull",
+        "smith2020",
+        "brown2021",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "tag",
+        "smith2020",
+        "--add",
+        "t"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "config",
+        "pool",
+        "none",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "config",
+        "pool",
+        "none",
+        "-y",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "config",
+        "pool",
+        "../pool",
+        "-y",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "config",
+        "--unset",
+        "pool",
+        "-y",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "config",
+        "pool"
+      ]
+    }
+  ]
+}

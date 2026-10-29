@@ -1,0 +1,31 @@
+{
+  "description": "edit --from - replaces the entry by the one on stdin; key, file and keywords stay",
+  "sections": [
+    "formats.md#1.2",
+    "formats.md#7.2"
+  ],
+  "tests": [
+    "tests/test_entry_cmds.py::TestEditFrom::test_from_stdin_pipe",
+    "tests/test_entry_cmds.py::TestEditFrom::test_from_file_with_file_and_keywords"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "edit",
+        "perrette2013",
+        "--from",
+        "-",
+        "--porcelain"
+      ],
+      "stdin_file": "stdin/01.txt"
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex",
+        "perrette2013"
+      ]
+    }
+  ]
+}

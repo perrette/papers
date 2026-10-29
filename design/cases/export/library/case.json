@@ -1,0 +1,87 @@
+{
+  "description": "export DIR: a self-contained library (configuration with a new id, .gitignore, the bibtex under the name of the source, the files copied under the name template of the new library); --files link and none; a selection of keys",
+  "sections": [
+    "formats.md#9",
+    "library.md#layout",
+    "library.md#the-library-configuration/which-keys-papers-writes"
+  ],
+  "tests": [
+    "tests/test_spec_formats.py::TestExportLayout::test_new_library"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "export",
+        "out"
+      ]
+    },
+    {
+      "argv": [
+        "export",
+        "out2",
+        "--files",
+        "link"
+      ]
+    },
+    {
+      "argv": [
+        "export",
+        "out3",
+        "--files",
+        "none"
+      ]
+    },
+    {
+      "argv": [
+        "export",
+        "out4",
+        "mueller2021",
+        "plain2020",
+        "--files",
+        "copy"
+      ]
+    },
+    {
+      "argv": [
+        "export",
+        "out5",
+        "nosuch"
+      ]
+    },
+    {
+      "argv": [
+        "export",
+        "out",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "export",
+        "out6",
+        "--dry-run"
+      ]
+    },
+    {
+      "argv": [
+        "export",
+        "empty"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "out",
+        "config"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "out",
+        "list",
+        "-K"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "description": "add of a file that does not exist; nothing is written",
+  "sections": [
+    "formats.md#7.3"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "add",
+        "nosuch.bib"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-K"
+      ]
+    }
+  ]
+}

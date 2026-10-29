@@ -1,0 +1,8 @@
+b2021: broken link: $WORK/lost/b.pdf -> $WORK/search/deep/b.pdf (found in $WORK/search)
+b2021: broken link: $WORK/lost/b2.txt -> $WORK/search/b2.txt (found in $WORK/search)
+a2020: the same file is linked twice: $WORK/files/a1.txt and $WORK/files/a1.txt
+a2020: identical files: $WORK/files/a1.txt and $WORK/files/a1-copy.txt
+b2021: path can be repaired: $WORK/usr/bin/env -> /usr/bin/env
+2 links can be relinked, 0 without a file found
+5 issue(s) in the files of 2 entries
+5 links can be repaired: `papers file fix a2020 b2021 --search $WORK/search --search $WORK/search/deep`

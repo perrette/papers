@@ -1,0 +1,33 @@
+{
+ "parent": "$STATE3",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers export out",
+ "ops": [
+  {
+   "op": "copied",
+   "src": "files/a.pdf",
+   "dst": "out/files/doe_2019_sea-level-rise-in-the-atlantic-a-scaling-approach.pdf",
+   "checksum": "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb"
+  }
+ ],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "f047322746976b22e8afe9fb5146a546355fd325dc23ebd7d58f4afdf4d2de45"
+  ],
+  "sha": "f047322746976b22e8afe9fb5146a546355fd325dc23ebd7d58f4afdf4d2de45"
+ },
+ "files": {
+  ".papers/distinct.json": [
+   "0d5846a0114fd7321429fde69dbf18aa742d75a83f19ea7bb3af9a6febdd8f11"
+  ]
+ },
+ "pools": {
+  "$PROJECT1": {
+   "state": "$STATE2",
+   "base": "$STATE1",
+   "config": "$WORK/out/.papers/config.json"
+  }
+ }
+}

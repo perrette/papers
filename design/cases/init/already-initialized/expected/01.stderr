@@ -1,0 +1,1 @@
+papers: error: a library already exists here (./.papers/config.json): change its settings with `papers config`

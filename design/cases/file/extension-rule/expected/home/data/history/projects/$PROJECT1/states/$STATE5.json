@@ -1,0 +1,26 @@
+{
+ "parent": "$STATE4",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers file attach e4 src/notes --copy --name-template {key}",
+ "ops": [
+  {
+   "op": "copied",
+   "src": "src/notes",
+   "dst": "files/e4",
+   "checksum": "eec83d8a52225f53c2401c8483e539546c24a70da2961592ba1a87d4ef6449da"
+  }
+ ],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "0cc2a1c885803c43a127e3cfafa6e67d718964b95004a3b17a4bce13e0e172d0"
+  ],
+  "sha": "0cc2a1c885803c43a127e3cfafa6e67d718964b95004a3b17a4bce13e0e172d0"
+ },
+ "files": {
+  ".papers/files.json": [
+   "11a8cd4f209f72178a3924ff66c3a366874ea049ef7325e52b242770a8706047"
+  ]
+ }
+}

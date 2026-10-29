@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE1",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers edit perrette2013 --from - --porcelain",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "d2aefc6a7655d6e73e26a42e3331fda4f50bb0290e55ba225895e15a3f3eda19"
+  ],
+  "sha": "d2aefc6a7655d6e73e26a42e3331fda4f50bb0290e55ba225895e15a3f3eda19"
+ },
+ "files": {}
+}

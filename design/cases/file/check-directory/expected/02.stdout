@@ -1,0 +1,4 @@
+a2020: broken link: $WORK/lib/gone.txt -> $WORK/search/gone.txt (found in $WORK/search)
+1 link can be relinked, 0 without a file found
+1 issue(s) in the files of 1 entries
+1 link can be repaired: `papers -C lib file fix a2020 --search $WORK/search`

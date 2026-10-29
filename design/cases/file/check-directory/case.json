@@ -1,0 +1,72 @@
+{
+  "description": "file check names the command that repairs what it reports, with the library it was run on: -C DIR, --bibtex FILE, the entries, --search",
+  "sections": [
+    "library.md#finding-the-library-of-a-command",
+    "library.md#the-files-directory",
+    "bibtex.md#5.1"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "file",
+        "check",
+        "--search",
+        "../search"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "file",
+        "check",
+        "a2020",
+        "--search",
+        "../search"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "check",
+        "--bibtex",
+        "lib/papers.bib",
+        "--search",
+        "search",
+        "--search",
+        "lib"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "file",
+        "fix",
+        "--search",
+        "../search",
+        "--dry-run"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "file",
+        "fix",
+        "--search",
+        "../search"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "file",
+        "check"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE1",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers -C a tag doe2019 --add x",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "9691bf5e0bfbca545d4f43b325aa937ceb92c2e399c59db685237d9ec4cda0d2"
+  ],
+  "sha": "9691bf5e0bfbca545d4f43b325aa937ceb92c2e399c59db685237d9ec4cda0d2"
+ },
+ "files": {}
+}

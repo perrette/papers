@@ -1,0 +1,7 @@
+@book{doe2019,
+ file = {:files/a.txt:txt},
+ keywords = {kept},
+ title = {From BibJSON},
+ year = {2022}
+}
+

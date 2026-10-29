@@ -1,0 +1,80 @@
+{
+  "description": "file attach and file rename print modified; detach, rm, check, checksum and mv print no line",
+  "sections": [
+    "formats.md#7.2",
+    "bibtex.md#5.1",
+    "library.md#the-files-directory/file-names"
+  ],
+  "tests": [
+    "tests/test_spec_formats.py::TestPorcelainCommands::test_file_commands"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "file",
+        "attach",
+        "doe2019",
+        "extra.txt",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "rename",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "checksum",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "check",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "detach",
+        "files/doe_2019_a-paper.txt",
+        "--key",
+        "doe2019",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "attach",
+        "smith2020",
+        "extra2.txt",
+        "--porcelain",
+        "--copy"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "rm",
+        "files/smith_2020_another-paper.txt",
+        "--key",
+        "smith2020",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    }
+  ]
+}

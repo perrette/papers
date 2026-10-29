@@ -1,0 +1,13 @@
+﻿% a comment
+@article{doe2019,
+ author = {Doe, Jane},
+ title = {Ocean Circulation
+  of the {Münster} sea},
+ year = {2019}
+}
+
+@article{smith2020,
+ author = {Smith, John},
+ title = {Cold Water},
+ year = {2020}
+}

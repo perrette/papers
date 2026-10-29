@@ -1,0 +1,210 @@
+{
+  "description": "file mv: move a file, several files into a folder, a folder, the files directory (the filesdir setting follows); the rules of git mv: errors that move nothing; -f replaces a file; -n and --dry-run show the moves",
+  "sections": [
+    "library.md#the-files-directory",
+    "bibtex.md#5.1",
+    "history.md#4"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "file",
+        "mv",
+        "files/a1.txt"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "mv",
+        "files/nosuch.txt",
+        "new/"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "mv",
+        "loose.txt",
+        "new.txt"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "mv",
+        "files/a1.txt",
+        "files/a2.txt",
+        "files/c.txt"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "mv",
+        "files/a1.txt",
+        "files/a2.txt",
+        "nodir"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "mv",
+        "files/a1.txt",
+        "files/a1.txt"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "mv",
+        "files/sub",
+        "files/sub/inner"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "mv",
+        "files/a1.txt",
+        "files/c.txt"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "mv",
+        "files/a1.txt",
+        "files/a2.txt",
+        "moved",
+        "-n"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "mv",
+        "files/a1.txt",
+        "files/a2.txt",
+        "moved",
+        "--dry-run"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "mv",
+        "files/a1.txt",
+        "files/a2.txt",
+        "moved"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "mv",
+        "files/a1.txt",
+        "files/a2.txt",
+        "moved"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "mv",
+        "moved/a1.txt",
+        "moved/new/a.txt"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "mv",
+        "moved/new/a.txt",
+        "files/c.txt"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "mv",
+        "-f",
+        "moved/new/a.txt",
+        "files/c.txt"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "mv",
+        "files/sub",
+        "other",
+        "--dry-run"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "mv",
+        "files/sub",
+        "other"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "mv",
+        "papers.bib",
+        "other"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "mv",
+        "files",
+        "archive",
+        "-n"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "mv",
+        "files",
+        "archive"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "filesdir"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    },
+    {
+      "argv": [
+        "undo"
+      ]
+    },
+    {
+      "argv": [
+        "undo"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    }
+  ]
+}

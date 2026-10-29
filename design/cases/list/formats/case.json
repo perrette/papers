@@ -1,0 +1,89 @@
+{
+  "description": "the output formats: line, bibtex, plain, key, field, csl-json, bibjson",
+  "sections": [
+    "formats.md#6",
+    "formats.md#3.4",
+    "formats.md#5.1",
+    "formats.md#8"
+  ],
+  "tests": [
+    "tests/test_spec_formats.py::TestListOutput::test_other_formats_paths",
+    "tests/test_list.py::FormattingTest::test_format"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "list"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-l"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex",
+        "perrette"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--plain",
+        "doe"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "key",
+        "ice"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--field",
+        "year",
+        "doi"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--field",
+        "title",
+        "--no-key"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "csl-json",
+        "smith"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibjson",
+        "--any",
+        "doe",
+        "perrette"
+      ]
+    }
+  ]
+}

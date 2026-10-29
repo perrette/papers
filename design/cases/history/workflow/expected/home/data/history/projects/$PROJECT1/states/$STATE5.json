@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE4",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers rm smith2020",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "b2eebfbf372bd3d8047de99acaa2abb2dfb196d404dcb28bd922f2db6d648be2"
+  ],
+  "sha": "b2eebfbf372bd3d8047de99acaa2abb2dfb196d404dcb28bd922f2db6d648be2"
+ },
+ "files": {}
+}

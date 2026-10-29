@@ -1,0 +1,42 @@
+{
+  "description": "config bibtex|filesdir|pool PATH: the path is read from the current folder (a subfolder of the library), and stored relative to the library directory",
+  "sections": [
+    "library.md#the-library-configuration/relative-paths"
+  ],
+  "tests": [
+    "tests/test_config_v3.py::TestConfigCommand::test_paths_normalized"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "config",
+        "filesdir",
+        "../files2"
+      ],
+      "cwd": "lib/sub"
+    },
+    {
+      "argv": [
+        "config",
+        "bibtex",
+        "refs.bib"
+      ],
+      "cwd": "lib/sub"
+    },
+    {
+      "argv": [
+        "config",
+        "pool",
+        "../../pool",
+        "-y"
+      ],
+      "cwd": "lib/sub"
+    },
+    {
+      "argv": [
+        "config"
+      ],
+      "cwd": "lib/sub"
+    }
+  ]
+}

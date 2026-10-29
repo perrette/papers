@@ -1,0 +1,15 @@
+{
+ "parent": 1,
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers add --doi 10.5194/esd-4-1-2013",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "0280b408687fb4533352c05bf7dc28653c7adc21450e432af86551d54ebde718"
+  ],
+  "sha": "0280b408687fb4533352c05bf7dc28653c7adc21450e432af86551d54ebde718"
+ },
+ "files": {}
+}

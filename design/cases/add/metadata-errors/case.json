@@ -1,0 +1,42 @@
+{
+  "description": "fields given on the command line apply to one entry only",
+  "sections": [
+    "formats.md#7.3",
+    "formats.md#1.2"
+  ],
+  "tests": [
+    "tests/test_formats.py::TestAddFormats::test_metadata_one_entry_only"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "add",
+        "refs.bib",
+        "--key",
+        "zz"
+      ]
+    },
+    {
+      "argv": [
+        "add",
+        "refs.bib",
+        "--metadata",
+        "note=hello"
+      ]
+    },
+    {
+      "argv": [
+        "add",
+        "a.bib",
+        "b.bib",
+        "--key",
+        "zz"
+      ]
+    },
+    {
+      "argv": [
+        "list"
+      ]
+    }
+  ]
+}

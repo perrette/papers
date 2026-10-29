@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE4",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers add n4.bib -u --porcelain --key-template {author}-{year}",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "88ee72d5d654f83be3e74e4ff4846b2d8f51d2a09cd1146938175b5468de41b1"
+  ],
+  "sha": "88ee72d5d654f83be3e74e4ff4846b2d8f51d2a09cd1146938175b5468de41b1"
+ },
+ "files": {}
+}

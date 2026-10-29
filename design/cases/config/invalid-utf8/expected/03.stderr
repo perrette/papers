@@ -1,0 +1,1 @@
+papers: error: $WORK/a/.papers/config.json could not be read ('utf-8' codec can't decode byte 0xff in position 100: invalid start byte): correct the file

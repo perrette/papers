@@ -1,0 +1,24 @@
+{
+ "parent": "$STATE3",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers file fix",
+ "ops": [
+  {
+   "op": "copied",
+   "src": "$DATA/history/file-objects/b8/b8f91133fe93bd1c06e47f02c23c6a10ff98f8360303b28604e11a71874f364f.txt",
+   "dst": "files/a.txt",
+   "checksum": "b8f91133fe93bd1c06e47f02c23c6a10ff98f8360303b28604e11a71874f364f"
+  }
+ ],
+ "deleted": [
+  "b8f91133fe93bd1c06e47f02c23c6a10ff98f8360303b28604e11a71874f364f"
+ ],
+ "bibtex": {
+  "pieces": [
+   "cfdba841206fb79b8167849d030060c55bd5d014ed02094a4a0d75278a5282ba"
+  ],
+  "sha": "cfdba841206fb79b8167849d030060c55bd5d014ed02094a4a0d75278a5282ba"
+ },
+ "files": {}
+}

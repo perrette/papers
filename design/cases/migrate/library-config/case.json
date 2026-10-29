@@ -1,0 +1,41 @@
+{
+  "description": "migrate, run in a library of papers 2, moves .papersconfig.json to .papers/config.json (the same move that saving does); in a library of v3 there is nothing to migrate; --dry-run says what it would do",
+  "sections": [
+    "library.md#legacy-configuration-files"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "migrate",
+        "--dry-run"
+      ],
+      "cwd": "lib"
+    },
+    {
+      "argv": [
+        "migrate"
+      ],
+      "cwd": "lib"
+    },
+    {
+      "argv": [
+        "migrate"
+      ],
+      "cwd": "lib"
+    },
+    {
+      "argv": [
+        "config"
+      ],
+      "cwd": "lib",
+      "contract": [
+        "stdout"
+      ]
+    },
+    {
+      "argv": [
+        "migrate"
+      ]
+    }
+  ]
+}

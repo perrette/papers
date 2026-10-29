@@ -1,0 +1,3 @@
+papers: error: doe2019: unknown placeholder {} in the name template '{}'; available: {author}, {Author}, {AUTHOR}, {authorX}, {AuthorX}, {journal}, {year}, {title}, {Title}, {key}, {ID}, {doi}, {doi_}, {doi_or_id}
+papers: error: mueller2021: unknown placeholder {} in the name template '{}'; available: {author}, {Author}, {AUTHOR}, {authorX}, {AuthorX}, {journal}, {year}, {title}, {Title}, {key}, {ID}, {doi}, {doi_}, {doi_or_id}
+papers: error: two: unknown placeholder {} in the name template '{}'; available: {author}, {Author}, {AUTHOR}, {authorX}, {AuthorX}, {journal}, {year}, {title}, {Title}, {key}, {ID}, {doi}, {doi_}, {doi_or_id}

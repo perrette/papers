@@ -1,0 +1,48 @@
+{
+  "description": "a library configuration that is not valid UTF-8 is an error that names the file, whichever the command, and the file is not replaced; a byte order mark is ignored",
+  "sections": [
+    "library.md#the-library-configuration/reading",
+    "library.md#the-library-configuration"
+  ],
+  "tests": [
+    "tests/test_spec_library.py::TestReading::test_invalid_utf8",
+    "tests/test_spec_library.py::TestConfigurationFormat::test_read_as_utf8"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "-C",
+        "a",
+        "list",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "a",
+        "config",
+        "editor",
+        "vim"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "a",
+        "tag",
+        "a1",
+        "--add",
+        "x"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "b",
+        "list",
+        "-K"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE6",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers tag --bibtex lone.bib plain2020 --add q",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "614779d73ca27f235a8b63b8c88a93a2be419542c294e5c873f9db2db22a5a0f"
+  ],
+  "sha": "614779d73ca27f235a8b63b8c88a93a2be419542c294e5c873f9db2db22a5a0f"
+ },
+ "files": {}
+}

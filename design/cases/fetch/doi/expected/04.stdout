@@ -1,0 +1,33 @@
+@article{10.5194/tc-11-1015-2017,
+ author = {Fettweis, Xavier and Box, Jason E. and Agosta, Cécile and Amory, Charles and Kittel, Christoph and Lang, Charlotte and van As, Dirk and Machguth, Horst and Gallée, Hubert},
+ doi = {10.5194/tc-11-1015-2017},
+ journal = {The Cryosphere},
+ number = {2},
+ pages = {1015-1033},
+ title = {Reconstructions of the 1900–2015 Greenland ice sheet surface mass balance using the regional climate MAR model},
+ url = {https://doi.org/10.5194/tc-11-1015-2017},
+ volume = {11},
+ year = {2017}
+}
+
+@article{10.5194/tc-11-1015-2017,
+ author = {Fettweis, Xavier and Box, Jason E. and Agosta, Cécile and Amory, Charles and Kittel, Christoph and Lang, Charlotte and van As, Dirk and Machguth, Horst and Gallée, Hubert},
+ doi = {10.5194/tc-11-1015-2017},
+ journal = {The Cryosphere},
+ number = {2},
+ pages = {1015-1033},
+ title = {Reconstructions of the 1900–2015 Greenland ice sheet surface mass balance using the regional climate MAR model},
+ url = {https://doi.org/10.5194/tc-11-1015-2017},
+ volume = {11},
+ year = {2017}
+}
+
+@misc{vaswani2023attentionneed,
+      title={Attention Is All You Need}, 
+      author={Ashish Vaswani and Noam Shazeer and Niki Parmar and Jakob Uszkoreit and Llion Jones and Aidan N. Gomez and Lukasz Kaiser and Illia Polosukhin},
+      year={2023},
+      eprint={1706.03762},
+      archivePrefix={arXiv},
+      primaryClass={cs.CL},
+      url={https://arxiv.org/abs/1706.03762}, 
+}

@@ -1,0 +1,116 @@
+{
+  "description": "edit KEY... opens the entries in the editor: the text is bibtex, several entries at once; a changed key is a removal and an addition; a key that another entry has, a text that is not bibtex or has no entry, and an editor that fails keep the entries",
+  "sections": [
+    "bibtex.md#3.3",
+    "bibtex.md#7.1",
+    "formats.md#7.3"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "config",
+        "editor",
+        "sed -i.bak s/Circulation/Flow/"
+      ]
+    },
+    {
+      "argv": [
+        "edit",
+        "doe2019"
+      ]
+    },
+    {
+      "argv": [
+        "edit",
+        "doe2019",
+        "smith2020",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "editor",
+        "sed -i.bak s/doe2019/doe_2019/"
+      ]
+    },
+    {
+      "argv": [
+        "edit",
+        "doe2019"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "editor",
+        "sed -i.bak s/smith2020/doe_2019/"
+      ]
+    },
+    {
+      "argv": [
+        "edit",
+        "smith2020"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "editor",
+        "sed -i.bak s/@article/@/"
+      ]
+    },
+    {
+      "argv": [
+        "edit",
+        "smith2020"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "editor",
+        "sed -i.bak s/author/au\\ thor/"
+      ]
+    },
+    {
+      "argv": [
+        "edit",
+        "smith2020"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "editor",
+        "sed -i.bak /@/d"
+      ]
+    },
+    {
+      "argv": [
+        "edit",
+        "smith2020"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "editor",
+        "false"
+      ]
+    },
+    {
+      "argv": [
+        "edit",
+        "smith2020"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    }
+  ]
+}

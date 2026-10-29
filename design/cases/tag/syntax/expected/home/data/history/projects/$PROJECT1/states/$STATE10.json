@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE9",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers tag --rename a;b renamed",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "bde9f53918b700fe1f7d59046334eb6434dae88f65a201b015126f231995707a"
+  ],
+  "sha": "bde9f53918b700fe1f7d59046334eb6434dae88f65a201b015126f231995707a"
+ },
+ "files": {}
+}

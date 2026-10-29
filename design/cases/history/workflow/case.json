@@ -1,0 +1,77 @@
+{
+  "description": "init, add, edit, tag, rm, then undo all: the whole history of a new library",
+  "sections": [
+    "history.md#2.2",
+    "history.md#3.2",
+    "history.md#5.4"
+  ],
+  "tests": [
+    "tests/test_spec_history.py::TestRecording::test_command_after_undo_starts_a_branch",
+    "tests/test_undo.py::TestTimeTravel::test_undo_then_change_branches"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "init"
+      ]
+    },
+    {
+      "argv": [
+        "add",
+        "import/refs.bib"
+      ]
+    },
+    {
+      "argv": [
+        "tag",
+        "doe2019",
+        "--add",
+        "x"
+      ]
+    },
+    {
+      "argv": [
+        "edit",
+        "doe2019",
+        "--set",
+        "note=n"
+      ]
+    },
+    {
+      "argv": [
+        "rm",
+        "smith2020"
+      ]
+    },
+    {
+      "argv": [
+        "history"
+      ]
+    },
+    {
+      "argv": [
+        "undo",
+        "-n",
+        "4"
+      ]
+    },
+    {
+      "argv": [
+        "undo",
+        "-n",
+        "3"
+      ]
+    },
+    {
+      "argv": [
+        "history"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-K"
+      ]
+    }
+  ]
+}

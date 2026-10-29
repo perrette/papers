@@ -1,0 +1,52 @@
+{
+  "description": "a history written by papers 3.0.0b5 (states numbered 000001.json, numbers in heads.json) is converted at the first command: states named by their identifier, numbers.json, heads.json; the next step is a child of the converted head",
+  "sections": [
+    "history.md#2.5",
+    "history.md#2.7",
+    "history.md#2.2"
+  ],
+  "tests": [
+    "tests/test_history.py::TestStates::test_upgrade_numbered_states",
+    "tests/test_spec_history.py::TestStates::test_numbers_json"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "history"
+      ]
+    },
+    {
+      "argv": [
+        "tag",
+        "doe2019",
+        "--add",
+        "y"
+      ]
+    },
+    {
+      "argv": [
+        "history"
+      ]
+    },
+    {
+      "argv": [
+        "undo",
+        "-n",
+        "2"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-K",
+        "--tag",
+        "x"
+      ]
+    },
+    {
+      "argv": [
+        "redo"
+      ]
+    }
+  ]
+}

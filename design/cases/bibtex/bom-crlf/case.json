@@ -1,0 +1,34 @@
+{
+  "description": "a bibtex with a byte order mark and CRLF line endings is read, and written as UTF-8 with LF line endings and no byte order mark",
+  "sections": [
+    "bibtex.md#1"
+  ],
+  "tests": [
+    "tests/test_spec_bibtex.py::TestEncodingAndLineEnds::test_byte_order_mark_of_an_added_bibtex",
+    "tests/test_spec_bibtex.py::TestEncodingAndLineEnds::test_line_ends_read_and_written_as_lf",
+    "tests/test_unchanged_save.py::TestReadWrite::test_byte_order_mark"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    },
+    {
+      "argv": [
+        "tag",
+        "doe2019",
+        "--add",
+        "x"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-K"
+      ]
+    }
+  ]
+}

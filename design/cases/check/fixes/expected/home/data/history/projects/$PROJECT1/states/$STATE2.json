@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE1",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers check --format-name --fix-doi --fix-key --key-ascii -y --porcelain",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "83559957ccff39909059cf50c72e5a8e273232f03a9f8f34f1840e86b91a2260"
+  ],
+  "sha": "83559957ccff39909059cf50c72e5a8e273232f03a9f8f34f1840e86b91a2260"
+ },
+ "files": {}
+}

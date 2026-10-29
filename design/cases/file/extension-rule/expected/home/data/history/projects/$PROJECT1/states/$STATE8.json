@@ -1,0 +1,32 @@
+{
+ "parent": "$STATE7",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers file attach e7 src/archive.tar.gz src/paper.v2.PDF --copy --name-template {key}",
+ "ops": [
+  {
+   "op": "copied",
+   "src": "src/archive.tar.gz",
+   "dst": "files/e7.gz",
+   "checksum": "bff94f83b3f7d26cec81f3b8b3bfa0af4330f4148b34bb1ec91057690403bdae"
+  },
+  {
+   "op": "copied",
+   "src": "src/paper.v2.PDF",
+   "dst": "files/e7--paper.v2.PDF",
+   "checksum": "f6f0e9cfa619c51a320e46fe54845dbf5fb2faa148b0916059dc64534ec260f0"
+  }
+ ],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "0da7eacf131114dfe0d646f2fe5f1e7c8aaa4e764a153d2f30e0a3ae43843400"
+  ],
+  "sha": "0da7eacf131114dfe0d646f2fe5f1e7c8aaa4e764a153d2f30e0a3ae43843400"
+ },
+ "files": {
+  ".papers/files.json": [
+   "bf3efc87b1fbae7ecafe16a81ea1e5a2650e764aa4a35933ef6336eb7be9c2e0"
+  ]
+ }
+}

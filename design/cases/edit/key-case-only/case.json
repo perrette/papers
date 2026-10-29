@@ -1,0 +1,70 @@
+{
+  "description": "a key changed in its case only is a rename (renamed OLD NEW), and crossref follows it (compared without case); a key that another entry has, in any case, is refused",
+  "sections": [
+    "bibtex.md#7.3",
+    "bibtex.md#7.1",
+    "formats.md#7.2"
+  ],
+  "tests": [
+    "tests/test_entry_cmds.py::TestEditSet::test_key_case_only"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "edit",
+        "doe2019",
+        "--key",
+        "Doe2019",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    },
+    {
+      "argv": [
+        "edit",
+        "doe2019",
+        "--key",
+        "DOE2019"
+      ]
+    },
+    {
+      "argv": [
+        "edit",
+        "DOE2019",
+        "--key",
+        "doe2019",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "edit",
+        "smith2019",
+        "--key",
+        "SMITH2019",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "edit",
+        "smith2019",
+        "--key",
+        "KID2020"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    }
+  ]
+}

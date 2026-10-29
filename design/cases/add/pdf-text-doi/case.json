@@ -1,0 +1,39 @@
+{
+  "description": "add of a PDF without DOI in its metadata: a DOI of its text counts when the library has the entry of that DOI and its title is in the text (no query); the DOI of a paper that the text cites, with another title, does not",
+  "sections": [
+    "library.md#the-files-directory/file-names",
+    "formats.md#7.3",
+    "bibtex.md#5.1"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "add",
+        "text.pdf"
+      ]
+    },
+    {
+      "argv": [
+        "add",
+        "other.pdf",
+        "--copy"
+      ]
+    },
+    {
+      "argv": [
+        "add",
+        "text.pdf",
+        "--no-check-duplicate",
+        "--no-query-fulltext",
+        "--no-query-doi"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    }
+  ]
+}

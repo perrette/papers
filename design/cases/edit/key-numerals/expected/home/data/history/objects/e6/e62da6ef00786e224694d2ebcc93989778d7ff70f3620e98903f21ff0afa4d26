@@ -1,0 +1,11 @@
+@article{smith2019,
+ author = {Smith, John},
+ title = {Another paper},
+ year = {2019}
+}
+
+@article{٣doe,
+ author = {Doe, Jane},
+ title = {The referenced paper},
+ year = {2019}
+}

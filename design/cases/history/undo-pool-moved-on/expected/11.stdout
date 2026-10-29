@@ -1,0 +1,2 @@
+redo: papers.bib restored to $STATE4 papers -C lib add ../import/refs.bib ($TIME)
+pool ../pool: changed since, so step $STATE6 reverted there: $STATE7 papers -C lib redo: revert of step $STATE6 ($TIME, from $WORK/lib)

@@ -1,0 +1,5 @@
+papers library: $WORK/lib
+* bibtex: papers.bib (3 entries, 1 file links)
+* files:  in the pool, $WORK/pool/files
+* pool:   ../pool (in sync)
+`papers config` lists and sets the settings

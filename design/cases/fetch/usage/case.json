@@ -1,0 +1,28 @@
+{
+  "description": "fetch without an argument, and with a DOI and --scholar: the usage messages (exit status 2)",
+  "sections": [
+    "formats.md#7.3"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "fetch"
+      ]
+    },
+    {
+      "argv": [
+        "fetch",
+        "10.1000/abc",
+        "--scholar"
+      ]
+    },
+    {
+      "argv": [
+        "fetch",
+        "doi:10.1000/abc",
+        "https://doi.org/10.1000/def",
+        "--scholar"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,52 @@
+{
+  "description": "a setting given to a library is saved even when it has the default value; --unset makes it follow the machine configuration again",
+  "sections": [
+    "library.md#the-library-configuration/which-keys-papers-writes",
+    "library.md#settings/precedence"
+  ],
+  "tests": [
+    "tests/test_config_v3.py::TestConfigCommand::test_explicit_values_saved",
+    "tests/test_config_v3.py::TestResolution::test_unset"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "config",
+        "auto-push",
+        "false"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "files",
+        "move"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "paths",
+        "relative"
+      ]
+    },
+    {
+      "argv": [
+        "config"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "--unset",
+        "files"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "files"
+      ]
+    }
+  ]
+}

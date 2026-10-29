@@ -1,0 +1,132 @@
+{
+  "description": "--dry-run of the exchanges and of the commands that push: nothing is written (the pool, the records, the library), the lines say what would be done",
+  "sections": [
+    "exchange.md#3.5",
+    "exchange.md#6",
+    "exchange.md#7",
+    "exchange.md#8"
+  ],
+  "tests": [
+    "tests/test_spec_exchange.py::TestOriginWriting::test_dry_run_writes_nothing"
+  ],
+  "ignore": [
+    "home/data/history/*"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "pull",
+        "--all",
+        "--dry-run"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "pull",
+        "--all"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "edit",
+        "smith2020",
+        "--set",
+        "note=a",
+        "--dry-run"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "add",
+        "../new.bib",
+        "--dry-run"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "push",
+        "--all",
+        "--dry-run"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "sync",
+        "--dry-run"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "pool",
+        "edit",
+        "brown2021",
+        "--set",
+        "year=2030"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "pull",
+        "--dry-run"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "sync",
+        "--dry-run"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "push",
+        "--dry-run"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "pull",
+        "--check"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "pool",
+        "list",
+        "-K"
+      ]
+    }
+  ]
+}

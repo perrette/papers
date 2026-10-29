@@ -1,0 +1,111 @@
+{
+  "description": "auto-push: in a shallow library a command that changes entries pushes them to the pool; the entries are added to the pool by add; the pool keeps its own history step",
+  "sections": [
+    "exchange.md#12",
+    "exchange.md#3"
+  ],
+  "ignore": [
+    "home/data/history/*"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "config",
+        "--global",
+        "auto-push",
+        "true"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "pull",
+        "smith2020"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "tag",
+        "smith2020",
+        "--add",
+        "t"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "pool",
+        "list",
+        "--format",
+        "bibtex",
+        "smith2020"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "add",
+        "new.bib"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "pool",
+        "list",
+        "-K"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "edit",
+        "smith2020",
+        "--set",
+        "note=via auto-push",
+        "--porcelain"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "pool",
+        "list",
+        "--format",
+        "bibtex",
+        "smith2020"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "rm",
+        "smith2020",
+        "new2022"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "pool",
+        "list",
+        "-K"
+      ],
+      "wait": 1.1
+    }
+  ]
+}

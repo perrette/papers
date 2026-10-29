@@ -1,0 +1,13 @@
+a2020: the same file is linked twice: $WORK/files/a1.txt and $WORK/files/a1.txt
+a2020: identical files: $WORK/files/a1.txt and $WORK/files/a1-copy.txt
+b2021: path can be repaired: $WORK/usr/bin/env -> /usr/bin/env
+b2021: broken link: $WORK/lost/b.pdf (remove it with `papers file detach --broken --key b2021`)
+b2021: broken link: $WORK/lost/b2.txt (remove it with `papers file detach --broken --key b2021`)
+c2022: broken link: $WORK/lost/needs-name.pdf (remove it with `papers file detach --broken --key c2022`)
+d2023: broken link: $WORK/lost/dup.txt (remove it with `papers file detach --broken --key d2023`)
+e2024: broken link: $WORK/lost/dup.txt (remove it with `papers file detach --broken --key e2024`)
+f2025: broken link: $WORK/lost/several.txt (remove it with `papers file detach --broken --key f2025`)
+f2025: broken link: $WORK/lost/fine.txt (remove it with `papers file detach --broken --key f2025`)
+0 links can be relinked, 7 without a file found (papers file detach --broken removes them)
+10 issue(s) in the files of 6 entries
+3 links can be repaired: `papers file fix`

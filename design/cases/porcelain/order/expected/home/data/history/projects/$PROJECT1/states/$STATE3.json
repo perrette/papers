@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE2",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers rm beta2018 Zeta2020 --porcelain",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "faa2a06e609c489fed6d6139de4c4e6efb372d1c5e220aa9fe4a192270159662"
+  ],
+  "sha": "faa2a06e609c489fed6d6139de4c4e6efb372d1c5e220aa9fe4a192270159662"
+ },
+ "files": {}
+}

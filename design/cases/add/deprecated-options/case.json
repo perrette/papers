@@ -1,0 +1,84 @@
+{
+  "description": "the deprecated forms of add still work: -m/--mode letters (u, U, o, s, r, a), -a NAME for --author, -a FILE to attach, --attachment",
+  "sections": [
+    "bibtex.md#9.5",
+    "formats.md#1.2"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "add",
+        "dup.bib",
+        "-m",
+        "r"
+      ]
+    },
+    {
+      "argv": [
+        "add",
+        "dup.bib",
+        "-m",
+        "s",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "add",
+        "dup.bib",
+        "-m",
+        "U",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "add",
+        "dup.bib",
+        "-m",
+        "a",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "add",
+        "one.bib",
+        "-a",
+        "Ann Bee",
+        "--year",
+        "2001",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "add",
+        "--key",
+        "doe2019",
+        "-a",
+        "dl/a.txt",
+        "--link",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "add",
+        "--key",
+        "doe2019",
+        "--attachment",
+        "dl/b.txt",
+        "--link",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "description": "add --no-check-duplicate creates duplicates; list --duplicates finds them",
+  "sections": [
+    "bibtex.md#9.5",
+    "formats.md#7.2"
+  ],
+  "tests": [
+    "tests/test_spec_bibtex.py::TestFindingDuplicates::test_add_candidates"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "add",
+        "dup.bib",
+        "--no-check-duplicate",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--duplicates",
+        "-K"
+      ]
+    }
+  ]
+}

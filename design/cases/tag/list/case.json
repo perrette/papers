@@ -1,0 +1,29 @@
+{
+  "description": "tag lists the tags with the number of entries; nested tags are indented under their parent",
+  "sections": [
+    "bibtex.md#6"
+  ],
+  "tests": [
+    "tests/test_entry_cmds.py::TestNestedTags::test_list_tag"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "tag"
+      ]
+    },
+    {
+      "argv": [
+        "tag",
+        "perrette2013"
+      ]
+    },
+    {
+      "argv": [
+        "tag",
+        "smith2020",
+        "doe2019"
+      ]
+    }
+  ]
+}

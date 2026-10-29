@@ -1,0 +1,16 @@
+{
+ "parent": "$STATE9",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers export out4 mueller2021 plain2020 --files copy",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "aee2204db2e0c0c012a8312c23497ed03f27b48096449b5e84034aee9c1d1ee5"
+  ],
+  "sha": "aee2204db2e0c0c012a8312c23497ed03f27b48096449b5e84034aee9c1d1ee5"
+ },
+ "files": {},
+ "from": "$WORK"
+}

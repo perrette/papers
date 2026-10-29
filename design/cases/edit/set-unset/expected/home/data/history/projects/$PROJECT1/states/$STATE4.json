@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE3",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers edit doe2019 --set author=Doe, Jane and Roe, Richard",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "51d51eb424f4770d4cf66e08dbb4b4790d4ba0f93270bff3e509fc46819ae9fa"
+  ],
+  "sha": "51d51eb424f4770d4cf66e08dbb4b4790d4ba0f93270bff3e509fc46819ae9fa"
+ },
+ "files": {}
+}

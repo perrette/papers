@@ -1,0 +1,129 @@
+{
+  "metadata": {
+    "records": 8,
+    "namespace": {
+      "bibtex": "https://www.bibtex.org/Format/"
+    }
+  },
+  "records": [
+    {
+      "type": "misc",
+      "id": "arx2021",
+      "eprint": "2101.00001",
+      "title": "Preprint",
+      "urldate": "2022-03-04",
+      "year": "2021"
+    },
+    {
+      "type": "inproceedings",
+      "id": "conf2017",
+      "address": "Berlin",
+      "author": [
+        {
+          "name": "Doe, Jane"
+        }
+      ],
+      "booktitle": "Proc. of the Ice Conference",
+      "edition": "2",
+      "editor": [
+        {
+          "name": "Ed, Anne"
+        },
+        {
+          "name": "Ed, Bob"
+        }
+      ],
+      "language": "en",
+      "series": "LNCS",
+      "title": "A talk",
+      "year": "2017"
+    },
+    {
+      "type": "misc",
+      "id": "dated2022",
+      "date": "2022-03-04",
+      "title": "Only a date"
+    },
+    {
+      "type": "article",
+      "id": "perrette2013",
+      "abstract": "Sea level\n rise.",
+      "author": [
+        {
+          "name": "Perrette, M."
+        },
+        {
+          "name": "van der Berg, Jan"
+        },
+        {
+          "name": "{World Health Organization}"
+        },
+        {
+          "name": "Smith, Jr, John"
+        }
+      ],
+      "doi": "10.5194/esd-4-11-2013",
+      "issn": "2190-4979",
+      "journal": {
+        "name": "Earth System Dynamics"
+      },
+      "keywords": "sea level, ice; amoc",
+      "month": "may",
+      "note": "A note",
+      "number": "1",
+      "pages": "11--29",
+      "title": "A scaling approach to {S}ea level in G{\\\"o}ttingen \\& $\\alpha$ 50\\% ~x",
+      "url": "https://esd.copernicus.org/x",
+      "volume": "4",
+      "year": "2013",
+      "file": [
+        "files/perrette_et_al_2013_a-scaling-approach-to-s-ea-level-in-g-o-ttingen-alpha-50-x.pdf"
+      ]
+    },
+    {
+      "type": "techreport",
+      "id": "rep2020",
+      "address": "Potsdam",
+      "author": [
+        {
+          "name": "Doe, Jane"
+        }
+      ],
+      "institution": "PIK",
+      "title": "Report",
+      "bibtex:type": "Working paper",
+      "year": "2020"
+    },
+    {
+      "type": "mastersthesis",
+      "id": "th2018",
+      "author": [
+        {
+          "name": "Roe, Richard"
+        }
+      ],
+      "school": "Univ. of Ice",
+      "title": "A master's thesis",
+      "year": "2018"
+    },
+    {
+      "type": "phdthesis",
+      "id": "th2019",
+      "author": [
+        {
+          "name": "Roe, Richard"
+        }
+      ],
+      "school": "Univ. of Ice",
+      "title": "A thesis",
+      "year": "2019"
+    },
+    {
+      "type": "online",
+      "id": "web2020",
+      "title": "A page",
+      "url": "https://example.org/a",
+      "year": "n.d."
+    }
+  ]
+}

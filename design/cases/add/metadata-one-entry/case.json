@@ -1,0 +1,32 @@
+{
+  "description": "fields given on the command line replace those of the added entry",
+  "sections": [
+    "formats.md#1.2",
+    "bibtex.md#3.3"
+  ],
+  "tests": [
+    "tests/test_formats.py::TestAddFormats::test_metadata_one_entry_only"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "add",
+        "new.bib",
+        "--key",
+        "weber_southern",
+        "--year",
+        "2023",
+        "--metadata",
+        "note=hello",
+        "publisher=Copernicus"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    }
+  ]
+}

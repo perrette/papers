@@ -1,0 +1,81 @@
+{
+  "description": "a tag under another tag (a/b): --tag a also finds a/b and the ones below",
+  "sections": [
+    "bibtex.md#6"
+  ],
+  "tests": [
+    "tests/test_entry_cmds.py::TestNestedTags::test_list_tag"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "list",
+        "-K",
+        "--tag",
+        "climate"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-K",
+        "--tag",
+        "climate/amoc"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-K",
+        "--tag",
+        "climate/amoc/tipping"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-K",
+        "--tag",
+        "amoc"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-K",
+        "--tag",
+        "clim"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-K",
+        "--tag",
+        "clim*"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-K",
+        "--tag",
+        "climate/*"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-K",
+        "--tag",
+        "climate/arctic",
+        "ice"
+      ]
+    },
+    {
+      "argv": [
+        "tag"
+      ]
+    }
+  ]
+}

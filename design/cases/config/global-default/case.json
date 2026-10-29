@@ -1,0 +1,55 @@
+{
+  "description": "config --global default sets, reads and removes the default library",
+  "sections": [
+    "library.md#the-machine-configuration/format",
+    "library.md#finding-the-library-of-a-command"
+  ],
+  "tests": [
+    "tests/test_config_v3.py::TestDefaultLibrary::test_config_global_default",
+    "tests/test_library_cmds.py::TestConfigCmd::test_global_default_takes_one_path"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "config",
+        "--global",
+        "default",
+        "lib"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "--global",
+        "default"
+      ]
+    },
+    {
+      "argv": [
+        "status"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "--global",
+        "default",
+        "nowhere"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "--global",
+        "default",
+        "none"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "--global"
+      ]
+    }
+  ]
+}

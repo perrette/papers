@@ -1,0 +1,26 @@
+{
+ "parent": "$STATE2",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers file mv moved/a1.txt moved/new/a.txt",
+ "ops": [
+  {
+   "op": "moved",
+   "src": "moved/a1.txt",
+   "dst": "moved/new/a.txt",
+   "checksum": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865"
+  }
+ ],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "2fccf2b24acde48b1e846af322f7975c686dac07800da529cbb94ae877f690e4"
+  ],
+  "sha": "2fccf2b24acde48b1e846af322f7975c686dac07800da529cbb94ae877f690e4"
+ },
+ "files": {
+  ".papers/files.json": [
+   "19b6ebe62a4f53a28a8a38d671cb8d80bff7b6e9af0cf507fb59abdf27a05f6d"
+  ]
+ }
+}

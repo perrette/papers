@@ -1,0 +1,26 @@
+{
+ "parent": "$STATE5",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers list c2022 --fix-files search --move",
+ "ops": [
+  {
+   "op": "moved",
+   "src": "search/c.pdf",
+   "dst": "files/lee_2020_title-of-c2022.pdf",
+   "checksum": "a3a5e715f0cc574a73c3f9bebb6bc24f32ffd5b67b387244c2c909da779a1478"
+  }
+ ],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "75f914caaaabd03c2ffc021ea0bede78c29f6caa1910c42338b22dc9935feb57"
+  ],
+  "sha": "75f914caaaabd03c2ffc021ea0bede78c29f6caa1910c42338b22dc9935feb57"
+ },
+ "files": {
+  ".papers/files.json": [
+   "af9512256945c203095d456ed247e90d773a14f49512ddeb3df5a8df40df17bb"
+  ]
+ }
+}

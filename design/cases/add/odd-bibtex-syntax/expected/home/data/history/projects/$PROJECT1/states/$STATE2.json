@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE1",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers add odd.bib",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "6f0e6ced8a957316fde7b9816c66d2a0cf386a5286382b9a42525937c2e31625"
+  ],
+  "sha": "6f0e6ced8a957316fde7b9816c66d2a0cf386a5286382b9a42525937c2e31625"
+ },
+ "files": {}
+}

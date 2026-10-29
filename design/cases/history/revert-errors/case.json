@@ -1,0 +1,89 @@
+{
+  "description": "the errors of history --revert: no library, no such step, the first step, a step that is not in the current history (after an undo and a new change)",
+  "sections": [
+    "history.md#8",
+    "history.md#2.5"
+  ],
+  "tests": [
+    "tests/test_spec_history.py::TestRevert::test_errors",
+    "tests/test_revert.py::TestRevertEntries::test_errors"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "history",
+        "--revert",
+        "1"
+      ]
+    },
+    {
+      "argv": [
+        "tag",
+        "doe2019",
+        "--add",
+        "a"
+      ]
+    },
+    {
+      "argv": [
+        "history",
+        "--revert",
+        "$STATE1"
+      ]
+    },
+    {
+      "argv": [
+        "history",
+        "--revert",
+        "0"
+      ]
+    },
+    {
+      "argv": [
+        "history",
+        "--revert",
+        "99"
+      ]
+    },
+    {
+      "argv": [
+        "history",
+        "--revert",
+        "-1"
+      ]
+    },
+    {
+      "argv": [
+        "tag",
+        "doe2019",
+        "--add",
+        "b"
+      ]
+    },
+    {
+      "argv": [
+        "undo"
+      ]
+    },
+    {
+      "argv": [
+        "tag",
+        "doe2019",
+        "--add",
+        "c"
+      ]
+    },
+    {
+      "argv": [
+        "history"
+      ]
+    },
+    {
+      "argv": [
+        "history",
+        "--revert",
+        "$STATE3"
+      ]
+    }
+  ]
+}

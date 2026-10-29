@@ -1,0 +1,3 @@
+papers: error: doe2019: invalid name template '{author': expected '}' before end of string
+papers: error: mueller2021: invalid name template '{author': expected '}' before end of string
+papers: error: two: invalid name template '{author': expected '}' before end of string

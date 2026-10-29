@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE1",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers edit doe2019 --key doe_2019 --keep-old-key",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "4a0460ce3345795d476be696ecac4dd99c017186bcea51e0bee11676c9d6eade"
+  ],
+  "sha": "4a0460ce3345795d476be696ecac4dd99c017186bcea51e0bee11676c9d6eade"
+ },
+ "files": {}
+}

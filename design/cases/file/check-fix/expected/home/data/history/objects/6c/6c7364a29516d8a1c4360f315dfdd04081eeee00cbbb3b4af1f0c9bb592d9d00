@@ -1,0 +1,41 @@
+@article{a2020,
+ author = {Doe, Jane},
+ file = {:files/a1.txt:txt},
+ title = {Title of a2020},
+ year = {2020}
+}
+
+@article{b2021,
+ author = {Roe, R},
+ file = {:../../../../../../../../usr/bin/env:;:files/roe_2020_title-of-b2021--b.pdf:pdf;:files/roe_2020_title-of-b2021--b2.txt:txt},
+ title = {Title of b2021},
+ year = {2020}
+}
+
+@article{c2022,
+ author = {Lee, A},
+ file = {:files/lee_2020_title-of-c2022.pdf:pdf},
+ title = {Title of c2022},
+ year = {2020}
+}
+
+@article{d2023,
+ author = {Kim, B},
+ file = {:lost/dup.txt:txt},
+ title = {Title of d2023},
+ year = {2020}
+}
+
+@article{e2024,
+ author = {Kim, C},
+ file = {:lost/dup.txt:txt},
+ title = {Title of e2024},
+ year = {2020}
+}
+
+@article{f2025,
+ author = {Fox, D},
+ file = {:lost/several.txt:txt;:lost/fine.txt:txt},
+ title = {Title of f2025},
+ year = {2020}
+}

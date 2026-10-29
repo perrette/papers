@@ -1,0 +1,62 @@
+{
+  "description": "the .papers/ files next to the bibtex (a subfolder) are not moved to the library directory by a dry run, whatever the spelling of the option (--dry-run, an abbreviation such as --dry, file mv -n), nor by a command whose arguments are wrong (a usage error)",
+  "sections": [
+    "library.md#layout",
+    "library.md#open-questions"
+  ],
+  "tests": [
+    "tests/test_spec_library.py::TestLayout::test_no_move_with_dry_run",
+    "tests/test_spec_library.py::TestLayout::test_no_move_with_other_spellings_of_dry_run"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "list",
+        "--nosuchoption"
+      ]
+    },
+    {
+      "argv": [
+        "tag",
+        "doe2019",
+        "--add",
+        "x",
+        "--dry"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-K",
+        "--dry-r"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "mv",
+        "files/a.txt",
+        "files/b.txt",
+        "-n"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "mv",
+        "files/a.txt",
+        "files/b.txt",
+        "--dry-run"
+      ]
+    },
+    {
+      "argv": [
+        "tag",
+        "doe2019",
+        "--add",
+        "x",
+        "--dry-run"
+      ]
+    }
+  ]
+}

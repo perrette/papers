@@ -1,0 +1,83 @@
+{
+  "description": "--dry-run: the report of the entries, no files, nothing saved; --porcelain: the lines of the entries changed",
+  "sections": [
+    "history.md#8",
+    "history.md#8.1",
+    "history.md#8.2",
+    "history.md#8.4",
+    "formats.md#7",
+    "history.md#2.5"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "tag",
+        "doe2019",
+        "--add",
+        "x"
+      ]
+    },
+    {
+      "argv": [
+        "tag",
+        "smith2020",
+        "--add",
+        "y"
+      ]
+    },
+    {
+      "argv": [
+        "rm",
+        "mueller2021"
+      ]
+    },
+    {
+      "argv": [
+        "history",
+        "--revert",
+        "$STATE2",
+        "--dry-run"
+      ]
+    },
+    {
+      "argv": [
+        "history"
+      ]
+    },
+    {
+      "argv": [
+        "history",
+        "--revert",
+        "$STATE4",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "history",
+        "--revert",
+        "$STATE3",
+        "--porcelain",
+        "--on-duplicate",
+        "keep"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "history"
+      ]
+    }
+  ]
+}

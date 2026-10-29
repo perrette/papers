@@ -1,0 +1,9 @@
+@article{jones2019,
+ author = {Jones, Mary},
+ doi = {10.1000/xyz},
+ file = {:files/jones_2019_ice-sheets.txt:txt},
+ keywords = {ice, to-read},
+ title = {Ice sheets},
+ year = {2019}
+}
+

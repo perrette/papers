@@ -1,0 +1,16 @@
+{
+ "parent": "$STATE2",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers edit smith2019 --key \uff13smith --porcelain",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "73c9285de0d6801a266c21dc84d76b02f2fec79318948253a6da6987217b8a8b",
+   "1f99692fa6671b5b13db2adb63ec9d590fc8e7e426a86e41c0b17497d82488c4"
+  ],
+  "sha": "9aeb142d44d830bd2087272ccbe26274b57c6f90e1a0452cace7e15442162c40"
+ },
+ "files": {}
+}

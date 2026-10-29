@@ -1,0 +1,4 @@
+smith2020: broken link: $WORK/plain/files/gone.txt -> $WORK/pool/files/smith_doe_2020_a-title.txt (from the library ../pool)
+1 link can be relinked, 1 without a file found (papers file detach --broken removes them)
+1 issue(s) in the files of 2 entries
+1 link can be repaired: `papers -C plain file fix --pool $WORK/pool --pool $WORK/other`

@@ -1,0 +1,6 @@
+usage: papers tag [-h] [-v] [--debug] [--color {auto,always,never}]
+                  [--porcelain] [--filesdir FILESDIR] [--bibtex BIBTEX]
+                  [--dry-run] [--add TAG [TAG ...]] [--rm TAG [TAG ...]]
+                  [--rename OLD NEW]
+                  [KEY ...]
+papers tag: error: --add and --rm need the entries: KEY..., or - to read them from the standard input. --add and --rm take all the words after them: put the keys first (papers tag KEY... --add TAG...)

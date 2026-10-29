@@ -1,0 +1,103 @@
+{
+  "description": "export --format: bib, csl-json, bibjson (json and bib.json are other names), repeated or separated by commas; written in the order bibtex, ris, csl-json, bibjson; without bibtex the folder is not a library; the links of the other formats are relative to DIR",
+  "sections": [
+    "formats.md#9",
+    "formats.md#3.4",
+    "formats.md#5.1",
+    "formats.md#8"
+  ],
+  "tests": [
+    "tests/test_spec_formats.py::TestExportLayout::test_format_names",
+    "tests/test_formats.py::TestExportFormats::test_unknown_format",
+    "tests/test_formats.py::TestExportFormats::test_repeated_and_comma"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "export",
+        "a",
+        "--format",
+        "csl-json"
+      ]
+    },
+    {
+      "argv": [
+        "export",
+        "b",
+        "--format",
+        "bib,csl-json,bibjson"
+      ]
+    },
+    {
+      "argv": [
+        "export",
+        "c",
+        "--format",
+        "json",
+        "--format",
+        "bib.json"
+      ]
+    },
+    {
+      "argv": [
+        "export",
+        "d",
+        "--format",
+        "bibjson,csl-json,bib"
+      ]
+    },
+    {
+      "argv": [
+        "export",
+        "e",
+        "--format",
+        "csl-json",
+        "--files",
+        "link"
+      ]
+    },
+    {
+      "argv": [
+        "export",
+        "f",
+        "--format",
+        "csl-json",
+        "--files",
+        "none"
+      ]
+    },
+    {
+      "argv": [
+        "export",
+        "g",
+        "--format",
+        "CSL-JSON, Bib"
+      ]
+    },
+    {
+      "argv": [
+        "export",
+        "h",
+        "--format",
+        "nosuch"
+      ]
+    },
+    {
+      "argv": [
+        "export",
+        "i",
+        "--format",
+        "bib",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "b",
+        "list",
+        "-K"
+      ]
+    }
+  ]
+}

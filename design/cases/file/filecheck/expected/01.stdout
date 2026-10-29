@@ -1,0 +1,4 @@
+a2020: the same file is linked twice: $WORK/files/a1.txt and $WORK/files/a1.txt
+a2020: identical files: $WORK/files/a1.txt and $WORK/files/a1-copy.txt
+b2021: path can be repaired: $WORK/usr/bin/env -> /usr/bin/env
+b2021: broken link: $WORK/lost/b.pdf (remove it with `papers file detach --broken --key b2021`)

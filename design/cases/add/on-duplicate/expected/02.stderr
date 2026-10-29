@@ -1,0 +1,2 @@
+papers: error: perrette_dup: already in library as perrette2013 (same DOI 10.5194/esd-4-11-2013; 1 conflict)
+Pass --on-duplicate with one of: ask, keep, update, skip (ask is the default in a terminal), see `papers add --help`.

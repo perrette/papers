@@ -1,0 +1,114 @@
+{
+  "description": "list --fuzzy: fuzzy match of the words and the fields (rapidfuzz token_set_ratio, the ratio of --fuzzy-ratio, 50 by default), --duplicates --fuzzy lists the entries with similar authors and title (80 by default)",
+  "sections": [
+    "formats.md#6",
+    "formats.md#6.1"
+  ],
+  "tests": [
+    "tests/test_list.py::SearchTest::test_list_title_fuzzy"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "list",
+        "--fuzzy",
+        "atlantic",
+        "size"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--fuzzy",
+        "sea level rise"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--fuzzy",
+        "--fuzzy-ratio",
+        "90",
+        "scaling approach"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--fuzzy",
+        "--fuzzy-ratio",
+        "0",
+        "zzz"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--fuzzy",
+        "-t",
+        "project regional sea rise"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--fuzzy",
+        "-a",
+        "perette"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--fuzzy",
+        "--any",
+        "-t",
+        "atlantic",
+        "nothing like it"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--fuzzy",
+        "--tag",
+        "ic"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--duplicates",
+        "--fuzzy",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--duplicates",
+        "--fuzzy",
+        "--fuzzy-ratio",
+        "95",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--duplicates",
+        "--fuzzy",
+        "--fuzzy-ratio",
+        "50",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--duplicates",
+        "-K"
+      ]
+    }
+  ]
+}

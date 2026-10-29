@@ -1,0 +1,1 @@
+papers: error: pool $WORK/plain is not a library (no .papers/config.json): create it first with `papers init $WORK/plain` (nothing was changed)

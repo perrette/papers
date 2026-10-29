@@ -1,0 +1,29 @@
+{
+ "parent": "$STATE4",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers export out4 mueller2021 plain2020 --files copy",
+ "ops": [
+  {
+   "op": "copied",
+   "src": "files/m.txt",
+   "dst": "out4/files/muller_2021.txt",
+   "checksum": "01a60e35df88d8b49546cb3f8f4ba4f406870f9b8e1f394c9d48ab73548d748d"
+  }
+ ],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "e7195c979af135d119f1c6d331b511ff410e74216f6685ff2e9d4cb6645cf9fa"
+  ],
+  "sha": "e7195c979af135d119f1c6d331b511ff410e74216f6685ff2e9d4cb6645cf9fa"
+ },
+ "files": {},
+ "pools": {
+  "$PROJECT5": {
+   "state": "$STATE10",
+   "base": "$STATE9",
+   "config": "$WORK/out4/.papers/config.json"
+  }
+ }
+}

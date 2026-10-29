@@ -1,0 +1,19 @@
+{
+ "parent": null,
+ "time": "$TIME",
+ "kind": "start",
+ "message": "the library before its first recorded command",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "a503c3ed44ca5bd79bc746204a710cb75c03baaf6ab61e8d3082b85fd6988517"
+  ],
+  "sha": "a503c3ed44ca5bd79bc746204a710cb75c03baaf6ab61e8d3082b85fd6988517"
+ },
+ "files": {
+  ".papers/distinct.json": [
+   "5bc8730cdb67ecf3733c053f57836587ea4e103256c468a33d6fba45bc784996"
+  ]
+ }
+}

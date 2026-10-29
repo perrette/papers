@@ -1,0 +1,71 @@
+[
+  {
+    "id": "f1",
+    "citation-key": "f1",
+    "type": "document",
+    "title": "The whole text is the path",
+    "custom": {
+      "file": [
+        "$WORK/files/one.txt"
+      ]
+    }
+  },
+  {
+    "id": "f3",
+    "citation-key": "f3",
+    "type": "document",
+    "title": "description:path:type",
+    "custom": {
+      "file": [
+        "$WORK/files/three.txt"
+      ]
+    }
+  },
+  {
+    "id": "f4",
+    "citation-key": "f4",
+    "type": "document",
+    "title": "The path has a colon",
+    "custom": {
+      "file": [
+        "$WORK/dir/a: b.txt"
+      ]
+    }
+  },
+  {
+    "id": "f5",
+    "citation-key": "f5",
+    "type": "document",
+    "title": "Empty links, an empty path",
+    "custom": {
+      "file": [
+        "$WORK/files/one.txt"
+      ]
+    }
+  },
+  {
+    "id": "f6",
+    "citation-key": "f6",
+    "type": "document",
+    "title": "A drive letter is a type",
+    "custom": {
+      "file": [
+        "$WORK/C"
+      ]
+    }
+  },
+  {
+    "id": "f7",
+    "citation-key": "f7",
+    "type": "document",
+    "title": "Relative, outside, absolute, not normalized",
+    "custom": {
+      "file": [
+        "$WORK/files/with space.txt",
+        "$TMP/outside.txt",
+        "/abs/path.txt",
+        "$WORK/files/one.txt"
+      ]
+    }
+  }
+]

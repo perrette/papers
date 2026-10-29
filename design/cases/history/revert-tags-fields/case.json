@@ -1,0 +1,144 @@
+{
+  "description": "history --revert STEP takes back what step N changed in each entry: a field goes back to its value, the tags one by one (those added are removed, those removed come back, the tags added since stay); later steps stay; the revert is a new step that undo takes back",
+  "sections": [
+    "history.md#8",
+    "history.md#8.1",
+    "history.md#8.2",
+    "history.md#8.4",
+    "bibtex.md#10",
+    "history.md#3.2",
+    "history.md#2.5"
+  ],
+  "tests": [
+    "tests/test_revert.py::TestRevertEntries::test_tag_removed_comes_back",
+    "tests/test_revert.py::TestRevertEntries::test_tags_one_by_one",
+    "tests/test_revert.py::TestRevertEntries::test_field"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "tag",
+        "doe2019",
+        "--add",
+        "x"
+      ]
+    },
+    {
+      "argv": [
+        "edit",
+        "smith2020",
+        "--set",
+        "journal=Nature"
+      ]
+    },
+    {
+      "argv": [
+        "tag",
+        "doe2019",
+        "--add",
+        "later"
+      ]
+    },
+    {
+      "argv": [
+        "tag",
+        "mueller2021",
+        "--add",
+        "other"
+      ]
+    },
+    {
+      "argv": [
+        "history"
+      ]
+    },
+    {
+      "argv": [
+        "history",
+        "--revert",
+        "$STATE2"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-k",
+        "doe2019",
+        "--format",
+        "bibtex"
+      ]
+    },
+    {
+      "argv": [
+        "history",
+        "--revert",
+        "$STATE3"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-k",
+        "smith2020",
+        "--format",
+        "bibtex"
+      ]
+    },
+    {
+      "argv": [
+        "tag",
+        "doe2019",
+        "--rm",
+        "to-read"
+      ]
+    },
+    {
+      "argv": [
+        "tag",
+        "doe2019",
+        "--add",
+        "z"
+      ]
+    },
+    {
+      "argv": [
+        "history",
+        "--revert",
+        "$STATE8"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-k",
+        "doe2019",
+        "--format",
+        "bibtex"
+      ]
+    },
+    {
+      "argv": [
+        "history"
+      ]
+    },
+    {
+      "argv": [
+        "undo"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-k",
+        "doe2019",
+        "--format",
+        "bibtex"
+      ]
+    },
+    {
+      "argv": [
+        "history"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,3 @@
+kept $WORK/files/s.txt: another entry links to it
+delete $WORK/files/c1.txt (kept in the history: undo restores it)
+Removed -> c: C (files:2)

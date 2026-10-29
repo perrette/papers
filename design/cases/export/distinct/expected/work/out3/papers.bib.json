@@ -1,0 +1,113 @@
+{
+  "metadata": {
+    "records": 8
+  },
+  "records": [
+    {
+      "type": "article",
+      "id": "doe2019",
+      "author": [
+        {
+          "name": "Doe, Jane"
+        }
+      ],
+      "doi": "10.1/x",
+      "journal": {
+        "name": "J. Ocean"
+      },
+      "keywords": "ice",
+      "title": "Sea level rise in the Atlantic: a scaling approach",
+      "year": "2019",
+      "file": [
+        "files/doe_2019_sea-level-rise-in-the-atlantic-a-scaling-approach.pdf"
+      ]
+    },
+    {
+      "type": "article",
+      "id": "doe2019b",
+      "author": [
+        {
+          "name": "Doe, J."
+        }
+      ],
+      "journal": {
+        "name": "J. Ocean"
+      },
+      "title": "Sea level rise in the Atlantic: a scaling approach",
+      "year": "2019"
+    },
+    {
+      "type": "article",
+      "id": "noauthor",
+      "doi": "bad doi",
+      "title": "No author",
+      "year": "2018",
+      "file": [
+        "../files/missing.pdf"
+      ]
+    },
+    {
+      "type": "article",
+      "id": "9digits",
+      "author": [
+        {
+          "name": "X, Y"
+        }
+      ],
+      "title": "Digit key",
+      "year": "2017"
+    },
+    {
+      "type": "article",
+      "id": "perrette2013",
+      "author": [
+        {
+          "name": "Perrette, M."
+        },
+        {
+          "name": "Landerer, F."
+        }
+      ],
+      "doi": "10.5194/esd-4-11-2013",
+      "title": "A scaling approach to project regional sea level rise",
+      "year": "2013"
+    },
+    {
+      "type": "article",
+      "id": "perrette2013a",
+      "author": [
+        {
+          "name": "Perrette, Mahe"
+        },
+        {
+          "name": "Landerer, Felix"
+        }
+      ],
+      "doi": "https://doi.org/10.5194/ESD-4-11-2013",
+      "title": "A scaling approach to project regional sea-level rise",
+      "year": "2013"
+    },
+    {
+      "type": "book",
+      "id": "Upper",
+      "author": [
+        {
+          "name": "Müller, Hans"
+        }
+      ],
+      "title": "Über die Größe des Atlantik",
+      "year": "2016"
+    },
+    {
+      "type": "article",
+      "id": "upper2",
+      "author": [
+        {
+          "name": "Mueller, Hans"
+        }
+      ],
+      "title": "About the size of the Atlantic",
+      "year": "2016"
+    }
+  ]
+}

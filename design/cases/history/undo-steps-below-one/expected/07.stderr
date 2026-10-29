@@ -1,0 +1,4 @@
+usage: papers undo [-h] [-v] [--debug] [--color {auto,always,never}]
+                   [--porcelain] [--filesdir FILESDIR] [--bibtex BIBTEX]
+                   [--dry-run] [-n STEPS] [--library-only]
+papers undo: error: argument -n/--steps: '-2': 1 step or more

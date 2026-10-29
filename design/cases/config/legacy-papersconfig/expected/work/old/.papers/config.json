@@ -1,0 +1,8 @@
+{
+  "bibtex": "refs.bib",
+  "editor": "vim",
+  "filesdir": "pdfs",
+  "id": "$PROJECT1",
+  "paths": "absolute",
+  "version": 3
+}

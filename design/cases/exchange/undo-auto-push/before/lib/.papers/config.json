@@ -1,0 +1,7 @@
+{
+  "auto-push": true,
+  "bibtex": "papers.bib",
+  "filesdir": "files",
+  "pool": "../pool",
+  "version": 3
+}

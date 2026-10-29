@@ -1,0 +1,100 @@
+{
+  "description": "the file field is written as :path:type joined by \";\" only when the files of the entry change; the type is the extension as written; paths follow the paths setting; the same path twice is kept once; the history store is not compared: with absolute paths the bibtex holds the sandbox path, and its pieces depend on it",
+  "sections": [
+    "bibtex.md#5.1",
+    "bibtex.md#5.2",
+    "library.md#settings/table"
+  ],
+  "tests": [
+    "tests/test_spec_bibtex.py::TestFileSyntax::test_writing",
+    "tests/test_spec_bibtex.py::TestFilePaths::test_one_file_however_written"
+  ],
+  "ignore": [
+    "home/data/history/*"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "tag",
+        "e1",
+        "--add",
+        "t"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex",
+        "e1"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "attach",
+        "e1",
+        "extra/x.txt",
+        "--link"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "attach",
+        "e2",
+        "extra/a.tar.gz",
+        "extra/.hidden",
+        "extra/README",
+        "extra/UP.PDF",
+        "extra/x.txt",
+        "extra/x.txt",
+        "--link"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "attach",
+        "e3",
+        "files/a.txt",
+        "--link"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "paths",
+        "absolute"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "paths",
+        "relative"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    }
+  ]
+}

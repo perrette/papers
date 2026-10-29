@@ -1,0 +1,135 @@
+{
+  "description": "undo, redo and restore of another bibtex (--bibtex): the history of the library of that bibtex, or, for a bibtex without library, of its path",
+  "sections": [
+    "history.md#5.1",
+    "library.md#finding-the-library-of-a-command",
+    "history.md#2.5"
+  ],
+  "tests": [
+    "tests/test_spec_library.py::TestFindingTheLibrary::test_bibtex_without_library",
+    "tests/test_spec_history.py::TestSeparateStores::test_bibtex_without_library"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "-C",
+        "a",
+        "tag",
+        "doe2019",
+        "--add",
+        "x"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "b",
+        "tag",
+        "plain2020",
+        "--add",
+        "y"
+      ]
+    },
+    {
+      "argv": [
+        "tag",
+        "--bibtex",
+        "b/papers.bib",
+        "mueller2021",
+        "--add",
+        "z"
+      ]
+    },
+    {
+      "argv": [
+        "undo",
+        "--bibtex",
+        "b/papers.bib"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "b",
+        "history"
+      ]
+    },
+    {
+      "argv": [
+        "restore",
+        "--bibtex",
+        "b/papers.bib",
+        "$STATE3"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "b",
+        "history"
+      ]
+    },
+    {
+      "argv": [
+        "tag",
+        "--bibtex",
+        "lone.bib",
+        "plain2020",
+        "--add",
+        "q"
+      ]
+    },
+    {
+      "argv": [
+        "undo",
+        "--bibtex",
+        "lone.bib"
+      ]
+    },
+    {
+      "argv": [
+        "redo",
+        "--bibtex",
+        "lone.bib"
+      ]
+    },
+    {
+      "argv": [
+        "undo",
+        "--bibtex",
+        "lone.bib",
+        "--dry-run"
+      ]
+    },
+    {
+      "argv": [
+        "undo",
+        "--bibtex",
+        "nosuch.bib"
+      ]
+    },
+    {
+      "argv": [
+        "restore",
+        "--bibtex",
+        "nosuch.bib"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "a",
+        "undo",
+        "--bibtex",
+        "../b/papers.bib"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "a",
+        "history"
+      ]
+    }
+  ]
+}

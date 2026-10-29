@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE1",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers tag --rename to-read reading",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "186be26034ee883affbe6da2076b2a2209b9b169918995402c688fa435d4b837"
+  ],
+  "sha": "186be26034ee883affbe6da2076b2a2209b9b169918995402c688fa435d4b837"
+ },
+ "files": {}
+}

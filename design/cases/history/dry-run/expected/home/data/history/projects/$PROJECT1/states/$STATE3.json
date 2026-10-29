@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE2",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers tag plain2020 --add y",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "672230e686c4b3ce5396f6b72ce70e23c6f76aca3f1b9687c1ffe15525608ef1"
+  ],
+  "sha": "672230e686c4b3ce5396f6b72ce70e23c6f76aca3f1b9687c1ffe15525608ef1"
+ },
+ "files": {}
+}

@@ -1,0 +1,10 @@
+@article{smith2020,
+ author = {Sm{\"i}th, J{\'o}hn and Doe, Jane},
+ doi = {10.1234/abc.2020.1},
+ journal = {Journal of Glaciology},
+ keywords = {ice, to-read, climate/arctic},
+ note = {s2},
+ title = {Cold {Water} and K{\"a}lte: \textit{ice} caps},
+ year = {2020}
+}
+

@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE2",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers edit perrette_2013 --key perrette2013 --keep-old-key",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "52e698a79944f11f7d5f7cc4dd0c938996b6cdb8141ebfdbd6d620d1195ff495"
+  ],
+  "sha": "52e698a79944f11f7d5f7cc4dd0c938996b6cdb8141ebfdbd6d620d1195ff495"
+ },
+ "files": {}
+}

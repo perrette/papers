@@ -1,0 +1,52 @@
+{
+  "description": "list --duplicates: entries that are the same paper (same DOI, or authors and title)",
+  "sections": [
+    "bibtex.md#9.2",
+    "bibtex.md#9.3",
+    "bibtex.md#9.5"
+  ],
+  "tests": [
+    "tests/test_duplicate_equivalence.py::TestEquivalence::test_find_duplicates",
+    "tests/test_spec_bibtex.py::TestIdentifiersOfAnEntry::test_authors_and_title"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "list",
+        "--duplicates"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--duplicates",
+        "--by",
+        "key"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--duplicates",
+        "--by",
+        "doi"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--duplicates",
+        "--by",
+        "title"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--duplicates",
+        "--invert",
+        "-K"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,8 @@
+usage: papers edit [-h] [-v] [--debug] [--color {auto,always,never}]
+                   [--porcelain] [--filesdir FILESDIR] [--bibtex BIBTEX]
+                   [--dry-run] [--from FILE]
+                   [--format {bibtex,ris,csl-json,bibjson}]
+                   [--set FIELD=VALUE [FIELD=VALUE ...]]
+                   [--unset FIELD [FIELD ...]] [--key NEW] [--keep-old-key]
+                   KEY [KEY ...]
+papers edit: error: --keep-old-key goes with --key NEW

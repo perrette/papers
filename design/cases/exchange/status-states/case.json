@@ -1,0 +1,174 @@
+{
+  "description": "papers status in a shallow library: not pulled from yet, in sync, pool changed, library changed, both changed, missing and not a library",
+  "sections": [
+    "exchange.md#14",
+    "exchange.md#14.1",
+    "exchange.md#14.3"
+  ],
+  "tests": [
+    "tests/test_pools.py::TestStatus::test_status_not_pulled_in_full",
+    "tests/test_pools.py::TestStatus::test_status",
+    "tests/test_pools.py::TestStatus::test_pool_changed"
+  ],
+  "ignore": [
+    "home/data/history/*"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "status"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "pull",
+        "--all"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "status"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "pool",
+        "edit",
+        "smith2020",
+        "--set",
+        "note=pool"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "status"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "edit",
+        "jones2019",
+        "--set",
+        "note=library"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "status"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "pull"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "status"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "push"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "status"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "pool",
+        "edit",
+        "jones2019",
+        "--set",
+        "note=other note"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "edit",
+        "jones2019",
+        "--set",
+        "note=library note"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "status"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lost",
+        "status"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "bare",
+        "status"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "pool",
+        "rm",
+        "brown2021"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "status"
+      ],
+      "wait": 1.1
+    }
+  ]
+}

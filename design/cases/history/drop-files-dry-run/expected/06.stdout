@@ -1,0 +1,4 @@
+> $STATE3 papers rm mueller2021 --delete-files ($TIME)  [0 KB of deleted files]
+  $STATE2 papers rm doe2019 --delete-files ($TIME)  [0 KB of deleted files]
+  $STATE1 the library before its first recorded command ($TIME)
+history: $DATA/history, 0.0 MB (up to 500 MB: the history-size setting; deleted files kept)

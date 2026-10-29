@@ -1,0 +1,39 @@
+{
+  "description": "the legacy file .papers/origin.bib of earlier builds is read and split into one file per pool when a command loads the records",
+  "sections": [
+    "exchange.md#3.8"
+  ],
+  "tests": [
+    "tests/test_spec_exchange.py::TestLegacyOrigin::test_origin_dir_wins",
+    "tests/test_pools.py::TestOrigin::test_migration"
+  ],
+  "ignore": [
+    "home/data/history/*"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "pull",
+        "--check"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "pull"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "status"
+      ],
+      "wait": 1.1
+    }
+  ]
+}

@@ -1,0 +1,5 @@
+usage: papers file rm [-h] [-v] [--debug] [--color {auto,always,never}]
+                      [--porcelain] [--filesdir FILESDIR] [--bibtex BIBTEX]
+                      [--dry-run] [-k KEY [KEY ...]] [-r]
+                      [FILE ...]
+papers file rm: error: papers file rm FILE... [-r] [--key KEY...]

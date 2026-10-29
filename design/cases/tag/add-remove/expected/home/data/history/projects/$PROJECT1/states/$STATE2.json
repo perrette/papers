@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE1",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers tag perrette2013 smith2020 --add to-read climate/amoc/tipping --porcelain",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "4cd004619f95cb6d6a9aa14356453cf4fc2d323cba67e52fb28c1eaed0650446"
+  ],
+  "sha": "4cd004619f95cb6d6a9aa14356453cf4fc2d323cba67e52fb28c1eaed0650446"
+ },
+ "files": {}
+}

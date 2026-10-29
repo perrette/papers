@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE3",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers edit perrette2013 --set note=found by key",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "fba6ab0fadda9fa132afa42a297b65b5422647cafac1a84ef1841e91ccafc75f"
+  ],
+  "sha": "fba6ab0fadda9fa132afa42a297b65b5422647cafac1a84ef1841e91ccafc75f"
+ },
+ "files": {}
+}

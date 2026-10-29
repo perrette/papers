@@ -1,0 +1,8 @@
+{
+  "bibtex": "papers.bib",
+  "editor": "sed -i.bak s/note\\ =\\ {x}/note\\ =\\ {}/",
+  "filesdir": "files",
+  "id": "$PROJECT1",
+  "pool": "none",
+  "version": 3
+}

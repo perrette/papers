@@ -1,0 +1,66 @@
+{
+  "description": "commands that touch files write their checksums to .papers/files.json ({\"files\": {path: sha256}}); the checksums setting turns it off; file checksum writes them for all the entries",
+  "sections": [
+    "history.md#10",
+    "bibtex.md#5.1"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "file",
+        "checksum"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "attach",
+        "plain2020",
+        "new.txt",
+        "--copy"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "checksums",
+        "false"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "attach",
+        "mueller2021",
+        "new2.txt",
+        "--copy"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "checksums",
+        "true"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "checksum"
+      ]
+    },
+    {
+      "argv": [
+        "rm",
+        "doe2019",
+        "--keep-files"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "checksum"
+      ]
+    }
+  ]
+}

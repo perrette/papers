@@ -1,0 +1,26 @@
+{
+ "parent": "$STATE7",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers list c2022 --add-files x5.txt --copy",
+ "ops": [
+  {
+   "op": "copied",
+   "src": "x5.txt",
+   "dst": "files/lee_2020_title-of-c2022--x5.txt",
+   "checksum": "e7f8f904c1658f19cb3fc30a63d4bcee18325e28e6fe6917e3177ef3fc24426a"
+  }
+ ],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "5ac9b24bc7bc25c0e5d0242f93597c7ee7356020abef4f73163601a989aeefc8"
+  ],
+  "sha": "5ac9b24bc7bc25c0e5d0242f93597c7ee7356020abef4f73163601a989aeefc8"
+ },
+ "files": {
+  ".papers/files.json": [
+   "5a4cc6c9e24c936849d827343266c084841e4abafc020a0f36deb6b023e8e7e7"
+  ]
+ }
+}

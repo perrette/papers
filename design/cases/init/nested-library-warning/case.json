@@ -1,0 +1,17 @@
+{
+  "description": "init inside a library warns",
+  "sections": [
+    "library.md#finding-the-library-of-a-command"
+  ],
+  "tests": [
+    "tests/test_library_cmds.py::TestOtherCommands::test_init_in_a_library"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "init",
+        "sub"
+      ]
+    }
+  ]
+}

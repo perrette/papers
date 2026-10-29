@@ -1,0 +1,74 @@
+{
+  "description": "extract of a directory needs -R, which finds the PDF files below it (any case of the suffix) in sorted order; the paths are printed as pathlib writes them",
+  "sections": [
+    "formats.md#7.3"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "extract",
+        "--doi-only",
+        "pdfs"
+      ],
+      "contract": [
+        "stdout"
+      ]
+    },
+    {
+      "argv": [
+        "extract",
+        "--doi-only",
+        "-R",
+        "pdfs"
+      ],
+      "contract": [
+        "stdout"
+      ]
+    },
+    {
+      "argv": [
+        "extract",
+        "--doi-only",
+        "-R",
+        "./pdfs/"
+      ],
+      "contract": [
+        "stdout"
+      ]
+    },
+    {
+      "argv": [
+        "extract",
+        "--doi-only",
+        "-R",
+        "pdfs/sub"
+      ],
+      "contract": [
+        "stdout"
+      ]
+    },
+    {
+      "argv": [
+        "extract",
+        "--doi-only",
+        "-R",
+        "empty"
+      ],
+      "contract": [
+        "stdout"
+      ]
+    },
+    {
+      "argv": [
+        "extract",
+        "--doi-only",
+        "-R",
+        "pdfs/b.pdf",
+        "empty"
+      ],
+      "contract": [
+        "stdout"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+@article{doe2020,
+ author = {Doe, Jane},
+ file = {:files/doe_2020_title-of-doe2020.txt:txt;:files/doe_2020_title-of-doe2020--y.txt:txt},
+ title = {Title of doe2020},
+ year = {2020}
+}
+
+@article{lee2022,
+ author = {Lee, Ann},
+ file = {:sub/w.txt:txt},
+ title = {Title of lee2022},
+ year = {2020}
+}
+
+@article{lee2023,
+ author = {Lee, Ann},
+ title = {Title of lee2023},
+ year = {2020}
+}
+
+@article{roe2021,
+ author = {Roe, Richard},
+ file = {:files/roe.txt:txt;:files/roe_2020_title-of-roe2021--z.pdf:pdf;:files/roe_2020_title-of-roe2021--v.txt:txt},
+ title = {Title of roe2021},
+ year = {2020}
+}

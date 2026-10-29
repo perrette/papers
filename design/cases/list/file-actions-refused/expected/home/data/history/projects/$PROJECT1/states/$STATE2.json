@@ -1,0 +1,19 @@
+{
+ "parent": "$STATE1",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers list c2022 --attach x1.txt",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "fba242abc34616522df7dd0f1b67f16e4ea95006718c300687e406ca78dcd691"
+  ],
+  "sha": "fba242abc34616522df7dd0f1b67f16e4ea95006718c300687e406ca78dcd691"
+ },
+ "files": {
+  ".papers/files.json": [
+   "f188c5eee85f9ef10130fa7b729154ffd1b1de64f005fe5cddc2aa0e06570d7f"
+  ]
+ }
+}

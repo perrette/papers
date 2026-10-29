@@ -1,0 +1,23 @@
+@article{e1,
+ keywords = {Climate, zeta, ocean/deep},
+ title = {One},
+ year = {2001}
+}
+
+@article{e2,
+ keywords = {Climate, zeta, ocean/shallow},
+ title = {Two},
+ year = {2002}
+}
+
+@article{e3,
+ keywords = {alpha, ocean/deep},
+ title = {Three},
+ year = {2003}
+}
+
+@article{e4,
+ keywords = {Alpha, Ocean},
+ title = {Four},
+ year = {2004}
+}

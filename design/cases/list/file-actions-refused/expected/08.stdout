@@ -1,0 +1,23 @@
+@article{a2020,
+ author = {Doe, Jane},
+ file = {:loose/a.txt:txt;:files/gone.txt:txt},
+ keywords = {x},
+ title = {Title of a2020},
+ year = {2020}
+}
+
+@article{b2021,
+ author = {Roe, R},
+ file = {:loose/b.txt:txt},
+ keywords = {x},
+ title = {Title of b2021},
+ year = {2020}
+}
+
+@article{c2022,
+ author = {Lee, A},
+ file = {:lost/c.pdf:pdf;:x1.txt:txt},
+ title = {Title of c2022},
+ year = {2020}
+}
+

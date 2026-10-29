@@ -1,0 +1,36 @@
+{
+  "description": "list --format bibjson: type and id first, then the fields as they are (raw values, LaTeX kept); author and editor as arrays of names, journal as an object, file as an array of paths (absolute); the count in metadata",
+  "sections": [
+    "formats.md#5.1",
+    "formats.md#8",
+    "formats.md#6"
+  ],
+  "tests": [
+    "tests/test_formats.py::TestBibJSON::test_field_named_as_a_bibjson_key"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibjson"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibjson",
+        "bk"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibjson",
+        "nosuch"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE1",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers edit doe2019 --set note=still works --porcelain",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "557a843311e469fda86c06afb574c298e40c767a950674b20f6dc29fe0897d32"
+  ],
+  "sha": "557a843311e469fda86c06afb574c298e40c767a950674b20f6dc29fe0897d32"
+ },
+ "files": {}
+}

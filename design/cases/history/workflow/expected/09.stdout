@@ -1,0 +1,6 @@
+  $STATE5 papers rm smith2020 ($TIME)  (undone: `papers redo`)
+  $STATE4 papers edit doe2019 --set note=n ($TIME)  (undone: `papers redo`)
+  $STATE3 papers tag doe2019 --add x ($TIME)  (undone: `papers redo`)
+  $STATE2 papers add import/refs.bib ($TIME)  (undone: `papers redo`)
+> $STATE1 the library before its first recorded command ($TIME)
+history: $DATA/history, 0.0 MB (up to 500 MB: the history-size setting; deleted files kept)

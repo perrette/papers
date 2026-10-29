@@ -1,0 +1,105 @@
+{
+  "description": "undo -n N and redo -n N with N below 1 (0, -1) are a usage error, exit status 2, and nothing is read or changed (no history is made in a library that has none); a N larger than the steps to undo (to redo) is an error that says how many there are",
+  "sections": [
+    "history.md#6.2"
+  ],
+  "tests": [
+    "tests/test_spec_history.py::TestCommands::test_steps_out_of_range"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "undo",
+        "-n",
+        "0"
+      ]
+    },
+    {
+      "argv": [
+        "redo",
+        "-n",
+        "-1"
+      ]
+    },
+    {
+      "argv": [
+        "undo",
+        "-n",
+        "0",
+        "--dry-run"
+      ]
+    },
+    {
+      "argv": [
+        "tag",
+        "doe2019",
+        "--add",
+        "x"
+      ]
+    },
+    {
+      "argv": [
+        "undo",
+        "-n",
+        "0"
+      ]
+    },
+    {
+      "argv": [
+        "redo",
+        "-n",
+        "0"
+      ]
+    },
+    {
+      "argv": [
+        "undo",
+        "-n",
+        "-2"
+      ]
+    },
+    {
+      "argv": [
+        "history"
+      ]
+    },
+    {
+      "argv": [
+        "undo",
+        "-n",
+        "2"
+      ]
+    },
+    {
+      "argv": [
+        "redo",
+        "-n",
+        "2"
+      ]
+    },
+    {
+      "argv": [
+        "undo"
+      ]
+    },
+    {
+      "argv": [
+        "redo",
+        "-n",
+        "2"
+      ]
+    },
+    {
+      "argv": [
+        "redo",
+        "-n",
+        "1"
+      ]
+    },
+    {
+      "argv": [
+        "history"
+      ]
+    }
+  ]
+}

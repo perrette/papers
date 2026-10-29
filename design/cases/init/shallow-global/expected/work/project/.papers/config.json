@@ -1,0 +1,7 @@
+{
+  "bibtex": "papers.bib",
+  "filesdir": "files",
+  "paths": "relative",
+  "pool": "$WORK/shared",
+  "version": 3
+}

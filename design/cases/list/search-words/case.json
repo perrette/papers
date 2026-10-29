@@ -1,0 +1,66 @@
+{
+  "description": "words match all the entries that have all of them (--any: one of them)",
+  "sections": [
+    "formats.md#6",
+    "formats.md#6.1"
+  ],
+  "tests": [
+    "tests/test_list.py::SearchTest::test_list_fullsearch"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "list",
+        "perrette",
+        "scaling",
+        "approach",
+        "sea",
+        "level"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "perrette",
+        "nothing"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "perrette",
+        "nothing",
+        "--any"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "PERRETTE"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--invert",
+        "perrette"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--invert",
+        "perrette",
+        "bretreger",
+        "--any"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "doi",
+        "10.1234"
+      ]
+    }
+  ]
+}

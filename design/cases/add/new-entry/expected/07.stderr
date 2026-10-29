@@ -1,0 +1,2 @@
+papers: error: doe_roe2023: already in library as doe_roe2023 (same title and authors; 1 conflict)
+Pass --on-duplicate with one of: ask, keep, update, skip (ask is the default in a terminal), see `papers add --help`.

@@ -1,0 +1,88 @@
+{
+  "description": "config --global lists, sets and unsets the settings of the machine",
+  "sections": [
+    "library.md#the-machine-configuration/format",
+    "library.md#settings/table"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "config",
+        "--global"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "--global",
+        "editor",
+        "vim"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "--global",
+        "name.template",
+        "{author}_{year}"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "--global",
+        "history-size",
+        "50"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "--global",
+        "keep-deleted-files",
+        "false"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "--global"
+      ]
+    },
+    {
+      "argv": [
+        "config"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "--global",
+        "--unset",
+        "editor"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "--global"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "--global",
+        "bibtex",
+        "x.bib"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "--global",
+        "pool",
+        "none"
+      ]
+    }
+  ]
+}

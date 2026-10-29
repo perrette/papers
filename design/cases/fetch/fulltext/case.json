@@ -1,0 +1,44 @@
+{
+  "description": "the bibtex of a crossref search by words: the best match, the words given as several arguments",
+  "sections": [
+    "formats.md#7.3"
+  ],
+  "requires": [
+    "network"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "fetch",
+        "Reconstructions of the 1900-2015 Greenland ice sheet surface mass balance using the regional climate MAR model"
+      ],
+      "contract": [
+        "stdout"
+      ]
+    },
+    {
+      "argv": [
+        "fetch",
+        "Reconstructions",
+        "of",
+        "the",
+        "1900-2015",
+        "Greenland",
+        "ice",
+        "sheet",
+        "surface",
+        "mass",
+        "balance",
+        "using",
+        "the",
+        "regional",
+        "climate",
+        "MAR",
+        "model"
+      ],
+      "contract": [
+        "stdout"
+      ]
+    }
+  ]
+}

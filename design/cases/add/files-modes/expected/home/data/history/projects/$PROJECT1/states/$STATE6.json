@@ -1,0 +1,26 @@
+{
+ "parent": "$STATE5",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers add in5.bib",
+ "ops": [
+  {
+   "op": "moved",
+   "src": "files/5.txt",
+   "dst": "files/doe_2019_entry-5.txt",
+   "checksum": "ac169f9fb7cb48d431466d7b3bf2dc3e1d2e7ad6630f6b767a1ac1801c496b35"
+  }
+ ],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "de248c94793a59eee99ccb0c75941ca1352fa55b4bf83f907e373ec7fbef22b7"
+  ],
+  "sha": "de248c94793a59eee99ccb0c75941ca1352fa55b4bf83f907e373ec7fbef22b7"
+ },
+ "files": {
+  ".papers/files.json": [
+   "58237664fc124fc7a6609931bf680c79fc32c2dc6197ece1b80e25d1a36ea123"
+  ]
+ }
+}

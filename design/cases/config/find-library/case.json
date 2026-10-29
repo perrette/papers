@@ -1,0 +1,98 @@
+{
+  "description": "a command finds its library: -C (several combine, each relative to the previous), the search upwards from the current directory, the nearest library wins, the default library of the machine when there is none",
+  "sections": [
+    "library.md#finding-the-library-of-a-command"
+  ],
+  "tests": [
+    "tests/test_spec_library.py::TestFindingTheLibrary::test_first_library_upwards"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "-C",
+        "outer",
+        "config",
+        "bibtex"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "outer",
+        "-C",
+        "inner",
+        "config",
+        "bibtex"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "outer/inner",
+        "config",
+        "bibtex"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "bibtex"
+      ],
+      "cwd": "outer/inner/deep"
+    },
+    {
+      "argv": [
+        "-C",
+        "..",
+        "config",
+        "bibtex"
+      ],
+      "cwd": "outer/inner/deep"
+    },
+    {
+      "argv": [
+        "-C",
+        "$WORK/outer",
+        "config",
+        "bibtex"
+      ],
+      "cwd": "outer/inner"
+    },
+    {
+      "argv": [
+        "list",
+        "-K"
+      ],
+      "cwd": "outer/plain"
+    },
+    {
+      "argv": [
+        "list",
+        "-K"
+      ],
+      "cwd": "elsewhere"
+    },
+    {
+      "argv": [
+        "config",
+        "--global",
+        "default",
+        "$WORK/outer"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-K"
+      ],
+      "cwd": "elsewhere"
+    },
+    {
+      "argv": [
+        "-C",
+        "nodir",
+        "list"
+      ]
+    }
+  ]
+}

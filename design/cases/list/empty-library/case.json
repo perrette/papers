@@ -1,0 +1,42 @@
+{
+  "description": "list of a library without entries",
+  "sections": [
+    "formats.md#6",
+    "formats.md#8"
+  ],
+  "tests": [
+    "tests/test_spec_formats.py::TestListOutput::test_no_entry"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "list"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "csl-json"
+      ]
+    },
+    {
+      "argv": [
+        "tag"
+      ]
+    }
+  ]
+}

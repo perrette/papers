@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE2",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers edit 10.1234/abc.2020.1 --set note=by doi",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "38958c7bacfb20e775236194df94497542dee74ef67df240b5b65addada88b3c"
+  ],
+  "sha": "38958c7bacfb20e775236194df94497542dee74ef67df240b5b65addada88b3c"
+ },
+ "files": {}
+}

@@ -1,0 +1,4 @@
+a2020: removed the link to $WORK/files/a2.txt
+a2020: removed the link to $WORK/out/o.txt
+delete $WORK/files/a2.txt (kept in the history: undo restores it)
+delete $WORK/out/o.txt (kept in the history: undo restores it)

@@ -1,0 +1,32 @@
+{
+ "parent": "$STATE1",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers file fix --search search b2021",
+ "ops": [
+  {
+   "op": "copied",
+   "src": "search/b.pdf",
+   "dst": "files/roe_2020_title-of-b2021.pdf",
+   "checksum": "0263829989b6fd954f72baaf2fc64bc2e2f01d692d4de72986ea808f6e99813f"
+  },
+  {
+   "op": "copied",
+   "src": "search/b2.txt",
+   "dst": "files/roe_2020_title-of-b2021--b2.txt",
+   "checksum": "65f653bec9d0d1be6a363cb500e002c0165efdc82ed058f38b786f05dd19d87f"
+  }
+ ],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "d8e612eb35051014d34285a3bed84b29ab197857ee12674f150e520a73173bdf"
+  ],
+  "sha": "d8e612eb35051014d34285a3bed84b29ab197857ee12674f150e520a73173bdf"
+ },
+ "files": {
+  ".papers/files.json": [
+   "c901850169fd24d58798f561a151c86f61202a799d33257cbf4b991c518a0911"
+  ]
+ }
+}

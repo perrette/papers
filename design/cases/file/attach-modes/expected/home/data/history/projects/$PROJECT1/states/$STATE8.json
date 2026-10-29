@@ -1,0 +1,19 @@
+{
+ "parent": "$STATE7",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers file attach roe2021 p2.txt",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "8b4692fff14a0fca3a4caf59bc0b4899cb8e624bfc209210e847fa637f43b3c1"
+  ],
+  "sha": "8b4692fff14a0fca3a4caf59bc0b4899cb8e624bfc209210e847fa637f43b3c1"
+ },
+ "files": {
+  ".papers/files.json": [
+   "e32fe20dcc5ad89d2546575ddbd39dec5cb7e81772864fae2efbcbe5b566202c"
+  ]
+ }
+}

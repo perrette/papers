@@ -1,0 +1,19 @@
+{
+ "parent": "$STATE1",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers add import/dup.bib --on-duplicate ask",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "6ed40d189ad157fc32d08dab8684c28f7830dbfc2d263baf28de56475f006a74"
+  ],
+  "sha": "6ed40d189ad157fc32d08dab8684c28f7830dbfc2d263baf28de56475f006a74"
+ },
+ "files": {
+  ".papers/distinct.json": [
+   "c5b61869deb66d11e9908dcd981ff49374cf463d9bcb4e168f929c1d1aa60eff"
+  ]
+ }
+}

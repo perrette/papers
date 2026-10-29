@@ -1,0 +1,74 @@
+{
+  "description": "list --attach and --rename with a name template (the setting) that leaves the files directory, or has an unknown or invalid placeholder: an error, the exit status 1; the new link of --attach is kept and saved",
+  "sections": [
+    "library.md#path-safety",
+    "library.md#name-and-key-templates/file-names",
+    "formats.md#7.3"
+  ],
+  "tests": [
+    "tests/test_spec_formats.py::TestExitCodes::test_refused_rename",
+    "tests/test_spec_formats.py::TestExitCodes::test_refused_attach"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "config",
+        "name.template",
+        "../{author}"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "c2022",
+        "--attach",
+        "x1.txt"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--tag",
+        "x",
+        "--rename"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "name.template",
+        "{nosuch}"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "a2020",
+        "--rename"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "name.template",
+        "{year.real}"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--tag",
+        "x",
+        "--rename",
+        "--keep-source"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    }
+  ]
+}

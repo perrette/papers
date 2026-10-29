@@ -1,0 +1,26 @@
+{
+ "parent": "$STATE4",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers file mv files/sub other",
+ "ops": [
+  {
+   "op": "moved",
+   "src": "files/sub",
+   "dst": "other/sub",
+   "checksum": null
+  }
+ ],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "e1a8dfa6dcbb851ef040e247eb1f109e5d4cde9366f97a5642ed81f3e406f925"
+  ],
+  "sha": "e1a8dfa6dcbb851ef040e247eb1f109e5d4cde9366f97a5642ed81f3e406f925"
+ },
+ "files": {
+  ".papers/files.json": [
+   "d810671188794a045c3413f01c071409cb6a16b904ce8cf9365941a785361914"
+  ]
+ }
+}

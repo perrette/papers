@@ -1,0 +1,14 @@
+@article{b,
+ author = {Doe, Jane},
+ file = {:ext/b1.txt:txt},
+ title = {B},
+ year = {2019}
+}
+
+@article{c,
+ author = {Doe, Jane},
+ file = {:files/c1.txt:txt;:files/s.txt:txt},
+ title = {C},
+ year = {2019}
+}
+

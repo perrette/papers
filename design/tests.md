@@ -6,6 +6,10 @@ after each command, so a second implementation can be checked against
 the same cases. Files `tests/test_spec_<file>.py` hold the tests written
 for the specification. A section marked free has none.
 
+The cases of [cases/](cases/README.md) are the language-neutral side of these
+tests: each names the sections it exercises and, in `tests`, the tests below
+that check the same thing.
+
 ## library.md
 
 ### Layout

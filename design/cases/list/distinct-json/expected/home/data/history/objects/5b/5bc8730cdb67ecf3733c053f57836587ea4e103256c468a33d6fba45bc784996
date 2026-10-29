@@ -1,0 +1,16 @@
+{
+ "distinct": [
+  [
+   {
+    "authortitle": "doe|same doi, written differently",
+    "doi": "10.1000/same.1"
+   },
+   {
+    "authortitle": "doe|same doi with a url prefix",
+    "doi": "10.1000/same.1"
+   }
+  ],
+  "not a pair",
+  [{"title": "only one side"}]
+ ]
+}

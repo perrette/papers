@@ -1,0 +1,6 @@
+pool none: the library becomes self-contained, with its own files
+copy 1 file of the pool into files (hard links when possible); the library will link to the copies, and the pool keeps its files.
+Modified -> smith2020: A title of a paper (doi:10.1000/abc, file:1)
+    $WORK/pool/files/smith_doe_2020_a-title.txt --> copied to files/smith_and_doe_2020_a-title-of-a-paper.txt
+pool = none (in $WORK/lib/.papers/config.json)
+the library is now self-contained: its own entries and files

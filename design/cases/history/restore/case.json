@@ -1,0 +1,100 @@
+{
+  "description": "restore STEP brings the library to a step (named by its identifier or the start of it); a new change starts a new line",
+  "sections": [
+    "history.md#6.2",
+    "history.md#6.3",
+    "history.md#2.5"
+  ],
+  "tests": [
+    "tests/test_spec_history.py::TestCommands::test_restore_redo_list",
+    "tests/test_spec_history.py::TestCommands::test_nothing_to_restore",
+    "tests/test_journal.py::TestSeveralSteps::test_restore_state"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "add",
+        "new.bib"
+      ]
+    },
+    {
+      "argv": [
+        "tag",
+        "doe2019",
+        "--add",
+        "x"
+      ]
+    },
+    {
+      "argv": [
+        "rm",
+        "bretreger1978"
+      ]
+    },
+    {
+      "argv": [
+        "restore",
+        "$STATE2"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "restore",
+        "$STATE1"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "history"
+      ]
+    },
+    {
+      "argv": [
+        "edit",
+        "doe2019",
+        "--set",
+        "year=2001"
+      ]
+    },
+    {
+      "argv": [
+        "history"
+      ]
+    },
+    {
+      "argv": [
+        "restore",
+        "$STATE4"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "restore",
+        "99"
+      ]
+    },
+    {
+      "argv": [
+        "restore"
+      ]
+    }
+  ]
+}

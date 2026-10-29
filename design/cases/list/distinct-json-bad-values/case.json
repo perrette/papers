@@ -1,0 +1,98 @@
+{
+  "description": "a distinct.json that is not an object, whose distinct is not a list, that is not valid JSON or UTF-8 is ignored with one warning (a missing file, or one without distinct, is no pairs and no warning); the elements of distinct that are not a pair of objects are ignored, the other pairs count",
+  "sections": [
+    "bibtex.md#9.4",
+    "bibtex.md#9.3"
+  ],
+  "tests": [
+    "tests/test_spec_bibtex.py::TestDistinctFile::test_reading_bad_values",
+    "tests/test_merge_dup_unit.py::TestDuplicate::test_distinct_read_once"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "-C",
+        "a",
+        "list",
+        "--duplicates",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "b",
+        "list",
+        "--duplicates",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "c",
+        "list",
+        "--duplicates",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "d",
+        "list",
+        "--duplicates",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "e",
+        "list",
+        "--duplicates",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "f",
+        "list",
+        "--duplicates",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "g",
+        "list",
+        "--duplicates",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "a",
+        "check",
+        "--duplicates",
+        "--on-duplicate",
+        "skip",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "d",
+        "check",
+        "--duplicates",
+        "--on-duplicate",
+        "skip",
+        "--porcelain"
+      ]
+    }
+  ]
+}

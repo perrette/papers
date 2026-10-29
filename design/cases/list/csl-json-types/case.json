@@ -1,0 +1,26 @@
+{
+  "description": "list --format csl-json: the type of each bibtex type, the keys in their order, names in parts, dates, pages, keywords, the DOI cleaned, LaTeX decoded; fields with no CSL key are left out",
+  "sections": [
+    "formats.md#3.1",
+    "formats.md#3.2",
+    "formats.md#2.1",
+    "formats.md#2.2",
+    "formats.md#2.4",
+    "formats.md#2.5",
+    "formats.md#2.6",
+    "formats.md#8"
+  ],
+  "tests": [
+    "tests/test_formats.py::TestCSL::test_types",
+    "tests/test_spec_formats.py::TestCSLExportFields::test_key_order"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "list",
+        "--format",
+        "csl-json"
+      ]
+    }
+  ]
+}

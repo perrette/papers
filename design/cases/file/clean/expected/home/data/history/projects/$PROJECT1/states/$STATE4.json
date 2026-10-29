@@ -1,0 +1,24 @@
+{
+ "parent": "$STATE3",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers file clean -y",
+ "ops": [
+  {
+   "op": "trashed",
+   "src": "files/sub/s2.txt",
+   "dst": null,
+   "checksum": "b4a7f47b7504602ce10b55a6c40b1758cdd716f0533a594fa426f26418b7d1eb"
+  }
+ ],
+ "deleted": [
+  "b4a7f47b7504602ce10b55a6c40b1758cdd716f0533a594fa426f26418b7d1eb"
+ ],
+ "bibtex": {
+  "pieces": [
+   "437284cca32ac4116ee29ca48f86dd8011fee3bd1c3bb48984851c8dec4450e6"
+  ],
+  "sha": "437284cca32ac4116ee29ca48f86dd8011fee3bd1c3bb48984851c8dec4450e6"
+ },
+ "files": {}
+}
