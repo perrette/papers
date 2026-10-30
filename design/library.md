@@ -869,9 +869,13 @@ names above). `--missing` takes the entries without PDF.
 - A `file fetch` of more than one entry (`--missing`, or several KEYs;
   not with `--dry-run` or `--porcelain`) prints a summary at the end: the
   PDFs attached by version, the entries repaired from a local file (not
-  downloaded), those without PDF, and the links to open in a browser of
-  the entries without PDF and of those whose published version was
-  refused.
+  downloaded), those that had the PDF already, those without PDF, and the
+  links to open in a browser of the entries without PDF and of those that
+  got an accepted manuscript or a submitted version attached after their
+  published version was refused. Each entry is counted once for its main
+  PDF: an entry whose PDF found is not attached (a file of the entry has
+  its content, or the machine's cache says so) had the PDF already, and
+  its refused published links are not listed.
 
 **Free**: the messages (`KEY: FILE (published version, from HOST)`,
 `KEY: FILE (accepted manuscript, from HOST; the published version was

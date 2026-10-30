@@ -769,7 +769,7 @@ def fetch_entry_pdfs(biblio, config, pools, entries, mode, least='any', suppleme
     summary = summary or FetchSummary()
     library = LibraryChecksums(biblio, config)
     failed = 0
-    plans = []  # (entry, [Found])
+    plans = []  # (entry, [Found], the summary line of a refused published version or None)
     for e in entries:
         main = again or (not has_pdf(biblio, e) and id(e) not in repaired)
         if not main and id(e) not in repaired:
@@ -790,36 +790,40 @@ def fetch_entry_pdfs(biblio, config, pools, entries, mode, least='any', suppleme
             failed += not _dry_run_lines(e, search, local, main, supplements)
             continue
         found = []
+        refused = None
         if main:
             try:
                 found.append(freepdf.fetch_pdf(search, local))
                 if found[-1].refused:
-                    summary.browser.append((e.key, list(found[-1].refused), 'published version refused; '
-                                            f'{freepdf.VERSION_NAMES[found[-1].link.version]} found'))
+                    # in the order of the entries; left out below if the PDF is not attached
+                    refused = (e.key, list(found[-1].refused), 'published version refused; '
+                               f'{freepdf.VERSION_NAMES[found[-1].link.version]} found')
+                    summary.browser.append(refused)
             except freepdf.NoPDF as error:
                 logger.error(f'{e.key}: {error}')
                 summary.browser.append((e.key, error.links, 'no PDF'))
                 failed += 1
         if supplements:
             found += freepdf.fetch_supplements(search, local)
-        plans.append((e, found))
+        plans.append((e, found, refused))
 
     # the downloads are done: the files are attached
-    for e, found in plans:
+    for e, found, refused in plans:
         new = []
         for f in found:
             if f.how == 'has':
                 print(f'{e.key}: already has {_show(f.path)} (from {f.link.host})')
-                summary.had += f.link.version != 'supplement'
+            elif f.how == 'downloaded' and (same := _same_content(f.path, biblio.get_files(e) + [g.path for g in new])):
+                print(f'{e.key}: {f.link.url}: not attached, the entry has the same file: {_show(same)}')
+                freepdf.discard(f.path)
+            else:
+                new.append(f)
                 continue
-            if f.how == 'downloaded':
-                same = _same_content(f.path, biblio.get_files(e) + [g.path for g in new])
-                if same:
-                    print(f'{e.key}: {f.link.url}: not attached, the entry has the same file: {_show(same)}')
-                    summary.had += f.link.version != 'supplement'
-                    freepdf.discard(f.path)
-                    continue
-            new.append(f)
+            # not attached: the entry had the PDF already (counted once, not as refused)
+            if f.link.version != 'supplement':
+                summary.had += 1
+                if refused in summary.browser:
+                    summary.browser.remove(refused)
         if not new:
             continue
         # a file of another entry is linked where it is (shared, as add does); the others are placed

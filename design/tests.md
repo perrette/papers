@@ -360,6 +360,7 @@ that check the same thing.
 - tests/test_file_fetch.py::TestSelection::test_porcelain
 - tests/test_file_fetch.py::TestSelection::test_undo
 - tests/test_file_fetch.py::TestSummary::test_missing
+- tests/test_file_fetch.py::TestSummary::test_refused_but_not_attached
 - tests/test_file_fetch.py::TestSummary::test_not_for_one_entry_or_a_dry_run
 - tests/test_file_fetch.py::TestBrokenLinkRepair::test_found_in_a_search_folder
 - tests/test_file_fetch.py::TestBrokenLinkRepair::test_copied_into_the_files_directory

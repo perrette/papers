@@ -350,6 +350,17 @@ class TestSummary(FetchTest):
                       '  none2020: https://journals.example.org/none.pdf, https://doi.org/10.1000/none (no PDF)\n',
                       out)
 
+    def test_refused_but_not_attached(self):
+        # the accepted manuscript found is the file the entry has: counted once, as had, and not listed as refused
+        Path(self.write('lib', 'files', 'acc.pdf')).write_bytes(pdf_bytes('acc'))
+        self.bib(entry('pub2020', doi='10.1000/pub'), entry('acc2020', 'files/acc.pdf', doi='10.1000/acc'))
+        out = self.out('file fetch pub2020 acc2020 --again')
+        self.assertIn('acc2020: https://repo.example.edu/acc.pdf: not attached, the entry has the same file', out)
+        self.assertIn('summary of 2 entries:\n'
+                      '  1 PDF attached: 1 published version\n'
+                      '  1 had the PDF already\n', out)
+        self.assertNotIn('open in a browser', out.split('summary of')[1])
+
     def test_not_for_one_entry_or_a_dry_run(self):
         self.assertNotIn('summary', self.out('file fetch pub2020'))
         self.assertNotIn('summary', self.out(f'file fetch --missing --dry-run --search {self.path("downloads")}'))
