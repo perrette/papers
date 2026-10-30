@@ -431,6 +431,52 @@ Idea: a machine-local cache of `(device, inode, size, mtime_ns) ->
 sha256` would let `papers file check` and undo skip reading files that did
 not change; it would be free (not shared between implementations).
 
+### 7.1 The file index of the other libraries
+
+`papers/otherlibs.py`, library.md "The file of a broken link", step 4.
+Looking up a checksum in every other library of the machine would read
+each library's `.papers/files.json` at every repair; the file index keeps
+the answer in `<cache dir>/file-index/`:
+
+- `<sha256>.json`: the known copies of a file content: for each, its
+  absolute path, the place (real path of the bibtex) whose `files.json`
+  has it, and the head state of that place in which it was indexed;
+- `seen.json`: for each place, the head state last indexed.
+
+The index is built and updated only by the command that searches it
+(`file check`, `file fix`, `file fetch`), when a broken link has a
+checksum in the library's `files.json`; with nothing to repair, nothing
+is read (0.14 s for `file check` of 2 000 entries, with or without other
+libraries). Libraries do not write it when they save.
+
+At the first search of a command, each place whose head state differs
+from `seen.json` is indexed again: the `files.json` kept in its old and
+new head states (history.md 3.3) are compared, and only the checksum files
+of the paths added, changed or removed are rewritten; the first time, all
+of the place's `files.json`. A state never changes, so a place whose head
+is the same is not read again, and no bibtex is parsed. A lookup opens one
+`<sha256>.json` and checks only the paths listed there: a path that is
+gone, or whose content changed, is skipped and removed from the file; a
+place whose bibtex is gone is dropped from `seen.json` and its copies are
+removed as they are met. Each file is written through a temporary file
+and a rename; two commands updating it at once lose at most an update (the
+last one wins), which comes back when the place changes again.
+
+Measured with `file fix --dry-run` in a library of 2 000 entries with 100
+broken links (50 whose content is in another library), and 5 other
+libraries of N entries, one in ten with a file (seconds; "parsed": a
+search that parses the bibtex of each other library, by checksum and by
+same paper, through the parse cache):
+
+| N | parsed, warm | first search | next search | after one change in one library |
+|---|---|---|---|---|
+| 100 | 0.18 | 0.26 | 0.16 | 0.16 |
+| 5 000 | 1.00 | 0.35 | 0.16 | 0.16 |
+| 10 000 | 4.7 | 0.43 | 0.17 | 0.17 |
+
+The same command without any other library takes 0.15 s. The first search
+writes one file per checksum (2 500 for N = 5 000).
+
 ## 8. Pools and exchanges
 
 `papers/pools.py`, `papers/merge.py`, exchange.md.

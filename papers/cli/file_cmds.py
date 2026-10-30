@@ -262,7 +262,7 @@ def plan_relinks(exchange, entries, search, nameformat, others=(), lookup=None):
     library itself (a file with the checksum that .papers/files.json has
     for the link), the pool of the library (the files of the pool entry,
     see Exchange.pool_relinks, then by checksum), the libraries of --pool
-    PATH (`others`), the other libraries of the machine (see
+    PATH (`others`), the other libraries of the machine by checksum (see
     papers.otherlibs), then the --search folders (by the link's file
     name, else by the template name of the entry). lookup: the
     papers.otherlibs.Lookup of the library (made here by default). Return
@@ -303,11 +303,7 @@ def plan_relinks(exchange, entries, search, nameformat, others=(), lookup=None):
             sources.update(dict.fromkeys(more, source))
             if source == 'pool':
                 by_checksum(lookup.in_pool)
-        rest = [f for f in broken if f not in found]
-        if rest:
-            more, more_sources = lookup.in_others(e, rest, taken())
-            found.update(more)
-            sources.update(more_sources)
+        by_checksum(lookup.in_others)
         plan = (e, found, sources)
         linked = taken()
         rest = [f for f in broken if f not in found]
@@ -720,40 +716,6 @@ def repair_pdf_links(config, biblio, exchange, entries, search_dirs, nameformat,
     return repaired
 
 
-def attach_pdfs_of_same_paper(config, biblio, exchange, entries, mode, lookup):
-    """`papers file fetch --missing`, before it downloads: an entry without
-    any PDF link gets the PDF of an entry of the same paper that has one,
-    in the pool (the pool entry, see Exchange.pool_entry), else in the
-    other libraries of the machine (see papers.otherlibs); placed as `papers
-    file fix` places the files found. --dry-run says what it would attach.
-    Return the ids of the entries that got a PDF: they are not downloaded."""
-    dryrun = papers.config.DRYRUN
-    pool = exchange.pools.pool(quiet=True)
-    attached = set()
-    for e in entries:
-        if any(f.lower().endswith('.pdf') for f in biblio.get_files(e)):
-            continue
-        hit = None
-        if pool is not None:
-            pe, _ = exchange.pool_entry(e, pool)
-            pdf = pe is not None and next((f for f in pool.biblio.get_files(pe)
-                                           if f.lower().endswith('.pdf') and os.path.isfile(f)), None)
-            hit = (pdf, 'pool') if pdf else None
-        hit = hit or lookup.pdf_of_same_paper(e)
-        if hit is None:
-            continue
-        pdf, source = hit
-        attached.add(id(e))
-        if dryrun:
-            print(f"DRYRUN: {e.key}: would attach {_show(pdf)} ({_source(source)})")
-            continue
-        pool_files, kept, copied = _placement({pdf: [pdf]}, {pdf: source}, config.filesdir)
-        attach_files(biblio, e, [pdf], config, mode, exchange.pools.files_dirs(), pool_files=pool_files,
-                     copied=copied, keep=kept)
-        print(f"{e.key}: {_show(biblio.get_files(e)[-1])} ({_source(source)}), not downloaded")
-    return attached
-
-
 def fetch_entry_pdfs(biblio, config, pools, entries, mode, least='any', supplements=False, again=False,
                      repaired=()):
     """`papers file fetch` (also `papers add --fetch-pdf`): find the free PDF
@@ -871,9 +833,6 @@ def file_fetchcmd(parser, o, config):
     lookup = Lookup(config, biblio, pool, [pool.config.bibtex] if pool is not None else [])
     repaired = repair_pdf_links(config, biblio, exchange, entries, o.search or [], nameformat, mode, again=o.again,
                                 lookup=lookup)
-    if o.missing:  # and the entries without PDF link: the PDF of the same paper in another library
-        repaired |= attach_pdfs_of_same_paper(config, biblio, exchange,
-                                              [e for e in entries if id(e) not in repaired], mode, lookup)
     fetched = [e for e in entries if id(e) not in repaired or o.again or o.supplements]
     failed = fetch_entry_pdfs(biblio, config, pools, fetched, mode, least=o.least_version,
                               supplements=o.supplements, again=o.again, repaired=repaired)

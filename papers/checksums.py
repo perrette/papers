@@ -32,12 +32,17 @@ def _base(config):
 
 def parse(text, config):
     "{absolute path: sha256} of the content of a checksums file"
+    return parse_text(text, _base(config))
+
+
+def parse_text(text, base):
+    "{absolute path: sha256} of the content of a checksums file, its paths relative to `base` (the bibtex folder)"
     try:
         stored = json.loads(text).get('files', {})
     except (ValueError, AttributeError):
         return {}
     # stored with / (with \\ by papers on Windows before 3.0.0b6)
-    return {os.path.normpath(os.path.join(_base(config), path.replace('\\', '/'))): digest
+    return {os.path.normpath(os.path.join(base, path.replace('\\', '/'))): digest
             for path, digest in stored.items()}
 
 

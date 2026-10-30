@@ -527,6 +527,25 @@ class Project:
         heads = _read_json(os.path.join(self.dir, 'heads.json'), {})
         return heads if isinstance(heads, dict) else {}
 
+    def head_states(self):
+        """{place: identifier of its state}, read from heads.json alone (no
+        state is read, unless a head is still numbered by an earlier
+        version: see heads)"""
+        heads = _read_json(os.path.join(self.dir, 'heads.json'), {})
+        if not isinstance(heads, dict):
+            return {}
+        if any(not isinstance(h, dict) or not isinstance(h.get('state'), str) for h in heads.values()):
+            heads = self.heads()
+        return {place: h['state'] for place, h in heads.items()
+                if isinstance(h, dict) and isinstance(h.get('state'), str)}
+
+    def read_state(self, n):
+        "the state n, reading its file only (not the other states); None if it cannot be read"
+        if self._states is not None:
+            return self._states.get(n)
+        state = _read_json(self._path(n)) if _STATE_ID.fullmatch(n or '') else None
+        return state if isinstance(state, dict) else None
+
     def head(self, place):
         "{'state': n, 'redo': [...]} of a place, or None"
         head = self.heads().get(place)

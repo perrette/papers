@@ -762,28 +762,27 @@ this order; the first that gives a file for a link decides:
    then by checksum: a file of the pool's `.papers/files.json` that exists
    and has the checksum that the library's `files.json` has for the link;
 3. the libraries of `--pool PATH`, as 2 without the checksums;
-4. the other libraries of the machine: the places of the history store of
-   the machine (`history.md`: the real path of the bibtex of each place
-   in `heads.json`, of the shared store and of the separate ones), except
-   the current library and the libraries of 2 and 3; a place whose bibtex
-   does not exist is skipped without message. The library of a place is
-   the library configuration found from the bibtex's folder upwards whose
-   bibtex is that file, else the bibtex alone (no files directory, no
-   checksums). In the order of the places (sorted by path): first, for
-   each library, a file of its `.papers/files.json` that exists and has
-   the checksum of the link (the message names the entry that links to
-   it, if one does); then, for each library, the entries of the same
-   paper (identity rules of the duplicates: DOI, arXiv id, ISBN, authors
-   and title; SAME only) that link to a file that exists, their files
-   matched to the links as in 2;
+4. the other libraries of the machine, by checksum only: the places of
+   the history store of the machine (`history.md`: the real path of the
+   bibtex of each place in `heads.json`, of the shared store and of the
+   separate ones), except the current library and the libraries of 2 and
+   3; a place whose bibtex does not exist is skipped without message. The
+   checksums of a place are those of the `.papers/files.json` kept in the
+   head state of the place (`history.md` 3.3; none when the state keeps
+   none), not the file on disk: a change made outside papers in another
+   library counts after the next papers command there. A file of these
+   checksums that exists and has the checksum of the link (sha256 read
+   from the file); several: the first by the real path of the place's
+   bibtex, then by the file's path;
 5. the folders of `--search DIR` (by the link's file name, else by the
    entry's template name; several files: none is taken);
 6. the history (`history.md` 6.6).
 
-Each other library is read once per command, and never written: its
-configuration, its bibtex and its `files.json` only; it is not locked,
-migrated, nor recorded in the history. Without checksum for a link in
-`files.json`, the checksum steps are skipped for it.
+Nothing is read in another library but the files of step 4 (their
+content, for the checksum) and nothing is written in it; it is not
+locked, migrated, nor recorded in the history. Without checksum for a link
+in `files.json`, the checksum steps are skipped for it (and step 4 is not
+made).
 
 A file found is placed by the files setting, rule 4: never moved from the
 pool or another library (a `move` is a copy); the `--search` folders are
@@ -791,7 +790,7 @@ the exception with `--move`.
 
 **Free**: the messages (papers: `(same content, in the library)`, `(same
 content as the file of KEY)`, `(from the pool, same content)`, `(found in
-~/path/of/the/library (entry KEY))`).
+~/path/of/the/library)`).
 
 ### The free PDF of an entry
 
@@ -813,14 +812,9 @@ names above). `--missing` takes the entries without PDF.
   are fetched as below. `--dry-run` says what the repair would relink or
   restore, and does not list the links of these entries. `add
   --fetch-pdf` makes no repair.
-- `file fetch --missing`: an entry without any PDF link gets, before any
-  download, the first PDF that exists of an entry of the same paper: the
-  pool entry of the same paper (exchange.md 15.3), else the entries of
-  the same paper of the other libraries of the machine (source 4 of "The
-  file of a broken link", same paper only, no checksum), placed in the
-  same way (`--dry-run`: `would attach`). Without such an entry, it is
-  fetched as below. `file fetch KEY...` (without `--missing`) does not
-  look for it: an entry without PDF link is fetched.
+- `file fetch --missing` makes the same repair, then downloads the other
+  entries without PDF, as `file fetch KEY...` does; an entry without any
+  PDF link is downloaded (no file of another library is looked for).
 - The links are tried in this order, until one gives a PDF (the first 1024
   bytes contain `%PDF`); an HTTP error, a network error or another answer
   moves to the next one:

@@ -112,9 +112,7 @@ The other broken links are reported, and removed with
 DOI or arXiv id, downloads it, and attaches it as `papers file attach` does:
 the PDF goes to the files directory, under the template name of the entry.
 `--missing` takes the entries without PDF (of the KEYs given, or of the whole
-library); an entry without any PDF link first gets the PDF of the same paper
-from the pool or another library of the machine, if one has it (below).
-Only open-access copies are used. The links are tried in this
+library). Only open-access copies are used. The links are tried in this
 order, until one gives a PDF (a file that starts with `%PDF`; a login page or
 a challenge is not one):
 
@@ -156,13 +154,7 @@ Nothing is downloaded or attached twice:
   libraries of the machine, in the folders of `--search DIR` (the option
   can be repeated) or in the history is relinked, and nothing is downloaded
   (`KEY: relinked files/x.pdf (found in ~/Downloads), not downloaded`). The
-  PDF is downloaded only when no file is found;
-- with `--missing`, an entry without any PDF link gets the PDF of an entry of
-  the same paper (same DOI, arXiv identifier, ISBN, or same title and
-  authors) in the pool or in another library of the machine, copied as
-  `papers file fix` copies the files it finds (`KEY: files/x.pdf (found in
-  ~/other/library (entry KEY2)), not downloaded`). `papers file fetch KEY`
-  without `--missing` downloads the PDF of an entry without PDF link. `--dry-run` says what would
+  PDF is downloaded only when no file is found. `--dry-run` says what would
   be relinked. The repair and the downloads are one step: `papers undo`
   undoes both;
 - a downloaded file with the content (sha256) of a file of the entry is not
@@ -293,13 +285,14 @@ looks for each missing file, without parsing any PDF:
    Nothing changes in PATH, and no origin copy is recorded (see
    [Origin copies](pools.md#origin-copies)): only the file links of the
    library change;
-4. in the other libraries of the machine: those that the history knows
-   (`papers history --all` lists them), except the library and its pool.
-   First a file with the checksum of the missing file in their
-   `.papers/files.json`, then the files of their entries of the same paper.
-   A library that moved or was deleted is skipped. Each library is read
-   once, and nothing is written in it
-   (`found in ~/other/library (entry KEY)`);
+4. in the other libraries of the machine, by checksum: those that the
+   history knows (`papers history --all` lists them), except the library
+   and its pool. A file with the checksum that `.papers/files.json` has for
+   the missing file, among the files of their `.papers/files.json` as of
+   their last papers command (a change made there by hand is seen after
+   the next papers command in that library). A library that moved or was
+   deleted is skipped, and nothing is written in the other libraries
+   (`found in ~/other/library`);
 5. in the folders given with `--search DIR` (searched recursively; the
    option can be repeated): a file with the same file name as the broken
    link, else a file named as the library's name template names the entry
