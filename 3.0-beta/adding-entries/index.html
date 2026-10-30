@@ -1371,9 +1371,11 @@ DOI or arXiv id, in the order of the arguments (the other messages go to
 the standard error): <code>downloaded ID VERSION URL FILE</code> (<code>VERSION</code>:
 <code>published</code>, <code>accepted</code> or <code>submitted</code>; <code>URL</code>: the link of the PDF), then
 <code>refused-published ID URL</code> for each link of the published version that was
-refused before an accepted or submitted version was found; when no PDF
-could be downloaded, <code>refused ID URL</code> for each link to open in a browser,
-or <code>failed ID</code> when there is none (not a DOI or arXiv id, the file exists).
+refused before an accepted or submitted version was found; <code>exists ID FILE</code>
+when the file to write exists (it is not replaced; with <code>-o FILE</code>, nothing
+is downloaded); when no PDF could be downloaded, <code>refused ID URL</code> for each
+link to open in a browser, or <code>failed ID</code> when there is none (not a DOI or
+arXiv id).
 The command exits with status 1 when an argument gave no PDF:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>$ papers fetch --pdf 10.5194/bg-8-515-2011 --porcelain 2&gt;/dev/null
 <a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>downloaded 10.5194/bg-8-515-2011 published https://bg.copernicus.org/articles/8/515/2011/bg-8-515-2011.pdf bg-8-515-2011.pdf
