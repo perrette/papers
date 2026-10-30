@@ -645,10 +645,10 @@ class LibraryChecksums:
 
 def _found_line(e, path, found):
     if found.how == 'linked':
-        return f'{e.key}: {_show(path)} ({found.link.describe()}; same file as {found.other}, not downloaded)'
+        return f'{e.key}: {_show(path)} ({found.describe()}; same file as {found.other}, not downloaded)'
     if found.how == 'known':
-        return f'{e.key}: {_show(path)} ({found.link.describe()}; a file of the library, not downloaded)'
-    return f'{e.key}: {_show(path)} ({found.link.describe()})'
+        return f'{e.key}: {_show(path)} ({found.describe()}; a file of the library, not downloaded)'
+    return f'{e.key}: {_show(path)} ({found.describe()})'
 
 
 def _dry_run_lines(e, search, local, main, supplements):
@@ -716,8 +716,43 @@ def repair_pdf_links(config, biblio, exchange, entries, search_dirs, nameformat,
     return repaired
 
 
+class FetchSummary:
+    """what `papers file fetch` did, entry by entry, for the summary printed
+    at the end of a fetch of several entries"""
+
+    def __init__(self):
+        self.attached = {}  # version -> number of main PDFs attached
+        self.supplements = 0
+        self.repaired = 0
+        self.had = 0  # entries that had the PDF already
+        self.browser = []  # (key, links, what): the links to open in a browser
+
+    def print(self, count):
+        lines = [f'summary of {count} entries:']
+        attached = sum(self.attached.values())
+        if attached:
+            lines.append(f'  {attached} PDF{"s" * (attached > 1)} attached: ' + ', '.join(
+                f'{n} {freepdf.VERSION_NAMES[v]}' for v, n in sorted(
+                    self.attached.items(), key=lambda x: freepdf.VERSIONS.index(x[0]))))
+        if self.repaired:
+            lines.append(f'  {self.repaired} found locally (repaired, not downloaded)')
+        if self.had:
+            lines.append(f'  {self.had} had the PDF already')
+        if self.supplements:
+            lines.append(f'  {self.supplements} supplement{"s" * (self.supplements > 1)} attached')
+        failed = sum(1 for _, _, what in self.browser if what == 'no PDF')
+        if failed:
+            lines.append(f'  {failed} without PDF')
+        if len(lines) == 1:
+            lines.append('  nothing attached')
+        links = [f'  {key}: {", ".join(urls)} ({what})' for key, urls, what in self.browser if urls]
+        if links:
+            lines += ['open in a browser:'] + links
+        print('\n'.join(lines))
+
+
 def fetch_entry_pdfs(biblio, config, pools, entries, mode, least='any', supplements=False, again=False,
-                     repaired=()):
+                     repaired=(), summary=None):
     """`papers file fetch` (also `papers add --fetch-pdf`): find the free PDF
     of each entry (see papers.freepdf), and attach it as `papers file attach`
     does (with the files mode `mode`); the library is not saved. The main
@@ -728,9 +763,10 @@ def fetch_entry_pdfs(biblio, config, pools, entries, mode, least='any', suppleme
     attached without downloading it. Return the number of entries whose PDF
     was not found (the errors are reported). repaired: the ids of the
     entries whose broken PDF link repair_pdf_links repaired (no main PDF
-    fetched unless `again`, without message)."""
+    fetched unless `again`, without message). summary: a FetchSummary to fill."""
     from papers.bib import _same_content
     dryrun = papers.config.DRYRUN
+    summary = summary or FetchSummary()
     library = LibraryChecksums(biblio, config)
     failed = 0
     plans = []  # (entry, [Found])
@@ -738,12 +774,14 @@ def fetch_entry_pdfs(biblio, config, pools, entries, mode, least='any', suppleme
         main = again or (not has_pdf(biblio, e) and id(e) not in repaired)
         if not main and id(e) not in repaired:
             print(f'{e.key}: has a PDF already (--again to fetch it anyway)')
+            summary.had += 1
             if not supplements:
                 continue
         doi, arxiv = strip_doi(get_entry_val(e, 'doi', '')), entry_arxiv(e)
         if not doi and not arxiv:
             if main:
                 logger.error(f'{e.key}: no DOI or arXiv id to look for a PDF')
+                summary.browser.append((e.key, [], 'no PDF'))
                 failed += 1
             continue
         search = freepdf.Search(doi, arxiv or None, least)
@@ -755,8 +793,12 @@ def fetch_entry_pdfs(biblio, config, pools, entries, mode, least='any', suppleme
         if main:
             try:
                 found.append(freepdf.fetch_pdf(search, local))
+                if found[-1].refused:
+                    summary.browser.append((e.key, list(found[-1].refused), 'published version refused; '
+                                            f'{freepdf.VERSION_NAMES[found[-1].link.version]} found'))
             except freepdf.NoPDF as error:
                 logger.error(f'{e.key}: {error}')
+                summary.browser.append((e.key, error.links, 'no PDF'))
                 failed += 1
         if supplements:
             found += freepdf.fetch_supplements(search, local)
@@ -768,11 +810,13 @@ def fetch_entry_pdfs(biblio, config, pools, entries, mode, least='any', suppleme
         for f in found:
             if f.how == 'has':
                 print(f'{e.key}: already has {_show(f.path)} (from {f.link.host})')
+                summary.had += f.link.version != 'supplement'
                 continue
             if f.how == 'downloaded':
                 same = _same_content(f.path, biblio.get_files(e) + [g.path for g in new])
                 if same:
                     print(f'{e.key}: {f.link.url}: not attached, the entry has the same file: {_show(same)}')
+                    summary.had += f.link.version != 'supplement'
                     freepdf.discard(f.path)
                     continue
             new.append(f)
@@ -790,6 +834,10 @@ def fetch_entry_pdfs(biblio, config, pools, entries, mode, least='any', suppleme
         paths = biblio.get_files(e)[-len(new):]
         for path, f in zip(paths, linked + placed):
             print(_found_line(e, path, f))
+            if f.link.version == 'supplement':
+                summary.supplements += 1
+            else:
+                summary.attached[f.link.version] = summary.attached.get(f.link.version, 0) + 1
     return failed
 
 
@@ -834,8 +882,10 @@ def file_fetchcmd(parser, o, config):
     repaired = repair_pdf_links(config, biblio, exchange, entries, o.search or [], nameformat, mode, again=o.again,
                                 lookup=lookup)
     fetched = [e for e in entries if id(e) not in repaired or o.again or o.supplements]
+    summary = FetchSummary()
+    summary.repaired = 0 if o.again else len(repaired)
     failed = fetch_entry_pdfs(biblio, config, pools, fetched, mode, least=o.least_version,
-                              supplements=o.supplements, again=o.again, repaired=repaired)
+                              supplements=o.supplements, again=o.again, repaired=repaired, summary=summary)
     if not dryrun:
         notes = save_entries(config, biblio, exchange)
         if papers.utils.PORCELAIN is not None:
@@ -844,5 +894,7 @@ def file_fetchcmd(parser, o, config):
             print_push_notes(biblio, notes)
     if o.missing and not entries:
         print('every entry has a PDF')
+    if len(entries) > 1 and not dryrun and papers.utils.PORCELAIN is None:
+        summary.print(len(entries))
     if failed:
         raise PapersExit()  # the errors are reported: exit 1

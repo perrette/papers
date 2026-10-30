@@ -198,6 +198,36 @@ class TestVersions(FetchTest):
         self.assertEqual(len(self.files('other2020')), 1)  # saved
         self.assertEqual(self.downloads_left(), [])
 
+    def test_published_refused_gives_its_link(self):
+        # library.md "The free PDF of an entry": an accepted version attached after the published one was
+        # refused: the message gives the published link to open in a browser
+        self.publisher(content=403)
+        self.web.openalex[DOI] = [location('https://repo.example.edu/am.pdf', 'acceptedVersion')]
+        self.web.files['https://repo.example.edu/am.pdf'] = pdf_bytes('am')
+        out = self.out('file fetch smith2020')
+        file, = self.files('smith2020')
+        self.assertIn(f'smith2020: files/{os.path.basename(file)} (accepted manuscript, from repo.example.edu; '
+                      f'the published version was refused: open {PDF} in a browser)', out)
+
+    def test_publisher_page_refused_gives_its_link(self):
+        # the publisher's page itself refused (no PDF link): the page is the link to open
+        self.bib('@article{arx2021,\n doi = {10.1000/ocean},\n eprint = {2101.01234},\n title = {T},\n'
+                 ' year = {2021}\n}\n')
+        self.web.openalex[DOI] = []
+        self.web.files['https://arxiv.org/pdf/2101.01234'] = pdf_bytes('arxiv')
+        out = self.out('file fetch arx2021')
+        self.assertIn('(submitted version, from arxiv.org; the published version was refused: '
+                      f'open https://doi.org/{DOI} in a browser)', out)
+
+    def test_no_published_link_says_nothing(self):
+        # the page gave no PDF link and OpenAlex no published location: nothing was refused
+        self.publisher(pdf=None)
+        self.web.openalex[DOI] = [location('https://repo.example.edu/am.pdf', 'acceptedVersion')]
+        self.web.files['https://repo.example.edu/am.pdf'] = pdf_bytes('am')
+        out = self.out('file fetch smith2020')
+        self.assertIn('(accepted manuscript, from repo.example.edu)', out)
+        self.assertNotIn('refused', out)
+
     def test_arxiv(self):
         self.bib('@article{arx2021,\n eprint = {2101.01234},\n archiveprefix = {arXiv},\n title = {T},\n'
                  ' year = {2021}\n}\n')
@@ -286,6 +316,43 @@ class TestSelection(FetchTest):
         self.assertEqual(self.files('smith2020'), [])
         self.lib('redo')
         self.assertEqual(len(self.files('smith2020')), 1)
+
+
+class TestSummary(FetchTest):
+    "library.md \"The free PDF of an entry\": a fetch of several entries ends with a summary"
+
+    def setUp(self):
+        super().setUp()
+        self.write('lib', 'files', 'a.pdf')
+        self.write('downloads', 'old.pdf', content='pdf old')
+        self.bib(entry('pub2020', doi='10.1000/pub'), entry('acc2020', doi='10.1000/acc'),
+                 entry('none2020', doi='10.1000/none'), entry('old2020', 'files/old.pdf', doi='10.1000/old'),
+                 entry('has2000', 'files/a.pdf', doi='10.1000/has'))
+        self.publisher(doi='10.1000/pub', pdf='https://journals.example.org/pub.pdf')
+        self.publisher(doi='10.1000/acc', pdf='https://journals.example.org/acc.pdf', content=403)
+        self.web.openalex['10.1000/acc'] = [location('https://repo.example.edu/acc.pdf', 'acceptedVersion')]
+        self.web.files['https://repo.example.edu/acc.pdf'] = pdf_bytes('acc')
+        self.publisher(doi='10.1000/none', pdf='https://journals.example.org/none.pdf', content=b'<html></html>')
+        self.web.openalex['10.1000/none'] = []
+
+    def test_missing(self):
+        out = io.StringIO()
+        with self.assertLogs('papers', 'ERROR'), self.assertRaises(PapersExit), redirect_stdout(out):
+            self.lib(f'file fetch --missing --search {self.path("downloads")}')
+        out = out.getvalue()
+        self.assertIn('summary of 4 entries:\n'
+                      '  2 PDFs attached: 1 published version, 1 accepted manuscript\n'
+                      '  1 found locally (repaired, not downloaded)\n'
+                      '  1 without PDF\n'
+                      'open in a browser:\n'
+                      '  acc2020: https://journals.example.org/acc.pdf (published version refused; '
+                      'accepted manuscript found)\n'
+                      '  none2020: https://journals.example.org/none.pdf, https://doi.org/10.1000/none (no PDF)\n',
+                      out)
+
+    def test_not_for_one_entry_or_a_dry_run(self):
+        self.assertNotIn('summary', self.out('file fetch pub2020'))
+        self.assertNotIn('summary', self.out(f'file fetch --missing --dry-run --search {self.path("downloads")}'))
 
 
 class TestBrokenLinkRepair(FetchTest):
@@ -552,6 +619,14 @@ class TestAddAndFetch(FetchTest):
         out = self.out('fetch --pdf arXiv:2101.01234')
         self.assertTrue(os.path.exists(self.path('lib', '2101.01234.pdf')))
         self.assertIn('2101.01234.pdf (submitted version, from arxiv.org)', out)
+
+    def test_fetch_pdf_published_refused(self):
+        self.publisher(content=b'<html>Just a moment...</html>')
+        self.web.openalex[DOI] = [location('https://repo.example.edu/am.pdf', 'acceptedVersion')]
+        self.web.files['https://repo.example.edu/am.pdf'] = pdf_bytes('am')
+        out = self.out(f'fetch --pdf {DOI} -o {self.path("paper.pdf")}')
+        self.assertIn(f'paper.pdf (accepted manuscript, from repo.example.edu; the published version was refused: '
+                      f'open {PDF} in a browser)', out)
 
     def test_fetch_pdf_none(self):
         self.publisher(pdf=None)

@@ -343,6 +343,9 @@ that check the same thing.
 - tests/test_file_fetch.py::TestVersions::test_accepted_then_submitted
 - tests/test_file_fetch.py::TestVersions::test_version_published_refuses_the_others
 - tests/test_file_fetch.py::TestVersions::test_none_works_the_links_to_open_and_the_others_attached
+- tests/test_file_fetch.py::TestVersions::test_published_refused_gives_its_link
+- tests/test_file_fetch.py::TestVersions::test_publisher_page_refused_gives_its_link
+- tests/test_file_fetch.py::TestVersions::test_no_published_link_says_nothing
 - tests/test_file_fetch.py::TestVersions::test_arxiv
 - tests/test_file_fetch.py::TestVersions::test_arxiv_after_the_doi
 - tests/test_file_fetch.py::TestVersions::test_no_identifier
@@ -353,6 +356,8 @@ that check the same thing.
 - tests/test_file_fetch.py::TestSelection::test_has_a_pdf_already
 - tests/test_file_fetch.py::TestSelection::test_porcelain
 - tests/test_file_fetch.py::TestSelection::test_undo
+- tests/test_file_fetch.py::TestSummary::test_missing
+- tests/test_file_fetch.py::TestSummary::test_not_for_one_entry_or_a_dry_run
 - tests/test_file_fetch.py::TestBrokenLinkRepair::test_found_in_a_search_folder
 - tests/test_file_fetch.py::TestBrokenLinkRepair::test_copied_into_the_files_directory
 - tests/test_file_fetch.py::TestBrokenLinkRepair::test_missing
@@ -377,6 +382,7 @@ that check the same thing.
 - tests/test_file_fetch.py::TestNoDuplicate::test_the_library_does_not_record_the_url
 - tests/test_file_fetch.py::TestAddAndFetch::test_add_doi_fetch_pdf
 - tests/test_file_fetch.py::TestAddAndFetch::test_add_fetch_pdf_failure_keeps_the_entry
+- tests/test_file_fetch.py::TestAddAndFetch::test_fetch_pdf_published_refused
 - tests/test_file_fetch.py::TestPageLinks::test_relative_links
 - tests/test_file_fetch.py::TestPageLinks::test_openalex_request
 

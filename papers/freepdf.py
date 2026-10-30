@@ -14,7 +14,8 @@ submitted version (preprint):
 The publisher's page is read first, and OpenAlex only when the publisher
 gives no PDF. A download that is refused (HTTP error, not a PDF) moves to the
 next link; when none is left, the error gives the links to open in a
-browser. The supplements are the PDFs that the article page links with
+browser. When an accepted or submitted version is found after the published
+version was refused, the published links are given too (Found.refused). The supplements are the PDFs that the article page links with
 "suppl" in the URL or the text of the link, and its
 `citation_supplementary_material` tags.
 
@@ -51,7 +52,12 @@ INTERVAL = 1.0  # seconds between two requests to a site
 
 
 class NoPDF(ValueError):
-    """no PDF could be downloaded: the message ends with the links to open in a browser"""
+    """no PDF could be downloaded: the message ends with the links to open in
+    a browser (`links`)"""
+
+    def __init__(self, message, links=()):
+        super().__init__(message)
+        self.links = list(links)
 
 
 class Link(namedtuple('Link', 'url version')):
@@ -132,6 +138,7 @@ class Search:
         self.versions = VERSIONS[:VERSIONS.index(least) + 1] if least in VERSIONS else VERSIONS
         self.notes = []
         self.browser = []
+        self.page_refused = None  # the URL of the publisher's page, when it gave an HTTP or network error
         self._page = None
 
     def page(self):
@@ -148,6 +155,7 @@ class Search:
                     if not self._page[0]:
                         self.notes.append(f'{_host(final)}: no PDF link on the article page')
                 except Exception as error:  # HTTP error, network error
+                    self.page_refused = url
                     self.notes.append(f'{url}: {_reason(error)}')
         return self._page
 
@@ -244,15 +252,24 @@ def download(link):
     return path
 
 
-class Found(namedtuple('Found', 'path link how other')):
+class Found(namedtuple('Found', 'path link how other refused')):
     """a PDF for a link: how is 'downloaded' (path: a temporary file),
     'has' (path: a file of the entry, with the content the link gave),
     'linked' (path: the file of another entry `other`, the key) or 'known'
-    (path: a file of the library that no entry links to)"""
+    (path: a file of the library that no entry links to). refused: the
+    links of the published version that were refused before this one, an
+    accepted or submitted version, was found (to open in a browser)."""
     __slots__ = ()
 
-    def __new__(cls, path, link, how='downloaded', other=None):
-        return super().__new__(cls, path, link, how, other)
+    def __new__(cls, path, link, how='downloaded', other=None, refused=()):
+        return super().__new__(cls, path, link, how, other, tuple(refused))
+
+    def describe(self):
+        "e.g. accepted manuscript, from repo.example.org; the published version was refused: open URL in a browser"
+        if not self.refused:
+            return self.link.describe()
+        return (f'{self.link.describe()}; the published version was refused: '
+                f'open {", ".join(self.refused)} in a browser')
 
 
 def get(link, local=None):
@@ -276,11 +293,18 @@ def fetch_pdf(search, local=None):
     tried = []
     for link in search.links():
         try:
-            return get(link, local)
+            found = get(link, local)
         except (ValueError, OSError) as error:
             logger.info(f'{link.url} ({VERSION_NAMES[link.version]}): {error}')
             tried.append((link, error))
-    raise NoPDF(no_pdf_message(search, tried))
+            continue
+        if link.version != 'published':
+            refused = [x.url for x, _ in tried if x.version == 'published']
+            if search.page_refused and search.page_refused not in refused:
+                refused.append(search.page_refused)
+            found = found._replace(refused=tuple(refused))
+        return found
+    raise NoPDF(no_pdf_message(search, tried), browser_links(search, tried))
 
 
 def _reason(error):
@@ -303,10 +327,16 @@ def no_pdf_message(search, tried):
     lines = ['no PDF could be downloaded' if tried else 'no free PDF found']
     lines += [f'  {link.url} ({VERSION_NAMES[link.version]}): {_reason(error)}' for link, error in tried]
     lines += [f'  {note}' for note in search.notes]
-    pages = [url for url in search.browser if url not in {link.url for link, _ in tried}]
-    if tried or pages:
-        lines.append('open in a browser: ' + ', '.join([link.url for link, _ in tried] + pages))
+    links = browser_links(search, tried)
+    if links:
+        lines.append('open in a browser: ' + ', '.join(links))
     return '\n'.join(lines)
+
+
+def browser_links(search, tried):
+    "the links to open in a browser when no PDF was found: those tried, then the pages"
+    urls = [link.url for link, _ in tried]
+    return urls + [url for url in search.browser if url not in urls]
 
 
 def fetch_supplements(search, local=None):

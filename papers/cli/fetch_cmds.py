@@ -56,7 +56,7 @@ def fetch_pdfs(parser, o):
             logger.error(f'{arg}: {error}')
             failed += 1
             continue
-        print(f'{target} ({found.link.describe()})')
+        print(f'{target} ({found.describe()})')
     if failed:
         raise PapersExit(f'{failed} of {len(o.doi_or_text)} PDFs not downloaded')
 

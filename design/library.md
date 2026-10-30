@@ -853,10 +853,25 @@ names above). `--missing` takes the entries without PDF.
   the repair copied from the history; a downloaded file is not put back,
   see rule 1). The
   command exits with 1 when an entry got no PDF, after saving the others.
+- When an accepted manuscript or a submitted version is attached (or
+  downloaded by `fetch --pdf`) after links of the published version were
+  refused (the links of 1 that gave an HTTP error, a network error or no
+  PDF, and the page of `https://doi.org/<DOI>` when it gave an HTTP or
+  network error), its message gives these links, to open in a browser.
+  When no link of the published version was refused (none was found),
+  nothing more is said.
+- A `file fetch` of more than one entry (`--missing`, or several KEYs;
+  not with `--dry-run` or `--porcelain`) prints a summary at the end: the
+  PDFs attached by version, the entries repaired from a local file (not
+  downloaded), those without PDF, and the links to open in a browser of
+  the entries without PDF and of those whose published version was
+  refused.
 
 **Free**: the messages (`KEY: FILE (published version, from HOST)`,
-`KEY: relinked FILE (found in DIR), not downloaded`, the links to open in
-a browser), the cache format, the user agent, the wait
+`KEY: FILE (accepted manuscript, from HOST; the published version was
+refused: open URL in a browser)`, `KEY: relinked FILE (found in DIR), not
+downloaded`, the links to open in a browser), the wording and layout of
+the summary, the cache format, the user agent, the wait
 between requests to a site (papers: one second), and the question that
 `--missing` asks before more than 50 entries with a DOI query OpenAlex
 without `OPENALEX_API_KEY` (`-y/--yes` does not ask; without a terminal,

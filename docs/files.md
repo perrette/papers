@@ -131,11 +131,35 @@ smith2020: files/smith_2020_ocean.pdf (published version, from journals.example.
 doe2021: files/doe_2021_ice.pdf (accepted manuscript, from repository.example.edu)
 ```
 
+When the published version was refused (an HTTP error, or a login page or a
+challenge instead of a PDF) and an accepted manuscript or a submitted version
+is attached instead, the line also gives the published link, to download it
+in a browser:
+
+```
+doe2021: files/doe_2021_ice.pdf (accepted manuscript, from repository.example.edu; the published version was refused: open https://journals.example.org/ice.pdf in a browser)
+```
+
 `--version published` attaches the published version only, `--version
 accepted` also the accepted manuscript. When no link gives a PDF, the error
 lists the links tried and the pages to open in a browser; the other entries
 are attached and saved, and the command exits with status 1. `--dry-run`
 lists the links that would be tried, in order, and changes nothing.
+
+A fetch of several entries (`--missing`, or several KEYs) ends with a
+summary: the PDFs attached by version, the entries repaired from a local
+file, and the links to open in a browser for the entries without PDF and
+those whose published version was refused:
+
+```
+summary of 4 entries:
+  2 PDFs attached: 1 published version, 1 accepted manuscript
+  1 found locally (repaired, not downloaded)
+  1 without PDF
+open in a browser:
+  doe2021: https://journals.example.org/ice.pdf (published version refused; accepted manuscript found)
+  lee2019: https://journals.example.org/sea.pdf, https://doi.org/10.1000/sea (no PDF)
+```
 
 `--supplements` also attaches the supplementary PDFs that the article page
 links: the links to a PDF with `suppl` in their URL or their text, and the
