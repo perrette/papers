@@ -39,7 +39,8 @@ formats.md (the porcelain lines of `papers file fetch`, `papers fetch
    library itself by checksum (`.papers/files.json`), in the pool by
    checksum, and in the other libraries of the machine (the places of the
    history store) by checksum only: the `files.json` of the head state of
-   each place. A library that moved or is gone is skipped. A file of
+   each place, read at each search (no index of these files is kept). A
+   library that moved or is gone is skipped. A file of
    another library is copied or linked as the files setting says, never
    moved. This applies to `file check`, `file fix` and to the repair of
    `file fetch`. An entry without any PDF link is downloaded, with or

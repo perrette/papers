@@ -329,12 +329,15 @@ that check the same thing.
 - tests/test_file_other_libraries.py::TestFix::test_dry_run
 - tests/test_file_other_libraries.py::TestPool::test_same_paper
 - tests/test_file_other_libraries.py::TestPool::test_by_checksum
-- tests/test_file_other_libraries.py::TestFileIndex::test_nothing_broken_nothing_searched
-- tests/test_file_other_libraries.py::TestFileIndex::test_new_head_indexed
-- tests/test_file_other_libraries.py::TestFileIndex::test_edit_outside_papers_seen_after_a_command
-- tests/test_file_other_libraries.py::TestFileIndex::test_missing_file_skipped_and_dropped
-- tests/test_file_other_libraries.py::TestFileIndex::test_changed_content_skipped
-- tests/test_file_other_libraries.py::TestFileIndex::test_gone_place_skipped
+- tests/test_file_other_libraries.py::TestOtherLibraries::test_nothing_broken_nothing_searched
+- tests/test_file_other_libraries.py::TestOtherLibraries::test_no_checksum_nothing_searched
+- tests/test_file_other_libraries.py::TestOtherLibraries::test_place_read_once_per_command
+- tests/test_file_other_libraries.py::TestOtherLibraries::test_no_file_index_in_cache
+- tests/test_file_other_libraries.py::TestOtherLibraries::test_new_head_seen
+- tests/test_file_other_libraries.py::TestOtherLibraries::test_edit_outside_papers_seen_after_a_command
+- tests/test_file_other_libraries.py::TestOtherLibraries::test_missing_file_skipped
+- tests/test_file_other_libraries.py::TestOtherLibraries::test_changed_content_skipped
+- tests/test_file_other_libraries.py::TestOtherLibraries::test_gone_place_skipped
 
 ### The free PDF of an entry
 

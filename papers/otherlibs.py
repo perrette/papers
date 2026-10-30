@@ -6,28 +6,22 @@ link: in the library itself, and in the other libraries of the machine.
 The other libraries are the places of the history store (papers.history:
 the bibtex of each library, or bibtex without library, that recorded a step
 on this machine), except the current library and the libraries searched
-already (its pool, --pool PATH). They are found through the file index
-(FileIndex), in the cache folder of the machine: for each checksum, the
-files of the other libraries with that content, as the .papers/files.json
-of the head state of their place has them. Nothing is read or written in
+already (its pool, --pool PATH). Their checksums are those of the
+.papers/files.json kept in the head state of their place in the history
+store, read at each search (OtherLibraries): once per command, and only
+when a broken link has a recorded checksum. Nothing is read or written in
 the other libraries but the files found (their checksum is read).
 """
-import json
 import os
-import re
 
 import papers.checksums
-import papers.config
 from papers import backup, logger
 from papers.config import short_home
 from papers.files import is_inside, realpath
 from papers.utils import checksum
 
-# of the files of the file index: a file of another format is not read
-INDEX_FORMAT = 1
 # the name of .papers/files.json among the kept files of a state (history.md 3.3)
 FILES_JSON = '.papers/files.json'
-_DIGEST = re.compile(r'[0-9a-f]{64}')
 
 
 class Digests:
@@ -157,80 +151,18 @@ class OwnLibrary:
         return found, Source('own', key=self.owners.get(realpath(found)))
 
 
-def index_dir():
-    "the folder of the file index (see FileIndex)"
-    return os.path.join(papers.config.CACHE_DIR, 'file-index')
+class OtherLibraries:
+    """the files of the other libraries of the machine by checksum: for each
+    place of the history store (but `skip`, real paths of bibtex), the
+    .papers/files.json kept in its head state (history.md 3.3; a state
+    without it: a library without checksums), read once, when first needed
+    (see the module)"""
 
-
-def _read_json(path):
-    "the content of a file of the index (a dict of format INDEX_FORMAT), or None"
-    try:
-        with open(path, encoding='utf-8') as f:
-            data = json.load(f)
-    except (OSError, ValueError):
-        return None
-    return data if isinstance(data, dict) and data.get('format') == INDEX_FORMAT else None
-
-
-def _write_json(path, data):
-    "write a file of the index through a temporary file and a rename (a cache: not synced to disk)"
-    tmp = f'{path}.{os.getpid()}.tmp'
-    try:
-        os.makedirs(os.path.dirname(path), exist_ok=True)
-        with open(tmp, 'w', encoding='utf-8') as f:
-            json.dump(dict(data, format=INDEX_FORMAT), f, indent=0, sort_keys=True)
-        os.replace(tmp, path)
-    except OSError as error:
-        logger.debug(f'{path}: not written ({error})')
-        try:
-            os.remove(tmp)
-        except OSError:
-            pass
-
-
-class FileIndex:
-    """the files of the libraries of the machine by checksum, in
-    <cache dir>/file-index/ (a cache of papers, see the module):
-
-    - <sha256>.json: {"format": 1, "copies": [{"path": ..., "place": ...,
-      "state": ...}]}, the files with that content: the absolute path of
-      the file, the place (real path of the bibtex) whose .papers/files.json
-      has it, and the identifier of the head state of the place in which it
-      was indexed;
-    - seen.json: {"format": 1, "places": {place: state}}, the head state of
-      each place when it was last indexed.
-
-    `update` indexes the places whose head state changed since: the
-    difference between the files.json of the two states (all of it, the
-    first time), as the states keep it (history.md 3.3; a state without it:
-    a library without checksums). A state never changes, so a place whose
-    head is the same is not read again. A copy that is gone, or whose
-    content changed, is dropped when `find` meets it.
-
-    Several commands may update the index at once: each file is written
-    through a temporary file and a rename, the last one wins (a copy lost
-    that way comes back when its place changes again; the index is a cache)."""
-
-    def __init__(self, root=None):
-        self.root = root or index_dir()
-        self.indexed = 0  # the places indexed by update (for the tests)
-
-    def _path(self, digest):
-        return os.path.join(self.root, digest + '.json')
-
-    def copies(self, digest):
-        data = _read_json(self._path(digest)) if _DIGEST.fullmatch(digest or '') else None
-        copies = data.get('copies') if data else None
-        return [c for c in copies if isinstance(c, dict)] if isinstance(copies, list) else []
-
-    def _set_copies(self, digest, copies):
-        if copies:
-            _write_json(self._path(digest), {'copies': copies})
-        else:
-            try:
-                os.remove(self._path(digest))
-            except OSError:
-                pass
+    def __init__(self, config, digests, skip=()):
+        self.config = config
+        self.digests = digests
+        self.skip = skip
+        self._places = None
 
     @staticmethod
     def heads(config):
@@ -257,66 +189,32 @@ class FileIndex:
             return {}
         return papers.checksums.parse_text(text, os.path.dirname(place))
 
-    def update(self, config):
-        "index the places of the history whose head state changed (see the class)"
-        try:
-            heads = self.heads(config)
-        except Exception as error:
-            logger.debug(f'the places of the history not read: {error}')
-            return
-        seen = (_read_json(os.path.join(self.root, 'seen.json')) or {}).get('places')
-        seen = seen if isinstance(seen, dict) else {}
-        added, removed = {}, {}  # digest: [copy], digest: {(path, place)}
-        places = {}
-        for place in sorted(heads):
-            if not os.path.isfile(place):
-                continue  # moved or deleted: forgotten (its copies are dropped when met)
-            project, n = heads[place]
-            places[place] = n
-            old = seen.get(place)
-            if old == n:
-                continue
-            self.indexed += 1
-            before = self.checksums(project, old, place)
-            after = self.checksums(project, n, place)
-            for path, digest in after.items():
-                if before.get(path) != digest:
-                    added.setdefault(digest, []).append({'path': path, 'place': place, 'state': n})
-            for path, digest in before.items():
-                if after.get(path) != digest:
-                    removed.setdefault(digest, set()).add((path, place))
-        for digest in sorted(set(added) | set(removed)):
-            new = added.get(digest, [])
-            drop = removed.get(digest, set()) | {(c['path'], c['place']) for c in new}
-            copies = [c for c in self.copies(digest) if (c.get('path'), c.get('place')) not in drop] + new
-            self._set_copies(digest, copies)
-        if places != seen:
-            _write_json(os.path.join(self.root, 'seen.json'), {'places': places})
+    def places(self):
+        "[(place, Checksums)] of the other libraries that exist, in the order of their place"
+        if self._places is None:
+            self._places = []
+            try:
+                heads = self.heads(self.config)
+            except Exception as error:
+                logger.debug(f'the places of the history not read: {error}')
+                heads = {}
+            for place in sorted(heads):
+                if realpath(place) in self.skip or not os.path.isfile(place):
+                    continue  # searched already, or moved or deleted
+                hashes = self.checksums(*heads[place], place)
+                if hashes:
+                    self._places.append((place, Checksums(hashes, self.digests)))
+        return self._places
 
-    def find(self, digest, exclude=(), places=(), digests=None):
+    def find(self, digest, exclude=()):
         """(file, place) of a file with this checksum that exists and has that
-        content, not one of `exclude` (real paths) nor of the places
-        `places` (real paths of their bibtex), in the order of the places
-        and paths; or None. The copies met that are gone (or of a place
-        gone), or whose content changed, are dropped from the index."""
-        digests = digests or Digests()
-        copies = self.copies(digest)
-        gone = []
-        found = None
-        for c in sorted(copies, key=lambda c: (str(c.get('place')), str(c.get('path')))):
-            path, place = c.get('path'), c.get('place')
-            if not isinstance(path, str) or not isinstance(place, str):
-                gone.append(c)
-            elif realpath(place) in places or realpath(path) in exclude:
-                continue
-            elif not os.path.isfile(place) or not os.path.isfile(path) or digests(path) != digest:
-                gone.append(c)
-            else:
-                found = path, place
-                break
-        if gone:
-            self._set_copies(digest, [c for c in copies if not any(c is g for g in gone)])
-        return found
+        content, not one of `exclude` (real paths), in the order of the places
+        and paths; or None"""
+        for place, checksums in self.places():
+            found = checksums.find(digest, exclude)
+            if found:
+                return found, place
+        return None
 
 
 def is_own_unlinked(source, file, filesdir):
@@ -327,8 +225,7 @@ def is_own_unlinked(source, file, filesdir):
 class Lookup:
     """the sources of `papers file fix` beyond the names of the pool (see
     papers.cli.file_cmds.plan_relinks), by checksum: the library, the pool,
-    and the other libraries of the machine (the file index, updated when
-    first needed). exclude: the bibtex files of the libraries searched
+    and the other libraries of the machine (read when first needed). exclude: the bibtex files of the libraries searched
     already (the pool, --pool PATH)."""
 
     def __init__(self, config, biblio, pool=None, exclude=()):
@@ -339,14 +236,7 @@ class Lookup:
         self.pool = pool
         self._pool_checksums = None
         self.exclude = {realpath(b) for b in [config.bibtex] + list(exclude) if b}
-        self._index = None
-
-    def index(self):
-        "the FileIndex, updated once per command"
-        if self._index is None:
-            self._index = FileIndex()
-            self._index.update(self.config)
-        return self._index
+        self.others = OtherLibraries(config, self.digests, self.exclude)
 
     def in_pool(self, link, exclude=()):
         "(file, Source) of the pool with the checksum of the broken link, or None"
@@ -363,5 +253,5 @@ class Lookup:
         digest = self.own.digest(link)
         if digest is None:
             return None
-        found = self.index().find(digest, exclude, self.exclude, self.digests)
+        found = self.others.find(digest, exclude)
         return (found[0], Source('other', found[1])) if found else None

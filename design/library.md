@@ -770,7 +770,9 @@ this order; the first that gives a file for a link decides:
    checksums of a place are those of the `.papers/files.json` kept in the
    head state of the place (`history.md` 3.3; none when the state keeps
    none), not the file on disk: a change made outside papers in another
-   library counts after the next papers command there. A file of these
+   library counts after the next papers command there. They are read at
+   each search: once per command, when a broken link has a checksum. A
+   file of these
    checksums that exists and has the checksum of the link (sha256 read
    from the file); several: the first by the real path of the place's
    bibtex, then by the file's path;
