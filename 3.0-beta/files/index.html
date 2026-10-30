@@ -1189,10 +1189,17 @@ of the entry (<code>&lt;name&gt;--&lt;label&gt;.pdf</code>). Data sets and other
 out; what is found depends on the publisher.</p>
 <p>Nothing is downloaded or attached twice:</p>
 <ul>
-<li>an entry that links to a PDF already is skipped (a broken link does not
-  count: its PDF is fetched) (<code>KEY: has a PDF already
+<li>an entry that links to a PDF already is skipped (<code>KEY: has a PDF already
   (--again to fetch it anyway)</code>); with <code>--supplements</code>, its supplements are
   still fetched;</li>
+<li>an entry whose PDF link is broken first gets the repair of
+  <code>papers file fix</code> (see <a href="#reconnecting-pdfs-and-a-bibtex">Reconnecting PDFs and a bibtex</a>):
+  the file found in the pool, in the folders of <code>--search DIR</code> (the option
+  can be repeated) or in the history is relinked, and nothing is downloaded
+  (<code>KEY: relinked files/x.pdf (found in ~/Downloads), not downloaded</code>). The
+  PDF is downloaded only when no file is found. <code>--dry-run</code> says what would
+  be relinked. The repair and the downloads are one step: <code>papers undo</code>
+  undoes both;</li>
 <li>a downloaded file with the content (sha256) of a file of the entry is not
   attached (<code>not attached, the entry has the same file</code>);</li>
 <li>papers remembers, in the cache of the machine (see
