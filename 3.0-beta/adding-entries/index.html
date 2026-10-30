@@ -1366,17 +1366,29 @@ downloads the PDF into the current directory, under the name of its URL
 <div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>$ papers fetch --pdf 10.5194/bg-8-515-2011
 <a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>bg-8-515-2011.pdf (published version, from bg.copernicus.org)
 </code></pre></div>
+<p>For programs, <code>--porcelain</code> prints on the standard output one line per
+DOI or arXiv id, in the order of the arguments (the other messages go to
+the standard error): <code>downloaded ID VERSION URL FILE</code> (<code>VERSION</code>:
+<code>published</code>, <code>accepted</code> or <code>submitted</code>; <code>URL</code>: the link of the PDF), then
+<code>refused-published ID URL</code> for each link of the published version that was
+refused before an accepted or submitted version was found; when no PDF
+could be downloaded, <code>refused ID URL</code> for each link to open in a browser,
+or <code>failed ID</code> when there is none (not a DOI or arXiv id, the file exists).
+The command exits with status 1 when an argument gave no PDF:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>$ papers fetch --pdf 10.5194/bg-8-515-2011 --porcelain 2&gt;/dev/null
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>downloaded 10.5194/bg-8-515-2011 published https://bg.copernicus.org/articles/8/515/2011/bg-8-515-2011.pdf bg-8-515-2011.pdf
+</code></pre></div>
 <h2 id="add-an-entry-without-doi-from-bibtex-pdf">Add an entry without DOI from bibtex + PDF<a class="headerlink" href="#add-an-entry-without-doi-from-bibtex-pdf" title="Permanent link">&para;</a></h2>
 <p>Some old files don't have a DOI. The best approach is to add the entry from its
 bibtex:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>papers add entry.bib --attach esd-4-11-2013.pdf --bibtex papers.bib --filesdir files
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>papers add entry.bib --attach esd-4-11-2013.pdf --bibtex papers.bib --filesdir files
 </code></pre></div>
 <h2 id="set-fields-on-the-command-line">Set fields on the command line<a class="headerlink" href="#set-fields-on-the-command-line" title="Permanent link">&para;</a></h2>
 <p><code>--title</code>, <code>--author</code>, <code>--year</code>, <code>--journal</code>, <code>--type</code> (the entry type, e.g.
 <code>book</code>), <code>--key</code> and <code>--metadata KEY=VALUE...</code> (any field) set these fields of
 the added entry. They replace the values found in the PDF, fetched from the
 DOI or read from the added bibtex; the other fields are kept:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>papers add paper.pdf --year 1999 --journal "Journal of Glaciology"
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>papers add paper.pdf --year 1999 --journal "Journal of Glaciology"
 </code></pre></div>
 <ul>
 <li><code>--key KEY</code> sets the key, which is then not generated from the key
@@ -1490,26 +1502,26 @@ added) when it is the same paper and the merge has nothing to decide (no
 conflict, no field to add); otherwise the command stops: pass
 <code>-u/--update-key</code> or <code>--key KEY</code>.</p>
 <h3 id="the-dialogue">The dialogue<a class="headerlink" href="#the-dialogue" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>$&gt; papers add new.bib
-<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>Already in library: smith2020climate (same DOI 10.1000/abc123)
-<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a>  1  library  smith2020climate  article  doi 10.1000/abc123  files/smith.pdf
-<a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a>  2  new      Smith_2020        article  doi 10.1000/ABC123  other/smith-preprint.pdf
-<a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a>
-<a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a>@article{smith2020climate,
-<a id="__codelineno-14-7" name="__codelineno-14-7" href="#__codelineno-14-7"></a>   author   = {Smith, John and Doe, Jane}
-<a id="__codelineno-14-8" name="__codelineno-14-8" href="#__codelineno-14-8"></a>   doi      = {10.1000/abc123}
-<a id="__codelineno-14-9" name="__codelineno-14-9" href="#__codelineno-14-9"></a>+  file     = {files/smith.pdf;other/smith-preprint.pdf}
-<a id="__codelineno-14-10" name="__codelineno-14-10" href="#__codelineno-14-10"></a>!  journal  = {Nature}
-<a id="__codelineno-14-11" name="__codelineno-14-11" href="#__codelineno-14-11"></a>!             2: {Nature Climate Change}
-<a id="__codelineno-14-12" name="__codelineno-14-12" href="#__codelineno-14-12"></a>   keywords = {climate, mine}
-<a id="__codelineno-14-13" name="__codelineno-14-13" href="#__codelineno-14-13"></a>   title    = {Climate sensitivity revisited}
-<a id="__codelineno-14-14" name="__codelineno-14-14" href="#__codelineno-14-14"></a>+  volume   = {10}
-<a id="__codelineno-14-15" name="__codelineno-14-15" href="#__codelineno-14-15"></a>   year     = {2020}
-<a id="__codelineno-14-16" name="__codelineno-14-16" href="#__codelineno-14-16"></a>}
-<a id="__codelineno-14-17" name="__codelineno-14-17" href="#__codelineno-14-17"></a>1 conflict. The key smith2020climate is kept; + lines are added.
-<a id="__codelineno-14-18" name="__codelineno-14-18" href="#__codelineno-14-18"></a>  1 keep library values   2 take new values   f field by field   e edit
-<a id="__codelineno-14-19" name="__codelineno-14-19" href="#__codelineno-14-19"></a>  n not the same paper (add Smith_2020 separately)   s skip   q quit   ? help
-<a id="__codelineno-14-20" name="__codelineno-14-20" href="#__codelineno-14-20"></a>&gt;&gt;&gt;
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>$&gt; papers add new.bib
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>Already in library: smith2020climate (same DOI 10.1000/abc123)
+<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>  1  library  smith2020climate  article  doi 10.1000/abc123  files/smith.pdf
+<a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a>  2  new      Smith_2020        article  doi 10.1000/ABC123  other/smith-preprint.pdf
+<a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a>
+<a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a>@article{smith2020climate,
+<a id="__codelineno-15-7" name="__codelineno-15-7" href="#__codelineno-15-7"></a>   author   = {Smith, John and Doe, Jane}
+<a id="__codelineno-15-8" name="__codelineno-15-8" href="#__codelineno-15-8"></a>   doi      = {10.1000/abc123}
+<a id="__codelineno-15-9" name="__codelineno-15-9" href="#__codelineno-15-9"></a>+  file     = {files/smith.pdf;other/smith-preprint.pdf}
+<a id="__codelineno-15-10" name="__codelineno-15-10" href="#__codelineno-15-10"></a>!  journal  = {Nature}
+<a id="__codelineno-15-11" name="__codelineno-15-11" href="#__codelineno-15-11"></a>!             2: {Nature Climate Change}
+<a id="__codelineno-15-12" name="__codelineno-15-12" href="#__codelineno-15-12"></a>   keywords = {climate, mine}
+<a id="__codelineno-15-13" name="__codelineno-15-13" href="#__codelineno-15-13"></a>   title    = {Climate sensitivity revisited}
+<a id="__codelineno-15-14" name="__codelineno-15-14" href="#__codelineno-15-14"></a>+  volume   = {10}
+<a id="__codelineno-15-15" name="__codelineno-15-15" href="#__codelineno-15-15"></a>   year     = {2020}
+<a id="__codelineno-15-16" name="__codelineno-15-16" href="#__codelineno-15-16"></a>}
+<a id="__codelineno-15-17" name="__codelineno-15-17" href="#__codelineno-15-17"></a>1 conflict. The key smith2020climate is kept; + lines are added.
+<a id="__codelineno-15-18" name="__codelineno-15-18" href="#__codelineno-15-18"></a>  1 keep library values   2 take new values   f field by field   e edit
+<a id="__codelineno-15-19" name="__codelineno-15-19" href="#__codelineno-15-19"></a>  n not the same paper (add Smith_2020 separately)   s skip   q quit   ? help
+<a id="__codelineno-15-20" name="__codelineno-15-20" href="#__codelineno-15-20"></a>&gt;&gt;&gt;
 </code></pre></div>
 <p>Unmarked lines are the same in both entries (here the title and the author
 names, which differ only by case and initials), <code>+</code> lines are added from the
@@ -1554,10 +1566,10 @@ the other values, numbered by entry.</p>
 </tbody>
 </table>
 <p><code>f</code> asks for each conflict:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>journal:
-<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>  1  Nature                 library
-<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>  2  Nature Climate Change  new
-<a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a>  [1/2/e] &gt;&gt;&gt;
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>journal:
+<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>  1  Nature                 library
+<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a>  2  Nature Climate Change  new
+<a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a>  [1/2/e] &gt;&gt;&gt;
 </code></pre></div>
 <p>To stop without saving anything, use Ctrl-C.</p>
 <h3 id="keys">Keys<a class="headerlink" href="#keys" title="Permanent link">&para;</a></h3>
