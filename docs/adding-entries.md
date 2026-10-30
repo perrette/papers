@@ -282,6 +282,26 @@ without file attachment):
 papers add --doi 10.5194/esd-4-11-2013 --bibtex papers.bib
 ```
 
+With `--fetch-pdf`, papers also downloads the free PDF of the entry and
+attaches it, as `papers file fetch KEY` does (see
+[Fetching the free PDF of an entry](files.md#fetching-the-free-pdf-of-an-entry)):
+
+```
+$ papers add --doi 10.5194/esd-4-11-2013 --fetch-pdf
+perrette_landerer2013: files/perrette_et_al_2013_a-scaling-approach-to-project-regional-sea-level-rise-and-its-uncertainties.pdf (published version, from esd.copernicus.org)
+Added -> perrette_landerer2013: A scaling approach to project regional sea level rise and it... (doi:10.5194/esd-4-11-2013, file:1)
+```
+
+When no PDF is found, the entry is added all the same, and the command exits
+with status 1 after the error. Without a library, `papers fetch --pdf DOI`
+downloads the PDF into the current directory, under the name of its URL
+(`-o FILE` names it), as `papers fetch DOI` prints the bibtex:
+
+```
+$ papers fetch --pdf 10.5194/bg-8-515-2011
+bg-8-515-2011.pdf (published version, from bg.copernicus.org)
+```
+
 ## Add an entry without DOI from bibtex + PDF
 
 Some old files don't have a DOI. The best approach is to add the entry from its

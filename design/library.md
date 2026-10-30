@@ -741,6 +741,60 @@ Contract:
   hidden `.<name>.bib`) are moved into the flat layout when renamed; the
   folder is removed when only the hidden bibtex is left.
 
+### The free PDF of an entry
+
+`papers file fetch KEY...` (and `add --doi DOI --fetch-pdf`) downloads an
+open-access PDF of an entry from its DOI or arXiv id and attaches it as
+`file attach` attaches a downloaded file (rule 1 of the files setting, the
+names above). `--missing` takes the entries without PDF.
+
+- An entry has a PDF when one of its links (broken or not) ends in `.pdf`,
+  case-insensitively. Its main PDF is not fetched again, unless `--again`;
+  `--supplements` still fetches its supplements.
+- The links are tried in this order, until one gives a PDF (the first 1024
+  bytes contain `%PDF`); an HTTP error, a network error or another answer
+  moves to the next one:
+  1. published version: the `citation_pdf_url` meta tag of the page that
+     `https://doi.org/<DOI>` leads to; then the locations of the OpenAlex
+     work of the DOI (`GET https://api.openalex.org/works/doi:<DOI>`) with
+     `is_oa` true, a `pdf_url`, and `version` `publishedVersion`;
+  2. accepted manuscript: those of `version` `acceptedVersion`;
+  3. submitted version: those of `version` `submittedVersion`, then
+     `https://arxiv.org/pdf/<id>` for the arXiv id of the entry (its
+     `eprint` field, or an arXiv DOI, which is then not looked up as a
+     DOI).
+
+  Among the locations of one version, the `best_oa_location` comes first,
+  then the order of `locations`. A URL is tried once. `--version
+  published` keeps the links of 1, `--version accepted` those of 1 and 2.
+- Supplements (`--supplements`): the `citation_supplementary_material` meta
+  tags of the article page, then its links (`<a href>`, resolved against
+  the page URL) that contain `.pdf` and whose URL or text contains `suppl`,
+  case-insensitively; the URL of the main PDF excepted. Each one must be a
+  PDF too; one that is not is left out with a warning. They are attached
+  after the main PDF, so they get `<name>--<label>.pdf`.
+- A downloaded file with the content (sha256) of a file of the entry is
+  not attached.
+- Nothing about the download is written in the library: no field, no file
+  of `.papers/`. The machine keeps, in its cache, the sha256 and size of
+  the file each URL gave. Before a URL of that cache is downloaded again:
+  if a file of the entry has that size and sha256, nothing is attached;
+  else if a file of another entry, or a file of `.papers/files.json`,
+  has it, that file is attached without download (the file of another
+  entry is linked where it is: the two entries link to one file; a file of
+  `files.json` alone is placed by the files setting); else the URL is
+  downloaded. A cache entry that matches no file is a miss.
+- The entries that got a file are saved in one step of the history (undo
+  removes the links; a downloaded file is not put back, see rule 1). The
+  command exits with 1 when an entry got no PDF, after saving the others.
+
+**Free**: the messages (`KEY: FILE (published version, from HOST)`, the
+links to open in a browser), the cache format, the user agent, the wait
+between requests to a site (papers: one second), and the question that
+`--missing` asks before more than 50 entries with a DOI query OpenAlex
+without `OPENALEX_API_KEY` (`-y/--yes` does not ask; without a terminal,
+an error).
+
 ## Name and key templates
 
 ### Syntax

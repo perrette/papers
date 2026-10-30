@@ -845,6 +845,10 @@ and `-v`); its text is human output (**free**).
 
 `papers extract` and `papers fetch` print bibtex (or DOIs with `extract
 --doi-only`) on standard output; see bibtex.md for the entry text.
+`papers fetch --pdf` writes the PDF (library.md, The free PDF of an
+entry) to the current directory, or to `-o FILE`, and prints one line per
+file (**free**); an existing file is not replaced (an error). It exits
+with 1 when a PDF was not downloaded.
 
 ## 7. `--porcelain`
 
@@ -878,7 +882,7 @@ they changed:
 | `papers edit` (editor, `--from`, `--set/--unset`, `--key`) | `modified`, `renamed`, ... |
 | `papers rm` | `removed` |
 | `papers tag` (`--add`, `--rm`, `--rename`) | `modified` |
-| `papers file rename`, `papers file attach` | `modified` |
+| `papers file rename`, `papers file attach`, `papers file fetch` | `modified` |
 | `papers config pool PATH`, `none`, `--unset pool` | `modified` (relinked entries) |
 | `papers history --revert STEP` | `added`, `modified`, `removed`, `renamed` |
 | `papers list` with `--add-tag`, `--rm-tag`, `--attach`, `-e/--edit`, `--fetch`, `--rename`, `--delete` | as the command each stands for |

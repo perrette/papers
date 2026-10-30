@@ -314,6 +314,39 @@ that check the same thing.
 - tests/test_config_v3.py::TestMigrateFolders::test_folders
 - tests/test_spec_library.py::TestFileNames::test_extension
 
+### The free PDF of an entry
+
+- tests/test_file_fetch.py::TestVersions::test_published_version_from_the_publisher
+- tests/test_file_fetch.py::TestVersions::test_publisher_refuses_then_openalex_published_before_accepted
+- tests/test_file_fetch.py::TestVersions::test_accepted_then_submitted
+- tests/test_file_fetch.py::TestVersions::test_version_published_refuses_the_others
+- tests/test_file_fetch.py::TestVersions::test_none_works_the_links_to_open_and_the_others_attached
+- tests/test_file_fetch.py::TestVersions::test_arxiv
+- tests/test_file_fetch.py::TestVersions::test_arxiv_after_the_doi
+- tests/test_file_fetch.py::TestVersions::test_no_identifier
+- tests/test_file_fetch.py::TestVersions::test_openalex_not_found_is_cached
+- tests/test_file_fetch.py::TestSelection::test_missing
+- tests/test_file_fetch.py::TestSelection::test_needs_entries_or_missing
+- tests/test_file_fetch.py::TestSelection::test_dry_run_changes_nothing
+- tests/test_file_fetch.py::TestSelection::test_has_a_pdf_already
+- tests/test_file_fetch.py::TestSelection::test_porcelain
+- tests/test_file_fetch.py::TestSelection::test_undo
+- tests/test_file_fetch.py::TestConfirmation::test_no_terminal_refuses
+- tests/test_file_fetch.py::TestConfirmation::test_asks_in_a_terminal
+- tests/test_file_fetch.py::TestConfirmation::test_yes_key_or_fewer_entries
+- tests/test_file_fetch.py::TestSupplements::test_supplements
+- tests/test_file_fetch.py::TestSupplements::test_not_without_the_option
+- tests/test_file_fetch.py::TestSupplements::test_second_pass_with_supplements
+- tests/test_file_fetch.py::TestNoDuplicate::test_same_content_not_attached
+- tests/test_file_fetch.py::TestNoDuplicate::test_cache_a_the_entry_has_it
+- tests/test_file_fetch.py::TestNoDuplicate::test_cache_b_another_entry_has_it
+- tests/test_file_fetch.py::TestNoDuplicate::test_cache_c_a_miss_downloads
+- tests/test_file_fetch.py::TestNoDuplicate::test_the_library_does_not_record_the_url
+- tests/test_file_fetch.py::TestAddAndFetch::test_add_doi_fetch_pdf
+- tests/test_file_fetch.py::TestAddAndFetch::test_add_fetch_pdf_failure_keeps_the_entry
+- tests/test_file_fetch.py::TestPageLinks::test_relative_links
+- tests/test_file_fetch.py::TestPageLinks::test_openalex_request
+
 ### Syntax
 
 - tests/test_filename_unit.py::TestPlaceholders::test_unknown_placeholder
@@ -1083,6 +1116,7 @@ that check the same thing.
 - tests/test_spec_formats.py::TestPorcelainLines::test_add_lines
 - tests/test_spec_formats.py::TestPorcelainCommands::test_file_commands
 - tests/test_spec_formats.py::TestPorcelainCommands::test_history_revert
+- tests/test_file_fetch.py::TestSelection::test_porcelain
 - tests/test_spec_formats.py::TestPorcelainConfigPool::test_config_pool. The human lines: none (free).
 
 ### 7.3 Exit codes and standard error

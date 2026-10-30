@@ -76,6 +76,7 @@ standard input, one per line:
 | `papers file rename [KEY...]` | place the files of the entries (all without KEY) in the files directory, under their template name; `--keep-source` keeps the originals too (hard links when possible) |
 | `papers file mv SRC... DEST` | move files or folders, and update the links of the entries (below) |
 | `papers file attach KEY FILE...` | attach files to an existing entry, following the `files` setting (`--move`, `--copy`, `--link` override it); the files the entry already has are not touched |
+| `papers file fetch KEY...`, `papers file fetch --missing` | download the free PDF of the entries (from their DOI or arXiv id) and attach it (below) |
 | `papers file detach FILE... [--key KEY...]` | remove the links to the files from every entry that links to them (only from the entries of `--key` with `--key`); the files are kept (below) |
 | `papers file detach --key KEY...` | remove all the links of the entries |
 | `papers file detach --broken [--key KEY...]` | remove the broken links (of all entries without `--key`) |
@@ -104,6 +105,71 @@ The other broken links are reported, and removed with
 `papers file clean` skips hidden files and folders (such as `.git`) and
 `.bib` files. A folder of the layout of versions before 2.19 (with a hidden
 `.<name>.bib`) is removed as a whole when no entry links to its files.
+
+### Fetching the free PDF of an entry
+
+`papers file fetch KEY...` finds an open-access PDF of each entry from its
+DOI or arXiv id, downloads it, and attaches it as `papers file attach` does:
+the PDF goes to the files directory, under the template name of the entry.
+`--missing` takes the entries without PDF (of the KEYs given, or of the whole
+library). Only open-access copies are used. The links are tried in this
+order, until one gives a PDF (a file that starts with `%PDF`; a login page or
+a challenge is not one):
+
+1. the published version: the PDF that the publisher's article page links
+   (its `citation_pdf_url` tag, the page being that of `https://doi.org/DOI`),
+   then the open-access locations of [OpenAlex](https://openalex.org) of the
+   published version;
+2. the accepted manuscript (OpenAlex);
+3. the submitted version (OpenAlex), then arXiv (`https://arxiv.org/pdf/ID`).
+
+Each line says which version was attached and where it came from:
+
+```
+$ papers file fetch smith2020 doe2021
+smith2020: files/smith_2020_ocean.pdf (published version, from journals.example.org)
+doe2021: files/doe_2021_ice.pdf (accepted manuscript, from repository.example.edu)
+```
+
+`--version published` attaches the published version only, `--version
+accepted` also the accepted manuscript. When no link gives a PDF, the error
+lists the links tried and the pages to open in a browser; the other entries
+are attached and saved, and the command exits with status 1. `--dry-run`
+lists the links that would be tried, in order, and changes nothing.
+
+`--supplements` also attaches the supplementary PDFs that the article page
+links: the links to a PDF with `suppl` in their URL or their text, and the
+`citation_supplementary_material` tags. They are attached as the other files
+of the entry (`<name>--<label>.pdf`). Data sets and other files are left
+out; what is found depends on the publisher.
+
+Nothing is downloaded or attached twice:
+
+- an entry that links to a PDF already is skipped (`KEY: has a PDF already
+  (--again to fetch it anyway)`); with `--supplements`, its supplements are
+  still fetched;
+- a downloaded file with the content (sha256) of a file of the entry is not
+  attached (`not attached, the entry has the same file`);
+- papers remembers, in the cache of the machine (see
+  [Configuration](configuration.md#cache)), the checksum of the PDF each URL
+  gave. A URL downloaded before is not downloaded again when the entry has a
+  file with that checksum (`KEY: already has FILE`), or when a file of the
+  library has it: that file is attached instead (a file of another entry is
+  linked where it is, `same file as OTHERKEY`). Nothing about the URL is
+  written in the library.
+
+With `--missing`, when more than 50 entries with a DOI would query OpenAlex
+and no API key is set (environment variable `OPENALEX_API_KEY`, free at
+<https://openalex.org/settings/api>), papers asks first (`-y/--yes` does not
+ask; without a terminal, it stops and says how to proceed). The email
+address of `PAPERS_MAILTO`, when set, is given to OpenAlex and in the user
+agent of the requests to the publishers. papers waits a second between two
+requests to the same site.
+
+`papers add --doi DOI --fetch-pdf` adds the entry and fetches its PDF in the
+same way, and `papers fetch --pdf DOI` downloads the PDF into the current
+directory (`-o FILE` names the file), without a library (see
+[Adding entries](adding-entries.md#add-an-entry-from-its-doi)).
 
 ### Moving files
 
