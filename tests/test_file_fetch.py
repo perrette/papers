@@ -288,6 +288,95 @@ class TestSelection(FetchTest):
         self.assertEqual(len(self.files('smith2020')), 1)
 
 
+class TestBrokenLinkRepair(FetchTest):
+    "a broken PDF link gets the repair of `papers file fix` first; the download only if it gives no PDF"
+
+    def setUp(self):
+        super().setUp()
+        self.old = self.path('lib', 'files', 'old.pdf')
+        self.bib(entry('smith2020', 'files/old.pdf', doi=DOI))
+        self.publisher()
+        self.found = self.write('downloads', 'old.pdf', content='pdf old')
+
+    def test_found_in_a_search_folder(self):
+        # the files setting of the tests is link: linked where it is, as file fix does
+        out = self.out('file fetch smith2020 --search ../downloads')
+        self.assertRegex(out, r'smith2020: relinked \S+/downloads/old.pdf \(found in \S+/downloads\), not downloaded')
+        self.assertEqual(self.files('smith2020'), [self.found])
+        self.assertEqual(self.web.downloads(), [])
+
+    def test_copied_into_the_files_directory(self):
+        self.lib('config files copy')
+        out = self.out('file fetch smith2020 --search ../downloads')
+        file, = self.files('smith2020')
+        self.assertIn(f'smith2020: relinked files/{os.path.basename(file)} (found in ', out)
+        self.assertEqual(Path(file).read_text(), 'pdf old')
+        self.assertEqual(os.path.dirname(file), self.path('lib', 'files'))
+        self.assertTrue(os.path.exists(self.found))
+        self.assertEqual(self.web.downloads(), [])
+
+    def test_missing(self):
+        out = self.out('file fetch --missing --search ../downloads')
+        self.assertIn('not downloaded', out)
+        self.assertEqual(self.web.downloads(), [])
+
+    def test_restored_by_checksum(self):
+        # deleted outside papers: its checksum in files.json, a copy of the same content in the history
+        import papers.backup
+        from papers.utils import checksum
+        Path(self.old).write_text('pdf a')
+        self.lib('file checksum')
+        copy = self.write('copy.pdf', content='pdf a')
+        papers.backup.Deleted(self.config()).store.put_file(copy, checksum(self.old).hex())
+        os.remove(self.old)
+        out = self.out('file fetch smith2020')
+        self.assertIn('smith2020: files/old.pdf: restored from the history (deleted, its checksum known), '
+                      'not downloaded', out)
+        self.assertEqual(Path(self.old).read_text(), 'pdf a')
+        self.assertEqual(self.files('smith2020'), [self.old])
+        self.assertEqual(self.web.downloads(), [])
+
+    def config(self):
+        from papers.config import Config, CONFIG_FILE_LOCAL
+        return Config.load(self.path('lib', CONFIG_FILE_LOCAL))
+
+    def test_not_found_downloads(self):
+        os.remove(self.found)
+        out = self.out('file fetch smith2020 --search ../downloads')
+        self.assertNotIn('relinked', out)
+        self.assertEqual(self.web.downloads(), [PDF])
+        self.assertEqual(len(self.files('smith2020')), 2)  # the broken link stays, as file fix leaves it
+
+    def test_dry_run(self):
+        before = self.bibtext()
+        out = self.out('file fetch smith2020 --search ../downloads --dry-run')
+        self.assertRegex(out, r'DRYRUN: smith2020: would relink files/old.pdf -> \S*downloads/old.pdf '
+                              r'\(found in .*downloads\)')
+        self.assertNotIn('would download', out)
+        self.assertEqual(self.bibtext(), before)
+        self.assertEqual(self.libfiles(), [])
+
+    def test_again_downloads_too(self):
+        out = self.out('file fetch smith2020 --search ../downloads --again')
+        self.assertNotIn('not downloaded', out)
+        self.assertEqual(self.web.downloads(), [PDF])
+        self.assertEqual(len(self.files('smith2020')), 2)
+
+    def test_one_step_with_the_downloads(self):
+        self.bib(entry('smith2020', 'files/old.pdf', doi=DOI), entry('other2001', 'files/gone.pdf', doi='10.1000/b'))
+        self.publisher(doi='10.1000/b', pdf='https://journals.example.org/b.pdf')
+        self.lib('file fetch smith2020 other2001 --search ../downloads')
+        self.assertEqual(self.web.downloads(), ['https://journals.example.org/b.pdf'])
+        self.assertEqual(self.files('smith2020'), [self.found])
+        self.assertEqual(len(self.libfiles()), 1)
+        self.lib('undo')  # the relink and the download together
+        self.assertEqual(self.files('smith2020'), [self.old])
+        self.assertEqual(self.files('other2001'), [self.path('lib', 'files', 'gone.pdf')])
+        self.lib('redo')
+        self.assertEqual(self.files('smith2020'), [self.found])
+        self.assertEqual(len(self.files('other2001')), 2)
+
+
 class TestConfirmation(FetchTest):
 
     def setUp(self):

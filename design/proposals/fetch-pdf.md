@@ -30,6 +30,12 @@ formats.md (the porcelain lines of `papers file fetch`, `papers fetch
    --fetch-pdf` adds the entry all the same.
 6. No duplicates, as below. Nothing about the source is written in the
    library (no field): the URLs are only in the cache of the machine.
+7. A broken PDF link is repaired locally first (#211): `papers file fetch`
+   makes the repair of `papers file fix` for an entry whose PDF link is
+   broken (the pool, `--search DIR`, the history), and downloads only if
+   the entry still has no PDF after it. The repair and the downloads are
+   saved in one step. An entry without PDF link is downloaded as before;
+   `add --fetch-pdf` makes no repair.
 
 ## No duplicate downloads
 

@@ -331,6 +331,14 @@ that check the same thing.
 - tests/test_file_fetch.py::TestSelection::test_has_a_pdf_already
 - tests/test_file_fetch.py::TestSelection::test_porcelain
 - tests/test_file_fetch.py::TestSelection::test_undo
+- tests/test_file_fetch.py::TestBrokenLinkRepair::test_found_in_a_search_folder
+- tests/test_file_fetch.py::TestBrokenLinkRepair::test_copied_into_the_files_directory
+- tests/test_file_fetch.py::TestBrokenLinkRepair::test_missing
+- tests/test_file_fetch.py::TestBrokenLinkRepair::test_restored_by_checksum
+- tests/test_file_fetch.py::TestBrokenLinkRepair::test_not_found_downloads
+- tests/test_file_fetch.py::TestBrokenLinkRepair::test_dry_run
+- tests/test_file_fetch.py::TestBrokenLinkRepair::test_again_downloads_too
+- tests/test_file_fetch.py::TestBrokenLinkRepair::test_one_step_with_the_downloads
 - tests/test_file_fetch.py::TestConfirmation::test_no_terminal_refuses
 - tests/test_file_fetch.py::TestConfirmation::test_asks_in_a_terminal
 - tests/test_file_fetch.py::TestConfirmation::test_yes_key_or_fewer_entries

@@ -145,10 +145,17 @@ out; what is found depends on the publisher.
 
 Nothing is downloaded or attached twice:
 
-- an entry that links to a PDF already is skipped (a broken link does not
-  count: its PDF is fetched) (`KEY: has a PDF already
+- an entry that links to a PDF already is skipped (`KEY: has a PDF already
   (--again to fetch it anyway)`); with `--supplements`, its supplements are
   still fetched;
+- an entry whose PDF link is broken first gets the repair of
+  `papers file fix` (see [Reconnecting PDFs and a bibtex](#reconnecting-pdfs-and-a-bibtex)):
+  the file found in the pool, in the folders of `--search DIR` (the option
+  can be repeated) or in the history is relinked, and nothing is downloaded
+  (`KEY: relinked files/x.pdf (found in ~/Downloads), not downloaded`). The
+  PDF is downloaded only when no file is found. `--dry-run` says what would
+  be relinked. The repair and the downloads are one step: `papers undo`
+  undoes both;
 - a downloaded file with the content (sha256) of a file of the entry is not
   attached (`not attached, the entry has the same file`);
 - papers remembers, in the cache of the machine (see

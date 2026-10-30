@@ -751,6 +751,16 @@ names above). `--missing` takes the entries without PDF.
 - An entry has a PDF when one of its links ends in `.pdf`,
   case-insensitively, and the file exists (a broken link is no PDF). Its main PDF is not fetched again, unless `--again`;
   `--supplements` still fetches its supplements.
+- `file fetch`: the local repair first. An entry without PDF that has a
+  broken link ending in `.pdf` first gets the repair of its broken links
+  that `file fix` makes (the files found for them in the pool, the folders
+  of `--search DIR`, which can be repeated, and the history; history.md
+  6.6; placed as `file fix` places them, rules 3 and 4 of the files
+  setting). An entry that has a PDF after that repair is not downloaded
+  (unless `--again`); the others are fetched as below. `--dry-run` says
+  what the repair would relink or restore, and does not list the links of
+  these entries. An entry without any PDF link is not repaired. `add
+  --fetch-pdf` makes no repair.
 - The links are tried in this order, until one gives a PDF (the first 1024
   bytes contain `%PDF`); an HTTP error, a network error or another answer
   moves to the next one:
@@ -784,12 +794,15 @@ names above). `--missing` takes the entries without PDF.
   entry is linked where it is: the two entries link to one file; a file of
   `files.json` alone is placed by the files setting); else the URL is
   downloaded. A cache entry that matches no file is a miss.
-- The entries that got a file are saved in one step of the history (undo
-  removes the links; a downloaded file is not put back, see rule 1). The
+- The entries that got a file, relinked or downloaded, are saved in one
+  step of the history (undo restores the links, and removes a file that
+  the repair copied from the history; a downloaded file is not put back,
+  see rule 1). The
   command exits with 1 when an entry got no PDF, after saving the others.
 
-**Free**: the messages (`KEY: FILE (published version, from HOST)`, the
-links to open in a browser), the cache format, the user agent, the wait
+**Free**: the messages (`KEY: FILE (published version, from HOST)`,
+`KEY: relinked FILE (found in DIR), not downloaded`, the links to open in
+a browser), the cache format, the user agent, the wait
 between requests to a site (papers: one second), and the question that
 `--missing` asks before more than 50 entries with a DOI query OpenAlex
 without `OPENALEX_API_KEY` (`-y/--yes` does not ask; without a terminal,

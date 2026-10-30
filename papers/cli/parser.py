@@ -605,8 +605,10 @@ def get_parser(config=None):
                     'published version (the citation_pdf_url of the publisher\'s article page, then the '
                     'open-access locations of OpenAlex), the accepted manuscript, the submitted version '
                     '(preprint) and arXiv. Each line says which version was attached and where it came from. '
-                    'An entry that links to a PDF already is skipped (--again fetches it anyway). A PDF with the '
-                    'content of a file of the entry is not attached; a URL downloaded before on this machine '
+                    'An entry that links to a PDF already is skipped (--again fetches it anyway). An entry whose '
+                    'PDF link is broken first gets the repair of `papers file fix` (the file found in the pool, '
+                    'the --search folders or the history), and is downloaded only if that gives it no PDF. A PDF '
+                    'with the content of a file of the entry is not attached; a URL downloaded before on this machine '
                     'whose file the library has is not downloaded again. OpenAlex reads the environment '
                     f'variables {API_KEY_ENV} (a free API key) and {MAILTO_ENV} (an email address, also given to '
                     'the publishers in the user agent). Exit 1 if an entry got no PDF (the others are attached); '
@@ -623,6 +625,9 @@ def get_parser(config=None):
              'or text, or a citation_supplementary_material tag), as other files of the entry '
              '(<name>--<label>.pdf); also for an entry that has its PDF')
     p.add_argument('--again', action='store_true', help='fetch the PDF of an entry that links to a PDF already')
+    p.add_argument('--search', action='append', metavar='DIR',
+        help='for an entry whose PDF link is broken, also look for its file in DIR (recursively), by file '
+             'name, else by the template name of the entry, as `papers file fix --search` (can be repeated)')
     p.add_argument('-y', '--yes', action='store_true', help='do not ask before querying OpenAlex for many entries')
     _command(p, file_fetchcmd, library=True)
 
