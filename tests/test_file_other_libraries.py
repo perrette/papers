@@ -1,9 +1,7 @@
 """papers file fix, check and fetch: the file of a broken link found in the
 library itself by checksum, in its pool, and in the other libraries of the
-machine (the places of the history store) by checksum, through the file
-index of the cache folder"""
+machine (the places of the history store) by checksum"""
 import io
-import json
 import os
 import shutil
 from contextlib import redirect_stdout
@@ -11,7 +9,7 @@ from pathlib import Path
 from unittest import mock
 
 from papers.config import short_home
-from papers.otherlibs import FileIndex, index_dir
+from papers.otherlibs import OtherLibraries
 
 from tests.test_file_fetch import FetchTest
 from tests.test_file_relink import entry
@@ -185,65 +183,61 @@ class TestFetch(OtherLibrariesTest):
         self.assertTrue(Path(file).read_bytes().startswith(b'%PDF'))
 
 
-class TestFileIndex(OtherLibrariesTest):
-    """the other libraries are found through the file index of the cache
-    folder (papers.otherlibs.FileIndex): a file by checksum, as the
-    .papers/files.json of the head state of each place has it"""
+class TestOtherLibraries(OtherLibrariesTest):
+    """the other libraries are searched by checksum, as the
+    .papers/files.json of the head state of each place has it
+    (papers.otherlibs.OtherLibraries), read once per command when needed"""
 
     def setUp(self):
         super().setUp()
-        self.indexed = []
-        update = FileIndex.update
+        self.read = []  # the places whose files.json was read
+        checksums = OtherLibraries.checksums
 
-        def counted(index, config):
-            update(index, config)
-            self.indexed.append(index.indexed)
-        patcher = mock.patch.object(FileIndex, 'update', counted)
+        def counted(project, n, place):
+            self.read.append(place)
+            return checksums(project, n, place)
+        patcher = mock.patch.object(OtherLibraries, 'checksums', staticmethod(counted))
         patcher.start()
         self.addCleanup(patcher.stop)
-
-    def indexes(self):
-        return sorted(os.listdir(index_dir())) if os.path.isdir(index_dir()) else []
 
     def test_nothing_broken_nothing_searched(self):
         self.write('lib', 'files', 'ice.pdf', content='pdf')
         self.bib(entry('doe2020a', 'files/ice.pdf', doi='10.1000/doe'))
         self.publisher(doi='10.1000/doe')
-        with mock.patch.object(FileIndex, 'update', side_effect=AssertionError('searched')), \
-                mock.patch.object(FileIndex, 'find', side_effect=AssertionError('searched')):
+        with mock.patch.object(OtherLibraries, 'places', side_effect=AssertionError('searched')):
             self.out('file check')
             self.out('file fix')
             self.out('file fetch --missing --dry-run')
-        self.assertEqual(self.indexes(), [])
+        self.assertEqual(self.read, [])
 
     def test_no_checksum_nothing_searched(self):
         self.bib(entry('doe2020a', self.path('gone', 'ice.pdf'), doi='10.1000/doe'))
         self.out('file check')
-        self.assertEqual(self.indexed, [])
+        self.assertEqual(self.read, [])
 
-    def test_place_indexed_once(self):
+    def test_place_read_once_per_command(self):
         self.lost('one2000', 'pdf doe')
+        self.write('lib', 'files', 'two.pdf', content='pdf two')
+        Path(self.path('lib', 'papers.bib')).write_text(
+            entry('one2000', 'files/one2000.pdf') + entry('two2000', 'files/two.pdf', title='Two'))
+        self.lib('file checksum')
+        os.remove(self.path('lib', 'files', 'two.pdf'))
         self.assertIn(self.found_in_other(), self.out('file check'))
-        self.assertEqual(self.indexed[-1], 2)  # other/ and lib/ (its head is searched by no other step)
-        self.assertIn('seen.json', self.indexes())
-        self.assertIn(self.found_in_other(), self.out('file check'))
-        self.assertEqual(self.indexed[-1], 0)  # no head changed: nothing read again
+        # other/ only (lib/ is the library itself), once for the two broken links
+        self.assertEqual(self.read, [os.path.realpath(self.path('other', 'papers.bib'))])
+        self.out('file check')
+        self.assertEqual(len(self.read), 2)  # read again by the next command
 
-    def test_index_file_per_checksum(self):
-        from papers.utils import checksum
+    def test_no_file_index_in_cache(self):
+        import papers.config
+        self.lost('one2000', 'pdf doe')
+        self.assertIn(self.found_in_other(), self.out('file fix'))
+        self.assertFalse(os.path.exists(os.path.join(papers.config.CACHE_DIR, 'file-index')))
+
+    def test_new_head_seen(self):
         self.lost('one2000', 'pdf doe')
         self.out('file check')
-        digest = checksum(self.other_pdf).hex()
-        copies = json.loads(Path(index_dir(), digest + '.json').read_text())['copies']
-        # the file of other/, and the lost file of lib/ (indexed too; not searched from lib/)
-        self.assertEqual(sorted((c['path'], c['place']) for c in copies),
-                         [(self.path('lib', 'files', 'one2000.pdf'), os.path.realpath(self.path('lib', 'papers.bib'))),
-                          (self.other_pdf, os.path.realpath(self.path('other', 'papers.bib')))])
-
-    def test_new_head_indexed(self):
-        self.lost('one2000', 'pdf doe')
-        self.out('file check')
-        # a new file in other/, recorded by a command there: indexed at the next search
+        # a new file in other/, recorded by a command there: found at the next search
         new = self.write('other', 'files', 'new.pdf', content='pdf new')
         Path(self.path('other', 'papers.bib')).write_text(
             entry('doe2020', 'files/doe.pdf', doi='10.1000/doe', author='Doe, Jane', title='Ice')
@@ -262,19 +256,13 @@ class TestFileIndex(OtherLibrariesTest):
         self.papers('file checksum', cwd=self.path('other'))
         self.assertIn(f'-> {short_home(new)} {self.found_in_other()}', self.out('file check'))
 
-    def test_missing_file_skipped_and_dropped(self):
-        from papers.utils import checksum
+    def test_missing_file_skipped(self):
         self.lost('one2000', 'pdf doe')
-        self.out('file check')
-        digest = checksum(self.other_pdf).hex()
-        os.remove(self.other_pdf)  # still in the index
+        os.remove(self.other_pdf)  # still in the files.json of the head state of other/
         self.assertIn('0 links relinked, 1 still broken', self.out('file fix'))
-        copies = json.loads(Path(index_dir(), digest + '.json').read_text())['copies']
-        self.assertEqual([c['path'] for c in copies], [self.path('lib', 'files', 'one2000.pdf')])  # of lib/: skipped
 
     def test_changed_content_skipped(self):
         self.lost('one2000', 'pdf doe')
-        self.out('file check')
         Path(self.other_pdf).write_text('pdf changed')
         self.assertIn('0 links relinked, 1 still broken', self.out('file fix'))
 
@@ -283,13 +271,4 @@ class TestFileIndex(OtherLibrariesTest):
         self.out('file check')
         shutil.move(self.path('other'), self.path('moved'))
         self.assertIn('0 links relinked, 1 still broken', self.out('file fix'))
-        seen = json.loads(Path(index_dir(), 'seen.json').read_text())['places']
-        self.assertNotIn(os.path.realpath(self.path('other', 'papers.bib')), seen)
-
-    def test_unreadable_index_file_ignored(self):
-        from papers.utils import checksum
-        self.lost('one2000', 'pdf doe')
-        self.out('file check')
-        Path(index_dir(), checksum(self.other_pdf).hex() + '.json').write_text('not json')
-        Path(index_dir(), 'seen.json').write_text('not json')  # all the places indexed again
-        self.assertIn(self.found_in_other(), self.out('file check'))
+        self.assertNotIn(os.path.realpath(self.path('other', 'papers.bib')), self.read[1:])

@@ -1620,11 +1620,6 @@ Contract:
   `<cache dir>/parsed/` (the first implementation would read wrong
   blocks). Having a cache, and its location, are free otherwise.
 
-`<cache dir>/file-index/` is another private cache of the Python
-implementation (the files of the other libraries by checksum, for
-library.md "The file of a broken link"): another implementation must not
-write into it.
-
 ## 12. `papers history`
 
 Free (display), except where it names stored data.
