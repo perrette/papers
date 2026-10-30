@@ -265,6 +265,14 @@ class TestSelection(FetchTest):
         self.out('file fetch has2000 --again')
         self.assertEqual(len(self.files('has2000')), 2)
 
+    def test_broken_link_is_no_pdf(self):
+        "an entry whose PDF link is broken is fetched, by name and with --missing"
+        os.remove(self.a)
+        self.publisher(doi='10.1000/has', pdf='https://journals.example.org/has.pdf')
+        out = self.out('file fetch --missing')
+        self.assertNotIn('has a PDF already', out)
+        self.assertIn('https://journals.example.org/has.pdf', self.web.downloads())
+
     def test_porcelain(self):
         out = io.StringIO()
         with redirect_stdout(out):

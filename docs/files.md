@@ -145,7 +145,8 @@ out; what is found depends on the publisher.
 
 Nothing is downloaded or attached twice:
 
-- an entry that links to a PDF already is skipped (`KEY: has a PDF already
+- an entry that links to a PDF already is skipped (a broken link does not
+  count: its PDF is fetched) (`KEY: has a PDF already
   (--again to fetch it anyway)`); with `--supplements`, its supplements are
   still fetched;
 - a downloaded file with the content (sha256) of a file of the entry is not

@@ -328,7 +328,8 @@ directory (shown by `papers status -v`), whether or not a library is
 configured. The metadata of each DOI is a json file under `doi/`, e.g.
 `doi/10.1126/science.1166510.json` (DOIs that do not exist are remembered for
 a day), the searches of `--openalex` are under `openalex/`, and the
-open-access locations of a DOI (`papers file fetch`) under `openalex-work/`.
+open-access locations of a DOI (`papers file fetch`) under `openalex-work/`
+(asked again after 30 days: a paper can become open access).
 `downloads/` has, for each URL of a PDF that `papers file fetch` (or `add
 --fetch-pdf`, `fetch --pdf`) downloaded, the checksum (sha256) and size of
 the file it gave: a URL whose file the entry or the library already has is

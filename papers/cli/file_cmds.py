@@ -523,8 +523,8 @@ OPENALEX_ASK = 50  # entries of --missing that may query OpenAlex, above which p
 
 
 def has_pdf(biblio, e):
-    "the entry links to a PDF (a broken link too)"
-    return any(f.lower().endswith('.pdf') for f in biblio.get_files(e))
+    "the entry links to a PDF file that exists (a broken link counts as no PDF)"
+    return any(f.lower().endswith('.pdf') and os.path.isfile(f) for f in biblio.get_files(e))
 
 
 def _show(path):

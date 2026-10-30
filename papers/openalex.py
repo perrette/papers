@@ -310,7 +310,11 @@ def _trim_location(location):
             'source': source.get('display_name')}
 
 
-@cached('openalex-work', not_found=WorkNotFound, normalize=str.lower)
+# open access changes (an embargo ends): the locations of a work are asked again after a month
+WORK_MAX_AGE = 30 * 24 * 3600
+
+
+@cached('openalex-work', not_found=WorkNotFound, normalize=str.lower, max_age=WORK_MAX_AGE)
 def work_locations(doi):
     """the locations of the work of a DOI (`GET /works/doi:<DOI>`, one request),
     trimmed: pdf_url, landing_page_url, version (publishedVersion,

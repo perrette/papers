@@ -49,6 +49,25 @@ class CacheTest(unittest.TestCase):
         self.assertEqual(calls, ["10.1234/ABC"])  # called with the argument as given
         self.assertTrue(os.path.isfile(os.path.join(self.tmp.name, "doi", "10.1234", "abc.json")))
 
+    def test_max_age(self):
+        "a result older than max_age is fetched again (e.g. open access that changes)"
+        calls = []
+
+        @cached("work", max_age=60)
+        def fn(x):
+            calls.append(x)
+            return len(calls)
+
+        self.assertEqual(fn("a"), 1)
+        self.assertEqual(fn("a"), 1)  # from the cache
+        path = os.path.join(self.tmp.name, "work", "a", "a.json")
+        with open(path) as f:
+            data = json.load(f)
+        data["time"] -= 61
+        with open(path, "w") as f:
+            json.dump(data, f)
+        self.assertEqual(fn("a"), 2)  # too old: fetched again
+
     def test_hashed_key_passes_the_argument(self):
         @cached("query", hashed_key=True)
         def fn(x):

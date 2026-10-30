@@ -70,7 +70,7 @@ def _migrate_legacy_cache(legacy, folder, migrate):
 NOT_FOUND_TTL = 24 * 3600  # seconds
 
 
-def cached(name, hashed_key=False, legacy=None, migrate=None, trim=None, not_found=None, normalize=None):
+def cached(name, hashed_key=False, legacy=None, migrate=None, trim=None, not_found=None, normalize=None, max_age=None):
     """cache the results of fun(key) as json files under papers.config.CACHE_DIR/name/
 
     legacy: cache file of previous versions, migrated on first use (with
@@ -80,6 +80,7 @@ def cached(name, hashed_key=False, legacy=None, migrate=None, trim=None, not_fou
         it is remembered (and raised again) for NOT_FOUND_TTL seconds
     normalize: the cache key of an argument (e.g. str.lower for DOIs); fun
         is called with the argument as given
+    max_age: seconds after which a stored result is fetched again (None: kept)
     """
     def decorator(fun):
         def decorated(arg):
@@ -94,7 +95,7 @@ def cached(name, hashed_key=False, legacy=None, migrate=None, trim=None, not_fou
                 key = hashlib.sha256(arg.encode('utf-8')).hexdigest()[:16]
             file = _cache_path(folder, key)
             data = _read_cache_file(file)
-            if data and 'value' in data:
+            if data and 'value' in data and not (max_age and time.time() - data.get('time', 0) > max_age):
                 logger.debug('load from cache: '+repr((name, key)))
                 return data['value']
             if data and not_found and time.time() - data.get('not_found', 0) < NOT_FOUND_TTL:
@@ -108,7 +109,7 @@ def cached(name, hashed_key=False, legacy=None, migrate=None, trim=None, not_fou
             if trim:
                 res = trim(res)
             if not papers.config.DRYRUN:
-                _write_cache_file({'value': res}, file)
+                _write_cache_file({'value': res, 'time': time.time()} if max_age else {'value': res}, file)
             return res
         return decorated
     return decorator

@@ -748,8 +748,8 @@ open-access PDF of an entry from its DOI or arXiv id and attaches it as
 `file attach` attaches a downloaded file (rule 1 of the files setting, the
 names above). `--missing` takes the entries without PDF.
 
-- An entry has a PDF when one of its links (broken or not) ends in `.pdf`,
-  case-insensitively. Its main PDF is not fetched again, unless `--again`;
+- An entry has a PDF when one of its links ends in `.pdf`,
+  case-insensitively, and the file exists (a broken link is no PDF). Its main PDF is not fetched again, unless `--again`;
   `--supplements` still fetches its supplements.
 - The links are tried in this order, until one gives a PDF (the first 1024
   bytes contain `%PDF`); an HTTP error, a network error or another answer
