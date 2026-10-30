@@ -1,6 +1,6 @@
 # Proposal: fetching the free PDF of an entry
 
-Status: implemented in #PRNUM (issue #211). The rules are in the
+Status: implemented in #212 (issue #211). The rules are in the
 specification: library.md, "The free PDF of an entry" (which entries, the
 order of the links, the supplements, the cache of the downloads), and
 formats.md (the porcelain lines of `papers file fetch`, `papers fetch
