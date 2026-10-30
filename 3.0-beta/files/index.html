@@ -1161,9 +1161,7 @@ The other broken links are reported, and removed with
 DOI or arXiv id, downloads it, and attaches it as <code>papers file attach</code> does:
 the PDF goes to the files directory, under the template name of the entry.
 <code>--missing</code> takes the entries without PDF (of the KEYs given, or of the whole
-library); an entry without any PDF link first gets the PDF of the same paper
-from the pool or another library of the machine, if one has it (below).
-Only open-access copies are used. The links are tried in this
+library). Only open-access copies are used. The links are tried in this
 order, until one gives a PDF (a file that starts with <code>%PDF</code>; a login page or
 a challenge is not one):</p>
 <ol>
@@ -1200,13 +1198,7 @@ out; what is found depends on the publisher.</p>
   libraries of the machine, in the folders of <code>--search DIR</code> (the option
   can be repeated) or in the history is relinked, and nothing is downloaded
   (<code>KEY: relinked files/x.pdf (found in ~/Downloads), not downloaded</code>). The
-  PDF is downloaded only when no file is found;</li>
-<li>with <code>--missing</code>, an entry without any PDF link gets the PDF of an entry of
-  the same paper (same DOI, arXiv identifier, ISBN, or same title and
-  authors) in the pool or in another library of the machine, copied as
-  <code>papers file fix</code> copies the files it finds (<code>KEY: files/x.pdf (found in
-  ~/other/library (entry KEY2)), not downloaded</code>). <code>papers file fetch KEY</code>
-  without <code>--missing</code> downloads the PDF of an entry without PDF link. <code>--dry-run</code> says what would
+  PDF is downloaded only when no file is found. <code>--dry-run</code> says what would
   be relinked. The repair and the downloads are one step: <code>papers undo</code>
   undoes both;</li>
 <li>a downloaded file with the content (sha256) of a file of the entry is not
@@ -1324,13 +1316,14 @@ looks for each missing file, without parsing any PDF:</p>
    Nothing changes in PATH, and no origin copy is recorded (see
    <a href="../pools/#origin-copies">Origin copies</a>): only the file links of the
    library change;</li>
-<li>in the other libraries of the machine: those that the history knows
-   (<code>papers history --all</code> lists them), except the library and its pool.
-   First a file with the checksum of the missing file in their
-   <code>.papers/files.json</code>, then the files of their entries of the same paper.
-   A library that moved or was deleted is skipped. Each library is read
-   once, and nothing is written in it
-   (<code>found in ~/other/library (entry KEY)</code>);</li>
+<li>in the other libraries of the machine, by checksum: those that the
+   history knows (<code>papers history --all</code> lists them), except the library
+   and its pool. A file with the checksum that <code>.papers/files.json</code> has for
+   the missing file, among the files of their <code>.papers/files.json</code> as of
+   their last papers command (a change made there by hand is seen after
+   the next papers command in that library). A library that moved or was
+   deleted is skipped, and nothing is written in the other libraries
+   (<code>found in ~/other/library</code>);</li>
 <li>in the folders given with <code>--search DIR</code> (searched recursively; the
    option can be repeated): a file with the same file name as the broken
    link, else a file named as the library's name template names the entry
