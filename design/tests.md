@@ -1005,6 +1005,7 @@ that check the same thing.
 - tests/test_spec_formats.py::TestCSLDocument::test_example
 - tests/test_formats.py::TestCSL::test_not_csl
 - tests/test_formats.py::TestCSL::test_bad_names
+- tests/test_formats.py::TestCSL::test_null_name_parts
 
 ### 3.5 What is lost
 

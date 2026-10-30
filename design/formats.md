@@ -355,7 +355,7 @@ All other bibtex fields are left out (e.g. `month` as such, `eprint`,
 
 | bibtex | from CSL |
 |---|---|
-| `author`, `editor`, `translator` | name arrays (2.3); a value that is a string or an object is an array of that one name; another value is an error (3.4) |
+| `author`, `editor`, `translator` | name arrays (2.3); a value that is a string or an object is an array of that one name; another value is an error (3.4). Empty names (3.4) and the `null` parts of a name are left out, and so is a name with no name part left (`{"family": null, "given": "Ann"}` is read as `{"given": "Ann"}`, `{"family": null}` gives no name); no name left gives no field |
 | `title`, `volume`, `doi`, `url`, `isbn`, `issn`, `publisher`, `address`, `abstract`, `note`, `edition`, `language`, `series`, `pmid`, `pmcid` | the keys of 3.2 rows 7–21. A value that is an array gives its first element; numbers become their decimal text. `doi` is cleaned (2.6). |
 | `booktitle` (types `incollection`, `inproceedings`) or `journal` (other types) | `container-title` |
 | `number` | `issue`, else `number` |
@@ -383,7 +383,8 @@ Each `author`, `editor` and `translator` that is present and not empty
 (not `null`, `false`, `""`, `[]` or `{}`) must be a name or an array
 whose elements are names or empty ones (left out). A name is a string or
 an object whose `family`, `given`, `literal`, `non-dropping-particle`,
-`dropping-particle` and `suffix` are strings or `null` when present.
+`dropping-particle` and `suffix` are strings or `null` when present
+(`null` parts are left out, 3.3).
 Else nothing is read, and the error is
 `not a CSL-JSON file: item <N> (id <id>): <key> is not a name or an array of names`,
 where N is the position of the item in the array (from 1), `<id>` the

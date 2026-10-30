@@ -225,7 +225,16 @@ def format_bibtex_names(names):
     "CSL names as a bibtex field: an array of names, or one name (a string or an object)"
     if isinstance(names, (str, dict)):
         names = [names]
-    return ' and '.join(format_bibtex_name(n) for n in names or [] if n)
+    names = [_csl_name_parts(n) for n in names or [] if n]
+    return ' and '.join(format_bibtex_name(n) for n in names if n)
+
+
+def _csl_name_parts(name):
+    "a CSL name without its null parts (an empty dict when no name part is left)"
+    if not isinstance(name, dict):
+        return name
+    name = {k: v for k, v in name.items() if v is not None}
+    return name if any(part in name for part in _CSL_NAME_PARTS) else {}
 
 
 _MONTHS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec']
