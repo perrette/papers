@@ -230,10 +230,10 @@ def format_bibtex_names(names):
 
 
 def _csl_name_parts(name):
-    "a CSL name without its null parts (an empty dict when no name part is left)"
+    "a CSL name without its null and blank parts (empty when no name part is left)"
     if not isinstance(name, dict):
-        return name
-    name = {k: v for k, v in name.items() if v is not None}
+        return name if name.strip() else ''
+    name = {k: v for k, v in name.items() if v is not None and not (isinstance(v, str) and not v.strip())}
     return name if any(part in name for part in _CSL_NAME_PARTS) else {}
 
 

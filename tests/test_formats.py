@@ -309,6 +309,14 @@ class TestCSL(unittest.TestCase):
         e, = loads_csl('[{"id": "x", "title": "T", "author": [{"family": null}]}]')
         self.assertNotIn('author', e)
 
+    def test_blank_name_parts(self):
+        # formats.md 3.3: blank name parts are left out like null ones; so is a name with no part left
+        e, = loads_csl('[{"id": "x", "author": ["A B", {"family": ""}, {"family": " ", "given": "Ann"}, "  ",'
+                       ' {"family": "Doe", "given": "", "suffix": "\\t"}]}]')
+        self.assertEqual(e['author'], '{A B} and , Ann and Doe')
+        e, = loads_csl('[{"id": "x", "title": "T", "author": [{"family": "", "given": " "}]}]')
+        self.assertNotIn('author', e)
+
     @unittest.skipUnless(HAS_JSONSCHEMA, 'jsonschema is not installed')
     def test_schema(self):
         import jsonschema
