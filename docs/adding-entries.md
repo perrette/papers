@@ -302,6 +302,21 @@ $ papers fetch --pdf 10.5194/bg-8-515-2011
 bg-8-515-2011.pdf (published version, from bg.copernicus.org)
 ```
 
+For programs, `--porcelain` prints on the standard output one line per
+DOI or arXiv id, in the order of the arguments (the other messages go to
+the standard error): `downloaded ID VERSION URL FILE` (`VERSION`:
+`published`, `accepted` or `submitted`; `URL`: the link of the PDF), then
+`refused-published ID URL` for each link of the published version that was
+refused before an accepted or submitted version was found; when no PDF
+could be downloaded, `refused ID URL` for each link to open in a browser,
+or `failed ID` when there is none (not a DOI or arXiv id, the file exists).
+The command exits with status 1 when an argument gave no PDF:
+
+```
+$ papers fetch --pdf 10.5194/bg-8-515-2011 --porcelain 2>/dev/null
+downloaded 10.5194/bg-8-515-2011 published https://bg.copernicus.org/articles/8/515/2011/bg-8-515-2011.pdf bg-8-515-2011.pdf
+```
+
 ## Add an entry without DOI from bibtex + PDF
 
 Some old files don't have a DOI. The best approach is to add the entry from its

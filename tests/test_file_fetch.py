@@ -638,6 +638,73 @@ class TestAddAndFetch(FetchTest):
             self.lib(f'fetch {DOI} -o x.pdf')
 
 
+class TestFetchPdfPorcelain(FetchTest):
+    """formats.md 7.2: the porcelain lines of `papers fetch --pdf`, one group per argument, in their order"""
+
+    def porcelain(self, cmd, fails=False):
+        out = io.StringIO()
+        with redirect_stdout(out):
+            if fails:
+                with self.assertRaises(PapersExit):
+                    self.lib(cmd + ' --porcelain')
+            else:
+                self.lib(cmd + ' --porcelain')
+        return out.getvalue()
+
+    def test_downloaded(self):
+        self.publisher()
+        target = self.path('paper.pdf')
+        out = self.porcelain(f'fetch --pdf {DOI} -o {target}')
+        self.assertEqual(out, f'downloaded {DOI} published {PDF} {target}\n')
+
+    def test_downloaded_into_the_current_directory(self):
+        self.web.files['https://arxiv.org/pdf/2101.01234'] = pdf_bytes('arxiv')
+        out = self.porcelain('fetch --pdf arXiv:2101.01234')
+        self.assertEqual(out, 'downloaded arXiv:2101.01234 submitted https://arxiv.org/pdf/2101.01234 2101.01234.pdf\n')
+
+    def test_refused_published(self):
+        self.publisher(content=403)
+        self.web.openalex[DOI] = [location('https://repo.example.edu/am.pdf', 'acceptedVersion')]
+        self.web.files['https://repo.example.edu/am.pdf'] = pdf_bytes('am')
+        target = self.path('paper.pdf')
+        out = self.porcelain(f'fetch --pdf {DOI} -o {target}')
+        self.assertEqual(out, f'downloaded {DOI} accepted https://repo.example.edu/am.pdf {target}\n'
+                              f'refused-published {DOI} {PDF}\n')
+
+    def test_refused(self):
+        self.publisher(content=b'<html>a challenge</html>')
+        self.web.openalex[DOI] = []
+        out = self.porcelain(f'fetch --pdf {DOI}', fails=True)
+        self.assertEqual(out, f'refused {DOI} {PDF}\nrefused {DOI} https://doi.org/{DOI}\n')
+
+    def test_failed(self):
+        self.publisher()
+        Path(self.path('paper.pdf')).write_text('x')
+        out = self.porcelain(f'fetch --pdf {DOI} -o {self.path("paper.pdf")}', fails=True)
+        self.assertEqual(out, f'failed {DOI}\n')  # the file exists
+        self.assertEqual(self.porcelain('fetch --pdf nothing', fails=True), 'failed nothing\n')
+
+    def test_several_exit_status(self):
+        self.publisher()
+        self.publisher(doi='10.1000/other', pdf=None)
+        self.web.openalex['10.1000/other'] = []
+        with self.assertLogs('papers', 'ERROR'), self.assertRaisesRegex(PapersExit, '1 of 2 PDFs not downloaded'):
+            out = io.StringIO()
+            with redirect_stdout(out):
+                self.lib(f'fetch --pdf 10.1000/other doi:{DOI} --porcelain')
+        out = out.getvalue()
+        name = '10.1000_ocean.pdf'
+        self.assertEqual(out, f'refused 10.1000/other https://doi.org/10.1000/other\n'
+                              f'downloaded doi:{DOI} published {PDF} {name}\n')
+        self.assertTrue(os.path.exists(self.path('lib', name)))
+
+    def test_all_downloaded_exit_0(self):
+        self.publisher()
+        self.web.files['https://arxiv.org/pdf/2101.01234'] = pdf_bytes('arxiv')
+        out = self.porcelain(f'fetch --pdf {DOI} 2101.01234')
+        self.assertEqual([line.split()[0] for line in out.splitlines()], ['downloaded', 'downloaded'])
+
+
 class TestPageLinks(FetchTest):
 
     def test_relative_links(self):

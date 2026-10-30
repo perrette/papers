@@ -860,6 +860,10 @@ names above). `--missing` takes the entries without PDF.
   network error), its message gives these links, to open in a browser.
   When no link of the published version was refused (none was found),
   nothing more is said.
+- `papers fetch --pdf --porcelain` gives the version, the link of the
+  PDF and the links to open in a browser as lines for programs
+  (formats.md 7.2); `file fetch --porcelain` gives the `modified` lines
+  of the entries that got a file.
 - A `file fetch` of more than one entry (`--missing`, or several KEYs;
   not with `--dry-run` or `--porcelain`) prints a summary at the end: the
   PDFs attached by version, the entries repaired from a local file (not

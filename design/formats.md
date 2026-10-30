@@ -848,8 +848,8 @@ and `-v`); its text is human output (**free**).
 --doi-only`) on standard output; see bibtex.md for the entry text.
 `papers fetch --pdf` writes the PDF (library.md, The free PDF of an
 entry) to the current directory, or to `-o FILE`, and prints one line per
-file (**free**); an existing file is not replaced (an error). It exits
-with 1 when a PDF was not downloaded.
+file (**free**; with `--porcelain`, the lines of 7.2); an existing file is
+not replaced (an error). It exits with 1 when a PDF was not downloaded.
 
 ## 7. `--porcelain`
 
@@ -886,6 +886,7 @@ they changed:
 | `papers file rename`, `papers file attach`, `papers file fetch` | `modified` |
 | `papers config pool PATH`, `none`, `--unset pool` | `modified` (relinked entries) |
 | `papers history --revert STEP` | `added`, `modified`, `removed`, `renamed` |
+| `papers fetch --pdf` | `downloaded`, `refused-published`, `refused`, `failed` (below) |
 | `papers list` with `--add-tag`, `--rm-tag`, `--attach`, `-e/--edit`, `--fetch`, `--rename`, `--delete` | as the command each stands for |
 
 Other commands (`list` without those actions, `pull`, `push`, `sync`,
@@ -922,6 +923,45 @@ Algorithm, comparing the entries as loaded at the start of the command
    new key; all `added` sorted by key; then the step 4 lines sorted by
    key. Sorting is by Unicode code points, case-sensitive. Keys are
    compared exactly (case-sensitive).
+
+`papers fetch --pdf ID... [-o FILE]` reports the arguments, not entries
+(**contract**). For each argument, in the order of the arguments, `ID`
+being the argument as given on the command line:
+
+```
+downloaded ID VERSION URL FILE
+refused-published ID URL
+refused ID URL
+failed ID
+```
+
+- a PDF was written: one `downloaded` line. `VERSION` is `published`,
+  `accepted` or `submitted` (library.md, The free PDF of an entry), `URL`
+  the link that gave the PDF, `FILE` the file written, as the command
+  names it (`-o FILE` as given, else the name in the current directory,
+  or in the folder of `-o`); `FILE` is the rest of the line and may hold
+  spaces. It is followed by one `refused-published` line per link of the
+  published version that was refused, when the PDF is an accepted or
+  submitted version (the links of the human message, in its order; none
+  when nothing was refused);
+- no PDF could be had: one `refused` line per link to open in a browser,
+  in the order of the human message (the links tried, then the pages);
+- no PDF and no link to open (the argument is not a DOI or arXiv id, the
+  file exists, ...): one `failed` line.
+
+The exit code is 0 when every argument gave a `downloaded` line, else 1
+(7.3), after the lines of all the arguments. The human line of a
+download and the errors go to standard error. The fields are separated
+by one space and are not quoted: with arguments without white space (a
+DOI or arXiv id has none), every line splits on spaces, `FILE` excepted.
+
+```
+$ papers fetch --pdf 10.1000/ocean 10.1000/ice --porcelain 2>/dev/null
+downloaded 10.1000/ocean accepted https://repo.example.edu/am.pdf 10.1000_ocean.pdf
+refused-published 10.1000/ocean https://journals.example.org/ocean.pdf
+refused 10.1000/ice https://journals.example.org/ice.pdf
+refused 10.1000/ice https://doi.org/10.1000/ice
+```
 
 Without `--porcelain`, the same diff is printed for humans as `Removed ->
 ...`, `Renamed -> ... (was OLD)`, `Added -> ...`, `Modified -> ...`,

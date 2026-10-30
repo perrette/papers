@@ -243,6 +243,10 @@ output, and goes to the standard output with `--porcelain` too (`papers
 list -K --porcelain` prints the keys). With an action (`--add-tag`,
 `--edit`...), it prints the lines of the command the action stands for.
 
+`papers fetch --pdf` prints other lines with `--porcelain`, one per DOI or
+arXiv id (`downloaded ID VERSION URL FILE`, `refused ID URL`...): see
+[Add an entry from its DOI](adding-entries.md#add-an-entry-from-its-doi).
+
 ## Actions on the listed entries
 
 `papers list` can run a command on the entries it lists: list the entries,

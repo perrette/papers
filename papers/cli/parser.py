@@ -1008,7 +1008,10 @@ def get_parser(config=None):
     fetchp.add_argument('doi_or_text', nargs='+', help='DOI or full text.')
     fetchp.add_argument('--pdf', action='store_true',
         help='download the free PDF of each DOI or arXiv id into the current directory, under the name of its '
-             'URL (or -o FILE), and say which version it is and where it came from')
+             'URL (or -o FILE), and say which version it is and where it came from; with --porcelain, one line per '
+             'argument for programs: "downloaded ID VERSION URL FILE" (then "refused-published ID URL" for each '
+             'published link refused before an accepted or submitted version), else "refused ID URL" for each link '
+             'to open in a browser, or "failed ID"')
     fetchp.add_argument('-o', '--output', metavar='FILE', type=file_uri_to_path,
         help='with --pdf and one DOI: the file to write')
     fetchp.add_argument('--version', choices=LEAST_VERSIONS, default='any', dest='least_version',

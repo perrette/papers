@@ -3,6 +3,7 @@ import os
 import shutil
 from pathlib import Path
 
+import papers.utils
 from papers import freepdf, logger
 from papers.extract import extract_pdf_doi, extract_pdf_metadata
 from papers.fetch import DOIRequestError, fetch_bibtex_by_doi, fetch_bibtex_by_fulltext_crossref, fetch_bibtex_by_fulltext_scholar
@@ -29,11 +30,20 @@ def _pdf_name(found, doi, arxiv):
 
 
 def fetch_pdfs(parser, o):
-    "papers fetch --pdf: download the free PDF of DOIs or arXiv ids (see papers.freepdf)"
+    """papers fetch --pdf: download the free PDF of DOIs or arXiv ids (see papers.freepdf).
+    With --porcelain, the lines of each argument (formats.md 7.2): `downloaded ID VERSION URL FILE`
+    and a `refused-published ID URL` per published link refused before it, or a `refused ID URL`
+    per link to open in a browser, or `failed ID` when there is none"""
     if o.scholar or o.openalex:
         parser.error('--pdf does not take --scholar or --openalex')
     if o.output and len(o.doi_or_text) > 1:
         parser.error('-o/--output FILE takes one DOI')
+    porcelain = papers.utils.PORCELAIN
+
+    def lines(*lines):
+        if porcelain is not None:
+            for line in lines:
+                print(line, file=porcelain)
     failed = 0
     for arg in o.doi_or_text:
         doi = strip_doi(arg)
@@ -51,12 +61,16 @@ def fetch_pdfs(parser, o):
             shutil.move(found.path, target)
             freepdf.discard(found.path)
         except ValueError as error:  # NoPDF among them
+            links = getattr(error, 'links', [])
+            lines(*([f'refused {arg} {url}' for url in links] or [f'failed {arg}']))
             if len(o.doi_or_text) == 1:
                 raise PapersExit(f'{arg}: {error}')
             logger.error(f'{arg}: {error}')
             failed += 1
             continue
         print(f'{target} ({found.describe()})')
+        lines(f'downloaded {arg} {found.link.version} {found.link.url} {target}',
+              *[f'refused-published {arg} {url}' for url in found.refused])
     if failed:
         raise PapersExit(f'{failed} of {len(o.doi_or_text)} PDFs not downloaded')
 

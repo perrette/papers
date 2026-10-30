@@ -383,6 +383,13 @@ that check the same thing.
 - tests/test_file_fetch.py::TestAddAndFetch::test_add_doi_fetch_pdf
 - tests/test_file_fetch.py::TestAddAndFetch::test_add_fetch_pdf_failure_keeps_the_entry
 - tests/test_file_fetch.py::TestAddAndFetch::test_fetch_pdf_published_refused
+- tests/test_file_fetch.py::TestFetchPdfPorcelain::test_downloaded
+- tests/test_file_fetch.py::TestFetchPdfPorcelain::test_downloaded_into_the_current_directory
+- tests/test_file_fetch.py::TestFetchPdfPorcelain::test_refused_published
+- tests/test_file_fetch.py::TestFetchPdfPorcelain::test_refused
+- tests/test_file_fetch.py::TestFetchPdfPorcelain::test_failed
+- tests/test_file_fetch.py::TestFetchPdfPorcelain::test_several_exit_status
+- tests/test_file_fetch.py::TestFetchPdfPorcelain::test_all_downloaded_exit_0
 - tests/test_file_fetch.py::TestPageLinks::test_relative_links
 - tests/test_file_fetch.py::TestPageLinks::test_openalex_request
 
@@ -1151,6 +1158,8 @@ that check the same thing.
 - tests/test_entry_cmds.py::TestEditSet::test_fix_key
 - tests/test_spec_formats.py::TestPorcelainStreams::test_commands_without_lines
 - tests/test_spec_formats.py::TestPorcelainLines::test_order
+- tests/test_file_fetch.py::TestFetchPdfPorcelain::test_refused_published
+- tests/test_file_fetch.py::TestFetchPdfPorcelain::test_several_exit_status
 - tests/test_spec_formats.py::TestPorcelainLines::test_existing_only_for_add
 - tests/test_spec_formats.py::TestPorcelainLines::test_content_equality
 - tests/test_spec_formats.py::TestPorcelainLines::test_add_lines
