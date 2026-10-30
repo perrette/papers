@@ -68,6 +68,30 @@ attached too, named as other files of the entry (`<name>--<label>.pdf`).
 Only PDFs; data sets and other files are left out. Off by default: the
 detection depends on the publisher.
 
+## No duplicate downloads
+
+A second pass (`papers file fetch KEY --supplements` after `papers file fetch
+KEY`) must not download or attach the same PDF again:
+
+1. The main PDF is not fetched for an entry that already has a PDF, unless
+   `--again` is given (`KEY: has a PDF already (--again to fetch it anyway)`).
+   The supplements are still fetched.
+2. A downloaded file is compared by checksum (sha256) with the files of the
+   entry before it is attached; the same content is not attached twice (as
+   `file attach` already refuses it).
+3. A cache of the downloads, on the machine (papers' cache, next to the
+   answers of crossref and OpenAlex; nothing in the library): each URL with
+   the checksum and size of the file it gave. Before a URL in the cache is
+   downloaded again:
+   - the entry has a file with that checksum: nothing is done;
+   - a file of the library has it (the checksums of `.papers/files.json`,
+     the files of other entries): that file is attached, without a
+     download, and the message says which entry has it too;
+   - otherwise: the URL is downloaded.
+
+Websites do not give a checksum before the download, so the cache is what
+lets papers know what a URL gives without fetching it.
+
 ## Network and settings
 
 - At most one request a second to each site; the answers of OpenAlex are
