@@ -1343,7 +1343,13 @@ library is removed.</p>
 directory (shown by <code>papers status -v</code>), whether or not a library is
 configured. The metadata of each DOI is a json file under <code>doi/</code>, e.g.
 <code>doi/10.1126/science.1166510.json</code> (DOIs that do not exist are remembered for
-a day), and the searches of <code>--openalex</code> are under <code>openalex/</code>. Deleting the
+a day), the searches of <code>--openalex</code> are under <code>openalex/</code>, and the
+open-access locations of a DOI (<code>papers file fetch</code>) under <code>openalex-work/</code>
+(asked again after 30 days: a paper can become open access).
+<code>downloads/</code> has, for each URL of a PDF that <code>papers file fetch</code> (or <code>add
+--fetch-pdf</code>, <code>fetch --pdf</code>) downloaded, the checksum (sha256) and size of
+the file it gave: a URL whose file the entry or the library already has is
+not downloaded again. Deleting the
 directory, or any file in it, is safe: the requests are made again when needed.</p>
 
 
