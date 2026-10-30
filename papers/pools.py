@@ -812,6 +812,35 @@ def _same_fields(a, b):
 # EXCHANGES BETWEEN A LIBRARY AND ITS POOL
 # ========================================
 
+def match_entry_files(broken, left, filesdir):
+    """the files `left` of an entry of the same paper (in a pool or another
+    library whose files directory is `filesdir`) for the broken links
+    `broken` of an entry: {link: [files]} (see Exchange.pool_relinks)"""
+    found = {}
+    for link in broken:
+        same = next((f for f in left if os.path.basename(f) == os.path.basename(link)), None)
+        if same is not None:
+            found[link] = [same]
+            left.remove(same)
+    for link in [link for link in broken if link not in found]:
+        label = ATTACHMENT_SEP + os.path.basename(link)
+        labelled = [f for f in left if os.path.basename(f).endswith(label)]
+        if len(labelled) == 1:
+            found[link] = labelled
+            left.remove(labelled[0])
+    rest = [link for link in broken if link not in found]
+    if not rest or not left:
+        return found
+    if len(rest) == 1 and len(left) == 1:
+        found[rest[0]] = left
+    elif filesdir:
+        inside = [link for link in rest if is_inside(link, filesdir)]
+        if inside:
+            found[inside[0]] = left
+            found.update((link, []) for link in inside[1:])
+    return found
+
+
 class Exchange:
     """a library (configuration and bibliography) with its pools and origin
     records: the pool of the library, and the libraries given with `--pool
@@ -1291,29 +1320,7 @@ class Exchange:
             return {}
         linked = {realpath(f) for f in self.biblio.get_files(e) if os.path.exists(f)}
         left = [f for f in pool.biblio.get_files(pe) if os.path.exists(f) and realpath(f) not in linked]
-        found = {}
-        for link in broken:
-            same = next((f for f in left if os.path.basename(f) == os.path.basename(link)), None)
-            if same is not None:
-                found[link] = [same]
-                left.remove(same)
-        for link in [link for link in broken if link not in found]:
-            label = ATTACHMENT_SEP + os.path.basename(link)
-            labelled = [f for f in left if os.path.basename(f).endswith(label)]
-            if len(labelled) == 1:
-                found[link] = labelled
-                left.remove(labelled[0])
-        rest = [link for link in broken if link not in found]
-        if not rest or not left:
-            return found
-        if len(rest) == 1 and len(left) == 1:
-            found[rest[0]] = left
-        elif pool.filesdir:
-            inside = [link for link in rest if is_inside(link, pool.filesdir)]
-            if inside:
-                found[inside[0]] = left
-                found.update((link, []) for link in inside[1:])
-        return found
+        return match_entry_files(broken, left, pool.filesdir)
 
     def repair_links(self, entries=None, pool=None):
         """replace the broken links to the files of a pool (default: the pool

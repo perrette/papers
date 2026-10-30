@@ -81,7 +81,7 @@ standard input, one per line:
 | `papers file detach --key KEY...` | remove all the links of the entries |
 | `papers file detach --broken [--key KEY...]` | remove the broken links (of all entries without `--key`) |
 | `papers file rm FILE... [-r] [--key KEY...]` | remove the links to the files, then delete the files, like `git rm` (below) |
-| `papers file check [KEY...]` | report broken links and the files found for them (in the pool, in the libraries of `--pool PATH`, and in the folders of `--search DIR`), files linked twice, identical files (same checksum) of an entry, and with `--metadata` a DOI of the PDF that differs from the DOI of the entry (this parses the PDFs) |
+| `papers file check [KEY...]` | report broken links and the files found for them (in the library by checksum, in the pool, in the libraries of `--pool PATH`, in the other libraries of the machine, and in the folders of `--search DIR`), files linked twice, identical files (same checksum) of an entry, and with `--metadata` a DOI of the PDF that differs from the DOI of the entry (this parses the PDFs) |
 | `papers file fix [KEY...]` | apply the repairs that `papers file check` reports (below); `--pool PATH` and `--search DIR` as for `check`; the files found are copied, never moved (`--move` moves those of `--search`) |
 | `papers file clean` | remove the files of the files directory and its subfolders that no entry links to, asking for each one (`-y/--yes` does not ask) |
 
@@ -112,7 +112,9 @@ The other broken links are reported, and removed with
 DOI or arXiv id, downloads it, and attaches it as `papers file attach` does:
 the PDF goes to the files directory, under the template name of the entry.
 `--missing` takes the entries without PDF (of the KEYs given, or of the whole
-library). Only open-access copies are used. The links are tried in this
+library); an entry without any PDF link first gets the PDF of the same paper
+from the pool or another library of the machine, if one has it (below).
+Only open-access copies are used. The links are tried in this
 order, until one gives a PDF (a file that starts with `%PDF`; a login page or
 a challenge is not one):
 
@@ -150,10 +152,17 @@ Nothing is downloaded or attached twice:
   still fetched;
 - an entry whose PDF link is broken first gets the repair of
   `papers file fix` (see [Reconnecting PDFs and a bibtex](#reconnecting-pdfs-and-a-bibtex)):
-  the file found in the pool, in the folders of `--search DIR` (the option
+  the file found in the library by checksum, in the pool, in the other
+  libraries of the machine, in the folders of `--search DIR` (the option
   can be repeated) or in the history is relinked, and nothing is downloaded
   (`KEY: relinked files/x.pdf (found in ~/Downloads), not downloaded`). The
-  PDF is downloaded only when no file is found. `--dry-run` says what would
+  PDF is downloaded only when no file is found;
+- with `--missing`, an entry without any PDF link gets the PDF of an entry of
+  the same paper (same DOI, arXiv identifier, ISBN, or same title and
+  authors) in the pool or in another library of the machine, copied as
+  `papers file fix` copies the files it finds (`KEY: files/x.pdf (found in
+  ~/other/library (entry KEY2)), not downloaded`). `papers file fetch KEY`
+  without `--missing` downloads the PDF of an entry without PDF link. `--dry-run` says what would
   be relinked. The repair and the downloads are one step: `papers undo`
   undoes both;
 - a downloaded file with the content (sha256) of a file of the entry is not
@@ -263,26 +272,40 @@ library that shared the files directory moved them into a library, a folder
 was renamed, a backup was restored elsewhere...), `papers file fix`
 looks for each missing file, without parsing any PDF:
 
-1. in the pool of the library, among the files of the pool entry of the
+1. in the library itself, by checksum: when `.papers/files.json` has the
+   checksum of the missing file (see `papers file checksum`), a file of the
+   library with that content: a file of another entry (linked where it is,
+   `same content as the file of KEY`), or a file of the files directory
+   that no entry links to (renamed by hand, for example; it is placed under
+   the template name);
+2. in the pool of the library, among the files of the pool entry of the
    same paper (same DOI, arXiv identifier, ISBN, or same title and
    authors): the file with the same file name as the broken link; else
    the one file named `<name>--<file name of the link>` (the pool renamed
    it as an attachment, see
    [Renaming files and keys](renaming.md#entries-with-several-files));
    then, if one broken link of the entry and one file of the pool entry
-   are left, that file. When more are left, nothing is guessed;
-2. in the libraries given with `--pool PATH` (the option can be repeated),
+   are left, that file. When more are left, nothing is guessed. Then by
+   checksum, among the files of the pool's `.papers/files.json`;
+3. in the libraries given with `--pool PATH` (the option can be repeated),
    in the same way: the entry of PATH of the same paper, and its files.
    PATH must be a library (otherwise: `create it first with papers init`).
    Nothing changes in PATH, and no origin copy is recorded (see
    [Origin copies](pools.md#origin-copies)): only the file links of the
    library change;
-3. in the folders given with `--search DIR` (searched recursively; the
+4. in the other libraries of the machine: those that the history knows
+   (`papers history --all` lists them), except the library and its pool.
+   First a file with the checksum of the missing file in their
+   `.papers/files.json`, then the files of their entries of the same paper.
+   A library that moved or was deleted is skipped. Each library is read
+   once, and nothing is written in it
+   (`found in ~/other/library (entry KEY)`);
+5. in the folders given with `--search DIR` (searched recursively; the
    option can be repeated): a file with the same file name as the broken
    link, else a file named as the library's name template names the entry
    (with the extension of the link). When several files match, none is
    taken, and papers says which;
-4. in the history (see [Undo and redo](undo-redo.md#deleted-files)): a file
+6. in the history (see [Undo and redo](undo-redo.md#deleted-files)): a file
    that a papers command deleted from the place of the link (or whose
    checksum `.papers/files.json` has, if the history keeps a file with that
    content) is copied back there, and the link stays as it is
@@ -291,15 +314,15 @@ looks for each missing file, without parsing any PDF:
    fix` keeps the file in the history too, so that undo and redo still
    work once the step that deleted it is dropped.
 
-The file found in the pool, `--pool PATH` or a `--search` folder replaces
-the broken link. It is never moved, whatever the
+The file found in the pool, `--pool PATH`, another library or a `--search`
+folder replaces the broken link. It is never moved, whatever the
 `files` setting:
 
 - in a self-contained library, it is copied (a hard link when possible)
   into the files directory, named as `papers file attach KEY FILE` names
   it;
 - in a shallow library, a file of its pool is linked where it is; a file of
-  `--pool PATH` or of a `--search` folder is copied into the files
+  `--pool PATH`, of another library or of a `--search` folder is copied into the files
   directory of the pool, and the pool entry links to it (as for the other
   changes of file links, see
   [Shallow libraries](shallow-libraries.md#files));
@@ -309,7 +332,8 @@ the broken link. It is never moved, whatever the
 `papers file fix --move` moves the files found in the `--search` folders
 instead of copying them. A file in the files directory of another library
 is still copied (`... belongs to the library in ...: copied, not moved`),
-and so are the files of the pool and of `--pool PATH`.
+and so are the files of the pool, of `--pool PATH` and of the other
+libraries.
 
 `papers config pool PATH` links the library to the copies in PATH of the
 files that exist, and says how many links were already broken:

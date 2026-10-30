@@ -34,8 +34,18 @@ formats.md (the porcelain lines of `papers file fetch`, `papers fetch
    makes the repair of `papers file fix` for an entry whose PDF link is
    broken (the pool, `--search DIR`, the history), and downloads only if
    the entry still has no PDF after it. The repair and the downloads are
-   saved in one step. An entry without PDF link is downloaded as before;
-   `add --fetch-pdf` makes no repair.
+   saved in one step. `add --fetch-pdf` makes no repair.
+8. The file of a broken link is also looked for, by default, in the
+   library itself by checksum (`.papers/files.json`), in the pool by
+   checksum, and in the other libraries of the machine: the places of the
+   history store, each read once per command without writing it (its
+   `files.json` by checksum, then its entries of the same paper with a
+   file). A library that moved or is gone is skipped. A file of another
+   library is copied or linked as the files setting says, never moved.
+   This applies to `file check`, `file fix` and to the repair of `file
+   fetch`. With `--missing`, an entry without any PDF link first gets the
+   PDF of an entry of the same paper in the pool or another library;
+   `file fetch KEY...` downloads it as before.
 
 ## No duplicate downloads
 

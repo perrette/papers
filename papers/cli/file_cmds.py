@@ -15,6 +15,7 @@ from papers.files import (SearchFolders, attach_files, broken_links, check_entry
                           delete_files, detach_links, execute_moves, files_to_delete, link_snapshot, linked_files,
                           links_to_paths, moved_links, plan_moves, realpath, remove_empty_folders, rename_files)
 from papers.library import get_biblio, savebib
+from papers.otherlibs import Lookup, Source, is_own_unlinked
 from papers.pools import Exchange, Pools
 from papers.utils import PapersExit, checksum, stdin_is_terminal
 from papers.cli.common import (set_format_config_from_cmd, _print_biblio_diff, files_mode,
@@ -255,21 +256,27 @@ def _search_names(e, link, rest, nameformat):
     return names
 
 
-def plan_relinks(exchange, entries, search, nameformat, others=()):
+def plan_relinks(exchange, entries, search, nameformat, others=(), lookup=None):
     """the files found for the broken links of the entries (see
-    `papers file fix`), without parsing any file: the pool of the
-    library first, then the libraries of --pool PATH (`others`, see
-    Exchange.pool_relinks), then the --search folders (by the
-    link's file name, else by the template name of the entry). Return
-    (plans, unclear, count): plans [(entry, {link: [files]}, {link: source})]
-    where source is 'pool' (the pool of the library), the Pool of a
-    --pool PATH, or the --search folder; unclear [(entry, link, reason)]
-    for the links that several files match; count, the number of broken
-    links."""
+    `papers file fix`), without parsing any file, in this order: the
+    library itself (a file with the checksum that .papers/files.json has
+    for the link), the pool of the library (the files of the pool entry,
+    see Exchange.pool_relinks, then by checksum), the libraries of --pool
+    PATH (`others`), the other libraries of the machine (see
+    papers.otherlibs), then the --search folders (by the link's file
+    name, else by the template name of the entry). lookup: the
+    papers.otherlibs.Lookup of the library (made here by default). Return
+    (plans, unclear, count): plans [(entry, {link: [files]}, {link:
+    source})] where source is 'pool' (the pool of the library, by name),
+    the Pool of a --pool PATH, a papers.otherlibs.Source, or the --search
+    folder; unclear [(entry, link, reason)] for the links that several
+    files match; count, the number of broken links."""
     biblio = exchange.biblio
     own = exchange.pools.pool(quiet=True)
     pools = [(own, 'pool')] if own is not None else []
     pools += [(p, p) for p in others if p is not own]
+    if lookup is None:
+        lookup = Lookup(exchange.config, biblio, own, [p.config.bibtex for p, _ in pools])
     plans, unclear, count = [], [], 0
     claims = {}  # real path of a file found in a --search folder: [(plan, link)]
     for e in entries:
@@ -278,13 +285,31 @@ def plan_relinks(exchange, entries, search, nameformat, others=()):
             continue
         count += len(broken)
         found, sources = {}, {}
+
+        def taken():
+            return {realpath(f) for f in biblio.get_files(e) + [g for fs in found.values() for g in fs]
+                    if os.path.exists(f)}
+
+        def by_checksum(where):
+            for link in [f for f in broken if f not in found]:
+                hit = where(link, taken())
+                if hit:
+                    found[link], sources[link] = [hit[0]], hit[1]
+
+        by_checksum(lookup.own.find)
         for pool, source in pools:
             more = exchange.pool_relinks(e, pool, [f for f in broken if f not in found])
             found.update(more)
             sources.update(dict.fromkeys(more, source))
+            if source == 'pool':
+                by_checksum(lookup.in_pool)
+        rest = [f for f in broken if f not in found]
+        if rest:
+            more, more_sources = lookup.in_others(e, rest, taken())
+            found.update(more)
+            sources.update(more_sources)
         plan = (e, found, sources)
-        linked = {realpath(f) for f in biblio.get_files(e) + [g for fs in found.values() for g in fs]
-                  if os.path.exists(f)}
+        linked = taken()
         rest = [f for f in broken if f not in found]
         for link in rest:
             for name in _search_names(e, link, rest, nameformat):
@@ -314,6 +339,8 @@ def _links(n):
 
 
 def _source(source):
+    if isinstance(source, Source):
+        return source.describe()
     if source == 'pool':
         return 'from the pool'
     if isinstance(source, str):
@@ -366,12 +393,13 @@ def file_check_pools(config, fix):
 
 
 def relink_broken_links(config, biblio, exchange, entries, search_dirs, nameformat, others=(), mode=None,
-                        place=False, move=False):
+                        place=False, move=False, lookup=None):
     """the repair of the broken links of the entries by `papers file fix`
     (also `papers file fetch`, before it downloads): the links to pool files
     repaired when a shallow library was loaded, the files found by
-    plan_relinks (in the pool, the libraries `others` of --pool PATH, the
-    folders `search_dirs` of --search), then the files that a command
+    plan_relinks (the library by checksum, the pool, the libraries
+    `others` of --pool PATH, the other libraries of the machine, the
+    folders `search_dirs` of --search; lookup: see plan_relinks), then the files that a command
     deleted from the place of the link, kept by the history. With place,
     the files found are placed as `papers file attach` does (with the files
     mode `mode`; move: the files of the --search folders are moved), and
@@ -385,7 +413,7 @@ def relink_broken_links(config, biblio, exchange, entries, search_dirs, nameform
     # the links to pool files repaired when a shallow library is loaded (already linked), then the others
     loaded = [(e, found, dict.fromkeys(found, 'pool')) for e, found in getattr(biblio, 'repaired_links', [])
               if id(e) in selected]
-    plans, unclear, count = plan_relinks(exchange, entries, search, nameformat, others)
+    plans, unclear, count = plan_relinks(exchange, entries, search, nameformat, others, lookup=lookup)
     count += sum(len(found) for _, found, _ in loaded)
 
     relinks = []
@@ -397,10 +425,9 @@ def relink_broken_links(config, biblio, exchange, entries, search_dirs, nameform
                 n = len(found.get(f, [f]))
                 positions[f] = range(i, i + n)
                 i += n
+            pool_files, kept, copied = _placement(found, sources, config.filesdir, move)
             attach_files(biblio, e, [], config, mode, exchange.pools.files_dirs(), replace=found,
-                         pool_files=[f for link in found if sources[link] == 'pool' for f in found[link]],
-                         copied=[f for link in found if sources[link] != 'pool'
-                                 and not (move and isinstance(sources[link], str)) for f in found[link]])
+                         pool_files=pool_files, copied=copied, keep=kept)
             newfiles = biblio.get_files(e)
             found = {link: [newfiles[j] for j in positions[link]] for link in found}
         relinks.append((e, found, sources))
@@ -421,6 +448,29 @@ def relink_broken_links(config, biblio, exchange, entries, search_dirs, nameform
                 journal.record('copied', stored, link)  # undo removes it again
             restores.append((e, link, when))
     return relinks, unclear, restores, count
+
+
+def _placement(found, sources, filesdir, move=False):
+    """how the files found for broken links are placed (see FilesPolicy):
+    (pool_files, kept, copied). The files of the pool are pool files; a
+    file of another entry of the library (found by checksum) is linked
+    where it is; an unlinked file of the files directory is placed as the
+    files setting says (renamed in place); the files of other libraries,
+    of --pool PATH and of the --search folders (unless `move`) are
+    copied."""
+    pool_files, kept, copied = [], [], []
+    for link, files in found.items():
+        source = sources[link]
+        for f in files:
+            if source == 'pool' or (isinstance(source, Source) and source.kind == 'pool'):
+                pool_files.append(f)
+            elif isinstance(source, Source) and source.kind == 'own' and source.key:
+                kept.append(f)
+            elif isinstance(source, Source) and is_own_unlinked(source, f, filesdir):
+                pass
+            elif not (move and isinstance(source, str)):
+                copied.append(f)
+    return pool_files, kept, copied
 
 
 def check_entries_files(o, config, fix, pools, biblio, entries, nameformat):
@@ -631,19 +681,19 @@ def _dry_run_lines(e, search, local, main, supplements):
     return ok
 
 
-def repair_pdf_links(config, biblio, exchange, entries, search_dirs, nameformat, mode, again=False):
+def repair_pdf_links(config, biblio, exchange, entries, search_dirs, nameformat, mode, again=False, lookup=None):
     """`papers file fetch`, before it downloads: the entries whose PDF link
     is broken get the repair of `papers file fix` (see relink_broken_links;
     search_dirs: the folders of --search); --dry-run says what it would
     relink. Return the ids of the entries that have a PDF after the repair:
-    their PDF is not downloaded (unless `again`)."""
+    their PDF is not downloaded (unless `again`). lookup: see plan_relinks."""
     dryrun = papers.config.DRYRUN
     broken = [e for e in entries if not has_pdf(biblio, e)
               and any(f.lower().endswith('.pdf') for f in broken_links(biblio, e))]
     if not broken:
         return set()
     relinks, unclear, restores, _ = relink_broken_links(config, biblio, exchange, broken, search_dirs, nameformat,
-                                                        mode=mode, place=not dryrun)
+                                                        mode=mode, place=not dryrun, lookup=lookup)
     repaired = {id(e) for e, found, _ in relinks
                 if any(f.lower().endswith('.pdf') for files in found.values() for f in files)}
     repaired |= {id(e) for e, link, _ in restores if link.lower().endswith('.pdf')}
@@ -668,6 +718,40 @@ def repair_pdf_links(config, biblio, exchange, entries, search_dirs, nameformat,
         else:
             print(f"{e.key}: {_show(link)}: restored from the history ({when}){end(e)}")
     return repaired
+
+
+def attach_pdfs_of_same_paper(config, biblio, exchange, entries, mode, lookup):
+    """`papers file fetch --missing`, before it downloads: an entry without
+    any PDF link gets the PDF of an entry of the same paper that has one,
+    in the pool (the pool entry, see Exchange.pool_entry), else in the
+    other libraries of the machine (see papers.otherlibs); placed as `papers
+    file fix` places the files found. --dry-run says what it would attach.
+    Return the ids of the entries that got a PDF: they are not downloaded."""
+    dryrun = papers.config.DRYRUN
+    pool = exchange.pools.pool(quiet=True)
+    attached = set()
+    for e in entries:
+        if any(f.lower().endswith('.pdf') for f in biblio.get_files(e)):
+            continue
+        hit = None
+        if pool is not None:
+            pe, _ = exchange.pool_entry(e, pool)
+            pdf = pe is not None and next((f for f in pool.biblio.get_files(pe)
+                                           if f.lower().endswith('.pdf') and os.path.isfile(f)), None)
+            hit = (pdf, 'pool') if pdf else None
+        hit = hit or lookup.pdf_of_same_paper(e)
+        if hit is None:
+            continue
+        pdf, source = hit
+        attached.add(id(e))
+        if dryrun:
+            print(f"DRYRUN: {e.key}: would attach {_show(pdf)} ({_source(source)})")
+            continue
+        pool_files, kept, copied = _placement({pdf: [pdf]}, {pdf: source}, config.filesdir)
+        attach_files(biblio, e, [pdf], config, mode, exchange.pools.files_dirs(), pool_files=pool_files,
+                     copied=copied, keep=kept)
+        print(f"{e.key}: {_show(biblio.get_files(e)[-1])} ({_source(source)}), not downloaded")
+    return attached
 
 
 def fetch_entry_pdfs(biblio, config, pools, entries, mode, least='any', supplements=False, again=False,
@@ -783,7 +867,13 @@ def file_fetchcmd(parser, o, config):
         _confirm_openalex(o, entries)
     # the repair of `papers file fix` first: the download, only if it gives no PDF (one step for both)
     exchange = Exchange(config, biblio, pools)
-    repaired = repair_pdf_links(config, biblio, exchange, entries, o.search or [], nameformat, mode, again=o.again)
+    pool = exchange.pools.pool(quiet=True)
+    lookup = Lookup(config, biblio, pool, [pool.config.bibtex] if pool is not None else [])
+    repaired = repair_pdf_links(config, biblio, exchange, entries, o.search or [], nameformat, mode, again=o.again,
+                                lookup=lookup)
+    if o.missing:  # and the entries without PDF link: the PDF of the same paper in another library
+        repaired |= attach_pdfs_of_same_paper(config, biblio, exchange,
+                                              [e for e in entries if id(e) not in repaired], mode, lookup)
     fetched = [e for e in entries if id(e) not in repaired or o.again or o.supplements]
     failed = fetch_entry_pdfs(biblio, config, pools, fetched, mode, least=o.least_version,
                               supplements=o.supplements, again=o.again, repaired=repaired)

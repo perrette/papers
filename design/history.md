@@ -1121,8 +1121,9 @@ before and no longer link. With `--dry-run`:
 
 `papers file check` and `papers file fix` (also `papers file fetch`,
 before it downloads, library.md "The free PDF of an entry") look for the
-file of a broken link in the pool, the `--search` folders and so on (see
-`docs/files.md`), and last in the history. A broken link that none of the earlier sources
+file of a broken link in the library by checksum, the pool, the other
+libraries of the machine, the `--search` folders and so on (library.md
+"The file of a broken link"), and last in the history. A broken link that none of the earlier sources
 resolved (or left unclear) is looked up in the history of the library's
 project (none is created):
 

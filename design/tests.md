@@ -295,6 +295,9 @@ that check the same thing.
 - tests/test_pools.py::TestShallow::test_add_same_pdf_move_mode
 - tests/test_file_relink.py::TestSearch::test_move
 - tests/test_file_relink.py::TestOtherLibrary::test_move_still_copies
+- tests/test_file_other_libraries.py::TestFix::test_move_setting_copies
+- tests/test_file_other_libraries.py::TestFix::test_own_files_directory_by_checksum
+- tests/test_file_other_libraries.py::TestFix::test_own_file_of_another_entry_by_checksum
 
 ### File names
 
@@ -313,6 +316,19 @@ that check the same thing.
 - tests/test_filename_unit.py::TestSafeFileNames::test_attachments_fit
 - tests/test_config_v3.py::TestMigrateFolders::test_folders
 - tests/test_spec_library.py::TestFileNames::test_extension
+
+### The file of a broken link
+
+- tests/test_file_other_libraries.py::TestFix::test_own_files_directory_by_checksum
+- tests/test_file_other_libraries.py::TestFix::test_own_file_of_another_entry_by_checksum
+- tests/test_file_other_libraries.py::TestFix::test_other_library_by_checksum
+- tests/test_file_other_libraries.py::TestFix::test_other_library_by_doi
+- tests/test_file_other_libraries.py::TestFix::test_move_setting_copies
+- tests/test_file_other_libraries.py::TestFix::test_other_paper_not_taken
+- tests/test_file_other_libraries.py::TestFix::test_gone_library_skipped
+- tests/test_file_other_libraries.py::TestFix::test_dry_run
+- tests/test_file_other_libraries.py::TestPool::test_same_paper
+- tests/test_file_other_libraries.py::TestPool::test_by_checksum
 
 ### The free PDF of an entry
 
@@ -335,6 +351,11 @@ that check the same thing.
 - tests/test_file_fetch.py::TestBrokenLinkRepair::test_copied_into_the_files_directory
 - tests/test_file_fetch.py::TestBrokenLinkRepair::test_missing
 - tests/test_file_fetch.py::TestBrokenLinkRepair::test_restored_by_checksum
+- tests/test_file_other_libraries.py::TestFetch::test_missing_takes_the_pdf_of_the_same_paper
+- tests/test_file_other_libraries.py::TestFetch::test_missing_dry_run
+- tests/test_file_other_libraries.py::TestFetch::test_missing_broken_link
+- tests/test_file_other_libraries.py::TestFetch::test_key_still_downloads
+- tests/test_file_other_libraries.py::TestFetch::test_other_paper_downloads
 - tests/test_file_fetch.py::TestBrokenLinkRepair::test_not_found_downloads
 - tests/test_file_fetch.py::TestBrokenLinkRepair::test_dry_run
 - tests/test_file_fetch.py::TestBrokenLinkRepair::test_again_downloads_too

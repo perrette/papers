@@ -471,7 +471,7 @@ def rename_files(biblio, entries, config, pool_dirs=(), keep_source=False, mode=
     return failed
 
 
-def attach_files(biblio, e, files, config, mode, pool_dirs=(), replace=None, pool_files=(), copied=()):
+def attach_files(biblio, e, files, config, mode, pool_dirs=(), replace=None, pool_files=(), copied=(), keep=()):
     """add files to the links of an entry, and place them as the files mode
     says (the files the entry had stay where they are).
 
@@ -479,6 +479,7 @@ def attach_files(biblio, e, files, config, mode, pool_dirs=(), replace=None, poo
     place by files, placed in the same way (`files` come after them).
     pool_files: files of pool entries, never moved (see FilesPolicy).
     copied: files copied, never moved (see FilesPolicy).
+    keep: files linked where they are.
     Return False when the name points outside the files directory (the
     links are kept, the files left where they are), True otherwise."""
     def resolve(f):
@@ -491,7 +492,7 @@ def attach_files(biblio, e, files, config, mode, pool_dirs=(), replace=None, poo
     old = biblio.get_files(e)
     replace = {link: [resolve(f) for f in fs] for link, fs in (replace or {}).items()}
     new = [resolve(f) for f in files]
-    kept = [f for f in old if f not in replace]
+    kept = [f for f in old if f not in replace] + list(keep)
     added = [f for fs in replace.values() for f in fs] + new
     biblio.set_files(e, [g for f in old for g in replace.get(f, [f])] + new)
     if mode != 'link' or any(is_download(f) for f in added):
