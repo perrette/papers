@@ -1126,7 +1126,7 @@ standard input, one per line:</p>
 </tr>
 <tr>
 <td><code>papers file check [KEY...]</code></td>
-<td>report broken links and the files found for them (in the pool, in the libraries of <code>--pool PATH</code>, and in the folders of <code>--search DIR</code>), files linked twice, identical files (same checksum) of an entry, and with <code>--metadata</code> a DOI of the PDF that differs from the DOI of the entry (this parses the PDFs)</td>
+<td>report broken links and the files found for them (in the library by checksum, in the pool, in the libraries of <code>--pool PATH</code>, in the other libraries of the machine, and in the folders of <code>--search DIR</code>), files linked twice, identical files (same checksum) of an entry, and with <code>--metadata</code> a DOI of the PDF that differs from the DOI of the entry (this parses the PDFs)</td>
 </tr>
 <tr>
 <td><code>papers file fix [KEY...]</code></td>
@@ -1161,7 +1161,9 @@ The other broken links are reported, and removed with
 DOI or arXiv id, downloads it, and attaches it as <code>papers file attach</code> does:
 the PDF goes to the files directory, under the template name of the entry.
 <code>--missing</code> takes the entries without PDF (of the KEYs given, or of the whole
-library). Only open-access copies are used. The links are tried in this
+library); an entry without any PDF link first gets the PDF of the same paper
+from the pool or another library of the machine, if one has it (below).
+Only open-access copies are used. The links are tried in this
 order, until one gives a PDF (a file that starts with <code>%PDF</code>; a login page or
 a challenge is not one):</p>
 <ol>
@@ -1194,10 +1196,17 @@ out; what is found depends on the publisher.</p>
   still fetched;</li>
 <li>an entry whose PDF link is broken first gets the repair of
   <code>papers file fix</code> (see <a href="#reconnecting-pdfs-and-a-bibtex">Reconnecting PDFs and a bibtex</a>):
-  the file found in the pool, in the folders of <code>--search DIR</code> (the option
+  the file found in the library by checksum, in the pool, in the other
+  libraries of the machine, in the folders of <code>--search DIR</code> (the option
   can be repeated) or in the history is relinked, and nothing is downloaded
   (<code>KEY: relinked files/x.pdf (found in ~/Downloads), not downloaded</code>). The
-  PDF is downloaded only when no file is found. <code>--dry-run</code> says what would
+  PDF is downloaded only when no file is found;</li>
+<li>with <code>--missing</code>, an entry without any PDF link gets the PDF of an entry of
+  the same paper (same DOI, arXiv identifier, ISBN, or same title and
+  authors) in the pool or in another library of the machine, copied as
+  <code>papers file fix</code> copies the files it finds (<code>KEY: files/x.pdf (found in
+  ~/other/library (entry KEY2)), not downloaded</code>). <code>papers file fetch KEY</code>
+  without <code>--missing</code> downloads the PDF of an entry without PDF link. <code>--dry-run</code> says what would
   be relinked. The repair and the downloads are one step: <code>papers undo</code>
   undoes both;</li>
 <li>a downloaded file with the content (sha256) of a file of the entry is not
@@ -1294,6 +1303,12 @@ library that shared the files directory moved them into a library, a folder
 was renamed, a backup was restored elsewhere...), <code>papers file fix</code>
 looks for each missing file, without parsing any PDF:</p>
 <ol>
+<li>in the library itself, by checksum: when <code>.papers/files.json</code> has the
+   checksum of the missing file (see <code>papers file checksum</code>), a file of the
+   library with that content: a file of another entry (linked where it is,
+   <code>same content as the file of KEY</code>), or a file of the files directory
+   that no entry links to (renamed by hand, for example; it is placed under
+   the template name);</li>
 <li>in the pool of the library, among the files of the pool entry of the
    same paper (same DOI, arXiv identifier, ISBN, or same title and
    authors): the file with the same file name as the broken link; else
@@ -1301,13 +1316,21 @@ looks for each missing file, without parsing any PDF:</p>
    it as an attachment, see
    <a href="../renaming/#entries-with-several-files">Renaming files and keys</a>);
    then, if one broken link of the entry and one file of the pool entry
-   are left, that file. When more are left, nothing is guessed;</li>
+   are left, that file. When more are left, nothing is guessed. Then by
+   checksum, among the files of the pool's <code>.papers/files.json</code>;</li>
 <li>in the libraries given with <code>--pool PATH</code> (the option can be repeated),
    in the same way: the entry of PATH of the same paper, and its files.
    PATH must be a library (otherwise: <code>create it first with papers init</code>).
    Nothing changes in PATH, and no origin copy is recorded (see
    <a href="../pools/#origin-copies">Origin copies</a>): only the file links of the
    library change;</li>
+<li>in the other libraries of the machine: those that the history knows
+   (<code>papers history --all</code> lists them), except the library and its pool.
+   First a file with the checksum of the missing file in their
+   <code>.papers/files.json</code>, then the files of their entries of the same paper.
+   A library that moved or was deleted is skipped. Each library is read
+   once, and nothing is written in it
+   (<code>found in ~/other/library (entry KEY)</code>);</li>
 <li>in the folders given with <code>--search DIR</code> (searched recursively; the
    option can be repeated): a file with the same file name as the broken
    link, else a file named as the library's name template names the entry
@@ -1322,15 +1345,15 @@ looks for each missing file, without parsing any PDF:</p>
    fix</code> keeps the file in the history too, so that undo and redo still
    work once the step that deleted it is dropped.</li>
 </ol>
-<p>The file found in the pool, <code>--pool PATH</code> or a <code>--search</code> folder replaces
-the broken link. It is never moved, whatever the
+<p>The file found in the pool, <code>--pool PATH</code>, another library or a <code>--search</code>
+folder replaces the broken link. It is never moved, whatever the
 <code>files</code> setting:</p>
 <ul>
 <li>in a self-contained library, it is copied (a hard link when possible)
   into the files directory, named as <code>papers file attach KEY FILE</code> names
   it;</li>
 <li>in a shallow library, a file of its pool is linked where it is; a file of
-  <code>--pool PATH</code> or of a <code>--search</code> folder is copied into the files
+  <code>--pool PATH</code>, of another library or of a <code>--search</code> folder is copied into the files
   directory of the pool, and the pool entry links to it (as for the other
   changes of file links, see
   <a href="../shallow-libraries/#files">Shallow libraries</a>);</li>
@@ -1340,7 +1363,8 @@ the broken link. It is never moved, whatever the
 <p><code>papers file fix --move</code> moves the files found in the <code>--search</code> folders
 instead of copying them. A file in the files directory of another library
 is still copied (<code>... belongs to the library in ...: copied, not moved</code>),
-and so are the files of the pool and of <code>--pool PATH</code>.</p>
+and so are the files of the pool, of <code>--pool PATH</code> and of the other
+libraries.</p>
 <p><code>papers config pool PATH</code> links the library to the copies in PATH of the
 files that exist, and says how many links were already broken:
 <code>papers file fix</code> relinks them afterwards.</p>
