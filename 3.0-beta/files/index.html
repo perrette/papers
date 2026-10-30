@@ -1177,11 +1177,29 @@ a challenge is not one):</p>
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>smith2020: files/smith_2020_ocean.pdf (published version, from journals.example.org)
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>doe2021: files/doe_2021_ice.pdf (accepted manuscript, from repository.example.edu)
 </code></pre></div>
+<p>When the published version was refused (an HTTP error, or a login page or a
+challenge instead of a PDF) and an accepted manuscript or a submitted version
+is attached instead, the line also gives the published link, to download it
+in a browser:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>doe2021: files/doe_2021_ice.pdf (accepted manuscript, from repository.example.edu; the published version was refused: open https://journals.example.org/ice.pdf in a browser)
+</code></pre></div>
 <p><code>--version published</code> attaches the published version only, <code>--version
 accepted</code> also the accepted manuscript. When no link gives a PDF, the error
 lists the links tried and the pages to open in a browser; the other entries
 are attached and saved, and the command exits with status 1. <code>--dry-run</code>
 lists the links that would be tried, in order, and changes nothing.</p>
+<p>A fetch of several entries (<code>--missing</code>, or several KEYs) ends with a
+summary: the PDFs attached by version, the entries repaired from a local
+file, and the links to open in a browser for the entries without PDF and
+those whose published version was refused:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>summary of 4 entries:
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>  2 PDFs attached: 1 published version, 1 accepted manuscript
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>  1 found locally (repaired, not downloaded)
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>  1 without PDF
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>open in a browser:
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>  doe2021: https://journals.example.org/ice.pdf (published version refused; accepted manuscript found)
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>  lee2019: https://journals.example.org/sea.pdf, https://doi.org/10.1000/sea (no PDF)
+</code></pre></div>
 <p><code>--supplements</code> also attaches the supplementary PDFs that the article page
 links: the links to a PDF with <code>suppl</code> in their URL or their text, and the
 <code>citation_supplementary_material</code> tags. They are attached as the other files
@@ -1244,9 +1262,9 @@ move fails midway (e.g. disk full), the bibtex is saved with the links of the
 files already moved, and the error is reported. The parent folders of the
 destination are created when needed. A folder that contains the bibtex or
 the library configuration cannot be moved with <code>papers file mv</code>.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>papers file mv files/2013 files/archive/2013
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>papers file mv files ~/Documents/library-files    # also sets filesdir
-<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>papers file mv -n files/a.pdf files/b.pdf files/new/
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>papers file mv files/2013 files/archive/2013
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>papers file mv files ~/Documents/library-files    # also sets filesdir
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>papers file mv -n files/a.pdf files/b.pdf files/new/
 </code></pre></div>
 <p>Links from other libraries to the moved files break: papers cannot know
 about them.</p>
@@ -1282,12 +1300,12 @@ reads them from the standard input. As it takes several values, write the
 files before it: in <code>papers file rm --key K1 file.pdf</code>, <code>file.pdf</code> would be
 read as an entry, and papers stops with the error <code>file.pdf is not an
 entry: put the files before --key</code>.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>papers file detach files/volume.pdf                    # from all the chapters
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>papers file detach files/volume.pdf --key smith2020    # from one chapter
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>papers file detach --key smith2020                     # all its links
-<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>papers file rm files/old-version.pdf
-<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>papers file rm -r files/2013 --dry-run
-<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>papers list --tag draft --detach-broken
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>papers file detach files/volume.pdf                    # from all the chapters
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>papers file detach files/volume.pdf --key smith2020    # from one chapter
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>papers file detach --key smith2020                     # all its links
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>papers file rm files/old-version.pdf
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>papers file rm -r files/2013 --dry-run
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>papers list --tag draft --detach-broken
 </code></pre></div>
 <h2 id="reconnecting-pdfs-and-a-bibtex">Reconnecting PDFs and a bibtex<a class="headerlink" href="#reconnecting-pdfs-and-a-bibtex" title="Permanent link">&para;</a></h2>
 <p>When the links of a library are broken because the PDFs moved (another
@@ -1367,22 +1385,22 @@ ends with the <code>papers file fix</code> command to run, with the same <code>-
 <code>--bibtex FILE</code>, KEYs, <code>--pool</code> and <code>--search</code>. <code>papers file fix --dry-run</code>
 shows the links that it would change, and changes nothing. After
 <code>papers file fix</code>, the last line counts the issues left, if any.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>$ papers file check --pool ~/P --search ~/Downloads
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>perrette2013scaling: broken link: ~/old/esd-4-11-2013.pdf -&gt; ~/P/files/perrette_2013_a-scaling-approach.pdf (from the library ~/P)
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>perrette2011: broken link: ~/old/bg-8-515-2011.pdf -&gt; ~/Downloads/bg-8-515-2011.pdf (found in ~/Downloads)
-<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>2 links can be relinked, 0 without a file found
-<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>2 issue(s) in the files of 2 entries
-<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>2 links can be repaired: `papers file fix --pool ~/P --search ~/Downloads`
-<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>$ papers file fix --pool ~/P --search ~/Downloads
-<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>perrette2013scaling: relinked to ~/thesis/files/perrette_2013_a-scaling-approach-to-project-regional-sea-level-rise.pdf (from the library ~/P)
-<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>perrette2011: relinked to ~/thesis/files/perrette_2011_near-ubiquity-of-ice-edge-blooms-in-the-arctic.pdf (found in ~/Downloads)
-<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>2 links relinked, 0 still broken
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>$ papers file check --pool ~/P --search ~/Downloads
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>perrette2013scaling: broken link: ~/old/esd-4-11-2013.pdf -&gt; ~/P/files/perrette_2013_a-scaling-approach.pdf (from the library ~/P)
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>perrette2011: broken link: ~/old/bg-8-515-2011.pdf -&gt; ~/Downloads/bg-8-515-2011.pdf (found in ~/Downloads)
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>2 links can be relinked, 0 without a file found
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>2 issue(s) in the files of 2 entries
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>2 links can be repaired: `papers file fix --pool ~/P --search ~/Downloads`
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>$ papers file fix --pool ~/P --search ~/Downloads
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>perrette2013scaling: relinked to ~/thesis/files/perrette_2013_a-scaling-approach-to-project-regional-sea-level-rise.pdf (from the library ~/P)
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>perrette2011: relinked to ~/thesis/files/perrette_2011_near-ubiquity-of-ice-edge-blooms-in-the-arctic.pdf (found in ~/Downloads)
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>2 links relinked, 0 still broken
 </code></pre></div>
 <p><code>papers file fix</code> works on any bibtex, without <code>papers init</code>: there is no
 files directory, and the files found are linked where they are.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>$ papers file fix --bibtex refs.bib --search ~/Downloads
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>perrette2011: relinked to ~/Downloads/bg-8-515-2011.pdf (found in ~/Downloads)
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>1 link relinked, 0 still broken
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>$ papers file fix --bibtex refs.bib --search ~/Downloads
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>perrette2011: relinked to ~/Downloads/bg-8-515-2011.pdf (found in ~/Downloads)
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>1 link relinked, 0 still broken
 </code></pre></div>
 <p>For PDFs whose names say nothing about the paper, <code>papers add -R DIR</code> is
 the fallback: it parses each PDF, and a PDF with the DOI of a library
