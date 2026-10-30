@@ -307,9 +307,11 @@ DOI or arXiv id, in the order of the arguments (the other messages go to
 the standard error): `downloaded ID VERSION URL FILE` (`VERSION`:
 `published`, `accepted` or `submitted`; `URL`: the link of the PDF), then
 `refused-published ID URL` for each link of the published version that was
-refused before an accepted or submitted version was found; when no PDF
-could be downloaded, `refused ID URL` for each link to open in a browser,
-or `failed ID` when there is none (not a DOI or arXiv id, the file exists).
+refused before an accepted or submitted version was found; `exists ID FILE`
+when the file to write exists (it is not replaced; with `-o FILE`, nothing
+is downloaded); when no PDF could be downloaded, `refused ID URL` for each
+link to open in a browser, or `failed ID` when there is none (not a DOI or
+arXiv id).
 The command exits with status 1 when an argument gave no PDF:
 
 ```

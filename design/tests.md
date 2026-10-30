@@ -392,6 +392,8 @@ that check the same thing.
 - tests/test_file_fetch.py::TestFetchPdfPorcelain::test_refused_published
 - tests/test_file_fetch.py::TestFetchPdfPorcelain::test_refused
 - tests/test_file_fetch.py::TestFetchPdfPorcelain::test_failed
+- tests/test_file_fetch.py::TestFetchPdfPorcelain::test_exists_output_checked_before_the_download
+- tests/test_file_fetch.py::TestFetchPdfPorcelain::test_exists_name_of_the_link
 - tests/test_file_fetch.py::TestFetchPdfPorcelain::test_several_exit_status
 - tests/test_file_fetch.py::TestFetchPdfPorcelain::test_all_downloaded_exit_0
 - tests/test_file_fetch.py::TestPageLinks::test_relative_links
@@ -1165,6 +1167,7 @@ that check the same thing.
 - tests/test_spec_formats.py::TestPorcelainLines::test_order
 - tests/test_file_fetch.py::TestFetchPdfPorcelain::test_refused_published
 - tests/test_file_fetch.py::TestFetchPdfPorcelain::test_several_exit_status
+- tests/test_file_fetch.py::TestFetchPdfPorcelain::test_exists_output_checked_before_the_download
 - tests/test_spec_formats.py::TestPorcelainLines::test_existing_only_for_add
 - tests/test_spec_formats.py::TestPorcelainLines::test_content_equality
 - tests/test_spec_formats.py::TestPorcelainLines::test_add_lines

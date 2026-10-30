@@ -1010,10 +1010,10 @@ def get_parser(config=None):
         help='download the free PDF of each DOI or arXiv id into the current directory, under the name of its '
              'URL (or -o FILE), and say which version it is and where it came from; with --porcelain, one line per '
              'argument for programs: "downloaded ID VERSION URL FILE" (then "refused-published ID URL" for each '
-             'published link refused before an accepted or submitted version), else "refused ID URL" for each link '
-             'to open in a browser, or "failed ID"')
+             'published link refused before an accepted or submitted version), "exists ID FILE" when the file '
+             'exists (not replaced), else "refused ID URL" for each link to open in a browser, or "failed ID"')
     fetchp.add_argument('-o', '--output', metavar='FILE', type=file_uri_to_path,
-        help='with --pdf and one DOI: the file to write')
+        help='with --pdf and one DOI: the file to write (an existing file is not replaced: nothing is downloaded)')
     fetchp.add_argument('--version', choices=LEAST_VERSIONS, default='any', dest='least_version',
         help='with --pdf: the least final version, as for `papers file fetch`')
     search = fetchp.add_mutually_exclusive_group()

@@ -32,8 +32,9 @@ def _pdf_name(found, doi, arxiv):
 def fetch_pdfs(parser, o):
     """papers fetch --pdf: download the free PDF of DOIs or arXiv ids (see papers.freepdf).
     With --porcelain, the lines of each argument (formats.md 7.2): `downloaded ID VERSION URL FILE`
-    and a `refused-published ID URL` per published link refused before it, or a `refused ID URL`
-    per link to open in a browser, or `failed ID` when there is none"""
+    and a `refused-published ID URL` per published link refused before it, or `exists ID FILE`
+    when the file to write exists, or a `refused ID URL` per link to open in a browser, or
+    `failed ID` when there is none"""
     if o.scholar or o.openalex:
         parser.error('--pdf does not take --scholar or --openalex')
     if o.output and len(o.doi_or_text) > 1:
@@ -48,28 +49,37 @@ def fetch_pdfs(parser, o):
     for arg in o.doi_or_text:
         doi = strip_doi(arg)
         arxiv = None if doi else normalize_arxiv(arg)
+        target = None  # the file to write, when it exists
         try:
             if not doi and not arxiv:
                 raise ValueError('not a DOI or arXiv id')
-            found = freepdf.fetch_pdf(freepdf.Search(doi, arxiv, o.least_version))
-            target = o.output or _pdf_name(found, doi, arxiv)
-            if os.path.isdir(target):
-                target = os.path.join(target, _pdf_name(found, doi, arxiv))
-            if os.path.exists(target):
-                freepdf.discard(found.path)
+            # -o FILE is checked before any download; a name made from the link, once it is known
+            if o.output and not os.path.isdir(o.output) and os.path.exists(o.output):
+                target = o.output
                 raise ValueError(f'{target} exists: not replaced (-o FILE writes another file)')
-            shutil.move(found.path, target)
+            found = freepdf.fetch_pdf(freepdf.Search(doi, arxiv, o.least_version))
+            name = o.output or _pdf_name(found, doi, arxiv)
+            if os.path.isdir(name):
+                name = os.path.join(name, _pdf_name(found, doi, arxiv))
+            if os.path.exists(name):
+                freepdf.discard(found.path)
+                target = name
+                raise ValueError(f'{target} exists: not replaced (-o FILE writes another file)')
+            shutil.move(found.path, name)
             freepdf.discard(found.path)
         except ValueError as error:  # NoPDF among them
             links = getattr(error, 'links', [])
-            lines(*([f'refused {arg} {url}' for url in links] or [f'failed {arg}']))
+            if target:
+                lines(f'exists {arg} {target}')
+            else:
+                lines(*([f'refused {arg} {url}' for url in links] or [f'failed {arg}']))
             if len(o.doi_or_text) == 1:
                 raise PapersExit(f'{arg}: {error}')
             logger.error(f'{arg}: {error}')
             failed += 1
             continue
-        print(f'{target} ({found.describe()})')
-        lines(f'downloaded {arg} {found.link.version} {found.link.url} {target}',
+        print(f'{name} ({found.describe()})')
+        lines(f'downloaded {arg} {found.link.version} {found.link.url} {name}',
               *[f'refused-published {arg} {url}' for url in found.refused])
     if failed:
         raise PapersExit(f'{failed} of {len(o.doi_or_text)} PDFs not downloaded')

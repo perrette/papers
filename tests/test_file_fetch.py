@@ -621,8 +621,10 @@ class TestAddAndFetch(FetchTest):
         out = self.out(f'fetch --pdf {DOI} -o {self.path("paper.pdf")}')
         self.assertEqual(Path(self.path('paper.pdf')).read_bytes(), pdf_bytes(PDF))
         self.assertIn('paper.pdf (published version, from journals.example.org)', out)
+        self.web.requests.clear()
         with self.assertRaisesRegex(PapersExit, 'exists: not replaced'):
             self.lib(f'fetch --pdf {DOI} -o {self.path("paper.pdf")}')
+        self.assertEqual(self.web.requests, [])  # checked before the download
         self.assertEqual(self.downloads_left(), [])
 
     def test_fetch_pdf_into_the_current_directory(self):
@@ -689,11 +691,29 @@ class TestFetchPdfPorcelain(FetchTest):
         self.assertEqual(out, f'refused {DOI} {PDF}\nrefused {DOI} https://doi.org/{DOI}\n')
 
     def test_failed(self):
-        self.publisher()
-        Path(self.path('paper.pdf')).write_text('x')
-        out = self.porcelain(f'fetch --pdf {DOI} -o {self.path("paper.pdf")}', fails=True)
-        self.assertEqual(out, f'failed {DOI}\n')  # the file exists
         self.assertEqual(self.porcelain('fetch --pdf nothing', fails=True), 'failed nothing\n')
+
+    def test_exists_output_checked_before_the_download(self):
+        self.publisher(content=403)
+        self.web.openalex[DOI] = [location('https://repo.example.edu/am.pdf', 'acceptedVersion')]
+        self.web.files['https://repo.example.edu/am.pdf'] = pdf_bytes('am')
+        target = self.path('paper.pdf')
+        Path(target).write_text('x')
+        out = self.porcelain(f'fetch --pdf {DOI} -o {target}', fails=True)
+        self.assertEqual(out, f'exists {DOI} {target}\n')
+        self.assertEqual(self.web.requests, [])  # nothing looked up nor downloaded
+        self.assertEqual(Path(target).read_text(), 'x')
+
+    def test_exists_name_of_the_link(self):
+        # the name made from the link is known once its PDF is found: no other link is tried
+        self.publisher()
+        self.web.openalex[DOI] = [location('https://repo.example.edu/am.pdf', 'acceptedVersion')]
+        Path(self.path('lib', '10.1000_ocean.pdf')).write_text('x')
+        out = self.porcelain(f'fetch --pdf {DOI}', fails=True)
+        self.assertEqual(out, f'exists {DOI} 10.1000_ocean.pdf\n')
+        self.assertEqual(self.web.downloads(), [PDF])
+        self.assertEqual(Path(self.path('lib', '10.1000_ocean.pdf')).read_text(), 'x')
+        self.assertEqual(self.downloads_left(), [])
 
     def test_several_exit_status(self):
         self.publisher()

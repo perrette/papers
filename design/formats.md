@@ -849,7 +849,11 @@ and `-v`); its text is human output (**free**).
 `papers fetch --pdf` writes the PDF (library.md, The free PDF of an
 entry) to the current directory, or to `-o FILE`, and prints one line per
 file (**free**; with `--porcelain`, the lines of 7.2); an existing file is
-not replaced (an error). It exits with 1 when a PDF was not downloaded.
+not replaced (an error). `-o FILE` (not a folder) is checked before
+anything is looked up or downloaded; the name made from the link (no `-o`,
+or `-o` a folder) is known once the link that gives a PDF is downloaded,
+and is checked then, before the file is written: no other link is tried.
+It exits with 1 when a PDF was not downloaded.
 
 ## 7. `--porcelain`
 
@@ -886,7 +890,7 @@ they changed:
 | `papers file rename`, `papers file attach`, `papers file fetch` | `modified` |
 | `papers config pool PATH`, `none`, `--unset pool` | `modified` (relinked entries) |
 | `papers history --revert STEP` | `added`, `modified`, `removed`, `renamed` |
-| `papers fetch --pdf` | `downloaded`, `refused-published`, `refused`, `failed` (below) |
+| `papers fetch --pdf` | `downloaded`, `refused-published`, `exists`, `refused`, `failed` (below) |
 | `papers list` with `--add-tag`, `--rm-tag`, `--attach`, `-e/--edit`, `--fetch`, `--rename`, `--delete` | as the command each stands for |
 
 Other commands (`list` without those actions, `pull`, `push`, `sync`,
@@ -931,6 +935,7 @@ being the argument as given on the command line:
 ```
 downloaded ID VERSION URL FILE
 refused-published ID URL
+exists ID FILE
 refused ID URL
 failed ID
 ```
@@ -944,10 +949,13 @@ failed ID
   published version that was refused, when the PDF is an accepted or
   submitted version (the links of the human message, in its order; none
   when nothing was refused);
+- the file to write exists (section 6: not replaced): one `exists` line,
+  and nothing else for the argument, `FILE` as in `downloaded` (the rest
+  of the line);
 - no PDF could be had: one `refused` line per link to open in a browser,
   in the order of the human message (the links tried, then the pages);
-- no PDF and no link to open (the argument is not a DOI or arXiv id, the
-  file exists, ...): one `failed` line.
+- no PDF and no link to open (the argument is not a DOI or arXiv id,
+  ...): one `failed` line.
 
 The exit code is 0 when every argument gave a `downloaded` line, else 1
 (7.3), after the lines of all the arguments. The human line of a
