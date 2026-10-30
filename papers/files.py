@@ -49,7 +49,7 @@ def _basename_from_url(url):
 DOWNLOAD_PREFIX = 'papers_dl_'
 
 
-def download_url(url, expect_pdf=False, dest_dir=None):
+def download_url(url, expect_pdf=False, dest_dir=None, user_agent=None):
     """Download a URL to a local file and return its path.
 
     The file is saved into a fresh temporary directory using the URL's
@@ -58,10 +58,11 @@ def download_url(url, expect_pdf=False, dest_dir=None):
     If ``expect_pdf`` is True, the response must look like a PDF (content-type
     containing ``pdf`` or bytes beginning with ``%PDF``); otherwise only
     HTML responses are rejected (e.g. login/landing pages).
+    user_agent: the User-Agent header (default: that of a browser).
     """
     headers = {
-        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
-                      "(KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+        "User-Agent": user_agent or "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+                                    "(KHTML, like Gecko) Chrome/120.0 Safari/537.36",
         "Accept": "application/pdf,*/*;q=0.8" if expect_pdf else "*/*",
     }
     import requests  # imported when first used (see papers.fetch.http_get)

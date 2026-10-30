@@ -1,12 +1,14 @@
-"""papers file rename, mv, attach, detach, rm, check, fix, clean, checksum, and filecheck (deprecated)"""
+"""papers file rename, mv, attach, fetch, detach, rm, check, fix, clean, checksum, and filecheck (deprecated)"""
 import os
 import shutil
 
 import papers.checksums
 import papers.config
 import papers.history
-from papers import backup, journal, logger
+import papers.utils
+from papers import backup, freepdf, journal, logger, openalex
 from papers.entries import get_entry_val
+from papers.identifiers import entry_arxiv, strip_doi
 from papers.filename import fit_name
 from papers.config import short_home
 from papers.files import (SearchFolders, attach_files, broken_links, check_entry_files, clean_filesdir,
@@ -14,7 +16,7 @@ from papers.files import (SearchFolders, attach_files, broken_links, check_entry
                           links_to_paths, moved_links, plan_moves, realpath, remove_empty_folders, rename_files)
 from papers.library import get_biblio, savebib
 from papers.pools import Exchange, Pools
-from papers.utils import PapersExit, checksum
+from papers.utils import PapersExit, checksum, stdin_is_terminal
 from papers.cli.common import (set_format_config_from_cmd, _print_biblio_diff, files_mode,
                                _entries_or_all, _one_entry, _key_option_entries, print_kept_files, library_pools,
                                save_entries, print_push_notes)
@@ -512,3 +514,213 @@ def file_checksumcmd(parser, o, config):
     papers.checksums.save(config, hashes)
     print(f"{written} checksum{'' if written == 1 else 's'} written ({len(changed)} changed)")
     savebib(biblio, config, other_changes=True)  # the backup commits files.json
+
+
+# papers file fetch (also papers add --fetch-pdf)
+# ===============================================
+
+OPENALEX_ASK = 50  # entries of --missing that may query OpenAlex, above which papers asks (without API key)
+
+
+def has_pdf(biblio, e):
+    "the entry links to a PDF (a broken link too)"
+    return any(f.lower().endswith('.pdf') for f in biblio.get_files(e))
+
+
+def _show(path):
+    "a file in a message: relative to the current directory if under it, else with ~"
+    relative = os.path.relpath(path)
+    return relative if not relative.startswith('..') else short_home(path)
+
+
+class LibraryChecksums:
+    """the files of the library with the content of a PDF downloaded before
+    (see papers.freepdf.get): of the entry, of another entry, or of the
+    checksums of the library (.papers/files.json). A file is compared by
+    size, then by checksum."""
+
+    def __init__(self, biblio, config):
+        self.biblio = biblio
+        self.hashes = papers.checksums.load(config)
+        self._sizes, self._digests = {}, {}
+
+    def _matches(self, f, known):
+        if f not in self._sizes:
+            self._sizes[f] = os.path.getsize(f) if os.path.isfile(f) else None
+        if self._sizes[f] != known['size']:
+            return False
+        if f not in self._digests:
+            self._digests[f] = checksum(f).hex()
+        return self._digests[f] == known['sha256']
+
+    def local(self, e):
+        "the `local` of papers.freepdf.get for the entry e"
+        def local(link, known):
+            for f in self.biblio.get_files(e):
+                if self._matches(f, known):
+                    return freepdf.Found(f, link, 'has')
+            for other in self.biblio.entries:
+                if other is not e:
+                    for f in self.biblio.get_files(other):
+                        if self._matches(f, known):
+                            return freepdf.Found(f, link, 'linked', other.key)
+            for f, digest in self.hashes.items():
+                if digest == known['sha256'] and self._matches(f, known):
+                    return freepdf.Found(f, link, 'known')
+            return None
+        return local
+
+
+def _found_line(e, path, found):
+    if found.how == 'linked':
+        return f'{e.key}: {_show(path)} ({found.link.describe()}; same file as {found.other}, not downloaded)'
+    if found.how == 'known':
+        return f'{e.key}: {_show(path)} ({found.link.describe()}; a file of the library, not downloaded)'
+    return f'{e.key}: {_show(path)} ({found.link.describe()})'
+
+
+def _dry_run_lines(e, search, local, main, supplements):
+    "the DRYRUN lines of an entry; False if no PDF would be found"
+    lines, ok = [], True
+    if main:
+        links = list(search.links())
+        for i, link in enumerate(links):
+            known = freepdf.known_download(link.url)
+            found = local(link, known) if known else None
+            if found and found.how == 'has':
+                what = f'already has {_show(found.path)} (from {link.host})'
+            elif found:
+                what = f'would attach {_show(found.path)} ({link.describe()}; ' + (
+                    f'same file as {found.other}' if found.how == 'linked' else 'a file of the library') + ')'
+            else:
+                what = f'would download {link.url} ({link.describe()})'
+            lines.append(f'DRYRUN: {e.key}: {"else " if i else ""}{what}')
+        if not links:
+            logger.error(f'{e.key}: {freepdf.no_pdf_message(search, [])}')
+            ok = False
+    if supplements:
+        lines += [f'DRYRUN: {e.key}: would download {link.url} ({link.describe()})' for link in search.supplements()]
+    for line in lines:
+        print(line)
+    return ok
+
+
+def fetch_entry_pdfs(biblio, config, pools, entries, mode, least='any', supplements=False, again=False):
+    """`papers file fetch` (also `papers add --fetch-pdf`): find the free PDF
+    of each entry (see papers.freepdf), and attach it as `papers file attach`
+    does (with the files mode `mode`); the library is not saved. The main
+    PDF of an entry that links to a PDF already is not fetched, unless
+    `again`; with `supplements`, the supplements are fetched too. A PDF with
+    the content of a file of the entry is not attached; one that this
+    machine downloaded before (same URL) and that the library has is
+    attached without downloading it. Return the number of entries whose PDF
+    was not found (the errors are reported)."""
+    from papers.bib import _same_content
+    dryrun = papers.config.DRYRUN
+    library = LibraryChecksums(biblio, config)
+    failed = 0
+    plans = []  # (entry, [Found])
+    for e in entries:
+        main = again or not has_pdf(biblio, e)
+        if not main:
+            print(f'{e.key}: has a PDF already (--again to fetch it anyway)')
+            if not supplements:
+                continue
+        doi, arxiv = strip_doi(get_entry_val(e, 'doi', '')), entry_arxiv(e)
+        if not doi and not arxiv:
+            if main:
+                logger.error(f'{e.key}: no DOI or arXiv id to look for a PDF')
+                failed += 1
+            continue
+        search = freepdf.Search(doi, arxiv or None, least)
+        local = library.local(e)
+        if dryrun:
+            failed += not _dry_run_lines(e, search, local, main, supplements)
+            continue
+        found = []
+        if main:
+            try:
+                found.append(freepdf.fetch_pdf(search, local))
+            except freepdf.NoPDF as error:
+                logger.error(f'{e.key}: {error}')
+                failed += 1
+        if supplements:
+            found += freepdf.fetch_supplements(search, local)
+        plans.append((e, found))
+
+    # the downloads are done: the files are attached
+    for e, found in plans:
+        new = []
+        for f in found:
+            if f.how == 'has':
+                print(f'{e.key}: already has {_show(f.path)} (from {f.link.host})')
+                continue
+            if f.how == 'downloaded':
+                same = _same_content(f.path, biblio.get_files(e) + [g.path for g in new])
+                if same:
+                    print(f'{e.key}: {f.link.url}: not attached, the entry has the same file: {_show(same)}')
+                    freepdf.discard(f.path)
+                    continue
+            new.append(f)
+        if not new:
+            continue
+        # a file of another entry is linked where it is (shared, as add does); the others are placed
+        linked = [f for f in new if f.how == 'linked']
+        placed = [f for f in new if f.how != 'linked']
+        biblio.set_files(e, biblio.get_files(e) + [f.path for f in linked])
+        if placed and not attach_files(biblio, e, [f.path for f in placed], config, mode, pools.files_dirs()):
+            failed += 1
+        for f in placed:  # the temporary folder of a download, now empty
+            if f.how == 'downloaded' and not os.path.exists(f.path):
+                shutil.rmtree(os.path.dirname(f.path), ignore_errors=True)
+        paths = biblio.get_files(e)[-len(new):]
+        for path, f in zip(paths, linked + placed):
+            print(_found_line(e, path, f))
+    return failed
+
+
+def _confirm_openalex(o, entries):
+    """--missing: ask before more than OPENALEX_ASK entries with a DOI may
+    query OpenAlex without API key (-y/--yes does not ask); without a
+    terminal, stop"""
+    count = sum(1 for e in entries if strip_doi(get_entry_val(e, 'doi', '')))
+    if count <= OPENALEX_ASK or os.environ.get(openalex.API_KEY_ENV) or o.yes:
+        return
+    question = (f'{count} entries with a DOI: each may make a request to OpenAlex, which allows few '
+                f'requests a day without an API key ({openalex.API_KEY_ENV}, free at '
+                f'https://openalex.org/settings/api)')
+    if not stdin_is_terminal():
+        raise PapersExit(f'{question}: no terminal to confirm; set {openalex.API_KEY_ENV}, pass -y/--yes, '
+                         f'or name the entries (nothing was changed)')
+    if input(f'{question}. Continue? [y/N] ').strip().lower() not in ('y', 'yes'):
+        raise PapersExit('nothing was changed')
+
+
+def file_fetchcmd(parser, o, config):
+    set_format_config_from_cmd(o, config, 'name')
+    if not o.entries and not o.missing:
+        parser.error('papers file fetch KEY... or --missing [KEY...]')
+    dryrun = papers.config.DRYRUN
+    pools = Pools(config) if dryrun else library_pools(config)
+    biblio = get_biblio(config)
+    entries = _entries_or_all(biblio, o.entries)
+    if o.missing:
+        entries = [e for e in entries if not has_pdf(biblio, e)]
+    if config.filesdir is None:
+        raise PapersExit('the library has no files directory, where the downloaded PDFs go '
+                         '(pass --filesdir, or set it with `papers config filesdir DIR`)')
+    mode = files_mode(o, config)
+    if o.missing:
+        _confirm_openalex(o, entries)
+    failed = fetch_entry_pdfs(biblio, config, pools, entries, mode, least=o.least_version,
+                              supplements=o.supplements, again=o.again)
+    if not dryrun:
+        notes = save_entries(config, biblio, Exchange(config, biblio, pools))
+        if papers.utils.PORCELAIN is not None:
+            _print_biblio_diff(biblio, entries, notes=notes)
+        else:
+            print_push_notes(biblio, notes)
+    if o.missing and not entries:
+        print('every entry has a PDF')
+    if failed:
+        raise PapersExit()  # the errors are reported: exit 1

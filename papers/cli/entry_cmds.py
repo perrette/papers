@@ -22,7 +22,7 @@ from papers.library import get_biblio, savebib
 from papers.merge import DuplicateError
 from papers.pools import Exchange, PoolLookup, Pools
 from papers.utils import PapersExit, file_uri_to_path, open_with_system, read_entry_text
-from papers.cli.file_cmds import (attach_entry_files, check_entries_files, detach_entries, file_check_pools,
+from papers.cli.file_cmds import (attach_entry_files, fetch_entry_pdfs, check_entries_files, detach_entries, file_check_pools,
                                   rename_entries)
 from papers.cli.pool_cmds import exchange_pools, export_entries, pull_entries, push_entries, sync_entries
 from papers.cli.common import (view_entry_files, set_format_config_from_cmd, _print_biblio_diff, files_mode,
@@ -92,6 +92,13 @@ def addcmd(parser, o, config):
         o.attachment = (o.attachment or []) + o.attachment_deprecated
     if o.author_short:
         _author_short_option(o)
+
+    if o.fetch_pdf and (o.file or not o.doi):
+        raise PapersExit('--fetch-pdf goes with --doi DOI, without FILE (`papers file fetch KEY` fetches the PDF '
+                         'of an entry of the library)')
+    if o.fetch_pdf and config.filesdir is None:
+        raise PapersExit('--fetch-pdf: the library has no files directory, where the downloaded PDF goes '
+                         '(pass --filesdir, or set it with `papers config filesdir DIR`)')
 
     # what to do with the files: see papers.files.FilesPolicy
     mode = files_mode(o, config)
@@ -229,6 +236,12 @@ def addcmd(parser, o, config):
             else:
                 raise PapersExit(str(error)) from error
 
+    # --fetch-pdf: the PDF of the entry, attached before the save
+    pdf_failed = 0
+    if o.fetch_pdf:
+        pdf_failed = fetch_entry_pdfs(biblio, config, pools, [e for e in biblio.entries
+                                                              if any(e is x for x in entries)], mode)
+
     # The list of new entries potentially contains duplicates if more than one file is added sequentially
     # If action is required on the added entry, we need to make sure we're consistent with the biblio.
     if len(entries) > 1 and (o.edit or o.open):
@@ -267,6 +280,8 @@ def addcmd(parser, o, config):
     if o.open:
         for e in entries:
             view_entry_files(biblio, e)
+    if pdf_failed:
+        raise PapersExit()  # the entry is added, the error about its PDF reported: exit 1
 
 
 def checkcmd(parser, o, config):

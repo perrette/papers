@@ -322,9 +322,9 @@ def fetch_bibtex_by_fulltext_crossref(txt, title=None, author=None, rows=5):
 # before crossref has them): look for a link to a .bib file on the page
 # the DOI resolves to, and take the entry with that DOI.
 
-def fetch_html(url):
+def fetch_html(url, headers=None):
     """the page and its URL, after the redirections (the links are relative to it)"""
-    response = http_get(url)
+    response = http_get(url, **({'headers': headers} if headers else {}))
     response.raise_for_status()  # Raise an error for bad status codes
     return response.text, response.url
 

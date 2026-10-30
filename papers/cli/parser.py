@@ -15,6 +15,9 @@ from papers.cli.entry_cmds import addcmd, checkcmd, listcmd, editcmd, rmcmd, tag
 from papers.cli.fetch_cmds import doicmd, fetchcmd, extractcmd
 from papers.cli.file_cmds import (filecheckcmd, file_renamecmd, file_mvcmd, file_attachcmd, file_detachcmd, file_rmcmd,
                                   file_checkcmd, file_fixcmd, file_cleancmd, file_checksumcmd)
+from papers.cli.file_cmds import OPENALEX_ASK, file_fetchcmd
+from papers.freepdf import LEAST_VERSIONS
+from papers.openalex import API_KEY_ENV, MAILTO_ENV
 from papers.cli.library_cmds import statuscmd, initcmd, configcmd, migratecmd, installcmd, uninstallcmd
 from papers.cli.pool_cmds import pullcmd, pushcmd, synccmd, exportcmd
 
@@ -497,6 +500,9 @@ def get_parser(config=None):
         help='attach these files to the entry (e.g. supplementary material)')
     grp.add_argument('--attachment', nargs='+', type=file_uri_to_path, dest='attachment_deprecated',
         help=argparse.SUPPRESS)  # deprecated: --attach
+    grp.add_argument('--fetch-pdf', action='store_true',
+        help='with --doi DOI (no FILE): also download the free PDF of the entry and attach it, '
+             'as `papers file fetch KEY` does')
     _files_mode_options(grp, add=True)
 
     grp = addp.add_argument_group('actions')
@@ -551,8 +557,9 @@ def get_parser(config=None):
     # file
     # ====
     filep = subparsers.add_parser('file', description='the files of the entries: rename, move, attach, '
-        'detach, remove, check them, and clean the files directory')
-    filesub = filep.add_subparsers(dest='file_cmd', metavar="{rename,mv,attach,detach,rm,check,fix,clean,checksum}")
+        'fetch, detach, remove, check them, and clean the files directory')
+    filesub = filep.add_subparsers(dest='file_cmd',
+                                   metavar="{rename,mv,attach,fetch,detach,rm,check,fix,clean,checksum}")
     _command(filep, None)  # without subcommand: the help of papers file
 
     p = filesub.add_parser('rename', parents=[cfg, namefmt],
@@ -589,6 +596,35 @@ def get_parser(config=None):
     p.add_argument('files', nargs='+', metavar='FILE', type=file_uri_to_path, help='files or URLs')
     _files_mode_options(p)
     _command(p, file_attachcmd, library=True)
+
+    p = filesub.add_parser('fetch', parents=[cfg, namefmt],
+        help='download the free PDF of entries and attach it',
+        description='find a free (open-access) PDF of each entry from its DOI or arXiv id, download it and '
+                    'attach it as `papers file attach` does (the downloaded file goes to the files directory, '
+                    'under its template name). The links are tried in this order, until one gives a PDF: the '
+                    'published version (the citation_pdf_url of the publisher\'s article page, then the '
+                    'open-access locations of OpenAlex), the accepted manuscript, the submitted version '
+                    '(preprint) and arXiv. Each line says which version was attached and where it came from. '
+                    'An entry that links to a PDF already is skipped (--again fetches it anyway). A PDF with the '
+                    'content of a file of the entry is not attached; a URL downloaded before on this machine '
+                    'whose file the library has is not downloaded again. OpenAlex reads the environment '
+                    f'variables {API_KEY_ENV} (a free API key) and {MAILTO_ENV} (an email address, also given to '
+                    'the publishers in the user agent). Exit 1 if an entry got no PDF (the others are attached); '
+                    'the error gives the links to open in a browser.')
+    p.add_argument('entries', nargs='*', metavar='KEY', help=_selection_help)
+    p.add_argument('--missing', action='store_true',
+        help='the entries without PDF (of KEY..., or of the whole library); papers asks before more than '
+             f'{OPENALEX_ASK} entries with a DOI when {API_KEY_ENV} is not set')
+    p.add_argument('--version', choices=LEAST_VERSIONS, default='any', dest='least_version',
+        help='the least final version to attach: published (the version of record only), accepted (also the '
+             'accepted manuscript), any (default: also the submitted version and the arXiv preprint)')
+    p.add_argument('--supplements', action='store_true',
+        help='also attach the supplementary PDFs that the article page links (a link with "suppl" in its URL '
+             'or text, or a citation_supplementary_material tag), as other files of the entry '
+             '(<name>--<label>.pdf); also for an entry that has its PDF')
+    p.add_argument('--again', action='store_true', help='fetch the PDF of an entry that links to a PDF already')
+    p.add_argument('-y', '--yes', action='store_true', help='do not ask before querying OpenAlex for many entries')
+    _command(p, file_fetchcmd, library=True)
 
     _key_help = (f'only the links of these entries ({ENTRY_IDS}; - reads them from the standard input); '
                  'write the files before --key, which takes several values')
@@ -959,8 +995,16 @@ def get_parser(config=None):
 
     # fetch
     # =====
-    fetchp = subparsers.add_parser('fetch', description='fetch bibtex from DOI or full-text', parents=[loggingp])
+    fetchp = subparsers.add_parser('fetch', description='fetch bibtex from DOI or full-text; with --pdf, download '
+        'the free PDF of DOIs or arXiv ids instead (as `papers file fetch` finds it)', parents=[loggingp])
     fetchp.add_argument('doi_or_text', nargs='+', help='DOI or full text.')
+    fetchp.add_argument('--pdf', action='store_true',
+        help='download the free PDF of each DOI or arXiv id into the current directory, under the name of its '
+             'URL (or -o FILE), and say which version it is and where it came from')
+    fetchp.add_argument('-o', '--output', metavar='FILE', type=file_uri_to_path,
+        help='with --pdf and one DOI: the file to write')
+    fetchp.add_argument('--version', choices=LEAST_VERSIONS, default='any', dest='least_version',
+        help='with --pdf: the least final version, as for `papers file fetch`')
     search = fetchp.add_mutually_exclusive_group()
     search.add_argument('--scholar', action='store_true', help='use google scholar instead of default crossref for fulltext search')
     search.add_argument('--openalex', action='store_true',

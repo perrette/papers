@@ -291,3 +291,51 @@ def fetch_bibtex_by_fulltext_openalex(txt, accept=None, rows=ROWS):
             chosen = next((work for work in accepted if not is_copy(work)), accepted[0])
     logger.debug('score: ' + str(scores[works.index(chosen)]))
     return bibtex_of_work(chosen).strip()
+
+
+# the open-access copies of a work (papers.freepdf)
+# ===================================================
+
+WORK_SELECT = 'id,doi,open_access,best_oa_location,locations'
+
+
+class WorkNotFound(OpenAlexError):
+    """a DOI that OpenAlex does not have (HTTP 404)"""
+
+
+def _trim_location(location):
+    source = location.get('source') or {}
+    return {'pdf_url': location.get('pdf_url'), 'landing_page_url': location.get('landing_page_url'),
+            'version': location.get('version'), 'is_oa': bool(location.get('is_oa')),
+            'source': source.get('display_name')}
+
+
+@cached('openalex-work', not_found=WorkNotFound, normalize=str.lower)
+def work_locations(doi):
+    """the locations of the work of a DOI (`GET /works/doi:<DOI>`, one request),
+    trimmed: pdf_url, landing_page_url, version (publishedVersion,
+    acceptedVersion, submittedVersion), is_oa and source (its name); the best
+    open-access location first. A DOI unknown to OpenAlex raises WorkNotFound."""
+    from urllib.parse import quote
+    request = {'select': WORK_SELECT}
+    if os.environ.get(MAILTO_ENV):
+        request['mailto'] = os.environ[MAILTO_ENV]
+    if os.environ.get(API_KEY_ENV):
+        request['api_key'] = os.environ[API_KEY_ENV]
+    logger.debug('openalex work: ' + doi)
+    _throttle()
+    try:
+        response = http_get(f'{API}/doi:{quote(doi, safe="/")}', params=request)
+    except OSError as error:
+        raise OpenAlexError(_redact(f'OpenAlex: {error}', request)) from None
+    if response.status_code == 404:
+        raise WorkNotFound(f'{doi}: not found on OpenAlex')
+    if response.status_code >= 400:
+        raise _http_error(response, request)
+    try:
+        work = response.json()
+        locations = [work['best_oa_location']] if work.get('best_oa_location') else []
+        locations += [x for x in work.get('locations') or [] if x and x not in locations]
+        return [_trim_location(x) for x in locations]
+    except (ValueError, KeyError, TypeError, AttributeError):
+        raise OpenAlexError('OpenAlex: unexpected answer') from None

@@ -1,12 +1,13 @@
 """papers fetch, extract, and doi (deprecated) (no library needed)"""
 import os
+import shutil
 from pathlib import Path
 
-from papers import logger
+from papers import freepdf, logger
 from papers.extract import extract_pdf_doi, extract_pdf_metadata
 from papers.fetch import DOIRequestError, fetch_bibtex_by_doi, fetch_bibtex_by_fulltext_crossref, fetch_bibtex_by_fulltext_scholar
 from papers.openalex import fetch_bibtex_by_fulltext_openalex
-from papers.identifiers import strip_doi
+from papers.identifiers import normalize_arxiv, strip_doi
 from papers.utils import PapersExit
 
 
@@ -18,7 +19,53 @@ def doicmd(parser, o, config):
         raise PapersExit(f'{o.pdf}: {error}')
 
 
+def _pdf_name(found, doi, arxiv):
+    """the file name of `papers fetch --pdf`: that of the URL when it looks
+    like the paper's (a digit in it), else made of the DOI or arXiv id"""
+    name = os.path.basename(found.path)
+    if any(c.isdigit() for c in os.path.splitext(name)[0]):
+        return name
+    return (doi or arxiv).replace('/', '_') + '.pdf'
+
+
+def fetch_pdfs(parser, o):
+    "papers fetch --pdf: download the free PDF of DOIs or arXiv ids (see papers.freepdf)"
+    if o.scholar or o.openalex:
+        parser.error('--pdf does not take --scholar or --openalex')
+    if o.output and len(o.doi_or_text) > 1:
+        parser.error('-o/--output FILE takes one DOI')
+    failed = 0
+    for arg in o.doi_or_text:
+        doi = strip_doi(arg)
+        arxiv = None if doi else normalize_arxiv(arg)
+        try:
+            if not doi and not arxiv:
+                raise ValueError('not a DOI or arXiv id')
+            found = freepdf.fetch_pdf(freepdf.Search(doi, arxiv, o.least_version))
+            target = o.output or _pdf_name(found, doi, arxiv)
+            if os.path.isdir(target):
+                target = os.path.join(target, _pdf_name(found, doi, arxiv))
+            if os.path.exists(target):
+                freepdf.discard(found.path)
+                raise ValueError(f'{target} exists: not replaced (-o FILE writes another file)')
+            shutil.move(found.path, target)
+            freepdf.discard(found.path)
+        except ValueError as error:  # NoPDF among them
+            if len(o.doi_or_text) == 1:
+                raise PapersExit(f'{arg}: {error}')
+            logger.error(f'{arg}: {error}')
+            failed += 1
+            continue
+        print(f'{target} ({found.link.describe()})')
+    if failed:
+        raise PapersExit(f'{failed} of {len(o.doi_or_text)} PDFs not downloaded')
+
+
 def fetchcmd(parser, o, config):
+    if o.pdf:
+        return fetch_pdfs(parser, o)
+    if o.output or o.least_version != 'any':
+        parser.error('-o/--output and --version go with --pdf')
     # either one or several DOIs
     dois = [strip_doi(field) for field in o.doi_or_text]  # the case of arXiv ids matters
     if all(dois):
