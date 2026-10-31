@@ -200,6 +200,8 @@ class Biblio:
         self._loaded = None
         # {new path: (original path, 'moved' or 'copied')}: the files placed by the command, for its report
         self.placed = {}
+        # {path: version}: the PDFs that papers file fetch attached or replaced (see papers.checksums.update)
+        self.pdf_versions = {}
         # the library entries that duplicates skipped by insert_entry were of: considered by the command
         self.skipped = []
 
@@ -385,7 +387,7 @@ class Biblio:
         """True if the entries are as loaded (see mark_loaded: the same
         keys, types and fields), nothing changed at load (load_changes) and
         no pair was added to distinct; False without mark_loaded"""
-        if self.loaded_entries is None or self.load_changes or self.distinct.changed:
+        if self.loaded_entries is None or self.load_changes or self.distinct.changed or self.pdf_versions:
             return False
         if len(self.loaded_entries) != len(self.db.entries):
             return False

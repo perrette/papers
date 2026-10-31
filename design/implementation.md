@@ -418,8 +418,10 @@ can load them as data, or use AnyAscii, which exists in many languages.
 persistent store of checksums; there is no cache keyed by size and
 modification time. At a save, the checksums of the paths no longer linked
 are dropped, and checksums are computed only for the files the command
-moved or copied and the links new since load (streamed sha256). A command
-that touches few files reads few files. `papers file checksum` reads all
+moved or copied and the links new since load (streamed sha256), and for
+the PDFs `papers file fetch` attached or replaced (their version is kept by
+checksum, `Biblio.pdf_versions` until the save). A command that touches few
+files reads few files. `papers file checksum` reads all
 linked files.
 
 Within a command, `journal.restore` memoizes the digests it computes;

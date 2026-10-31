@@ -342,7 +342,7 @@ order is part of the output):
 | 26 | `keyword` | `keywords` split on `,`, each trimmed, empty ones dropped, joined with `, ` (a string, not an array) |
 | 27 | `issued` | `{"date-parts": [[Y, M?, D?]]}` from the date of the entry (2.4); if none and `year` is not empty: `{"literal": "<year as text>"}` |
 | 28 | `accessed` | `{"date-parts": [[...]]}` from `urldate` as date text, when it gives numbers |
-| 29 | `custom` | `{"file": [path, ...]}` when the entry has file links (paths as given by the caller, sections 6 and 9) |
+| 29 | `custom` | `{"file": [path, ...]}` when the entry has file links (paths as given by the caller, sections 6 and 9); `papers list` adds `"file-version": {path: version}` after `file`, the paths of `file` whose version is known (section 6), when there is one |
 
 A name object has its keys in the order `family`, `given`,
 `non-dropping-particle`, `suffix`, or only `literal`. Date numbers are
@@ -722,12 +722,19 @@ A record is built in this key order (**contract**):
      as in 2.2 (raw, braces kept);
    - `journal`: `{"name": <value>}`;
    - a field named `type`, `id`, `cid`, `collection`, `identifier`,
-     `link` or `license` (the keys BibJSON gives a meaning): the raw
+     `link`, `license` (the keys BibJSON gives a meaning) or
+     `file-version` (step 5): the raw
      value as a string under the key `bibtex:<name>`
      (`"bibtex:type": "Working paper"`), so that the record's `type` and
      `id` stay the entry type and key;
    - any other: the raw value as a string;
-4. `"file"`: array of the file link paths, when there are any.
+4. `"file"`: array of the file link paths, when there are any;
+5. `"file-version"`: with `papers list` (section 6), `{path: version}`
+   of the paths of `file` whose version is known, when there is one.
+
+A field named `file-version` is written as `bibtex:file-version` (as the
+BibJSON keys of step 3), and a record's `file-version` key is not read
+as a field.
 
 Field names are lower case, as papers reads them (bibtex.md 2.2).
 
@@ -772,7 +779,7 @@ braced value is lost (`may` comes back as `{may}`).
 ## 6. `papers list` output
 
 Options of the formatting group, mutually exclusive: `--format
-line|bibtex|ris|csl-json|bibjson|key`, `--plain` (= `bibtex`), `-l`,
+line|bibtex|ris|csl-json|bibjson|key|files`, `--plain` (= `bibtex`), `-l`,
 `-1`, `--one-liner` (= `line`), `-K`, `--key-only` (= `key`),
 `--field FIELD...`. Plus `--no-key`. The deprecated `-f` is `--field`
 with a warning. Entries are listed in the order of the library.
@@ -787,7 +794,15 @@ The output goes to standard output, with `--porcelain` too (section 7).
 | `--format ris` | 4.3; file links as absolute normalised paths (resolved against the library's bibtex directory, `.` and `..` removed, symlinks not resolved). No entry: empty | **contract** |
 | `--format csl-json` | 3.4, same file paths. No entry: `[]\n` | **contract** |
 | `--format bibjson` | 5.1, same file paths. No entry: `metadata.records` 0 and `"records": []` | **contract** |
+| `--format files` | one line per file link of each entry, in the order of the entries and of their links: `KEY VERSION PATH`, `VERSION` the version of the file (below), `PATH` as for RIS, the rest of the line (it may hold spaces); `--no-key` does not apply. No link: no line | **contract** |
 | `--format line` (default) | below | **free** (human output) |
+
+The version of a file (`papers list --format csl-json`, `bibjson`,
+`files`, and `--pdf-version`) is that of its checksum in
+`.papers/files.json` (history.md 10): `published`, `accepted` or
+`submitted` for a PDF that `papers file fetch` attached, else unknown
+(`unknown` in `--format files`; left out of the `file-version` objects of
+CSL-JSON and BibJSON). `papers export` writes no version.
 
 Line format (**free**: it is for people; programs read `-K`, `--field`
 or another format. What papers prints, informative): `KEY: TITLE INFO`
@@ -835,6 +850,12 @@ Matching of one word with the text:
   (always substring);
 - with `--fuzzy`: a substring, or a fuzzy score at least `--fuzzy-ratio`
   (the rapidfuzz token set ratio, default 50) (**free**).
+
+`--pdf-version published|accepted|submitted|unknown` lists the entries
+that link to a PDF (a link ending in `.pdf`, case-insensitively, to an
+existing file) of that version (above; `unknown`: a PDF without
+version). It combines with the other searches like them (`--invert`
+included).
 
 An option with several words lists the entries that match all of them
 (`--any`: one of them); several options list the entries that pass each.

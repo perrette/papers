@@ -51,12 +51,12 @@ class Response:
 
 
 class Web:
-    """the sites: pages {url: (final url, html)}, openalex {doi: [locations] or None (404)}, ids {doi:
-    ids of the work}, files {url: bytes, an HTTP status, (status, headers), or a list of these, the
+    """the sites: pages {url: (final url, html)}, openalex {doi: [locations] or None (404)},
+    files {url: bytes, an HTTP status, (status, headers), or a list of these, the
     answers in turn}; the requests are in `requests`"""
 
     def __init__(self, test):
-        self.pages, self.openalex, self.files, self.ids = {}, {}, {}, {}
+        self.pages, self.openalex, self.files = {}, {}, {}
         self.requests = []
         for target, fun in [('papers.fetch.http_get', self.get_page), ('papers.openalex.http_get', self.get_work),
                             ('requests.get', self.get_file)]:
@@ -76,8 +76,7 @@ class Web:
         doi = url.split('/works/doi:', 1)[1]
         if self.openalex.get(doi) is None:
             return Response(404, json={'error': 'not found'})
-        return Response(200, json={'id': 'https://openalex.org/W1', 'locations': self.openalex[doi],
-                                   'ids': self.ids.get(doi, {})})
+        return Response(200, json={'id': 'https://openalex.org/W1', 'locations': self.openalex[doi]})
 
     def get_file(self, url, headers=None, **kw):
         self.requests.append(('file', url, headers))
@@ -269,8 +268,8 @@ class TestVersions(FetchTest):
 
 
 class TestMoreSources(FetchTest):
-    """library.md "The free PDF of an entry": the landing pages of OpenAlex (repositories), Europe PMC,
-    and the retry after HTTP 429"""
+    """library.md "The free PDF of an entry": the landing pages of OpenAlex (repositories) and the retry
+    after HTTP 429"""
 
     REPO = 'https://repo.example.edu/handle/1'
     REPO_PDF = 'https://repo.example.edu/bitstream/1/paper.pdf'
@@ -317,35 +316,6 @@ class TestMoreSources(FetchTest):
         with self.assertLogs('papers', 'ERROR'), self.assertRaises(PapersExit):
             self.lib('file fetch smith2020')
         self.assertEqual(len([r for r in self.web.requests if r[0] == 'page']), 1)
-
-    def test_europe_pmc_before_pmc(self):
-        pmc = 'https://pmc.ncbi.nlm.nih.gov/articles/PMC10495961/pdf/x.pdf'
-        europe = 'https://europepmc.org/articles/PMC10495961?pdf=render'
-        self.web.openalex[DOI] = [location(pmc, 'publishedVersion',
-                                           landing='https://pmc.ncbi.nlm.nih.gov/articles/PMC10495961'),
-                                  location('https://repo.example.edu/am.pdf', 'acceptedVersion')]
-        self.web.files[pmc] = b'<html>a check page</html>'
-        self.web.files[europe] = pdf_bytes('vor')
-        out = self.out('file fetch smith2020')
-        self.assertIn('(published version, from europepmc.org)', out)
-        self.assertEqual(self.web.downloads(), [PDF, europe])
-        self.assertEqual([r for r in self.web.requests if r[0] == 'page'],  # the PMC page is not read
-                         [('page', 'https://doi.org/' + DOI, mock.ANY)])
-
-    def test_europe_pmc_of_the_openalex_ids(self):
-        europe = 'https://europepmc.org/articles/PMC123?pdf=render'
-        self.web.files[europe] = pdf_bytes('vor')
-        self.web.ids[DOI] = {'pmcid': 'https://www.ncbi.nlm.nih.gov/pmc/articles/123'}
-        self.web.openalex[DOI] = [location('https://repo.example.edu/am.pdf', 'acceptedVersion')]
-        self.assertIn('(published version, from europepmc.org)', self.out('file fetch smith2020'))
-        self.assertEqual(self.web.downloads(), [PDF, europe])
-
-    def test_europe_pmc_of_the_pmcid_field(self):
-        europe = 'https://europepmc.org/articles/PMC123?pdf=render'
-        self.web.files[europe] = pdf_bytes('vor')
-        self.bib('@article{nodoi2020,\n pmcid = {PMC123},\n title = {T},\n year = {2020}\n}\n')
-        self.assertIn('(published version, from europepmc.org)', self.out('file fetch nodoi2020'))
-        self.assertEqual(self.web.downloads(), [europe])
 
     def test_429_then_the_pdf(self):
         self.web.openalex[DOI] = [location('https://repo.example.edu/am.pdf', 'acceptedVersion')]

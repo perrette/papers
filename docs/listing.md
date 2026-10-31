@@ -90,7 +90,21 @@ to-read (2)
   conversion). BibJSON keeps the bibtex fields as they are: it is the
   format for programs that read the library;
 - `--format key`: the keys only, one per line (also `-K`, `--key-only`),
-  to pipe into other commands (below).
+  to pipe into other commands (below);
+- `--format files`: one line per file link, `KEY VERSION PATH`, the path
+  absolute (it is the rest of the line).
+
+The version of a PDF is the one `papers file fetch` attached (see
+[Files](files.md#fetching-the-free-pdf-of-an-entry)): `published`, `accepted`
+(an accepted manuscript) or `submitted` (a preprint); a file attached
+otherwise is `unknown`. CSL-JSON and BibJSON give it under `file-version`
+(`{path: version}`, only the files whose version is known; in CSL-JSON, inside
+`custom`). `--pdf-version published|accepted|submitted|unknown` lists the
+entries with a PDF of that version:
+
+```bash
+papers list --pdf-version accepted -K   # the entries whose PDF is an accepted manuscript
+```
 
 `--field FIELD...` prints one line per entry: `KEY:` and the values of the
 given fields, separated by spaces (an empty value for a missing field).

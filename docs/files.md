@@ -77,6 +77,7 @@ standard input, one per line:
 | `papers file mv SRC... DEST` | move files or folders, and update the links of the entries (below) |
 | `papers file attach KEY FILE...` | attach files to an existing entry, following the `files` setting (`--move`, `--copy`, `--link` override it); the files the entry already has are not touched |
 | `papers file fetch KEY...`, `papers file fetch --missing` | download the free PDF of the entries (from their DOI or arXiv id) and attach it (below) |
+| `papers file fetch --upgrade [KEY...]` | replace an accepted manuscript or a submitted version by the published version, when it can be had (below) |
 | `papers file detach FILE... [--key KEY...]` | remove the links to the files from every entry that links to them (only from the entries of `--key` with `--key`); the files are kept (below) |
 | `papers file detach --key KEY...` | remove all the links of the entries |
 | `papers file detach --broken [--key KEY...]` | remove the broken links (of all entries without `--key`) |
@@ -121,11 +122,7 @@ a challenge is not one):
    then the open-access locations of [OpenAlex](https://openalex.org) of the
    published version: their PDF links, then the PDF that the landing pages
    of the others give in their `citation_pdf_url` tag (repositories such as
-   DSpace, Pure or PubMan), then, for an article in PubMed Central, the PDF
-   of [Europe PMC](https://europepmc.org)
-   (`https://europepmc.org/articles/PMCID?pdf=render`; the PMCID comes from
-   the `pmcid` field of the entry, its `url` field, or OpenAlex), then the
-   PubMed Central links themselves;
+   DSpace, Pure or PubMan);
 2. the accepted manuscript (OpenAlex, in the same way);
 3. the submitted version (OpenAlex, in the same way), then arXiv
    (`https://arxiv.org/pdf/ID`).
@@ -202,7 +199,7 @@ Nothing is downloaded or attached twice:
   file with that checksum (`KEY: already has FILE`), or when a file of the
   library has it: that file is attached instead (a file of another entry is
   linked where it is, `same file as OTHERKEY`). Nothing about the URL is
-  written in the library.
+  written in the library (only the version of the PDF, below).
 
 With `--missing`, when more than 50 entries with a DOI would query OpenAlex
 and no API key is set (environment variable `OPENALEX_API_KEY`, free at
@@ -212,6 +209,33 @@ address of `PAPERS_MAILTO`, when set, is given to OpenAlex and in the user
 agent of the requests to the publishers. papers waits a second between two
 requests to the same site; a site that answers "too many requests" (HTTP
 429) is asked once more after the wait it gives (at most 30 seconds).
+
+The version of each PDF attached this way is kept in the library
+(`.papers/files.json`, by the checksum of the file): it follows the file when
+it is renamed or moved, and `papers list` shows it (see
+[Listing](listing.md#output-formats)). A file attached otherwise (`papers file
+attach`, `papers add FILE`) has no version: it is unknown.
+
+`papers file fetch --upgrade` looks again for the published version of the
+entries whose PDF is an accepted manuscript or a submitted version (all such
+entries, or those of KEY...), and only for it. When it is found, it replaces
+that PDF under the same file name; the old file is kept in the history, so
+`papers undo` brings it back. When it is not found, nothing changes:
+
+```
+$ papers file fetch --upgrade
+doe2021: files/doe_2021_ice.pdf: accepted manuscript replaced by the published version, from journals.example.org
+lee2019: files/lee_2019_sea.pdf (submitted version) kept (no published version: https://journals.example.org/sea.pdf (published version): HTTP 403; open https://journals.example.org/sea.pdf, https://doi.org/10.1000/sea in a browser)
+summary of 2 entries:
+  1 replaced by the published version
+  1 without published version (kept as they are)
+open in a browser:
+  lee2019: https://journals.example.org/sea.pdf, https://doi.org/10.1000/sea (no published version)
+```
+
+`--dry-run` lists the links that would be tried and the file each would
+replace. `--upgrade` does not go with `--missing`, `--again`,
+`--supplements`, `--version` or `--search`.
 
 `papers add --doi DOI --fetch-pdf` adds the entry and fetches its PDF in the
 same way, and `papers fetch --pdf DOI` downloads the PDF into the current

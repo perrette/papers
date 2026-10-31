@@ -10,9 +10,7 @@ submitted version (preprint):
 2. OpenAlex (`GET /works/doi:<DOI>`, see papers.openalex.work_locations),
    version by version: the `pdf_url` of its open-access locations, then
    the `citation_pdf_url` tag of the landing pages of those without
-   `pdf_url` (repositories), then, for the published version, the Europe
-   PMC copy of a PMCID; the links of PubMed Central itself after it (PMC
-   answers programs with a check page);
+   `pdf_url` (repositories);
 3. arXiv: `https://arxiv.org/pdf/<id>`, a submitted version.
 
 The publisher's page is read first, OpenAlex only when the publisher gives
@@ -135,34 +133,6 @@ def _fetch_page(url):
     return _once_more_if_429(url, lambda: fetch.fetch_html(url, headers={'User-Agent': user_agent()}))
 
 
-_PMC_HOSTS = ('ncbi.nlm.nih.gov', 'europepmc.org')
-
-
-def _is_pmc(url):
-    "a link of PubMed Central (pmc.ncbi.nlm.nih.gov, www.ncbi.nlm.nih.gov/pmc)"
-    host = _host(url).lower()
-    return host == 'pmc.ncbi.nlm.nih.gov' or (host.endswith('ncbi.nlm.nih.gov') and '/pmc/' in url.lower())
-
-
-def pmcid(text, url=False):
-    """the PMCID (PMC<digits>) of a pmcid field (PMC123 or 123) or, with
-    url, of a link of PubMed Central or Europe PMC; None if there is none"""
-    text = (text or '').strip()
-    if url:
-        host = _host(text).lower()
-        if not any(host == h or host.endswith('.' + h) for h in _PMC_HOSTS):
-            return None
-        m = re.search(r'(?:PMC|/pmc/articles/)(\d+)', text, re.I)
-    else:
-        m = re.fullmatch(r'(?:PMC)?(\d+)', text, re.I)
-    return f'PMC{m.group(1)}' if m else None
-
-
-def europepmc_url(pmcid):
-    "the PDF that Europe PMC renders for an open-access article"
-    return f'https://europepmc.org/articles/{pmcid}?pdf=render'
-
-
 def page_links(html, base_url):
     """the PDF (citation_pdf_url) and the supplements (PDF links with "suppl"
     in the URL or the text, citation_supplementary_material) of an article page"""
@@ -194,11 +164,11 @@ class Search:
     LEAST_VERSIONS). `notes` says what each source gave, `browser` the
     pages to open in a browser."""
 
-    def __init__(self, doi=None, arxiv=None, least='any', pmcid=None):
+    def __init__(self, doi=None, arxiv=None, least='any'):
         if doi and arxiv_of_doi(doi):  # an arXiv DOI: the paper of arXiv
             arxiv = arxiv or normalize_arxiv(arxiv_of_doi(doi))
             doi = None
-        self.doi, self.arxiv, self.pmcid = doi, arxiv, pmcid
+        self.doi, self.arxiv = doi, arxiv
         self.versions = VERSIONS[:VERSIONS.index(least) + 1] if least in VERSIONS else VERSIONS
         self.notes = []
         self.browser = []
@@ -226,8 +196,7 @@ class Search:
 
     def openalex(self):
         """the open-access locations of OpenAlex of the versions asked: (PDF
-        links, landing pages without PDF link as Links), by version; a
-        PMCID they give is kept (pmcid)"""
+        links, landing pages without PDF link as Links), by version"""
         try:
             locations = openalex.work_locations(self.doi)
         except openalex.WorkNotFound:
@@ -242,8 +211,6 @@ class Search:
                 continue
             version = _OPENALEX_VERSIONS.get(x.get('version'))
             landing, pdf = x.get('landing_page_url'), x.get('pdf_url')
-            self.pmcid = (self.pmcid or pmcid(x.get('pmcid'), url=True) or pmcid(x.get('pmcid'))
-                          or pmcid(pdf, url=True) or pmcid(landing, url=True))
             if landing and landing not in self.browser:
                 self.browser.append(landing)
             if version not in self.versions:
@@ -291,21 +258,13 @@ class Search:
         publisher = {'https://doi.org/' + (self.doi or '').lower(), (self.page_final or '').lower()}
         for version in self.versions:
             for link in links:
-                if link.version == version and not _is_pmc(link.url) and new(link):
+                if link.version == version and new(link):
                     yield link
             for page in landings:
-                # the publisher's page was read; a PMC page is the Europe PMC copy
-                if page.version != version or page.url.lower() in publisher or _is_pmc(page.url):
+                if page.version != version or page.url.lower() in publisher:  # the publisher's page was read
                     continue
                 link = self.landing(page)
                 if link and new(link):
-                    yield link
-            if version == 'published' and self.pmcid:
-                link = Link(europepmc_url(self.pmcid), 'published')
-                if new(link):
-                    yield link
-            for link in links:  # PubMed Central after Europe PMC
-                if link.version == version and _is_pmc(link.url) and new(link):
                     yield link
         if self.arxiv and 'submitted' in self.versions:
             if not any(re.search(r'arxiv\.org/(pdf|abs)/' + re.escape(self.arxiv), url, re.I) for url in seen):
@@ -432,7 +391,7 @@ def _reason(error):
 
 
 def no_pdf_message(search, tried):
-    if not search.doi and not search.arxiv and not search.pmcid:
+    if not search.doi and not search.arxiv:
         return 'no DOI or arXiv id to look for a PDF'
     lines = ['no PDF could be downloaded' if tried else 'no free PDF found']
     lines += [f'  {link.url} ({VERSION_NAMES[link.version]}): {_reason(error)}' for link, error in tried]

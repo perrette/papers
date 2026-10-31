@@ -211,6 +211,26 @@ def remove(path, trash=True):
     record('trashed', path, None, digest)
 
 
+def replace(path, new, copy=False):
+    """put the file `new` at `path`, in place of the file there (papers
+    file fetch --upgrade); copy: `new` stays where it is. The old file is
+    deleted as `remove` does. When the history keeps it, it keeps the new
+    file too, and the new file is recorded as copied from it to `path`:
+    undo puts the old file back, redo the new one (see `restore`)."""
+    if papers.config.DRYRUN:
+        return
+    remove(path)
+    _place(new, path, copy=copy)
+    if _paused or _unrecorded or not keeps_deleted():
+        return
+    digest = _checksum(path)
+    folder, name = os.path.split(path)
+    spare = os.path.join(folder, '.' + name)  # a copy for the history (its put_file moves the file)
+    shutil.copy2(path, spare)
+    stored = _deleted.store.put_file(spare, digest)
+    record('copied', stored, path, digest)
+
+
 def to_system_trash(path):
     """a file that papers does not keep goes to the trash of the system
     (the user empties it), or is deleted if there is none"""
@@ -375,11 +395,20 @@ def restore(current, target, ops, undo, hashes=None, pool_dirs=(), find_deleted=
 
     # the files deleted by the commands whose link did not change (no entry links to them, e.g. papers
     # file clean, or the same entry before and after): brought back by undo, deleted again by redo
-    for op in (reversed(ops) if undo else ops):
+    for i in (reversed(range(len(ops))) if undo else range(len(ops))):
+        op = ops[i]
         path = op['src']
         if op['op'] != 'trashed' or (path in current) != (path in target) or path in reported:
             continue
         reported.add(path)
+        # a file that the command put in place of it, from the history (see `replace`)
+        new = next((o for o in ops[i + 1:] if o['op'] == 'copied' and o.get('dst') == path
+                    and history.is_file_object(o['src'])), None)
+        if (undo and new and os.path.isfile(path) and digest(path) == new.get('checksum')
+                and os.path.isfile(copied_from(new)) and find_deleted and find_deleted(op.get('checksum'))):
+            record('removed', path, copied_from(new), digest(path))
+            os.remove(path)  # the history keeps it
+            digests.pop(path, None)
         if undo and not os.path.lexists(path):
             found = find_deleted(op.get('checksum')) if find_deleted else None
             if found:
@@ -391,7 +420,14 @@ def restore(current, target, ops, undo, hashes=None, pool_dirs=(), find_deleted=
                              'not restored')
         elif not undo and os.path.isfile(path) and digest(path) == op.get('checksum'):
             remove(path)
-            lines.append(_deleted_again(path))
+            digests.pop(path, None)
+            src = copied_from(new) if new else None
+            if src and os.path.isfile(src):
+                _place(src, path, copy=True)
+                record('copied', src, path)
+                lines.append(f'    {_show(path)}: replaced again (from the history)')
+            else:
+                lines.append(_deleted_again(path))
 
     # the files that the commands copied to a place linked before and after (papers file fix from the
     # history): removed by undo, copied again by redo
