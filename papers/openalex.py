@@ -296,18 +296,18 @@ def fetch_bibtex_by_fulltext_openalex(txt, accept=None, rows=ROWS):
 # the open-access copies of a work (papers.freepdf)
 # ===================================================
 
-WORK_SELECT = 'id,doi,open_access,best_oa_location,locations'
+WORK_SELECT = 'id,doi,ids,open_access,best_oa_location,locations'
 
 
 class WorkNotFound(OpenAlexError):
     """a DOI that OpenAlex does not have (HTTP 404)"""
 
 
-def _trim_location(location):
+def _trim_location(location, pmcid=None):
     source = location.get('source') or {}
     return {'pdf_url': location.get('pdf_url'), 'landing_page_url': location.get('landing_page_url'),
             'version': location.get('version'), 'is_oa': bool(location.get('is_oa')),
-            'source': source.get('display_name')}
+            'source': source.get('display_name'), 'pmcid': pmcid}
 
 
 # open access changes (an embargo ends): the locations of a work are asked again after a month
@@ -318,7 +318,8 @@ WORK_MAX_AGE = 30 * 24 * 3600
 def work_locations(doi):
     """the locations of the work of a DOI (`GET /works/doi:<DOI>`, one request),
     trimmed: pdf_url, landing_page_url, version (publishedVersion,
-    acceptedVersion, submittedVersion), is_oa and source (its name); the best
+    acceptedVersion, submittedVersion), is_oa, source (its name) and pmcid
+    (the ids.pmcid of the work, the same in each location); the best
     open-access location first. A DOI unknown to OpenAlex raises WorkNotFound."""
     from urllib.parse import quote
     request = {'select': WORK_SELECT}
@@ -340,6 +341,7 @@ def work_locations(doi):
         work = response.json()
         locations = [work['best_oa_location']] if work.get('best_oa_location') else []
         locations += [x for x in work.get('locations') or [] if x and x not in locations]
-        return [_trim_location(x) for x in locations]
+        pmcid = (work.get('ids') or {}).get('pmcid')
+        return [_trim_location(x, pmcid) for x in locations]
     except (ValueError, KeyError, TypeError, AttributeError):
         raise OpenAlexError('OpenAlex: unexpected answer') from None

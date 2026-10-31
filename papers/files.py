@@ -81,10 +81,12 @@ def download_url(url, expect_pdf=False, dest_dir=None, user_agent=None):
             hint = (" — server appears to require a JavaScript/CAPTCHA challenge "
                     "(AWS WAF or similar); download manually in a browser "
                     "and re-run with the local file path")
-        raise ValueError(
+        error = ValueError(
             f"Failed to download from {url}: HTTP {response.status_code} "
             f"(content-type: {ctype or 'unknown'}){hint}"
         )
+        error.response = response  # its status and headers (Retry-After)
+        raise error
     if expect_pdf:
         if "pdf" not in ctype and not response.content.startswith(b"%PDF"):
             raise ValueError(

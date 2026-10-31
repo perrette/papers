@@ -119,9 +119,16 @@ a challenge is not one):
 1. the published version: the PDF that the publisher's article page links
    (its `citation_pdf_url` tag, the page being that of `https://doi.org/DOI`),
    then the open-access locations of [OpenAlex](https://openalex.org) of the
-   published version;
-2. the accepted manuscript (OpenAlex);
-3. the submitted version (OpenAlex), then arXiv (`https://arxiv.org/pdf/ID`).
+   published version: their PDF links, then the PDF that the landing pages
+   of the others give in their `citation_pdf_url` tag (repositories such as
+   DSpace, Pure or PubMan), then, for an article in PubMed Central, the PDF
+   of [Europe PMC](https://europepmc.org)
+   (`https://europepmc.org/articles/PMCID?pdf=render`; the PMCID comes from
+   the `pmcid` field of the entry, its `url` field, or OpenAlex), then the
+   PubMed Central links themselves;
+2. the accepted manuscript (OpenAlex, in the same way);
+3. the submitted version (OpenAlex, in the same way), then arXiv
+   (`https://arxiv.org/pdf/ID`).
 
 Each line says which version was attached and where it came from:
 
@@ -143,7 +150,13 @@ doe2021: files/doe_2021_ice.pdf (accepted manuscript, from repository.example.ed
 `--version published` attaches the published version only, `--version
 accepted` also the accepted manuscript. When no link gives a PDF, the error
 lists the links tried and the pages to open in a browser; the other entries
-are attached and saved, and the command exits with status 1. `--dry-run`
+are attached and saved, and the command exits with status 1. In a fetch of
+several entries, an entry without PDF is one line (`KEY: no PDF (...)`,
+with the same reasons and links), not an error:
+
+```
+lee2019: no PDF (https://journals.example.org/sea.pdf (published version): not a PDF; OpenAlex: no open-access PDF; open https://journals.example.org/sea.pdf, https://doi.org/10.1000/sea in a browser)
+``` `--dry-run`
 lists the links that would be tried, in order, and changes nothing.
 
 A fetch of several entries (`--missing`, or several KEYs) ends with a
@@ -197,7 +210,8 @@ and no API key is set (environment variable `OPENALEX_API_KEY`, free at
 ask; without a terminal, it stops and says how to proceed). The email
 address of `PAPERS_MAILTO`, when set, is given to OpenAlex and in the user
 agent of the requests to the publishers. papers waits a second between two
-requests to the same site.
+requests to the same site; a site that answers "too many requests" (HTTP
+429) is asked once more after the wait it gives (at most 30 seconds).
 
 `papers add --doi DOI --fetch-pdf` adds the entry and fetches its PDF in the
 same way, and `papers fetch --pdf DOI` downloads the PDF into the current

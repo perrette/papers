@@ -2,7 +2,7 @@
 import io
 import os
 import tempfile
-from contextlib import redirect_stdout
+from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from unittest import mock
 
@@ -51,11 +51,12 @@ class Response:
 
 
 class Web:
-    """the sites: pages {url: (final url, html)}, openalex {doi: [locations] or None (404)},
-    files {url: bytes or an HTTP status}; the requests are in `requests`"""
+    """the sites: pages {url: (final url, html)}, openalex {doi: [locations] or None (404)}, ids {doi:
+    ids of the work}, files {url: bytes, an HTTP status, (status, headers), or a list of these, the
+    answers in turn}; the requests are in `requests`"""
 
     def __init__(self, test):
-        self.pages, self.openalex, self.files = {}, {}, {}
+        self.pages, self.openalex, self.files, self.ids = {}, {}, {}, {}
         self.requests = []
         for target, fun in [('papers.fetch.http_get', self.get_page), ('papers.openalex.http_get', self.get_work),
                             ('requests.get', self.get_file)]:
@@ -75,11 +76,16 @@ class Web:
         doi = url.split('/works/doi:', 1)[1]
         if self.openalex.get(doi) is None:
             return Response(404, json={'error': 'not found'})
-        return Response(200, json={'id': 'https://openalex.org/W1', 'locations': self.openalex[doi]})
+        return Response(200, json={'id': 'https://openalex.org/W1', 'locations': self.openalex[doi],
+                                   'ids': self.ids.get(doi, {})})
 
     def get_file(self, url, headers=None, **kw):
         self.requests.append(('file', url, headers))
         content = self.files.get(url, 404)
+        if isinstance(content, list):  # the answers of the requests in turn
+            content = content.pop(0) if len(content) > 1 else content[0]
+        if isinstance(content, tuple):  # (HTTP status, headers)
+            return Response(content[0], url=url, headers={'content-type': 'text/html', **content[1]})
         if isinstance(content, int):
             return Response(content, url=url, headers={'content-type': 'text/html'})
         if content.startswith(b'%PDF'):
@@ -189,11 +195,13 @@ class TestVersions(FetchTest):
         self.publisher(content=b'<html>a challenge</html>')
         self.web.openalex[DOI] = []
         self.publisher(doi='10.1000/other', pdf='https://journals.example.org/other.pdf')
-        with self.assertLogs('papers', 'ERROR') as logs, self.assertRaises(PapersExit):
+        err = io.StringIO()
+        with redirect_stderr(err), self.assertNoLogs('papers', 'ERROR'), self.assertRaises(PapersExit):
             self.lib('file fetch smith2020 other2020')
-        message = '\n'.join(logs.output)
-        self.assertIn(f'{PDF} (published version): not a PDF', message)
-        self.assertIn(f'open in a browser: {PDF}, https://doi.org/{DOI}', message)
+        # several entries: one line for the entry without PDF, not an error
+        self.assertIn(f'smith2020: no PDF ({PDF} (published version): not a PDF; OpenAlex: no open-access PDF; '
+                      f'open {PDF}, https://doi.org/{DOI} in a browser)\n', err.getvalue())
+        self.assertNotIn('error', err.getvalue())
         self.assertEqual(self.files('smith2020'), [])
         self.assertEqual(len(self.files('other2020')), 1)  # saved
         self.assertEqual(self.downloads_left(), [])
@@ -258,6 +266,146 @@ class TestVersions(FetchTest):
             with self.assertLogs('papers', 'ERROR'), self.assertRaises(PapersExit):
                 self.lib('file fetch smith2020')
         self.assertEqual(len([r for r in self.web.requests if r[0] == 'openalex']), 1)
+
+
+class TestMoreSources(FetchTest):
+    """library.md "The free PDF of an entry": the landing pages of OpenAlex (repositories), Europe PMC,
+    and the retry after HTTP 429"""
+
+    REPO = 'https://repo.example.edu/handle/1'
+    REPO_PDF = 'https://repo.example.edu/bitstream/1/paper.pdf'
+
+    def setUp(self):
+        super().setUp()
+        self.bib(entry('smith2020', doi=DOI))
+        self.publisher(content=b'<html>a check page</html>')
+        sleep = mock.patch('papers.freepdf.time.sleep')
+        self.sleep = sleep.start()
+        self.addCleanup(sleep.stop)
+
+    def test_landing_page_citation_pdf_url(self):
+        self.web.openalex[DOI] = [location(None, 'acceptedVersion', landing=self.REPO),
+                                  location('https://preprints.example.org/s.pdf', 'submittedVersion')]
+        self.web.pages[self.REPO] = (self.REPO, page('/bitstream/1/paper.pdf'))
+        self.web.files[self.REPO_PDF] = pdf_bytes('am')
+        out = self.out('file fetch smith2020')
+        self.assertIn('(accepted manuscript, from repo.example.edu; the published version was refused', out)
+        self.assertEqual(Path(self.files('smith2020')[0]).read_bytes(), pdf_bytes('am'))
+        self.assertEqual(self.web.downloads(), [PDF, self.REPO_PDF])
+        agent = next(h for kind, url, h in self.web.requests if url == self.REPO)['User-Agent']
+        self.assertTrue(agent.startswith('papers/'))
+
+    def test_landing_page_of_a_repository_doi_follows_the_redirection(self):
+        landing = 'https://doi.org/10.34657/351'
+        self.web.openalex[DOI] = [location(None, 'publishedVersion', landing=landing)]
+        self.web.pages[landing] = (self.REPO, page('/bitstream/1/paper.pdf'))
+        self.web.files[self.REPO_PDF] = pdf_bytes('vor')
+        self.assertIn('(published version, from repo.example.edu)', self.out('file fetch smith2020'))
+
+    def test_landing_page_without_the_tag_is_to_open(self):
+        self.web.openalex[DOI] = [location(None, 'acceptedVersion', landing=self.REPO)]
+        self.web.pages[self.REPO] = (self.REPO, page(links=[('/bitstream/1/paper.pdf', 'PDF')]))
+        with self.assertLogs('papers', 'ERROR') as logs, self.assertRaises(PapersExit):
+            self.lib('file fetch smith2020')
+        message = '\n'.join(logs.output)
+        self.assertIn('repo.example.edu: no PDF link on the landing page', message)
+        self.assertIn(f'open in a browser: {PDF}, https://doi.org/{DOI}, {self.REPO}', message)
+        self.assertEqual(self.web.downloads(), [PDF])  # no other link of the page
+
+    def test_landing_page_of_the_publisher_is_not_read_again(self):
+        self.web.openalex[DOI] = [location(None, 'publishedVersion', landing='https://doi.org/' + DOI)]
+        with self.assertLogs('papers', 'ERROR'), self.assertRaises(PapersExit):
+            self.lib('file fetch smith2020')
+        self.assertEqual(len([r for r in self.web.requests if r[0] == 'page']), 1)
+
+    def test_europe_pmc_before_pmc(self):
+        pmc = 'https://pmc.ncbi.nlm.nih.gov/articles/PMC10495961/pdf/x.pdf'
+        europe = 'https://europepmc.org/articles/PMC10495961?pdf=render'
+        self.web.openalex[DOI] = [location(pmc, 'publishedVersion',
+                                           landing='https://pmc.ncbi.nlm.nih.gov/articles/PMC10495961'),
+                                  location('https://repo.example.edu/am.pdf', 'acceptedVersion')]
+        self.web.files[pmc] = b'<html>a check page</html>'
+        self.web.files[europe] = pdf_bytes('vor')
+        out = self.out('file fetch smith2020')
+        self.assertIn('(published version, from europepmc.org)', out)
+        self.assertEqual(self.web.downloads(), [PDF, europe])
+        self.assertEqual([r for r in self.web.requests if r[0] == 'page'],  # the PMC page is not read
+                         [('page', 'https://doi.org/' + DOI, mock.ANY)])
+
+    def test_europe_pmc_of_the_openalex_ids(self):
+        europe = 'https://europepmc.org/articles/PMC123?pdf=render'
+        self.web.files[europe] = pdf_bytes('vor')
+        self.web.ids[DOI] = {'pmcid': 'https://www.ncbi.nlm.nih.gov/pmc/articles/123'}
+        self.web.openalex[DOI] = [location('https://repo.example.edu/am.pdf', 'acceptedVersion')]
+        self.assertIn('(published version, from europepmc.org)', self.out('file fetch smith2020'))
+        self.assertEqual(self.web.downloads(), [PDF, europe])
+
+    def test_europe_pmc_of_the_pmcid_field(self):
+        europe = 'https://europepmc.org/articles/PMC123?pdf=render'
+        self.web.files[europe] = pdf_bytes('vor')
+        self.bib('@article{nodoi2020,\n pmcid = {PMC123},\n title = {T},\n year = {2020}\n}\n')
+        self.assertIn('(published version, from europepmc.org)', self.out('file fetch nodoi2020'))
+        self.assertEqual(self.web.downloads(), [europe])
+
+    def test_429_then_the_pdf(self):
+        self.web.openalex[DOI] = [location('https://repo.example.edu/am.pdf', 'acceptedVersion')]
+        self.web.files['https://repo.example.edu/am.pdf'] = [(429, {'Retry-After': '120'}), pdf_bytes('am')]
+        with self.assertLogs('papers', 'DEBUG') as logs:
+            out = self.out('file fetch smith2020')
+        self.assertIn('(accepted manuscript, from repo.example.edu', out)
+        self.sleep.assert_called_once_with(30)  # at most 30 s
+        self.assertIn('https://repo.example.edu/am.pdf: HTTP 429, retried in 30 s', '\n'.join(logs.output))
+
+    def test_429_twice_moves_on(self):
+        self.web.openalex[DOI] = [location('https://repo.example.edu/am.pdf', 'acceptedVersion'),
+                                  location('https://preprints.example.org/s.pdf', 'submittedVersion')]
+        self.web.files['https://repo.example.edu/am.pdf'] = (429, {})
+        self.web.files['https://preprints.example.org/s.pdf'] = pdf_bytes('s')
+        self.assertIn('(submitted version, from preprints.example.org', self.out('file fetch smith2020'))
+        self.sleep.assert_called_once_with(5)  # without Retry-After
+        self.assertEqual(self.web.downloads(), [PDF, 'https://repo.example.edu/am.pdf',
+                                                'https://repo.example.edu/am.pdf',
+                                                'https://preprints.example.org/s.pdf'])
+
+    def test_429_of_a_page(self):
+        calls = []
+
+        def fetch_html(url, headers=None):
+            calls.append(url)
+            if len(calls) == 1:
+                Response(429, url=url, headers={'Retry-After': '2'}).raise_for_status()
+            return page(PDF), url
+        with mock.patch('papers.fetch.fetch_html', fetch_html):
+            self.web.files[PDF] = pdf_bytes('vor')
+            self.assertIn('(published version', self.out('file fetch smith2020'))
+        self.assertEqual(calls, ['https://doi.org/' + DOI] * 2)
+        self.sleep.assert_called_once_with(2)
+
+
+class TestNoPdfMessages(FetchTest):
+    "library.md \"The free PDF of an entry\": one entry without PDF is an error, of several a line each"
+
+    def setUp(self):
+        super().setUp()
+        self.bib(entry('smith2020', doi=DOI), entry('nodoi2000'))
+        self.publisher(pdf=None)
+        self.web.openalex[DOI] = []
+
+    def test_one_entry_is_an_error(self):
+        with self.assertLogs('papers', 'ERROR') as logs, self.assertRaises(PapersExit):
+            self.lib('file fetch smith2020')
+        self.assertIn('ERROR:papers:smith2020: no free PDF found', logs.output[0])
+
+    def test_several_entries_a_line_each(self):
+        err, out = io.StringIO(), io.StringIO()
+        with redirect_stderr(err), redirect_stdout(out), self.assertNoLogs('papers', 'ERROR'), \
+                self.assertRaises(PapersExit):
+            self.lib('file fetch smith2020 nodoi2000')
+        self.assertEqual(err.getvalue(),
+                         'smith2020: no PDF (journals.example.org: no PDF link on the article page; '
+                         f'OpenAlex: no open-access PDF; open https://doi.org/{DOI} in a browser)\n'
+                         'nodoi2000: no PDF (no DOI or arXiv id to look for a PDF)\n')
+        self.assertIn('summary of 2 entries:', out.getvalue())
 
 
 class TestSelection(FetchTest):
@@ -337,7 +485,7 @@ class TestSummary(FetchTest):
 
     def test_missing(self):
         out = io.StringIO()
-        with self.assertLogs('papers', 'ERROR'), self.assertRaises(PapersExit), redirect_stdout(out):
+        with redirect_stderr(io.StringIO()), self.assertRaises(PapersExit), redirect_stdout(out):
             self.lib(f'file fetch --missing --search {self.path("downloads")}')
         out = out.getvalue()
         self.assertIn('summary of 4 entries:\n'

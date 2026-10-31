@@ -823,16 +823,38 @@ names above). `--missing` takes the entries without PDF.
   1. published version: the `citation_pdf_url` meta tag of the page that
      `https://doi.org/<DOI>` leads to; then the locations of the OpenAlex
      work of the DOI (`GET https://api.openalex.org/works/doi:<DOI>`) with
-     `is_oa` true, a `pdf_url`, and `version` `publishedVersion`;
-  2. accepted manuscript: those of `version` `acceptedVersion`;
-  3. submitted version: those of `version` `submittedVersion`, then
-     `https://arxiv.org/pdf/<id>` for the arXiv id of the entry (its
-     `eprint` field, or an arXiv DOI, which is then not looked up as a
-     DOI).
+     `is_oa` true and `version` `publishedVersion`: (a) their `pdf_url`;
+     (b) for those without `pdf_url`, the `citation_pdf_url` meta tag of
+     their `landing_page_url` (a repository page; redirections followed, as
+     for the page of the DOI); (c) the Europe PMC copy of the PMCID of the
+     entry, `https://europepmc.org/articles/PMC<digits>?pdf=render`; (d)
+     the `pdf_url` of 1a on PubMed Central (host `pmc.ncbi.nlm.nih.gov`, or
+     a host ending in `ncbi.nlm.nih.gov` with `/pmc/` in the URL), left out
+     of 1a;
+  2. accepted manuscript: (a), (b) and (d) for `version` `acceptedVersion`;
+  3. submitted version: (a), (b) and (d) for `version`
+     `submittedVersion`, then `https://arxiv.org/pdf/<id>` for the arXiv id
+     of the entry (its `eprint` field, or an arXiv DOI, which is then not
+     looked up as a DOI).
 
   Among the locations of one version, the `best_oa_location` comes first,
   then the order of `locations`. A URL is tried once. `--version
   published` keeps the links of 1, `--version accepted` those of 1 and 2.
+  A landing page is read only when the links before it gave no PDF; it is
+  not read when it is `https://doi.org/<DOI>` or the page it led to, or a
+  page of PubMed Central (PubMed Central answers programs with a check
+  page); only its `citation_pdf_url` tag is used (no other link of the
+  page), with the version of its location. The PMCID of the entry
+  (`PMC<digits>`) is the first of: its `pmcid` field (`PMC<digits>` or
+  `<digits>`), its `url` field when it is a link of PubMed Central or
+  Europe PMC (`PMC<digits>`, or `/pmc/articles/<digits>`), the `ids.pmcid`
+  of the OpenAlex work, the `pdf_url` or `landing_page_url` of an
+  open-access location that is such a link. An entry without DOI or arXiv
+  id but with a PMCID gets the link of 1c only.
+- An answer HTTP 429 (too many requests), to a page or a PDF, is asked
+  again once, after the wait of its `Retry-After` header in seconds (at
+  most 30; 5 when the header is absent or not a number); a second 429 moves
+  to the next link.
 - Supplements (`--supplements`): the `citation_supplementary_material` meta
   tags of the article page, then its links (`<a href>`, resolved against
   the page URL) that contain `.pdf` and whose URL or text contains `suppl`,
@@ -855,6 +877,13 @@ names above). `--missing` takes the entries without PDF.
   the repair copied from the history; a downloaded file is not put back,
   see rule 1). The
   command exits with 1 when an entry got no PDF, after saving the others.
+- An entry without PDF: for `file fetch` of one entry (and `add
+  --fetch-pdf`), an error (`papers: error: KEY: ...`, the links tried with
+  their reasons, then the pages to open in a browser). For `file fetch` of
+  more than one entry (`--missing`, or several KEYs), it is not an error
+  line: one line on stderr for the entry, `KEY: no PDF (...)`, with the same
+  reasons and links in the parentheses; the summary follows at the end,
+  and the exit status is 1 as above.
 - When an accepted manuscript or a submitted version is attached (or
   downloaded by `fetch --pdf`) after links of the published version were
   refused (the links of 1 that gave an HTTP error, a network error or no
@@ -877,7 +906,9 @@ names above). `--missing` takes the entries without PDF.
   its content, or the machine's cache says so) had the PDF already, and
   its refused published links are not listed.
 
-**Free**: the messages (`KEY: FILE (published version, from HOST)`,
+**Free**: the messages (`KEY: FILE (published version, from HOST)`, the
+text in the parentheses of `KEY: no PDF (...)`, the debug message of a
+retry after HTTP 429,
 `KEY: FILE (accepted manuscript, from HOST; the published version was
 refused: open URL in a browser)`, `KEY: relinked FILE (found in DIR), not
 downloaded`, the links to open in a browser), the wording and layout of

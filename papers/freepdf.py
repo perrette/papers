@@ -7,14 +7,20 @@ submitted version (preprint):
 
 1. the publisher's page (`https://doi.org/<DOI>`, then the article page):
    its `citation_pdf_url` tag, a published version;
-2. OpenAlex (`GET /works/doi:<DOI>`, see papers.openalex.work_locations):
-   the open-access locations with a PDF, by version;
+2. OpenAlex (`GET /works/doi:<DOI>`, see papers.openalex.work_locations),
+   version by version: the `pdf_url` of its open-access locations, then
+   the `citation_pdf_url` tag of the landing pages of those without
+   `pdf_url` (repositories), then, for the published version, the Europe
+   PMC copy of a PMCID; the links of PubMed Central itself after it (PMC
+   answers programs with a check page);
 3. arXiv: `https://arxiv.org/pdf/<id>`, a submitted version.
 
-The publisher's page is read first, and OpenAlex only when the publisher
-gives no PDF. A download that is refused (HTTP error, not a PDF) moves to the
-next link; when none is left, the error gives the links to open in a
-browser. When an accepted or submitted version is found after the published
+The publisher's page is read first, OpenAlex only when the publisher gives
+no PDF, and a landing page only when the links before it gave none. An
+HTTP 429 (too many requests) is retried once, after the wait it asks
+(Retry-After, at most RETRY_MAX seconds; RETRY_DEFAULT without it). A
+download that is refused (HTTP error, not a PDF) moves to the next link;
+when none is left, the error gives the links to open in a browser. When an accepted or submitted version is found after the published
 version was refused, the published links are given too (Found.refused). The supplements are the PDFs that the article page links with
 "suppl" in the URL or the text of the link, and its
 `citation_supplementary_material` tags.
@@ -49,6 +55,7 @@ _OPENALEX_VERSIONS = {'publishedVersion': 'published', 'acceptedVersion': 'accep
                       'submittedVersion': 'submitted'}
 LEAST_VERSIONS = ('published', 'accepted', 'any')  # the choices of --version
 INTERVAL = 1.0  # seconds between two requests to a site
+RETRY_DEFAULT, RETRY_MAX = 5, 30  # seconds to wait after an HTTP 429: without Retry-After, at most
 
 
 class NoPDF(ValueError):
@@ -99,6 +106,63 @@ def _wait(url):
         _last[host] = time.monotonic()
 
 
+def _retry_after(value):
+    "the seconds to wait for a Retry-After header (seconds; a date or none gives RETRY_DEFAULT)"
+    try:
+        return min(max(float(value), 0), RETRY_MAX)
+    except (TypeError, ValueError):
+        return RETRY_DEFAULT
+
+
+def _once_more_if_429(url, get):
+    "get(), and again once after the wait that an HTTP 429 asks"
+    try:
+        return get()
+    except (ValueError, OSError) as error:
+        response = getattr(error, 'response', None)
+        if response is None or getattr(response, 'status_code', None) != 429:
+            raise
+        wait = _retry_after((response.headers or {}).get('Retry-After'))
+        logger.debug(f'{url}: HTTP 429, retried in {wait:g} s')
+        time.sleep(wait)
+        _wait(url)
+        return get()
+
+
+def _fetch_page(url):
+    "the page of url and its URL after the redirections, as papers asks for it"
+    _wait(url)
+    return _once_more_if_429(url, lambda: fetch.fetch_html(url, headers={'User-Agent': user_agent()}))
+
+
+_PMC_HOSTS = ('ncbi.nlm.nih.gov', 'europepmc.org')
+
+
+def _is_pmc(url):
+    "a link of PubMed Central (pmc.ncbi.nlm.nih.gov, www.ncbi.nlm.nih.gov/pmc)"
+    host = _host(url).lower()
+    return host == 'pmc.ncbi.nlm.nih.gov' or (host.endswith('ncbi.nlm.nih.gov') and '/pmc/' in url.lower())
+
+
+def pmcid(text, url=False):
+    """the PMCID (PMC<digits>) of a pmcid field (PMC123 or 123) or, with
+    url, of a link of PubMed Central or Europe PMC; None if there is none"""
+    text = (text or '').strip()
+    if url:
+        host = _host(text).lower()
+        if not any(host == h or host.endswith('.' + h) for h in _PMC_HOSTS):
+            return None
+        m = re.search(r'(?:PMC|/pmc/articles/)(\d+)', text, re.I)
+    else:
+        m = re.fullmatch(r'(?:PMC)?(\d+)', text, re.I)
+    return f'PMC{m.group(1)}' if m else None
+
+
+def europepmc_url(pmcid):
+    "the PDF that Europe PMC renders for an open-access article"
+    return f'https://europepmc.org/articles/{pmcid}?pdf=render'
+
+
 def page_links(html, base_url):
     """the PDF (citation_pdf_url) and the supplements (PDF links with "suppl"
     in the URL or the text, citation_supplementary_material) of an article page"""
@@ -130,16 +194,17 @@ class Search:
     LEAST_VERSIONS). `notes` says what each source gave, `browser` the
     pages to open in a browser."""
 
-    def __init__(self, doi=None, arxiv=None, least='any'):
+    def __init__(self, doi=None, arxiv=None, least='any', pmcid=None):
         if doi and arxiv_of_doi(doi):  # an arXiv DOI: the paper of arXiv
             arxiv = arxiv or normalize_arxiv(arxiv_of_doi(doi))
             doi = None
-        self.doi, self.arxiv = doi, arxiv
+        self.doi, self.arxiv, self.pmcid = doi, arxiv, pmcid
         self.versions = VERSIONS[:VERSIONS.index(least) + 1] if least in VERSIONS else VERSIONS
         self.notes = []
         self.browser = []
         self.page_refused = None  # the URL of the publisher's page, when it gave an HTTP or network error
         self._page = None
+        self.page_final = None  # the URL of the publisher's article page
 
     def page(self):
         "(PDF link, supplements) of the publisher's page, read once"
@@ -148,9 +213,9 @@ class Search:
             if self.doi:
                 url = 'https://doi.org/' + self.doi
                 self.browser.append(url)
-                _wait(url)
                 try:
-                    html, final = fetch.fetch_html(url, headers={'User-Agent': user_agent()})
+                    html, final = _fetch_page(url)
+                    self.page_final = final
                     self._page = page_links(html, final)
                     if not self._page[0]:
                         self.notes.append(f'{_host(final)}: no PDF link on the article page')
@@ -160,26 +225,53 @@ class Search:
         return self._page
 
     def openalex(self):
-        "the open-access PDFs of OpenAlex, by version"
+        """the open-access locations of OpenAlex of the versions asked: (PDF
+        links, landing pages without PDF link as Links), by version; a
+        PMCID they give is kept (pmcid)"""
         try:
             locations = openalex.work_locations(self.doi)
         except openalex.WorkNotFound:
             self.notes.append('OpenAlex: no work of this DOI')
-            return []
+            return [], []
         except OSError as error:  # OpenAlexError: its message has no key
             self.notes.append(str(error))
-            return []
-        links = []
+            return [], []
+        links, landings = [], []
         for x in locations:
+            if not x.get('is_oa'):
+                continue
             version = _OPENALEX_VERSIONS.get(x.get('version'))
-            if x.get('is_oa') and x.get('landing_page_url') and x['landing_page_url'] not in self.browser:
-                self.browser.append(x['landing_page_url'])
-            if x.get('is_oa') and x.get('pdf_url') and version in self.versions:
-                links.append(Link(x['pdf_url'], version))
+            landing, pdf = x.get('landing_page_url'), x.get('pdf_url')
+            self.pmcid = (self.pmcid or pmcid(x.get('pmcid'), url=True) or pmcid(x.get('pmcid'))
+                          or pmcid(pdf, url=True) or pmcid(landing, url=True))
+            if landing and landing not in self.browser:
+                self.browser.append(landing)
+            if version not in self.versions:
+                continue
+            if pdf:
+                links.append(Link(pdf, version))
+            elif landing:
+                landings.append(Link(landing, version))
         if not links:
             self.notes.append('OpenAlex: no open-access PDF' + ('' if self.versions == VERSIONS else
                                                                   ' of the versions asked'))
-        return sorted(links, key=lambda link: VERSIONS.index(link.version))  # stable: the best location first
+
+        def order(link):  # stable: the best location first
+            return VERSIONS.index(link.version)
+        return sorted(links, key=order), sorted(landings, key=order)
+
+    def landing(self, link):
+        "the Link of the citation_pdf_url tag of a landing page (of its version), or None"
+        try:
+            html, final = _fetch_page(link.url)
+        except Exception as error:  # HTTP error, network error
+            self.notes.append(f'{link.url}: {_reason(error)}')
+            return None
+        pdf, _ = page_links(html, final)
+        if not pdf:
+            self.notes.append(f'{_host(final)}: no PDF link on the landing page')
+            return None
+        return Link(pdf, link.version)
 
     def links(self):
         "the links to try, in order (the sources are read as they are needed)"
@@ -190,12 +282,30 @@ class Search:
                 return False
             seen.add(link.url)
             return True
+        links, landings = [], []
         if self.doi:
             pdf, _ = self.page()
             if pdf and new(Link(pdf, 'published')):
                 yield Link(pdf, 'published')
-            for link in self.openalex():
+            links, landings = self.openalex()
+        publisher = {'https://doi.org/' + (self.doi or '').lower(), (self.page_final or '').lower()}
+        for version in self.versions:
+            for link in links:
+                if link.version == version and not _is_pmc(link.url) and new(link):
+                    yield link
+            for page in landings:
+                # the publisher's page was read; a PMC page is the Europe PMC copy
+                if page.version != version or page.url.lower() in publisher or _is_pmc(page.url):
+                    continue
+                link = self.landing(page)
+                if link and new(link):
+                    yield link
+            if version == 'published' and self.pmcid:
+                link = Link(europepmc_url(self.pmcid), 'published')
                 if new(link):
+                    yield link
+            for link in links:  # PubMed Central after Europe PMC
+                if link.version == version and _is_pmc(link.url) and new(link):
                     yield link
         if self.arxiv and 'submitted' in self.versions:
             if not any(re.search(r'arxiv\.org/(pdf|abs)/' + re.escape(self.arxiv), url, re.I) for url in seen):
@@ -242,7 +352,7 @@ def download(link):
     answer is not a PDF (its first bytes are %PDF). Its checksum is
     remembered (known_download)."""
     _wait(link.url)
-    path = download_url(link.url, expect_pdf=True, user_agent=user_agent())
+    path = _once_more_if_429(link.url, lambda: download_url(link.url, expect_pdf=True, user_agent=user_agent()))
     with open(path, 'rb') as f:
         head = f.read(1024)
     if b'%PDF' not in head:
@@ -322,7 +432,7 @@ def _reason(error):
 
 
 def no_pdf_message(search, tried):
-    if not search.doi and not search.arxiv:
+    if not search.doi and not search.arxiv and not search.pmcid:
         return 'no DOI or arXiv id to look for a PDF'
     lines = ['no PDF could be downloaded' if tried else 'no free PDF found']
     lines += [f'  {link.url} ({VERSION_NAMES[link.version]}): {_reason(error)}' for link, error in tried]

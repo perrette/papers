@@ -1,6 +1,7 @@
 """papers file rename, mv, attach, fetch, detach, rm, check, fix, clean, checksum, and filecheck (deprecated)"""
 import os
 import shutil
+import sys
 
 import papers.checksums
 import papers.config
@@ -651,7 +652,20 @@ def _found_line(e, path, found):
     return f'{e.key}: {_show(path)} ({found.describe()})'
 
 
-def _dry_run_lines(e, search, local, main, supplements):
+def _no_pdf(e, message, several):
+    """report an entry without PDF: a `papers: error:` for one entry; for
+    several, a line `KEY: no PDF (the reasons; open LINKS in a browser)` on stderr"""
+    if not several:
+        logger.error(f'{e.key}: {message}')
+        return
+    lines = message.splitlines()
+    browser = [line for line in lines[1:] if line.startswith('open in a browser: ')]
+    reasons = [line.strip() for line in lines[1:] if line not in browser] or lines[:1]
+    reasons += [f'open {line[len("open in a browser: "):]} in a browser' for line in browser]
+    print(f'{e.key}: no PDF ({"; ".join(reasons)})', file=sys.stderr)
+
+
+def _dry_run_lines(e, search, local, main, supplements, several=False):
     "the DRYRUN lines of an entry; False if no PDF would be found"
     lines, ok = [], True
     if main:
@@ -668,7 +682,7 @@ def _dry_run_lines(e, search, local, main, supplements):
                 what = f'would download {link.url} ({link.describe()})'
             lines.append(f'DRYRUN: {e.key}: {"else " if i else ""}{what}')
         if not links:
-            logger.error(f'{e.key}: {freepdf.no_pdf_message(search, [])}')
+            _no_pdf(e, freepdf.no_pdf_message(search, []), several)
             ok = False
     if supplements:
         lines += [f'DRYRUN: {e.key}: would download {link.url} ({link.describe()})' for link in search.supplements()]
@@ -752,7 +766,7 @@ class FetchSummary:
 
 
 def fetch_entry_pdfs(biblio, config, pools, entries, mode, least='any', supplements=False, again=False,
-                     repaired=(), summary=None):
+                     repaired=(), summary=None, several=False):
     """`papers file fetch` (also `papers add --fetch-pdf`): find the free PDF
     of each entry (see papers.freepdf), and attach it as `papers file attach`
     does (with the files mode `mode`); the library is not saved. The main
@@ -763,7 +777,8 @@ def fetch_entry_pdfs(biblio, config, pools, entries, mode, least='any', suppleme
     attached without downloading it. Return the number of entries whose PDF
     was not found (the errors are reported). repaired: the ids of the
     entries whose broken PDF link repair_pdf_links repaired (no main PDF
-    fetched unless `again`, without message). summary: a FetchSummary to fill."""
+    fetched unless `again`, without message). summary: a FetchSummary to fill.
+    several: the entries without PDF get one line each (see _no_pdf)."""
     from papers.bib import _same_content
     dryrun = papers.config.DRYRUN
     summary = summary or FetchSummary()
@@ -778,16 +793,17 @@ def fetch_entry_pdfs(biblio, config, pools, entries, mode, least='any', suppleme
             if not supplements:
                 continue
         doi, arxiv = strip_doi(get_entry_val(e, 'doi', '')), entry_arxiv(e)
-        if not doi and not arxiv:
+        pmcid = freepdf.pmcid(get_entry_val(e, 'pmcid', '')) or freepdf.pmcid(get_entry_val(e, 'url', ''), url=True)
+        if not doi and not arxiv and not pmcid:
             if main:
-                logger.error(f'{e.key}: no DOI or arXiv id to look for a PDF')
+                _no_pdf(e, 'no DOI or arXiv id to look for a PDF', several)
                 summary.browser.append((e.key, [], 'no PDF'))
                 failed += 1
             continue
-        search = freepdf.Search(doi, arxiv or None, least)
+        search = freepdf.Search(doi, arxiv or None, least, pmcid)
         local = library.local(e)
         if dryrun:
-            failed += not _dry_run_lines(e, search, local, main, supplements)
+            failed += not _dry_run_lines(e, search, local, main, supplements, several)
             continue
         found = []
         refused = None
@@ -800,7 +816,7 @@ def fetch_entry_pdfs(biblio, config, pools, entries, mode, least='any', suppleme
                                f'{freepdf.VERSION_NAMES[found[-1].link.version]} found')
                     summary.browser.append(refused)
             except freepdf.NoPDF as error:
-                logger.error(f'{e.key}: {error}')
+                _no_pdf(e, str(error), several)
                 summary.browser.append((e.key, error.links, 'no PDF'))
                 failed += 1
         if supplements:
@@ -889,7 +905,8 @@ def file_fetchcmd(parser, o, config):
     summary = FetchSummary()
     summary.repaired = 0 if o.again else len(repaired)
     failed = fetch_entry_pdfs(biblio, config, pools, fetched, mode, least=o.least_version,
-                              supplements=o.supplements, again=o.again, repaired=repaired, summary=summary)
+                              supplements=o.supplements, again=o.again, repaired=repaired, summary=summary,
+                              several=len(entries) > 1)
     if not dryrun:
         notes = save_entries(config, biblio, exchange)
         if papers.utils.PORCELAIN is not None:
