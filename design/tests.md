@@ -378,6 +378,15 @@ that check the same thing.
 - tests/test_file_fetch.py::TestConfirmation::test_yes_key_or_fewer_entries
 - tests/test_file_fetch.py::TestSupplements::test_supplements
 - tests/test_file_fetch.py::TestSupplements::test_not_without_the_option
+- tests/test_pdf_versions.py::TestUpgrade::test_replaces_under_the_same_name
+- tests/test_pdf_versions.py::TestUpgrade::test_undo_brings_the_old_file_back
+- tests/test_pdf_versions.py::TestUpgrade::test_only_the_published_version
+- tests/test_pdf_versions.py::TestUpgrade::test_no_published_version_changes_nothing
+- tests/test_pdf_versions.py::TestUpgrade::test_dry_run
+- tests/test_pdf_versions.py::TestUpgrade::test_entries_without_lower_version
+- tests/test_pdf_versions.py::TestUpgrade::test_nothing_to_upgrade
+- tests/test_pdf_versions.py::TestUpgrade::test_summary_of_several_entries
+- tests/test_pdf_versions.py::TestUpgrade::test_options_that_do_not_go_with_it
 - tests/test_file_fetch.py::TestSupplements::test_second_pass_with_supplements
 - tests/test_file_fetch.py::TestNoDuplicate::test_same_content_not_attached
 - tests/test_file_fetch.py::TestNoDuplicate::test_cache_a_the_entry_has_it
@@ -1128,6 +1137,10 @@ that check the same thing.
 - tests/test_formats.py::TestListFormats::test_csl_json
 - tests/test_formats.py::TestListFormats::test_bibjson
 - tests/test_formats.py::TestListFormats::test_ris
+- tests/test_pdf_versions.py::TestList::test_format_files
+- tests/test_pdf_versions.py::TestList::test_json
+- tests/test_pdf_versions.py::TestList::test_export_has_no_version
+- tests/test_pdf_versions.py::TestBibjsonField::test_field
 
 ### 6.1 Search
 
@@ -1141,6 +1154,7 @@ that check the same thing.
 - tests/test_list.py::SearchTest::test_list_year
 - tests/test_list.py::SearchTest::test_list_combined
 - tests/test_list.py::SearchTest::test_list_fullsearch
+- tests/test_pdf_versions.py::TestList::test_pdf_version_filter
 
 ### 7. `--porcelain`
 
@@ -1879,7 +1893,8 @@ that check the same thing.
 - tests/test_history.py::TestDownloads::test_add_move_undo
 - tests/test_history.py::TestStoredNames::test_windows_separators
 - tests/test_journal.py::TestSeveralSteps::test_operations_in_the_state
-- tests/test_journal.py::TestDeleted::test_identical_copy_not_kept.
+- tests/test_journal.py::TestDeleted::test_identical_copy_not_kept
+- tests/test_pdf_versions.py::TestUpgrade::test_operations_of_the_step.
 
 ### 5.1 The place and the project of a library
 
@@ -1976,6 +1991,8 @@ that check the same thing.
 
 ### 6.4 Restoring the files
 
+- tests/test_pdf_versions.py::TestUpgrade::test_undo_brings_the_old_file_back
+- tests/test_pdf_versions.py::TestUpgrade::test_undo_leaves_a_file_changed_since
 - tests/test_journal.py::TestOneStep::test_rename_undo_redo
 - tests/test_journal.py::TestOneStep::test_copy_removed_by_undo
 - tests/test_journal.py::TestOneStep::test_file_changed_since
@@ -2155,6 +2172,15 @@ that check the same thing.
 - tests/test_journal.py::TestChecksums::test_command
 - tests/test_journal.py::TestChecksums::test_found_by_checksum
 - tests/test_undo.py::TestUndoNoInstall::test_undo.
+- tests/test_pdf_versions.py::TestFilesJson::test_written_by_fetch
+- tests/test_pdf_versions.py::TestFilesJson::test_add_fetch_pdf
+- tests/test_pdf_versions.py::TestFilesJson::test_no_version_for_a_file_attached_by_hand
+- tests/test_pdf_versions.py::TestFilesJson::test_supplements_have_no_version
+- tests/test_pdf_versions.py::TestFilesJson::test_with_the_checksums_setting_off
+- tests/test_pdf_versions.py::TestFilesJson::test_kept_when_the_file_moves
+- tests/test_pdf_versions.py::TestFilesJson::test_dropped_with_the_checksum
+- tests/test_pdf_versions.py::TestFilesJson::test_old_file_without_versions
+- tests/test_pdf_versions.py::TestFilesJson::test_undo_restores_the_versions
 
 ### 11. The parse cache
 

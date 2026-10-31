@@ -102,8 +102,10 @@ writing and matching in `bibtex.md` section 9.4.
 
 ### `.papers/files.json`, `.papers/origin/`
 
-- `files.json`: `{"files": {path: sha256}}` with the paths written as the
-  file links of the bibtex. See `history.md`.
+- `files.json`: `{"files": {path: sha256}, "versions": {sha256: version}}`
+  with the paths written as the file links of the bibtex, and the version
+  of the PDFs that `papers file fetch` attached (`versions` only when
+  there is one). See `history.md` section 10.
 - `origin/`: one bibtex file per pool. See `exchange.md`.
 
 ## The library configuration: `.papers/config.json`
@@ -154,7 +156,7 @@ Example (a shallow library):
 | `files` | `"ask"`, `"move"`, `"copy"`, `"link"` | What `add` and the file commands do with a file outside the files directory. |
 | `auto-push` | boolean | Shallow library: commands that change entries push them to the pool. |
 | `editor` | string | Command that opens a text editor. |
-| `checksums` | boolean | Commands write the checksums of the files they touch to `files.json`. |
+| `checksums` | boolean | Commands write the checksums of the files they touch to `files.json` (the PDFs that `file fetch` attaches get theirs also when false, for their version). |
 | `history-size` | integer | Size limit of the library's own history store, in MB (see `history.md`). |
 | `history-separate` | boolean | The library has a history store of its own (see `history.md`). |
 | `nameformat` | object | The file name template and its modifiers (see below). |
@@ -841,8 +843,13 @@ names above). `--missing` takes the entries without PDF.
   after the main PDF, so they get `<name>--<label>.pdf`.
 - A downloaded file with the content (sha256) of a file of the entry is
   not attached.
-- Nothing about the download is written in the library: no field, no file
-  of `.papers/`. The machine keeps, in its cache, the sha256 and size of
+- The version of an attached PDF (`published`, `accepted` or
+  `submitted`; not a supplement) is written in `.papers/files.json`, by
+  the checksum of the file (history.md 10), also for a PDF attached from
+  a file of the library without download. Nothing else about the
+  download is written in the library: no field, no URL. A file attached
+  otherwise (`file attach`, `add FILE`) has no version: unknown, not
+  published. The machine keeps, in its cache, the sha256 and size of
   the file each URL gave. Before a URL of that cache is downloaded again:
   if a file of the entry has that size and sha256, nothing is attached;
   else if a file of another entry, or a file of `.papers/files.json`,
@@ -876,6 +883,31 @@ names above). `--missing` takes the entries without PDF.
   PDF: an entry whose PDF found is not attached (a file of the entry has
   its content, or the machine's cache says so) had the PDF already, and
   its refused published links are not listed.
+
+- `file fetch --upgrade [KEY...]` (all entries without KEY): the entries
+  with a PDF (a link ending in `.pdf` to an existing file) whose version
+  is `accepted` or `submitted`, and none whose version is `published`.
+  An entry given by KEY that is not one of them is said and skipped. For
+  each: the links of the published version only (1 above, from the DOI;
+  an entry without DOI is said and skipped), as `file fetch --version
+  published` tries them, the machine's cache included. When one gives a
+  PDF, it takes the place of the first such PDF of the entry, under the
+  same path (the link does not change): the old file is deleted as a
+  command deletes a file (history.md 5.6, kept in the history: `papers
+  undo` brings it back; see history.md 4 for the operations), and the
+  version of the new content is `published`. A PDF found that has the
+  content of a file of the entry replaces nothing (that file's version
+  becomes `published`). No published PDF: nothing changes, the message
+  says so with the links refused, and the command exits with 0. The
+  entries changed are saved in one step of the history. A run of more
+  than one entry prints the summary below (the PDFs replaced, those
+  without published version and their links to open in a browser).
+  `--dry-run` says which links would be tried and which file each would
+  replace. `--upgrade` with `--missing`, `--again`, `--supplements`,
+  `--version` or `--search` is a usage error (exit 2); `--porcelain`
+  prints no `modified` line (the entries do not change). The question
+  before more than 50 entries with a DOI (below) is asked as for
+  `--missing`.
 
 **Free**: the messages (`KEY: FILE (published version, from HOST)`,
 `KEY: FILE (accepted manuscript, from HOST; the published version was

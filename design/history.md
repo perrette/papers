@@ -594,7 +594,13 @@ operation is part of each command's behaviour):
   (`removed` with `dst`: the pool's copy);
 - the file a `papers file check` or `fix` brings back from the history
   (6.6): `copied`, from the file object in the store to the place of the
-  link.
+  link;
+- the file that `papers file fetch --upgrade` puts in place of another
+  under the same name (library.md, The free PDF of an entry): the old
+  file is deleted (`trashed`, or `removed` when not kept), then, when it
+  was kept, the new file is put in the store too and recorded as
+  `copied` from its file object to the path; when the old file was not
+  kept, the new one is moved there unrecorded (a download).
 
 Not recorded: the operations of undo, redo and restore (they move in the
 history and are not a step of it), except those of the revert of a pool
@@ -1028,13 +1034,22 @@ first when undo, the first first otherwise, whose `src` is in both
 `current` and `target` or in neither, and not in `reported`: add `src` to
 `reported`, then
 
+- the replacement: a `copied` operation after this one, whose `dst` is
+  `src` and whose `src` is a file object of a store (the file that
+  `papers file fetch --upgrade` put in place of the deleted one, 4);
+- undo, the replacement exists, `src` is a file, `digest(src)` is the
+  replacement's checksum, `source(replacement)` is a file and the store
+  has the file object of this operation's checksum: delete `src` (not to
+  the store: `source(replacement)` stays), then go on as below;
 - undo, and nothing exists at `src`: copy the file object of its checksum
   to `src` (`<src>: restored from the history`); if there is none:
   `<src>: no longer in the history (see the history-size setting), not
   restored`;
 - redo, `src` is a file and `digest(src)` is the operation's checksum:
   delete it as a command deletes a file (5.6: to the store, or to the
-  system trash; the guard is not asked); report
+  system trash; the guard is not asked); then, if the replacement exists
+  and `source(replacement)` is a file, copy it to `src` and report
+  `<src>: replaced again (from the history)`; otherwise report
   `<src>: deleted again (kept in the history)`, or `(to the trash of the
   system)` with `keep-deleted-files` false.
 
@@ -1084,7 +1099,9 @@ sorted, that is not in `reported` and is a file:
 
 Consequences (contract):
 
-- no file is ever overwritten;
+- no file is ever overwritten (a file replaced by `file fetch --upgrade`
+  comes back only after the file that replaced it, unchanged since, is
+  deleted: the store keeps that one);
 - a file whose content differs from the recorded checksum is left in
   place, with a line;
 - a file that no operation touched and that no checksum identifies is
@@ -1544,27 +1561,41 @@ restored`.
 
 ## 10. `.papers/files.json`
 
-The checksums of the files that the entries link to. Location: `.papers/`
-of the library directory; a bibtex without library has none.
+The checksums of the files that the entries link to, and the version of
+the PDFs that `papers file fetch` attached. Location: `.papers/` of the
+library directory; a bibtex without library has none.
 
 ```json
 {
  "files": {
   "../out/y.pdf": "7e4fa2eb8c7ac089739d5defc4489fad68a100d92082ca35c6b40a4524821f87",
   "files/doe_2000_a.pdf": "2493a40c8dae940590f8b323c46051a641bebd740aa5d1997108043a9b301274"
+ },
+ "versions": {
+  "2493a40c8dae940590f8b323c46051a641bebd740aa5d1997108043a9b301274": "accepted"
  }
 }
 ```
 
-- Keys: the path of a file, relative to the directory of the bibtex (with
-  `..` for a file outside it), or absolute with `paths absolute`, with `/`
-  as separator on every system. Values: sha256 of the file's content.
+- `files`: keys: the path of a file, relative to the directory of the
+  bibtex (with `..` for a file outside it), or absolute with `paths
+  absolute`, with `/` as separator on every system. Values: sha256 of the
+  file's content.
+- `versions`: keys: a sha256 of `files`; values: `published`, `accepted`
+  or `submitted`, the version of that content as `papers file fetch` or
+  `add --fetch-pdf` found it (library.md, The free PDF of an entry). A
+  file whose checksum has no version (a file attached otherwise, or a
+  file without checksum) has an unknown version. Written only when it is
+  not empty: a library without fetched PDFs has the file without
+  `versions`, as before.
 - Written with one-space indentation, sorted keys and a final newline,
   through a temporary file and a rename. When there is no checksum left,
   the file is deleted.
-- Read: each key, with any `\` read as `/` (papers on Windows wrote `\`
-  before 3.0.0b6), resolved against the directory of the bibtex and
-  normalized. An unreadable file means no checksums.
+- Read: each key of `files`, with any `\` read as `/` (papers on Windows
+  wrote `\` before 3.0.0b6), resolved against the directory of the
+  bibtex and normalized. A file without `versions` is valid (no version
+  known); a value of `versions` other than the three is ignored. An
+  unreadable file means no checksums and no versions.
 
 When it is written: at each save of the library (5.4, before the bibtex):
 
@@ -1574,13 +1605,23 @@ When it is written: at each save of the library (5.4, before the bibtex):
    of the files that the command moved or copied (the `dst` of its
    operations so far) and of the files linked now but not when the
    library was loaded, when they are linked and exist;
-3. write the file if the result differs from what was read.
+3. the PDFs that `papers file fetch` (or `add --fetch-pdf`) attached, or
+   that `file fetch --upgrade` replaced, when they are linked and exist:
+   compute their checksum (also with the `checksums` setting false: the
+   version needs it) and set `versions[checksum]` to their version;
+4. keep the versions whose checksum is a value of `files`; drop the
+   others. A version thus follows its content: a file renamed or moved
+   keeps it, and so does a copy linked by another entry; it goes when no
+   linked file has that checksum any more;
+5. write the file if the result (checksums or versions) differs from what
+   was read.
 
 `papers file checksum` writes the checksums of all linked files (or of
 the entries given), as a save with other changes.
 
 How undo uses it: the file is one of the kept `.papers/` files, so each
-state has the checksums of its links. Going to a state, the checksums of
+state has the checksums of its links and their versions (undo of a
+`file fetch` restores the versions of the state before it). Going to a state, the checksums of
 the state restored give `want` (6.4): a file whose path is free is found
 by its content wherever the commands left it, or among the deleted files;
 a file at its path with another content is not overwritten and not

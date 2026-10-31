@@ -8,8 +8,10 @@ usage: papers list [-h] [-v] [--debug] [--color {auto,always,never}]
                    [--abstract ABSTRACT [ABSTRACT ...]] [-k KEY [KEY ...]]
                    [--doi DOI [DOI ...]] [--keywords KEYWORDS [KEYWORDS ...]]
                    [--by {key,doi,title}] [--duplicates] [--has-file]
-                   [--no-file] [--broken-file] [--review-required]
-                   [--format {line,bibtex,ris,csl-json,bibjson,key} |
+                   [--no-file] [--broken-file]
+                   [--pdf-version {published,accepted,submitted,unknown}]
+                   [--review-required]
+                   [--format {line,bibtex,ris,csl-json,bibjson,key,files} |
                    --plain | -l | -K | --field FIELD [FIELD ...]] [--no-key]
                    [--delete] [--delete-files] [--keep-files] [-e]
                    [--add-keywords ADD_KEYWORDS [ADD_KEYWORDS ...]] [--rename]

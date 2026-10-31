@@ -651,8 +651,8 @@ def _found_line(e, path, found):
     return f'{e.key}: {_show(path)} ({found.describe()})'
 
 
-def _dry_run_lines(e, search, local, main, supplements):
-    "the DRYRUN lines of an entry; False if no PDF would be found"
+def _dry_run_lines(e, search, local, main, supplements, replacing=''):
+    "the DRYRUN lines of an entry; False if no PDF would be found (replacing: the end of a line of --upgrade)"
     lines, ok = [], True
     if main:
         links = list(search.links())
@@ -666,6 +666,8 @@ def _dry_run_lines(e, search, local, main, supplements):
                     f'same file as {found.other}' if found.how == 'linked' else 'a file of the library') + ')'
             else:
                 what = f'would download {link.url} ({link.describe()})'
+            if replacing and not (found and found.how == 'has'):
+                what = what.replace('would attach', 'would copy') + replacing
             lines.append(f'DRYRUN: {e.key}: {"else " if i else ""}{what}')
         if not links:
             logger.error(f'{e.key}: {freepdf.no_pdf_message(search, [])}')
@@ -725,6 +727,7 @@ class FetchSummary:
         self.supplements = 0
         self.repaired = 0
         self.had = 0  # entries that had the PDF already
+        self.upgraded = 0  # --upgrade: the PDFs replaced by the published version
         self.browser = []  # (key, links, what): the links to open in a browser
 
     def print(self, count):
@@ -734,6 +737,8 @@ class FetchSummary:
             lines.append(f'  {attached} PDF{"s" * (attached > 1)} attached: ' + ', '.join(
                 f'{n} {freepdf.VERSION_NAMES[v]}' for v, n in sorted(
                     self.attached.items(), key=lambda x: freepdf.VERSIONS.index(x[0]))))
+        if self.upgraded:
+            lines.append(f'  {self.upgraded} replaced by the published version')
         if self.repaired:
             lines.append(f'  {self.repaired} found locally (repaired, not downloaded)')
         if self.had:
@@ -743,6 +748,9 @@ class FetchSummary:
         failed = sum(1 for _, _, what in self.browser if what == 'no PDF')
         if failed:
             lines.append(f'  {failed} without PDF')
+        kept = sum(1 for _, _, what in self.browser if what == NO_PUBLISHED)
+        if kept:
+            lines.append(f'  {kept} without published version (kept as they are)')
         if len(lines) == 1:
             lines.append('  nothing attached')
         links = [f'  {key}: {", ".join(urls)} ({what})' for key, urls, what in self.browser if urls]
@@ -842,7 +850,82 @@ def fetch_entry_pdfs(biblio, config, pools, entries, mode, least='any', suppleme
                 summary.supplements += 1
             else:
                 summary.attached[f.link.version] = summary.attached.get(f.link.version, 0) + 1
+                biblio.pdf_versions[path] = f.link.version  # in .papers/files.json, by checksum
     return failed
+
+
+NO_PUBLISHED = 'no published version'
+LOWER_VERSIONS = ('accepted', 'submitted')
+
+
+def lower_version_pdf(biblio, e, versions):
+    """the first PDF of the entry whose version is accepted or submitted,
+    with its version, when no PDF of the entry is the published version;
+    else None (versions: see papers.checksums.file_versions)"""
+    pdfs = [f for f in biblio.get_files(e) if f.lower().endswith('.pdf') and os.path.isfile(f)]
+    known = [versions.get(os.path.normpath(f)) for f in pdfs]
+    if 'published' in known:
+        return None
+    return next(((f, v) for f, v in zip(pdfs, known) if v in LOWER_VERSIONS), None)
+
+
+def upgrade_entry_pdfs(biblio, config, entries, named, summary):
+    """`papers file fetch --upgrade`: the entries whose PDF is an accepted
+    manuscript or a submitted version (see lower_version_pdf) look for the
+    published version only; one found replaces that file, under its name
+    (the old file goes to the history, see papers.journal.replace). The
+    library is not saved. named: the entries were given by key (an entry
+    without such a PDF is said). Return the entries looked at."""
+    from papers.bib import _same_content
+    dryrun = papers.config.DRYRUN
+    versions = papers.checksums.file_versions(config)
+    library = LibraryChecksums(biblio, config)
+    looked, plans = [], []
+    for e in entries:
+        lower = lower_version_pdf(biblio, e, versions)
+        if lower is None:
+            if named:
+                print(f'{e.key}: no accepted manuscript or submitted version to replace')
+            continue
+        looked.append(e)
+        file, version = lower
+        doi = strip_doi(get_entry_val(e, 'doi', ''))
+        if not doi:
+            print(f'{e.key}: no DOI to look for the published version: {_show(file)} '
+                  f'({freepdf.VERSION_NAMES[version]}) kept')
+            summary.browser.append((e.key, [], NO_PUBLISHED))
+            continue
+        search = freepdf.Search(doi, None, 'published')
+        local = library.local(e)
+        replacing = f', in place of {_show(file)} ({freepdf.VERSION_NAMES[version]})'
+        if dryrun:
+            _dry_run_lines(e, search, local, True, False, replacing=replacing)
+            continue
+        try:
+            plans.append((e, file, version, freepdf.fetch_pdf(search, local)))
+        except freepdf.NoPDF as error:
+            print(f'{e.key}: {_show(file)} ({freepdf.VERSION_NAMES[version]}) kept: {error}')
+            summary.browser.append((e.key, error.links, NO_PUBLISHED))
+
+    # the downloads are done: the files are replaced
+    for e, file, version, found in plans:
+        same = found.path if found.how == 'has' else _same_content(found.path, biblio.get_files(e))
+        if same:
+            # the entry has the published version already: it is now known
+            print(f'{e.key}: already has {_show(same)} ({found.describe()})')
+            if found.how == 'downloaded':
+                freepdf.discard(found.path)
+            biblio.pdf_versions[same] = 'published'
+            summary.had += 1
+            continue
+        journal.replace(file, found.path, copy=found.how != 'downloaded')
+        if found.how == 'downloaded':  # the temporary folder of the download, now empty
+            shutil.rmtree(os.path.dirname(found.path), ignore_errors=True)
+        biblio.pdf_versions[file] = 'published'
+        print(f'{e.key}: {_show(file)}: {freepdf.VERSION_NAMES[version]} replaced by the {found.describe()}'
+              + ('' if journal.keeps_deleted() else ' (the old file went to the trash of the system)'))
+        summary.upgraded += 1
+    return looked
 
 
 def _confirm_openalex(o, entries):
@@ -864,8 +947,15 @@ def _confirm_openalex(o, entries):
 
 def file_fetchcmd(parser, o, config):
     set_format_config_from_cmd(o, config, 'name')
+    if o.upgrade:
+        for option, given in [('--missing', o.missing), ('--again', o.again), ('--supplements', o.supplements),
+                              ('--version', o.least_version is not None), ('--search', o.search)]:
+            if given:
+                parser.error(f'--upgrade and {option}: --upgrade replaces an accepted manuscript or a submitted '
+                             'version by the published version')
+        return file_upgradecmd(o, config)
     if not o.entries and not o.missing:
-        parser.error('papers file fetch KEY... or --missing [KEY...]')
+        parser.error('papers file fetch KEY... or --missing [KEY...] or --upgrade [KEY...]')
     dryrun = papers.config.DRYRUN
     nameformat = config.nameformat  # the library's own, as for `papers file fix`
     pools = Pools(config) if dryrun else library_pools(config)
@@ -888,7 +978,7 @@ def file_fetchcmd(parser, o, config):
     fetched = [e for e in entries if id(e) not in repaired or o.again or o.supplements]
     summary = FetchSummary()
     summary.repaired = 0 if o.again else len(repaired)
-    failed = fetch_entry_pdfs(biblio, config, pools, fetched, mode, least=o.least_version,
+    failed = fetch_entry_pdfs(biblio, config, pools, fetched, mode, least=o.least_version or 'any',
                               supplements=o.supplements, again=o.again, repaired=repaired, summary=summary)
     if not dryrun:
         notes = save_entries(config, biblio, exchange)
@@ -902,3 +992,28 @@ def file_fetchcmd(parser, o, config):
         summary.print(len(entries))
     if failed:
         raise PapersExit()  # the errors are reported: exit 1
+
+
+def file_upgradecmd(o, config):
+    "papers file fetch --upgrade [KEY...]"
+    dryrun = papers.config.DRYRUN
+    pools = None if dryrun else library_pools(config)  # a shallow library pushes the entries it saves
+    biblio = get_biblio(config)
+    entries = _entries_or_all(biblio, o.entries)
+    if not o.entries:
+        versions = papers.checksums.file_versions(config)
+        entries = [e for e in entries if lower_version_pdf(biblio, e, versions)]
+    _confirm_openalex(o, entries)
+    summary = FetchSummary()
+    looked = upgrade_entry_pdfs(biblio, config, entries, bool(o.entries), summary)
+    if not dryrun:
+        exchange = Exchange(config, biblio, pools)
+        notes = save_entries(config, biblio, exchange)
+        if papers.utils.PORCELAIN is not None:
+            _print_biblio_diff(biblio, entries, notes=notes)
+        else:
+            print_push_notes(biblio, notes)
+    if not o.entries and not entries:
+        print('no entry has an accepted manuscript or a submitted version attached by papers file fetch')
+    if len(looked) > 1 and not dryrun and papers.utils.PORCELAIN is None:
+        summary.print(len(looked))

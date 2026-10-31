@@ -618,7 +618,12 @@ def get_parser(config=None):
     p.add_argument('--missing', action='store_true',
         help='the entries without PDF (of KEY..., or of the whole library); papers asks before more than '
              f'{OPENALEX_ASK} entries with a DOI when {API_KEY_ENV} is not set')
-    p.add_argument('--version', choices=LEAST_VERSIONS, default='any', dest='least_version',
+    p.add_argument('--upgrade', action='store_true',
+        help='the entries (of KEY..., or of the whole library) whose PDF was attached by papers file fetch as an '
+             'accepted manuscript or a submitted version: look for the published version only, and when it is '
+             'found, put it in place of that file, under the same name (the old file is kept in the history: '
+             '`papers undo` brings it back); without a published version, nothing changes')
+    p.add_argument('--version', choices=LEAST_VERSIONS, dest='least_version',
         help='the least final version to attach: published (the version of record only), accepted (also the '
              'accepted manuscript), any (default: also the submitted version and the arXiv preprint)')
     p.add_argument('--supplements', action='store_true',
@@ -789,14 +794,19 @@ def get_parser(config=None):
     grp.add_argument('--has-file', action='store_true', help='entries with at least one file')
     grp.add_argument('--no-file', action='store_true', help='entries without file')
     grp.add_argument('--broken-file', action='store_true', help='entries with a file link to a missing file')
+    grp.add_argument('--pdf-version', choices=['published', 'accepted', 'submitted', 'unknown'],
+        help='entries with a PDF of this version (that of a PDF attached by papers file fetch; unknown: a PDF '
+             'attached otherwise)')
     grp.add_argument('--review-required', action='store_true', help='suspicious entry (invalid dois, missing field etc.)')
 
     grp = listp.add_argument_group('formatting')
     mgrp = grp.add_mutually_exclusive_group()
-    mgrp.add_argument('--format', choices=['line', *FORMATS, 'key'],
+    mgrp.add_argument('--format', choices=['line', *FORMATS, 'key', 'files'],
         help=f'line: one line per entry (the default); {", ".join(FORMATS)}: the entries in that format '
-             '(file links as absolute paths; RIS needs the rispy package); key: the keys only, '
-             'one per line (to pipe into the commands that take -, e.g. `papers file rename -`)')
+             '(file links as absolute paths, with the version of the PDFs that papers file fetch attached in '
+             'CSL-JSON and BibJSON; RIS needs the rispy package); key: the keys only, '
+             'one per line (to pipe into the commands that take -, e.g. `papers file rename -`); files: one '
+             'line per file link, KEY VERSION PATH (VERSION: published, accepted, submitted or unknown)')
     mgrp.add_argument('--plain', action='store_const', dest='format', const='bibtex', help='same as --format bibtex')
     mgrp.add_argument('-l', '-1', '--one-liner', action='store_const', dest='format', const='line',
         help='same as --format line')

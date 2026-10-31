@@ -5,6 +5,7 @@ import os
 import re
 import sys
 
+import papers.checksums
 import papers.config
 import papers.files
 import papers.utils
@@ -675,6 +676,12 @@ def listcmd(parser, o, config):
         entries = [e for e in entries if get_entry_val(e, 'file', '')]
     if o.no_file:
         entries = [e for e in entries if not get_entry_val(e, 'file', '')]
+    if o.pdf_version:
+        versions = papers.checksums.file_versions(config)
+        def _pdf_versions(e):
+            return {versions.get(os.path.normpath(f), 'unknown') for f in biblio.get_files(e)
+                    if f.lower().endswith('.pdf') and os.path.isfile(f)}
+        entries = [e for e in entries if o.pdf_version in _pdf_versions(e)]
     if o.broken_file:
         entries = [e for e in entries if get_entry_val(e, 'file', '') and any([not os.path.exists(f) for f in parse_file(e['file'], relative_to=biblio.relative_to)])]
 
@@ -801,8 +808,15 @@ def listcmd(parser, o, config):
                 print(get_entry_val(e, 'ID', ''), file=out)
         elif o.format == 'bibtex':
             print(format_entries(entries), file=out)
+        elif o.format == 'files':
+            versions = papers.checksums.file_versions(config)
+            for e in entries:
+                for f in biblio.get_files(e):
+                    print(e.key, versions.get(os.path.normpath(f), 'unknown'), f, file=out)
         elif o.format in FORMATS:
-            out.write(dumps(entries, o.format, files=biblio.get_files))
+            versions = papers.checksums.file_versions(config)
+            out.write(dumps(entries, o.format, files=biblio.get_files,
+                            versions=lambda f: versions.get(os.path.normpath(f))))
         else:
             for e in entries:
                 print(format_entry(biblio, e, no_key=o.no_key), file=out)

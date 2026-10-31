@@ -447,7 +447,7 @@ _CSL_SIMPLE = {
 }
 
 
-def entry_to_csl(e, files=()):
+def entry_to_csl(e, files=(), versions=None):
     "a CSL-JSON item (a dict) of a bibtex entry; `files`: the paths of its file links, as written"
     f = _unicode_fields(e)
     entry_type = e.entry_type.lower()
@@ -492,6 +492,8 @@ def entry_to_csl(e, files=()):
         item['accessed'] = {'date-parts': [_date_parts(f['urldate'])]}
     if files:
         item['custom'] = {'file': list(files)}
+        if versions:
+            item['custom']['file-version'] = versions
     return item
 
 
@@ -558,8 +560,12 @@ def csl_to_entry(item):
     return _entry(entry_type, key, fields, files, escape=True)
 
 
-def dumps_csl(entries, files=lambda e: ()):
-    return json.dumps([entry_to_csl(e, files(e)) for e in entries], indent=2, ensure_ascii=False) + '\n'
+def dumps_csl(entries, files=lambda e: (), versions=None):
+    items = []
+    for e in entries:
+        paths = files(e)
+        items.append(entry_to_csl(e, paths, _versions(paths, versions)))
+    return json.dumps(items, indent=2, ensure_ascii=False) + '\n'
 
 
 _CSL_NAME_PARTS = ('family', 'given', 'literal', 'non-dropping-particle', 'dropping-particle', 'suffix')
@@ -903,7 +909,7 @@ def loads_ris(text, rispy=None):
 # links are a list of paths, "file".
 
 _BIBJSON_NAMES = ('author', 'editor')
-_BIBJSON_SKIPPED = ('type', 'id', 'cid', 'collection', 'file', 'identifier', 'link', 'license')
+_BIBJSON_SKIPPED = ('type', 'id', 'cid', 'collection', 'file', 'file-version', 'identifier', 'link', 'license')
 # a bibtex field with the name of a key of BibJSON (e.g. the type of a techreport, `type = {Working
 # paper}`) goes in a namespaced key, `bibtex:type`, declared in the metadata of the collection (as the
 # BibJSON convention says for additional keys): the record's own type and id stay the entry type and key
@@ -911,7 +917,7 @@ _BIBJSON_NAMESPACE = 'bibtex'
 _BIBJSON_NAMESPACE_URL = 'https://www.bibtex.org/Format/'
 
 
-def entry_to_bibjson(e, files=()):
+def entry_to_bibjson(e, files=(), versions=None):
     record = {'type': e.entry_type, 'id': e.key}
     for field in e.fields:
         if field.key == 'file':
@@ -926,6 +932,8 @@ def entry_to_bibjson(e, files=()):
             record[field.key] = field.value
     if files:
         record['file'] = list(files)
+        if versions:
+            record['file-version'] = versions
     return record
 
 
@@ -962,8 +970,11 @@ def bibjson_to_entry(record):
     return _entry(str(record.get('type') or 'misc').lower(), key, fields, _file_paths(record.get('file')))
 
 
-def dumps_bibjson(entries, files=lambda e: ()):
-    records = [entry_to_bibjson(e, files(e)) for e in entries]
+def dumps_bibjson(entries, files=lambda e: (), versions=None):
+    records = []
+    for e in entries:
+        paths = files(e)
+        records.append(entry_to_bibjson(e, paths, _versions(paths, versions)))
     metadata = {'records': len(records)}
     prefix = _BIBJSON_NAMESPACE + ':'
     if any(name.startswith(prefix) for record in records for name in record):
@@ -991,12 +1002,20 @@ _DUMPS = {'ris': dumps_ris, 'csl-json': dumps_csl, 'bibjson': dumps_bibjson}
 _LOADS = {'ris': loads_ris, 'csl-json': loads_csl, 'bibjson': loads_bibjson}
 
 
-def dumps(entries, fmt, files=lambda e: ()):
+def _versions(files, versions):
+    "{path: version} of the files whose version is known (versions: path -> version or None)"
+    return {f: versions(f) for f in files if versions(f)} if versions else {}
+
+
+def dumps(entries, fmt, files=lambda e: (), versions=None):
     """the entries as a text in format `fmt` (other than bibtex; `files`:
-    entry -> paths of its file links, as written)"""
+    entry -> paths of its file links, as written; versions: path -> the
+    version of the PDF (papers list), written in CSL-JSON and BibJSON)"""
     if fmt not in _DUMPS:
         raise ValueError(f'unknown format: {fmt}')
-    return _DUMPS[fmt](entries, files)
+    if fmt == 'ris':
+        return _DUMPS[fmt](entries, files)
+    return _DUMPS[fmt](entries, files, versions)
 
 
 def loads(text, fmt):
