@@ -257,7 +257,7 @@ def _search_names(e, link, rest, nameformat):
     return names
 
 
-def plan_relinks(exchange, entries, search, nameformat, others=(), lookup=None):
+def plan_relinks(exchange, entries, search, nameformat, others=()):
     """the files found for the broken links of the entries (see
     `papers file fix`), without parsing any file, in this order: the
     library itself (a file with the checksum that .papers/files.json has
@@ -265,8 +265,7 @@ def plan_relinks(exchange, entries, search, nameformat, others=(), lookup=None):
     see Exchange.pool_relinks, then by checksum), the libraries of --pool
     PATH (`others`), the other libraries of the machine by checksum (see
     papers.otherlibs), then the --search folders (by the link's file
-    name, else by the template name of the entry). lookup: the
-    papers.otherlibs.Lookup of the library (made here by default). Return
+    name, else by the template name of the entry). Return
     (plans, unclear, count): plans [(entry, {link: [files]}, {link:
     source})] where source is 'pool' (the pool of the library, by name),
     the Pool of a --pool PATH, a papers.otherlibs.Source, or the --search
@@ -276,8 +275,7 @@ def plan_relinks(exchange, entries, search, nameformat, others=(), lookup=None):
     own = exchange.pools.pool(quiet=True)
     pools = [(own, 'pool')] if own is not None else []
     pools += [(p, p) for p in others if p is not own]
-    if lookup is None:
-        lookup = Lookup(exchange.config, biblio, own, [p.config.bibtex for p, _ in pools])
+    lookup = Lookup(exchange.config, biblio, own, [p.config.bibtex for p, _ in pools])
     plans, unclear, count = [], [], 0
     claims = {}  # real path of a file found in a --search folder: [(plan, link)]
     for e in entries:
@@ -390,13 +388,13 @@ def file_check_pools(config, fix):
 
 
 def relink_broken_links(config, biblio, exchange, entries, search_dirs, nameformat, others=(), mode=None,
-                        place=False, move=False, lookup=None):
+                        place=False, move=False):
     """the repair of the broken links of the entries by `papers file fix`
     (also `papers file fetch`, before it downloads): the links to pool files
     repaired when a shallow library was loaded, the files found by
     plan_relinks (the library by checksum, the pool, the libraries
     `others` of --pool PATH, the other libraries of the machine, the
-    folders `search_dirs` of --search; lookup: see plan_relinks), then the files that a command
+    folders `search_dirs` of --search), then the files that a command
     deleted from the place of the link, kept by the history. With place,
     the files found are placed as `papers file attach` does (with the files
     mode `mode`; move: the files of the --search folders are moved), and
@@ -410,7 +408,7 @@ def relink_broken_links(config, biblio, exchange, entries, search_dirs, nameform
     # the links to pool files repaired when a shallow library is loaded (already linked), then the others
     loaded = [(e, found, dict.fromkeys(found, 'pool')) for e, found in getattr(biblio, 'repaired_links', [])
               if id(e) in selected]
-    plans, unclear, count = plan_relinks(exchange, entries, search, nameformat, others, lookup=lookup)
+    plans, unclear, count = plan_relinks(exchange, entries, search, nameformat, others)
     count += sum(len(found) for _, found, _ in loaded)
 
     relinks = []
@@ -676,8 +674,7 @@ def _dry_run_lines(e, search, local, main, supplements, replacing='', several=Fa
     if main:
         links = list(search.links())
         for i, link in enumerate(links):
-            known = freepdf.known_download(link.url)
-            found = local(link, known) if known else None
+            found = freepdf.local_copy(link, local)
             if found and found.how == 'has':
                 what = f'already has {_show(found.path)} (from {link.host})'
             elif found:
@@ -698,19 +695,19 @@ def _dry_run_lines(e, search, local, main, supplements, replacing='', several=Fa
     return ok
 
 
-def repair_pdf_links(config, biblio, exchange, entries, search_dirs, nameformat, mode, again=False, lookup=None):
+def repair_pdf_links(config, biblio, exchange, entries, search_dirs, nameformat, mode, again=False):
     """`papers file fetch`, before it downloads: the entries whose PDF link
     is broken get the repair of `papers file fix` (see relink_broken_links;
     search_dirs: the folders of --search); --dry-run says what it would
     relink. Return the ids of the entries that have a PDF after the repair:
-    their PDF is not downloaded (unless `again`). lookup: see plan_relinks."""
+    their PDF is not downloaded (unless `again`)."""
     dryrun = papers.config.DRYRUN
     broken = [e for e in entries if not has_pdf(biblio, e)
               and any(f.lower().endswith('.pdf') for f in broken_links(biblio, e))]
     if not broken:
         return set()
     relinks, unclear, restores, _ = relink_broken_links(config, biblio, exchange, broken, search_dirs, nameformat,
-                                                        mode=mode, place=not dryrun, lookup=lookup)
+                                                        mode=mode, place=not dryrun)
     repaired = {id(e) for e, found, _ in relinks
                 if any(f.lower().endswith('.pdf') for files in found.values() for f in files)}
     repaired |= {id(e) for e, link, _ in restores if link.lower().endswith('.pdf')}
@@ -792,7 +789,6 @@ def fetch_entry_pdfs(biblio, config, pools, entries, mode, least='any', suppleme
     entries whose broken PDF link repair_pdf_links repaired (no main PDF
     fetched unless `again`, without message). summary: a FetchSummary to fill.
     several: the entries without PDF get one line each (see _no_pdf)."""
-    from papers.bib import _same_content
     dryrun = papers.config.DRYRUN
     summary = summary or FetchSummary()
     library = LibraryChecksums(biblio, config)
@@ -837,41 +833,51 @@ def fetch_entry_pdfs(biblio, config, pools, entries, mode, least='any', suppleme
 
     # the downloads are done: the files are attached
     for e, found, refused in plans:
-        new = []
-        for f in found:
-            if f.how == 'has':
-                print(f'{e.key}: already has {_show(f.path)} (from {f.link.host})')
-            elif f.how == 'downloaded' and (same := _same_content(f.path, biblio.get_files(e) + [g.path for g in new])):
-                print(f'{e.key}: {f.link.url}: not attached, the entry has the same file: {_show(same)}')
-                freepdf.discard(f.path)
-            else:
-                new.append(f)
-                continue
-            # not attached: the entry had the PDF already (counted once, not as refused)
-            if f.link.version != 'supplement':
-                summary.had += 1
-                if refused in summary.browser:
-                    summary.browser.remove(refused)
-        if not new:
-            continue
-        # a file of another entry is linked where it is (shared, as add does); the others are placed
-        linked = [f for f in new if f.how == 'linked']
-        placed = [f for f in new if f.how != 'linked']
-        biblio.set_files(e, biblio.get_files(e) + [f.path for f in linked])
-        if placed and not attach_files(biblio, e, [f.path for f in placed], config, mode, pools.files_dirs()):
+        if not _attach_fetched(biblio, config, pools, e, found, refused, mode, summary):
             failed += 1
-        for f in placed:  # the temporary folder of a download, now empty
-            if f.how == 'downloaded' and not os.path.exists(f.path):
-                shutil.rmtree(os.path.dirname(f.path), ignore_errors=True)
-        paths = biblio.get_files(e)[-len(new):]
-        for path, f in zip(paths, linked + placed):
-            print(_found_line(e, path, f))
-            if f.link.version == 'supplement':
-                summary.supplements += 1
-            else:
-                summary.attached[f.link.version] = summary.attached.get(f.link.version, 0) + 1
-                biblio.pdf_versions[path] = f.link.version  # in .papers/files.json, by checksum
     return failed
+
+
+def _attach_fetched(biblio, config, pools, e, found, refused, mode, summary):
+    """attach the PDFs found for the entry e ([freepdf.Found]) as
+    fetch_entry_pdfs says, and count them in the summary (refused: the
+    summary line of a refused published version, or None). Return False
+    when the files could not be placed (see attach_files)."""
+    from papers.bib import _same_content
+    new = []
+    for f in found:
+        if f.how == 'has':
+            print(f'{e.key}: already has {_show(f.path)} (from {f.link.host})')
+        elif f.how == 'downloaded' and (same := _same_content(f.path, biblio.get_files(e) + [g.path for g in new])):
+            print(f'{e.key}: {f.link.url}: not attached, the entry has the same file: {_show(same)}')
+            freepdf.discard(f.path)
+        else:
+            new.append(f)
+            continue
+        # not attached: the entry had the PDF already (counted once, not as refused)
+        if f.link.version != 'supplement':
+            summary.had += 1
+            if refused in summary.browser:
+                summary.browser.remove(refused)
+    if not new:
+        return True
+    # a file of another entry is linked where it is (shared, as add does); the others are placed
+    linked = [f for f in new if f.how == 'linked']
+    placed = [f for f in new if f.how != 'linked']
+    biblio.set_files(e, biblio.get_files(e) + [f.path for f in linked])
+    ok = not placed or attach_files(biblio, e, [f.path for f in placed], config, mode, pools.files_dirs())
+    for f in placed:  # the temporary folder of a download, now empty
+        if f.how == 'downloaded' and not os.path.exists(f.path):
+            freepdf.discard(f.path)
+    paths = biblio.get_files(e)[-len(new):]
+    for path, f in zip(paths, linked + placed):
+        print(_found_line(e, path, f))
+        if f.link.version == 'supplement':
+            summary.supplements += 1
+        else:
+            summary.attached[f.link.version] = summary.attached.get(f.link.version, 0) + 1
+            biblio.pdf_versions[path] = f.link.version  # in .papers/files.json, by checksum
+    return ok
 
 
 NO_PUBLISHED = 'no published version'
@@ -897,7 +903,6 @@ def upgrade_entry_pdfs(biblio, config, entries, named, summary, several=False):
     library is not saved. named: the entries were given by key (an entry
     without such a PDF is said); several: an entry without published PDF
     gets one line. Return the entries looked at."""
-    from papers.bib import _same_content
     dryrun = papers.config.DRYRUN
     versions = papers.checksums.file_versions(config)
     library = LibraryChecksums(biblio, config)
@@ -931,23 +936,31 @@ def upgrade_entry_pdfs(biblio, config, entries, named, summary, several=False):
 
     # the downloads are done: the files are replaced
     for e, file, version, found in plans:
-        same = found.path if found.how == 'has' else _same_content(found.path, biblio.get_files(e))
-        if same:
-            # the entry has the published version already: it is now known
-            print(f'{e.key}: already has {_show(same)} ({found.describe()})')
-            if found.how == 'downloaded':
-                freepdf.discard(found.path)
-            biblio.pdf_versions[same] = 'published'
-            summary.had += 1
-            continue
-        journal.replace(file, found.path, copy=found.how != 'downloaded')
-        if found.how == 'downloaded':  # the temporary folder of the download, now empty
-            shutil.rmtree(os.path.dirname(found.path), ignore_errors=True)
-        biblio.pdf_versions[file] = 'published'
-        print(f'{e.key}: {_show(file)}: {freepdf.VERSION_NAMES[version]} replaced by the {found.describe()}'
-              + ('' if journal.keeps_deleted() else ' (the old file went to the trash of the system)'))
-        summary.upgraded += 1
+        _replace_by_published(biblio, e, file, version, found, summary)
     return looked
+
+
+def _replace_by_published(biblio, e, file, version, found, summary):
+    """replace the PDF `file` of the entry e (of version `version`) by the
+    published version found (a freepdf.Found), unless the entry has it
+    already; count it in the summary"""
+    from papers.bib import _same_content
+    same = found.path if found.how == 'has' else _same_content(found.path, biblio.get_files(e))
+    if same:
+        # the entry has the published version already: it is now known
+        print(f'{e.key}: already has {_show(same)} ({found.describe()})')
+        if found.how == 'downloaded':
+            freepdf.discard(found.path)
+        biblio.pdf_versions[same] = 'published'
+        summary.had += 1
+        return
+    journal.replace(file, found.path, copy=found.how != 'downloaded')
+    if found.how == 'downloaded':  # the temporary folder of the download, now empty
+        freepdf.discard(found.path)
+    biblio.pdf_versions[file] = 'published'
+    print(f'{e.key}: {_show(file)}: {freepdf.VERSION_NAMES[version]} replaced by the {found.describe()}'
+          + ('' if journal.keeps_deleted() else ' (the old file went to the trash of the system)'))
+    summary.upgraded += 1
 
 
 def _confirm_openalex(o, entries):
@@ -965,6 +978,15 @@ def _confirm_openalex(o, entries):
                          f'or name the entries (nothing was changed)')
     if input(f'{question}. Continue? [y/N] ').strip().lower() not in ('y', 'yes'):
         raise PapersExit('nothing was changed')
+
+
+def _save_fetched(config, biblio, exchange, entries):
+    "save the library after `papers file fetch`: the changes of the entries with --porcelain, else the push notes"
+    notes = save_entries(config, biblio, exchange)
+    if papers.utils.PORCELAIN is not None:
+        _print_biblio_diff(biblio, entries, notes=notes)
+    else:
+        print_push_notes(biblio, notes)
 
 
 def file_fetchcmd(parser, o, config):
@@ -993,10 +1015,7 @@ def file_fetchcmd(parser, o, config):
         _confirm_openalex(o, entries)
     # the repair of `papers file fix` first: the download, only if it gives no PDF (one step for both)
     exchange = Exchange(config, biblio, pools)
-    pool = exchange.pools.pool(quiet=True)
-    lookup = Lookup(config, biblio, pool, [pool.config.bibtex] if pool is not None else [])
-    repaired = repair_pdf_links(config, biblio, exchange, entries, o.search or [], nameformat, mode, again=o.again,
-                                lookup=lookup)
+    repaired = repair_pdf_links(config, biblio, exchange, entries, o.search or [], nameformat, mode, again=o.again)
     fetched = [e for e in entries if id(e) not in repaired or o.again or o.supplements]
     summary = FetchSummary()
     summary.repaired = 0 if o.again else len(repaired)
@@ -1004,11 +1023,7 @@ def file_fetchcmd(parser, o, config):
                               supplements=o.supplements, again=o.again, repaired=repaired, summary=summary,
                               several=len(entries) > 1)
     if not dryrun:
-        notes = save_entries(config, biblio, exchange)
-        if papers.utils.PORCELAIN is not None:
-            _print_biblio_diff(biblio, entries, notes=notes)
-        else:
-            print_push_notes(biblio, notes)
+        _save_fetched(config, biblio, exchange, entries)
     if o.missing and not entries:
         print('every entry has a PDF')
     if len(entries) > 1 and not dryrun and papers.utils.PORCELAIN is None:
@@ -1030,12 +1045,7 @@ def file_upgradecmd(o, config):
     summary = FetchSummary()
     looked = upgrade_entry_pdfs(biblio, config, entries, bool(o.entries), summary, several=len(entries) > 1)
     if not dryrun:
-        exchange = Exchange(config, biblio, pools)
-        notes = save_entries(config, biblio, exchange)
-        if papers.utils.PORCELAIN is not None:
-            _print_biblio_diff(biblio, entries, notes=notes)
-        else:
-            print_push_notes(biblio, notes)
+        _save_fetched(config, biblio, Exchange(config, biblio, pools), entries)
     if not o.entries and not entries:
         print('no entry has an accepted manuscript or a submitted version attached by papers file fetch')
     if len(looked) > 1 and not dryrun and papers.utils.PORCELAIN is None:
