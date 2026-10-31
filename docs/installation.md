@@ -58,7 +58,7 @@ mitigations are built in:
   google scholar
 - [rapidfuzz](https://github.com/rhasspy/rapidfuzz): calculate score to sort
   crossref requests
-- [unidecode](https://github.com/avian2/unidecode): replace unicode with ascii
+- [anyascii](https://github.com/anyascii/anyascii): replace unicode with ascii
   equivalent
 
 The Python dependencies are installed automatically with `pip`.
