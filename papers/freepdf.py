@@ -18,10 +18,12 @@ no PDF, and a landing page only when the links before it gave none. An
 HTTP 429 (too many requests) is retried once, after the wait it asks
 (Retry-After, at most RETRY_MAX seconds; RETRY_DEFAULT without it). A
 download that is refused (HTTP error, not a PDF) moves to the next link;
-when none is left, the error gives the links to open in a browser. When an accepted or submitted version is found after the published
-version was refused, the published links are given too (Found.refused). The supplements are the PDFs that the article page links with
-"suppl" in the URL or the text of the link, and its
-`citation_supplementary_material` tags.
+when none is left, the error gives the links to open in a browser. When an
+accepted or submitted version is found after the published version was
+refused, the published links are given too (Found.refused). The
+supplements are the PDFs that the article page links with "suppl" in the
+URL or the text of the link, and its `citation_supplementary_material`
+tags.
 
 The checksum (sha256) and size of each PDF downloaded are kept in the cache
 of the machine, by URL (see `known_download`): before a URL is downloaded
@@ -40,13 +42,14 @@ import time
 from collections import namedtuple
 
 import papers
+import papers.checksums
 import papers.config
 from papers import logger
 from papers.files import download_url
 from papers.identifiers import arxiv_of_doi, normalize_arxiv
 from papers import fetch, openalex
 
-VERSIONS = ('published', 'accepted', 'submitted')  # the order of preference
+VERSIONS = papers.checksums.VERSIONS  # the order of preference
 VERSION_NAMES = {'published': 'published version', 'accepted': 'accepted manuscript',
                  'submitted': 'submitted version', 'supplement': 'supplement'}
 _OPENALEX_VERSIONS = {'publishedVersion': 'published', 'acceptedVersion': 'accepted',
@@ -112,8 +115,9 @@ def _retry_after(value):
         return RETRY_DEFAULT
 
 
-def _once_more_if_429(url, get):
-    "get(), and again once after the wait that an HTTP 429 asks"
+def _request(url, get):
+    "get() after _wait(url), and again once after the wait that an HTTP 429 asks"
+    _wait(url)
     try:
         return get()
     except (ValueError, OSError) as error:
@@ -129,8 +133,7 @@ def _once_more_if_429(url, get):
 
 def _fetch_page(url):
     "the page of url and its URL after the redirections, as papers asks for it"
-    _wait(url)
-    return _once_more_if_429(url, lambda: fetch.fetch_html(url, headers={'User-Agent': user_agent()}))
+    return _request(url, lambda: fetch.fetch_html(url, headers={'User-Agent': user_agent()}))
 
 
 def page_links(html, base_url):
@@ -310,8 +313,7 @@ def download(link):
     """download a link into a temporary folder: the path, or ValueError if the
     answer is not a PDF (its first bytes are %PDF). Its checksum is
     remembered (known_download)."""
-    _wait(link.url)
-    path = _once_more_if_429(link.url, lambda: download_url(link.url, expect_pdf=True, user_agent=user_agent()))
+    path = _request(link.url, lambda: download_url(link.url, expect_pdf=True, user_agent=user_agent()))
     with open(path, 'rb') as f:
         head = f.read(1024)
     if b'%PDF' not in head:
@@ -341,14 +343,16 @@ class Found(namedtuple('Found', 'path link how other refused')):
                 f'open {", ".join(self.refused)} in a browser')
 
 
-def get(link, local=None):
-    """the Found of a link: what `local(link, known)` finds for a URL
-    downloaded before (known: see known_download), else the download"""
+def local_copy(link, local=None):
+    """what `local(link, known)` finds for a URL downloaded before (known:
+    see known_download), or None"""
     known = known_download(link.url) if local else None
-    found = local(link, known) if known else None
-    if found:
-        return found
-    return Found(download(link), link)
+    return local(link, known) if known else None
+
+
+def get(link, local=None):
+    "the Found of a link: its local_copy, else the download"
+    return local_copy(link, local) or Found(download(link), link)
 
 
 def discard(path):

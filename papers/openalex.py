@@ -93,6 +93,27 @@ def _redact(text, params):
     return text
 
 
+def _get(url, params, not_found=None):
+    """the answer of OpenAlex to a GET of url, with the email address and the
+    key of the environment, when set (`params`: without them); an HTTP error
+    raises OpenAlexError, a 404 `not_found` when given"""
+    request = dict(params)
+    if os.environ.get(MAILTO_ENV):
+        request['mailto'] = os.environ[MAILTO_ENV]
+    if os.environ.get(API_KEY_ENV):
+        request['api_key'] = os.environ[API_KEY_ENV]
+    _throttle()
+    try:
+        response = http_get(url, params=request)
+    except OSError as error:  # requests' errors; they may show the url, with the key
+        raise OpenAlexError(_redact(f'OpenAlex: {error}', request)) from None
+    if response.status_code == 404 and not_found is not None:
+        raise not_found
+    if response.status_code >= 400:
+        raise _http_error(response, request)
+    return response
+
+
 def _http_error(response, params):
     try:
         body = response.json()
@@ -139,19 +160,8 @@ def _search(params):
     """the works of a semantic search, trimmed (`params`: json of the query,
     the cache key: not the email address or the key, which do not change the answer)"""
     params = json.loads(params)
-    request = dict(params)
-    if os.environ.get(MAILTO_ENV):
-        request['mailto'] = os.environ[MAILTO_ENV]
-    if os.environ.get(API_KEY_ENV):
-        request['api_key'] = os.environ[API_KEY_ENV]
     logger.debug('openalex search: ' + repr(params))
-    _throttle()
-    try:
-        response = http_get(API, params=request)
-    except OSError as error:  # requests' errors; they may show the url, with the key
-        raise OpenAlexError(_redact(f'OpenAlex: {error}', request)) from None
-    if response.status_code >= 400:
-        raise _http_error(response, request)
+    response = _get(API, params)
     try:
         return [_trim(work) for work in response.json()['results']]
     except (ValueError, KeyError, TypeError, AttributeError):
@@ -321,21 +331,9 @@ def work_locations(doi):
     acceptedVersion, submittedVersion), is_oa and source (its name); the best
     open-access location first. A DOI unknown to OpenAlex raises WorkNotFound."""
     from urllib.parse import quote
-    request = {'select': WORK_SELECT}
-    if os.environ.get(MAILTO_ENV):
-        request['mailto'] = os.environ[MAILTO_ENV]
-    if os.environ.get(API_KEY_ENV):
-        request['api_key'] = os.environ[API_KEY_ENV]
     logger.debug('openalex work: ' + doi)
-    _throttle()
-    try:
-        response = http_get(f'{API}/doi:{quote(doi, safe="/")}', params=request)
-    except OSError as error:
-        raise OpenAlexError(_redact(f'OpenAlex: {error}', request)) from None
-    if response.status_code == 404:
-        raise WorkNotFound(f'{doi}: not found on OpenAlex')
-    if response.status_code >= 400:
-        raise _http_error(response, request)
+    response = _get(f'{API}/doi:{quote(doi, safe="/")}', {'select': WORK_SELECT},
+                    not_found=WorkNotFound(f'{doi}: not found on OpenAlex'))
     try:
         work = response.json()
         locations = [work['best_oa_location']] if work.get('best_oa_location') else []
