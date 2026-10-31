@@ -1084,8 +1084,19 @@ parent, which counts the entries that have it or a tag under it:</p>
   conversion). BibJSON keeps the bibtex fields as they are: it is the
   format for programs that read the library;</li>
 <li><code>--format key</code>: the keys only, one per line (also <code>-K</code>, <code>--key-only</code>),
-  to pipe into other commands (below).</li>
+  to pipe into other commands (below);</li>
+<li><code>--format files</code>: one line per file link, <code>KEY VERSION PATH</code>, the path
+  absolute (it is the rest of the line).</li>
 </ul>
+<p>The version of a PDF is the one <code>papers file fetch</code> attached (see
+<a href="../files/#fetching-the-free-pdf-of-an-entry">Files</a>): <code>published</code>, <code>accepted</code>
+(an accepted manuscript) or <code>submitted</code> (a preprint); a file attached
+otherwise is <code>unknown</code>. CSL-JSON and BibJSON give it under <code>file-version</code>
+(<code>{path: version}</code>, only the files whose version is known; in CSL-JSON, inside
+<code>custom</code>). <code>--pdf-version published|accepted|submitted|unknown</code> lists the
+entries with a PDF of that version:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>papers<span class="w"> </span>list<span class="w"> </span>--pdf-version<span class="w"> </span>accepted<span class="w"> </span>-K<span class="w">   </span><span class="c1"># the entries whose PDF is an accepted manuscript</span>
+</code></pre></div>
 <p><code>--field FIELD...</code> prints one line per entry: <code>KEY:</code> and the values of the
 given fields, separated by spaces (an empty value for a missing field).
 <code>--no-key</code> leaves the key out: the line starts with the first value. The
@@ -1132,10 +1143,10 @@ anything changes.</p>
 <p><code>-</code> reads the identifiers from the standard input, one per line (blank lines
 are ignored). <code>papers list -K</code> prints the keys of the listed entries, one per
 line:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>papers list smith 2020 -K | papers file rename -
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>papers list --tag to-read -K | papers open -
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>papers list --no-file -K | papers check --fetch -
-<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>papers list --review-required -K | papers edit -
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>papers list smith 2020 -K | papers file rename -
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>papers list --tag to-read -K | papers open -
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>papers list --no-file -K | papers check --fetch -
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>papers list --review-required -K | papers edit -
 </code></pre></div>
 <p>These commands take <code>-</code>: <code>edit</code>, <code>rm</code>, <code>tag</code>, <code>open</code>, <code>check</code>, and the
 <code>papers file</code> commands that act on entries (<code>rename</code>, <code>check</code>, and the
@@ -1149,16 +1160,16 @@ is bibtex, or RIS (<code>.ris</code>), CSL-JSON (<code>.json</code>) or BibJSON 
 or the format given with <code>--format</code>. The file links of FILE are relative to
 the directory of FILE, as with <code>papers add FILE</code>. <code>--from -</code> reads the entry
 from the standard input:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>papers extract paper.pdf | papers edit perrette2013 --from -
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>papers fetch 10.5194/esd-4-11-2013 | papers edit perrette2013 --from -
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>papers extract paper.pdf | papers edit perrette2013 --from -
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>papers fetch 10.5194/esd-4-11-2013 | papers edit perrette2013 --from -
 </code></pre></div>
 <p>In a terminal, <code>papers edit KEY --from -</code> waits for the entry: paste it, and
 papers continues when the closing brace of the entry is read (Ctrl-D ends
 the input too, Ctrl-C cancels).</p>
 <p><code>--set</code> and <code>--unset</code> change single fields, of one entry or several:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>papers edit perrette2013 --set journal="Earth System Dynamics" year=2013
-<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>papers list --journal "Earth Syst. Dyn." -K | papers edit - --set journal="Earth System Dynamics"
-<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>papers edit smith2020 --unset note
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>papers edit perrette2013 --set journal="Earth System Dynamics" year=2013
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>papers list --journal "Earth Syst. Dyn." -K | papers edit - --set journal="Earth System Dynamics"
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>papers edit smith2020 --unset note
 </code></pre></div>
 <p>The value replaces the whole field, written as in bibtex
 (<code>--set author="Smith, John and Doe, Jane"</code>). The key and the file links
@@ -1166,7 +1177,7 @@ are not changed this way: <code>--key</code> (below) changes the key, and
 <code>papers file attach</code> and <code>detach</code> the file links. <code>papers tag</code> adds and
 removes single tags of the <code>keywords</code> field.</p>
 <p><code>--key NEW</code> changes the key of one entry:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>papers edit perrette_landerer2013 --key perrette2013 [--keep-old-key]
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>papers edit perrette_landerer2013 --key perrette2013 [--keep-old-key]
 </code></pre></div>
 <p>The <code>crossref</code> fields of other entries that name the old key, and the
 records of the exchanges with pools (see <a href="../pools/">Pools</a>), follow the new
@@ -1185,11 +1196,11 @@ the key of another entry is not applied, and the command exits with status
 stable for programs: the standard output has only the entries that the
 command added, modified, renamed or removed, or found already in the library
 (<code>papers add</code> of an entry that is there), one per line, without colours:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>$ papers add paper.pdf --porcelain
-<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>added perrette2013
-<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>$ papers tag perrette2013 smith2020 --add to-read --porcelain
-<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>modified perrette2013
-<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>modified smith2020
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>$ papers add paper.pdf --porcelain
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>added perrette2013
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>$ papers tag perrette2013 smith2020 --add to-read --porcelain
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>modified perrette2013
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>modified smith2020
 </code></pre></div>
 <p>The lines are <code>added KEY</code>, <code>modified KEY</code>, <code>renamed OLD NEW</code>, <code>removed KEY</code>
 and <code>existing KEY</code>. <code>renamed OLD NEW</code> is an entry whose key the command
