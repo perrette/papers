@@ -824,7 +824,7 @@ def entry_filecheck_metadata(e, file, image=False):
         raise ValueError(get_entry_val(e, 'ID', '')+': doi: entry <=> pdf : {} <=> {}'.format(e['doi'].lower(), doi.lower()))
 
 
-def fix_mendeley_path(file, key=''):
+def fix_mendeley_path(file):
     """the path of a file link as saved by Mendeley, repaired: latex symbols
     (e.g. "{\\_}") converted, and the leading "/" restored when it was omitted
     (home/... instead of /home/...)"""
@@ -843,7 +843,6 @@ def fix_mendeley_path(file, key=''):
 def repaired_paths(biblio, e):
     """for each link of an entry: the repaired path of a broken link saved by
     Mendeley (missing leading /, latex symbols), if that path exists, else None"""
-    key = get_entry_val(e, 'ID', '')
     # the links as written: get_files makes a link without its leading /
     # (saved by Mendeley) relative to the bibtex directory
     written = parse_file(get_entry_val(e, 'file', ''))
@@ -851,9 +850,9 @@ def repaired_paths(biblio, e):
     for file, link in zip(biblio.get_files(e), written):
         repaired = None
         if not os.path.exists(file):
-            repaired = fix_mendeley_path(file, key=key)
+            repaired = fix_mendeley_path(file)
             if not os.path.exists(repaired) and not os.path.isabs(link):
-                candidate = fix_mendeley_path(link, key=key)
+                candidate = fix_mendeley_path(link)
                 if os.path.isabs(candidate):
                     repaired = candidate
             if repaired == file or not os.path.exists(repaired):

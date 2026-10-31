@@ -1,6 +1,5 @@
 """papers undo, redo, restore (restore-backup: deprecated), history (backup: deprecated), git (removed)"""
 import os
-import time
 
 import papers.config
 import papers.history
@@ -99,10 +98,6 @@ def restorecmd(parser, o, config):
 
 # papers history
 # ==============
-
-def _when(t):
-    return time.strftime('%Y-%m-%d %H:%M', time.localtime(t or 0))
-
 
 def _mb(size):
     return f'{size / MB:.1f} MB'

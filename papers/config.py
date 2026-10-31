@@ -387,12 +387,6 @@ def is_v2_config_name(file):
     return file is not None and os.path.basename(file) == CONFIG_FILE_LOCAL_V2
 
 
-def is_backup_name(value):
-    "a name, not a path, of a backup directory"
-    return (value not in ('.', '..') and os.path.sep not in value
-            and not (os.path.altsep and os.path.altsep in value) and not value.startswith('~'))
-
-
 def pool_setting(path, libdir, base=None):
     """how the pool setting of a library in `libdir` writes a pool path given
     on the command line (`base`: the directory a relative path is relative

@@ -225,12 +225,11 @@ def is_own_unlinked(source, file, filesdir):
 class Lookup:
     """the sources of `papers file fix` beyond the names of the pool (see
     papers.cli.file_cmds.plan_relinks), by checksum: the library, the pool,
-    and the other libraries of the machine (read when first needed). exclude: the bibtex files of the libraries searched
-    already (the pool, --pool PATH)."""
+    and the other libraries of the machine (read when first needed).
+    exclude: the bibtex files of the libraries searched already (the pool,
+    --pool PATH)."""
 
     def __init__(self, config, biblio, pool=None, exclude=()):
-        self.config = config
-        self.biblio = biblio
         self.digests = Digests()
         self.own = OwnLibrary(config, biblio, self.digests)
         self.pool = pool
