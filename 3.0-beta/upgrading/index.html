@@ -988,16 +988,16 @@
 
 
 <h1 id="upgrading-from-papers-2">Upgrading from papers 2<a class="headerlink" href="#upgrading-from-papers-2" title="Permanent link">&para;</a></h1>
-<p>papers 3 adds the following new functionalities:</p>
+<p>papers 3 adds the following new features and concepts:</p>
 <ul>
 <li><strong>exchanges between libraries</strong>: <code>papers pull</code>, <code>push</code> and <code>sync</code> copy
-  entries from one library to another and keep them in step, with a
+  entries from one library to another and keep them in sync, with a
   field-by-field merge (see <a href="../pools/">Pools</a>);</li>
 <li><strong>shallow libraries</strong>: a project library that takes its entries from a
-  shared library, its pool, and links to the pool's PDFs instead of
+  shared library, the shared library  pool, and links to the pool's PDFs instead of
   copying them (see <a href="../shallow-libraries/">Shallow libraries</a>). The shared
   library can be a library per topic (<code>~/Documents/papers/sealevel</code>), or
-  one library for everything, the default library (see
+  one library for everything: the default library (see
   <a href="../global-library/">A global shared library</a>);</li>
 <li><strong>speed</strong>: on a library of 10,000 entries, common commands take a third
   to a half of the time of papers 2 (<code>papers list</code> 0.87 s → 0.27 s,
@@ -1005,14 +1005,14 @@
   of magnitude faster (<code>papers list --duplicates</code> on 1,000 entries:
   18.6 s → 0.13 s). Measured with papers 2.19.6 and 3.0.0b4 on the same
   machine and libraries (<code>scripts/generate_dummy_bib.py</code>);</li>
-<li><strong>a review of the commands</strong>: <code>papers init</code> and <code>papers config</code> replace
-  <code>papers install</code>, the commands on attached files are grouped under
-  <code>papers file</code>, <code>papers list</code> has more actions, and older forms are
+<li><strong>new, cleaner commands</strong>: <code>papers install</code> is replaced by <code>papers init</code>
+  and <code>papers config</code>. Commands on attached files are grouped under
+  <code>papers file</code>. <code>papers list</code> has more actions, and older forms are
   deprecated (see <a href="#what-else-changed">What else changed</a>);</li>
 <li><strong>RIS, CSL-JSON and BibJSON</strong>: <code>papers add refs.ris</code> (or <code>.json</code>, <code>.bib.json</code>) imports them,
   <code>papers list --format</code> and <code>papers export</code> write them (see
   <a href="../export/">Export</a>);</li>
-<li><strong>a history of each library, without git</strong>: every command is a step;
+<li><strong>a history of each library, without git</strong>: every command tries as much as possible to be atomic;
   <code>papers undo</code> and <code>papers redo</code> take back any command with the files it
   moved, renamed or deleted (also outside the library, e.g. a PDF taken
   from <code>~/Downloads</code>), a change made outside papers is recorded as a step
@@ -1023,14 +1023,15 @@
 <li><strong><code>papers status</code> and the pool</strong>: a shallow library says whether it is
   <code>in sync</code> with its pool, or which side changed, and which command shows
   and exchanges the changes (see <a href="../configuration/#pools">Configuration</a>);</li>
-<li><strong>for programs</strong>: <code>--porcelain</code> lists the entries a command added,
+<li><strong>for programming and scripting</strong>: <code>--porcelain</code> lists the entries a command added,
   modified, renamed or removed, and <code>papers edit KEY --from FILE</code>, <code>--set</code>,
   <code>--unset</code> and <code>--key</code> change an entry without an editor (used by
   <a href="https://github.com/mathesislab/papers-desktop">Papers Desktop</a>).</li>
 </ul>
 <h2 id="what-changes-for-an-existing-setup">What changes for an existing setup<a class="headerlink" href="#what-changes-for-an-existing-setup" title="Permanent link">&para;</a></h2>
 <p>The bibtex files do not change format, and stay readable by papers 2 and
-by other tools. What changes:</p>
+by other tools.</p>
+<p>What does change, however:</p>
 <ul>
 <li>The configuration files:<ul>
 <li>the configuration of a project library moves from
@@ -1111,7 +1112,7 @@ by other tools. What changes:</p>
 </table>
 <p><code>papers git</code> is removed, and the options <code>--git</code>, <code>--no-git</code>,
 <code>--git-lfs</code> and <code>--restore-files</code> are ignored (papers keeps its
-history without git, see <a href="../undo-redo/">Undo and redo</a>).
+it's own history without using git, see <a href="../undo-redo/">Undo and redo</a>).
 <code>papers install --global</code> is removed: it stops with an error, and
 changes nothing. <code>papers init PATH --global</code> creates the default
 library, and <code>papers config --global default PATH</code> registers an
@@ -1155,8 +1156,8 @@ existing one.</p>
 </tbody>
 </table>
 <h2 id="what-happens-on-the-first-run">What happens on the first run<a class="headerlink" href="#what-happens-on-the-first-run" title="Permanent link">&para;</a></h2>
-<p>papers 3 reads the configuration files of papers 2 as they are. Nothing
-is converted without a command.</p>
+<p>papers 3 reads the configuration files of papers 2 as they are; nothing
+is converted without the user deliberawtily issuing a command.</p>
 <h3 id="the-global-configuration">The global configuration<a class="headerlink" href="#the-global-configuration" title="Permanent link">&para;</a></h3>
 <p>The global library of papers 2 is defined by its global configuration
 (<code>~/.config/papersconfig.json</code> on Linux). papers 3 keeps using it outside
