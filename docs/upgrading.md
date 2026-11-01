@@ -1,15 +1,15 @@
 # Upgrading from papers 2
 
-papers 3 adds the following new functionalities:
+papers 3 adds the following new features and concepts:
 
 - **exchanges between libraries**: `papers pull`, `push` and `sync` copy
-  entries from one library to another and keep them in step, with a
+  entries from one library to another and keep them in sync, with a
   field-by-field merge (see [Pools](pools.md));
 - **shallow libraries**: a project library that takes its entries from a
-  shared library, its pool, and links to the pool's PDFs instead of
+  shared library, the shared library  pool, and links to the pool's PDFs instead of
   copying them (see [Shallow libraries](shallow-libraries.md)). The shared
   library can be a library per topic (`~/Documents/papers/sealevel`), or
-  one library for everything, the default library (see
+  one library for everything: the default library (see
   [A global shared library](global-library.md));
 - **speed**: on a library of 10,000 entries, common commands take a third
   to a half of the time of papers 2 (`papers list` 0.87 s → 0.27 s,
@@ -17,14 +17,14 @@ papers 3 adds the following new functionalities:
   of magnitude faster (`papers list --duplicates` on 1,000 entries:
   18.6 s → 0.13 s). Measured with papers 2.19.6 and 3.0.0b4 on the same
   machine and libraries (`scripts/generate_dummy_bib.py`);
-- **a review of the commands**: `papers init` and `papers config` replace
-  `papers install`, the commands on attached files are grouped under
-  `papers file`, `papers list` has more actions, and older forms are
+- **new, cleaner commands**: `papers install` is replaced by `papers init`
+  and `papers config`. Commands on attached files are grouped under
+  `papers file`. `papers list` has more actions, and older forms are
   deprecated (see [What else changed](#what-else-changed));
 - **RIS, CSL-JSON and BibJSON**: `papers add refs.ris` (or `.json`, `.bib.json`) imports them,
   `papers list --format` and `papers export` write them (see
   [Export](export.md));
-- **a history of each library, without git**: every command is a step;
+- **a history of each library, without git**: every command tries as much as possible to be atomic;
   `papers undo` and `papers redo` take back any command with the files it
   moved, renamed or deleted (also outside the library, e.g. a PDF taken
   from `~/Downloads`), a change made outside papers is recorded as a step
@@ -35,7 +35,7 @@ papers 3 adds the following new functionalities:
 - **`papers status` and the pool**: a shallow library says whether it is
   `in sync` with its pool, or which side changed, and which command shows
   and exchanges the changes (see [Configuration](configuration.md#pools));
-- **for programs**: `--porcelain` lists the entries a command added,
+- **for programming and scripting**: `--porcelain` lists the entries a command added,
   modified, renamed or removed, and `papers edit KEY --from FILE`, `--set`,
   `--unset` and `--key` change an entry without an editor (used by
   [Papers Desktop](https://github.com/mathesislab/papers-desktop)).
@@ -43,7 +43,9 @@ papers 3 adds the following new functionalities:
 ## What changes for an existing setup
 
 The bibtex files do not change format, and stay readable by papers 2 and
-by other tools. What changes:
+by other tools.
+
+What does change, however:
 
 - The configuration files:
     - the configuration of a project library moves from
@@ -79,7 +81,7 @@ by other tools. What changes:
 
     `papers git` is removed, and the options `--git`, `--no-git`,
     `--git-lfs` and `--restore-files` are ignored (papers keeps its
-    history without git, see [Undo and redo](undo-redo.md)).
+    it's own history without using git, see [Undo and redo](undo-redo.md)).
     `papers install --global` is removed: it stops with an error, and
     changes nothing. `papers init PATH --global` creates the default
     library, and `papers config --global default PATH` registers an
@@ -107,8 +109,8 @@ by other tools. What changes:
 
 ## What happens on the first run
 
-papers 3 reads the configuration files of papers 2 as they are. Nothing
-is converted without a command.
+papers 3 reads the configuration files of papers 2 as they are; nothing
+is converted without the user deliberawtily issuing a command.
 
 ### The global configuration
 
