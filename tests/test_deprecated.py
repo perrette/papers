@@ -101,6 +101,8 @@ class TestFileCheck(BibTest):
         self.assertTrue(os.path.exists(self.pdf))
         self.temp_dir = tempfile.TemporaryDirectory()
         self.workdir = self.temp_dir.name
+        # a copy: the tests move the PDF, which must stay in tests/downloadedpapers
+        self.pdf = shutil.copy(self.pdf, self.workdir)
         self.mybib = os.path.join(self.workdir, 'papers.bib')
         self.filesdir = os.path.join(self.workdir, 'files')
         open(self.mybib, 'w').write(self.bibtex)
