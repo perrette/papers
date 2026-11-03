@@ -1,6 +1,5 @@
 {
   "bibtex": "papers.bib",
-  "editor": "vim",
   "filesdir": "files",
   "nameformat": {
     "template": "{author}_{year}"

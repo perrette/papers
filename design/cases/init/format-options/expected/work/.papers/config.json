@@ -1,6 +1,5 @@
 {
   "bibtex": "papers.bib",
-  "editor": "vim",
   "filesdir": "files",
   "keyformat": {
     "author_num": 3,

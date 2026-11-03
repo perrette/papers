@@ -1,6 +1,6 @@
 {
   "bibtex": "refs.bib",
-  "editor": "vim",
+  "files": "copy",
   "filesdir": "pdfs",
   "id": "$PROJECT1",
   "paths": "absolute",

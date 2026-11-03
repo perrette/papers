@@ -273,7 +273,7 @@ class TestEdit(EntryTest):
         return script
 
     def test_add_edit_without_file(self):
-        self.lib(f'config editor {self.editor_script()}')
+        self.lib(f'config --global editor {self.editor_script()}')
         with patch.dict(os.environ, {'VISUAL': 'false', 'EDITOR': 'false'}):
             self.lib('add -e --title Original --author "Smith, John" --year 2001 --key three2001')
         self.assertEqual(self.entry('three2001')['title'], 'Edited')
@@ -308,7 +308,7 @@ class TestEdit(EntryTest):
                 self.lib('add -e --title T --key three2001')
 
     def test_editor_setting_wins_over_visual(self):
-        self.lib(f'config editor {self.editor_script()}')
+        self.lib(f'config --global editor {self.editor_script()}')
         self.bib(entry('one2000').replace('Title of one2000', 'Original'))
         with patch.dict(os.environ, {'VISUAL': 'false', 'EDITOR': 'false'}):
             self.lib('edit one2000')

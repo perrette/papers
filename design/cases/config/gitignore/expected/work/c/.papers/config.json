@@ -1,6 +1,6 @@
 {
   "bibtex": "papers.bib",
-  "editor": "vim",
+  "files": "copy",
   "filesdir": "files",
   "pool": "none",
   "version": 3

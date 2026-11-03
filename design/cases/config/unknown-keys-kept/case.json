@@ -10,8 +10,8 @@
     {
       "argv": [
         "config",
-        "editor",
-        "vim"
+        "files",
+        "copy"
       ]
     },
     {

@@ -19,7 +19,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from papers import logger
-from papers.config import Config, CONFIG_FILE_LOCAL, NO_POOL, pool_setting
+from papers.config import Config, CONFIG_FILE_LOCAL, NO_POOL, pool_setting, short_home
 
 # words that clear a value at a prompt or on the command line
 RESET_WORDS = ('none', 'null', 'unset', 'undefined', 'reset', 'delete')
@@ -69,6 +69,8 @@ class InstallPlan:
     create_bibtex: bool = False
     create_filesdir: bool = False
     remove_config_files: list = field(default_factory=list)
+    # --editor: a setting of the machine configuration
+    editor: str = None
 
 
 def _ask_path(asker, what, default, current=None):
@@ -166,8 +168,8 @@ def resolve_install(config, o, probe=None, asker=None, target=None):
 
     _resolve_pool(config, o, fresh)
 
-    if o.editor:
-        config.set('editor', o.editor)
+    if o.editor:  # a setting of the machine, saved by apply_install
+        config.editor = o.editor
 
     return InstallPlan(
         config=config,
@@ -177,6 +179,7 @@ def resolve_install(config, o, probe=None, asker=None, target=None):
         create_filesdir=bool(config.filesdir) and not os.path.exists(config.filesdir)
                         and not config.has_pool(),
         remove_config_files=remove_config_files,
+        editor=o.editor or None,
     )
 
 
@@ -207,6 +210,11 @@ def apply_install(plan):
     for f in plan.remove_config_files:
         logger.warning(f'remove pre-existing configuration file: {f}')
         os.remove(f)
+
+    if plan.editor:
+        config.machine.set('editor', plan.editor)
+        config.machine.save()
+        print(f'editor {plan.editor} set in {short_home(config.machine.file)} (a setting of the machine)')
 
     logger.info('save config file: ' + config.file)
     if os.path.dirname(config.file):

@@ -447,8 +447,8 @@ class TestConfigCommand(ConfigTest):
         self.papers('config pool shared')  # no PDF: nothing moves
         self.assertEqual(self.json()['pool'], './shared')
         self.assertEqual(self.get('pool'), './shared')
-        self.papers('config editor "subl -w"')
-        self.assertEqual(self.json()['editor'], 'subl -w')
+        self.papers('config --global editor "subl -w"')
+        self.assertEqual(MachineConfig.load().get('editor'), 'subl -w')
         self.papers('config filesdir pdfs')
         self.assertEqual(self.json()['filesdir'], 'pdfs')
 
@@ -550,7 +550,8 @@ class TestMigrateV2Global(ConfigTest):
         self.assertEqual(js['bibtex'], 'lib.bib')
         self.assertEqual(js['filesdir'], 'pdfs')
         self.assertEqual(js['paths'], 'absolute')
-        self.assertEqual(js['editor'], 'nano')
+        self.assertNotIn('editor', js)
+        self.assertEqual(MachineConfig.load().get('editor'), 'nano')  # a setting of the machine
         self.assertEqual(js['nameformat'], {'template': '{author}-{year}'})
         self.assertEqual(js['pool'], 'none')  # self-contained
         self.assertNotIn('local', js)

@@ -70,6 +70,14 @@ def migrate_v2_global(machine, relative=False, dryrun=False):
                         convert_file_links(new)
                         print(f"  the file links of {new.bibtex} are now relative to its directory")
 
+            # the editor is now a setting of the machine (the global configuration of v2 was this user's)
+            editor = old.raw.get('editor')
+            if isinstance(editor, str) and editor and machine.get('editor') is None:
+                print(f"  {prefix}set the editor {editor} in {machine.file}")
+                if not dryrun:
+                    machine.set('editor', editor)
+                    machine.save()
+
             current = machine.default
             if current is None or _same_path(current, libdir):
                 print(f"  {prefix}register {libdir} as the default library in {machine.file}")

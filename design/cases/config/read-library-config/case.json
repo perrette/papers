@@ -27,8 +27,8 @@
         "-C",
         "a",
         "config",
-        "editor",
-        "vim"
+        "files",
+        "copy"
       ]
     },
     {
@@ -44,8 +44,8 @@
         "-C",
         "b",
         "config",
-        "editor",
-        "vim"
+        "files",
+        "copy"
       ]
     },
     {
@@ -61,8 +61,8 @@
         "-C",
         "c",
         "config",
-        "editor",
-        "vim"
+        "files",
+        "copy"
       ]
     },
     {

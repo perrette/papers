@@ -41,8 +41,8 @@
     {
       "argv": [
         "config",
-        "editor",
-        "subl -w"
+        "auto-push",
+        "true"
       ]
     },
     {

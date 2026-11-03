@@ -23,7 +23,7 @@ class TestConfigCmd(FileTest):
 
     def test_machine_settings(self):
         # a library cannot choose where the history goes, or whether it keeps the deleted files
-        for name in ('history-dir', 'keep-deleted-files'):
+        for name in ('history-dir', 'keep-deleted-files', 'editor'):
             with self.assertRaises(PapersExit) as cm:
                 self.lib(f'config {name} x')
             self.assertIn('setting of the machine', str(cm.exception))

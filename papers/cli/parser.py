@@ -320,7 +320,7 @@ def get_parser(config=None):
              f'(default: {config.inherited("paths")})')
     initp.add_argument('--git', '--no-git', action=_Ignored, why=_NO_GIT)
     initp.add_argument('--git-lfs', action=_Ignored, why=_NO_GIT_LFS)
-    initp.add_argument('--editor', help='command to open a text editor; it must wait until the editor is closed, e.g. vim or "subl -w"')
+    initp.add_argument('--editor', help='command to open a text editor, saved in the global configuration (a setting of the machine); it must wait until the editor is closed, e.g. vim or "subl -w"')
     _command(initp, initcmd)
 
     # config
@@ -387,7 +387,7 @@ def get_parser(config=None):
 
     installp.add_argument('--git', '--backup', action=_Ignored, why=_NO_GIT)
     installp.add_argument('--git-lfs', '--backup-files', action=_Ignored, why=_NO_GIT_LFS)
-    installp.add_argument('--editor', help="""Set command to open text editor. Need to wait until closing ! E.g. vim or subl -w""")
+    installp.add_argument('--editor', help='command to open a text editor, saved in the global configuration; it must wait until the editor is closed, e.g. vim or "subl -w"')
     installp.add_argument('--pool', metavar='PATH|none', help=argparse.SUPPRESS)
 
     grp = installp.add_argument_group('status')

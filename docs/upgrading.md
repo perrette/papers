@@ -58,6 +58,11 @@ What does change, however:
       the global library, and renames it to `papersconfig.json.v2.bak`.
       Until then, papers 3 keeps using it outside of libraries, with a
       warning on every command;
+    - the `editor` setting is read from the global configuration only
+      (`papers config --global editor vim`): a library received from
+      someone does not choose a command that papers runs. `papers
+      migrate` moves it from the global configuration of papers 2; in a
+      library configuration it is ignored, with a warning;
     - papers 2 does not read the new configuration files. To go back to
       papers 2, restore `.papersconfig.json` (e.g. from the project
       repository) or `papersconfig.json.v2.bak`.
@@ -168,7 +173,7 @@ the library, which adds the `id` of its history), and prints a line that
 says so:
 
 ```
-$ papers config editor vim
+$ papers config auto-push true
 moved ~/projects/sealevel/.papersconfig.json to ~/projects/sealevel/.papers/config.json
 ```
 

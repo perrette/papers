@@ -155,7 +155,6 @@ Example (a shallow library):
 | `paths` | `"relative"` or `"absolute"` | How the file links of the bibtex are written. |
 | `files` | `"ask"`, `"move"`, `"copy"`, `"link"` | What `add` and the file commands do with a file outside the files directory. |
 | `auto-push` | boolean | Shallow library: commands that change entries push them to the pool. |
-| `editor` | string | Command that opens a text editor. |
 | `checksums` | boolean | Commands write the checksums of the files they touch to `files.json` (the PDFs that `file fetch` attaches get theirs also when false, for their version). |
 | `history-size` | integer | Size limit of the library's own history store, in MB (see `history.md`). |
 | `history-separate` | boolean | The library has a history store of its own (see `history.md`). |
@@ -181,8 +180,11 @@ keys inside `nameformat`/`keyformat` use underscores (`author_num`). The
 other JSON keys are the setting names themselves, with hyphens
 (`auto-push`, `history-size`).
 
-`history-dir` and `keep-deleted-files` are settings of the machine only.
-In a library configuration they are ignored when read and never written.
+`history-dir`, `keep-deleted-files` and `editor` are settings of the
+machine only. In a library configuration they are ignored when read and
+never written. An `editor` key in a library configuration (written by
+papers before 3.0.0) is also a warning when read: a library received from
+someone does not choose a command that papers runs.
 
 ### Which keys papers writes
 
@@ -217,7 +219,8 @@ section says what papers produces):
 
 `papers init` writes `pool` (`none` by default) and `paths` (the value of
 `--paths`, else the inherited value), and the settings given as its
-options (`--editor`, the name and key template options). A new library so
+options (the name and key template options; `--editor` is written in the
+machine configuration). A new library so
 keeps its link style whatever the machine configuration of the computer
 that opens it later.
 
@@ -429,6 +432,7 @@ Contract: a JSON object with the layout of a library configuration:
 | `default` | The default library: a path, written with `~` for the home directory when under it. Absent or empty: none. |
 | every setting except `bibtex`, `filesdir`, `pool` | The default value for libraries that do not set it. |
 | `history-dir`, `keep-deleted-files` | Machine-only settings (see `history.md`). |
+| `editor` | Machine-only setting. |
 | `pool` | Legacy (earlier v3 builds). Discarded on reading, with a warning unless it is `none`. |
 | `pools` | Legacy: an object `{name: path}` of earlier v3 builds, used only to read `pools` lists of library configurations. Not a setting; written back unchanged when papers rewrites the file. |
 
@@ -473,7 +477,7 @@ configuration, M = machine configuration.
 | `paths` | `relative`, `absolute` | `relative` | L, M | File links in the bibtex: relative to the directory of the bibtex, or absolute. Setting it rewrites the links of the bibtex. |
 | `files` | `ask`, `move`, `copy`, `link` | `move` | L, M | See [The files setting](#the-files-setting). |
 | `auto-push` | bool | `false` | L, M | In a shallow library, commands that change entries push them to the pool (see `exchange.md`). No effect in a self-contained library. |
-| `editor` | string | none | L, M | Editor command. It wins over `$VISUAL` and `$EDITOR`. |
+| `editor` | string | none | M only | Editor command. It wins over `$VISUAL` and `$EDITOR`. |
 | `checksums` | bool | `true` | L, M | Commands write checksums to `files.json` (see `history.md`). |
 | `history-dir` | string | none (the data folder's `history/`) | M only | Folder of the history store. A leading `~` is expanded; a relative path is relative to the folder of the machine configuration. |
 | `history-size` | int (MB) | `500` | L, M | Machine value: the shared store. Library value: its separate store only. `0`: no limit. |
@@ -519,8 +523,8 @@ Exceptions:
   is `none`. The machine configuration has no pool.
 - `bibtex` and `filesdir` come only from the library configuration (or
   the command line).
-- `history-dir` and `keep-deleted-files` come only from the machine
-  configuration. `papers config` refuses to set them in a library.
+- `history-dir`, `keep-deleted-files` and `editor` come only from the
+  machine configuration. `papers config` refuses to set them in a library.
 - For the shared history store, `history-size` is the machine value; for a
   separate store, the library value (see `history.md`).
 - In a shallow library, the files go to the pool's files directory, named

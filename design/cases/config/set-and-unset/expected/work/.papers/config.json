@@ -1,7 +1,7 @@
 {
+  "auto-push": true,
   "bibtex": "papers.bib",
   "checksums": false,
-  "editor": "subl -w",
   "filesdir": "files",
   "history-size": 100,
   "keyformat": {

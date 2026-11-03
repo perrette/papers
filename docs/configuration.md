@@ -26,8 +26,8 @@ files directory is `files` (or an existing `pdfs`, `pdf`, `papers` or
 `bibliography` folder). The options of `papers init` are `--bibtex`,
 `--filesdir`, `--pool PATH` and `--shallow` (see [Pools](#pools)),
 `--global` (see [Global configuration](#global-configuration)),
-`--paths relative|absolute`, `--editor`
-and the name and key format options (see
+`--paths relative|absolute`, `--editor` (written in the global
+configuration, see below) and the name and key format options (see
 [Renaming files and keys](renaming.md)).
 With `DIR`, the paths given to `--bibtex`, `--filesdir` and `--pool` are
 relative to the current directory, as `DIR` is (`papers init lib --bibtex
@@ -98,7 +98,7 @@ papers writes the file.
 | `files` | `move` (default), `copy`, `link` or `ask`: what `papers add`, `file attach` and `file rename` do with a file outside the files directory (see [Files](files.md#what-add-does-with-a-file)); in a shallow library, how the file gets to the pool: moved or copied into its files directory, or linked where it is by the library and the pool entry |
 | `auto-push` | `false` (default) or `true`: in a shallow library, the commands that change entries push them to the pool (the entries shared with it, and new ones), see [Auto-push](shallow-libraries.md#auto-push); no effect in a self-contained library |
 | `checksums` | `true` (default): the commands write the checksum of the files they move, copy, add or link in `.papers/files.json`, for undo (see [Checksums](undo-redo.md#checksums)) |
-| `editor` | command that opens a text editor, e.g. `vim` or `subl -w` (it wins over `$VISUAL` and `$EDITOR`, which are used without it) |
+| `editor` | global only: command that opens a text editor, e.g. `vim` or `subl -w` (it wins over `$VISUAL` and `$EDITOR`, which are used without it). A library cannot set it: a library received from someone does not choose a command that papers runs |
 | `history-size` | `500` (default): the size of the history (see [Undo and redo](undo-redo.md#deleted-files)), in MB, `0` for no limit; papers asks before a command that deletes more. In the global configuration: the history shared by the libraries; in a library: its own history, with `history-separate` |
 | `history-separate` | `false` (default) or `true`: the library keeps its history in a store of its own (see [Where the history is](undo-redo.md#where-the-history-is)) |
 | `history-dir` | global only: the folder of the history (default: `~/.local/share/papers/history` on Linux) |

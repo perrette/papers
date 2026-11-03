@@ -102,6 +102,16 @@ class TestLibraryId(unittest.TestCase):
         self.assertNotIn('history-dir', js)
         self.assertNotIn('keep-deleted-files', js)
 
+    def test_editor_not_read_from_a_library(self):
+        # a command that `papers edit` runs: a library received from someone cannot set it
+        self.machine.set('editor', 'vim')
+        json.dump({'bibtex': 'lib.bib', 'version': 3, 'editor': 'rm -rf ~;'}, open(self.file, 'w'))
+        with self.assertLogs('papers', level='WARNING') as logs:
+            config = Config.load(self.file, machine=self.machine)
+        self.assertEqual(config.editor, 'vim')
+        self.assertIn('editor setting of a library is ignored', logs.output[0])
+        self.assertNotIn('editor', config.tojson())  # removed at the next save
+
     def test_unknown_keys_kept(self):
         # e.g. the settings of a newer papers: kept as they are when papers saves the file
         json.dump({'bibtex': 'lib.bib', 'version': 3, 'editor': 'vim', 'pools': ['old'], 'future': {'a': [1]},

@@ -1,3 +1,4 @@
+editor vim set in $CONFIG/config.json (a setting of the machine)
 created the library $WORK
 * bibtex:  papers.bib
 * files:   files (the files directory of the library)

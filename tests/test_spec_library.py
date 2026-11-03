@@ -77,12 +77,12 @@ class TestConfigurationFormat(ConfigTest):
         """library.md Format: keys sorted, indent of two spaces, separators
         `,` and `: `, LF, no final newline, ASCII with \\uXXXX escapes"""
         self.papers('init lib')
-        self.papers('config editor "édit -w"', cwd=self.path('lib'))
+        self.papers('config name.template "é_{year}"', cwd=self.path('lib'))
         data = config_text(self.path('lib', CONFIG_FILE_LOCAL))
         js = json.loads(data)
         self.assertEqual(data.decode('ascii'),
                          json.dumps(js, sort_keys=True, indent=2, separators=(',', ': ')))
-        self.assertIn(b'"editor": "\\u00e9dit -w"', data)
+        self.assertIn(b'"template": "\\u00e9_{year}"', data)
         self.assertNotIn(b'\r', data)
         self.assertFalse(data.endswith(b'\n'))
         self.assertTrue(data.startswith(b'{\n  "'))
@@ -92,9 +92,9 @@ class TestConfigurationFormat(ConfigTest):
         text (a byte order mark is ignored)"""
         os.makedirs(self.path('lib', '.papers'))
         Path(self.path('lib', CONFIG_FILE_LOCAL)).write_bytes(
-            '﻿{"version":3,"bibtex":"réf.bib","editor":"é","filesdir":null}'.encode('utf-8'))
+            '﻿{"version":3,"bibtex":"réf.bib","nameformat":{"template":"é"},"filesdir":null}'.encode('utf-8'))
         config = Config.load(self.path('lib', CONFIG_FILE_LOCAL))
-        self.assertEqual(config.editor, 'é')
+        self.assertEqual(config.nameformat.template, 'é')
         self.assertEqual(config.bibtex, self.path('lib', 'réf.bib'))
 
 
@@ -124,7 +124,7 @@ class TestConfigurationKeys(ConfigTest):
         hyphens, and the values of the types of the table"""
         self.papers('init lib')
         for name, value, written in [('paths', 'absolute', 'absolute'), ('files', 'copy', 'copy'),
-                                     ('auto-push', 'yes', True), ('editor', 'vim', 'vim'),
+                                     ('auto-push', 'yes', True),
                                      ('checksums', 'off', False), ('history-size', '12', 12),
                                      ('history-separate', 'true', True)]:
             with self.subTest(name=name):
@@ -149,10 +149,17 @@ class TestWrittenKeys(ConfigTest):
     def test_init_writes_pool_and_paths(self):
         """library.md Which keys papers writes: papers init writes pool (none)
         and paths, and no other setting it was not given"""
-        self.papers('init lib --editor vim')
+        self.papers('init lib --name-template "{author}"')
         js = self.json('lib')
-        self.assertEqual(set(js), {'bibtex', 'filesdir', 'pool', 'paths', 'editor', 'version'})
-        self.assertEqual((js['pool'], js['paths'], js['editor']), ('none', 'relative', 'vim'))
+        self.assertEqual(set(js), {'bibtex', 'filesdir', 'pool', 'paths', 'nameformat', 'version'})
+        self.assertEqual((js['pool'], js['paths']), ('none', 'relative'))
+
+    def test_init_editor_goes_to_the_machine(self):
+        """library.md Settings: editor is a setting of the machine only;
+        `papers init --editor` writes it in the machine configuration"""
+        self.papers('init lib --editor vim')
+        self.assertNotIn('editor', self.json('lib'))
+        self.assertEqual(MachineConfig.load().get('editor'), 'vim')
 
     def test_prune_removes_the_settings_of_papers_2(self):
         """library.md Which keys papers writes: `papers config --prune` removes
@@ -211,10 +218,10 @@ class TestReading(ConfigTest):
     def test_null_is_unset(self):
         """library.md Reading 6: a setting present with the value null is not
         set (the inherited value applies)"""
-        machine = MachineConfig(self.path('machine.json'), {'editor': 'vim'})
-        config = Config.load(self.write({'bibtex': 'papers.bib', 'version': 3, 'editor': None}), machine=machine)
-        self.assertEqual(config.editor, 'vim')
-        self.assertEqual(config.source('editor'), 'global')
+        machine = MachineConfig(self.path('machine.json'), {'files': 'copy'})
+        config = Config.load(self.write({'bibtex': 'papers.bib', 'version': 3, 'files': None}), machine=machine)
+        self.assertEqual(config.files, 'copy')
+        self.assertEqual(config.source('files'), 'global')
 
 
 class TestIdField(FileTest):

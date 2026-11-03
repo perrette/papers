@@ -22,8 +22,8 @@
         "-C",
         "a",
         "config",
-        "editor",
-        "vim"
+        "files",
+        "copy"
       ]
     },
     {

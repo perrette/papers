@@ -52,6 +52,7 @@ that check the same thing.
 - tests/test_spec_library.py::TestConfigurationKeys::test_other_keys
 - tests/test_config_v3.py::TestConfigCommand::test_types
 - tests/test_config_unit.py::TestLibraryId::test_machine_settings_not_read_from_a_library
+- tests/test_config_unit.py::TestLibraryId::test_editor_not_read_from_a_library
 
 ### Which keys papers writes
 
@@ -68,8 +69,10 @@ that check the same thing.
 - tests/test_config_v3.py::TestFormatVersion::test_earlier_v3_settings
 - tests/test_config_unit.py::TestLibraryId::test_unknown_keys_kept
 - tests/test_config_unit.py::TestLibraryId::test_machine_settings_not_read_from_a_library
+- tests/test_config_unit.py::TestLibraryId::test_editor_not_read_from_a_library
 - tests/test_spec_library.py::TestWrittenKeys::test_paths_written_as_null
 - tests/test_spec_library.py::TestWrittenKeys::test_init_writes_pool_and_paths
+- tests/test_spec_library.py::TestWrittenKeys::test_init_editor_goes_to_the_machine
 - tests/test_spec_library.py::TestWrittenKeys::test_prune_removes_the_settings_of_papers_2
 
 ### Reading
@@ -1786,6 +1789,7 @@ that check the same thing.
 - tests/test_spec_history.py::TestLocation::test_nothing_created_without_a_change
 - tests/test_config_unit.py::TestPathsOfSettings::test_relative_to_the_global_configuration
 - tests/test_config_unit.py::TestLibraryId::test_machine_settings_not_read_from_a_library
+- tests/test_config_unit.py::TestLibraryId::test_editor_not_read_from_a_library
 - tests/test_library_cmds.py::TestConfigCmd::test_machine_settings
 - tests/test_library_cmds.py::TestConfigCmd::test_global_path_relative_to_current_directory
 - tests/test_history.py::TestSeparate::test_dry_run_writes_nothing.

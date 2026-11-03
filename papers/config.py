@@ -111,10 +111,10 @@ for _kind in ('name', 'key'):
 # settings that only make sense for a library
 LIBRARY_ONLY = ('bibtex', 'filesdir')
 # settings of the machine only: a library does not set them (a library
-# received from someone cannot choose where the history goes, or what it keeps;
-# history-separate and history-size may be set by a library: its own store,
-# in the folder of the machine, see papers.backup.store)
-MACHINE_ONLY = ('history-dir', 'keep-deleted-files')
+# received from someone cannot choose where the history goes, or what it keeps,
+# or a command that papers runs; history-separate and history-size may be set
+# by a library: its own store, in the folder of the machine, see papers.backup.store)
+MACHINE_ONLY = ('history-dir', 'keep-deleted-files', 'editor')
 # settings of a library other than its paths: when the library does not set
 # one, the global configuration applies, except for pool (see Config.inherited)
 LIBRARY_SETTINGS = [name for name in SETTINGS if name not in LIBRARY_ONLY + MACHINE_ONLY]
@@ -770,6 +770,9 @@ class Config:
         machine = machine if machine is not None else MachineConfig.load()
         _read_earlier_v3(js, machine, the_file)
         check_settings(js, the_file)
+        if is_library and js.get('editor') is not None:  # written by papers before 3.0.0
+            logger.warning(f"{the_file}: the editor setting of a library is ignored, it is a setting of the "
+                           f"machine: `papers config --global editor CMD` (the next save removes it from the file)")
         cfg = cls(file=the_file, is_library=is_library, machine=machine,
                   bibtex=js.get('bibtex'), filesdir=js.get('filesdir'))
         cfg.raw = raw

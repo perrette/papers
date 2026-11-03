@@ -9,6 +9,7 @@
     {
       "argv": [
         "config",
+        "--global",
         "editor",
         "sed -i.bak s/Circulation/Flow/"
       ]
@@ -30,6 +31,7 @@
     {
       "argv": [
         "config",
+        "--global",
         "editor",
         "sed -i.bak s/doe2019/doe_2019/"
       ]
@@ -43,6 +45,7 @@
     {
       "argv": [
         "config",
+        "--global",
         "editor",
         "sed -i.bak s/smith2020/doe_2019/"
       ]
@@ -56,6 +59,7 @@
     {
       "argv": [
         "config",
+        "--global",
         "editor",
         "sed -i.bak s/@article/@/"
       ]
@@ -69,6 +73,7 @@
     {
       "argv": [
         "config",
+        "--global",
         "editor",
         "sed -i.bak s/author/au\\ thor/"
       ]
@@ -82,6 +87,7 @@
     {
       "argv": [
         "config",
+        "--global",
         "editor",
         "sed -i.bak /@/d"
       ]
@@ -95,6 +101,7 @@
     {
       "argv": [
         "config",
+        "--global",
         "editor",
         "false"
       ]

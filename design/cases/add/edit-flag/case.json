@@ -8,6 +8,7 @@
     {
       "argv": [
         "config",
+        "--global",
         "editor",
         "sed -i.bak s/Ocean/Sea/"
       ]
@@ -35,6 +36,7 @@
     {
       "argv": [
         "config",
+        "--global",
         "editor",
         "sed -i.bak s/@article/@/"
       ]
@@ -49,6 +51,7 @@
     {
       "argv": [
         "config",
+        "--global",
         "editor",
         "false"
       ]
@@ -63,6 +66,7 @@
     {
       "argv": [
         "config",
+        "--global",
         "editor",
         "sed -i.bak s/note\\ =\\ {x}/note\\ =\\ {}/"
       ]

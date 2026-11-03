@@ -41,8 +41,8 @@
         "-C",
         "old",
         "config",
-        "editor",
-        "vim"
+        "files",
+        "copy"
       ]
     },
     {

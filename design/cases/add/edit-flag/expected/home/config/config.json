@@ -1,0 +1,4 @@
+{
+  "editor": "sed -i.bak s/note\\ =\\ {x}/note\\ =\\ {}/",
+  "version": 3
+}
