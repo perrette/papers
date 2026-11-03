@@ -935,7 +935,11 @@ class Biblio:
         # absolute, to compare with the (absolute) current file paths
         filesdir = os.path.abspath(self.filesdir)
         target = os.path.normpath(os.path.join(filesdir, newname))
-        if os.path.commonpath([filesdir, target]) != filesdir or target == filesdir:
+        # also with the symbolic links resolved: a folder of the files directory that is a link to
+        # another place (e.g. in a library received from someone) is outside
+        real_filesdir, real_folder = os.path.realpath(filesdir), os.path.realpath(os.path.dirname(target))
+        if os.path.commonpath([filesdir, target]) != filesdir or target == filesdir \
+                or os.path.commonpath([real_filesdir, real_folder]) != real_filesdir:
             logger.error(f'{get_entry_val(e, "ID", "")}: the file name {newname!r} points outside the files directory: the files are left where they are')
             return False
 
