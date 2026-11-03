@@ -1,0 +1,1522 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Command-line tool to manage your bibliography (PDFs + BibTeX)">
+      
+      
+      
+        <link rel="canonical" href="https://perrette.github.io/papers/dev/files/">
+      
+      
+        <link rel="prev" href="../renaming/">
+      
+      
+        <link rel="next" href="../configuration/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.0">
+    
+    
+      
+        <title>Files - papers</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.57a0d79d.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.fb2fffe2.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#files" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="papers" class="md-header__button md-logo" aria-label="papers" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            papers
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Files
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/perrette/papers" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    perrette/papers
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="papers" class="md-nav__button md-logo" aria-label="papers" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    papers
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/perrette/papers" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    perrette/papers
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quickstart
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../upgrading/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Upgrading from papers 2
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guides
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Guides
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../adding-entries/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Adding entries
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../listing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Listing and searching
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../renaming/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Renaming files and keys
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Files
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Files
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#what-add-does-with-a-file" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What add does with a file
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#papers-file" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        papers file
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="papers file">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fetching-the-free-pdf-of-an-entry" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fetching the free PDF of an entry
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#removing-entries-and-their-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Removing entries and their files
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#deprecated-forms" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Deprecated forms
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../pools/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pools
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../shallow-libraries/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Shallow libraries
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../export/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Export
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../global-library/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    A global shared library
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../library-management/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Managing your library
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../git/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Using git
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../undo-redo/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Undo and redo
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/perrette/papers/edit/v3/files.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="files">Files<a class="headerlink" href="#files" title="Permanent link">&para;</a></h1>
+<p>An entry links to its files (the PDF, supplementary material...) in its
+<code>file</code> field. The files usually live in the files directory of the library
+(the <code>filesdir</code> setting), named after the name template (see
+<a href="../renaming/">Renaming files and keys</a>), but an entry can link to a file
+anywhere.</p>
+<p>The <code>file</code> field holds the links separated by <code>;</code>. Each link is <code>path</code>,
+<code>path:type</code> or <code>description:path:type</code>; papers writes <code>:path:type</code>
+(<code>:files/x.pdf:pdf</code>), as JabRef and Zotero do. In the three-part form, the
+path is everything between the first and the last <code>:</code>, so it may contain
+<code>:</code> (<code>:C:\x.pdf:pdf</code>). Spaces around each path are removed. There is no
+escaping: a path that contains <code>;</code> cannot be linked, JabRef's <code>\:</code> and <code>\;</code>
+are read as they are, and a Windows path written alone (<code>C:\x.pdf</code>) is
+read as the path <code>C</code> with type <code>\x.pdf</code>.</p>
+<h2 id="what-add-does-with-a-file">What <code>add</code> does with a file<a class="headerlink" href="#what-add-does-with-a-file" title="Permanent link">&para;</a></h2>
+<p>The <code>files</code> setting says what <code>papers add</code> does with the PDF it adds, with
+the files of the entries of an added bibtex (<code>papers add other.bib</code>), with
+the files of an added folder (<code>papers add --recursive DIR</code>) and with the
+files attached with <code>--attach</code>:</p>
+<table>
+<thead>
+<tr>
+<th><code>files</code></th>
+<th>the file is placed in the files directory</th>
+<th>the original is removed</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>move</code> (default)</td>
+<td>yes, under its template name</td>
+<td>yes</td>
+</tr>
+<tr>
+<td><code>ask</code></td>
+<td>papers asks for each file: move, copy or leave it (link)</td>
+<td>as answered</td>
+</tr>
+<tr>
+<td><code>copy</code></td>
+<td>yes, as a hard link when possible (same file system), otherwise a copy</td>
+<td>no</td>
+</tr>
+<tr>
+<td><code>link</code></td>
+<td>no: the entry links to the file where it is</td>
+<td>no</td>
+</tr>
+</tbody>
+</table>
+<p>With <code>ask</code>, papers names each file that is outside the files directory and
+waits for an answer: <code>m</code> (move), <code>c</code> (copy) or <code>l</code> (leave it where it is,
+also Enter); <code>M</code>, <code>C</code> or <code>L</code> gives the same answer for all the next files of
+the command. A file already in the files directory is renamed without
+asking. Without a terminal (a script, a pipe), papers does not ask: the
+files are left where they are, with a warning.</p>
+<p>Set it for a library with <code>papers config files copy</code>, or for all libraries
+of the user with <code>papers config --global files copy</code>. The options
+<code>--move</code>, <code>--copy</code> and <code>--link</code> of <code>papers add</code> override it for one command;
+<code>-r/--rename</code> is the same as <code>--move</code>, and <code>-c</code> the same as <code>--copy</code>.
+<code>papers file attach</code>, <code>papers file rename</code> (<code>--keep-source</code> is the same as
+<code>--copy</code>) and <code>papers list --rename</code> (with <code>--move</code> or <code>--keep-source</code>)
+follow the setting too.</p>
+<p>A file that belongs to another library, i.e. a file inside the files
+directory of a library whose configuration (<code>.papers/config.json</code>) is found
+in the file's directory or above, is never moved: in <code>move</code> mode it is
+copied instead (a hard link when possible), so that the other library keeps
+its link. The same holds for a file in the files directory of the pool of
+the library, or of the library of <code>--pool PATH</code> (see <a href="../pools/">Pools</a>). A file already in the files directory of the current library is
+renamed in <code>copy</code> mode too, rather than copied next to itself. A file
+downloaded by papers (a URL given to <code>add</code> or <code>--attach</code>) is always moved
+into the files directory.</p>
+<p>In a shallow library (a library with a pool), the file links are the pool
+entry's; the library decides which entries it has. The files directory
+where <code>add</code>, <code>file attach</code> and <code>file rename</code> place the files is that of the
+pool, and the name template is the pool's: <code>move</code> and <code>copy</code> place the
+file in the pool's files directory, and the library entry and the pool
+entry link to it there; with <code>link</code>, the file stays where it is, and both
+link to it there. This works on one machine; on another machine that uses
+the pool, such links are broken (see
+<a href="../shallow-libraries/#files">Shallow libraries</a>).</p>
+<h2 id="papers-file"><code>papers file</code><a class="headerlink" href="#papers-file" title="Permanent link">&para;</a></h2>
+<p>The commands of <code>papers file</code> act on the files of the entries. Those that
+take entries accept keys, DOIs, arXiv identifiers or ISBNs (see
+<a href="../listing/#naming-entries">Naming entries</a>), and <code>-</code> to read them from the
+standard input, one per line:</p>
+<table>
+<thead>
+<tr>
+<th>Command</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>papers file rename [KEY...]</code></td>
+<td>place the files of the entries (all without KEY) in the files directory, under their template name; <code>--keep-source</code> keeps the originals too (hard links when possible)</td>
+</tr>
+<tr>
+<td><code>papers file mv SRC... DEST</code></td>
+<td>move files or folders, and update the links of the entries (below)</td>
+</tr>
+<tr>
+<td><code>papers file attach KEY FILE...</code></td>
+<td>attach files to an existing entry, following the <code>files</code> setting (<code>--move</code>, <code>--copy</code>, <code>--link</code> override it); the files the entry already has are not touched</td>
+</tr>
+<tr>
+<td><code>papers file fetch KEY...</code>, <code>papers file fetch --missing</code></td>
+<td>download the free PDF of the entries (from their DOI or arXiv id) and attach it (below)</td>
+</tr>
+<tr>
+<td><code>papers file fetch --upgrade [KEY...]</code></td>
+<td>replace an accepted manuscript or a submitted version by the published version, when it can be had (below)</td>
+</tr>
+<tr>
+<td><code>papers file detach FILE... [--key KEY...]</code></td>
+<td>remove the links to the files from every entry that links to them (only from the entries of <code>--key</code> with <code>--key</code>); the files are kept (below)</td>
+</tr>
+<tr>
+<td><code>papers file detach --key KEY...</code></td>
+<td>remove all the links of the entries</td>
+</tr>
+<tr>
+<td><code>papers file detach --broken [--key KEY...]</code></td>
+<td>remove the broken links (of all entries without <code>--key</code>)</td>
+</tr>
+<tr>
+<td><code>papers file rm FILE... [-r] [--key KEY...]</code></td>
+<td>remove the links to the files, then delete the files, like <code>git rm</code> (below)</td>
+</tr>
+<tr>
+<td><code>papers file check [KEY...]</code></td>
+<td>report broken links and the files found for them (in the library by checksum, in the pool, in the libraries of <code>--pool PATH</code>, in the other libraries of the machine, and in the folders of <code>--search DIR</code>), files linked twice, identical files (same checksum) of an entry, and with <code>--metadata</code> a DOI of the PDF that differs from the DOI of the entry (this parses the PDFs)</td>
+</tr>
+<tr>
+<td><code>papers file fix [KEY...]</code></td>
+<td>apply the repairs that <code>papers file check</code> reports (below); <code>--pool PATH</code> and <code>--search DIR</code> as for <code>check</code>; the files found are copied, never moved (<code>--move</code> moves those of <code>--search</code>)</td>
+</tr>
+<tr>
+<td><code>papers file clean</code></td>
+<td>remove the files of the files directory and its subfolders that no entry links to, asking for each one (<code>-y/--yes</code> does not ask)</td>
+</tr>
+</tbody>
+</table>
+<p><code>papers file attach KEY FILE...</code> is the low-level form of
+<code>papers add FILE --doi DOI</code> for an entry already in the library: when the
+DOI is that of a library entry, <code>add</code> attaches the file to it in the same
+way, without fetching anything (see
+<a href="../adding-entries/#entries-already-in-the-library">Adding entries</a>).</p>
+<p><code>papers file check</code> changes nothing, and ends with the number of links that
+<code>papers file fix</code> can repair. <code>papers file fix</code> only applies the repairs
+that cannot lose anything: paths saved by Mendeley
+(missing leading <code>/</code>, latex symbols such as <code>{\_}</code>) are repaired when the
+repaired path exists, the second link to the same file, or to an
+identical file, is removed from the entry (the file itself stays on disk;
+<code>papers file clean</code> removes it), and broken links are relinked to the files
+found for them (see <a href="#reconnecting-pdfs-and-a-bibtex">Reconnecting PDFs and a bibtex</a>).
+The other broken links are reported, and removed with
+<code>papers file detach --broken</code>.</p>
+<p><code>papers file clean</code> skips hidden files and folders (such as <code>.git</code>) and
+<code>.bib</code> files. A folder of the layout of versions before 2.19 (with a hidden
+<code>.&lt;name&gt;.bib</code>) is removed as a whole when no entry links to its files.</p>
+<h3 id="fetching-the-free-pdf-of-an-entry">Fetching the free PDF of an entry<a class="headerlink" href="#fetching-the-free-pdf-of-an-entry" title="Permanent link">&para;</a></h3>
+<p><code>papers file fetch KEY...</code> finds an open-access PDF of each entry from its
+DOI or arXiv id, downloads it, and attaches it as <code>papers file attach</code> does:
+the PDF goes to the files directory, under the template name of the entry.
+<code>--missing</code> takes the entries without PDF (of the KEYs given, or of the whole
+library). Only open-access copies are used. The links are tried in this
+order, until one gives a PDF (a file that starts with <code>%PDF</code>; a login page or
+a challenge is not one):</p>
+<ol>
+<li>the published version: the PDF that the publisher's article page links
+   (its <code>citation_pdf_url</code> tag, the page being that of <code>https://doi.org/DOI</code>),
+   then the open-access locations of <a href="https://openalex.org">OpenAlex</a> of the
+   published version: their PDF links, then the PDF that the landing pages
+   of the others give in their <code>citation_pdf_url</code> tag (repositories such as
+   DSpace, Pure or PubMan);</li>
+<li>the accepted manuscript (OpenAlex, in the same way);</li>
+<li>the submitted version (OpenAlex, in the same way), then arXiv
+   (<code>https://arxiv.org/pdf/ID</code>).</li>
+</ol>
+<p>Each line says which version was attached and where it came from:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>$ papers file fetch smith2020 doe2021
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>smith2020: files/smith_2020_ocean.pdf (published version, from journals.example.org)
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>doe2021: files/doe_2021_ice.pdf (accepted manuscript, from repository.example.edu)
+</code></pre></div>
+<p>When the published version was refused (an HTTP error, or a login page or a
+challenge instead of a PDF) and an accepted manuscript or a submitted version
+is attached instead, the line also gives the published link, to download it
+in a browser:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>doe2021: files/doe_2021_ice.pdf (accepted manuscript, from repository.example.edu; the published version was refused: open https://journals.example.org/ice.pdf in a browser)
+</code></pre></div>
+<p><code>--version published</code> attaches the published version only, <code>--version
+accepted</code> also the accepted manuscript. When no link gives a PDF, the error
+lists the links tried and the pages to open in a browser; the other entries
+are attached and saved, and the command exits with status 1. In a fetch of
+several entries, an entry without PDF is one line (<code>KEY: no PDF (...)</code>,
+with the same reasons and links), not an error:</p>
+<p><div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>lee2019: no PDF (https://journals.example.org/sea.pdf (published version): not a PDF; OpenAlex: no open-access PDF; open https://journals.example.org/sea.pdf, https://doi.org/10.1000/sea in a browser)
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>``` `--dry-run`
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>lists the links that would be tried, in order, and changes nothing.
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>A fetch of several entries (`--missing`, or several KEYs) ends with a
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>summary: the PDFs attached by version, the entries repaired from a local
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>file, and the links to open in a browser for the entries without PDF and
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>those whose published version was refused:
+</code></pre></div>
+summary of 4 entries:
+  2 PDFs attached: 1 published version, 1 accepted manuscript
+  1 found locally (repaired, not downloaded)
+  1 without PDF
+open in a browser:
+  doe2021: https://journals.example.org/ice.pdf (published version refused; accepted manuscript found)
+  lee2019: https://journals.example.org/sea.pdf, https://doi.org/10.1000/sea (no PDF)
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>`--supplements` also attaches the supplementary PDFs that the article page
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>links: the links to a PDF with `suppl` in their URL or their text, and the
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>`citation_supplementary_material` tags. They are attached as the other files
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>of the entry (`&lt;name&gt;--&lt;label&gt;.pdf`). Data sets and other files are left
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>out; what is found depends on the publisher.
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>Nothing is downloaded or attached twice:
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>- an entry that links to a PDF already is skipped (`KEY: has a PDF already
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>  (--again to fetch it anyway)`); with `--supplements`, its supplements are
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>  still fetched;
+<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>- an entry whose PDF link is broken first gets the repair of
+<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>  `papers file fix` (see [Reconnecting PDFs and a bibtex](#reconnecting-pdfs-and-a-bibtex)):
+<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a>  the file found in the library by checksum, in the pool, in the other
+<a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a>  libraries of the machine, in the folders of `--search DIR` (the option
+<a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a>  can be repeated) or in the history is relinked, and nothing is downloaded
+<a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a>  (`KEY: relinked files/x.pdf (found in ~/Downloads), not downloaded`). The
+<a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a>  PDF is downloaded only when no file is found. `--dry-run` says what would
+<a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a>  be relinked. The repair and the downloads are one step: `papers undo`
+<a id="__codelineno-3-20" name="__codelineno-3-20" href="#__codelineno-3-20"></a>  undoes both;
+<a id="__codelineno-3-21" name="__codelineno-3-21" href="#__codelineno-3-21"></a>- a downloaded file with the content (sha256) of a file of the entry is not
+<a id="__codelineno-3-22" name="__codelineno-3-22" href="#__codelineno-3-22"></a>  attached (`not attached, the entry has the same file`);
+<a id="__codelineno-3-23" name="__codelineno-3-23" href="#__codelineno-3-23"></a>- papers remembers, in the cache of the machine (see
+<a id="__codelineno-3-24" name="__codelineno-3-24" href="#__codelineno-3-24"></a>  [Configuration](configuration.md#cache)), the checksum of the PDF each URL
+<a id="__codelineno-3-25" name="__codelineno-3-25" href="#__codelineno-3-25"></a>  gave. A URL downloaded before is not downloaded again when the entry has a
+<a id="__codelineno-3-26" name="__codelineno-3-26" href="#__codelineno-3-26"></a>  file with that checksum (`KEY: already has FILE`), or when a file of the
+<a id="__codelineno-3-27" name="__codelineno-3-27" href="#__codelineno-3-27"></a>  library has it: that file is attached instead (a file of another entry is
+<a id="__codelineno-3-28" name="__codelineno-3-28" href="#__codelineno-3-28"></a>  linked where it is, `same file as OTHERKEY`). Nothing about the URL is
+<a id="__codelineno-3-29" name="__codelineno-3-29" href="#__codelineno-3-29"></a>  written in the library (only the version of the PDF, below).
+<a id="__codelineno-3-30" name="__codelineno-3-30" href="#__codelineno-3-30"></a>
+<a id="__codelineno-3-31" name="__codelineno-3-31" href="#__codelineno-3-31"></a>With `--missing`, when more than 50 entries with a DOI would query OpenAlex
+<a id="__codelineno-3-32" name="__codelineno-3-32" href="#__codelineno-3-32"></a>and no API key is set (environment variable `OPENALEX_API_KEY`, free at
+<a id="__codelineno-3-33" name="__codelineno-3-33" href="#__codelineno-3-33"></a>&lt;https://openalex.org/settings/api&gt;), papers asks first (`-y/--yes` does not
+<a id="__codelineno-3-34" name="__codelineno-3-34" href="#__codelineno-3-34"></a>ask; without a terminal, it stops and says how to proceed). The email
+<a id="__codelineno-3-35" name="__codelineno-3-35" href="#__codelineno-3-35"></a>address of `PAPERS_MAILTO`, when set, is given to OpenAlex and in the user
+<a id="__codelineno-3-36" name="__codelineno-3-36" href="#__codelineno-3-36"></a>agent of the requests to the publishers. papers waits a second between two
+<a id="__codelineno-3-37" name="__codelineno-3-37" href="#__codelineno-3-37"></a>requests to the same site; a site that answers "too many requests" (HTTP
+<a id="__codelineno-3-38" name="__codelineno-3-38" href="#__codelineno-3-38"></a>429) is asked once more after the wait it gives (at most 30 seconds).
+<a id="__codelineno-3-39" name="__codelineno-3-39" href="#__codelineno-3-39"></a>
+<a id="__codelineno-3-40" name="__codelineno-3-40" href="#__codelineno-3-40"></a>The version of each PDF attached this way is kept in the library
+<a id="__codelineno-3-41" name="__codelineno-3-41" href="#__codelineno-3-41"></a>(`.papers/files.json`, by the checksum of the file): it follows the file when
+<a id="__codelineno-3-42" name="__codelineno-3-42" href="#__codelineno-3-42"></a>it is renamed or moved, and `papers list` shows it (see
+<a id="__codelineno-3-43" name="__codelineno-3-43" href="#__codelineno-3-43"></a>[Listing](listing.md#output-formats)). A file attached otherwise (`papers file
+<a id="__codelineno-3-44" name="__codelineno-3-44" href="#__codelineno-3-44"></a>attach`, `papers add FILE`) has no version: it is unknown.
+<a id="__codelineno-3-45" name="__codelineno-3-45" href="#__codelineno-3-45"></a>
+<a id="__codelineno-3-46" name="__codelineno-3-46" href="#__codelineno-3-46"></a>`papers file fetch --upgrade` looks again for the published version of the
+<a id="__codelineno-3-47" name="__codelineno-3-47" href="#__codelineno-3-47"></a>entries whose PDF is an accepted manuscript or a submitted version (all such
+<a id="__codelineno-3-48" name="__codelineno-3-48" href="#__codelineno-3-48"></a>entries, or those of KEY...), and only for it. When it is found, it replaces
+<a id="__codelineno-3-49" name="__codelineno-3-49" href="#__codelineno-3-49"></a>that PDF under the same file name; the old file is kept in the history, so
+<a id="__codelineno-3-50" name="__codelineno-3-50" href="#__codelineno-3-50"></a>`papers undo` brings it back. When it is not found, nothing changes:
+</code></pre></div>
+$ papers file fetch --upgrade
+doe2021: files/doe_2021_ice.pdf: accepted manuscript replaced by the published version, from journals.example.org
+lee2019: files/lee_2019_sea.pdf (submitted version) kept (no published version: https://journals.example.org/sea.pdf (published version): HTTP 403; open https://journals.example.org/sea.pdf, https://doi.org/10.1000/sea in a browser)
+summary of 2 entries:
+  1 replaced by the published version
+  1 without published version (kept as they are)
+open in a browser:
+  lee2019: https://journals.example.org/sea.pdf, https://doi.org/10.1000/sea (no published version)
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>`--dry-run` lists the links that would be tried and the file each would
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>replace. `--upgrade` does not go with `--missing`, `--again`,
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>`--supplements`, `--version` or `--search`.
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>`papers add --doi DOI --fetch-pdf` adds the entry and fetches its PDF in the
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>same way, and `papers fetch --pdf DOI` downloads the PDF into the current
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>directory (`-o FILE` names the file), without a library (see
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>[Adding entries](adding-entries.md#add-an-entry-from-its-doi)).
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>### Moving files
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>
+<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>`papers file mv` works like `mv`, with the rules of `git mv`, and updates the
+<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>links of every entry that links to a moved file (links are compared by real
+<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a>path, so a link through a symbolic link is found too):
+<a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a>
+<a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a>1. a source file that no entry links to is an error;
+<a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a>2. a source folder must contain at least one linked file; the whole folder
+<a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a>   moves, files that no entry links to included;
+<a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a>3. with several sources, the destination must be an existing folder;
+<a id="__codelineno-4-20" name="__codelineno-4-20" href="#__codelineno-4-20"></a>4. a destination that exists as a file is an error, unless `-f/--force`
+<a id="__codelineno-4-21" name="__codelineno-4-21" href="#__codelineno-4-21"></a>   (papers warns when entries link to the replaced file: their links then
+<a id="__codelineno-4-22" name="__codelineno-4-22" href="#__codelineno-4-22"></a>   lead to the moved file);
+<a id="__codelineno-4-23" name="__codelineno-4-23" href="#__codelineno-4-23"></a>5. `-n/--dry-run` shows the moves and the links that change, and does
+<a id="__codelineno-4-24" name="__codelineno-4-24" href="#__codelineno-4-24"></a>   nothing;
+<a id="__codelineno-4-25" name="__codelineno-4-25" href="#__codelineno-4-25"></a>6. moving the files directory of the library (or a folder that contains it)
+<a id="__codelineno-4-26" name="__codelineno-4-26" href="#__codelineno-4-26"></a>   also updates the `filesdir` setting.
+<a id="__codelineno-4-27" name="__codelineno-4-27" href="#__codelineno-4-27"></a>
+<a id="__codelineno-4-28" name="__codelineno-4-28" href="#__codelineno-4-28"></a>All checks run before anything moves: if one fails, nothing is moved. If a
+<a id="__codelineno-4-29" name="__codelineno-4-29" href="#__codelineno-4-29"></a>move fails midway (e.g. disk full), the bibtex is saved with the links of the
+<a id="__codelineno-4-30" name="__codelineno-4-30" href="#__codelineno-4-30"></a>files already moved, and the error is reported. The parent folders of the
+<a id="__codelineno-4-31" name="__codelineno-4-31" href="#__codelineno-4-31"></a>destination are created when needed. A folder that contains the bibtex or
+<a id="__codelineno-4-32" name="__codelineno-4-32" href="#__codelineno-4-32"></a>the library configuration cannot be moved with `papers file mv`.
+</code></pre></div>
+papers file mv files/2013 files/archive/2013
+papers file mv files ~/Documents/library-files    # also sets filesdir
+papers file mv -n files/a.pdf files/b.pdf files/new/
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>Links from other libraries to the moved files break: papers cannot know
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>about them.
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>### Detaching and removing files
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>A file can be linked from several entries: the chapters of a book that
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>share the PDF of the volume, two papers that share a supplement.
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>`papers file detach FILE...` removes the links to FILE from all of them and
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>prints which entries lost a link. Links are compared by real path, so a
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>broken link can be named too. The files stay on disk: `papers file detach`
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>never deletes a file.
+<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>
+<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a>`papers file rm FILE...` works like `git rm`: it removes the links to FILE
+<a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a>from every entry that links to it, then deletes the file.
+<a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a>
+<a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a>- A FILE that no entry links to is an error, and nothing changes (with
+<a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a>  `--key`: that none of the entries of `--key` links to).
+<a id="__codelineno-5-18" name="__codelineno-5-18" href="#__codelineno-5-18"></a>- `-r FOLDER` removes the linked files inside FOLDER (and its subfolders).
+<a id="__codelineno-5-19" name="__codelineno-5-19" href="#__codelineno-5-19"></a>  Files that no entry links to stay where they are; the folders left empty
+<a id="__codelineno-5-20" name="__codelineno-5-20" href="#__codelineno-5-20"></a>  are removed, FOLDER included, except the files directory of the library.
+<a id="__codelineno-5-21" name="__codelineno-5-21" href="#__codelineno-5-21"></a>  Without `-r`, a folder is an error. `papers file detach -r FOLDER` removes
+<a id="__codelineno-5-22" name="__codelineno-5-22" href="#__codelineno-5-22"></a>  the links in the same way, without deleting anything.
+<a id="__codelineno-5-23" name="__codelineno-5-23" href="#__codelineno-5-23"></a>- With `--key`, only the links of those entries are removed; a file that
+<a id="__codelineno-5-24" name="__codelineno-5-24" href="#__codelineno-5-24"></a>  another entry still links to is kept on disk, and papers says so.
+<a id="__codelineno-5-25" name="__codelineno-5-25" href="#__codelineno-5-25"></a>- In a shallow library, the link is removed from the pool entry too, and
+<a id="__codelineno-5-26" name="__codelineno-5-26" href="#__codelineno-5-26"></a>  the file (in the pool's files directory or elsewhere) is deleted unless
+<a id="__codelineno-5-27" name="__codelineno-5-27" href="#__codelineno-5-27"></a>  another entry of the pool or of the library still links to it.
+<a id="__codelineno-5-28" name="__codelineno-5-28" href="#__codelineno-5-28"></a>- papers does not ask: the file was named on the command line. `--dry-run`
+<a id="__codelineno-5-29" name="__codelineno-5-29" href="#__codelineno-5-29"></a>  shows the links that would be removed and the files and folders that
+<a id="__codelineno-5-30" name="__codelineno-5-30" href="#__codelineno-5-30"></a>  would be deleted.
+<a id="__codelineno-5-31" name="__codelineno-5-31" href="#__codelineno-5-31"></a>
+<a id="__codelineno-5-32" name="__codelineno-5-32" href="#__codelineno-5-32"></a>`-k/--key` takes one or more entries (keys, DOIs, arXiv identifiers or
+<a id="__codelineno-5-33" name="__codelineno-5-33" href="#__codelineno-5-33"></a>ISBNs), and can be repeated: `--key K1 K2` is `--key K1 --key K2`; `-`
+<a id="__codelineno-5-34" name="__codelineno-5-34" href="#__codelineno-5-34"></a>reads them from the standard input. As it takes several values, write the
+<a id="__codelineno-5-35" name="__codelineno-5-35" href="#__codelineno-5-35"></a>files before it: in `papers file rm --key K1 file.pdf`, `file.pdf` would be
+<a id="__codelineno-5-36" name="__codelineno-5-36" href="#__codelineno-5-36"></a>read as an entry, and papers stops with the error `file.pdf is not an
+<a id="__codelineno-5-37" name="__codelineno-5-37" href="#__codelineno-5-37"></a>entry: put the files before --key`.
+</code></pre></div>
+papers file detach files/volume.pdf                    # from all the chapters
+papers file detach files/volume.pdf --key smith2020    # from one chapter
+papers file detach --key smith2020                     # all its links
+papers file rm files/old-version.pdf
+papers file rm -r files/2013 --dry-run
+papers list --tag draft --detach-broken
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>## Reconnecting PDFs and a bibtex
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>When the links of a library are broken because the PDFs moved (another
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>library that shared the files directory moved them into a library, a folder
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>was renamed, a backup was restored elsewhere...), `papers file fix`
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>looks for each missing file, without parsing any PDF:
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>1. in the library itself, by checksum: when `.papers/files.json` has the
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>   checksum of the missing file (see `papers file checksum`), a file of the
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>   library with that content: a file of another entry (linked where it is,
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>   `same content as the file of KEY`), or a file of the files directory
+<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>   that no entry links to (renamed by hand, for example; it is placed under
+<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a>   the template name);
+<a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a>2. in the pool of the library, among the files of the pool entry of the
+<a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a>   same paper (same DOI, arXiv identifier, ISBN, or same title and
+<a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a>   authors): the file with the same file name as the broken link; else
+<a id="__codelineno-6-17" name="__codelineno-6-17" href="#__codelineno-6-17"></a>   the one file named `&lt;name&gt;--&lt;file name of the link&gt;` (the pool renamed
+<a id="__codelineno-6-18" name="__codelineno-6-18" href="#__codelineno-6-18"></a>   it as an attachment, see
+<a id="__codelineno-6-19" name="__codelineno-6-19" href="#__codelineno-6-19"></a>   [Renaming files and keys](renaming.md#entries-with-several-files));
+<a id="__codelineno-6-20" name="__codelineno-6-20" href="#__codelineno-6-20"></a>   then, if one broken link of the entry and one file of the pool entry
+<a id="__codelineno-6-21" name="__codelineno-6-21" href="#__codelineno-6-21"></a>   are left, that file. When more are left, nothing is guessed. Then by
+<a id="__codelineno-6-22" name="__codelineno-6-22" href="#__codelineno-6-22"></a>   checksum, among the files of the pool's `.papers/files.json`;
+<a id="__codelineno-6-23" name="__codelineno-6-23" href="#__codelineno-6-23"></a>3. in the libraries given with `--pool PATH` (the option can be repeated),
+<a id="__codelineno-6-24" name="__codelineno-6-24" href="#__codelineno-6-24"></a>   in the same way: the entry of PATH of the same paper, and its files.
+<a id="__codelineno-6-25" name="__codelineno-6-25" href="#__codelineno-6-25"></a>   PATH must be a library (otherwise: `create it first with papers init`).
+<a id="__codelineno-6-26" name="__codelineno-6-26" href="#__codelineno-6-26"></a>   Nothing changes in PATH, and no origin copy is recorded (see
+<a id="__codelineno-6-27" name="__codelineno-6-27" href="#__codelineno-6-27"></a>   [Origin copies](pools.md#origin-copies)): only the file links of the
+<a id="__codelineno-6-28" name="__codelineno-6-28" href="#__codelineno-6-28"></a>   library change;
+<a id="__codelineno-6-29" name="__codelineno-6-29" href="#__codelineno-6-29"></a>4. in the other libraries of the machine, by checksum: those that the
+<a id="__codelineno-6-30" name="__codelineno-6-30" href="#__codelineno-6-30"></a>   history knows (`papers history --all` lists them), except the library
+<a id="__codelineno-6-31" name="__codelineno-6-31" href="#__codelineno-6-31"></a>   and its pool. A file with the checksum that `.papers/files.json` has for
+<a id="__codelineno-6-32" name="__codelineno-6-32" href="#__codelineno-6-32"></a>   the missing file, among the files of their `.papers/files.json` as of
+<a id="__codelineno-6-33" name="__codelineno-6-33" href="#__codelineno-6-33"></a>   their last papers command (a change made there by hand is seen after
+<a id="__codelineno-6-34" name="__codelineno-6-34" href="#__codelineno-6-34"></a>   the next papers command in that library). A library that moved or was
+<a id="__codelineno-6-35" name="__codelineno-6-35" href="#__codelineno-6-35"></a>   deleted is skipped, and nothing is written in the other libraries
+<a id="__codelineno-6-36" name="__codelineno-6-36" href="#__codelineno-6-36"></a>   (`found in ~/other/library`);
+<a id="__codelineno-6-37" name="__codelineno-6-37" href="#__codelineno-6-37"></a>5. in the folders given with `--search DIR` (searched recursively; the
+<a id="__codelineno-6-38" name="__codelineno-6-38" href="#__codelineno-6-38"></a>   option can be repeated): a file with the same file name as the broken
+<a id="__codelineno-6-39" name="__codelineno-6-39" href="#__codelineno-6-39"></a>   link, else a file named as the library's name template names the entry
+<a id="__codelineno-6-40" name="__codelineno-6-40" href="#__codelineno-6-40"></a>   (with the extension of the link). When several files match, none is
+<a id="__codelineno-6-41" name="__codelineno-6-41" href="#__codelineno-6-41"></a>   taken, and papers says which;
+<a id="__codelineno-6-42" name="__codelineno-6-42" href="#__codelineno-6-42"></a>6. in the history (see [Undo and redo](undo-redo.md#deleted-files)): a file
+<a id="__codelineno-6-43" name="__codelineno-6-43" href="#__codelineno-6-43"></a>   that a papers command deleted from the place of the link (or whose
+<a id="__codelineno-6-44" name="__codelineno-6-44" href="#__codelineno-6-44"></a>   checksum `.papers/files.json` has, if the history keeps a file with that
+<a id="__codelineno-6-45" name="__codelineno-6-45" href="#__codelineno-6-45"></a>   content) is copied back there, and the link stays as it is
+<a id="__codelineno-6-46" name="__codelineno-6-46" href="#__codelineno-6-46"></a>   (`one2000: files/a.pdf: restored from the history (deleted by step
+<a id="__codelineno-6-47" name="__codelineno-6-47" href="#__codelineno-6-47"></a>   4f1c9a2e)`). `papers undo` removes it again. The step of `papers file
+<a id="__codelineno-6-48" name="__codelineno-6-48" href="#__codelineno-6-48"></a>   fix` keeps the file in the history too, so that undo and redo still
+<a id="__codelineno-6-49" name="__codelineno-6-49" href="#__codelineno-6-49"></a>   work once the step that deleted it is dropped.
+<a id="__codelineno-6-50" name="__codelineno-6-50" href="#__codelineno-6-50"></a>
+<a id="__codelineno-6-51" name="__codelineno-6-51" href="#__codelineno-6-51"></a>The file found in the pool, `--pool PATH`, another library or a `--search`
+<a id="__codelineno-6-52" name="__codelineno-6-52" href="#__codelineno-6-52"></a>folder replaces the broken link. It is never moved, whatever the
+<a id="__codelineno-6-53" name="__codelineno-6-53" href="#__codelineno-6-53"></a>`files` setting:
+<a id="__codelineno-6-54" name="__codelineno-6-54" href="#__codelineno-6-54"></a>
+<a id="__codelineno-6-55" name="__codelineno-6-55" href="#__codelineno-6-55"></a>- in a self-contained library, it is copied (a hard link when possible)
+<a id="__codelineno-6-56" name="__codelineno-6-56" href="#__codelineno-6-56"></a>  into the files directory, named as `papers file attach KEY FILE` names
+<a id="__codelineno-6-57" name="__codelineno-6-57" href="#__codelineno-6-57"></a>  it;
+<a id="__codelineno-6-58" name="__codelineno-6-58" href="#__codelineno-6-58"></a>- in a shallow library, a file of its pool is linked where it is; a file of
+<a id="__codelineno-6-59" name="__codelineno-6-59" href="#__codelineno-6-59"></a>  `--pool PATH`, of another library or of a `--search` folder is copied into the files
+<a id="__codelineno-6-60" name="__codelineno-6-60" href="#__codelineno-6-60"></a>  directory of the pool, and the pool entry links to it (as for the other
+<a id="__codelineno-6-61" name="__codelineno-6-61" href="#__codelineno-6-61"></a>  changes of file links, see
+<a id="__codelineno-6-62" name="__codelineno-6-62" href="#__codelineno-6-62"></a>  [Shallow libraries](shallow-libraries.md#files));
+<a id="__codelineno-6-63" name="__codelineno-6-63" href="#__codelineno-6-63"></a>- in `link` mode, or in a library without files directory, the file is
+<a id="__codelineno-6-64" name="__codelineno-6-64" href="#__codelineno-6-64"></a>  linked where it is.
+<a id="__codelineno-6-65" name="__codelineno-6-65" href="#__codelineno-6-65"></a>
+<a id="__codelineno-6-66" name="__codelineno-6-66" href="#__codelineno-6-66"></a>`papers file fix --move` moves the files found in the `--search` folders
+<a id="__codelineno-6-67" name="__codelineno-6-67" href="#__codelineno-6-67"></a>instead of copying them. A file in the files directory of another library
+<a id="__codelineno-6-68" name="__codelineno-6-68" href="#__codelineno-6-68"></a>is still copied (`... belongs to the library in ...: copied, not moved`),
+<a id="__codelineno-6-69" name="__codelineno-6-69" href="#__codelineno-6-69"></a>and so are the files of the pool, of `--pool PATH` and of the other
+<a id="__codelineno-6-70" name="__codelineno-6-70" href="#__codelineno-6-70"></a>libraries.
+<a id="__codelineno-6-71" name="__codelineno-6-71" href="#__codelineno-6-71"></a>
+<a id="__codelineno-6-72" name="__codelineno-6-72" href="#__codelineno-6-72"></a>`papers config pool PATH` links the library to the copies in PATH of the
+<a id="__codelineno-6-73" name="__codelineno-6-73" href="#__codelineno-6-73"></a>files that exist, and says how many links were already broken:
+<a id="__codelineno-6-74" name="__codelineno-6-74" href="#__codelineno-6-74"></a>`papers file fix` relinks them afterwards.
+<a id="__codelineno-6-75" name="__codelineno-6-75" href="#__codelineno-6-75"></a>
+<a id="__codelineno-6-76" name="__codelineno-6-76" href="#__codelineno-6-76"></a>`papers file check` takes `--pool PATH` and `--search DIR` too, reports the
+<a id="__codelineno-6-77" name="__codelineno-6-77" href="#__codelineno-6-77"></a>files that `papers file fix` would relink and where they come from, and
+<a id="__codelineno-6-78" name="__codelineno-6-78" href="#__codelineno-6-78"></a>ends with the `papers file fix` command to run, with the same `-C DIR`,
+<a id="__codelineno-6-79" name="__codelineno-6-79" href="#__codelineno-6-79"></a>`--bibtex FILE`, KEYs, `--pool` and `--search`. `papers file fix --dry-run`
+<a id="__codelineno-6-80" name="__codelineno-6-80" href="#__codelineno-6-80"></a>shows the links that it would change, and changes nothing. After
+<a id="__codelineno-6-81" name="__codelineno-6-81" href="#__codelineno-6-81"></a>`papers file fix`, the last line counts the issues left, if any.
+</code></pre></div>
+$ papers file check --pool ~/P --search ~/Downloads
+perrette2013scaling: broken link: ~/old/esd-4-11-2013.pdf -&gt; ~/P/files/perrette_2013_a-scaling-approach.pdf (from the library ~/P)
+perrette2011: broken link: ~/old/bg-8-515-2011.pdf -&gt; ~/Downloads/bg-8-515-2011.pdf (found in ~/Downloads)
+2 links can be relinked, 0 without a file found
+2 issue(s) in the files of 2 entries
+2 links can be repaired: <code>papers file fix --pool ~/P --search ~/Downloads</code>
+$ papers file fix --pool ~/P --search ~/Downloads
+perrette2013scaling: relinked to ~/thesis/files/perrette_2013_a-scaling-approach-to-project-regional-sea-level-rise.pdf (from the library ~/P)
+perrette2011: relinked to ~/thesis/files/perrette_2011_near-ubiquity-of-ice-edge-blooms-in-the-arctic.pdf (found in ~/Downloads)
+2 links relinked, 0 still broken
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>`papers file fix` works on any bibtex, without `papers init`: there is no
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>files directory, and the files found are linked where they are.
+</code></pre></div>
+$ papers file fix --bibtex refs.bib --search ~/Downloads
+perrette2011: relinked to ~/Downloads/bg-8-515-2011.pdf (found in ~/Downloads)
+1 link relinked, 0 still broken
+```</p>
+<p>For PDFs whose names say nothing about the paper, <code>papers add -R DIR</code> is
+the fallback: it parses each PDF, and a PDF with the DOI of a library
+entry is attached to that entry, without new entry and without duplicate
+dialogue (a PDF with the content of a file of the entry is not attached
+again; see
+<a href="../adding-entries/#entries-already-in-the-library">Adding entries</a>). The
+broken links stay next to the new ones: remove them with
+<code>papers file detach --broken</code>.</p>
+<h2 id="removing-entries-and-their-files">Removing entries and their files<a class="headerlink" href="#removing-entries-and-their-files" title="Permanent link">&para;</a></h2>
+<p><code>papers rm KEY...</code> (or <code>papers list ... --delete</code>) removes entries. Their
+files that no remaining entry links to may be deleted too:</p>
+<ul>
+<li>in a terminal, papers lists those that are inside the files directory and
+  asks once whether to delete them (default: no);</li>
+<li><code>--delete-files</code> deletes them without asking, and also those outside the
+  files directory; <code>--keep-files</code> keeps them without asking;</li>
+<li>without a terminal (e.g. the keys come from a pipe), the files are kept,
+  and papers lists them: <code>papers file clean</code> deletes them later;</li>
+<li>a file outside the files directory is deleted only with <code>--delete-files</code>.</li>
+</ul>
+<p>A file still linked from another entry is never deleted, nor a file in the
+files directory of the pool of the library, nor, in a shallow library, a
+file that an entry of the pool links to (see
+<a href="../shallow-libraries/#files">Shallow libraries</a>); <code>papers rm</code> does not
+change the pool. In a shallow library, <code>--delete-files</code> is an error and
+nothing is removed: the files are the pool's, and <code>papers file rm FILE</code>
+deletes them. A file that is a
+hard link (e.g. to the file of another library) can be deleted: this only
+removes this link, and papers says so.</p>
+<h2 id="deprecated-forms">Deprecated forms<a class="headerlink" href="#deprecated-forms" title="Permanent link">&para;</a></h2>
+<p><code>papers filecheck</code> still works in v3, with a warning, and runs the
+corresponding commands: <code>--rename</code> (<code>-c</code>) is <code>papers file rename</code>
+(<code>--keep-source</code>), <code>--delete-broken</code> is <code>papers file detach --broken</code>,
+<code>--hash-check</code> and <code>--fix-mendeley</code> are <code>papers file fix</code>,
+<code>--metadata-check</code> is <code>papers file check --metadata</code>, and <code>--clean-filesdir</code>
+(<code>--force</code>) is <code>papers file clean</code> (<code>--yes</code>). <code>papers list --copy</code>
+and <code>--add-files</code> are deprecated too (now <code>--rename --keep-source</code> and
+<code>--attach</code>, see <a href="../listing/#actions-on-the-listed-entries">Listing and searching</a>),
+and so is <code>papers add --attachment</code> (now <code>--attach</code>; <code>-a FILE</code> attaches the file
+until v4, with a warning: <code>-a</code> is <code>--author</code>, see <a href="../adding-entries/#attach-files">Adding entries</a>).</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.instant", "navigation.tracking", "navigation.sections", "navigation.top", "toc.follow", "toc.integrate", "navigation.expand", "search.suggest", "search.highlight", "content.code.copy", "content.action.edit"], "search": "../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"default": "stable", "provider": "mike"}}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.c21346df.min.js"></script>
+      
+    
+  </body>
+</html>

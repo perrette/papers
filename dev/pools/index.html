@@ -1,0 +1,1603 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Command-line tool to manage your bibliography (PDFs + BibTeX)">
+      
+      
+      
+        <link rel="canonical" href="https://perrette.github.io/papers/dev/pools/">
+      
+      
+        <link rel="prev" href="../configuration/">
+      
+      
+        <link rel="next" href="../shallow-libraries/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.0">
+    
+    
+      
+        <title>Pools - papers</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.57a0d79d.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.fb2fffe2.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#pools" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="papers" class="md-header__button md-logo" aria-label="papers" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            papers
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Pools
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/perrette/papers" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    perrette/papers
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="papers" class="md-nav__button md-logo" aria-label="papers" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    papers
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/perrette/papers" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    perrette/papers
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quickstart
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../upgrading/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Upgrading from papers 2
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guides
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Guides
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../adding-entries/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Adding entries
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../listing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Listing and searching
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../renaming/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Renaming files and keys
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../files/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Files
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pools
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pools
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#libraries-and-pools" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Libraries and pools
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#merging" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Merging
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Merging">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#removed-entries" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Removed entries
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#papers-pull" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        papers pull
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#papers-push" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        papers push
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#papers-sync" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        papers sync
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#keys-and-identity" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Keys and identity
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#origin-copies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Origin copies
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#exchanges-with-any-library" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Exchanges with any library
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#add-looks-in-the-pool-first" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        add looks in the pool first
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="add looks in the pool first">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#add-pool-path" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        add --pool PATH
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#a-pool-with-entries-papers-cannot-read" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A pool with entries papers cannot read
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#a-finished-paper" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A finished paper
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#undo-in-a-pool" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Undo in a pool
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../shallow-libraries/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Shallow libraries
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../export/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Export
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../global-library/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    A global shared library
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../library-management/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Managing your library
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../git/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Using git
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../undo-redo/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Undo and redo
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/perrette/papers/edit/v3/pools.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="pools">Pools<a class="headerlink" href="#pools" title="Permanent link">&para;</a></h1>
+<h2 id="libraries-and-pools">Libraries and pools<a class="headerlink" href="#libraries-and-pools" title="Permanent link">&para;</a></h2>
+<p>A <strong>library</strong> is a bibtex file, a files directory and a configuration file
+(<code>.papers/config.json</code>), as created by <code>papers init</code> (see
+<a href="../configuration/#libraries">Configuration</a>). Each project usually has its
+own library.</p>
+<p>A <strong>pool</strong> is a library that another library takes entries from or
+exchanges entries with. Nothing in a library marks it as a pool: any
+library without pool of its own can serve as one, and a pool can be used
+by several libraries.</p>
+<p>A library is in one of two states, given by its <code>pool</code> setting alone:</p>
+<ul>
+<li><strong>self-contained</strong>: no pool (<code>pool: none</code>, or no <code>pool</code> setting). The
+  library has its own entries and its own PDFs, in its files directory.
+  <code>papers init</code> creates such a library.</li>
+<li><strong>shallow</strong>: a pool, the path of another library. The library takes its
+  entries from the pool and links to the pool's PDFs. <code>papers init --pool
+  PATH</code> creates such a library. See <a href="../shallow-libraries/">Shallow libraries</a>.</li>
+</ul>
+<p>Any library, self-contained or shallow, can also exchange entries with
+another library given on the command line, <code>--pool PATH</code>, e.g. a folder
+shared with a coauthor (see
+<a href="#exchanges-with-any-library">Exchanges with any library</a>).</p>
+<p>What a library does with its pool, or with the library of <code>--pool PATH</code>:</p>
+<ul>
+<li><code>papers add</code> looks in the pool first (<code>papers add --pool PATH</code> looks in
+  PATH);</li>
+<li><code>papers pull</code> updates the entries shared with the pool, and adds the
+  entries of the pool named, or all of them with <code>--all</code>;</li>
+<li><code>papers push</code> updates the entries shared with the pool, and adds the
+  entries named, or all of them with <code>--all</code>;</li>
+<li><code>papers sync</code> does both;</li>
+<li><code>papers status</code> (shallow library) tells how the library stands with its
+  pool: <code>in sync</code>, <code>pool changed</code>, <code>library changed</code> or <code>both changed</code>, and
+  which command shows and exchanges the changes (see
+  <a href="../configuration/#pools">Configuration</a>);
+  <code>papers pull --check</code> lists the entries that the pool changed;</li>
+<li><code>papers file fix</code> relinks the broken links to the files of the pool entry
+  of the same paper (<code>papers file fix --pool PATH</code> also looks in PATH, which
+  may have a pool itself; nothing changes in PATH and no origin copy is
+  recorded, see
+  <a href="../files/#reconnecting-pdfs-and-a-bibtex">Reconnecting PDFs and a bibtex</a>).</li>
+</ul>
+<p>An entry is <strong>shared</strong> with a pool when the pool has the same paper: the
+pool entry of its origin copy (see <a href="#origin-copies">Origin copies</a>), else
+the same paper by the same-paper rule (see
+<a href="#keys-and-identity">Keys and identity</a>). Without KEY or <code>--all</code>, <code>pull</code>,
+<code>push</code> and <code>sync</code> exchange the shared entries only, with an origin copy or
+not.</p>
+<p>An exchange goes one level only: the pool has no pool, and a library given
+with <code>--pool PATH</code> must have none either (<code>PATH has a pool itself</code>).</p>
+<p>Nothing is pulled automatically. Nothing is pushed automatically, except
+in a shallow library: <code>add</code> adds the new entries to the pool, the file
+links of an entry are updated in the pool entry, and with the <code>auto-push</code>
+setting the changes of the shared entries are pushed too (see
+<a href="../shallow-libraries/#auto-push">Shallow libraries</a>). An older project does
+not change because of work in a newer one.</p>
+<p>The <a href="../quickstart/">Quickstart</a> shows a self-contained project and a
+shallow project that uses it. <a href="../global-library/">A global shared library</a>
+describes one library used as the pool of all projects.</p>
+<h2 id="merging">Merging<a class="headerlink" href="#merging" title="Permanent link">&para;</a></h2>
+<p><code>pull</code>, <code>push</code> and <code>sync</code> merge each entry field by field. The origin copy
+is papers' memory of the entry at the last exchange (see
+<a href="#origin-copies">Origin copies</a>). Comparing each side with it tells which
+side changed a field. A removed field counts as a change:</p>
+<table>
+<thead>
+<tr>
+<th>Field since the origin copy</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>changed or removed on the side that sends only (the pool for <code>pull</code>, the library for <code>push</code>)</td>
+<td>taken</td>
+</tr>
+<tr>
+<td>changed or removed on the side that receives only (e.g. a field adapted to a journal style)</td>
+<td>kept, without asking</td>
+</tr>
+<tr>
+<td>changed on both sides to different values, or removed on one side and changed on the other</td>
+<td>a conflict</td>
+</tr>
+<tr>
+<td>removed on both sides</td>
+<td>removed</td>
+</tr>
+</tbody>
+</table>
+<p>Values that differ only by case, braces or the form of the names (<code>J.
+Smith</code> and <code>John Smith</code>) are equivalent. A change to an equivalent value
+(e.g. <code>CO2</code> to <code>{CO2}</code>) is taken when the side that receives has the
+value of the origin copy exactly. Otherwise, and for an entry without
+origin copy, equivalent values are not a difference: the side that
+receives keeps its value (for names, the fuller form of the two).</p>
+<p>Conflicts are decided in the dialogue or with <code>--on-duplicate</code> (see
+<a href="#papers-pull"><code>papers pull</code></a> and <a href="#papers-push"><code>papers push</code></a>). <code>keep</code>
+keeps the values of the side that receives the changes, and <code>update</code> takes
+those of the side they come from: in <code>pull</code>, <code>keep</code> keeps the library's
+values; in <code>push</code>, it keeps the pool's. <code>papers sync</code> runs a pull, then a
+push, each with this rule. An entry
+without origin copy has no base: each field that differs is a conflict. The
+first exchange of such an entry (e.g. the first <code>sync</code> with a library given
+with <code>--pool PATH</code> that has papers of the library) asks about these
+conflicts once: afterwards the origin copy is recorded, and the next
+exchanges merge three-way.</p>
+<h3 id="removed-entries">Removed entries<a class="headerlink" href="#removed-entries" title="Permanent link">&para;</a></h3>
+<p>An entry is never removed by an exchange:</p>
+<ul>
+<li><code>papers rm KEY</code> removes the entry from the library only. <code>push</code> and
+  <code>sync</code> do not remove it from the pool. Its origin copies stay. An entry
+  that later gets KEY by a change of key (<code>papers edit --key</code>, a rename)
+  does not take them: its own origin copies replace them, and where it
+  has none they are dropped, so that it is not taken for the removed
+  paper.</li>
+<li>An entry removed from the pool stays in the libraries that have it. It
+  is no longer shared: <code>pull</code>, <code>push</code> and <code>sync</code> without KEY or <code>--all</code>
+  (and the auto-push of a shallow library) leave it out, and note it once:</li>
+</ul>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>smith2020: removed from pool ~/Documents/papers (`papers push smith2020` adds it back)
+</code></pre></div>
+<p>Its origin copy for the pool is dropped, so the note does not come again.
+  <code>push KEY</code> and <code>push --all</code> add it to the pool again; <code>pull KEY</code> reports
+  it as <code>Not found</code>; <code>pull --check</code> lists it with the note (and drops
+  nothing). Remove it from the library with <code>papers rm KEY</code>.</p>
+<h2 id="papers-pull"><code>papers pull</code><a class="headerlink" href="#papers-pull" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>papers pull [KEY...|-] [--all] [--pool PATH] [--on-duplicate MODE] [--check]
+</code></pre></div>
+<p>Without KEY, <code>pull</code> updates the entries shared with the pool (the pool
+has the same paper). For each of them (or each entry named, or every entry with
+<code>--all</code>), papers finds its entry in the pool (by its origin copy,
+else by the same-paper rule) and merges it into the library entry, field by
+field (see <a href="#merging">Merging</a>). The pool is the side that sends: a field
+changed or removed in the pool only is taken (<code>+</code> in the dialogue,
+<code>(removed)</code> for a removal), a field changed in the library only is kept,
+and a conflict is marked <code>!</code>.</p>
+<p>File links are merged: new files of the pool entry are linked in a
+shallow library (from its own pool), and otherwise copied into the files
+directory as the <code>files</code> setting says. The key of the library entry never
+changes. After the merge, the origin copy is the pool's current version.
+A skipped conflict leaves the pool shown as changed in <code>papers status</code>.</p>
+<p>An entry without origin copy (added before the pool was used, or with
+<code>--no-pool</code>) is matched to the pool by the same-paper rule. Its differences
+with the pool entry are conflicts (there is no origin to tell which side
+changed), a field that only the pool entry has is added, and the origin
+copy is recorded afterwards ("linked").</p>
+<p>An entry that the pool does not have is reported (<code>Not found</code>) only when it
+is named on the command line. Without KEY, it is left as it is (with a
+note if it was removed from the pool, see <a href="#removed-entries">Removed entries</a>).</p>
+<p>A KEY is looked up in the library first, then in the pool (its key, DOI,
+arXiv identifier or ISBN): an entry of the pool that the library does not
+have is added to it (<code>added</code>), with its origin copy, under the pool key
+(see <a href="#keys-and-identity">Keys and identity</a>); its files are linked in a
+shallow library, otherwise copied as the <code>files</code> setting says (a hard link
+when possible). An identifier found in neither is an error, and nothing is
+changed. <code>--all</code> adds every entry of the pool that the library does not
+have (same-paper rule). A pool that does not exist or is not a library is
+an error of <code>pull</code>, <code>pull --check</code> and <code>sync</code>, and nothing is changed
+(<code>papers init PATH</code> creates it).
+Without <code>--pool PATH</code>, a self-contained library has no pool to pull from:
+<code>this library has no pool: give one with --pool PATH</code>.</p>
+<p><code>pull</code> prints one line per entry added (<code>Added -&gt;</code>), modified
+(<code>Modified -&gt;</code>), left with a conflict (<code>Conflict -&gt;</code>) or, among the entries
+named, not found in the pool (<code>Not found -&gt;</code>), with the pool in brackets,
+then the counts when more than one entry changed or was not exchanged:
+<code>added</code>, <code>modified</code>, <code>skipped</code>, <code>not found</code>, and <code>linked</code> (an entry
+without origin copy, the same as its pool entry: its origin copy is
+recorded). The entries unchanged are not counted. When nothing changed,
+<code>pull</code> prints one line, <code>nothing to pull from pool ../sealevel</code>. <code>push</code>
+prints the same lines for the pool entries. When a
+command also adds or changes the entry in the pool (see
+<a href="../shallow-libraries/#auto-push">Auto-push</a>), or <code>add</code> takes it from the
+pool, its line says so in brackets: <code>[also added to pool
+~/Documents/papers]</code>, <code>[also modified in pool ~/Documents/papers]</code>, <code>[not
+pushed: changed in the pool too; papers sync decides]</code>, <code>[from pool
+~/Documents/papers]</code>.</p>
+<p>Conflicts are decided as for duplicates (see
+<a href="../adding-entries/#the-dialogue">The dialogue</a>), with <code>--on-duplicate</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Mode</th>
+<th>Conflicts</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ask</code> (default in a terminal)</td>
+<td>the dialogue: <code>1</code> keeps the library values, <code>2</code> takes the pool values, <code>f</code> goes field by field (also through the changes from the pool), <code>e</code> edits, <code>s</code> skips, <code>q</code> quits</td>
+</tr>
+<tr>
+<td><code>keep</code></td>
+<td>the library values are kept</td>
+</tr>
+<tr>
+<td><code>update</code></td>
+<td>the pool values are taken</td>
+</tr>
+<tr>
+<td><code>skip</code></td>
+<td>the entry is not changed, and its origin copy is not updated: it comes again next time</td>
+</tr>
+<tr>
+<td><code>error</code> (default without a terminal)</td>
+<td>stop before saving anything</td>
+</tr>
+</tbody>
+</table>
+<p>Fields changed in the pool only need no decision: they are taken in every
+mode.</p>
+<p><code>papers pull --check</code> only reports: whether the pool changed since the last
+pull (a modification time check), and the entries whose pool version
+changed since their origin copy, with the fields (without KEY, the entries
+shared with the pool). <code>papers status</code> shows the first part too, for the
+pool of a shallow library.</p>
+<h2 id="papers-push"><code>papers push</code><a class="headerlink" href="#papers-push" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>papers push [KEY...|-] [--all] [--pool PATH] [--on-duplicate MODE]
+</code></pre></div>
+<p>The reverse of <code>pull</code>, into the pool of the library or the library of
+<code>--pool PATH</code>. Without KEY, only the entries shared with the pool (the
+pool has the same paper) are pushed; an entry removed from the pool is not
+added back (see <a href="#removed-entries">Removed entries</a>). <code>push KEY...</code> pushes
+the entries named,
+and <code>push --all</code> every entry of the library:</p>
+<ul>
+<li>an entry that is not in the pool is added to it, with a key from the
+  pool's key template; its files are copied into the pool's files directory
+  (a hard link when possible), named with the pool's name template;</li>
+<li>an entry that is in the pool is merged three-way into the pool entry:
+  fields changed or removed in the library only are taken, fields changed
+  or removed in the pool only are kept, conflicts are decided with
+  <code>--on-duplicate</code> (<code>keep</code>: the pool values, <code>update</code>: the library values).
+  The pool key does not change.</li>
+</ul>
+<p>Push does not change the library: after it, the origin copy is the library
+version that was pushed, and the fields that only the pool entry has come
+with the next <code>pull</code> (or <code>papers sync</code>). A pool that does not exist or is
+not a library is an error of <code>push</code>, and nothing is changed: the message
+suggests <code>papers init PATH</code> (and, when the parent folder of PATH is missing
+too, that a disk may not be mounted).</p>
+<h2 id="papers-sync"><code>papers sync</code><a class="headerlink" href="#papers-sync" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>papers sync [KEY...|-] [--all] [--pool PATH] [--on-duplicate MODE]
+</code></pre></div>
+<p>runs <code>papers pull</code>, then <code>papers push</code> of the same entries:</p>
+<ul>
+<li>without KEY, the entries shared with the pool (the pool has the same
+  paper). An entry that the pool does not have is not exchanged: name it,
+  or use <code>--all</code>;</li>
+<li>with KEY..., the entries named. A KEY that only the pool has is added to
+  the library, as with <code>pull</code>, and a KEY that only the library has is
+  added to the pool, as with <code>push</code>;</li>
+<li>with <code>--all</code>, <code>pull --all</code> then <code>push --all</code>: each side gets the entries
+  it does not have.</li>
+</ul>
+<p>If the pull leaves conflicts undecided (skipped, or the dialogue quit),
+nothing is pushed: decide them with <code>papers pull</code>, then sync again. When
+nothing changed, <code>sync</code> prints one line:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>$ papers sync
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>nothing to sync with pool ../sealevel
+</code></pre></div>
+<h2 id="keys-and-identity">Keys and identity<a class="headerlink" href="#keys-and-identity" title="Permanent link">&para;</a></h2>
+<p>The key of an entry belongs to each library: it is what LaTeX documents
+cite. <code>pull</code> and <code>push</code> never change the key of an entry that the library
+they write to has. An entry new to the pool gets a key from the pool's key
+template; an entry of the pool new to the library keeps the pool key, with
+a letter suffix if the library has that key already (<code>Smith_2020b</code>).</p>
+<p>Three fields are not merged by <code>pull</code> and <code>push</code>: each side keeps its own.</p>
+<ul>
+<li>the key, as above;</li>
+<li><code>ids</code>, the former keys of the entry in that library: they mean nothing
+  in the other library;</li>
+<li><code>file</code>, the links of each library to its own copies of the files. A file
+  that the other side has and this side does not is linked or copied (see
+  <a href="#papers-pull"><code>papers pull</code></a> and <a href="#papers-push"><code>papers push</code></a>).</li>
+</ul>
+<p>A library entry and a pool entry are matched by the same rule as duplicates
+(see <a href="../adding-entries/#same-paper">Same paper</a>): same DOI, arXiv
+identifier, ISBN (two books), or else the same authors and title. The pairs
+recorded as "not the same paper" (<code>.papers/distinct.json</code>) are merged both
+ways on <code>pull</code> and <code>push</code>.</p>
+<p>An entry with an origin copy is first looked up under the pool key of its
+origin copy: that pool entry is taken if it is the same paper as the origin
+copy or as the entry. Otherwise, e.g. when the pool key now names another
+paper, the pool entry is found by the rule above (from the origin copy,
+then from the entry), and last under the pool key, if its DOI, arXiv
+identifier and ISBN do not differ from those of the origin copy and it has
+the same authors (family names) and year (both titles changed). When the pool has the same paper twice, the entry of the
+origin copy is the one exchanged.</p>
+<h2 id="origin-copies">Origin copies<a class="headerlink" href="#origin-copies" title="Permanent link">&para;</a></h2>
+<p><code>.papers/origin/</code> of the library holds one file per
+pool: the pool of the library, and each library exchanged with through
+<code>--pool PATH</code>. The pool is named by its library identifier (the <code>id</code> of
+its <code>.papers/config.json</code>), which does not change when the library or the
+pool moves: after a move, <code>papers config pool NEWPATH</code> finds its origin
+copies again. A file is named after the folder of the pool and the start of
+a hash of its identifier, e.g. <code>shared-with-bob-d15650.bib</code>. The first lines
+of the file name the pool, give the modification time of its bibtex at the
+last exchange, and where the pool was then. In a library whose pool is
+<code>../shared-with-bob</code>, after <code>papers pull agnew_farrell1978</code> and
+<code>papers pull</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>@comment{papers-pool 9b916361b46f4304980306f3dcdce793}
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>@comment{papers-pulled 1792681264781917448}
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>@comment{papers-pool-path ~/papers/shared-with-bob}
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>@article{agnew_farrell1978,
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a> author = {Agnew, D. C. and Farrell, W. E.},
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a> papers-pool-key = {agnew_farrell1978},
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a> papers-time = {2026-10-22T17:01:45+02:00},
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a> title = {Self-consistent equilibrium ocean tides},
+<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a> year = {1978}
+<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a>}
+</code></pre></div>
+<p>The file records, for each entry exchanged with the pool (by <code>add</code>, <code>pull</code>
+or <code>push</code>), its origin copy, under the library's key, with the key in the
+pool (<code>papers-pool-key</code>) and the time (<code>papers-time</code>). In a shallow
+library, the origin copy for its pool also keeps its <code>file</code> field, the
+file links of the pool entry after the exchange, so that a pull can tell a
+link that the pool entry removed from one it never had (the origin copies
+for other libraries have no <code>file</code> field). For a pool entry without file
+links, the field is there and empty (<code>file = {}</code>): the pool entry had no
+links, while an origin copy without the field (e.g. recorded before the
+library was shallow) says nothing about them. In the library bibtex, an
+entry whose last link a pull removed has no <code>file</code> field. The file links are not part of
+the three-way merge. The modification time is recorded at a pull of all
+entries that skipped no conflict, or a push or an add when the pool had
+not changed since the previous exchange (or when it is the first
+exchange). A push that leaves the pool entry with fields or files that the
+library entry does not have does not count: <code>papers status</code> then shows the
+pool as changed until the next pull. The files are part of the history of
+the library (see <a href="../undo-redo/">Undo and redo</a>), which <code>papers undo</code>
+restores with its bibtex.</p>
+<p>papers reads every <code>.bib</code> file of <code>.papers/origin/</code>. Two files that name
+the same pool (e.g. a copy) are merged, and the next time papers writes
+the origin copies of that pool, it writes them to the file of its own name
+and removes the other.</p>
+<p>The files of all pools are kept: after <code>papers config pool PATH</code>, the
+library uses the file of PATH (with the origin copies of the exchanges
+with <code>--pool PATH</code>, if any), and setting the pool back to an earlier one
+finds its origin copies again.</p>
+<p>Earlier v3 beta versions kept all the origin copies in one file,
+<code>.papers/origin.bib</code>: papers splits it into these files the first time it
+reads it, and removes it. Versions up to 3.0.0b5 named the pool by its path
+(<code>@comment{papers-pool ../shared-with-bob}</code>): at the next exchange with the
+pool, papers moves its origin copies to the pool's identifier: those of
+every path that names the pool (e.g. <code>../shared-with-bob</code> and
+<code>~/papers/shared-with-bob</code>) at once, an origin copy already under the
+identifier being kept. A pool that has no identifier yet (a library of an
+earlier version that never recorded a step) keeps its path until it has
+one.</p>
+<p>The origin copy is the third version of a three-way merge. It is the
+version of the side that sent the entry, as it was sent: the pool entry
+after <code>add</code> and <code>pull</code>, the library entry after <code>push</code>, without the
+former keys (<code>ids</code>), which each side keeps for itself. What the receiving
+side has beyond it is a change of that side, for the next exchange the
+other way: a field that only the pool entry has comes with the next
+<code>pull</code>; a field that only the library entry has goes to the pool with the
+next <code>push</code>.</p>
+<p><code>papers add other.bib</code> copies the entries of <code>other.bib</code> once, and keeps no
+memory of where they came from. The entries taken with <code>papers pull</code> stay
+linked to the pool through their origin copy: later pulls bring the
+corrections made in the pool.</p>
+<h2 id="exchanges-with-any-library">Exchanges with any library<a class="headerlink" href="#exchanges-with-any-library" title="Permanent link">&para;</a></h2>
+<p><code>--pool PATH</code> on <code>pull</code>, <code>push</code> and <code>sync</code> exchanges with the library at
+<code>PATH</code>, from any library: self-contained or shallow. PATH must be a
+library without pool: no command creates it, <code>papers init PATH</code> does. The
+exchange works as with the pool of a library:</p>
+<ul>
+<li>the origin copies are recorded for PATH, in its own file of
+  <code>.papers/origin/</code>: the next exchange with PATH is a three-way merge, and
+  a field changed on one side only needs no decision;</li>
+<li>without KEY or <code>--all</code>, the exchange handles the entries shared with
+  PATH (PATH has the same paper);</li>
+<li><code>papers sync --pool PATH KEY...</code> takes the entries named from PATH that
+  the library does not have, sends to PATH those that it does not have,
+  and merges the others both ways;</li>
+<li><code>papers pull --pool PATH --all</code> takes every entry of PATH, and
+  <code>papers push --pool PATH --all</code> sends every entry of the library.</li>
+</ul>
+<p>An entry that has no origin copy for PATH yet (the first exchange) has no
+base: each field that differs is a conflict, decided in the dialogue or
+with <code>--on-duplicate</code>.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>$ papers sync --pool ../shared-with-bob
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>nothing to sync with pool ../shared-with-bob: no entries shared with it (`papers sync --pool ../shared-with-bob --all` adds the entries missing on each side)
+</code></pre></div>
+<p>The files are copied, as the <code>files</code> setting says (a file of PATH is
+never moved): the entries taken from PATH get copies of its files (a hard
+link when possible) and the entries sent to PATH get copies of theirs in
+its files directory. The file links of a shallow library are those of the
+pool entries for its own pool only. A shallow library that takes entries
+from PATH places their files in the files directory of its pool, and adds
+the entries new to the library to its pool, as <code>add</code> does (<code>also added to
+pool ...</code>); the changes of the fields go to the pool with <code>papers push</code>,
+or with auto-push. See
+<a href="../shallow-libraries/#use-case-topic-libraries">Topic libraries</a> for an
+example.</p>
+<p><code>papers config pool PATH</code> makes PATH the pool of the library (see
+<a href="../shallow-libraries/#changing-the-pool">Changing the pool</a>); the origin
+copies recorded for PATH stay valid, however PATH is written.</p>
+<p>A folder shared with a coauthor, exchanged with from time to time:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>cd ~/projects/sealevel
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>papers export ../shared-with-bob mine2022 smith2020   # a self-contained library for Bob
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>papers sync --pool ../shared-with-bob                  # the changes of the shared entries, both ways
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>papers sync --pool ../shared-with-bob --all            # also the entries missing on each side
+</code></pre></div>
+<p><code>papers export</code> is described in <a href="../export/">Export</a>.</p>
+<h2 id="add-looks-in-the-pool-first"><code>add</code> looks in the pool first<a class="headerlink" href="#add-looks-in-the-pool-first" title="Permanent link">&para;</a></h2>
+<p>When the paper added is already in the pool, <code>papers add</code> takes the pool's
+entry, without querying crossref:</p>
+<ul>
+<li>a PDF with the same content as a file of a pool entry, or whose DOI (from
+  the PDF metadata, or a DOI of its text whose title in the pool appears in
+  the text) is in the pool;</li>
+<li>a DOI (<code>papers add --doi DOI</code>) that a pool entry has;</li>
+<li>a key (<code>papers add --key KEY</code>, with no file, DOI or other field) that a
+  pool entry has, ignoring case: the entry keeps the pool key. Without such
+  an entry (and without a library entry of that key), <code>add</code> stops with an
+  error;</li>
+<li>an entry of an added bibtex that is the same paper as a pool entry: the
+  pool's fields are taken, the entry keeps its key, and its fields that the
+  pool entry does not have are kept.</li>
+</ul>
+<p>The entry gets the pool's files: in a shallow library, the entry links to
+the pool's file; otherwise, in <code>copy</code> and <code>move</code> mode they are copied into
+the library's files directory (a hard link when possible), named with the
+library's name template, and in <code>link</code> mode the entry links to the pool's
+file. A pool file is never moved. A PDF given that has the same content as
+a file of the pool entry is removed in <code>move</code> mode, since it is stored
+already, and kept in <code>copy</code> and <code>link</code> mode; a PDF with other content is
+attached to the entry as another file, placed as the files mode says. The
+origin copy is recorded. <code>--no-pool</code> skips the lookup.</p>
+<h3 id="add-pool-path"><code>add --pool PATH</code><a class="headerlink" href="#add-pool-path" title="Permanent link">&para;</a></h3>
+<p><code>papers add --pool PATH</code> looks in the library PATH instead (PATH must be a
+library without pool), in the same way: a paper that PATH has is taken from
+it with its files, copied as the files mode says (in a shallow library,
+into the files directory of its pool, and the entry goes to its pool too,
+as any new entry), and the origin copy is recorded for PATH, so that
+<code>papers pull --pool PATH</code> brings the later corrections. Nothing new is sent
+to PATH. This is not <code>papers -C PATH add</code>, which adds to the library PATH.</p>
+<h2 id="a-pool-with-entries-papers-cannot-read">A pool with entries papers cannot read<a class="headerlink" href="#a-pool-with-entries-papers-cannot-read" title="Permanent link">&para;</a></h2>
+<p>An entry that the bibtex parser cannot read, such as one with a field
+given twice or a missing brace, is kept in the file as it is, but papers
+does not see it. As in BibTeX, field names and keys ignore case: <code>Title</code>
+and <code>title</code> in one entry are a field given twice, and an entry <code>smith2000</code>
+after an entry <code>Smith2000</code> is a key given twice (the first one is read). Every command that loads that bibtex warns about it, with
+its line. Papers does not write to a pool that has such an entry: it would
+not find that paper there, and would add it again. <code>push</code>, <code>sync</code> and the
+commands that add to the pool stop with an error, and nothing is changed,
+until the entry is fixed in the pool's bibtex. Reading from the pool
+(<code>pull</code>, <code>add</code> looking in the pool) still works.</p>
+<h2 id="a-finished-paper">A finished paper<a class="headerlink" href="#a-finished-paper" title="Permanent link">&para;</a></h2>
+<p>Do not sync the library of a finished paper. Its keys stay as they are,
+but a <code>pull</code> can change journal abbreviations and other fields that the
+paper was written with. Leave <code>auto-push</code> off there, and do not pull.</p>
+<h2 id="undo-in-a-pool">Undo in a pool<a class="headerlink" href="#undo-in-a-pool" title="Permanent link">&para;</a></h2>
+<p>A pool is a library with its own history (see
+<a href="../undo-redo/">Undo and redo</a>). <code>papers undo</code> in a
+library also undoes what the command wrote to the pool (an entry that
+<code>add</code> also added to the pool, a push); if the pool changed since, it
+reverts the pool's step there (a new step of the pool);
+<code>papers undo --library-only</code> undoes the library only. To undo a change
+made in the pool, run the command in the pool, e.g.
+<code>papers -C ../sealevel undo</code>. The origin copies
+of the library are restored with its bibtex: see
+<a href="../undo-redo/#undo-in-a-library-that-has-a-pool">Undo in a library that has a pool</a>.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.instant", "navigation.tracking", "navigation.sections", "navigation.top", "toc.follow", "toc.integrate", "navigation.expand", "search.suggest", "search.highlight", "content.code.copy", "content.action.edit"], "search": "../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"default": "stable", "provider": "mike"}}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.c21346df.min.js"></script>
+      
+    
+  </body>
+</html>
