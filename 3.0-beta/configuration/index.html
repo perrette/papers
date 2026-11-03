@@ -1038,8 +1038,8 @@ files directory is <code>files</code> (or an existing <code>pdfs</code>, <code>p
 <code>bibliography</code> folder). The options of <code>papers init</code> are <code>--bibtex</code>,
 <code>--filesdir</code>, <code>--pool PATH</code> and <code>--shallow</code> (see <a href="#pools">Pools</a>),
 <code>--global</code> (see <a href="#global-configuration">Global configuration</a>),
-<code>--paths relative|absolute</code>, <code>--editor</code>
-and the name and key format options (see
+<code>--paths relative|absolute</code>, <code>--editor</code> (written in the global
+configuration, see below) and the name and key format options (see
 <a href="../renaming/">Renaming files and keys</a>).
 With <code>DIR</code>, the paths given to <code>--bibtex</code>, <code>--filesdir</code> and <code>--pool</code> are
 relative to the current directory, as <code>DIR</code> is (<code>papers init lib --bibtex
@@ -1126,7 +1126,7 @@ papers writes the file.</p>
 </tr>
 <tr>
 <td><code>editor</code></td>
-<td>command that opens a text editor, e.g. <code>vim</code> or <code>subl -w</code> (it wins over <code>$VISUAL</code> and <code>$EDITOR</code>, which are used without it)</td>
+<td>global only: command that opens a text editor, e.g. <code>vim</code> or <code>subl -w</code> (it wins over <code>$VISUAL</code> and <code>$EDITOR</code>, which are used without it). A library cannot set it: a library received from someone does not choose a command that papers runs</td>
 </tr>
 <tr>
 <td><code>history-size</code></td>

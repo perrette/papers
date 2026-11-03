@@ -1044,6 +1044,11 @@ by other tools.</p>
   the global library, and renames it to <code>papersconfig.json.v2.bak</code>.
   Until then, papers 3 keeps using it outside of libraries, with a
   warning on every command;</li>
+<li>the <code>editor</code> setting is read from the global configuration only
+  (<code>papers config --global editor vim</code>): a library received from
+  someone does not choose a command that papers runs. <code>papers
+  migrate</code> moves it from the global configuration of papers 2; in a
+  library configuration it is ignored, with a warning;</li>
 <li>papers 2 does not read the new configuration files. To go back to
   papers 2, restore <code>.papersconfig.json</code> (e.g. from the project
   repository) or <code>papersconfig.json.v2.bak</code>.</li>
@@ -1203,7 +1208,7 @@ directory, and it works as in papers 2.</p>
 the configuration (e.g. <code>papers config</code>, or the first command that changes
 the library, which adds the <code>id</code> of its history), and prints a line that
 says so:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>$ papers config editor vim
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>$ papers config auto-push true
 <a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>moved ~/projects/sealevel/.papersconfig.json to ~/projects/sealevel/.papers/config.json
 </code></pre></div>
 <p><code>papers migrate</code>, run in the library, moves it too (<code>--dry-run</code> shows
