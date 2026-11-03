@@ -1237,6 +1237,29 @@ class TestExitCodes(SpecLibrary):
         self.lib('file rename --move')  # exit 0
         self.assertEqual(self.libfiles(), ['one2000-x.pdf'])
 
+    def test_folder_that_is_a_link_to_outside(self):
+        """library.md Path safety 2: a folder of the files directory that is a
+        symbolic link to another place is outside (e.g. in a library received
+        from someone); a files directory that is itself a link is fine"""
+        self.bib(entry('one2000'))
+        os.makedirs(self.path('lib', 'files'), exist_ok=True)
+        outside = self.path('outside')
+        os.makedirs(outside)
+        os.symlink(outside, self.path('lib', 'files', '2000'))
+        self.lib(f'file attach one2000 {self.write("a.pdf")} --move')
+        before = self.files('one2000')
+        with self.assertRaises(PapersExit):
+            self.lib("file rename --move --name-template '{year}/{key}'")
+        self.assertEqual(os.listdir(outside), [])
+        self.assertEqual(self.files('one2000'), before)
+        # the files directory itself a link: inside
+        real = self.path('realfiles')
+        os.rename(self.path('lib', 'files'), real)
+        os.remove(os.path.join(real, '2000'))
+        os.symlink(real, self.path('lib', 'files'))
+        self.lib("file rename --move --name-template '{year}/{key}'")
+        self.assertEqual(os.listdir(os.path.join(real, '2000')), ['one2000.pdf'])
+
     def test_refused_attach(self):
         "formats.md 7.3, library.md Path safety 2: a refused file attach exits 1, the link is kept"
         self.bib(entry('one2000'))

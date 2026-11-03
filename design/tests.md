@@ -495,6 +495,7 @@ that check the same thing.
 - tests/test_path_traversal.py::TestRename::test_template_outside_is_refused
 - tests/test_spec_formats.py::TestExitCodes::test_refused_rename
 - tests/test_spec_formats.py::TestExitCodes::test_refused_attach
+- tests/test_spec_formats.py::TestExitCodes::test_folder_that_is_a_link_to_outside
 - tests/test_path_traversal.py::TestRename::test_subfolders_still_work
 - tests/test_path_traversal.py::TestAddBibtex::test_add
 

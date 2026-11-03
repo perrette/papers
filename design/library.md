@@ -1098,7 +1098,11 @@ intended folder.
    two is not the files directory), papers refuses: an error names the
    entry, and its files stay where they are with their links unchanged.
    This covers templates such as `../{author}`, `/tmp/{author}`,
-   `{author}/../../x` and `.`.
+   `{author}/../../x` and `.`. The same holds with the symbolic links
+   resolved: the folder of the target, its symbolic links followed, must
+   be inside the files directory, its symbolic links followed (a folder
+   `files/2020` that is a link to another place is outside; a files
+   directory that is itself a link is fine).
    `papers file rename` (and `papers list --rename`) places the files of
    the other entries, then exits with code 1; so does it when the name
    template has an unknown or invalid placeholder. `papers file attach`

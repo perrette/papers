@@ -78,7 +78,8 @@ method). Its placeholders are:
   `{doi_or_id}` (the same, or the key if the entry has no doi, or an empty one)
 
 Another placeholder is an error that lists these. A name that would place
-the file outside the files directory (`../{author}`) is refused: the files
+the file outside the files directory (`../{author}`, or a subfolder that
+is a symbolic link to another place) is refused: the files
 of that entry stay where they are, and `papers file rename` exits with
 status 1 once it has renamed the files of the other entries. `papers file
 attach` keeps the new link to the file where it is, and exits with status 1.
