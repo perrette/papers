@@ -964,7 +964,11 @@ the summary, the cache format, the user agent, the wait
 between requests to a site (papers: one second), and the question that
 `--missing` asks before more than 50 entries with a DOI query OpenAlex
 without `OPENALEX_API_KEY` (`-y/--yes` does not ask; without a terminal,
-an error).
+an error). Whatever the wording, a URL in a message is followed by a space
+or the end of the line, never by punctuation (`:` `,` `;` `.` `)`), which a
+terminal would take as part of the link: the reason comes before the URL or
+in parentheses after a space (`URL (HTTP 403)`), and several URLs are
+separated by spaces.
 
 ## Name and key templates
 
