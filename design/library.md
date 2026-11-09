@@ -675,13 +675,19 @@ Rules on the pool (contract for the conditions; the checks are behaviour):
   the entry and says to run `papers push KEY`, then `papers file rename
   KEY` (wording free). With `auto-push true` the entry is pushed by the
   same command and its files are renamed. An entry that the pool does not
-  have is renamed (it is pushed, `exchange.md` section 12.1).
+  have is renamed (it is pushed, `exchange.md` section 12.1). A file that
+  a pool entry of another paper links to is not moved: the entry gets a
+  copy (a hard link when possible) under its name, and the pool entry,
+  with the libraries that link to it, keeps the file (The files setting).
 - A file given to `add` or `file attach`, or found by `file fix`, that is
   already in the pool's files directory: renamed there with the pool's
   name template when no pool entry links to it; linked where it is when a
-  pool entry links to it, with a warning that names that entry and the
-  command that renames it in the pool (`papers -C POOL file rename
-  POOLKEY`; wording free), if its name is not the one the template gives.
+  pool entry links to it, if its name is not the one the template gives
+  the library entry, with a warning that names that entry and the command
+  that renames it in the pool (`papers -C POOL file rename POOLKEY`), or,
+  when the file already has the name that the pool's template gives that
+  pool entry (the command would change nothing), a warning that says so,
+  without command (wordings free).
 - `papers rm KEY` keeps the files of the library's own files directory
   (left from when it was self-contained) that only the removed entries
   linked to; since `papers file clean` is refused in a shallow library,
@@ -737,6 +743,14 @@ warning). The rules, in order (the first that applies decides):
    directory upwards, other than the current library, whose files
    directory contains the file.
 
+Whatever the rule, a `move` of a file that another entry links to becomes
+a copy (a hard link when possible), so that the other entry keeps its
+link: an entry of the library, or, in a shallow library, a pool entry of
+another paper (the pool entry of the same paper follows the links of the
+library entry). The links are those of the command's current state: when
+`file rename` renames the files of several entries that link to one file,
+the last of them moves the file.
+
 The mode set, the rules are behaviour that another implementation should
 follow so that files are not lost; the exact prompts are free.
 
@@ -777,7 +791,9 @@ Contract:
   - if it is the file itself (same real path), or a file with the same
     content (same sha256), that path is used: the source is removed (move)
     or nothing is done (copy), and the entry links to that path. Two
-    entries can so link to one file;
+    entries can so link to one file; a later rename of the files of one
+    of them copies the file to its new name (a hard link when possible)
+    and the other entry keeps its link (see The files setting);
   - otherwise `-2` is inserted before the extension (as above), then
     `-3`, and so on, until a path is free or holds the file itself or
     the same content:
@@ -839,6 +855,7 @@ pool or another library (a `move` is a copy); the `--search` folders are
 the exception with `--move`.
 
 **Free**: the messages (papers: `(same content, in the library)`, `(same
+content, in the files directory of pool POOL)` in a shallow library, `(same
 content as the file of KEY)`, `(from the pool, same content)`, `(found in
 ~/path/of/the/library)`).
 

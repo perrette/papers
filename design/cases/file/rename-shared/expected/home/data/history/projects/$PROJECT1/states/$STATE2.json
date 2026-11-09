@@ -1,0 +1,26 @@
+{
+ "parent": "$STATE1",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers file rename doe2019",
+ "ops": [
+  {
+   "op": "copied",
+   "src": "files/shared.txt",
+   "dst": "files/doe_2019_a-preprint.txt",
+   "checksum": "7fd2c5763f98b5a9f927f333bdfd8e6e0f0128d409a8183b88f31088ba21957d"
+  }
+ ],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "f9cf4310c586c75965b124bf0c8fa86ccac515ab8e72c3d9b25e7b2c22b988b2"
+  ],
+  "sha": "f9cf4310c586c75965b124bf0c8fa86ccac515ab8e72c3d9b25e7b2c22b988b2"
+ },
+ "files": {
+  ".papers/files.json": [
+   "35a41c5ffb2edc4a0fd3f843dcbdb9d4b6b4fe6250c2313c0fa6469714e84c87"
+  ]
+ }
+}

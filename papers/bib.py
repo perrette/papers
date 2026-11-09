@@ -920,7 +920,10 @@ class Biblio:
             the file where it is), see papers.files.FilesPolicy; its method
             not_renamed, if it has one, is called with the entry and each
             file linked where it is under another name than its template
-            name.
+            name; with a method linked_by_others (self, e, file), a file to
+            move that another entry links to is copied instead, and the
+            method relinked (e, real paths of the old files, new files) is
+            told the new links.
 
         See `papers.filename.Format` class and REAMDE.md for infos.
         """
@@ -948,9 +951,15 @@ class Biblio:
 
         if callable(copy):
             actions = [copy(file) for file in files]
+            # a file that another entry links to stays for it: copied (a hard link when possible)
+            linked_by_others = getattr(copy, 'linked_by_others', None)
+            if linked_by_others:
+                actions = ['copy' if action == 'move' and linked_by_others(self, e, file) else action
+                           for file, action in zip(files, actions)]
         else:
             actions = ['copy' if copy else 'move' for file in files]
 
+        old_reals = [realpath(f) for f in files]
         count = 0
         newfiles = []
         not_renamed = getattr(copy, 'not_renamed', None)
@@ -969,6 +978,8 @@ class Biblio:
                     count += 1
             newfiles.append(newfile)
         self.set_files(e, newfiles, relative_to=relative_to)
+        if hasattr(copy, 'relinked'):
+            copy.relinked(e, old_reals, newfiles)
 
         for direc in {os.path.dirname(file) for file, action in zip(files, actions) if action == 'move'}:
             remove_entry_dir_if_empty(direc)

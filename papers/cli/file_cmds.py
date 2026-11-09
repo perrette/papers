@@ -126,7 +126,8 @@ def place_entries_files(exchange, entries, keep_source=False, mode=None):
     config, biblio, pools = exchange.config, exchange.biblio, exchange.pools
     held = named_otherwise_in_pool(exchange, entries)
     keep = [f for _, files, _ in held for f in files]
-    failed = rename_files(biblio, entries, config, pools.files_dirs(), keep_source=keep_source, mode=mode, keep=keep)
+    failed = rename_files(biblio, entries, config, pools.files_dirs(), keep_source=keep_source, mode=mode, keep=keep,
+                          pool=pools.pool(quiet=True) if config.shallow else None)
     for e, files, pool_name in held:
         logger.warning(f"{e.key}: {len(files)} file(s) not renamed: they are in {pools.target().label}, whose entry "
                        f"differs and names them {pool_name}; `papers push {e.key}` first, "

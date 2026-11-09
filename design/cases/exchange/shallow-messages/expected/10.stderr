@@ -1,2 +1,2 @@
 papers: warning: name.title-sep: not used, because the library is shallow: its files are named with the settings of pool ../pool (`papers -C ../pool config name.title-sep VALUE` sets them there)
-papers: warning: $WORK/pool/files/jones_2019_ice-sheets.txt: not renamed, because the entry jones2019 of pool ../pool links to it (`papers -C ../pool file rename jones2019`)
+papers: warning: $WORK/pool/files/jones_2019_ice-sheets.txt: not renamed: it keeps the name that the entry jones2019 of pool ../pool gives it

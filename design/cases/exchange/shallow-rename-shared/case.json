@@ -1,0 +1,39 @@
+{
+  "description": "in a shallow library, file rename does not move a file that a pool entry of another paper links to: the renamed entry gets a copy (a hard link when possible) under its name, and the pool entry keeps its file and link; file attach of a pool file that already has the name the pool gives it warns without the command that would rename it",
+  "sections": [
+    "library.md#pools-and-shallow-libraries/files-of-a-shallow-library",
+    "library.md#the-files-directory/the-files-setting",
+    "library.md#the-files-directory/file-names"
+  ],
+  "tests": [
+    "tests/test_pools.py::TestShallow::test_rename_file_of_another_pool_entry_copied",
+    "tests/test_pools.py::TestShallow::test_attach_pool_file_named_by_its_entry_no_hint"
+  ],
+  "ignore": [
+    "home/data/history/*"
+  ],
+  "steps": [
+    {
+      "argv": ["-C", "pool", "file", "rename", "smith2020"],
+      "wait": 1.1
+    },
+    {
+      "argv": ["-C", "lib", "pull", "--all"],
+      "wait": 1.1
+    },
+    {
+      "argv": ["-C", "lib", "file", "attach", "jones2019", "../pool/files/smith_and_doe_2020_a-title-of-a-paper.txt"],
+      "wait": 1.1
+    },
+    {
+      "argv": ["-C", "lib", "file", "rename", "jones2019"],
+      "wait": 1.1
+    },
+    {
+      "argv": ["-C", "lib", "file", "check"]
+    },
+    {
+      "argv": ["-C", "pool", "list", "--format", "bibtex"]
+    }
+  ]
+}

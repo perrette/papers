@@ -101,6 +101,77 @@ class TestRenameInPlace(BibTest):
         self.assertFilesExist(2)
 
 
+SHARED = """@article{smith2020,
+ author = {Smith, John},
+ title = {A test},
+ year = {2020},
+ file = {:files/shared.pdf:pdf}
+}
+
+@article{jones2021,
+ author = {Jones, Jane},
+ title = {Another test},
+ year = {2021},
+ file = {:files/shared.pdf:pdf}
+}
+"""
+
+
+class TestRenameSharedFile(BibTest):
+    """regression: two entries link to one file (see free_name); renaming
+    the files of one of them moved the file and broke the other's link: it
+    is copied (a hard link when possible), not moved"""
+
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.dir = self.temp_dir.name
+        os.makedirs(os.path.join(self.dir, 'files'))
+        self.shared = os.path.join(self.dir, 'files', 'shared.pdf')
+        Path(self.shared).write_text('shared')
+        Path(self.dir, 'lib.bib').write_text(SHARED)
+        self.opts = '--bibtex lib.bib --filesdir files --relative-paths'
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
+    def files(self):
+        biblio = Biblio.load(os.path.join(self.dir, 'lib.bib'), None)
+        return {e['ID']: biblio.get_files(e) for e in biblio.entries}
+
+    def test_rename_one(self):
+        out = paperscmd(f'file rename smith2020 --move {self.opts}', cwd=self.dir, sp_cmd='check_output')
+        files = self.files()
+        smith = os.path.join(self.dir, 'files', 'smith_2020_a-test.pdf')
+        self.assertEqual(files['smith2020'], [smith])
+        self.assertEqual(files['jones2021'], [self.shared])
+        self.assertTrue(os.path.exists(self.shared))
+        self.assertEqual(Path(smith).read_text(), 'shared')
+        self.assertIn('copied', out)
+
+    def test_rename_all(self):
+        # the first entry gets a copy; the last one, which alone links to the file then, moves it
+        paperscmd(f'file rename --move {self.opts}', cwd=self.dir)
+        files = self.files()
+        for key, name in [('smith2020', 'smith_2020_a-test.pdf'), ('jones2021', 'jones_2021_another-test.pdf')]:
+            self.assertEqual(files[key], [os.path.join(self.dir, 'files', name)])
+            self.assertTrue(os.path.exists(files[key][0]))
+        self.assertFalse(os.path.exists(self.shared))
+
+    def test_attach_file_of_another_entry(self):
+        # file attach of a file that another entry links to: copied too
+        Path(self.dir, 'lib.bib').write_text(SHARED.rsplit(' file = ', 1)[0] + '}\n')  # jones2021: no file
+        self.assertEqual(self.files()['jones2021'], [])
+        out = paperscmd(f'file attach jones2021 files/shared.pdf --move {self.opts}', cwd=self.dir,
+                        sp_cmd='check_output')
+        files = self.files()
+        jones = os.path.join(self.dir, 'files', 'jones_2021_another-test.pdf')
+        self.assertEqual(files['jones2021'], [jones])
+        self.assertEqual(files['smith2020'], [self.shared])
+        self.assertTrue(os.path.exists(self.shared))
+        self.assertTrue(os.path.exists(jones))
+        self.assertIn('copied', out)
+
+
 class TestLocalConfigSubfolder(BibTest):
     """local configuration whose bibtex lives in a subfolder"""
 
