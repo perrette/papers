@@ -176,6 +176,31 @@ class TestFlatLayout(BibTest):
         self.assertEqual(files, [f'{n}.pdf', f'{n}--si.pdf', f'{n}--si-2.pdf'])
         self.assertEqual(self.rename(), files)
 
+    def test_slug_labels(self):
+        "the label is the slug of the file's name: lower case, ASCII, words joined with '-'"
+        files = self.rename(self.touch('a.pdf', 'Geophysical Research Letters - 2011 - Rignot (SI).pdf',
+                                       'Données_été.csv'))
+        n = self.name
+        self.assertEqual(files, [f'{n}.pdf', f'{n}--geophysical-research-letters-2011-rignot-si.pdf',
+                                 f'{n}--donnees-ete.csv'])
+        self.assertEqual(self.rename(), files)
+
+    def test_slug_label_of_a_renamed_file(self):
+        "a file named <name>--<label> by an earlier version gets the slug of its label"
+        n = self.name
+        files = self.rename(self.touch('a.pdf', f'{n}--Supplementary Data.pdf'))
+        self.assertEqual(files, [f'{n}.pdf', f'{n}--supplementary-data.pdf'])
+
+    def test_slug_label_keeps_separators(self):
+        "the parts of a label between '--' are slugified one by one"
+        files = self.rename(self.touch('a.pdf', 'Info DOI--Supp Data.zip'))
+        self.assertEqual(files, [f'{self.name}.pdf', f'{self.name}--info-doi--supp-data.zip'])
+
+    def test_empty_slug_label(self):
+        "a label without letters or digits is kept as it is"
+        files = self.rename(self.touch('a.pdf', '+++.pdf'))
+        self.assertEqual(files, [f'{self.name}.pdf', f'{self.name}--+++.pdf'])
+
     def test_legacy_directory(self):
         n = self.name
         legacy = self.touch(f'files/{n}/{n}.pdf', f'files/{n}/si.pdf', f'files/{n}/.{n}.bib')[:2]

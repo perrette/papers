@@ -14,7 +14,7 @@ from papers import journal, logger
 from papers.config import Config, config_root, find_library_config
 from papers.entries import get_entry_val, parse_string, parse_file, format_file
 from papers.extract import extract_pdf_doi, isvaliddoi
-from papers.filename import fit_name
+from papers.filename import fit_name, slugify
 from papers.latex import latex_to_unicode
 from papers.utils import checksum, stdin_is_terminal, PapersExit
 
@@ -303,13 +303,16 @@ ATTACHMENT_SEP = '--'
 
 def attachment_label(file, prefixes=()):
     """label of an entry's file other than the first one: its name without
-    extension, stripped of a '<prefix>--' already added by a rename"""
+    extension, stripped of a '<prefix>--' already added by a rename, then
+    slugified part by part between its '--' (see `slugify`; a part whose
+    slug is empty is kept as it is)"""
     stem = os.path.splitext(os.path.basename(file))[0]
     for prefix in prefixes:
         head = prefix + ATTACHMENT_SEP
         if prefix and stem.startswith(head) and len(stem) > len(head):
-            return stem[len(head):]
-    return stem
+            stem = stem[len(head):]
+            break
+    return ATTACHMENT_SEP.join(slugify(part) or part for part in stem.split(ATTACHMENT_SEP))
 
 
 def attachment_names(files, target):
