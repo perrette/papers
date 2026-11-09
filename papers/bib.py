@@ -917,7 +917,10 @@ class Biblio:
         copy: keep the original file (a hard link when possible, with
             hardlink=True, otherwise a copy). It can also be a function that
             tells for each file what to do: 'move', 'copy', or 'link' (leave
-            the file where it is), see papers.files.FilesPolicy.
+            the file where it is), see papers.files.FilesPolicy; its method
+            not_renamed, if it has one, is called with the entry and each
+            file linked where it is under another name than its template
+            name.
 
         See `papers.filename.Format` class and REAMDE.md for infos.
         """
@@ -950,8 +953,11 @@ class Biblio:
 
         count = 0
         newfiles = []
+        not_renamed = getattr(copy, 'not_renamed', None)
         for file, newfile, action in zip(files, attachment_names(files, target), actions):
             if action == 'link':
+                if not_renamed and newfile != file:
+                    not_renamed(e, file)
                 newfile = file
             elif not os.path.exists(file):
                 logger.warning(file+': original file link is broken')

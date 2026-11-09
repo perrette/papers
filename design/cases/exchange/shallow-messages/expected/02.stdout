@@ -1,0 +1,4 @@
+kept 1 file(s) of the removed entries in the files directory:
+  $WORK/lib/files/own.txt
+delete them with `papers file rm FILE...` before `papers rm` (`papers undo` brings the entries back)
+Removed -> own2018: From when the library was self-contained (file:1)

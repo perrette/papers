@@ -47,12 +47,38 @@ setting says how a new file gets to the pool:
 
 - `move` (the default) and `copy`: the file is placed in the pool's files
   directory (moved, or copied: a hard link when possible), named with the
-  pool's name template (a name template set on the library is not used);
-  the library entry and the pool entry link to it there;
+  pool's name template; the library entry and the pool entry link to it
+  there;
 - `link`: the file stays where it is, and the library entry and the pool
   entry both link to it there. This works on one machine; on another
   machine that uses the pool (a pool in a synchronized folder), such links
   are broken.
+
+The library's own `filesdir` and `name.*` settings are not used, and
+neither are `--filesdir` and the `--name-*` options of a command: papers
+warns, and says where to set them instead:
+
+```
+$ papers file rename --name-author-num 1
+papers: warning: name.author-num: not used, because the library is shallow: its files are named with the settings of pool ~/Documents/papers/arctic (`papers -C ~/Documents/papers/arctic config name.author-num VALUE` sets them there)
+$ papers config name.template '{title}'
+papers: warning: name.template: saved, but not used while the library is shallow: its files are named with the settings of pool ~/Documents/papers/arctic (`papers -C ~/Documents/papers/arctic config name.template VALUE` sets them there); it applies after `papers config pool none`
+```
+
+`papers config filesdir DIR`, `papers config name.*` and `papers init
+--pool PATH` with `--filesdir` or `--name-*` save the setting all the same:
+it applies once the library is self-contained (`papers config pool none`).
+
+A file given to `add` or `file attach` (or found by `file fix`) that is
+already in the pool's files directory is renamed there with the pool's
+template, unless an entry of the pool links to it: then it stays where it
+is, since the pool and its other libraries use that name, and papers says
+how to rename it in the pool:
+
+```
+$ papers file attach perrette_yool2011 ~/Documents/papers/arctic/files/si.pdf
+papers: warning: ~/Documents/papers/arctic/files/si.pdf: not renamed, because the entry yool2011 of pool ~/Documents/papers/arctic links to it (`papers -C ~/Documents/papers/arctic file rename yool2011`)
+```
 
 What the commands do in a shallow library:
 
@@ -103,7 +129,11 @@ What the commands do in a shallow library:
     (`kept FILE: an entry of the pool links to it`). The PDF is removed for
     every library that uses the pool;
   - `papers rm KEY` removes the entry from the library only. The pool entry
-    and its files stay, and papers does not ask about them.
+    and its files stay, and papers does not ask about them. A file of the
+    library's own `files/` (from when it was self-contained) that only the
+    removed entries linked to is kept, and papers lists it: `papers file rm
+    FILE` deletes it, run before `papers rm` (`papers undo` brings the
+    entries back); `papers file clean` does not, in a shallow library.
     `papers rm KEY --delete-files` (and `papers list ... --delete
     --delete-files`) is an error, and nothing is removed:
 

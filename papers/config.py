@@ -805,6 +805,33 @@ class Config:
         `papers config pool none` copies them)"""
         return self.shallow and (name == 'filesdir' or name.startswith('name.'))
 
+    def warn_unused_while_shallow(self, names, given=None, saved=False):
+        """warn that settings of a shallow library are not used (see
+        unused_while_shallow). names: the settings (filesdir, name.*);
+        given: how the command line gave them (e.g. '--filesdir DIR');
+        saved: `papers config` or `papers init` saved them, for when the
+        library is self-contained"""
+        names = [name for name in names if self.unused_while_shallow(name)]
+        if not names:
+            return
+        pool = self.pool_label()
+        notes = []
+        if 'filesdir' in names:
+            notes.append(('filesdir', f'its files are in the files directory of pool {pool}', None))
+        named = [name for name in names if name.startswith('name.')]
+        if named:
+            setting = named[0] if len(named) == 1 else 'NAME'
+            notes.append((', '.join(named), f'its files are named with the settings of pool {pool}',
+                          f'`papers -C {pool} config {setting} VALUE` sets them there'))
+        for what, why, hint in notes:
+            what = given or what
+            if saved:
+                logger.warning(f'{what}: saved, but not used while the library is shallow: {why}'
+                               + (f' ({hint})' if hint else '') + '; it applies after `papers config pool none`')
+            else:
+                hint = hint or '`papers config pool none` makes the library self-contained, with its own files directory'
+                logger.warning(f'{what}: not used, because the library is shallow: {why} ({hint})')
+
     def settings_lines(self, names=None):
         """lines `name = value (source)` of `papers config` and `papers status -v`
         (bibtex and filesdir as absolute paths, as `papers config KEY` prints them)"""

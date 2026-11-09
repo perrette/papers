@@ -1773,6 +1773,110 @@ class TestShallow(OwnFilesTest):
         self.assertEqual(self.files('Smith_2020', 'pool'), [renamed])
         self.assertEqual(self.entry('Smith_2020', 'pool')['title'], 'Climate sensitivity')
 
+    def test_attach_stray_pool_file_renamed(self):
+        # a file of the pool's files directory that no pool entry links to: placed under the template name
+        stray = self.path('pool', 'files', 'stray.pdf')
+        Path(stray).write_text('stray')
+        self.lib(f'file attach mine2022 {stray} --move')
+        files = self.files('mine2022')
+        self.assertEqual(files[1], self.path('pool', 'files', 'mine_2022_my-own-paper--stray.pdf'))
+        self.assertFalse(os.path.exists(stray))
+        self.assertEqual(self.files(self.origin().get(self.entry('mine2022')).pool_key, 'pool'), files)
+
+    def test_add_stray_pool_file_renamed(self):
+        stray = self.path('pool', 'files', 'stray.pdf')
+        Path(stray).write_text('stray')
+        self.lib(f'add --key doe2024 --title Stray --author Doe,J --year 2024 --attach {stray}')
+        self.assertEqual(self.files('doe2024'), [self.path('pool', 'files', 'doe_2024_stray.pdf')])
+        self.assertFalse(os.path.exists(stray))
+
+    def test_attach_pool_linked_file_not_renamed(self):
+        # a file that a pool entry links to: linked where it is, with the command that renames it in the pool
+        with self.assertLogs(papers.logger, level='WARNING') as logs:
+            self.lib(f'file attach mine2022 {self.pool_pdf} --move')
+        self.assertIn(f'{self.pool_pdf}: not renamed, because the entry Smith_2020 of pool ../pool links to it '
+                      '(`papers -C ../pool file rename Smith_2020`)', '\n'.join(logs.output))
+        self.assertEqual(self.files('mine2022')[1], self.pool_pdf)
+        self.assertTrue(os.path.exists(self.pool_pdf))
+
+    def test_file_fix_stray_pool_file_renamed(self):
+        # the file of a broken link found unlinked in the pool's files directory: renamed there;
+        # --dry-run finds it too
+        pdf = self.files('mine2022')[0]
+        stray = self.path('pool', 'files', 'stray.pdf')
+        os.rename(pdf, stray)
+        out = self.out('file fix --dry-run')
+        self.assertIn(f'DRYRUN: mine2022: relink {pdf} -> {stray}', out)
+        self.lib('file fix')
+        self.assertEqual(self.files('mine2022'), [pdf])
+        self.assertTrue(os.path.exists(pdf))
+        self.assertFalse(os.path.exists(stray))
+
+    def test_filesdir_option_not_used(self):
+        with self.assertLogs(papers.logger, level='WARNING') as logs:
+            self.lib('file rename --filesdir ../elsewhere')
+        self.assertIn('--filesdir ../elsewhere: not used, because the library is shallow: its files are in the '
+                      'files directory of pool ../pool (`papers config pool none` makes the library '
+                      'self-contained, with its own files directory)', '\n'.join(logs.output))
+        self.assertFalse(os.path.exists(self.path('elsewhere')))
+
+    def test_name_settings_not_used(self):
+        # the name settings of the library and of the command line: one warning, the pool's apply
+        self.lib('config name.title-sep _')
+        with self.assertLogs(papers.logger, level='WARNING') as logs:
+            self.lib('file rename --name-author-num 1')
+        self.assertIn('name.author-num, name.title-sep: not used, because the library is shallow: its files are '
+                      'named with the settings of pool ../pool (`papers -C ../pool config NAME VALUE` sets them '
+                      'there)', '\n'.join(logs.output))
+        self.assertEqual(self.files('mine2022'), [self.path('pool', 'files', 'mine_2022_my-own-paper.pdf')])
+
+    def test_config_unused_setting_saved_with_note(self):
+        with self.assertLogs(papers.logger, level='WARNING') as logs:
+            self.lib('config name.template {title}')
+        self.assertIn('name.template: saved, but not used while the library is shallow: its files are named with '
+                      'the settings of pool ../pool (`papers -C ../pool config name.template VALUE` sets them '
+                      'there); it applies after `papers config pool none`', '\n'.join(logs.output))
+        self.assertEqual(self.json('lib')['nameformat']['template'], '{title}')
+        with self.assertLogs(papers.logger, level='WARNING') as logs:
+            self.lib('config filesdir files')
+        self.assertIn('filesdir: saved, but not used while the library is shallow: its files are in the files '
+                      'directory of pool ../pool; it applies after `papers config pool none`', '\n'.join(logs.output))
+
+    def test_init_shallow_with_unused_settings(self):
+        with self.assertLogs(papers.logger, level='WARNING') as logs:
+            self.papers('init lib3 --pool pool --filesdir lib3/files --name-template {title}', cwd=self.path())
+        out = '\n'.join(logs.output)
+        self.assertIn('filesdir: saved, but not used while the library is shallow: its files are in the files '
+                      'directory of pool ../pool; it applies after `papers config pool none`', out)
+        self.assertIn('name.template: saved, but not used while the library is shallow', out)
+        self.assertEqual(self.json('lib3')['nameformat']['template'], '{title}')
+
+    def test_rm_own_file_hint(self):
+        # a file of the library's own files directory: `papers file clean` is refused in a shallow library
+        own = self.path('lib', 'files', 'own.pdf')
+        Path(own).write_text('own')
+        biblio, entries = self.bib()
+        biblio.set_files(entries['mine2022'], biblio.get_files(entries['mine2022']) + [own])
+        biblio.save(self.path('lib', 'papers.bib'))
+        out = self.out('rm mine2022')
+        self.assertIn('delete them with `papers file rm FILE...` before `papers rm` (`papers undo` brings the '
+                      'entries back)', out)
+        self.assertNotIn('papers file clean', out)
+        self.assertTrue(os.path.exists(own))
+
+    def test_filecheck_rename_stays_in_pool(self):
+        # regression: the deprecated filecheck --rename copied the pool files into lib/files, with the
+        # library's template, and pointed the pool entry there
+        self.lib('config name.template {title}')
+        self.lib('filecheck --rename')
+        self.assertEqual(os.listdir(self.path('lib', 'files')), [])
+        files = self.files('smith2020climate')
+        self.assertTrue(files[0].startswith(self.path('pool', 'files')), files)
+        self.assertEqual(self.files('Smith_2020', 'pool'), files)
+        with self.assertRaisesRegex(PapersExit, '--rename with --clean-filesdir: not done, because the library is '
+                                                'shallow'):
+            self.lib('filecheck --rename --clean-filesdir --force')
+
 
     def test_add_same_pdf_move_mode(self):
         self.lib('rm smith2020climate --keep-files')

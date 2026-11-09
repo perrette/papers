@@ -108,6 +108,9 @@ def _initcmd(parser, o, config):
     o.reset = False
     config = _install(o, Config(machine=config.machine), DefaultAsker(), target=CONFIG_FILE_LOCAL)
     print('\n'.join(init_summary(config)))
+    given = (['filesdir'] if o.filesdir and o.filesdir.lower() not in RESET_WORDS else []) + list(format_options(o))
+    if not papers.config.DRYRUN:
+        config.warn_unused_while_shallow(given, saved=True)
 
 
 def init_summary(config):
@@ -280,6 +283,8 @@ def configcmd(parser, o, config):
         return
     config.save()
 
+    if not o.unset:
+        config.warn_unused_while_shallow([name], saved=True)
     if name == 'paths' and config.bibtex and os.path.exists(config.bibtex):
         convert_file_links(config)
     if name == 'checksums':

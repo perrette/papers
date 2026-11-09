@@ -1,0 +1,1 @@
+papers: warning: filesdir: saved, but not used while the library is shallow: its files are in the files directory of pool ../pool; it applies after `papers config pool none`

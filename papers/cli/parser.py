@@ -111,7 +111,8 @@ def _format_parser(kind, title, what, fmt, template_help):
     of the name or key format settings (kind: name or key), defaulting to
     None: the configured values (`fmt`, a papers.filename.Format) apply"""
     parser = argparse.ArgumentParser(add_help=False)
-    grp = parser.add_argument_group(title)
+    grp = parser.add_argument_group(title, 'not used in a shallow library, whose files are named with the '
+                                           'settings of its pool' if kind == 'name' else None)
     for name, type_ in SETTINGS.items():
         if not name.startswith(kind + '.'):
             continue
@@ -261,7 +262,8 @@ def get_parser(config=None):
     cfg = argparse.ArgumentParser(add_help=False, parents=[loggingp])
     grp = cfg.add_argument_group('config')
     grp.add_argument('--filesdir', default=None, type=file_uri_to_path,
-        help=f'files directory (default: {_default(config.filesdir)})')
+        help=f'files directory (default: {_default(config.filesdir)}; not used in a shallow library, whose '
+             'files are in the files directory of its pool)')
     grp.add_argument('--bibtex', default=None, type=file_uri_to_path,
         help=f'bibtex database (default: {_default(config.bibtex)})')
     grp.add_argument('--dry-run', action='store_true',
@@ -494,8 +496,9 @@ def get_parser(config=None):
         the entry links to them there. A file that belongs to another library (inside
         its files directory) is never moved: it is copied instead. In a library that is
         shallow, the file links are those of the pool entry: move and copy place the files in
-        the files directory of the pool, link leaves them where they are and the pool entry
-        links to them there too.''')
+        the files directory of the pool (a file already there is renamed, unless a pool entry
+        links to it), link leaves them where they are and the pool entry links to them there
+        too.''')
     grp.add_argument('--attach', nargs='+', type=file_uri_to_path, dest='attachment', metavar='FILE',
         help='attach these files to the entry (e.g. supplementary material)')
     grp.add_argument('--attachment', nargs='+', type=file_uri_to_path, dest='attachment_deprecated',

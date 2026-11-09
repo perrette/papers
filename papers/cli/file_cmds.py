@@ -43,7 +43,14 @@ def filecheckcmd(parser, o, config):
     logger.warning(f"`papers filecheck` is deprecated: use {' and '.join('`'+cmd+'`' for cmd in new)}")
 
     set_format_config_from_cmd(o, config, 'name')
+    if o.rename and o.clean_filesdir and config.shallow:
+        raise PapersExit('--rename with --clean-filesdir: not done, because the library is shallow: its files are '
+                         'renamed in the files directory of the pool, cleaned there with all the entries of the pool '
+                         f'(`papers file rename`, then `papers -C {config.pool_label()} file clean`)')
+    # with --rename, the pools of `papers file rename` (in a shallow library, the files go to the pool)
+    pools = library_pools(config) if o.rename else Pools(config)
     biblio = get_biblio(config)
+    exchange = Exchange(config, biblio, pools)
 
     if check:
         for e in biblio.entries:
@@ -56,13 +63,13 @@ def filecheckcmd(parser, o, config):
 
     if o.rename:
         # deprecated: moves the files, as before the files setting applied to the renames
-        rename_files(biblio, biblio.entries, config, Pools(config).files_dirs(), keep_source=o.copy, mode='move')
+        place_entries_files(exchange, biblio.entries, keep_source=o.copy, mode='move')
 
     if o.clean_filesdir:
         print("Check files directory for unlinked files")
         clean_filesdir(biblio, interactive=not o.force, ignore_files=[config.bibtex])
 
-    print_push_notes(biblio, save_entries(config, biblio))
+    print_push_notes(biblio, save_entries(config, biblio, exchange))
 
 
 def named_otherwise_in_pool(exchange, entries):
@@ -108,6 +115,15 @@ def rename_entries(biblio, config, pools, entries, keep_source=False, mode=None)
     save_entries, and the number of entries whose files could not be
     placed."""
     exchange = Exchange(config, biblio, pools)
+    failed = place_entries_files(exchange, entries, keep_source=keep_source, mode=mode)
+    return save_entries(config, biblio, exchange), failed
+
+
+def place_entries_files(exchange, entries, keep_source=False, mode=None):
+    """rename_entries without the save (also `papers filecheck
+    --rename`): return the number of entries whose files could not be
+    placed"""
+    config, biblio, pools = exchange.config, exchange.biblio, exchange.pools
     held = named_otherwise_in_pool(exchange, entries)
     keep = [f for _, files, _ in held for f in files]
     failed = rename_files(biblio, entries, config, pools.files_dirs(), keep_source=keep_source, mode=mode, keep=keep)
@@ -115,7 +131,7 @@ def rename_entries(biblio, config, pools, entries, keep_source=False, mode=None)
         logger.warning(f"{e.key}: {len(files)} file(s) not renamed: they are in {pools.target().label}, whose entry "
                        f"differs and names them {pool_name}; `papers push {e.key}` first, "
                        f"then `papers file rename {e.key}`")
-    return save_entries(config, biblio, exchange), failed
+    return failed
 
 
 def file_renamecmd(parser, o, config):
@@ -188,7 +204,8 @@ def attach_entry_files(biblio, config, pools, e, files, o):
     as for rename_entries. Return the notes of save_entries, and whether the
     files could be placed (False: the name points outside the files
     directory; the links are saved, the files left where they are)."""
-    placed = attach_files(biblio, e, files, config, files_mode(o, config), pools.files_dirs())
+    placed = attach_files(biblio, e, files, config, files_mode(o, config), pools.files_dirs(),
+                          pool=pools.pool(quiet=True))
     return save_entries(config, biblio, Exchange(config, biblio, pools)), placed
 
 
@@ -426,8 +443,9 @@ def _file_check(o, config, fix):
 
 def file_check_pools(config, fix):
     """the pools of `papers file check` and `papers file fix`, made before
-    the library is loaded (see rename_entries)"""
-    return library_pools(config) if fix and not papers.config.DRYRUN else Pools(config)
+    the library is loaded (see rename_entries); --dry-run looks for the
+    files where `papers file fix` does"""
+    return library_pools(config) if fix else Pools(config)
 
 
 def relink_broken_links(config, biblio, exchange, entries, search_dirs, nameformat, others=(), mode=None,
@@ -465,7 +483,7 @@ def relink_broken_links(config, biblio, exchange, entries, search_dirs, nameform
                 i += n
             pool_files, kept, copied = _placement(found, sources, config.filesdir, move)
             attach_files(biblio, e, [], config, mode, exchange.pools.files_dirs(), replace=found,
-                         pool_files=pool_files, copied=copied, keep=kept)
+                         pool_files=pool_files, copied=copied, keep=kept, pool=exchange.pools.pool(quiet=True))
             newfiles = biblio.get_files(e)
             found = {link: [newfiles[j] for j in positions[link]] for link in found}
         relinks.append((e, found, sources))
@@ -908,7 +926,8 @@ def _attach_fetched(biblio, config, pools, e, found, refused, mode, summary):
     linked = [f for f in new if f.how == 'linked']
     placed = [f for f in new if f.how != 'linked']
     biblio.set_files(e, biblio.get_files(e) + [f.path for f in linked])
-    ok = not placed or attach_files(biblio, e, [f.path for f in placed], config, mode, pools.files_dirs())
+    ok = not placed or attach_files(biblio, e, [f.path for f in placed], config, mode, pools.files_dirs(),
+                                    pool=pools.pool(quiet=True))
     for f in placed:  # the temporary folder of a download, now empty
         if f.how == 'downloaded' and not os.path.exists(f.path):
             freepdf.discard(f.path)
@@ -1045,7 +1064,7 @@ def file_fetchcmd(parser, o, config):
         parser.error('papers file fetch KEY... or --missing [KEY...] or --upgrade [KEY...]')
     dryrun = papers.config.DRYRUN
     nameformat = config.nameformat  # the library's own, as for `papers file fix`
-    pools = Pools(config) if dryrun else library_pools(config)
+    pools = library_pools(config)  # --dry-run too: it looks for the files where the fetch does
     biblio = get_biblio(config)
     entries = _entries_or_all(biblio, o.entries)
     if o.missing:

@@ -1,0 +1,1 @@
+papers: warning: name.template: saved, but not used while the library is shallow: its files are named with the settings of pool ../pool (`papers -C ../pool config name.template VALUE` sets them there); it applies after `papers config pool none`

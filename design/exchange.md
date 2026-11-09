@@ -1026,8 +1026,8 @@ what the exchanges do with the files.
 ### 15.1 The pool's files directory
 
 Where a shallow library places files (its pool's files directory, the
-pool's name template, not renaming a file already there, except in
-`file rename`) is in
+pool's name template, not renaming a file already there that a pool
+entry links to, except in `file rename`) is in
 `library.md`, Files of a shallow library and The files setting; it
 applies also to
 `pull`/`sync`/`add` with an other library.

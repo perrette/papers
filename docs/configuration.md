@@ -44,7 +44,8 @@ was started in `DIR`:
 papers -C ~/projects/sealevel list smith
 ```
 
-`--bibtex` and `--filesdir` still override the library for one command. If
+`--bibtex` and `--filesdir` still override the library for one command
+(`--filesdir` is not used in a shallow library, with a warning). If
 the bibtex given with `--bibtex` belongs to another library (a configuration
 file in its directory or above), the settings of that library apply.
 
@@ -77,7 +78,10 @@ library that does not set it has no pool (`none`).
 `(library)`, `(global)` or `(default)`. In a shallow library, `filesdir`
 and the `name.*` settings are marked `not used: shallow library`: the
 files are in the pool, named with the pool's template (`filesdir` is where
-`papers config pool none` copies them).
+`papers config pool none` copies them). Setting one of them there
+(`papers config name.template ...`, or `papers init --pool PATH` with
+`--filesdir` or `--name-*`) saves it, with a warning that it is not used
+until `papers config pool none`.
 
 The library configuration keeps the settings given to the library
 (`papers init --paths absolute`, `papers config NAME VALUE`), even when the

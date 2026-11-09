@@ -103,7 +103,7 @@ def addcmd(parser, o, config):
 
     # what to do with the files: see papers.files.FilesPolicy
     mode = files_mode(o, config)
-    policy = files_policy(config, mode, pools.files_dirs() + source_dirs)
+    policy = files_policy(config, mode, pools.files_dirs() + source_dirs, pool=pools.pool(quiet=True))
     rename = mode != 'link'
 
     metadata = {k: v for k, v in o.metadata or []}
@@ -354,8 +354,10 @@ def remove_entries(biblio, entries, config, delete_files=None, ask=True):
     print(f"kept {len(inside)} file(s) of the removed entries in the files directory:")
     for f in inside:
         print(f"  {f}")
-    print("delete them with `papers file clean`"
-          + ("" if config.shallow else ", or remove the entries with `--delete-files`"))
+    if config.shallow:  # `papers file clean` is refused (it would clean the pool), and no entry links them now
+        print("delete them with `papers file rm FILE...` before `papers rm` (`papers undo` brings the entries back)")
+    else:
+        print("delete them with `papers file clean`, or remove the entries with `--delete-files`")
     return []
 
 
