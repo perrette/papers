@@ -740,8 +740,12 @@ Contract:
   `<files directory>/<name>--<label><ext>`. `<label>` is the base name of
   the file without its extension, with a leading `<prefix>--` removed when
   `<prefix>` is the current base name (without extension) of the first
-  file or the base name of `<name>`, and the label would not be empty. So
-  a second rename keeps the label.
+  file or the base name of `<name>`, and the label would not be empty;
+  then each part of it between `--` slugified (see Slugify), the `--`
+  kept, and a part whose slug is empty kept as it is.
+  So a second rename keeps the label (the slug of a slug is itself), and
+  a file named with spaces or capitals by an earlier version gets the
+  slug of its label at its next rename.
 - When two files of one entry get the same path, the later ones get
   `-2`, `-3`, … appended to the label: `<name>--<label>-2<ext>`.
   Comparison is case-insensitive on Windows only.

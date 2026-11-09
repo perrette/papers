@@ -5,12 +5,15 @@
 The first file of an entry (the PDF) is named after the name template, and
 any other file (attachments, e.g. supplementary material added with
 `--attach` or `papers file attach`) is placed next to it, under the same
-name followed by `--` and the file's original name:
+name followed by `--` and the file's original name, slugified as the titles
+are (lower case, ASCII, words joined with `-`):
 
 ```
 files/perrette_et_al_2013_a-scaling-approach.pdf
 files/perrette_et_al_2013_a-scaling-approach--esd-4-11-2013-supplement.pdf
 ```
+
+(`ESD 4-11-2013 Supplement.pdf` would get the same name.)
 
 The label after `--` is kept when the entry is renamed again (e.g. after its
 title or year was fixed), so only the part before `--` changes. If two

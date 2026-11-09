@@ -1,0 +1,23 @@
+{
+  "description": "the labels of the other files of an entry: the slug of the file name without extension (lower case, ASCII, words joined with '-'), after the <name>-- of an earlier rename is removed; each part of the label between '--' is slugified on its own, a part whose slug is empty is kept as it is; a second rename keeps the labels; file attach labels the same way",
+  "sections": [
+    "library.md#the-files-directory/file-names"
+  ],
+  "tests": [
+    "tests/test_paths.py::TestFlatLayout::test_slug_labels",
+    "tests/test_paths.py::TestFlatLayout::test_slug_label_of_a_renamed_file",
+    "tests/test_paths.py::TestFlatLayout::test_slug_label_keeps_separators",
+    "tests/test_paths.py::TestFlatLayout::test_empty_slug_label"
+  ],
+  "steps": [
+    {
+      "argv": ["file", "rename"]
+    },
+    {
+      "argv": ["file", "rename"]
+    },
+    {
+      "argv": ["file", "attach", "doe2020", "inbox/Données été.csv"]
+    }
+  ]
+}

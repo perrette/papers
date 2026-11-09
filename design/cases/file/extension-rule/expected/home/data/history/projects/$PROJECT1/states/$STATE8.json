@@ -13,20 +13,20 @@
   {
    "op": "copied",
    "src": "src/paper.v2.PDF",
-   "dst": "files/e7--paper.v2.PDF",
+   "dst": "files/e7--paper-v2.PDF",
    "checksum": "f6f0e9cfa619c51a320e46fe54845dbf5fb2faa148b0916059dc64534ec260f0"
   }
  ],
  "deleted": [],
  "bibtex": {
   "pieces": [
-   "0da7eacf131114dfe0d646f2fe5f1e7c8aaa4e764a153d2f30e0a3ae43843400"
+   "7e94c8e0a3b5fca2684fea40cd10b21ee46a40af9e3e4c556ed0256efe392e27"
   ],
-  "sha": "0da7eacf131114dfe0d646f2fe5f1e7c8aaa4e764a153d2f30e0a3ae43843400"
+  "sha": "7e94c8e0a3b5fca2684fea40cd10b21ee46a40af9e3e4c556ed0256efe392e27"
  },
  "files": {
   ".papers/files.json": [
-   "bf3efc87b1fbae7ecafe16a81ea1e5a2650e764aa4a35933ef6336eb7be9c2e0"
+   "4179403672a9df38c9ac53bdb439dca05d4d3c0d60e07e0cc8e7e2c4f193ba66"
   ]
  }
 }

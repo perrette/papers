@@ -312,6 +312,10 @@ that check the same thing.
 - tests/test_paths.py::TestFlatLayout::test_names
 - tests/test_paths.py::TestFlatLayout::test_new_name_keeps_labels
 - tests/test_paths.py::TestFlatLayout::test_same_labels
+- tests/test_paths.py::TestFlatLayout::test_slug_labels
+- tests/test_paths.py::TestFlatLayout::test_slug_label_of_a_renamed_file
+- tests/test_paths.py::TestFlatLayout::test_slug_label_keeps_separators
+- tests/test_paths.py::TestFlatLayout::test_empty_slug_label
 - tests/test_paths.py::TestFlatLayout::test_legacy_directory
 - tests/test_paths.py::TestFlatLayout::test_legacy_directory_with_other_files
 - tests/test_paths.py::TestRenameInPlace::test_single_file
