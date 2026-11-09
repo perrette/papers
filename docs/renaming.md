@@ -56,6 +56,15 @@ not moved. `papers list ... --rename` runs this command (with `--move` or
 `--keep-source`); the deprecated `papers filecheck --rename` moves the
 files, whatever the setting.
 
+In a shallow library (a library with a pool), the files are in the pool's
+files directory and the name template is the pool's: `papers file rename`
+renames the files there, and the pool entry links to the new names. With
+`auto-push` false, the files of an entry whose pool entry has other fields
+(so that the pool's template names it otherwise) are left where they are,
+with a warning: `papers push KEY` sends the entry to the pool, then
+`papers file rename KEY` renames them. See
+[Shallow libraries](shallow-libraries.md).
+
 ## Control fields when renaming files
 
 ```

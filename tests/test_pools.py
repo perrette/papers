@@ -1706,6 +1706,73 @@ class TestShallow(OwnFilesTest):
         self.assertTrue(all(f.startswith(self.path('pool', 'files')) for f in files), files)
         self.assertEqual(os.listdir(self.path('lib', 'files')), [])
 
+    def pool_states(self):
+        project, _ = papers.backup.project_of(Config.load(self.path('pool', CONFIG_FILE_LOCAL)), create=False)
+        return len(project.states()) if project else 0
+
+    def test_file_rename_renames_pool_files(self):
+        # a file already in the pool's files directory is renamed, with the pool's name template;
+        # the pool entry's links follow, and the pool gets a step in its history
+        self.papers('config name.template {title}', cwd=self.path('pool'))
+        pool_key = self.origin().get(self.entry('mine2022')).pool_key
+        for key, cmd, name in [('smith2020climate', 'file rename smith2020climate', 'climate-sensitivity-revisited'),
+                               ('mine2022', 'list mine2022 --rename', 'my-own-paper')]:
+            with self.subTest(cmd=cmd):
+                old = self.files(key)
+                states = self.pool_states()
+                out = self.out(cmd)
+                self.assertIn('[file links also updated in pool ../pool]', out)
+                renamed = self.path('pool', 'files', name + '.pdf')
+                self.assertEqual(self.files(key), [renamed])
+                self.assertFalse(os.path.exists(old[0]))
+                self.assertEqual(self.files('Smith_2020' if key == 'smith2020climate' else pool_key, 'pool'),
+                                 [renamed])
+                self.assertEqual(self.pool_states(), states + 1)
+
+    def test_file_rename_repairs_other_shallow_libraries(self):
+        # another shallow library linking to the old path finds the renamed file when it is loaded
+        self.papers('init lib2 --pool pool')
+        Path(self.path('smith.bib')).write_text(SMITH_BIB)
+        with patch('papers.bib.fetch_bibtex_by_doi', no_fetch):
+            self.papers('add ../smith.bib', cwd=self.path('lib2'))
+        self.assertEqual(self.files('smith2020climate', 'lib2'), [self.pool_pdf])
+        self.papers('config name.template {title}', cwd=self.path('pool'))
+        self.lib('file rename smith2020climate')
+        renamed = self.path('pool', 'files', 'climate-sensitivity-revisited.pdf')
+        self.papers('tag smith2020climate --add x', cwd=self.path('lib2'))  # any command that writes
+        self.assertEqual(self.files('smith2020climate', 'lib2'), [renamed])
+
+    def test_file_rename_pool_entry_named_otherwise(self):
+        # without auto-push, a library entry whose pool entry gets another name: its pool files stay, with a warning
+        self.papers('config name.template {title}', cwd=self.path('pool'))
+        self.edit_lib('title = {Climate sensitivity revisited}', 'title = {Climate sensitivity}')
+        pool_bib = Path(self.path('pool', 'papers.bib')).read_text()
+        with self.assertLogs(papers.logger, level='WARNING') as logs:
+            self.lib('file rename smith2020climate')
+        self.assertIn('smith2020climate: 1 file(s) not renamed: they are in pool ../pool, whose entry differs and '
+                      'names them climate-sensitivity-revisited; `papers push smith2020climate` first, then '
+                      '`papers file rename smith2020climate`', '\n'.join(logs.output))
+        self.assertEqual(self.files('smith2020climate'), [self.pool_pdf])
+        self.assertEqual(Path(self.path('pool', 'papers.bib')).read_text(), pool_bib)
+        # pushed, the names agree
+        self.lib('push smith2020climate')
+        self.lib('file rename smith2020climate')
+        renamed = self.path('pool', 'files', 'climate-sensitivity.pdf')
+        self.assertEqual(self.files('smith2020climate'), [renamed])
+        self.assertEqual(self.files('Smith_2020', 'pool'), [renamed])
+
+    def test_file_rename_pool_entry_named_otherwise_auto_push(self):
+        # with auto-push, the entry is pushed by the rename: renamed after the library entry
+        self.lib('config auto-push true')
+        self.papers('config name.template {title}', cwd=self.path('pool'))
+        self.edit_lib('title = {Climate sensitivity revisited}', 'title = {Climate sensitivity}')
+        out = self.out('file rename smith2020climate')
+        self.assertIn('[also modified in pool ../pool]', out)
+        renamed = self.path('pool', 'files', 'climate-sensitivity.pdf')
+        self.assertEqual(self.files('smith2020climate'), [renamed])
+        self.assertEqual(self.files('Smith_2020', 'pool'), [renamed])
+        self.assertEqual(self.entry('Smith_2020', 'pool')['title'], 'Climate sensitivity')
+
 
     def test_add_same_pdf_move_mode(self):
         self.lib('rm smith2020climate --keep-files')

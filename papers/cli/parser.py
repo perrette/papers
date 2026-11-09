@@ -568,7 +568,9 @@ def get_parser(config=None):
                     'under the name made from the name template. The files already there are renamed; the '
                     'others are moved, copied or left where they are as the files setting says (ask: papers '
                     'asks for each one). A file that belongs to another library (inside its files directory) '
-                    'is copied, not moved.')
+                    'is copied, not moved. In a shallow library, the files directory and the name template are '
+                    'those of the pool: the files already in the pool\'s files directory are renamed, and the '
+                    'pool entries link to the new names.')
     p.add_argument('entries', nargs='*', metavar='KEY', help=_selection_help)
     grp = p.add_argument_group('files mode')
     _files_mode_options(grp)

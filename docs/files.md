@@ -60,7 +60,9 @@ where `add`, `file attach` and `file rename` place the files is that of the
 pool, and the name template is the pool's: `move` and `copy` place the
 file in the pool's files directory, and the library entry and the pool
 entry link to it there; with `link`, the file stays where it is, and both
-link to it there. This works on one machine; on another machine that uses
+link to it there. A file already in the pool's files directory is linked
+where it is, except by `papers file rename`, which renames it (see
+[Renaming](renaming.md#renaming-the-files-of-existing-entries)). This works on one machine; on another machine that uses
 the pool, such links are broken (see
 [Shallow libraries](shallow-libraries.md#files)).
 

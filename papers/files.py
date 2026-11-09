@@ -191,7 +191,8 @@ class FilesPolicy:
     - with `in_pool`, `filesdir` is the files directory of the pool of a shallow
       library (papers.pools.use_pool_files): the files already there are
       linked where they are, never renamed, since other libraries may link
-      to them.
+      to them (`papers file rename` renames them all the same: see
+      files_policy).
     """
 
     def __init__(self, mode, filesdir=None, current_config=None, machine=None, keep=(), pool_dirs=(), in_pool=False,
@@ -258,12 +259,18 @@ class FilesPolicy:
         return mode
 
 
-def files_policy(config, mode, pool_dirs=(), keep=(), pool_files=(), copied=()):
+def files_policy(config, mode, pool_dirs=(), keep=(), pool_files=(), copied=(), rename=False):
     """the FilesPolicy of a library (its configuration) for a files mode;
     pool_dirs: the files directories of its pools; pool_files: files of
-    pool entries (outside pool_dirs too); copied: files never moved"""
+    pool entries (outside pool_dirs too); copied: files never moved.
+    rename: `papers file rename`, which renames the files already in the
+    files directory also when it is the pool's, in a shallow library (the
+    links of the pool entries follow, see papers.pools.Exchange.push_links,
+    and those of the other libraries are repaired when they are loaded);
+    `keep` leaves some where they are."""
     # files placed in the pool by a shallow library (see papers.pools.use_pool_files)
-    in_pool = config.shallow and any(realpath(config.filesdir or '') == realpath(d) for d in pool_dirs)
+    in_pool = (config.shallow and not rename
+               and any(realpath(config.filesdir or '') == realpath(d) for d in pool_dirs))
     return FilesPolicy(mode, config.filesdir, current_config=config.file, machine=config.machine, keep=keep,
                        pool_dirs=pool_dirs, in_pool=in_pool, pool_files=pool_files, copied=copied)
 
@@ -453,18 +460,20 @@ def scan_dir_items(direc, quiet=False):
 # papers file rename, attach, detach
 # ==================================
 
-def rename_files(biblio, entries, config, pool_dirs=(), keep_source=False, mode=None):
+def rename_files(biblio, entries, config, pool_dirs=(), keep_source=False, mode=None, keep=()):
     """place the files of the entries in the files directory, under their
-    template name: the files already there are renamed, the others are
+    template name: the files already there are renamed (in a shallow
+    library, those of the pool's files directory too), the others are
     moved, copied or left where they are as the files mode says (mode, else
     the `files` setting; keep_source: copy). A file that belongs to another
-    library is copied, see FilesPolicy. Returns the number of entries whose
-    files could not be placed (an error is reported for each)."""
+    library is copied, see FilesPolicy; the files of `keep` are left where
+    they are. Returns the number of entries whose files could not be
+    placed (an error is reported for each)."""
     if config.filesdir is None:
         raise PapersExit('the library has no files directory: pass --filesdir, '
                          'or set it with `papers config filesdir DIR`')
     mode = 'copy' if keep_source else (mode or config.files or 'move')
-    policy = files_policy(config, mode, pool_dirs)
+    policy = files_policy(config, mode, pool_dirs, keep=keep, rename=True)
     failed = 0
     for e in entries:
         try:

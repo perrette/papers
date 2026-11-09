@@ -14,7 +14,8 @@ from papers.filename import fit_name
 from papers.config import short_home
 from papers.files import (SearchFolders, attach_files, broken_links, check_entry_files, clean_filesdir,
                           delete_files, detach_links, execute_moves, files_to_delete, link_snapshot, linked_files,
-                          links_to_paths, moved_links, plan_moves, realpath, remove_empty_folders, rename_files)
+                          links_to_paths, moved_links, plan_moves, realpath, remove_empty_folders, rename_files,
+                          attachment_names, is_inside)
 from papers.library import get_biblio, savebib
 from papers.otherlibs import Lookup, Source, is_own_unlinked
 from papers.pools import Exchange, Pools
@@ -64,15 +65,57 @@ def filecheckcmd(parser, o, config):
     print_push_notes(biblio, save_entries(config, biblio))
 
 
+def named_otherwise_in_pool(exchange, entries):
+    """a shallow library without auto-push: [(entry, files, name in the
+    pool)] of the entries whose files in the pool's files directory `papers
+    file rename` would rename, while the pool entry gives them another name
+    (the pool's name template applied to the pool entry: its fields differ
+    from the library entry's). The pool would rename them back: they stay
+    until the entry is pushed. An entry the pool does not have is not
+    listed (its push adds it to the pool)."""
+    config, biblio = exchange.config, exchange.biblio
+    if not config.shallow or config.auto_push:
+        return []
+    pool = exchange.pools.target()
+    filesdir = os.path.abspath(config.filesdir)
+    held = []
+    for e in entries:
+        files = biblio.get_files(e)
+        in_pool = [f for f in files if is_inside(f, filesdir)]
+        if not in_pool:
+            continue
+        pe, _ = exchange.pool_entry(e, pool)
+        if pe is None:
+            continue
+        name, pool_name = biblio.nameformat(e), biblio.nameformat(pe)
+        if name == pool_name:
+            continue
+        targets = dict(zip(files, attachment_names(files, os.path.join(filesdir, name))))
+        moved = [f for f in in_pool if os.path.abspath(f) != targets[f]]
+        if moved:
+            held.append((e, moved, pool_name))
+    return held
+
+
 def rename_entries(biblio, config, pools, entries, keep_source=False, mode=None):
     """`papers file rename` (also `papers list --rename`): place the files of
     the entries under their template name, and save the library. pools: the
     library_pools of the configuration, made before the library is loaded
     (in a shallow library, they set the files directory and name template
-    of the run). Return the notes of save_entries, and the number of entries
-    whose files could not be placed."""
-    failed = rename_files(biblio, entries, config, pools.files_dirs(), keep_source=keep_source, mode=mode)
-    return save_entries(config, biblio, Exchange(config, biblio, pools)), failed
+    of the run: the files in the pool's files directory are renamed, the
+    pool entries' links follow, see save_entries, except those of
+    named_otherwise_in_pool, with a warning). Return the notes of
+    save_entries, and the number of entries whose files could not be
+    placed."""
+    exchange = Exchange(config, biblio, pools)
+    held = named_otherwise_in_pool(exchange, entries)
+    keep = [f for _, files, _ in held for f in files]
+    failed = rename_files(biblio, entries, config, pools.files_dirs(), keep_source=keep_source, mode=mode, keep=keep)
+    for e, files, pool_name in held:
+        logger.warning(f"{e.key}: {len(files)} file(s) not renamed: they are in {pools.target().label}, whose entry "
+                       f"differs and names them {pool_name}; `papers push {e.key}` first, "
+                       f"then `papers file rename {e.key}`")
+    return save_entries(config, biblio, exchange), failed
 
 
 def file_renamecmd(parser, o, config):
