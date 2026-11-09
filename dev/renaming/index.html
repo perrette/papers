@@ -1003,6 +1003,14 @@ hard link when possible). A file that belongs to another library is copied,
 not moved. <code>papers list ... --rename</code> runs this command (with <code>--move</code> or
 <code>--keep-source</code>); the deprecated <code>papers filecheck --rename</code> moves the
 files, whatever the setting.</p>
+<p>In a shallow library (a library with a pool), the files are in the pool's
+files directory and the name template is the pool's: <code>papers file rename</code>
+renames the files there, and the pool entry links to the new names. With
+<code>auto-push</code> false, the files of an entry whose pool entry has other fields
+(so that the pool's template names it otherwise) are left where they are,
+with a warning: <code>papers push KEY</code> sends the entry to the pool, then
+<code>papers file rename KEY</code> renames them. See
+<a href="../shallow-libraries/">Shallow libraries</a>.</p>
 <h2 id="control-fields-when-renaming-files">Control fields when renaming files<a class="headerlink" href="#control-fields-when-renaming-files" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>$&gt; papers add --move -v --name-template "{AuthorX}{year}-{Title}" --name-title-sep '' --name-author-sep '' esd-4-11-2013
 <a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>papers: info: found doi:10.5194/esd-4-11-2013

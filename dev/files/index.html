@@ -1043,7 +1043,9 @@ where <code>add</code>, <code>file attach</code> and <code>file rename</code> pl
 pool, and the name template is the pool's: <code>move</code> and <code>copy</code> place the
 file in the pool's files directory, and the library entry and the pool
 entry link to it there; with <code>link</code>, the file stays where it is, and both
-link to it there. This works on one machine; on another machine that uses
+link to it there. A file already in the pool's files directory is linked
+where it is, except by <code>papers file rename</code>, which renames it (see
+<a href="../renaming/#renaming-the-files-of-existing-entries">Renaming</a>). This works on one machine; on another machine that uses
 the pool, such links are broken (see
 <a href="../shallow-libraries/#files">Shallow libraries</a>).</p>
 <h2 id="papers-file"><code>papers file</code><a class="headerlink" href="#papers-file" title="Permanent link">&para;</a></h2>
