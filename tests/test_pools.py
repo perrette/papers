@@ -1877,6 +1877,57 @@ class TestShallow(OwnFilesTest):
                                                 'shallow'):
             self.lib('filecheck --rename --clean-filesdir --force')
 
+    def test_rename_file_of_another_pool_entry_copied(self):
+        # regression: `file rename` moved a file that the pool entry of another paper links to, and broke
+        # that entry's link (and the library's link to it): it is now copied (a hard link when possible)
+        with self.assertLogs(papers.logger, level='WARNING'):
+            self.lib(f'file attach mine2022 {self.pool_pdf} --move')
+        out = self.out('file rename mine2022')
+        renamed = self.path('pool', 'files', 'mine_2022_my-own-paper--smith.pdf')
+        self.assertEqual(self.files('mine2022')[1], renamed)
+        self.assertTrue(os.path.exists(renamed))
+        self.assertTrue(os.path.exists(self.pool_pdf))
+        self.assertEqual(self.files('Smith_2020', 'pool'), [self.pool_pdf])
+        self.assertEqual(self.files('smith2020climate'), [self.pool_pdf])
+        self.assertEqual(self.files(self.origin().get(self.entry('mine2022')).pool_key, 'pool'),
+                         self.files('mine2022'))
+        self.assertIn('copied', out)
+        self.assertNotIn('broken', self.out('file check'))
+
+    def test_rename_all_with_shared_pool_file(self):
+        # two papers link to one pool file: renamed for both, the first gets a copy, the last moves it
+        with self.assertLogs(papers.logger, level='WARNING'):
+            self.lib(f'file attach mine2022 {self.pool_pdf} --move')
+        self.lib('file rename')
+        self.assertFalse(os.path.exists(self.pool_pdf))
+        for key in ['mine2022', 'smith2020climate']:
+            files = self.files(key)
+            self.assertTrue(all(os.path.exists(f) and f != self.pool_pdf for f in files), files)
+            self.assertEqual(self.files(self.origin().get(self.entry(key)).pool_key, 'pool'), files)
+        self.assertNotIn('broken', self.out('file check'))
+
+    def test_attach_pool_file_named_by_its_entry_no_hint(self):
+        # a file that has the name the pool entry gives it: no `file rename` hint, which would change nothing
+        self.papers('file rename Smith_2020 --move', cwd=self.path('pool'))
+        pdf = self.files('Smith_2020', 'pool')[0]
+        self.assertNotEqual(pdf, self.pool_pdf)
+        with self.assertLogs(papers.logger, level='WARNING') as logs:
+            self.lib(f'file attach mine2022 {pdf} --move')
+        out = '\n'.join(logs.output)
+        self.assertIn(f'{pdf}: not renamed: it keeps the name that the entry Smith_2020 of pool ../pool gives it',
+                      out)
+        self.assertNotIn('file rename', out)
+        self.assertEqual(self.files('mine2022')[1], pdf)
+
+    def test_file_fix_pool_file_labelled_pool(self):
+        # regression: the file found in the pool's files directory was said to be in the library
+        pdf = self.files('mine2022')[0]
+        stray = self.path('pool', 'files', 'stray.pdf')
+        os.rename(pdf, stray)
+        out = self.out('file fix')
+        self.assertIn('(same content, in the files directory of pool ../pool)', out)
+        self.assertNotIn('in the library', out)
+
 
     def test_add_same_pdf_move_mode(self):
         self.lib('rm smith2020climate --keep-files')

@@ -277,6 +277,9 @@ that check the same thing.
 - tests/test_pools.py::TestShallow::test_init_shallow_with_unused_settings
 - tests/test_pools.py::TestShallow::test_rm_own_file_hint
 - tests/test_pools.py::TestShallow::test_filecheck_rename_stays_in_pool
+- tests/test_pools.py::TestShallow::test_rename_file_of_another_pool_entry_copied
+- tests/test_pools.py::TestShallow::test_rename_all_with_shared_pool_file
+- tests/test_pools.py::TestShallow::test_attach_pool_file_named_by_its_entry_no_hint
 - tests/test_pools.py::TestConfigPoolSelfContained::test_init_shallow_has_no_files_directory
 - tests/test_pools_more.py::TestExchange::test_pool_without_filesdir
 - tests/test_pools.py::TestConfigPoolSelfContained::test_refused
@@ -316,6 +319,8 @@ that check the same thing.
 - tests/test_file_other_libraries.py::TestFix::test_move_setting_copies
 - tests/test_file_other_libraries.py::TestFix::test_own_files_directory_by_checksum
 - tests/test_file_other_libraries.py::TestFix::test_own_file_of_another_entry_by_checksum
+- tests/test_paths.py::TestRenameSharedFile::test_attach_file_of_another_entry
+- tests/test_pools.py::TestShallow::test_rename_file_of_another_pool_entry_copied
 
 ### File names
 
@@ -330,6 +335,8 @@ that check the same thing.
 - tests/test_paths.py::TestFlatLayout::test_legacy_directory_with_other_files
 - tests/test_paths.py::TestRenameInPlace::test_single_file
 - tests/test_paths.py::TestRenameInPlace::test_several_files
+- tests/test_paths.py::TestRenameSharedFile::test_rename_one
+- tests/test_paths.py::TestRenameSharedFile::test_rename_all
 - tests/test_paths.py::TestMoveSameFile::test_hardlink_is_moved
 - tests/test_file_cmd.py::TestSameFileName::test_two_papers_same_name
 - tests/test_file_cmd.py::TestSameFileName::test_same_content_is_the_same_file
@@ -360,6 +367,7 @@ that check the same thing.
 - tests/test_file_other_libraries.py::TestOtherLibraries::test_missing_file_skipped
 - tests/test_file_other_libraries.py::TestOtherLibraries::test_changed_content_skipped
 - tests/test_file_other_libraries.py::TestOtherLibraries::test_gone_place_skipped
+- tests/test_pools.py::TestShallow::test_file_fix_pool_file_labelled_pool
 
 ### The free PDF of an entry
 

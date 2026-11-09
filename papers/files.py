@@ -195,7 +195,11 @@ class FilesPolicy:
       files_policy). With `pool` (that pool), only those that a pool entry
       links to are: the others are renamed, and for each file left under
       another name a warning gives the command that renames it in the pool
-      (see not_renamed).
+      (see not_renamed);
+    - a file that another entry links to is never moved: `move` becomes
+      `copy` (a hard link when possible), so that the other entry keeps its
+      link (see linked_by_others): an entry of the library, or, in a shallow
+      library (`pool`), a pool entry of another paper.
     """
 
     def __init__(self, mode, filesdir=None, current_config=None, machine=None, keep=(), pool_dirs=(), in_pool=False,
@@ -211,7 +215,8 @@ class FilesPolicy:
         self.copied = {realpath(f) for f in copied}
         self.in_pool = in_pool
         self.pool = pool
-        self._pool_links = None  # {real path: pool entry}, read when first needed
+        self._pool_links = None  # {real path: [pool entries]}, read when first needed
+        self._links = None  # {real path: [entries of the library]}, read when first needed
         self._linked_in_pool = {}  # file: the pool entry that links to it (see not_renamed)
         self._said = set()
         self._for_all = None  # the answer of ask for all the next files
@@ -244,26 +249,88 @@ class FilesPolicy:
         if a pool entry links to it (or without `pool`), else renamed"""
         if self.pool is None:
             return 'link'
-        if self._pool_links is None:
-            biblio = self.pool.biblio
-            self._pool_links = {realpath(f): e for e in biblio.entries for f in biblio.get_files(e)}
-        pe = self._pool_links.get(realpath(file))
-        if pe is None:
+        linked = self._pool_index().get(realpath(file))
+        if not linked:
             return 'move'
-        self._linked_in_pool[file] = pe
+        self._linked_in_pool[file] = linked[0]
         return 'link'
+
+    def _pool_index(self):
+        if self._pool_links is None:
+            self._pool_links = linked_files(self.pool.biblio)
+        return self._pool_links
+
+    def linked_by_others(self, biblio, e, file):
+        """called by Biblio.rename_entry_files for each file of entry e that
+        it would move: whether another entry links to it (it is copied
+        instead). The other entries: those of the library (biblio), and with
+        `pool`, the pool entries but e's own (its links follow e's, see
+        papers.pools.Exchange.push_links). The links are read once, and
+        follow the renames of the command (see relinked)."""
+        if is_download(file):
+            return False
+        if self._links is None:
+            self._links = linked_files(biblio)
+        real = realpath(file)
+        if any(other is not e for other in self._links.get(real, ())):
+            return True
+        if self.pool is None:
+            return False
+        linked = self._pool_index().get(real)
+        if not linked:
+            return False
+        own = self.pool.find(e)
+        return any(pe is not own for pe in linked)
+
+    def relinked(self, e, old_reals, new):
+        """called by Biblio.rename_entry_files once entry e links to the
+        files `new` instead of the files of real paths `old_reals` (read
+        before the moves): the links of linked_by_others follow, e's pool
+        entry with e"""
+        indexes = []
+        if self._links is not None:
+            indexes.append((self._links, e))
+        if self.pool is not None and self._pool_links is not None:
+            own = self.pool.find(e)
+            if own is not None:
+                indexes.append((self._pool_links, own))
+        for index, entry in indexes:
+            for real in old_reals:
+                linked = index.get(real, [])
+                if any(x is entry for x in linked):
+                    index[real] = [x for x in linked if x is not entry]
+            for f in new:
+                linked = index.setdefault(realpath(f), [])
+                if not any(x is entry for x in linked):
+                    linked.append(entry)
 
     def not_renamed(self, e, file):
         """called by Biblio.rename_entry_files for a file of entry e linked
         where it is while its template name differs: a warning if it is a
         file of a pool entry (see _in_pool) of another paper than e (the
-        files of e's own pool entry are not the command's to rename)"""
+        files of e's own pool entry are not the command's to rename); the
+        command that renames it in the pool only if it would rename it"""
         pe = self._linked_in_pool.get(file)
         if pe is None or file in self._said or self.pool.find(e) is pe:
             return
         self._said.add(file)
+        if self._pool_name(pe, file) == realpath(file):
+            logger.warning(f'{papers.config.short_home(file)}: not renamed: it keeps the name that the entry '
+                           f'{pe.key} of {self.pool.label} gives it')
+            return
         logger.warning(f'{papers.config.short_home(file)}: not renamed, because the entry {pe.key} of '
                        f'{self.pool.label} links to it (`papers -C {self.pool.shown} file rename {pe.key}`)')
+
+    def _pool_name(self, pe, file):
+        """the real path that `file rename` in the pool gives to the file of
+        pool entry pe (see Biblio.rename_entry_files), or None"""
+        files = self.pool.biblio.get_files(pe)
+        target = os.path.join(os.path.abspath(self.pool.filesdir), self.pool.config.nameformat(pe))
+        real = realpath(file)
+        for f, name in zip(files, attachment_names(files, os.path.normpath(target))):
+            if realpath(f) == real:
+                return realpath(free_name(name, f))
+        return None
 
     def __call__(self, file):
         if is_download(file):
@@ -296,7 +363,8 @@ def files_policy(config, mode, pool_dirs=(), keep=(), pool_files=(), copied=(), 
     pool_dirs: the files directories of its pools; pool_files: files of
     pool entries (outside pool_dirs too); copied: files never moved;
     pool: the pool of the library (in a shallow library, the files of its
-    files directory that no pool entry links to are renamed).
+    files directory that no pool entry links to are renamed, and a file
+    that a pool entry of another paper links to is never moved).
     rename: `papers file rename`, which renames the files already in the
     files directory also when it is the pool's, in a shallow library (the
     links of the pool entries follow, see papers.pools.Exchange.push_links,
@@ -307,7 +375,7 @@ def files_policy(config, mode, pool_dirs=(), keep=(), pool_files=(), copied=(), 
                and any(realpath(config.filesdir or '') == realpath(d) for d in pool_dirs))
     return FilesPolicy(mode, config.filesdir, current_config=config.file, machine=config.machine, keep=keep,
                        pool_dirs=pool_dirs, in_pool=in_pool, pool_files=pool_files, copied=copied,
-                       pool=pool if in_pool else None)
+                       pool=pool if config.shallow else None)
 
 
 # names of the files of an entry, directory scan
@@ -495,20 +563,21 @@ def scan_dir_items(direc, quiet=False):
 # papers file rename, attach, detach
 # ==================================
 
-def rename_files(biblio, entries, config, pool_dirs=(), keep_source=False, mode=None, keep=()):
+def rename_files(biblio, entries, config, pool_dirs=(), keep_source=False, mode=None, keep=(), pool=None):
     """place the files of the entries in the files directory, under their
     template name: the files already there are renamed (in a shallow
     library, those of the pool's files directory too), the others are
     moved, copied or left where they are as the files mode says (mode, else
     the `files` setting; keep_source: copy). A file that belongs to another
-    library is copied, see FilesPolicy; the files of `keep` are left where
-    they are. Returns the number of entries whose files could not be
-    placed (an error is reported for each)."""
+    library, or that another entry links to (pool: the pool of a shallow
+    library, whose entries count), is copied, see FilesPolicy; the files of
+    `keep` are left where they are. Returns the number of entries whose
+    files could not be placed (an error is reported for each)."""
     if config.filesdir is None:
         raise PapersExit('the library has no files directory: pass --filesdir, '
                          'or set it with `papers config filesdir DIR`')
     mode = 'copy' if keep_source else (mode or config.files or 'move')
-    policy = files_policy(config, mode, pool_dirs, keep=keep, rename=True)
+    policy = files_policy(config, mode, pool_dirs, keep=keep, rename=True, pool=pool)
     failed = 0
     for e in entries:
         try:

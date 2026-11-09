@@ -80,6 +80,10 @@ $ papers file attach perrette_yool2011 ~/Documents/papers/arctic/files/si.pdf
 papers: warning: ~/Documents/papers/arctic/files/si.pdf: not renamed, because the entry yool2011 of pool ~/Documents/papers/arctic links to it (`papers -C ~/Documents/papers/arctic file rename yool2011`)
 ```
 
+When the file already has the name that the pool gives to its entry, the
+warning says so, without command (`not renamed: it keeps the name that the
+entry yool2011 of pool ~/Documents/papers/arctic gives it`).
+
 What the commands do in a shallow library:
 
 - `add` places new files as the `files` setting says, and adds the new
@@ -91,7 +95,10 @@ What the commands do in a shallow library:
   the same way. `file rename` also renames the files already in the
   pool's files directory, with the pool's name template, and the pool
   entry links to the new names; the other shallow libraries of the pool
-  repair their links when they are loaded. With `auto-push` false, when
+  repair their links when they are loaded. A file that a pool entry of
+  another paper links to is not moved: the entry gets a copy under its
+  new name (a hard link when possible), and the pool entry keeps the
+  file. With `auto-push` false, when
   the pool entry has other fields than the library entry and the pool's
   template gives it another name, the files of that entry are left as
   they are, since the pool would rename them back; papers warns and says

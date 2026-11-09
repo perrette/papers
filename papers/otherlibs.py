@@ -62,16 +62,22 @@ class Source:
     itself, by checksum), 'pool' (the pool, by checksum) or 'other' (another
     library of the machine, by checksum: place, the real path of its
     bibtex); key: the entry of the library that links to the file (None: a
-    file that no entry links to)"""
+    file that no entry links to); pool: the label of the pool whose files
+    directory has the file of the library (a shallow library's)"""
 
-    def __init__(self, kind, place=None, key=None):
+    def __init__(self, kind, place=None, key=None, pool=None):
         self.kind = kind
         self.place = place
         self.key = key
+        self.pool = pool
 
     def describe(self):
         if self.kind == 'own':
-            return f'same content as the file of {self.key}' if self.key else 'same content, in the library'
+            if self.key:
+                return f'same content as the file of {self.key}'
+            if self.pool:
+                return f'same content, in the files directory of {self.pool}'
+            return 'same content, in the library'
         if self.kind == 'pool':
             return 'from the pool, same content'
         return f'found in {short_home(os.path.dirname(self.place))}'
@@ -89,10 +95,12 @@ def _linked_by(biblio):
 class OwnLibrary:
     """the library itself: a broken link whose checksum .papers/files.json
     has, found in a file of files.json or an unlinked file of the files
-    directory with that content"""
+    directory with that content (pool: the pool of a shallow library, whose
+    files directory is the library's)"""
 
-    def __init__(self, config, biblio, digests):
+    def __init__(self, config, biblio, digests, pool=None):
         self.config = config
+        self.pool = pool
         self.biblio = biblio
         self.digests = digests
         self._hashes = self._checksums = None
@@ -148,7 +156,8 @@ class OwnLibrary:
                          None)
         if found is None:
             return None
-        return found, Source('own', key=self.owners.get(realpath(found)))
+        pool = self.pool.label if self.pool is not None and is_inside(found, self.config.filesdir) else None
+        return found, Source('own', key=self.owners.get(realpath(found)), pool=pool)
 
 
 class OtherLibraries:
@@ -231,7 +240,7 @@ class Lookup:
 
     def __init__(self, config, biblio, pool=None, exclude=()):
         self.digests = Digests()
-        self.own = OwnLibrary(config, biblio, self.digests)
+        self.own = OwnLibrary(config, biblio, self.digests, pool if config.shallow else None)
         self.pool = pool
         self._pool_checksums = None
         self.exclude = {realpath(b) for b in [config.bibtex] + list(exclude) if b}

@@ -160,8 +160,8 @@ def _print_placed(biblio, e):
         source, action = getattr(biblio, 'placed', {}).get(f, (None, None))
         if source is None:
             continue
-        if os.path.dirname(source) == os.path.dirname(f):
-            print(f'    {show(source)} --> renamed to {os.path.basename(f)}')
+        if os.path.dirname(source) == os.path.dirname(f):  # copied: e.g. another entry links to the source
+            print(f'    {show(source)} --> {"renamed" if action == "moved" else action} to {os.path.basename(f)}')
         else:
             print(f'    {show(source)} --> {action} to {show(f)}')
 
