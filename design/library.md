@@ -654,6 +654,19 @@ Rules on the pool (contract for the conditions; the checks are behaviour):
   settings are ignored (a warning when the library sets `name.template`).
 - A pool without files directory: adding a file is an error.
 - The file links of the library entries are the pool entries' links.
+- `file rename` (and `list --rename`) renames the files of the entries
+  that are already in the pool's files directory, with the pool's name
+  template applied to the library entry; the links of the pool entries
+  follow (`exchange.md` section 12.3), and the other shallow libraries of
+  the pool repair their links when loaded (`exchange.md` section 15.3).
+  Exception: with `auto-push false`, when the pool's name template gives
+  the pool entry (`exchange.md` section 4.1) another name than the library
+  entry, the files of that entry in the pool's files directory stay where
+  they are (the pool would rename them back), with a warning that names
+  the entry and says to run `papers push KEY`, then `papers file rename
+  KEY` (wording free). With `auto-push true` the entry is pushed by the
+  same command and its files are renamed. An entry that the pool does not
+  have is renamed (it is pushed, `exchange.md` section 12.1).
 - `papers init --pool` writes `filesdir` (default `files`) but does not
   create the folder.
 - Changing the pool moves files (the repair of broken links before
@@ -690,7 +703,9 @@ warning). The rules, in order (the first that applies decides):
    found by its checksum: rule 5;
 5. a file already inside the files directory: move (renamed in place);
    in a shallow library, a file already in the pool's files directory:
-   link (never renamed: other libraries may link to it);
+   link (not renamed: other libraries may link to it), except in
+   `file rename` (and `list --rename`), which renames it (see Files of a
+   shallow library);
 6. a file of a pool entry: copy (link in a shallow library);
 7. a file inside the files directory of a pool: copy;
 8. otherwise the mode (asked, with `ask`). A `move` of a file that lies in

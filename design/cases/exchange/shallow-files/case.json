@@ -1,5 +1,5 @@
 {
-  "description": "in a shallow library the files of the entries are the pool entries links: attach, detach and rename update the links in the pool entry (and its record), without copying or deleting a file",
+  "description": "in a shallow library the files of the entries are the pool entries links: attach, detach and rename update the links in the pool entry (and its record); rename renames the file already in the pool's files directory; no file is copied or deleted",
   "sections": [
     "exchange.md#12.3",
     "exchange.md#15",

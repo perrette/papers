@@ -320,10 +320,13 @@ class TestShallowFileLinks(ExchangeTest):
         self.edit_lib('file = {', 'file = {:x.pdf:pdf;')
         out = self.out('file rename smith2020climate')
         self.assertIn(LINKS_NOTE, out)
-        new = [f for f in self.files('smith2020climate') if f != self.pool_pdf]
-        self.assertEqual(len(new), 1)
-        self.assertTrue(new[0].startswith(self.path('pool', 'files')), new)
-        self.assertEqual(sorted(self.pool_files()), sorted([self.pool_pdf] + new))
+        # the external file is placed in the pool; the pool's file is renamed too, the pool entry follows
+        files = self.files('smith2020climate')
+        self.assertEqual(len(files), 2)
+        self.assertTrue(all(f.startswith(self.path('pool', 'files')) for f in files), files)
+        self.assertNotIn(self.pool_pdf, files)
+        self.assertFalse(Path(self.pool_pdf).exists())
+        self.assertEqual(sorted(self.pool_files()), sorted(files))
         self.assertEqual(self.unlinked_in_pool(), [])
 
     def test_detach(self):

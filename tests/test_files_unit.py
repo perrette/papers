@@ -11,7 +11,7 @@ import requests
 import papers.config
 from papers.bib import Biblio
 from papers.entries import get_entry_val
-from papers.files import (FilesPolicy, OtherLibraries, attach_files, check_entry_files, clean_filesdir,
+from papers.files import (FilesPolicy, OtherLibraries, attach_files, files_policy, check_entry_files, clean_filesdir,
                           download_url, entry_filecheck_metadata, execute_moves, fix_mendeley_path, is_inside,
                           plan_moves, read_entry_dir, rename_files, scan_dir_items)
 from papers.utils import PapersExit
@@ -78,6 +78,17 @@ class TestPolicy(TmpTest):
             self.assertEqual(FilesPolicy('link')(os.path.join(d, 'a.pdf')), 'move')
         finally:
             os.rmdir(d)
+
+    def test_shallow_rename_moves_pool_files(self):
+        # a shallow library whose files directory is the pool's: its files are linked where they are,
+        # except by `papers file rename`, which renames them (keep: left where they are)
+        pool_files = os.path.join(self.dir, 'pool', 'files')
+        pdf, kept = self.write('pool', 'files', 'a.pdf'), self.write('pool', 'files', 'b.pdf')
+        config = mock.Mock(shallow=True, filesdir=pool_files, file=None, machine=None)
+        self.assertEqual(files_policy(config, 'move', [pool_files])(pdf), 'link')
+        policy = files_policy(config, 'move', [pool_files], keep=[kept], rename=True)
+        self.assertEqual(policy(pdf), 'move')
+        self.assertEqual(policy(kept), 'link')
 
     def test_unreadable_library_config(self):
         # a broken configuration of another library: the file is not its file

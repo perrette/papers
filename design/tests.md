@@ -266,6 +266,10 @@ that check the same thing.
 - tests/test_pools.py::TestShallow::test_add_places_files_in_pool
 - tests/test_pools.py::TestShallow::test_file_attach_places_files_in_pool
 - tests/test_pools.py::TestShallow::test_file_rename_places_files_in_pool
+- tests/test_pools.py::TestShallow::test_file_rename_renames_pool_files
+- tests/test_pools.py::TestShallow::test_file_rename_pool_entry_named_otherwise
+- tests/test_pools.py::TestShallow::test_file_rename_pool_entry_named_otherwise_auto_push
+- tests/test_pools.py::TestShallow::test_file_rename_repairs_other_shallow_libraries
 - tests/test_pools.py::TestConfigPoolSelfContained::test_init_shallow_has_no_files_directory
 - tests/test_pools_more.py::TestExchange::test_pool_without_filesdir
 - tests/test_pools.py::TestConfigPoolSelfContained::test_refused
@@ -293,6 +297,7 @@ that check the same thing.
 - tests/test_files_mode.py::TestOtherLibrary::test_outside_files_directory_is_moved
 - tests/test_files_mode.py::TestOtherLibrary::test_own_files_directory_is_not_other
 - tests/test_files_unit.py::TestPolicy::test_download_is_moved
+- tests/test_files_unit.py::TestPolicy::test_shallow_rename_moves_pool_files
 - tests/test_pools.py::TestAdd::test_copy_mode
 - tests/test_pools.py::TestAdd::test_move_mode_never_moves_pool_files
 - tests/test_pools.py::TestShallow::test_add_same_pdf_move_mode
@@ -1727,6 +1732,10 @@ that check the same thing.
 - tests/test_pools.py::TestShallow::test_add_places_files_in_pool
 - tests/test_pools.py::TestShallow::test_file_attach_places_files_in_pool
 - tests/test_pools.py::TestShallow::test_file_rename_places_files_in_pool
+- tests/test_pools.py::TestShallow::test_file_rename_renames_pool_files
+- tests/test_pools.py::TestShallow::test_file_rename_pool_entry_named_otherwise
+- tests/test_pools.py::TestShallow::test_file_rename_pool_entry_named_otherwise_auto_push
+- tests/test_pools.py::TestShallow::test_file_rename_repairs_other_shallow_libraries
 - tests/test_exchanges.py::TestShallowWithOther::test_pull
 - tests/test_exchanges.py::TestAddPool::test_shallow
 

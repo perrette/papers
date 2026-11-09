@@ -62,7 +62,22 @@ What the commands do in a shallow library:
   `add` makes to the fields of an entry the library has already is pushed
   only with auto-push;
 - `papers file attach` and `file rename` place the files they handle in
-  the same way; `file fix` copies the files it finds outside the pool into
+  the same way. `file rename` also renames the files already in the
+  pool's files directory, with the pool's name template, and the pool
+  entry links to the new names; the other shallow libraries of the pool
+  repair their links when they are loaded. With `auto-push` false, when
+  the pool entry has other fields than the library entry and the pool's
+  template gives it another name, the files of that entry are left as
+  they are, since the pool would rename them back; papers warns and says
+  what to run:
+
+  ```
+  $ papers file rename perrette_yool2011
+  papers: warning: perrette_yool2011: 1 file(s) not renamed: they are in pool ~/Documents/papers/arctic, whose entry differs and names them perrette_et_al_2011_near-ubiquity-of-ice-edge-blooms-in-the-arctic; `papers push perrette_yool2011` first, then `papers file rename perrette_yool2011`
+  ```
+
+  With `auto-push` true, the entry is pushed by the same command and its
+  files are renamed. `file fix` copies the files it finds outside the pool into
   the pool (hard links when possible) and never moves them, unless
   `--move` is given for the files of the `--search` folders;
 - the file links are always pushed, whatever the `auto-push` setting: a
