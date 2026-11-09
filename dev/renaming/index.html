@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.0">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.1">
     
     
       
@@ -964,10 +964,12 @@
 <p>The first file of an entry (the PDF) is named after the name template, and
 any other file (attachments, e.g. supplementary material added with
 <code>--attach</code> or <code>papers file attach</code>) is placed next to it, under the same
-name followed by <code>--</code> and the file's original name:</p>
+name followed by <code>--</code> and the file's original name, slugified as the titles
+are (lower case, ASCII, words joined with <code>-</code>):</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>files/perrette_et_al_2013_a-scaling-approach.pdf
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>files/perrette_et_al_2013_a-scaling-approach--esd-4-11-2013-supplement.pdf
 </code></pre></div>
+<p>(<code>ESD 4-11-2013 Supplement.pdf</code> would get the same name.)</p>
 <p>The label after <code>--</code> is kept when the entry is renamed again (e.g. after its
 title or year was fixed), so only the part before <code>--</code> changes. If two
 attachments have the same original name, the second one gets a <code>-2</code> suffix.</p>
@@ -1158,7 +1160,7 @@ change, it is convenient to store them in a <a href="../configuration/">library 
       <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.instant", "navigation.tracking", "navigation.sections", "navigation.top", "toc.follow", "toc.integrate", "navigation.expand", "search.suggest", "search.highlight", "content.code.copy", "content.action.edit"], "search": "../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"default": "stable", "provider": "mike"}}</script>
     
     
-      <script src="../assets/javascripts/bundle.c21346df.min.js"></script>
+      <script src="../assets/javascripts/bundle.a5f9d56c.min.js"></script>
       
     
   </body>
