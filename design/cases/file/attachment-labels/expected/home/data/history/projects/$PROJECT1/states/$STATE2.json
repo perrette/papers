@@ -1,0 +1,50 @@
+{
+ "parent": "$STATE1",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers file rename",
+ "ops": [
+  {
+   "op": "moved",
+   "src": "files/a.txt",
+   "dst": "files/doe_2020_ocean-heat.txt",
+   "checksum": "6403203dd5a0867eb14d104ee8a73730bd72dd9ad92e78d996a6dba0a5dcfc01"
+  },
+  {
+   "op": "moved",
+   "src": "files/Geophysical Research Letters - 2011 - Rignot (SI).txt",
+   "dst": "files/doe_2020_ocean-heat--geophysical-research-letters-2011-rignot-si.txt",
+   "checksum": "19e7e7c7a82e7e603fd2b04d187cc15d31cd4488ffa5311028c17d09b48fd66c"
+  },
+  {
+   "op": "moved",
+   "src": "files/doe_2020_ocean-heat--Supplementary Data.txt",
+   "dst": "files/doe_2020_ocean-heat--supplementary-data.txt",
+   "checksum": "01d09d19c2139a46aebfb577780d123d7396e97201bc7ead210a2ebff8239dee"
+  },
+  {
+   "op": "moved",
+   "src": "files/+++.txt",
+   "dst": "files/doe_2020_ocean-heat--+++.txt",
+   "checksum": "8c49180859389026c9534fb3f2a0de611477e30c69831ec6c6b8a0b53d6f6e41"
+  },
+  {
+   "op": "moved",
+   "src": "files/Info DOI--Supp Data.txt",
+   "dst": "files/doe_2020_ocean-heat--info-doi--supp-data.txt",
+   "checksum": "a4fb621495a0122493b2203591c448903c472e306a1ede54fabad829e01075c0"
+  }
+ ],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "76620f8a787c919faec6c1c75d293c019da5f1831c2f894d3fc2639321a692eb"
+  ],
+  "sha": "76620f8a787c919faec6c1c75d293c019da5f1831c2f894d3fc2639321a692eb"
+ },
+ "files": {
+  ".papers/files.json": [
+   "481bb3010bfff19f8b057580656a368bbd1a3ced8a694279533666bb80bb7217"
+  ]
+ }
+}
