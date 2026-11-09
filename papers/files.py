@@ -70,7 +70,7 @@ def download_url(url, expect_pdf=False, dest_dir=None, user_agent=None):
         response = requests.get(url, headers=headers, timeout=30)
     except requests.exceptions.RequestException as err:
         raise ValueError(
-            f"Failed to download from {url}: {type(err).__name__}: {err}. "
+            f"Failed to download {url} ({type(err).__name__}: {err}). "
             "The connection failed before any HTTP response was received — "
             "this is often transient (try again), or due to TLS/network issues."
         ) from err
@@ -82,8 +82,8 @@ def download_url(url, expect_pdf=False, dest_dir=None, user_agent=None):
                     "(AWS WAF or similar); download manually in a browser "
                     "and re-run with the local file path")
         error = ValueError(
-            f"Failed to download from {url}: HTTP {response.status_code} "
-            f"(content-type: {ctype or 'unknown'}){hint}"
+            f"Failed to download {url} (HTTP {response.status_code}, "
+            f"content-type: {ctype or 'unknown'}){hint}"
         )
         error.response = response  # its status and headers (Retry-After)
         raise error

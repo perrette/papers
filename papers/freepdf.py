@@ -81,6 +81,13 @@ class Link(namedtuple('Link', 'url version')):
         return f'{VERSION_NAMES[self.version]}, from {self.host}'
 
 
+def join_urls(urls):
+    """the URLs of a message, separated by spaces: a URL in a message is
+    followed by a space or the end of the line, never by punctuation, which
+    terminals would take as part of the link"""
+    return ' '.join(urls)
+
+
 def _host(url):
     from urllib.parse import urlparse  # imported when used: papers starts faster
     return urlparse(url).netloc
@@ -125,7 +132,7 @@ def _request(url, get):
         if response is None or getattr(response, 'status_code', None) != 429:
             raise
         wait = _retry_after((response.headers or {}).get('Retry-After'))
-        logger.debug(f'{url}: HTTP 429, retried in {wait:g} s')
+        logger.debug(f'{url} (HTTP 429), retried in {wait:g} s')
         time.sleep(wait)
         _wait(url)
         return get()
@@ -194,7 +201,7 @@ class Search:
                         self.notes.append(f'{_host(final)}: no PDF link on the article page')
                 except Exception as error:  # HTTP error, network error
                     self.page_refused = url
-                    self.notes.append(f'{url}: {_reason(error)}')
+                    self.notes.append(f'{url} ({_reason(error)})')
         return self._page
 
     def openalex(self):
@@ -235,7 +242,7 @@ class Search:
         try:
             html, final = _fetch_page(link.url)
         except Exception as error:  # HTTP error, network error
-            self.notes.append(f'{link.url}: {_reason(error)}')
+            self.notes.append(f'{link.url} ({_reason(error)})')
             return None
         pdf, _ = page_links(html, final)
         if not pdf:
@@ -318,7 +325,7 @@ def download(link):
         head = f.read(1024)
     if b'%PDF' not in head:
         discard(path)
-        raise ValueError(f'{link.url}: not a PDF')
+        raise ValueError(f'not a PDF: {link.url}')
     remember_download(link.url, path)
     return path
 
@@ -340,7 +347,7 @@ class Found(namedtuple('Found', 'path link how other refused')):
         if not self.refused:
             return self.link.describe()
         return (f'{self.link.describe()}; the published version was refused: '
-                f'open {", ".join(self.refused)} in a browser')
+                f'open {join_urls(self.refused)} in a browser')
 
 
 def local_copy(link, local=None):
@@ -402,7 +409,7 @@ def no_pdf_message(search, tried):
     lines += [f'  {note}' for note in search.notes]
     links = browser_links(search, tried)
     if links:
-        lines.append('open in a browser: ' + ', '.join(links))
+        lines.append('open in a browser: ' + join_urls(links))
     return '\n'.join(lines)
 
 
@@ -419,5 +426,5 @@ def fetch_supplements(search, local=None):
         try:
             found.append(get(link, local))
         except (ValueError, OSError) as error:
-            logger.warning(f'supplement {link.url}: {_reason(error)} (not attached)')
+            logger.warning(f'supplement {link.url} not attached ({_reason(error)})')
     return found

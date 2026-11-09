@@ -187,7 +187,7 @@ class TestVersions(FetchTest):
         self.assertEqual(self.web.downloads(), [])
         message = '\n'.join(logs.output)
         self.assertIn('smith2020: no free PDF found', message)
-        self.assertIn('open in a browser: https://doi.org/10.1000/ocean, https://repo.example.edu/am', message)
+        self.assertIn('open in a browser: https://doi.org/10.1000/ocean https://repo.example.edu/am', message)
 
     def test_none_works_the_links_to_open_and_the_others_attached(self):
         self.bib(entry('smith2020', doi=DOI), entry('other2020', doi='10.1000/other'))
@@ -199,7 +199,7 @@ class TestVersions(FetchTest):
             self.lib('file fetch smith2020 other2020')
         # several entries: one line for the entry without PDF, not an error
         self.assertIn(f'smith2020: no PDF ({PDF} (published version): not a PDF; OpenAlex: no open-access PDF; '
-                      f'open {PDF}, https://doi.org/{DOI} in a browser)\n', err.getvalue())
+                      f'open {PDF} https://doi.org/{DOI} in a browser)\n', err.getvalue())
         self.assertNotIn('error', err.getvalue())
         self.assertEqual(self.files('smith2020'), [])
         self.assertEqual(len(self.files('other2020')), 1)  # saved
@@ -308,7 +308,7 @@ class TestMoreSources(FetchTest):
             self.lib('file fetch smith2020')
         message = '\n'.join(logs.output)
         self.assertIn('repo.example.edu: no PDF link on the landing page', message)
-        self.assertIn(f'open in a browser: {PDF}, https://doi.org/{DOI}, {self.REPO}', message)
+        self.assertIn(f'open in a browser: {PDF} https://doi.org/{DOI} {self.REPO}', message)
         self.assertEqual(self.web.downloads(), [PDF])  # no other link of the page
 
     def test_landing_page_of_the_publisher_is_not_read_again(self):
@@ -324,7 +324,7 @@ class TestMoreSources(FetchTest):
             out = self.out('file fetch smith2020')
         self.assertIn('(accepted manuscript, from repo.example.edu', out)
         self.sleep.assert_called_once_with(30)  # at most 30 s
-        self.assertIn('https://repo.example.edu/am.pdf: HTTP 429, retried in 30 s', '\n'.join(logs.output))
+        self.assertIn('https://repo.example.edu/am.pdf (HTTP 429), retried in 30 s', '\n'.join(logs.output))
 
     def test_429_twice_moves_on(self):
         self.web.openalex[DOI] = [location('https://repo.example.edu/am.pdf', 'acceptedVersion'),
@@ -465,7 +465,7 @@ class TestSummary(FetchTest):
                       'open in a browser:\n'
                       '  acc2020: https://journals.example.org/acc.pdf (published version refused; '
                       'accepted manuscript found)\n'
-                      '  none2020: https://journals.example.org/none.pdf, https://doi.org/10.1000/none (no PDF)\n',
+                      '  none2020: https://journals.example.org/none.pdf https://doi.org/10.1000/none (no PDF)\n',
                       out)
 
     def test_refused_but_not_attached(self):
@@ -473,7 +473,7 @@ class TestSummary(FetchTest):
         Path(self.write('lib', 'files', 'acc.pdf')).write_bytes(pdf_bytes('acc'))
         self.bib(entry('pub2020', doi='10.1000/pub'), entry('acc2020', 'files/acc.pdf', doi='10.1000/acc'))
         out = self.out('file fetch pub2020 acc2020 --again')
-        self.assertIn('acc2020: https://repo.example.edu/acc.pdf: not attached, the entry has the same file', out)
+        self.assertIn('acc2020: https://repo.example.edu/acc.pdf not attached, the entry has the same file', out)
         self.assertIn('summary of 2 entries:\n'
                       '  1 PDF attached: 1 published version\n'
                       '  1 had the PDF already\n', out)
@@ -633,7 +633,7 @@ class TestSupplements(FetchTest):
         self.assertEqual(os.path.basename(suppl), stem + '--ocean-supplement.pdf')
         self.assertEqual(os.path.basename(tagged), stem + '--si-tables.pdf')
         self.assertIn('(supplement, from journals.example.org)', out)
-        self.assertIn('s2.pdf: not a PDF (not attached)', '\n'.join(logs.output))
+        self.assertIn('s2.pdf not attached (not a PDF)', '\n'.join(logs.output))
         self.assertNotIn('https://journals.example.org/other.pdf', self.web.downloads())
         self.assertNotIn('https://journals.example.org/data.zip', self.web.downloads())
 
@@ -663,7 +663,7 @@ class TestNoDuplicate(FetchTest):
         Path(local).write_bytes(pdf_bytes(PDF))
         self.bib(entry('smith2020', 'files/mine.pdf', doi=DOI))
         out = self.out('file fetch smith2020 --again')
-        self.assertIn(f'smith2020: {PDF}: not attached, the entry has the same file: files/mine.pdf', out)
+        self.assertIn(f'smith2020: {PDF} not attached, the entry has the same file: files/mine.pdf', out)
         self.assertEqual(self.files('smith2020'), [local])
         self.assertEqual(self.downloads_left(), [])
 
@@ -877,3 +877,67 @@ class TestPageLinks(FetchTest):
         self.assertEqual(url, 'https://api.openalex.org/works/doi:10.1000/ocean')
         self.assertEqual(params['select'], openalex.WORK_SELECT)
         self.assertEqual(params['api_key'], 'secret')
+
+
+class TestUrlsInMessages(FetchTest):
+    """library.md "The free PDF of an entry": a URL in a message is followed by a space or the end of
+    the line, never by punctuation (a terminal would take it as part of the link)"""
+
+    def setUp(self):
+        super().setUp()
+        Path(self.write('lib', 'files', 'same.pdf')).write_bytes(pdf_bytes('https://journals.example.org/same.pdf'))
+        self.bib(entry('ref2020', doi='10.1000/ref'), entry('none2020', doi='10.1000/none'),
+                 entry('same2020', 'files/same.pdf', doi='10.1000/same'), entry('sup2020', doi='10.1000/sup'))
+        # ref2020: no publisher page (HTTP 404), a PDF after an HTTP 429
+        self.web.openalex['10.1000/ref'] = [location('https://repo.example.edu/ref.pdf', 'submittedVersion')]
+        self.web.files['https://repo.example.edu/ref.pdf'] = [(429, {}), pdf_bytes('ref')]
+        # none2020: the publisher's PDF is not one, a landing page that is not there
+        self.publisher(doi='10.1000/none', pdf='https://journals.example.org/none.pdf', content=b'<html></html>')
+        self.web.openalex['10.1000/none'] = [location(None, 'acceptedVersion', landing='https://repo.example.edu/none')]
+        # same2020: the PDF is the file of the entry; sup2020: a supplement refused
+        self.publisher(doi='10.1000/same', pdf='https://journals.example.org/same.pdf')
+        self.publisher(doi='10.1000/sup', pdf='https://journals.example.org/sup.pdf',
+                       links=[('https://journals.example.org/sup-suppl.pdf', 'Supplement')])
+        sleep = mock.patch('papers.freepdf.time.sleep')
+        sleep.start()
+        self.addCleanup(sleep.stop)
+
+    def messages(self, cmd):
+        "stdout, stderr and the log messages of papers.freepdf (all levels) and of papers (INFO and above)"
+        import logging
+        out, err = io.StringIO(), io.StringIO()
+        with self.assertLogs('papers', 'DEBUG') as logs, redirect_stdout(out), redirect_stderr(err):
+            try:
+                self.lib(cmd)
+            except PapersExit as error:
+                err.write(str(error))
+        records = [r.getMessage() for r in logs.records if r.levelno >= logging.INFO or r.filename == 'freepdf.py']
+        return '\n'.join([out.getvalue(), err.getvalue()] + records)
+
+    def assertUrlsEndClean(self, text, *expected):
+        import re
+        urls = re.findall(r'https?://\S+', text)
+        for url in expected:  # the messages tested are there
+            self.assertIn(url, urls)
+        self.assertEqual([url for url in urls if url[-1] in ':;,.)'], [], text)
+
+    def test_several_entries(self):
+        text = self.messages('file fetch ref2020 none2020 same2020 sup2020 --again --supplements')
+        self.assertUrlsEndClean(text, 'https://doi.org/10.1000/ref', 'https://repo.example.edu/none',
+                                'https://journals.example.org/none.pdf', 'https://journals.example.org/same.pdf',
+                                'https://journals.example.org/sup-suppl.pdf', 'https://repo.example.edu/ref.pdf')
+        self.assertIn('summary of 4 entries:', text)
+
+    def test_one_entry(self):
+        text = self.messages('file fetch none2020')
+        self.assertUrlsEndClean(text, 'https://journals.example.org/none.pdf', 'https://doi.org/10.1000/none')
+        self.assertIn('open in a browser: https://journals.example.org/none.pdf https://doi.org/10.1000/none '
+                      'https://repo.example.edu/none', text)
+
+    def test_download_errors(self):
+        from papers.files import download_url
+        self.web.files['https://x.example.org/b.pdf'] = b'<html></html>'
+        for url in ('https://x.example.org/a.pdf', 'https://x.example.org/b.pdf'):
+            with self.assertRaises(ValueError) as error:
+                download_url(url, expect_pdf=True)
+            self.assertUrlsEndClean(str(error.exception), url)

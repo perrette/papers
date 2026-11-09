@@ -830,7 +830,7 @@ class FetchSummary:
             lines.append(f'  {kept} without published version (kept as they are)')
         if len(lines) == 1:
             lines.append('  nothing attached')
-        links = [f'  {key}: {", ".join(urls)} ({what})' for key, urls, what in self.browser if urls]
+        links = [f'  {key}: {freepdf.join_urls(urls)} ({what})' for key, urls, what in self.browser if urls]
         if links:
             lines += ['open in a browser:'] + links
         print('\n'.join(lines))
@@ -910,7 +910,7 @@ def _attach_fetched(biblio, config, pools, e, found, refused, mode, summary):
         if f.how == 'has':
             print(f'{e.key}: already has {_show(f.path)} (from {f.link.host})')
         elif f.how == 'downloaded' and (same := _same_content(f.path, biblio.get_files(e) + [g.path for g in new])):
-            print(f'{e.key}: {f.link.url}: not attached, the entry has the same file: {_show(same)}')
+            print(f'{e.key}: {f.link.url} not attached, the entry has the same file: {_show(same)}')
             freepdf.discard(f.path)
         else:
             new.append(f)
