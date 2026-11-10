@@ -976,7 +976,9 @@ attachments have the same original name, the second one gets a <code>-2</code> s
 <p>Two entries can get the same file name (the same authors, year and title,
 e.g. a preprint and the published paper). A file of another entry is never
 replaced: the second file gets a <code>-2</code> suffix (<code>-3</code>, ... after that), unless
-it has the same content, in which case both entries link to the same file.</p>
+it has the same content, in which case both entries link to the same file.
+Renaming the files of one of them later copies the file to its new name (a
+hard link when possible): the other entry keeps its link.</p>
 <p>Versions before 2.19 placed the files of an entry with several files in a
 folder named after the entry, with a hidden copy of the entry
 (<code>files/&lt;name&gt;/.&lt;name&gt;.bib</code>). Such folders keep working as they are: their
@@ -1000,7 +1002,8 @@ in a folder of your project) is moved, copied or left where it is as the
 <a href="../files/#what-add-does-with-a-file">Files</a>). <code>--move</code>, <code>--copy</code> and
 <code>--link</code> override the setting; <code>--keep-source</code> is the same as <code>--copy</code> (a
 hard link when possible). A file that belongs to another library is copied,
-not moved. <code>papers list ... --rename</code> runs this command (with <code>--move</code> or
+not moved, and so is a file that another entry links to (the report says
+<code>copied to</code> instead of <code>renamed to</code>). <code>papers list ... --rename</code> runs this command (with <code>--move</code> or
 <code>--keep-source</code>); the deprecated <code>papers filecheck --rename</code> moves the
 files, whatever the setting.</p>
 <p>In a shallow library (a library with a pool), the files are in the pool's
@@ -1009,7 +1012,9 @@ renames the files there, and the pool entry links to the new names. With
 <code>auto-push</code> false, the files of an entry whose pool entry has other fields
 (so that the pool's template names it otherwise) are left where they are,
 with a warning: <code>papers push KEY</code> sends the entry to the pool, then
-<code>papers file rename KEY</code> renames them. See
+<code>papers file rename KEY</code> renames them. A file that an entry of the pool
+for another paper links to is copied to the new name (a hard link when
+possible), so that the pool entry keeps it. See
 <a href="../shallow-libraries/">Shallow libraries</a>.</p>
 <h2 id="control-fields-when-renaming-files">Control fields when renaming files<a class="headerlink" href="#control-fields-when-renaming-files" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>$&gt; papers add --move -v --name-template "{AuthorX}{year}-{Title}" --name-title-sep '' --name-author-sep '' esd-4-11-2013
