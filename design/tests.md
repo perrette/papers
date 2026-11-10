@@ -270,6 +270,13 @@ that check the same thing.
 - tests/test_pools.py::TestShallow::test_file_rename_pool_entry_named_otherwise
 - tests/test_pools.py::TestShallow::test_file_rename_pool_entry_named_otherwise_auto_push
 - tests/test_pools.py::TestShallow::test_file_rename_repairs_other_shallow_libraries
+- tests/test_pools.py::TestShallow::test_attach_pool_linked_file_not_renamed
+- tests/test_pools.py::TestShallow::test_filesdir_option_not_used
+- tests/test_pools.py::TestShallow::test_name_settings_not_used
+- tests/test_pools.py::TestShallow::test_config_unused_setting_saved_with_note
+- tests/test_pools.py::TestShallow::test_init_shallow_with_unused_settings
+- tests/test_pools.py::TestShallow::test_rm_own_file_hint
+- tests/test_pools.py::TestShallow::test_filecheck_rename_stays_in_pool
 - tests/test_pools.py::TestConfigPoolSelfContained::test_init_shallow_has_no_files_directory
 - tests/test_pools_more.py::TestExchange::test_pool_without_filesdir
 - tests/test_pools.py::TestConfigPoolSelfContained::test_refused
@@ -301,6 +308,9 @@ that check the same thing.
 - tests/test_pools.py::TestAdd::test_copy_mode
 - tests/test_pools.py::TestAdd::test_move_mode_never_moves_pool_files
 - tests/test_pools.py::TestShallow::test_add_same_pdf_move_mode
+- tests/test_pools.py::TestShallow::test_attach_stray_pool_file_renamed
+- tests/test_pools.py::TestShallow::test_add_stray_pool_file_renamed
+- tests/test_pools.py::TestShallow::test_file_fix_stray_pool_file_renamed
 - tests/test_file_relink.py::TestSearch::test_move
 - tests/test_file_relink.py::TestOtherLibrary::test_move_still_copies
 - tests/test_file_other_libraries.py::TestFix::test_move_setting_copies

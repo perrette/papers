@@ -71,7 +71,10 @@ def check_install(parser, o, config, bibtex_must_exist=True):
         config = config_for_bibtex(o.bibtex, config)
         config.bibtex = o.bibtex
     if getattr(o, "filesdir", None) is not None:
-        config.filesdir = o.filesdir
+        if config.shallow:
+            config.warn_unused_while_shallow(['filesdir'], given=f'--filesdir {o.filesdir}')
+        else:
+            config.filesdir = o.filesdir
     if getattr(o, "absolute_paths", None) is not None:
         option = '--absolute-paths' if o.absolute_paths else '--relative-paths'
         logger.warning(f"{option} is deprecated: file paths are a setting of the library, "

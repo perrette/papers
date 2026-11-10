@@ -1,0 +1,2 @@
+papers: warning: `papers filecheck` is deprecated: use `papers file rename` and `papers file clean --yes`
+papers: error: --rename with --clean-filesdir: not done, because the library is shallow: its files are renamed in the files directory of the pool, cleaned there with all the entries of the pool (`papers file rename`, then `papers -C ../pool file clean`)

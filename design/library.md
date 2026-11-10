@@ -651,7 +651,16 @@ Rules on the pool (contract for the conditions; the checks are behaviour):
 - New files go to the **files directory of the pool**, named with the
   **pool's** `name.*` settings. The library's `filesdir` is not used,
   except as the destination of `papers config pool none`; its `name.*`
-  settings are ignored (a warning when the library sets `name.template`).
+  settings are ignored. A command that places files warns, in one
+  warning, about the `name.*` settings that the library or the command
+  line (`--name-*`) sets to another value than the pool's, and gives
+  the command that sets them in the pool. `--filesdir DIR` is not used
+  either, on any command, with a warning that says that `papers config
+  pool none` makes the library self-contained. `papers config filesdir`,
+  `papers config name.*` and `papers init --pool` with `--filesdir` or
+  `--name-*` save the settings, with a warning that they are not used
+  while the library is shallow and apply after `papers config pool none`.
+  The wording of these warnings is free.
 - A pool without files directory: adding a file is an error.
 - The file links of the library entries are the pool entries' links.
 - `file rename` (and `list --rename`) renames the files of the entries
@@ -667,6 +676,19 @@ Rules on the pool (contract for the conditions; the checks are behaviour):
   KEY` (wording free). With `auto-push true` the entry is pushed by the
   same command and its files are renamed. An entry that the pool does not
   have is renamed (it is pushed, `exchange.md` section 12.1).
+- A file given to `add` or `file attach`, or found by `file fix`, that is
+  already in the pool's files directory: renamed there with the pool's
+  name template when no pool entry links to it; linked where it is when a
+  pool entry links to it, with a warning that names that entry and the
+  command that renames it in the pool (`papers -C POOL file rename
+  POOLKEY`; wording free), if its name is not the one the template gives.
+- `papers rm KEY` keeps the files of the library's own files directory
+  (left from when it was self-contained) that only the removed entries
+  linked to; since `papers file clean` is refused in a shallow library,
+  its hint is `papers file rm FILE...` before `papers rm` (wording free).
+- `papers filecheck --rename` (deprecated) renames as `papers file
+  rename`; with `--clean-filesdir` it is an error in a shallow library
+  (nothing changes).
 - `papers init --pool` writes `filesdir` (default `files`) but does not
   create the folder.
 - Changing the pool moves files (the repair of broken links before
@@ -697,15 +719,16 @@ warning). The rules, in order (the first that applies decides):
    had before `file attach`): link;
 3. mode `link`: link;
 4. a file that `file fix` found (see "The file of a broken link"): copy
-   (link if it is already in the pool's files directory, in a shallow
+   (rule 5 if it is already in the pool's files directory, in a shallow
    library); a file of another entry of the library found by its
    checksum: link; a file of the files directory that no entry links to,
    found by its checksum: rule 5;
 5. a file already inside the files directory: move (renamed in place);
-   in a shallow library, a file already in the pool's files directory:
-   link (not renamed: other libraries may link to it), except in
-   `file rename` (and `list --rename`), which renames it (see Files of a
-   shallow library);
+   in a shallow library, a file already in the pool's files directory
+   that a pool entry links to: link (not renamed: other libraries may
+   link to it, with a warning, see Files of a shallow library), except in
+   `file rename` (and `list --rename`), which renames it; one that no
+   pool entry links to: move (renamed in place);
 6. a file of a pool entry: copy (link in a shallow library);
 7. a file inside the files directory of a pool: copy;
 8. otherwise the mode (asked, with `ask`). A `move` of a file that lies in

@@ -1,0 +1,135 @@
+{
+  "description": "in a shallow library, nothing is silently left undone: a file that rm keeps in the library's own files directory gets the hint papers file rm; a file of the pool's files directory that no pool entry links to is renamed by file attach, one that a pool entry links to is linked where it is, with a warning; --filesdir and the name settings of the library and of the command line are not used, with a warning; config and init save filesdir and name.* with a warning; filecheck --rename renames in the pool, and is refused with --clean-filesdir",
+  "sections": [
+    "library.md#pools-and-shallow-libraries/files-of-a-shallow-library",
+    "library.md#the-files-directory/the-files-setting",
+    "exchange.md#15.1"
+  ],
+  "tests": [
+    "tests/test_pools.py::TestShallow::test_rm_own_file_hint",
+    "tests/test_pools.py::TestShallow::test_attach_stray_pool_file_renamed",
+    "tests/test_pools.py::TestShallow::test_attach_pool_linked_file_not_renamed",
+    "tests/test_pools.py::TestShallow::test_filesdir_option_not_used",
+    "tests/test_pools.py::TestShallow::test_name_settings_not_used",
+    "tests/test_pools.py::TestShallow::test_config_unused_setting_saved_with_note",
+    "tests/test_pools.py::TestShallow::test_init_shallow_with_unused_settings",
+    "tests/test_pools.py::TestShallow::test_filecheck_rename_stays_in_pool"
+  ],
+  "ignore": [
+    "home/data/history/*"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "pull",
+        "--all"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "rm",
+        "own2018"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "file",
+        "attach",
+        "brown2021",
+        "../pool/files/stray.txt"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "config",
+        "name.title-sep",
+        "_"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "filecheck",
+        "--rename",
+        "--clean-filesdir",
+        "--force"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "filecheck",
+        "--rename"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "file",
+        "rename",
+        "--filesdir",
+        "../elsewhere",
+        "--name-author-num",
+        "1"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "config",
+        "filesdir",
+        "files"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "init",
+        "lib3",
+        "--pool",
+        "pool",
+        "--name-template",
+        "{title}"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "file",
+        "attach",
+        "brown2021",
+        "../pool/files/jones_2019_ice-sheets.txt"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "pool",
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    }
+  ]
+}

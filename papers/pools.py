@@ -1600,9 +1600,10 @@ def use_pool_files(config, pools):
     if pool.filesdir is None:
         raise PoolError(f'{pool.label} has no files directory, and this library is shallow (its files are '
                         'in the pool)')
-    if config.source('name.template') == 'library':
-        logger.warning('the name template of a shallow library is not used: the files are named '
-                       f'with the template of {pool.label}')
+    # the name settings of the library or of the command line (see Config.is_set) that the pool's replace
+    config.warn_unused_while_shallow([name for name in papers.config.SETTINGS if name.startswith('name.')
+                                      and config.source(name) == 'library'
+                                      and config.get(name) != pool.config.get(name)])
     config.filesdir = pool.filesdir
     config.nameformat = pool.config.nameformat
     return pool
