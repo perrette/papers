@@ -1165,7 +1165,7 @@ lists the links tried and the pages to open in a browser; the other entries
 are attached and saved, and the command exits with status 1. In a fetch of
 several entries, an entry without PDF is one line (<code>KEY: no PDF (...)</code>,
 with the same reasons and links), not an error:</p>
-<p><div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>lee2019: no PDF (https://journals.example.org/sea.pdf (published version): not a PDF; OpenAlex: no open-access PDF; open https://journals.example.org/sea.pdf, https://doi.org/10.1000/sea in a browser)
+<p><div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>lee2019: no PDF (https://journals.example.org/sea.pdf (published version): not a PDF; OpenAlex: no open-access PDF; open https://journals.example.org/sea.pdf https://doi.org/10.1000/sea in a browser)
 <a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>``` `--dry-run`
 <a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>lists the links that would be tried, in order, and changes nothing.
 <a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>
@@ -1180,7 +1180,7 @@ summary of 4 entries:
   1 without PDF
 open in a browser:
   doe2021: https://journals.example.org/ice.pdf (published version refused; accepted manuscript found)
-  lee2019: https://journals.example.org/sea.pdf, https://doi.org/10.1000/sea (no PDF)
+  lee2019: https://journals.example.org/sea.pdf https://doi.org/10.1000/sea (no PDF)
 <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>`--supplements` also attaches the supplementary PDFs that the article page
 <a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>links: the links to a PDF with `suppl` in their URL or their text, and the
 <a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>`citation_supplementary_material` tags. They are attached as the other files
@@ -1234,12 +1234,12 @@ open in a browser:
 </code></pre></div>
 $ papers file fetch --upgrade
 doe2021: files/doe_2021_ice.pdf: accepted manuscript replaced by the published version, from journals.example.org
-lee2019: files/lee_2019_sea.pdf (submitted version) kept (no published version: https://journals.example.org/sea.pdf (published version): HTTP 403; open https://journals.example.org/sea.pdf, https://doi.org/10.1000/sea in a browser)
+lee2019: files/lee_2019_sea.pdf (submitted version) kept (no published version: https://journals.example.org/sea.pdf (published version): HTTP 403; open https://journals.example.org/sea.pdf https://doi.org/10.1000/sea in a browser)
 summary of 2 entries:
   1 replaced by the published version
   1 without published version (kept as they are)
 open in a browser:
-  lee2019: https://journals.example.org/sea.pdf, https://doi.org/10.1000/sea (no published version)
+  lee2019: https://journals.example.org/sea.pdf https://doi.org/10.1000/sea (no published version)
 <div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>`--dry-run` lists the links that would be tried and the file each would
 <a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>replace. `--upgrade` does not go with `--missing`, `--again`,
 <a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>`--supplements`, `--version` or `--search`.
