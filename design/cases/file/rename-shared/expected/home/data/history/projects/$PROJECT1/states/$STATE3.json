@@ -1,0 +1,19 @@
+{
+ "parent": "$STATE2",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers edit doe2019 --set title=A new title",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "00306a3c98f26679e8befaba272a0f858eed0e2d8ff272050e94b47d2aa80176"
+  ],
+  "sha": "00306a3c98f26679e8befaba272a0f858eed0e2d8ff272050e94b47d2aa80176"
+ },
+ "files": {
+  ".papers/files.json": [
+   "35a41c5ffb2edc4a0fd3f843dcbdb9d4b6b4fe6250c2313c0fa6469714e84c87"
+  ]
+ }
+}

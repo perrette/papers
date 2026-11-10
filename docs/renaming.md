@@ -23,6 +23,8 @@ Two entries can get the same file name (the same authors, year and title,
 e.g. a preprint and the published paper). A file of another entry is never
 replaced: the second file gets a `-2` suffix (`-3`, ... after that), unless
 it has the same content, in which case both entries link to the same file.
+Renaming the files of one of them later copies the file to its new name (a
+hard link when possible): the other entry keeps its link.
 
 Versions before 2.19 placed the files of an entry with several files in a
 folder named after the entry, with a hidden copy of the entry
@@ -52,7 +54,8 @@ in a folder of your project) is moved, copied or left where it is as the
 [Files](files.md#what-add-does-with-a-file)). `--move`, `--copy` and
 `--link` override the setting; `--keep-source` is the same as `--copy` (a
 hard link when possible). A file that belongs to another library is copied,
-not moved. `papers list ... --rename` runs this command (with `--move` or
+not moved, and so is a file that another entry links to (the report says
+`copied to` instead of `renamed to`). `papers list ... --rename` runs this command (with `--move` or
 `--keep-source`); the deprecated `papers filecheck --rename` moves the
 files, whatever the setting.
 
@@ -62,7 +65,9 @@ renames the files there, and the pool entry links to the new names. With
 `auto-push` false, the files of an entry whose pool entry has other fields
 (so that the pool's template names it otherwise) are left where they are,
 with a warning: `papers push KEY` sends the entry to the pool, then
-`papers file rename KEY` renames them. See
+`papers file rename KEY` renames them. A file that an entry of the pool
+for another paper links to is copied to the new name (a hard link when
+possible), so that the pool entry keeps it. See
 [Shallow libraries](shallow-libraries.md).
 
 ## Control fields when renaming files

@@ -49,7 +49,10 @@ directory of a library whose configuration (`.papers/config.json`) is found
 in the file's directory or above, is never moved: in `move` mode it is
 copied instead (a hard link when possible), so that the other library keeps
 its link. The same holds for a file in the files directory of the pool of
-the library, or of the library of `--pool PATH` (see [Pools](pools.md)). A file already in the files directory of the current library is
+the library, or of the library of `--pool PATH` (see [Pools](pools.md)),
+and for a file that another entry links to (of the library, or of the pool
+in a shallow library): the entry gets a copy under its name, the other
+entry keeps the file. A file already in the files directory of the current library is
 renamed in `copy` mode too, rather than copied next to itself. A file
 downloaded by papers (a URL given to `add` or `--attach`) is always moved
 into the files directory.
