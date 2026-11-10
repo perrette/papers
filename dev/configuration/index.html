@@ -1052,7 +1052,8 @@ acts on that library. <code>-C DIR</code>, before the command name, runs papers 
 was started in <code>DIR</code>:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>papers -C ~/projects/sealevel list smith
 </code></pre></div>
-<p><code>--bibtex</code> and <code>--filesdir</code> still override the library for one command. If
+<p><code>--bibtex</code> and <code>--filesdir</code> still override the library for one command
+(<code>--filesdir</code> is not used in a shallow library, with a warning). If
 the bibtex given with <code>--bibtex</code> belongs to another library (a configuration
 file in its directory or above), the settings of that library apply.</p>
 <p>Outside of any library, commands act on the default library if the global
@@ -1078,7 +1079,10 @@ library that does not set it has no pool (<code>none</code>).
 <code>(library)</code>, <code>(global)</code> or <code>(default)</code>. In a shallow library, <code>filesdir</code>
 and the <code>name.*</code> settings are marked <code>not used: shallow library</code>: the
 files are in the pool, named with the pool's template (<code>filesdir</code> is where
-<code>papers config pool none</code> copies them).</p>
+<code>papers config pool none</code> copies them). Setting one of them there
+(<code>papers config name.template ...</code>, or <code>papers init --pool PATH</code> with
+<code>--filesdir</code> or <code>--name-*</code>) saves it, with a warning that it is not used
+until <code>papers config pool none</code>.</p>
 <p>The library configuration keeps the settings given to the library
 (<code>papers init --paths absolute</code>, <code>papers config NAME VALUE</code>), even when the
 value is the global or default one; the other settings follow the global

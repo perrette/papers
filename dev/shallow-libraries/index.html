@@ -1068,13 +1068,32 @@ setting says how a new file gets to the pool:</p>
 <ul>
 <li><code>move</code> (the default) and <code>copy</code>: the file is placed in the pool's files
   directory (moved, or copied: a hard link when possible), named with the
-  pool's name template (a name template set on the library is not used);
-  the library entry and the pool entry link to it there;</li>
+  pool's name template; the library entry and the pool entry link to it
+  there;</li>
 <li><code>link</code>: the file stays where it is, and the library entry and the pool
   entry both link to it there. This works on one machine; on another
   machine that uses the pool (a pool in a synchronized folder), such links
   are broken.</li>
 </ul>
+<p>The library's own <code>filesdir</code> and <code>name.*</code> settings are not used, and
+neither are <code>--filesdir</code> and the <code>--name-*</code> options of a command: papers
+warns, and says where to set them instead:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>$ papers file rename --name-author-num 1
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>papers: warning: name.author-num: not used, because the library is shallow: its files are named with the settings of pool ~/Documents/papers/arctic (`papers -C ~/Documents/papers/arctic config name.author-num VALUE` sets them there)
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>$ papers config name.template '{title}'
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>papers: warning: name.template: saved, but not used while the library is shallow: its files are named with the settings of pool ~/Documents/papers/arctic (`papers -C ~/Documents/papers/arctic config name.template VALUE` sets them there); it applies after `papers config pool none`
+</code></pre></div>
+<p><code>papers config filesdir DIR</code>, <code>papers config name.*</code> and <code>papers init
+--pool PATH</code> with <code>--filesdir</code> or <code>--name-*</code> save the setting all the same:
+it applies once the library is self-contained (<code>papers config pool none</code>).</p>
+<p>A file given to <code>add</code> or <code>file attach</code> (or found by <code>file fix</code>) that is
+already in the pool's files directory is renamed there with the pool's
+template, unless an entry of the pool links to it: then it stays where it
+is, since the pool and its other libraries use that name, and papers says
+how to rename it in the pool:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>$ papers file attach perrette_yool2011 ~/Documents/papers/arctic/files/si.pdf
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>papers: warning: ~/Documents/papers/arctic/files/si.pdf: not renamed, because the entry yool2011 of pool ~/Documents/papers/arctic links to it (`papers -C ~/Documents/papers/arctic file rename yool2011`)
+</code></pre></div>
 <p>What the commands do in a shallow library:</p>
 <ul>
 <li><code>add</code> places new files as the <code>files</code> setting says, and adds the new
@@ -1092,8 +1111,8 @@ setting says how a new file gets to the pool:</p>
   they are, since the pool would rename them back; papers warns and says
   what to run:</li>
 </ul>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>$ papers file rename perrette_yool2011
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>papers: warning: perrette_yool2011: 1 file(s) not renamed: they are in pool ~/Documents/papers/arctic, whose entry differs and names them perrette_et_al_2011_near-ubiquity-of-ice-edge-blooms-in-the-arctic; `papers push perrette_yool2011` first, then `papers file rename perrette_yool2011`
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>$ papers file rename perrette_yool2011
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>papers: warning: perrette_yool2011: 1 file(s) not renamed: they are in pool ~/Documents/papers/arctic, whose entry differs and names them perrette_et_al_2011_near-ubiquity-of-ice-edge-blooms-in-the-arctic; `papers push perrette_yool2011` first, then `papers file rename perrette_yool2011`
 </code></pre></div>
 <p>With <code>auto-push</code> true, the entry is pushed by the same command and its
   files are renamed. <code>file fix</code> copies the files it finds outside the pool into
@@ -1122,7 +1141,11 @@ setting says how a new file gets to the pool:</p>
     (<code>kept FILE: an entry of the pool links to it</code>). The PDF is removed for
     every library that uses the pool;
   - <code>papers rm KEY</code> removes the entry from the library only. The pool entry
-    and its files stay, and papers does not ask about them.
+    and its files stay, and papers does not ask about them. A file of the
+    library's own <code>files/</code> (from when it was self-contained) that only the
+    removed entries linked to is kept, and papers lists it: <code>papers file rm
+    FILE</code> deletes it, run before <code>papers rm</code> (<code>papers undo</code> brings the
+    entries back); <code>papers file clean</code> does not, in a shallow library.
     <code>papers rm KEY --delete-files</code> (and <code>papers list ... --delete
     --delete-files</code>) is an error, and nothing is removed:</p>
 <div class="highlight"><pre><span></span><code>```
@@ -1206,23 +1229,23 @@ PATH</code>) are those of the new pool.</p>
 <h3 id="from-a-self-contained-project-to-a-shallow-one">From a self-contained project to a shallow one<a class="headerlink" href="#from-a-self-contained-project-to-a-shallow-one" title="Permanent link">&para;</a></h3>
 <p>To move the PDFs of a self-contained library into another library, and
 make the library shallow:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>papers init PATH                # if PATH is not a library yet
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>papers push --pool PATH --all   # copies the entries and their PDFs to PATH
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>papers config pool PATH         # links to the copies in PATH, deletes the library's own
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>papers init PATH                # if PATH is not a library yet
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>papers push --pool PATH --all   # copies the entries and their PDFs to PATH
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>papers config pool PATH         # links to the copies in PATH, deletes the library's own
 </code></pre></div>
 <p>For a project with one PDF and the library <code>~/Documents/papers/arctic</code>:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>$ papers config pool ~/Documents/papers/arctic
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>papers: error: pool ~/Documents/papers/arctic: 1 entry links to PDFs that the pool ~/Documents/papers/arctic does not have (nothing was changed): perrette_landerer2013
-<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>Copy them to the pool first: `papers push --pool ~/Documents/papers/arctic perrette_landerer2013`
-<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>Then run `papers config pool ~/Documents/papers/arctic` again.
-<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>$ papers push --pool ~/Documents/papers/arctic --all
-<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>Added -&gt; perrette_landerer2013: A scaling approach to project regional sea level rise and it... (doi:10.5194/esd-4-11-2013, file:1) [to pool ~/Documents/papers/arctic]
-<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>$ papers config pool ~/Documents/papers/arctic -y
-<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>link to the copies in the pool ~/Documents/papers/arctic for 1 file (same content); the library's copies in files (1 file) are deleted
-<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>Modified -&gt; perrette_landerer2013: A scaling approach to project regional sea level rise and it... (doi:10.5194/esd-4-11-2013, file:1)
-<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>pool = ~/Documents/papers/arctic (in ~/projects/old-paper/.papers/config.json)
-<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>the library is now shallow: it links to the PDFs of the pool entries, and `papers add` adds its new entries to the pool
-<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>delete ~/projects/old-paper/files/perrette_et_al_2013_a-scaling-approach-to-project-regional-sea-level-rise-and-its-uncertainties.pdf (hard link: the other links remain)
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>$ papers config pool ~/Documents/papers/arctic
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>papers: error: pool ~/Documents/papers/arctic: 1 entry links to PDFs that the pool ~/Documents/papers/arctic does not have (nothing was changed): perrette_landerer2013
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>Copy them to the pool first: `papers push --pool ~/Documents/papers/arctic perrette_landerer2013`
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>Then run `papers config pool ~/Documents/papers/arctic` again.
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>$ papers push --pool ~/Documents/papers/arctic --all
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>Added -&gt; perrette_landerer2013: A scaling approach to project regional sea level rise and it... (doi:10.5194/esd-4-11-2013, file:1) [to pool ~/Documents/papers/arctic]
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>$ papers config pool ~/Documents/papers/arctic -y
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>link to the copies in the pool ~/Documents/papers/arctic for 1 file (same content); the library's copies in files (1 file) are deleted
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>Modified -&gt; perrette_landerer2013: A scaling approach to project regional sea level rise and it... (doi:10.5194/esd-4-11-2013, file:1)
+<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>pool = ~/Documents/papers/arctic (in ~/projects/old-paper/.papers/config.json)
+<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a>the library is now shallow: it links to the PDFs of the pool entries, and `papers add` adds its new entries to the pool
+<a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a>delete ~/projects/old-paper/files/perrette_et_al_2013_a-scaling-approach-to-project-regional-sea-level-rise-and-its-uncertainties.pdf (hard link: the other links remain)
 </code></pre></div>
 <h2 id="auto-push">Auto-push<a class="headerlink" href="#auto-push" title="Permanent link">&para;</a></h2>
 <p><code>papers config auto-push true</code> in a shallow library makes the commands that
@@ -1236,9 +1259,9 @@ are not pushed: an entry removed from the pool is noted once (see
 <a href="../pools/#removed-entries">Removed entries</a>). In a
 self-contained library, the setting has no effect (it has no pool; the
 libraries of <code>--pool PATH</code> only get what <code>push</code> and <code>sync</code> send).</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>$ papers config auto-push true
-<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>$ papers tag perrette_landerer2013 --add sealevel
-<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>Modified -&gt; perrette_landerer2013: A scaling approach to project regional sea level rise and it... (doi:10.5194/esd-4-11-2013, file:1, sealevel) [also modified in pool ~/Documents/papers/sealevel]
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>$ papers config auto-push true
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>$ papers tag perrette_landerer2013 --add sealevel
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>Modified -&gt; perrette_landerer2013: A scaling approach to project regional sea level rise and it... (doi:10.5194/esd-4-11-2013, file:1, sealevel) [also modified in pool ~/Documents/papers/sealevel]
 </code></pre></div>
 <ul>
 <li><code>rm</code> is never pushed: removing an entry from the library does not
@@ -1247,8 +1270,8 @@ libraries of <code>--pool PATH</code> only get what <code>push</code> and <code>
   does not stop the command: the entry is saved in the library, is not
   pushed, and its line says so:</li>
 </ul>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>$ papers tag Smith_2020 --add bar
-<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>Modified -&gt; Smith_2020: Climate sensitivity revisited (doi:10.1000/abc123, foo | bar) [not pushed: changed in the pool too; papers sync decides]
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>$ papers tag Smith_2020 --add bar
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>Modified -&gt; Smith_2020: Climate sensitivity revisited (doi:10.1000/abc123, foo | bar) [not pushed: changed in the pool too; papers sync decides]
 </code></pre></div>
 <p>With <code>auto-push false</code> (the default), nothing is pushed automatically,
 apart from the new entries of <code>add</code> and the file links (see
@@ -1262,48 +1285,48 @@ on one of them:</p>
 <li><code>~/projects/thesis</code>: a thesis, shallow on <code>sealevel</code>;</li>
 <li><code>~/projects/arctic-paper</code>: a paper, shallow on <code>arctic</code>.</li>
 </ul>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>$ papers init ~/Documents/papers/sealevel
-<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>created the library ~/Documents/papers/sealevel
-<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>* bibtex:  papers.bib
-<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>* files:   files (the files directory of the library)
-<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>`papers config` lists and sets the settings
-<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>$ papers init ~/Documents/papers/arctic
-<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>created the library ~/Documents/papers/arctic
-<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>...
-<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>$ papers init ~/projects/thesis --pool ~/Documents/papers/sealevel
-<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>created the library ~/projects/thesis
-<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a>* bibtex:  papers.bib
-<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a>* files:   in the pool (shallow library)
-<a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a>* pool:    ~/Documents/papers/sealevel
-<a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a>`papers config` lists and sets the settings
-<a id="__codelineno-8-15" name="__codelineno-8-15" href="#__codelineno-8-15"></a>$ papers init ~/projects/arctic-paper --pool ~/Documents/papers/arctic
-<a id="__codelineno-8-16" name="__codelineno-8-16" href="#__codelineno-8-16"></a>created the library ~/projects/arctic-paper
-<a id="__codelineno-8-17" name="__codelineno-8-17" href="#__codelineno-8-17"></a>...
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>$ papers init ~/Documents/papers/sealevel
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>created the library ~/Documents/papers/sealevel
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>* bibtex:  papers.bib
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>* files:   files (the files directory of the library)
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>`papers config` lists and sets the settings
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>$ papers init ~/Documents/papers/arctic
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>created the library ~/Documents/papers/arctic
+<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>...
+<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a>$ papers init ~/projects/thesis --pool ~/Documents/papers/sealevel
+<a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a>created the library ~/projects/thesis
+<a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a>* bibtex:  papers.bib
+<a id="__codelineno-10-12" name="__codelineno-10-12" href="#__codelineno-10-12"></a>* files:   in the pool (shallow library)
+<a id="__codelineno-10-13" name="__codelineno-10-13" href="#__codelineno-10-13"></a>* pool:    ~/Documents/papers/sealevel
+<a id="__codelineno-10-14" name="__codelineno-10-14" href="#__codelineno-10-14"></a>`papers config` lists and sets the settings
+<a id="__codelineno-10-15" name="__codelineno-10-15" href="#__codelineno-10-15"></a>$ papers init ~/projects/arctic-paper --pool ~/Documents/papers/arctic
+<a id="__codelineno-10-16" name="__codelineno-10-16" href="#__codelineno-10-16"></a>created the library ~/projects/arctic-paper
+<a id="__codelineno-10-17" name="__codelineno-10-17" href="#__codelineno-10-17"></a>...
 </code></pre></div>
 <p>Each project adds its papers. They go to its topic library:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>$ cd ~/projects/thesis
-<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>$ papers add ~/Downloads/esd-4-11-2013.pdf
-<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>Added -&gt; perrette_landerer2013: A scaling approach to project regional sea level rise and it... (doi:10.5194/esd-4-11-2013, file:1) [also added to pool ~/Documents/papers/sealevel]
-<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>$ cd ~/projects/arctic-paper
-<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>$ papers add ~/Downloads/bg-8-515-2011.pdf
-<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>Added -&gt; perrette_yool2011: Near-ubiquity of ice-edge blooms in the Arctic (doi:10.5194/bg-8-515-2011, file:1) [also added to pool ~/Documents/papers/arctic]
-<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>$ ls ~/projects/arctic-paper ~/Documents/papers/arctic/files
-<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>~/Documents/papers/arctic/files:
-<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>perrette_et_al_2011_near-ubiquity-of-ice-edge-blooms-in-the-arctic.pdf
-<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a>
-<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a>~/projects/arctic-paper:
-<a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a>papers.bib
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>$ cd ~/projects/thesis
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>$ papers add ~/Downloads/esd-4-11-2013.pdf
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>Added -&gt; perrette_landerer2013: A scaling approach to project regional sea level rise and it... (doi:10.5194/esd-4-11-2013, file:1) [also added to pool ~/Documents/papers/sealevel]
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>$ cd ~/projects/arctic-paper
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>$ papers add ~/Downloads/bg-8-515-2011.pdf
+<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>Added -&gt; perrette_yool2011: Near-ubiquity of ice-edge blooms in the Arctic (doi:10.5194/bg-8-515-2011, file:1) [also added to pool ~/Documents/papers/arctic]
+<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a>$ ls ~/projects/arctic-paper ~/Documents/papers/arctic/files
+<a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a>~/Documents/papers/arctic/files:
+<a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a>perrette_et_al_2011_near-ubiquity-of-ice-edge-blooms-in-the-arctic.pdf
+<a id="__codelineno-11-10" name="__codelineno-11-10" href="#__codelineno-11-10"></a>
+<a id="__codelineno-11-11" name="__codelineno-11-11" href="#__codelineno-11-11"></a>~/projects/arctic-paper:
+<a id="__codelineno-11-12" name="__codelineno-11-12" href="#__codelineno-11-12"></a>papers.bib
 </code></pre></div>
 <h3 id="a-paper-relevant-to-both-topics">A paper relevant to both topics<a class="headerlink" href="#a-paper-relevant-to-both-topics" title="Permanent link">&para;</a></h3>
 <p>A shallow library has one pool. The thesis also cites
 <code>perrette_yool2011</code>, which is in <code>arctic</code>. <code>papers add --pool</code> takes it
 from <code>arctic</code>, without a query to crossref:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>$ cd ~/projects/thesis
-<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>$ papers add --pool ~/Documents/papers/arctic --doi 10.5194/bg-8-515-2011
-<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>Added -&gt; perrette_yool2011: Near-ubiquity of ice-edge blooms in the Arctic (doi:10.5194/bg-8-515-2011, file:1) [from pool ~/Documents/papers/arctic; also added to pool ~/Documents/papers/sealevel]
-<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>$ ls ~/Documents/papers/sealevel/files
-<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>perrette_et_al_2011_near-ubiquity-of-ice-edge-blooms-in-the-arctic.pdf
-<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>perrette_et_al_2013_a-scaling-approach-to-project-regional-sea-level-rise-and-its-uncertainties.pdf
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>$ cd ~/projects/thesis
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>$ papers add --pool ~/Documents/papers/arctic --doi 10.5194/bg-8-515-2011
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>Added -&gt; perrette_yool2011: Near-ubiquity of ice-edge blooms in the Arctic (doi:10.5194/bg-8-515-2011, file:1) [from pool ~/Documents/papers/arctic; also added to pool ~/Documents/papers/sealevel]
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>$ ls ~/Documents/papers/sealevel/files
+<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>perrette_et_al_2011_near-ubiquity-of-ice-edge-blooms-in-the-arctic.pdf
+<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>perrette_et_al_2013_a-scaling-approach-to-project-regional-sea-level-rise-and-its-uncertainties.pdf
 </code></pre></div>
 <p>The entry is now in the thesis and in <code>sealevel</code>. Its PDF is copied into
 the files directory of <code>sealevel</code>: a hard link when both libraries are on
@@ -1311,21 +1334,21 @@ the same disk. <code>papers pull --pool ~/Documents/papers/arctic
 perrette_yool2011</code> does the same.</p>
 <p>The thesis records an origin copy for <code>arctic</code>. A later change in <code>arctic</code>
 comes with <code>papers pull --pool</code>, and goes to <code>sealevel</code> with <code>papers push</code>:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>$ papers -C ~/Documents/papers/arctic tag perrette_yool2011 --add blooms
-<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>Modified -&gt; perrette_yool2011: Near-ubiquity of ice-edge blooms in the Arctic (doi:10.5194/bg-8-515-2011, file:1, blooms)
-<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>$ papers pull --pool ~/Documents/papers/arctic
-<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>Modified -&gt; perrette_yool2011: Near-ubiquity of ice-edge blooms in the Arctic (doi:10.5194/bg-8-515-2011, file:1, blooms) [from pool ~/Documents/papers/arctic]
-<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>$ papers push
-<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>Modified -&gt; perrette_yool2011: Near-ubiquity of ice-edge blooms in the Arctic (doi:10.5194/bg-8-515-2011, file:1, blooms) [in pool ~/Documents/papers/sealevel]
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>$ papers -C ~/Documents/papers/arctic tag perrette_yool2011 --add blooms
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>Modified -&gt; perrette_yool2011: Near-ubiquity of ice-edge blooms in the Arctic (doi:10.5194/bg-8-515-2011, file:1, blooms)
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>$ papers pull --pool ~/Documents/papers/arctic
+<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>Modified -&gt; perrette_yool2011: Near-ubiquity of ice-edge blooms in the Arctic (doi:10.5194/bg-8-515-2011, file:1, blooms) [from pool ~/Documents/papers/arctic]
+<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>$ papers push
+<a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a>Modified -&gt; perrette_yool2011: Near-ubiquity of ice-edge blooms in the Arctic (doi:10.5194/bg-8-515-2011, file:1, blooms) [in pool ~/Documents/papers/sealevel]
 </code></pre></div>
 <p>The paper project gets the change from its own pool:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>$ cd ~/projects/arctic-paper
-<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>$ papers status
-<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>...
-<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>* pool:    ~/Documents/papers/arctic (pool changed)
-<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>`papers pull --dry-run` shows the changes, `papers pull` takes them
-<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>$ papers pull
-<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a>Modified -&gt; perrette_yool2011: Near-ubiquity of ice-edge blooms in the Arctic (doi:10.5194/bg-8-515-2011, file:1, blooms) [from pool ~/Documents/papers/arctic]
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>$ cd ~/projects/arctic-paper
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>$ papers status
+<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a>...
+<a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a>* pool:    ~/Documents/papers/arctic (pool changed)
+<a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a>`papers pull --dry-run` shows the changes, `papers pull` takes them
+<a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a>$ papers pull
+<a id="__codelineno-14-7" name="__codelineno-14-7" href="#__codelineno-14-7"></a>Modified -&gt; perrette_yool2011: Near-ubiquity of ice-edge blooms in the Arctic (doi:10.5194/bg-8-515-2011, file:1, blooms) [from pool ~/Documents/papers/arctic]
 </code></pre></div>
 <p><code>papers sync --pool ~/Documents/papers/arctic</code> in the thesis also sends
 the changes made in the thesis to <code>arctic</code>. The two topic libraries can
@@ -1393,8 +1416,8 @@ takes the entry from its pool with <code>papers add --doi</code>.</p>
 self-contained library, as in papers 2. A shared files folder is enough
 when the libraries are independent and you do not want a shared
 bibliography. To set it up:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>papers init --filesdir ~/Documents/pdfs   # a new library
-<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>papers config filesdir ~/Documents/pdfs   # an existing library
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>papers init --filesdir ~/Documents/pdfs   # a new library
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>papers config filesdir ~/Documents/pdfs   # an existing library
 </code></pre></div>
 <p>Each library only knows its own entries. What to watch for:</p>
 <ul>
