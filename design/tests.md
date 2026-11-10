@@ -393,6 +393,9 @@ that check the same thing.
 - tests/test_file_fetch.py::TestSummary::test_missing
 - tests/test_file_fetch.py::TestSummary::test_refused_but_not_attached
 - tests/test_file_fetch.py::TestSummary::test_not_for_one_entry_or_a_dry_run
+- tests/test_file_fetch.py::TestUrlsInMessages::test_several_entries
+- tests/test_file_fetch.py::TestUrlsInMessages::test_one_entry
+- tests/test_file_fetch.py::TestUrlsInMessages::test_download_errors
 - tests/test_file_fetch.py::TestBrokenLinkRepair::test_found_in_a_search_folder
 - tests/test_file_fetch.py::TestBrokenLinkRepair::test_copied_into_the_files_directory
 - tests/test_file_fetch.py::TestBrokenLinkRepair::test_missing

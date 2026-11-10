@@ -154,7 +154,7 @@ several entries, an entry without PDF is one line (`KEY: no PDF (...)`,
 with the same reasons and links), not an error:
 
 ```
-lee2019: no PDF (https://journals.example.org/sea.pdf (published version): not a PDF; OpenAlex: no open-access PDF; open https://journals.example.org/sea.pdf, https://doi.org/10.1000/sea in a browser)
+lee2019: no PDF (https://journals.example.org/sea.pdf (published version): not a PDF; OpenAlex: no open-access PDF; open https://journals.example.org/sea.pdf https://doi.org/10.1000/sea in a browser)
 ``` `--dry-run`
 lists the links that would be tried, in order, and changes nothing.
 
@@ -170,7 +170,7 @@ summary of 4 entries:
   1 without PDF
 open in a browser:
   doe2021: https://journals.example.org/ice.pdf (published version refused; accepted manuscript found)
-  lee2019: https://journals.example.org/sea.pdf, https://doi.org/10.1000/sea (no PDF)
+  lee2019: https://journals.example.org/sea.pdf https://doi.org/10.1000/sea (no PDF)
 ```
 
 `--supplements` also attaches the supplementary PDFs that the article page
@@ -227,12 +227,12 @@ that PDF under the same file name; the old file is kept in the history, so
 ```
 $ papers file fetch --upgrade
 doe2021: files/doe_2021_ice.pdf: accepted manuscript replaced by the published version, from journals.example.org
-lee2019: files/lee_2019_sea.pdf (submitted version) kept (no published version: https://journals.example.org/sea.pdf (published version): HTTP 403; open https://journals.example.org/sea.pdf, https://doi.org/10.1000/sea in a browser)
+lee2019: files/lee_2019_sea.pdf (submitted version) kept (no published version: https://journals.example.org/sea.pdf (published version): HTTP 403; open https://journals.example.org/sea.pdf https://doi.org/10.1000/sea in a browser)
 summary of 2 entries:
   1 replaced by the published version
   1 without published version (kept as they are)
 open in a browser:
-  lee2019: https://journals.example.org/sea.pdf, https://doi.org/10.1000/sea (no published version)
+  lee2019: https://journals.example.org/sea.pdf https://doi.org/10.1000/sea (no published version)
 ```
 
 `--dry-run` lists the links that would be tried and the file each would

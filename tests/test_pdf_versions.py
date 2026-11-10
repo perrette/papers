@@ -238,7 +238,7 @@ class TestUpgrade(VersionsTest):
         self.assertIn(f'ice2020: {rel} (submitted version) kept (no published version: '
                       'https://journals.example.org/ice.pdf (published version): HTTP 403; '
                       'OpenAlex: no open-access PDF of the versions asked; '
-                      'open https://journals.example.org/ice.pdf, https://doi.org/10.1000/ice in a browser)\n', out)
+                      'open https://journals.example.org/ice.pdf https://doi.org/10.1000/ice in a browser)\n', out)
 
     def test_published_landing_page(self):
         # library.md "The free PDF of an entry": --upgrade reads the landing pages of the published version
