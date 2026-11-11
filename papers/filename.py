@@ -160,7 +160,13 @@ class Format:
         if self.unknown_template and self.is_unknown(entry):
             return self.unknown_template.format(**fields)
 
-        return self.template.format(**fields)
+        try:
+            return self.template.format(**fields)
+        except KeyError as e:
+            raise ValueError(
+                f"unknown field {e} in name template {self.template!r}; "
+                f"available fields: {', '.join(sorted(fields))}"
+            ) from e
 
     def __call__(self, entry):
         # Support both dict and bibtexparser v2 Entry (convert to dict for ** unpacking)
