@@ -17,6 +17,14 @@ class TestFormatIsUnknown(unittest.TestCase):
         self.assertFalse(fmt.is_unknown({"author": "Smith", "year": "2020", "title": "A Paper"}))
 
 
+class TestUnknownTemplateField(unittest.TestCase):
+
+    def test_unknown_field_raises_value_error(self):
+        fmt = Format(template="{author}_{nosuchfield}")
+        with self.assertRaises(ValueError):
+            fmt({"author": "Doe, John", "title": "A title", "year": "2020"})
+
+
 class TestUnknownKeySanitized(unittest.TestCase):
 
     def test_unknown_key_from_doi_is_sanitized(self):
