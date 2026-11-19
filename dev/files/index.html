@@ -1295,27 +1295,28 @@ papers file mv -n files/a.pdf files/b.pdf files/new/
 <a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a>from every entry that links to it, then deletes the file.
 <a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a>
 <a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a>- A FILE that no entry links to is an error, and nothing changes (with
-<a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a>  `--key`: that none of the entries of `--key` links to).
-<a id="__codelineno-5-18" name="__codelineno-5-18" href="#__codelineno-5-18"></a>- `-r FOLDER` removes the linked files inside FOLDER (and its subfolders).
-<a id="__codelineno-5-19" name="__codelineno-5-19" href="#__codelineno-5-19"></a>  Files that no entry links to stay where they are; the folders left empty
-<a id="__codelineno-5-20" name="__codelineno-5-20" href="#__codelineno-5-20"></a>  are removed, FOLDER included, except the files directory of the library.
-<a id="__codelineno-5-21" name="__codelineno-5-21" href="#__codelineno-5-21"></a>  Without `-r`, a folder is an error. `papers file detach -r FOLDER` removes
-<a id="__codelineno-5-22" name="__codelineno-5-22" href="#__codelineno-5-22"></a>  the links in the same way, without deleting anything.
-<a id="__codelineno-5-23" name="__codelineno-5-23" href="#__codelineno-5-23"></a>- With `--key`, only the links of those entries are removed; a file that
-<a id="__codelineno-5-24" name="__codelineno-5-24" href="#__codelineno-5-24"></a>  another entry still links to is kept on disk, and papers says so.
-<a id="__codelineno-5-25" name="__codelineno-5-25" href="#__codelineno-5-25"></a>- In a shallow library, the link is removed from the pool entry too, and
-<a id="__codelineno-5-26" name="__codelineno-5-26" href="#__codelineno-5-26"></a>  the file (in the pool's files directory or elsewhere) is deleted unless
-<a id="__codelineno-5-27" name="__codelineno-5-27" href="#__codelineno-5-27"></a>  another entry of the pool or of the library still links to it.
-<a id="__codelineno-5-28" name="__codelineno-5-28" href="#__codelineno-5-28"></a>- papers does not ask: the file was named on the command line. `--dry-run`
-<a id="__codelineno-5-29" name="__codelineno-5-29" href="#__codelineno-5-29"></a>  shows the links that would be removed and the files and folders that
-<a id="__codelineno-5-30" name="__codelineno-5-30" href="#__codelineno-5-30"></a>  would be deleted.
-<a id="__codelineno-5-31" name="__codelineno-5-31" href="#__codelineno-5-31"></a>
-<a id="__codelineno-5-32" name="__codelineno-5-32" href="#__codelineno-5-32"></a>`-k/--key` takes one or more entries (keys, DOIs, arXiv identifiers or
-<a id="__codelineno-5-33" name="__codelineno-5-33" href="#__codelineno-5-33"></a>ISBNs), and can be repeated: `--key K1 K2` is `--key K1 --key K2`; `-`
-<a id="__codelineno-5-34" name="__codelineno-5-34" href="#__codelineno-5-34"></a>reads them from the standard input. As it takes several values, write the
-<a id="__codelineno-5-35" name="__codelineno-5-35" href="#__codelineno-5-35"></a>files before it: in `papers file rm --key K1 file.pdf`, `file.pdf` would be
-<a id="__codelineno-5-36" name="__codelineno-5-36" href="#__codelineno-5-36"></a>read as an entry, and papers stops with the error `file.pdf is not an
-<a id="__codelineno-5-37" name="__codelineno-5-37" href="#__codelineno-5-37"></a>entry: put the files before --key`.
+<a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a>  `--key`: that none of the entries of `--key` links to). A FILE that does
+<a id="__codelineno-5-18" name="__codelineno-5-18" href="#__codelineno-5-18"></a>  not exist but is an entry key gets a hint: `(did you mean --key KEY?)`.
+<a id="__codelineno-5-19" name="__codelineno-5-19" href="#__codelineno-5-19"></a>- `-r FOLDER` removes the linked files inside FOLDER (and its subfolders).
+<a id="__codelineno-5-20" name="__codelineno-5-20" href="#__codelineno-5-20"></a>  Files that no entry links to stay where they are; the folders left empty
+<a id="__codelineno-5-21" name="__codelineno-5-21" href="#__codelineno-5-21"></a>  are removed, FOLDER included, except the files directory of the library.
+<a id="__codelineno-5-22" name="__codelineno-5-22" href="#__codelineno-5-22"></a>  Without `-r`, a folder is an error. `papers file detach -r FOLDER` removes
+<a id="__codelineno-5-23" name="__codelineno-5-23" href="#__codelineno-5-23"></a>  the links in the same way, without deleting anything.
+<a id="__codelineno-5-24" name="__codelineno-5-24" href="#__codelineno-5-24"></a>- With `--key`, only the links of those entries are removed; a file that
+<a id="__codelineno-5-25" name="__codelineno-5-25" href="#__codelineno-5-25"></a>  another entry still links to is kept on disk, and papers says so.
+<a id="__codelineno-5-26" name="__codelineno-5-26" href="#__codelineno-5-26"></a>- In a shallow library, the link is removed from the pool entry too, and
+<a id="__codelineno-5-27" name="__codelineno-5-27" href="#__codelineno-5-27"></a>  the file (in the pool's files directory or elsewhere) is deleted unless
+<a id="__codelineno-5-28" name="__codelineno-5-28" href="#__codelineno-5-28"></a>  another entry of the pool or of the library still links to it.
+<a id="__codelineno-5-29" name="__codelineno-5-29" href="#__codelineno-5-29"></a>- papers does not ask: the file was named on the command line. `--dry-run`
+<a id="__codelineno-5-30" name="__codelineno-5-30" href="#__codelineno-5-30"></a>  shows the links that would be removed and the files and folders that
+<a id="__codelineno-5-31" name="__codelineno-5-31" href="#__codelineno-5-31"></a>  would be deleted.
+<a id="__codelineno-5-32" name="__codelineno-5-32" href="#__codelineno-5-32"></a>
+<a id="__codelineno-5-33" name="__codelineno-5-33" href="#__codelineno-5-33"></a>`-k/--key` takes one or more entries (keys, DOIs, arXiv identifiers or
+<a id="__codelineno-5-34" name="__codelineno-5-34" href="#__codelineno-5-34"></a>ISBNs), and can be repeated: `--key K1 K2` is `--key K1 --key K2`; `-`
+<a id="__codelineno-5-35" name="__codelineno-5-35" href="#__codelineno-5-35"></a>reads them from the standard input. As it takes several values, write the
+<a id="__codelineno-5-36" name="__codelineno-5-36" href="#__codelineno-5-36"></a>files before it: in `papers file rm --key K1 file.pdf`, `file.pdf` would be
+<a id="__codelineno-5-37" name="__codelineno-5-37" href="#__codelineno-5-37"></a>read as an entry, and papers stops with the error `file.pdf is not an
+<a id="__codelineno-5-38" name="__codelineno-5-38" href="#__codelineno-5-38"></a>entry: put the files before --key`.
 </code></pre></div>
 papers file detach files/volume.pdf                    # from all the chapters
 papers file detach files/volume.pdf --key smith2020    # from one chapter
