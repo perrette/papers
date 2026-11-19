@@ -293,7 +293,8 @@ never deletes a file.
 from every entry that links to it, then deletes the file.
 
 - A FILE that no entry links to is an error, and nothing changes (with
-  `--key`: that none of the entries of `--key` links to).
+  `--key`: that none of the entries of `--key` links to). A FILE that does
+  not exist but is an entry key gets a hint: `(did you mean --key KEY?)`.
 - `-r FOLDER` removes the linked files inside FOLDER (and its subfolders).
   Files that no entry links to stay where they are; the folders left empty
   are removed, FOLDER included, except the files directory of the library.

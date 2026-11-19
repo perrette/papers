@@ -662,7 +662,9 @@ def links_to_paths(biblio, paths, entries=None, recursive=False):
     are compared by real path, so a broken link can be named too.
 
     A PATH that none of the entries links to is an error, and so is a folder
-    without recursive: the error is raised before anything changes."""
+    without recursive: the error is raised before anything changes. A PATH
+    that does not exist but is the key of an entry gets a hint to --key."""
+    keys = {e.key.lower() for e in biblio.entries}
     whom = 'no entry' if entries is None else 'none of the entries of --key'
     links = [(e, biblio.get_files(e)) for e in (biblio.entries if entries is None else entries)]
     found = {}
@@ -681,7 +683,10 @@ def links_to_paths(biblio, paths, entries=None, recursive=False):
                     hit = True
                     found.setdefault(id(e), (e, []))[1].append(f)
         if not hit:
-            errors.append(f'{path}: {whom} links to {"a file in this folder" if isdir else "this file"}')
+            hint = ''
+            if not os.path.lexists(path) and path.lower() in keys:
+                hint = f' (did you mean --key {path}?)'
+            errors.append(f'{path}: {whom} links to {"a file in this folder" if isdir else "this file"}{hint}')
     if errors:
         raise PapersExit('\n'.join(errors) + '\n(nothing was changed)')
     return [(e, list(dict.fromkeys(files))) for e, files in found.values()]

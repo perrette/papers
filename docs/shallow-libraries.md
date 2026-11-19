@@ -129,7 +129,7 @@ What the commands do in a shallow library:
   entry of the same paper updated; if the pool does not have it, the entry
   is added to the pool, as `add` does;
 - removing a file and removing an entry are different:
-  - `papers file detach KEY FILE` removes the link from the library entry
+  - `papers file detach FILE --key KEY` removes the link from the library entry
     and from the pool entry; the file stays;
   - `papers file rm FILE` removes the link from both and deletes the file,
     unless another entry of the pool or of the library still links to it

@@ -304,6 +304,19 @@ class TestDetach(FileTest):
             self.lib('file detach files/b.pdf files/other.pdf')
         self.assertIn(self.b, self.files('one2000'))
 
+    def test_key_as_file_hint(self):
+        # `file detach KEY FILE`, as `file attach KEY FILE`: the key is read as a FILE
+        before = open(self.path('lib', 'papers.bib')).read()
+        with self.assertRaisesRegex(PapersExit, r'one2000: no entry links to this file \(did you mean --key one2000\?\)'):
+            self.lib('file detach one2000 files/b.pdf')
+        self.assertEqual(open(self.path('lib', 'papers.bib')).read(), before)
+
+    def test_no_hint_for_existing_file(self):
+        self.write('lib', 'one2000')
+        with self.assertRaises(PapersExit) as cm:
+            self.lib('file detach one2000')
+        self.assertNotIn('did you mean', str(cm.exception))
+
     def test_not_linked_from_key(self):
         with self.assertRaisesRegex(PapersExit, 'none of the entries of --key'):
             self.lib('file detach files/b.pdf --key two2000')
@@ -380,6 +393,11 @@ class TestFileRm(FileTest):
             self.lib('file rm files/a.pdf files/sub/notes.txt')
         self.assertTrue(os.path.exists(self.a))
         self.assertEqual(open(self.path('lib', 'papers.bib')).read(), before)
+
+    def test_key_as_file_hint(self):
+        with self.assertRaisesRegex(PapersExit, r'did you mean --key one2000\?'):
+            self.lib('file rm one2000 files/a.pdf')
+        self.assertTrue(os.path.exists(self.a))
 
     def test_folder_needs_r(self):
         with self.assertRaisesRegex(PapersExit, 'is a folder'):
