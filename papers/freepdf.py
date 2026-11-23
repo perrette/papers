@@ -18,8 +18,9 @@ no PDF, and a landing page only when the links before it gave none. An
 HTTP 429 (too many requests) is retried once, after the wait it asks
 (Retry-After, see papers.fetch.retried). A download that is refused (HTTP
 error, not a PDF) moves to the next link; when none is left, the error
-gives the links to open in a browser. When an accepted or submitted version is found after the published version was
-refused, the published links are given too (Found.refused). The
+gives the links to open in a browser. When an accepted or submitted
+version is found after the published version was refused, the published
+links are given too (Found.refused). The
 supplements are the PDFs that the article page links with "suppl" in the
 URL or the text of the link, and its `citation_supplementary_material`
 tags.
