@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.1">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.2">
     
     
       
@@ -572,6 +572,17 @@
     <span class="md-ellipsis">
       
         How the DOI is found
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#several-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Several files
       
     </span>
   </a>
@@ -1169,9 +1180,24 @@ attachment.</p>
 of the text (<code>--scholar</code>: Google Scholar, <code>--openalex</code>: OpenAlex, see
 <a href="#search-with-openalex">below</a>), and accepts the result only if
 its title appears in the text. Otherwise the PDF is not added, and papers
-stops with an error: pass the DOI with <code>--doi</code>, or describe the entry (see
+reports an error: pass the DOI with <code>--doi</code>, or describe the entry (see
 <a href="#add-a-whole-directory-of-pdfs">below</a>). <code>--no-query-doi</code> skips the DOI
 search, and <code>--no-query-fulltext</code> the text search.</p>
+<p>When crossref answers HTTP 429 (too many requests), the request is made
+once more after the wait it asks (its <code>Retry-After</code> header, at most 30
+seconds; 5 without it). When a request still fails (HTTP error, no
+connection, timeout), the error says so instead, e.g. <code>failed to extract
+metadata: crossref did not answer (HTTP 429 Too Many Requests): try again
+later</code>.</p>
+<h3 id="several-files">Several files<a class="headerlink" href="#several-files" title="Permanent link">&para;</a></h3>
+<p><code>papers add a.pdf b.pdf refs.bib</code> adds each file on its own. A file that
+fails (a PDF without metadata, a file that cannot be read) is reported with
+its name, and the others are added; the library is saved with them, and the
+command ends with a line such as <code>1 of 3 files not added: b.pdf</code> and exit
+status 1. A PDF that is not added stays where it is. A question that cannot
+be answered (no terminal) or <code>--on-duplicate error</code> stops the command; the
+files added before it are saved. (<code>--ignore-errors</code>, which used to be
+needed to go on after an error, is ignored.)</p>
 <h3 id="search-with-openalex">Search with OpenAlex<a class="headerlink" href="#search-with-openalex" title="Permanent link">&para;</a></h3>
 <p><code>--openalex</code> (of <code>add</code>, <code>extract</code> and <code>fetch</code>) searches
 <a href="https://openalex.org">OpenAlex</a> instead of crossref: an open catalogue
@@ -1494,7 +1520,7 @@ fields to add:</p>
 </tr>
 <tr>
 <td><code>error</code></td>
-<td>stop before saving, and exit with status 1 (default without a terminal, e.g. in a script)</td>
+<td>stop, and exit with status 1 (default without a terminal, e.g. in a script); with several files, the entries added before are saved</td>
 </tr>
 </tbody>
 </table>
@@ -1627,6 +1653,10 @@ gives <code>Smith2000C</code>); after <code>z</code>, a second letter is added (
 <tr>
 <td><code>--no-merge-files</code></td>
 <td>ignored: file links are always merged</td>
+</tr>
+<tr>
+<td><code>--ignore-errors</code></td>
+<td>ignored: an error on one file never stops the others</td>
 </tr>
 </tbody>
 </table>
