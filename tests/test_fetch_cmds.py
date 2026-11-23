@@ -45,7 +45,7 @@ class TestFetch(FileTest):
                 self.lib('fetch 10.1000/nw')
             with self.assertRaisesRegex(PapersExit, '^10.1000/nw: no proxy$'):
                 self.lib('add --doi 10.1000/nw')
-            with self.assertRaisesRegex(PapersExit, '^no proxy$'):
+            with self.assertRaisesRegex(PapersExit, '^crossref: no connection$'):  # no URL
                 self.lib('fetch Climate sensitivity revisited')
 
 

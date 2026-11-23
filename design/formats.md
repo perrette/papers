@@ -63,6 +63,32 @@ Used by `papers add FILE` and `papers edit --from FILE`.
 `papers edit --format` without `--from` is a usage error (exit 2):
 `--format is the format of --from FILE`.
 
+`papers add FILE...` with several FILEs (or `DIR --recursive`) adds each
+file on its own: **contract**.
+
+- A FILE that fails (unreadable, not in its format, a PDF whose metadata
+  are not found, a key conflict) is reported as an error that names it,
+  and the other FILEs are added. A PDF that fails is not moved or copied.
+  The library is saved with the entries added (and their files placed), and
+  the command exits 1. The message texts are free; the current
+  implementation ends with `N of M files not added: FILE, FILE`. One FILE
+  that fails is an error (exit 1) that changes nothing.
+- A question with closed standard input, or a duplicate with
+  `--on-duplicate error`, stops the command at that FILE (exit 1): the
+  entries added from the FILEs before it are saved, with their files.
+- `--ignore-errors` is accepted, with a warning, and does nothing.
+- Within a directory (`--recursive`), a file that fails is a warning, and
+  the scan goes on.
+
+The metadata of a PDF are looked up on crossref (by DOI and by
+bibliographic search, informative). An answer HTTP 429 (too many
+requests) is asked again once, after the wait of its `Retry-After` header
+in seconds (at most 30; 5 when the header is absent or not a number), as
+for the free PDF of an entry (library.md). When no metadata are found and a
+request failed (an HTTP error or no answer, after that retry), the error
+says that the site did not answer, rather than asking for `--doi`: the
+wording is free.
+
 ### 1.3 Text encoding
 
 - Reading: the file is decoded as UTF-8; a leading byte-order mark is

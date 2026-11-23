@@ -4,6 +4,7 @@ and the journal website, with the results cached (see papers.cache). OpenAlex
 is in papers.openalex."""
 import json
 import threading
+import time
 
 import papers
 from papers import logger
@@ -15,6 +16,7 @@ from papers.identifiers import arxiv_of_doi
 # crossref "polite pool": identify the client and a contact address
 USER_AGENT = f'papers/{papers.__version__} (https://github.com/perrette/papers; mailto:mahe.perrette@gmail.com)'
 TIMEOUT = 30  # seconds
+RETRY_DEFAULT, RETRY_MAX = 5, 30  # seconds to wait after an HTTP 429: without Retry-After, at most
 
 _thread_local = threading.local()
 
@@ -30,11 +32,71 @@ def http_get(url, **kw):
     return session.get(url, **kw)
 
 
+def _retry_after(value):
+    "the seconds to wait for a Retry-After header (seconds; a date or none gives RETRY_DEFAULT)"
+    try:
+        return min(max(float(value), 0), RETRY_MAX)
+    except (TypeError, ValueError):
+        return RETRY_DEFAULT
+
+
+def retried(get, url):
+    """get(), and again once after the wait that an HTTP 429 (too many
+    requests) asks (see _retry_after). get() returns a response of status
+    429, or raises an error that has it as `response` (requests' HTTPError,
+    papers.files.download_url's ValueError); a second 429 is returned or
+    raised as the first was."""
+    try:
+        response = get()
+    except (ValueError, OSError) as error:
+        response = getattr(error, 'response', None)
+        if getattr(response, 'status_code', None) != 429:
+            raise
+    else:
+        if getattr(response, 'status_code', None) != 429:
+            return response
+    wait = _retry_after((response.headers or {}).get('Retry-After'))
+    logger.debug(f'{url} (HTTP 429), retried in {wait:g} s')
+    time.sleep(wait)
+    return get()
+
+
 class DOIRequestError(ValueError):
     pass
 
 class DOINotFoundError(DOIRequestError):
     """the DOI does not exist (unknown to doi.org)"""
+
+class RequestFailed(DOIRequestError):
+    """a request without answer, or answered with an HTTP error, after the
+    retry of an HTTP 429: `site` (crossref), `detail` (HTTP 429 Too Many
+    Requests, timed out, no connection) and `status` (the HTTP status, or
+    None) say which. The message has no URL (that of a fulltext query has
+    up to 200 words); `subject`, when given, starts it (the DOI)."""
+
+    def __init__(self, site, detail, status=None, subject=''):
+        self.site, self.detail, self.status = site, detail, status
+        super().__init__(f'{subject}: {site}: {detail}' if subject else f'{site}: {detail}')
+
+
+def _crossref_get(url, subject='', **kw):
+    """the answer of crossref to http_get(url, **kw), asked again once after
+    an HTTP 429 (see retried); no answer or an HTTP error raises
+    RequestFailed (`subject`: see there)"""
+    import requests  # imported by http_get already
+    from http import HTTPStatus
+    try:
+        response = retried(lambda: http_get(url, **kw), url)
+    except requests.exceptions.RequestException as error:
+        detail = 'timed out' if isinstance(error, requests.exceptions.Timeout) else 'no connection'
+        raise RequestFailed('crossref', detail, subject=subject) from error
+    if response.status_code >= 400:
+        try:
+            reason = HTTPStatus(response.status_code).phrase
+        except ValueError:
+            reason = ''
+        raise RequestFailed('crossref', f'HTTP {response.status_code} {reason}'.strip(), response.status_code, subject)
+    return response
 
 
 def _drop_references(message):
@@ -51,11 +113,13 @@ def _migrate_crossref_cache(response):
 def fetch_crossref_by_doi(doi):
     """crossref record of a DOI ("message" field of the API response)"""
     from urllib.parse import quote
-    response = http_get('https://api.crossref.org/works/' + quote(doi, safe='/'))
-    if response.status_code == 404:
-        raise DOINotFoundError(f'{doi}: not found on crossref')
     try:
-        response.raise_for_status()
+        response = _crossref_get('https://api.crossref.org/works/' + quote(doi, safe='/'), subject=doi)
+    except RequestFailed as error:
+        if error.status == 404:
+            raise DOINotFoundError(f'{doi}: not found on crossref') from None
+        raise
+    try:
         return response.json()['message']
     except Exception as error:
         raise DOIRequestError(repr(doi)+': '+repr(error))
@@ -97,12 +161,22 @@ def fetch_doi_metadata(doi):
     for DOIs registered elsewhere (DataCite, mEDRA...). A DOI unknown to
     doi.org raises DOINotFoundError (remembered for a day: a new paper's
     DOI may be printed before it is registered). DOIs are case-insensitive:
-    the queries use the DOI as given, the cache its lower case."""
+    the queries use the DOI as given, the cache its lower case. When
+    crossref did not answer (RequestFailed) and doi.org has no metadata
+    either, the error of crossref is raised."""
     try:
         return fetch_crossref_by_doi(doi)
     except DOIRequestError as error:
         logger.debug(f'{error}: try doi.org')
-    return fetch_csl_by_doi(doi)
+        crossref_error = error
+    try:
+        return fetch_csl_by_doi(doi)
+    except DOINotFoundError:
+        raise
+    except DOIRequestError:
+        if isinstance(crossref_error, RequestFailed):
+            raise crossref_error from None
+        raise
 
 
 @cached('arxiv', legacy='arxiv.json', migrate=lambda bibtex: None if bibtex.startswith('Error') else bibtex)
@@ -123,6 +197,7 @@ def fetch_bibtex_by_doi(doi):
         raise
     except DOIRequestError as error:
         logger.debug(str(error))
+        failure = error
 
     # registered but without metadata (yet): the publisher's page may link a bibtex
     try:
@@ -130,6 +205,8 @@ def fetch_bibtex_by_doi(doi):
     except Exception as error:
         logger.debug(f'{doi}: no bibtex on the journal website: {error}')
 
+    if isinstance(failure, RequestFailed):
+        raise failure  # crossref did not answer: not a DOI without metadata
     raise DOIRequestError(f"Unable to fetch BibTeX for DOI {doi}")
 
 
@@ -287,8 +364,8 @@ CROSSREF_SELECT = ','.join(['DOI', 'URL', 'type', 'title', 'author', 'editor', '
 
 @cached('crossref-query', hashed_key=True)
 def _crossref_query(params):
-    response = http_get('https://api.crossref.org/works', params=json.loads(params))
-    response.raise_for_status()
+    # an error is raised before the result is cached: an HTTP 429 is not remembered
+    response = _crossref_get('https://api.crossref.org/works', params=json.loads(params))
     return response.json()['message']['items']
 
 

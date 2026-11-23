@@ -278,7 +278,7 @@ class TestMoreSources(FetchTest):
         super().setUp()
         self.bib(entry('smith2020', doi=DOI))
         self.publisher(content=b'<html>a check page</html>')
-        sleep = mock.patch('papers.freepdf.time.sleep')
+        sleep = mock.patch('papers.fetch.time.sleep')
         self.sleep = sleep.start()
         self.addCleanup(sleep.stop)
 
@@ -898,12 +898,12 @@ class TestUrlsInMessages(FetchTest):
         self.publisher(doi='10.1000/same', pdf='https://journals.example.org/same.pdf')
         self.publisher(doi='10.1000/sup', pdf='https://journals.example.org/sup.pdf',
                        links=[('https://journals.example.org/sup-suppl.pdf', 'Supplement')])
-        sleep = mock.patch('papers.freepdf.time.sleep')
+        sleep = mock.patch('papers.fetch.time.sleep')
         sleep.start()
         self.addCleanup(sleep.stop)
 
     def messages(self, cmd):
-        "stdout, stderr and the log messages of papers.freepdf (all levels) and of papers (INFO and above)"
+        "stdout, stderr and the log messages of papers.freepdf and papers.fetch (all levels) and of papers (INFO and above)"
         import logging
         out, err = io.StringIO(), io.StringIO()
         with self.assertLogs('papers', 'DEBUG') as logs, redirect_stdout(out), redirect_stderr(err):
@@ -911,7 +911,7 @@ class TestUrlsInMessages(FetchTest):
                 self.lib(cmd)
             except PapersExit as error:
                 err.write(str(error))
-        records = [r.getMessage() for r in logs.records if r.levelno >= logging.INFO or r.filename == 'freepdf.py']
+        records = [r.getMessage() for r in logs.records if r.levelno >= logging.INFO or r.filename in ('freepdf.py', 'fetch.py')]
         return '\n'.join([out.getvalue(), err.getvalue()] + records)
 
     def assertUrlsEndClean(self, text, *expected):

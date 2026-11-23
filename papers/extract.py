@@ -11,7 +11,7 @@ from papers.ascii import to_ascii
 
 from papers import logger
 from papers.entries import get_entry_val, parse_string
-from papers.fetch import (DOIRequestError, fetch_bibtex_by_doi, fetch_bibtex_by_fulltext_crossref,
+from papers.fetch import (DOIRequestError, RequestFailed, fetch_bibtex_by_doi, fetch_bibtex_by_fulltext_crossref,
                           fetch_bibtex_by_fulltext_scholar)
 from papers.openalex import fetch_bibtex_by_fulltext_openalex
 
@@ -477,20 +477,23 @@ def _bibtex_title(bibtex):
     return get_entry_val(entries[0], 'title', '') if entries else ''
 
 
-def confirm_doi(dois, txt):
+def confirm_doi(dois, txt, failures=None):
     """The first candidate DOI whose title (from crossref) appears in the
     text, as (doi, bibtex), or None.
 
     A candidate is never accepted on faith: a DOI cited in the text, or the
     DOI of the previous article printed on the same page, is a valid DOI of
     another paper. DOIs without metadata or without title cannot be checked
-    and are skipped.
+    and are skipped. The requests that failed (RequestFailed) are appended
+    to the list `failures`, when given.
     """
     for doi in dois:
         try:
             bibtex = fetch_bibtex_by_doi(doi)
         except DOIRequestError as error:
             logger.info(f'{doi}: no metadata found ({error})')
+            if isinstance(error, RequestFailed) and failures is not None:
+                failures.append(error)
             continue
         title = _bibtex_title(bibtex)
         if not title:
@@ -502,17 +505,21 @@ def confirm_doi(dois, txt):
     return None
 
 
-def extract_txt_metadata(txt, search_doi=True, search_fulltext=False, max_query_words=200, scholar=False, openalex=False, tail=''):
+def extract_txt_metadata(txt, search_doi=True, search_fulltext=False, max_query_words=200, scholar=False, openalex=False, tail='',
+                         failures=None):
     """
     extract metadata from text, by parsing and doi-query, or by fulltext query in crossref (default), google scholar or OpenAlex
 
     The result is accepted only if its title appears in txt (not in the tail:
     for most papers the last page is the reference list, where cited papers
-    have both their title and DOI). Raise ValueError otherwise.
+    have both their title and DOI). Raise ValueError otherwise; its message
+    says when a request failed (RequestFailed, also those of the list
+    `failures` given by the caller) rather than nothing matched.
     """
     assert search_doi or search_fulltext, 'no search criteria specified for metadata'
 
     dois = []
+    failures = [] if failures is None else failures
 
     if search_doi:
         try:
@@ -524,7 +531,7 @@ def extract_txt_metadata(txt, search_doi=True, search_fulltext=False, max_query_
 
         if dois:
             logger.debug('query bibtex by doi')
-            confirmed = confirm_doi(dois, txt)
+            confirmed = confirm_doi(dois, txt, failures)
             if confirmed:
                 logger.debug('doi query successful')
                 return confirmed[1]
@@ -543,6 +550,8 @@ def extract_txt_metadata(txt, search_doi=True, search_fulltext=False, max_query_
                 bibtex = fetch_bibtex_by_fulltext_crossref(query_txt)
         except Exception as error:
             logger.warning(f'fulltext query failed: {error}')
+            if isinstance(error, RequestFailed):
+                failures.append(error)
         else:
             title = _bibtex_title(bibtex)
             if title and title_in_text(title, txt):
@@ -550,6 +559,9 @@ def extract_txt_metadata(txt, search_doi=True, search_fulltext=False, max_query_
                 return bibtex
             logger.warning(f'fulltext query: title not found in the text: {title[:100]}')
 
+    if failures:
+        failure = failures[-1]
+        raise ValueError(f'failed to extract metadata: {failure.site} did not answer ({failure.detail}): try again later')
     raise ValueError('failed to extract metadata: pass the DOI with --doi, or, without DOI, add the entry with --title, --author, --year... and the PDF with --attach')
 
 
@@ -557,14 +569,17 @@ def _metadata_from_pdf_contents(metadata_doi, read_text, search_doi=True, search
     """the network part of extract_pdf_metadata: read_text() returns the text
     of the first pages and of the last page"""
     # a DOI in the PDF metadata is the article's own: no need to parse the text
+    failures = []
     if search_doi and metadata_doi:
         logger.info(f'found doi in pdf metadata: {metadata_doi}')
         try:
             return fetch_bibtex_by_doi(metadata_doi)
         except DOIRequestError as error:
             logger.warning(f'{metadata_doi}: no metadata found ({error}), search the text')
+            if isinstance(error, RequestFailed):
+                failures.append(error)
     txt, tail = read_text()
-    return extract_txt_metadata(txt, search_doi, search_fulltext, tail=tail, **kw)
+    return extract_txt_metadata(txt, search_doi, search_fulltext, tail=tail, failures=failures, **kw)
 
 
 def extract_pdf_metadata(pdf, search_doi=True, search_fulltext=True, maxpages=10, minwords=200, image=False, **kw):

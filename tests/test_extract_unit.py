@@ -647,6 +647,105 @@ class TestDoiRequests(unittest.TestCase):
         self.assertEqual(params[0]['rows'], 5)
         self.assertNotIn('reference', params[0]['select'])
 
+    def _answers(self, *responses):
+        """fake http_get: the responses in turn (the last one again), and the urls asked"""
+        calls = []
+        def get(url, **kw):
+            calls.append(url)
+            return responses[min(len(calls), len(responses)) - 1]
+        return get, calls
+
+    def test_crossref_429_is_asked_again_once(self):
+        # formats.md 1.2: after the wait of Retry-After (at most 30 s)
+        from unittest import mock
+        from papers.fetch import fetch_bibtex_by_fulltext_crossref
+        too_many = FakeResponse(429)
+        too_many.headers['Retry-After'] = '2'
+        get, calls = self._answers(too_many, FakeResponse(json={'message': {'items': [dict(self.CROSSREF)]}}))
+        with mock.patch('papers.fetch.http_get', get), mock.patch('papers.fetch.time.sleep') as sleep:
+            self.assertIn('A Title', fetch_bibtex_by_fulltext_crossref('', title='A Title'))
+        sleep.assert_called_once_with(2)
+        self.assertEqual(len(calls), 2)
+
+    def test_crossref_429_twice_is_a_short_error_not_cached(self):
+        from unittest import mock
+        from papers.fetch import fetch_bibtex_by_fulltext_crossref, RequestFailed
+        get, calls = self._answers(FakeResponse(429))
+        with mock.patch('papers.fetch.http_get', get), mock.patch('papers.fetch.time.sleep') as sleep:
+            for _ in range(2):
+                with self.assertRaises(RequestFailed) as error:
+                    fetch_bibtex_by_fulltext_crossref('a long query of many words')
+                self.assertEqual(str(error.exception), 'crossref: HTTP 429 Too Many Requests')  # no URL
+        sleep.assert_called_with(5)  # without Retry-After
+        self.assertEqual(len(calls), 4)  # not cached: asked again
+
+    def test_crossref_without_answer_is_a_short_error(self):
+        import requests
+        from unittest import mock
+        from papers.fetch import fetch_bibtex_by_fulltext_crossref, RequestFailed
+        timeout = requests.exceptions.ReadTimeout('HTTPSConnectionPool(...): Read timed out. url: /works?query=...')
+        with mock.patch('papers.fetch.http_get', side_effect=timeout):
+            with self.assertRaisesRegex(RequestFailed, '^crossref: timed out$'):
+                fetch_bibtex_by_fulltext_crossref('a long query of many words')
+
+    def test_doi_429_is_a_request_failure(self):
+        # crossref did not answer, doi.org has no metadata: the error of crossref
+        from unittest import mock
+        from papers.fetch import fetch_bibtex_by_doi, RequestFailed
+        get, calls = self._get([('https://api.crossref.org/', FakeResponse(429)),
+                                ('https://doi.org/', FakeResponse(503, content_type='text/html'))])
+        with mock.patch('papers.fetch.http_get', get), mock.patch('papers.fetch.time.sleep'), \
+                mock.patch('papers.fetch.fetch_bibtex_on_journal_website', side_effect=ValueError('no link')):
+            with self.assertRaises(RequestFailed) as error:
+                fetch_bibtex_by_doi('10.1000/x')
+        self.assertEqual(str(error.exception), '10.1000/x: crossref: HTTP 429 Too Many Requests')
+        self.assertEqual(calls, ['https://api.crossref.org/works/10.1000/x'] * 2 + ['https://doi.org/10.1000/x'])
+
+
+class TestRequestFailedMessage(unittest.TestCase):
+    """formats.md 1.2: when a request failed, the error of the metadata of a PDF says so"""
+
+    TEXT = 'A Title Of Some Length about something\n\nSome One, Other Two\n\nhttps://doi.org/10.1000/x and more words here'
+
+    def failure(self):
+        from papers.fetch import RequestFailed
+        return RequestFailed('crossref', 'HTTP 429 Too Many Requests', 429)
+
+    def test_fulltext_query(self):
+        from unittest import mock
+        from papers.extract import extract_txt_metadata
+        with mock.patch('papers.extract.fetch_bibtex_by_fulltext_crossref', side_effect=self.failure()), \
+                self.assertLogs('papers', 'WARNING') as logs:
+            with self.assertRaisesRegex(ValueError, r'^failed to extract metadata: crossref did not answer '
+                                        r'\(HTTP 429 Too Many Requests\): try again later$'):
+                extract_txt_metadata(self.TEXT, search_doi=False, search_fulltext=True)
+        self.assertIn('fulltext query failed: crossref: HTTP 429 Too Many Requests', logs.output[0])
+
+    def test_doi_candidate(self):
+        from unittest import mock
+        from papers.extract import extract_txt_metadata
+        with mock.patch('papers.extract.fetch_bibtex_by_doi', side_effect=self.failure()), \
+                self.assertLogs('papers', 'WARNING'):
+            with self.assertRaisesRegex(ValueError, 'crossref did not answer'):
+                extract_txt_metadata(self.TEXT, search_doi=True, search_fulltext=False)
+
+    def test_doi_of_the_pdf_metadata(self):
+        from unittest import mock
+        from papers.extract import _metadata_from_pdf_contents
+        with mock.patch('papers.extract.fetch_bibtex_by_doi', side_effect=self.failure()), \
+                self.assertLogs('papers', 'WARNING'):
+            with self.assertRaisesRegex(ValueError, 'crossref did not answer'):
+                _metadata_from_pdf_contents('10.1000/x', lambda: ('no doi in this text at all', ''),
+                                            search_doi=True, search_fulltext=False)
+
+    def test_nothing_matched(self):
+        from unittest import mock
+        from papers.extract import extract_txt_metadata
+        with mock.patch('papers.extract.fetch_bibtex_by_fulltext_crossref', return_value='@article{x, title = {Another Paper Altogether}}'), \
+                self.assertLogs('papers', 'WARNING'):
+            with self.assertRaisesRegex(ValueError, 'pass the DOI with --doi'):
+                extract_txt_metadata(self.TEXT, search_doi=False, search_fulltext=True)
+
 
 class TestPrefetch(unittest.TestCase):
 

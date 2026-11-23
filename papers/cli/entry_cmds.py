@@ -138,6 +138,8 @@ def addcmd(parser, o, config):
 
     if o.no_merge_files:
         logger.warning('--no-merge-files is deprecated and ignored: the file links of duplicates are always merged')
+    if o.ignore_errors:
+        logger.warning('--ignore-errors is deprecated and ignored: an error on one file never stops the others')
     resolver = duplicate_resolver(o, 'add')
     kw = {'on_duplicate':resolver, 'check_duplicate':not o.no_check_duplicate,
             'update_key':o.update_key, 'metadata':metadata}
@@ -201,15 +203,20 @@ def addcmd(parser, o, config):
            for f in o.file):
         load_rispy()
 
+    # each file on its own: one that fails is reported, and the others are added
+    failed = []
+    stopped = None  # the error that stops the command, raised after the save of what was added
     for file in o.file:
         try:
             if os.path.isdir(file):
                 if o.recursive:
-                    entries.extend( biblio.scan_dir(file, rename=rename, copy=policy,
+                    # one entry at a time: those added before a stop are kept in `entries`
+                    for e in biblio.scan_dir_iter(file, rename=rename, copy=policy,
                                 search_doi=not o.no_query_doi,
                                 search_fulltext=not o.no_query_fulltext,
                                 scholar=o.scholar, openalex=o.openalex,
-                                **kw) )
+                                **kw):
+                        entries.append(e)
                 else:
                     raise ValueError(file+' is a directory, requires -R/--recursive to explore')
 
@@ -227,19 +234,20 @@ def addcmd(parser, o, config):
                 entries.extend( biblio.add_file_of_format(file, file_format(file, o.format),
                                 attachments=o.attachment, rename=rename, copy=policy, **kw) )
 
-        except (EOFError, DuplicateError):
-            raise  # a question without answer, or --on-duplicate error, stops the command (see main_clean_exit)
+        except (EOFError, DuplicateError) as error:
+            # a question without answer, or --on-duplicate error, stops the command (see main_clean_exit),
+            # after the save of the files added before: they may be in the files directory already
+            stopped = error
+            break
         except Exception as error:
-            if o.ignore_errors:
-                logger.error(str(error))
-            elif len(o.file) > 1 or (os.path.isdir(file) and o.recursive):
-                raise PapersExit(f'{error}\nuse --ignore-errors to add other files anyway') from error
-            else:
+            if len(o.file) == 1:
                 raise PapersExit(str(error)) from error
+            logger.error(f'{file}: {error}')
+            failed.append(file)
 
     # --fetch-pdf: the PDF of the entry, attached before the save
     pdf_failed = 0
-    if o.fetch_pdf:
+    if o.fetch_pdf and not stopped:
         pdf_failed = fetch_entry_pdfs(biblio, config, pools, [e for e in biblio.entries
                                                               if any(e is x for x in entries)], mode)
 
@@ -249,7 +257,7 @@ def addcmd(parser, o, config):
         unique_keys = set(biblio.key(e) for e in entries)
         entries = [e for e in biblio.entries if biblio.key(e) in unique_keys]
 
-    if o.edit:
+    if o.edit and not stopped:
         others = [e for e in biblio.entries if not any(e is x for x in entries)]
 
         try:
@@ -278,9 +286,13 @@ def addcmd(parser, o, config):
     # (with the entries a skipped duplicate was of: `existing`)
     _print_biblio_diff(biblio, entries + biblio.skipped, show_existing=True, notes=notes)
 
+    if stopped:
+        raise stopped
     if o.open:
         for e in entries:
             view_entry_files(biblio, e)
+    if failed:
+        raise PapersExit(f'{len(failed)} of {len(o.file)} files not added: {", ".join(failed)}')
     if pdf_failed:
         raise PapersExit()  # the entry is added, the error about its PDF reported: exit 1
 

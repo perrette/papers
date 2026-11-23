@@ -2,7 +2,7 @@
  "parent": "$STATE1",
  "time": "$TIME",
  "kind": "command",
- "message": "papers add good.bib missing.bib other.bib --ignore-errors --porcelain",
+ "message": "papers add good.bib missing.bib other.bib",
  "ops": [],
  "deleted": [],
  "bibtex": {

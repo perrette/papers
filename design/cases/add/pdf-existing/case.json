@@ -68,14 +68,6 @@
     {
       "argv": [
         "add",
-        "missing.pdf",
-        "again/xmp-doi.pdf",
-        "--ignore-errors"
-      ]
-    },
-    {
-      "argv": [
-        "add",
         "again/xmp-doi.pdf",
         "info-doi.pdf",
         "--title",

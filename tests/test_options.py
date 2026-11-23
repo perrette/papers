@@ -50,7 +50,7 @@ class TestOptions(FileTest):
         self.assertEqual(doi.call_args.args[0], self.a)
 
     def test_add_R(self):
-        with patch('papers.bib.Biblio.scan_dir', return_value=[]) as scan:
+        with patch('papers.bib.Biblio.scan_dir_iter', return_value=iter([])) as scan:
             self.lib(f'add -R {self.path("src")} --no-query-doi --no-query-fulltext')
         scan.assert_called_once()
 

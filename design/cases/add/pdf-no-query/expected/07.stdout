@@ -1,6 +1,7 @@
 @article{ice2020,
  author = {Doe, Jane},
  doi = {10.1234/ICE.2020.1},
+ file = {:files/doe_2020_title-of-ice2020.pdf:pdf},
  title = {Title of ice2020},
  year = {2020}
 }

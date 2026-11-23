@@ -51,9 +51,27 @@ When no DOI is accepted, papers searches crossref with the first 200 words
 of the text (`--scholar`: Google Scholar, `--openalex`: OpenAlex, see
 [below](#search-with-openalex)), and accepts the result only if
 its title appears in the text. Otherwise the PDF is not added, and papers
-stops with an error: pass the DOI with `--doi`, or describe the entry (see
+reports an error: pass the DOI with `--doi`, or describe the entry (see
 [below](#add-a-whole-directory-of-pdfs)). `--no-query-doi` skips the DOI
 search, and `--no-query-fulltext` the text search.
+
+When crossref answers HTTP 429 (too many requests), the request is made
+once more after the wait it asks (its `Retry-After` header, at most 30
+seconds; 5 without it). When a request still fails (HTTP error, no
+connection, timeout), the error says so instead, e.g. `failed to extract
+metadata: crossref did not answer (HTTP 429 Too Many Requests): try again
+later`.
+
+### Several files
+
+`papers add a.pdf b.pdf refs.bib` adds each file on its own. A file that
+fails (a PDF without metadata, a file that cannot be read) is reported with
+its name, and the others are added; the library is saved with them, and the
+command ends with a line such as `1 of 3 files not added: b.pdf` and exit
+status 1. A PDF that is not added stays where it is. A question that cannot
+be answered (no terminal) or `--on-duplicate error` stops the command; the
+files added before it are saved. (`--ignore-errors`, which used to be
+needed to go on after an error, is ignored.)
 
 ### Search with OpenAlex
 
@@ -430,7 +448,7 @@ fields to add:
 | `keep` | merge; conflicts keep the library value |
 | `update` | merge; conflicts take the value of the added entry |
 | `skip` | the entry is not added; the library entry, its files and the added file are left as they are |
-| `error` | stop before saving, and exit with status 1 (default without a terminal, e.g. in a script) |
+| `error` | stop, and exit with status 1 (default without a terminal, e.g. in a script); with several files, the entries added before are saved |
 
 `--no-check-duplicate` adds the entries without looking for duplicates. An
 entry with the key of a library entry is still folded into it (its files
@@ -518,3 +536,4 @@ These options still work, with a warning, and will be removed:
 | `-m r` | `--on-duplicate error` |
 | `-m a` | `--no-check-duplicate` |
 | `--no-merge-files` | ignored: file links are always merged |
+| `--ignore-errors` | ignored: an error on one file never stops the others |

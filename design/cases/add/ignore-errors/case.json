@@ -1,5 +1,5 @@
 {
-  "description": "several files: an error stops the command (nothing is added) and says so, --ignore-errors goes on with the other files; a directory needs -R",
+  "description": "several files: each is added on its own, one that fails is reported and the others are added and saved (exit 1); a directory needs -R; --ignore-errors is accepted with a warning and changes nothing",
   "sections": [
     "formats.md#1.2",
     "formats.md#7.3"

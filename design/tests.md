@@ -967,6 +967,15 @@ that check the same thing.
 - tests/test_formats.py::TestListFormats::test_csl_json
 - tests/test_list_actions.py::TestListFileActions::test_export
 - tests/test_list_actions.py::TestListFileActions::test_export_files
+- tests/test_commands_more.py::TestAddMore::test_several_files_one_error_the_others_added
+- tests/test_commands_more.py::TestAddMore::test_ignore_errors_is_deprecated_and_ignored
+- tests/test_commands_more.py::TestAddMore::test_files_moved_before_an_error_are_saved
+- tests/test_commands_more.py::TestAddMore::test_files_moved_before_a_stop_are_saved
+- tests/test_extract_unit.py::TestDoiRequests::test_crossref_429_is_asked_again_once
+- tests/test_extract_unit.py::TestDoiRequests::test_crossref_429_twice_is_a_short_error_not_cached
+- tests/test_extract_unit.py::TestDoiRequests::test_doi_429_is_a_request_failure
+- tests/test_extract_unit.py::TestRequestFailedMessage::test_fulltext_query
+- tests/test_extract_unit.py::TestRequestFailedMessage::test_doi_candidate
 
 ### 1.3 Text encoding
 

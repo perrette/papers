@@ -415,7 +415,8 @@ def get_parser(config=None):
         shallow library, the files go to the files directory of the pool (files mode
         move or copy; with link, they stay where they are), and the entries to the pool too. Adding a bibtex file (`papers add other.bib`) copies its entries once, with no
         memory of where they came from; `papers pull` instead keeps the entries linked to the pool,
-        and later pulls bring its corrections.''',
+        and later pulls bring its corrections. Each FILE is added on its own: one that fails
+        (e.g. a PDF without metadata) is reported, the others are added, and the command exits 1.''',
         parents=[cfg, namefmt, keyfmt])
     addp.add_argument('file', nargs='*', default=[], type=file_uri_to_path)
     addp.add_argument('--format', choices=FORMATS,
@@ -459,7 +460,7 @@ def get_parser(config=None):
         of .pdf and .bib files; files named <name>--<label>.<ext> next to <name>.pdf \
         are added as attachments of its entry')
     grp.add_argument('--ignore-errors', action='store_true',
-        help='ignore errors when adding multiple files')
+        help=argparse.SUPPRESS)  # deprecated and ignored: an error on one file never stops the others
 
     grp = addp.add_argument_group('metadata',
         description='''The fields given here replace those found in the PDF, fetched from the DOI,

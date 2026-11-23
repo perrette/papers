@@ -16,10 +16,9 @@ submitted version (preprint):
 The publisher's page is read first, OpenAlex only when the publisher gives
 no PDF, and a landing page only when the links before it gave none. An
 HTTP 429 (too many requests) is retried once, after the wait it asks
-(Retry-After, at most RETRY_MAX seconds; RETRY_DEFAULT without it). A
-download that is refused (HTTP error, not a PDF) moves to the next link;
-when none is left, the error gives the links to open in a browser. When an
-accepted or submitted version is found after the published version was
+(Retry-After, see papers.fetch.retried). A download that is refused (HTTP
+error, not a PDF) moves to the next link; when none is left, the error
+gives the links to open in a browser. When an accepted or submitted version is found after the published version was
 refused, the published links are given too (Found.refused). The
 supplements are the PDFs that the article page links with "suppl" in the
 URL or the text of the link, and its `citation_supplementary_material`
@@ -56,7 +55,6 @@ _OPENALEX_VERSIONS = {'publishedVersion': 'published', 'acceptedVersion': 'accep
                       'submittedVersion': 'submitted'}
 LEAST_VERSIONS = ('published', 'accepted', 'any')  # the choices of --version
 INTERVAL = 1.0  # seconds between two requests to a site
-RETRY_DEFAULT, RETRY_MAX = 5, 30  # seconds to wait after an HTTP 429: without Retry-After, at most
 
 
 class NoPDF(ValueError):
@@ -114,28 +112,12 @@ def _wait(url):
         _last[host] = time.monotonic()
 
 
-def _retry_after(value):
-    "the seconds to wait for a Retry-After header (seconds; a date or none gives RETRY_DEFAULT)"
-    try:
-        return min(max(float(value), 0), RETRY_MAX)
-    except (TypeError, ValueError):
-        return RETRY_DEFAULT
-
-
 def _request(url, get):
-    "get() after _wait(url), and again once after the wait that an HTTP 429 asks"
-    _wait(url)
-    try:
-        return get()
-    except (ValueError, OSError) as error:
-        response = getattr(error, 'response', None)
-        if response is None or getattr(response, 'status_code', None) != 429:
-            raise
-        wait = _retry_after((response.headers or {}).get('Retry-After'))
-        logger.debug(f'{url} (HTTP 429), retried in {wait:g} s')
-        time.sleep(wait)
+    "get() after _wait(url), and again once after the wait that an HTTP 429 asks (see fetch.retried)"
+    def waited():
         _wait(url)
         return get()
+    return fetch.retried(waited, url)
 
 
 def _fetch_page(url):

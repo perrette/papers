@@ -6,6 +6,7 @@ from unittest.mock import patch
 
 import papers.config
 from papers.bib import Biblio
+from papers.merge import DuplicateError
 from papers.utils import PapersExit
 from tests.common import FileTest, entry
 
@@ -28,16 +29,57 @@ class TestAddMore(FileTest):
         with self.assertRaisesRegex(PapersExit, 'requires -R/--recursive'):
             self.lib(f'add {self.path("src")}')
 
-    def test_several_files_error_and_ignore_errors(self):
+    def test_several_files_one_error_the_others_added(self):
+        # formats.md 1.2: each file on its own; the error names the file, the summary comes last (exit 1)
         good = self.write('src', 'good.bib', content=entry('good2000'))
         bad = self.write('src', 'bad.pdf')
         with patch('papers.bib.extract_pdf_metadata', side_effect=ValueError('no metadata')), \
                 patch('papers.cli.entry_cmds.prefetch_pdf_metadata'):
-            with self.assertRaisesRegex(PapersExit, 'use --ignore-errors'):
+            with self.assertLogs('papers', level='ERROR') as logs, \
+                    self.assertRaisesRegex(PapersExit, f'^1 of 2 files not added: {bad}$'):
                 self.lib(f'add {bad} {good}')
-            with self.assertLogs('papers', level='ERROR'):
-                self.lib(f'add {bad} {good} --ignore-errors')
+        self.assertIn(f'{bad}: no metadata', '\n'.join(logs.output))
         self.assertEqual(self.keys(), ['good2000'])
+
+    def test_ignore_errors_is_deprecated_and_ignored(self):
+        good = self.write('src', 'good.bib', content=entry('good2000'))
+        bad = self.write('src', 'bad.pdf')
+        with patch('papers.bib.extract_pdf_metadata', side_effect=ValueError('no metadata')), \
+                patch('papers.cli.entry_cmds.prefetch_pdf_metadata'):
+            with self.assertLogs('papers', level='WARNING') as logs, \
+                    self.assertRaisesRegex(PapersExit, '^1 of 2 files not added'):
+                self.lib(f'add {bad} {good} --ignore-errors')
+        self.assertIn('--ignore-errors is deprecated and ignored', '\n'.join(logs.output))
+        self.assertEqual(self.keys(), ['good2000'])
+
+    def test_files_moved_before_an_error_are_saved(self):
+        # the PDF moved into the files directory is linked by the saved library;
+        # the PDF that failed stays where it is
+        a = self.write('src', 'a.pdf')
+        b = self.write('src', 'b.pdf')
+        bibtex = '@article{x, author = {Smith, John}, title = {A Title}, year = {2020}, doi = {10.1000/a}}'
+        with patch('papers.bib.extract_pdf_metadata', side_effect=[bibtex, ValueError('no metadata')]), \
+                patch('papers.cli.entry_cmds.prefetch_pdf_metadata'):
+            with self.assertLogs('papers', level='ERROR'), \
+                    self.assertRaisesRegex(PapersExit, f'^1 of 2 files not added: {b}$'):
+                self.lib(f'add {a} {b} --move')
+        self.assertEqual(self.keys(), ['smith2020'])
+        self.assertFalse(os.path.exists(a))
+        self.assertTrue(all(os.path.exists(f) for f in self.files('smith2020')))
+        self.assertTrue(os.path.exists(b))
+
+    def test_files_moved_before_a_stop_are_saved(self):
+        # --on-duplicate error stops the command: what was added before is saved first
+        self.bib(entry('dup2000'))
+        a = self.write('src', 'a.pdf')
+        dup = self.write('src', 'dup.bib', content=entry('dup2000').replace('{2000}', '{2001}'))
+        bibtex = '@article{x, author = {Smith, John}, title = {A Title}, year = {2020}, doi = {10.1000/a}}'
+        with patch('papers.bib.extract_pdf_metadata', return_value=bibtex):
+            with self.assertRaises(DuplicateError):
+                self.lib(f'add {a} {dup} --move --on-duplicate error')
+        self.assertEqual(self.keys(), ['dup2000', 'smith2020'])
+        self.assertFalse(os.path.exists(a))
+        self.assertTrue(all(os.path.exists(f) for f in self.files('smith2020')))
 
     def test_url_attachment_is_downloaded(self):
         import tempfile
