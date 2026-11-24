@@ -92,7 +92,19 @@ def _hide_commands(subparsers, names):
 
 
 class _Parser(argparse.ArgumentParser):
-    "an unknown command is an error that names the commands of the help only (see _hide_commands)"
+    """an unknown command is an error that names the commands of the help
+    only (see _hide_commands); an abbreviation of an option that also
+    abbreviates a hidden one (a deprecated form) is the visible option
+    (see _get_option_tuples)"""
+
+    def _get_option_tuples(self, option_string):
+        """the options that `option_string` abbreviates: the names of one
+        option count once, and the hidden options are left out when a
+        visible one matches (`--att` is --attach, not also the deprecated
+        --attachment)"""
+        matches = list({id(t[0]): t for t in super()._get_option_tuples(option_string)}.values())
+        visible = [t for t in matches if t[0].help != argparse.SUPPRESS]
+        return visible if len(matches) > 1 and visible else matches
 
     def _check_value(self, action, value):
         visible = getattr(action, 'visible', None)

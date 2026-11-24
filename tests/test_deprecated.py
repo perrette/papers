@@ -372,6 +372,22 @@ class TestHiddenFromTheHelp(unittest.TestCase):
         for name in DEPRECATED_COMMANDS:
             self.assertNotRegex(message, rf'\b{name}\b')
 
+    def test_abbreviation(self):
+        "an abbreviation of a visible option is that option, though it abbreviates a hidden one too"
+        from papers.cli.parser import get_parser
+        from papers.config import Config
+        parser, _ = get_parser(Config())
+        o = parser.parse_args(['add', '--att', 'a.pdf'])
+        self.assertEqual(o.attachment, ['a.pdf'])
+        self.assertIsNone(o.attachment_deprecated)
+        self.assertTrue(parser.parse_args(['migrate', '--rel']).relative)
+        self.assertTrue(parser.parse_args(['check', '--dup']).duplicates)
+        # two visible options stay ambiguous
+        err = io.StringIO()
+        with redirect_stderr(err), self.assertRaises(SystemExit):
+            parser.parse_args(['add', '--no-'])
+        self.assertIn('ambiguous option', err.getvalue())
+
     def test_options(self):
         for cmd, options in [('add', ['--attachment', '--mode', '--no-merge-files', '--relative-paths', '--no-git']),
                              ('list', ['--add-files', '--similarity', '--fetch', '--duplicates-doi', '-f FIELD']),

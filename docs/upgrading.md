@@ -67,7 +67,9 @@ What does change, however:
       papers 2, restore `.papersconfig.json` (e.g. from the project
       repository) or `papersconfig.json.v2.bak`.
 - Some commands and options are deprecated. They still work, print a
-  warning that names the new form, and are removed in papers 4:
+  warning that names the new form, and are removed in papers 4. They are
+  not in the help, and do not make abbreviations ambiguous (`--att` is
+  `--attach`):
 
     | stop using | use instead |
     |---|---|
