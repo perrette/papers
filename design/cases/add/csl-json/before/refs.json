@@ -1,0 +1,46 @@
+[
+  {
+    "id": "item1",
+    "citation-key": "doe2020",
+    "type": "article-journal",
+    "author": [
+      {"family": "Doe", "given": "Jane"},
+      {"family": "Berg", "given": "Jan", "non-dropping-particle": "van der"},
+      {"literal": "World Health Organization"}
+    ],
+    "title": "Imported from CSL-JSON",
+    "container-title": "Journal of Imports",
+    "volume": "3",
+    "issue": "2",
+    "page": "5-9",
+    "DOI": "https://doi.org/10.1000/CSL.1",
+    "issued": {"date-parts": [[2020, 5, 17]]},
+    "keyword": "a; b, c",
+    "accessed": {"date-parts": [[2021, 3, 4]]}
+  },
+  {
+    "id": "ITEM-3",
+    "type": "thesis",
+    "genre": "Master's thesis",
+    "author": [{"family": "Student", "given": "Sue"}],
+    "title": "A thesis",
+    "publisher": "Univ. of Berlin",
+    "issued": {"raw": "2019-06"}
+  },
+  {
+    "type": "report",
+    "author": [{"family": "Doe", "given": "Jane"}],
+    "title": "A report",
+    "publisher": "PIK",
+    "genre": "Working paper",
+    "issued": {"literal": "2018"},
+    "custom": {"file": ["files/a.txt"]}
+  },
+  {
+    "type": "webpage",
+    "title": "A web page",
+    "author": [{"family": "Web", "given": "Wim"}],
+    "URL": "https://example.org",
+    "issued": {"date-parts": [[2022]]}
+  }
+]

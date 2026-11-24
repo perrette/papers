@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE7",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers tag e4 --add first --porcelain",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "422f53140f3c0aa054c566155378fb5ad655d321504008ed4cb20c855d708aca"
+  ],
+  "sha": "422f53140f3c0aa054c566155378fb5ad655d321504008ed4cb20c855d708aca"
+ },
+ "files": {}
+}

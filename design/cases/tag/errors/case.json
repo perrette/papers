@@ -1,0 +1,31 @@
+{
+  "description": "tag of an unknown entry changes nothing",
+  "sections": [
+    "bibtex.md#6",
+    "formats.md#7.3"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "tag",
+        "nosuch",
+        "--add",
+        "x"
+      ]
+    },
+    {
+      "argv": [
+        "tag",
+        "perrette2013",
+        "nosuch",
+        "--add",
+        "x"
+      ]
+    },
+    {
+      "argv": [
+        "tag"
+      ]
+    }
+  ]
+}

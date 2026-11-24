@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE2",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers edit doe2019 --set note=two year=2017 publisher=Wiley isbn=0-306-40615-2",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "26fa24e206fdd1195f81d59b6cf56f36ef3d11a006c2e11d3da3bca0fd351fd1"
+  ],
+  "sha": "26fa24e206fdd1195f81d59b6cf56f36ef3d11a006c2e11d3da3bca0fd351fd1"
+ },
+ "files": {}
+}

@@ -1,0 +1,68 @@
+{
+  "description": "each fix of check alone: the names, the DOIs, the keys that start with a digit, the ASCII keys; an option that is not given changes nothing",
+  "sections": [
+    "bibtex.md#3",
+    "bibtex.md#8"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "check",
+        "--format-name",
+        "-y",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "undo"
+      ]
+    },
+    {
+      "argv": [
+        "check",
+        "--fix-doi",
+        "-y",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "undo"
+      ]
+    },
+    {
+      "argv": [
+        "check",
+        "--fix-key",
+        "-y",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "undo"
+      ]
+    },
+    {
+      "argv": [
+        "check",
+        "--key-ascii",
+        "-y",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "undo"
+      ]
+    },
+    {
+      "argv": [
+        "check",
+        "-y",
+        "--porcelain"
+      ]
+    }
+  ]
+}

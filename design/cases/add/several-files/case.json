@@ -1,0 +1,21 @@
+{
+  "description": "several bibtex files in one command",
+  "sections": [
+    "formats.md#1.2"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "add",
+        "a.bib",
+        "b.bib"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-K"
+      ]
+    }
+  ]
+}

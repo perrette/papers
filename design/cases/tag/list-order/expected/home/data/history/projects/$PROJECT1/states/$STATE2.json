@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE1",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers tag --rename climate Climate",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "f731ce3d99bef9d9eb53524212903c3525cfe8bf22837f88be77a91a0d0ab7cb"
+  ],
+  "sha": "f731ce3d99bef9d9eb53524212903c3525cfe8bf22837f88be77a91a0d0ab7cb"
+ },
+ "files": {}
+}

@@ -1,0 +1,68 @@
+{
+  "description": "the bibtex of a PDF: from the DOI of its metadata, from the DOI in its text whose title is in the text, from the text without the DOI (--fulltext); a DOI that crossref does not know is not taken",
+  "sections": [
+    "formats.md#7.3"
+  ],
+  "requires": [
+    "network"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "extract",
+        "real-xmp-doi.pdf"
+      ],
+      "contract": [
+        "stdout"
+      ]
+    },
+    {
+      "argv": [
+        "extract",
+        "real-text-doi.pdf"
+      ],
+      "contract": [
+        "stdout"
+      ]
+    },
+    {
+      "argv": [
+        "extract",
+        "--doi-only",
+        "real-text-doi.pdf"
+      ],
+      "contract": [
+        "stdout"
+      ]
+    },
+    {
+      "argv": [
+        "extract",
+        "--fulltext",
+        "real-text-doi.pdf"
+      ],
+      "contract": [
+        "stdout"
+      ]
+    },
+    {
+      "argv": [
+        "extract",
+        "text-doi.pdf"
+      ],
+      "contract": [
+        "stdout"
+      ]
+    },
+    {
+      "argv": [
+        "extract",
+        "--doi-only",
+        "text-doi.pdf"
+      ],
+      "contract": [
+        "stdout"
+      ]
+    }
+  ]
+}

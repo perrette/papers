@@ -1,0 +1,1 @@
+[{"citation-key": "txt1", "type": "article-journal", "title": "In a txt", "issued": {"date-parts": [[1999]]}}]

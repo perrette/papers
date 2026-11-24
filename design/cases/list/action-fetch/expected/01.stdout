@@ -1,0 +1,8 @@
+*** UPDATE ***
+  @article{2019doe,
+-  author = {Doe Jane and Smith John},
++  author = {Jane, Doe and John, Smith},
+   journal = {Nature},
+   year = {2019}
+  }
+update? [Y/n] 

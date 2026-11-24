@@ -1,0 +1,27 @@
+[
+  {
+    "type": "article-journal",
+    "author": "Doe, Jane",
+    "title": "The author is a string",
+    "issued": {"date-parts": [[2020]]}
+  },
+  {
+    "type": "article-journal",
+    "author": {"family": "Roe", "given": "Richard"},
+    "editor": "Edit, Ed",
+    "title": "The author is one object",
+    "issued": {"date-parts": [[2021]]}
+  },
+  {
+    "type": "article-journal",
+    "author": {"literal": "World Health Organization"},
+    "title": "The author is one literal name",
+    "issued": {"date-parts": [[2022]]}
+  },
+  {
+    "type": "article-journal",
+    "author": [{"family": "Poe", "given": "Pat"}, "Loe, Lou"],
+    "title": "A name in an array may be a string",
+    "issued": {"date-parts": [[2023]]}
+  }
+]

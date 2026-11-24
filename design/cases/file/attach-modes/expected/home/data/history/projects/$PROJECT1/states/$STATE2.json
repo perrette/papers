@@ -1,0 +1,26 @@
+{
+ "parent": "$STATE1",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers file attach doe2020 x.txt",
+ "ops": [
+  {
+   "op": "moved",
+   "src": "x.txt",
+   "dst": "files/doe_2020_title-of-doe2020.txt",
+   "checksum": "73cb3858a687a8494ca3323053016282f3dad39d42cf62ca4e79dda2aac7d9ac"
+  }
+ ],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "0a47ec961fc9470c9eee26d748f003118cbb52b620578cdc8de5b47e699051ee"
+  ],
+  "sha": "0a47ec961fc9470c9eee26d748f003118cbb52b620578cdc8de5b47e699051ee"
+ },
+ "files": {
+  ".papers/files.json": [
+   "2d6be1ebc0c1e8db7a7d7c23b491f53681b261da2d603ee5bc3e01abba9fea41"
+  ]
+ }
+}

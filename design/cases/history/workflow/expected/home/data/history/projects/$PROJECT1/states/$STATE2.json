@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE1",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers add import/refs.bib",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "bd77a255ff145711cc7ca20122e993d622fe45dfcdb383be8c3dfa4261ec676b"
+  ],
+  "sha": "bd77a255ff145711cc7ca20122e993d622fe45dfcdb383be8c3dfa4261ec676b"
+ },
+ "files": {}
+}

@@ -1,0 +1,149 @@
+{
+  "description": "the keywords field: comma separated, trimmed, empty tags dropped; tags are written joined by \", \", appended in the order given; adding, removing and renaming ignore case; the field is written only when the tags change",
+  "sections": [
+    "bibtex.md#6",
+    "formats.md#7.2"
+  ],
+  "tests": [
+    "tests/test_spec_bibtex.py::TestTags::test_syntax",
+    "tests/test_spec_bibtex.py::TestTags::test_add_remove_rename_ignore_case"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "tag"
+      ]
+    },
+    {
+      "argv": [
+        "tag",
+        "e1",
+        "e2",
+        "e3",
+        "e4"
+      ]
+    },
+    {
+      "argv": [
+        "tag",
+        "e1",
+        "--add",
+        "d",
+        "d",
+        "c",
+        "b"
+      ]
+    },
+    {
+      "argv": [
+        "tag",
+        "e2",
+        "--add",
+        "y",
+        "X"
+      ]
+    },
+    {
+      "argv": [
+        "tag",
+        "e3",
+        "--rm",
+        "z"
+      ]
+    },
+    {
+      "argv": [
+        "tag",
+        "e3",
+        "--add",
+        "z"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex",
+        "e3"
+      ]
+    },
+    {
+      "argv": [
+        "tag",
+        "e3",
+        "--rm",
+        "Z",
+        "climate/amoc/tipping"
+      ]
+    },
+    {
+      "argv": [
+        "tag",
+        "e3",
+        "--add",
+        "last"
+      ]
+    },
+    {
+      "argv": [
+        "tag",
+        "e3",
+        "--rm",
+        "last"
+      ]
+    },
+    {
+      "argv": [
+        "tag",
+        "e4",
+        "--add",
+        "first",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "tag",
+        "e4",
+        "--rm",
+        "first"
+      ]
+    },
+    {
+      "argv": [
+        "tag",
+        "--rename",
+        "a;b",
+        "renamed"
+      ]
+    },
+    {
+      "argv": [
+        "tag",
+        "--rename",
+        "X",
+        "Q"
+      ]
+    },
+    {
+      "argv": [
+        "tag",
+        "--rename",
+        "x",
+        "x2"
+      ]
+    },
+    {
+      "argv": [
+        "tag"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    }
+  ]
+}

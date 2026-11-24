@@ -1,0 +1,17 @@
+{
+ "parent": "$STATE3",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers add clash.bib --porcelain --key-template {author}{year} -u",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "1c2feaaed9368f3f10e5a13c2d3d74e7d97480b078bfb0b7d4184bc90499f0e6",
+   "d320b63e6a5753f87e8258fdf76395068ecb6133c79b5524e6b032cbd00321a0",
+   "09d6b04d1c3969862f3648e1e9b0f77076d6601dab524bd126c829083902ff09"
+  ],
+  "sha": "3bf49b19398c89e13abc13d31b964c8c8ed8bb4ccb677c9a331750234580bba6"
+ },
+ "files": {}
+}

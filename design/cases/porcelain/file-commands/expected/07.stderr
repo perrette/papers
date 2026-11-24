@@ -1,0 +1,2 @@
+smith2020: removed the link to $WORK/files/smith_2020_another-paper.txt
+delete $WORK/files/smith_2020_another-paper.txt (hard link: the other links remain) (kept in the history: undo restores it)

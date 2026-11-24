@@ -1,0 +1,16 @@
+{
+  "description": "history --revert outside a library",
+  "sections": [
+    "history.md#8",
+    "history.md#2.5"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "history",
+        "--revert",
+        "$STATE2"
+      ]
+    }
+  ]
+}

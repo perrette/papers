@@ -1,0 +1,26 @@
+{
+ "parent": "$STATE3",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers file attach mueller2021 new2.txt --copy",
+ "ops": [
+  {
+   "op": "copied",
+   "src": "new2.txt",
+   "dst": "files/muller_2021_a-paper-with-one-file--new2.txt",
+   "checksum": "07d7d3b7915dbc7aa2ef47d7526ff223f8efa908ec2507be7e820713f19345ff"
+  }
+ ],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "29f4c569919b6d7195af98ece2c26e1a691eddb31ed6cf7aa86daece1e46a832"
+  ],
+  "sha": "29f4c569919b6d7195af98ece2c26e1a691eddb31ed6cf7aa86daece1e46a832"
+ },
+ "files": {
+  ".papers/files.json": [
+   "a19b855b2232a297839055419a369d44f2453940b89645f9f6c4069d1584268a"
+  ]
+ }
+}

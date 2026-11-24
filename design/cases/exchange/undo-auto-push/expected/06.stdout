@@ -1,0 +1,2 @@
+redo: papers.bib restored to $STATE7 papers -C lib edit fresh --set note=one ($TIME)
+pool ../pool: also redone, restored to $STATE6 papers -C lib edit fresh --set note=one ($TIME, from $WORK/lib)

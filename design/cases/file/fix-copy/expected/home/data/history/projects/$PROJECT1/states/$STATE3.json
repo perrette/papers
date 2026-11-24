@@ -1,0 +1,19 @@
+{
+ "parent": "$STATE2",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers file fix --search search c2022",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "1a4241d3d3291978b711a48cdf54b2f38f678e093e582ccffa70afe71962a428"
+  ],
+  "sha": "1a4241d3d3291978b711a48cdf54b2f38f678e093e582ccffa70afe71962a428"
+ },
+ "files": {
+  ".papers/files.json": [
+   "a0a4c6914f153691f6da7379022dde778d200e8fef1d4406900f06e1dabc5c2c"
+  ]
+ }
+}

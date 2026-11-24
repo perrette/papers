@@ -1,0 +1,22 @@
+{
+  "description": "status of a shallow library says where its files are",
+  "sections": [
+    "library.md#pools-and-shallow-libraries/states"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "-C",
+        "project",
+        "status"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "status"
+      ]
+    }
+  ]
+}

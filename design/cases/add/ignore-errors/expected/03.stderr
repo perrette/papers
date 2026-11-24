@@ -1,0 +1,5 @@
+papers: warning: --ignore-errors is deprecated and ignored: an error on one file never stops the others
+already in library: g1
+papers: error: missing.bib: [Errno 2] No such file or directory: 'missing.bib'
+already in library: o1
+papers: error: 1 of 3 files not added: missing.bib

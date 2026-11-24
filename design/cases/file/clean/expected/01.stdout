@@ -1,0 +1,7 @@
+DRYRUN: remove $WORK/files/u1.txt
+DRYRUN: remove $WORK/files/u2.txt
+DRYRUN: remove $WORK/files/u3.txt
+DRYRUN: remove $WORK/files/gone
+DRYRUN: remove $WORK/files/sub/s2.txt
+DRYRUN: remove $WORK/files/sub/s3.txt
+DRYRUN: removed 6 unlinked file(s) from $WORK/files

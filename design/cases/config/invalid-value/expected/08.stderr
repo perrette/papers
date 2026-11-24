@@ -1,0 +1,1 @@
+papers: error: $WORK/h/.papers/config.json: invalid value "two" for the setting name.author-num (expected an integer): correct the file

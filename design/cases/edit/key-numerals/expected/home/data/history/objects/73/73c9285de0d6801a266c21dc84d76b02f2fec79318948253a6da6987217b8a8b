@@ -1,0 +1,15 @@
+@inproceedings{kid2020,
+ author = {Kid, Kim},
+ crossref = {٣doe},
+ title = {Points to doe2019 in another case},
+ year = {2020}
+}
+
+@inproceedings{kid2021,
+ author = {Kid, Kim},
+ crossref = {٣doe},
+ title = {Points to doe2019},
+ xref = {doe2019},
+ year = {2021}
+}
+

@@ -1,0 +1,47 @@
+{
+  "description": "the one-line listing: KEY: TITLE (INFO), the title cut at 60 characters, doi, file count, tags; --field prints the raw values after the key, a missing field as nothing, --no-key leaves a leading space",
+  "sections": [
+    "formats.md#6"
+  ],
+  "tests": [
+    "tests/test_spec_formats.py::TestListOutput::test_line_format"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "list"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-l",
+        "--no-key"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--field",
+        "year",
+        "doi"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--field",
+        "nosuch",
+        "title"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--field",
+        "keywords",
+        "--no-key"
+      ]
+    }
+  ]
+}

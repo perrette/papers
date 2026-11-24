@@ -1,0 +1,26 @@
+{
+ "parent": "$STATE1",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers add refs.bib.json",
+ "ops": [
+  {
+   "op": "moved",
+   "src": "files/a.txt",
+   "dst": "files/unknown_viacid.txt",
+   "checksum": "87428fc522803d31065e7bce3cf03fe475096631e5e07bbd7a0fde60c4cf25c7"
+  }
+ ],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "bd2cf499881c72ab72d8292656df560ddd1977bdc2ffbcf0061635f543cdb45e"
+  ],
+  "sha": "bd2cf499881c72ab72d8292656df560ddd1977bdc2ffbcf0061635f543cdb45e"
+ },
+ "files": {
+  ".papers/files.json": [
+   "52f5181d29ae2c22e6f1150224b65eb42af762b8d0b32b3e669eac13fdd1569d"
+  ]
+ }
+}

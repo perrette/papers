@@ -5,7 +5,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from papers.bib import Biblio, group_attachments
+from papers.bib import Biblio
+from papers.files import group_attachments
 from papers.config import Config, CONFIG_FILE_LOCAL
 from papers.utils import move
 from tests.common import paperscmd, BibTest
@@ -64,7 +65,7 @@ class TestRenameInPlace(BibTest):
         Path(self.dir, 'b.pdf').write_text('b')
         Path(self.dir, 'in.bib').write_text(ENTRY)
         Path(self.dir, 'lib.bib').write_text('')
-        self.opts = '--bibtex lib.bib --filesdir files --relative-paths --no-git'
+        self.opts = '--bibtex lib.bib --filesdir files --relative-paths'
 
     def tearDown(self):
         self.temp_dir.cleanup()
@@ -100,6 +101,77 @@ class TestRenameInPlace(BibTest):
         self.assertFilesExist(2)
 
 
+SHARED = """@article{smith2020,
+ author = {Smith, John},
+ title = {A test},
+ year = {2020},
+ file = {:files/shared.pdf:pdf}
+}
+
+@article{jones2021,
+ author = {Jones, Jane},
+ title = {Another test},
+ year = {2021},
+ file = {:files/shared.pdf:pdf}
+}
+"""
+
+
+class TestRenameSharedFile(BibTest):
+    """regression: two entries link to one file (see free_name); renaming
+    the files of one of them moved the file and broke the other's link: it
+    is copied (a hard link when possible), not moved"""
+
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.dir = self.temp_dir.name
+        os.makedirs(os.path.join(self.dir, 'files'))
+        self.shared = os.path.join(self.dir, 'files', 'shared.pdf')
+        Path(self.shared).write_text('shared')
+        Path(self.dir, 'lib.bib').write_text(SHARED)
+        self.opts = '--bibtex lib.bib --filesdir files --relative-paths'
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
+    def files(self):
+        biblio = Biblio.load(os.path.join(self.dir, 'lib.bib'), None)
+        return {e['ID']: biblio.get_files(e) for e in biblio.entries}
+
+    def test_rename_one(self):
+        out = paperscmd(f'file rename smith2020 --move {self.opts}', cwd=self.dir, sp_cmd='check_output')
+        files = self.files()
+        smith = os.path.join(self.dir, 'files', 'smith_2020_a-test.pdf')
+        self.assertEqual(files['smith2020'], [smith])
+        self.assertEqual(files['jones2021'], [self.shared])
+        self.assertTrue(os.path.exists(self.shared))
+        self.assertEqual(Path(smith).read_text(), 'shared')
+        self.assertIn('copied', out)
+
+    def test_rename_all(self):
+        # the first entry gets a copy; the last one, which alone links to the file then, moves it
+        paperscmd(f'file rename --move {self.opts}', cwd=self.dir)
+        files = self.files()
+        for key, name in [('smith2020', 'smith_2020_a-test.pdf'), ('jones2021', 'jones_2021_another-test.pdf')]:
+            self.assertEqual(files[key], [os.path.join(self.dir, 'files', name)])
+            self.assertTrue(os.path.exists(files[key][0]))
+        self.assertFalse(os.path.exists(self.shared))
+
+    def test_attach_file_of_another_entry(self):
+        # file attach of a file that another entry links to: copied too
+        Path(self.dir, 'lib.bib').write_text(SHARED.rsplit(' file = ', 1)[0] + '}\n')  # jones2021: no file
+        self.assertEqual(self.files()['jones2021'], [])
+        out = paperscmd(f'file attach jones2021 files/shared.pdf --move {self.opts}', cwd=self.dir,
+                        sp_cmd='check_output')
+        files = self.files()
+        jones = os.path.join(self.dir, 'files', 'jones_2021_another-test.pdf')
+        self.assertEqual(files['jones2021'], [jones])
+        self.assertEqual(files['smith2020'], [self.shared])
+        self.assertTrue(os.path.exists(self.shared))
+        self.assertTrue(os.path.exists(jones))
+        self.assertIn('copied', out)
+
+
 class TestLocalConfigSubfolder(BibTest):
     """local configuration whose bibtex lives in a subfolder"""
 
@@ -112,22 +184,9 @@ class TestLocalConfigSubfolder(BibTest):
     def tearDown(self):
         self.temp_dir.cleanup()
 
-    def test_reinstall_keeps_paths(self):
-        paperscmd('install --local --no-prompt --no-git --bibtex refs/papers.bib --filesdir files', cwd=self.dir)
-        configfile = os.path.join(self.dir, CONFIG_FILE_LOCAL)
-        for _ in range(2):
-            js = json.load(open(configfile))
-            self.assertEqual(js['bibtex'], os.path.join('refs', 'papers.bib'))
-            self.assertEqual(js['filesdir'], 'files')
-            config = Config.load(configfile)
-            self.assertEqual(Path(config.bibtex), Path(self.dir, 'refs', 'papers.bib').resolve())
-            self.assertEqual(Path(config.filesdir), Path(self.dir, 'files').resolve())
-            # update the install
-            paperscmd('install --no-prompt --editor vim', cwd=self.dir)
-
     def test_save_from_another_directory(self):
         configfile = os.path.join(self.dir, CONFIG_FILE_LOCAL)
-        config = Config(file=configfile, local=True,
+        config = Config(file=configfile, is_library=True,
                         bibtex=os.path.join(self.dir, 'refs', 'papers.bib'),
                         filesdir=os.path.join(self.dir, 'files'))
         config.save()
@@ -187,6 +246,31 @@ class TestFlatLayout(BibTest):
         n = self.name
         self.assertEqual(files, [f'{n}.pdf', f'{n}--si.pdf', f'{n}--si-2.pdf'])
         self.assertEqual(self.rename(), files)
+
+    def test_slug_labels(self):
+        "the label is the slug of the file's name: lower case, ASCII, words joined with '-'"
+        files = self.rename(self.touch('a.pdf', 'Geophysical Research Letters - 2011 - Rignot (SI).pdf',
+                                       'Données_été.csv'))
+        n = self.name
+        self.assertEqual(files, [f'{n}.pdf', f'{n}--geophysical-research-letters-2011-rignot-si.pdf',
+                                 f'{n}--donnees-ete.csv'])
+        self.assertEqual(self.rename(), files)
+
+    def test_slug_label_of_a_renamed_file(self):
+        "a file named <name>--<label> by an earlier version gets the slug of its label"
+        n = self.name
+        files = self.rename(self.touch('a.pdf', f'{n}--Supplementary Data.pdf'))
+        self.assertEqual(files, [f'{n}.pdf', f'{n}--supplementary-data.pdf'])
+
+    def test_slug_label_keeps_separators(self):
+        "the parts of a label between '--' are slugified one by one"
+        files = self.rename(self.touch('a.pdf', 'Info DOI--Supp Data.zip'))
+        self.assertEqual(files, [f'{self.name}.pdf', f'{self.name}--info-doi--supp-data.zip'])
+
+    def test_empty_slug_label(self):
+        "a label without letters or digits is kept as it is"
+        files = self.rename(self.touch('a.pdf', '+++.pdf'))
+        self.assertEqual(files, [f'{self.name}.pdf', f'{self.name}--+++.pdf'])
 
     def test_legacy_directory(self):
         n = self.name
@@ -257,8 +341,8 @@ class TestScanFlatLayout(BibTest):
     def test_scan(self):
         from unittest import mock
         with mock.patch('papers.bib.extract_pdf_metadata', self.fake_metadata), \
-                mock.patch('papers.__main__.prefetch_pdf_metadata', lambda *a, **k: None):
-            paperscmd('add --recursive files --bibtex lib.bib --no-git --relative-paths', cwd=self.dir)
+                mock.patch('papers.cli.entry_cmds.prefetch_pdf_metadata', lambda *a, **k: None):
+            paperscmd('add --recursive files --bibtex lib.bib --relative-paths', cwd=self.dir)
         self.assertEqual(sorted(self.scanned), ['main.pdf', 'other.pdf'])
         biblio = Biblio.load(os.path.join(self.dir, 'lib.bib'), None)
         files = {e['title']: [os.path.basename(f) for f in biblio.get_files(e)] for e in biblio.entries}
@@ -281,8 +365,8 @@ class TestScanFlatLayout(BibTest):
 }
 """)
         with mock.patch('papers.bib.extract_pdf_metadata', self.fake_metadata), \
-                mock.patch('papers.__main__.prefetch_pdf_metadata', lambda *a, **k: None):
-            paperscmd('add --recursive scanned --bibtex lib.bib --no-git --relative-paths', cwd=self.dir)
+                mock.patch('papers.cli.entry_cmds.prefetch_pdf_metadata', lambda *a, **k: None):
+            paperscmd('add --recursive scanned --bibtex lib.bib --relative-paths', cwd=self.dir)
         self.assertEqual(self.scanned, ['other.pdf'])
         biblio = Biblio.load(os.path.join(self.dir, 'lib.bib'), None)
         files = {e.key: [os.path.relpath(f, self.dir) for f in biblio.get_files(e)] for e in biblio.entries}

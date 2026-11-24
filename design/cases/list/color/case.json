@@ -1,0 +1,51 @@
+{
+  "description": "list --color always: the key in blue and in bold for each file, hyperlinks on the DOI and the file count, the file count in green, the tags in yellow; --field with colours; --no-key",
+  "sections": [
+    "formats.md#6"
+  ],
+  "tests": [
+    "tests/test_list.py::FormattingTest::test_color"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "list",
+        "--color",
+        "always"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--color",
+        "always",
+        "--field",
+        "year"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--color",
+        "always",
+        "--no-key"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--color",
+        "never"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--color",
+        "always",
+        "--format",
+        "key"
+      ]
+    }
+  ]
+}

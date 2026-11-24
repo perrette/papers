@@ -1,0 +1,15 @@
+{
+ "parent": null,
+ "time": "$TIME",
+ "kind": "start",
+ "message": "the library before its first recorded command",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "8b7487af3ccccb2e77b55262ed85c8ea91c87a83a26980a4e913912584cff7ab"
+  ],
+  "sha": "8b7487af3ccccb2e77b55262ed85c8ea91c87a83a26980a4e913912584cff7ab"
+ },
+ "files": {}
+}

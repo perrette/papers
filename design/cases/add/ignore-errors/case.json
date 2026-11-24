@@ -1,0 +1,40 @@
+{
+  "description": "several files: each is added on its own, one that fails is reported and the others are added and saved (exit 1); a directory needs -R; --ignore-errors is accepted with a warning and changes nothing",
+  "sections": [
+    "formats.md#1.2",
+    "formats.md#7.3"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "add",
+        "good.bib",
+        "missing.bib",
+        "other.bib"
+      ]
+    },
+    {
+      "argv": [
+        "add",
+        "good.bib",
+        "dir"
+      ]
+    },
+    {
+      "argv": [
+        "add",
+        "good.bib",
+        "missing.bib",
+        "other.bib",
+        "--ignore-errors",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-K"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,407 @@
+[
+  {
+    "id": "art",
+    "citation-key": "art",
+    "type": "article-journal",
+    "author": [
+      {
+        "family": "Berg",
+        "given": "Jan",
+        "non-dropping-particle": "van der"
+      },
+      {
+        "family": "King",
+        "given": "Martin",
+        "suffix": "Jr."
+      },
+      {
+        "literal": "World Health Organization"
+      },
+      {
+        "family": "Beethoven",
+        "given": "Ludwig",
+        "non-dropping-particle": "van"
+      },
+      {
+        "family": "Perrette",
+        "given": "M."
+      }
+    ],
+    "editor": [
+      {
+        "family": "Ed",
+        "given": "Ita"
+      }
+    ],
+    "title": "Sea Level and $\\alpha$",
+    "volume": "4",
+    "DOI": "10.1000/Art.1",
+    "abstract": "An abstract with an accent: café.",
+    "language": "english",
+    "container-title": "Journal of Göttingen & Co",
+    "issue": "3",
+    "page": "11-29",
+    "keyword": "sea level, ice; amoc, climate/amoc",
+    "issued": {
+      "date-parts": [
+        [
+          2013,
+          5
+        ]
+      ]
+    },
+    "accessed": {
+      "date-parts": [
+        [
+          2020,
+          3,
+          4
+        ]
+      ]
+    }
+  },
+  {
+    "id": "artissue",
+    "citation-key": "artissue",
+    "type": "article-journal",
+    "author": [
+      {
+        "family": "Doe",
+        "given": "Jane"
+      }
+    ],
+    "title": "An article with issue and number",
+    "issue": "7",
+    "issued": {
+      "date-parts": [
+        [
+          2014
+        ]
+      ]
+    }
+  },
+  {
+    "id": "bk",
+    "citation-key": "bk",
+    "type": "book",
+    "author": [
+      {
+        "family": "Book",
+        "given": "Ann"
+      }
+    ],
+    "title": "A book",
+    "ISBN": "978-3-16-148410-0",
+    "publisher": "Springer",
+    "publisher-place": "Berlin",
+    "edition": "2",
+    "collection-title": "A Series",
+    "issued": {
+      "date-parts": [
+        [
+          2000
+        ]
+      ]
+    }
+  },
+  {
+    "id": "proc",
+    "citation-key": "proc",
+    "type": "book",
+    "editor": [
+      {
+        "family": "Chair",
+        "given": "Chuck"
+      }
+    ],
+    "title": "Proceedings",
+    "issued": {
+      "date-parts": [
+        [
+          2001
+        ]
+      ]
+    }
+  },
+  {
+    "id": "booklet",
+    "citation-key": "booklet",
+    "type": "pamphlet",
+    "title": "A booklet",
+    "issued": {
+      "date-parts": [
+        [
+          2002
+        ]
+      ]
+    }
+  },
+  {
+    "id": "inbook",
+    "citation-key": "inbook",
+    "type": "chapter",
+    "author": [
+      {
+        "family": "Part",
+        "given": "Pat"
+      }
+    ],
+    "title": "A chapter",
+    "container-title": "The Book",
+    "issued": {
+      "date-parts": [
+        [
+          2003
+        ]
+      ]
+    }
+  },
+  {
+    "id": "incoll",
+    "citation-key": "incoll",
+    "type": "chapter",
+    "author": [
+      {
+        "family": "Part",
+        "given": "Pat"
+      }
+    ],
+    "title": "A part",
+    "container-title": "The Collection",
+    "page": "5-9",
+    "issued": {
+      "date-parts": [
+        [
+          2004
+        ]
+      ]
+    }
+  },
+  {
+    "id": "inproc",
+    "citation-key": "inproc",
+    "type": "paper-conference",
+    "author": [
+      {
+        "family": "Talk",
+        "given": "Tim"
+      }
+    ],
+    "title": "A talk",
+    "note": "Invited",
+    "container-title": "Proc. of the Conference",
+    "issued": {
+      "date-parts": [
+        [
+          2005
+        ]
+      ]
+    }
+  },
+  {
+    "id": "conf",
+    "citation-key": "conf",
+    "type": "paper-conference",
+    "author": [
+      {
+        "family": "Talk",
+        "given": "Tim"
+      }
+    ],
+    "title": "An old style conference paper",
+    "issued": {
+      "date-parts": [
+        [
+          2006
+        ]
+      ]
+    }
+  },
+  {
+    "id": "phd",
+    "citation-key": "phd",
+    "type": "thesis",
+    "author": [
+      {
+        "family": "Student",
+        "given": "Sam"
+      }
+    ],
+    "title": "A thesis",
+    "publisher": "Univ. of Potsdam",
+    "genre": "PhD thesis",
+    "issued": {
+      "date-parts": [
+        [
+          2007
+        ]
+      ]
+    }
+  },
+  {
+    "id": "msc",
+    "citation-key": "msc",
+    "type": "thesis",
+    "author": [
+      {
+        "family": "Student",
+        "given": "Sue"
+      }
+    ],
+    "title": "A master thesis",
+    "publisher": "Univ. of Berlin",
+    "genre": "Master's thesis",
+    "issued": {
+      "date-parts": [
+        [
+          2008
+        ]
+      ]
+    }
+  },
+  {
+    "id": "tr",
+    "citation-key": "tr",
+    "type": "report",
+    "author": [
+      {
+        "family": "Doe",
+        "given": "Jane"
+      }
+    ],
+    "title": "A report",
+    "publisher": "PIK",
+    "genre": "Working paper",
+    "issued": {
+      "date-parts": [
+        [
+          2009
+        ]
+      ]
+    }
+  },
+  {
+    "id": "man",
+    "citation-key": "man",
+    "type": "report",
+    "title": "A manual",
+    "publisher": "Some Org",
+    "issued": {
+      "date-parts": [
+        [
+          2010
+        ]
+      ]
+    }
+  },
+  {
+    "id": "misc1",
+    "citation-key": "misc1",
+    "type": "document",
+    "title": "A misc without eprint",
+    "issued": {
+      "date-parts": [
+        [
+          2011
+        ]
+      ]
+    }
+  },
+  {
+    "id": "misc2",
+    "citation-key": "misc2",
+    "type": "article",
+    "title": "A misc with eprint",
+    "issued": {
+      "date-parts": [
+        [
+          2021
+        ]
+      ]
+    }
+  },
+  {
+    "id": "web",
+    "citation-key": "web",
+    "type": "webpage",
+    "title": "A web page",
+    "URL": "https://example.org/page",
+    "accessed": {
+      "date-parts": [
+        [
+          2022,
+          2,
+          3
+        ]
+      ]
+    }
+  },
+  {
+    "id": "data",
+    "citation-key": "data",
+    "type": "dataset",
+    "title": "A dataset",
+    "issued": {
+      "date-parts": [
+        [
+          2023,
+          4,
+          5
+        ]
+      ]
+    }
+  },
+  {
+    "id": "soft",
+    "citation-key": "soft",
+    "type": "software",
+    "title": "A software",
+    "issued": {
+      "date-parts": [
+        [
+          2024
+        ]
+      ]
+    }
+  },
+  {
+    "id": "unp",
+    "citation-key": "unp",
+    "type": "manuscript",
+    "title": "Not published",
+    "note": "In prep",
+    "issued": {
+      "date-parts": [
+        [
+          2012
+        ]
+      ]
+    }
+  },
+  {
+    "id": "pat",
+    "citation-key": "pat",
+    "type": "patent",
+    "title": "A patent",
+    "issued": {
+      "date-parts": [
+        [
+          2015
+        ]
+      ]
+    }
+  },
+  {
+    "id": "other",
+    "citation-key": "other",
+    "type": "document",
+    "title": "An unknown type",
+    "issued": {
+      "date-parts": [
+        [
+          2016
+        ]
+      ]
+    }
+  }
+]

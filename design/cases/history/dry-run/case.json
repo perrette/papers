@@ -1,0 +1,124 @@
+{
+  "description": "undo, redo and restore with --dry-run say what they would do and change nothing (no lock, no history created)",
+  "sections": [
+    "history.md#6.2",
+    "history.md#6.5",
+    "history.md#2.5"
+  ],
+  "tests": [
+    "tests/test_undo.py::TestTimeTravel::test_dry_run",
+    "tests/test_spec_history.py::TestCommands::test_nothing_to_do_leaves_no_trace"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "undo",
+        "--dry-run"
+      ]
+    },
+    {
+      "argv": [
+        "history",
+        "--dry-run"
+      ]
+    },
+    {
+      "argv": [
+        "tag",
+        "doe2019",
+        "--add",
+        "x"
+      ]
+    },
+    {
+      "argv": [
+        "tag",
+        "plain2020",
+        "--add",
+        "y"
+      ]
+    },
+    {
+      "argv": [
+        "undo",
+        "--dry-run"
+      ]
+    },
+    {
+      "argv": [
+        "undo",
+        "-n",
+        "2",
+        "--dry-run"
+      ]
+    },
+    {
+      "argv": [
+        "undo",
+        "-n",
+        "3",
+        "--dry-run"
+      ]
+    },
+    {
+      "argv": [
+        "restore",
+        "--dry-run",
+        "$STATE1"
+      ]
+    },
+    {
+      "argv": [
+        "restore",
+        "--dry-run",
+        "9"
+      ]
+    },
+    {
+      "argv": [
+        "restore",
+        "--dry-run"
+      ]
+    },
+    {
+      "argv": [
+        "redo",
+        "--dry-run"
+      ]
+    },
+    {
+      "argv": [
+        "history"
+      ]
+    },
+    {
+      "argv": [
+        "undo"
+      ]
+    },
+    {
+      "argv": [
+        "redo",
+        "--dry-run"
+      ]
+    },
+    {
+      "argv": [
+        "redo",
+        "-n",
+        "2",
+        "--dry-run"
+      ]
+    },
+    {
+      "argv": [
+        "history"
+      ]
+    },
+    {
+      "argv": [
+        "redo"
+      ]
+    }
+  ]
+}

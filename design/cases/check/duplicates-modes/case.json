@@ -1,0 +1,94 @@
+{
+  "description": "check --duplicates merges the entries that are the same paper: --on-duplicate keep merges (the target has most fields, the keys of the others go to ids), skip leaves them, error stops with the groups; without the option -y skips, and without a terminal papers stops; --on-duplicate without --duplicates does nothing",
+  "sections": [
+    "bibtex.md#10",
+    "bibtex.md#9.5",
+    "formats.md#7.2"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "check",
+        "--duplicates",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "check",
+        "--duplicates",
+        "--on-duplicate",
+        "error",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "check",
+        "--duplicates",
+        "-y",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "check",
+        "--duplicates",
+        "--on-duplicate",
+        "skip",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "check",
+        "--on-duplicate",
+        "keep",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "check",
+        "--duplicates",
+        "--on-duplicate",
+        "update"
+      ]
+    },
+    {
+      "argv": [
+        "check",
+        "--duplicates",
+        "--dry-run",
+        "--on-duplicate",
+        "keep",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "check",
+        "--duplicates",
+        "--on-duplicate",
+        "keep",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    },
+    {
+      "argv": [
+        "check",
+        "--duplicates",
+        "--on-duplicate",
+        "error",
+        "--porcelain"
+      ]
+    }
+  ]
+}

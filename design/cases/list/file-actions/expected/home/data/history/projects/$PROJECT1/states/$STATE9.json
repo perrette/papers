@@ -1,0 +1,19 @@
+{
+ "parent": "$STATE8",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers list c2022 --add-files x6.txt",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "f9c49ffc934fc84cf9dd3f60d024fd14580663cce155861f807cad15304346f8"
+  ],
+  "sha": "f9c49ffc934fc84cf9dd3f60d024fd14580663cce155861f807cad15304346f8"
+ },
+ "files": {
+  ".papers/files.json": [
+   "8ecde5c6347387e21aea8c2ceb31c0a80333fa1c8401a469a5236d5af335f860"
+  ]
+ }
+}

@@ -1,0 +1,32 @@
+@article{caf2018,
+ author = {Dupont, Anne},
+ title = {Caf{\'e} au lait},
+ year = {2018}
+}
+
+@article{dupa2019,
+ author = {Roe, Richard},
+ doi = {10.1000/same},
+ title = {The same paper twice},
+ year = {2019}
+}
+
+@article{dupb2019,
+ author = {Roe, Richard},
+ doi = {10.1000/same},
+ journal = {A Journal},
+ title = {The same paper twice},
+ year = {2019}
+}
+
+@article{fine2017,
+ author = {Fine, Fay},
+ title = {Nothing to fix},
+ year = {2017}
+}
+
+@article{smith2020,
+ author = {Smith, John},
+ title = {Key that starts with a digit},
+ year = {2020}
+}

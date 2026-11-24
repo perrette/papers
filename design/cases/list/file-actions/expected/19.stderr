@@ -1,0 +1,1 @@
+papers: warning: `papers list --add-files` is deprecated: use `papers list --attach` (`papers file attach KEY FILE... --copy`)

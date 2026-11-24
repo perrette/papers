@@ -1,0 +1,56 @@
+{
+  "description": "each library has its own history",
+  "sections": [
+    "history.md#2.7",
+    "history.md#5.1"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "-C",
+        "a",
+        "tag",
+        "doe2019",
+        "--add",
+        "x"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "b",
+        "rm",
+        "doe2019"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "a",
+        "history"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "b",
+        "history"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "a",
+        "undo"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "b",
+        "list",
+        "-K"
+      ]
+    }
+  ]
+}

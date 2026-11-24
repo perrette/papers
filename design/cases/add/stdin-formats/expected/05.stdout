@@ -1,0 +1,16 @@
+@book{bj1,
+ author = {Roe, Richard},
+ title = {BibJSON record},
+ year = {2021}
+}
+
+@article{stdin1,
+ journal = {J},
+ title = {Replaced}
+}
+
+@article{txt1,
+ title = {In a txt},
+ year = {1999}
+}
+

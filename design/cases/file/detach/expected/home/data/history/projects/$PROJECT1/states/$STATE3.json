@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE2",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers file detach files/sub -r --key b2021 --porcelain",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "de40dba74caac14475b1ddf4df5195704631c19634903f9a81efdda2a8490058"
+  ],
+  "sha": "de40dba74caac14475b1ddf4df5195704631c19634903f9a81efdda2a8490058"
+ },
+ "files": {}
+}

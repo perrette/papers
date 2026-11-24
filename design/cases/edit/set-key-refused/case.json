@@ -1,0 +1,93 @@
+{
+  "description": "edit --set does not change the key or the file links: --set ID=, --set key= (any case), --set file= and --unset ID, --unset file are refused (exit status 1), and the entry is not changed; --key is the way to rename",
+  "sections": [
+    "bibtex.md#7.2",
+    "formats.md#7.3"
+  ],
+  "tests": [
+    "tests/test_entry_cmds.py::TestEditSet::test_set_refused"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "edit",
+        "doe2019",
+        "--set",
+        "ID=other"
+      ]
+    },
+    {
+      "argv": [
+        "edit",
+        "doe2019",
+        "--set",
+        "id=other"
+      ]
+    },
+    {
+      "argv": [
+        "edit",
+        "doe2019",
+        "--set",
+        "key=other"
+      ]
+    },
+    {
+      "argv": [
+        "edit",
+        "doe2019",
+        "--set",
+        "KEY=other"
+      ]
+    },
+    {
+      "argv": [
+        "edit",
+        "doe2019",
+        "--set",
+        "key="
+      ]
+    },
+    {
+      "argv": [
+        "edit",
+        "doe2019",
+        "--set",
+        "file=:x.pdf:pdf"
+      ]
+    },
+    {
+      "argv": [
+        "edit",
+        "doe2019",
+        "--unset",
+        "ID"
+      ]
+    },
+    {
+      "argv": [
+        "edit",
+        "doe2019",
+        "--unset",
+        "file"
+      ]
+    },
+    {
+      "argv": [
+        "edit",
+        "doe2019",
+        "--set",
+        "note=still works",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex",
+        "doe"
+      ]
+    }
+  ]
+}

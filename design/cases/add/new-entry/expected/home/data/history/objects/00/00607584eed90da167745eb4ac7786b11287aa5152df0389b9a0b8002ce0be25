@@ -1,0 +1,27 @@
+@article{bee2021,
+ author = {Bee, Ann},
+ file = {:files/bee_2021_with-attachment.txt:txt},
+ title = {With attachment},
+ year = {2021}
+}
+
+@article{doe2019,
+ author = {Doe, Jane},
+ title = {A paper},
+ year = {2019}
+}
+
+@book{doe_roe2023,
+ author = {Doe, John and Roe, Jane},
+ title = {Second paper},
+ year = {2023}
+}
+
+@article{new2022,
+ author = {Roe, Jane},
+ journal = {J. Things},
+ note = {hello},
+ title = {A new paper},
+ volume = {3},
+ year = {2022}
+}

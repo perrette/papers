@@ -1,0 +1,1 @@
+papers: error: $WORK/c/.papers/config.json: invalid value "sometimes" for the setting files (expected one of ask, move, copy, link): correct the file

@@ -1,0 +1,71 @@
+[
+  {
+    "id": "doe2019",
+    "citation-key": "doe2019",
+    "type": "article-journal",
+    "author": [
+      {
+        "family": "Doe",
+        "given": "Jane"
+      }
+    ],
+    "title": "A paper with two files",
+    "container-title": "J. Ocean",
+    "issued": {
+      "date-parts": [
+        [
+          2019
+        ]
+      ]
+    },
+    "custom": {
+      "file": [
+        "files/doe_2019.txt",
+        "files/doe_2019--d2.txt"
+      ]
+    }
+  },
+  {
+    "id": "mueller2021",
+    "citation-key": "mueller2021",
+    "type": "article-journal",
+    "author": [
+      {
+        "family": "Müller",
+        "given": "Hans"
+      }
+    ],
+    "title": "A paper with one file",
+    "issued": {
+      "date-parts": [
+        [
+          2021
+        ]
+      ]
+    },
+    "custom": {
+      "file": [
+        "files/muller_2021.txt"
+      ]
+    }
+  },
+  {
+    "id": "plain2020",
+    "citation-key": "plain2020",
+    "type": "article-journal",
+    "author": [
+      {
+        "family": "Plain",
+        "given": "Pat"
+      }
+    ],
+    "title": "A paper with no file",
+    "issued": {
+      "date-parts": [
+        [
+          2020
+        ]
+      ]
+    }
+  }
+]

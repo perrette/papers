@@ -1,0 +1,107 @@
+{
+  "description": "file rm: remove the links and delete the files; a file that another entry links to is kept; -r with a folder removes the folders left empty; the files are in the history (undo brings them back); --dry-run",
+  "sections": [
+    "library.md#the-files-directory",
+    "history.md#4",
+    "history.md#5.6",
+    "bibtex.md#5.1"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "file",
+        "rm"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "rm",
+        "files/nosuch.txt"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "rm",
+        "files/sub"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "rm",
+        "files/a1.txt",
+        "--dry-run"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "rm",
+        "files/a1.txt",
+        "--key",
+        "a2020"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "rm",
+        "files/sub",
+        "-r",
+        "--dry-run"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "rm",
+        "files/sub",
+        "-r"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "rm",
+        "files/a2.txt",
+        "out/o.txt",
+        "--key",
+        "a2020",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "rm",
+        "files/missing.txt"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    },
+    {
+      "argv": [
+        "undo"
+      ]
+    },
+    {
+      "argv": [
+        "undo"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    }
+  ]
+}

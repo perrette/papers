@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE8",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers -C c tag plain2020 --add v",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "7b937181fc9eaef0f74e41a065130c5f30b545485f017443838e17d6b0a7f1cc"
+  ],
+  "sha": "7b937181fc9eaef0f74e41a065130c5f30b545485f017443838e17d6b0a7f1cc"
+ },
+ "files": {}
+}

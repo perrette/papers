@@ -1,0 +1,27 @@
+{
+ "parent": 5,
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers add dummy2.pdf --doi 10.1038/nature12373 --key mykey",
+ "ops": [
+  {
+   "op": "moved",
+   "src": "dummy2.pdf",
+   "dst": "files/kucsko_et_al_2013_nanometre-scale-thermometry-in-a-living-cell.pdf",
+   "checksum": "9242bbab62540e243e5f627d9ad5744d1018ca37f6de66136418b36c2cdfc507"
+  }
+ ],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "65a7321975d83463388b47f3ca2213be504d1fd6e7638a9459f724ab43c903de",
+   "67f13db7e8de68e3622d910f284c21b67dee04f4b467364084daa8af244e4ea7"
+  ],
+  "sha": "29b81b6bdcc9a97fc7ff6c992eb972651f72c13555e84fe8f0b1eb5d33ac2e21"
+ },
+ "files": {
+  ".papers/files.json": [
+   "f238096beee2d1be8b4f2aa17f5a44b96d19a670f457a142e0dbf7dd28cef86c"
+  ]
+ }
+}

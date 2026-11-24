@@ -1,0 +1,2 @@
+pool = ../pool1 (in $WORK/lib/.papers/config.json)
+the library is now shallow: it links to the PDFs of the pool entries, and `papers add` adds its new entries to the pool

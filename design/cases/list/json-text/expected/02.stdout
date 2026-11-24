@@ -1,0 +1,16 @@
+[
+  {
+    "id": "esc",
+    "citation-key": "esc",
+    "type": "document",
+    "title": "Line one\n line two",
+    "note": "form feed \f and \u0001 and tab\there, backslash \n and \"quotes\" and slash / and unicode: é ü 日本 😀",
+    "issued": {
+      "date-parts": [
+        [
+          2020
+        ]
+      ]
+    }
+  }
+]

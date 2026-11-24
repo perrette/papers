@@ -13,7 +13,7 @@ class TestSimple(unittest.TestCase):
         self.assertTrue(os.path.exists(self.pdf))
 
     def test_doi(self):
-        self.assertEqual(paperscmd(f'doi {self.pdf}', sp_cmd='check_output').strip(), self.doi)
+        self.assertEqual(paperscmd(f'extract --doi-only {self.pdf}', sp_cmd='check_output').strip(), self.doi)
 
     def test_fetch(self):
         bibtexs = paperscmd(f'fetch {self.doi}', sp_cmd='check_output').strip()

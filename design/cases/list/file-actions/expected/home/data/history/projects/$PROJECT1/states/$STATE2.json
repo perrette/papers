@@ -1,0 +1,32 @@
+{
+ "parent": "$STATE1",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers list c2022 --attach x1.txt x2.txt",
+ "ops": [
+  {
+   "op": "moved",
+   "src": "x1.txt",
+   "dst": "files/lee_2020_title-of-c2022--x1.txt",
+   "checksum": "50313adddde6034b1eb0bffe6bba93a5ef922b5f013efbd95781f7fcc58db3f7"
+  },
+  {
+   "op": "moved",
+   "src": "x2.txt",
+   "dst": "files/lee_2020_title-of-c2022--x2.txt",
+   "checksum": "c3e7d348748d004775b062bd9f0454e061e1729da8c08be74032cdc40ea2c94f"
+  }
+ ],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "e4728ad311976d318eb890983777305eb7c7d16926f97d29637abdfe6f749645"
+  ],
+  "sha": "e4728ad311976d318eb890983777305eb7c7d16926f97d29637abdfe6f749645"
+ },
+ "files": {
+  ".papers/files.json": [
+   "ddb292a8e00c1161195056786790783d77a1cecb4c1dc0f98852b59991c22b9c"
+  ]
+ }
+}

@@ -1,0 +1,4 @@
+DRYRUN: a2020: relink $WORK/lib/gone.txt -> $WORK/search/gone.txt (found in $WORK/search)
+DRYRUN: 1 link relinked, 0 still broken
+1 issue(s) in the files of 2 entries
+DRYRUN: $WORK/lib/papers.bib not saved

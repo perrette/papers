@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE3",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers tag --rename ocean/moc/tipping tipping",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "76b7efeb0a94f730105274b9b999e4d6bb62e65670c06c11805e3793ddd2aad6"
+  ],
+  "sha": "76b7efeb0a94f730105274b9b999e4d6bb62e65670c06c11805e3793ddd2aad6"
+ },
+ "files": {}
+}

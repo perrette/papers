@@ -1,0 +1,8 @@
+@article{doe2019,
+ author = {Doe, Jane},
+ file = {:files/doe_doe2019.txt:txt;:files/doe_doe2019--x.txt:txt;:files/doe_doe2019--x-2.txt:txt;:files/doe_doe2019--y.PDF:PDF},
+ journal = {J. Ocean},
+ title = {A longer title about many different subjects of the sea},
+ year = {2019}
+}
+

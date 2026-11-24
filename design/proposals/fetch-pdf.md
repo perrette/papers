@@ -1,0 +1,72 @@
+# Proposal: fetching the free PDF of an entry
+
+Status: implemented in #212 (issue #211). The rules are in the
+specification: library.md, "The free PDF of an entry" (which entries, the
+order of the links, the supplements, the cache of the downloads), and
+formats.md (the porcelain lines of `papers file fetch`, `papers fetch
+--pdf`). The user documentation is in docs/files.md.
+
+## Decisions
+
+1. Commands: `papers file fetch KEY...` (`--missing`, `--dry-run`,
+   `--version published|accepted|any`, `--supplements`, `--again`,
+   `-y/--yes`), `papers add --doi DOI --fetch-pdf`, `papers fetch --pdf
+   DOI... [-o FILE]` (`-o` takes one DOI; an existing file is not
+   replaced). An arXiv id works as well as a DOI.
+2. Order: the `citation_pdf_url` of the publisher's page, then the
+   open-access locations of OpenAlex by version (published, accepted,
+   submitted), then arXiv. The publisher's page is read first, and
+   OpenAlex only when the publisher gives no PDF. `--version` is the least
+   final version accepted.
+3. Supplements (only with `--supplements`): the PDF links of the article
+   page whose URL or text contains "suppl" (case-insensitive), and the
+   `citation_supplementary_material` tags. PDFs only, attached as
+   `<name>--<label>.pdf`.
+4. `--missing` asks before more than 50 entries with a DOI when
+   `OPENALEX_API_KEY` is not set (`-y/--yes` does not ask); without a
+   terminal it stops and says how to proceed.
+5. An entry that got no PDF is an error (the links to open in a browser);
+   the others are attached and saved, and the command exits with 1. `add
+   --fetch-pdf` adds the entry all the same.
+6. No duplicates, as below. Nothing about the source is written in the
+   library (no field): the URLs are only in the cache of the machine.
+7. A broken PDF link is repaired locally first (#211): `papers file fetch`
+   makes the repair of `papers file fix` for an entry whose PDF link is
+   broken (the pool, `--search DIR`, the history), and downloads only if
+   the entry still has no PDF after it. The repair and the downloads are
+   saved in one step. `add --fetch-pdf` makes no repair.
+8. The file of a broken link is also looked for, by default, in the
+   library itself by checksum (`.papers/files.json`), in the pool by
+   checksum, and in the other libraries of the machine (the places of the
+   history store) by checksum only: the `files.json` of the head state of
+   each place, read at each search (no index of these files is kept). A
+   library that moved or is gone is skipped. A file of
+   another library is copied or linked as the files setting says, never
+   moved. This applies to `file check`, `file fix` and to the repair of
+   `file fetch`. An entry without any PDF link is downloaded, with or
+   without `--missing` (no PDF of the same paper is taken from another
+   library).
+
+## No duplicate downloads
+
+A second pass (`papers file fetch KEY --supplements` after `papers file fetch
+KEY`) must not download or attach the same PDF again:
+
+1. The main PDF is not fetched for an entry that already has a PDF, unless
+   `--again` is given (`KEY: has a PDF already (--again to fetch it anyway)`).
+   The supplements are still fetched.
+2. A downloaded file is compared by checksum (sha256) with the files of the
+   entry before it is attached; the same content is not attached twice (as
+   `file attach` already refuses it).
+3. A cache of the downloads, on the machine (papers' cache, next to the
+   answers of crossref and OpenAlex; nothing in the library): each URL with
+   the checksum and size of the file it gave. Before a URL in the cache is
+   downloaded again:
+   - the entry has a file with that checksum: nothing is done;
+   - a file of the library has it (the checksums of `.papers/files.json`,
+     the files of other entries): that file is attached, without a
+     download, and the message says which entry has it too;
+   - otherwise: the URL is downloaded.
+
+Websites do not give a checksum before the download, so the cache is what
+lets papers know what a URL gives without fetching it.

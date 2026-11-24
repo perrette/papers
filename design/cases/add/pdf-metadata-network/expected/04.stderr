@@ -1,0 +1,2 @@
+papers: warning: fulltext query: title not found in the text: ‘Nothing Ever Ends’:Angelopoulos and the Image of Duration
+papers: error: failed to extract metadata: pass the DOI with --doi, or, without DOI, add the entry with --title, --author, --year... and the PDF with --attach

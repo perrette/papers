@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE6",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers edit p13 --key p14 --keep-old-key",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "999aa62ce071fabbe341f1014da72eba324c8a572397c9672fc1aad45fe65285"
+  ],
+  "sha": "999aa62ce071fabbe341f1014da72eba324c8a572397c9672fc1aad45fe65285"
+ },
+ "files": {}
+}

@@ -1,0 +1,20 @@
+{
+  "bibtex": "papers.bib",
+  "filesdir": "files",
+  "pool": "none",
+  "version": 3,
+  "future-setting": {
+    "a": [
+      1,
+      2
+    ]
+  },
+  "nameformat": {
+    "template": "{author}_{year}",
+    "future_member": 7
+  },
+  "keyformat": {
+    "future_member": "x"
+  },
+  "auto-push": true
+}

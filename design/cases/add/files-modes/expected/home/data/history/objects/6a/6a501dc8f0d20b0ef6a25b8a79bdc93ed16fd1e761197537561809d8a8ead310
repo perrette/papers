@@ -1,0 +1,27 @@
+@article{k1,
+ author = {Doe, Jane},
+ file = {:files/doe_2019_entry-1.txt:txt},
+ title = {Entry 1},
+ year = {2019}
+}
+
+@article{k2,
+ author = {Doe, Jane},
+ file = {:src/2.txt:txt},
+ title = {Entry 2},
+ year = {2019}
+}
+
+@article{k3,
+ author = {Doe, Jane},
+ file = {:files/doe_2019_entry-3.txt:txt},
+ title = {Entry 3},
+ year = {2019}
+}
+
+@article{k4,
+ author = {Doe, Jane},
+ file = {:src/4.txt:txt},
+ title = {Entry 4},
+ year = {2019}
+}

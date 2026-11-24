@@ -1,0 +1,2 @@
+papers: warning: `papers list --fetch` is deprecated: use `papers list ... -K | papers check --fetch --fetch-all --fix-doi --fix-key --format-name -`
+papers: warning: ...fetch-all: rejected search result (different title (43% similar)): Methods for Determining Unobscured Areas on Instrument Panels (10.4271/750359)

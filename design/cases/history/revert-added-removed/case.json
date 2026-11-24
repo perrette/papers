@@ -1,0 +1,123 @@
+{
+  "description": "an entry added by step N is removed (unless it changed since: kept, with a line); an entry removed by step N is added back as it was; an entry changed by step N and removed since is not added back; an entry changed by N and added back since",
+  "sections": [
+    "history.md#8",
+    "history.md#8.1",
+    "history.md#8.2",
+    "history.md#8.4",
+    "history.md#2.5"
+  ],
+  "tests": [
+    "tests/test_revert.py::TestRevertEntries::test_added_entry",
+    "tests/test_revert.py::TestRevertEntries::test_added_entry_changed_since",
+    "tests/test_revert.py::TestRevertEntries::test_removed_entry"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "add",
+        "import/new.bib"
+      ]
+    },
+    {
+      "argv": [
+        "tag",
+        "newone2022",
+        "--add",
+        "later"
+      ]
+    },
+    {
+      "argv": [
+        "edit",
+        "doe2019",
+        "--set",
+        "note=gone"
+      ]
+    },
+    {
+      "argv": [
+        "rm",
+        "doe2019"
+      ]
+    },
+    {
+      "argv": [
+        "rm",
+        "smith2020"
+      ]
+    },
+    {
+      "argv": [
+        "tag",
+        "mueller2021",
+        "--add",
+        "b"
+      ]
+    },
+    {
+      "argv": [
+        "history",
+        "--revert",
+        "$STATE2"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "history",
+        "--revert",
+        "$STATE4"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "history",
+        "--revert",
+        "$STATE5"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "history",
+        "--revert",
+        "$STATE3"
+      ]
+    },
+    {
+      "argv": [
+        "history",
+        "--revert",
+        "$STATE6"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "history"
+      ]
+    }
+  ]
+}

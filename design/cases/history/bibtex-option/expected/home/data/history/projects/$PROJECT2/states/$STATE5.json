@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE4",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers tag --bibtex b/papers.bib mueller2021 --add z",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "c55df63aa1796ee787118f020f2c463392e882081275bd8edd61823c4f96e6f6"
+  ],
+  "sha": "c55df63aa1796ee787118f020f2c463392e882081275bd8edd61823c4f96e6f6"
+ },
+ "files": {}
+}

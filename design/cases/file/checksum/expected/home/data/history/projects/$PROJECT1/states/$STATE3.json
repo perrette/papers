@@ -1,0 +1,26 @@
+{
+ "parent": "$STATE2",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers file attach plain2020 new.txt --copy",
+ "ops": [
+  {
+   "op": "copied",
+   "src": "new.txt",
+   "dst": "files/plain_2020_a-paper-with-no-file.txt",
+   "checksum": "7aa7a5359173d05b63cfd682e3c38487f3cb4f7f1d60659fe59fab1505977d4c"
+  }
+ ],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "c591de48b18db235734647ee26270bb8713efa370452b8f281031d951fe7d1c8"
+  ],
+  "sha": "c591de48b18db235734647ee26270bb8713efa370452b8f281031d951fe7d1c8"
+ },
+ "files": {
+  ".papers/files.json": [
+   "a19b855b2232a297839055419a369d44f2453940b89645f9f6c4069d1584268a"
+  ]
+ }
+}

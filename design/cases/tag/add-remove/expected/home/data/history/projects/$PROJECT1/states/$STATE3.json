@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE2",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers tag perrette2013 --rm to-read",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "d1b110af31830e49b8425f7061739cad3f5085facf14ea2ba258b729ed14f0de"
+  ],
+  "sha": "d1b110af31830e49b8425f7061739cad3f5085facf14ea2ba258b729ed14f0de"
+ },
+ "files": {}
+}

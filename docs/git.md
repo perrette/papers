@@ -1,49 +1,61 @@
-# Git integration
+# Using git
 
-## Git-tracked library
+papers does not use git: it keeps its own history of each library for undo
+and redo (see [Undo and redo](undo-redo.md)), on your computer, outside the
+library. That history is a way to repair mistakes, not a record of your
+work: it is not synced, and it keeps a limited size.
 
-By default (when a git binary is available), a fresh `papers install`
-git-tracks any change to the bibtex file. Pass `--no-git` to opt out, and
-`--git-lfs` to also back up the attached files (see below):
+If you want the history of your bibliography and PDFs, or to share them,
+put the library folder under git yourself, like any other project:
 
 ```
-$> papers install --bibtex papers.bib --filesdir files [ --no-git | --git-lfs ]
+cd ~/projects/sealevel
+git init
+git add papers.bib files .papers
+git commit -m "my library"
 ```
 
-Installs made by older papers versions keep their saved setting; re-run
-`papers install` (or `papers install --edit --git`) to enable git-tracking
-on an existing install.
+papers never commits to that repository, and leaves it alone.
 
-From now on, every change to the library will result in an automatic git
-commit. And the `papers git ...` command will work just as `git ...` executed
-from the backup directory. E.g. `papers git remote add origin *REMOTE URL*`;
-`papers git lfs track files`; `papers git add files`; `papers git push`.
+## The folder `.papers/`
 
-Under the hood, every save commits a copy of the bibtex file to the backup
-repository. If `--git-lfs` is passed, the attached files are backed up along
-with the bibtex: they are hard-linked into the backup directory and tracked
-with git-lfs, together with a copy of the bibtex whose file paths point into
-the backup (so the backup is self-contained). Background in
-[issue 51](https://github.com/perrette/papers/issues/51).
+The bibtex and the PDFs are your work. The folder `.papers/` holds the
+internals of papers: what it keeps to manage them, which may change from
+one version to the next. papers writes `.papers/.gitignore` (with `*`), so
+that git leaves the folder out. A colleague who clones the repository runs
+`papers init` to make it a library on their side.
 
-Backup occurs in a subfolder of `~/.local/share/papers/backups` regardless of
-the type of installation. Type `papers status -v` to find out, or
-`papers backup list` to see every backup directory papers knows of and which
-library each belongs to. Orphaned directories (e.g. whose library was
-deleted) can be cleaned up with `papers backup remove NAME` (glob patterns
-allowed; asks before deleting unless `--force` is passed).
+As git does with its own `.git/config`, each copy of a library has its own
+settings. To commit the configuration nonetheless (so that a clone is a
+library right away), make `.papers/.gitignore`:
 
-Backup directories are named after the bibtex file and its parent folder,
-plus a hash of the full path (e.g. `myproject-references-3f9a1c2b`), so two
-libraries can never share a directory and same-named libraries remain
-recognizable.
-Each directory also contains a `manifest.json` recording the bibtex file it
-backs up; if a backup operation finds a directory that belongs to another
-library (which could happen with directories created by papers versions that
-used the bibtex name alone), it moves the current library to a fresh
-directory instead of mixing the two histories. Directories created by older
-versions keep their name and are adopted as-is.
+```
+*
+!.gitignore
+!config.json
+```
 
-For local installs that are already git-tracked, the feature remains useful as
-it is the basis for `papers undo` and `papers redo` (see
-[Undo and redo](undo-redo.md)).
+papers does not rewrite a `.gitignore` you changed. What is in the folder:
+
+| file | what it is | without it |
+|---|---|---|
+| `config.json` | the settings of the library: where its bibtex and files are, its pool, the name formats, its identifier | set them again (`papers init`, `papers config`) |
+| `origin/` | with a pool only: each entry as it was at the last `pull` or `push`, to tell who changed what since | the next `pull` asks about more differences |
+| `distinct.json` | the pairs of entries you said are not the same paper | papers asks about them again |
+| `files.json` | the checksums of the files, for undo | nothing: `papers file checksum` writes them again |
+
+## Backups of earlier versions
+
+Earlier versions of papers kept a git backup of each library: in the
+library, `.papers/backup` (the v3 branch before 3.0.0b4), or in a folder of
+the computer, `~/.local/share/papers/backups` (papers 3.0.0b2 and earlier).
+papers no longer uses them, and does not delete them: `papers history`
+lists those it finds, with their size, and the command that deletes them:
+
+```
+stale: ~/projects/sealevel/.papers/backup (backup of an earlier papers, 641 MB, no longer used) — delete with: rm -rf ~/projects/sealevel/.papers/backup
+```
+
+Their history does not carry over: undo starts with the first command made
+with this version. The settings `git` and `git-lfs`, `papers init --git`,
+`--git-lfs` and `papers git` are no longer used.

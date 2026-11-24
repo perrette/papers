@@ -1,0 +1,60 @@
+{
+  "description": "rm --delete-files keeps the files in the history (file objects, listed in the state); undo brings them back with their content, redo deletes them again",
+  "sections": [
+    "history.md#2.4",
+    "history.md#4",
+    "history.md#5.6",
+    "history.md#6.4"
+  ],
+  "tests": [
+    "tests/test_journal.py::TestDeleted::test_rm_undo_restores_from_the_history",
+    "tests/test_journal.py::TestDeleted::test_keep_deleted_files_false",
+    "tests/test_journal.py::TestDeleted::test_redo_with_keep_deleted_files_false"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "rm",
+        "doe2019",
+        "--delete-files"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "history"
+      ]
+    },
+    {
+      "argv": [
+        "undo"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "redo"
+      ]
+    },
+    {
+      "argv": [
+        "undo"
+      ]
+    },
+    {
+      "argv": [
+        "history"
+      ]
+    }
+  ]
+}

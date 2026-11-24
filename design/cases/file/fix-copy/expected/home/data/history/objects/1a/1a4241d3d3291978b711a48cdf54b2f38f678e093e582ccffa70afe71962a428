@@ -1,0 +1,13 @@
+@article{b2021,
+ author = {Roe, R},
+ file = {:files/roe_2020_title-of-b2021.pdf:pdf;:files/keep.txt:txt;:files/roe_2020_title-of-b2021--b2.txt:txt},
+ title = {Title of b2021},
+ year = {2020}
+}
+
+@article{c2022,
+ author = {Lee, A},
+ file = {:search/c.pdf:pdf},
+ title = {Title of c2022},
+ year = {2020}
+}

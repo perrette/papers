@@ -1,0 +1,4 @@
+papers library: $WORK/a
+* bibtex: papers.bib (1 entries, 0 file links)
+* files:  files (the files directory of the library, empty)
+`papers config` lists and sets the settings

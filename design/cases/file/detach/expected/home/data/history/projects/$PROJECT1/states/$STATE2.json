@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE1",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers file detach files/a1.txt --key a2020",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "5d108dacbfd77cd6a8305f081fb9f635a7b9060e677d073b3c124afa5795c801"
+  ],
+  "sha": "5d108dacbfd77cd6a8305f081fb9f635a7b9060e677d073b3c124afa5795c801"
+ },
+ "files": {}
+}

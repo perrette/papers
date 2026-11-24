@@ -1,0 +1,118 @@
+{
+  "description": "edit --set and --unset: field names are lower-cased, the key and the file links are not fields to set, a name that is not a field name is an error, an empty value is a field; the options exclude one another (a usage error)",
+  "sections": [
+    "bibtex.md#3.3",
+    "bibtex.md#3.5",
+    "formats.md#7.3"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "edit",
+        "doe2019",
+        "--set",
+        "id=x"
+      ]
+    },
+    {
+      "argv": [
+        "edit",
+        "doe2019",
+        "--set",
+        "File=x"
+      ]
+    },
+    {
+      "argv": [
+        "edit",
+        "doe2019",
+        "--unset",
+        "file"
+      ]
+    },
+    {
+      "argv": [
+        "edit",
+        "doe2019",
+        "--unset",
+        "ID"
+      ]
+    },
+    {
+      "argv": [
+        "edit",
+        "doe2019",
+        "--set",
+        "bad name=x"
+      ]
+    },
+    {
+      "argv": [
+        "edit",
+        "doe2019",
+        "--set",
+        "1x=x"
+      ]
+    },
+    {
+      "argv": [
+        "edit",
+        "doe2019",
+        "--set",
+        "Note=Value",
+        "TITLE=New {Title}",
+        "a-b_c=1"
+      ]
+    },
+    {
+      "argv": [
+        "edit",
+        "doe2019",
+        "--set",
+        "abstract="
+      ]
+    },
+    {
+      "argv": [
+        "edit",
+        "doe2019",
+        "--set",
+        "a=b",
+        "--key",
+        "c"
+      ]
+    },
+    {
+      "argv": [
+        "edit",
+        "doe2019",
+        "--keep-old-key"
+      ]
+    },
+    {
+      "argv": [
+        "edit",
+        "doe2019",
+        "smith2020",
+        "--key",
+        "x"
+      ]
+    },
+    {
+      "argv": [
+        "edit",
+        "doe2019",
+        "smith2020",
+        "--from",
+        "one.bib"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    }
+  ]
+}

@@ -1,5 +1,34 @@
 # Scripts
 
+## Data tables of the specification
+
+`spec_tables.py` writes the two tables of `design/data/` from the code (the
+LaTeX character table of `papers/latexenc.py` and the transliteration of
+the Unidecode package); `--check` exits 1 when a table differs.
+`tests/test_spec_tables.py` runs the same check.
+
+```bash
+python scripts/spec_tables.py
+```
+
+## DOI extraction checked against a library
+
+`doi_benchmark.py` runs the DOI extraction of `papers extract --doi-only` on
+the first PDF of each entry that has a DOI, and compares the DOI found with
+the entry's. The PDFs stay where they are; only the counts and the list of
+failures are printed.
+
+```bash
+python3 scripts/doi_benchmark.py ~/Documents/papers -v --csv doi-check.csv
+python3 scripts/doi_benchmark.py ~/Documents/papers --metadata-only   # offline
+```
+
+The results are given by source of the DOI: the PDF metadata (no network
+query), or the text, where each candidate DOI is checked against its title
+on crossref (cached after the first run). `different` means another DOI was
+found: a wrong extraction, or a wrong DOI in the library. Nothing is written
+to the library.
+
 ## Dummy Bib and bibtexparser load benchmark
 
 For profiling/benchmarking bibtexparser load time with a large library (e.g. [issue #86](https://github.com/perrette/papers/issues/86)).

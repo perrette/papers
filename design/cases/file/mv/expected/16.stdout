@@ -1,0 +1,3 @@
+DRYRUN: mv $WORK/files/sub $WORK/other/sub
+DRYRUN: b2021: $WORK/files/sub/b.txt -> $WORK/other/sub/b.txt
+DRYRUN: b2021: $WORK/files/sub/c.txt -> $WORK/other/sub/c.txt

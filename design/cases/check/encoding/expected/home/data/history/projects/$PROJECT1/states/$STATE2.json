@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE1",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers check --encoding latex -y --porcelain",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "ddef3f791694dd7f363762b7d05b2ab0fcfb6e48b45139bfcb160b7ae8238f91"
+  ],
+  "sha": "ddef3f791694dd7f363762b7d05b2ab0fcfb6e48b45139bfcb160b7ae8238f91"
+ },
+ "files": {}
+}

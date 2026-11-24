@@ -1,0 +1,1 @@
+papers: warning: $WORK/g/.papers/config.json: the editor setting of a library is ignored, it is a setting of the machine: `papers config --global editor CMD` (the next save removes it from the file)

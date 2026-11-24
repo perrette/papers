@@ -1,0 +1,49 @@
+{
+  "description": "a step whose changes were all taken back since: the revert changes nothing, and records no step",
+  "sections": [
+    "history.md#8",
+    "history.md#8.1",
+    "history.md#8.2",
+    "history.md#8.4",
+    "history.md#2.5"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "tag",
+        "doe2019",
+        "--add",
+        "x"
+      ]
+    },
+    {
+      "argv": [
+        "tag",
+        "doe2019",
+        "--rm",
+        "x"
+      ]
+    },
+    {
+      "argv": [
+        "history",
+        "--revert",
+        "$STATE2"
+      ]
+    },
+    {
+      "argv": [
+        "history"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-k",
+        "doe2019",
+        "--format",
+        "bibtex"
+      ]
+    }
+  ]
+}

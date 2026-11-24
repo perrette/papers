@@ -1,0 +1,3 @@
+pool none: the library becomes self-contained, with its own files
+copy 1 file of the pool into files (hard links when possible); the library will link to the copies, and the pool keeps its files.
+papers: error: pool none: confirm in a terminal, or pass -y to proceed (nothing was changed)

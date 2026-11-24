@@ -1,0 +1,26 @@
+{
+ "parent": "$STATE4",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers file attach smith2020 extra2.txt --porcelain --copy",
+ "ops": [
+  {
+   "op": "copied",
+   "src": "extra2.txt",
+   "dst": "files/smith_2020_another-paper.txt",
+   "checksum": "2396099c6c084fa4b9beac9f0d52cf3be9cf8d47040ef127883d532b5790cd74"
+  }
+ ],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "339d0c50752788baaaaee0e5c81d1d7503c4e896f1b2d6533a253133f8f1fdfb"
+  ],
+  "sha": "339d0c50752788baaaaee0e5c81d1d7503c4e896f1b2d6533a253133f8f1fdfb"
+ },
+ "files": {
+  ".papers/files.json": [
+   "3fbc27ee4d3cc3cafd12cb4973c80261ba1062df6a83d09c94156aa1a9795e27"
+  ]
+ }
+}

@@ -1,0 +1,101 @@
+{
+  "description": "the pool conditions: no pool, a pool that does not exist, that is not a library, that has a pool itself, that is the library itself; an unreadable pool bibtex is not written to",
+  "sections": [
+    "exchange.md#2.2",
+    "exchange.md#2.1"
+  ],
+  "tests": [
+    "tests/test_pools.py::TestConfigPoolSelfContained::test_config_pool_not_the_library_itself",
+    "tests/test_pools.py::TestConfigPoolSelfContained::test_init_pool_must_be_a_library_without_pool",
+    "tests/test_spec_exchange.py::TestPoolRules::test_unreadable_pool_stops_the_automatic_push",
+    "tests/test_parsecache.py::TestParseCache::test_warning_once"
+  ],
+  "ignore": [
+    "home/data/history/*"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "-C",
+        "own",
+        "pull"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "own",
+        "push",
+        "--pool",
+        "../nowhere"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "own",
+        "pull",
+        "--pool",
+        "../plain"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "own",
+        "pull",
+        "--pool",
+        "../twolevel"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "own",
+        "pull",
+        "--pool",
+        "."
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "own",
+        "push",
+        "--pool",
+        "../broken",
+        "--all"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "own",
+        "pull",
+        "--pool",
+        "../broken",
+        "--all"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "own",
+        "push",
+        "--all",
+        "--pool",
+        "../pool"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "own",
+        "pull",
+        "nosuchkey",
+        "--pool",
+        "../pool"
+      ]
+    }
+  ]
+}

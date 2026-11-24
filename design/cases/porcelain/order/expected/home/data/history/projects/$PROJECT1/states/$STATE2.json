@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE1",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers tag beta2018 Zeta2020 alpha2019 Alpha2021 --add x --porcelain",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "969de095560fdc99268fce6b22542a33f4677e76d5442e5f59ebf325b6271a6d"
+  ],
+  "sha": "969de095560fdc99268fce6b22542a33f4677e76d5442e5f59ebf325b6271a6d"
+ },
+ "files": {}
+}

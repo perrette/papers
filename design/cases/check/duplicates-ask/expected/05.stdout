@@ -1,0 +1,19 @@
+@article{a2,
+ author = {Smith, John},
+ doi = {10.1000/abc},
+ ids = {a1, a3},
+ journal = {Nature},
+ note = {x},
+ title = {Climate sensitivity revisited},
+ volume = {3},
+ year = {2020}
+}
+
+@article{b2,
+ author = {Lee, Ann},
+ ids = {b1},
+ journal = {J},
+ title = {A pair of two},
+ year = {2015}
+}
+

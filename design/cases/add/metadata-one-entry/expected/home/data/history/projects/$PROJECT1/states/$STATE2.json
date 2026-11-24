@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE1",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers add new.bib --key weber_southern --year 2023 --metadata note=hello publisher=Copernicus",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "31454644884aefae8aadfa7a4e30473afa654170abfb194a3e1a07ba60631b5e"
+  ],
+  "sha": "31454644884aefae8aadfa7a4e30473afa654170abfb194a3e1a07ba60631b5e"
+ },
+ "files": {}
+}

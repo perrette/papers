@@ -1,0 +1,116 @@
+{
+  "description": "with --porcelain the standard output has the porcelain lines, and the listing of list (its data); the other messages go to the standard error; a command that has no lines prints nothing on the standard output",
+  "sections": [
+    "formats.md#7.1",
+    "formats.md#7.2",
+    "formats.md#7.3"
+  ],
+  "tests": [
+    "tests/test_spec_formats.py::TestPorcelainStreams::test_commands_without_lines",
+    "tests/test_porcelain.py::TestPorcelain::test_list_on_stdout",
+    "tests/test_porcelain.py::TestPorcelain::test_other_messages_on_stderr"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "list",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex",
+        "smith",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--add-tag",
+        "x",
+        "--porcelain",
+        "smith"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--rm-tag",
+        "x",
+        "--porcelain",
+        "smith"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--porcelain",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "status",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "history",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "undo",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "redo",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "rm",
+        "nosuch",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "tag",
+        "nosuch",
+        "--add",
+        "x",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--delete",
+        "--keep-files",
+        "--porcelain",
+        "smith"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-K"
+      ]
+    }
+  ]
+}

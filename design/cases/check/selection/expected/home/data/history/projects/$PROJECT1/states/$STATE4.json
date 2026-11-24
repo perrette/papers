@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE3",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers check 10.1000/abc --fix-doi -y --porcelain",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "6e758e6ada5c305c8ad475ff470a34a5f486988904738eadc3a51cd464609cbb"
+  ],
+  "sha": "6e758e6ada5c305c8ad475ff470a34a5f486988904738eadc3a51cd464609cbb"
+ },
+ "files": {}
+}

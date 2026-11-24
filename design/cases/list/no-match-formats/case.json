@@ -1,0 +1,65 @@
+{
+  "description": "the formats of a listing that finds nothing: bibtex one newline, csl-json [], bibjson no records, key and field nothing",
+  "sections": [
+    "formats.md#6",
+    "formats.md#3.4",
+    "formats.md#5.1"
+  ],
+  "tests": [
+    "tests/test_spec_formats.py::TestListOutput::test_no_entry"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "list",
+        "nosuch",
+        "--format",
+        "bibtex"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "nosuch",
+        "--plain"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "nosuch",
+        "--format",
+        "csl-json"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "nosuch",
+        "--format",
+        "bibjson"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "nosuch",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "nosuch",
+        "--field",
+        "year"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "nosuch"
+      ]
+    }
+  ]
+}

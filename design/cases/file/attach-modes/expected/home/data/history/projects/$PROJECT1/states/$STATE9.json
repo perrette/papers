@@ -1,0 +1,19 @@
+{
+ "parent": "$STATE8",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers file attach roe2021 p3.txt --porcelain",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "143baf8944165e3ada856ebd49561a0bd845f0eac50ee0a484e8fb9be0bf1906"
+  ],
+  "sha": "143baf8944165e3ada856ebd49561a0bd845f0eac50ee0a484e8fb9be0bf1906"
+ },
+ "files": {
+  ".papers/files.json": [
+   "403e6c929b95afb22b2075129ee8b4db28c5facfd94c2e2712d5b303c9eaec88"
+  ]
+ }
+}

@@ -1,0 +1,50 @@
+@article{s1,
+ author = {Doe, Jane},
+ file = {:files/s1_doe_ete-l-eau_2001.txt:txt},
+ title = {&eacute;t&eacute; &amp; l&#39;eau},
+ year = {2001}
+}
+
+@article{s2,
+ author = {Doe, Jane},
+ file = {:files/s2_doe_aab-1114112-bc-a_2002.txt:txt},
+ title = {a&#65;b &#1114112; &#66;c &#x26;&#X41;},
+ year = {2002}
+}
+
+@article{s3,
+ author = {Doe, Jane},
+ file = {:files/s3_doe_38-amp-apos-x-apos-eeur_2003.txt:txt},
+ title = {&amp;#38; &AMP; &apos;x&apos; &nbsp;&Eacute;&euro;},
+ year = {2003}
+}
+
+@article{s4,
+ author = {Иванов, Иван},
+ file = {:files/s4_ivanov_oceans-10000-things-35-more_2004.txt:txt},
+ title = {Ocean’s: 10,000 things, 3,5 &quot;more&quot;},
+ year = {2004}
+}
+
+@article{s5,
+ author = {中村, Ken and Παπαδόπουλος, Γιώργος},
+ file = {:files/s5_zhongcun_papadopoylos_zhongwen-ellinika-ribenyu-hangugeo_2005.txt:txt},
+ title = {中文 Ελληνικά 日本語 한국어},
+ year = {2005}
+}
+
+@article{s6,
+ author = {Doe, Jane},
+ doi = {10.1000/Ünï(1)&amp;2},
+ file = {:files/s6_doe_no-author_2006.txt:txt},
+ title = {No author},
+ year = {2006}
+}
+
+@article{s7,
+ author = {Doe, Jane},
+ doi = {   },
+ file = {:files/s7_doe_the-doi-is-only-white-space_2007.txt:txt},
+ title = {The doi is only white space},
+ year = {2007}
+}

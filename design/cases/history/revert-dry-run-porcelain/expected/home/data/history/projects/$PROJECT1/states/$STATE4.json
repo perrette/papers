@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE3",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers rm mueller2021",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "f91b5071c8b6733b9baca92f8442d0f72c9e1c1528e9f75833dd2ac08d13410d"
+  ],
+  "sha": "f91b5071c8b6733b9baca92f8442d0f72c9e1c1528e9f75833dd2ac08d13410d"
+ },
+ "files": {}
+}

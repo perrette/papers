@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE3",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers rm isbn:978-3-16-148410-0",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "b85ef9f65640f1cb9bc3b3fbc79f94778f9dbf082fdf9299cd4bedb84a45fccf"
+  ],
+  "sha": "b85ef9f65640f1cb9bc3b3fbc79f94778f9dbf082fdf9299cd4bedb84a45fccf"
+ },
+ "files": {}
+}

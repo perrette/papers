@@ -1,0 +1,49 @@
+{
+  "description": "check prints modified, renamed and removed lines for what it fixes (--fix-key, --encoding, --duplicates)",
+  "sections": [
+    "formats.md#7.2",
+    "bibtex.md#7.1",
+    "bibtex.md#10"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "check",
+        "--fix-key",
+        "--porcelain",
+        "-y"
+      ]
+    },
+    {
+      "argv": [
+        "check",
+        "--encoding",
+        "latex",
+        "--porcelain",
+        "-y"
+      ]
+    },
+    {
+      "argv": [
+        "check",
+        "--duplicates",
+        "--on-duplicate",
+        "keep",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "check",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    }
+  ]
+}

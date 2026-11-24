@@ -1,0 +1,10 @@
+*** UPDATE ***
+  @article{k2,
+-  author = {Jane Doe},
+?                ----
++  author = {Doe, Jane},
+?            +++++
+   title = {Two},
+   year = {2001}
+  }
+update? [Y/n] 

@@ -1,0 +1,35 @@
+{
+  "description": "file clean of a library with a pool is refused: its files are the pool's",
+  "sections": [
+    "library.md#the-files-directory",
+    "library.md#pools-and-shallow-libraries/the-pool-setting"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "file",
+        "clean"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "file",
+        "clean",
+        "-y"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "pool",
+        "file",
+        "clean",
+        "-y"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,72 @@
+{
+  "description": "the files of an added bibtex: --copy keeps the original (a hard link when possible), --link leaves the file where it is, --move places it; without option the files setting decides (config files link); a file in the files directory is renamed even with --copy; the files that another library holds are copied",
+  "sections": [
+    "bibtex.md#5.1",
+    "history.md#4",
+    "library.md#the-files-directory/file-names"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "add",
+        "in1.bib",
+        "--copy"
+      ]
+    },
+    {
+      "argv": [
+        "add",
+        "in2.bib",
+        "--link"
+      ]
+    },
+    {
+      "argv": [
+        "add",
+        "in3.bib",
+        "--move"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "files",
+        "link"
+      ]
+    },
+    {
+      "argv": [
+        "add",
+        "in4.bib"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "files",
+        "copy"
+      ]
+    },
+    {
+      "argv": [
+        "add",
+        "in5.bib"
+      ]
+    },
+    {
+      "argv": [
+        "add",
+        "in6.bib",
+        "--link",
+        "--move"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    }
+  ]
+}

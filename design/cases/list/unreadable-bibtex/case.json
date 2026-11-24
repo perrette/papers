@@ -1,0 +1,22 @@
+{
+  "description": "a bibtex that is not valid",
+  "sections": [
+    "bibtex.md#2.5"
+  ],
+  "tests": [
+    "tests/test_spec_bibtex.py::TestFailedBlocks::test_kinds_and_warning",
+    "tests/test_parsecache.py::TestParseCache::test_warning_once"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "list"
+      ]
+    },
+    {
+      "argv": [
+        "status"
+      ]
+    }
+  ]
+}

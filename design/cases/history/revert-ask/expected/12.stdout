@@ -1,0 +1,8 @@
+> $STATE7 papers history --revert $STATE3 --on-duplicate ask ($TIME)
+  $STATE6 papers history --revert $STATE2 --on-duplicate ask ($TIME)
+  $STATE5 papers edit smith2020 --set note=s2 ($TIME)
+  $STATE4 papers edit smith2020 --set note=s1 ($TIME)
+  $STATE3 papers edit doe2019 --set note=two year=2017 publisher=Wiley isbn=0-306-40615-2 ($TIME)
+  $STATE2 papers edit doe2019 --set note=one year=2018 publisher=Elsevier ($TIME)
+  $STATE1 the library before its first recorded command ($TIME)
+history: $DATA/history, 0.0 MB (up to 500 MB: the history-size setting; deleted files kept)

@@ -1,0 +1,2 @@
+bibtexparser.splitter: warning: Parsing of `@article` block (line 0) aborted on line 2 due to syntactical error in bibtex:
+ Unexpectedly reached end of file.

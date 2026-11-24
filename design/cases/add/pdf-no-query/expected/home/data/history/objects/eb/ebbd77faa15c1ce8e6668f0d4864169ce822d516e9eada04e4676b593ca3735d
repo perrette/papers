@@ -1,0 +1,11 @@
+@article{ice2020,
+ author = {Doe, Jane},
+ doi = {10.1234/ICE.2020.1},
+ title = {Title of ice2020},
+ year = {2020}
+}
+
+@article{new2021,
+ doi = {10.1234/new.2021},
+ title = {New}
+}

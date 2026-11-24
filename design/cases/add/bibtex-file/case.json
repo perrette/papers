@@ -1,0 +1,27 @@
+{
+  "description": "add a bibtex file to an empty library: keys kept, bibtex normalized and sorted",
+  "sections": [
+    "formats.md#1.1",
+    "bibtex.md#2.2",
+    "bibtex.md#3.1",
+    "bibtex.md#3.2"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "add",
+        "refs.bib"
+      ]
+    },
+    {
+      "argv": [
+        "list"
+      ]
+    },
+    {
+      "argv": [
+        "status"
+      ]
+    }
+  ]
+}

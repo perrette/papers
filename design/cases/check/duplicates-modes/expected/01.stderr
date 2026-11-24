@@ -1,0 +1,4 @@
+papers: error: same paper: smith2020a, smith2020b (same DOI 10.1000/abc; fields to add)
+same paper: nodoi2018b, nodoi2018 (same title and authors; 0 conflicts)
+same paper: exact1, exact2 (same title and authors; 0 conflicts)
+Pass --on-duplicate with one of: ask, keep, skip (ask is the default in a terminal), see `papers check --help`.

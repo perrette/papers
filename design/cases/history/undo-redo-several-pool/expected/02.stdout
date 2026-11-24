@@ -1,0 +1,5 @@
+created the library $WORK/lib
+* bibtex:  papers.bib
+* files:   in the pool (shallow library)
+* pool:    ../pool
+`papers config` lists and sets the settings

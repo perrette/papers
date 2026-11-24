@@ -1,0 +1,7 @@
+> $STATE9 papers -C lib redo -n 2: revert of step $STATE8 ($TIME, from $WORK/lib)
+  $STATE8 papers -C lib undo -n 2: revert of steps $STATE5, $STATE2 ($TIME, from $WORK/lib)
+  $STATE7 papers -C pool edit bretreger_mather1978 --set note=pool note ($TIME)
+  $STATE5 papers -C lib add ../import/more.bib ($TIME, from $WORK/lib)
+  $STATE2 papers -C lib add ../import/refs.bib ($TIME, from $WORK/lib)
+  $STATE1 the library before its first recorded command ($TIME)
+history: $DATA/history, 0.0 MB (up to 500 MB: the history-size setting; deleted files kept)

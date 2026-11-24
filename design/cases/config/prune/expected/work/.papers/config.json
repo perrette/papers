@@ -1,0 +1,9 @@
+{
+  "bibtex": "papers.bib",
+  "filesdir": "files",
+  "nameformat": {
+    "template": "{author}_{year}"
+  },
+  "pool": "none",
+  "version": 3
+}

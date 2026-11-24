@@ -1,0 +1,113 @@
+{
+  "description": "papers config pool: the files follow. pool none copies the pool files the library links to into its files directory (the pool keeps them); a pool PATH links the library to the pool copies of the same content and deletes its own; a pool that lacks a file is an error that names the entries; -y, --dry-run and no terminal",
+  "sections": [
+    "library.md#pools-and-shallow-libraries/files-of-a-shallow-library",
+    "exchange.md#15.4",
+    "exchange.md#15"
+  ],
+  "ignore": [
+    "home/data/history/*"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "config",
+        "pool",
+        "none",
+        "--dry-run"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "config",
+        "pool",
+        "none"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "config",
+        "pool",
+        "none",
+        "-y"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "own",
+        "config",
+        "pool",
+        "../pool",
+        "-y"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "own",
+        "rm",
+        "only",
+        "--keep-files"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "own",
+        "config",
+        "pool",
+        "../pool",
+        "--dry-run"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "own",
+        "config",
+        "pool",
+        "../pool",
+        "-y"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "own",
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "own",
+        "undo"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "own",
+        "status"
+      ]
+    }
+  ]
+}

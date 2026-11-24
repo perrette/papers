@@ -1,0 +1,15 @@
+{
+ "parent": "d62498828dd5bc63433a027fe6977fd43a5aa217c25a94e953376b1eda2490f4",
+ "time": 1790000060.5,
+ "kind": "command",
+ "message": "papers tag doe2019 --add x",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "d8d8a090024cecafc897950ee4a1328d8273958abb0f21e9a1149613a11a854a"
+  ],
+  "sha": "d8d8a090024cecafc897950ee4a1328d8273958abb0f21e9a1149613a11a854a"
+ },
+ "files": {}
+}

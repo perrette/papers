@@ -1,0 +1,201 @@
+{
+  "description": "pull: new entries come with the origin record (.papers/origin/<name>-<hash>.bib); a later pull takes the fields changed in the pool only, keeps the ones changed in the library only (three-way merge); a field changed on both sides is a conflict: error without a terminal, --on-duplicate keep or update decides",
+  "sections": [
+    "exchange.md#3",
+    "exchange.md#5",
+    "exchange.md#6",
+    "exchange.md#2.3"
+  ],
+  "ignore": [
+    "home/data/history/*"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "status"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "pull",
+        "smith2020",
+        "brown2021"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "status"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "edit",
+        "smith2020",
+        "--set",
+        "note=library note"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "pool",
+        "edit",
+        "smith2020",
+        "--set",
+        "title=A better title"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "pool",
+        "edit",
+        "brown2021",
+        "--set",
+        "year=2022"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "pull"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "list",
+        "--format",
+        "bibtex"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "edit",
+        "brown2021",
+        "--set",
+        "year=2023"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "pool",
+        "edit",
+        "brown2021",
+        "--set",
+        "year=2024"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "edit",
+        "smith2020",
+        "--set",
+        "title=Library title"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "pool",
+        "edit",
+        "smith2020",
+        "--set",
+        "title=Pool title"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "pull"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "pull",
+        "brown2021",
+        "--on-duplicate",
+        "update"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "list",
+        "--format",
+        "bibtex",
+        "brown2021"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "pull",
+        "--on-duplicate",
+        "keep"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "list",
+        "--format",
+        "bibtex",
+        "smith2020"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "status"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "history"
+      ],
+      "wait": 1.1
+    }
+  ]
+}

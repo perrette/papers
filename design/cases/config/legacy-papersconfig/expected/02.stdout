@@ -1,0 +1,4 @@
+papers library: $WORK/old
+* bibtex: refs.bib (1 entries, 0 file links)
+* files:  pdfs (the files directory of the library, empty)
+`papers config` lists and sets the settings

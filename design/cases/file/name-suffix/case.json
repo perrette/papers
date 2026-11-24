@@ -1,0 +1,69 @@
+{
+  "description": "entries whose files get the same name: the file of another entry is never replaced, the second gets -2 before the extension, the next -3, and a file with the same content is shared",
+  "sections": [
+    "library.md#the-files-directory/file-names",
+    "library.md#name-and-key-templates/file-names"
+  ],
+  "tests": [
+    "tests/test_file_cmd.py::TestSameFileName::test_two_papers_same_name",
+    "tests/test_file_cmd.py::TestSameFileName::test_same_content_is_the_same_file"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "file",
+        "attach",
+        "e1",
+        "dl/a.txt",
+        "--copy"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "attach",
+        "e2",
+        "dl/b.txt",
+        "--copy"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "attach",
+        "e3",
+        "dl/c.txt",
+        "--copy"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "attach",
+        "e4",
+        "dl/d.txt",
+        "--copy"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "rename"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    }
+  ]
+}

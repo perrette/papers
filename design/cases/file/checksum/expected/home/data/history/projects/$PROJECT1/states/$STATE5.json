@@ -1,0 +1,19 @@
+{
+ "parent": "$STATE4",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers file checksum",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "29f4c569919b6d7195af98ece2c26e1a691eddb31ed6cf7aa86daece1e46a832"
+  ],
+  "sha": "29f4c569919b6d7195af98ece2c26e1a691eddb31ed6cf7aa86daece1e46a832"
+ },
+ "files": {
+  ".papers/files.json": [
+   "2a056dd86a25dab6ae1d75af5747c0d998f8571f39ef81e666338be7f9700536"
+  ]
+ }
+}

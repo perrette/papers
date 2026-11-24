@@ -1,0 +1,62 @@
+{
+ "parent": "$STATE1",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers file rename --name-template {key}_{author}_{title}_{year}",
+ "ops": [
+  {
+   "op": "moved",
+   "src": "files/f1.txt",
+   "dst": "files/s1_doe_ete-l-eau_2001.txt",
+   "checksum": "5f5d584c5857d85af911ade1b2ae7cb593c17654282091f3ace31efd9e951360"
+  },
+  {
+   "op": "moved",
+   "src": "files/f2.txt",
+   "dst": "files/s2_doe_aab-1114112-bc-a_2002.txt",
+   "checksum": "0b7e1391e807365614c548fd10a4a543cf0654268529f3fe768ed7042624c006"
+  },
+  {
+   "op": "moved",
+   "src": "files/f3.txt",
+   "dst": "files/s3_doe_38-amp-apos-x-apos-eeur_2003.txt",
+   "checksum": "b90ae9387f8c3b679f6bbd62649e3b0649fd2f5ab82cc174af8977671367f761"
+  },
+  {
+   "op": "moved",
+   "src": "files/f4.txt",
+   "dst": "files/s4_ivanov_oceans-10000-things-35-more_2004.txt",
+   "checksum": "76f61e3503f81ffc8ccff1db16486d49a5f602267027e5ae85ae17d0c5e041b1"
+  },
+  {
+   "op": "moved",
+   "src": "files/f5.txt",
+   "dst": "files/s5_zhongcun_papadopoylos_zhongwen-ellinika-ribenyu-hangugeo_2005.txt",
+   "checksum": "27c7d24edb77a005c6109792cc4efc120bc2388a5464d54745b99f006d241db9"
+  },
+  {
+   "op": "moved",
+   "src": "files/f6.txt",
+   "dst": "files/s6_doe_no-author_2006.txt",
+   "checksum": "180fa4e69eabbd12afde1390092594798e083d97f779d089cd753363c6905cd0"
+  },
+  {
+   "op": "moved",
+   "src": "files/f7.txt",
+   "dst": "files/s7_doe_the-doi-is-only-white-space_2007.txt",
+   "checksum": "cdc4f52fe4cd55696b22732e3d35afd38e2905551ac4f7b4ceb44357740b62ea"
+  }
+ ],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "ecb0d9001f3655ca181a17cf8d6e2420be2f402ab40f60bd4ad5f7c903a696fa"
+  ],
+  "sha": "ecb0d9001f3655ca181a17cf8d6e2420be2f402ab40f60bd4ad5f7c903a696fa"
+ },
+ "files": {
+  ".papers/files.json": [
+   "f3bfbd97e5821e328466798eaa9b08476bf0a4bb78e9e1da0e137d4d653ff11a"
+  ]
+ }
+}

@@ -1,0 +1,33 @@
+{
+  "description": "rm accepts a key (any case), a DOI or an ISBN",
+  "sections": [
+    "bibtex.md#7.1",
+    "formats.md#7.2"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "rm",
+        "PERRETTE2013"
+      ]
+    },
+    {
+      "argv": [
+        "rm",
+        "10.1234/abc.2020.1"
+      ]
+    },
+    {
+      "argv": [
+        "rm",
+        "isbn:978-3-16-148410-0"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-K"
+      ]
+    }
+  ]
+}

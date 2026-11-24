@@ -1,0 +1,42 @@
+{
+  "description": "check -f/--force is -y/--yes, -m/--mode is --on-duplicate (i: ask, m: keep, s: skip), with a warning",
+  "sections": [
+    "bibtex.md#9.5",
+    "bibtex.md#10"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "check",
+        "-f",
+        "--format-name",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "check",
+        "--duplicates",
+        "-m",
+        "m",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "check",
+        "--duplicates",
+        "-m",
+        "s",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    }
+  ]
+}

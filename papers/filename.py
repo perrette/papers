@@ -1,19 +1,66 @@
 """
 Key and file name formatting
 """
-from slugify import slugify
+import functools
+import os
+import re
+import unicodedata
+from papers.ascii import to_ascii
 from papers.encoding import family_names
 from papers.entries import get_entry_val
 
+
+@functools.cache
+def _html_reference():
+    "the references of HTML: named (the entities of HTML 4), decimal, hexadecimal"
+    from html.entities import name2codepoint
+    return re.compile(r'&(?:#([0-9]+)|#[xX]([0-9a-fA-F]+)|(%s));' % '|'.join(name2codepoint))
+
+
+def _decode_reference(match):
+    "the character of an HTML reference; a number that is no character (a surrogate, above U+10FFFF) stays as written"
+    decimal, hexadecimal, name = match.groups()
+    if name:
+        from html.entities import name2codepoint
+        return chr(name2codepoint[name])
+    digits = (decimal or hexadecimal).lstrip('0') or '0'
+    n = int(digits, 10 if decimal else 16) if len(digits) <= 8 else -1
+    return chr(n) if 0 <= n <= 0x10FFFF and not 0xD800 <= n <= 0xDFFF else match.group(0)
+
+
+def decode_html(text):
+    "`text` with its HTML references decoded, in one pass from left to right (a decoded `&` starts no reference)"
+    if '&' not in text:
+        return text
+    return _html_reference().sub(_decode_reference, text)
+
+
+def slugify(text):
+    """the slug of `text` (design/library.md, Slugify): words of `a-z0-9`
+    joined with `-`, transliterated by papers' own table (papers.ascii);
+    an apostrophe in `text` separates words, one from the table (as in Ь)
+    is dropped"""
+    text = decode_html(text)
+    text = to_ascii(unicodedata.normalize('NFKD', text.replace("'", '-'))).replace("'", '')
+    text = text.lower()
+    text = re.sub(r'(?<=\d),(?=\d)', '', text.replace("'", ''))
+    return re.sub(r'-{2,}', '-', re.sub(r'[^-a-zA-Z0-9]+', '-', text)).strip('-')
+
+
+def title_words(words, maxlength=30, minwordlen=3, n=100, sep='-'):
+    """the first `n` words of at least `minwordlen` characters, without the
+    last words that make them longer than `maxlength` once joined with `sep`:
+    a hard limit. At least one word is kept, cut to `maxlength` if needed."""
+    words = [word for word in words if len(word) >= minwordlen][:n]
+    while len(words) > 1 and len(sep.join(words)) > maxlength:
+        words.pop()
+    if words and len(words[0]) > maxlength:
+        words[0] = words[0][:maxlength]
+    return words
+
 def listtag(words, maxlength=30, minwordlen=3, n=100, sep='-'):
-    # preformat & filter words
-    words = [word for word in words if len(word) >= minwordlen]
-    while True:
-        tag = sep.join(words[:n])
-        n -= 1
-        if len(tag) <= maxlength or n < 2:
-            break
-    return tag
+    "the words of title_words joined with `sep`"
+    return sep.join(title_words(words, maxlength, minwordlen, n, sep))
 
 def _cite_author(names):
     if len(names) >= 3:
@@ -25,7 +72,7 @@ def _cite_author(names):
 
 UNKNOWN_AUTHOR = 'unknown'
 UNKNOWN_YEAR = '0000'
-UNKNOWN_JOURNAL = None
+UNKNOWN_JOURNAL = ''
 UNKNOWN_TITLE = ""
 
 def path_safe(value):
@@ -39,6 +86,49 @@ def path_safe(value):
     if value and not value.strip('.'):
         value = '-' * len(value)
     return value
+
+# the longest name (in bytes, as UTF-8) of a file or folder that papers names
+# after an entry: 255 is the limit of most file systems, minus room for the
+# -2, -3... suffix of a name already taken
+MAX_NAME_BYTES = 250
+# characters that Windows does not accept in a file name ('/' separates the
+# folders of the template, '\\' is replaced in the values, see path_safe)
+_FORBIDDEN = re.compile(r'[<>:"|?*\x00-\x1f]')
+_RESERVED = {'CON', 'PRN', 'AUX', 'NUL', *(f'COM{i}' for i in range(1, 10)), *(f'LPT{i}' for i in range(1, 10))}
+
+
+def cut_bytes(text, size):
+    "the start of `text` that is at most `size` bytes as UTF-8"
+    return text.encode('utf-8')[:size].decode('utf-8', errors='ignore')
+
+
+def safe_file_name(name):
+    """a file name made from a template, valid on every system: in each
+    folder of it, the characters that Windows forbids replaced with '-', no
+    trailing dot or space, '-' after a reserved name of Windows (CON, NUL...),
+    and at most MAX_NAME_BYTES bytes"""
+    parts = []
+    for part in name.split('/'):
+        if part not in ('', '.', '..'):
+            part = cut_bytes(_FORBIDDEN.sub('-', part), MAX_NAME_BYTES).rstrip('. ') or '-'
+            first, dot, rest = part.partition('.')
+            if first.upper() in _RESERVED:
+                part = cut_bytes(first + '-' + dot + rest, MAX_NAME_BYTES)
+        parts.append(part)
+    return '/'.join(parts)
+
+
+def fit_name(path):
+    """`path` with its file name (extension included) cut to MAX_NAME_BYTES
+    bytes, keeping the extension (itself cut when it leaves no room for the name)"""
+    head, name = os.path.split(path)
+    stem, ext = os.path.splitext(name)
+    if len(name.encode('utf-8')) <= MAX_NAME_BYTES:
+        return path
+    ext = cut_bytes(ext, MAX_NAME_BYTES - 1)
+    stem = cut_bytes(stem, MAX_NAME_BYTES - len(ext.encode('utf-8'))).rstrip('. ') or '-'
+    return os.path.join(head, stem + ext)
+
 
 def make_template_fields(
     entry,
@@ -56,18 +146,17 @@ def make_template_fields(
     - Author : same as author but title case (first letter capitalized)
     - AUTHOR : same as author but upper case
     - authorX: first; first and second; first et al
-    - journal: journal name
-    (the values of journal, year, ID and doi have their path separators
+    - journal: journal name ('' without journal)
+    (the values of journal, year, key, ID and doi have their path separators
     replaced with '-': see path_safe)
     - title : normalized title in lower case, separated by {title_sep} ('-' by default) with max {title_word_num} words
     - Title: same as title by with capitalized words
     - year
-    - ID : bibtex key
+    - key, ID : bibtex key
     - doi : bibtex DOI
     - doi- : slugified doi (for use in filenames)
     Each one of these needs a specific, explicit assignment below.
     """
-    # names = bibtexparser.customization.getnames(entry.get('author','unknown').lower().split(' and '))
     _names = family_names(get_entry_val(entry, "author", UNKNOWN_AUTHOR).lower())
     _names = [slugify(nm) for nm in _names]
     author = author_sep.join([nm for nm in _names[:author_num]])
@@ -85,13 +174,13 @@ def make_template_fields(
         Title = UNKNOWN_TITLE
     else:
         titlewords = slugify(entry["title"]).split('-')
-        _titles = listtag(
+        _titles = title_words(
             titlewords,
             n=title_word_num,
             minwordlen=title_word_size,
             maxlength=title_length,
-            sep="*",
-        ).split("*")
+            sep=title_sep,
+        )
         title = title_sep.join(_titles)
         Title = title_sep.join(w.capitalize() for w in _titles)
 
@@ -105,11 +194,34 @@ def make_template_fields(
         "year": year,
         "title": title,
         "Title": Title,
+        "key": path_safe(get_entry_val(entry, "ID", "")),
         "ID": path_safe(get_entry_val(entry, "ID", "")),
         "doi": path_safe(get_entry_val(entry, "doi", "")),
         "doi_": slugify(get_entry_val(entry, "doi", "")),
-        "doi_or_id": slugify(get_entry_val(entry, "doi", get_entry_val(entry, "ID", ""))),
+        # an empty doi field is no doi
+        "doi_or_id": slugify(get_entry_val(entry, "doi", "").strip() or get_entry_val(entry, "ID", "")),
     }
+
+
+class TemplateError(ValueError):
+    "a name or key template that cannot be formatted"
+
+
+PLACEHOLDERS = list(make_template_fields({}))
+
+
+def format_template(template, fields, kind='name'):
+    """`template` formatted with `fields` (see make_template_fields); an
+    unknown placeholder is a TemplateError that lists the available ones"""
+    try:
+        return template.format(**fields)
+    except (KeyError, IndexError) as error:
+        name = error.args[0] if isinstance(error, KeyError) else ''
+        available = ', '.join('{' + f + '}' for f in PLACEHOLDERS)
+        raise TemplateError(f'unknown placeholder {{{name}}} in the {kind} template {template!r}; '
+                            f'available: {available}') from None
+    except (ValueError, AttributeError, TypeError) as error:  # e.g. {year.real}, {year[x]}
+        raise TemplateError(f'invalid {kind} template {template!r}: {error}') from None
 
 
 class Format:
@@ -119,21 +231,21 @@ class Format:
 
     Example
     -------
-    To rename esd-4-11-2013.pdf as perrette_2013.pdf, template should be '{author}_{year}' with --name-nauthor 1.
+    To rename esd-4-11-2013.pdf as perrette_2013.pdf, template should be '{author}_{year}' with --name-author-num 1.
     If that happens to be the entry ID, 'ID' also works.
     To rename esd-4-11-2013.pdf as
     2013/Perrette2013-AScalingApproachToProjectRegionalSeaLevelRiseAndItsUncertainties.pdf,
-    template should be '{year}/{Author}{year}-{Title}' with --name-nauthor 1 (note the case).
+    template should be '{year}/{Author}{year}-{Title}' with --name-author-num 1 (note the case).
     Entries are case-sensitive, so that:
         'author' generates 'perrette'
         'Author' generates 'Perrette'
         'AUTHOR' generates 'PERRETTE'
-    any other case, like 'AuTHoR', will retrieve the field from 'e' with unaltered case.
+    Any other placeholder, like 'AuTHoR', is a TemplateError.
 
     """
-    # def __init__(self, template="{author}{year}{title}", author_num=2, title_word_num=5, author_sep="_", title_sep="-")
     def __init__(self, template, author_num=2, title_word_num=100, title_word_size=1, title_length=100,
-                 author_sep="_", title_sep="-", unknown_strict=False, unknown_template=None):
+                 author_sep="_", title_sep="-", unknown_strict=False, unknown_template=None, kind='name'):
+        self.kind = kind  # name or key: for the errors
         self.template = template
         self.author_num = author_num
         self.author_sep = author_sep
@@ -143,9 +255,6 @@ class Format:
         self.title_word_size = title_word_size
         self.unknown_strict = unknown_strict
         self.unknown_template = unknown_template
-
-    def todict(self):
-        return vars(self)
 
     def is_unknown(self, entry):
         conditions = ( get_entry_val(entry, "author", UNKNOWN_AUTHOR) == UNKNOWN_AUTHOR, get_entry_val(entry, "year", UNKNOWN_YEAR) == UNKNOWN_YEAR, get_entry_val(entry, "title", UNKNOWN_TITLE) == UNKNOWN_TITLE)
@@ -158,9 +267,16 @@ class Format:
         fields = make_template_fields(entry, **vars(self))
 
         if self.unknown_template and self.is_unknown(entry):
-            return self.unknown_template.format(**fields)
-
-        return self.template.format(**fields)
+            template = self.unknown_template
+            name = format_template(template, fields, self.kind + ' unknown')
+        else:
+            template = self.template
+            name = format_template(template, fields, self.kind)
+        if self.kind != 'name':
+            return name
+        if not template.startswith('/'):  # an empty first folder ({journal}/... without journal) is left out
+            name = name.lstrip('/')
+        return safe_file_name(name)
 
     def __call__(self, entry):
         # Support both dict and bibtexparser v2 Entry (convert to dict for ** unpacking)
@@ -168,7 +284,20 @@ class Format:
         return self.render(**entry)
 
 
+def fallback_key(entry):
+    """the key of a new entry for which the key template gives an empty key:
+    the first title word of at least 3 characters (else the first word) of
+    the slugified title, words that start with a digit left out (a key does
+    not start with one), followed by the slugified year if there is one
+    (`only2000`); `entry` without such a word"""
+    words = [w for w in slugify(get_entry_val(entry, 'title', '')).split('-') if w and not w[0].isdigit()]
+    if not words:
+        return 'entry'
+    word = next((w for w in words if len(w) >= 3), words[0])
+    return word + slugify(get_entry_val(entry, 'year', ''))
+
+
 # the unknown-key fallback uses the slugified doi: a raw doi (slashes,
 # parentheses, unicode...) makes for an invalid or unwieldy bibtex key
-KEYFORMAT = Format(template='{author}{year}', author_num=2, author_sep="_", unknown_template="{doi_}")
+KEYFORMAT = Format(template='{author}{year}', author_num=2, author_sep="_", unknown_template="{doi_}", kind='key')
 NAMEFORMAT = Format(template='{authorX}_{year}_{title}', author_sep="_", title_sep="-", unknown_template="unknown_{doi_or_id}")

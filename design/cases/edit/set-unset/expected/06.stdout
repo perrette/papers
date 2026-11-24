@@ -1,0 +1,20 @@
+@book{doe2019,
+ abstract = {An overview of the large-scale circulation.},
+ author = {Doe, Jane and Roe, Richard},
+ isbn = {978-3-16-148410-0},
+ keywords = {to-read},
+ publisher = {Springer},
+ title = {Ocean Circulation},
+ year = {2019}
+}
+
+@article{perrette2013,
+ author = {Perrette, M. and Landerer, F. and Riva, R. and Frieler, K. and Meinshausen, M.},
+ doi = {10.5194/esd-4-11-2013},
+ journal = {Earth System Dynamics (ESD)},
+ keywords = {sea-level, projections, climate/amoc},
+ note = {},
+ title = {A scaling approach to project regional sea level rise and its uncertainties},
+ year = {2014}
+}
+

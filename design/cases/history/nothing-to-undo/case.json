@@ -1,0 +1,61 @@
+{
+  "description": "undo, redo and restore with nothing to do: an error, and no trace (no id in the configuration, no start state, no store folder)",
+  "sections": [
+    "history.md#6.2"
+  ],
+  "tests": [
+    "tests/test_undo.py::TestTimeTravel::test_nothing_to_undo",
+    "tests/test_spec_history.py::TestCommands::test_nothing_to_do_leaves_no_trace"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "redo"
+      ]
+    },
+    {
+      "argv": [
+        "undo"
+      ]
+    },
+    {
+      "argv": [
+        "undo"
+      ]
+    },
+    {
+      "argv": [
+        "redo"
+      ]
+    },
+    {
+      "argv": [
+        "history"
+      ]
+    },
+    {
+      "argv": [
+        "undo",
+        "-n",
+        "3"
+      ]
+    },
+    {
+      "argv": [
+        "restore"
+      ]
+    },
+    {
+      "argv": [
+        "restore",
+        "abcd1234"
+      ]
+    },
+    {
+      "argv": [
+        "history",
+        "--dry-run"
+      ]
+    }
+  ]
+}

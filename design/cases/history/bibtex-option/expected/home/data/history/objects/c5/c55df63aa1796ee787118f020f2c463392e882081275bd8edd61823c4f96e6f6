@@ -1,0 +1,22 @@
+@article{doe2019,
+ author = {Doe, Jane},
+ file = {:files/d1.txt:txt;:files/sub/d2.txt:txt},
+ journal = {J. Ocean},
+ title = {A paper with files},
+ year = {2019}
+}
+
+@article{mueller2021,
+ author = {Müller, Hans},
+ file = {:files/m.txt:txt},
+ keywords = {z},
+ title = {A paper with one file},
+ year = {2021}
+}
+
+@article{plain2020,
+ author = {Plain, Pat},
+ keywords = {y},
+ title = {A paper with no file},
+ year = {2020}
+}

@@ -1,0 +1,26 @@
+{
+  "description": "add a CSL-JSON file whose author (or editor) is one string or one object, not an array: it is one name (a string is a literal name)",
+  "sections": [
+    "formats.md#2.3",
+    "formats.md#3.3",
+    "formats.md#1.1"
+  ],
+  "tests": [
+    "tests/test_spec_formats.py::TestPartsToNames::test_one_name_not_in_an_array"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "add",
+        "refs.json"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    }
+  ]
+}

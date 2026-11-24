@@ -1,0 +1,31 @@
+{
+  "description": "two entries link to one file: file rename of one of them copies the file (a hard link when possible) under its name and the other keeps its link; a later rename moves the file of each, which it alone links to",
+  "sections": [
+    "library.md#the-files-directory/file-names",
+    "library.md#the-files-directory/the-files-setting"
+  ],
+  "tests": [
+    "tests/test_paths.py::TestRenameSharedFile::test_rename_one",
+    "tests/test_paths.py::TestRenameSharedFile::test_rename_all"
+  ],
+  "steps": [
+    {
+      "argv": ["file", "rename", "doe2019"]
+    },
+    {
+      "argv": ["list", "--format", "bibtex"]
+    },
+    {
+      "argv": ["file", "check"]
+    },
+    {
+      "argv": ["edit", "doe2019", "--set", "title=A new title"]
+    },
+    {
+      "argv": ["file", "rename"]
+    },
+    {
+      "argv": ["list", "--format", "bibtex"]
+    }
+  ]
+}

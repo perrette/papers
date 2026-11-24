@@ -1,0 +1,24 @@
+{
+ "parent": "$STATE3",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers rm c --delete-files",
+ "ops": [
+  {
+   "op": "trashed",
+   "src": "files/c1.txt",
+   "dst": null,
+   "checksum": "1b35060c33bd673408add98a1e47d4b5e7916e529207c38100b39af08358444f"
+  }
+ ],
+ "deleted": [
+  "1b35060c33bd673408add98a1e47d4b5e7916e529207c38100b39af08358444f"
+ ],
+ "bibtex": {
+  "pieces": [
+   "71287594e45385b368cde9e3357f74cb5e25ccd682a71c4c7856651350935480"
+  ],
+  "sha": "71287594e45385b368cde9e3357f74cb5e25ccd682a71c4c7856651350935480"
+ },
+ "files": {}
+}

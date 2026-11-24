@@ -1,0 +1,20 @@
+{
+  "description": "status outside of a library",
+  "sections": [
+    "library.md#finding-the-library-of-a-command",
+    "formats.md#7.3"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "status"
+      ]
+    },
+    {
+      "argv": [
+        "status",
+        "-v"
+      ]
+    }
+  ]
+}

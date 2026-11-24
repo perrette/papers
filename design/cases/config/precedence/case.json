@@ -1,0 +1,92 @@
+{
+  "description": "a setting comes from the command line, else the library, else the machine, else the default: the key template of add -u; a library value equal to the machine value is removed from the file",
+  "sections": [
+    "library.md#settings/precedence",
+    "library.md#settings/table",
+    "library.md#the-library-configuration/which-keys-papers-writes"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "add",
+        "n1.bib",
+        "-u",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "--global",
+        "key.template",
+        "{author}_{year}"
+      ]
+    },
+    {
+      "argv": [
+        "add",
+        "n2.bib",
+        "-u",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "key.template",
+        "{author}"
+      ]
+    },
+    {
+      "argv": [
+        "add",
+        "n3.bib",
+        "-u",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "add",
+        "n4.bib",
+        "-u",
+        "--porcelain",
+        "--key-template",
+        "{author}-{year}"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "key.template",
+        "{author}_{year}"
+      ]
+    },
+    {
+      "argv": [
+        "config"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "--unset",
+        "key.template"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "--global",
+        "--unset",
+        "key.template"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-K"
+      ]
+    }
+  ]
+}

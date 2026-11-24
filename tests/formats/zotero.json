@@ -1,0 +1,135 @@
+[
+	{
+		"id": "http://zotero.org/users/local/k3ZbQ9cH/items/9QX2ZJ4K",
+		"type": "article-journal",
+		"abstract": "Sea level rise is a major hazard for coastal areas.",
+		"container-title": "Earth System Dynamics",
+		"DOI": "10.5194/esd-4-11-2013",
+		"ISSN": "2190-4987",
+		"issue": "1",
+		"journalAbbreviation": "Earth Syst. Dynam.",
+		"language": "en",
+		"page": "11-29",
+		"source": "DOI.org (Crossref)",
+		"title": "A scaling approach to project regional sea level rise and its uncertainties",
+		"URL": "https://esd.copernicus.org/articles/4/11/2013/",
+		"volume": "4",
+		"author": [
+			{
+				"family": "Perrette",
+				"given": "M."
+			},
+			{
+				"family": "Landerer",
+				"given": "F."
+			},
+			{
+				"family": "Riva",
+				"given": "R."
+			},
+			{
+				"family": "Frieler",
+				"given": "K."
+			},
+			{
+				"family": "Meinshausen",
+				"given": "M."
+			}
+		],
+		"accessed": {
+			"date-parts": [
+				[
+					"2024",
+					3,
+					1
+				]
+			]
+		},
+		"issued": {
+			"date-parts": [
+				[
+					"2013",
+					1,
+					25
+				]
+			]
+		}
+	},
+	{
+		"id": "http://zotero.org/users/local/k3ZbQ9cH/items/T7MNB2WA",
+		"type": "chapter",
+		"collection-title": "Lecture Notes in Earth System Sciences",
+		"container-title": "Climate Change and Coastal Zones",
+		"edition": "2",
+		"event-place": "Cham",
+		"ISBN": "978-3-030-00000-0",
+		"page": "101-125",
+		"publisher": "Springer",
+		"publisher-place": "Cham",
+		"title": "Coastal flooding under sea level rise",
+		"author": [
+			{
+				"family": "Weiß",
+				"given": "Jürgen"
+			},
+			{
+				"family": "Beethoven",
+				"given": "Ludwig",
+				"non-dropping-particle": "van"
+			}
+		],
+		"editor": [
+			{
+				"family": "Fontaine",
+				"given": "Jean",
+				"non-dropping-particle": "de la"
+			}
+		],
+		"issued": {
+			"date-parts": [
+				[
+					"2019"
+				]
+			]
+		}
+	},
+	{
+		"id": "http://zotero.org/users/local/k3ZbQ9cH/items/R2D2C3PO",
+		"type": "report",
+		"genre": "Synthesis Report",
+		"number": "AR6",
+		"publisher": "IPCC",
+		"publisher-place": "Geneva, Switzerland",
+		"title": "Climate Change 2023: Synthesis Report",
+		"author": [
+			{
+				"literal": "Intergovernmental Panel on Climate Change"
+			}
+		],
+		"keyword": "climate, assessment",
+		"issued": {
+			"date-parts": [
+				[
+					"2023",
+					7
+				]
+			]
+		}
+	},
+	{
+		"id": "smith2020thesis",
+		"type": "thesis",
+		"genre": "PhD Thesis",
+		"publisher": "University of Potsdam",
+		"title": "Ice sheets and sea level",
+		"author": [
+			{
+				"family": "Smith",
+				"given": "Anna"
+			}
+		],
+		"issued": {
+			"raw": "2020-11-03"
+		}
+	}
+]

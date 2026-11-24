@@ -1,0 +1,21 @@
+{
+  "description": "rm - reads the keys from the standard input",
+  "sections": [
+    "formats.md#7.2"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "rm",
+        "-"
+      ],
+      "stdin_file": "stdin/01.txt"
+    },
+    {
+      "argv": [
+        "list",
+        "-K"
+      ]
+    }
+  ]
+}

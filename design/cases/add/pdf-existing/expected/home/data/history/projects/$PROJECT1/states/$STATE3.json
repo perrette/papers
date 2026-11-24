@@ -1,0 +1,26 @@
+{
+ "parent": "$STATE2",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers add again/xmp-doi.pdf --attach extra.txt",
+ "ops": [
+  {
+   "op": "moved",
+   "src": "extra.txt",
+   "dst": "files/doe_2020_title-of-ice2020--extra.txt",
+   "checksum": "65110ea3b8b62b0c09742c368bf1527f0978b06dff7a1371ef7b4c98e244d91a"
+  }
+ ],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "01316ad8816773c95b7b5995899990e4e62baa8109ff9fd97cd9e4a2ee3df92f"
+  ],
+  "sha": "01316ad8816773c95b7b5995899990e4e62baa8109ff9fd97cd9e4a2ee3df92f"
+ },
+ "files": {
+  ".papers/files.json": [
+   "e199eb147b825a50943345e08258a7e2121edf59efd587b56b7f2998cb999fc2"
+  ]
+ }
+}

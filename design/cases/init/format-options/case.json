@@ -1,0 +1,34 @@
+{
+  "description": "the name and key format options of init go to the library configuration",
+  "sections": [
+    "library.md#the-library-configuration/keys",
+    "library.md#the-library-configuration/which-keys-papers-writes"
+  ],
+  "tests": [
+    "tests/test_config_v3.py::TestInit::test_init_options",
+    "tests/test_spec_library.py::TestConfigurationKeys::test_format_keys"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "init",
+        "--key-template",
+        "{author}_{year}",
+        "--key-author-num",
+        "3",
+        "--name-template",
+        "{author}_{title}",
+        "--name-title-sep",
+        "_",
+        "--no-name-unknown-strict",
+        "--editor",
+        "vim"
+      ]
+    },
+    {
+      "argv": [
+        "config"
+      ]
+    }
+  ]
+}

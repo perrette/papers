@@ -1,0 +1,26 @@
+{
+ "parent": "$STATE1",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers file attach doe2019 dl/a.txt",
+ "ops": [
+  {
+   "op": "moved",
+   "src": "dl/a.txt",
+   "dst": "files/doe_2019_ocean-circulation.txt",
+   "checksum": "87428fc522803d31065e7bce3cf03fe475096631e5e07bbd7a0fde60c4cf25c7"
+  }
+ ],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "154c87592ab3a90c8f138318058b17aadd0a7e09483b8011e1f45318e41f9221"
+  ],
+  "sha": "154c87592ab3a90c8f138318058b17aadd0a7e09483b8011e1f45318e41f9221"
+ },
+ "files": {
+  ".papers/files.json": [
+   "0eef54abbb5680a8f4c383d5479995aa592420149e34975d0110283bb2bdeba5"
+  ]
+ }
+}

@@ -1,0 +1,129 @@
+{
+  "description": "the pool is written relative to the library (starting with .) when given relative or inside it, else absolute, with ~ under the home directory; paths given to config are relative to the current directory",
+  "sections": [
+    "library.md#pools-and-shallow-libraries/the-pool-setting",
+    "library.md#the-library-configuration/relative-paths"
+  ],
+  "tests": [
+    "tests/test_pools.py::TestConfigPool::test_pool_path_written_relative",
+    "tests/test_pools_onetime.py::TestSmallFixes::test_config_pool_path_with_home",
+    "tests/test_pools.py::TestConfigPoolSelfContained::test_config_pool_not_the_library_itself"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "config",
+        "pool",
+        "../pool1",
+        "-y"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "config",
+        "pool",
+        "../pool2",
+        "-y"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "config",
+        "pool",
+        "$WORK/pool1",
+        "-y"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "config",
+        "pool",
+        "$WORK/lib/inner",
+        "-y"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "config",
+        "pool",
+        "~/pool3",
+        "-y"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "config",
+        "pool",
+        "$HOME/pool3",
+        "-y"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "pool",
+        "../../pool2",
+        "-y"
+      ],
+      "cwd": "lib/sub"
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "config",
+        "pool"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "config",
+        "pool",
+        "nowhere",
+        "-y"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "config",
+        "pool",
+        "../lib",
+        "-y"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "config",
+        "pool",
+        "none",
+        "-y"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "config",
+        "pool"
+      ]
+    }
+  ]
+}

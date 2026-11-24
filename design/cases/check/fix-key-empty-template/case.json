@@ -1,0 +1,41 @@
+{
+  "description": "check --fix-key and --auto-key never rename an entry to an empty key: when the key template gives an empty key (no author, no DOI), the entry keeps its key and papers warns",
+  "sections": [
+    "bibtex.md#7.2",
+    "bibtex.md#8",
+    "library.md#name-and-key-templates/keys"
+  ],
+  "tests": [
+    "tests/test_bib_fix.py::TestFixEntry::test_fix_key_never_empty"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "check",
+        "--fix-key",
+        "-y",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "check",
+        "--auto-key",
+        "-y",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-K"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,73 @@
+{
+  "description": "a step that also wrote a pool: history --revert acts on the library, and says how to revert the step of the pool",
+  "sections": [
+    "history.md#8.4",
+    "history.md#7.1",
+    "history.md#2.5"
+  ],
+  "tests": [
+    "tests/test_revert.py::TestRevertShallow::test_pool_line"
+  ],
+  "ignore": [
+    "home/data/history/*"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "init",
+        "pool"
+      ]
+    },
+    {
+      "argv": [
+        "init",
+        "lib",
+        "--pool",
+        "pool"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "add",
+        "../import/refs.bib"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "tag",
+        "doe2019",
+        "--add",
+        "later"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "history",
+        "--revert",
+        "$STATE4"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "list",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "pool",
+        "list",
+        "-K"
+      ]
+    }
+  ]
+}

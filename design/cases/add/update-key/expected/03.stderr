@@ -1,0 +1,2 @@
+papers: error: any_old_key: already in library as weber_rossi2022 (same DOI 10.5194/os-18-1-2022; fields to add)
+Pass --on-duplicate with one of: ask, keep, update, skip (ask is the default in a terminal), see `papers add --help`.

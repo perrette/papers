@@ -1,0 +1,48 @@
+{
+  "description": "history --all lists the projects of a store in the order of the place of their last use (the real path of its bibtex, by Unicode code points), not in the order of their identifiers (random)",
+  "sections": [
+    "history.md#12",
+    "history.md#2.7"
+  ],
+  "tests": [
+    "tests/test_history.py::TestHistoryCommand::test_all_sorted_by_place"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "-C",
+        "c",
+        "tag",
+        "doe2019",
+        "--add",
+        "x"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "a",
+        "tag",
+        "doe2019",
+        "--add",
+        "x"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "b",
+        "tag",
+        "doe2019",
+        "--add",
+        "x"
+      ]
+    },
+    {
+      "argv": [
+        "history",
+        "--all"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,1 @@
+papers: warning: $WORK/p2.txt: left where it is (files mode ask, no terminal to ask): --move, --copy or --link chooses, or `papers config files move|copy|link`

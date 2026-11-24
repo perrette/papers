@@ -1,0 +1,3 @@
+papers: error: mueller2021: invalid name template '{year.real}': 'str' object has no attribute 'real'
+papers: error: doe2019: invalid name template '{year.real}': 'str' object has no attribute 'real'
+papers: error: two: invalid name template '{year.real}': 'str' object has no attribute 'real'

@@ -1,0 +1,13 @@
+@article{mykey,
+ author = {Kucsko, G. and Maurer, P. C. and Yao, N. Y. and Kubo, M. and Noh, H. J. and Lo, P. K. and Park, H. and Lukin, M. D.},
+ doi = {10.1038/nature12373},
+ file = {:files/kucsko_et_al_2013_nanometre-scale-thermometry-in-a-living-cell.pdf:pdf},
+ journal = {Nature},
+ number = {7460},
+ pages = {54-58},
+ title = {Nanometre-scale thermometry in a living cell},
+ url = {https://doi.org/10.1038/nature12373},
+ volume = {500},
+ year = {2013}
+}
+

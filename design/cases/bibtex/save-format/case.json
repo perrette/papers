@@ -1,0 +1,27 @@
+{
+  "description": "a bibtex of every kind (comments, @string, @preamble, failed blocks, odd values) is saved in the reference layout (tests/sortformat/varied.bib and varied.expected.bib of papers): after the tag is added, papers.bib is varied.expected.bib with the line keywords = {x} added (a second save would add a warning line: bibtex.md, open question 1)",
+  "sections": [
+    "bibtex.md#2.1",
+    "bibtex.md#2.3",
+    "bibtex.md#2.4",
+    "bibtex.md#2.5",
+    "bibtex.md#3.1",
+    "bibtex.md#3.2",
+    "bibtex.md#3.3",
+    "bibtex.md#3.4"
+  ],
+  "tests": [
+    "tests/test_sort_format.py::TestSortFormat::test_sort_format_unchanged",
+    "tests/test_parsecache.py::TestParseCache::test_warning_once"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "tag",
+        "alpha1999",
+        "--add",
+        "x"
+      ]
+    }
+  ]
+}

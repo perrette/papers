@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE1",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers rm PERRETTE2013",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "8c4d4499f4ff2440c095a7b15a9c543f889a40c58884c5771905d37cea82780a"
+  ],
+  "sha": "8c4d4499f4ff2440c095a7b15a9c543f889a40c58884c5771905d37cea82780a"
+ },
+ "files": {}
+}

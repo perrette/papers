@@ -1,0 +1,4 @@
+DRYRUN: mv $WORK/files/a1.txt $WORK/moved/a1.txt
+DRYRUN: mv $WORK/files/a2.txt $WORK/moved/a2.txt
+DRYRUN: a2020: $WORK/files/a1.txt -> $WORK/moved/a1.txt
+DRYRUN: a2020: $WORK/files/a2.txt -> $WORK/moved/a2.txt

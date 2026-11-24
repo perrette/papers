@@ -1,0 +1,34 @@
+{
+  "description": "status --bibtex FILE and list --bibtex FILE with a FILE that does not exist: an error, exit status 1",
+  "sections": [
+    "library.md#finding-the-library-of-a-command",
+    "formats.md#7.3"
+  ],
+  "tests": [
+    "tests/test_spec_library.py::TestFindingTheLibrary::test_status_bibtex"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "status",
+        "--bibtex",
+        "nosuch.bib"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--bibtex",
+        "nosuch.bib",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "status",
+        "--bibtex",
+        "files"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,62 @@
+{
+ "parent": "$STATE1",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers file rename",
+ "ops": [
+  {
+   "op": "moved",
+   "src": "files/m.txt",
+   "dst": "files/muller_et_al_2021_the-ice-l-eau-of-10000-things-a-study.txt",
+   "checksum": "01a60e35df88d8b49546cb3f8f4ba4f406870f9b8e1f394c9d48ab73548d748d"
+  },
+  {
+   "op": "moved",
+   "src": "files/d1.txt",
+   "dst": "files/doe_2019_a-longer-title-about-many-different-subjects-of-the-sea.txt",
+   "checksum": "aa7c0aae7df2aa227cedc731deb961340e89eb853c15d6b90d474e2bb66277e3"
+  },
+  {
+   "op": "moved",
+   "src": "files/sub/x.txt",
+   "dst": "files/doe_2019_a-longer-title-about-many-different-subjects-of-the-sea--x.txt",
+   "checksum": "c3ab322901f527002fb30a26217e5fe4a21837c17e309c9f1b09c099c1d4c076"
+  },
+  {
+   "op": "moved",
+   "src": "files/other/x.txt",
+   "dst": "files/doe_2019_a-longer-title-about-many-different-subjects-of-the-sea--x-2.txt",
+   "checksum": "c6a6de7241939b8cca2efeed7c1e7389ceadcc8cbac96a11db5df156a5ef5491"
+  },
+  {
+   "op": "moved",
+   "src": "files/y.PDF",
+   "dst": "files/doe_2019_a-longer-title-about-many-different-subjects-of-the-sea--y.PDF",
+   "checksum": "3bb2abb69ebb27fbfe63c7639624c6ec5e331b841a5bc8c3ebc10b9285e90877"
+  },
+  {
+   "op": "moved",
+   "src": "files/u.txt",
+   "dst": "files/unknown_10-1000-xyz-1.txt",
+   "checksum": "ea46748e171abd2dd4dba5b86bb6589334d86bba2df8d50cbb16b36c83b0856a"
+  },
+  {
+   "op": "moved",
+   "src": "files/r.txt",
+   "dst": "files/roe_and_poe_2018_two-authors.txt",
+   "checksum": "8e54b0ca18020275e4aef1ca0eb5e197e066c065c1864817652a8a39c55402cd"
+  }
+ ],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "4cf3dd4e67804e148fafa3704047c23173dba9f62a35978bd675f2ed75c290c9"
+  ],
+  "sha": "4cf3dd4e67804e148fafa3704047c23173dba9f62a35978bd675f2ed75c290c9"
+ },
+ "files": {
+  ".papers/files.json": [
+   "6a385dfcb7efc42292579a0fbfe0c4ca7b30209e9dfae3402ad3c4977b165bed"
+  ]
+ }
+}

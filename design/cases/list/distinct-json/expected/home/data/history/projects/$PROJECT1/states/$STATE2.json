@@ -1,0 +1,19 @@
+{
+ "parent": "$STATE1",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers check --duplicates --on-duplicate keep --porcelain",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "6fc0c1aec84281168e7bd35fa2e7d1f5733fdc06a1e1932339434cf1ab198f39"
+  ],
+  "sha": "6fc0c1aec84281168e7bd35fa2e7d1f5733fdc06a1e1932339434cf1ab198f39"
+ },
+ "files": {
+  ".papers/distinct.json": [
+   "5bc8730cdb67ecf3733c053f57836587ea4e103256c468a33d6fba45bc784996"
+  ]
+ }
+}

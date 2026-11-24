@@ -1,0 +1,101 @@
+{
+  "description": "a state is named by its identifier or the start of it (4 characters or more, any case, spaces dropped); a start that two states have, one that is too short, not hexadecimal, or no state has, is an error",
+  "sections": [
+    "history.md#2.5",
+    "history.md#6.2",
+    "history.md#8",
+    "history.md#9.4"
+  ],
+  "tests": [
+    "tests/test_history.py::TestStates::test_state_identifier",
+    "tests/test_history.py::TestStoredNames::test_known_state_id",
+    "tests/test_undo.py::TestTimeTravel::test_unknown_state"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "history"
+      ]
+    },
+    {
+      "argv": [
+        "restore",
+        "b95f"
+      ]
+    },
+    {
+      "argv": [
+        "restore",
+        "b95"
+      ]
+    },
+    {
+      "argv": [
+        "restore",
+        "zzzz"
+      ]
+    },
+    {
+      "argv": [
+        "restore",
+        "0000"
+      ]
+    },
+    {
+      "argv": [
+        "history",
+        "--revert",
+        "b95f"
+      ]
+    },
+    {
+      "argv": [
+        "history",
+        "--drop-files",
+        "b95f"
+      ]
+    },
+    {
+      "argv": [
+        "restore",
+        "D62498"
+      ]
+    },
+    {
+      "argv": [
+        "history"
+      ]
+    },
+    {
+      "argv": [
+        "restore",
+        " b95f1da6 "
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "restore",
+        "b95f078a3209f32847e7c85b00f42a46fd601cea5d55e54d539b94a4b98b42fc"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "restore",
+        "b95f0",
+        "--dry-run"
+      ]
+    }
+  ]
+}

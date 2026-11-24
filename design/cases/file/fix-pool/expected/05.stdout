@@ -1,0 +1,15 @@
+@article{lost,
+ author = {Lost, Lara},
+ file = {:../pool/files/lost.txt:txt},
+ title = {Lost file},
+ year = {2010}
+}
+
+@article{smith2020,
+ author = {Smith, John and Doe, Jane},
+ doi = {10.1000/abc},
+ file = {:../pool/files/smith_doe_2020_a-title.txt:txt},
+ title = {A title of a paper},
+ year = {2020}
+}
+

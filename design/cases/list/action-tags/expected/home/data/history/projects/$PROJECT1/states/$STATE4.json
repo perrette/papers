@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE3",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers list --tag climate/amoc --rm-tag ice a",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "d099710cb64b258f81497e02748c8a5b5d1c79b13963f45aa7a3e6df5fa4fa22"
+  ],
+  "sha": "d099710cb64b258f81497e02748c8a5b5d1c79b13963f45aa7a3e6df5fa4fa22"
+ },
+ "files": {}
+}

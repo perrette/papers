@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE3",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers add --year 2002 --metadata note=no title",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "d1d56e05384deb66edfd810548d2caa21ecd2f30981189a27a64989f85f7434c"
+  ],
+  "sha": "d1d56e05384deb66edfd810548d2caa21ecd2f30981189a27a64989f85f7434c"
+ },
+ "files": {}
+}

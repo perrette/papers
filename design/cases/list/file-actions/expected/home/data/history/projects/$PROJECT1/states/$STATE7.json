@@ -1,0 +1,26 @@
+{
+ "parent": "$STATE6",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers list c2022 --add-files x4.txt --rename",
+ "ops": [
+  {
+   "op": "moved",
+   "src": "x4.txt",
+   "dst": "files/lee_2020_title-of-c2022--x4.txt",
+   "checksum": "1fce9bf5b094435174a024f6462a5675839411c4aceb783efbc023b0f1c8bcec"
+  }
+ ],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "a979021b1f1a98a80008dc31a387634e884414e68277c148e05416efff3a8737"
+  ],
+  "sha": "a979021b1f1a98a80008dc31a387634e884414e68277c148e05416efff3a8737"
+ },
+ "files": {
+  ".papers/files.json": [
+   "39a44f7616f7e771f81cf07736baef9e329bb4f97a452c6e3abc8028e2d44f9d"
+  ]
+ }
+}

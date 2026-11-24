@@ -1,0 +1,14 @@
+@article{brown2021,
+ author = {Brown, Bob},
+ title = {Another paper},
+ year = {2022}
+}
+
+@article{smith2020,
+ author = {Smith, John},
+ file = {:../pool/files/smith_2020_a-paper.txt:txt},
+ note = {library note},
+ title = {A better title},
+ year = {2020}
+}
+

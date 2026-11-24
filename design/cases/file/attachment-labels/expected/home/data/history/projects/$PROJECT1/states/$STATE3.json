@@ -1,0 +1,26 @@
+{
+ "parent": "$STATE2",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers file attach doe2020 inbox/Donn\u00e9es \u00e9t\u00e9.csv",
+ "ops": [
+  {
+   "op": "moved",
+   "src": "inbox/Donn\u00e9es \u00e9t\u00e9.csv",
+   "dst": "files/doe_2020_ocean-heat--donnees-ete.csv",
+   "checksum": "6667b2d1aab6a00caa5aee5af8ad9f1465e567abf1c209d15727d57b3e8f6e5f"
+  }
+ ],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "db4505700c45785bd0a9eda816379fce4f635f5adf07264aa0e339b4af00cdb5"
+  ],
+  "sha": "db4505700c45785bd0a9eda816379fce4f635f5adf07264aa0e339b4af00cdb5"
+ },
+ "files": {
+  ".papers/files.json": [
+   "865431ef663c6a86b5c2a62857360768920c7034c34dc71c272bb19adc1c0621"
+  ]
+ }
+}

@@ -1,0 +1,2 @@
+no history yet: each command that changes the library records a step
+history: $DATA/history, 0.0 MB (up to 500 MB: the history-size setting; deleted files kept)

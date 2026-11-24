@@ -1,0 +1,106 @@
+{
+  "description": "in a shallow library, file rename renames the files already in the pool's files directory, with the pool's name template, and the pool entry links to the new names; without auto-push, an entry whose pool entry gets another name keeps its files, with a warning, until it is pushed; another shallow library of the pool repairs its links when loaded",
+  "sections": [
+    "library.md#pools-and-shallow-libraries/files-of-a-shallow-library",
+    "library.md#the-files-directory/the-files-setting",
+    "exchange.md#12.3",
+    "exchange.md#15.3"
+  ],
+  "tests": [
+    "tests/test_pools.py::TestShallow::test_file_rename_renames_pool_files",
+    "tests/test_pools.py::TestShallow::test_file_rename_pool_entry_named_otherwise",
+    "tests/test_pools.py::TestShallow::test_file_rename_repairs_other_shallow_libraries"
+  ],
+  "ignore": [
+    "home/data/history/*"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "pull",
+        "--all"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib2",
+        "pull",
+        "--all"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "edit",
+        "jones2019",
+        "--set",
+        "title=Ice sheets and sea level"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "file",
+        "rename"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "pool",
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "push",
+        "jones2019"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "file",
+        "rename",
+        "jones2019"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "pool",
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "lib2",
+        "tag",
+        "smith2020",
+        "jones2019",
+        "--add",
+        "x"
+      ],
+      "wait": 1.1
+    }
+  ]
+}

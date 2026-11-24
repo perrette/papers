@@ -1,0 +1,37 @@
+{
+  "description": "history outside of a library",
+  "sections": [
+    "history.md#6.2",
+    "formats.md#7.3",
+    "history.md#2.5"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "history"
+      ]
+    },
+    {
+      "argv": [
+        "history",
+        "--all"
+      ]
+    },
+    {
+      "argv": [
+        "undo"
+      ]
+    },
+    {
+      "argv": [
+        "redo"
+      ]
+    },
+    {
+      "argv": [
+        "restore",
+        "$STATE1"
+      ]
+    }
+  ]
+}

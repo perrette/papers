@@ -1,0 +1,140 @@
+{
+  "description": "auto-push of file links and of the entries new to the library (whatever auto-push says): the pool entry links to a file attached in the library and the entry added by the library is added to the pool",
+  "sections": [
+    "exchange.md#12.1",
+    "exchange.md#12.3"
+  ],
+  "ignore": [
+    "home/data/history/*"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "pull",
+        "--all"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "add",
+        "../new.bib"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "pool",
+        "list",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "file",
+        "attach",
+        "fresh",
+        "../extra.txt"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "pool",
+        "list",
+        "--format",
+        "bibtex",
+        "fresh"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "tag",
+        "jones2019",
+        "--add",
+        "x"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "pool",
+        "list",
+        "--format",
+        "bibtex",
+        "jones2019"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "config",
+        "auto-push",
+        "true"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "tag",
+        "jones2019",
+        "--add",
+        "y"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "pool",
+        "list",
+        "--format",
+        "bibtex",
+        "jones2019"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "pool",
+        "edit",
+        "jones2019",
+        "--set",
+        "note=pool side"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "tag",
+        "jones2019",
+        "--add",
+        "z"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "status"
+      ],
+      "wait": 1.1
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+@article{smith2020,
+ author = {Smith, John},
+ file = {:files/smith_2020_a-paper.txt:txt},
+ keywords = {t},
+ note = {via auto-push},
+ title = {A paper},
+ year = {2020}
+}
+

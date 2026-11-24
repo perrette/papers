@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE2",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers add --title Ocean by fields --author Ann Bee --year 2020 --edit --porcelain",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "87595d52a2a1f3522e955c7f8403ca9877fff69d14d305b37e85c8fdc3c49957"
+  ],
+  "sha": "87595d52a2a1f3522e955c7f8403ca9877fff69d14d305b37e85c8fdc3c49957"
+ },
+ "files": {}
+}

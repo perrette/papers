@@ -1,0 +1,26 @@
+{
+ "parent": "$STATE2",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers add --no-query-doi --doi 10.1234/new.2021 --attach plain.txt --key new2021",
+ "ops": [
+  {
+   "op": "moved",
+   "src": "plain.txt",
+   "dst": "files/unknown_10-1234-new-2021.txt",
+   "checksum": "dacf36547c7774a0a170806363b5d412991fbc0d6260b2c00b1d3a80a816c23f"
+  }
+ ],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "4c9cbc303691dc0b2962928eeb13ae8bfb031e1c49b1879108bbf602854a41f1"
+  ],
+  "sha": "4c9cbc303691dc0b2962928eeb13ae8bfb031e1c49b1879108bbf602854a41f1"
+ },
+ "files": {
+  ".papers/files.json": [
+   "81af9af68fe952f18a1158a819d0ee731067b1bf6d1b7f3d9d12eb75f1338d23"
+  ]
+ }
+}

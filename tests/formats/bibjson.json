@@ -1,0 +1,56 @@
+{
+    "metadata": {
+        "collection": "my_collection",
+        "records": 2
+    },
+    "records": [
+        {
+            "title": "Open Bibliography for Science, Technology and Medicine",
+            "author":[
+                {"name": "Richard Jones"},
+                {"name": "Mark MacGillivray"},
+                {"name": "Peter Murray-Rust"},
+                {"name": "Jim Pitman"},
+                {"name": "Peter Sefton"},
+                {"name": "Ben O'Steen"},
+                {"name": "William Waites"}
+            ],
+            "type": "article",
+            "year": "2011",
+            "journal": {"name": "Journal of Cheminformatics"},
+            "link": [{"url":"http://www.jcheminf.com/content/3/1/47"}],
+            "identifier": [{"type":"doi","id":"10.1186/1758-2946-3-47"}]
+        },
+        {
+            "type": "article",
+            "title": "On a family of symmetric Bernoulli convolutions",
+            "author": [
+                {
+                    "name": "Erdös, Paul"
+                }
+            ],
+            "journal": {
+                "name": "American Journal of Mathematics",
+                "identifier":[
+                    {
+                        "id": "0002-9327",
+                        "type": "issn"
+                    }
+                ],
+                "volume": "61",
+                "pages": "974--976"
+            },
+            "year": "1939",
+            "owner": "me",
+            "id": "ID_1",
+            "collection": "my_collection",
+            "url": "http://example.com/me/my_collection/ID_1",
+            "link":[
+                {
+                    "url": "http://okfn.org",
+                    "anchor": "Open Knowledge Foundation"
+                }
+            ]
+        }
+    ]
+}

@@ -1,0 +1,43 @@
+@misc{e1,
+ author = {Doe, Jane},
+ file = {:files/e1.PDF:PDF},
+ title = {one},
+ year = {2001}
+}
+
+@misc{e2,
+ author = {Doe, Jane},
+ file = {:files/e2:},
+ title = {two},
+ year = {2002}
+}
+
+@misc{e3,
+ author = {Doe, Jane},
+ title = {three},
+ year = {2003}
+}
+
+@misc{e4,
+ author = {Doe, Jane},
+ title = {four},
+ year = {2004}
+}
+
+@misc{e5,
+ author = {Doe, Jane},
+ title = {five},
+ year = {2005}
+}
+
+@misc{e6,
+ author = {Doe, Jane},
+ title = {six},
+ year = {2006}
+}
+
+@misc{e7,
+ author = {Doe, Jane},
+ title = {seven},
+ year = {2007}
+}

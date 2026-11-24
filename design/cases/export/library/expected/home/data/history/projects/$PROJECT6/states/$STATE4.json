@@ -1,0 +1,41 @@
+{
+ "parent": "$STATE3",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers export out",
+ "ops": [
+  {
+   "op": "copied",
+   "src": "files/d1.txt",
+   "dst": "out/files/doe_2019.txt",
+   "checksum": "aa7c0aae7df2aa227cedc731deb961340e89eb853c15d6b90d474e2bb66277e3"
+  },
+  {
+   "op": "copied",
+   "src": "files/sub/d2.txt",
+   "dst": "out/files/doe_2019--d2.txt",
+   "checksum": "c66169a0e4913133cbebf50c3f71dabef7540b9a636cde9c80be6e39f7113fa5"
+  },
+  {
+   "op": "copied",
+   "src": "files/m.txt",
+   "dst": "out/files/muller_2021.txt",
+   "checksum": "01a60e35df88d8b49546cb3f8f4ba4f406870f9b8e1f394c9d48ab73548d748d"
+  }
+ ],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "e7195c979af135d119f1c6d331b511ff410e74216f6685ff2e9d4cb6645cf9fa"
+  ],
+  "sha": "e7195c979af135d119f1c6d331b511ff410e74216f6685ff2e9d4cb6645cf9fa"
+ },
+ "files": {},
+ "pools": {
+  "$PROJECT2": {
+   "state": "$STATE2",
+   "base": "$STATE1",
+   "config": "$WORK/out/.papers/config.json"
+  }
+ }
+}

@@ -1,0 +1,36 @@
+{
+  "description": "edit --from - with text that is not an entry, or an unknown key",
+  "sections": [
+    "formats.md#1.2",
+    "formats.md#7.3"
+  ],
+  "tests": [
+    "tests/test_entry_cmds.py::TestEditFrom::test_errors"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "edit",
+        "perrette2013",
+        "--from",
+        "-"
+      ],
+      "stdin_file": "stdin/01.txt"
+    },
+    {
+      "argv": [
+        "edit",
+        "nosuch",
+        "--from",
+        "-"
+      ],
+      "stdin_file": "stdin/02.txt"
+    },
+    {
+      "argv": [
+        "list",
+        "-K"
+      ]
+    }
+  ]
+}

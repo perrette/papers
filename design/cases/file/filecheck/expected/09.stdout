@@ -1,0 +1,3 @@
+Check files directory for unlinked files
+a1-copy.txt: removed, not in the library
+unlinked.txt: removed, not in the library

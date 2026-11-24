@@ -1,0 +1,26 @@
+{
+  "description": "status of a library without pool, empty and with entries",
+  "sections": [
+    "library.md#layout"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "status"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "empty",
+        "status"
+      ]
+    },
+    {
+      "argv": [
+        "status",
+        "-v"
+      ]
+    }
+  ]
+}

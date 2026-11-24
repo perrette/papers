@@ -1,0 +1,24 @@
+{
+ "parent": "$STATE2",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers rm mueller2021 --delete-files",
+ "ops": [
+  {
+   "op": "trashed",
+   "src": "files/m.txt",
+   "dst": null,
+   "checksum": "01a60e35df88d8b49546cb3f8f4ba4f406870f9b8e1f394c9d48ab73548d748d"
+  }
+ ],
+ "deleted": [
+  "01a60e35df88d8b49546cb3f8f4ba4f406870f9b8e1f394c9d48ab73548d748d"
+ ],
+ "bibtex": {
+  "pieces": [
+   "6452057cdcfecc1993d73406807193c9fdcaf932893b4768c707961a85f8a7fc"
+  ],
+  "sha": "6452057cdcfecc1993d73406807193c9fdcaf932893b4768c707961a85f8a7fc"
+ },
+ "files": {}
+}

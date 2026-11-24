@@ -1,0 +1,4 @@
+papers library: $WORK/lib (default library, set in $CONFIG/config.json)
+* bibtex: lib/papers.bib (5 entries, 0 file links)
+* files:  lib/files (the files directory of the library, empty)
+`papers config` lists and sets the settings

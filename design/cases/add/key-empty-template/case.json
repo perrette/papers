@@ -1,0 +1,61 @@
+{
+  "description": "a new entry never gets an empty key: when the key template gives none (no author or year, no DOI), the key is made from the title: the first slug word of at least 3 characters (else the first word; words that start with a digit are left out) and the year, else entry; then the suffix rule (only2000b, onlyb, entryb)",
+  "sections": [
+    "bibtex.md#8",
+    "library.md#name-and-key-templates/keys",
+    "library.md#name-and-key-templates/placeholders"
+  ],
+  "tests": [
+    "tests/test_spec_bibtex.py::TestKeySuffix::test_empty_template_key",
+    "tests/test_entry_cmds.py::TestAddEmptyKey::test_add"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "add",
+        "new.bib",
+        "-u",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "add",
+        "--title",
+        "Only a title",
+        "--year",
+        "2000"
+      ]
+    },
+    {
+      "argv": [
+        "add",
+        "--year",
+        "2002",
+        "--metadata",
+        "note=no title"
+      ]
+    },
+    {
+      "argv": [
+        "add",
+        "--title",
+        "10 000",
+        "--metadata",
+        "note=no word"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-K"
+      ]
+    }
+  ]
+}

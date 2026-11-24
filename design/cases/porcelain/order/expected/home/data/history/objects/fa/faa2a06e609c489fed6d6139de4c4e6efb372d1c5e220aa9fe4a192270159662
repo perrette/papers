@@ -1,0 +1,13 @@
+@article{Alpha2021,
+ author = {Alpha, Ann},
+ keywords = {x},
+ title = {Upper case key},
+ year = {2021}
+}
+
+@article{alpha2019,
+ author = {Alpha, Ann},
+ keywords = {x},
+ title = {Lower case key},
+ year = {2019}
+}

@@ -1,0 +1,38 @@
+@techreport{doe2018,
+ author = {Doe, Jane},
+ file = {:files/doe_2018_a-report.txt:txt},
+ institution = {PIK},
+ title = {A report},
+ type = {Working paper},
+ year = {2018}
+}
+
+@article{doe2020,
+ author = {Doe, Jane and van der Berg, Jan and {World Health Organization}},
+ doi = {10.1000/CSL.1},
+ journal = {Journal of Imports},
+ keywords = {a, b, c},
+ month = {5},
+ number = {2},
+ pages = {5--9},
+ title = {Imported from CSL-JSON},
+ urldate = {2021-03-04},
+ volume = {3},
+ year = {2020}
+}
+
+@mastersthesis{student2019,
+ author = {Student, Sue},
+ month = {6},
+ school = {Univ. of Berlin},
+ title = {A thesis},
+ year = {2019}
+}
+
+@online{web2022,
+ author = {Web, Wim},
+ title = {A web page},
+ url = {https://example.org},
+ year = {2022}
+}
+

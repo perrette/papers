@@ -1,0 +1,39 @@
+{
+  "description": "the slugs of the file names: HTML references are decoded first (named: those of HTML 4, case sensitive, apos stays; decimal and hexadecimal: when they are characters), then the text is transliterated to ASCII (the table of bibtex.md 9.1: other scripts too) and cut into a slug; doi_or_id of an empty or blank doi is the key",
+  "sections": [
+    "library.md#name-and-key-templates/placeholders",
+    "library.md#name-and-key-templates/file-names",
+    "bibtex.md#9.1"
+  ],
+  "tests": [
+    "tests/test_spec_library.py::TestPlaceholders::test_slugify",
+    "tests/test_spec_library.py::TestPlaceholders::test_slugify_html_references",
+    "tests/test_filename_unit.py::TestSlugTable::test_own_table_whatever_the_slugify_backend",
+    "tests/test_spec_tables.py::TestSpecTables::test_ascii_transliteration"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "file",
+        "rename",
+        "--name-template",
+        "{key}_{author}_{title}_{year}"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "rename",
+        "--name-template",
+        "{key}_{doi_}_{doi_or_id}"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,2 @@
+papers: error: not-a-pdf.pdf: Failed to open file 'not-a-pdf.pdf' as type pdf.
+papers: error: 1 of 2 files failed

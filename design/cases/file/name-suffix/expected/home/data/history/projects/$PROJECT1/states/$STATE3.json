@@ -1,0 +1,26 @@
+{
+ "parent": "$STATE2",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers file attach e2 dl/b.txt --copy",
+ "ops": [
+  {
+   "op": "copied",
+   "src": "dl/b.txt",
+   "dst": "files/doe_2019_same-title-2.txt",
+   "checksum": "f957b19529906961933c5c30f8713c500a9bb5d9d0695c40d48c97a26a3594ec"
+  }
+ ],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "c864d2e555f6c7184c5988f4d80df3a4fd966f4e2394144b0f76bead7bb7e186"
+  ],
+  "sha": "c864d2e555f6c7184c5988f4d80df3a4fd966f4e2394144b0f76bead7bb7e186"
+ },
+ "files": {
+  ".papers/files.json": [
+   "79ce7097d099af05be3db721ac1996179b9e659c6ffbf5299a04f81176a537db"
+  ]
+ }
+}

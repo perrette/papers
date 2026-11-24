@@ -1,0 +1,56 @@
+{
+  "description": "the lines come by kind (removed, renamed, added, then modified and existing) and sorted by key, by code point: an upper-case key before a lower-case one",
+  "sections": [
+    "formats.md#7.2",
+    "formats.md#7.1"
+  ],
+  "tests": [
+    "tests/test_spec_formats.py::TestPorcelainLines::test_order"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "tag",
+        "beta2018",
+        "Zeta2020",
+        "alpha2019",
+        "Alpha2021",
+        "--add",
+        "x",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "rm",
+        "beta2018",
+        "Zeta2020",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "add",
+        "new.bib",
+        "--porcelain",
+        "--on-duplicate",
+        "update"
+      ]
+    },
+    {
+      "argv": [
+        "edit",
+        "alpha2019",
+        "--key",
+        "a2019",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-K"
+      ]
+    }
+  ]
+}

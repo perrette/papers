@@ -1,0 +1,56 @@
+{
+ "parent": "$STATE4",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers file rename --name-template {authorX}_{year}_{title} --name-title-length 20 --name-title-word-num 3 --name-title-word-size 3 --name-author-num 1 --name-author-sep -",
+ "ops": [
+  {
+   "op": "moved",
+   "src": "files/doe_doe2019.txt",
+   "dst": "files/doe_2019_longer-title-about.txt",
+   "checksum": "aa7c0aae7df2aa227cedc731deb961340e89eb853c15d6b90d474e2bb66277e3"
+  },
+  {
+   "op": "moved",
+   "src": "files/doe_doe2019--x.txt",
+   "dst": "files/doe_2019_longer-title-about--x.txt",
+   "checksum": "c3ab322901f527002fb30a26217e5fe4a21837c17e309c9f1b09c099c1d4c076"
+  },
+  {
+   "op": "moved",
+   "src": "files/doe_doe2019--x-2.txt",
+   "dst": "files/doe_2019_longer-title-about--x-2.txt",
+   "checksum": "c6a6de7241939b8cca2efeed7c1e7389ceadcc8cbac96a11db5df156a5ef5491"
+  },
+  {
+   "op": "moved",
+   "src": "files/doe_doe2019--y.PDF",
+   "dst": "files/doe_2019_longer-title-about--y.PDF",
+   "checksum": "3bb2abb69ebb27fbfe63c7639624c6ec5e331b841a5bc8c3ebc10b9285e90877"
+  },
+  {
+   "op": "moved",
+   "src": "files/muller_skoda_mueller2021.txt",
+   "dst": "files/muller-et-al_2021_the-ice-eau.txt",
+   "checksum": "01a60e35df88d8b49546cb3f8f4ba4f406870f9b8e1f394c9d48ab73548d748d"
+  },
+  {
+   "op": "moved",
+   "src": "files/roe_poe_two.txt",
+   "dst": "files/roe-and-poe_2018_two-authors.txt",
+   "checksum": "8e54b0ca18020275e4aef1ca0eb5e197e066c065c1864817652a8a39c55402cd"
+  }
+ ],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "db40842a9a4b1ddec470db5677a85105379dda2825f074e62ca4bc2cb60c69ad"
+  ],
+  "sha": "db40842a9a4b1ddec470db5677a85105379dda2825f074e62ca4bc2cb60c69ad"
+ },
+ "files": {
+  ".papers/files.json": [
+   "68dbe243812054c87f43d759fa8ab3fb3b549173d776aaf0b28804d5520fc3d4"
+  ]
+ }
+}

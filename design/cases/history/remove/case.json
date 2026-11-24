@@ -1,0 +1,170 @@
+{
+  "description": "history --remove [ID]: the history of this place, of the library when no other folder uses it, or of the library ID; the question is not asked with -y, and without a terminal the command stops",
+  "sections": [
+    "history.md#9.3",
+    "history.md#12",
+    "history.md#2.7"
+  ],
+  "tests": [
+    "tests/test_history.py::TestHistoryCommand::test_remove_keeps_the_history_of_a_copy",
+    "tests/test_history.py::TestHistoryCommand::test_remove_without_terminal",
+    "tests/test_history.py::TestHistoryCommand::test_all_and_remove",
+    "tests/test_history.py::TestHistoryCommand::test_all_sorted_by_place",
+    "tests/test_spec_history.py::TestRemove::test_place_without_history"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "-C",
+        "a",
+        "tag",
+        "doe2019",
+        "--add",
+        "x"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "b",
+        "tag",
+        "mueller2021",
+        "--add",
+        "y"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "c",
+        "tag",
+        "plain2020",
+        "--add",
+        "z"
+      ]
+    },
+    {
+      "argv": [
+        "history",
+        "--all"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "b",
+        "history",
+        "--remove"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "b",
+        "history"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "a",
+        "history",
+        "--remove"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "a",
+        "history",
+        "--remove",
+        "-y"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "a",
+        "history",
+        "--remove",
+        "-y"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "a",
+        "history"
+      ]
+    },
+    {
+      "argv": [
+        "history",
+        "--remove",
+        "nosuchid",
+        "-y"
+      ]
+    },
+    {
+      "argv": [
+        "history",
+        "--remove",
+        "0123456789abcdef0123456789abcde3"
+      ]
+    },
+    {
+      "argv": [
+        "history",
+        "--remove",
+        "0123456789abcdef0123456789abcde3",
+        "--yes"
+      ]
+    },
+    {
+      "argv": [
+        "history",
+        "--all"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "b",
+        "undo"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "c",
+        "undo"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "b",
+        "tag",
+        "mueller2021",
+        "--add",
+        "w"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "c",
+        "tag",
+        "plain2020",
+        "--add",
+        "v"
+      ]
+    },
+    {
+      "argv": [
+        "history",
+        "--all"
+      ]
+    }
+  ]
+}

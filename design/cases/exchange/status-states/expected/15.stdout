@@ -1,0 +1,5 @@
+papers library: $WORK/lost
+* bibtex: papers.bib (empty)
+* files:  in the pool
+* pool:   ../nowhere (missing)
+`papers config` lists and sets the settings

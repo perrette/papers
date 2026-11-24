@@ -1,0 +1,127 @@
+{
+  "description": "undo of a step that also wrote the pool, when the pool changed since: the pool takes the step back by a revert (a new step of the pool, conflicts are skipped without a terminal), redo takes the revert back; a pool that did not change is undone and redone as it is",
+  "sections": [
+    "history.md#7",
+    "history.md#7.2",
+    "history.md#7.3",
+    "history.md#8"
+  ],
+  "tests": [
+    "tests/test_undo_pool.py::TestUndoPool::test_redo_after_the_pool_moved_on",
+    "tests/test_undo_pool.py::TestUndoPool::test_pool_changed_since",
+    "tests/test_undo_pool.py::TestUndoPool::test_pool_changed_since_elsewhere"
+  ],
+  "ignore": [
+    "home/data/history/*"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "init",
+        "pool"
+      ]
+    },
+    {
+      "argv": [
+        "init",
+        "lib",
+        "--pool",
+        "pool"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "add",
+        "../import/refs.bib"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "pool",
+        "edit",
+        "doe2019",
+        "--set",
+        "note=pool note"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "pool",
+        "tag",
+        "smith2020",
+        "--add",
+        "pooltag"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "pool",
+        "history"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "undo"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "pool",
+        "list",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "pool",
+        "history"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "list",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "redo"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "pool",
+        "list",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "pool",
+        "history"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "history"
+      ]
+    }
+  ]
+}

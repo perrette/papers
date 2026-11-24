@@ -1,0 +1,26 @@
+{
+  "description": "add a BibJSON file (.bib.json): the type lower-cased (misc if none), the key from id or cid, names, journal, a number as text, the DOI from identifier, keys that start with _ and link/identifier left out",
+  "sections": [
+    "formats.md#1.1",
+    "formats.md#5.2",
+    "formats.md#2.7"
+  ],
+  "tests": [
+    "tests/test_spec_formats.py::TestBibJSONReading::test_type_key_and_skipped"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "add",
+        "refs.bib.json"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    }
+  ]
+}

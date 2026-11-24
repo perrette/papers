@@ -1,0 +1,39 @@
+{
+  "description": "check --format-name, --fix-doi, --fix-key and --key-ascii: names as Family, Given (the braces are not taken into account), the DOI cleaned of its prefixes and suffixes (one that cannot be fixed is kept), a key that starts with a digit made from the entry, the key transliterated",
+  "sections": [
+    "bibtex.md#3",
+    "bibtex.md#8",
+    "formats.md#7.2"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "check",
+        "--format-name",
+        "--fix-doi",
+        "--fix-key",
+        "--key-ascii",
+        "-y",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    },
+    {
+      "argv": [
+        "check",
+        "--format-name",
+        "--fix-doi",
+        "--fix-key",
+        "--key-ascii",
+        "-y",
+        "--porcelain"
+      ]
+    }
+  ]
+}

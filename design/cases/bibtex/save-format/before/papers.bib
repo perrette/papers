@@ -1,0 +1,65 @@
+% a comment at the top of the file, before anything
+
+@string{ jgr = "Journal of Geophysical Research" }
+
+@comment{an explicit comment above zeta}
+@article{Zeta2020,
+  title = {Sea level {Rise} and the {AMOC}},
+  author = {M{\"u}ller, J{\"o}rg and Smith, John},
+  journal = jgr,
+  month = jan,
+  year = 2020,
+  volume = "12",
+  pages = {1--10},
+  doi = {10.1000/ZETA},
+}
+
+@preamble{ "\newcommand{\noop}[1]{}" }
+
+an implicit comment above alpha
+@book{alpha1999,
+  title = "A book: with {Braces} and ``quotes''",
+  author = {Ångström, Anders},
+  isbn = {978-3-16-148410-0},
+  year = {1999},
+  note = "first" # " and second",
+  file = {:files/alpha1999.pdf:pdf},
+}
+
+@misc{Beta2001,
+  title = {Ünïcödé title},
+  keywords = {b, a},
+  abstract = {Line one
+  line two},
+  year = {2001},
+}
+
+@inproceedings{beta2001b,
+  booktitle = {Proc.},
+  title = {Lower-case key sorted after upper case},
+  number = 7,
+  edition = {2},
+}
+
+@article{Gamma2002,
+  title = {Duplicate field},
+  title = {Duplicate field again},
+}
+
+@article{Zeta2020,
+  title = {A second entry with the key of Zeta2020},
+}
+
+@article{broken2003,
+  title = {Missing closing brace
+}
+
+@string{ other = {Other} }
+
+@article{delta2004,
+  title = {Uses @string other},
+  journal = other,
+  author = {van der Berg, Jane and {Collaboration}, The},
+}
+
+% a trailing comment, not followed by any entry

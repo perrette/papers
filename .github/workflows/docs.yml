@@ -1,12 +1,18 @@
 name: docs
 
-# Each branch deploys its own version of the site with mike: one folder per
-# version on the gh-pages branch, and a version selector on every page.
-#   master -> 2.x, aliased "stable" (the default version: /papers/ redirects there)
-#   v3     -> 3.0-beta
+# Each version of the site is deployed with mike: one folder per version on
+# the gh-pages branch, and a version selector on every page.
+#   a push to v3 (and to master once v3 is merged) -> dev: the docs of what is
+#     not released yet
+#   a tag vX.Y.ZbN (or aN, rcN)                    -> X.Y-beta
+#   a tag vX.Y.Z                                   -> X.Y, aliased "stable" (the
+#     default version: /papers/ redirects there)
+# The 2.x docs stay on gh-pages as they were deployed from master before v3.
 on:
   push:
     branches: [master, v3]
+    tags: ['v*']
+    # not evaluated for tags
     paths:
       - "docs/**"
       - "mkdocs.yml"
@@ -45,11 +51,22 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git fetch origin gh-pages:gh-pages || true
-      - name: Deploy 2.x (master)
-        if: github.ref_name == 'master'
+      - name: Deploy dev (branch)
+        if: github.ref_type == 'branch'
+        run: mike deploy --push --title "dev (not released)" dev
+      - name: Deploy the release (tag)
+        if: github.ref_type == 'tag'
         run: |
-          mike deploy --push --update-aliases --title "2.x (stable)" 2.x stable
-          mike set-default --push stable
-      - name: Deploy 3.0-beta (v3)
-        if: github.ref_name == 'v3'
-        run: mike deploy --push --title "3.0 (beta)" 3.0-beta
+          TAG=${GITHUB_REF_NAME#v}
+          XY=$(echo "$TAG" | cut -d. -f1,2)
+          if echo "$TAG" | grep -q '[a-z]'; then
+            # a pre-release: 3.0.0b7 -> 3.0-beta
+            mike deploy --push --title "$XY (beta)" "$XY-beta"
+          else
+            mike deploy --push --update-aliases --title "$XY (stable)" "$XY" stable
+            mike set-default --push stable
+            # the earlier stable versions keep their folder, without "(stable)" in their title
+            for v in $(mike list --json | python3 -c "import json, sys; print(' '.join(v['version'] for v in json.load(sys.stdin) if 'stable' not in v['aliases'] and '(stable)' in v['title']))"); do
+              mike retitle --push "$v" "$v"
+            done
+          fi

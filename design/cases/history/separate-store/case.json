@@ -1,0 +1,97 @@
+{
+  "description": "history-separate: the history of the library is in a store of its own (separate/<id>), with its own size; a change of the setting does not move the history",
+  "sections": [
+    "history.md#2.6",
+    "history.md#9.1"
+  ],
+  "tests": [
+    "tests/test_history.py::TestSeparate::test_own_store",
+    "tests/test_history.py::TestSeparate::test_shared_store_in_a_folder_named_separate"
+  ],
+  "ignore": [
+    "home/data/history/separate/*"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "config",
+        "history-separate",
+        "true"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "history-size",
+        "7"
+      ]
+    },
+    {
+      "argv": [
+        "tag",
+        "doe2019",
+        "--add",
+        "x"
+      ]
+    },
+    {
+      "argv": [
+        "history"
+      ]
+    },
+    {
+      "argv": [
+        "history",
+        "--all"
+      ]
+    },
+    {
+      "argv": [
+        "undo"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "history-separate",
+        "false"
+      ]
+    },
+    {
+      "argv": [
+        "history"
+      ]
+    },
+    {
+      "argv": [
+        "tag",
+        "plain2020",
+        "--add",
+        "y"
+      ]
+    },
+    {
+      "argv": [
+        "undo"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "history-separate",
+        "true"
+      ]
+    },
+    {
+      "argv": [
+        "redo"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+*** UPDATE ***
+  @article{k1,
+-  author = {John Smith},
+?            -----
++  author = {Smith, John},
+?                 ++++++
+-  doi = {DOI:10.1000/abc},
+?         ----
++  doi = {10.1000/abc},
+   title = {One},
+   year = {2000}
+  }
+update? [Y/n] *** UPDATE ***
+  @article{k2,
+-  author = {Jane Doe},
+?                ----
++  author = {Doe, Jane},
+?            +++++
+   title = {Two},
+   year = {2001}
+  }
+update? [Y/n] *** UPDATE ***
+  @article{k3,
+-  author = {Third Person},
+?            ------
++  author = {Person, Third},
+?                  +++++++
+   title = {Three},
+   year = {2002}
+  }
+update? [Y/n] Modified -> k1: One (doi:10.1000/abc)

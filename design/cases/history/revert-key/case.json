@@ -1,0 +1,131 @@
+{
+  "description": "step N renamed an entry (keep-old-key puts the former key in ids): the key goes back and the former key leaves ids, if the entry still has the key; an entry whose key changed since stays; the key of another entry that took the old key stays",
+  "sections": [
+    "history.md#8",
+    "history.md#8.1",
+    "history.md#8.2",
+    "history.md#8.4",
+    "bibtex.md#7",
+    "history.md#2.5"
+  ],
+  "tests": [
+    "tests/test_revert.py::TestRevertEntries::test_key",
+    "tests/test_revert.py::TestRevertEntries::test_removed_entry_whose_key_is_taken"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "edit",
+        "doe2019",
+        "--key",
+        "doe_2019",
+        "--keep-old-key"
+      ]
+    },
+    {
+      "argv": [
+        "tag",
+        "doe_2019",
+        "--add",
+        "later"
+      ]
+    },
+    {
+      "argv": [
+        "edit",
+        "smith2020",
+        "--key",
+        "smith_2020",
+        "--keep-old-key"
+      ]
+    },
+    {
+      "argv": [
+        "edit",
+        "mueller2021",
+        "--key",
+        "smith2020"
+      ]
+    },
+    {
+      "argv": [
+        "edit",
+        "perrette2013",
+        "--key",
+        "p13",
+        "--keep-old-key"
+      ]
+    },
+    {
+      "argv": [
+        "edit",
+        "p13",
+        "--key",
+        "p14",
+        "--keep-old-key"
+      ]
+    },
+    {
+      "argv": [
+        "history",
+        "--revert",
+        "$STATE2"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "history",
+        "--revert",
+        "$STATE4"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "history",
+        "--revert",
+        "$STATE6"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-k",
+        "doe2019",
+        "--format",
+        "bibtex"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-k",
+        "p14",
+        "--format",
+        "bibtex"
+      ]
+    },
+    {
+      "argv": [
+        "history"
+      ]
+    }
+  ]
+}

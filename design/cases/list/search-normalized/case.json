@@ -1,0 +1,145 @@
+{
+  "description": "list: the search compares norm (LaTeX decoded, transliterated to ASCII, no braces, lower case, single spaces) of the text and of each word, for the words, --title, --author, --first-author, --key and the other fields; --strict matches the whole text with a shell pattern; the text of the words is ENTRYTYPE, the key and the field values",
+  "sections": [
+    "formats.md#6.1",
+    "bibtex.md#9.1",
+    "bibtex.md#4.1"
+  ],
+  "tests": [
+    "tests/test_spec_formats.py::TestListOutput::test_search_normalized"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "list",
+        "muller",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "MÜLLER",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--author",
+        "muller",
+        "--strict",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--first-author",
+        "muller",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--first-author",
+        "doe",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--title",
+        "sea level",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "SEA   LEVEL",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "zhongcun",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "中村",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "ivanov",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--author",
+        "Ivanov",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "papadopoylos",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--title",
+        "sea",
+        "ice",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--title",
+        "sea",
+        "ice",
+        "--any",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--key",
+        "MUELLER",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--year",
+        "2022",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "book",
+        "-K"
+      ]
+    }
+  ]
+}

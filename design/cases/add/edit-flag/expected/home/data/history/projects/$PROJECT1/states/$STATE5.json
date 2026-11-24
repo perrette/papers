@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE4",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers add in3.bib --edit",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "41a6d5fc87d0fa7f31abc86349f5760ff3464a6f9200b3aba9f67ac7244f11ad"
+  ],
+  "sha": "41a6d5fc87d0fa7f31abc86349f5760ff3464a6f9200b3aba9f67ac7244f11ad"
+ },
+ "files": {}
+}

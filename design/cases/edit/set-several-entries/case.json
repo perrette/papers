@@ -1,0 +1,42 @@
+{
+  "description": "edit --set on several entries and by DOI",
+  "sections": [
+    "formats.md#7.2",
+    "bibtex.md#3.3"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "edit",
+        "perrette2013",
+        "doe2019",
+        "--set",
+        "note=checked",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "edit",
+        "10.1234/abc.2020.1",
+        "--set",
+        "note=by doi"
+      ]
+    },
+    {
+      "argv": [
+        "edit",
+        "doi:10.5194/esd-4-11-2013",
+        "--unset",
+        "note"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--field",
+        "note"
+      ]
+    }
+  ]
+}

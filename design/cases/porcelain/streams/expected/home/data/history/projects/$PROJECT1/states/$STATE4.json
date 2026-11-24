@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE3",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers list --delete --keep-files --porcelain smith",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "10afd66278f6769797496f499afc76027efcb6d0ba0ede8dffa00a97b91983e4"
+  ],
+  "sha": "10afd66278f6769797496f499afc76027efcb6d0ba0ede8dffa00a97b91983e4"
+ },
+ "files": {}
+}

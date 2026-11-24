@@ -1,0 +1,13 @@
+{
+  "description": "config lists the settings and where each comes from",
+  "sections": [
+    "library.md#settings/precedence"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "config"
+      ]
+    }
+  ]
+}

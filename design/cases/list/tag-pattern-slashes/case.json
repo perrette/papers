@@ -1,0 +1,51 @@
+{
+  "description": "list --tag: every trailing / of the pattern is dropped (climate// is climate), the pattern is matched against the whole tag in lower case, and a tag under a tag that matches matches too",
+  "sections": [
+    "bibtex.md#6"
+  ],
+  "tests": [
+    "tests/test_spec_bibtex.py::TestTags::test_matching"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "list",
+        "--tag",
+        "climate//",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--tag",
+        "climate/",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--tag",
+        "climate/amoc///",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--tag",
+        "CLIMATE/*/",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--tag",
+        "amoc",
+        "-K"
+      ]
+    }
+  ]
+}

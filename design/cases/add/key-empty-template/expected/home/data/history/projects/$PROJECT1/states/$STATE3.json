@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE2",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers add --title Only a title --year 2000",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "be7a220ec58b9b88f740968663b8a9d41f6121f8c7f44c6852d9436d4500bda1"
+  ],
+  "sha": "be7a220ec58b9b88f740968663b8a9d41f6121f8c7f44c6852d9436d4500bda1"
+ },
+ "files": {}
+}

@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE2",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers tag newone2022 --add later",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "f2e75c7ebdf26119dcedd53acf086ab78829e1139fc07f1cedf1d9d578e5b88d"
+  ],
+  "sha": "f2e75c7ebdf26119dcedd53acf086ab78829e1139fc07f1cedf1d9d578e5b88d"
+ },
+ "files": {}
+}

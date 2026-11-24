@@ -1,0 +1,37 @@
+{
+  "description": "init --pool creates a shallow library; the pool is read from the current folder, and stored relative to the library",
+  "sections": [
+    "library.md#pools-and-shallow-libraries/the-pool-setting",
+    "library.md#the-library-configuration/relative-paths"
+  ],
+  "tests": [
+    "tests/test_pools.py::TestConfigPool::test_pool_path_written_relative",
+    "tests/test_spec_library.py::TestRelativePaths::test_pool_resolved_against_the_library",
+    "tests/test_config_v3.py::TestInit::test_init_paths_relative_to_current_directory"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "init",
+        "project",
+        "--pool",
+        "lib"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "project",
+        "status"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "project",
+        "config",
+        "pool"
+      ]
+    }
+  ]
+}

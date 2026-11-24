@@ -1,0 +1,1 @@
+papers: error: $CONFIG/config.json was written by a newer papers (configuration version 4; papers $VERSION reads up to version 3): upgrade papers

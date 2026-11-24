@@ -1,0 +1,28 @@
+{
+  "metadata": {"records": 3},
+  "records": [
+    {
+      "type": "Article",
+      "id": "doe2020",
+      "author": [{"name": "Doe, Jane"}, {"name": "Roe, Richard"}],
+      "journal": {"name": "Journal of Imports"},
+      "title": "Imported from BibJSON",
+      "year": "2020",
+      "volume": 12,
+      "identifier": [{"type": "DOI", "id": "10.1000/bj.1"}],
+      "link": [{"url": "https://example.org"}],
+      "_internal": "dropped",
+      "keywords": ["a", "b"]
+    },
+    {
+      "cid": "viaCid",
+      "title": "No type, key from cid",
+      "file": ["files/a.txt"]
+    },
+    {
+      "author": [{"name": "Nokey, Nick"}],
+      "title": "No key",
+      "year": "2021"
+    }
+  ]
+}

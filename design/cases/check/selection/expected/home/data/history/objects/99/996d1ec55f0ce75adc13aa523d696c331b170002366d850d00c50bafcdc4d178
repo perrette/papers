@@ -1,0 +1,18 @@
+@article{k1,
+ author = {John Smith},
+ doi = {DOI:10.1000/abc},
+ title = {One},
+ year = {2000}
+}
+
+@article{k2,
+ author = {Jane Doe},
+ title = {Two},
+ year = {2001}
+}
+
+@article{k3,
+ author = {Third Person},
+ title = {Three},
+ year = {2002}
+}

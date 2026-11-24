@@ -1,0 +1,19 @@
+{
+ "parent": "$STATE4",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers add info-doi.pdf --doi 10.1234/other.2021 --link",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "d6818ce47db87bb3ca6ce8b8680a6bdd9c0c70ee0aa3765be3693ae6c685752c"
+  ],
+  "sha": "d6818ce47db87bb3ca6ce8b8680a6bdd9c0c70ee0aa3765be3693ae6c685752c"
+ },
+ "files": {
+  ".papers/files.json": [
+   "5fdc5a01b4b97a1faeb5ad9ee0d0993b14c137c4f989052e8bf5a7ee9907838c"
+  ]
+ }
+}

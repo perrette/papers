@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE1",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers add new.bib -u --porcelain",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "6d3a2d488f8efd321d62c836c38ead15f3070bf48786d11d2238b3df1b9fd869"
+  ],
+  "sha": "6d3a2d488f8efd321d62c836c38ead15f3070bf48786d11d2238b3df1b9fd869"
+ },
+ "files": {}
+}

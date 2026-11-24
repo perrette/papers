@@ -1,0 +1,14 @@
+{
+  "metadata": {
+    "records": 1
+  },
+  "records": [
+    {
+      "type": "book",
+      "id": "bk",
+      "publisher": "Springer",
+      "title": "A book",
+      "year": "2000"
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+[
+  {
+    "id": "smith2020",
+    "citation-key": "smith2020",
+    "type": "article-journal",
+    "author": [
+      {
+        "family": "Smïth",
+        "given": "Jóhn"
+      },
+      {
+        "family": "Doe",
+        "given": "Jane"
+      }
+    ],
+    "title": "Cold Water and Kälte: ice caps",
+    "DOI": "10.1234/abc.2020.1",
+    "note": "Café résumé & %",
+    "container-title": "Journal of Glaciology",
+    "keyword": "ice, to-read, climate/arctic",
+    "issued": {
+      "date-parts": [
+        [
+          2020
+        ]
+      ]
+    }
+  }
+]

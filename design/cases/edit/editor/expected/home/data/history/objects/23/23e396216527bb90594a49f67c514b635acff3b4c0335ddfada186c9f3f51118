@@ -1,0 +1,12 @@
+@article{doe_2019,
+ author = {Doe, Jane},
+ file = {:files/d.txt:txt},
+ title = {Ocean Flow},
+ year = {2019}
+}
+
+@article{smith2020,
+ author = {Smith, John},
+ title = {Cold Flow},
+ year = {2019}
+}

@@ -1,0 +1,31 @@
+{
+ "parent": "$STATE1",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers file clean",
+ "ops": [
+  {
+   "op": "trashed",
+   "src": "files/u2.txt",
+   "dst": null,
+   "checksum": "161dd0752eeae52c7d3478add86b2b130c66f8a20df27d23f56d38a198e922dc"
+  },
+  {
+   "op": "trashed",
+   "src": "files/u3.txt",
+   "dst": null,
+   "checksum": "949814ccd46b9e1445c01283cb551a6fdcd45edb6ce6a38cdd7806910ae01890"
+  }
+ ],
+ "deleted": [
+  "161dd0752eeae52c7d3478add86b2b130c66f8a20df27d23f56d38a198e922dc",
+  "949814ccd46b9e1445c01283cb551a6fdcd45edb6ce6a38cdd7806910ae01890"
+ ],
+ "bibtex": {
+  "pieces": [
+   "437284cca32ac4116ee29ca48f86dd8011fee3bd1c3bb48984851c8dec4450e6"
+  ],
+  "sha": "437284cca32ac4116ee29ca48f86dd8011fee3bd1c3bb48984851c8dec4450e6"
+ },
+ "files": {}
+}

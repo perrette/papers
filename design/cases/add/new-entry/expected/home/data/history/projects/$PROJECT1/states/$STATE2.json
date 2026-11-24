@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE1",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers add --key new2022 --title A new paper --author Jane Roe --year 2022 --journal J. Things --metadata note=hello volume=3",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "71b7f43d3f06b012c079b0b827d97af05ca520be045691ef75cbfa4b5c986e10"
+  ],
+  "sha": "71b7f43d3f06b012c079b0b827d97af05ca520be045691ef75cbfa4b5c986e10"
+ },
+ "files": {}
+}

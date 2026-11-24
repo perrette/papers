@@ -1,0 +1,72 @@
+{
+  "description": "file clean: the files of the files directory that no entry links to are removed (asked for each one, or with -y; the answers Y and N apply to the files of a folder); hidden files and folders and .bib files stay; a folder of the layout before 2.19 that no entry links to is removed; a library without files directory is an error; the files are in the history",
+  "sections": [
+    "library.md#the-files-directory",
+    "history.md#4",
+    "history.md#5.6"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "file",
+        "clean",
+        "--dry-run",
+        "-y"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "clean"
+      ],
+      "stdin": "n\nY\ny\nN\n"
+    },
+    {
+      "argv": [
+        "file",
+        "clean"
+      ],
+      "stdin": "y\nn\ny\n"
+    },
+    {
+      "argv": [
+        "file",
+        "clean"
+      ],
+      "stdin": ""
+    },
+    {
+      "argv": [
+        "file",
+        "clean",
+        "-y"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "clean",
+        "-y"
+      ]
+    },
+    {
+      "argv": [
+        "undo"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "--unset",
+        "filesdir"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "clean",
+        "-y"
+      ]
+    }
+  ]
+}

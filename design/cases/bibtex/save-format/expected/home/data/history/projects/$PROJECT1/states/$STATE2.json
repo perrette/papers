@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE1",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers tag alpha1999 --add x",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "c5190cd16573bba38d6f935027d8cae6922f383746e73dd1058ce9fae8c55b8a"
+  ],
+  "sha": "c5190cd16573bba38d6f935027d8cae6922f383746e73dd1058ce9fae8c55b8a"
+ },
+ "files": {}
+}

@@ -1,0 +1,1 @@
+the files get a checksum when a command moves, copies, adds or links them: `papers file checksum` writes those of all the files

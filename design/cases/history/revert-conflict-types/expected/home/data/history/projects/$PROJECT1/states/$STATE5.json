@@ -1,0 +1,18 @@
+{
+ "parent": "$STATE3",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers history --revert $STATE2 --on-duplicate keep",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "36f5ad8e6be0779a7b3048ceb2bf50cafce5f19de02d7b049dc5b51e1364bf18"
+  ],
+  "sha": "36f5ad8e6be0779a7b3048ceb2bf50cafce5f19de02d7b049dc5b51e1364bf18"
+ },
+ "files": {},
+ "reverts": [
+  "$STATE2"
+ ]
+}

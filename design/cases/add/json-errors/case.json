@@ -1,0 +1,43 @@
+{
+  "description": "add of a JSON file that is not CSL-JSON or BibJSON: an error, nothing is written",
+  "sections": [
+    "formats.md#3.4",
+    "formats.md#5.2",
+    "formats.md#7.3"
+  ],
+  "tests": [
+    "tests/test_spec_formats.py::TestCSLDocument::test_add_error_exit"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "add",
+        "notjson.json"
+      ]
+    },
+    {
+      "argv": [
+        "add",
+        "scalar.json"
+      ]
+    },
+    {
+      "argv": [
+        "add",
+        "notjson.bib.json"
+      ]
+    },
+    {
+      "argv": [
+        "add",
+        "list.bib.json"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-K"
+      ]
+    }
+  ]
+}

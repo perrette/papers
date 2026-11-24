@@ -1,0 +1,10 @@
+{
+  "bibtex": "papers.bib",
+  "filesdir": "files",
+  "nameformat": {
+    "template": "{title}"
+  },
+  "paths": "relative",
+  "pool": "../pool",
+  "version": 3
+}

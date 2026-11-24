@@ -1,0 +1,14 @@
+Modified -> s1: &eacute;t&eacute; &amp; l&#39;eau (file:1)
+    files/f1.txt --> renamed to s1_doe_ete-l-eau_2001.txt
+Modified -> s2: a&#65;b &#1114112; &#66;c &#x26;&#X41; (file:1)
+    files/f2.txt --> renamed to s2_doe_aab-1114112-bc-a_2002.txt
+Modified -> s3: &amp;#38; &AMP; &apos;x&apos; &nbsp;&Eacute;&euro; (file:1)
+    files/f3.txt --> renamed to s3_doe_38-amp-apos-x-apos-eeur_2003.txt
+Modified -> s4: Ocean’s: 10,000 things, 3,5 &quot;more&quot; (file:1)
+    files/f4.txt --> renamed to s4_ivanov_oceans-10000-things-35-more_2004.txt
+Modified -> s5: 中文 Ελληνικά 日本語 한국어 (file:1)
+    files/f5.txt --> renamed to s5_zhongcun_papadopoylos_zhongwen-ellinika-ribenyu-hangugeo_2005.txt
+Modified -> s6: No author (doi:10.1000/Ünï(1)&amp;2, file:1)
+    files/f6.txt --> renamed to s6_doe_no-author_2006.txt
+Modified -> s7: The doi is only white space (doi:   , file:1)
+    files/f7.txt --> renamed to s7_doe_the-doi-is-only-white-space_2007.txt

@@ -1,0 +1,19 @@
+{
+ "parent": "$STATE4",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers list b2021 --detach files/roe_2020_title-of-b2021.txt --porcelain",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "4f86a7731dc8caa0f68c65369f8b95beca460db66051fc3de414d5db066db039"
+  ],
+  "sha": "4f86a7731dc8caa0f68c65369f8b95beca460db66051fc3de414d5db066db039"
+ },
+ "files": {
+  ".papers/files.json": [
+   "77afe96db167294b50c0c464eda5f97a76a0c5b72bdc4322cb7ec5f049ee39cf"
+  ]
+ }
+}

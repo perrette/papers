@@ -1,0 +1,25 @@
+@article{ml_b,
+ author = {Müller, Hans and Berg, Jan},
+ title = {tipping points in the climate},
+ year = {2020}
+}
+
+@article{nodoi,
+ author = {Doe, Jane},
+ title = {Same DOI, written differently},
+ year = {2022}
+}
+
+@article{notitle1,
+ doi = {10.1000/nt1}
+}
+
+@article{notitle2,
+ title = {Authors missing, title the same},
+ year = {2001}
+}
+
+@article{notitle3,
+ title = {Authors missing, title the same},
+ year = {2002}
+}

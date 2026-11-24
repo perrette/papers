@@ -1,0 +1,3 @@
+redo: papers.bib restored to $STATE2 papers rm doe2019 --delete-files ($TIME)
+    files/d1.txt: deleted again (kept in the history)
+    files/sub/d2.txt: deleted again (kept in the history)

@@ -1,0 +1,19 @@
+@inproceedings{mueller2021,
+ author = {Müller, Hans and Škoda, Petr},
+ booktitle = {Proceedings of the Ice Conference},
+ doi = {10.1234/mueller.2021.7},
+ keywords = {climate/amoc, climate/amoc/tipping, ice},
+ title = {Tipping points in the overturning circulation},
+ year = {2021}
+}
+
+@article{perrette2013,
+ author = {Perrette, M. and Landerer, F. and Riva, R. and Frieler, K. and Meinshausen, M.},
+ doi = {10.5194/esd-4-11-2013},
+ journal = {Earth System Dynamics},
+ keywords = {sea-level, projections, climate/amoc},
+ pages = {11--29},
+ title = {A scaling approach to project regional sea level rise and its uncertainties},
+ volume = {4},
+ year = {2013}
+}

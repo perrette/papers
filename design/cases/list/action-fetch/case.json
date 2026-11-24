@@ -1,0 +1,62 @@
+{
+  "description": "list --fetch (deprecated) refreshes the entries listed: the names of the authors formatted, shown as a diff with the question \"update? [Y/n]\" (n keeps the entry as it was); a key that starts with a digit is not renamed to an empty key: the entry keeps it, with a warning; an entry that has no DOI nor title is left as it is (offline)",
+  "sections": [
+    "bibtex.md#3.3",
+    "formats.md#7.2",
+    "bibtex.md#7.2"
+  ],
+  "tests": [
+    "tests/test_bib_fix.py::TestFixEntry::test_fix_key_never_empty"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "list",
+        "--fetch"
+      ],
+      "stdin": "n\n"
+    },
+    {
+      "argv": [
+        "list",
+        "--fetch",
+        "--porcelain"
+      ],
+      "stdin": "y\n"
+    },
+    {
+      "argv": [
+        "list",
+        "--fetch"
+      ],
+      "stdin": "y\n"
+    },
+    {
+      "argv": [
+        "list",
+        "--key",
+        "plain2020",
+        "--fetch"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    },
+    {
+      "argv": [
+        "undo"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    }
+  ]
+}

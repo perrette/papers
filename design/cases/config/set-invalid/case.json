@@ -1,0 +1,57 @@
+{
+  "description": "config refuses values and settings that do not exist",
+  "sections": [
+    "library.md#the-library-configuration/reading",
+    "library.md#settings/table"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "config",
+        "key.author-num",
+        "three"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "files",
+        "zip"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "nosuch.setting"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "nosuch",
+        "value"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "keep-deleted-files",
+        "false"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "pool",
+        "nowhere"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "bibtex",
+        "other.bib"
+      ]
+    }
+  ]
+}

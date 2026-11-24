@@ -1,0 +1,90 @@
+{
+  "description": "the deprecated filecheck: its options run the file commands (check, fix, detach --broken, rename, clean); a warning says which",
+  "sections": [
+    "library.md#the-files-directory",
+    "bibtex.md#5.1",
+    "history.md#4"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "filecheck"
+      ]
+    },
+    {
+      "argv": [
+        "filecheck",
+        "--metadata-check"
+      ]
+    },
+    {
+      "argv": [
+        "filecheck",
+        "--hash-check"
+      ]
+    },
+    {
+      "argv": [
+        "filecheck",
+        "--fix-mendeley",
+        "--dry-run"
+      ]
+    },
+    {
+      "argv": [
+        "filecheck",
+        "--fix-mendeley"
+      ]
+    },
+    {
+      "argv": [
+        "filecheck",
+        "-r",
+        "-c"
+      ]
+    },
+    {
+      "argv": [
+        "filecheck",
+        "-d"
+      ]
+    },
+    {
+      "argv": [
+        "filecheck",
+        "-r"
+      ]
+    },
+    {
+      "argv": [
+        "filecheck",
+        "--clean-filesdir",
+        "--force"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    },
+    {
+      "argv": [
+        "undo"
+      ]
+    },
+    {
+      "argv": [
+        "undo"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    }
+  ]
+}

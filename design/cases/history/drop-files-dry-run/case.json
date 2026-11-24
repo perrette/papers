@@ -1,0 +1,63 @@
+{
+  "description": "history --drop-files with --dry-run: the list of the files, then that they are not dropped; nothing is asked and nothing changes (undo still brings the files back)",
+  "sections": [
+    "history.md#9.4",
+    "history.md#5.7"
+  ],
+  "tests": [
+    "tests/test_spec_history.py::TestDropFiles::test_dry_run"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "rm",
+        "doe2019",
+        "--delete-files"
+      ]
+    },
+    {
+      "argv": [
+        "rm",
+        "mueller2021",
+        "--delete-files"
+      ]
+    },
+    {
+      "argv": [
+        "history",
+        "--drop-files",
+        "$STATE2",
+        "--dry-run"
+      ]
+    },
+    {
+      "argv": [
+        "history",
+        "--drop-files",
+        "$STATE2",
+        "-y",
+        "--dry-run"
+      ]
+    },
+    {
+      "argv": [
+        "history",
+        "--drop-files",
+        "files/m.txt",
+        "--dry-run"
+      ]
+    },
+    {
+      "argv": [
+        "history"
+      ]
+    },
+    {
+      "argv": [
+        "undo",
+        "-n",
+        "2"
+      ]
+    }
+  ]
+}

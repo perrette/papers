@@ -1,0 +1,45 @@
+{
+  "description": "a machine configuration that is not valid JSON is an error that names the file, for every command (papers 3.0.0b5 ignored it with a warning); config --global does not overwrite it; a version above 3 is an error",
+  "sections": [
+    "library.md#the-machine-configuration/format",
+    "library.md#the-machine-configuration"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "config",
+        "editor"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "--global"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "--global",
+        "editor",
+        "vim"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "--global"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "config",
+        "editor"
+      ]
+    }
+  ]
+}

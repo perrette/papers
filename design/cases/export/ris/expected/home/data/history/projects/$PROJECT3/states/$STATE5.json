@@ -1,0 +1,29 @@
+{
+ "parent": "$STATE2",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers export c --format all",
+ "ops": [
+  {
+   "op": "copied",
+   "src": "files/perrette_et_al_2013_a-scaling-approach.pdf",
+   "dst": "c/files/perrette_et_al_2013_a-scaling-approach-to-s-ea-level-in-g-o-ttingen-alpha-50-x.pdf",
+   "checksum": "c35b21d6ca39aa7cc3b79a705d989f1a6e88b99ab43988d74048799e3db926a3"
+  }
+ ],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "88ee9d125b0429c2ad825bdb570a0b8b57dde1d0f3fdfceefeafb36736d10664"
+  ],
+  "sha": "88ee9d125b0429c2ad825bdb570a0b8b57dde1d0f3fdfceefeafb36736d10664"
+ },
+ "files": {},
+ "pools": {
+  "$PROJECT1": {
+   "state": "$STATE4",
+   "base": "$STATE3",
+   "config": "$WORK/c/.papers/config.json"
+  }
+ }
+}

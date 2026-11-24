@@ -1,0 +1,3 @@
+$WORK/lib2/files/ext.txt belongs to the library in $WORK/lib2: copied, not moved
+Modified -> lee2023: Title of lee2023 (file:1)
+    lib2/files/ext.txt --> copied to files/lee_2020_title-of-lee2023.txt

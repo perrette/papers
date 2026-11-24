@@ -1,0 +1,2 @@
+papers: warning: `papers filecheck` is deprecated: use `papers file rename --keep-source`
+papers: warning: $WORK/lost/b.pdf: original file link is broken

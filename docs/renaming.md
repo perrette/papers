@@ -3,52 +3,130 @@
 ## Entries with several files
 
 The first file of an entry (the PDF) is named after the name template, and
-any other file (attachments, e.g. supplementary material added with `-a`) is
-placed next to it, under the same name followed by `--` and the file's
-original name:
+any other file (attachments, e.g. supplementary material added with
+`--attach` or `papers file attach`) is placed next to it, under the same
+name followed by `--` and the file's original name, slugified as the titles
+are (lower case, ASCII, words joined with `-`):
 
 ```
 files/perrette_et_al_2013_a-scaling-approach.pdf
 files/perrette_et_al_2013_a-scaling-approach--esd-4-11-2013-supplement.pdf
 ```
 
+(`ESD 4-11-2013 Supplement.pdf` would get the same name.)
+
 The label after `--` is kept when the entry is renamed again (e.g. after its
 title or year was fixed), so only the part before `--` changes. If two
 attachments have the same original name, the second one gets a `-2` suffix.
+
+Two entries can get the same file name (the same authors, year and title,
+e.g. a preprint and the published paper). A file of another entry is never
+replaced: the second file gets a `-2` suffix (`-3`, ... after that), unless
+it has the same content, in which case both entries link to the same file.
+Renaming the files of one of them later copies the file to its new name (a
+hard link when possible): the other entry keeps its link.
 
 Versions before 2.19 placed the files of an entry with several files in a
 folder named after the entry, with a hidden copy of the entry
 (`files/<name>/.<name>.bib`). Such folders keep working as they are: their
 files are linked from the bibtex, and nothing is moved until the entry is
-renamed. Renaming (`papers filecheck --rename`, or `papers list ... --rename`)
-moves the files out of the folder into the layout above, and removes the
-folder if nothing but the hidden bibtex is left in it (a folder with other
-files is kept, and the files left in it are reported).
+renamed. Renaming (`papers file rename`) moves the files out of the folder
+into the layout above, and removes the folder if nothing but the hidden
+bibtex is left in it (a folder with other files is kept, and the files left
+in it are reported).
+
+## Renaming the files of existing entries
+
+`papers add` places new files in the files directory under their template
+name (unless the `files` setting is `link`, see [Files](files.md)). To rename
+the files of entries already in the library, e.g. after changing the name
+template or fixing an entry's title:
+
+```
+papers file rename                      # all entries
+papers file rename perrette2013         # some entries
+papers list --year 2013 --rename       # the listed entries
+```
+
+A file already in the files directory is renamed. A file outside it (e.g.
+in a folder of your project) is moved, copied or left where it is as the
+`files` setting says (moved by default, see
+[Files](files.md#what-add-does-with-a-file)). `--move`, `--copy` and
+`--link` override the setting; `--keep-source` is the same as `--copy` (a
+hard link when possible). A file that belongs to another library is copied,
+not moved, and so is a file that another entry links to (the report says
+`copied to` instead of `renamed to`). `papers list ... --rename` runs this command (with `--move` or
+`--keep-source`); the deprecated `papers filecheck --rename` moves the
+files, whatever the setting.
+
+In a shallow library (a library with a pool), the files are in the pool's
+files directory and the name template is the pool's: `papers file rename`
+renames the files there, and the pool entry links to the new names. With
+`auto-push` false, the files of an entry whose pool entry has other fields
+(so that the pool's template names it otherwise) are left where they are,
+with a warning: `papers push KEY` sends the entry to the pool, then
+`papers file rename KEY` renames them. A file that an entry of the pool
+for another paper links to is copied to the new name (a hard link when
+possible), so that the pool entry keeps it. See
+[Shallow libraries](shallow-libraries.md).
 
 ## Control fields when renaming files
 
 ```
-$> papers add --rename --info --name-template "{AuthorX}{year}-{Title}" --name-title-sep '' --name-author-sep '' esd-4-11-2013
-INFO:papers:found doi:10.5194/esd-4-11-2013
-INFO:papers:new entry: perrette2013scaling
-INFO:papers:create directory: files/2013
-INFO:papers:mv /home/perrette/playground/papers/esd-4-11-2013.pdf files/PerretteEtAl2013-AScalingApproachToProjectRegionalSeaLevelRiseAndItsUncertainties.pdf
-INFO:papers:renamed file(s): 1
+$> papers add --move -v --name-template "{AuthorX}{year}-{Title}" --name-title-sep '' --name-author-sep '' esd-4-11-2013
+papers: info: found doi:10.5194/esd-4-11-2013
+papers: info: new entry: perrette2013scaling
+papers: info: create directory: files/2013
+papers: info: mv /home/perrette/playground/papers/esd-4-11-2013.pdf files/PerretteEtAl2013-AScalingApproachToProjectRegionalSeaLevelRiseAndItsUncertainties.pdf
+papers: info: renamed file(s): 1
 ```
 
 where `--name-template` is a python template (formatted via the `.format()`
-method) with valid fields being any field available in the bibtex. Fields not
-in the bibtex will remain untouched.
+method). Its placeholders are:
+
+- `{author}`, `{Author}`, `{AUTHOR}`, `{authorX}`, `{AuthorX}`: the authors
+  (see below)
+- `{year}`, `{journal}` (empty for an entry without journal: a folder of
+  the template that is empty, as in `{journal}/{author}`, is left out)
+- `{title}`, `{Title}`: the title words (see the modifiers below)
+- `{key}` (or `{ID}`): the bibtex key of the entry
+- `{doi}`, `{doi_}` (the doi with `-` in place of `/`, `.` and the other
+  characters that are not letters or digits, for a file name),
+  `{doi_or_id}` (the same, or the key if the entry has no doi, or an empty one)
+
+Another placeholder is an error that lists these. A name that would place
+the file outside the files directory (`../{author}`, or a subfolder that
+is a symbolic link to another place) is refused: the files
+of that entry stay where they are, and `papers file rename` exits with
+status 1 once it has renamed the files of the other entries. `papers file
+attach` keeps the new link to the file where it is, and exits with status 1.
 
 To rename `esd-4-11-2013.pdf` as `perrette_2013.pdf`, the template should be
 `--name-template {author}_{year} --name-author-num 1`. If that happens to be
-the entry ID, `ID` also works.
+the entry key, `{key}` also works.
 
 To rename `esd-4-11-2013.pdf` as
 `2013/Perrette2013-AScalingApproachToProjectRegionalSeaLevelRiseAndItsUncertainties.pdf`,
 name-template should be
 `--name-template {year}/{Author}{year}-{Title} --name-title-sep ''`
 (note the case).
+
+The names made from the template are valid on every system. In each part
+of the name (the folders and the file name), papers:
+
+- replaces the characters that Windows does not accept (`<>:"|?*` and
+  control characters) with `-` (`/` and `\` in the field values are
+  replaced with `-` too, so a field cannot add a folder),
+- removes trailing dots and spaces,
+- adds `-` after a name that Windows reserves (`CON`, `PRN`, `AUX`, `NUL`,
+  `COM1` to `COM9`, `LPT1` to `LPT9`),
+- cuts the name to 250 bytes (UTF-8), extension included (a `-2` suffix
+  for a name already taken can follow).
+
+This applies only to the names papers makes from the template: a file
+linked where it is keeps its name, and a file named before this rule keeps
+its name until the entry is renamed (`papers file rename`, `papers list
+--rename`).
 
 ## Case-sensitive fields
 
@@ -61,12 +139,19 @@ Entries are case-sensitive, and a few more fields are added, so that:
   depending on the number of authors
 - `AuthorX` same as `authorX` but capitalized
 
+The author names, the title words, `{doi_}` and `{doi_or_id}` are written
+in ASCII: accented and non-Latin letters are transliterated with the table
+of AnyAscii (`Müller` gives `muller`, `Хрущёв` gives `khrushchev`, `北京`
+gives `beijing`), and other characters separate words.
+
 ## Modifiers
 
 The modifiers are:
 
 - `--name-title-sep`: separator for title words
-- `--name-title-length`: max title length
+- `--name-title-length`: max title length, with its separators: the last
+  words are dropped until the title fits, and a first word longer than that
+  is cut
 - `--name-title-word-size`: min size to be considered a word
 - `--name-title-word-num`: max number of title words
 
@@ -75,9 +160,24 @@ and similarly:
 - `--name-author-sep`: separator for authors
 - `--name-author-num`: number of authors (not relevant for `{authorX}`)
 
+and for entries without author, year or title:
+
+- `--name-unknown-template`: the template used instead (default:
+  `unknown_{doi_or_id}` for file names, `{doi_}` for keys)
+- `--name-unknown-strict`: use it only when author, year and title are all
+  missing (by default, when any of them is missing); `--no-name-unknown-strict`
+  turns off the `name.unknown-strict` setting for one command
+
 The same template and modifiers system applies to the bibtex key generation by
 replacing the prefix `--name-` with `--key-`, e.g. `--key-template`.
 
+When the key template gives an empty key (an entry without author, year and
+DOI, with the default templates), a new entry gets a key from the first word
+of its title (of at least 3 letters) and its year: `only2000` for "Only a
+title" of 2000, `only` without year, `entry` without title. `papers check
+--fix-key` and the other renames keep the key of the entry instead.
+
 In the common case where the bibtex (`--bibtex`), files directory
 (`--filesdir`), and name and key formats (e.g. `--name-template`) do not
-change, it is convenient to [install](configuration.md) `papers`.
+change, it is convenient to store them in a [library configuration](configuration.md)
+(`papers init`, `papers config name.template ...`).

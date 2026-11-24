@@ -1,0 +1,126 @@
+{
+  "description": "file check and file fix: broken links, a link written without its leading slash (Mendeley), the same file linked twice, identical files, the files found in a --search folder by name or by the name template, links that several files or several entries claim (not relinked); fix copies the found files in the files directory, --move moves them; --dry-run lists the repairs",
+  "sections": [
+    "library.md#the-files-directory",
+    "bibtex.md#5.1",
+    "history.md#4"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "file",
+        "check"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "check",
+        "--search",
+        "search"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "check",
+        "--search",
+        "nosuchdir"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "check",
+        "a2020",
+        "b2021",
+        "--search",
+        "search",
+        "--search",
+        "search/deep"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "check",
+        "--metadata"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "fix",
+        "--dry-run",
+        "--search",
+        "search"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "fix",
+        "--search",
+        "search",
+        "--move"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "check"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "fix"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    },
+    {
+      "argv": [
+        "undo"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "fix",
+        "--search",
+        "search",
+        "b2021",
+        "c2022"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex",
+        "b2021",
+        "c2022"
+      ]
+    }
+  ]
+}

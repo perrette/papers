@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE2",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers edit doe2019 --set abstract=",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "145c3e6ce62c67320cced395fbd5d8d359c395ae8f39f32577ff76ba36d4336b"
+  ],
+  "sha": "145c3e6ce62c67320cced395fbd5d8d359c395ae8f39f32577ff76ba36d4336b"
+ },
+ "files": {}
+}

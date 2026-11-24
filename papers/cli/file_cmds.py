@@ -1,0 +1,1115 @@
+"""papers file rename, mv, attach, fetch, detach, rm, check, fix, clean, checksum, and filecheck (deprecated)"""
+import os
+import shutil
+import sys
+
+import papers.checksums
+import papers.config
+import papers.history
+import papers.utils
+from papers import backup, freepdf, journal, logger, openalex
+from papers.entries import get_entry_val
+from papers.identifiers import entry_arxiv, strip_doi
+from papers.filename import fit_name
+from papers.config import short_home
+from papers.files import (SearchFolders, attach_files, broken_links, check_entry_files, clean_filesdir,
+                          delete_files, detach_links, execute_moves, files_to_delete, link_snapshot, linked_files,
+                          links_to_paths, moved_links, plan_moves, realpath, remove_empty_folders, rename_files,
+                          attachment_names, is_inside)
+from papers.library import get_biblio, savebib
+from papers.otherlibs import Lookup, Source, is_own_unlinked
+from papers.pools import Exchange, Pools
+from papers.utils import PapersExit, checksum, stdin_is_terminal
+from papers.cli.common import (set_format_config_from_cmd, _print_biblio_diff, files_mode,
+                               _entries_or_all, _one_entry, _key_option_entries, print_kept_files, library_pools,
+                               save_entries, print_push_notes)
+
+
+def filecheckcmd(parser, o, config):
+    """deprecated: the options of filecheck run the `papers file` subcommands"""
+    check = o.fix_mendeley or o.hash_check or o.metadata_check or not (o.delete_broken or o.rename or o.clean_filesdir)
+    new = []
+    if check:
+        if o.fix_mendeley or o.hash_check:
+            new.append('papers file fix')
+        if o.metadata_check or not (o.fix_mendeley or o.hash_check):
+            new.append('papers file check' + (' --metadata' if o.metadata_check else ''))
+    if o.delete_broken:
+        new.append('papers file detach --broken')
+    if o.rename:
+        new.append('papers file rename' + (' --keep-source' if o.copy else ''))
+    if o.clean_filesdir:
+        new.append('papers file clean' + (' --yes' if o.force else ''))
+    logger.warning(f"`papers filecheck` is deprecated: use {' and '.join('`'+cmd+'`' for cmd in new)}")
+
+    set_format_config_from_cmd(o, config, 'name')
+    if o.rename and o.clean_filesdir and config.shallow:
+        raise PapersExit('--rename with --clean-filesdir: not done, because the library is shallow: its files are '
+                         'renamed in the files directory of the pool, cleaned there with all the entries of the pool '
+                         f'(`papers file rename`, then `papers -C {config.pool_label()} file clean`)')
+    # with --rename, the pools of `papers file rename` (in a shallow library, the files go to the pool)
+    pools = library_pools(config) if o.rename else Pools(config)
+    biblio = get_biblio(config)
+    exchange = Exchange(config, biblio, pools)
+
+    if check:
+        for e in biblio.entries:
+            for line in check_entry_files(biblio, e, metadata=o.metadata_check, fix=o.fix_mendeley or o.hash_check):
+                print(line)
+
+    if o.delete_broken:
+        for e in biblio.entries:
+            detach_links(biblio, e, [f for f in biblio.get_files(e) if not os.path.exists(f)])
+
+    if o.rename:
+        # deprecated: moves the files, as before the files setting applied to the renames
+        place_entries_files(exchange, biblio.entries, keep_source=o.copy, mode='move')
+
+    if o.clean_filesdir:
+        print("Check files directory for unlinked files")
+        clean_filesdir(biblio, interactive=not o.force, ignore_files=[config.bibtex])
+
+    print_push_notes(biblio, save_entries(config, biblio, exchange))
+
+
+def named_otherwise_in_pool(exchange, entries):
+    """a shallow library without auto-push: [(entry, files, name in the
+    pool)] of the entries whose files in the pool's files directory `papers
+    file rename` would rename, while the pool entry gives them another name
+    (the pool's name template applied to the pool entry: its fields differ
+    from the library entry's). The pool would rename them back: they stay
+    until the entry is pushed. An entry the pool does not have is not
+    listed (its push adds it to the pool)."""
+    config, biblio = exchange.config, exchange.biblio
+    if not config.shallow or config.auto_push:
+        return []
+    pool = exchange.pools.target()
+    filesdir = os.path.abspath(config.filesdir)
+    held = []
+    for e in entries:
+        files = biblio.get_files(e)
+        in_pool = [f for f in files if is_inside(f, filesdir)]
+        if not in_pool:
+            continue
+        pe, _ = exchange.pool_entry(e, pool)
+        if pe is None:
+            continue
+        name, pool_name = biblio.nameformat(e), biblio.nameformat(pe)
+        if name == pool_name:
+            continue
+        targets = dict(zip(files, attachment_names(files, os.path.join(filesdir, name))))
+        moved = [f for f in in_pool if os.path.abspath(f) != targets[f]]
+        if moved:
+            held.append((e, moved, pool_name))
+    return held
+
+
+def rename_entries(biblio, config, pools, entries, keep_source=False, mode=None):
+    """`papers file rename` (also `papers list --rename`): place the files of
+    the entries under their template name, and save the library. pools: the
+    library_pools of the configuration, made before the library is loaded
+    (in a shallow library, they set the files directory and name template
+    of the run: the files in the pool's files directory are renamed, the
+    pool entries' links follow, see save_entries, except those of
+    named_otherwise_in_pool, with a warning). Return the notes of
+    save_entries, and the number of entries whose files could not be
+    placed."""
+    exchange = Exchange(config, biblio, pools)
+    failed = place_entries_files(exchange, entries, keep_source=keep_source, mode=mode)
+    return save_entries(config, biblio, exchange), failed
+
+
+def place_entries_files(exchange, entries, keep_source=False, mode=None):
+    """rename_entries without the save (also `papers filecheck
+    --rename`): return the number of entries whose files could not be
+    placed"""
+    config, biblio, pools = exchange.config, exchange.biblio, exchange.pools
+    held = named_otherwise_in_pool(exchange, entries)
+    keep = [f for _, files, _ in held for f in files]
+    failed = rename_files(biblio, entries, config, pools.files_dirs(), keep_source=keep_source, mode=mode, keep=keep,
+                          pool=pools.pool(quiet=True) if config.shallow else None)
+    for e, files, pool_name in held:
+        logger.warning(f"{e.key}: {len(files)} file(s) not renamed: they are in {pools.target().label}, whose entry "
+                       f"differs and names them {pool_name}; `papers push {e.key}` first, "
+                       f"then `papers file rename {e.key}`")
+    return failed
+
+
+def file_renamecmd(parser, o, config):
+    set_format_config_from_cmd(o, config, 'name')
+    pools = library_pools(config)
+    biblio = get_biblio(config)
+    entries = _entries_or_all(biblio, o.entries)
+    mode = files_mode(o, config) if o.move or o.copy or o.link else None
+    notes, failed = rename_entries(biblio, config, pools, entries, keep_source=o.keep_source, mode=mode)
+    _print_biblio_diff(biblio, entries, notes=notes)
+    if failed:
+        raise PapersExit()  # the errors are reported: exit 1
+
+
+def file_mvcmd(parser, o, config):
+    if len(o.paths) < 2:
+        parser.error('papers file mv SRC... DEST')
+    *sources, dest = o.paths
+    biblio = get_biblio(config)
+    moves = plan_moves(biblio, sources, dest, force=o.force, protected=[config.bibtex, config.file])
+    snapshot = link_snapshot(biblio)
+
+    # -f: a replaced destination that entries link to
+    links = linked_files(biblio)
+    for m in moves:
+        replaced = links.get(realpath(m.target)) if not m.isdir and os.path.isfile(m.target) else None
+        if replaced:
+            logger.warning(f"-f replaces {m.target}, which {', '.join(e.key for e in replaced)} "
+                           f"link{'s' if len(replaced) == 1 else ''} to: "
+                           f"{'that link leads' if len(replaced) == 1 else 'these links lead'} to the moved file")
+
+    def _filesdir(moves):
+        "the new files directory, if it moves"
+        if config.filesdir is None or o.filesdir is not None:
+            return None
+        return next(filter(None, (m.new_path(realpath(config.filesdir)) for m in moves)), None)
+
+    if papers.config.DRYRUN:
+        for m in moves:
+            print(f"DRYRUN: mv {m.src} {m.target}")
+        for e, old, new in moved_links(snapshot, moves):
+            for a, b in zip(old, new):
+                if a != b:
+                    print(f"DRYRUN: {get_entry_val(e, 'ID', '')}: {a} -> {b}")
+        if _filesdir(moves):
+            print(f"DRYRUN: filesdir = {_filesdir(moves)}")
+        return
+
+    done, error = execute_moves(moves, force=o.force)
+    changes = moved_links(snapshot, done)
+    for e, old, new in changes:
+        biblio.set_files(e, new)
+    notes = save_entries(config, biblio)
+    filesdir = _filesdir(done)
+    if filesdir:
+        config.filesdir = filesdir
+        if config.file:
+            config.save()
+            print(f"filesdir = {config._relpath(filesdir)} (in {config.file})")
+    print(f"moved {len(done)} of {len(moves)} file(s) or folder(s), {len(changes)} entries updated")
+    print_push_notes(biblio, notes)
+    if error:
+        raise PapersExit(f"{error}: the links of the files moved before were saved")
+
+
+def attach_entry_files(biblio, config, pools, e, files, o):
+    """`papers file attach` (also `papers list --attach`): attach the files to
+    the entry e, as the files mode options of o (--move, --copy, --link, see
+    files_mode) or else the files setting say, and save the library. pools:
+    as for rename_entries. Return the notes of save_entries, and whether the
+    files could be placed (False: the name points outside the files
+    directory; the links are saved, the files left where they are)."""
+    placed = attach_files(biblio, e, files, config, files_mode(o, config), pools.files_dirs(),
+                          pool=pools.pool(quiet=True))
+    return save_entries(config, biblio, Exchange(config, biblio, pools)), placed
+
+
+def file_attachcmd(parser, o, config):
+    set_format_config_from_cmd(o, config, 'name')
+    pools = library_pools(config)
+    biblio = get_biblio(config)
+    e = _one_entry(biblio, o.key)
+    notes, placed = attach_entry_files(biblio, config, pools, e, o.files, o)
+    _print_biblio_diff(biblio, [e], notes=notes)
+    if not placed:
+        raise PapersExit()  # the error is reported: exit 1
+
+
+def _detach(biblio, links):
+    "remove the links [(entry, files)], and say which entries lost a link"
+    prefix = 'DRYRUN: ' if papers.config.DRYRUN else ''
+    for e, files in links:
+        detach_links(biblio, e, files)
+        for f in files:
+            print(f"{prefix}{e.key}: removed the link to {f}")
+
+
+def file_detachcmd(parser, o, config):
+    biblio = get_biblio(config)
+    entries = _key_option_entries(biblio, o.key)
+    if o.broken and o.files:
+        parser.error('--broken takes no FILE (--key limits it to entries)')
+    if not o.broken and not o.files and entries is None:
+        parser.error('papers file detach FILE... [--key KEY...], --key KEY... or --broken [--key KEY...]')
+    detach_entries(biblio, config, entries, o.files, broken=o.broken, recursive=o.recursive)
+
+
+def detach_entries(biblio, config, entries, files=(), broken=False, recursive=False):
+    """`papers file detach` (also `papers list --detach`): remove the links
+    of the entries (None: all entries) to the files (all their links
+    without files; only the broken links with broken=True), and save the
+    library"""
+    if broken:
+        links = [(e, [f for f in biblio.get_files(e) if not os.path.exists(f)])
+                 for e in (biblio.entries if entries is None else entries)]
+    elif files:
+        links = links_to_paths(biblio, files, entries, recursive=recursive)
+    else:
+        links = [(e, biblio.get_files(e)) for e in entries]
+    links = [(e, files) for e, files in links if files]
+    _detach(biblio, links)
+    print_push_notes(biblio, save_entries(config, biblio))
+    if not links:
+        print('no link removed')
+
+
+def file_rmcmd(parser, o, config):
+    biblio = get_biblio(config)
+    entries = _key_option_entries(biblio, o.key)
+    if not o.files:
+        parser.error('papers file rm FILE... [-r] [--key KEY...]')
+    links = links_to_paths(biblio, o.files, entries, recursive=o.recursive)
+    _detach(biblio, links)
+    removed = [f for _, files in links for f in files]
+    keep_dirs = [config.filesdir]
+    if config.shallow:
+        # a shallow library: the links of the pool entries were removed too
+        # (save_entries); a pool file that no entry of the pool or of the
+        # library links to any more is deleted
+        exchange = Exchange(config, biblio)
+        notes = save_entries(config, biblio, exchange)
+        pool = exchange.pools.pool(quiet=True)
+        if pool is None:  # the pool cannot be read: its files are kept
+            inside, outside, kept, in_pool = files_to_delete(biblio, removed, config.filesdir,
+                                                             pool_dirs=exchange.pools.files_dirs())
+            pool_linked = set()
+        else:
+            inside, outside, kept, in_pool = files_to_delete(biblio, removed, config.filesdir)
+            pool_linked = {realpath(f) for e in pool.biblio.entries for f in pool.biblio.get_files(e)}
+            keep_dirs.append(pool.filesdir)
+        pool_kept = [f for f in inside + outside if realpath(f) in pool_linked]
+        inside = [f for f in inside if realpath(f) not in pool_linked]
+        outside = [f for f in outside if realpath(f) not in pool_linked]
+        print_push_notes(biblio, notes)
+        print_kept_files(kept, in_pool)
+        for f in pool_kept:
+            print(f"kept {f}: an entry of the pool links to it")
+    else:
+        inside, outside, kept, in_pool = files_to_delete(biblio, removed, config.filesdir,
+                                                         pool_dirs=Pools(config).files_dirs())
+        print_push_notes(biblio, save_entries(config, biblio))
+        print_kept_files(kept, in_pool)
+    deleted = inside + outside
+    delete_files(deleted, dryrun=papers.config.DRYRUN)
+    for path in o.files:
+        if os.path.isdir(path):
+            remove_empty_folders(deleted, path, keep=keep_dirs, dryrun=papers.config.DRYRUN)
+
+
+def _search_names(e, link, rest, nameformat):
+    """the names to look for in the --search folders for the broken link
+    `link` of an entry (`rest`: its broken links not found in the pool): the
+    link's file name, then the name that the library's name template gives
+    the entry, with the link's extension (only when no other broken link
+    has that extension: the template names one file)"""
+    names = [os.path.basename(link)]
+    ext = os.path.splitext(link)[1]
+    if sum(os.path.splitext(f)[1].lower() == ext.lower() for f in rest) == 1:
+        try:
+            names.append(os.path.basename(fit_name(nameformat(e) + ext)))
+        except Exception as error:
+            logger.debug(f'{e.key}: no template name: {error}')
+    return names
+
+
+def plan_relinks(exchange, entries, search, nameformat, others=()):
+    """the files found for the broken links of the entries (see
+    `papers file fix`), without parsing any file, in this order: the
+    library itself (a file with the checksum that .papers/files.json has
+    for the link), the pool of the library (the files of the pool entry,
+    see Exchange.pool_relinks, then by checksum), the libraries of --pool
+    PATH (`others`), the other libraries of the machine by checksum (see
+    papers.otherlibs), then the --search folders (by the link's file
+    name, else by the template name of the entry). Return
+    (plans, unclear, count): plans [(entry, {link: [files]}, {link:
+    source})] where source is 'pool' (the pool of the library, by name),
+    the Pool of a --pool PATH, a papers.otherlibs.Source, or the --search
+    folder; unclear [(entry, link, reason)] for the links that several
+    files match; count, the number of broken links."""
+    biblio = exchange.biblio
+    own = exchange.pools.pool(quiet=True)
+    pools = [(own, 'pool')] if own is not None else []
+    pools += [(p, p) for p in others if p is not own]
+    lookup = Lookup(exchange.config, biblio, own, [p.config.bibtex for p, _ in pools])
+    plans, unclear, count = [], [], 0
+    claims = {}  # real path of a file found in a --search folder: [(plan, link)]
+    for e in entries:
+        broken = broken_links(biblio, e)
+        if not broken:
+            continue
+        count += len(broken)
+        found, sources = {}, {}
+
+        def taken():
+            return {realpath(f) for f in biblio.get_files(e) + [g for fs in found.values() for g in fs]
+                    if os.path.exists(f)}
+
+        def by_checksum(where):
+            for link in [f for f in broken if f not in found]:
+                hit = where(link, taken())
+                if hit:
+                    found[link], sources[link] = [hit[0]], hit[1]
+
+        by_checksum(lookup.own.find)
+        for pool, source in pools:
+            more = exchange.pool_relinks(e, pool, [f for f in broken if f not in found])
+            found.update(more)
+            sources.update(dict.fromkeys(more, source))
+            if source == 'pool':
+                by_checksum(lookup.in_pool)
+        by_checksum(lookup.in_others)
+        plan = (e, found, sources)
+        linked = taken()
+        rest = [f for f in broken if f not in found]
+        for link in rest:
+            for name in _search_names(e, link, rest, nameformat):
+                candidates = [f for f in search.find(name) if realpath(f) not in linked]
+                if candidates:
+                    break
+            if len(candidates) > 1:
+                unclear.append((e, link, 'several files match in the --search folders: '
+                                         + ', '.join(short_home(f) for f in candidates)))
+            elif candidates:
+                found[link] = candidates
+                plan[2][link] = search.folder(candidates[0])
+                claims.setdefault(realpath(candidates[0]), []).append((plan, link))
+        plans.append(plan)
+    # a file found for the broken links of several entries goes to none of them
+    for real, links in claims.items():
+        if len(links) > 1:
+            keys = ', '.join(plan[0].key for plan, _ in links)
+            for plan, link in links:
+                unclear.append((plan[0], link, f'{short_home(real)} matches the broken links of {keys}'))
+                del plan[1][link], plan[2][link]
+    return [plan for plan in plans if plan[1]], unclear, count
+
+
+def _links(n):
+    return f"{n} link{'' if n == 1 else 's'}"
+
+
+def _source(source):
+    if isinstance(source, Source):
+        return source.describe()
+    if source == 'pool':
+        return 'from the pool'
+    if isinstance(source, str):
+        return f'found in {short_home(source)}'
+    return f'from the library {source.shown}'
+
+
+def file_checkcmd(parser, o, config):
+    "papers file check: report the problems of the file links, change nothing"
+    _file_check(o, config, fix=False)
+
+
+def file_fixcmd(parser, o, config):
+    "papers file fix: the repairs that `papers file check` reports"
+    _file_check(o, config, fix=True)
+
+
+def _fix_command(o):
+    """the `papers file fix` command for the options of `papers file check`:
+    -C DIR, --bibtex FILE, the selection, --pool and --search"""
+    directory = getattr(o, 'directory', None)
+    return ' '.join(['papers'] + ([f'-C {directory}'] if directory else []) + ['file fix']
+                    + ([f'--bibtex {o.bibtex}'] if o.bibtex else [])
+                    + list(o.entries)
+                    + [f'--pool {short_home(os.path.abspath(os.path.expanduser(p)))}' for p in o.pool or []]
+                    + [f'--search {short_home(os.path.abspath(d))}' for d in o.search or []])
+
+
+def _file_check(o, config, fix):
+    """papers file check (fix=False) and papers file fix (fix=True): with
+    fix, apply the safe repairs (repaired paths, the second link of a file
+    linked twice or of identical files removed, broken links relinked to the
+    files found in the pool, the libraries of --pool PATH or the --search
+    folders); --dry-run lists them. A file found is copied (a hard link when
+    possible) into the files directory, never moved, except with --move a
+    file of a --search folder (see FilesPolicy for the files of other
+    libraries); in link mode, or without files directory, it is linked where
+    it is."""
+    nameformat = config.nameformat  # the library's own (a shallow library places files with the pool's)
+    pools = file_check_pools(config, fix)
+    biblio = get_biblio(config)
+    entries = _entries_or_all(biblio, o.entries)
+    check_entries_files(o, config, fix, pools, biblio, entries, nameformat)
+
+
+def file_check_pools(config, fix):
+    """the pools of `papers file check` and `papers file fix`, made before
+    the library is loaded (see rename_entries); --dry-run looks for the
+    files where `papers file fix` does"""
+    return library_pools(config) if fix else Pools(config)
+
+
+def relink_broken_links(config, biblio, exchange, entries, search_dirs, nameformat, others=(), mode=None,
+                        place=False, move=False):
+    """the repair of the broken links of the entries by `papers file fix`
+    (also `papers file fetch`, before it downloads): the links to pool files
+    repaired when a shallow library was loaded, the files found by
+    plan_relinks (the library by checksum, the pool, the libraries
+    `others` of --pool PATH, the other libraries of the machine, the
+    folders `search_dirs` of --search), then the files that a command
+    deleted from the place of the link, kept by the history. With place,
+    the files found are placed as `papers file attach` does (with the files
+    mode `mode`; move: the files of the --search folders are moved), and
+    those of the history copied back. Return (relinks, unclear, restores,
+    count): relinks [(entry, {link: [files]}, {link: source})] (the new
+    links once placed), unclear as for plan_relinks, restores [(entry,
+    link, when)], and count, the number of broken links."""
+    selected = {id(e) for e in entries}
+    search = SearchFolders(search_dirs)
+
+    # the links to pool files repaired when a shallow library is loaded (already linked), then the others
+    loaded = [(e, found, dict.fromkeys(found, 'pool')) for e, found in getattr(biblio, 'repaired_links', [])
+              if id(e) in selected]
+    plans, unclear, count = plan_relinks(exchange, entries, search, nameformat, others)
+    count += sum(len(found) for _, found, _ in loaded)
+
+    relinks = []
+    for (e, found, sources), linked in [(p, True) for p in loaded] + [(p, False) for p in plans]:
+        if place and not linked:
+            # placed as `papers file attach` does, in place of the broken links
+            positions, i = {}, 0
+            for f in biblio.get_files(e):
+                n = len(found.get(f, [f]))
+                positions[f] = range(i, i + n)
+                i += n
+            pool_files, kept, copied = _placement(found, sources, config.filesdir, move)
+            attach_files(biblio, e, [], config, mode, exchange.pools.files_dirs(), replace=found,
+                         pool_files=pool_files, copied=copied, keep=kept, pool=exchange.pools.pool(quiet=True))
+            newfiles = biblio.get_files(e)
+            found = {link: [newfiles[j] for j in positions[link]] for link in found}
+        relinks.append((e, found, sources))
+
+    # last, the history: a file that a command deleted from the place of the link comes back there
+    found_links = {link for _, found, _ in relinks for link in found} | {link for _, link, _ in unclear}
+    restores = []
+    for e in entries:
+        for link in broken_links(biblio, e):
+            kept = None if link in found_links else backup.deleted_file(config, link)
+            if kept is None:
+                continue
+            stored, step = kept
+            when = f'deleted by step {papers.history.short(step)}' if step else 'deleted, its checksum known'
+            if place:
+                os.makedirs(os.path.dirname(link), exist_ok=True)
+                shutil.copy2(stored, link)
+                journal.record('copied', stored, link)  # undo removes it again
+            restores.append((e, link, when))
+    return relinks, unclear, restores, count
+
+
+def _placement(found, sources, filesdir, move=False):
+    """how the files found for broken links are placed (see FilesPolicy):
+    (pool_files, kept, copied). The files of the pool are pool files; a
+    file of another entry of the library (found by checksum) is linked
+    where it is; an unlinked file of the files directory is placed as the
+    files setting says (renamed in place); the files of other libraries,
+    of --pool PATH and of the --search folders (unless `move`) are
+    copied."""
+    pool_files, kept, copied = [], [], []
+    for link, files in found.items():
+        source = sources[link]
+        for f in files:
+            if source == 'pool' or (isinstance(source, Source) and source.kind == 'pool'):
+                pool_files.append(f)
+            elif isinstance(source, Source) and source.kind == 'own' and source.key:
+                kept.append(f)
+            elif isinstance(source, Source) and is_own_unlinked(source, f, filesdir):
+                pass
+            elif not (move and isinstance(source, str)):
+                copied.append(f)
+    return pool_files, kept, copied
+
+
+def check_entries_files(o, config, fix, pools, biblio, entries, nameformat):
+    """`papers file check` and `papers file fix` (also `papers list
+    --fix-files`) on the entries: see _file_check. o has the options of
+    file check or fix (search, pool, move, metadata); nameformat: the name
+    format of the library, before file_check_pools."""
+    dryrun = papers.config.DRYRUN
+    metadata = getattr(o, 'metadata', False)
+    place = fix and not dryrun
+    exchange = Exchange(config, biblio, pools)
+    others = [pools.get_library(p) for p in o.pool or []]
+    mode = files_mode(o, config) if fix else None
+    relinks, unclear, restores, count = relink_broken_links(
+        config, biblio, exchange, entries, o.search or [], nameformat, others, mode=mode, place=place,
+        move=getattr(o, 'move', False))
+
+    lines = []
+    for e, found, sources in relinks:
+        found = {link: ', '.join(short_home(f) for f in files) for link, files in found.items() if files}
+        if place:
+            lines.append(f"{e.key}: relinked to "
+                         + '; '.join(f'{files} ({_source(sources[link])})' for link, files in found.items()))
+        elif fix:
+            lines.extend(f"DRYRUN: {e.key}: relink {short_home(link)} -> {files} ({_source(sources[link])})"
+                         for link, files in found.items())
+        else:
+            lines.extend(f"{e.key}: broken link: {short_home(link)} -> {files} ({_source(sources[link])})"
+                         for link, files in found.items())
+    for e, link, reason in unclear:
+        lines.append(f"{e.key}: broken link: {short_home(link)}: {reason} (not relinked)")
+    for e, link, when in restores:
+        if place:
+            lines.append(f"{e.key}: {short_home(link)}: restored from the history ({when})")
+        elif fix:
+            lines.append(f"DRYRUN: {e.key}: restore {short_home(link)} from the history ({when})")
+        else:
+            lines.append(f"{e.key}: broken link: {short_home(link)} -> in the history ({when})")
+    restored = len(restores)
+    restorable = {link for _, link, _ in restores}
+
+    relinked = sum(len(found) for _, found, _ in relinks) + restored
+    issues = list(lines)
+    repairs = []
+    skip = {link for _, link, _ in unclear}
+    if not place:
+        skip |= {link for _, found, _ in relinks for link in found} | restorable
+    for e in entries:
+        issues.extend(check_entry_files(biblio, e, metadata=metadata, fix=fix, skip=skip, repairs=repairs,
+                                        dryrun=dryrun))
+    for line in issues:
+        print(line)
+    if count:
+        left = count - relinked
+        detach = ' (papers file detach --broken removes them)' if left else ''
+        if fix:
+            print(f"{'DRYRUN: ' if not place else ''}{_links(relinked)} relinked, {left} still broken{detach}")
+        else:
+            print(f"{_links(relinked)} can be relinked, {left} without a file found{detach}")
+    if place:
+        # the issues left: neither relinked nor repaired
+        left = len(issues) - (len(lines) - len(unclear)) - len(repairs)
+        if left:
+            print(f"{left} issue(s) left in the files of {len(entries)} entries")
+        elif not issues:
+            print(f"no issue found in the files of {len(entries)} entries")
+    elif issues:
+        print(f"{len(issues)} issue(s) in the files of {len(entries)} entries")
+    else:
+        print(f"no issue found in the files of {len(entries)} entries")
+    if not fix and relinked + len(repairs):
+        print(f"{_links(relinked + len(repairs))} can be repaired: `{_fix_command(o)}`")
+    if fix and issues:
+        print_push_notes(biblio, save_entries(config, biblio, exchange if place else None))
+
+
+def file_cleancmd(parser, o, config):
+    if config.shallow:
+        # its filesdir setting is not used: the files are those of the pool, which other libraries link to too
+        raise PapersExit(f'the files of a shallow library are in its pool: clean them there, with all the entries '
+                         f'of the pool (`papers -C {config.pool_label()} file clean`)')
+    biblio = get_biblio(config)
+    if config.filesdir is None:
+        raise PapersExit('the library has no files directory')
+    removed = clean_filesdir(biblio, interactive=not o.yes, ignore_files=[config.bibtex])
+    print(f"{'DRYRUN: ' if papers.config.DRYRUN else ''}removed {len(removed)} unlinked file(s) "
+          f"from {config.filesdir}")
+
+
+def file_checksumcmd(parser, o, config):
+    """papers file checksum: write (or check) the checksums of the files of
+    the entries in .papers/files.json (see papers.checksums)"""
+    if papers.checksums.files_json(config) is None:
+        raise PapersExit('the checksums are kept in a library (.papers/files.json): this bibtex has none')
+    biblio = get_biblio(config)
+    paths = sorted({os.path.normpath(f) for e in _entries_or_all(biblio, o.entries) for f in biblio.get_files(e)})
+    hashes = papers.checksums.load(config)
+    written, changed, missing = 0, [], []
+    for p in paths:
+        if not os.path.isfile(p):
+            missing.append(p)
+            continue
+        digest = checksum(p).hex()
+        if p in hashes and hashes[p] != digest:
+            changed.append(p)
+        if hashes.get(p) != digest:
+            written += 1
+            hashes[p] = digest
+    for p in changed:
+        print(f"{short_home(p)}: changed since its checksum{'' if o.check else ' (updated)'}")
+    if missing:
+        print(f"{len(missing)} broken link{'' if len(missing) == 1 else 's'} (`papers file check` reports them)")
+    if o.check:
+        print(f"{len(paths) - len(missing)} files checked, {len(changed)} changed, "
+              f"{written - len(changed)} without checksum")
+        return
+    papers.checksums.save(config, hashes)
+    print(f"{written} checksum{'' if written == 1 else 's'} written ({len(changed)} changed)")
+    savebib(biblio, config, other_changes=True)  # the backup commits files.json
+
+
+# papers file fetch (also papers add --fetch-pdf)
+# ===============================================
+
+OPENALEX_ASK = 50  # entries of --missing that may query OpenAlex, above which papers asks (without API key)
+
+
+def has_pdf(biblio, e):
+    "the entry links to a PDF file that exists (a broken link counts as no PDF)"
+    return any(f.lower().endswith('.pdf') and os.path.isfile(f) for f in biblio.get_files(e))
+
+
+def _show(path):
+    "a file in a message: relative to the current directory if under it, else with ~"
+    relative = os.path.relpath(path)
+    return relative if not relative.startswith('..') else short_home(path)
+
+
+class LibraryChecksums:
+    """the files of the library with the content of a PDF downloaded before
+    (see papers.freepdf.get): of the entry, of another entry, or of the
+    checksums of the library (.papers/files.json). A file is compared by
+    size, then by checksum."""
+
+    def __init__(self, biblio, config):
+        self.biblio = biblio
+        self.hashes = papers.checksums.load(config)
+        self._sizes, self._digests = {}, {}
+
+    def _matches(self, f, known):
+        if f not in self._sizes:
+            self._sizes[f] = os.path.getsize(f) if os.path.isfile(f) else None
+        if self._sizes[f] != known['size']:
+            return False
+        if f not in self._digests:
+            self._digests[f] = checksum(f).hex()
+        return self._digests[f] == known['sha256']
+
+    def local(self, e):
+        "the `local` of papers.freepdf.get for the entry e"
+        def local(link, known):
+            for f in self.biblio.get_files(e):
+                if self._matches(f, known):
+                    return freepdf.Found(f, link, 'has')
+            for other in self.biblio.entries:
+                if other is not e:
+                    for f in self.biblio.get_files(other):
+                        if self._matches(f, known):
+                            return freepdf.Found(f, link, 'linked', other.key)
+            for f, digest in self.hashes.items():
+                if digest == known['sha256'] and self._matches(f, known):
+                    return freepdf.Found(f, link, 'known')
+            return None
+        return local
+
+
+def _found_line(e, path, found):
+    if found.how == 'linked':
+        return f'{e.key}: {_show(path)} ({found.describe()}; same file as {found.other}, not downloaded)'
+    if found.how == 'known':
+        return f'{e.key}: {_show(path)} ({found.describe()}; a file of the library, not downloaded)'
+    return f'{e.key}: {_show(path)} ({found.describe()})'
+
+
+def _one_line(message):
+    "the message of freepdf.NoPDF in one line: the reasons; open LINKS in a browser"
+    lines = message.splitlines()
+    browser = [line for line in lines[1:] if line.startswith('open in a browser: ')]
+    reasons = [line.strip() for line in lines[1:] if line not in browser] or lines[:1]
+    reasons += [f'open {line[len("open in a browser: "):]} in a browser' for line in browser]
+    return '; '.join(reasons)
+
+
+def _no_pdf(e, message, several):
+    """report an entry without PDF: a `papers: error:` for one entry; for
+    several, a line `KEY: no PDF (the reasons; open LINKS in a browser)` on stderr"""
+    if not several:
+        logger.error(f'{e.key}: {message}')
+        return
+    print(f'{e.key}: no PDF ({_one_line(message)})', file=sys.stderr)
+
+
+def _dry_run_lines(e, search, local, main, supplements, replacing='', several=False):
+    "the DRYRUN lines of an entry; False if no PDF would be found (replacing: the end of a line of --upgrade)"
+    lines, ok = [], True
+    if main:
+        links = list(search.links())
+        for i, link in enumerate(links):
+            found = freepdf.local_copy(link, local)
+            if found and found.how == 'has':
+                what = f'already has {_show(found.path)} (from {link.host})'
+            elif found:
+                what = f'would attach {_show(found.path)} ({link.describe()}; ' + (
+                    f'same file as {found.other}' if found.how == 'linked' else 'a file of the library') + ')'
+            else:
+                what = f'would download {link.url} ({link.describe()})'
+            if replacing and not (found and found.how == 'has'):
+                what = what.replace('would attach', 'would copy') + replacing
+            lines.append(f'DRYRUN: {e.key}: {"else " if i else ""}{what}')
+        if not links:
+            _no_pdf(e, freepdf.no_pdf_message(search, []), several)
+            ok = False
+    if supplements:
+        lines += [f'DRYRUN: {e.key}: would download {link.url} ({link.describe()})' for link in search.supplements()]
+    for line in lines:
+        print(line)
+    return ok
+
+
+def repair_pdf_links(config, biblio, exchange, entries, search_dirs, nameformat, mode, again=False):
+    """`papers file fetch`, before it downloads: the entries whose PDF link
+    is broken get the repair of `papers file fix` (see relink_broken_links;
+    search_dirs: the folders of --search); --dry-run says what it would
+    relink. Return the ids of the entries that have a PDF after the repair:
+    their PDF is not downloaded (unless `again`)."""
+    dryrun = papers.config.DRYRUN
+    broken = [e for e in entries if not has_pdf(biblio, e)
+              and any(f.lower().endswith('.pdf') for f in broken_links(biblio, e))]
+    if not broken:
+        return set()
+    relinks, unclear, restores, _ = relink_broken_links(config, biblio, exchange, broken, search_dirs, nameformat,
+                                                        mode=mode, place=not dryrun)
+    repaired = {id(e) for e, found, _ in relinks
+                if any(f.lower().endswith('.pdf') for files in found.values() for f in files)}
+    repaired |= {id(e) for e, link, _ in restores if link.lower().endswith('.pdf')}
+
+    def end(e):
+        return ', not downloaded' if id(e) in repaired and not again else ''
+    for e, found, sources in relinks:
+        found = {link: files for link, files in found.items() if files}
+        if dryrun:
+            for link, files in found.items():
+                print(f"DRYRUN: {e.key}: would relink {_show(link)} -> {', '.join(_show(f) for f in files)} "
+                      f"({_source(sources[link])})")
+        elif found:
+            print(f"{e.key}: relinked "
+                  + '; '.join(f"{', '.join(_show(f) for f in files)} ({_source(sources[link])})"
+                              for link, files in found.items()) + end(e))
+    for e, link, reason in unclear:
+        print(f"{e.key}: broken link: {_show(link)}: {reason} (not relinked)")
+    for e, link, when in restores:
+        if dryrun:
+            print(f"DRYRUN: {e.key}: would restore {_show(link)} from the history ({when})")
+        else:
+            print(f"{e.key}: {_show(link)}: restored from the history ({when}){end(e)}")
+    return repaired
+
+
+class FetchSummary:
+    """what `papers file fetch` did, entry by entry, for the summary printed
+    at the end of a fetch of several entries"""
+
+    def __init__(self):
+        self.attached = {}  # version -> number of main PDFs attached
+        self.supplements = 0
+        self.repaired = 0
+        self.had = 0  # entries that had the PDF already
+        self.upgraded = 0  # --upgrade: the PDFs replaced by the published version
+        self.browser = []  # (key, links, what): the links to open in a browser
+
+    def print(self, count):
+        lines = [f'summary of {count} entries:']
+        attached = sum(self.attached.values())
+        if attached:
+            lines.append(f'  {attached} PDF{"s" * (attached > 1)} attached: ' + ', '.join(
+                f'{n} {freepdf.VERSION_NAMES[v]}' for v, n in sorted(
+                    self.attached.items(), key=lambda x: freepdf.VERSIONS.index(x[0]))))
+        if self.upgraded:
+            lines.append(f'  {self.upgraded} replaced by the published version')
+        if self.repaired:
+            lines.append(f'  {self.repaired} found locally (repaired, not downloaded)')
+        if self.had:
+            lines.append(f'  {self.had} had the PDF already')
+        if self.supplements:
+            lines.append(f'  {self.supplements} supplement{"s" * (self.supplements > 1)} attached')
+        failed = sum(1 for _, _, what in self.browser if what == 'no PDF')
+        if failed:
+            lines.append(f'  {failed} without PDF')
+        kept = sum(1 for _, _, what in self.browser if what == NO_PUBLISHED)
+        if kept:
+            lines.append(f'  {kept} without published version (kept as they are)')
+        if len(lines) == 1:
+            lines.append('  nothing attached')
+        links = [f'  {key}: {freepdf.join_urls(urls)} ({what})' for key, urls, what in self.browser if urls]
+        if links:
+            lines += ['open in a browser:'] + links
+        print('\n'.join(lines))
+
+
+def fetch_entry_pdfs(biblio, config, pools, entries, mode, least='any', supplements=False, again=False,
+                     repaired=(), summary=None, several=False):
+    """`papers file fetch` (also `papers add --fetch-pdf`): find the free PDF
+    of each entry (see papers.freepdf), and attach it as `papers file attach`
+    does (with the files mode `mode`); the library is not saved. The main
+    PDF of an entry that links to a PDF already is not fetched, unless
+    `again`; with `supplements`, the supplements are fetched too. A PDF with
+    the content of a file of the entry is not attached; one that this
+    machine downloaded before (same URL) and that the library has is
+    attached without downloading it. Return the number of entries whose PDF
+    was not found (the errors are reported). repaired: the ids of the
+    entries whose broken PDF link repair_pdf_links repaired (no main PDF
+    fetched unless `again`, without message). summary: a FetchSummary to fill.
+    several: the entries without PDF get one line each (see _no_pdf)."""
+    dryrun = papers.config.DRYRUN
+    summary = summary or FetchSummary()
+    library = LibraryChecksums(biblio, config)
+    failed = 0
+    plans = []  # (entry, [Found], the summary line of a refused published version or None)
+    for e in entries:
+        main = again or (not has_pdf(biblio, e) and id(e) not in repaired)
+        if not main and id(e) not in repaired:
+            print(f'{e.key}: has a PDF already (--again to fetch it anyway)')
+            summary.had += 1
+            if not supplements:
+                continue
+        doi, arxiv = strip_doi(get_entry_val(e, 'doi', '')), entry_arxiv(e)
+        if not doi and not arxiv:
+            if main:
+                _no_pdf(e, 'no DOI or arXiv id to look for a PDF', several)
+                summary.browser.append((e.key, [], 'no PDF'))
+                failed += 1
+            continue
+        search = freepdf.Search(doi, arxiv or None, least)
+        local = library.local(e)
+        if dryrun:
+            failed += not _dry_run_lines(e, search, local, main, supplements, several=several)
+            continue
+        found = []
+        refused = None
+        if main:
+            try:
+                found.append(freepdf.fetch_pdf(search, local))
+                if found[-1].refused:
+                    # in the order of the entries; left out below if the PDF is not attached
+                    refused = (e.key, list(found[-1].refused), 'published version refused; '
+                               f'{freepdf.VERSION_NAMES[found[-1].link.version]} found')
+                    summary.browser.append(refused)
+            except freepdf.NoPDF as error:
+                _no_pdf(e, str(error), several)
+                summary.browser.append((e.key, error.links, 'no PDF'))
+                failed += 1
+        if supplements:
+            found += freepdf.fetch_supplements(search, local)
+        plans.append((e, found, refused))
+
+    # the downloads are done: the files are attached
+    for e, found, refused in plans:
+        if not _attach_fetched(biblio, config, pools, e, found, refused, mode, summary):
+            failed += 1
+    return failed
+
+
+def _attach_fetched(biblio, config, pools, e, found, refused, mode, summary):
+    """attach the PDFs found for the entry e ([freepdf.Found]) as
+    fetch_entry_pdfs says, and count them in the summary (refused: the
+    summary line of a refused published version, or None). Return False
+    when the files could not be placed (see attach_files)."""
+    from papers.bib import _same_content
+    new = []
+    for f in found:
+        if f.how == 'has':
+            print(f'{e.key}: already has {_show(f.path)} (from {f.link.host})')
+        elif f.how == 'downloaded' and (same := _same_content(f.path, biblio.get_files(e) + [g.path for g in new])):
+            print(f'{e.key}: {f.link.url} not attached, the entry has the same file: {_show(same)}')
+            freepdf.discard(f.path)
+        else:
+            new.append(f)
+            continue
+        # not attached: the entry had the PDF already (counted once, not as refused)
+        if f.link.version != 'supplement':
+            summary.had += 1
+            if refused in summary.browser:
+                summary.browser.remove(refused)
+    if not new:
+        return True
+    # a file of another entry is linked where it is (shared, as add does); the others are placed
+    linked = [f for f in new if f.how == 'linked']
+    placed = [f for f in new if f.how != 'linked']
+    biblio.set_files(e, biblio.get_files(e) + [f.path for f in linked])
+    ok = not placed or attach_files(biblio, e, [f.path for f in placed], config, mode, pools.files_dirs(),
+                                    pool=pools.pool(quiet=True))
+    for f in placed:  # the temporary folder of a download, now empty
+        if f.how == 'downloaded' and not os.path.exists(f.path):
+            freepdf.discard(f.path)
+    paths = biblio.get_files(e)[-len(new):]
+    for path, f in zip(paths, linked + placed):
+        print(_found_line(e, path, f))
+        if f.link.version == 'supplement':
+            summary.supplements += 1
+        else:
+            summary.attached[f.link.version] = summary.attached.get(f.link.version, 0) + 1
+            biblio.pdf_versions[path] = f.link.version  # in .papers/files.json, by checksum
+    return ok
+
+
+NO_PUBLISHED = 'no published version'
+LOWER_VERSIONS = ('accepted', 'submitted')
+
+
+def lower_version_pdf(biblio, e, versions):
+    """the first PDF of the entry whose version is accepted or submitted,
+    with its version, when no PDF of the entry is the published version;
+    else None (versions: see papers.checksums.file_versions)"""
+    pdfs = [f for f in biblio.get_files(e) if f.lower().endswith('.pdf') and os.path.isfile(f)]
+    known = [versions.get(os.path.normpath(f)) for f in pdfs]
+    if 'published' in known:
+        return None
+    return next(((f, v) for f, v in zip(pdfs, known) if v in LOWER_VERSIONS), None)
+
+
+def upgrade_entry_pdfs(biblio, config, entries, named, summary, several=False):
+    """`papers file fetch --upgrade`: the entries whose PDF is an accepted
+    manuscript or a submitted version (see lower_version_pdf) look for the
+    published version only; one found replaces that file, under its name
+    (the old file goes to the history, see papers.journal.replace). The
+    library is not saved. named: the entries were given by key (an entry
+    without such a PDF is said); several: an entry without published PDF
+    gets one line. Return the entries looked at."""
+    dryrun = papers.config.DRYRUN
+    versions = papers.checksums.file_versions(config)
+    library = LibraryChecksums(biblio, config)
+    looked, plans = [], []
+    for e in entries:
+        lower = lower_version_pdf(biblio, e, versions)
+        if lower is None:
+            if named:
+                print(f'{e.key}: no accepted manuscript or submitted version to replace')
+            continue
+        looked.append(e)
+        file, version = lower
+        doi = strip_doi(get_entry_val(e, 'doi', ''))
+        if not doi:
+            print(f'{e.key}: no DOI to look for the published version: {_show(file)} '
+                  f'({freepdf.VERSION_NAMES[version]}) kept')
+            summary.browser.append((e.key, [], NO_PUBLISHED))
+            continue
+        search = freepdf.Search(doi, None, 'published')
+        local = library.local(e)
+        replacing = f', in place of {_show(file)} ({freepdf.VERSION_NAMES[version]})'
+        if dryrun:
+            _dry_run_lines(e, search, local, True, False, replacing=replacing)
+            continue
+        try:
+            plans.append((e, file, version, freepdf.fetch_pdf(search, local)))
+        except freepdf.NoPDF as error:
+            kept = f'{e.key}: {_show(file)} ({freepdf.VERSION_NAMES[version]}) kept'
+            print(f'{kept} (no published version: {_one_line(str(error))})' if several else f'{kept}: {error}')
+            summary.browser.append((e.key, error.links, NO_PUBLISHED))
+
+    # the downloads are done: the files are replaced
+    for e, file, version, found in plans:
+        _replace_by_published(biblio, e, file, version, found, summary)
+    return looked
+
+
+def _replace_by_published(biblio, e, file, version, found, summary):
+    """replace the PDF `file` of the entry e (of version `version`) by the
+    published version found (a freepdf.Found), unless the entry has it
+    already; count it in the summary"""
+    from papers.bib import _same_content
+    same = found.path if found.how == 'has' else _same_content(found.path, biblio.get_files(e))
+    if same:
+        # the entry has the published version already: it is now known
+        print(f'{e.key}: already has {_show(same)} ({found.describe()})')
+        if found.how == 'downloaded':
+            freepdf.discard(found.path)
+        biblio.pdf_versions[same] = 'published'
+        summary.had += 1
+        return
+    journal.replace(file, found.path, copy=found.how != 'downloaded')
+    if found.how == 'downloaded':  # the temporary folder of the download, now empty
+        freepdf.discard(found.path)
+    biblio.pdf_versions[file] = 'published'
+    print(f'{e.key}: {_show(file)}: {freepdf.VERSION_NAMES[version]} replaced by the {found.describe()}'
+          + ('' if journal.keeps_deleted() else ' (the old file went to the trash of the system)'))
+    summary.upgraded += 1
+
+
+def _confirm_openalex(o, entries):
+    """--missing: ask before more than OPENALEX_ASK entries with a DOI may
+    query OpenAlex without API key (-y/--yes does not ask); without a
+    terminal, stop"""
+    count = sum(1 for e in entries if strip_doi(get_entry_val(e, 'doi', '')))
+    if count <= OPENALEX_ASK or os.environ.get(openalex.API_KEY_ENV) or o.yes:
+        return
+    question = (f'{count} entries with a DOI: each may make a request to OpenAlex, which allows few '
+                f'requests a day without an API key ({openalex.API_KEY_ENV}, free at '
+                f'https://openalex.org/settings/api)')
+    if not stdin_is_terminal():
+        raise PapersExit(f'{question}: no terminal to confirm; set {openalex.API_KEY_ENV}, pass -y/--yes, '
+                         f'or name the entries (nothing was changed)')
+    if input(f'{question}. Continue? [y/N] ').strip().lower() not in ('y', 'yes'):
+        raise PapersExit('nothing was changed')
+
+
+def _save_fetched(config, biblio, exchange, entries):
+    "save the library after `papers file fetch`: the changes of the entries with --porcelain, else the push notes"
+    notes = save_entries(config, biblio, exchange)
+    if papers.utils.PORCELAIN is not None:
+        _print_biblio_diff(biblio, entries, notes=notes)
+    else:
+        print_push_notes(biblio, notes)
+
+
+def file_fetchcmd(parser, o, config):
+    set_format_config_from_cmd(o, config, 'name')
+    if o.upgrade:
+        for option, given in [('--missing', o.missing), ('--again', o.again), ('--supplements', o.supplements),
+                              ('--version', o.least_version is not None), ('--search', o.search)]:
+            if given:
+                parser.error(f'--upgrade and {option}: --upgrade replaces an accepted manuscript or a submitted '
+                             'version by the published version')
+        return file_upgradecmd(o, config)
+    if not o.entries and not o.missing:
+        parser.error('papers file fetch KEY... or --missing [KEY...] or --upgrade [KEY...]')
+    dryrun = papers.config.DRYRUN
+    nameformat = config.nameformat  # the library's own, as for `papers file fix`
+    pools = library_pools(config)  # --dry-run too: it looks for the files where the fetch does
+    biblio = get_biblio(config)
+    entries = _entries_or_all(biblio, o.entries)
+    if o.missing:
+        entries = [e for e in entries if not has_pdf(biblio, e)]
+    if config.filesdir is None:
+        raise PapersExit('the library has no files directory, where the downloaded PDFs go '
+                         '(pass --filesdir, or set it with `papers config filesdir DIR`)')
+    mode = files_mode(o, config)
+    if o.missing:
+        _confirm_openalex(o, entries)
+    # the repair of `papers file fix` first: the download, only if it gives no PDF (one step for both)
+    exchange = Exchange(config, biblio, pools)
+    repaired = repair_pdf_links(config, biblio, exchange, entries, o.search or [], nameformat, mode, again=o.again)
+    fetched = [e for e in entries if id(e) not in repaired or o.again or o.supplements]
+    summary = FetchSummary()
+    summary.repaired = 0 if o.again else len(repaired)
+    failed = fetch_entry_pdfs(biblio, config, pools, fetched, mode, least=o.least_version or 'any',
+                              supplements=o.supplements, again=o.again, repaired=repaired, summary=summary,
+                              several=len(entries) > 1)
+    if not dryrun:
+        _save_fetched(config, biblio, exchange, entries)
+    if o.missing and not entries:
+        print('every entry has a PDF')
+    if len(entries) > 1 and not dryrun and papers.utils.PORCELAIN is None:
+        summary.print(len(entries))
+    if failed:
+        raise PapersExit()  # the errors are reported: exit 1
+
+
+def file_upgradecmd(o, config):
+    "papers file fetch --upgrade [KEY...]"
+    dryrun = papers.config.DRYRUN
+    pools = None if dryrun else library_pools(config)  # a shallow library pushes the entries it saves
+    biblio = get_biblio(config)
+    entries = _entries_or_all(biblio, o.entries)
+    if not o.entries:
+        versions = papers.checksums.file_versions(config)
+        entries = [e for e in entries if lower_version_pdf(biblio, e, versions)]
+    _confirm_openalex(o, entries)
+    summary = FetchSummary()
+    looked = upgrade_entry_pdfs(biblio, config, entries, bool(o.entries), summary, several=len(entries) > 1)
+    if not dryrun:
+        _save_fetched(config, biblio, Exchange(config, biblio, pools), entries)
+    if not o.entries and not entries:
+        print('no entry has an accepted manuscript or a submitted version attached by papers file fetch')
+    if len(looked) > 1 and not dryrun and papers.utils.PORCELAIN is None:
+        summary.print(len(looked))

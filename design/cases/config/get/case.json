@@ -1,0 +1,44 @@
+{
+  "description": "config NAME prints one setting",
+  "sections": [
+    "library.md#settings/table"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "config",
+        "name.template"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "bibtex"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "filesdir"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "pool"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "files"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "key.author-num"
+      ]
+    }
+  ]
+}

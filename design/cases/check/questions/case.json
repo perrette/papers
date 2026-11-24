@@ -1,0 +1,55 @@
+{
+  "description": "without -y check shows the changes of each entry and asks `update? [Y/n]`: yes (or nothing) keeps them, any other answer puts the entry back; without input it is an error; --dry-run saves nothing",
+  "sections": [
+    "bibtex.md#3",
+    "formats.md#7.2"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "check",
+        "--format-name",
+        "--fix-doi"
+      ],
+      "stdin": "y\nn\nx\n"
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    },
+    {
+      "argv": [
+        "check",
+        "--format-name",
+        "--fix-doi"
+      ]
+    },
+    {
+      "argv": [
+        "check",
+        "--format-name",
+        "--fix-doi",
+        "--dry-run"
+      ],
+      "stdin": "\n\n\n"
+    },
+    {
+      "argv": [
+        "check",
+        "--format-name",
+        "--fix-doi"
+      ],
+      "stdin": "\n\n\n"
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    }
+  ]
+}

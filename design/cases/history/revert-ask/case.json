@@ -1,0 +1,143 @@
+{
+  "description": "history --revert --on-duplicate ask: the dialogue of a conflict (the entries as keys, the origin line, the numbered answers, help, an invalid answer, field by field, skip, quit, \"not the same paper\" which leaves the entry), without a terminal the answers come from the standard input",
+  "sections": [
+    "history.md#8",
+    "history.md#8.1",
+    "history.md#8.2",
+    "history.md#8.4",
+    "bibtex.md#10.6",
+    "exchange.md#5.7",
+    "history.md#2.5"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "edit",
+        "doe2019",
+        "--set",
+        "note=one",
+        "year=2018",
+        "publisher=Elsevier"
+      ]
+    },
+    {
+      "argv": [
+        "edit",
+        "doe2019",
+        "--set",
+        "note=two",
+        "year=2017",
+        "publisher=Wiley",
+        "isbn=0-306-40615-2"
+      ]
+    },
+    {
+      "argv": [
+        "edit",
+        "smith2020",
+        "--set",
+        "note=s1"
+      ]
+    },
+    {
+      "argv": [
+        "edit",
+        "smith2020",
+        "--set",
+        "note=s2"
+      ]
+    },
+    {
+      "argv": [
+        "history",
+        "--revert",
+        "$STATE2",
+        "--on-duplicate",
+        "ask"
+      ],
+      "stdin": "?\nx\ns\n"
+    },
+    {
+      "argv": [
+        "history",
+        "--revert",
+        "$STATE2",
+        "--on-duplicate",
+        "ask"
+      ],
+      "stdin": "n\n"
+    },
+    {
+      "argv": [
+        "history",
+        "--revert",
+        "$STATE2",
+        "--on-duplicate",
+        "ask"
+      ],
+      "stdin": "f\n1\n2\n2\n"
+    },
+    {
+      "argv": [
+        "list",
+        "-k",
+        "doe2019",
+        "--format",
+        "bibtex"
+      ]
+    },
+    {
+      "argv": [
+        "history",
+        "--revert",
+        "$STATE3",
+        "--on-duplicate",
+        "ask"
+      ],
+      "stdin": "q\n"
+    },
+    {
+      "argv": [
+        "history",
+        "--revert",
+        "$STATE3",
+        "--on-duplicate",
+        "ask"
+      ],
+      "stdin": "2\n"
+    },
+    {
+      "argv": [
+        "history",
+        "--revert",
+        "$STATE3",
+        "--on-duplicate",
+        "ask"
+      ],
+      "stdin": ""
+    },
+    {
+      "argv": [
+        "history"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-k",
+        "doe2019",
+        "--format",
+        "bibtex"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-k",
+        "smith2020",
+        "--format",
+        "bibtex"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE3",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers add one.bib -a Ann Bee --year 2001 --porcelain",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "fb5385ee190656e702f9746ed4ffabba5ec453b4ccf14ba49b04736a5947ccfa"
+  ],
+  "sha": "fb5385ee190656e702f9746ed4ffabba5ec453b4ccf14ba49b04736a5947ccfa"
+ },
+ "files": {}
+}

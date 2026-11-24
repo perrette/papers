@@ -21,27 +21,30 @@ jobs:
       id: tag
       run: echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
 
-    - name: Generate changelog
-      id: changelog
+    - name: Release notes
+      id: notes
       run: |
-        # Get the previous tag
-        PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
-
-        if [ -z "$PREV_TAG" ]; then
-          # First release - get all commits
-          CHANGES=$(git log --pretty=format:"- %s (%h)" --no-merges)
+        TAG=${{ steps.tag.outputs.tag }}
+        NOTES=.github/release-notes/$TAG.md
+        if [ -f "$NOTES" ]; then
+          # notes written for this release
+          cp "$NOTES" body.md
         else
-          # Get commits since previous tag
-          CHANGES=$(git log ${PREV_TAG}..HEAD --pretty=format:"- %s (%h)" --no-merges)
+          # otherwise the commits since the previous tag
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          if [ -z "$PREV_TAG" ]; then
+            CHANGES=$(git log --pretty=format:"- %s (%h)" --no-merges)
+          else
+            CHANGES=$(git log ${PREV_TAG}..HEAD --pretty=format:"- %s (%h)" --no-merges)
+          fi
+          printf '## Changes in %s\n\n%s\n' "$TAG" "$CHANGES" > body.md
         fi
-
-        # Save to file to handle multiline content
-        echo "$CHANGES" > changelog.txt
-
-        # Also output to GitHub output
-        echo "changelog<<EOF" >> $GITHUB_OUTPUT
-        echo "$CHANGES" >> $GITHUB_OUTPUT
-        echo "EOF" >> $GITHUB_OUTPUT
+        # a version with a, b, rc or dev (e.g. v3.0.0b1) is a pre-release
+        if echo "$TAG" | grep -Eq '[0-9](a|b|rc|\.dev)[0-9]*$'; then
+          echo "prerelease=true" >> $GITHUB_OUTPUT
+        else
+          echo "prerelease=false" >> $GITHUB_OUTPUT
+        fi
 
     - name: Create Release
       uses: actions/create-release@v1
@@ -50,9 +53,6 @@ jobs:
       with:
         tag_name: ${{ steps.tag.outputs.tag }}
         release_name: Release ${{ steps.tag.outputs.tag }}
-        body: |
-          ## Changes in ${{ steps.tag.outputs.tag }}
-
-          ${{ steps.changelog.outputs.changelog }}
+        body_path: body.md
         draft: false
-        prerelease: false
+        prerelease: ${{ steps.notes.outputs.prerelease }}

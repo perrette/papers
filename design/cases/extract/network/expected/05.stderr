@@ -1,0 +1,3 @@
+papers: warning: no DOI found whose title appears in the text: 10.1234/ice.2020.1
+papers: warning: fulltext query: title not found in the text: Ice-dynamic projections of the Greenland ice sheet in response to atmospheric and oceanic warming
+papers: error: text-doi.pdf: failed to extract metadata: pass the DOI with --doi, or, without DOI, add the entry with --title, --author, --year... and the PDF with --attach

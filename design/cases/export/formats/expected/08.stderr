@@ -1,0 +1,5 @@
+usage: papers export [-h] [-v] [--debug] [--color {auto,always,never}]
+                     [--porcelain] [--filesdir FILESDIR] [--bibtex BIBTEX]
+                     [--dry-run] [--files {copy,link,none}] [--format FORMAT]
+                     DIR [KEY ...]
+papers export: error: argument --format: unknown format 'nosuch' (choose from bib, ris, csl-json, bibjson, all)

@@ -1,0 +1,26 @@
+{
+ "parent": "$STATE1",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers add in1.bib --copy",
+ "ops": [
+  {
+   "op": "copied",
+   "src": "src/1.txt",
+   "dst": "files/doe_2019_entry-1.txt",
+   "checksum": "2c8b08da5ce60398e1f19af0e5dccc744df274b826abe585eaba68c525434806"
+  }
+ ],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "595ad169bf7cdfa348949f32ec9a1e641303f255d5672a342d3259dac4ad7faf"
+  ],
+  "sha": "595ad169bf7cdfa348949f32ec9a1e641303f255d5672a342d3259dac4ad7faf"
+ },
+ "files": {
+  ".papers/files.json": [
+   "552b5471468e41f37589839d7be5a30be92d01be24b21505cff187b2eeb6cfb8"
+  ]
+ }
+}

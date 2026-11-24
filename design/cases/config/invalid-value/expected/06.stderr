@@ -1,0 +1,1 @@
+papers: error: $WORK/f/.papers/config.json: invalid value true for the setting paths (expected one of relative, absolute): correct the file

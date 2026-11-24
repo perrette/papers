@@ -1,0 +1,79 @@
+{
+  "description": "search compares the text of the entry and the search word after norm (LaTeX decoded, transliterated to ASCII, no braces, lower case): Muller finds Müller and M{\\\"u}ller, whichever way the bibtex has the accent",
+  "sections": [
+    "bibtex.md#4.1",
+    "formats.md#6",
+    "formats.md#6.1",
+    "bibtex.md#9.1"
+  ],
+  "tests": [
+    "tests/test_spec_formats.py::TestListOutput::test_search_normalized"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "list",
+        "Müller"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "Muller"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "M{\\\"u}ller"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "Škoda"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "Sm"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--author",
+        "smith"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--author",
+        "Sm{\\\"i}th"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "kälte"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "Cold",
+        "Water"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "csl-json",
+        "smith"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "description": "a bibtex with file links: a file that exists is renamed into the files folder, a broken link is warned about",
+  "sections": [
+    "bibtex.md#5.1",
+    "bibtex.md#5.2",
+    "library.md#the-files-directory/file-names",
+    "history.md#10"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "add",
+        "links.bib"
+      ]
+    },
+    {
+      "argv": [
+        "list"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    }
+  ]
+}

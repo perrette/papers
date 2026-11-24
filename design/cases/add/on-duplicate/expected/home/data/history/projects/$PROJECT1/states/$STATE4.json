@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE3",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers add dup.bib --on-duplicate update --porcelain",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "b8028ef66253ed11e31568dcc948a901d819e6691a4b6f15d7e15f247f2a08d5"
+  ],
+  "sha": "b8028ef66253ed11e31568dcc948a901d819e6691a4b6f15d7e15f247f2a08d5"
+ },
+ "files": {}
+}

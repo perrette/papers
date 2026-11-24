@@ -1,0 +1,31 @@
+{
+ "parent": "$STATE3",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers file rm files/a2.txt out/o.txt --key a2020 --porcelain",
+ "ops": [
+  {
+   "op": "trashed",
+   "src": "files/a2.txt",
+   "dst": null,
+   "checksum": "53c234e5e8472b6ac51c1ae1cab3fe06fad053beb8ebfd8977b010655bfdd3c3"
+  },
+  {
+   "op": "trashed",
+   "src": "out/o.txt",
+   "dst": null,
+   "checksum": "7427d152005f9ed0fa31c76ef9963cf4bb47dce6e2768111d9eb0edbfe59c704"
+  }
+ ],
+ "deleted": [
+  "53c234e5e8472b6ac51c1ae1cab3fe06fad053beb8ebfd8977b010655bfdd3c3",
+  "7427d152005f9ed0fa31c76ef9963cf4bb47dce6e2768111d9eb0edbfe59c704"
+ ],
+ "bibtex": {
+  "pieces": [
+   "edf27d6df15ef7ae1e294d0ab09aaedf580c7b355f865d45f6d65bee742fc445"
+  ],
+  "sha": "edf27d6df15ef7ae1e294d0ab09aaedf580c7b355f865d45f6d65bee742fc445"
+ },
+ "files": {}
+}

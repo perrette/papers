@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE2",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers tag --rename ocean/amoc ocean/moc",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "18016a81ecbc3f5c306defec88781d160bbf12b1b04e8ae451fe3f8fc64f2e94"
+  ],
+  "sha": "18016a81ecbc3f5c306defec88781d160bbf12b1b04e8ae451fe3f8fc64f2e94"
+ },
+ "files": {}
+}

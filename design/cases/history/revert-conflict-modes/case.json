@@ -1,0 +1,105 @@
+{
+  "description": "an entry that changed since step N too is a conflict, decided as in pull: an error without a terminal, --on-duplicate keep (the values now), update (the values before the step), skip (the entry is left as it is, no new step), error",
+  "sections": [
+    "history.md#8",
+    "history.md#8.1",
+    "history.md#8.2",
+    "history.md#8.4",
+    "history.md#8.2",
+    "exchange.md#5.6",
+    "history.md#2.5"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "edit",
+        "doe2019",
+        "--set",
+        "note=one"
+      ]
+    },
+    {
+      "argv": [
+        "edit",
+        "doe2019",
+        "--set",
+        "note=two"
+      ]
+    },
+    {
+      "argv": [
+        "edit",
+        "mueller2021",
+        "--set",
+        "note=m"
+      ]
+    },
+    {
+      "argv": [
+        "history",
+        "--revert",
+        "$STATE2"
+      ]
+    },
+    {
+      "argv": [
+        "history",
+        "--revert",
+        "$STATE2",
+        "--on-duplicate",
+        "error"
+      ]
+    },
+    {
+      "argv": [
+        "history",
+        "--revert",
+        "$STATE2",
+        "--on-duplicate",
+        "skip"
+      ]
+    },
+    {
+      "argv": [
+        "history"
+      ]
+    },
+    {
+      "argv": [
+        "history",
+        "--revert",
+        "$STATE2",
+        "--on-duplicate",
+        "keep"
+      ]
+    },
+    {
+      "argv": [
+        "history"
+      ]
+    },
+    {
+      "argv": [
+        "history",
+        "--revert",
+        "$STATE2",
+        "--on-duplicate",
+        "update"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-k",
+        "doe2019",
+        "--format",
+        "bibtex"
+      ]
+    },
+    {
+      "argv": [
+        "history"
+      ]
+    }
+  ]
+}

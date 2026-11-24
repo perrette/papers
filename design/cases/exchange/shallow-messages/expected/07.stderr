@@ -1,0 +1,2 @@
+papers: warning: --filesdir ../elsewhere: not used, because the library is shallow: its files are in the files directory of pool ../pool (`papers config pool none` makes the library self-contained, with its own files directory)
+papers: warning: name.author-num, name.title-sep: not used, because the library is shallow: its files are named with the settings of pool ../pool (`papers -C ../pool config NAME VALUE` sets them there)

@@ -1,0 +1,17 @@
+@article{enc2020,
+ abstract = {Kept as \'e written in the abstract},
+ author = {Fran{\textbackslash c{c}}ois M{\textbackslash \textquotesingle e}nard and J{\textbackslash "o}rg M{\textbackslash "u}ller},
+ doi = {10.5194/test_2020~a},
+ file = {:files/enc_x.pdf:pdf},
+ title = {Test with {\textbackslash \textquotesingle e} and {\textbackslash "u} and \textbackslash \& more},
+ url = {https://example.org/a_b?x=~y},
+ year = {2020}
+}
+
+@article{plain2021,
+ author = {M{\"u}ller, J{\"o}rg and {\. Z}{\'o}{\l}{\' c}, {\L}ukasz},
+ journal = {Ann{\textbackslash \textquotesingle e}e},
+ title = {{\"U}ber die {Natur} von \textdollar \textbackslash alpha\textdollar  und {\AA}ngstr{\"o}m},
+ year = {2021}
+}
+

@@ -1,0 +1,48 @@
+{
+  "description": "file fix without --move copies the found files in the files directory (the source stays), named by the name template; in link mode the file is linked where it is",
+  "sections": [
+    "library.md#the-files-directory/the-files-setting",
+    "bibtex.md#5.1"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "file",
+        "fix",
+        "--search",
+        "search",
+        "b2021"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    },
+    {
+      "argv": [
+        "config",
+        "files",
+        "link"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "fix",
+        "--search",
+        "search",
+        "c2022"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    }
+  ]
+}

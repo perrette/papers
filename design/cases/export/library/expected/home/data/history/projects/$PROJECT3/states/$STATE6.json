@@ -1,0 +1,16 @@
+{
+ "parent": "$STATE5",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers export out2 --files link",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "593bee7443d4827714b27d4d33b0c1ba3f12670824add125f005d6768f7f159b"
+  ],
+  "sha": "593bee7443d4827714b27d4d33b0c1ba3f12670824add125f005d6768f7f159b"
+ },
+ "files": {},
+ "from": "$WORK"
+}

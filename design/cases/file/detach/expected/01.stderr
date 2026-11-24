@@ -1,0 +1,6 @@
+usage: papers file detach [-h] [-v] [--debug] [--color {auto,always,never}]
+                          [--porcelain] [--filesdir FILESDIR]
+                          [--bibtex BIBTEX] [--dry-run] [-k KEY [KEY ...]]
+                          [-y] [-r] [--broken]
+                          [FILE ...]
+papers file detach: error: papers file detach FILE... [--key KEY...], --key KEY... or --broken [--key KEY...]

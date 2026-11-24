@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE3",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers edit smith2020 --key smith_2020 --keep-old-key",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "73761bc64484104bded92dc9c9390d154046724396647277980f9e4da2930ff5"
+  ],
+  "sha": "73761bc64484104bded92dc9c9390d154046724396647277980f9e4da2930ff5"
+ },
+ "files": {}
+}

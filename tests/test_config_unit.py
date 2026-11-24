@@ -1,32 +1,11 @@
 """Unit tests for papers.config (pure logic, no install)"""
 import json
-import multiprocessing
 import os
 import tempfile
-import time
 import unittest
-from pathlib import Path
+from unittest import mock
 
-from papers.config import Config, CONFIG_FILE_LOCAL
-
-
-class TestConfigRoot(unittest.TestCase):
-
-    def test_root_non_local_returns_sep(self):
-        """When local=False, root is Path('/')"""
-        cfg = Config(local=False, bibtex="/tmp/x.bib")
-        self.assertEqual(cfg.root, __import__('pathlib').Path(os.path.sep))
-
-    def test_root_local_with_bibtex(self):
-        """When local=True and bibtex set, root is parent of bibtex"""
-        with tempfile.NamedTemporaryFile(suffix='.bib', delete=False) as f:
-            path = f.name
-        try:
-            cfg = Config(local=True, bibtex=path)
-            expected = __import__('pathlib').Path(path).parent.resolve()
-            self.assertEqual(cfg.root, expected)
-        finally:
-            os.unlink(path)
+from papers.config import Config, CONFIG_FILE_LOCAL, CONFIG_FILE_LOCAL_V2, MachineConfig
 
 
 class TestConfigRelpath(unittest.TestCase):
@@ -35,7 +14,7 @@ class TestConfigRelpath(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             bib = os.path.join(d, "lib.bib")
             open(bib, 'w').close()
-            cfg = Config(file=os.path.join(d, ".papersconfig.json"), bibtex=bib, local=True)
+            cfg = Config(file=os.path.join(d, CONFIG_FILE_LOCAL), bibtex=bib, is_library=True)
             # Path under root -> relative
             sub = os.path.join(d, "sub", "file.pdf")
             os.makedirs(os.path.dirname(sub))
@@ -43,11 +22,11 @@ class TestConfigRelpath(unittest.TestCase):
             self.assertIn("sub", result)
 
     def test_relpath_none_returns_none(self):
-        cfg = Config(local=True, bibtex="/tmp/x.bib")
+        cfg = Config(is_library=True, bibtex="/tmp/x.bib")
         self.assertIsNone(cfg._relpath(None))
 
     def test_relpath_non_local_returns_abspath(self):
-        cfg = Config(local=False, bibtex="/tmp/x.bib")
+        cfg = Config(is_library=False, bibtex="/tmp/x.bib")
         result = cfg._relpath("/some/path/file.pdf")
         self.assertEqual(result, "/some/path/file.pdf")
 
@@ -55,179 +34,177 @@ class TestConfigRelpath(unittest.TestCase):
 class TestConfigEditor(unittest.TestCase):
 
     def test_editor_setter(self):
-        old_editor = os.environ.get("EDITOR")
-        try:
-            cfg = Config(local=True, bibtex="/tmp/x.bib")
+        # the editor setting is handed to utils.edit_text, the environment is left alone
+        with mock.patch.dict(os.environ, {"EDITOR": "nano"}):
+            cfg = Config(is_library=True, bibtex="/tmp/x.bib")
             cfg.editor = "vim"
             self.assertEqual(cfg.editor, "vim")
-            self.assertEqual(os.environ.get("EDITOR"), "vim")
-        finally:
-            if old_editor is not None:
-                os.environ["EDITOR"] = old_editor
-            elif "EDITOR" in os.environ:
-                del os.environ["EDITOR"]
+            self.assertEqual(os.environ.get("EDITOR"), "nano")
 
 
-class TestConfigBackupFiles(unittest.TestCase):
-
-    def test_backupfile_properties(self):
-        cfg = Config(local=True, bibtex="/tmp/x.bib", gitdir="/tmp/git")
-        self.assertIn("backup_clean.bib", str(cfg.backupfile_clean))
-        # the tracked backup copy is named after the bibtex itself
-        self.assertEqual("x.bib", Path(cfg.backupfile).name)
-
-    def test_backupfile_reserved_names(self):
-        cfg = Config(local=True, bibtex="/tmp/backup_clean.bib", gitdir="/tmp/git")
-        self.assertNotEqual(Path(cfg.backupfile).name, Path(cfg.backupfile_clean).name)
-
-
-class TestConfigCollections(unittest.TestCase):
-
-    def test_collections(self):
-        with tempfile.TemporaryDirectory() as d:
-            open(os.path.join(d, "lib.bib"), 'w').close()
-            open(os.path.join(d, "other.bib"), 'w').close()
-            open(os.path.join(d, "readme.txt"), 'w').close()
-            cfg = Config(local=True, bibtex=os.path.join(d, "lib.bib"))
-            colls = cfg.collections()
-            self.assertIn("lib.bib", colls)
-            self.assertIn("other.bib", colls)
-            self.assertEqual(len(colls), 2)
-
-
-class CacheTest(unittest.TestCase):
-    """the cache writes one json file per key under CACHE_DIR/<name>/"""
+class TestLibraryId(unittest.TestCase):
+    "the identifier of a library names its history (see papers.backup)"
 
     def setUp(self):
-        import papers.config as pconfig
-        self.pconfig = pconfig
         self.tmp = tempfile.TemporaryDirectory()
-        self.old_cache_dir = pconfig.CACHE_DIR
-        pconfig.CACHE_DIR = self.tmp.name
+        self.file = os.path.join(self.tmp.name, CONFIG_FILE_LOCAL)
+        os.makedirs(os.path.dirname(self.file))
+        self.machine = MachineConfig(os.path.join(self.tmp.name, 'machine.json'))
 
     def tearDown(self):
-        self.pconfig.CACHE_DIR = self.old_cache_dir
         self.tmp.cleanup()
 
-    def test_one_file_per_doi(self):
+    def test_created_once_and_kept(self):
+        json.dump({'bibtex': 'lib.bib', 'version': 3}, open(self.file, 'w'))
+        config = Config.load(self.file, machine=self.machine)
+        self.assertIsNone(config.library_id(create=False))
+        id = config.library_id()
+        self.assertRegex(id, r'^[0-9a-f]{32}$')
+        self.assertEqual(json.load(open(self.file))['id'], id)
+        self.assertEqual(Config.load(self.file, machine=self.machine).library_id(), id)
+
+    def test_invalid_id_ignored(self):
+        for bad in ('../../somewhere', 'a/b', '', 12):
+            json.dump({'bibtex': 'lib.bib', 'version': 3, 'id': bad}, open(self.file, 'w'))
+            config = Config.load(self.file, machine=self.machine)
+            self.assertIsNone(config.library_id(create=False))
+            self.assertRegex(config.library_id(), r'^[0-9a-f]{32}$')  # a new one, written over it
+
+    def test_only_the_id_is_written(self):
+        # the settings in memory may be those of the command (e.g. the files directory of a pool)
+        json.dump({'bibtex': 'lib.bib', 'version': 3}, open(self.file, 'w'))
+        config = Config.load(self.file, machine=self.machine)
+        config.filesdir = '/somewhere/else'
+        config.library_id()
+        self.assertEqual(set(json.load(open(self.file))), {'bibtex', 'version', 'id'})
+
+    def test_written_to_papers_config_json(self):
+        # a library configuration of papers 2 is moved first, as by any save
+        v2 = os.path.join(self.tmp.name, CONFIG_FILE_LOCAL_V2)
+        os.rmdir(os.path.dirname(self.file))
+        json.dump({'bibtex': 'lib.bib', 'version': 3}, open(v2, 'w'))
+        config = Config.load(v2, machine=self.machine)
+        id = config.library_id()
+        self.assertFalse(os.path.exists(v2))
+        self.assertEqual(config.file, self.file)
+        self.assertEqual(json.load(open(self.file)), {'bibtex': 'lib.bib', 'version': 3, 'id': id})
+
+    def test_machine_settings_not_read_from_a_library(self):
+        json.dump({'bibtex': 'lib.bib', 'version': 3, 'history-dir': '/tmp/evil', 'keep-deleted-files': False,
+                   'history-separate': True, 'history-size': 7}, open(self.file, 'w'))
+        config = Config.load(self.file, machine=self.machine)
+        self.assertIsNone(config.history_dir)
+        self.assertTrue(config.keep_deleted_files)
+        # a library may keep a history of its own, of its own size
+        self.assertTrue(config.history_separate)
+        self.assertEqual(config.history_size, 7)
+        js = config.tojson()
+        self.assertNotIn('history-dir', js)
+        self.assertNotIn('keep-deleted-files', js)
+
+    def test_editor_not_read_from_a_library(self):
+        # a command that `papers edit` runs: a library received from someone cannot set it
+        self.machine.set('editor', 'vim')
+        json.dump({'bibtex': 'lib.bib', 'version': 3, 'editor': 'rm -rf ~;'}, open(self.file, 'w'))
+        with self.assertLogs('papers', level='WARNING') as logs:
+            config = Config.load(self.file, machine=self.machine)
+        self.assertEqual(config.editor, 'vim')
+        self.assertIn('editor setting of a library is ignored', logs.output[0])
+        self.assertNotIn('editor', config.tojson())  # removed at the next save
+
+    def test_unknown_keys_kept(self):
+        # e.g. the settings of a newer papers: kept as they are when papers saves the file
+        json.dump({'bibtex': 'lib.bib', 'version': 3, 'editor': 'vim', 'pools': ['old'], 'future': {'a': [1]},
+                   'nameformat': {'template': '{author}', 'future-field': 2}}, open(self.file, 'w'))
+        config = Config.load(self.file, machine=self.machine)
+        config.unset('editor')
+        config.set('name.template', '{year}')
+        config.save()
+        js = json.load(open(self.file))
+        self.assertEqual(js['future'], {'a': [1]})
+        self.assertEqual(js['nameformat'], {'template': '{year}', 'future-field': 2})
+        # the known settings are those of papers: unset, or read and no longer written
+        self.assertNotIn('editor', js)
+        self.assertNotIn('pools', js)
+
+
+class TestPathsOfSettings(unittest.TestCase):
+    "~ is the home directory in every path setting; a relative path of the global configuration is relative to its folder"
+
+    def test_home_in_bibtex_and_filesdir(self):
+        from papers.config import Config, MachineConfig
+        with tempfile.TemporaryDirectory() as d:
+            os.makedirs(os.path.join(d, '.papers'))
+            file = os.path.join(d, '.papers', 'config.json')
+            with open(file, 'w') as f:
+                json.dump({'bibtex': '~/refs.bib', 'filesdir': '~/pdfs', 'version': 3}, f)
+            config = Config.load(file, machine=MachineConfig(os.path.join(d, 'machine.json')))
+            self.assertEqual(config.bibtex, os.path.join(os.path.expanduser('~'), 'refs.bib'))
+            self.assertEqual(config.filesdir, os.path.join(os.path.expanduser('~'), 'pdfs'))
+
+    def test_relative_to_the_global_configuration(self):
+        from papers.config import MachineConfig
+        machine = MachineConfig('/etc/papers/config.json', {'default': 'library', 'history-dir': '../history'})
+        self.assertEqual(machine.default_path(), '/etc/papers/library')
+        self.assertEqual(machine.absolute('../history'), '/etc/history')
+        self.assertEqual(machine.absolute('~/h'), os.path.join(os.path.expanduser('~'), 'h'))
+
+
+class TestPoolPathsOnce(unittest.TestCase):
+    """the folder of the library and the path of its pool resolve symbolic
+    links: once per configuration file and pool setting (the exchanges ask
+    for them for every entry), again when either changes"""
+
+    def setUp(self):
+        from papers.config import Config, MachineConfig
+        self.dir = tempfile.TemporaryDirectory()
+        d = os.path.realpath(self.dir.name)
+        for name in ('lib', 'pool'):
+            os.makedirs(os.path.join(d, name, '.papers'))
+        os.symlink(os.path.join(d, 'lib'), os.path.join(d, 'link'))
+        self.d = d
+        self.config = Config(file=os.path.join(d, 'lib', '.papers', 'config.json'), is_library=True,
+                             bibtex=os.path.join(d, 'lib', 'papers.bib'), pool='../pool',
+                             machine=MachineConfig(os.path.join(d, 'machine.json')))
+
+    def tearDown(self):
+        self.dir.cleanup()
+
+    def test_resolved_once(self):
         calls = []
+        realpath = os.path.realpath
+        with mock.patch('os.path.realpath', lambda p, **kw: calls.append(p) or realpath(p, **kw)):
+            for _ in range(100):
+                self.assertTrue(self.config.shallow)
+                self.assertTrue(self.config.has_pool())
+                self.assertEqual(self.config.pool_path(), os.path.join(self.d, 'pool'))
+                self.assertEqual(str(self.config.configdir), os.path.join(self.d, 'lib'))
+        self.assertLessEqual(len(calls), 3)  # 1 200 before
 
-        @self.pconfig.cached("doi")
-        def fn(x):
-            calls.append(x)
-            return {"title": x}
+    def test_changed_pool_setting(self):
+        self.assertTrue(self.config.shallow)
+        self.config.set('pool', '.')
+        self.assertTrue(self.config.is_pool_library())
+        self.assertFalse(self.config.shallow)
+        self.config.set('pool', '../link')  # the library itself, through a symbolic link
+        self.assertTrue(self.config.is_pool_library())
+        self.config.pool = '../pool'
+        self.assertTrue(self.config.shallow)
+        self.config.set('pool', 'none')
+        self.assertIsNone(self.config.pool_path())
+        self.assertFalse(self.config.shallow)
 
-        self.assertEqual(fn("10.1234/a/b:c"), {"title": "10.1234/a/b:c"})
-        self.assertEqual(fn("10.1234/a/b:c"), {"title": "10.1234/a/b:c"})
-        self.assertEqual(calls, ["10.1234/a/b:c"])
-        self.assertTrue(os.path.isfile(os.path.join(self.tmp.name, "doi", "10.1234", "a%2Fb%3Ac.json")))
+    def test_changed_file(self):
+        self.assertEqual(str(self.config.configdir), os.path.join(self.d, 'lib'))
+        self.config.file = os.path.join(self.d, 'pool', '.papers', 'config.json')
+        self.assertEqual(str(self.config.configdir), os.path.join(self.d, 'pool'))
+        self.assertTrue(self.config.is_pool_library())  # ../pool from pool/
 
-    def test_hashed_key_passes_the_argument(self):
-        @self.pconfig.cached("query", hashed_key=True)
-        def fn(x):
-            return x.upper()
-
-        self.assertEqual(fn("some long text"), "SOME LONG TEXT")
-        self.assertEqual(fn("some long text"), "SOME LONG TEXT")
-
-    def test_corrupt_cache_file_is_ignored(self):
-        file = os.path.join(self.tmp.name, "doi", "10.1234", "a.json")
-        os.makedirs(os.path.dirname(file))
-        open(file, "w").write("{corrupt json")
-
-        @self.pconfig.cached("doi")
-        def fn(x):
-            return x.upper()
-
-        with self.assertLogs("papers", level="WARNING"):
-            self.assertEqual(fn("10.1234/a"), "10.1234/A")
-        self.assertEqual(json.load(open(file)), {"value": "10.1234/A"})
-
-    def test_not_found_is_remembered_for_a_while(self):
-        calls = []
-
-        class NotFound(ValueError):
-            pass
-
-        @self.pconfig.cached("doi", not_found=NotFound)
-        def fn(x):
-            calls.append(x)
-            raise NotFound(x)
-
-        for _ in range(2):
-            with self.assertRaises(NotFound):
-                fn("10.1234/a")
-        self.assertEqual(len(calls), 1)
-
-        # expired: asked again
-        file = os.path.join(self.tmp.name, "doi", "10.1234", "a.json")
-        json.dump({"not_found": time.time() - self.pconfig.NOT_FOUND_TTL - 1}, open(file, "w"))
-        with self.assertRaises(NotFound):
-            fn("10.1234/a")
-        self.assertEqual(len(calls), 2)
-
-    def test_other_errors_are_not_cached(self):
-        calls = []
-
-        @self.pconfig.cached("doi", not_found=KeyError)
-        def fn(x):
-            calls.append(x)
-            raise ValueError("network down")
-
-        for _ in range(2):
-            with self.assertRaises(ValueError):
-                fn("10.1234/a")
-        self.assertEqual(len(calls), 2)
-
-    def test_trim(self):
-        @self.pconfig.cached("doi", trim=lambda r: {k: v for k, v in r.items() if k != "reference"})
-        def fn(x):
-            return {"title": "T", "reference": ["long", "list"]}
-
-        self.assertEqual(fn("10.1234/a"), {"title": "T"})
-
-    def test_legacy_cache_is_migrated(self):
-        legacy = os.path.join(self.tmp.name, "crossref.json")
-        json.dump({"10.1234/A": {"message": {"title": ["A"], "reference": [1]}},
-                   "10.1234/b": {"message": {"title": ["B"]}},
-                   "10.1234/drop": "garbage"}, open(legacy, "w"))
-        migrate = lambda v: v["message"] if isinstance(v, dict) else None
-
-        @self.pconfig.cached("doi", legacy="crossref.json", migrate=migrate)
-        def fn(x):
-            raise AssertionError("should come from the migrated cache")
-
-        self.assertEqual(fn("10.1234/a"), {"title": ["A"], "reference": [1]})  # keys lower-cased
-        self.assertEqual(fn("10.1234/b"), {"title": ["B"]})
-        self.assertFalse(os.path.exists(legacy))
-        self.assertTrue(os.path.exists(legacy + ".bak"))
-        self.assertFalse(os.path.exists(os.path.join(self.tmp.name, "doi", "10.1234", "drop.json")))
-
-    def test_concurrent_writers_keep_all_keys(self):
-        # several processes writing in parallel must not clobber each other
-        keys = ["10.1234/doi%d" % i for i in range(4)]
-        procs = [multiprocessing.Process(target=_concurrent_cache_worker, args=(self.tmp.name, key))
-                 for key in keys]
-        for p in procs:
-            p.start()
-        for p in procs:
-            p.join()
-
-        @self.pconfig.cached("concurrent")
-        def fn(x):
-            raise AssertionError("should be cached")
-
-        for key in keys:
-            self.assertEqual(fn(key), "value-" + key)
-
-
-def _concurrent_cache_worker(cache_dir, key):
-    import papers.config as pconfig
-    pconfig.CACHE_DIR = cache_dir
-
-    @pconfig.cached("concurrent")
-    def fn(x):
-        time.sleep(0.2)
-        return "value-" + x
-
-    fn(key)
+    def test_relative_file(self):
+        # a relative configuration file is relative to the current directory
+        from papers.utils import set_directory
+        self.config.file = os.path.join('.papers', 'config.json')
+        with set_directory(os.path.join(self.d, 'lib')):
+            self.assertEqual(str(self.config.configdir), os.path.join(self.d, 'lib'))
+        with set_directory(os.path.join(self.d, 'pool')):
+            self.assertEqual(str(self.config.configdir), os.path.join(self.d, 'pool'))

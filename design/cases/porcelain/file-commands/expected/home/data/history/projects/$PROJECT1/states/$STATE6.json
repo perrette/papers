@@ -1,0 +1,28 @@
+{
+ "parent": "$STATE5",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers file rm files/smith_2020_another-paper.txt --key smith2020 --porcelain",
+ "ops": [
+  {
+   "op": "trashed",
+   "src": "files/smith_2020_another-paper.txt",
+   "dst": null,
+   "checksum": "2396099c6c084fa4b9beac9f0d52cf3be9cf8d47040ef127883d532b5790cd74"
+  }
+ ],
+ "deleted": [
+  "2396099c6c084fa4b9beac9f0d52cf3be9cf8d47040ef127883d532b5790cd74"
+ ],
+ "bibtex": {
+  "pieces": [
+   "590ee37a8903bc1a3d7372f95d2e45492630b429d3c70eff85fd9eaab871bca4"
+  ],
+  "sha": "590ee37a8903bc1a3d7372f95d2e45492630b429d3c70eff85fd9eaab871bca4"
+ },
+ "files": {
+  ".papers/files.json": [
+   "e5d71af8728d0247454763decfec8bcf04791d5f5efa9d882499bcf4d8e34c7c"
+  ]
+ }
+}

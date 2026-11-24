@@ -1,0 +1,3 @@
+pool none: the library becomes self-contained, with its own files
+pool = none (in $WORK/lib/.papers/config.json)
+the library is now self-contained: its own entries and files

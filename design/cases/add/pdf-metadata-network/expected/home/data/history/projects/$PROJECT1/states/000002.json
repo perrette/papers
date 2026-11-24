@@ -1,0 +1,26 @@
+{
+ "parent": 1,
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers add real.pdf",
+ "ops": [
+  {
+   "op": "moved",
+   "src": "real.pdf",
+   "dst": "files/sriver_et_al_2013_excitation-of-equatorial-kelvin-and-yanai-waves-by-tropical-cyclones-in-an-ocean-general-circulation.pdf",
+   "checksum": "fe0202ff9648712f8269e6019e96d4b6becc5af6fe27947105338ea2b47b8a64"
+  }
+ ],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "a725e8dad426dcc4f00f354379c17e57103159196858e32949524235c3e12c0b"
+  ],
+  "sha": "a725e8dad426dcc4f00f354379c17e57103159196858e32949524235c3e12c0b"
+ },
+ "files": {
+  ".papers/files.json": [
+   "46f11fff182edbd4376e9421fdaff3d273c50806bf5babe0edd91e7c326d8916"
+  ]
+ }
+}

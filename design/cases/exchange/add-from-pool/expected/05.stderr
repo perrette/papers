@@ -1,0 +1,2 @@
+papers: error: mine: already in library as brown2021 (same title and authors; fields to add)
+Pass --on-duplicate with one of: ask, keep, update, skip (ask is the default in a terminal), see `papers add --help`.

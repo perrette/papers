@@ -1,0 +1,77 @@
+{
+  "description": "a pool whose library has an identifier is named by it in the origin records: the records written under the path of the pool (earlier builds) move to the identifier at the next exchange (file pool-<first 6 digits of the sha1 of the id>.bib, papers-pool-path); after the pool moved, papers config pool NEWPATH finds the records again under the same identifier",
+  "sections": [
+    "exchange.md#2.3",
+    "exchange.md#3.1",
+    "exchange.md#3.2",
+    "exchange.md#3.9"
+  ],
+  "tests": [
+    "tests/test_spec_exchange.py::TestOriginFiles::test_identifier_file_named_after_the_folder",
+    "tests/test_pools_more.py::TestPoolIdentifier::test_file_named_after_the_pool_folder",
+    "tests/test_pools_more.py::TestPoolIdentifier::test_library_moved",
+    "tests/test_pools_onetime.py::TestOneTime::test_config_pool_finds_the_records",
+    "tests/test_spec_exchange.py::TestPoolId::test_identifier_after_first_step"
+  ],
+  "ignore": [
+    "home/data/history/*"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "status"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "pull"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "status"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "config",
+        "pool",
+        "../pool2",
+        "-y"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "status"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "pull"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "status"
+      ],
+      "wait": 1.1
+    }
+  ]
+}

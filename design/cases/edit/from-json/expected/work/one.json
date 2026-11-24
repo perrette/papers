@@ -1,0 +1,11 @@
+[
+  {
+    "id": "x",
+    "type": "article-journal",
+    "author": [{"family": "Doe", "given": "Jane"}],
+    "title": "Replaced from a CSL-JSON file",
+    "container-title": "A Journal",
+    "issued": {"date-parts": [[2021, 6]]},
+    "DOI": "10.1000/edit.1"
+  }
+]

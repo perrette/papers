@@ -1,0 +1,43 @@
+@misc{f1,
+ file = {files/one.txt},
+ title = {The whole text is the path}
+}
+
+@misc{f2,
+ file = {files/two.txt:txt},
+ title = {path:type}
+}
+
+@misc{f3,
+ file = {Full Text:files/three.txt:application/pdf},
+ title = {description:path:type}
+}
+
+@misc{f4,
+ file = {Desc:dir/a: b.txt:txt},
+ title = {The path has a colon}
+}
+
+@misc{f5,
+ file = {;; ;:files/one.txt:txt;::pdf; },
+ title = {Empty links, an empty path}
+}
+
+@misc{f6,
+ file = {C:\x.pdf},
+ title = {A drive letter is a type}
+}
+
+@misc{f7,
+ file = {:files/with space.txt:txt;:../outside.txt:txt;:/abs/path.txt:txt;:./files/./one.txt:txt},
+ title = {Relative, outside, absolute, not normalized}
+}
+
+@misc{f8,
+ file = { files/one.txt :txt},
+ title = {White space is part of the path}
+}
+
+@misc{f9,
+ title = {No file field}
+}

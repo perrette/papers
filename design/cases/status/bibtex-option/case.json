@@ -1,0 +1,27 @@
+{
+  "description": "status --bibtex FILE for a bibtex outside of the library: the library of the command is the one found for that file (here none)",
+  "sections": [
+    "library.md#finding-the-library-of-a-command"
+  ],
+  "tests": [
+    "tests/test_spec_library.py::TestFindingTheLibrary::test_bibtex_of_the_library_from_elsewhere",
+    "tests/test_spec_library.py::TestFindingTheLibrary::test_status_bibtex"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "status",
+        "--bibtex",
+        "other.bib"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--bibtex",
+        "other.bib",
+        "-K"
+      ]
+    }
+  ]
+}

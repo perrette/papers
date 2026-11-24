@@ -1,0 +1,8 @@
+[1mpapers library: $WORK/full[0m
+* bibtex:             papers.bib[94m (3 entries, 3 file links)[0m
+* files:              files (the files directory of the library, [94m3 files, 0.4 MB[0m)
+* history:            0 steps (`papers history`)
+* configuration file: .papers/config.json
+* cache directory:    $CACHE
+* version:            $VERSION
+`papers config` lists and sets the settings

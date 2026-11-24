@@ -1,0 +1,24 @@
+{
+  "description": "the JSON text format of CSL-JSON and BibJSON: two-space indentation, UTF-8 not escaped, the escapes of quotes, backslash, tab and newline, slash not escaped, one \\n at the end",
+  "sections": [
+    "formats.md#8",
+    "formats.md#5.1",
+    "formats.md#3.4"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibjson"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "csl-json"
+      ]
+    }
+  ]
+}

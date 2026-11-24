@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE4",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers edit mueller2021 --key smith2020",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "9dbc3e4aa43d77fa161a099bef487471fffc964ec193478562357e8fad707c67"
+  ],
+  "sha": "9dbc3e4aa43d77fa161a099bef487471fffc964ec193478562357e8fad707c67"
+ },
+ "files": {}
+}

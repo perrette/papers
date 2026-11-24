@@ -1,0 +1,52 @@
+{
+  "description": "the pairs that step N added to distinct.json are removed, those it removed come back",
+  "sections": [
+    "history.md#8",
+    "history.md#8.1",
+    "history.md#8.2",
+    "history.md#8.4",
+    "history.md#8.3",
+    "bibtex.md#10",
+    "history.md#2.5"
+  ],
+  "tests": [
+    "tests/test_revert.py::TestRevertEntries::test_distinct"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "add",
+        "import/dup.bib",
+        "--on-duplicate",
+        "ask"
+      ],
+      "stdin": "n\n"
+    },
+    {
+      "argv": [
+        "tag",
+        "doe2019",
+        "--add",
+        "x"
+      ]
+    },
+    {
+      "argv": [
+        "history",
+        "--revert",
+        "$STATE2"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "history"
+      ]
+    }
+  ]
+}

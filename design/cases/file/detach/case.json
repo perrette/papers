@@ -1,0 +1,137 @@
+{
+  "description": "file detach: a file from every entry, only from the entries of --key, all the links of an entry, the broken links, a folder with -r; the files are kept; errors that change nothing",
+  "sections": [
+    "library.md#the-files-directory",
+    "bibtex.md#5.1",
+    "formats.md#7.2"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "file",
+        "detach"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "detach",
+        "files/a2.txt",
+        "--broken"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "detach",
+        "files/nosuch.txt"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "detach",
+        "files/sub"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "detach",
+        "files/a1.txt",
+        "--key",
+        "a2020",
+        "--dry-run"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "detach",
+        "files/a1.txt",
+        "--key",
+        "d2023"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "detach",
+        "files/a1.txt",
+        "--key",
+        "a2020"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "detach",
+        "files/sub",
+        "-r",
+        "--key",
+        "b2021",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "detach",
+        "--broken",
+        "--key",
+        "c2022"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "detach",
+        "--broken"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "detach",
+        "--key",
+        "c2022",
+        "a2020"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "detach",
+        "--key",
+        "c2022"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "detach",
+        "-k",
+        "files/a2.txt"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    },
+    {
+      "argv": [
+        "undo"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    }
+  ]
+}

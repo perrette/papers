@@ -1,0 +1,26 @@
+{
+ "parent": "$STATE1",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers add import/one.bib --attach dl/c.txt",
+ "ops": [
+  {
+   "op": "moved",
+   "src": "dl/c.txt",
+   "dst": "files/new_2022_a-first-new-paper.txt",
+   "checksum": "a3a5e715f0cc574a73c3f9bebb6bc24f32ffd5b67b387244c2c909da779a1478"
+  }
+ ],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "504c0f92670d82a0c73e7254a7a4e07389acc9be91ac35a32df09f0c9ec4187c"
+  ],
+  "sha": "504c0f92670d82a0c73e7254a7a4e07389acc9be91ac35a32df09f0c9ec4187c"
+ },
+ "files": {
+  ".papers/files.json": [
+   "52f21232973059b76ea5ab37218d69da8d602352a53353ca49a14a8ae585cc6f"
+  ]
+ }
+}

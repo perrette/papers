@@ -1,0 +1,65 @@
+{
+  "description": "edit --key renames an entry (--keep-old-key: the old key goes to ids)",
+  "sections": [
+    "bibtex.md#7.1",
+    "bibtex.md#7.2",
+    "formats.md#7.2"
+  ],
+  "tests": [
+    "tests/test_spec_bibtex.py::TestIds::test_keep_old_key_written",
+    "tests/test_entry_cmds.py::TestEditSet::test_keep_old_key",
+    "tests/test_entry_cmds.py::TestEditSet::test_keep_old_key_once"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "edit",
+        "perrette2013",
+        "--key",
+        "perrette_2013",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "edit",
+        "perrette_2013",
+        "--key",
+        "perrette2013",
+        "--keep-old-key"
+      ]
+    },
+    {
+      "argv": [
+        "edit",
+        "perrette2013",
+        "--key",
+        "doe2019"
+      ]
+    },
+    {
+      "argv": [
+        "edit",
+        "doe2019",
+        "--key",
+        "bad key"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex",
+        "perrette"
+      ]
+    },
+    {
+      "argv": [
+        "edit",
+        "perrette2013",
+        "--set",
+        "note=found by key"
+      ]
+    }
+  ]
+}

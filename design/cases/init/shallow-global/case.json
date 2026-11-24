@@ -1,0 +1,26 @@
+{
+  "description": "init --shallow takes the default library of the global configuration as pool",
+  "sections": [
+    "library.md#pools-and-shallow-libraries/the-pool-setting",
+    "library.md#the-machine-configuration/format"
+  ],
+  "tests": [
+    "tests/test_config_v3.py::TestDefaultLibrary::test_init_shallow"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "init",
+        "project",
+        "--shallow"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "project",
+        "status"
+      ]
+    }
+  ]
+}

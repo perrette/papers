@@ -1,0 +1,4 @@
+created the library $WORK
+* bibtex:  papers.bib
+* files:   files (the files directory of the library)
+`papers config` lists and sets the settings

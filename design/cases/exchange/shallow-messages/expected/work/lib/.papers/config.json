@@ -1,0 +1,10 @@
+{
+  "bibtex": "papers.bib",
+  "filesdir": "files",
+  "id": "$PROJECT1",
+  "nameformat": {
+    "title_sep": "_"
+  },
+  "pool": "../pool",
+  "version": 3
+}

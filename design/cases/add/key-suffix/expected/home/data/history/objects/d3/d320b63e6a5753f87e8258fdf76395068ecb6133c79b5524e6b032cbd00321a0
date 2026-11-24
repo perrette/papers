@@ -1,0 +1,18 @@
+@article{abb,
+ author = {Ab, Bob},
+ title = {Another Ab},
+ year = {2002}
+}
+
+@article{abc,
+ author = {Ab, Cid},
+ title = {Yet another Ab},
+ year = {2003}
+}
+
+@article{smith2000,
+ author = {Smith, John},
+ title = {Taken by the first paper},
+ year = {2000}
+}
+

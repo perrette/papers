@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE1",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers list --add-tag x --porcelain smith",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "95e22685b3d42124eb37e53ce922cdde7f15acf6f21bf451daff7af90c6c3aab"
+  ],
+  "sha": "95e22685b3d42124eb37e53ce922cdde7f15acf6f21bf451daff7af90c6c3aab"
+ },
+ "files": {}
+}

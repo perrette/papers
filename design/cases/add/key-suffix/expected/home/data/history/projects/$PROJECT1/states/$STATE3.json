@@ -1,0 +1,17 @@
+{
+ "parent": "$STATE2",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers add newab.bib -u --porcelain",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "1c2feaaed9368f3f10e5a13c2d3d74e7d97480b078bfb0b7d4184bc90499f0e6",
+   "d320b63e6a5753f87e8258fdf76395068ecb6133c79b5524e6b032cbd00321a0",
+   "e96a7d655f1c14c228175355561a6be23fb38c8a330705d6de35f212ae5d37de"
+  ],
+  "sha": "c3258d5c3023bcf881108704bbec4f216f93d5f28cd988aaa4813a15f4e45d2d"
+ },
+ "files": {}
+}

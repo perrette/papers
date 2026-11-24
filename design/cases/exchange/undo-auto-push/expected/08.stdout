@@ -1,0 +1,2 @@
+undo: papers.bib restored to $STATE2 papers -C lib pull --all ($TIME)
+pool ../pool: also undone, restored to $STATE3 the library before its first recorded command ($TIME)

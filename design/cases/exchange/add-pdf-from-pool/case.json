@@ -1,0 +1,61 @@
+{
+  "description": "add of a PDF with the content of a file of a pool entry takes the entry from the pool (the file is not parsed); in move mode the file given is removed (stored already), in a shallow library the entry links to the pool file",
+  "sections": [
+    "exchange.md#13.1"
+  ],
+  "tests": [
+    "tests/test_pools.py::TestShallow::test_add_from_pool_links_to_pool_file",
+    "tests/test_pools.py::TestAdd::test_pdf_same_content_move_mode"
+  ],
+  "ignore": [
+    "home/data/history/*"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "add",
+        "../copy.pdf"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "own",
+        "add",
+        "--pool",
+        "../pool",
+        "../copy2.pdf"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "own",
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "pool",
+        "list",
+        "-K"
+      ]
+    }
+  ]
+}

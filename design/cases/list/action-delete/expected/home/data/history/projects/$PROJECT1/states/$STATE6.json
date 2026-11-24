@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE5",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers list --key f --delete --keep-files",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "de05cd1fd3f64a7722157548feaeeaae37cfef99d37d65c349156b49a65470c5"
+  ],
+  "sha": "de05cd1fd3f64a7722157548feaeeaae37cfef99d37d65c349156b49a65470c5"
+ },
+ "files": {}
+}

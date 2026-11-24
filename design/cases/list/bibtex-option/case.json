@@ -1,0 +1,44 @@
+{
+  "description": "list --bibtex FILE reads a bibtex file as it is (unsorted, not normalized)",
+  "sections": [
+    "library.md#finding-the-library-of-a-command",
+    "bibtex.md#2.2"
+  ],
+  "tests": [
+    "tests/test_spec_library.py::TestFindingTheLibrary::test_bibtex_without_library"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "list",
+        "--bibtex",
+        "refs.bib",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--bibtex",
+        "odd.bib"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--bibtex",
+        "odd.bib",
+        "--format",
+        "csl-json",
+        "odd"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--bibtex",
+        "nosuch.bib"
+      ]
+    }
+  ]
+}

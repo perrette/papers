@@ -1,0 +1,20 @@
+{
+ "parent": "$STATE5",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers export out2 doe2019 doe2019b",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "ea03a1a859227717b31fbee4f8618204088078fa5dbe9522034963a41d8317d7"
+  ],
+  "sha": "ea03a1a859227717b31fbee4f8618204088078fa5dbe9522034963a41d8317d7"
+ },
+ "files": {
+  ".papers/distinct.json": [
+   "0d5846a0114fd7321429fde69dbf18aa742d75a83f19ea7bb3af9a6febdd8f11"
+  ]
+ },
+ "from": "$WORK"
+}

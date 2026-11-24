@@ -1,0 +1,4 @@
+  b95f078a papers edit smith2020 --set year=2000 ($TIME)  (undone: `papers redo`)
+  b95f1da6 papers tag doe2019 --add x ($TIME)  (undone: `papers redo`)
+> d6249882 the library before its first recorded command ($TIME)
+history: $DATA/history, 0.0 MB (up to 500 MB: the history-size setting; deleted files kept)

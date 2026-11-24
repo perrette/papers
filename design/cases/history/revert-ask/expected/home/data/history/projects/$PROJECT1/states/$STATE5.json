@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE4",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers edit smith2020 --set note=s2",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "2c7ce6fe18980372f050a0a72ab1d21679bca693f00f252c254ba4aa41d04e01"
+  ],
+  "sha": "2c7ce6fe18980372f050a0a72ab1d21679bca693f00f252c254ba4aa41d04e01"
+ },
+ "files": {}
+}

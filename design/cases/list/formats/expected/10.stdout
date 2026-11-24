@@ -1,0 +1,72 @@
+{
+  "metadata": {
+    "records": 3
+  },
+  "records": [
+    {
+      "type": "book",
+      "id": "doe2019",
+      "abstract": "An overview of the large-scale circulation.",
+      "author": [
+        {
+          "name": "Doe, Jane"
+        }
+      ],
+      "isbn": "978-3-16-148410-0",
+      "keywords": "to-read",
+      "publisher": "Springer",
+      "title": "Ocean Circulation",
+      "year": "2019"
+    },
+    {
+      "type": "article",
+      "id": "perrette2013",
+      "author": [
+        {
+          "name": "Perrette, M."
+        },
+        {
+          "name": "Landerer, F."
+        },
+        {
+          "name": "Riva, R."
+        },
+        {
+          "name": "Frieler, K."
+        },
+        {
+          "name": "Meinshausen, M."
+        }
+      ],
+      "doi": "10.5194/esd-4-11-2013",
+      "journal": {
+        "name": "Earth System Dynamics"
+      },
+      "keywords": "sea-level, projections, climate/amoc",
+      "pages": "11--29",
+      "title": "A scaling approach to project regional sea level rise and its uncertainties",
+      "volume": "4",
+      "year": "2013"
+    },
+    {
+      "type": "article",
+      "id": "smith2020",
+      "author": [
+        {
+          "name": "Sm{\\\"i}th, J{\\'o}hn"
+        },
+        {
+          "name": "Doe, Jane"
+        }
+      ],
+      "doi": "10.1234/abc.2020.1",
+      "journal": {
+        "name": "Journal of Glaciology"
+      },
+      "keywords": "ice, to-read, climate/arctic",
+      "note": "Caf\\'e r{\\'e}sum{\\'e} \\& \\%",
+      "title": "Cold {Water} and K{\\\"a}lte: \\textit{ice} caps",
+      "year": "2020"
+    }
+  ]
+}

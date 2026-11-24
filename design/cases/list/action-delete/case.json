@@ -1,0 +1,100 @@
+{
+  "description": "list --delete: the entries listed are removed, as papers rm does; their files are kept without a terminal and listed (in the files directory, outside it); --delete-files deletes those that no other entry links to; --keep-files; the two together are an error; the lines of the files come before those of the entries; --porcelain; --dry-run; undo brings the entries and the files back",
+  "sections": [
+    "history.md#4",
+    "history.md#5.6",
+    "bibtex.md#7.1",
+    "formats.md#7.2"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "list",
+        "--key",
+        "a",
+        "--dry-run",
+        "--delete",
+        "--delete-files"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--key",
+        "a",
+        "--delete"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--key",
+        "b",
+        "--delete"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--key",
+        "c",
+        "--delete",
+        "--delete-files"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--key",
+        "e",
+        "--delete",
+        "--delete-files",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--key",
+        "d",
+        "--delete",
+        "--keep-files",
+        "--delete-files"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--key",
+        "nosuchkey",
+        "--delete"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--key",
+        "f",
+        "--delete",
+        "--keep-files"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "undo"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-K"
+      ]
+    }
+  ]
+}

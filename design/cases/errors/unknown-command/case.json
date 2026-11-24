@@ -1,0 +1,18 @@
+{
+  "description": "an unknown command",
+  "sections": [
+    "formats.md#7.3"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "frobnicate"
+      ]
+    },
+    {
+      "argv": [
+        "lst"
+      ]
+    }
+  ]
+}

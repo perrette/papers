@@ -1,0 +1,56 @@
+{
+ "parent": "$STATE1",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers add in in2 -R",
+ "ops": [
+  {
+   "op": "moved",
+   "src": "in/xmp-doi.pdf",
+   "dst": "files/doe_2020_title-of-ice2020.pdf",
+   "checksum": "3fc0e10996c7afa5a142f2e7c2d54f0ad574adbed672c433330e37df4467d0c4"
+  },
+  {
+   "op": "moved",
+   "src": "in/xmp-doi--data.csv",
+   "dst": "files/doe_2020_title-of-ice2020--data.csv",
+   "checksum": "5be08c9684a1d25efcee09318204824278b08bbfb4aef973ffefd0b9d7478313"
+  },
+  {
+   "op": "moved",
+   "src": "in/xmp-doi--notes--more.txt",
+   "dst": "files/doe_2020_title-of-ice2020--notes--more.txt",
+   "checksum": "2396099c6c084fa4b9beac9f0d52cf3be9cf8d47040ef127883d532b5790cd74"
+  },
+  {
+   "op": "moved",
+   "src": "in/xmp-doi--notes.txt",
+   "dst": "files/doe_2020_title-of-ice2020--notes.txt",
+   "checksum": "444e0fffbd825e9610ff5b199485707a0c895339ae80c15cc8a8aee41b106fda"
+  },
+  {
+   "op": "moved",
+   "src": "in/sub/info-doi.pdf",
+   "dst": "files/doe_2020_title-of-ice2020--info-doi.pdf",
+   "checksum": "78f1f4ebd3809e1aa2bba6a7a7df5991791c99ccd15d3231c99bbba85bb66406"
+  },
+  {
+   "op": "moved",
+   "src": "in/sub/info-doi--supp.zip",
+   "dst": "files/doe_2020_title-of-ice2020--info-doi--supp.zip",
+   "checksum": "257a4c075a4c2721970ffc7ef0380d0bf7329185de8f34ff9a6ac8336561c34c"
+  }
+ ],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "e5c371366f92cd9647beb4392f19f4c01f1cb09916a936010414d5f879c53cb8"
+  ],
+  "sha": "e5c371366f92cd9647beb4392f19f4c01f1cb09916a936010414d5f879c53cb8"
+ },
+ "files": {
+  ".papers/files.json": [
+   "7a6c18c5a7c7e2c1e33029abfe6a5fbfdcdf2c9fd6f076ed9099796e099317c7"
+  ]
+ }
+}

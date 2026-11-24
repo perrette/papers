@@ -1,0 +1,26 @@
+{
+ "parent": "$STATE2",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers file attach doe2020 y.txt --copy",
+ "ops": [
+  {
+   "op": "copied",
+   "src": "y.txt",
+   "dst": "files/doe_2020_title-of-doe2020--y.txt",
+   "checksum": "3bb2abb69ebb27fbfe63c7639624c6ec5e331b841a5bc8c3ebc10b9285e90877"
+  }
+ ],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "ebf97806afdcc3044eed4ac804f93f2ea7927ea348d8880d3a4509aa74e27bc9"
+  ],
+  "sha": "ebf97806afdcc3044eed4ac804f93f2ea7927ea348d8880d3a4509aa74e27bc9"
+ },
+ "files": {
+  ".papers/files.json": [
+   "3f68de377135d32c281069517b7484d45b84d59a1d953fcbdf676445f8e11a5d"
+  ]
+ }
+}

@@ -1,0 +1,50 @@
+@misc{a,
+ title = {A b}
+}
+
+@misc{doe2001,
+ author = {Doe, Jane},
+ title = {An entry with an author},
+ year = {2001}
+}
+
+@misc{entry,
+ year = {2001}
+}
+
+@misc{entryb,
+ title = {100}
+}
+
+@misc{only,
+ title = {Only another title}
+}
+
+@misc{only2000,
+ title = {Something else},
+ year = {2000}
+}
+
+@misc{only2000b,
+ title = {Only a title},
+ year = {2000}
+}
+
+@misc{onlyb,
+ title = {Only the third title}
+}
+
+@misc{uber1999,
+ title = {Über den Ozean},
+ year = {1999}
+}
+
+@misc{years2000,
+ title = {100 years},
+ year = {2000}
+}
+
+@misc{zhongwenbiaoti1998,
+ title = {中文标题 {Beta}},
+ year = {1998}
+}

@@ -2,11 +2,8 @@ import unittest
 """Tests for papers check --format-name --encoding --fix-doi --fix-key
 Documented in README: fix entries (papers check --format-name --encoding unicode --fix-doi --fix-key ...)
 """
-import os
-
-from tests.common import LocalInstallTest
+from tests.common import InitTest
 from papers.bib import Biblio
-from papers.config import CONFIG_FILE_LOCAL
 
 
 # Entry with author in "First Last" format (will be formatted to "Last, First")
@@ -42,7 +39,7 @@ bibtex_latex_encoding = """@article{EncodingTest2020,
 }"""
 
 
-class TestCheckFormatName(LocalInstallTest):
+class TestCheckFormatName(InitTest):
 
     initial_content = bibtex_format_name
 
@@ -56,7 +53,7 @@ class TestCheckFormatName(LocalInstallTest):
         self.assertIn('Doe, Jane', author)
 
 
-class TestCheckFixDoi(LocalInstallTest):
+class TestCheckFixDoi(InitTest):
 
     initial_content = bibtex_fix_doi
 
@@ -70,7 +67,7 @@ class TestCheckFixDoi(LocalInstallTest):
         self.assertNotIn('DOI:', doi)
 
 
-class TestCheckFixKey(LocalInstallTest):
+class TestCheckFixKey(InitTest):
 
     initial_content = bibtex_fix_key
 
@@ -85,7 +82,7 @@ class TestCheckFixKey(LocalInstallTest):
         self.assertIn('2011', key)
 
 
-class TestCheckEncoding(LocalInstallTest):
+class TestCheckEncoding(InitTest):
 
     initial_content = bibtex_latex_encoding
 

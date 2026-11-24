@@ -1,0 +1,62 @@
+{
+  "description": "an option that does not exist, an argument that is missing: the usage message of argparse (exit status 2)",
+  "sections": [
+    "formats.md#7.3"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "rm",
+        "doe2019",
+        "--nonsense"
+      ]
+    },
+    {
+      "argv": [
+        "rm"
+      ]
+    },
+    {
+      "argv": [
+        "edit",
+        "doe2019",
+        "--set"
+      ]
+    },
+    {
+      "argv": [
+        "edit",
+        "doe2019",
+        "--set",
+        "badfield"
+      ]
+    },
+    {
+      "argv": [
+        "tag",
+        "--add",
+        "x"
+      ]
+    },
+    {
+      "argv": [
+        "tag",
+        "--rename",
+        "ice"
+      ]
+    },
+    {
+      "argv": [
+        "undo",
+        "-n",
+        "x"
+      ]
+    },
+    {
+      "argv": [
+        "history",
+        "--revert"
+      ]
+    }
+  ]
+}

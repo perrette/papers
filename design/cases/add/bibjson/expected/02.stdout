@@ -1,0 +1,21 @@
+@article{doe2020,
+ author = {Doe, Jane and Roe, Richard},
+ doi = {10.1000/bj.1},
+ journal = {Journal of Imports},
+ keywords = {a, b},
+ title = {Imported from BibJSON},
+ volume = {12},
+ year = {2020}
+}
+
+@misc{nokey2021,
+ author = {Nokey, Nick},
+ title = {No key},
+ year = {2021}
+}
+
+@misc{viaCid,
+ file = {:files/unknown_viacid.txt:txt},
+ title = {No type, key from cid}
+}
+

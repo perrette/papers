@@ -1,0 +1,29 @@
+{
+  "description": "the identifiers of the same-paper rule: digits are 0-9 (fullwidth digits make no ISBN and no arXiv id), a leading ISBN and the colons after it are removed from an ISBN (a colon alone stays), the words of a name are separated by any whitespace, line breaks included",
+  "sections": [
+    "bibtex.md#9.2",
+    "bibtex.md#9.3"
+  ],
+  "tests": [
+    "tests/test_spec_bibtex.py::TestIdentifiersOfAnEntry::test_ascii_digits",
+    "tests/test_spec_bibtex.py::TestIdentifiersOfAnEntry::test_isbn_prefix"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "list",
+        "--duplicates",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--duplicates",
+        "--by",
+        "doi",
+        "-K"
+      ]
+    }
+  ]
+}

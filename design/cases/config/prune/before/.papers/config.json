@@ -1,0 +1,17 @@
+{
+  "bibtex": "papers.bib",
+  "editor": "vim",
+  "files": "move",
+  "filesdir": "files",
+  "history-size": 500,
+  "keyformat": {
+    "author_num": 2,
+    "template": "{author}{year}"
+  },
+  "nameformat": {
+    "template": "{author}_{year}"
+  },
+  "paths": "relative",
+  "pool": "none",
+  "version": 3
+}

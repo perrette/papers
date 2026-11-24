@@ -1,0 +1,22 @@
+@article{doe2019,
+ author = {Doe, Jane},
+ doi = {10.1/x},
+ file = {:dl/a.txt:txt},
+ note = {from dup},
+ title = {A paper},
+ year = {2019}
+}
+
+@article{dup,
+ author = {Doe, Jane},
+ doi = {10.1/x},
+ note = {from dup},
+ title = {A paper},
+ year = {2019}
+}
+
+@article{one1,
+ author = {Bee, Ann},
+ title = {One},
+ year = {2001}
+}

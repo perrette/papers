@@ -1,0 +1,26 @@
+{
+ "parent": "$STATE2",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers add other.pdf --copy",
+ "ops": [
+  {
+   "op": "copied",
+   "src": "other.pdf",
+   "dst": "files/roe_2020_a-study-of-other-things-in-detail-and-at-length.pdf",
+   "checksum": "7ec21dc5651140ace8ca748730f6617f6202af4b957ca7fd698713180162d8e5"
+  }
+ ],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "ae368db9e3c0d0ca5c3e5a7984945fbdd187b5929fe6280ae1327c2fe8b38bbf"
+  ],
+  "sha": "ae368db9e3c0d0ca5c3e5a7984945fbdd187b5929fe6280ae1327c2fe8b38bbf"
+ },
+ "files": {
+  ".papers/files.json": [
+   "bd2b4807049a5f05ec826b44508ba13d847525cc325f6859aea457476e3befd6"
+  ]
+ }
+}

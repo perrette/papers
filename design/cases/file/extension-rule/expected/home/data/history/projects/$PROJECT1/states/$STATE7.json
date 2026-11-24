@@ -1,0 +1,26 @@
+{
+ "parent": "$STATE6",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers file attach e6 src/a. --copy --name-template {key}",
+ "ops": [
+  {
+   "op": "copied",
+   "src": "src/a.",
+   "dst": "files/e6.",
+   "checksum": "6bacf7d3837610f8493e210bc8710f9220ad90a4428462e1952c6522135a254e"
+  }
+ ],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "d3cc291b78b0049c0130cc3204158582c5a5a51310f17c4bcd64f87db4ee8a62"
+  ],
+  "sha": "d3cc291b78b0049c0130cc3204158582c5a5a51310f17c4bcd64f87db4ee8a62"
+ },
+ "files": {
+  ".papers/files.json": [
+   "ba6e22b005d4e158c37ca347d03781fc4eb53300684fc3fd1183942c8fabe449"
+  ]
+ }
+}

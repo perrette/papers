@@ -1,0 +1,14 @@
+@article{doe2019,
+ author = {Doe, Jane},
+ title = {A paper},
+ year = {2019}
+}
+
+@article{new2022,
+ author = {Roe, Jane},
+ journal = {J. Things},
+ note = {hello},
+ title = {A new paper},
+ volume = {3},
+ year = {2022}
+}

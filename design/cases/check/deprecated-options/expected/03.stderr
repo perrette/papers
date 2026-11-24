@@ -1,0 +1,1 @@
+papers: warning: -m/--mode s is deprecated: use --on-duplicate skip

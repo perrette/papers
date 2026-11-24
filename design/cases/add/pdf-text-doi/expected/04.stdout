@@ -1,0 +1,16 @@
+@article{ice2020,
+ author = {Doe, Jane},
+ doi = {10.1234/ICE.2020.1},
+ file = {:files/doe_2020_ice-sheet-response-to-warming-in-the-early-holocene.pdf:pdf},
+ title = {Ice sheet response to warming in the early Holocene},
+ year = {2020}
+}
+
+@article{other2021,
+ author = {Roe, Richard},
+ doi = {10.1234/other.2021},
+ file = {:files/roe_2020_a-study-of-other-things-in-detail-and-at-length.pdf:pdf},
+ title = {A study of other things in detail and at length},
+ year = {2020}
+}
+

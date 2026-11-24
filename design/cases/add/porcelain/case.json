@@ -1,0 +1,34 @@
+{
+  "description": "add --porcelain: only added/existing lines on stdout",
+  "sections": [
+    "formats.md#7.1",
+    "formats.md#7.2"
+  ],
+  "tests": [
+    "tests/test_spec_formats.py::TestPorcelainLines::test_add_lines",
+    "tests/test_spec_formats.py::TestPorcelainLines::test_existing_only_for_add",
+    "tests/test_porcelain.py::TestPorcelain::test_add"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "add",
+        "refs.bib",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "add",
+        "refs.bib",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "add",
+        "refs.bib"
+      ]
+    }
+  ]
+}

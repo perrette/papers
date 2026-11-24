@@ -1,0 +1,14 @@
+{
+  "metadata": {
+    "records": 1
+  },
+  "records": [
+    {
+      "type": "misc",
+      "id": "esc",
+      "note": "form feed \f and \u0001 and tab\there, backslash \\\\ and \"quotes\" and slash / and unicode: é ü 日本 😀",
+      "title": "Line one\n line two",
+      "year": "2020"
+    }
+  ]
+}

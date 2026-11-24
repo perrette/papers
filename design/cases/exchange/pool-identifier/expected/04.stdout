@@ -1,0 +1,3 @@
+link to the copies in the pool ../pool2 for 1 file (same content)
+Modified -> smith2020: A title of a paper (doi:10.1000/abc, file:1)
+pool = ../pool2 (in $WORK/lib/.papers/config.json)

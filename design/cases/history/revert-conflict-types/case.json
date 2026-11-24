@@ -1,0 +1,84 @@
+{
+  "description": "conflicts of different kinds in one revert: a field changed on both sides, a field added again since that the step removed, a field the step added and that was removed since; update takes the values before the step, keep (after undoing the revert) the values now",
+  "sections": [
+    "history.md#8",
+    "history.md#8.1",
+    "history.md#8.2",
+    "history.md#8.4",
+    "history.md#8.2",
+    "exchange.md#5.3",
+    "history.md#2.5"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "edit",
+        "doe2019",
+        "--set",
+        "publisher=Wiley",
+        "year=2018",
+        "note=n1",
+        "--unset",
+        "abstract"
+      ]
+    },
+    {
+      "argv": [
+        "edit",
+        "doe2019",
+        "--set",
+        "publisher=Elsevier",
+        "abstract=a new abstract",
+        "isbn=0-306-40615-2",
+        "--unset",
+        "note"
+      ]
+    },
+    {
+      "argv": [
+        "history",
+        "--revert",
+        "$STATE2",
+        "--on-duplicate",
+        "update"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-k",
+        "doe2019",
+        "--format",
+        "bibtex"
+      ]
+    },
+    {
+      "argv": [
+        "undo"
+      ]
+    },
+    {
+      "argv": [
+        "history",
+        "--revert",
+        "$STATE2",
+        "--on-duplicate",
+        "keep"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-k",
+        "doe2019",
+        "--format",
+        "bibtex"
+      ]
+    },
+    {
+      "argv": [
+        "history"
+      ]
+    }
+  ]
+}

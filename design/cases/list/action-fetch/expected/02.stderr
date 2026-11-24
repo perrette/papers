@@ -1,0 +1,10 @@
+papers: warning: `papers list --fetch` is deprecated: use `papers list ... -K | papers check --fetch --fetch-all --fix-doi --fix-key --format-name -`
+papers: warning: 2019doe: the key template gives an empty key: the key stays
+*** UPDATE ***
+  @article{2019doe,
+-  author = {Doe Jane and Smith John},
++  author = {Jane, Doe and John, Smith},
+   journal = {Nature},
+   year = {2019}
+  }
+update? [Y/n] 

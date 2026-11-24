@@ -1,0 +1,58 @@
+{
+  "description": "the file field: three forms of link (path, path:type, description:path:type), empty links skipped, no escaping, the path not trimmed; relative paths are relative to the bibtex, shown absolute and normalized",
+  "sections": [
+    "bibtex.md#5.1",
+    "bibtex.md#5.2",
+    "formats.md#6",
+    "formats.md#5.1"
+  ],
+  "tests": [
+    "tests/test_spec_bibtex.py::TestFileSyntax::test_reading",
+    "tests/test_spec_bibtex.py::TestFilePaths::test_relative_to_bibtex",
+    "tests/test_entries.py::TestBibtexFileEntry::test_parse_file_empty_path_ignored"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibjson"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "csl-json",
+        "--any",
+        "f1",
+        "f3",
+        "f4",
+        "f5",
+        "f6",
+        "f7"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-K",
+        "--has-file"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-K",
+        "--broken-file"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-K",
+        "--no-file"
+      ]
+    }
+  ]
+}

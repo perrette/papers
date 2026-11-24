@@ -1,0 +1,74 @@
+% a comment at the top of the file, before anything
+
+@string{jgr = {Journal of Geophysical Research}}
+
+@string{other = {Other}}
+
+@preamble{ "\newcommand{\noop}[1]{}" }
+
+@misc{Beta2001,
+ abstract = {Line one
+  line two},
+ keywords = {b, a},
+ title = {Ünïcödé title},
+ year = {2001}
+}
+
+@comment{an explicit comment above zeta}
+
+@article{Zeta2020,
+ author = {M{\"u}ller, J{\"o}rg and Smith, John},
+ doi = {10.1000/ZETA},
+ journal = {Journal of Geophysical Research},
+ month = jan,
+ pages = {1--10},
+ title = {Sea level {Rise} and the {AMOC}},
+ volume = {12},
+ year = {2020}
+}
+
+an implicit comment above alpha
+
+@book{alpha1999,
+ author = {Ångström, Anders},
+ file = {:files/alpha1999.pdf:pdf},
+ isbn = {978-3-16-148410-0},
+ keywords = {x},
+ note = "first" # " and second",
+ title = {A book: with {Braces} and ``quotes''},
+ year = {1999}
+}
+
+@inproceedings{beta2001b,
+ booktitle = {Proc.},
+ edition = {2},
+ number = {7},
+ title = {Lower-case key sorted after upper case}
+}
+
+@article{delta2004,
+ author = {van der Berg, Jane and {Collaboration}, The},
+ journal = {Other},
+ title = {Uses @string other}
+}
+
+% a trailing comment, not followed by any entry
+
+% WARNING Parsing failed for the following 4 lines.
+@article{Gamma2002,
+  title = {Duplicate field},
+  title = {Duplicate field again},
+}
+
+
+% WARNING Parsing failed for the following 3 lines.
+@article{broken2003,
+  title = {Missing closing brace
+}
+
+
+% WARNING Parsing failed for the following 3 lines.
+@article{Zeta2020,
+  title = {A second entry with the key of Zeta2020},
+}
+

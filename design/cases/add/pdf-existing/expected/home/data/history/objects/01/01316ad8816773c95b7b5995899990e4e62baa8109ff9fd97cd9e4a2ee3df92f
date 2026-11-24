@@ -1,0 +1,14 @@
+@article{ice2020,
+ author = {Doe, Jane},
+ doi = {10.1234/ICE.2020.1},
+ file = {:files/doe_2020_title-of-ice2020.pdf:pdf;:files/doe_2020_title-of-ice2020--extra.txt:txt},
+ title = {Title of ice2020},
+ year = {2020}
+}
+
+@article{other2021,
+ author = {Roe, Richard},
+ doi = {10.1234/other.2021},
+ title = {Title of other2021},
+ year = {2020}
+}

@@ -1,0 +1,46 @@
+{
+  "description": "add of a PDF whose DOI is in its metadata, that the library does not have: the entry of its DOI, the PDF placed by the name template; of a PDF without DOI (full-text query, accepted only if the title is in the text)",
+  "sections": [
+    "library.md#the-files-directory/file-names",
+    "formats.md#7.3",
+    "bibtex.md#5.1"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "add",
+        "real.pdf"
+      ]
+    },
+    {
+      "argv": [
+        "add",
+        "folder",
+        "-R"
+      ]
+    },
+    {
+      "argv": [
+        "add",
+        "nodoi.pdf",
+        "--no-query-doi"
+      ]
+    },
+    {
+      "argv": [
+        "add",
+        "nodoi.pdf"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    }
+  ],
+  "requires": [
+    "network"
+  ]
+}

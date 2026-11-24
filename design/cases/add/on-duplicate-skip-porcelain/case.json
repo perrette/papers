@@ -1,0 +1,45 @@
+{
+  "description": "add --on-duplicate skip --porcelain: an entry skipped as a duplicate makes the library entry it is a duplicate of considered: existing KEY, with the key of the library (not the key of the added entry)",
+  "sections": [
+    "formats.md#7.2",
+    "bibtex.md#9.3",
+    "bibtex.md#10"
+  ],
+  "tests": [
+    "tests/test_porcelain.py::TestPorcelain::test_add_skipped_duplicate_is_existing"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "add",
+        "dup.bib",
+        "--on-duplicate",
+        "skip",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "add",
+        "dup.bib",
+        "--on-duplicate",
+        "skip",
+        "--porcelain"
+      ]
+    },
+    {
+      "argv": [
+        "add",
+        "dup.bib",
+        "--on-duplicate",
+        "skip"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-K"
+      ]
+    }
+  ]
+}

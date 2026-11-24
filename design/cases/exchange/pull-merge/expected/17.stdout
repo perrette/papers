@@ -1,0 +1,8 @@
+@article{smith2020,
+ author = {Smith, John},
+ file = {:../pool/files/smith_2020_a-paper.txt:txt},
+ note = {library note},
+ title = {Library title},
+ year = {2020}
+}
+

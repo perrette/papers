@@ -1,0 +1,15 @@
+{
+ "parent": "b95f1da68b3b271c3d64aedc0507e11ebf7607e15a03110fe8f3f14cbf174387",
+ "time": 1790000120.029812,
+ "kind": "command",
+ "message": "papers edit smith2020 --set year=2000",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "6ae0a0c2f879192eed0958be2f2432b436aa4d40e375abbb6bf0258563ae5997"
+  ],
+  "sha": "6ae0a0c2f879192eed0958be2f2432b436aa4d40e375abbb6bf0258563ae5997"
+ },
+ "files": {}
+}

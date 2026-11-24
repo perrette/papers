@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE3",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers rm bretreger1978",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "aff7d6a3b1748ca1b7b904632960e96ce5a528ab090c094e7fa8b9d69aac4e2f"
+  ],
+  "sha": "aff7d6a3b1748ca1b7b904632960e96ce5a528ab090c094e7fa8b9d69aac4e2f"
+ },
+ "files": {}
+}

@@ -1,0 +1,56 @@
+{
+ "parent": "$STATE2",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers file rename --name-template {Author}-{year}/{journal}-{AUTHOR}-{Title}",
+ "ops": [
+  {
+   "op": "moved",
+   "src": "files/doe_2019_a-longer-title-about-many-different-subjects-of-the-sea.txt",
+   "dst": "files/Doe-2019/J. Ocean-DOE-A-Longer-Title-About-Many-Different-Subjects-Of-The-Sea.txt",
+   "checksum": "aa7c0aae7df2aa227cedc731deb961340e89eb853c15d6b90d474e2bb66277e3"
+  },
+  {
+   "op": "moved",
+   "src": "files/doe_2019_a-longer-title-about-many-different-subjects-of-the-sea--x.txt",
+   "dst": "files/Doe-2019/J. Ocean-DOE-A-Longer-Title-About-Many-Different-Subjects-Of-The-Sea--x.txt",
+   "checksum": "c3ab322901f527002fb30a26217e5fe4a21837c17e309c9f1b09c099c1d4c076"
+  },
+  {
+   "op": "moved",
+   "src": "files/doe_2019_a-longer-title-about-many-different-subjects-of-the-sea--x-2.txt",
+   "dst": "files/Doe-2019/J. Ocean-DOE-A-Longer-Title-About-Many-Different-Subjects-Of-The-Sea--x-2.txt",
+   "checksum": "c6a6de7241939b8cca2efeed7c1e7389ceadcc8cbac96a11db5df156a5ef5491"
+  },
+  {
+   "op": "moved",
+   "src": "files/doe_2019_a-longer-title-about-many-different-subjects-of-the-sea--y.PDF",
+   "dst": "files/Doe-2019/J. Ocean-DOE-A-Longer-Title-About-Many-Different-Subjects-Of-The-Sea--y.PDF",
+   "checksum": "3bb2abb69ebb27fbfe63c7639624c6ec5e331b841a5bc8c3ebc10b9285e90877"
+  },
+  {
+   "op": "moved",
+   "src": "files/muller_et_al_2021_the-ice-l-eau-of-10000-things-a-study.txt",
+   "dst": "files/Muller_Skoda-2021/Nature-Science-MULLER_SKODA-The-Ice-L-Eau-Of-10000-Things-A-Study.txt",
+   "checksum": "01a60e35df88d8b49546cb3f8f4ba4f406870f9b8e1f394c9d48ab73548d748d"
+  },
+  {
+   "op": "moved",
+   "src": "files/roe_and_poe_2018_two-authors.txt",
+   "dst": "files/Roe_Poe-2018/---ROE_POE-Two-Authors.txt",
+   "checksum": "8e54b0ca18020275e4aef1ca0eb5e197e066c065c1864817652a8a39c55402cd"
+  }
+ ],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "8ab12869c98e4bb43eb18cb8181045c64ffa447e67113c1d50f1e6695cdfb31d"
+  ],
+  "sha": "8ab12869c98e4bb43eb18cb8181045c64ffa447e67113c1d50f1e6695cdfb31d"
+ },
+ "files": {
+  ".papers/files.json": [
+   "fd9965aba17f9750652f002592b3abc3a53b62d3ca695712b1f183e5bb92ef54"
+  ]
+ }
+}

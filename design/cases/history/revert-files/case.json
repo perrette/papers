@@ -1,0 +1,132 @@
+{
+  "description": "the files go back as undo moves them: an attached file returns to where it came from, one deleted by step N comes back from the history, the links one by one (the link added by step N goes, the later link stays); the operations are the revert's own: undo of the revert moves them again",
+  "sections": [
+    "history.md#8",
+    "history.md#8.1",
+    "history.md#8.2",
+    "history.md#8.4",
+    "history.md#8.3",
+    "history.md#4",
+    "history.md#2.5"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "file",
+        "attach",
+        "doe2019",
+        "dl/a.txt"
+      ]
+    },
+    {
+      "argv": [
+        "file",
+        "attach",
+        "doe2019",
+        "dl/b.txt",
+        "--copy"
+      ]
+    },
+    {
+      "argv": [
+        "tag",
+        "doe2019",
+        "--add",
+        "x"
+      ]
+    },
+    {
+      "argv": [
+        "history",
+        "--revert",
+        "$STATE2"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-k",
+        "doe2019",
+        "--format",
+        "bibtex"
+      ]
+    },
+    {
+      "argv": [
+        "history"
+      ]
+    },
+    {
+      "argv": [
+        "undo"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-k",
+        "doe2019",
+        "--format",
+        "bibtex"
+      ]
+    },
+    {
+      "argv": [
+        "history"
+      ]
+    },
+    {
+      "argv": [
+        "undo",
+        "-n",
+        "2"
+      ]
+    },
+    {
+      "argv": [
+        "redo"
+      ]
+    },
+    {
+      "argv": [
+        "redo"
+      ]
+    },
+    {
+      "argv": [
+        "rm",
+        "doe2019",
+        "--delete-files"
+      ]
+    },
+    {
+      "argv": [
+        "tag",
+        "smith2020",
+        "--add",
+        "y"
+      ]
+    },
+    {
+      "argv": [
+        "history",
+        "--revert",
+        "$STATE6"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-k",
+        "doe2019",
+        "--format",
+        "bibtex"
+      ]
+    },
+    {
+      "argv": [
+        "history"
+      ]
+    }
+  ]
+}

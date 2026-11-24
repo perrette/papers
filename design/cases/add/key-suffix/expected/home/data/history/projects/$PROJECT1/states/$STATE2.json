@@ -1,0 +1,17 @@
+{
+ "parent": "$STATE1",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers add new.bib -u --porcelain",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "1c2feaaed9368f3f10e5a13c2d3d74e7d97480b078bfb0b7d4184bc90499f0e6",
+   "7a77939da5f06550e9accd816e63c6e80a990272da4789fd8ba0604272183794",
+   "e96a7d655f1c14c228175355561a6be23fb38c8a330705d6de35f212ae5d37de"
+  ],
+  "sha": "bb9f110710018c26d557cd69b3723a9694c071389d826cc2106f5bb2f08626f3"
+ },
+ "files": {}
+}

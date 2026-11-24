@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE1",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers tag - --add piped",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "cde047db821d3320182bd3a1a2aaf5894ce61812e255b706019ddf67774d8c41"
+  ],
+  "sha": "cde047db821d3320182bd3a1a2aaf5894ce61812e255b706019ddf67774d8c41"
+ },
+ "files": {}
+}

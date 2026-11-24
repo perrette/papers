@@ -1,0 +1,5 @@
+created the library $WORK/shared
+* bibtex:  papers.bib
+* files:   files (the files directory of the library)
+`papers config` lists and sets the settings
+registered $WORK/shared as the default library in $CONFIG/config.json

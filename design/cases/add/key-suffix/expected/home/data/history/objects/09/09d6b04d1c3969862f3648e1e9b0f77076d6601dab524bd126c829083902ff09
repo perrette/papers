@@ -1,0 +1,23 @@
+@article{smith2000b,
+ author = {Smith, John},
+ title = {Second paper of the year},
+ year = {2000}
+}
+
+@article{smith2000c,
+ author = {Smith, John},
+ title = {Third paper of the year},
+ year = {2000}
+}
+
+@article{smith2000d,
+ author = {Smith, John},
+ title = {Fourth paper of the year},
+ year = {2000}
+}
+
+@article{smith2000e,
+ author = {Smith, John},
+ title = {Not the same paper},
+ year = {2000}
+}

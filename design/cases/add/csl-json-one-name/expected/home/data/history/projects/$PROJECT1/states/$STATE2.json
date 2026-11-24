@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE1",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers add refs.json",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "89c49d4eac4d60ccfcefc30aa6038dda4ca69397afb1c028838b26d83d9a2a7c"
+  ],
+  "sha": "89c49d4eac4d60ccfcefc30aa6038dda4ca69397afb1c028838b26d83d9a2a7c"
+ },
+ "files": {}
+}

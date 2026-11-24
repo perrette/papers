@@ -1,0 +1,41 @@
+@article{a,
+ author = {Doe, Jane},
+ file = {:files/a1.txt:txt},
+ title = {A},
+ year = {2019},
+}
+
+@article{b,
+ author = {Doe, Jane},
+ file = {:ext/b1.txt:txt},
+ title = {B},
+ year = {2019},
+}
+
+@article{c,
+ author = {Doe, Jane},
+ file = {:files/c1.txt:txt;:files/s.txt:txt},
+ title = {C},
+ year = {2019},
+}
+
+@article{d,
+ author = {Doe, Jane},
+ file = {:files/s.txt:txt},
+ title = {D},
+ year = {2019},
+}
+
+@article{e,
+ author = {Doe, Jane},
+ file = {:ext/e1.txt:txt;:missing.txt:txt},
+ title = {E},
+ year = {2019},
+}
+
+@article{f,
+ author = {Doe, Jane},
+ title = {F},
+ year = {2019},
+}
+

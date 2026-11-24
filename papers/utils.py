@@ -1,8 +1,9 @@
 import os
 import re
+import shlex
 import shutil
-import hashlib
-import subprocess, platform
+import sys
+import tempfile
 from contextlib import contextmanager
 from pathlib import Path
 
@@ -14,7 +15,8 @@ class PapersExit(Exception):
 
 
 class bcolors:
-    # https://stackoverflow.com/a/287944/2192272
+    """the colour codes of the output (https://stackoverflow.com/a/287944/2192272):
+    empty strings when the output has no colours (see use_color)"""
     HEADER = '\033[95m'
     OKBLUE = '\033[94m'
     OKGREEN = '\033[92m'
@@ -24,19 +26,51 @@ class bcolors:
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
 
+
+_COLOR_CODES = {name: code for name, code in vars(bcolors).items() if not name.startswith('_')}
+
+
+def color_enabled(choice='auto', stream=None):
+    """whether the output has colours and hyperlinks: --color always or
+    never, else (auto) only when the standard output is a terminal and the
+    NO_COLOR environment variable is not set (https://no-color.org)"""
+    if choice == 'always':
+        return True
+    if choice == 'never' or os.environ.get('NO_COLOR'):
+        return False
+    stream = sys.stdout if stream is None else stream
+    try:
+        return stream.isatty()
+    except (AttributeError, ValueError, OSError):
+        return False
+
+
+def use_color(enabled):
+    "turn the colours and hyperlinks of the output on or off"
+    global COLOR
+    COLOR = enabled
+    for name, code in _COLOR_CODES.items():
+        setattr(bcolors, name, code if enabled else '')
+
+
+COLOR = True
+use_color(color_enabled())
+
+
 def strip_colors(s):
-    for name, c in vars(bcolors).items():
-        if name.startswith("_"):
-            continue
+    for c in _COLOR_CODES.values():
         s = s.replace(c, '')
     return s
 
 
 def ansi_link(uri, label=None):
-    """https://stackoverflow.com/a/71309268/2192272
+    """https://stackoverflow.com/a/71309268/2192272 (the label only, when
+    the output has no colours)
     """
     if label is None:
         label = uri
+    if not COLOR:
+        return label
     parameters = ''
 
     # OSC 8 ; params ; URI ST <name> OSC 8 ;; ST
@@ -71,28 +105,6 @@ def check_filesdir(folder):
     return file_count, folder_size
 
 
-def search_config(filenames, start_dir, default=None):
-    """Thanks Chat GPT !"""
-    current_dir = os.path.abspath(start_dir)
-    root_dir = os.path.abspath(os.sep)
-    while True:
-        for filename in filenames:
-            file_path = os.path.join(current_dir, filename)
-            if os.path.exists(file_path):
-                return file_path
-
-        parent_dir = os.path.dirname(current_dir)
-        if parent_dir == current_dir:
-            return default
-
-        # root
-        if parent_dir == root_dir:
-            return default
-        current_dir = parent_dir
-
-    return default
-
-
 def hash_bytestr_iter(bytesiter, hasher, ashexstr=False):
     for block in bytesiter:
         hasher.update(block)
@@ -110,6 +122,7 @@ def checksum(fname):
 
     source: https://stackoverflow.com/a/3431835/2192272
     """
+    import hashlib
     return hash_bytestr_iter(file_as_blockiter(open(fname, 'rb')), hashlib.sha256())
 
 
@@ -171,7 +184,7 @@ def move(f1, f2, copy=False, interactive=True, dryrun=False, hardlink=False):
         if hardlink:
             try:
                 _hardlink(f1, f2)
-            except:
+            except OSError:  # e.g. another file system, or no hard links there
                 _copy(f1, f2)
         else:
             _copy(f1, f2)
@@ -204,16 +217,17 @@ def set_directory(path: Path):
         os.chdir(origin)
 
 
-def view_pdf(filepath):
-    """
-    https://stackoverflow.com/questions/434597/open-document-with-default-os-application-in-python-both-in-windows-and-mac-os
-    """
+def open_with_system(path):
+    """open a file or a folder with the application the system associates with it
+    (https://stackoverflow.com/questions/434597)"""
+    import platform
+    import subprocess
     if platform.system() == 'Darwin':       # macOS
-        subprocess.call(('open', filepath))
+        subprocess.call(('open', path))
     elif platform.system() == 'Windows':    # Windows
-        os.startfile(filepath)
+        os.startfile(path)
     else:                                   # linux variants
-        subprocess.call(('xdg-open', filepath))
+        subprocess.call(('xdg-open', path))
 
 
 def file_uri_to_path(arg):
@@ -252,14 +266,110 @@ def find_masked_viewer(name='papers'):
     return None
 
 
-def open_folder(path):
-    system_platform = platform.system()
-
-    if system_platform == "Windows":
-        os.startfile(path)
-    elif system_platform == "Darwin":  # macOS
-        os.system(f'open "{path}"')
-    elif system_platform == "Linux":
-        os.system(f'xdg-open "{path}"')
+def write_atomic(path, text):
+    """write `text` to `path` through a temporary file next to it, then
+    replaced in one step: a crash, or a program reading the file meanwhile
+    (a sync client), never sees a partial file. A symbolic link is followed
+    (its target is written), and the permissions of the file are kept. The
+    text is written as UTF-8 with LF line endings on every platform."""
+    path = os.path.realpath(path)
+    directory = os.path.dirname(path)
+    if os.path.exists(path):
+        mode = os.stat(path).st_mode & 0o7777
     else:
-        print("Unsupported operating system.")
+        umask = os.umask(0)
+        os.umask(umask)
+        mode = 0o666 & ~umask
+    fd, tmp = tempfile.mkstemp(dir=directory, prefix='.' + os.path.basename(path) + '.', suffix='.tmp')
+    try:
+        with os.fdopen(fd, 'w', encoding='utf-8', newline='\n') as f:
+            f.write(text)
+            f.flush()
+            os.fsync(f.fileno())
+        os.chmod(tmp, mode)
+        os.replace(tmp, path)
+    except BaseException:
+        try:
+            os.remove(tmp)
+        except OSError:
+            pass
+        raise
+
+
+# the standard output of --porcelain (papers.cli.main): the other messages go to the standard error
+PORCELAIN = None
+
+
+@contextmanager
+def porcelain_output(enabled):
+    """with --porcelain: the standard output is the standard error, and
+    PORCELAIN the real standard output (for papers.cli.common._print_biblio_diff)"""
+    global PORCELAIN
+    if not enabled:
+        yield
+        return
+    PORCELAIN, sys.stdout = sys.stdout, sys.stderr
+    try:
+        yield
+    finally:
+        sys.stdout, PORCELAIN = PORCELAIN, None
+
+
+# the `editor` setting of the library of the command (set by papers.cli.main)
+EDITOR = None
+
+
+def edit_text(text, editor=None):
+    """edit a text in a text editor (the `editor` setting, else $VISUAL, else
+    $EDITOR, else vi): the edited text, or None if the editor failed. The
+    editor is a command that may have arguments (e.g. "subl -w"); it must
+    wait until the file is closed."""
+    editor = editor or EDITOR or os.environ.get('VISUAL') or os.environ.get('EDITOR') or 'vi'
+    fd, filename = tempfile.mkstemp(suffix='.bib')
+    try:
+        with os.fdopen(fd, 'w', encoding='utf-8') as f:
+            f.write(text)
+        if os.system(f'{editor} {shlex.quote(filename)}') != 0:
+            logger.error('the editor failed')
+            return None
+        with open(filename, encoding='utf-8-sig') as f:
+            return f.read()
+    finally:
+        os.remove(filename)
+
+
+def read_entry_text(stdin=None, terminal=None):
+    """the text of one entry from the standard input. From a pipe or a file:
+    all of it. From a terminal (a paste): until the braces of the first
+    @type{...} close, or the end of the input (Ctrl-D), with a hint on the
+    standard error first. Only for one entry: the braces of a second entry
+    are not waited for."""
+    stdin = stdin or sys.stdin
+    if terminal is None:
+        terminal = stdin_is_terminal()
+    if not terminal:
+        return stdin.read()
+    print('Paste or type the entry: papers continues when its closing brace is read '
+          '(Ctrl-D ends the input, Ctrl-C cancels)', file=sys.stderr)
+    lines, depth, started, opened = [], 0, False, False
+    for line in stdin:
+        lines.append(line)
+        for char in line:
+            if char == '@':
+                started = True
+            elif started and char == '{':
+                depth += 1
+                opened = True
+            elif started and char == '}':
+                depth -= 1
+        if opened and depth <= 0:
+            break
+    return ''.join(lines)
+
+
+def stdin_is_terminal():
+    "the standard input is a terminal (papers can ask)"
+    try:
+        return sys.stdin.isatty()
+    except (AttributeError, ValueError, OSError):
+        return False

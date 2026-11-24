@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE1",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers edit perrette2013 --set journal=Earth System Dynamics (ESD) year=2014",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "61f5ea1b51f9c97831527429457c9feb32c7a9a8dae93e186060d34abcd76449"
+  ],
+  "sha": "61f5ea1b51f9c97831527429457c9feb32c7a9a8dae93e186060d34abcd76449"
+ },
+ "files": {}
+}

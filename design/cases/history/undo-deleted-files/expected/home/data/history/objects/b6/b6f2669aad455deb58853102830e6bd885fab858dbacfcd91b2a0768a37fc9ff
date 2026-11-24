@@ -1,0 +1,12 @@
+@article{mueller2021,
+ author = {Müller, Hans},
+ file = {:files/m.txt:txt},
+ title = {A paper with one file},
+ year = {2021}
+}
+
+@article{plain2020,
+ author = {Plain, Pat},
+ title = {A paper with no file},
+ year = {2020}
+}

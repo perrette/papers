@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE1",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers add dup.bib -u --no-check-duplicate",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "63ed849675effeb01cde7abefa5a285e59c30f0b4006ea928dc40374c38daeb1"
+  ],
+  "sha": "63ed849675effeb01cde7abefa5a285e59c30f0b4006ea928dc40374c38daeb1"
+ },
+ "files": {}
+}

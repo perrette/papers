@@ -1,0 +1,107 @@
+{
+  "description": "undo and redo in a shallow library with auto-push: the pool step goes with the undo, and what differs from the pool is pushed",
+  "sections": [
+    "history.md#7",
+    "history.md#7.6",
+    "exchange.md#12.1"
+  ],
+  "tests": [
+    "tests/test_undo_pool.py::TestUndoPoolAutoPush::test_undo_pushes_what_a_step_did_not"
+  ],
+  "ignore": [
+    "home/data/history/*"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "pull",
+        "--all"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "add",
+        "../new.bib"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "edit",
+        "fresh",
+        "--set",
+        "note=one"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "undo"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "pool",
+        "list",
+        "--format",
+        "bibtex",
+        "fresh"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "redo"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "pool",
+        "list",
+        "--format",
+        "bibtex",
+        "fresh"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "undo",
+        "-n",
+        "2"
+      ],
+      "wait": 1.1
+    },
+    {
+      "argv": [
+        "-C",
+        "pool",
+        "list",
+        "-K"
+      ]
+    },
+    {
+      "argv": [
+        "-C",
+        "lib",
+        "status"
+      ],
+      "wait": 1.1
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+@article{s6,
+ author = {Doe, Jane},
+ doi = {10.1000/Ünï(1)&amp;2},
+ file = {:files/f6.txt:txt},
+ title = {No author},
+ year = {2006}
+}
+
+@article{s7,
+ author = {Doe, Jane},
+ doi = {   },
+ file = {:files/f7.txt:txt},
+ title = {The doi is only white space},
+ year = {2007}
+}

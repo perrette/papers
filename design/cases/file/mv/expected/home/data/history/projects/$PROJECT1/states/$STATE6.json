@@ -1,0 +1,26 @@
+{
+ "parent": "$STATE5",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers file mv files archive",
+ "ops": [
+  {
+   "op": "moved",
+   "src": "files",
+   "dst": "archive",
+   "checksum": null
+  }
+ ],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "386703f4ddb9aa5f24ab2080a164f07665c2ddcd075e7f36e319229d4262c338"
+  ],
+  "sha": "386703f4ddb9aa5f24ab2080a164f07665c2ddcd075e7f36e319229d4262c338"
+ },
+ "files": {
+  ".papers/files.json": [
+   "90846816c034ef346d3aa68af54787a80399420058554d73b38c08660462ab1d"
+  ]
+ }
+}

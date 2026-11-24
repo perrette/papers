@@ -1,0 +1,1 @@
+{"id": "bj1", "type": "Book", "title": "BibJSON record", "author": [{"name": "Roe, Richard"}], "year": 2021}

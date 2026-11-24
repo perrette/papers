@@ -1,0 +1,16 @@
+{
+ "parent": "$STATE2",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers rm b",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "5039dfb6f3aa2045c2ec234ac6408f3797c61fad82f086cd94d37fa44fb44a57",
+   "71287594e45385b368cde9e3357f74cb5e25ccd682a71c4c7856651350935480"
+  ],
+  "sha": "d87ba45675e12d07ed6f507107c7a9f1277bc5d8ed6d5e5b561d571d94f52197"
+ },
+ "files": {}
+}

@@ -1,0 +1,22 @@
+{
+  "description": "tag - reads the keys from the standard input",
+  "sections": [
+    "bibtex.md#6"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "tag",
+        "-",
+        "--add",
+        "piped"
+      ],
+      "stdin_file": "stdin/01.txt"
+    },
+    {
+      "argv": [
+        "tag"
+      ]
+    }
+  ]
+}

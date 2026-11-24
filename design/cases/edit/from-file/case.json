@@ -1,0 +1,36 @@
+{
+  "description": "edit --from FILE",
+  "sections": [
+    "formats.md#1.1",
+    "formats.md#1.2"
+  ],
+  "tests": [
+    "tests/test_entry_cmds.py::TestEditFrom::test_from_file"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "edit",
+        "perrette2013",
+        "--from",
+        "new.bib"
+      ]
+    },
+    {
+      "argv": [
+        "edit",
+        "doe2019",
+        "--from",
+        "nosuch.bib"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex",
+        "perrette2013"
+      ]
+    }
+  ]
+}

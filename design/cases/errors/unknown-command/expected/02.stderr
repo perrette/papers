@@ -1,0 +1,3 @@
+usage: papers [-h] [--version] [-C DIR]
+              {status,init,config,migrate,add,check,file,list,edit,rm,tag,pull,push,sync,export,open,fetch,extract,undo,redo,restore,history} ...
+papers: error: unknown command 'lst' (commands: status, init, config, migrate, add, check, file, list, edit, rm, tag, pull, push, sync, export, open, fetch, extract, undo, redo, restore, history)

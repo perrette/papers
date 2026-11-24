@@ -1,0 +1,26 @@
+@article{Doe2019,
+ author = {Doe, Jane},
+ title = {The referenced paper},
+ year = {2019}
+}
+
+@inproceedings{kid2020,
+ author = {Kid, Kim},
+ crossref = {Doe2019},
+ title = {Points to doe2019 in another case},
+ year = {2020}
+}
+
+@inproceedings{kid2021,
+ author = {Kid, Kim},
+ crossref = {Doe2019},
+ title = {Points to doe2019},
+ xref = {doe2019},
+ year = {2021}
+}
+
+@article{smith2019,
+ author = {Smith, John},
+ title = {Another paper},
+ year = {2019}
+}

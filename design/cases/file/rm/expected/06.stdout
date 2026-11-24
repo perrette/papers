@@ -1,0 +1,6 @@
+DRYRUN: b2021: removed the link to $WORK/files/sub/deep/b.txt
+DRYRUN: b2021: removed the link to $WORK/files/sub/c.txt
+DRYRUN: $WORK/papers.bib not saved
+DRYRUN: delete $WORK/files/sub/deep/b.txt (kept in the history: undo restores it)
+DRYRUN: delete $WORK/files/sub/c.txt (kept in the history: undo restores it)
+DRYRUN: remove folder $WORK/files/sub/deep

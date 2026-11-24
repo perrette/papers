@@ -1,0 +1,29 @@
+{
+ "parent": "$STATE4",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers history --revert $STATE2",
+ "ops": [
+  {
+   "op": "moved",
+   "src": "files/doe_2019_ocean-circulation.txt",
+   "dst": "dl/a.txt",
+   "checksum": "87428fc522803d31065e7bce3cf03fe475096631e5e07bbd7a0fde60c4cf25c7"
+  }
+ ],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "cca9b7ccd2f0a46aa9635d6eaceb4cd4378cbbe2796b1df7253f5ca40170fb93"
+  ],
+  "sha": "cca9b7ccd2f0a46aa9635d6eaceb4cd4378cbbe2796b1df7253f5ca40170fb93"
+ },
+ "files": {
+  ".papers/files.json": [
+   "a8d7b09dea9066e2c15b37058095b66a187df4ccf6d5fd8fe1225c32d9282270"
+  ]
+ },
+ "reverts": [
+  "$STATE2"
+ ]
+}

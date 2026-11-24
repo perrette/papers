@@ -1,4 +1,4 @@
-"""Unit tests for papers.extract (42% -> higher coverage)"""
+"""Unit tests for papers.extract and papers.fetch"""
 import unittest
 
 from papers.extract import (
@@ -6,10 +6,8 @@ from papers.extract import (
     isvaliddoi,
     DOIParsingError,
     _parse_doi_from_metadata_string,
-    format_authors,
-    map_crossref_to_bibtex_type,
-    crossref_to_bibtex,
 )
+from papers.fetch import format_authors, map_crossref_to_bibtex_type, crossref_to_bibtex
 
 
 class TestParseDoi(unittest.TestCase):
@@ -87,6 +85,20 @@ class TestParseDoiFromMetadataString(unittest.TestCase):
         self.assertIsNone(_parse_doi_from_metadata_string(''))
 
 
+class TestParseDoiFromInfoFields(unittest.TestCase):
+
+    def test_cleaned_as_in_the_text(self):
+        from papers.extract import _parse_doi_from_info_fields, parse_dois
+        subject = 'Journal X. doi:10.1000/ABC.123.'
+        self.assertEqual(_parse_doi_from_info_fields({'subject': subject}), '10.1000/abc.123')
+        self.assertEqual(parse_dois(subject), ['10.1000/abc.123'])
+
+    def test_too_short_is_passed_over(self):
+        from papers.extract import _parse_doi_from_info_fields
+        self.assertEqual(_parse_doi_from_info_fields({'subject': 'doi:10.1000/.', 'title': 'doi:10.1000/Title-1'}),
+                         '10.1000/title-1')
+
+
 class TestFormatAuthors(unittest.TestCase):
 
     def test_single_author(self):
@@ -152,6 +164,29 @@ class TestCrossrefToBibtex(unittest.TestCase):
         bib = crossref_to_bibtex(msg)
         self.assertIn("@book{", bib)
 
+    BASE = {"type": "journal-article", "DOI": "10.1/x", "title": ["T"], "author": [{"family": "S", "given": "J"}],
+            "issued": {"date-parts": [[2000]]}, "container-title": ["J"]}
+
+    def test_empty_title_and_container_title(self):
+        bib = crossref_to_bibtex({**self.BASE, "title": [], "container-title": []})
+        self.assertNotIn("title", bib)
+        self.assertNotIn("journal", bib)
+        self.assertIn("year = {2000}", bib)
+        self.assertNotIn("isbn", crossref_to_bibtex({**self.BASE, "type": "book", "ISBN": []}))
+
+    def test_institution_list(self):
+        self.assertIn("institution = {A}", crossref_to_bibtex({**self.BASE, "type": "report", "institution": [{"name": "A"}]}))
+        self.assertIn("school = {A}", crossref_to_bibtex({**self.BASE, "type": "thesis", "institution": [{"name": "A"}]}))
+        self.assertIn("institution = {A}", crossref_to_bibtex({**self.BASE, "type": "report", "institution": {"name": "A"}}))
+        self.assertNotIn("institution", crossref_to_bibtex({**self.BASE, "type": "report", "institution": []}))
+
+    def test_date_without_year(self):
+        self.assertIn("year = {0000}", crossref_to_bibtex({**self.BASE, "issued": {"date-parts": [[None]]}}))
+        self.assertIn("year = {0000}", crossref_to_bibtex({**self.BASE, "issued": None}))
+        self.assertIn("year = {0000}", crossref_to_bibtex({**self.BASE, "issued": {"date-parts": []}}))
+        # a date without year is passed over for the next one
+        self.assertIn("year = {2000}", crossref_to_bibtex({**self.BASE, "published-print": {"date-parts": [[None]]}}))
+
 
 class TestQueryText(unittest.TestCase):
 
@@ -171,7 +206,7 @@ class TestCollectPdfFiles(unittest.TestCase):
     def test_collect(self):
         import os, tempfile
         from pathlib import Path
-        from papers.__main__ import _collect_pdf_files
+        from papers.cli.fetch_cmds import _collect_pdf_files
         with tempfile.TemporaryDirectory() as d:
             open(os.path.join(d, "a.pdf"), "w").write("x")
             open(os.path.join(d, "b.PDF"), "w").write("x")   # case-insensitive
@@ -242,7 +277,8 @@ class TestExtractTxtMetadataCandidates(unittest.TestCase):
 
     def test_next_candidate_on_request_error(self):
         from unittest import mock
-        from papers.extract import extract_txt_metadata, DOIRequestError
+        from papers.extract import extract_txt_metadata
+        from papers.fetch import DOIRequestError
         txt = 'see https://doi.org/10.1234/not-registered and https://doi.org/10.5678/registered-paper\nThe registered paper'
         def fetch(doi):
             if doi == '10.1234/not-registered':
@@ -251,6 +287,17 @@ class TestExtractTxtMetadataCandidates(unittest.TestCase):
         with mock.patch('papers.extract.fetch_bibtex_by_doi', side_effect=fetch):
             bibtex = extract_txt_metadata(txt, search_doi=True, search_fulltext=False)
         self.assertIn('10.5678/registered-paper', bibtex)
+
+    def test_crossref_record_with_empty_title_is_skipped(self):
+        # crossref_to_bibtex used to raise IndexError, which stopped the whole extraction
+        from unittest import mock
+        from papers.extract import extract_txt_metadata
+        txt = 'cites https://doi.org/10.1000/untitled then https://doi.org/10.1000/titled\nThe Titled Paper'
+        records = {'10.1000/untitled': {'DOI': '10.1000/untitled', 'type': 'journal-article', 'title': []},
+                   '10.1000/titled': {'DOI': '10.1000/titled', 'type': 'journal-article', 'title': ['The Titled Paper']}}
+        with mock.patch('papers.fetch.fetch_doi_metadata', side_effect=lambda doi: records[doi]):
+            bibtex = extract_txt_metadata(txt, search_doi=True, search_fulltext=False)
+        self.assertIn('10.1000/titled', bibtex)
 
     def test_prefers_candidate_whose_title_is_in_text(self):
         from unittest import mock
@@ -277,7 +324,8 @@ class TestExtractTxtMetadataCandidates(unittest.TestCase):
     def test_unregistered_dois_fail(self):
         # a DOI without metadata cannot be checked against the text: no bare entry
         from unittest import mock
-        from papers.extract import extract_txt_metadata, DOIRequestError
+        from papers.extract import extract_txt_metadata
+        from papers.fetch import DOIRequestError
         with mock.patch('papers.extract.fetch_bibtex_by_doi', side_effect=DOIRequestError('nope')):
             with self.assertLogs('papers', level='WARNING'):
                 with self.assertRaises(ValueError):
@@ -285,7 +333,8 @@ class TestExtractTxtMetadataCandidates(unittest.TestCase):
 
     def test_fulltext_query_error_fails(self):
         from unittest import mock
-        from papers.extract import extract_txt_metadata, DOIRequestError
+        from papers.extract import extract_txt_metadata
+        from papers.fetch import DOIRequestError
         with mock.patch('papers.extract.fetch_bibtex_by_doi', side_effect=DOIRequestError('nope')), \
                 mock.patch('papers.extract.fetch_bibtex_by_fulltext_crossref', side_effect=ValueError('crossref down')):
             with self.assertLogs('papers', level='WARNING'):
@@ -294,7 +343,8 @@ class TestExtractTxtMetadataCandidates(unittest.TestCase):
 
     def test_fulltext_search_when_no_doi_has_metadata(self):
         from unittest import mock
-        from papers.extract import extract_txt_metadata, DOIRequestError
+        from papers.extract import extract_txt_metadata
+        from papers.fetch import DOIRequestError
         fulltext = mock.Mock(return_value=self._bibtex('10.5194/essd-2025-300', 'A gridded dataset of something important'))
         with mock.patch('papers.extract.fetch_bibtex_by_doi', side_effect=DOIRequestError('nope')), \
                 mock.patch('papers.extract.fetch_bibtex_by_fulltext_crossref', fulltext):
@@ -416,7 +466,8 @@ class TestExtractPdfMetadataFromPdfMetadata(unittest.TestCase):
 
     def test_unregistered_metadata_doi_falls_back_to_text(self):
         from unittest import mock
-        from papers.extract import extract_pdf_metadata, DOIRequestError
+        from papers.extract import extract_pdf_metadata
+        from papers.fetch import DOIRequestError
         def fetch(doi):
             if doi == '10.1000/meta':
                 raise DOIRequestError(doi)
@@ -431,14 +482,17 @@ class TestExtractPdfMetadataFromPdfMetadata(unittest.TestCase):
 
 
 class FakeResponse:
-    def __init__(self, status_code=200, json=None, content_type='application/json', text=''):
+    def __init__(self, status_code=200, json=None, content_type='application/json', text='', url=''):
         self.status_code = status_code
         self._json = json
+        self.url = url
         self.headers = {'content-type': content_type}
         self.text = text
         self.ok = status_code < 400
 
     def json(self):
+        if isinstance(self._json, Exception):
+            raise self._json
         return self._json
 
     def raise_for_status(self):
@@ -480,65 +534,110 @@ class TestDoiRequests(unittest.TestCase):
 
     def test_crossref_record_without_references_is_cached(self):
         from unittest import mock
-        from papers.extract import fetch_bibtex_by_doi, fetch_doi_metadata
-        get, calls = self._get([('https://api.crossref.org/works/10.1000/x', FakeResponse(json={'message': dict(self.CROSSREF)}))])
-        with mock.patch('papers.extract.http_get', get):
+        from papers.fetch import fetch_bibtex_by_doi, fetch_doi_metadata
+        get, calls = self._get([('https://api.crossref.org/works/10.1000/X', FakeResponse(json={'message': dict(self.CROSSREF)}))])
+        with mock.patch('papers.fetch.http_get', get):
             self.assertIn('A Title', fetch_bibtex_by_doi('10.1000/X'))
-            self.assertIn('A Title', fetch_bibtex_by_doi('10.1000/x'))
+            self.assertIn('A Title', fetch_bibtex_by_doi('10.1000/x'))  # same cache entry
             self.assertNotIn('reference', fetch_doi_metadata('10.1000/x'))
         self.assertEqual(len(calls), 1)
 
+    def test_doi_case_is_kept_in_all_queries(self):
+        # crossref, doi.org and the journal website get the DOI as given
+        from unittest import mock
+        from papers.fetch import fetch_bibtex_by_doi
+        get, calls = self._get([('https://api.crossref.org/', FakeResponse(404)),
+                                ('https://doi.org/', FakeResponse(200, content_type='text/html'))])
+        website = mock.Mock(return_value='@article{x, title = {From Website}}')
+        with mock.patch('papers.fetch.http_get', get), \
+             mock.patch('papers.fetch.fetch_bibtex_on_journal_website', website):
+            fetch_bibtex_by_doi('10.1000/NEW')
+        self.assertEqual(calls, ['https://api.crossref.org/works/10.1000/NEW', 'https://doi.org/10.1000/NEW'])
+        self.assertEqual(website.call_args.args[0], '10.1000/NEW')
+
     def test_doi_org_for_dois_unknown_to_crossref(self):
         from unittest import mock
-        from papers.extract import fetch_bibtex_by_doi
+        from papers.fetch import fetch_bibtex_by_doi
         get, calls = self._get([('https://api.crossref.org/', FakeResponse(404)),
                                 ('https://doi.org/10.5281/zenodo.1', FakeResponse(json=dict(self.CSL)))])
-        with mock.patch('papers.extract.http_get', get):
+        with mock.patch('papers.fetch.http_get', get):
             bibtex = fetch_bibtex_by_doi('10.5281/zenodo.1')
         self.assertIn('A Dataset', bibtex)
         self.assertIn('Two', bibtex)
 
     def test_unknown_doi_is_not_searched_on_websites_and_remembered(self):
         from unittest import mock
-        from papers.extract import fetch_bibtex_by_doi, DOINotFoundError
+        from papers.fetch import fetch_bibtex_by_doi, DOINotFoundError
         get, calls = self._get([('https://api.crossref.org/', FakeResponse(404)),
                                 ('https://doi.org/', FakeResponse(404, content_type='text/html'))])
-        with mock.patch('papers.extract.http_get', get), \
-             mock.patch('papers.extract.fetch_bibtex_on_journal_website') as website:
+        with mock.patch('papers.fetch.http_get', get), \
+             mock.patch('papers.fetch.fetch_bibtex_on_journal_website') as website:
             for _ in range(2):
                 with self.assertRaises(DOINotFoundError):
                     fetch_bibtex_by_doi('10.1000/misread')
         website.assert_not_called()
         self.assertEqual(len(calls), 2)  # crossref + doi.org, once
 
+    def test_invalid_json_on_doi_org_tries_the_website(self):
+        import json
+        from unittest import mock
+        from papers.fetch import fetch_bibtex_by_doi
+        get, calls = self._get([('https://api.crossref.org/', FakeResponse(404)),
+                                ('https://doi.org/', FakeResponse(json=json.JSONDecodeError('Expecting value', '<html>', 0)))])
+        website = mock.Mock(return_value='@article{x, title = {From Website}}')
+        with mock.patch('papers.fetch.http_get', get), \
+             mock.patch('papers.fetch.fetch_bibtex_on_journal_website', website):
+            self.assertIn('From Website', fetch_bibtex_by_doi('10.1000/badjson'))
+
+    def test_website_bibtex_links_are_relative_to_the_page(self):
+        # doi.org redirects to the journal page: its relative links are relative to that page
+        from unittest import mock
+        from papers.fetch import fetch_bibtex_on_journal_website
+        bibtex = '@article{x, doi = {10.1000/web}, title = {From Website}}'
+        get, calls = self._get([
+            ('https://doi.org/', FakeResponse(text='<a href="cite/x.bib">BibTeX</a>', content_type='text/html',
+                                              url='https://journal.example.org/articles/x')),
+            ('https://journal.example.org/articles/cite/x.bib', FakeResponse(text=bibtex, content_type='text/plain'))])
+        with mock.patch('papers.fetch.http_get', get):
+            self.assertEqual(fetch_bibtex_on_journal_website('10.1000/web', as_string=True), bibtex)
+        self.assertEqual(calls, ['https://doi.org/10.1000/web', 'https://journal.example.org/articles/cite/x.bib'])
+
     def test_registered_doi_without_metadata_tries_the_website(self):
         # e.g. a new paper: the DOI resolves but the metadata are not out yet
         from unittest import mock
-        from papers.extract import fetch_bibtex_by_doi
+        from papers.fetch import fetch_bibtex_by_doi
         get, calls = self._get([('https://api.crossref.org/', FakeResponse(404)),
                                 ('https://doi.org/', FakeResponse(200, content_type='text/html'))])
         website = mock.Mock(return_value='@article{x, title = {From Website}}')
-        with mock.patch('papers.extract.http_get', get), \
-             mock.patch('papers.extract.fetch_bibtex_on_journal_website', website):
+        with mock.patch('papers.fetch.http_get', get), \
+             mock.patch('papers.fetch.fetch_bibtex_on_journal_website', website):
             self.assertIn('From Website', fetch_bibtex_by_doi('10.1000/new'))
             fetch_bibtex_by_doi('10.1000/new')
         self.assertEqual(website.call_count, 2)  # not cached: retried
 
     def test_arxiv_error_is_raised_not_cached(self):
         from unittest import mock
-        from papers.extract import fetch_bibtex_by_arxiv, DOIRequestError
+        from papers.fetch import fetch_bibtex_by_arxiv, DOIRequestError
         get, calls = self._get([('https://arxiv.org/', FakeResponse(503))])
-        with mock.patch('papers.extract.http_get', get):
+        with mock.patch('papers.fetch.http_get', get):
             for _ in range(2):
                 with self.assertRaises(DOIRequestError):
                     fetch_bibtex_by_arxiv('2101.00001')
         self.assertEqual(len(calls), 2)
 
+    def test_arxiv_doi_fetched_from_arxiv(self):
+        from unittest import mock
+        from papers.fetch import fetch_bibtex_by_doi
+        for doi in ['10.48550/arXiv.2101.00001', '10.48550/arxiv.2101.00001']:
+            with mock.patch('papers.fetch.fetch_bibtex_by_arxiv', return_value='@misc{x}') as arxiv:
+                self.assertEqual(fetch_bibtex_by_doi(doi), '@misc{x}')
+            arxiv.assert_called_once_with('2101.00001')
+
     def test_fulltext_query_parameters(self):
         from unittest import mock
-        from papers.extract import fetch_bibtex_by_fulltext_crossref
+        from papers.fetch import fetch_bibtex_by_fulltext_crossref
         params = []
-        with mock.patch('papers.extract.http_get', side_effect=lambda url, **kw: (params.append(kw['params']), FakeResponse(json={'message': {'items': [dict(self.CROSSREF)]}}))[1]):
+        with mock.patch('papers.fetch.http_get', side_effect=lambda url, **kw: (params.append(kw['params']), FakeResponse(json={'message': {'items': [dict(self.CROSSREF)]}}))[1]):
             bibtex = fetch_bibtex_by_fulltext_crossref('', title='A Title', author=['One', 'Two'])
             fetch_bibtex_by_fulltext_crossref('', title='A Title', author=['One', 'Two'])  # cached
         self.assertIn('A Title', bibtex)
@@ -548,12 +647,110 @@ class TestDoiRequests(unittest.TestCase):
         self.assertEqual(params[0]['rows'], 5)
         self.assertNotIn('reference', params[0]['select'])
 
+    def _answers(self, *responses):
+        """fake http_get: the responses in turn (the last one again), and the urls asked"""
+        calls = []
+        def get(url, **kw):
+            calls.append(url)
+            return responses[min(len(calls), len(responses)) - 1]
+        return get, calls
+
+    def test_crossref_429_is_asked_again_once(self):
+        # formats.md 1.2: after the wait of Retry-After (at most 30 s)
+        from unittest import mock
+        from papers.fetch import fetch_bibtex_by_fulltext_crossref
+        too_many = FakeResponse(429)
+        too_many.headers['Retry-After'] = '2'
+        get, calls = self._answers(too_many, FakeResponse(json={'message': {'items': [dict(self.CROSSREF)]}}))
+        with mock.patch('papers.fetch.http_get', get), mock.patch('papers.fetch.time.sleep') as sleep:
+            self.assertIn('A Title', fetch_bibtex_by_fulltext_crossref('', title='A Title'))
+        sleep.assert_called_once_with(2)
+        self.assertEqual(len(calls), 2)
+
+    def test_crossref_429_twice_is_a_short_error_not_cached(self):
+        from unittest import mock
+        from papers.fetch import fetch_bibtex_by_fulltext_crossref, RequestFailed
+        get, calls = self._answers(FakeResponse(429))
+        with mock.patch('papers.fetch.http_get', get), mock.patch('papers.fetch.time.sleep') as sleep:
+            for _ in range(2):
+                with self.assertRaises(RequestFailed) as error:
+                    fetch_bibtex_by_fulltext_crossref('a long query of many words')
+                self.assertEqual(str(error.exception), 'crossref: HTTP 429 Too Many Requests')  # no URL
+        sleep.assert_called_with(5)  # without Retry-After
+        self.assertEqual(len(calls), 4)  # not cached: asked again
+
+    def test_crossref_without_answer_is_a_short_error(self):
+        import requests
+        from unittest import mock
+        from papers.fetch import fetch_bibtex_by_fulltext_crossref, RequestFailed
+        timeout = requests.exceptions.ReadTimeout('HTTPSConnectionPool(...): Read timed out. url: /works?query=...')
+        with mock.patch('papers.fetch.http_get', side_effect=timeout):
+            with self.assertRaisesRegex(RequestFailed, '^crossref: timed out$'):
+                fetch_bibtex_by_fulltext_crossref('a long query of many words')
+
+    def test_doi_429_is_a_request_failure(self):
+        # crossref did not answer, doi.org has no metadata: the error of crossref
+        from unittest import mock
+        from papers.fetch import fetch_bibtex_by_doi, RequestFailed
+        get, calls = self._get([('https://api.crossref.org/', FakeResponse(429)),
+                                ('https://doi.org/', FakeResponse(503, content_type='text/html'))])
+        with mock.patch('papers.fetch.http_get', get), mock.patch('papers.fetch.time.sleep'), \
+                mock.patch('papers.fetch.fetch_bibtex_on_journal_website', side_effect=ValueError('no link')):
+            with self.assertRaises(RequestFailed) as error:
+                fetch_bibtex_by_doi('10.1000/x')
+        self.assertEqual(str(error.exception), '10.1000/x: crossref: HTTP 429 Too Many Requests')
+        self.assertEqual(calls, ['https://api.crossref.org/works/10.1000/x'] * 2 + ['https://doi.org/10.1000/x'])
+
+
+class TestRequestFailedMessage(unittest.TestCase):
+    """formats.md 1.2: when a request failed, the error of the metadata of a PDF says so"""
+
+    TEXT = 'A Title Of Some Length about something\n\nSome One, Other Two\n\nhttps://doi.org/10.1000/x and more words here'
+
+    def failure(self):
+        from papers.fetch import RequestFailed
+        return RequestFailed('crossref', 'HTTP 429 Too Many Requests', 429)
+
+    def test_fulltext_query(self):
+        from unittest import mock
+        from papers.extract import extract_txt_metadata
+        with mock.patch('papers.extract.fetch_bibtex_by_fulltext_crossref', side_effect=self.failure()), \
+                self.assertLogs('papers', 'WARNING') as logs:
+            with self.assertRaisesRegex(ValueError, r'^failed to extract metadata: crossref did not answer '
+                                        r'\(HTTP 429 Too Many Requests\): try again later$'):
+                extract_txt_metadata(self.TEXT, search_doi=False, search_fulltext=True)
+        self.assertIn('fulltext query failed: crossref: HTTP 429 Too Many Requests', logs.output[0])
+
+    def test_doi_candidate(self):
+        from unittest import mock
+        from papers.extract import extract_txt_metadata
+        with mock.patch('papers.extract.fetch_bibtex_by_doi', side_effect=self.failure()), \
+                self.assertLogs('papers', 'WARNING'):
+            with self.assertRaisesRegex(ValueError, 'crossref did not answer'):
+                extract_txt_metadata(self.TEXT, search_doi=True, search_fulltext=False)
+
+    def test_doi_of_the_pdf_metadata(self):
+        from unittest import mock
+        from papers.extract import _metadata_from_pdf_contents
+        with mock.patch('papers.extract.fetch_bibtex_by_doi', side_effect=self.failure()), \
+                self.assertLogs('papers', 'WARNING'):
+            with self.assertRaisesRegex(ValueError, 'crossref did not answer'):
+                _metadata_from_pdf_contents('10.1000/x', lambda: ('no doi in this text at all', ''),
+                                            search_doi=True, search_fulltext=False)
+
+    def test_nothing_matched(self):
+        from unittest import mock
+        from papers.extract import extract_txt_metadata
+        with mock.patch('papers.extract.fetch_bibtex_by_fulltext_crossref', return_value='@article{x, title = {Another Paper Altogether}}'), \
+                self.assertLogs('papers', 'WARNING'):
+            with self.assertRaisesRegex(ValueError, 'pass the DOI with --doi'):
+                extract_txt_metadata(self.TEXT, search_doi=False, search_fulltext=True)
+
 
 class TestPrefetch(unittest.TestCase):
 
     def test_prefetch_runs_each_pdf_and_restores_logging(self):
         from unittest import mock
-        import logging
         from papers import logger
         from papers.extract import prefetch_pdf_metadata
         seen = []

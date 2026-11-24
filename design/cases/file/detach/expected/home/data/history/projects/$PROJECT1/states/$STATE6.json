@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE5",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers file detach --key c2022 a2020",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "4d97aed8c8966ddb1c8e6ee9cd29c92f4d3d2a41c9bdbefc670963ea5c2a1ca1"
+  ],
+  "sha": "4d97aed8c8966ddb1c8e6ee9cd29c92f4d3d2a41c9bdbefc670963ea5c2a1ca1"
+ },
+ "files": {}
+}

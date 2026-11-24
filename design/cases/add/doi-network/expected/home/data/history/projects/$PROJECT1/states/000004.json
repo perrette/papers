@@ -1,0 +1,19 @@
+{
+ "parent": 3,
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers add dummy.pdf --doi 10.5194/esd-4-1-2013 --link",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "15f14b76a6367a1d9c8da69d501747e659089eb853b820a1832f8879e313f409"
+  ],
+  "sha": "15f14b76a6367a1d9c8da69d501747e659089eb853b820a1832f8879e313f409"
+ },
+ "files": {
+  ".papers/files.json": [
+   "82abc222d035f7ad95d852cce41b6bf899e5a2d818c034728a5d264e962984a7"
+  ]
+ }
+}

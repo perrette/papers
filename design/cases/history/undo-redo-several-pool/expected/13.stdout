@@ -1,0 +1,4 @@
+> $STATE6 papers -C lib add ../import/more.bib ($TIME)
+  $STATE4 papers -C lib add ../import/refs.bib ($TIME)
+  $STATE3 the library before its first recorded command ($TIME)
+history: $DATA/history, 0.0 MB (up to 500 MB: the history-size setting; deleted files kept)

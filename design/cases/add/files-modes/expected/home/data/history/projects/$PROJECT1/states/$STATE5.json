@@ -1,0 +1,19 @@
+{
+ "parent": "$STATE4",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers add in4.bib",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "6a501dc8f0d20b0ef6a25b8a79bdc93ed16fd1e761197537561809d8a8ead310"
+  ],
+  "sha": "6a501dc8f0d20b0ef6a25b8a79bdc93ed16fd1e761197537561809d8a8ead310"
+ },
+ "files": {
+  ".papers/files.json": [
+   "212beb65eec8742a7c813a63d564cef274d702231e74266ab561a0217a8c2254"
+  ]
+ }
+}

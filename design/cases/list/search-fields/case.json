@@ -1,0 +1,110 @@
+{
+  "description": "search in a field: --key, --author, --first-author, --year, --title, --doi...",
+  "sections": [
+    "formats.md#6",
+    "formats.md#6.1"
+  ],
+  "tests": [
+    "tests/test_list.py::SearchTest::test_list_title",
+    "tests/test_list.py::SearchTest::test_list_title_multiple",
+    "tests/test_list.py::SearchTest::test_list_author",
+    "tests/test_list.py::SearchTest::test_list_first_author",
+    "tests/test_list.py::SearchTest::test_list_key",
+    "tests/test_list.py::SearchTest::test_list_year",
+    "tests/test_list.py::SearchTest::test_list_combined"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "list",
+        "--key",
+        "doe2019"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--author",
+        "Doe"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--first-author",
+        "Doe"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--first-author",
+        "Perrette"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--author",
+        "Landerer"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "-y",
+        "2013",
+        "2019"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--year",
+        "2020"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--title",
+        "ocean"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--doi",
+        "10.1234"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--abstract",
+        "overview"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--keywords",
+        "to-read"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--key",
+        "perrette2013",
+        "--author",
+        "Perrette",
+        "--year",
+        "2013",
+        "--title",
+        "scaling",
+        "approach"
+      ]
+    }
+  ]
+}

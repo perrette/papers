@@ -1,0 +1,16 @@
+{
+  "description": "init --pool of a folder that is not a library fails and changes nothing",
+  "sections": [
+    "library.md#pools-and-shallow-libraries/the-pool-setting"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "init",
+        "project",
+        "--pool",
+        "nowhere"
+      ]
+    }
+  ]
+}

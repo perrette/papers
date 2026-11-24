@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE3",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers tag e3 --add z",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "f31584ffdba9919e1731e3cf8c52ed4e8ff72f6e2cb4273c7e896ad185f51cae"
+  ],
+  "sha": "f31584ffdba9919e1731e3cf8c52ed4e8ff72f6e2cb4273c7e896ad185f51cae"
+ },
+ "files": {}
+}

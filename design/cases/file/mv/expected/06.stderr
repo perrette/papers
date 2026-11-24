@@ -1,0 +1,2 @@
+papers: error: $WORK/files/a1.txt: source and destination are the same
+nothing was moved

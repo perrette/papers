@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE3",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers tag doe2019 --add later",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "b8d1aabf3bd1df6123ba9017abbacb316f8eb7b96876897fe08a79716b16055b"
+  ],
+  "sha": "b8d1aabf3bd1df6123ba9017abbacb316f8eb7b96876897fe08a79716b16055b"
+ },
+ "files": {}
+}

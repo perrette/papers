@@ -1,0 +1,2 @@
+papers: error: brown2021: changed in the library and in pool ../pool (brown2021; 1 conflict)
+Pass --on-duplicate with one of: ask, keep, update, skip (ask is the default in a terminal), see `papers pull --help`.

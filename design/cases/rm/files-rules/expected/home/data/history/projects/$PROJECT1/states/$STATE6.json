@@ -1,0 +1,24 @@
+{
+ "parent": "$STATE5",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers rm d --delete-files --porcelain",
+ "ops": [
+  {
+   "op": "trashed",
+   "src": "files/s.txt",
+   "dst": null,
+   "checksum": "cf99975aa7995fad86fae7f3b0905143f30a52501944dff26002afc99c3b8419"
+  }
+ ],
+ "deleted": [
+  "cf99975aa7995fad86fae7f3b0905143f30a52501944dff26002afc99c3b8419"
+ ],
+ "bibtex": {
+  "pieces": [
+   "64926b29fe1b89ef5b29d3667cdb0aa6c914a11bc95236322a6138b87cba7b91"
+  ],
+  "sha": "64926b29fe1b89ef5b29d3667cdb0aa6c914a11bc95236322a6138b87cba7b91"
+ },
+ "files": {}
+}

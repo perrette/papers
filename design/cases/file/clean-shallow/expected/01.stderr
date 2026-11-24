@@ -1,0 +1,1 @@
+papers: error: the files of a shallow library are in its pool: clean them there, with all the entries of the pool (`papers -C ../pool file clean`)

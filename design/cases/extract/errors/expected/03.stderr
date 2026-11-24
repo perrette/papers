@@ -1,0 +1,3 @@
+papers: error: missing.pdf: no such file
+papers: error: no-doi.pdf: no DOI found in the text
+papers: error: 2 of 3 files failed

@@ -1,0 +1,15 @@
+{
+ "parent": "$STATE2",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers check --auto-key --key-template {author}_{year} --key-author-num 1 -y --porcelain",
+ "ops": [],
+ "deleted": [],
+ "bibtex": {
+  "pieces": [
+   "3a91584d3aea2d7476f59ecf055304bd4cc636798660f23334b316890e064005"
+  ],
+  "sha": "3a91584d3aea2d7476f59ecf055304bd4cc636798660f23334b316890e064005"
+ },
+ "files": {}
+}

@@ -1,0 +1,26 @@
+{
+  "description": "add a CSL-JSON file (.json): types, names, container-title, issued, accessed, keywords split on , and ;, the key from citation-key (a key that is not valid is made from the template), the DOI cleaned",
+  "sections": [
+    "formats.md#1.1",
+    "formats.md#3.3",
+    "formats.md#2.3",
+    "formats.md#2.4",
+    "formats.md#2.7",
+    "formats.md#2.8"
+  ],
+  "steps": [
+    {
+      "argv": [
+        "add",
+        "refs.json"
+      ]
+    },
+    {
+      "argv": [
+        "list",
+        "--format",
+        "bibtex"
+      ]
+    }
+  ]
+}
