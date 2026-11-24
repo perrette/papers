@@ -2257,3 +2257,9 @@ that check the same thing.
 - tests/test_history.py::TestHistoryCommand::test_list
 - tests/test_history.py::TestHistoryCommand::test_all_and_remove
 - tests/test_history.py::TestHistoryCommand::test_all_sorted_by_place
+
+## v3.md
+
+### Command line
+
+- tests/test_deprecated.py::TestHiddenFromTheHelp::test_abbreviation
