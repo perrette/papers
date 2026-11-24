@@ -107,16 +107,14 @@ option.
 
 ## Install
 
-papers 3 (beta), published on PyPI as a pre-release:
-
-```bash
-pip install --pre papers-cli
-```
-
-papers 2, the current release:
-
 ```bash
 pip install papers-cli
+```
+
+papers 2 (the previous major version), for a library that must stay readable by papers 2:
+
+```bash
+pip install "papers-cli<3"
 ```
 
 The package is called `papers-cli` because another project is registered

@@ -13,7 +13,7 @@ and PDFs, and a shallow project that uses the first one as its pool.
 The 3.0 beta is published on PyPI as a pre-release:
 
 ```
-pip install --pre papers-cli
+pip install papers-cli
 ```
 
 See [Installation](installation.md) for the requirements.

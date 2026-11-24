@@ -2,10 +2,8 @@
 
 ## Install papers
 
-papers 3 (beta) is published on PyPI as a pre-release: `--pre` installs it.
-
 ```bash
-pip install --pre papers-cli
+pip install papers-cli
 ```
 
 The development version, from the `v3` branch:
@@ -14,10 +12,10 @@ The development version, from the `v3` branch:
 pip install git+https://github.com/perrette/papers.git@v3
 ```
 
-papers 2, the current release:
+papers 2 (the previous major version), for a library that must stay readable by papers 2:
 
 ```bash
-pip install papers-cli
+pip install "papers-cli<3"
 ```
 
 Note there is another project registered on PyPI as `papers`, hence
