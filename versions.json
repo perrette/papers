@@ -5,6 +5,13 @@
     "aliases": []
   },
   {
+    "version": "3.0",
+    "title": "3.0 (stable)",
+    "aliases": [
+      "stable"
+    ]
+  },
+  {
     "version": "3.0-beta",
     "title": "3.0 (beta)",
     "aliases": []
@@ -12,8 +19,6 @@
   {
     "version": "2.x",
     "title": "2.x (stable)",
-    "aliases": [
-      "stable"
-    ]
+    "aliases": []
   }
 ]
