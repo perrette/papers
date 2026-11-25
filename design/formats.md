@@ -89,6 +89,12 @@ request failed (an HTTP error or no answer, after that retry), the error
 says that the site did not answer, rather than asking for `--doi`: the
 wording is free.
 
+The candidate DOIs of a PDF are those of its text (bibtex.md 3.6), and
+first the DOI `10.1016/<PII>` of an Elsevier Publisher Item Identifier
+printed in the text (`PII S0016-7037(98)00180-X`, articles before about
+2005, which print no DOI). Each candidate is accepted only if the title of
+its metadata appears in the text.
+
 ### 1.3 Text encoding
 
 - Reading: the file is decoded as UTF-8; a leading byte-order mark is

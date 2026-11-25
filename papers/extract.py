@@ -104,6 +104,9 @@ REGEXP = re.compile(rf'(?<![\w.\-])({_DOI})')
 # DOI introduced by a "doi" label or a doi.org URL
 LABELED_REGEXP = re.compile(rf'(?:doi:?\s*|doi\.org/)({_DOI})')
 ARXIV = re.compile(r'arxiv:\s*(\d{4}\.\d{4,5})')
+# the Publisher Item Identifier of an Elsevier article before about 2005,
+# printed in its header (PII S0016-7037(98)00180-X): its DOI is 10.1016/<PII>
+PII = re.compile(r'\bpii:?\s*(s\d{4}-\d{3}[\dx]\(\d{2}\)\d{5}-[\dx])')
 
 def _parse_doi_from_metadata_string(metadata):
     """Extract DOI from XMP metadata string."""
@@ -309,7 +312,7 @@ def _clean_doi(doi):
     return doi
 
 
-def parse_dois(txt, tail=''):
+def parse_dois(txt, tail='', pii=True):
     """Return the DOIs found in the text, the most likely article DOI first.
 
     DOIs of data repositories (see DATA_REPOSITORY_PREFIXES) come last when
@@ -318,7 +321,12 @@ def parse_dois(txt, tail=''):
     tail is the end of the document (e.g. the cover page publishers append
     to the PDF): its labeled DOIs ("doi:", doi.org URL) are added after the
     DOIs of the text.
+
+    An Elsevier PII in the text (see PII) gives the DOI 10.1016/<PII>, first:
+    a convention of Elsevier, not a rule, so the caller checks it as any
+    candidate (see confirm_doi); pii=False leaves it out (parse_doi).
     """
+    pii_dois = list(dict.fromkeys('10.1016/' + p for p in PII.findall(_normalize_doi_text(txt)))) if pii else []
     tail_dois = []
     for candidate in LABELED_REGEXP.findall(_normalize_doi_text(tail)):
         try:
@@ -330,10 +338,10 @@ def parse_dois(txt, tail=''):
     try:
         dois = _parse_dois(txt)
     except DOIParsingError:
-        if not tail_dois:
+        if not tail_dois and not pii_dois:
             raise
         dois = []
-    return dois + [doi for doi in tail_dois if doi not in dois]
+    return list(dict.fromkeys(pii_dois + dois + tail_dois))
 
 
 def _parse_dois(txt):
@@ -370,7 +378,8 @@ def _parse_dois(txt):
 
 
 def parse_doi(txt):
-    return parse_dois(txt)[0]
+    "the DOI of a text (check --fix-doi): no PII taken for a DOI, nothing checks it"
+    return parse_dois(txt, pii=False)[0]
 
 
 def isvaliddoi(doi):

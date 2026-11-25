@@ -261,6 +261,17 @@ class TestParseDoiCandidates(unittest.TestCase):
         from papers.extract import parse_dois
         self.assertEqual(parse_dois(ESSD_TEXT), ['10.5194/essd-2025-300', '10.5281/zenodo.15385035'])
 
+    def test_elsevier_pii(self):
+        "an Elsevier PII printed in the header gives the DOI 10.1016/<PII>, first"
+        from papers.extract import parse_dois
+        txt = 'Pergamon\nPII S0016-7037(98)00180-X\nAssessment of sea surface temperature'
+        self.assertEqual(parse_dois(txt), ['10.1016/s0016-7037(98)00180-x'])
+        txt += '\nSee doi:10.1029/98pa02318.'
+        self.assertEqual(parse_dois(txt), ['10.1016/s0016-7037(98)00180-x', '10.1029/98pa02318'])
+        # parse_doi (check --fix-doi) does not take a PII for a DOI
+        with self.assertRaises(DOIParsingError):
+            parse_doi('PII S0016-7037(98)00180-X')
+
     def test_data_repository_doi_alone_is_kept(self):
         txt = 'Data: https://doi.org/10.5281/zenodo.15385035 and nothing else'
         self.assertEqual(parse_doi(txt), '10.5281/zenodo.15385035')
