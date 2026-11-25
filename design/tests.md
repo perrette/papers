@@ -708,6 +708,7 @@ Network outside the lock:
 - tests/test_check.py::TestFixEntryBadDoi::test_other_fixes_still_applied
 - tests/test_extract_unit.py::TestParseDoi::test_strips_doi_prefix
 - tests/test_extract_unit.py::TestParseDoi::test_strips_unbalanced_trailing_paren
+- tests/test_extract_unit.py::TestParseDoi::test_sici_doi
 - tests/test_extract_unit.py::TestParseDoiCandidates::test_prefers_article_doi_over_data_repository
 - tests/test_extract_unit.py::TestTextDoiCandidates::test_doi_glued_to_a_word_or_number_is_ignored
 

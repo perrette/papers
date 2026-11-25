@@ -46,6 +46,17 @@ class TestParseDoi(unittest.TestCase):
         doi = '10.1234/foo(bar)'
         self.assertEqual(parse_doi('doi:'+doi), doi)
 
+    def test_sici_doi(self):
+        "the SICI DOIs of older articles have a <...:...> group (GSA, AGU, Wiley)"
+        from papers.extract import parse_dois
+        txt = 'Geology\ndoi: 10.1130/0091-7613(2001)029<0239:MSCOSA>2.0.CO;2\n 2001;29;239-242\nGeology'
+        self.assertEqual(parse_dois(txt), ['10.1130/0091-7613(2001)029<0239:mscosa>2.0.co;2'])
+        doi = '10.1002/(sici)1097-4636(199709)36:3<398::aid-jbm14>3.0.co;2-f'
+        self.assertEqual(parse_doi(f'see {doi}.'), doi)
+        self.assertTrue(isvaliddoi(doi))
+        # markup after a DOI is not part of it
+        self.assertEqual(parse_doi('doi:10.1000/abc<b>bold</b>'), '10.1000/abc')
+
 
 class TestIsvaliddoi(unittest.TestCase):
 

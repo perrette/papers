@@ -92,12 +92,17 @@ def readpdf_image(pdf, first=None, last=None):
 
         return open(tmptxt).read()
 
-# CrossRef DOI standard: /^10.\d{4,9}/[-._;()/:A-Z0-9]+$/i
+# CrossRef DOI standard: /^10.\d{4,9}/[-._;()/:A-Z0-9]+$/i, and the SICI
+# DOIs of articles before about 2005 (GSA, AGU, Wiley), which have one
+# <...:...> group: 10.1130/0091-7613(2001)029<0239:mscosa>2.0.co;2,
+# 10.1002/(sici)1097-4636(199709)36:3<398::aid-jbm14>3.0.co;2-f
+_DOI_CHARS = r'[-._;()/:a-z0-9]'
+_DOI = rf'10\.\d{{4,9}}/(?:{_DOI_CHARS}*<{_DOI_CHARS}*:{_DOI_CHARS}*>{_DOI_CHARS}+|{_DOI_CHARS}+)'
 # any DOI not glued to a preceding word, number or dot (bare DOIs included:
 # Science and AGU print the article's DOI alone on a line)
-REGEXP = re.compile(r'(?<![\w.\-])(10\.\d{4,9}/[-._;()/:a-z0-9]+)')
+REGEXP = re.compile(rf'(?<![\w.\-])({_DOI})')
 # DOI introduced by a "doi" label or a doi.org URL
-LABELED_REGEXP = re.compile(r'(?:doi:?\s*|doi\.org/)(10\.\d{4,9}/[-._;()/:a-z0-9]+)')
+LABELED_REGEXP = re.compile(rf'(?:doi:?\s*|doi\.org/)({_DOI})')
 ARXIV = re.compile(r'arxiv:\s*(\d{4}\.\d{4,5})')
 
 def _parse_doi_from_metadata_string(metadata):
@@ -120,7 +125,7 @@ def _parse_doi_from_info_fields(fields):
     period...)"""
     for key in ['subject', 'keywords', 'title']:
         value = _normalize_doi_text(fields.get(key) or '')
-        doi_match = re.search(r'10\.\d{4,9}/[-._;()/:a-z0-9]+', value)
+        doi_match = re.search(_DOI, value)
         if doi_match:
             try:
                 return _clean_doi(doi_match.group(0))

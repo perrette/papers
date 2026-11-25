@@ -401,8 +401,10 @@ field:
    (`10.\n1073/...`), after `10.1073/pnas.` before a digit, and after a
    `-` in the suffix.
 2. Candidates are the matches of the regular expression
-   `(?<![\w.\-])(10\.\d{4,9}/[-._;()/:a-z0-9]+)` (`\w`: a Unicode letter,
-   digit or underscore), in order, without repeats. Without match, `arxiv:\s*(\d{4}\.\d{4,5})`
+   `(?<![\w.\-])(10\.\d{4,9}/(?:C*<C*:C*>C+|C+))`, where `C` is
+   `[-._;()/:a-z0-9]` (`\w`: a Unicode letter, digit or underscore), in
+   order, without repeats. The first form is a SICI DOI of an older article,
+   with one `<...:...>` group (`10.1130/0091-7613(2001)029<0239:mscosa>2.0.co;2`). Without match, `arxiv:\s*(\d{4}\.\d{4,5})`
    gives `10.48550/arXiv.<id>`; otherwise the parse fails.
 3. DOIs of data repositories (prefixes `10.5281`, `10.5061`, `10.6084`,
    `10.5066`, `10.17882`, `10.1594`, `10.5067`) come after the others.
