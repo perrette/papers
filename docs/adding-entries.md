@@ -50,7 +50,9 @@ papers add entry.bib --attach esd-4-11-2013.pdf --bibtex papers.bib --filesdir f
 When no DOI is accepted, papers searches crossref with the first 200 words
 of the text (`--scholar`: Google Scholar, `--openalex`: OpenAlex, see
 [below](#search-with-openalex)), and accepts the result only if
-its title appears in the text. Otherwise the PDF is not added, and papers
+its title appears in the text. A title that differs from the text by a
+character or two (98 % similar, e.g. a prime extracted as `0`) counts as
+appearing in it. Otherwise the PDF is not added, and papers
 reports an error: pass the DOI with `--doi`, or describe the entry (see
 [below](#add-a-whole-directory-of-pdfs)). `--no-query-doi` skips the DOI
 search, and `--no-query-fulltext` the text search.

@@ -734,6 +734,8 @@ Network outside the lock:
 - tests/test_extract_unit.py::TestParseDoi::test_strips_unbalanced_trailing_paren
 - tests/test_extract_unit.py::TestParseDoi::test_sici_doi
 - tests/test_extract_unit.py::TestParseDoiCandidates::test_elsevier_pii
+- tests/test_extract_unit.py::TestTitleCheck::test_near_match
+- tests/test_extract_unit.py::TestTitleCheck::test_exact_before_near
 - tests/test_extract_unit.py::TestParseDoiCandidates::test_prefers_article_doi_over_data_repository
 - tests/test_extract_unit.py::TestTextDoiCandidates::test_doi_glued_to_a_word_or_number_is_ignored
 

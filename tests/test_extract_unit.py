@@ -475,6 +475,31 @@ class TestTitleCheck(unittest.TestCase):
         self.assertTrue(title_in_text('Ocean CO<sub>2</sub> uptake in the Weddell Sea', 'Ocean CO2 uptake\nin the Weddell Sea'))
         self.assertTrue(title_in_text('Évolution du niveau de la mer', 'EVOLUTION DU NI-\nVEAU DE LA MER'))
 
+    TITLE = ('New insights into the glacial latitudinal temperature gradients in the North Atlantic. '
+             'Results from UK′37 sea surface temperatures and terrigenous inputs')
+    TEXT = TITLE.replace('UK′37', 'UK0\n37') + '\nEva Calvo, Joan Villanueva\nAbstract'
+
+    def test_near_match(self):
+        "an error of the text extraction in the title (a prime read as a 0)"
+        from papers.extract import title_in_text, title_in_text_strict
+        self.assertTrue(title_in_text(self.TITLE, self.TEXT))
+        self.assertTrue(title_in_text_strict(self.TITLE, self.TEXT))
+        self.assertFalse(title_in_text(self.TITLE, self.TEXT, near=False))
+        # another title, however close, and a text that is a part of the title
+        self.assertFalse(title_in_text(self.TITLE.replace('North Atlantic', 'South Pacific'), self.TEXT))
+        self.assertFalse(title_in_text(self.TITLE, 'new insights into the glacial'))
+        self.assertFalse(title_in_text(self.TITLE, ''))
+
+    def test_exact_before_near(self):
+        "confirm_doi: a candidate with the exact title goes before an earlier one with a near title"
+        from unittest import mock
+        from papers.extract import confirm_doi
+        titles = {'10.1/near': self.TITLE, '10.1/exact': 'Eva Calvo, Joan Villanueva'}
+        with mock.patch('papers.extract.fetch_bibtex_by_doi',
+                        side_effect=lambda doi: '@article{a, title={%s}}' % titles[doi]):
+            self.assertEqual(confirm_doi(['10.1/near', '10.1/exact'], self.TEXT)[0], '10.1/exact')
+            self.assertEqual(confirm_doi(['10.1/near'], self.TEXT)[0], '10.1/near')
+
 
 class TestExtractPdfMetadataFromPdfMetadata(unittest.TestCase):
     """a DOI in the PDF metadata is used without parsing the text (crossref is mocked)"""

@@ -879,7 +879,7 @@ check of the library like any added entry.
 
 | Added | Pool entry taken | Key of the new entry |
 |---|---|---|
-| a PDF | a pool entry with a file of the same content (same real path, or same size and checksum); else the DOI given with `--doi`, else the DOI of the PDF metadata (the pool entry of that DOI); else the first DOI found in the text of the PDF whose pool entry's title appears in the text | from the library's key template |
+| a PDF | a pool entry with a file of the same content (same real path, or same size and checksum); else the DOI given with `--doi`, else the DOI of the PDF metadata (the pool entry of that DOI); else the first DOI found in the text of the PDF whose pool entry's title appears in the text (exactly or nearly, formats.md 1.2) | from the library's key template |
 | `--doi DOI` | the pool entry of that DOI (same-paper rule on the DOI alone) | from the library's key template |
 | `--key KEY` alone | the pool entry of key KEY, without case (when the library has no entry of that key) | the pool key |
 | an entry of an added bibtex (or RIS, CSL-JSON) file | the pool entry that is the same paper (with the library's `distinct.json`) | the added entry's key |

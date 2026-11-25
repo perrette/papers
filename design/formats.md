@@ -94,7 +94,13 @@ first the DOI `10.1016/<PII>` of an Elsevier Publisher Item Identifier
 in the title, subject or keywords of the PDF's document info, then
 printed in the text (`PII S0016-7037(98)00180-X`, also letter-spaced as `PII: S 0 0 1 2 - ...`, articles before about
 2005, which print no DOI). Each candidate is accepted only if the title of
-its metadata appears in the text.
+its metadata appears in the text, both reduced to their ASCII letters and
+digits: exactly, or nearly, with a similarity of 98 % or more between the
+title and the most similar part of the text (an error of the text
+extraction, e.g. a prime read as `0`). A text shorter than the title has no
+near match. A candidate whose title appears exactly goes before one whose
+title nearly does. The same comparison serves every check of a title
+against the text of a PDF (bibliographic search, library, pool).
 
 ### 1.3 Text encoding
 

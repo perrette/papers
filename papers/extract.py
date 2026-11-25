@@ -495,13 +495,34 @@ def _normalize_for_match(s):
     return re.sub(r'[^a-z0-9]', '', to_ascii(s).lower())
 
 
-def title_in_text(title, txt):
+# the least similarity (rapidfuzz's partial_ratio, 0-100) of a near match of a
+# title: on two libraries (about 205,000 pairs of a PDF and the title of another
+# paper) the highest was 97.0
+TITLE_SIMILARITY = 98
+
+
+def _title_match(title, txt, near=True):
+    """True if a normalized title is in the text, as it is or (near) with an
+    error or two of the text extraction (the prime of UK'37 read as a 0). A
+    text shorter than the title has no near match: partial_ratio would look
+    for the text in the title."""
+    txt = _normalize_for_match(txt)
+    if title in txt:
+        return True
+    if not near or len(txt) < len(title):
+        return False
+    from rapidfuzz.fuzz import partial_ratio
+    return partial_ratio(title, txt, score_cutoff=TITLE_SIMILARITY) > 0
+
+
+def title_in_text(title, txt, near=True):
     """True if the title appears in the text (ignoring case, accents, spacing
-    and punctuation, so that line breaks and hyphenation do not matter)"""
+    and punctuation, so that line breaks and hyphenation do not matter),
+    exactly or nearly (see _title_match; near=False: exactly)"""
     title = _normalize_for_match(title)
     if len(title) < 10:
         return True  # too short to tell
-    return title in _normalize_for_match(txt)
+    return _title_match(title, txt, near)
 
 
 MIN_TITLE_LENGTH = 20  # letters and digits, see title_in_text_strict
@@ -512,7 +533,7 @@ def title_in_text_strict(title, txt):
     pass (OpenAlex has hits whose title is the name of a journal, or a word that
     any text has)"""
     title = _normalize_for_match(title)
-    return len(title) >= MIN_TITLE_LENGTH and title in _normalize_for_match(txt)
+    return len(title) >= MIN_TITLE_LENGTH and _title_match(title, txt)
 
 
 def _bibtex_title(bibtex):
@@ -522,7 +543,8 @@ def _bibtex_title(bibtex):
 
 def confirm_doi(dois, txt, failures=None):
     """The first candidate DOI whose title (from crossref) appears in the
-    text, as (doi, bibtex), or None.
+    text, as (doi, bibtex), or None. A candidate whose title appears exactly
+    goes before one whose title nearly does.
 
     A candidate is never accepted on faith: a DOI cited in the text, or the
     DOI of the previous article printed on the same page, is a valid DOI of
@@ -530,6 +552,7 @@ def confirm_doi(dois, txt, failures=None):
     and are skipped. The requests that failed (RequestFailed) are appended
     to the list `failures`, when given.
     """
+    nearly = None
     for doi in dois:
         try:
             bibtex = fetch_bibtex_by_doi(doi)
@@ -542,10 +565,13 @@ def confirm_doi(dois, txt, failures=None):
         if not title:
             logger.info(f'{doi}: metadata without title, skip')
             continue
-        if title_in_text(title, txt):
+        if title_in_text(title, txt, near=False):
             return doi, bibtex
+        if nearly is None and title_in_text(title, txt):
+            nearly = doi, bibtex
+            continue
         logger.info(f'{doi}: title not found in the text: {title}')
-    return None
+    return nearly
 
 
 def extract_txt_metadata(txt, search_doi=True, search_fulltext=False, max_query_words=200, scholar=False, openalex=False, tail='',
