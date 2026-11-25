@@ -95,7 +95,8 @@ class TestQuery(OpenAlexTest):
     def test_long_query_is_cut_at_1500_characters(self):
         calls = self.get(answer(work()))
         query = ' '.join(['climate'] * 400)  # 3199 characters
-        openalex.fetch_bibtex_by_fulltext_openalex(query)
+        with mock.patch('papers.openalex.fetch_bibtex_by_doi', return_value='@misc{x}'):
+            openalex.fetch_bibtex_by_fulltext_openalex(query)
         sent = calls[0][1]['search.semantic']
         self.assertLessEqual(len(sent), 1500)
         self.assertGreater(len(sent), 1490)

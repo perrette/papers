@@ -123,7 +123,7 @@ _NAME_DOIS = [
 ]
 # Elsevier: 1-s2.0-<PII>-main, the PII without punctuation; only those of articles before about 2005, whose
 # DOI is 10.1016/<PII> (then 10.1016/j.<journal>...): 0025322786901234, S0012821X99001168
-_NAME_PII = re.compile(r'1-s2\.0-(\d{7}[\dx]\d{7}[\dx]|s\d{7}[\dx](?:9\d|0[0-5])\d{5}[\dx])-main')
+_NAME_PII = re.compile(r'1-s2\.0-(\d{7}[\dx]\d{7}[\da-z]|s\d{7}[\dx](?:9\d|0[0-5])\d{5}[\dx])-main')
 
 
 def _name_doi(file):
