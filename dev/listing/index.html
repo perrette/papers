@@ -1148,6 +1148,16 @@ line:</p>
 <a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>papers list --no-file -K | papers check --fetch -
 <a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>papers list --review-required -K | papers edit -
 </code></pre></div>
+<p><code>papers open --web KEY...</code> opens the web page of each entry in the browser
+instead of its files: <code>https://doi.org/DOI</code>, else the <code>url</code> field, else the
+arXiv abstract page. An entry without any is an error, after the others are
+opened (exit status 1); so is a file path. Before more than 20 pages, papers
+asks (<code>-y/--yes</code> does not ask; without a terminal, it stops before opening
+any); <code>--dry-run</code> prints the URLs (<code>DRYRUN: open URL</code>) and opens nothing. To
+download by hand the PDFs that publishers refuse to programs (see
+<a href="../files/#fetching-the-free-pdf-of-an-entry"><code>papers file fetch --browser</code></a>):</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>papers list --no-file -K | head -10 | papers open --web -
+</code></pre></div>
 <p>These commands take <code>-</code>: <code>edit</code>, <code>rm</code>, <code>tag</code>, <code>open</code>, <code>check</code>, and the
 <code>papers file</code> commands that act on entries (<code>rename</code>, <code>check</code>, and the
 <code>--key</code> option of <code>detach</code> and <code>rm</code>).</p>
@@ -1160,16 +1170,16 @@ is bibtex, or RIS (<code>.ris</code>), CSL-JSON (<code>.json</code>) or BibJSON 
 or the format given with <code>--format</code>. The file links of FILE are relative to
 the directory of FILE, as with <code>papers add FILE</code>. <code>--from -</code> reads the entry
 from the standard input:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>papers extract paper.pdf | papers edit perrette2013 --from -
-<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>papers fetch 10.5194/esd-4-11-2013 | papers edit perrette2013 --from -
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>papers extract paper.pdf | papers edit perrette2013 --from -
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>papers fetch 10.5194/esd-4-11-2013 | papers edit perrette2013 --from -
 </code></pre></div>
 <p>In a terminal, <code>papers edit KEY --from -</code> waits for the entry: paste it, and
 papers continues when the closing brace of the entry is read (Ctrl-D ends
 the input too, Ctrl-C cancels).</p>
 <p><code>--set</code> and <code>--unset</code> change single fields, of one entry or several:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>papers edit perrette2013 --set journal="Earth System Dynamics" year=2013
-<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>papers list --journal "Earth Syst. Dyn." -K | papers edit - --set journal="Earth System Dynamics"
-<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>papers edit smith2020 --unset note
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>papers edit perrette2013 --set journal="Earth System Dynamics" year=2013
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>papers list --journal "Earth Syst. Dyn." -K | papers edit - --set journal="Earth System Dynamics"
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>papers edit smith2020 --unset note
 </code></pre></div>
 <p>The value replaces the whole field, written as in bibtex
 (<code>--set author="Smith, John and Doe, Jane"</code>). The key and the file links
@@ -1177,7 +1187,7 @@ are not changed this way: <code>--key</code> (below) changes the key, and
 <code>papers file attach</code> and <code>detach</code> the file links. <code>papers tag</code> adds and
 removes single tags of the <code>keywords</code> field.</p>
 <p><code>--key NEW</code> changes the key of one entry:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>papers edit perrette_landerer2013 --key perrette2013 [--keep-old-key]
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>papers edit perrette_landerer2013 --key perrette2013 [--keep-old-key]
 </code></pre></div>
 <p>The <code>crossref</code> fields of other entries that name the old key, and the
 records of the exchanges with pools (see <a href="../pools/">Pools</a>), follow the new
@@ -1196,11 +1206,11 @@ the key of another entry is not applied, and the command exits with status
 stable for programs: the standard output has only the entries that the
 command added, modified, renamed or removed, or found already in the library
 (<code>papers add</code> of an entry that is there), one per line, without colours:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>$ papers add paper.pdf --porcelain
-<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>added perrette2013
-<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>$ papers tag perrette2013 smith2020 --add to-read --porcelain
-<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>modified perrette2013
-<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>modified smith2020
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>$ papers add paper.pdf --porcelain
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>added perrette2013
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>$ papers tag perrette2013 smith2020 --add to-read --porcelain
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>modified perrette2013
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>modified smith2020
 </code></pre></div>
 <p>The lines are <code>added KEY</code>, <code>modified KEY</code>, <code>renamed OLD NEW</code>, <code>removed KEY</code>
 and <code>existing KEY</code>. <code>renamed OLD NEW</code> is an entry whose key the command
@@ -1282,6 +1292,11 @@ for, with the listed entries as KEY...:</p>
 <td><code>papers list --tag to-read --open</code></td>
 </tr>
 <tr>
+<td><code>--open-web</code> (<code>--yes</code>)</td>
+<td><code>papers open --web KEY...</code> (<code>-y/--yes</code>)</td>
+<td><code>papers list --no-file --open-web</code></td>
+</tr>
+<tr>
 <td><code>--push</code> (<code>--pool PATH</code>, <code>--on-duplicate</code>)</td>
 <td><code>papers push KEY...</code> (same options)</td>
 <td><code>papers list --tag thesis --push</code></td>
@@ -1312,6 +1327,8 @@ for, with the listed entries as KEY...:</p>
   error and nothing changes. The files are moved, copied or linked as the
   <code>files</code> setting says.</li>
 <li><code>--detach</code> without FILE removes all the links of the listed entries.</li>
+<li><code>--open-web</code> takes <code>--yes</code> for the <code>-y/--yes</code> of <code>papers open --web</code>
+  (<code>-y</code> is <code>--year</code> in <code>papers list</code>).</li>
 <li>The folders given to <code>--fix-files</code> are the <code>--search</code> folders of
   <code>papers file fix</code>: the broken links are also looked for there. <code>--move</code>
   moves the files found there instead of copying them.</li>
