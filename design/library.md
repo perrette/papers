@@ -751,6 +751,12 @@ library entry). The links are those of the command's current state: when
 `file rename` renames the files of several entries that link to one file,
 the last of them moves the file.
 
+`add` of a PDF (and the files of its `--attach`) whose content a file of its
+entry has already does not attach it. In mode `move`, when the rules move it,
+it is deleted once the library is saved (history.md 5.6, `undo` brings it
+back): not a symbolic link, a file of the files directory, nor a file that an
+entry links to.
+
 The mode set, the rules are behaviour that another implementation should
 follow so that files are not lost; the exact prompts are free.
 

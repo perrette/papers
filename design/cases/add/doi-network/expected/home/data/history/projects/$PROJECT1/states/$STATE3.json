@@ -1,5 +1,5 @@
 {
- "parent": 2,
+ "parent": "$STATE2",
  "time": "$TIME",
  "kind": "command",
  "message": "papers add --doi 10.5194/esd-4-1-2013 --attach extra.txt --copy",

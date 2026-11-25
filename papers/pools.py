@@ -68,7 +68,7 @@ from papers.duplicate import (Distinct, IdentityIndex, author_id, contradicts, d
 from papers.entries import (get_entry_val, set_entry_key, entry_copy, parse_string, format_library, format_file,
                             parse_file)
 from papers.bib import Biblio, append_abc, parse_cache, read_text
-from papers.extract import parse_doi_from_pdf_metadata, parse_dois, pdf_info_text, pdfhead, pdftail, title_in_text
+from papers.extract import parse_doi_from_pdf_metadata, parse_dois, pdf_info_text, pdfhead, pdftail, entry_in_text
 from papers.files import ATTACHMENT_SEP, FilesPolicy, realpath, is_inside
 from papers.filename import slugify
 from papers.install import resolve_install, apply_install, DefaultAsker
@@ -1525,13 +1525,13 @@ class PoolLookup:
             if doi:
                 return self.doi(biblio, doi, files)
             txt = pdfhead(pdf)
-            candidates = parse_dois(txt, pdftail(pdf), info=pdf_info_text(pdf))
+            candidates = parse_dois(txt, pdftail(pdf), info=pdf_info_text(pdf), name=pdf)
         except Exception as error:
             logger.debug(f'{pdf}: {error}')
             return None
         for candidate in candidates:
             pe = pool.find_doi(candidate)
-            if pe is not None and title_in_text(get_entry_val(pe, 'title', ''), txt):
+            if pe is not None and entry_in_text(pe, txt):
                 return self._take(biblio, pool, pe, biblio.keyformat(pe), files=files)
         return None
 

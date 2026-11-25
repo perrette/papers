@@ -314,6 +314,10 @@ def addcmd(parser, o, config):
     # (with the entries a skipped duplicate was of: `existing`)
     _print_biblio_diff(biblio, entries + biblio.skipped, show_existing=True, notes=notes)
 
+    # the added PDFs that the library has already: not left behind, as if they had been moved
+    if biblio.leftovers:
+        delete_files(list(biblio.leftovers), dryrun=papers.config.DRYRUN)
+
     if stopped:
         raise stopped
     if o.open:

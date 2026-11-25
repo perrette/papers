@@ -2,10 +2,10 @@
  "parent": "$STATE2",
  "time": "$TIME",
  "kind": "command",
- "message": "papers add again/xmp-doi.pdf --attach extra.txt",
+ "message": "papers add again/xmp-doi.pdf --attach extra.txt --copy",
  "ops": [
   {
-   "op": "moved",
+   "op": "copied",
    "src": "extra.txt",
    "dst": "files/doe_2020_title-of-ice2020--extra.txt",
    "checksum": "65110ea3b8b62b0c09742c368bf1527f0978b06dff7a1371ef7b4c98e244d91a"

@@ -1,1 +1,2 @@
-undo: papers.bib restored to $STATE4 papers add info-doi.pdf --title Another title --copy ($TIME)
+undo: papers.bib restored to $STATE5 papers add info-doi.pdf --doi 10.1234/other.2021 --link ($TIME)
+    again/xmp-doi.pdf: restored from the history

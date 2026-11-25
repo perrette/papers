@@ -1,5 +1,5 @@
 {
-  "description": "add of a PDF whose DOI is in its metadata (XMP, document information) and that the library has: no query, the PDF is attached to its entry and placed by the name template; a PDF with the content of a file of the entry is not attached again; --doi names the entry; the fields given are not applied to an existing entry; attachments come with the PDF",
+  "description": "add of a PDF whose DOI is in its metadata (XMP, document information) and that the library has: no query, the PDF is attached to its entry and placed by the name template; a PDF with the content of a file of the entry is not attached again, and is deleted in mode move (last); --doi names the entry; the fields given are not applied to an existing entry; attachments come with the PDF",
   "sections": [
     "library.md#the-files-directory/file-names",
     "library.md#the-files-directory/the-files-setting",
@@ -18,13 +18,15 @@
         "add",
         "again/xmp-doi.pdf",
         "--attach",
-        "extra.txt"
+        "extra.txt",
+        "--copy"
       ]
     },
     {
       "argv": [
         "add",
-        "again/xmp-doi.pdf"
+        "again/xmp-doi.pdf",
+        "--copy"
       ]
     },
     {
@@ -62,7 +64,8 @@
       "argv": [
         "add",
         "missing.pdf",
-        "again/xmp-doi.pdf"
+        "again/xmp-doi.pdf",
+        "--copy"
       ]
     },
     {

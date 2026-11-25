@@ -501,6 +501,42 @@ class TestTitleCheck(unittest.TestCase):
             self.assertEqual(confirm_doi(['10.1/near'], self.TEXT)[0], '10.1/near')
 
 
+    CITED = ('5. Jeffery, C. A. & Austin, P. H. Homogeneous nucleation of supercooled water: results from a new\n'
+             'equation of state. J. Geophys. Res. 102, 25269-25279 (1997).\n')
+    CITED_BIBTEX = ('@article{x, author={Jeffery, C. A. and Austin, P. H.}, year={1997}, doi={10.1/cited},\n'
+                    ' title={Homogeneous nucleation of supercooled water: Results from a new equation of state}}')
+    PAGE = CITED + 'Past temperature of surface ocean waters\nH. Elderfield & G. Ganssen\n'
+
+    def test_cited_title_is_not_the_paper(self):
+        "the page starts with the references of the previous article"
+        from unittest import mock
+        from papers.entries import parse_string
+        from papers.extract import entry_in_text, extract_txt_metadata
+        entry = parse_string(self.CITED_BIBTEX).entries[0]
+        title = 'Homogeneous nucleation of supercooled water: results from a new equation of state'
+        self.assertFalse(entry_in_text(entry, self.PAGE))
+        # the year before the title, the initials before the name
+        self.assertFalse(entry_in_text(entry, f'C.A. Jeffery, P.H. Austin (1997). {title}. J. Geophys. Res.'))
+        # the paper itself: its title, also cited in its header, or with an author after it
+        self.assertTrue(entry_in_text(entry, self.PAGE + title))
+        self.assertTrue(entry_in_text(entry, f'Citation: Jeffery, C. A., {title}, J. Geophys. Res., 1997'))
+        self.assertTrue(entry_in_text(entry, f'C. A. Jeffery et al. / JGR\n{title}\nC. A. Jeffery, P. H. Austin\nReceived 1997'))
+        with mock.patch('papers.extract.fetch_bibtex_by_fulltext_crossref', return_value=self.CITED_BIBTEX):
+            with self.assertLogs('papers', level='WARNING'), self.assertRaises(ValueError):
+                extract_txt_metadata(self.PAGE, search_fulltext=True)
+
+    def test_doi_of_file_name(self):
+        from papers.extract import DOIParsingError, parse_dois
+        for name, doi in [('/x/35013033.pdf', '10.1038/35013033'), ('nature01297 (1).pdf', '10.1038/nature01297'),
+                          ('ngeo277.pdf', '10.1038/ngeo277'), ('s41598-017-15637-6.pdf', '10.1038/s41598-017-15637-6'),
+                          ('science.289.5485.1719.pdf', '10.1126/science.289.5485.1719')]:
+            self.assertEqual(parse_dois('no doi', name=name), [doi])
+            self.assertEqual(parse_dois('doi:10.1000/a', name=name), ['10.1000/a', doi])
+        for name in 'oppo2005.pdf', '20200101.pdf', 'science.pdf', 'nature.pdf':
+            with self.assertRaises(DOIParsingError):
+                parse_dois('no doi', name=name)
+
+
 class TestExtractPdfMetadataFromPdfMetadata(unittest.TestCase):
     """a DOI in the PDF metadata is used without parsing the text (crossref is mocked)"""
 

@@ -1,0 +1,35 @@
+{
+ "parent": "$STATE5",
+ "time": "$TIME",
+ "kind": "command",
+ "message": "papers add real2.pdf --attach extra.txt",
+ "ops": [
+  {
+   "op": "trashed",
+   "src": "real2.pdf",
+   "dst": null,
+   "checksum": "fe0202ff9648712f8269e6019e96d4b6becc5af6fe27947105338ea2b47b8a64"
+  },
+  {
+   "op": "trashed",
+   "src": "extra.txt",
+   "dst": null,
+   "checksum": "65110ea3b8b62b0c09742c368bf1527f0978b06dff7a1371ef7b4c98e244d91a"
+  }
+ ],
+ "deleted": [
+  "65110ea3b8b62b0c09742c368bf1527f0978b06dff7a1371ef7b4c98e244d91a",
+  "fe0202ff9648712f8269e6019e96d4b6becc5af6fe27947105338ea2b47b8a64"
+ ],
+ "bibtex": {
+  "pieces": [
+   "67f13db7e8de68e3622d910f284c21b67dee04f4b467364084daa8af244e4ea7"
+  ],
+  "sha": "67f13db7e8de68e3622d910f284c21b67dee04f4b467364084daa8af244e4ea7"
+ },
+ "files": {
+  ".papers/files.json": [
+   "bf781c6d7fd453e870df6c3573a66f2e4ff7bfa9111ec2110ecc9cc1e61778be"
+  ]
+ }
+}
