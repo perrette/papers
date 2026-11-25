@@ -528,6 +528,8 @@ class TestTitleCheck(unittest.TestCase):
     def test_doi_of_file_name(self):
         from papers.extract import DOIParsingError, parse_dois
         for name, doi in [('/x/35013033.pdf', '10.1038/35013033'), ('nature01297 (1).pdf', '10.1038/nature01297'),
+                          ('358485a0.pdf', '10.1038/358485a0'), ('33391.pdf', '10.1038/33391'),
+                          ('sdata.2015.29.pdf', '10.1038/sdata.2015.29'),
                           ('ngeo277.pdf', '10.1038/ngeo277'), ('s41598-017-15637-6.pdf', '10.1038/s41598-017-15637-6'),
                           ('science.289.5485.1719.pdf', '10.1126/science.289.5485.1719')]:
             self.assertEqual(parse_dois('no doi', name=name), [doi])

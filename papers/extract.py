@@ -114,8 +114,9 @@ _PII_LABELED = re.compile(r'\bpii:?\s*(s(?: ?[\dx()\-]){20})')
 
 # the file names that publishers give to a PDF, and the DOI each stands for
 _NAME_DOIS = [
-    # Nature Portfolio: 35013033, nature01297, ngeo277, s41598-017-15637-6
-    (re.compile(r'(35\d{6}|(?:nature|ncomms|nclimate|ngeo|nphys|nmat|nchem|nbt|nmeth|ng|nn|nm|srep|sdata|npjclimatsci)\.?\d{2,8}'
+    # Nature Portfolio: 358485a0 (until about 1997), 33391 and 990069 (about 1998-2000), 35013033, nature01297,
+    # ngeo277, sdata.2015.29, s41598-017-15637-6
+    (re.compile(r'(\d{6}[a-z]\d|\d{5,6}|35\d{6}|(?:nature|ncomms|nclimate|ngeo|nphys|nmat|nchem|nbt|nmeth|ng|nn|nm|srep|sdata|npjclimatsci)\.?\d{2,8}(?:\.\d+)?'
                 r'|s4\d{4}-\d{3}-\d{4,5}-[\da-z])'), '10.1038/'),
     # Science: science.1072376, science.289.5485.1719, sciadv.abf7787
     (re.compile(r'((?:science|sciadv)\.[a-z\d]+(?:\.\d+)*)'), '10.1126/'),

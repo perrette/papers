@@ -104,7 +104,8 @@ against the text of a PDF (bibliographic search, library, pool).
 A DOI in the PDF's metadata goes before all candidates and is not checked.
 
 The last candidate is the DOI that the file name stands for: `10.1038/NAME`
-for the names of Nature Portfolio (`35013033`, `nature01297`, `ngeo277`,
+for the names of Nature Portfolio (`358485a0`, `33391`, `35013033`,
+`nature01297`, `ngeo277`, `sdata.2015.29`,
 `s41598-017-15637-6`), `10.1126/NAME` for those of Science
 (`science.1072376`, `sciadv.abf7787`), without the ` (1)` of a browser. The
 list of names is free.
