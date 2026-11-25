@@ -1179,7 +1179,9 @@ attachment.</p>
 <p>When no DOI is accepted, papers searches crossref with the first 200 words
 of the text (<code>--scholar</code>: Google Scholar, <code>--openalex</code>: OpenAlex, see
 <a href="#search-with-openalex">below</a>), and accepts the result only if
-its title appears in the text. Otherwise the PDF is not added, and papers
+its title appears in the text. A title that differs from the text by a
+character or two (98 % similar, e.g. a prime extracted as <code>0</code>) counts as
+appearing in it. Otherwise the PDF is not added, and papers
 reports an error: pass the DOI with <code>--doi</code>, or describe the entry (see
 <a href="#add-a-whole-directory-of-pdfs">below</a>). <code>--no-query-doi</code> skips the DOI
 search, and <code>--no-query-fulltext</code> the text search.</p>
