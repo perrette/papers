@@ -456,6 +456,30 @@ that check the same thing.
 - tests/test_lock_after_network.py::TestFileFetch::test_entry_got_a_pdf_during_the_download
 - tests/test_lock_after_network.py::TestFileFetch::test_same_file_linked_during_the_download
 - tests/test_lock_after_network.py::TestFileFetch::test_interrupted_during_the_downloads
+- tests/test_file_fetch.py::TestBrowser::test_refused_and_without_pdf
+- tests/test_file_fetch.py::TestBrowser::test_not_without_the_option
+- tests/test_file_fetch.py::TestBrowser::test_asks_before_many_pages
+- tests/test_file_fetch.py::TestBrowser::test_upgrade
+
+### The web page of an entry
+
+- tests/test_open_web.py::TestOpenInBrowser::test_opens_each_url
+- tests/test_open_web.py::TestOpenInBrowser::test_up_to_the_threshold_without_question
+- tests/test_open_web.py::TestOpenInBrowser::test_asks_in_a_terminal
+- tests/test_open_web.py::TestOpenInBrowser::test_no_terminal_refuses
+- tests/test_open_web.py::TestOpenInBrowser::test_yes
+- tests/test_open_web.py::TestOpenInBrowser::test_dry_run
+- tests/test_open_web.py::TestOpenInBrowser::test_no_browser
+- tests/test_open_web.py::TestWebPages::test_fallbacks
+- tests/test_open_web.py::TestWebPages::test_none_is_reported_after_the_others
+- tests/test_open_web.py::TestWebPages::test_a_file_is_an_error
+- tests/test_open_web.py::TestWebPages::test_keys_from_the_standard_input
+- tests/test_open_web.py::TestWebPages::test_dry_run_and_porcelain
+- tests/test_open_web.py::TestWebPages::test_yes
+- tests/test_open_web.py::TestWebPages::test_list_open_web
+- tests/test_open_web.py::TestWebPages::test_list_open_web_reports_and_asks
+- tests/test_open_web.py::TestWebPages::test_list_yes_goes_with_open_web
+- tests/test_open_web.py::TestWebPages::test_list_open_web_does_not_lock
 
 ### Syntax
 

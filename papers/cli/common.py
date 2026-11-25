@@ -53,6 +53,33 @@ def view_entry_files(biblio, entry):
         open_with_system(f)
 
 
+# more web pages than this: open_in_browser asks before opening them
+BROWSER_ASK = 20
+
+
+def open_in_browser(urls, yes=False):
+    """open the web pages `urls` in the browser, each in a new tab (the
+    webbrowser module: a web browser, never the document viewer that
+    open_with_system may give). Before more than BROWSER_ASK pages, ask in
+    a terminal (yes: do not ask); without a terminal, stop before opening
+    any. With --dry-run, print them instead."""
+    if papers.config.DRYRUN:
+        for url in urls:
+            print(f'DRYRUN: open {url}')
+        return
+    if len(urls) > BROWSER_ASK and not yes:
+        question = f'{len(urls)} web pages to open in the browser'
+        if not stdin_is_terminal():
+            raise PapersExit(f'{question}: no terminal to confirm; pass -y/--yes (nothing was opened)')
+        if input(f'{question}. Continue? [y/N] ').strip().lower() not in ('y', 'yes'):
+            raise PapersExit('nothing was opened')
+    import webbrowser
+    for url in urls:
+        logger.info(f'opening {url} ...')
+        if not webbrowser.open_new_tab(url):
+            raise PapersExit(f'no web browser found to open {url}')
+
+
 def format_options(o, kind=('name', 'key')):
     """the name and key format settings passed on the command line, by
     setting name (`--name-author-num 1` -> {'name.author-num': 1})"""

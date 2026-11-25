@@ -1023,6 +1023,45 @@ terminal would take as part of the link: the reason comes before the URL or
 in parentheses after a space (`URL (HTTP 403)`), and several URLs are
 separated by spaces.
 
+### The web page of an entry
+
+`papers open --web KEY...`, `papers list --open-web` and `papers file
+fetch --browser` open web pages in the browser (papers: the `webbrowser`
+module of Python, a new tab per page; never the viewer of the files). They
+change nothing in the library and do not lock it.
+
+- The web page of an entry (`open --web`, `list --open-web`):
+  `https://doi.org/<DOI>` (the DOI as written in the entry, without a
+  `doi:` or `doi.org/` prefix; each character other than letters, digits,
+  `_.-~` and `/` is percent-encoded), else its `url` field, else
+  `https://arxiv.org/abs/<ID>` of its arXiv id (the `eprint` field of an
+  arXiv entry, else an arXiv DOI; a DOI comes first anyway). An entry
+  without any is an error (`papers: error: KEY: ...`) and is skipped; so is
+  a KEY of `open --web` that is no entry, and an existing file (`open`
+  without `--web` opens a file with the viewer). The command opens the
+  other pages, then exits with 1. `-` reads the keys from the standard
+  input, as `papers open -`.
+- `file fetch --browser` (also with `--upgrade`): the first link to open
+  in a browser of each entry that the summary lists (above: the entries
+  without PDF, those whose published version was refused when an accepted
+  manuscript or a submitted version was attached, and with `--upgrade`
+  those without published version), one entry at a time, in the order of
+  the entries. An entry without DOI or arXiv id has no link: nothing is
+  opened. The pages are opened after the library is saved and its locks
+  are released; the exit status is that of the fetch.
+- More than 20 pages: papers asks once before opening any, in a terminal;
+  `-y/--yes` (`--yes` for `list --open-web`, whose `-y` is `--year`; the
+  `-y/--yes` of `file fetch`, which also skips the question about
+  OpenAlex) does not ask. Without a terminal and without `-y/--yes`, it is
+  an error before any page is opened (a `file fetch` has done its work
+  already). `--yes` without `--open-web` is a usage error of `papers list`.
+- `--dry-run` prints `DRYRUN: open URL` per page and opens none (`file
+  fetch --dry-run` downloads nothing: no page). With `--porcelain`, nothing
+  is printed on the standard output for the pages.
+
+**Free**: the question, the error messages, `-v`'s `opening URL ...`
+lines, the threshold of 20 pages and the browser used.
+
 ## Name and key templates
 
 ### Syntax

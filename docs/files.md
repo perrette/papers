@@ -225,6 +225,18 @@ agent of the requests to the publishers. papers waits a second between two
 requests to the same site; a site that answers "too many requests" (HTTP
 429) is asked once more after the wait it gives (at most 30 seconds).
 
+`--browser` opens in the browser, once the library is saved, the first link
+to open in a browser of each entry without PDF and of each entry whose
+published version was refused (the link of the published version), to
+download it by hand. An entry without DOI or arXiv id has no link and is
+not opened. Before more than 20 pages, papers asks (`-y/--yes` does not
+ask; without a terminal, it stops before opening any); `--dry-run` downloads
+nothing, so it opens nothing either:
+
+```
+papers file fetch --missing --browser
+```
+
 The version of each PDF attached this way is kept in the library
 (`.papers/files.json`, by the checksum of the file): it follows the file when
 it is renamed or moved, and `papers list` shows it (see

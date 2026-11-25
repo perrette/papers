@@ -18,7 +18,7 @@ from papers.entries import entry_from_dict, get_entry_val, format_file, parse_fi
 from papers.extract import isvaliddoi, prefetch_pdf_metadata
 from papers.fetch import DOIRequestError, fetch_bibtex_by_doi
 from papers.files import delete_files, describe_file, download_url, files_policy, scan_dir_items
-from papers.identifiers import normalize_doi, read_selection, select_entries
+from papers.identifiers import entry_arxiv, normalize_doi, read_selection, select_entries, strip_doi
 from papers.library import get_biblio, savebib
 from papers.merge import DuplicateError
 from papers.pools import Exchange, PoolLookup, Pools
@@ -26,7 +26,7 @@ from papers.utils import PapersExit, file_uri_to_path, open_with_system, read_en
 from papers.cli.file_cmds import (attach_entry_files, fetch_entry_pdfs, check_entries_files, detach_entries, file_check_pools,
                                   rename_entries)
 from papers.cli.pool_cmds import exchange_pools, export_entries, pull_entries, push_entries, sync_entries
-from papers.cli.common import (view_entry_files, set_format_config_from_cmd, _print_biblio_diff, files_mode,
+from papers.cli.common import (view_entry_files, open_in_browser, set_format_config_from_cmd, _print_biblio_diff, files_mode,
                                duplicate_resolver, save_exchange, stdin_is_terminal, edit_entries, edit_selected,
                                EditRejected, parse_edited, replace_entries, set_fields,
                                print_kept_files, _delete_files_option, library_pools, push_notes, push_changed,
@@ -679,7 +679,8 @@ def listcmd(parser, o, config):
     actions = [name for name, given in [('--delete', o.delete), ('--edit', o.edit), ('--fetch', o.fetch),
                                         ('--add-tag', o.add_keywords), ('--rm-tag', o.rm_tag),
                                         ('--attach', attach), ('--detach', detach), ('--rename', rename),
-                                        ('--fix-files', fix_files), ('--open', o.open), ('--push', o.push),
+                                        ('--fix-files', fix_files), ('--open', o.open), ('--open-web', o.open_web),
+                                        ('--push', o.push),
                                         ('--pull', o.pull), ('--sync', o.sync), ('--export', o.export)] if given]
     if len(actions) > 1:
         parser.error(f"one action at a time: {' and '.join(actions)}")
@@ -688,7 +689,8 @@ def listcmd(parser, o, config):
             ('--move', o.move, fix_files or rename, '--fix-files or --rename'),
             ('--pool', o.pool, fix_files or exchange, '--push, --pull, --sync or --fix-files'),
             ('--on-duplicate', o.on_duplicate, exchange, '--push, --pull or --sync'),
-            ('--export-format', o.export_format, o.export, '--export')]:
+            ('--export-format', o.export_format, o.export, '--export'),
+            ('--yes', o.yes, o.open_web, '--open-web')]:
         if given and not needs:
             parser.error(f'{option} goes with {action}')
     if o.detach_broken and o.detach:
@@ -838,6 +840,11 @@ def listcmd(parser, o, config):
         open_entries(biblio, entries)
         return
 
+    elif o.open_web:
+        if open_web_pages(entries, yes=o.yes):
+            raise PapersExit()  # the errors are reported: exit 1
+        return
+
     else:
         # the listing is the data: on the standard output, with --porcelain too
         out = papers.utils.PORCELAIN or sys.stdout
@@ -874,10 +881,15 @@ def listcmd(parser, o, config):
 
 def opencmd(parser, o, config):
     biblio = None
+    entries, skipped = [], 0
     for key in read_selection(o.key):
         # an existing file is opened directly with the system viewer; anything
         # else is looked up as an entry key (or DOI) in the bibliography
         if os.path.isfile(key):
+            if o.web:
+                logger.error(f"{key}: a file, not an entry (--web opens the web page of entries)")
+                skipped += 1
+                continue
             logger.info(f"opening {key} ...")
             open_with_system(key)
             continue
@@ -890,8 +902,46 @@ def opencmd(parser, o, config):
             e, = select_entries(biblio, [key])[:1]
         except PapersExit as error:
             logger.error(str(error))
+            if o.web:
+                skipped += 1
             continue
-        open_entries(biblio, [e])
+        if o.web:
+            entries.append(e)
+        else:
+            open_entries(biblio, [e])
+    if o.web:
+        skipped += open_web_pages(entries, yes=o.yes)
+        if skipped:
+            raise PapersExit()  # the errors are reported: exit 1
+
+
+def web_page(e):
+    """the web page of an entry: https://doi.org/<DOI>, else its url field,
+    else its arXiv abstract page ('' if none)"""
+    from urllib.parse import quote
+    doi = strip_doi(get_entry_val(e, 'doi', ''))
+    if doi:
+        return 'https://doi.org/' + quote(doi, safe='/')
+    url = get_entry_val(e, 'url', '').strip()
+    if url:
+        return url
+    arxiv = entry_arxiv(e)
+    return f'https://arxiv.org/abs/{arxiv}' if arxiv else ''
+
+
+def open_web_pages(entries, yes=False):
+    """`papers open --web` (also `papers list --open-web`): open the web page
+    of each entry in the browser (see web_page and open_in_browser); an
+    entry without one is reported and skipped. Return the number skipped."""
+    urls = []
+    for e in entries:
+        url = web_page(e)
+        if url:
+            urls.append(url)
+        else:
+            logger.error(f'{e.key}: no DOI, url or arXiv id: no web page to open')
+    open_in_browser(urls, yes)
+    return len(entries) - len(urls)
 
 
 def open_entries(biblio, entries):

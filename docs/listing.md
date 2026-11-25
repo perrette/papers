@@ -169,6 +169,19 @@ papers list --no-file -K | papers check --fetch -
 papers list --review-required -K | papers edit -
 ```
 
+`papers open --web KEY...` opens the web page of each entry in the browser
+instead of its files: `https://doi.org/DOI`, else the `url` field, else the
+arXiv abstract page. An entry without any is an error, after the others are
+opened (exit status 1); so is a file path. Before more than 20 pages, papers
+asks (`-y/--yes` does not ask; without a terminal, it stops before opening
+any); `--dry-run` prints the URLs (`DRYRUN: open URL`) and opens nothing. To
+download by hand the PDFs that publishers refuse to programs (see
+[`papers file fetch --browser`](files.md#fetching-the-free-pdf-of-an-entry)):
+
+```
+papers list --no-file -K | head -10 | papers open --web -
+```
+
 These commands take `-`: `edit`, `rm`, `tag`, `open`, `check`, and the
 `papers file` commands that act on entries (`rename`, `check`, and the
 `--key` option of `detach` and `rm`).
@@ -279,6 +292,7 @@ for, with the listed entries as KEY...:
 | `--detach-broken` | `papers file detach --broken --key KEY...` | `papers list --broken-file --detach-broken` |
 | `--fix-files [DIR...]` (`--pool PATH`, `--move`) | `papers file fix KEY... [--search DIR...]` (`--pool PATH`, `--move`) | `papers list --broken-file --fix-files ~/pdfs` |
 | `-o/--open` | `papers open KEY...` | `papers list --tag to-read --open` |
+| `--open-web` (`--yes`) | `papers open --web KEY...` (`-y/--yes`) | `papers list --no-file --open-web` |
 | `--push` (`--pool PATH`, `--on-duplicate`) | `papers push KEY...` (same options) | `papers list --tag thesis --push` |
 | `--pull` (`--pool PATH`, `--on-duplicate`) | `papers pull KEY...` (same options) | `papers list --tag thesis --pull` |
 | `--sync` (`--pool PATH`, `--on-duplicate`) | `papers sync KEY...` (same options) | `papers list --tag thesis --sync` |
@@ -293,6 +307,8 @@ Notes on the options:
   error and nothing changes. The files are moved, copied or linked as the
   `files` setting says.
 - `--detach` without FILE removes all the links of the listed entries.
+- `--open-web` takes `--yes` for the `-y/--yes` of `papers open --web`
+  (`-y` is `--year` in `papers list`).
 - The folders given to `--fix-files` are the `--search` folders of
   `papers file fix`: the broken links are also looked for there. `--move`
   moves the files found there instead of copying them.

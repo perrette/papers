@@ -6,6 +6,7 @@ import sys
 import papers.checksums
 import papers.config
 import papers.history
+import papers.lock
 import papers.utils
 from papers import backup, freepdf, journal, logger, openalex
 from papers.entries import get_entry_val
@@ -16,13 +17,13 @@ from papers.files import (SearchFolders, attach_files, broken_links, check_entry
                           delete_files, detach_links, execute_moves, files_to_delete, link_snapshot, linked_files,
                           links_to_paths, moved_links, plan_moves, realpath, remove_empty_folders, rename_files,
                           attachment_names, is_inside)
-from papers.library import get_biblio, savebib
+from papers.library import finish_journal, get_biblio, savebib
 from papers.otherlibs import Lookup, Source, is_own_unlinked
 from papers.pools import Exchange, Pools
 from papers.utils import PapersExit, checksum, stdin_is_terminal
 from papers.cli.common import (set_format_config_from_cmd, _print_biblio_diff, files_mode,
                                _entries_or_all, _one_entry, _key_option_entries, print_kept_files, library_pools,
-                               save_entries, print_push_notes, lock_library)
+                               save_entries, print_push_notes, lock_library, open_in_browser)
 
 
 def filecheckcmd(parser, o, config):
@@ -1153,6 +1154,20 @@ def _save_fetched(config, biblio, exchange, entries):
         print_push_notes(biblio, notes)
 
 
+def _open_refused(o, config, summary):
+    """--browser: open in the browser the first link to open in a browser of
+    each entry of the summary (FetchSummary.browser: the entries without PDF
+    and those whose published version was refused), after the library is
+    saved: the step of the command in the history is completed and the
+    locks are released first (the question of open_in_browser may wait)"""
+    urls = [links[0] for _, links, _ in summary.browser if links]
+    if not o.browser or not urls:
+        return
+    finish_journal(config)
+    papers.lock.release_all()
+    open_in_browser(urls, o.yes)
+
+
 def file_fetchcmd(parser, o, config):
     set_format_config_from_cmd(o, config, 'name')
     if o.upgrade:
@@ -1207,6 +1222,7 @@ def file_fetchcmd(parser, o, config):
         print('every entry has a PDF')
     if len(entries) > 1 and not dryrun and papers.utils.PORCELAIN is None:
         summary.print(len(entries))
+    _open_refused(o, config, summary)
     if failed:
         raise PapersExit()  # the errors are reported: exit 1
 
@@ -1230,3 +1246,4 @@ def file_upgradecmd(o, config):
         print('no entry has an accepted manuscript or a submitted version attached by papers file fetch')
     if len(looked) > 1 and not dryrun and papers.utils.PORCELAIN is None:
         summary.print(len(looked))
+    _open_refused(o, config, summary)
