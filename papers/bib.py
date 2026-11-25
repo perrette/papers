@@ -30,8 +30,8 @@ import papers
 from papers import logger
 
 from papers.extract import parse_doi
-from papers.extract import (extract_pdf_metadata, parse_doi_from_pdf_metadata, parse_dois, pdfhead, pdftail,
-                            title_in_text)
+from papers.extract import (extract_pdf_metadata, parse_doi_from_pdf_metadata, parse_dois, pdf_info_text, pdfhead, pdftail,
+                            entry_in_text)
 from papers.fetch import fetch_bibtex_by_fulltext_crossref, fetch_bibtex_by_doi
 from papers.identifiers import DIGITS
 
@@ -39,7 +39,7 @@ from papers.encoding import standard_name, family_names, format_entries
 
 from papers.filename import NAMEFORMAT, KEYFORMAT, fallback_key
 from papers.files import (download_url, read_entry_dir, attachment_names, free_name, remove_entry_dir_if_empty,
-                          realpath, scan_dir_items, is_download)
+                          realpath, scan_dir_items, is_download, is_inside, linked_files)
 from papers import journal
 from papers.utils import bcolors, checksum, move as _move, write_atomic, PapersExit
 import papers.config
@@ -204,6 +204,9 @@ class Biblio:
         self.pdf_versions = {}
         # the library entries that duplicates skipped by insert_entry were of: considered by the command
         self.skipped = []
+        # the added files whose content an entry of the library has already: {file: the entry's file}
+        # (see _note_leftovers)
+        self.leftovers = {}
 
     def move(self, file, newfile, copy=False, hardlink=False):
         result = _move(file, newfile, copy=copy, dryrun=papers.config.DRYRUN, hardlink=hardlink)
@@ -643,13 +646,13 @@ class Biblio:
             if doi:
                 return self.find_doi(doi)
             txt = pdfhead(pdf)
-            candidates = parse_dois(txt, pdftail(pdf))
+            candidates = parse_dois(txt, pdftail(pdf), info=pdf_info_text(pdf), name=pdf)
         except Exception as error:
             logger.debug(f'{pdf}: {error}')
             return None
         for candidate in candidates:
             e = self.find_doi(candidate)
-            if e is not None and title_in_text(get_entry_val(e, 'title', ''), txt):
+            if e is not None and entry_in_text(e, txt):
                 return e
         return None
 
@@ -717,7 +720,39 @@ class Biblio:
         return self._insert_taken(taken, **kw)
 
 
-    def add_pdf(self, pdf, attachments=None, search_doi=True, search_fulltext=True, scholar=False, openalex=False, doi=None, **kw):
+    def add_pdf(self, pdf, attachments=None, **kw):
+        "add a PDF, see _add_pdf; return the entries it ended in"
+        entries = self._add_pdf(pdf, attachments=attachments, **kw)
+        if kw.get('rename'):
+            self._note_leftovers([pdf] + list(attachments or []), entries, kw.get('copy', False))
+        return entries
+
+    def _note_leftovers(self, files, entries, copy):
+        """note in `leftovers` the files that mode move would have moved, left
+        in place since an entry of `entries` has a file of the same content:
+        `add` deletes them, once the library is saved. Not a file that an
+        entry links to, one of the files directory, a symbolic link, nor one
+        that the policy `copy` does not move (see papers.files.FilesPolicy)."""
+        policy = copy if callable(copy) else (lambda f: 'copy' if copy else 'move')
+        if getattr(copy, 'mode', 'move') != 'move':
+            return
+        linked_by_others = getattr(copy, 'linked_by_others', None)
+        linked = None
+        for f in map(os.path.abspath, files):
+            if not os.path.isfile(f) or os.path.islink(f) or is_inside(f, self.filesdir):
+                continue
+            for e in entries:
+                same = _same_content(f, self.get_files(e))
+                if same is None:
+                    continue
+                if linked is None:
+                    linked = linked_files(self)
+                if realpath(f) not in linked and not (linked_by_others and linked_by_others(self, e, f)) \
+                        and policy(f) == 'move':
+                    self.leftovers[f] = same
+                break
+
+    def _add_pdf(self, pdf, attachments=None, search_doi=True, search_fulltext=True, scholar=False, openalex=False, doi=None, **kw):
 
         if str(pdf).startswith("http"):
             pdf = download_url(pdf, expect_pdf=True)

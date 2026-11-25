@@ -751,6 +751,12 @@ library entry). The links are those of the command's current state: when
 `file rename` renames the files of several entries that link to one file,
 the last of them moves the file.
 
+`add` of a PDF (and the files of its `--attach`) whose content a file of its
+entry has already does not attach it. In mode `move`, when the rules move it,
+it is deleted once the library is saved (history.md 5.6, `undo` brings it
+back): not a symbolic link, a file of the files directory, nor a file that an
+entry links to.
+
 The mode set, the rules are behaviour that another implementation should
 follow so that files are not lost; the exact prompts are free.
 
@@ -878,7 +884,20 @@ names above). `--missing` takes the entries without PDF.
   a PDF after that repair is not downloaded (unless `--again`); the others
   are fetched as below. `--dry-run` says what the repair would relink or
   restore, and does not list the links of these entries. `add
-  --fetch-pdf` makes no repair.
+  --fetch-pdf` makes no repair. The repair is planned before the
+  downloads and made after them, under the lock (next item).
+- The downloads run without the lock of the library (`file fetch`
+  without `--upgrade`; "The lock", Network outside the lock), into
+  temporary files. Then the command takes the lock, reads the library
+  again, makes the repair above and attaches each download to its entry,
+  found again by key: an entry no longer in the library (removed, or its
+  key changed) gets nothing, said with its key, and counts as an entry
+  without PDF for the exit status; an entry that has a PDF now (unless
+  `--again`) does not get the main PDF, said; a download is looked up
+  again in the files of the library by checksum, as for the cache of the
+  machine below (a file of the entry with that content: not attached; a
+  file of another entry: linked). The downloads not attached are removed.
+  `add --fetch-pdf` and `file fetch --upgrade` download under the lock.
 - `file fetch --missing` makes the same repair, then downloads the other
   entries without PDF, as `file fetch KEY...` does; an entry without any
   PDF link is downloaded (no file of another library is looked for).
@@ -1009,6 +1028,45 @@ or the end of the line, never by punctuation (`:` `,` `;` `.` `)`), which a
 terminal would take as part of the link: the reason comes before the URL or
 in parentheses after a space (`URL (HTTP 403)`), and several URLs are
 separated by spaces.
+
+### The web page of an entry
+
+`papers open --web KEY...`, `papers list --open-web` and `papers file
+fetch --browser` open web pages in the browser (papers: the `webbrowser`
+module of Python, a new tab per page; never the viewer of the files). They
+change nothing in the library and do not lock it.
+
+- The web page of an entry (`open --web`, `list --open-web`):
+  `https://doi.org/<DOI>` (the DOI as written in the entry, without a
+  `doi:` or `doi.org/` prefix; each character other than letters, digits,
+  `_.-~` and `/` is percent-encoded), else its `url` field, else
+  `https://arxiv.org/abs/<ID>` of its arXiv id (the `eprint` field of an
+  arXiv entry, else an arXiv DOI; a DOI comes first anyway). An entry
+  without any is an error (`papers: error: KEY: ...`) and is skipped; so is
+  a KEY of `open --web` that is no entry, and an existing file (`open`
+  without `--web` opens a file with the viewer). The command opens the
+  other pages, then exits with 1. `-` reads the keys from the standard
+  input, as `papers open -`.
+- `file fetch --browser` (also with `--upgrade`): the first link to open
+  in a browser of each entry that the summary lists (above: the entries
+  without PDF, those whose published version was refused when an accepted
+  manuscript or a submitted version was attached, and with `--upgrade`
+  those without published version), one entry at a time, in the order of
+  the entries. An entry without DOI or arXiv id has no link: nothing is
+  opened. The pages are opened after the library is saved and its locks
+  are released; the exit status is that of the fetch.
+- More than 20 pages: papers asks once before opening any, in a terminal;
+  `-y/--yes` (`--yes` for `list --open-web`, whose `-y` is `--year`; the
+  `-y/--yes` of `file fetch`, which also skips the question about
+  OpenAlex) does not ask. Without a terminal and without `-y/--yes`, it is
+  an error before any page is opened (a `file fetch` has done its work
+  already). `--yes` without `--open-web` is a usage error of `papers list`.
+- `--dry-run` prints `DRYRUN: open URL` per page and opens none (`file
+  fetch --dry-run` downloads nothing: no page). With `--porcelain`, nothing
+  is printed on the standard output for the pages.
+
+**Free**: the question, the error messages, `-v`'s `opening URL ...`
+lines, the threshold of 20 pages and the browser used.
 
 ## Name and key templates
 
@@ -1272,6 +1330,18 @@ orders (a command in L1 with `--pool L2` and a command in L2 with
 stops after `WAIT` seconds with an error, before it writes anything, and
 the other then gets the lock, unless it too waited `WAIT` seconds.
 Nothing is corrupted.
+
+**Network outside the lock.** A command whose network part is long (`file
+fetch`, `add` of PDFs or `--doi`) runs it without the lock: it reads the
+library to know what to look up, downloads or fills its cache, and writes
+nothing. It then takes the lock, reads the library again (and its pools,
+locked in the order above), and applies its results to that state, which
+may include the changes of commands that wrote the library meanwhile;
+these stay steps of their own in the history (the state before the
+command, history.md 5, is read under the lock). How `file fetch` applies
+its downloads to the library read again: "The free PDF of an entry".
+Stopped before it takes the lock (an error, an interrupt), such a command
+writes nothing in the library and removes its downloads.
 
 **Values.**
 

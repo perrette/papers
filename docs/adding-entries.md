@@ -46,11 +46,17 @@ papers add entry.bib --attach esd-4-11-2013.pdf --bibtex papers.bib --filesdir f
 4. If the text has no DOI, an arXiv identifier written `arXiv:2101.01234`
    gives the DOI `10.48550/arXiv.2101.01234`, whose metadata come from
    arXiv and are checked as in step 3.
+5. A file name given by Nature, Science or Elsevier (before about 2005:
+   `1-s2.0-0025322786901234-main.pdf`, `358485a0.pdf`, `35013033.pdf`, `nature01297.pdf`,
+   `science.1072376.pdf`) gives a last DOI to try, checked as in step 3.
 
 When no DOI is accepted, papers searches crossref with the first 200 words
 of the text (`--scholar`: Google Scholar, `--openalex`: OpenAlex, see
 [below](#search-with-openalex)), and accepts the result only if
-its title appears in the text. Otherwise the PDF is not added, and papers
+its title appears in the text. A title that differs from the text by a
+character or two (98 % similar, e.g. a prime extracted as `0`) counts as
+appearing in it. A title that the text only cites (after its author's name,
+with its year, as in a reference list) does not. Otherwise the PDF is not added, and papers
 reports an error: pass the DOI with `--doi`, or describe the entry (see
 [below](#add-a-whole-directory-of-pdfs)). `--no-query-doi` skips the DOI
 search, and `--no-query-fulltext` the text search.
@@ -200,7 +206,9 @@ is fetched online and there is no duplicate dialogue. The PDF (and the files
 of `--attach`) are attached to the entry and placed as the `files` setting
 says, as `papers file attach KEY FILE...` does; the key, the fields and the
 other files of the entry are not touched. A file with the content of a file
-of the entry is not attached again, and stays where it is. An arXiv DOI
+of the entry is not attached again; with `files` set to `move` it is
+deleted, as if it had been moved (`papers undo` brings it back), unless
+another entry links to it. An arXiv DOI
 (`10.48550/arXiv.<id>`) matches an entry whose `eprint` is that arXiv
 identifier. `--no-check-duplicate` skips this, and adds a new entry.
 

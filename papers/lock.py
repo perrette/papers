@@ -26,6 +26,15 @@ the lock over. The holder removes the lock at the end of the command, if
 it still has its token (renamed aside first, then its token checked, so
 that a lock taken over meanwhile is put back and not removed).
 
+A command whose network part is long (papers file fetch, papers add of
+PDFs or a DOI) runs it without the lock, writing nothing in the library;
+then it takes the lock (see papers.cli.common.lock_library), reads the
+library again and applies its results to that state: the lock covers the
+write only. papers file fetch attaches each download to its entry found
+again by key: an entry removed or renamed meanwhile gets nothing, an entry
+that has a PDF now does not get the main PDF, and a download that a file
+of the library now has (by checksum) is not attached twice.
+
 A command locks the library of the command line first, then its pool
 (see papers.pools.Pools.resolve); a command in the pool locks the pool
 only. Two commands that lock two libraries in opposite orders (a command

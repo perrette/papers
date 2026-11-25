@@ -7,3 +7,4 @@ Modified -> ice2020: Title of ice2020 (doi:10.1234/ICE.2020.1, files:6)
     in/xmp-doi--notes.txt --> moved to files/doe_2020_title-of-ice2020--notes.txt
     in/sub/info-doi.pdf --> moved to files/doe_2020_title-of-ice2020--info-doi.pdf
     in/sub/info-doi--supp.zip --> moved to files/doe_2020_title-of-ice2020--info-doi--supp.zip
+delete $WORK/in2/xmp-doi.pdf (kept in the history: undo restores it)

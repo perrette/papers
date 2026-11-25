@@ -170,7 +170,10 @@ after 30 seconds with an error; nothing is written. Two commands that lock
 two libraries in opposite orders (a command in A with `--pool B` and a
 command in B with `--pool A`) wait for each other the same way: the first
 to wait stops after 30 seconds, and the other then goes on, unless it too
-waited 30 seconds. Commands that only read
+waited 30 seconds. `papers file fetch` and `papers add` of PDFs or of a
+DOI make their network requests before they lock the library, then lock
+it, read it again and write it: they hold the lock only while they
+write. Commands that only read
 (`list` without an action, `status`, `export`, `file check`, `history`) do
 not wait.
 

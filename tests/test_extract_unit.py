@@ -46,6 +46,17 @@ class TestParseDoi(unittest.TestCase):
         doi = '10.1234/foo(bar)'
         self.assertEqual(parse_doi('doi:'+doi), doi)
 
+    def test_sici_doi(self):
+        "the SICI DOIs of older articles have a <...:...> group (GSA, AGU, Wiley)"
+        from papers.extract import parse_dois
+        txt = 'Geology\ndoi: 10.1130/0091-7613(2001)029<0239:MSCOSA>2.0.CO;2\n 2001;29;239-242\nGeology'
+        self.assertEqual(parse_dois(txt), ['10.1130/0091-7613(2001)029<0239:mscosa>2.0.co;2'])
+        doi = '10.1002/(sici)1097-4636(199709)36:3<398::aid-jbm14>3.0.co;2-f'
+        self.assertEqual(parse_doi(f'see {doi}.'), doi)
+        self.assertTrue(isvaliddoi(doi))
+        # markup after a DOI is not part of it
+        self.assertEqual(parse_doi('doi:10.1000/abc<b>bold</b>'), '10.1000/abc')
+
 
 class TestIsvaliddoi(unittest.TestCase):
 
@@ -250,6 +261,23 @@ class TestParseDoiCandidates(unittest.TestCase):
         from papers.extract import parse_dois
         self.assertEqual(parse_dois(ESSD_TEXT), ['10.5194/essd-2025-300', '10.5281/zenodo.15385035'])
 
+    def test_elsevier_pii(self):
+        "an Elsevier PII printed in the header gives the DOI 10.1016/<PII>, first"
+        from papers.extract import parse_dois
+        txt = 'Pergamon\nPII S0016-7037(98)00180-X\nAssessment of sea surface temperature'
+        self.assertEqual(parse_dois(txt), ['10.1016/s0016-7037(98)00180-x'])
+        txt += '\nSee doi:10.1029/98pa02318.'
+        self.assertEqual(parse_dois(txt), ['10.1016/s0016-7037(98)00180-x', '10.1029/98pa02318'])
+        # letter-spaced
+        txt = 'reserved.\nPII: S 0 0 1 2 - 8 2 1 X ( 0 1 ) 0 0 3 1 6 - 8\n* Corresponding'
+        self.assertEqual(parse_dois(txt), ['10.1016/s0012-821x(01)00316-8'])
+        # in the document info of the PDF (its title), before those of the text
+        self.assertEqual(parse_dois('no identifier', info='PII: S0012-821X(01)00316-8'),
+                         ['10.1016/s0012-821x(01)00316-8'])
+        # parse_doi (check --fix-doi) does not take a PII for a DOI
+        with self.assertRaises(DOIParsingError):
+            parse_doi('PII S0016-7037(98)00180-X')
+
     def test_data_repository_doi_alone_is_kept(self):
         txt = 'Data: https://doi.org/10.5281/zenodo.15385035 and nothing else'
         self.assertEqual(parse_doi(txt), '10.5281/zenodo.15385035')
@@ -446,6 +474,77 @@ class TestTitleCheck(unittest.TestCase):
         from papers.extract import title_in_text
         self.assertTrue(title_in_text('Ocean CO<sub>2</sub> uptake in the Weddell Sea', 'Ocean CO2 uptake\nin the Weddell Sea'))
         self.assertTrue(title_in_text('Évolution du niveau de la mer', 'EVOLUTION DU NI-\nVEAU DE LA MER'))
+
+    TITLE = ('New insights into the glacial latitudinal temperature gradients in the North Atlantic. '
+             'Results from UK′37 sea surface temperatures and terrigenous inputs')
+    TEXT = TITLE.replace('UK′37', 'UK0\n37') + '\nEva Calvo, Joan Villanueva\nAbstract'
+
+    def test_near_match(self):
+        "an error of the text extraction in the title (a prime read as a 0)"
+        from papers.extract import title_in_text, title_in_text_strict
+        self.assertTrue(title_in_text(self.TITLE, self.TEXT))
+        self.assertTrue(title_in_text_strict(self.TITLE, self.TEXT))
+        self.assertFalse(title_in_text(self.TITLE, self.TEXT, near=False))
+        # another title, however close, and a text that is a part of the title
+        self.assertFalse(title_in_text(self.TITLE.replace('North Atlantic', 'South Pacific'), self.TEXT))
+        self.assertFalse(title_in_text(self.TITLE, 'new insights into the glacial'))
+        self.assertFalse(title_in_text(self.TITLE, ''))
+
+    def test_exact_before_near(self):
+        "confirm_doi: a candidate with the exact title goes before an earlier one with a near title"
+        from unittest import mock
+        from papers.extract import confirm_doi
+        titles = {'10.1/near': self.TITLE, '10.1/exact': 'Eva Calvo, Joan Villanueva'}
+        with mock.patch('papers.extract.fetch_bibtex_by_doi',
+                        side_effect=lambda doi: '@article{a, title={%s}}' % titles[doi]):
+            self.assertEqual(confirm_doi(['10.1/near', '10.1/exact'], self.TEXT)[0], '10.1/exact')
+            self.assertEqual(confirm_doi(['10.1/near'], self.TEXT)[0], '10.1/near')
+
+
+    CITED = ('5. Jeffery, C. A. & Austin, P. H. Homogeneous nucleation of supercooled water: results from a new\n'
+             'equation of state. J. Geophys. Res. 102, 25269-25279 (1997).\n')
+    CITED_BIBTEX = ('@article{x, author={Jeffery, C. A. and Austin, P. H.}, year={1997}, doi={10.1/cited},\n'
+                    ' title={Homogeneous nucleation of supercooled water: Results from a new equation of state}}')
+    PAGE = CITED + 'Past temperature of surface ocean waters\nH. Elderfield & G. Ganssen\n'
+
+    def test_cited_title_is_not_the_paper(self):
+        "the page starts with the references of the previous article"
+        from unittest import mock
+        from papers.entries import parse_string
+        from papers.extract import entry_in_text, extract_txt_metadata
+        entry = parse_string(self.CITED_BIBTEX).entries[0]
+        title = 'Homogeneous nucleation of supercooled water: results from a new equation of state'
+        self.assertFalse(entry_in_text(entry, self.PAGE))
+        # the year before the title, the initials before the name
+        self.assertFalse(entry_in_text(entry, f'C.A. Jeffery, P.H. Austin (1997). {title}. J. Geophys. Res.'))
+        # the paper itself: its title, also cited in its header, or with an author after it
+        self.assertTrue(entry_in_text(entry, self.PAGE + title))
+        self.assertTrue(entry_in_text(entry, f'Citation: Jeffery, C. A., {title}, J. Geophys. Res., 1997'))
+        self.assertTrue(entry_in_text(entry, f'C. A. Jeffery et al. / JGR\n{title}\nC. A. Jeffery, P. H. Austin\nReceived 1997'))
+        # the paper itself, its heading badly extracted: it cites itself under its abstract
+        self.assertTrue(entry_in_text(entry, 'HOMOGENEOUS NUCLE~ION\nC.A. JEFFERY and P.H. AUSTIN\nDepartment of Atmospheric Sciences, '
+                                      + 'Vancouver, Canada ' * 12 + '\nABSTRACT\n' + self.CITED.replace('5. ', '') + 'We show'))
+        with mock.patch('papers.extract.fetch_bibtex_by_fulltext_crossref', return_value=self.CITED_BIBTEX):
+            with self.assertLogs('papers', level='WARNING'), self.assertRaises(ValueError):
+                extract_txt_metadata(self.PAGE, search_fulltext=True)
+
+    def test_doi_of_file_name(self):
+        from papers.extract import DOIParsingError, parse_dois
+        for name, doi in [('/x/35013033.pdf', '10.1038/35013033'), ('nature01297 (1).pdf', '10.1038/nature01297'),
+                          ('358485a0.pdf', '10.1038/358485a0'),
+                          ('1-s2.0-0025322786901234-main.pdf', '10.1016/0025-3227(86)90123-4'),
+                          ('1-s2.0-0012821X8590072X-main (1).pdf', '10.1016/0012-821x(85)90072-x'),
+                          ('1-s2.0-001670379500325T-main.pdf', '10.1016/0016-7037(95)00325-t'),
+                          ('1-s2.0-S0012821X99001168-main.pdf', '10.1016/s0012-821x(99)00116-8'),
+                          ('33391.pdf', '10.1038/33391'),
+                          ('sdata.2015.29.pdf', '10.1038/sdata.2015.29'),
+                          ('ngeo277.pdf', '10.1038/ngeo277'), ('s41598-017-15637-6.pdf', '10.1038/s41598-017-15637-6'),
+                          ('science.289.5485.1719.pdf', '10.1126/science.289.5485.1719')]:
+            self.assertEqual(parse_dois('no doi', name=name), [doi])
+            self.assertEqual(parse_dois('doi:10.1000/a', name=name), ['10.1000/a', doi])
+        for name in '1-s2.0-S0012821X14007511-main.pdf', 'oppo2005.pdf', '20200101.pdf', 'science.pdf', 'nature.pdf':
+            with self.assertRaises(DOIParsingError):
+                parse_dois('no doi', name=name)
 
 
 class TestExtractPdfMetadataFromPdfMetadata(unittest.TestCase):
@@ -735,7 +834,7 @@ class TestRequestFailedMessage(unittest.TestCase):
         with mock.patch('papers.extract.fetch_bibtex_by_doi', side_effect=self.failure()), \
                 self.assertLogs('papers', 'WARNING'):
             with self.assertRaisesRegex(ValueError, 'crossref did not answer'):
-                _metadata_from_pdf_contents('10.1000/x', lambda: ('no doi in this text at all', ''),
+                _metadata_from_pdf_contents('10.1000/x', lambda: ('no doi in this text at all', '', ''),
                                             search_doi=True, search_fulltext=False)
 
     def test_nothing_matched(self):
@@ -762,7 +861,8 @@ class TestPrefetch(unittest.TestCase):
         with mock.patch('papers.extract.parse_doi_from_pdf_metadata', side_effect=lambda pdf: '10.1/meta' if pdf == 'a.pdf' else None), \
              mock.patch('papers.extract.pdfhead', side_effect=lambda pdf: 'head ' + pdf), \
              mock.patch('papers.extract.pdftail', return_value='tail'), \
+             mock.patch('papers.extract.pdf_info_text', return_value='info'), \
              mock.patch('papers.extract._metadata_from_pdf_contents', side_effect=network):
             prefetch_pdf_metadata(['a.pdf', 'b.pdf', 'c.pdf'])
-        self.assertEqual(sorted(seen, key=str), sorted([('10.1/meta', ('', '')), (None, ('head b.pdf', 'tail')), (None, ('head c.pdf', 'tail'))], key=str))
+        self.assertEqual(sorted(seen, key=str), sorted([('10.1/meta', ('', '', '')), (None, ('head b.pdf', 'tail', 'info')), (None, ('head c.pdf', 'tail', 'info'))], key=str))
         self.assertEqual(logger.level, level)

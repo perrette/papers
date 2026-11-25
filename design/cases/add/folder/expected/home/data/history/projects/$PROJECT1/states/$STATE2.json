@@ -39,9 +39,17 @@
    "src": "in/sub/info-doi--supp.zip",
    "dst": "files/doe_2020_title-of-ice2020--info-doi--supp.zip",
    "checksum": "257a4c075a4c2721970ffc7ef0380d0bf7329185de8f34ff9a6ac8336561c34c"
+  },
+  {
+   "op": "trashed",
+   "src": "in2/xmp-doi.pdf",
+   "dst": null,
+   "checksum": "3fc0e10996c7afa5a142f2e7c2d54f0ad574adbed672c433330e37df4467d0c4"
   }
  ],
- "deleted": [],
+ "deleted": [
+  "3fc0e10996c7afa5a142f2e7c2d54f0ad574adbed672c433330e37df4467d0c4"
+ ],
  "bibtex": {
   "pieces": [
    "e5c371366f92cd9647beb4392f19f4c01f1cb09916a936010414d5f879c53cb8"

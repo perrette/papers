@@ -1,5 +1,5 @@
 {
- "parent": 2,
+ "parent": "$STATE2",
  "time": "$TIME",
  "kind": "command",
  "message": "papers add folder -R",
@@ -9,9 +9,17 @@
    "src": "folder/real--supp.txt",
    "dst": "files/sriver_et_al_2013_excitation-of-equatorial-kelvin-and-yanai-waves-by-tropical-cyclones-in-an-ocean-general-circulation--real--supp.txt",
    "checksum": "41218fd85de7e677547e3742f1348e077fa02dbc5207b4b86202f73008c2aa7b"
+  },
+  {
+   "op": "trashed",
+   "src": "folder/real.pdf",
+   "dst": null,
+   "checksum": "fe0202ff9648712f8269e6019e96d4b6becc5af6fe27947105338ea2b47b8a64"
   }
  ],
- "deleted": [],
+ "deleted": [
+  "fe0202ff9648712f8269e6019e96d4b6becc5af6fe27947105338ea2b47b8a64"
+ ],
  "bibtex": {
   "pieces": [
    "4107c6cbb4d107987418bf66f52b917ba5587113a592f4201fe73e14b07e3ede"

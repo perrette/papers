@@ -89,6 +89,38 @@ request failed (an HTTP error or no answer, after that retry), the error
 says that the site did not answer, rather than asking for `--doi`: the
 wording is free.
 
+The candidate DOIs of a PDF are those of its text (bibtex.md 3.6), and
+first the DOI `10.1016/<PII>` of an Elsevier Publisher Item Identifier
+in the title, subject or keywords of the PDF's document info, then
+printed in the text (`PII S0016-7037(98)00180-X`, also letter-spaced as `PII: S 0 0 1 2 - ...`, articles before about
+2005, which print no DOI). Each candidate is accepted only if the title of
+its metadata appears in the text, both reduced to their ASCII letters and
+digits: exactly, or nearly, with a similarity of 98 % or more between the
+title and the most similar part of the text (an error of the text
+extraction, e.g. a prime read as `0`). A text shorter than the title has no
+near match. A candidate whose title appears exactly goes before one whose
+title nearly does. The same comparison serves every check of a title
+against the text of a PDF (bibliographic search, library, pool).
+A DOI in the PDF's metadata goes before all candidates and is not checked.
+
+The last candidate is the DOI that the file name stands for: `10.1038/NAME`
+for the names of Nature Portfolio (`358485a0`, `33391`, `35013033`,
+`nature01297`, `ngeo277`, `sdata.2015.29`,
+`s41598-017-15637-6`), `10.1126/NAME` for those of Science
+(`science.1072376`, `sciadv.abf7787`),
+`10.1016/<PII>` for those of Elsevier before about 2005
+(`1-s2.0-0025322786901234-main`: `10.1016/0025-3227(86)90123-4`), without the ` (1)` of a browser. The
+list of names is free.
+
+A title that the text only cites does not count: the paper's own title is
+looked for (exactly or nearly) in the text without those occurrences of the
+exact title that have the first author with initials in the 200 characters
+before, the entry's year between that author and the title or in the 150
+characters after it, no first author in those 150 characters, and no `cite`
+or `citation` before; none does when the first author is elsewhere in the
+text (beyond those 200 characters), as in a byline. The PDF of an article that starts in the middle of a
+page has the references of the previous one.
+
 ### 1.3 Text encoding
 
 - Reading: the file is decoded as UTF-8; a leading byte-order mark is

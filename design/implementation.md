@@ -587,6 +587,19 @@ Notes for another implementation:
   has its own stop signal, and a thread told to stop is replaced by a new
   one.
 
+A command declared with `writes=LOCK_LATER` (papers/cli/parser.py: `add`,
+`file fetch`) is not locked by papers/cli/__init__.py at its start: it
+runs its network part, then calls `papers.cli.common.lock_library`
+(`lock.acquire`, then `backup.start` again, so the state before the
+command is read under the lock), and reads the library and its pools
+again through the functions it used at its start (`get_biblio`,
+`library_pools`; a pool resolved while the lock is held is locked). `file
+fetch` downloads with `download_entry_pdfs` and attaches with
+`attach_entry_downloads`, which finds the entries again by key. The
+caches written without the lock (papers/cache.py, papers/parsecache.py,
+the download checksums of papers/freepdf.py) are written to a temporary
+file and renamed, so two processes can fill them at the same time.
+
 Within one process, the Python implementation is single-threaded apart
 from the lock refresh and the network requests of `add DIR` (a thread
 pool for crossref, with a `requests` session per thread; PyMuPDF is

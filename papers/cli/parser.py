@@ -16,6 +16,7 @@ from papers.cli.fetch_cmds import doicmd, fetchcmd, extractcmd
 from papers.cli.file_cmds import (filecheckcmd, file_renamecmd, file_mvcmd, file_attachcmd, file_detachcmd, file_rmcmd,
                                   file_checkcmd, file_fixcmd, file_cleancmd, file_checksumcmd)
 from papers.cli.file_cmds import OPENALEX_ASK, file_fetchcmd
+from papers.cli.common import BROWSER_ASK, LOCK_LATER
 from papers.freepdf import LEAST_VERSIONS
 from papers.openalex import API_KEY_ENV, MAILTO_ENV
 from papers.cli.library_cmds import statuscmd, initcmd, configcmd, migratecmd, installcmd, uninstallcmd
@@ -236,7 +237,9 @@ def get_parser(config=None):
         papers.cli.main; with library=True, config is the library of the
         command line (see papers.cli.common.check_install), locked while
         the command runs (see papers.lock) unless writes is False, or a
-        function of the parsed arguments that says False"""
+        function of the parsed arguments that says False. With
+        writes=LOCK_LATER, the command takes the lock itself, after its
+        network part (see papers.cli.common.lock_library)."""
         p.set_defaults(func=func, library=library, bibtex_must_exist=bibtex_must_exist, command_parser=p,
                        writes=writes)
 
@@ -524,7 +527,7 @@ def get_parser(config=None):
     grp = addp.add_argument_group('actions')
     grp.add_argument('-e', '--edit', action='store_true', help='edit entry')
     grp.add_argument('-o', '--open', action='store_true', help='open files')
-    _command(addp, addcmd, library=True)
+    _command(addp, addcmd, library=True, writes=LOCK_LATER)
 
     # check
     # =====
@@ -653,8 +656,14 @@ def get_parser(config=None):
     p.add_argument('--search', action='append', metavar='DIR',
         help='for an entry whose PDF link is broken, also look for its file in DIR (recursively), by file '
              'name, else by the template name of the entry, as `papers file fix --search` (can be repeated)')
-    p.add_argument('-y', '--yes', action='store_true', help='do not ask before querying OpenAlex for many entries')
-    _command(p, file_fetchcmd, library=True)
+    p.add_argument('--browser', action='store_true',
+        help='open in the browser, at the end, the first link to open in a browser of each entry without PDF, '
+             'and of each entry whose published version was refused when an accepted manuscript or a submitted '
+             f'version was attached instead; papers asks before more than {BROWSER_ASK} pages')
+    p.add_argument('-y', '--yes', action='store_true',
+        help=f'do not ask before querying OpenAlex for many entries, nor before opening more than {BROWSER_ASK} '
+             'pages (--browser)')
+    _command(p, file_fetchcmd, library=True, writes=LOCK_LATER)
 
     _key_help = (f'only the links of these entries ({ENTRY_IDS}; - reads them from the standard input); '
                  'write the files before --key, which takes several values')
@@ -852,6 +861,10 @@ def get_parser(config=None):
         help='with --rename: keep the files where they are too, as `papers file rename --keep-source`')
     grp.add_argument('-o', '--open', action='store_true',
         help='open the files of the listed entries, as `papers open`')
+    grp.add_argument('--open-web', action='store_true',
+        help='open the web page of the listed entries in the browser, as `papers open --web`')
+    grp.add_argument('--yes', action='store_true',
+        help=f'with --open-web: do not ask before opening more than {BROWSER_ASK} pages')
     grp.add_argument('--attach', nargs='+', type=file_uri_to_path, metavar='FILE',
         help='attach files to the listed entry, as `papers file attach KEY FILE...` (the files setting '
              'applies); an error unless the listing gives exactly one entry')
@@ -1019,8 +1032,14 @@ def get_parser(config=None):
 
     # open
     # ====
-    openp = subparsers.add_parser('open', description='open entry attachments or files with the system viewer', parents=[cfg])
+    openp = subparsers.add_parser('open', description='open entry attachments or files with the system viewer (with --web: the web page of the entries, in the browser)', parents=[cfg])
     openp.add_argument('key', nargs='+', type=file_uri_to_path, help='entries (' + _selection_help + '), or existing file path(s) to open directly')
+    openp.add_argument('--web', action='store_true',
+        help='open the web page of each entry in the browser instead of its files: https://doi.org/DOI, else '
+             'the url field, else the arXiv abstract page (an entry without any is an error, and exit 1 after '
+             'opening the others; a FILE is an error too)')
+    openp.add_argument('-y', '--yes', action='store_true',
+        help=f'with --web: do not ask before opening more than {BROWSER_ASK} pages')
     _command(openp, opencmd)
 
     # doi

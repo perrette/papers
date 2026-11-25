@@ -10,6 +10,7 @@ import logging
 from papers.ascii import to_ascii
 
 from papers import logger
+from papers.encoding import family_names
 from papers.entries import get_entry_val, parse_string
 from papers.fetch import (DOIRequestError, RequestFailed, fetch_bibtex_by_doi, fetch_bibtex_by_fulltext_crossref,
                           fetch_bibtex_by_fulltext_scholar)
@@ -92,13 +93,61 @@ def readpdf_image(pdf, first=None, last=None):
 
         return open(tmptxt).read()
 
-# CrossRef DOI standard: /^10.\d{4,9}/[-._;()/:A-Z0-9]+$/i
+# CrossRef DOI standard: /^10.\d{4,9}/[-._;()/:A-Z0-9]+$/i, and the SICI
+# DOIs of articles before about 2005 (GSA, AGU, Wiley), which have one
+# <...:...> group: 10.1130/0091-7613(2001)029<0239:mscosa>2.0.co;2,
+# 10.1002/(sici)1097-4636(199709)36:3<398::aid-jbm14>3.0.co;2-f
+_DOI_CHARS = r'[-._;()/:a-z0-9]'
+_DOI = rf'10\.\d{{4,9}}/(?:{_DOI_CHARS}*<{_DOI_CHARS}*:{_DOI_CHARS}*>{_DOI_CHARS}+|{_DOI_CHARS}+)'
 # any DOI not glued to a preceding word, number or dot (bare DOIs included:
 # Science and AGU print the article's DOI alone on a line)
-REGEXP = re.compile(r'(?<![\w.\-])(10\.\d{4,9}/[-._;()/:a-z0-9]+)')
+REGEXP = re.compile(rf'(?<![\w.\-])({_DOI})')
 # DOI introduced by a "doi" label or a doi.org URL
-LABELED_REGEXP = re.compile(r'(?:doi:?\s*|doi\.org/)(10\.\d{4,9}/[-._;()/:a-z0-9]+)')
+LABELED_REGEXP = re.compile(rf'(?:doi:?\s*|doi\.org/)({_DOI})')
 ARXIV = re.compile(r'arxiv:\s*(\d{4}\.\d{4,5})')
+# the Publisher Item Identifier of an Elsevier article before about 2005,
+# printed in its header (PII S0016-7037(98)00180-X), sometimes letter-spaced
+# (PII: S 0 0 1 2 - 8 2 1 X ( 0 1 ) ...): its DOI is 10.1016/<PII>
+PII = re.compile(r's\d{4}-\d{3}[\dx]\(\d{2}\)\d{5}-[\dx]')
+_PII_LABELED = re.compile(r'\bpii:?\s*(s(?: ?[\dx()\-]){20})')
+
+
+# the file names that publishers give to a PDF, and the DOI each stands for
+_NAME_DOIS = [
+    # Nature Portfolio: 358485a0 (until about 1997), 33391 and 990069 (about 1998-2000), 35013033, nature01297,
+    # ngeo277, sdata.2015.29, s41598-017-15637-6
+    (re.compile(r'(\d{6}[a-z]\d|\d{5,6}|35\d{6}|(?:nature|ncomms|nclimate|ngeo|nphys|nmat|nchem|nbt|nmeth|ng|nn|nm|srep|sdata|npjclimatsci)\.?\d{2,8}(?:\.\d+)?'
+                r'|s4\d{4}-\d{3}-\d{4,5}-[\da-z])'), '10.1038/'),
+    # Science: science.1072376, science.289.5485.1719, sciadv.abf7787
+    (re.compile(r'((?:science|sciadv)\.[a-z\d]+(?:\.\d+)*)'), '10.1126/'),
+]
+# Elsevier: 1-s2.0-<PII>-main, the PII without punctuation; only those of articles before about 2005, whose
+# DOI is 10.1016/<PII> (then 10.1016/j.<journal>...): 0025322786901234, S0012821X99001168
+_NAME_PII = re.compile(r'1-s2\.0-(\d{7}[\dx]\d{7}[\da-z]|s\d{7}[\dx](?:9\d|0[0-5])\d{5}[\dx])-main')
+
+
+def _name_doi(file):
+    """the DOI that the file name of a PDF stands for, as the publisher names
+    it (10.1038/35013033 for 35013033.pdf, also `35013033 (1).pdf` of a
+    browser), or None: a candidate, see confirm_doi"""
+    stem = os.path.splitext(os.path.basename(file))[0].lower()
+    stem = re.sub(r' ?\(\d+\)$', '', stem)
+    for pattern, prefix in _NAME_DOIS:
+        match = pattern.fullmatch(stem)
+        if match:
+            return prefix + match.group(1)
+    match = _NAME_PII.fullmatch(stem)
+    if match:
+        pii = match.group(1)
+        s, n = ('s', pii[1:]) if pii.startswith('s') else ('', pii)
+        return f'10.1016/{s}{n[:4]}-{n[4:8]}({n[8:10]}){n[10:15]}-{n[15]}'
+    return None
+
+
+def _pii_dois(txt):
+    "the DOIs 10.1016/<PII> of the PIIs of a text (lower case), in order, without repeats"
+    piis = (m.replace(' ', '') for m in _PII_LABELED.findall(txt))
+    return list(dict.fromkeys('10.1016/' + p for p in piis if PII.fullmatch(p)))
 
 def _parse_doi_from_metadata_string(metadata):
     """Extract DOI from XMP metadata string."""
@@ -120,7 +169,7 @@ def _parse_doi_from_info_fields(fields):
     period...)"""
     for key in ['subject', 'keywords', 'title']:
         value = _normalize_doi_text(fields.get(key) or '')
-        doi_match = re.search(r'10\.\d{4,9}/[-._;()/:a-z0-9]+', value)
+        doi_match = re.search(_DOI, value)
         if doi_match:
             try:
                 return _clean_doi(doi_match.group(0))
@@ -165,6 +214,26 @@ def parse_doi_from_pdf_metadata_pymupdf(pdf_path):
         if xmp:
             xmp_str = xmp if isinstance(xmp, str) else xmp.decode('utf-8', errors='ignore')
             return _parse_doi_from_metadata_string(xmp_str)
+
+
+def pdf_info_text(pdf_path):
+    """the title, subject and keywords of the PDF's document info, one per
+    line ('' when they cannot be read): where some PDFs have their PII
+    (title 'PII: S0012-821X(01)00316-8'), see parse_dois"""
+    try:
+        try:
+            import pymupdf
+            with pymupdf.open(pdf_path) as doc:
+                fields = doc.metadata or {}
+        except ImportError:
+            import subprocess as sp
+            result = sp.run(['pdfinfo', pdf_path], capture_output=True, text=True, timeout=5)
+            fields = {k.strip().lower(): v.strip() for k, v in
+                      (line.split(':', 1) for line in result.stdout.splitlines() if ':' in line)}
+    except Exception as error:
+        logger.debug(f'{pdf_path}: document info not read ({error})')
+        return ''
+    return '\n'.join(fields.get(key) or '' for key in ['title', 'subject', 'keywords'])
 
 
 def parse_doi_from_pdf_metadata(pdf_path):
@@ -304,7 +373,7 @@ def _clean_doi(doi):
     return doi
 
 
-def parse_dois(txt, tail=''):
+def parse_dois(txt, tail='', pii=True, info='', name=''):
     """Return the DOIs found in the text, the most likely article DOI first.
 
     DOIs of data repositories (see DATA_REPOSITORY_PREFIXES) come last when
@@ -313,7 +382,16 @@ def parse_dois(txt, tail=''):
     tail is the end of the document (e.g. the cover page publishers append
     to the PDF): its labeled DOIs ("doi:", doi.org URL) are added after the
     DOIs of the text.
+
+    An Elsevier PII in the document info of the PDF (`info`, see
+    pdf_info_text) or in the text (see PII) gives the DOI 10.1016/<PII>, first:
+    a convention of Elsevier, not a rule, so the caller checks it as any
+    candidate (see confirm_doi); pii=False leaves it out (parse_doi).
+
+    name is the path of the PDF: the DOI of its file name (see _name_doi) is
+    added last.
     """
+    pii_dois = _pii_dois(_normalize_doi_text(info + '\n' + txt)) if pii else []
     tail_dois = []
     for candidate in LABELED_REGEXP.findall(_normalize_doi_text(tail)):
         try:
@@ -322,13 +400,16 @@ def parse_dois(txt, tail=''):
             continue
         if candidate not in tail_dois:
             tail_dois.append(candidate)
+    name_doi = _name_doi(name)
+    if name_doi:
+        tail_dois.append(name_doi)
     try:
         dois = _parse_dois(txt)
     except DOIParsingError:
-        if not tail_dois:
+        if not tail_dois and not pii_dois:
             raise
         dois = []
-    return dois + [doi for doi in tail_dois if doi not in dois]
+    return list(dict.fromkeys(pii_dois + dois + tail_dois))
 
 
 def _parse_dois(txt):
@@ -365,7 +446,8 @@ def _parse_dois(txt):
 
 
 def parse_doi(txt):
-    return parse_dois(txt)[0]
+    "the DOI of a text (check --fix-doi): no PII taken for a DOI, nothing checks it"
+    return parse_dois(txt, pii=False)[0]
 
 
 def isvaliddoi(doi):
@@ -419,7 +501,7 @@ def extract_pdf_doi(pdf, image=False):
 
     txt = pdfhead(pdf, image=image)
     tail = '' if image else pdftail(pdf)
-    confirmed = confirm_doi(parse_dois(txt, tail), txt)  # the title is on the first page(s)
+    confirmed = confirm_doi(parse_dois(txt, tail, name=pdf), txt)  # the title is on the first page(s)
     if not confirmed:
         raise DOIParsingError('no DOI found whose title appears in the text')
     return confirmed[0]
@@ -452,13 +534,34 @@ def _normalize_for_match(s):
     return re.sub(r'[^a-z0-9]', '', to_ascii(s).lower())
 
 
-def title_in_text(title, txt):
+# the least similarity (rapidfuzz's partial_ratio, 0-100) of a near match of a
+# title: on two libraries (about 205,000 pairs of a PDF and the title of another
+# paper) the highest was 97.0
+TITLE_SIMILARITY = 98
+
+
+def _title_match(title, txt, near=True):
+    """True if a normalized title is in the text, as it is or (near) with an
+    error or two of the text extraction (the prime of UK'37 read as a 0). A
+    text shorter than the title has no near match: partial_ratio would look
+    for the text in the title."""
+    txt = _normalize_for_match(txt)
+    if title in txt:
+        return True
+    if not near or len(txt) < len(title):
+        return False
+    from rapidfuzz.fuzz import partial_ratio
+    return partial_ratio(title, txt, score_cutoff=TITLE_SIMILARITY) > 0
+
+
+def title_in_text(title, txt, near=True):
     """True if the title appears in the text (ignoring case, accents, spacing
-    and punctuation, so that line breaks and hyphenation do not matter)"""
+    and punctuation, so that line breaks and hyphenation do not matter),
+    exactly or nearly (see _title_match; near=False: exactly)"""
     title = _normalize_for_match(title)
     if len(title) < 10:
         return True  # too short to tell
-    return title in _normalize_for_match(txt)
+    return _title_match(title, txt, near)
 
 
 MIN_TITLE_LENGTH = 20  # letters and digits, see title_in_text_strict
@@ -469,17 +572,79 @@ def title_in_text_strict(title, txt):
     pass (OpenAlex has hits whose title is the name of a journal, or a word that
     any text has)"""
     title = _normalize_for_match(title)
-    return len(title) >= MIN_TITLE_LENGTH and title in _normalize_for_match(txt)
+    return len(title) >= MIN_TITLE_LENGTH and _title_match(title, txt)
+
+
+def _without_citations(entry, txt):
+    """the text without the title of the entry where the text cites the paper
+    (a reference list: the PDF of an article that starts in the middle of a
+    page has the references of the previous one).
+
+    A citation: the first author with initials before the title, the year of
+    the entry between them or after the title, and no author after the title
+    (as in the paper itself), nor "cite" before it (how to cite this paper).
+    And the first author nowhere else in the text: old Elsevier papers cite
+    themselves under their abstract, after their byline."""
+    title = _normalize_for_match(get_entry_val(entry, 'title', ''))
+    year = get_entry_val(entry, 'year', '')
+    families = family_names(get_entry_val(entry, 'author', ''))
+    if len(title) < 10 or not year or not families:
+        return txt
+    family = to_ascii(families[0]).lower()
+    # the characters of the normalized text, and where they are in the text
+    txt = re.sub(r'<[^>]+>', '', txt)
+    chars, where = [], []
+    for i, c in enumerate(txt):
+        for n in _normalize_for_match(c):
+            chars.append(n)
+            where.append(i)
+    normalized = ''.join(chars)
+    initials = r'(?:[A-Z]\. ?-?){1,4}|[A-Z]{1,3}\b'
+    author = re.compile(rf'\b(?i:{re.escape(family)}),? (?:{initials})|\b(?:{initials}) ?(?i:{re.escape(family)})\b')
+    kept, last = [], 0
+    others = ''  # the text but the citations
+    for match in re.finditer(re.escape(title), normalized):
+        start, end = where[match.start()], where[match.end()-1] + 1
+        before = to_ascii(' '.join(txt[max(0, start-200):start].split()))
+        after = to_ascii(' '.join(txt[end:end+150].split()))
+        authors = list(author.finditer(before))
+        if not authors or re.search(r'\bcit(?:e|ation)\b', before, re.I):
+            continue
+        if re.search(rf'\b{re.escape(family)}\b', after, re.I):
+            continue
+        if year in before[authors[-1].end():] or year in after:
+            kept.append(txt[last:start])
+            others += ' ' + txt[last:max(last, start-200)]
+            last = end
+    if not kept:
+        return txt
+    others += ' ' + txt[last:]
+    if re.search(rf'\b{re.escape(family)}\b', to_ascii(' '.join(others.split())), re.I):
+        return txt
+    return ' '.join(kept + [txt[last:]])
+
+
+def entry_in_text(entry, txt, near=True):
+    """True if the text is that of the paper of the entry: its title is in
+    the text (see title_in_text) elsewhere than in a citation"""
+    title = get_entry_val(entry, 'title', '')
+    return title_in_text(title, txt, near) and title_in_text(title, _without_citations(entry, txt), near)
+
+
+def _bibtex_entry(bibtex):
+    entries = parse_string(bibtex).entries
+    return entries[0] if entries else None
 
 
 def _bibtex_title(bibtex):
-    entries = parse_string(bibtex).entries
-    return get_entry_val(entries[0], 'title', '') if entries else ''
+    entry = _bibtex_entry(bibtex)
+    return get_entry_val(entry, 'title', '') if entry else ''
 
 
 def confirm_doi(dois, txt, failures=None):
     """The first candidate DOI whose title (from crossref) appears in the
-    text, as (doi, bibtex), or None.
+    text, as (doi, bibtex), or None. A candidate whose title appears exactly
+    goes before one whose title nearly does.
 
     A candidate is never accepted on faith: a DOI cited in the text, or the
     DOI of the previous article printed on the same page, is a valid DOI of
@@ -487,6 +652,7 @@ def confirm_doi(dois, txt, failures=None):
     and are skipped. The requests that failed (RequestFailed) are appended
     to the list `failures`, when given.
     """
+    nearly = None
     for doi in dois:
         try:
             bibtex = fetch_bibtex_by_doi(doi)
@@ -499,14 +665,18 @@ def confirm_doi(dois, txt, failures=None):
         if not title:
             logger.info(f'{doi}: metadata without title, skip')
             continue
-        if title_in_text(title, txt):
+        entry = _bibtex_entry(bibtex)
+        if entry_in_text(entry, txt, near=False):
             return doi, bibtex
+        if nearly is None and entry_in_text(entry, txt):
+            nearly = doi, bibtex
+            continue
         logger.info(f'{doi}: title not found in the text: {title}')
-    return None
+    return nearly
 
 
 def extract_txt_metadata(txt, search_doi=True, search_fulltext=False, max_query_words=200, scholar=False, openalex=False, tail='',
-                         failures=None):
+                         failures=None, info='', name=''):
     """
     extract metadata from text, by parsing and doi-query, or by fulltext query in crossref (default), google scholar or OpenAlex
 
@@ -524,7 +694,7 @@ def extract_txt_metadata(txt, search_doi=True, search_fulltext=False, max_query_
     if search_doi:
         try:
             logger.debug('parse doi')
-            dois = parse_dois(txt, tail)
+            dois = parse_dois(txt, tail, info=info, name=name)
             logger.info('found doi(s): ' + ', '.join(dois))
         except DOIParsingError as error:
             logger.debug('doi parsing error: '+str(error))
@@ -554,7 +724,7 @@ def extract_txt_metadata(txt, search_doi=True, search_fulltext=False, max_query_
                 failures.append(error)
         else:
             title = _bibtex_title(bibtex)
-            if title and title_in_text(title, txt):
+            if title and entry_in_text(_bibtex_entry(bibtex), txt):
                 logger.debug('fulltext query successful')
                 return bibtex
             logger.warning(f'fulltext query: title not found in the text: {title[:100]}')
@@ -567,7 +737,8 @@ def extract_txt_metadata(txt, search_doi=True, search_fulltext=False, max_query_
 
 def _metadata_from_pdf_contents(metadata_doi, read_text, search_doi=True, search_fulltext=True, **kw):
     """the network part of extract_pdf_metadata: read_text() returns the text
-    of the first pages and of the last page"""
+    of the first pages, of the last page, and of the document info (see
+    pdf_info_text)"""
     # a DOI in the PDF metadata is the article's own: no need to parse the text
     failures = []
     if search_doi and metadata_doi:
@@ -578,14 +749,15 @@ def _metadata_from_pdf_contents(metadata_doi, read_text, search_doi=True, search
             logger.warning(f'{metadata_doi}: no metadata found ({error}), search the text')
             if isinstance(error, RequestFailed):
                 failures.append(error)
-    txt, tail = read_text()
-    return extract_txt_metadata(txt, search_doi, search_fulltext, tail=tail, failures=failures, **kw)
+    txt, tail, info = read_text()
+    return extract_txt_metadata(txt, search_doi, search_fulltext, tail=tail, failures=failures, info=info, **kw)
 
 
 def extract_pdf_metadata(pdf, search_doi=True, search_fulltext=True, maxpages=10, minwords=200, image=False, **kw):
     metadata_doi = parse_doi_from_pdf_metadata(pdf) if search_doi else None
-    read_text = lambda: (pdfhead(pdf, maxpages, minwords, image=image), '' if image else pdftail(pdf))
-    return _metadata_from_pdf_contents(metadata_doi, read_text, search_doi, search_fulltext, **kw)
+    read_text = lambda: (pdfhead(pdf, maxpages, minwords, image=image), '' if image else pdftail(pdf),
+                         pdf_info_text(pdf))
+    return _metadata_from_pdf_contents(metadata_doi, read_text, search_doi, search_fulltext, name=pdf, **kw)
 
 
 def prefetch_pdf_metadata(pdfs, workers=3, search_doi=True, search_fulltext=True, **kw):
@@ -598,15 +770,15 @@ def prefetch_pdf_metadata(pdfs, workers=3, search_doi=True, search_fulltext=True
     for pdf in pdfs:  # read in this thread: PyMuPDF is not thread-safe
         try:
             metadata_doi = parse_doi_from_pdf_metadata(pdf) if search_doi else None
-            text = ('', '') if metadata_doi else (pdfhead(pdf), pdftail(pdf))
+            text = ('', '', '') if metadata_doi else (pdfhead(pdf), pdftail(pdf), pdf_info_text(pdf))
         except Exception:
             continue
-        contents.append((metadata_doi, text))
+        contents.append((metadata_doi, text, pdf))
 
     def fetch(content):
-        metadata_doi, text = content
+        metadata_doi, text, pdf = content
         try:
-            _metadata_from_pdf_contents(metadata_doi, lambda: text, search_doi, search_fulltext, **kw)
+            _metadata_from_pdf_contents(metadata_doi, lambda: text, search_doi, search_fulltext, name=pdf, **kw)
         except Exception:
             pass
 

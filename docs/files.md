@@ -206,6 +206,16 @@ Nothing is downloaded or attached twice:
   linked where it is, `same file as OTHERKEY`). Nothing about the URL is
   written in the library (only the version of the PDF, below).
 
+The downloads do not lock the library: other commands can change it
+meanwhile. When they are done, `papers file fetch` locks the library,
+reads it again, makes the repairs and attaches the files to the entries,
+found again by key. An entry removed or renamed meanwhile gets nothing
+(`KEY: no longer in the library ...`, exit status 1); an entry that got
+a PDF meanwhile does not get a second one (`KEY: has a PDF now`); a
+download with the content of a file that the library has now is not
+attached a second time. A fetch stopped before (Ctrl-C, an error)
+changes nothing and leaves no downloaded file.
+
 With `--missing`, when more than 50 entries with a DOI would query OpenAlex
 and no API key is set (environment variable `OPENALEX_API_KEY`, free at
 <https://openalex.org/settings/api>), papers asks first (`-y/--yes` does not
@@ -214,6 +224,18 @@ address of `PAPERS_MAILTO`, when set, is given to OpenAlex and in the user
 agent of the requests to the publishers. papers waits a second between two
 requests to the same site; a site that answers "too many requests" (HTTP
 429) is asked once more after the wait it gives (at most 30 seconds).
+
+`--browser` opens in the browser, once the library is saved, the first link
+to open in a browser of each entry without PDF and of each entry whose
+published version was refused (the link of the published version), to
+download it by hand. An entry without DOI or arXiv id has no link and is
+not opened. Before more than 20 pages, papers asks (`-y/--yes` does not
+ask; without a terminal, it stops before opening any); `--dry-run` downloads
+nothing, so it opens nothing either:
+
+```
+papers file fetch --missing --browser
+```
 
 The version of each PDF attached this way is kept in the library
 (`.papers/files.json`, by the checksum of the file): it follows the file when

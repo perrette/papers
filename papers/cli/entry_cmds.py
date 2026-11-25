@@ -16,9 +16,9 @@ from papers.encoding import family_names, format_entries, format_entry, format_k
 from papers.formats import FORMATS, dumps, file_format, load_rispy
 from papers.entries import entry_from_dict, get_entry_val, format_file, parse_file, set_entry_key
 from papers.extract import isvaliddoi, prefetch_pdf_metadata
-from papers.fetch import DOIRequestError
+from papers.fetch import DOIRequestError, fetch_bibtex_by_doi
 from papers.files import delete_files, describe_file, download_url, files_policy, scan_dir_items
-from papers.identifiers import normalize_doi, read_selection, select_entries
+from papers.identifiers import entry_arxiv, normalize_doi, read_selection, select_entries, strip_doi
 from papers.library import get_biblio, savebib
 from papers.merge import DuplicateError
 from papers.pools import Exchange, PoolLookup, Pools
@@ -26,11 +26,11 @@ from papers.utils import PapersExit, file_uri_to_path, open_with_system, read_en
 from papers.cli.file_cmds import (attach_entry_files, fetch_entry_pdfs, check_entries_files, detach_entries, file_check_pools,
                                   rename_entries)
 from papers.cli.pool_cmds import exchange_pools, export_entries, pull_entries, push_entries, sync_entries
-from papers.cli.common import (view_entry_files, set_format_config_from_cmd, _print_biblio_diff, files_mode,
+from papers.cli.common import (view_entry_files, open_in_browser, set_format_config_from_cmd, _print_biblio_diff, files_mode,
                                duplicate_resolver, save_exchange, stdin_is_terminal, edit_entries, edit_selected,
                                EditRejected, parse_edited, replace_entries, set_fields,
                                print_kept_files, _delete_files_option, library_pools, push_notes, push_changed,
-                               save_entries, print_push_notes)
+                               save_entries, print_push_notes, lock_library)
 
 
 def _author_short_option(o):
@@ -66,6 +66,51 @@ def _nothing_to_add(o, biblio, what):
     return f'nothing to add: no file, identifier or bibtex given, and {what}{where}'
 
 
+def _add_library(o, config):
+    """the library of add, with its pools: (pools, biblio, exchange,
+    source_dirs), source_dirs: the files directory of the library of
+    --pool PATH"""
+    pools = library_pools(config)  # in a shallow library, files go to the pool
+    biblio = get_biblio(config)
+    exchange = Exchange(config, biblio, pools)
+    source_dirs = []
+    if not o.no_pool:
+        lookup = PoolLookup(exchange, pools.get(o.pool) if o.pool else None)
+        biblio.pool_lookup = lookup if lookup else None
+        if o.pool and lookup.pool.filesdir:
+            source_dirs = [lookup.pool.filesdir]
+    return pools, biblio, exchange, source_dirs
+
+
+def _prefetch(o, biblio):
+    """the network part of add, before its lock (see
+    papers.cli.common.lock_library): the metadata of the PDFs (concurrently,
+    see prefetch_pdf_metadata) and of --doi go to the cache, where the add
+    of each file finds them. Those of the PDFs and DOIs of the library and
+    the pools are not looked up (add does not look them up). The errors are
+    left to the add."""
+    lookup = biblio.pool_lookup
+    if o.doi and (o.file or not o.no_query_doi):
+        if biblio.find_doi(o.doi) is None and not (lookup and lookup.pool.find_doi(o.doi)):
+            try:
+                fetch_bibtex_by_doi(o.doi)
+            except Exception:
+                pass
+    if not o.doi and not o.scholar and not o.openalex and not (o.no_query_doi and o.no_query_fulltext):
+        pdfs = []
+        for file in o.file:
+            if os.path.isdir(file) and o.recursive:
+                pdfs.extend(path for kind, path, _ in scan_dir_items(file, quiet=True) if kind == 'file' and path.lower().endswith('.pdf'))
+            elif os.path.isfile(file) and file.lower().endswith('.pdf'):
+                pdfs.append(file)
+        if not o.no_check_duplicate and not o.no_query_doi:
+            pdfs = [pdf for pdf in pdfs if biblio.find_pdf(pdf) is None]
+        if lookup:
+            pdfs = [pdf for pdf in pdfs if not lookup.has_file(pdf)]
+        if pdfs:
+            prefetch_pdf_metadata(pdfs, search_doi=not o.no_query_doi, search_fulltext=not o.no_query_fulltext)
+
+
 def addcmd(parser, o, config):
     """
     Given an options set and a config, sets up the function call to add the file or all files in the directory to the bibtex, and executes it.
@@ -76,15 +121,7 @@ def addcmd(parser, o, config):
 
     if o.pool and o.no_pool:
         raise PapersExit('--pool PATH and --no-pool exclude each other')
-    pools = library_pools(config)  # in a shallow library, files go to the pool
-    biblio = get_biblio(config)
-    exchange = Exchange(config, biblio, pools)
-    source_dirs = []  # the files directory of the library of --pool PATH
-    if not o.no_pool:
-        lookup = PoolLookup(exchange, pools.get(o.pool) if o.pool else None)
-        biblio.pool_lookup = lookup if lookup else None
-        if o.pool and lookup.pool.filesdir:
-            source_dirs = [lookup.pool.filesdir]
+    pools, biblio, exchange, source_dirs = _add_library(o, config)
 
     entries = []
 
@@ -103,7 +140,6 @@ def addcmd(parser, o, config):
 
     # what to do with the files: see papers.files.FilesPolicy
     mode = files_mode(o, config)
-    policy = files_policy(config, mode, pools.files_dirs() + source_dirs, pool=pools.pool(quiet=True))
     rename = mode != 'link'
 
     metadata = {k: v for k, v in o.metadata or []}
@@ -140,6 +176,14 @@ def addcmd(parser, o, config):
         logger.warning('--no-merge-files is deprecated and ignored: the file links of duplicates are always merged')
     if o.ignore_errors:
         logger.warning('--ignore-errors is deprecated and ignored: an error on one file never stops the others')
+
+    # the network lookups without the lock, then the add, under the lock, in the library read again
+    # (not in a dry run, which writes no cache: the lookups would be made twice)
+    if not papers.config.DRYRUN:
+        _prefetch(o, biblio)
+    lock_library(o, config)
+    pools, biblio, exchange, source_dirs = _add_library(o, config)
+    policy = files_policy(config, mode, pools.files_dirs() + source_dirs, pool=pools.pool(quiet=True))
     resolver = duplicate_resolver(o, 'add')
     kw = {'on_duplicate':resolver, 'check_duplicate':not o.no_check_duplicate,
             'update_key':o.update_key, 'metadata':metadata}
@@ -181,22 +225,6 @@ def addcmd(parser, o, config):
         # the entry is made of the metadata (and edited): not applied again
         entries.extend( biblio.insert_entry(entry, rename=rename, copy=policy, **{**kw, 'metadata': {}}) )
 
-
-    # several PDFs: fetch their metadata concurrently first
-    if not o.doi and not o.scholar and not o.openalex and not (o.no_query_doi and o.no_query_fulltext):
-        pdfs = []
-        for file in o.file:
-            if os.path.isdir(file) and o.recursive:
-                pdfs.extend(path for kind, path, _ in scan_dir_items(file, quiet=True) if kind == 'file' and path.lower().endswith('.pdf'))
-            elif os.path.isfile(file) and file.lower().endswith('.pdf'):
-                pdfs.append(file)
-        # those of the library and the pools are not looked up online
-        if not o.no_check_duplicate and not o.no_query_doi:
-            pdfs = [pdf for pdf in pdfs if biblio.find_pdf(pdf) is None]
-        if biblio.pool_lookup:
-            pdfs = [pdf for pdf in pdfs if not biblio.pool_lookup.has_file(pdf)]
-        if len(pdfs) > 1:
-            prefetch_pdf_metadata(pdfs, search_doi=not o.no_query_doi, search_fulltext=not o.no_query_fulltext)
 
     # RIS needs rispy: asked about (or the command stops) before anything is added
     if any(not os.path.isdir(f) and not f.lower().endswith('.pdf') and file_format(f, o.format) == 'ris'
@@ -285,6 +313,10 @@ def addcmd(parser, o, config):
     # this is not very efficient but I have yet to hear a complaint about speed
     # (with the entries a skipped duplicate was of: `existing`)
     _print_biblio_diff(biblio, entries + biblio.skipped, show_existing=True, notes=notes)
+
+    # the added PDFs that the library has already: not left behind, as if they had been moved
+    if biblio.leftovers:
+        delete_files(list(biblio.leftovers), dryrun=papers.config.DRYRUN)
 
     if stopped:
         raise stopped
@@ -651,7 +683,8 @@ def listcmd(parser, o, config):
     actions = [name for name, given in [('--delete', o.delete), ('--edit', o.edit), ('--fetch', o.fetch),
                                         ('--add-tag', o.add_keywords), ('--rm-tag', o.rm_tag),
                                         ('--attach', attach), ('--detach', detach), ('--rename', rename),
-                                        ('--fix-files', fix_files), ('--open', o.open), ('--push', o.push),
+                                        ('--fix-files', fix_files), ('--open', o.open), ('--open-web', o.open_web),
+                                        ('--push', o.push),
                                         ('--pull', o.pull), ('--sync', o.sync), ('--export', o.export)] if given]
     if len(actions) > 1:
         parser.error(f"one action at a time: {' and '.join(actions)}")
@@ -660,7 +693,8 @@ def listcmd(parser, o, config):
             ('--move', o.move, fix_files or rename, '--fix-files or --rename'),
             ('--pool', o.pool, fix_files or exchange, '--push, --pull, --sync or --fix-files'),
             ('--on-duplicate', o.on_duplicate, exchange, '--push, --pull or --sync'),
-            ('--export-format', o.export_format, o.export, '--export')]:
+            ('--export-format', o.export_format, o.export, '--export'),
+            ('--yes', o.yes, o.open_web, '--open-web')]:
         if given and not needs:
             parser.error(f'{option} goes with {action}')
     if o.detach_broken and o.detach:
@@ -810,6 +844,11 @@ def listcmd(parser, o, config):
         open_entries(biblio, entries)
         return
 
+    elif o.open_web:
+        if open_web_pages(entries, yes=o.yes):
+            raise PapersExit()  # the errors are reported: exit 1
+        return
+
     else:
         # the listing is the data: on the standard output, with --porcelain too
         out = papers.utils.PORCELAIN or sys.stdout
@@ -846,10 +885,15 @@ def listcmd(parser, o, config):
 
 def opencmd(parser, o, config):
     biblio = None
+    entries, skipped = [], 0
     for key in read_selection(o.key):
         # an existing file is opened directly with the system viewer; anything
         # else is looked up as an entry key (or DOI) in the bibliography
         if os.path.isfile(key):
+            if o.web:
+                logger.error(f"{key}: a file, not an entry (--web opens the web page of entries)")
+                skipped += 1
+                continue
             logger.info(f"opening {key} ...")
             open_with_system(key)
             continue
@@ -862,8 +906,46 @@ def opencmd(parser, o, config):
             e, = select_entries(biblio, [key])[:1]
         except PapersExit as error:
             logger.error(str(error))
+            if o.web:
+                skipped += 1
             continue
-        open_entries(biblio, [e])
+        if o.web:
+            entries.append(e)
+        else:
+            open_entries(biblio, [e])
+    if o.web:
+        skipped += open_web_pages(entries, yes=o.yes)
+        if skipped:
+            raise PapersExit()  # the errors are reported: exit 1
+
+
+def web_page(e):
+    """the web page of an entry: https://doi.org/<DOI>, else its url field,
+    else its arXiv abstract page ('' if none)"""
+    from urllib.parse import quote
+    doi = strip_doi(get_entry_val(e, 'doi', ''))
+    if doi:
+        return 'https://doi.org/' + quote(doi, safe='/')
+    url = get_entry_val(e, 'url', '').strip()
+    if url:
+        return url
+    arxiv = entry_arxiv(e)
+    return f'https://arxiv.org/abs/{arxiv}' if arxiv else ''
+
+
+def open_web_pages(entries, yes=False):
+    """`papers open --web` (also `papers list --open-web`): open the web page
+    of each entry in the browser (see web_page and open_in_browser); an
+    entry without one is reported and skipped. Return the number skipped."""
+    urls = []
+    for e in entries:
+        url = web_page(e)
+        if url:
+            urls.append(url)
+        else:
+            logger.error(f'{e.key}: no DOI, url or arXiv id: no web page to open')
+    open_in_browser(urls, yes)
+    return len(entries) - len(urls)
 
 
 def open_entries(biblio, entries):

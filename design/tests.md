@@ -451,6 +451,35 @@ that check the same thing.
 - tests/test_file_fetch.py::TestFetchPdfPorcelain::test_all_downloaded_exit_0
 - tests/test_file_fetch.py::TestPageLinks::test_relative_links
 - tests/test_file_fetch.py::TestPageLinks::test_openalex_request
+- tests/test_lock_after_network.py::TestFileFetch::test_library_changed_during_the_download
+- tests/test_lock_after_network.py::TestFileFetch::test_entry_removed_during_the_download
+- tests/test_lock_after_network.py::TestFileFetch::test_entry_got_a_pdf_during_the_download
+- tests/test_lock_after_network.py::TestFileFetch::test_same_file_linked_during_the_download
+- tests/test_lock_after_network.py::TestFileFetch::test_interrupted_during_the_downloads
+- tests/test_file_fetch.py::TestBrowser::test_refused_and_without_pdf
+- tests/test_file_fetch.py::TestBrowser::test_not_without_the_option
+- tests/test_file_fetch.py::TestBrowser::test_asks_before_many_pages
+- tests/test_file_fetch.py::TestBrowser::test_upgrade
+
+### The web page of an entry
+
+- tests/test_open_web.py::TestOpenInBrowser::test_opens_each_url
+- tests/test_open_web.py::TestOpenInBrowser::test_up_to_the_threshold_without_question
+- tests/test_open_web.py::TestOpenInBrowser::test_asks_in_a_terminal
+- tests/test_open_web.py::TestOpenInBrowser::test_no_terminal_refuses
+- tests/test_open_web.py::TestOpenInBrowser::test_yes
+- tests/test_open_web.py::TestOpenInBrowser::test_dry_run
+- tests/test_open_web.py::TestOpenInBrowser::test_no_browser
+- tests/test_open_web.py::TestWebPages::test_fallbacks
+- tests/test_open_web.py::TestWebPages::test_none_is_reported_after_the_others
+- tests/test_open_web.py::TestWebPages::test_a_file_is_an_error
+- tests/test_open_web.py::TestWebPages::test_keys_from_the_standard_input
+- tests/test_open_web.py::TestWebPages::test_dry_run_and_porcelain
+- tests/test_open_web.py::TestWebPages::test_yes
+- tests/test_open_web.py::TestWebPages::test_list_open_web
+- tests/test_open_web.py::TestWebPages::test_list_open_web_reports_and_asks
+- tests/test_open_web.py::TestWebPages::test_list_yes_goes_with_open_web
+- tests/test_open_web.py::TestWebPages::test_list_open_web_does_not_lock
 
 ### Syntax
 
@@ -573,6 +602,18 @@ that check the same thing.
 - tests/test_lock.py::TestCommands::test_reading_command_does_not_wait
 - tests/test_lock.py::TestCommands::test_writing_command_waits
 
+### Protocol
+
+Network outside the lock:
+
+- tests/test_lock_after_network.py::TestFileFetch::test_not_locked_during_the_download
+- tests/test_lock_after_network.py::TestFileFetch::test_library_changed_during_the_download
+- tests/test_lock_after_network.py::TestFileFetch::test_interrupted_during_the_downloads
+- tests/test_lock_after_network.py::TestFileFetch::test_lock_waited_for_after_the_downloads
+- tests/test_lock_after_network.py::TestAdd::test_pdf_metadata_fetched_before_the_lock
+- tests/test_lock_after_network.py::TestAdd::test_doi_fetched_before_the_lock
+- tests/test_lock_after_network.py::TestAdd::test_library_changed_during_the_lookup
+
 ## bibtex.md
 
 ### 1. Text encoding and line endings
@@ -691,6 +732,12 @@ that check the same thing.
 - tests/test_check.py::TestFixEntryBadDoi::test_other_fixes_still_applied
 - tests/test_extract_unit.py::TestParseDoi::test_strips_doi_prefix
 - tests/test_extract_unit.py::TestParseDoi::test_strips_unbalanced_trailing_paren
+- tests/test_extract_unit.py::TestParseDoi::test_sici_doi
+- tests/test_extract_unit.py::TestParseDoiCandidates::test_elsevier_pii
+- tests/test_extract_unit.py::TestTitleCheck::test_near_match
+- tests/test_extract_unit.py::TestTitleCheck::test_exact_before_near
+- tests/test_extract_unit.py::TestTitleCheck::test_cited_title_is_not_the_paper
+- tests/test_extract_unit.py::TestTitleCheck::test_doi_of_file_name
 - tests/test_extract_unit.py::TestParseDoiCandidates::test_prefers_article_doi_over_data_repository
 - tests/test_extract_unit.py::TestTextDoiCandidates::test_doi_glued_to_a_word_or_number_is_ignored
 

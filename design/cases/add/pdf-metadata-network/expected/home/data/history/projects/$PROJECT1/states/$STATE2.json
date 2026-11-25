@@ -1,5 +1,5 @@
 {
- "parent": 1,
+ "parent": "$STATE1",
  "time": "$TIME",
  "kind": "command",
  "message": "papers add real.pdf",

@@ -13,7 +13,7 @@ from papers.config import CONFIG_FILE
 from papers.filename import TemplateError
 from papers.library import check_legacy_global_config, find_config, finish_journal
 from papers.utils import PapersExit, file_uri_to_path, find_masked_viewer, set_directory, open_with_system
-from papers.cli.common import check_install
+from papers.cli.common import LOCK_LATER, check_install
 from papers.cli.parser import get_parser
 
 
@@ -151,7 +151,7 @@ def _run(o, parser, subparsers, config):
     papers.backup.start(config, o.cmd)
     writes = o.writes(o) if callable(o.writes) else o.writes
     try:
-        if o.library and writes:
+        if o.library and writes and writes != LOCK_LATER:  # LOCK_LATER: see papers.cli.common.lock_library
             papers.lock.acquire(config)
         o.func(o.command_parser, o, config)
     finally:

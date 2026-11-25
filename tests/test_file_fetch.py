@@ -573,12 +573,68 @@ class TestBrokenLinkRepair(FetchTest):
         self.assertEqual(len(self.files('other2001')), 2)
 
 
+class TestBrowser(FetchTest):
+    "--browser: the first link to open in a browser of each entry, opened once the library is saved"
+
+    def setUp(self):
+        super().setUp()
+        self.bib(entry('pub2020', doi='10.1000/pub'), entry('acc2020', doi='10.1000/acc'),
+                 entry('none2020', doi='10.1000/none'), entry('nodoi2000'))
+        self.publisher(doi='10.1000/pub', pdf='https://journals.example.org/pub.pdf')
+        self.publisher(doi='10.1000/acc', pdf='https://journals.example.org/acc.pdf', content=403)
+        self.web.openalex['10.1000/acc'] = [location('https://repo.example.edu/acc.pdf', 'acceptedVersion')]
+        self.web.files['https://repo.example.edu/acc.pdf'] = pdf_bytes('acc')
+        self.publisher(doi='10.1000/none', pdf='https://journals.example.org/none.pdf', content=b'<html></html>')
+        self.web.openalex['10.1000/none'] = []
+        self.opened = []
+        patcher = mock.patch('webbrowser.open_new_tab', side_effect=self.open)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def open(self, url):
+        import papers.lock
+        self.opened.append((url, papers.lock.held(), 'acc2020' in self.files('acc2020')[0]))
+        return True
+
+    def test_refused_and_without_pdf(self):
+        with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()), self.assertRaises(PapersExit):
+            self.lib('file fetch --missing --browser')
+        # the entry without DOI is not opened; the library is saved and unlocked before
+        self.assertEqual(self.opened, [('https://journals.example.org/acc.pdf', [], True),
+                                       ('https://journals.example.org/none.pdf', [], True)])
+
+    def test_not_without_the_option(self):
+        with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()), self.assertRaises(PapersExit):
+            self.lib('file fetch --missing')
+        self.assertEqual(self.opened, [])
+
+    def test_asks_before_many_pages(self):
+        with mock.patch('papers.cli.common.BROWSER_ASK', 1), \
+                mock.patch('papers.cli.common.stdin_is_terminal', return_value=False), \
+                redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()), \
+                self.assertRaisesRegex(PapersExit, 'no terminal to confirm'):
+            self.lib('file fetch --missing --browser')
+        self.assertEqual(self.opened, [])
+        self.assertTrue(self.files('pub2020'))  # the fetch is done: only the opening is refused
+        with mock.patch('papers.cli.common.BROWSER_ASK', 0), \
+                mock.patch('papers.cli.common.stdin_is_terminal', return_value=False), \
+                redirect_stderr(io.StringIO()), self.assertRaises(PapersExit):
+            self.lib('file fetch none2020 --browser -y')  # -y: also for the pages
+        self.assertEqual([url for url, _, _ in self.opened], ['https://journals.example.org/none.pdf'])
+
+    def test_upgrade(self):
+        self.lib('file fetch acc2020')
+        self.opened.clear()
+        self.lib('file fetch --upgrade acc2020 --browser')
+        self.assertEqual([url for url, _, _ in self.opened], ['https://journals.example.org/acc.pdf'])
+
+
 class TestConfirmation(FetchTest):
 
     def setUp(self):
         super().setUp()
         self.bib(*[entry(f'e{i}x', doi=f'10.1000/e{i}') for i in range(51)])
-        patcher = mock.patch('papers.cli.file_cmds.fetch_entry_pdfs', return_value=0)
+        patcher = mock.patch('papers.cli.file_cmds.download_entry_pdfs', return_value=([], 0))
         self.fetch = patcher.start()
         self.addCleanup(patcher.stop)
 

@@ -768,7 +768,21 @@ class TestAddExistingEntry(FileTest):
         self.assertIn('already in library: one2000\n', out)
         self.assertIn(f'{copy}: not attached, the entry has the same file: {self.a}', out)
         self.assertEqual(self.files('one2000'), [self.a])
-        self.assertTrue(os.path.exists(copy))  # left where it is
+        self.assertIn(f'delete {copy}', out)  # as if it had been moved
+        self.assertFalse(os.path.exists(copy))
+        self.assertTrue(os.path.exists(self.a))
+        self.add('undo')
+        self.assertTrue(os.path.exists(copy))
+
+    def test_identical_file_kept(self):
+        "only mode move deletes the file that is not attached, and not if it is another entry's"
+        copy = self.write('src', 'copy.pdf', content='a.pdf')
+        for mode in '--copy', '--link', '--dry-run':
+            self.add(f'add {copy} --doi 10.1000/one {mode}')
+            self.assertTrue(os.path.exists(copy), mode)
+        self.add(f'file attach two2000 {copy} --link')
+        self.add(f'add {copy} --doi 10.1000/one')
+        self.assertTrue(os.path.exists(copy))
 
     def test_recursive(self):
         # add -R: a PDF of the DOI of a library entry is attached to it; one with its content is not
@@ -784,7 +798,7 @@ class TestAddExistingEntry(FileTest):
         self.assertEqual(files[0], self.a)
         self.assertEqual(sorted(Path(f).read_text() for f in files), ['a.pdf', 'new.pdf', 'si.pdf'])
         self.assertTrue(all(f.startswith(self.path('lib', 'files')) for f in files))
-        self.assertTrue(os.path.exists(self.path('src', 'sub', 'copy.pdf')))
+        self.assertFalse(os.path.exists(self.path('src', 'sub', 'copy.pdf')))
 
     def test_no_check_duplicate_fetches(self):
         fetched = '@article{x,\n author = {Some One},\n doi = {10.1000/one},\n title = {Title of one2000},\n year = {2000}\n}\n'
@@ -817,7 +831,7 @@ class TestAddMetadataOptions(FileTest):
     def add(self, cmd):
         with patch('papers.bib.fetch_bibtex_by_doi', return_value=FETCHED), \
                 patch('papers.bib.extract_pdf_metadata', return_value=FETCHED), \
-                patch('papers.cli.entry_cmds.prefetch_pdf_metadata', no_fetch), \
+                patch('papers.cli.entry_cmds.prefetch_pdf_metadata'), \
                 patch('builtins.input', no_fetch):
             self.lib(cmd)
         biblio = Biblio.load(self.path('lib', 'papers.bib'), '')
