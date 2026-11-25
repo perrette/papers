@@ -105,8 +105,16 @@ REGEXP = re.compile(rf'(?<![\w.\-])({_DOI})')
 LABELED_REGEXP = re.compile(rf'(?:doi:?\s*|doi\.org/)({_DOI})')
 ARXIV = re.compile(r'arxiv:\s*(\d{4}\.\d{4,5})')
 # the Publisher Item Identifier of an Elsevier article before about 2005,
-# printed in its header (PII S0016-7037(98)00180-X): its DOI is 10.1016/<PII>
-PII = re.compile(r'\bpii:?\s*(s\d{4}-\d{3}[\dx]\(\d{2}\)\d{5}-[\dx])')
+# printed in its header (PII S0016-7037(98)00180-X), sometimes letter-spaced
+# (PII: S 0 0 1 2 - 8 2 1 X ( 0 1 ) ...): its DOI is 10.1016/<PII>
+PII = re.compile(r's\d{4}-\d{3}[\dx]\(\d{2}\)\d{5}-[\dx]')
+_PII_LABELED = re.compile(r'\bpii:?\s*(s(?: ?[\dx()\-]){20})')
+
+
+def _pii_dois(txt):
+    "the DOIs 10.1016/<PII> of the PIIs of a text (lower case), in order, without repeats"
+    piis = (m.replace(' ', '') for m in _PII_LABELED.findall(txt))
+    return list(dict.fromkeys('10.1016/' + p for p in piis if PII.fullmatch(p)))
 
 def _parse_doi_from_metadata_string(metadata):
     """Extract DOI from XMP metadata string."""
@@ -173,6 +181,26 @@ def parse_doi_from_pdf_metadata_pymupdf(pdf_path):
         if xmp:
             xmp_str = xmp if isinstance(xmp, str) else xmp.decode('utf-8', errors='ignore')
             return _parse_doi_from_metadata_string(xmp_str)
+
+
+def pdf_info_text(pdf_path):
+    """the title, subject and keywords of the PDF's document info, one per
+    line ('' when they cannot be read): where some PDFs have their PII
+    (title 'PII: S0012-821X(01)00316-8'), see parse_dois"""
+    try:
+        try:
+            import pymupdf
+            with pymupdf.open(pdf_path) as doc:
+                fields = doc.metadata or {}
+        except ImportError:
+            import subprocess as sp
+            result = sp.run(['pdfinfo', pdf_path], capture_output=True, text=True, timeout=5)
+            fields = {k.strip().lower(): v.strip() for k, v in
+                      (line.split(':', 1) for line in result.stdout.splitlines() if ':' in line)}
+    except Exception as error:
+        logger.debug(f'{pdf_path}: document info not read ({error})')
+        return ''
+    return '\n'.join(fields.get(key) or '' for key in ['title', 'subject', 'keywords'])
 
 
 def parse_doi_from_pdf_metadata(pdf_path):
@@ -312,7 +340,7 @@ def _clean_doi(doi):
     return doi
 
 
-def parse_dois(txt, tail='', pii=True):
+def parse_dois(txt, tail='', pii=True, info=''):
     """Return the DOIs found in the text, the most likely article DOI first.
 
     DOIs of data repositories (see DATA_REPOSITORY_PREFIXES) come last when
@@ -322,11 +350,12 @@ def parse_dois(txt, tail='', pii=True):
     to the PDF): its labeled DOIs ("doi:", doi.org URL) are added after the
     DOIs of the text.
 
-    An Elsevier PII in the text (see PII) gives the DOI 10.1016/<PII>, first:
+    An Elsevier PII in the document info of the PDF (`info`, see
+    pdf_info_text) or in the text (see PII) gives the DOI 10.1016/<PII>, first:
     a convention of Elsevier, not a rule, so the caller checks it as any
     candidate (see confirm_doi); pii=False leaves it out (parse_doi).
     """
-    pii_dois = list(dict.fromkeys('10.1016/' + p for p in PII.findall(_normalize_doi_text(txt)))) if pii else []
+    pii_dois = _pii_dois(_normalize_doi_text(info + '\n' + txt)) if pii else []
     tail_dois = []
     for candidate in LABELED_REGEXP.findall(_normalize_doi_text(tail)):
         try:
@@ -520,7 +549,7 @@ def confirm_doi(dois, txt, failures=None):
 
 
 def extract_txt_metadata(txt, search_doi=True, search_fulltext=False, max_query_words=200, scholar=False, openalex=False, tail='',
-                         failures=None):
+                         failures=None, info=''):
     """
     extract metadata from text, by parsing and doi-query, or by fulltext query in crossref (default), google scholar or OpenAlex
 
@@ -538,7 +567,7 @@ def extract_txt_metadata(txt, search_doi=True, search_fulltext=False, max_query_
     if search_doi:
         try:
             logger.debug('parse doi')
-            dois = parse_dois(txt, tail)
+            dois = parse_dois(txt, tail, info=info)
             logger.info('found doi(s): ' + ', '.join(dois))
         except DOIParsingError as error:
             logger.debug('doi parsing error: '+str(error))
@@ -581,7 +610,8 @@ def extract_txt_metadata(txt, search_doi=True, search_fulltext=False, max_query_
 
 def _metadata_from_pdf_contents(metadata_doi, read_text, search_doi=True, search_fulltext=True, **kw):
     """the network part of extract_pdf_metadata: read_text() returns the text
-    of the first pages and of the last page"""
+    of the first pages, of the last page, and of the document info (see
+    pdf_info_text)"""
     # a DOI in the PDF metadata is the article's own: no need to parse the text
     failures = []
     if search_doi and metadata_doi:
@@ -592,13 +622,14 @@ def _metadata_from_pdf_contents(metadata_doi, read_text, search_doi=True, search
             logger.warning(f'{metadata_doi}: no metadata found ({error}), search the text')
             if isinstance(error, RequestFailed):
                 failures.append(error)
-    txt, tail = read_text()
-    return extract_txt_metadata(txt, search_doi, search_fulltext, tail=tail, failures=failures, **kw)
+    txt, tail, info = read_text()
+    return extract_txt_metadata(txt, search_doi, search_fulltext, tail=tail, failures=failures, info=info, **kw)
 
 
 def extract_pdf_metadata(pdf, search_doi=True, search_fulltext=True, maxpages=10, minwords=200, image=False, **kw):
     metadata_doi = parse_doi_from_pdf_metadata(pdf) if search_doi else None
-    read_text = lambda: (pdfhead(pdf, maxpages, minwords, image=image), '' if image else pdftail(pdf))
+    read_text = lambda: (pdfhead(pdf, maxpages, minwords, image=image), '' if image else pdftail(pdf),
+                         pdf_info_text(pdf))
     return _metadata_from_pdf_contents(metadata_doi, read_text, search_doi, search_fulltext, **kw)
 
 
@@ -612,7 +643,7 @@ def prefetch_pdf_metadata(pdfs, workers=3, search_doi=True, search_fulltext=True
     for pdf in pdfs:  # read in this thread: PyMuPDF is not thread-safe
         try:
             metadata_doi = parse_doi_from_pdf_metadata(pdf) if search_doi else None
-            text = ('', '') if metadata_doi else (pdfhead(pdf), pdftail(pdf))
+            text = ('', '', '') if metadata_doi else (pdfhead(pdf), pdftail(pdf), pdf_info_text(pdf))
         except Exception:
             continue
         contents.append((metadata_doi, text))

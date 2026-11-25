@@ -30,7 +30,7 @@ import papers
 from papers import logger
 
 from papers.extract import parse_doi
-from papers.extract import (extract_pdf_metadata, parse_doi_from_pdf_metadata, parse_dois, pdfhead, pdftail,
+from papers.extract import (extract_pdf_metadata, parse_doi_from_pdf_metadata, parse_dois, pdf_info_text, pdfhead, pdftail,
                             title_in_text)
 from papers.fetch import fetch_bibtex_by_fulltext_crossref, fetch_bibtex_by_doi
 from papers.identifiers import DIGITS
@@ -643,7 +643,7 @@ class Biblio:
             if doi:
                 return self.find_doi(doi)
             txt = pdfhead(pdf)
-            candidates = parse_dois(txt, pdftail(pdf))
+            candidates = parse_dois(txt, pdftail(pdf), info=pdf_info_text(pdf))
         except Exception as error:
             logger.debug(f'{pdf}: {error}')
             return None

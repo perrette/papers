@@ -91,7 +91,8 @@ wording is free.
 
 The candidate DOIs of a PDF are those of its text (bibtex.md 3.6), and
 first the DOI `10.1016/<PII>` of an Elsevier Publisher Item Identifier
-printed in the text (`PII S0016-7037(98)00180-X`, articles before about
+in the title, subject or keywords of the PDF's document info, then
+printed in the text (`PII S0016-7037(98)00180-X`, also letter-spaced as `PII: S 0 0 1 2 - ...`, articles before about
 2005, which print no DOI). Each candidate is accepted only if the title of
 its metadata appears in the text.
 

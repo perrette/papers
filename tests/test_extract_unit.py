@@ -268,6 +268,12 @@ class TestParseDoiCandidates(unittest.TestCase):
         self.assertEqual(parse_dois(txt), ['10.1016/s0016-7037(98)00180-x'])
         txt += '\nSee doi:10.1029/98pa02318.'
         self.assertEqual(parse_dois(txt), ['10.1016/s0016-7037(98)00180-x', '10.1029/98pa02318'])
+        # letter-spaced
+        txt = 'reserved.\nPII: S 0 0 1 2 - 8 2 1 X ( 0 1 ) 0 0 3 1 6 - 8\n* Corresponding'
+        self.assertEqual(parse_dois(txt), ['10.1016/s0012-821x(01)00316-8'])
+        # in the document info of the PDF (its title), before those of the text
+        self.assertEqual(parse_dois('no identifier', info='PII: S0012-821X(01)00316-8'),
+                         ['10.1016/s0012-821x(01)00316-8'])
         # parse_doi (check --fix-doi) does not take a PII for a DOI
         with self.assertRaises(DOIParsingError):
             parse_doi('PII S0016-7037(98)00180-X')
@@ -757,7 +763,7 @@ class TestRequestFailedMessage(unittest.TestCase):
         with mock.patch('papers.extract.fetch_bibtex_by_doi', side_effect=self.failure()), \
                 self.assertLogs('papers', 'WARNING'):
             with self.assertRaisesRegex(ValueError, 'crossref did not answer'):
-                _metadata_from_pdf_contents('10.1000/x', lambda: ('no doi in this text at all', ''),
+                _metadata_from_pdf_contents('10.1000/x', lambda: ('no doi in this text at all', '', ''),
                                             search_doi=True, search_fulltext=False)
 
     def test_nothing_matched(self):
@@ -784,7 +790,8 @@ class TestPrefetch(unittest.TestCase):
         with mock.patch('papers.extract.parse_doi_from_pdf_metadata', side_effect=lambda pdf: '10.1/meta' if pdf == 'a.pdf' else None), \
              mock.patch('papers.extract.pdfhead', side_effect=lambda pdf: 'head ' + pdf), \
              mock.patch('papers.extract.pdftail', return_value='tail'), \
+             mock.patch('papers.extract.pdf_info_text', return_value='info'), \
              mock.patch('papers.extract._metadata_from_pdf_contents', side_effect=network):
             prefetch_pdf_metadata(['a.pdf', 'b.pdf', 'c.pdf'])
-        self.assertEqual(sorted(seen, key=str), sorted([('10.1/meta', ('', '')), (None, ('head b.pdf', 'tail')), (None, ('head c.pdf', 'tail'))], key=str))
+        self.assertEqual(sorted(seen, key=str), sorted([('10.1/meta', ('', '', '')), (None, ('head b.pdf', 'tail', 'info')), (None, ('head c.pdf', 'tail', 'info'))], key=str))
         self.assertEqual(logger.level, level)
