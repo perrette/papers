@@ -817,7 +817,7 @@ class TestAddMetadataOptions(FileTest):
     def add(self, cmd):
         with patch('papers.bib.fetch_bibtex_by_doi', return_value=FETCHED), \
                 patch('papers.bib.extract_pdf_metadata', return_value=FETCHED), \
-                patch('papers.cli.entry_cmds.prefetch_pdf_metadata', no_fetch), \
+                patch('papers.cli.entry_cmds.prefetch_pdf_metadata'), \
                 patch('builtins.input', no_fetch):
             self.lib(cmd)
         biblio = Biblio.load(self.path('lib', 'papers.bib'), '')

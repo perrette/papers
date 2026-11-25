@@ -16,7 +16,7 @@ from papers.encoding import family_names, format_entries, format_entry, format_k
 from papers.formats import FORMATS, dumps, file_format, load_rispy
 from papers.entries import entry_from_dict, get_entry_val, format_file, parse_file, set_entry_key
 from papers.extract import isvaliddoi, prefetch_pdf_metadata
-from papers.fetch import DOIRequestError
+from papers.fetch import DOIRequestError, fetch_bibtex_by_doi
 from papers.files import delete_files, describe_file, download_url, files_policy, scan_dir_items
 from papers.identifiers import normalize_doi, read_selection, select_entries
 from papers.library import get_biblio, savebib
@@ -30,7 +30,7 @@ from papers.cli.common import (view_entry_files, set_format_config_from_cmd, _pr
                                duplicate_resolver, save_exchange, stdin_is_terminal, edit_entries, edit_selected,
                                EditRejected, parse_edited, replace_entries, set_fields,
                                print_kept_files, _delete_files_option, library_pools, push_notes, push_changed,
-                               save_entries, print_push_notes)
+                               save_entries, print_push_notes, lock_library)
 
 
 def _author_short_option(o):
@@ -66,6 +66,51 @@ def _nothing_to_add(o, biblio, what):
     return f'nothing to add: no file, identifier or bibtex given, and {what}{where}'
 
 
+def _add_library(o, config):
+    """the library of add, with its pools: (pools, biblio, exchange,
+    source_dirs), source_dirs: the files directory of the library of
+    --pool PATH"""
+    pools = library_pools(config)  # in a shallow library, files go to the pool
+    biblio = get_biblio(config)
+    exchange = Exchange(config, biblio, pools)
+    source_dirs = []
+    if not o.no_pool:
+        lookup = PoolLookup(exchange, pools.get(o.pool) if o.pool else None)
+        biblio.pool_lookup = lookup if lookup else None
+        if o.pool and lookup.pool.filesdir:
+            source_dirs = [lookup.pool.filesdir]
+    return pools, biblio, exchange, source_dirs
+
+
+def _prefetch(o, biblio):
+    """the network part of add, before its lock (see
+    papers.cli.common.lock_library): the metadata of the PDFs (concurrently,
+    see prefetch_pdf_metadata) and of --doi go to the cache, where the add
+    of each file finds them. Those of the PDFs and DOIs of the library and
+    the pools are not looked up (add does not look them up). The errors are
+    left to the add."""
+    lookup = biblio.pool_lookup
+    if o.doi and (o.file or not o.no_query_doi):
+        if biblio.find_doi(o.doi) is None and not (lookup and lookup.pool.find_doi(o.doi)):
+            try:
+                fetch_bibtex_by_doi(o.doi)
+            except Exception:
+                pass
+    if not o.doi and not o.scholar and not o.openalex and not (o.no_query_doi and o.no_query_fulltext):
+        pdfs = []
+        for file in o.file:
+            if os.path.isdir(file) and o.recursive:
+                pdfs.extend(path for kind, path, _ in scan_dir_items(file, quiet=True) if kind == 'file' and path.lower().endswith('.pdf'))
+            elif os.path.isfile(file) and file.lower().endswith('.pdf'):
+                pdfs.append(file)
+        if not o.no_check_duplicate and not o.no_query_doi:
+            pdfs = [pdf for pdf in pdfs if biblio.find_pdf(pdf) is None]
+        if lookup:
+            pdfs = [pdf for pdf in pdfs if not lookup.has_file(pdf)]
+        if pdfs:
+            prefetch_pdf_metadata(pdfs, search_doi=not o.no_query_doi, search_fulltext=not o.no_query_fulltext)
+
+
 def addcmd(parser, o, config):
     """
     Given an options set and a config, sets up the function call to add the file or all files in the directory to the bibtex, and executes it.
@@ -76,15 +121,7 @@ def addcmd(parser, o, config):
 
     if o.pool and o.no_pool:
         raise PapersExit('--pool PATH and --no-pool exclude each other')
-    pools = library_pools(config)  # in a shallow library, files go to the pool
-    biblio = get_biblio(config)
-    exchange = Exchange(config, biblio, pools)
-    source_dirs = []  # the files directory of the library of --pool PATH
-    if not o.no_pool:
-        lookup = PoolLookup(exchange, pools.get(o.pool) if o.pool else None)
-        biblio.pool_lookup = lookup if lookup else None
-        if o.pool and lookup.pool.filesdir:
-            source_dirs = [lookup.pool.filesdir]
+    pools, biblio, exchange, source_dirs = _add_library(o, config)
 
     entries = []
 
@@ -103,7 +140,6 @@ def addcmd(parser, o, config):
 
     # what to do with the files: see papers.files.FilesPolicy
     mode = files_mode(o, config)
-    policy = files_policy(config, mode, pools.files_dirs() + source_dirs, pool=pools.pool(quiet=True))
     rename = mode != 'link'
 
     metadata = {k: v for k, v in o.metadata or []}
@@ -140,6 +176,14 @@ def addcmd(parser, o, config):
         logger.warning('--no-merge-files is deprecated and ignored: the file links of duplicates are always merged')
     if o.ignore_errors:
         logger.warning('--ignore-errors is deprecated and ignored: an error on one file never stops the others')
+
+    # the network lookups without the lock, then the add, under the lock, in the library read again
+    # (not in a dry run, which writes no cache: the lookups would be made twice)
+    if not papers.config.DRYRUN:
+        _prefetch(o, biblio)
+    lock_library(o, config)
+    pools, biblio, exchange, source_dirs = _add_library(o, config)
+    policy = files_policy(config, mode, pools.files_dirs() + source_dirs, pool=pools.pool(quiet=True))
     resolver = duplicate_resolver(o, 'add')
     kw = {'on_duplicate':resolver, 'check_duplicate':not o.no_check_duplicate,
             'update_key':o.update_key, 'metadata':metadata}
@@ -181,22 +225,6 @@ def addcmd(parser, o, config):
         # the entry is made of the metadata (and edited): not applied again
         entries.extend( biblio.insert_entry(entry, rename=rename, copy=policy, **{**kw, 'metadata': {}}) )
 
-
-    # several PDFs: fetch their metadata concurrently first
-    if not o.doi and not o.scholar and not o.openalex and not (o.no_query_doi and o.no_query_fulltext):
-        pdfs = []
-        for file in o.file:
-            if os.path.isdir(file) and o.recursive:
-                pdfs.extend(path for kind, path, _ in scan_dir_items(file, quiet=True) if kind == 'file' and path.lower().endswith('.pdf'))
-            elif os.path.isfile(file) and file.lower().endswith('.pdf'):
-                pdfs.append(file)
-        # those of the library and the pools are not looked up online
-        if not o.no_check_duplicate and not o.no_query_doi:
-            pdfs = [pdf for pdf in pdfs if biblio.find_pdf(pdf) is None]
-        if biblio.pool_lookup:
-            pdfs = [pdf for pdf in pdfs if not biblio.pool_lookup.has_file(pdf)]
-        if len(pdfs) > 1:
-            prefetch_pdf_metadata(pdfs, search_doi=not o.no_query_doi, search_fulltext=not o.no_query_fulltext)
 
     # RIS needs rispy: asked about (or the command stops) before anything is added
     if any(not os.path.isdir(f) and not f.lower().endswith('.pdf') and file_format(f, o.format) == 'ris'

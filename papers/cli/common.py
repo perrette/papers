@@ -5,7 +5,9 @@ import os
 import re
 from types import SimpleNamespace
 
+import papers.backup
 import papers.config
+import papers.lock
 import papers.utils
 from papers import logger
 from papers.config import SETTINGS, short_home
@@ -17,6 +19,22 @@ from papers.library import config_for_bibtex, savebib
 from papers.merge import Resolver
 from papers.pools import Exchange, PoolError, Pools, check_readable, report_counts, use_pool_files
 from papers.utils import PapersExit, edit_text, open_with_system, stdin_is_terminal
+
+
+# the `writes` of a command that takes the lock of its library itself (see lock_library)
+LOCK_LATER = 'later'
+
+
+def lock_library(o, config):
+    """the lock of a command declared with writes=LOCK_LATER (see
+    papers.cli.parser): taken at its write phase, after its network part,
+    which runs without the lock (see papers.lock). The command then reads
+    the library again (get_biblio, library_pools: its pool is locked too)
+    and applies its results to that state. The library before the command,
+    for its step in the history (see papers.backup.start), is also read
+    again: a command that wrote the library meanwhile keeps its own step."""
+    papers.lock.acquire(config)
+    papers.backup.start(config, o.cmd)
 
 
 def view_entry_files(biblio, entry):

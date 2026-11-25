@@ -22,7 +22,7 @@ from papers.pools import Exchange, Pools
 from papers.utils import PapersExit, checksum, stdin_is_terminal
 from papers.cli.common import (set_format_config_from_cmd, _print_biblio_diff, files_mode,
                                _entries_or_all, _one_entry, _key_option_entries, print_kept_files, library_pools,
-                               save_entries, print_push_notes)
+                               save_entries, print_push_notes, lock_library)
 
 
 def filecheckcmd(parser, o, config):
@@ -757,22 +757,26 @@ def _dry_run_lines(e, search, local, main, supplements, replacing='', several=Fa
     return ok
 
 
-def repair_pdf_links(config, biblio, exchange, entries, search_dirs, nameformat, mode, again=False):
-    """`papers file fetch`, before it downloads: the entries whose PDF link
-    is broken get the repair of `papers file fix` (see relink_broken_links;
-    search_dirs: the folders of --search); --dry-run says what it would
-    relink. Return the ids of the entries that have a PDF after the repair:
-    their PDF is not downloaded (unless `again`)."""
+def repair_pdf_links(config, biblio, exchange, entries, search_dirs, nameformat, mode, again=False, plan=False):
+    """`papers file fetch`: the entries whose PDF link is broken get the
+    repair of `papers file fix` (see relink_broken_links; search_dirs: the
+    folders of --search); --dry-run says what it would relink. Return the
+    ids of the entries that have a PDF after the repair: their PDF is not
+    downloaded (unless `again`). With plan, nothing is placed or said:
+    the ids of the entries that the repair would give a PDF (the fetch,
+    before its downloads; the repair is made under the lock, after them)."""
     dryrun = papers.config.DRYRUN
     broken = [e for e in entries if not has_pdf(biblio, e)
               and any(f.lower().endswith('.pdf') for f in broken_links(biblio, e))]
     if not broken:
         return set()
     relinks, unclear, restores, _ = relink_broken_links(config, biblio, exchange, broken, search_dirs, nameformat,
-                                                        mode=mode, place=not dryrun)
+                                                        mode=mode, place=not dryrun and not plan)
     repaired = {id(e) for e, found, _ in relinks
                 if any(f.lower().endswith('.pdf') for files in found.values() for f in files)}
     repaired |= {id(e) for e, link, _ in restores if link.lower().endswith('.pdf')}
+    if plan:
+        return repaired
 
     def end(e):
         return ', not downloaded' if id(e) in repaired and not again else ''
@@ -841,63 +845,160 @@ def fetch_entry_pdfs(biblio, config, pools, entries, mode, least='any', suppleme
                      repaired=(), summary=None, several=False):
     """`papers file fetch` (also `papers add --fetch-pdf`): find the free PDF
     of each entry (see papers.freepdf), and attach it as `papers file attach`
-    does (with the files mode `mode`); the library is not saved. The main
-    PDF of an entry that links to a PDF already is not fetched, unless
-    `again`; with `supplements`, the supplements are fetched too. A PDF with
-    the content of a file of the entry is not attached; one that this
-    machine downloaded before (same URL) and that the library has is
-    attached without downloading it. Return the number of entries whose PDF
-    was not found (the errors are reported). repaired: the ids of the
-    entries whose broken PDF link repair_pdf_links repaired (no main PDF
-    fetched unless `again`, without message). summary: a FetchSummary to fill.
-    several: the entries without PDF get one line each (see _no_pdf)."""
+    does (with the files mode `mode`); the library is not saved. The
+    downloads (download_entry_pdfs) and the attachment
+    (attach_entry_downloads), one after the other. Return the number of
+    entries whose PDF was not found or not attached (the errors are
+    reported)."""
+    summary = summary or FetchSummary()
+    plans, failed = download_entry_pdfs(biblio, config, entries, least, supplements, again, repaired, summary,
+                                        several)
+    return failed + attach_entry_downloads(biblio, config, pools, plans, mode, summary, again)
+
+
+def download_entry_pdfs(biblio, config, entries, least='any', supplements=False, again=False, repaired=(),
+                        summary=None, several=False):
+    """the network part of fetch_entry_pdfs: find the free PDF of each entry
+    and download it into a temporary folder; nothing is written in the
+    library (`papers file fetch` runs it without the lock, see
+    papers.lock). The main PDF of an entry that links to a PDF already is
+    not fetched, unless `again`; with `supplements`, the supplements are
+    fetched too. A PDF that this machine downloaded before (same URL) and
+    that the library has is not downloaded again (see LibraryChecksums).
+    repaired: the ids of the entries whose broken PDF link repair_pdf_links
+    repairs (no main PDF fetched unless `again`, without message). summary:
+    a FetchSummary to fill. several: the entries without PDF get one line
+    each (see _no_pdf). Return (plans, failed): plans [(key, [Found],
+    refused)] for attach_entry_downloads (refused: the summary line of a
+    refused published version, or None), failed: the number of entries
+    whose PDF was not found (reported). Interrupted, it removes the files
+    it downloaded."""
     dryrun = papers.config.DRYRUN
     summary = summary or FetchSummary()
     library = LibraryChecksums(biblio, config)
     failed = 0
-    plans = []  # (entry, [Found], the summary line of a refused published version or None)
-    for e in entries:
-        main = again or (not has_pdf(biblio, e) and id(e) not in repaired)
-        if not main and id(e) not in repaired:
-            print(f'{e.key}: has a PDF already (--again to fetch it anyway)')
-            summary.had += 1
-            if not supplements:
+    plans, found = [], []
+    try:
+        for e in entries:
+            main = again or (not has_pdf(biblio, e) and id(e) not in repaired)
+            if not main and id(e) not in repaired:
+                print(f'{e.key}: has a PDF already (--again to fetch it anyway)')
+                summary.had += 1
+                if not supplements:
+                    continue
+            doi, arxiv = strip_doi(get_entry_val(e, 'doi', '')), entry_arxiv(e)
+            if not doi and not arxiv:
+                if main:
+                    _no_pdf(e, 'no DOI or arXiv id to look for a PDF', several)
+                    summary.browser.append((e.key, [], 'no PDF'))
+                    failed += 1
                 continue
-        doi, arxiv = strip_doi(get_entry_val(e, 'doi', '')), entry_arxiv(e)
-        if not doi and not arxiv:
+            search = freepdf.Search(doi, arxiv or None, least)
+            local = library.local(e)
+            if dryrun:
+                failed += not _dry_run_lines(e, search, local, main, supplements, several=several)
+                continue
+            found, refused = [], None
             if main:
-                _no_pdf(e, 'no DOI or arXiv id to look for a PDF', several)
-                summary.browser.append((e.key, [], 'no PDF'))
-                failed += 1
-            continue
-        search = freepdf.Search(doi, arxiv or None, least)
-        local = library.local(e)
-        if dryrun:
-            failed += not _dry_run_lines(e, search, local, main, supplements, several=several)
-            continue
-        found = []
-        refused = None
-        if main:
-            try:
-                found.append(freepdf.fetch_pdf(search, local))
-                if found[-1].refused:
-                    # in the order of the entries; left out below if the PDF is not attached
-                    refused = (e.key, list(found[-1].refused), 'published version refused; '
-                               f'{freepdf.VERSION_NAMES[found[-1].link.version]} found')
-                    summary.browser.append(refused)
-            except freepdf.NoPDF as error:
-                _no_pdf(e, str(error), several)
-                summary.browser.append((e.key, error.links, 'no PDF'))
-                failed += 1
-        if supplements:
-            found += freepdf.fetch_supplements(search, local)
-        plans.append((e, found, refused))
+                try:
+                    found.append(freepdf.fetch_pdf(search, local))
+                    if found[-1].refused:
+                        # in the order of the entries; left out below if the PDF is not attached
+                        refused = (e.key, list(found[-1].refused), 'published version refused; '
+                                   f'{freepdf.VERSION_NAMES[found[-1].link.version]} found')
+                        summary.browser.append(refused)
+                except freepdf.NoPDF as error:
+                    _no_pdf(e, str(error), several)
+                    summary.browser.append((e.key, error.links, 'no PDF'))
+                    failed += 1
+            if supplements:
+                found += freepdf.fetch_supplements(search, local)
+            plans.append((e.key, found, refused))
+    except BaseException:
+        discard_downloads(plans + [(None, found, None)])  # with those of the entry being fetched
+        raise
+    return plans, failed
 
-    # the downloads are done: the files are attached
-    for e, found, refused in plans:
-        if not _attach_fetched(biblio, config, pools, e, found, refused, mode, summary):
-            failed += 1
+
+def discard_downloads(plans):
+    "remove the downloaded files of the plans of download_entry_pdfs (those not attached)"
+    for _, found, _ in plans:
+        for f in found:
+            if f.how == 'downloaded':
+                freepdf.discard(f.path)
+
+
+def attach_entry_downloads(biblio, config, pools, plans, mode, summary, again=False):
+    """attach the PDFs of download_entry_pdfs (plans, consumed: those left
+    are not attached yet) to the entries of `biblio`, as `papers file
+    attach` does (with the files mode `mode`). The library may have changed
+    since the downloads (`papers file fetch` reads it again, under the
+    lock): the entries are found again by key, and the files of the library
+    again by checksum. An entry no longer in the library (removed, or its
+    key changed) gets nothing; the main PDF is not attached to an entry
+    that has a PDF now (unless `again`); a PDF with the content of a file
+    of the entry is not attached, one of another entry is linked where it
+    is (see LibraryChecksums). Return the number of entries whose PDFs
+    were not attached. The downloads not attached are removed, also when
+    the attachment stops on an error."""
+    library = LibraryChecksums(biblio, config)
+    entries = {e.key: e for e in biblio.entries}
+    failed = 0
+    try:
+        while plans:
+            key, found, refused = plans[0]
+            e = entries.get(key)
+            if e is None:
+                if found:
+                    print(f'{key}: no longer in the library (removed, or its key changed, since the download): '
+                          f'nothing attached')
+                    discard_downloads(plans[:1])
+                    failed += 1
+            else:
+                found, lost = _found_again(biblio, e, found, library.local(e), again, refused, summary)
+                ok = _attach_fetched(biblio, config, pools, e, found, refused, mode, summary)
+                failed += not ok or lost
+            plans.pop(0)
+    except BaseException:
+        discard_downloads(plans)
+        raise
     return failed
+
+
+def _found_again(biblio, e, found, local, again, refused, summary):
+    """the files found for the entry e before the library was read again:
+    the main PDF is left out if the entry has a PDF now (unless `again`),
+    and each file is looked up in the library again (local: see
+    LibraryChecksums.local), by the checksum of the download, or that of
+    known_download for a file of the library. Return ([Found], lost):
+    lost, a file of the library found before is no longer there."""
+    now = not again and has_pdf(biblio, e)
+    kept, lost = [], False
+    for f in found:
+        if now and f.link.version != 'supplement':
+            print(f'{e.key}: has a PDF now (since the download): {f.link.url} not attached')
+            summary.had += 1
+            if refused in summary.browser:
+                summary.browser.remove(refused)
+            discard_downloads([(e.key, [f], None)])
+            continue
+        if f.how == 'downloaded':
+            known = {'sha256': checksum(f.path).hex(), 'size': os.path.getsize(f.path)}
+        else:
+            known = freepdf.known_download(f.link.url)
+        same = local(f.link, known) if known else None
+        if same is not None and same.how == 'has' and f.how == 'downloaded':
+            same = None  # said by _attach_fetched (the entry has the same file)
+        if same is not None:
+            if f.how == 'downloaded':
+                freepdf.discard(f.path)
+            kept.append(same._replace(refused=f.refused))
+        elif f.how == 'downloaded':
+            kept.append(f)
+        else:
+            print(f'{e.key}: {_show(f.path)} is no longer in the library (since the download): not attached')
+            lost = True
+    return kept, lost
 
 
 def _attach_fetched(biblio, config, pools, e, found, refused, mode, summary):
@@ -1076,15 +1177,30 @@ def file_fetchcmd(parser, o, config):
     mode = files_mode(o, config)
     if o.missing:
         _confirm_openalex(o, entries)
-    # the repair of `papers file fix` first: the download, only if it gives no PDF (one step for both)
-    exchange = Exchange(config, biblio, pools)
-    repaired = repair_pdf_links(config, biblio, exchange, entries, o.search or [], nameformat, mode, again=o.again)
+    # the downloads, without the lock (see papers.lock); not those of the entries that the repair of
+    # `papers file fix` gives a PDF (the repair is made with the attachment: one step for both)
+    repaired = repair_pdf_links(config, biblio, Exchange(config, biblio, pools), entries, o.search or [],
+                                nameformat, mode, again=o.again, plan=True)
     fetched = [e for e in entries if id(e) not in repaired or o.again or o.supplements]
     summary = FetchSummary()
-    summary.repaired = 0 if o.again else len(repaired)
-    failed = fetch_entry_pdfs(biblio, config, pools, fetched, mode, least=o.least_version or 'any',
-                              supplements=o.supplements, again=o.again, repaired=repaired, summary=summary,
-                              several=len(entries) > 1)
+    plans, failed = download_entry_pdfs(biblio, config, fetched, least=o.least_version or 'any',
+                                        supplements=o.supplements, again=o.again, repaired=repaired,
+                                        summary=summary, several=len(entries) > 1)
+    # the repair and the attachment, under the lock, in the library read again
+    try:
+        lock_library(o, config)
+        pools = library_pools(config)
+        biblio = get_biblio(config)
+        keys = {e.key: e for e in biblio.entries}
+        entries = [keys[e.key] for e in entries if e.key in keys]  # those gone are said by attach_entry_downloads
+        exchange = Exchange(config, biblio, pools)
+        repaired = repair_pdf_links(config, biblio, exchange, entries, o.search or [], nameformat, mode,
+                                    again=o.again)
+        summary.repaired = 0 if o.again else len(repaired)
+        failed += attach_entry_downloads(biblio, config, pools, plans, mode, summary, again=o.again)
+    except BaseException:
+        discard_downloads(plans)
+        raise
     if not dryrun:
         _save_fetched(config, biblio, exchange, entries)
     if o.missing and not entries:
@@ -1096,7 +1212,8 @@ def file_fetchcmd(parser, o, config):
 
 
 def file_upgradecmd(o, config):
-    "papers file fetch --upgrade [KEY...]"
+    "papers file fetch --upgrade [KEY...]: the downloads are made under the lock"
+    lock_library(o, config)
     dryrun = papers.config.DRYRUN
     pools = None if dryrun else library_pools(config)  # a shallow library pushes the entries it saves
     biblio = get_biblio(config)

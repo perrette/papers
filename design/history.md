@@ -696,7 +696,10 @@ papers keeps in memory the text of the bibtex and of the kept `.papers/`
 files, as they are before the command. The `start` or `outside` state
 (5.2) is made from them, so that a command which writes a `.papers/`
 file before it saves the bibtex still finds the library before itself
-in the history.
+in the history. A command that runs its network part without the lock
+(library.md, "The lock", Network outside the lock) does this again once
+it holds the lock: a command that wrote the library meanwhile keeps its
+own state, and is not recorded as a change made outside papers.
 
 This is not done for `status`, `config`, `init`, `install`,
 `uninstall`, `migrate`, `history`, `backup`, `git`, `undo`, `redo`,
@@ -1724,8 +1727,9 @@ same machine, on the same store. What makes this safe, and what does not:
   microsecond and content (the second is then not written). The upgrade
   of numbered states gives the same result whoever does it.
 - **The library** is protected by its lock (see `library.md`): a command
-  that writes a library, and undo, redo, restore and revert, hold it;
-  undo and redo also lock each pool before reading its head (7.2). Both
+  that writes a library, and undo, redo, restore and revert, hold it
+  (a command with a network part from its write phase on, after reading
+  the library again); undo and redo also lock each pool before reading its head (7.2). Both
   implementations must take the same lock file.
 - **The writing order** (2.8) and the modification time of reused objects
   protect against a concurrent prune.

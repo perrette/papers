@@ -578,7 +578,7 @@ class TestConfirmation(FetchTest):
     def setUp(self):
         super().setUp()
         self.bib(*[entry(f'e{i}x', doi=f'10.1000/e{i}') for i in range(51)])
-        patcher = mock.patch('papers.cli.file_cmds.fetch_entry_pdfs', return_value=0)
+        patcher = mock.patch('papers.cli.file_cmds.download_entry_pdfs', return_value=([], 0))
         self.fetch = patcher.start()
         self.addCleanup(patcher.stop)
 

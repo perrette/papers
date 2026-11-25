@@ -878,7 +878,20 @@ names above). `--missing` takes the entries without PDF.
   a PDF after that repair is not downloaded (unless `--again`); the others
   are fetched as below. `--dry-run` says what the repair would relink or
   restore, and does not list the links of these entries. `add
-  --fetch-pdf` makes no repair.
+  --fetch-pdf` makes no repair. The repair is planned before the
+  downloads and made after them, under the lock (next item).
+- The downloads run without the lock of the library (`file fetch`
+  without `--upgrade`; "The lock", Network outside the lock), into
+  temporary files. Then the command takes the lock, reads the library
+  again, makes the repair above and attaches each download to its entry,
+  found again by key: an entry no longer in the library (removed, or its
+  key changed) gets nothing, said with its key, and counts as an entry
+  without PDF for the exit status; an entry that has a PDF now (unless
+  `--again`) does not get the main PDF, said; a download is looked up
+  again in the files of the library by checksum, as for the cache of the
+  machine below (a file of the entry with that content: not attached; a
+  file of another entry: linked). The downloads not attached are removed.
+  `add --fetch-pdf` and `file fetch --upgrade` download under the lock.
 - `file fetch --missing` makes the same repair, then downloads the other
   entries without PDF, as `file fetch KEY...` does; an entry without any
   PDF link is downloaded (no file of another library is looked for).
@@ -1272,6 +1285,18 @@ orders (a command in L1 with `--pool L2` and a command in L2 with
 stops after `WAIT` seconds with an error, before it writes anything, and
 the other then gets the lock, unless it too waited `WAIT` seconds.
 Nothing is corrupted.
+
+**Network outside the lock.** A command whose network part is long (`file
+fetch`, `add` of PDFs or `--doi`) runs it without the lock: it reads the
+library to know what to look up, downloads or fills its cache, and writes
+nothing. It then takes the lock, reads the library again (and its pools,
+locked in the order above), and applies its results to that state, which
+may include the changes of commands that wrote the library meanwhile;
+these stay steps of their own in the history (the state before the
+command, history.md 5, is read under the lock). How `file fetch` applies
+its downloads to the library read again: "The free PDF of an entry".
+Stopped before it takes the lock (an error, an interrupt), such a command
+writes nothing in the library and removes its downloads.
 
 **Values.**
 

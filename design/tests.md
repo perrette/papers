@@ -451,6 +451,11 @@ that check the same thing.
 - tests/test_file_fetch.py::TestFetchPdfPorcelain::test_all_downloaded_exit_0
 - tests/test_file_fetch.py::TestPageLinks::test_relative_links
 - tests/test_file_fetch.py::TestPageLinks::test_openalex_request
+- tests/test_lock_after_network.py::TestFileFetch::test_library_changed_during_the_download
+- tests/test_lock_after_network.py::TestFileFetch::test_entry_removed_during_the_download
+- tests/test_lock_after_network.py::TestFileFetch::test_entry_got_a_pdf_during_the_download
+- tests/test_lock_after_network.py::TestFileFetch::test_same_file_linked_during_the_download
+- tests/test_lock_after_network.py::TestFileFetch::test_interrupted_during_the_downloads
 
 ### Syntax
 
@@ -572,6 +577,18 @@ that check the same thing.
 
 - tests/test_lock.py::TestCommands::test_reading_command_does_not_wait
 - tests/test_lock.py::TestCommands::test_writing_command_waits
+
+### Protocol
+
+Network outside the lock:
+
+- tests/test_lock_after_network.py::TestFileFetch::test_not_locked_during_the_download
+- tests/test_lock_after_network.py::TestFileFetch::test_library_changed_during_the_download
+- tests/test_lock_after_network.py::TestFileFetch::test_interrupted_during_the_downloads
+- tests/test_lock_after_network.py::TestFileFetch::test_lock_waited_for_after_the_downloads
+- tests/test_lock_after_network.py::TestAdd::test_pdf_metadata_fetched_before_the_lock
+- tests/test_lock_after_network.py::TestAdd::test_doi_fetched_before_the_lock
+- tests/test_lock_after_network.py::TestAdd::test_library_changed_during_the_lookup
 
 ## bibtex.md
 

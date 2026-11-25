@@ -206,6 +206,16 @@ Nothing is downloaded or attached twice:
   linked where it is, `same file as OTHERKEY`). Nothing about the URL is
   written in the library (only the version of the PDF, below).
 
+The downloads do not lock the library: other commands can change it
+meanwhile. When they are done, `papers file fetch` locks the library,
+reads it again, makes the repairs and attaches the files to the entries,
+found again by key. An entry removed or renamed meanwhile gets nothing
+(`KEY: no longer in the library ...`, exit status 1); an entry that got
+a PDF meanwhile does not get a second one (`KEY: has a PDF now`); a
+download with the content of a file that the library has now is not
+attached a second time. A fetch stopped before (Ctrl-C, an error)
+changes nothing and leaves no downloaded file.
+
 With `--missing`, when more than 50 entries with a DOI would query OpenAlex
 and no API key is set (environment variable `OPENALEX_API_KEY`, free at
 <https://openalex.org/settings/api>), papers asks first (`-y/--yes` does not

@@ -16,6 +16,7 @@ from papers.cli.fetch_cmds import doicmd, fetchcmd, extractcmd
 from papers.cli.file_cmds import (filecheckcmd, file_renamecmd, file_mvcmd, file_attachcmd, file_detachcmd, file_rmcmd,
                                   file_checkcmd, file_fixcmd, file_cleancmd, file_checksumcmd)
 from papers.cli.file_cmds import OPENALEX_ASK, file_fetchcmd
+from papers.cli.common import LOCK_LATER
 from papers.freepdf import LEAST_VERSIONS
 from papers.openalex import API_KEY_ENV, MAILTO_ENV
 from papers.cli.library_cmds import statuscmd, initcmd, configcmd, migratecmd, installcmd, uninstallcmd
@@ -236,7 +237,9 @@ def get_parser(config=None):
         papers.cli.main; with library=True, config is the library of the
         command line (see papers.cli.common.check_install), locked while
         the command runs (see papers.lock) unless writes is False, or a
-        function of the parsed arguments that says False"""
+        function of the parsed arguments that says False. With
+        writes=LOCK_LATER, the command takes the lock itself, after its
+        network part (see papers.cli.common.lock_library)."""
         p.set_defaults(func=func, library=library, bibtex_must_exist=bibtex_must_exist, command_parser=p,
                        writes=writes)
 
@@ -524,7 +527,7 @@ def get_parser(config=None):
     grp = addp.add_argument_group('actions')
     grp.add_argument('-e', '--edit', action='store_true', help='edit entry')
     grp.add_argument('-o', '--open', action='store_true', help='open files')
-    _command(addp, addcmd, library=True)
+    _command(addp, addcmd, library=True, writes=LOCK_LATER)
 
     # check
     # =====
@@ -654,7 +657,7 @@ def get_parser(config=None):
         help='for an entry whose PDF link is broken, also look for its file in DIR (recursively), by file '
              'name, else by the template name of the entry, as `papers file fix --search` (can be repeated)')
     p.add_argument('-y', '--yes', action='store_true', help='do not ask before querying OpenAlex for many entries')
-    _command(p, file_fetchcmd, library=True)
+    _command(p, file_fetchcmd, library=True, writes=LOCK_LATER)
 
     _key_help = (f'only the links of these entries ({ENTRY_IDS}; - reads them from the standard input); '
                  'write the files before --key, which takes several values')
