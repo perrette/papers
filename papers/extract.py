@@ -121,6 +121,9 @@ _NAME_DOIS = [
     # Science: science.1072376, science.289.5485.1719, sciadv.abf7787
     (re.compile(r'((?:science|sciadv)\.[a-z\d]+(?:\.\d+)*)'), '10.1126/'),
 ]
+# Elsevier: 1-s2.0-<PII>-main, the PII without punctuation; only those of articles before about 2005, whose
+# DOI is 10.1016/<PII> (then 10.1016/j.<journal>...): 0025322786901234, S0012821X99001168
+_NAME_PII = re.compile(r'1-s2\.0-(\d{7}[\dx]\d{7}[\dx]|s\d{7}[\dx](?:9\d|0[0-5])\d{5}[\dx])-main')
 
 
 def _name_doi(file):
@@ -133,6 +136,11 @@ def _name_doi(file):
         match = pattern.fullmatch(stem)
         if match:
             return prefix + match.group(1)
+    match = _NAME_PII.fullmatch(stem)
+    if match:
+        pii = match.group(1)
+        s, n = ('s', pii[1:]) if pii.startswith('s') else ('', pii)
+        return f'10.1016/{s}{n[:4]}-{n[4:8]}({n[8:10]}){n[10:15]}-{n[15]}'
     return None
 
 
@@ -574,7 +582,9 @@ def _without_citations(entry, txt):
 
     A citation: the first author with initials before the title, the year of
     the entry between them or after the title, and no author after the title
-    (as in the paper itself), nor "cite" before it (how to cite this paper)."""
+    (as in the paper itself), nor "cite" before it (how to cite this paper).
+    And the first author nowhere else in the text: old Elsevier papers cite
+    themselves under their abstract, after their byline."""
     title = _normalize_for_match(get_entry_val(entry, 'title', ''))
     year = get_entry_val(entry, 'year', '')
     families = family_names(get_entry_val(entry, 'author', ''))
@@ -592,6 +602,7 @@ def _without_citations(entry, txt):
     initials = r'(?:[A-Z]\. ?-?){1,4}|[A-Z]{1,3}\b'
     author = re.compile(rf'\b(?i:{re.escape(family)}),? (?:{initials})|\b(?:{initials}) ?(?i:{re.escape(family)})\b')
     kept, last = [], 0
+    others = ''  # the text but the citations
     for match in re.finditer(re.escape(title), normalized):
         start, end = where[match.start()], where[match.end()-1] + 1
         before = to_ascii(' '.join(txt[max(0, start-200):start].split()))
@@ -603,8 +614,14 @@ def _without_citations(entry, txt):
             continue
         if year in before[authors[-1].end():] or year in after:
             kept.append(txt[last:start])
+            others += ' ' + txt[last:max(last, start-200)]
             last = end
-    return ' '.join(kept + [txt[last:]]) if kept else txt
+    if not kept:
+        return txt
+    others += ' ' + txt[last:]
+    if re.search(rf'\b{re.escape(family)}\b', to_ascii(' '.join(others.split())), re.I):
+        return txt
+    return ' '.join(kept + [txt[last:]])
 
 
 def entry_in_text(entry, txt, near=True):

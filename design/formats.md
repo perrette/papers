@@ -107,7 +107,9 @@ The last candidate is the DOI that the file name stands for: `10.1038/NAME`
 for the names of Nature Portfolio (`358485a0`, `33391`, `35013033`,
 `nature01297`, `ngeo277`, `sdata.2015.29`,
 `s41598-017-15637-6`), `10.1126/NAME` for those of Science
-(`science.1072376`, `sciadv.abf7787`), without the ` (1)` of a browser. The
+(`science.1072376`, `sciadv.abf7787`),
+`10.1016/<PII>` for those of Elsevier before about 2005
+(`1-s2.0-0025322786901234-main`: `10.1016/0025-3227(86)90123-4`), without the ` (1)` of a browser. The
 list of names is free.
 
 A title that the text only cites does not count: the paper's own title is
@@ -115,7 +117,8 @@ looked for (exactly or nearly) in the text without those occurrences of the
 exact title that have the first author with initials in the 200 characters
 before, the entry's year between that author and the title or in the 150
 characters after it, no first author in those 150 characters, and no `cite`
-or `citation` before. The PDF of an article that starts in the middle of a
+or `citation` before; none does when the first author is elsewhere in the
+text (beyond those 200 characters), as in a byline. The PDF of an article that starts in the middle of a
 page has the references of the previous one.
 
 ### 1.3 Text encoding

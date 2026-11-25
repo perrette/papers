@@ -521,6 +521,9 @@ class TestTitleCheck(unittest.TestCase):
         self.assertTrue(entry_in_text(entry, self.PAGE + title))
         self.assertTrue(entry_in_text(entry, f'Citation: Jeffery, C. A., {title}, J. Geophys. Res., 1997'))
         self.assertTrue(entry_in_text(entry, f'C. A. Jeffery et al. / JGR\n{title}\nC. A. Jeffery, P. H. Austin\nReceived 1997'))
+        # the paper itself, its heading badly extracted: it cites itself under its abstract
+        self.assertTrue(entry_in_text(entry, 'HOMOGENEOUS NUCLE~ION\nC.A. JEFFERY and P.H. AUSTIN\nDepartment of Atmospheric Sciences, '
+                                      + 'Vancouver, Canada ' * 12 + '\nABSTRACT\n' + self.CITED.replace('5. ', '') + 'We show'))
         with mock.patch('papers.extract.fetch_bibtex_by_fulltext_crossref', return_value=self.CITED_BIBTEX):
             with self.assertLogs('papers', level='WARNING'), self.assertRaises(ValueError):
                 extract_txt_metadata(self.PAGE, search_fulltext=True)
@@ -528,13 +531,17 @@ class TestTitleCheck(unittest.TestCase):
     def test_doi_of_file_name(self):
         from papers.extract import DOIParsingError, parse_dois
         for name, doi in [('/x/35013033.pdf', '10.1038/35013033'), ('nature01297 (1).pdf', '10.1038/nature01297'),
-                          ('358485a0.pdf', '10.1038/358485a0'), ('33391.pdf', '10.1038/33391'),
+                          ('358485a0.pdf', '10.1038/358485a0'),
+                          ('1-s2.0-0025322786901234-main.pdf', '10.1016/0025-3227(86)90123-4'),
+                          ('1-s2.0-0012821X8590072X-main (1).pdf', '10.1016/0012-821x(85)90072-x'),
+                          ('1-s2.0-S0012821X99001168-main.pdf', '10.1016/s0012-821x(99)00116-8'),
+                          ('33391.pdf', '10.1038/33391'),
                           ('sdata.2015.29.pdf', '10.1038/sdata.2015.29'),
                           ('ngeo277.pdf', '10.1038/ngeo277'), ('s41598-017-15637-6.pdf', '10.1038/s41598-017-15637-6'),
                           ('science.289.5485.1719.pdf', '10.1126/science.289.5485.1719')]:
             self.assertEqual(parse_dois('no doi', name=name), [doi])
             self.assertEqual(parse_dois('doi:10.1000/a', name=name), ['10.1000/a', doi])
-        for name in 'oppo2005.pdf', '20200101.pdf', 'science.pdf', 'nature.pdf':
+        for name in '1-s2.0-S0012821X14007511-main.pdf', 'oppo2005.pdf', '20200101.pdf', 'science.pdf', 'nature.pdf':
             with self.assertRaises(DOIParsingError):
                 parse_dois('no doi', name=name)
 
