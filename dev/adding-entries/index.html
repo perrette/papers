@@ -1175,13 +1175,16 @@ attachment.</p>
 <li>If the text has no DOI, an arXiv identifier written <code>arXiv:2101.01234</code>
    gives the DOI <code>10.48550/arXiv.2101.01234</code>, whose metadata come from
    arXiv and are checked as in step 3.</li>
+<li>A file name given by Nature or Science (<code>35013033.pdf</code>, <code>nature01297.pdf</code>,
+   <code>science.1072376.pdf</code>) gives a last DOI to try, checked as in step 3.</li>
 </ol>
 <p>When no DOI is accepted, papers searches crossref with the first 200 words
 of the text (<code>--scholar</code>: Google Scholar, <code>--openalex</code>: OpenAlex, see
 <a href="#search-with-openalex">below</a>), and accepts the result only if
 its title appears in the text. A title that differs from the text by a
 character or two (98 % similar, e.g. a prime extracted as <code>0</code>) counts as
-appearing in it. Otherwise the PDF is not added, and papers
+appearing in it. A title that the text only cites (after its author's name,
+with its year, as in a reference list) does not. Otherwise the PDF is not added, and papers
 reports an error: pass the DOI with <code>--doi</code>, or describe the entry (see
 <a href="#add-a-whole-directory-of-pdfs">below</a>). <code>--no-query-doi</code> skips the DOI
 search, and <code>--no-query-fulltext</code> the text search.</p>
@@ -1301,7 +1304,9 @@ is fetched online and there is no duplicate dialogue. The PDF (and the files
 of <code>--attach</code>) are attached to the entry and placed as the <code>files</code> setting
 says, as <code>papers file attach KEY FILE...</code> does; the key, the fields and the
 other files of the entry are not touched. A file with the content of a file
-of the entry is not attached again, and stays where it is. An arXiv DOI
+of the entry is not attached again; with <code>files</code> set to <code>move</code> it is
+deleted, as if it had been moved (<code>papers undo</code> brings it back), unless
+another entry links to it. An arXiv DOI
 (<code>10.48550/arXiv.&lt;id&gt;</code>) matches an entry whose <code>eprint</code> is that arXiv
 identifier. <code>--no-check-duplicate</code> skips this, and adds a new entry.</p>
 <p>The order is: the library, then the pool (below), then online.</p>
