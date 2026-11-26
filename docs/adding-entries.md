@@ -46,9 +46,9 @@ papers add entry.bib --attach esd-4-11-2013.pdf --bibtex papers.bib --filesdir f
 4. If the text has no DOI, an arXiv identifier written `arXiv:2101.01234`
    gives the DOI `10.48550/arXiv.2101.01234`, whose metadata come from
    arXiv and are checked as in step 3.
-5. A file name given by Nature, Science or Elsevier (before about 2005:
+5. A file name given by Nature, Science, Springer or Elsevier (before about 2005:
    `1-s2.0-0025322786901234-main.pdf`, `358485a0.pdf`, `35013033.pdf`, `nature01297.pdf`,
-   `science.1072376.pdf`) gives a last DOI to try, checked as in step 3.
+   `science.1072376.pdf`, `s00382-005-0009-4.pdf`) gives a last DOI to try, checked as in step 3.
 
 When no DOI is accepted, papers searches crossref with the first 200 words
 of the text (`--scholar`: Google Scholar, `--openalex`: OpenAlex, see

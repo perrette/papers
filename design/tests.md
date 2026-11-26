@@ -738,6 +738,8 @@ Network outside the lock:
 - tests/test_extract_unit.py::TestTitleCheck::test_exact_before_near
 - tests/test_extract_unit.py::TestTitleCheck::test_cited_title_is_not_the_paper
 - tests/test_extract_unit.py::TestTitleCheck::test_doi_of_file_name
+- tests/test_extract_unit.py::TestDamagedXmp::test_damaged_xmp_is_no_metadata
+- tests/test_extract_unit.py::TestFormatAuthors::test_names_in_one_piece
 - tests/test_extract_unit.py::TestParseDoiCandidates::test_prefers_article_doi_over_data_repository
 - tests/test_extract_unit.py::TestTextDoiCandidates::test_doi_glued_to_a_word_or_number_is_ignored
 

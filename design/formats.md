@@ -107,7 +107,8 @@ The last candidate is the DOI that the file name stands for: `10.1038/NAME`
 for the names of Nature Portfolio (`358485a0`, `33391`, `35013033`,
 `nature01297`, `ngeo277`, `sdata.2015.29`,
 `s41598-017-15637-6`), `10.1126/NAME` for those of Science
-(`science.1072376`, `sciadv.abf7787`),
+(`science.1072376`, `sciadv.abf7787`), `10.1007/NAME` for those of Springer
+(`s00382-005-0009-4`, `s003820050278`, `BF00028046`),
 `10.1016/<PII>` for those of Elsevier before about 2005
 (`1-s2.0-0025322786901234-main`: `10.1016/0025-3227(86)90123-4`), without the ` (1)` of a browser. The
 list of names is free.

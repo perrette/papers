@@ -120,6 +120,9 @@ _NAME_DOIS = [
                 r'|s4\d{4}-\d{3}-\d{4,5}-[\da-z])'), '10.1038/'),
     # Science: science.1072376, science.289.5485.1719, sciadv.abf7787
     (re.compile(r'((?:science|sciadv)\.[a-z\d]+(?:\.\d+)*)'), '10.1126/'),
+    # Springer (after Nature, for its s41598-... names): s00382-005-0009-4, s003820050278 (before about
+    # 2002), BF00028046 (older articles)
+    (re.compile(r'(s\d{5}-\d{3}-\d{4,5}-[\dx]|s\d{12}|bf\d{8})'), '10.1007/'),
 ]
 # Elsevier: 1-s2.0-<PII>-main, the PII without punctuation; only those of articles before about 2005, whose
 # DOI is 10.1016/<PII> (then 10.1016/j.<journal>...): 0025322786901234, S0012821X99001168
@@ -209,8 +212,12 @@ def parse_doi_from_pdf_metadata_pymupdf(pdf_path):
             if doi:
                 return doi
 
-        # Fall back to XMP metadata
-        xmp = doc.get_xml_metadata() if hasattr(doc, 'get_xml_metadata') else doc.xref_get_key(-1, "Metadata")
+        # Fall back to XMP metadata; a damaged one (e.g. its reference is not a stream) is none
+        try:
+            xmp = doc.get_xml_metadata() if hasattr(doc, 'get_xml_metadata') else doc.xref_get_key(-1, "Metadata")
+        except Exception as error:
+            logger.debug(f'{pdf_path}: XMP metadata not read ({error})')
+            xmp = None
         if xmp:
             xmp_str = xmp if isinstance(xmp, str) else xmp.decode('utf-8', errors='ignore')
             return _parse_doi_from_metadata_string(xmp_str)

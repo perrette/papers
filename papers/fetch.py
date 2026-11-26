@@ -269,6 +269,12 @@ def format_authors(authors):
     for author in authors:
         given = author.get("given", "")
         family = author.get("family", "")
+        # a name in one piece: `literal` (DataCite records at doi.org: "Birks, H.John B."), `name`
+        # (an organization at crossref). With a comma it is "Family, Given"; without, it stays whole
+        literal = (author.get("literal") or author.get("name") or "").strip()
+        if not family and not given and literal:
+            author_list.append(literal if ',' in literal else '{' + literal + '}')
+            continue
         # Format as "Family, Given" for BibTeX
         formatted = f"{family}, {given}" if family else given
         author_list.append(formatted)

@@ -1,5 +1,6 @@
 """Unit tests for papers.extract and papers.fetch"""
 import unittest
+from unittest import mock
 
 from papers.extract import (
     parse_doi,
@@ -129,6 +130,11 @@ class TestFormatAuthors(unittest.TestCase):
 
     def test_empty_list(self):
         self.assertEqual(format_authors([]), "")
+
+    def test_names_in_one_piece(self):
+        # DataCite records at doi.org (CSL): literal names; crossref: organizations as name
+        authors = [{"literal": "Birks, H.John B."}, {"literal": "Heiri, Oliver"}, {"name": "IPCC"}]
+        self.assertEqual(format_authors(authors), "Birks, H.John B. and Heiri, Oliver and {IPCC}")
 
 
 class TestMapCrossrefToBibtexType(unittest.TestCase):
@@ -539,7 +545,9 @@ class TestTitleCheck(unittest.TestCase):
                           ('33391.pdf', '10.1038/33391'),
                           ('sdata.2015.29.pdf', '10.1038/sdata.2015.29'),
                           ('ngeo277.pdf', '10.1038/ngeo277'), ('s41598-017-15637-6.pdf', '10.1038/s41598-017-15637-6'),
-                          ('science.289.5485.1719.pdf', '10.1126/science.289.5485.1719')]:
+                          ('science.289.5485.1719.pdf', '10.1126/science.289.5485.1719'),
+                          ('s00382-005-0009-4.pdf', '10.1007/s00382-005-0009-4'),
+                          ('s003820050278.pdf', '10.1007/s003820050278'), ('BF00028046.pdf', '10.1007/bf00028046')]:
             self.assertEqual(parse_dois('no doi', name=name), [doi])
             self.assertEqual(parse_dois('doi:10.1000/a', name=name), ['10.1000/a', doi])
         for name in '1-s2.0-S0012821X14007511-main.pdf', 'oppo2005.pdf', '20200101.pdf', 'science.pdf', 'nature.pdf':
@@ -866,3 +874,16 @@ class TestPrefetch(unittest.TestCase):
             prefetch_pdf_metadata(['a.pdf', 'b.pdf', 'c.pdf'])
         self.assertEqual(sorted(seen, key=str), sorted([('10.1/meta', ('', '', '')), (None, ('head b.pdf', 'tail', 'info')), (None, ('head c.pdf', 'tail', 'info'))], key=str))
         self.assertEqual(logger.level, level)
+
+
+class TestDamagedXmp(unittest.TestCase):
+
+    def test_damaged_xmp_is_no_metadata(self):
+        # a PDF whose XMP reference is not a stream (pymupdf: "code=7: object is not a stream")
+        from papers.extract import parse_doi_from_pdf_metadata_pymupdf
+        doc = mock.MagicMock()
+        doc.__enter__.return_value = doc
+        doc.metadata = {'title': 'Modern Analogues of Late-Quaternary Pollen Spectra'}
+        doc.get_xml_metadata.side_effect = RuntimeError('code=7: object is not a stream')
+        with mock.patch('pymupdf.open', return_value=doc):
+            self.assertIsNone(parse_doi_from_pdf_metadata_pymupdf('x.pdf'))
